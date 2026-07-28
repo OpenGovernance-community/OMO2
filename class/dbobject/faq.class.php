@@ -11,6 +11,7 @@ class FAQ extends DbObject
 	protected static $_hasVoteColumns = null;
 	protected static $_hasScoreAnalyticsColumns = null;
 	protected static $_hasParcoursColumn = null;
+	protected static $_hasApplicationColumn = null;
 	protected static $_organizationIdByHolonId = array();
 	protected static $_availableParcoursIdsByOrganization = array();
 
@@ -23,8 +24,8 @@ class FAQ extends DbObject
 	{
 		return [
 			[['question', 'answer'], 'required'],
-			[['id', 'IDhowto', 'IDorganization', 'IDparcours', 'displayorder', 'viewcount', 'total_votes'], 'integer'],
-			[['IDorganization', 'IDholon', 'IDparcours'], 'fk'],
+			[['id', 'IDhowto', 'displayorder', 'viewcount', 'total_votes'], 'integer'],
+			[['IDorganization', 'IDholon', 'IDparcours', 'IDapplication'], 'fk'],
 			[['positive_score', 'negative_score', 'reliability'], 'float'],
 			[['question'], 'string'],
 			[['video'], 'string'],
@@ -45,6 +46,7 @@ class FAQ extends DbObject
 			'IDorganization' => 'Organisation',
 			'IDholon' => 'Holon',
 			'IDparcours' => 'Parcours',
+			'IDapplication' => 'Application',
 			'question' => 'Question',
 			'detail' => 'Reponse complete',
 			'answer' => 'Reponse courte',
@@ -70,6 +72,13 @@ class FAQ extends DbObject
 			'question' => 255,
 			'video' => 1000,
 			'image' => [480, 270],
+		];
+	}
+
+	public static function attributeDescriptions()
+	{
+		return [
+			'IDapplication' => 'Application optionnelle. Si elle est desactivee dans l organisation courante, la FAQ est masquee pour les utilisateurs.',
 		];
 	}
 
@@ -279,6 +288,16 @@ class FAQ extends DbObject
 
 		self::$_hasParcoursColumn = self::hasColumn('IDparcours');
 		return self::$_hasParcoursColumn;
+	}
+
+	public static function hasApplicationColumn()
+	{
+		if (self::$_hasApplicationColumn !== null) {
+			return self::$_hasApplicationColumn;
+		}
+
+		self::$_hasApplicationColumn = self::hasColumn('IDapplication');
+		return self::$_hasApplicationColumn;
 	}
 
 	public static function getPopupOrderBy()
@@ -837,6 +856,40 @@ class FAQ extends DbObject
 		return $parcours->load($parcoursId) ? $parcours : null;
 	}
 
+	public function getLinkedApplication()
+	{
+		if (!self::hasApplicationColumn()) {
+			return null;
+		}
+
+		$applicationId = (int)$this->get('IDapplication');
+		if ($applicationId <= 0) {
+			return null;
+		}
+
+		$application = new \dbObject\Application();
+		return $application->load($applicationId) ? $application : null;
+	}
+
+	public function isLinkedApplicationVisibleInOrganization($organizationId)
+	{
+		if (!self::hasApplicationColumn()) {
+			return true;
+		}
+
+		$applicationId = (int)$this->get('IDapplication');
+		if ($applicationId <= 0) {
+			return true;
+		}
+
+		$organizationId = (int)$organizationId;
+		if ($organizationId <= 0) {
+			return false;
+		}
+
+		return \dbObject\Application::isEnabledForOrganization($applicationId, $organizationId);
+	}
+
 	protected static function resolveOrganizationIdForHolon($holonId)
 	{
 		$holonId = (int)$holonId;
@@ -956,6 +1009,10 @@ class FAQ extends DbObject
 		}
 
 		if (!$matchesScope) {
+			return false;
+		}
+
+		if (!$this->isLinkedApplicationVisibleInOrganization($contextOrganizationId)) {
 			return false;
 		}
 

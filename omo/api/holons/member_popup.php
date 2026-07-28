@@ -28,9 +28,22 @@ if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organi
     exit;
 }
 
+$organizationLexicon = $organization->getLexicon();
+$adminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
+$adminLabelLower = function_exists('mb_strtolower')
+	? mb_strtolower($adminLabel, 'UTF-8')
+	: strtolower($adminLabel);
+
 $canAddMember = $_SERVER['REQUEST_METHOD'] === 'POST'
     ? $holon->isAllowed('CAN_ADD_MEMBER', false)
     : $holon->isAllowed('CAN_ADD_MEMBER');
+$canAddAdmin = $_SERVER['REQUEST_METHOD'] === 'POST'
+    ? $holon->isAllowed('CAN_ADD_ADMIN', false)
+    : $holon->isAllowed('CAN_ADD_ADMIN');
+$adminConstraintState = $holon->getAdminMemberConstraintState($organizationId);
+$adminMinimum = (int)($adminConstraintState['min'] ?? 0);
+$adminMaximum = $adminConstraintState['max'] ?? null;
+$adminCount = (int)($adminConstraintState['adminCount'] ?? 0);
 
 if (!$canAddMember) {
     http_response_code(403);
@@ -40,13 +53,33 @@ if (!$canAddMember) {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $adminMinimum > 0 && $adminCount < $adminMinimum && !$canAddAdmin) {
+    http_response_code(403);
+    ?>
+    <div class="omo-holon-member-popup__empty">Ce role exige au moins <?= (int)$adminMinimum ?> <?= omoApiEscape($adminLabelLower) ?> avant l ajout d un membre normal. Vous ne pouvez pas definir ce statut dans ce contexte.</div>
+    <?php
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=UTF-8');
 
     $selectedUserId = (int)($_POST['user_id'] ?? 0);
     $email = trim((string)($_POST['email'] ?? ''));
+	$isAdmin = !empty($_POST['is_admin']);
 
-    $result = $holon->addMember($selectedUserId, $email);
+	if ($isAdmin && !$canAddAdmin) {
+		http_response_code(403);
+		echo json_encode(array(
+			'status' => false,
+			'message' => "Vous n'avez pas le droit de gerer le statut " . $adminLabelLower . ' dans ce contexte.',
+		), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		exit;
+	}
+
+	$result = $holon->addMember($selectedUserId, $email, array(
+		'isAdmin' => $isAdmin,
+	));
     if (!($result['status'] ?? false)) {
         http_response_code(422);
         echo json_encode(array(
@@ -114,6 +147,18 @@ foreach ($directMembers as $member) {
         color: var(--topbar-panel-muted, #64748b);
         font-size: 0.92rem;
         line-height: 1.45;
+    }
+
+    .omo-holon-member-popup__checkbox {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+    }
+
+    .omo-holon-member-popup__checkbox input {
+        width: 18px;
+        height: 18px;
     }
 
     .omo-holon-member-popup__separator {
@@ -214,6 +259,21 @@ foreach ($directMembers as $member) {
         >
         <div class="omo-holon-member-popup__hint">
             Si l'adresse existe déjà, le profil existant sera réutilisé. Sinon, un nouveau profil minimal sera créé puis rattaché.
+        </div>
+    </div>
+
+    <div class="omo-holon-member-popup__group">
+        <label class="omo-holon-member-popup__checkbox" for="omoHolonMemberAdmin">
+            <input type="checkbox" id="omoHolonMemberAdmin" name="is_admin" value="1"<?= $canAddAdmin ? '' : ' disabled' ?>>
+            <?= omoApiEscape($adminLabel) ?>
+        </label>
+        <div class="omo-holon-member-popup__hint">
+            <?= $canAddAdmin
+                ? 'La personne recevra le statut ' . $adminLabelLower . ' de ce contexte, maintenant ou apres validation de l invitation.'
+                : 'Vous n avez pas le droit de definir ce statut dans ce contexte.' ?>
+            <?php if ($adminMinimum > 0 || $adminMaximum !== null): ?>
+                <br><?= omoApiEscape($adminLabel) ?> : <?= (int)$adminCount ?><?= $adminMinimum > 0 ? ' (minimum : ' . (int)$adminMinimum . ')' : '' ?><?= $adminMaximum !== null ? ' (maximum : ' . (int)$adminMaximum . ')' : '' ?>.
+            <?php endif; ?>
         </div>
     </div>
 

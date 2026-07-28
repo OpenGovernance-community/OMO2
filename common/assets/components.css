@@ -15,6 +15,51 @@
     --project-priority-p5: #778aa3;
 }
 
+/* Summernote appends its link dialog outside the editor. Keep that dialog
+ * consistent with the application dark theme instead of inheriting light
+ * modal surfaces with dark-theme text. */
+html[data-theme="dark"] .note-modal .note-modal-content {
+    border-color: var(--color-border-strong, #3b4e67) !important;
+    background: var(--color-surface-raised, #1b2632) !important;
+    color: var(--color-text, #e5edf7) !important;
+}
+
+html[data-theme="dark"] .note-modal .note-modal-header,
+html[data-theme="dark"] .note-modal .note-modal-footer {
+    border-color: var(--color-border, #283548) !important;
+}
+
+html[data-theme="dark"] .note-modal .note-modal-footer {
+    box-sizing: border-box;
+    min-height: 58px;
+    height: auto;
+    padding: 12px 14px;
+}
+
+html[data-theme="dark"] .note-modal .note-modal-title,
+html[data-theme="dark"] .note-modal .note-modal-body label,
+html[data-theme="dark"] .note-modal .note-modal-body .checkbox {
+    color: var(--color-text, #e5edf7) !important;
+}
+
+html[data-theme="dark"] .note-modal .note-modal-header .close {
+    color: var(--color-text, #e5edf7) !important;
+    opacity: 0.8;
+}
+
+html[data-theme="dark"] .note-modal .note-modal-body .note-input,
+html[data-theme="dark"] .note-modal .note-modal-body .note-form-control {
+    border-color: var(--color-border-strong, #3b4e67) !important;
+    background: var(--color-surface-alt, #101923) !important;
+    color: var(--color-text, #e5edf7) !important;
+}
+
+html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
+    border-color: color-mix(in srgb, var(--color-primary, #7c9cff) 70%, var(--color-border-strong, #3b4e67)) !important;
+    background: var(--color-primary, #7c9cff) !important;
+    color: var(--color-text-inverse, #0f1720) !important;
+}
+
 .generic-project-priority {
     display: inline-grid;
     place-items: center;

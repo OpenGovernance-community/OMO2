@@ -38,9 +38,31 @@ class ArrayRule extends ArrayDbObject
 
     public function loadForPolicyContext($organizationId, Holon $contextHolon)
     {
+        $this->loadForPolicyContexts($organizationId, [(int)$contextHolon->getId()]);
+    }
+
+    /**
+     * Load the rules effective for at least one holon in a displayed context
+     * scope. The rule itself is included once even when it applies to several
+     * holons of that scope.
+     */
+    public function loadForPolicyContexts($organizationId, array $contextHolonIds)
+    {
         $this->exchangeArray([]);
         $organizationId = (int)$organizationId;
-        if ($organizationId <= 0 || (int)$contextHolon->getId() <= 0) {
+        $contextHolons = [];
+        foreach ($contextHolonIds as $contextHolonId) {
+            $contextHolonId = (int)$contextHolonId;
+            if ($contextHolonId <= 0 || isset($contextHolons[$contextHolonId])) {
+                continue;
+            }
+
+            $contextHolon = new Holon();
+            if ($contextHolon->load($contextHolonId)) {
+                $contextHolons[$contextHolonId] = $contextHolon;
+            }
+        }
+        if ($organizationId <= 0 || count($contextHolons) === 0) {
             return;
         }
 
@@ -68,10 +90,14 @@ class ArrayRule extends ArrayDbObject
             if (!($sourceHolon instanceof Holon)) {
                 continue;
             }
-            if ($scope === Rule::SCOPE_GLOBAL
-                || ($scope === Rule::SCOPE_LOCAL && (int)$sourceHolon->getId() === (int)$contextHolon->getId())
-                || ($scope === Rule::SCOPE_DESCENDANTS && $contextHolon->isDescendantOf((int)$sourceHolon->getId(), true))) {
-                $this[] = $rule;
+
+            foreach ($contextHolons as $contextHolon) {
+                if ($scope === Rule::SCOPE_GLOBAL
+                    || ($scope === Rule::SCOPE_LOCAL && (int)$sourceHolon->getId() === (int)$contextHolon->getId())
+                    || ($scope === Rule::SCOPE_DESCENDANTS && $contextHolon->isDescendantOf((int)$sourceHolon->getId(), true))) {
+                    $this[] = $rule;
+                    break;
+                }
             }
         }
     }

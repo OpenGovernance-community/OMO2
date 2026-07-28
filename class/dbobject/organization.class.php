@@ -153,6 +153,68 @@
 			$this->set('parameters', $parameters);
 		}
 
+		public static function getDefaultLexicon(): array
+		{
+			return array(
+				'tension' => array(
+					'label' => 'Tension',
+					'article' => 'une',
+				),
+				'admin' => array(
+					'label' => 'Admin',
+				),
+			);
+		}
+
+		public static function normalizeLexicon(array $lexicon): array
+		{
+			$defaults = self::getDefaultLexicon();
+			$normalized = $defaults;
+
+			foreach ($defaults as $key => $defaultTerm) {
+				$value = $lexicon[$key] ?? array();
+				if (is_string($value)) {
+					$value = array('label' => $value);
+				}
+				if (!is_array($value)) {
+					$value = array();
+				}
+
+				$label = trim((string)($value['label'] ?? ''));
+				if ($label !== '') {
+					$normalized[$key]['label'] = function_exists('mb_substr')
+						? mb_substr($label, 0, 80, 'UTF-8')
+						: substr($label, 0, 80);
+				}
+
+				if (array_key_exists('article', $defaultTerm)) {
+					$article = trim((string)($value['article'] ?? ''));
+					if ($article !== '') {
+						$normalized[$key]['article'] = function_exists('mb_substr')
+							? mb_substr($article, 0, 20, 'UTF-8')
+							: substr($article, 0, 20);
+					}
+				}
+			}
+
+			return $normalized;
+		}
+
+		public function getLexicon(): array
+		{
+			$parameters = $this->getParametersArray();
+			$lexicon = $parameters['lexicon'] ?? array();
+
+			return self::normalizeLexicon(is_array($lexicon) ? $lexicon : array());
+		}
+
+		public function setLexicon(array $lexicon): void
+		{
+			$parameters = $this->getParametersArray();
+			$parameters['lexicon'] = self::normalizeLexicon($lexicon);
+			$this->setParametersArray($parameters);
+		}
+
 		public function getApplicationLinkByDirectory(string $directory, bool $activeOnly = false): ?\dbObject\OrganizationApplication
 		{
 			$organizationId = (int)$this->getId();
@@ -1966,6 +2028,114 @@
 			return $rawValue;
 		}
 
+		protected function remapProjectReferenceItems($items, array $projectIdMap)
+		{
+			if (!is_array($items)) {
+				return $items;
+			}
+
+			$remapped = array();
+			foreach ($items as $item) {
+				if (is_array($item) && array_key_exists('id', $item)) {
+					$sourceProjectId = (int)$item['id'];
+					if ($sourceProjectId > 0 && !isset($projectIdMap[$sourceProjectId])) {
+						continue;
+					}
+					if ($sourceProjectId > 0) {
+						$item['id'] = (int)$projectIdMap[$sourceProjectId];
+					}
+					$remapped[] = $item;
+					continue;
+				}
+
+				if (is_scalar($item)) {
+					$sourceProjectId = (int)$item;
+					if ($sourceProjectId > 0) {
+						if (isset($projectIdMap[$sourceProjectId])) {
+							$remapped[] = (int)$projectIdMap[$sourceProjectId];
+						}
+						continue;
+					}
+				}
+
+				$remapped[] = $item;
+			}
+
+			return array_values($remapped);
+		}
+
+		protected function remapProjectReferenceValue($rawValue, array $projectIdMap)
+		{
+			$rawValue = is_scalar($rawValue) || $rawValue === null ? (string)$rawValue : '';
+			$trimmedValue = trim($rawValue);
+			if ($trimmedValue === '') {
+				return $rawValue;
+			}
+
+			$decoded = json_decode($trimmedValue, true);
+			if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+				$sourceProjectId = (int)$trimmedValue;
+				return $sourceProjectId > 0 && isset($projectIdMap[$sourceProjectId])
+					? (string)$projectIdMap[$sourceProjectId]
+					: $rawValue;
+			}
+
+			if (array_key_exists('items', $decoded) && is_array($decoded['items'])) {
+				$decoded['items'] = $this->remapProjectReferenceItems($decoded['items'], $projectIdMap);
+			} elseif (array_is_list($decoded)) {
+				$decoded = $this->remapProjectReferenceItems($decoded, $projectIdMap);
+			} elseif (array_key_exists('id', $decoded)) {
+				$remapped = $this->remapProjectReferenceItems(array($decoded), $projectIdMap);
+				$decoded = $remapped[0] ?? array();
+			}
+
+			return json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		}
+
+		protected function remapImportedProjectPropertyValues(array $projectIdMap, array $taskIdMap)
+		{
+			$projectIdMap = $projectIdMap + $taskIdMap;
+
+			$rootHolon = $this->getStructuralRootHolon();
+			if (!($rootHolon instanceof \dbObject\Holon)) {
+				return;
+			}
+
+			$holons = new \dbObject\ArrayHolon();
+			$holons->load(array(
+				'whereAny' => array(
+					array('field' => 'IDorganization', 'value' => (int)$this->getId()),
+					array('field' => 'IDholon_org', 'value' => (int)$rootHolon->getId()),
+				),
+				'orderBy' => array(
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+
+			foreach ($holons as $holon) {
+				if (!($holon instanceof \dbObject\Holon)) {
+					continue;
+				}
+
+				foreach ($holon->getHolonProperties() as $holonProperty) {
+					$property = new \dbObject\Property();
+					if (!$property->load((int)$holonProperty->get('IDproperty'))
+						|| (string)$property->get('listitemtype') !== \dbObject\Property::LIST_ITEM_PROJECT) {
+						continue;
+					}
+
+					$currentValue = $holonProperty->get('value');
+					$remappedValue = $this->remapProjectReferenceValue($currentValue, $projectIdMap);
+					if ((string)$remappedValue === (string)$currentValue) {
+						continue;
+					}
+
+					$holonProperty->set('value', $remappedValue);
+					self::omo1ImportSave($holonProperty, 'Une liste de projets n a pas pu etre restauree');
+				}
+			}
+		}
+
 		protected function cloneStructuralPropertyValue(\dbObject\Property $property, $rawValue, array $holonIdMap)
 		{
 			$value = $this->remapHolonReferenceValueByListType($property->get('listitemtype'), $rawValue, $holonIdMap);
@@ -2100,8 +2270,10 @@
 				}
 
 				$formatId = (int)($definition['formatId'] ?? 0);
-				if (strtolower(trim((string)($definition['shortname'] ?? ''))) === 'strategie') {
-					$formatId = \dbObject\PropertyFormat::FORMAT_HTML;
+				if (strtolower(trim((string)($definition['shortname'] ?? ''))) === 'strategie' && $formatId <= 0) {
+					$formatId = ($definition['listItemType'] ?? '') === \dbObject\Property::LIST_ITEM_PROJECT
+						? \dbObject\PropertyFormat::FORMAT_HTML_LIST
+						: \dbObject\PropertyFormat::FORMAT_HTML;
 				}
 				$property = new \dbObject\Property();
 				$property->set('name', trim((string)($definition['name'] ?? '')) !== '' ? $definition['name'] : 'Propriete');
@@ -2143,6 +2315,15 @@
 			$targetHolon->set('lockedbanner', !empty($record['lockedBanner']));
 			$targetHolon->set('unique', !empty($record['unique']));
 			$targetHolon->set('link', !empty($record['link']));
+			$targetHolon->set('adminparent', !empty($record['adminParent']) && (int)$targetHolon->get('IDtypeholon') === 1);
+			$targetHolon->set('admin_min', max(0, (int)($record['adminMin'] ?? 0)));
+			$targetHolon->set('admin_max', array_key_exists('adminMax', $record) && trim((string)$record['adminMax']) !== ''
+				? max(0, (int)$record['adminMax'])
+				: null);
+			$targetHolon->set('lockedadminmin', !empty($record['lockedAdminMin']));
+			$targetHolon->set('lockedadminmax', !empty($record['lockedAdminMax']));
+			$targetHolon->set('adminminoverride', !empty($record['adminMinOverride']));
+			$targetHolon->set('adminmaxoverride', !empty($record['adminMaxOverride']));
 			$targetHolon->set('color', trim((string)($record['color'] ?? '')) !== '' ? $record['color'] : null);
 			$targetHolon->set('icon', trim((string)($record['icon'] ?? '')) !== '' ? $record['icon'] : null);
 			$targetHolon->set('banner', trim((string)($record['banner'] ?? '')) !== '' ? $record['banner'] : null);
@@ -2207,6 +2388,48 @@
 			}
 		}
 
+		protected function alignImportedHolonPropertyPositionsWithTemplate(\dbObject\Holon $targetHolon, \dbObject\Holon $templateHolon)
+		{
+			$positionsByPropertyId = array();
+			$lastPosition = 0;
+			foreach ($templateHolon->getTemplatePropertyDefinitions() as $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId <= 0 || isset($positionsByPropertyId[$propertyId])) {
+					continue;
+				}
+
+				$position = (int)($definition['position'] ?? 0);
+				if ($position <= 0) {
+					$position = $lastPosition + 1;
+				}
+				$positionsByPropertyId[$propertyId] = $position;
+				$lastPosition = max($lastPosition, $position);
+			}
+
+			$extraProperties = array();
+			foreach ($targetHolon->getHolonProperties() as $holonProperty) {
+				$propertyId = (int)$holonProperty->get('IDproperty');
+				if (isset($positionsByPropertyId[$propertyId])) {
+					$holonProperty->set('position', (int)$positionsByPropertyId[$propertyId]);
+					$holonProperty->save();
+					continue;
+				}
+				$extraProperties[] = $holonProperty;
+			}
+
+			usort($extraProperties, static function ($left, $right) {
+				$positionComparison = (int)$left->get('position') <=> (int)$right->get('position');
+				return $positionComparison !== 0
+					? $positionComparison
+					: ((int)$left->getId() <=> (int)$right->getId());
+			});
+			foreach ($extraProperties as $holonProperty) {
+				$lastPosition += 1;
+				$holonProperty->set('position', $lastPosition);
+				$holonProperty->save();
+			}
+		}
+
 		protected function importCompactHolonPermissionRows(array $record, \dbObject\Holon $targetHolon)
 		{
 			$targetHolonId = (int)$targetHolon->getId();
@@ -2215,7 +2438,10 @@
 			}
 
 			$rows = $record['permissions'] ?? array();
-			$assignmentsByPermissionKey = array();
+			$assignmentsByPermissionKey = array(
+				\dbObject\HolonPermission::MEMBER_TYPE_MEMBER => array(),
+				\dbObject\HolonPermission::MEMBER_TYPE_ADMIN => array(),
+			);
 
 			if (is_array($rows)) {
 				foreach ($rows as $row) {
@@ -2225,22 +2451,386 @@
 
 					$permissionKey = trim((string)($row['permissionKey'] ?? ''));
 					$range = trim((string)($row['range'] ?? ''));
+					$memberType = \dbObject\HolonPermission::normalizeMemberType($row['memberType'] ?? \dbObject\HolonPermission::MEMBER_TYPE_MEMBER);
 					if ($permissionKey === '' || $range === '') {
 						continue;
 					}
 
-					if (!isset($assignmentsByPermissionKey[$permissionKey])) {
-						$assignmentsByPermissionKey[$permissionKey] = array();
+					if (!isset($assignmentsByPermissionKey[$memberType][$permissionKey])) {
+						$assignmentsByPermissionKey[$memberType][$permissionKey] = array();
 					}
 
-					$assignmentsByPermissionKey[$permissionKey][] = $range;
+					$assignmentsByPermissionKey[$memberType][$permissionKey][] = $range;
 				}
 			}
 
 			return \dbObject\HolonPermission::syncAssignmentsForHolon($targetHolonId, $assignmentsByPermissionKey);
 		}
 
-		protected function importStructureFromCompactGraph(array $payload, $userId = 0)
+		protected static function normalizeImportTemplateKey($value)
+		{
+			$value = trim((string)$value);
+			if ($value === '') {
+				return '';
+			}
+
+			$value = function_exists('mb_strtolower') ? mb_strtolower($value, 'UTF-8') : strtolower($value);
+			$asciiValue = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+			if (is_string($asciiValue) && $asciiValue !== '') {
+				$value = $asciiValue;
+			}
+
+			return trim((string)preg_replace('/[^a-z0-9]+/', '', $value));
+		}
+
+		protected static function getImportPropertyMatchKeys($shortname, $name)
+		{
+			$keys = array();
+			foreach (array($shortname, $name) as $value) {
+				$key = self::normalizeImportTemplateKey($value);
+				if ($key !== '') {
+					$keys[$key] = true;
+				}
+			}
+
+			$rdeKeys = array('rde', 'raisonetre', 'raisondetre', 'purpose');
+			foreach ($rdeKeys as $rdeKey) {
+				if (isset($keys[$rdeKey])) {
+					foreach ($rdeKeys as $aliasKey) {
+						$keys[$aliasKey] = true;
+					}
+					break;
+				}
+			}
+
+			return array_keys($keys);
+		}
+
+		protected static function isImportedTemplateRecord(array $record)
+		{
+			return trim((string)($record['templateName'] ?? '')) !== ''
+				|| (array_key_exists('visible', $record) && !(bool)$record['visible']);
+		}
+
+		protected function getImportTemplateNodes(\dbObject\Holon $templateRootHolon)
+		{
+			$nodes = array();
+			$visitedHolonIds = array();
+			$templateRootHolonId = (int)$templateRootHolon->getId();
+			$collectNodes = function (\dbObject\Holon $parentHolon) use (&$collectNodes, &$nodes, &$visitedHolonIds, $templateRootHolonId) {
+				$parentHolonId = (int)$parentHolon->getId();
+				if ($parentHolonId <= 0 || isset($visitedHolonIds[$parentHolonId])) {
+					return;
+				}
+				$visitedHolonIds[$parentHolonId] = true;
+
+				$children = new \dbObject\ArrayHolon();
+				$children->load(array(
+					'where' => array(
+						array('field' => 'IDholon_parent', 'value' => $parentHolonId),
+						array('field' => 'active', 'value' => 1),
+					),
+					'orderBy' => array(
+						array('field' => 'IDtypeholon', 'dir' => 'ASC'),
+						array('field' => 'name', 'dir' => 'ASC'),
+						array('field' => 'templatename', 'dir' => 'ASC'),
+						array('field' => 'id', 'dir' => 'ASC'),
+					),
+				));
+				foreach ($children as $childHolon) {
+					if ($childHolon->isTemplateNode($templateRootHolonId)) {
+						$nodes[(int)$childHolon->getId()] = $childHolon;
+					}
+					$collectNodes($childHolon);
+				}
+			};
+
+			$collectNodes($templateRootHolon);
+			return $nodes;
+		}
+
+		protected function getImportTemplateNodePath(\dbObject\Holon $nodeHolon, $templateRootHolonId)
+		{
+			$templateRootHolonId = (int)$templateRootHolonId;
+			$labels = array();
+			$currentHolon = $nodeHolon;
+			$visitedHolonIds = array();
+
+			while ($currentHolon instanceof \dbObject\Holon) {
+				$currentHolonId = (int)$currentHolon->getId();
+				if ($currentHolonId <= 0 || isset($visitedHolonIds[$currentHolonId])) {
+					break;
+				}
+				$visitedHolonIds[$currentHolonId] = true;
+				if ($currentHolonId === $templateRootHolonId) {
+					break;
+				}
+
+				$label = $currentHolon->isTemplateNode($templateRootHolonId)
+					? $this->getStructuralInitializationTemplateName($currentHolon)
+					: $currentHolon->getDisplayName();
+				if (trim((string)$label) !== '') {
+					$labels[] = trim((string)$label);
+				}
+
+				$parentHolonId = (int)$currentHolon->get('IDholon_parent');
+				if ($parentHolonId <= 0) {
+					break;
+				}
+				$parentHolon = new \dbObject\Holon();
+				$currentHolon = $parentHolon->load($parentHolonId) ? $parentHolon : null;
+			}
+
+			return implode(' > ', array_reverse($labels));
+		}
+
+		public function getStructuralImportTemplateCatalog()
+		{
+			$catalog = array();
+			foreach ($this->getStructuralInitializationTemplates() as $template) {
+				$templateRootHolonId = (int)($template['id'] ?? 0);
+				if ($templateRootHolonId <= 0) {
+					continue;
+				}
+
+				$templateRootHolon = new \dbObject\Holon();
+				if (!$templateRootHolon->load($templateRootHolonId)) {
+					continue;
+				}
+
+				$nodes = array();
+				foreach ($this->getImportTemplateNodes($templateRootHolon) as $nodeHolon) {
+					$nodes[] = array(
+						'id' => (int)$nodeHolon->getId(),
+						'name' => $this->getStructuralInitializationTemplateName($nodeHolon),
+						'path' => $this->getImportTemplateNodePath($nodeHolon, $templateRootHolonId),
+						'typeId' => (int)$nodeHolon->get('IDtypeholon'),
+						'parentId' => (int)$nodeHolon->get('IDholon_parent'),
+					);
+				}
+
+				$template['nodes'] = $nodes;
+				$catalog[] = $template;
+			}
+
+			return $catalog;
+		}
+
+		protected function cloneImportTemplateNodes(\dbObject\Holon $sourceTemplateRoot, \dbObject\Holon $targetRootHolon, $userId = 0)
+		{
+			$sourceNodesById = $this->getImportTemplateNodes($sourceTemplateRoot);
+			$targetNodesBySourceId = array();
+			$targetNodeIdMap = array();
+			$propertyIdMap = array();
+			$sourceRootHolonId = (int)$sourceTemplateRoot->getId();
+			$targetRootHolonId = (int)$targetRootHolon->getId();
+
+			foreach ($sourceNodesById as $sourceNodeId => $sourceNode) {
+				$sourceParentId = (int)$sourceNode->get('IDholon_parent');
+				$targetParentId = isset($targetNodeIdMap[$sourceParentId])
+					? (int)$targetNodeIdMap[$sourceParentId]
+					: $targetRootHolonId;
+
+				$targetNode = new \dbObject\Holon();
+				$targetNode->set('name', $sourceNode->get('name'));
+				$targetNode->set('nomcomplet', trim((string)$sourceNode->get('nomcomplet')) !== '' ? $sourceNode->get('nomcomplet') : null);
+				$targetNode->set('templatename', $sourceNode->get('templatename'));
+				$targetNode->set('IDtypeholon', (int)$sourceNode->get('IDtypeholon'));
+				$targetNode->set('IDholon_parent', $targetParentId);
+				$targetNode->set('IDholon_template', null);
+				$targetNode->set('IDholon_org', $targetRootHolonId);
+				$targetNode->set('IDorganization', null);
+				$targetNode->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)$sourceNode->get('IDuser'));
+				$targetNode->set('active', (bool)$sourceNode->get('active'));
+				$targetNode->set('visible', (bool)$sourceNode->get('visible'));
+				$targetNode->set('mandatory', (bool)$sourceNode->get('mandatory'));
+				$targetNode->set('lockedname', (bool)$sourceNode->get('lockedname'));
+				$targetNode->set('lockedicon', (bool)$sourceNode->get('lockedicon'));
+				$targetNode->set('lockedbanner', (bool)$sourceNode->get('lockedbanner'));
+				$targetNode->set('unique', (bool)$sourceNode->get('unique'));
+				$targetNode->set('link', (bool)$sourceNode->get('link'));
+				$targetNode->set('adminparent', (bool)$sourceNode->get('adminparent'));
+				$targetNode->set('admin_min', max(0, (int)$sourceNode->get('admin_min')));
+				$targetNode->set('admin_max', $sourceNode->get('admin_max') === null ? null : (int)$sourceNode->get('admin_max'));
+				$targetNode->set('lockedadminmin', (bool)$sourceNode->get('lockedadminmin'));
+				$targetNode->set('lockedadminmax', (bool)$sourceNode->get('lockedadminmax'));
+				$targetNode->set('adminminoverride', (bool)$sourceNode->get('adminminoverride'));
+				$targetNode->set('adminmaxoverride', (bool)$sourceNode->get('adminmaxoverride'));
+				$targetNode->set('color', $sourceNode->get('color') ?: null);
+				$targetNode->set('icon', $sourceNode->get('icon') ?: null);
+				$targetNode->set('banner', $sourceNode->get('banner') ?: null);
+				$targetNode->set('accesskey', $sourceNode->get('accesskey') ?: null);
+				$targetNode->save();
+				if ((int)$targetNode->getId() <= 0) {
+					throw new \RuntimeException("Un template du modele selectionne n'a pas pu etre copie.");
+				}
+
+				$targetNodesBySourceId[(int)$sourceNodeId] = $targetNode;
+				$targetNodeIdMap[(int)$sourceNodeId] = (int)$targetNode->getId();
+			}
+
+			foreach ($sourceNodesById as $sourceNodeId => $sourceNode) {
+				$targetNode = $targetNodesBySourceId[(int)$sourceNodeId];
+				$sourceTemplateId = (int)$sourceNode->get('IDholon_template');
+				$targetNode->set(
+					'IDholon_template',
+					isset($targetNodeIdMap[$sourceTemplateId]) ? (int)$targetNodeIdMap[$sourceTemplateId] : null
+				);
+				$targetNode->save();
+
+				$this->cloneStructuralHolonProperties(
+					$sourceNode,
+					$targetNode,
+					$sourceRootHolonId,
+					$targetRootHolonId,
+					$targetNodeIdMap,
+					$propertyIdMap
+				);
+				if (!$this->cloneStructuralHolonPermissions($sourceNode, $targetNode)) {
+					throw new \RuntimeException("Les droits d'un template du modele n'ont pas pu etre copies.");
+				}
+			}
+
+			return array(
+				'sourceNodesById' => $sourceNodesById,
+				'targetNodesBySourceId' => $targetNodesBySourceId,
+				'targetNodeIdMap' => $targetNodeIdMap,
+			);
+		}
+
+		protected function applyImportTemplateCalibration(array $recordsBySourceId, array $propertyDefinitions, \dbObject\Holon $targetRootHolon, array &$holonIdMap, array &$targetHolonsBySourceId, array &$propertyIdMap, array $calibration, $userId = 0)
+		{
+			$templateRootHolonId = (int)($calibration['templateRootHolonId'] ?? 0);
+			$mappings = isset($calibration['mappings']) && is_array($calibration['mappings']) ? $calibration['mappings'] : array();
+			if ($templateRootHolonId <= 0 || count($mappings) === 0) {
+				return array('mappedSourceTemplateIds' => array(), 'warnings' => array());
+			}
+
+			$templateRootHolon = new \dbObject\Holon();
+			if (
+				!$templateRootHolon->load($templateRootHolonId)
+				|| (int)$templateRootHolon->get('IDtypeholon') !== 4
+				|| !(bool)$templateRootHolon->get('active')
+				|| trim((string)$templateRootHolon->get('templatename')) === ''
+			) {
+				throw new \RuntimeException("Le modele d'organisation selectionne est introuvable.");
+			}
+
+			$clonedTemplates = $this->cloneImportTemplateNodes($templateRootHolon, $targetRootHolon, $userId);
+			$targetTemplateNodes = $clonedTemplates['targetNodesBySourceId'];
+			$mappedSourceTemplateIds = array();
+			$mappedTargetTemplateIds = array();
+			$warnings = array();
+			$propertyDefinitionsById = array();
+			foreach ($propertyDefinitions as $definition) {
+				$propertyDefinitionsById[(int)($definition['id'] ?? 0)] = $definition;
+			}
+
+			foreach ($mappings as $sourceTemplateId => $targetTemplateSourceId) {
+				$sourceTemplateId = (int)$sourceTemplateId;
+				$targetTemplateSourceId = (int)$targetTemplateSourceId;
+				$sourceRecord = $recordsBySourceId[$sourceTemplateId] ?? null;
+				$targetTemplate = $targetTemplateNodes[$targetTemplateSourceId] ?? null;
+				if (!is_array($sourceRecord) || !self::isImportedTemplateRecord($sourceRecord) || !($targetTemplate instanceof \dbObject\Holon)) {
+					throw new \RuntimeException('Une correspondance de template est invalide.');
+				}
+				if ((int)($sourceRecord['typeId'] ?? 0) !== (int)$targetTemplate->get('IDtypeholon')) {
+					throw new \RuntimeException('Les templates associes doivent etre du meme type de holon.');
+				}
+				if (isset($mappedTargetTemplateIds[$targetTemplateSourceId])) {
+					throw new \RuntimeException('Un template du modele ne peut etre associe qu a un seul template importe.');
+				}
+
+				$holonIdMap[$sourceTemplateId] = (int)$targetTemplate->getId();
+				$targetHolonsBySourceId[$sourceTemplateId] = $targetTemplate;
+				$mappedSourceTemplateIds[$sourceTemplateId] = true;
+				$mappedTargetTemplateIds[$targetTemplateSourceId] = true;
+
+				$targetPropertiesByKey = array();
+				foreach ($targetTemplate->getTemplatePropertyDefinitions() as $targetDefinition) {
+					$targetPropertyId = (int)($targetDefinition['id'] ?? 0);
+					if ($targetPropertyId <= 0) {
+						continue;
+					}
+					foreach (self::getImportPropertyMatchKeys($targetDefinition['shortname'] ?? '', $targetDefinition['name'] ?? '') as $targetPropertyKey) {
+						$targetPropertiesByKey[$targetPropertyKey] = $targetPropertyId;
+					}
+				}
+
+				$sourcePropertyIds = array();
+				$currentSourceTemplateRecord = $sourceRecord;
+				$visitedSourceTemplateIds = array();
+				while (is_array($currentSourceTemplateRecord)) {
+					$currentSourceTemplateId = (int)($currentSourceTemplateRecord['id'] ?? 0);
+					if ($currentSourceTemplateId <= 0 || isset($visitedSourceTemplateIds[$currentSourceTemplateId])) {
+						break;
+					}
+					$visitedSourceTemplateIds[$currentSourceTemplateId] = true;
+					foreach (($currentSourceTemplateRecord['properties'] ?? array()) as $sourcePropertyRow) {
+						$sourcePropertyId = (int)($sourcePropertyRow['propertyId'] ?? 0);
+						if ($sourcePropertyId > 0) {
+							$sourcePropertyIds[$sourcePropertyId] = true;
+						}
+					}
+					$currentSourceTemplateRecord = $recordsBySourceId[(int)($currentSourceTemplateRecord['templateId'] ?? 0)] ?? null;
+				}
+
+				foreach (array_keys($sourcePropertyIds) as $sourcePropertyId) {
+					$sourcePropertyId = (int)$sourcePropertyId;
+					$sourceDefinition = $propertyDefinitionsById[$sourcePropertyId] ?? null;
+					if (!is_array($sourceDefinition)) {
+						continue;
+					}
+
+					$targetPropertyId = 0;
+					foreach (self::getImportPropertyMatchKeys($sourceDefinition['shortname'] ?? '', $sourceDefinition['name'] ?? '') as $sourcePropertyKey) {
+						if (isset($targetPropertiesByKey[$sourcePropertyKey])) {
+							$targetPropertyId = (int)$targetPropertiesByKey[$sourcePropertyKey];
+							break;
+						}
+					}
+					if ($targetPropertyId <= 0) {
+						continue;
+					}
+
+					$targetProperty = new \dbObject\Property();
+					if (!$targetProperty->load($targetPropertyId)) {
+						continue;
+					}
+
+					$sourceFormatId = (int)($sourceDefinition['formatId'] ?? 0);
+					$sourceListItemType = null;
+					$sourceListHolonTypeIds = null;
+					if (\dbObject\PropertyFormat::isListFormat($sourceFormatId)) {
+						$sourceListItemType = \dbObject\Property::normalizeListItemType($sourceDefinition['listItemType'] ?? null);
+						$sourceListHolonTypeIds = \dbObject\Property::serializeHolonTypeIds($sourceDefinition['listHolonTypeIds'] ?? array());
+					}
+					if (
+						$sourceFormatId > 0
+						&& (
+							(int)$targetProperty->get('IDpropertyformat') !== $sourceFormatId
+							|| (string)$targetProperty->get('listitemtype') !== (string)$sourceListItemType
+							|| (string)$targetProperty->get('listholontypeids') !== (string)$sourceListHolonTypeIds
+						)
+					) {
+						$targetProperty->set('IDpropertyformat', $sourceFormatId);
+						$targetProperty->set('listitemtype', $sourceListItemType);
+						$targetProperty->set('listholontypeids', $sourceListHolonTypeIds);
+						$targetProperty->save();
+						$warnings[] = 'La propriete ' . trim((string)$sourceDefinition['name']) . ' conserve son format importe pour eviter une conversion ambigue.';
+					}
+
+					$propertyIdMap[$sourcePropertyId] = $targetPropertyId;
+				}
+			}
+
+			return array(
+				'mappedSourceTemplateIds' => $mappedSourceTemplateIds,
+				'warnings' => array_values(array_unique($warnings)),
+			);
+		}
+
+		protected function importStructureFromCompactGraph(array $payload, $userId = 0, array $calibration = array())
 		{
 			$records = $this->getImportedHolonRecords($payload);
 			$propertyDefinitions = $this->getImportedCompactPropertyDefinitions($payload);
@@ -2305,9 +2895,26 @@
 				$targetHolonsBySourceId = array(
 					$sourceRootId => $targetRootHolon,
 				);
+				$calibrationResult = $this->applyImportTemplateCalibration(
+					$recordsBySourceId,
+					$propertyDefinitions,
+					$targetRootHolon,
+					$holonIdMap,
+					$targetHolonsBySourceId,
+					$propertyIdMap,
+					$calibration,
+					$userId
+				);
+				$mappedSourceTemplateIds = $calibrationResult['mappedSourceTemplateIds'] ?? array();
+				$calibrationWarnings = $calibrationResult['warnings'] ?? array();
 
 				$pending = $recordsBySourceId;
 				unset($pending[$sourceRootId]);
+				foreach ($mappedSourceTemplateIds as $mappedSourceTemplateId => $isMapped) {
+					if ($isMapped) {
+						unset($pending[(int)$mappedSourceTemplateId]);
+					}
+				}
 
 				$guard = 0;
 				while (count($pending) > 0 && $guard < 1000) {
@@ -2342,6 +2949,9 @@
 					if (!isset($targetHolonsBySourceId[$sourceId])) {
 						continue;
 					}
+					if (!empty($mappedSourceTemplateIds[(int)$sourceId])) {
+						continue;
+					}
 
 					$templateSourceId = (int)($record['templateId'] ?? 0);
 					$targetHolon = $targetHolonsBySourceId[$sourceId];
@@ -2351,11 +2961,39 @@
 							? (int)$holonIdMap[$templateSourceId]
 							: null
 					);
+					if ($templateSourceId > 0 && !empty($mappedSourceTemplateIds[$templateSourceId])) {
+						$mappedTemplate = $targetHolonsBySourceId[$templateSourceId] ?? null;
+						if ($mappedTemplate instanceof \dbObject\Holon) {
+							$mappedTemplateName = trim((string)$mappedTemplate->getDisplayName());
+							if ($mappedTemplateName !== '' && (bool)$mappedTemplate->getEffectiveTemplateBooleanField('lockedname')) {
+								$targetHolon->set('name', $mappedTemplateName);
+							}
+							$targetHolon->set('color', null);
+							$targetHolon->set('icon', null);
+							$targetHolon->set('banner', null);
+							$targetHolon->set('mandatory', false);
+							$targetHolon->set('lockedname', false);
+							$targetHolon->set('lockedicon', false);
+							$targetHolon->set('lockedbanner', false);
+							$targetHolon->set('unique', false);
+							$targetHolon->set('link', false);
+							$targetHolon->set('adminparent', false);
+							$targetHolon->set('admin_min', 0);
+							$targetHolon->set('admin_max', null);
+							$targetHolon->set('lockedadminmin', false);
+							$targetHolon->set('lockedadminmax', false);
+							$targetHolon->set('adminminoverride', false);
+							$targetHolon->set('adminmaxoverride', false);
+						}
+					}
 					$targetHolon->save();
 				}
 
 				foreach ($recordsBySourceId as $sourceId => $record) {
 					if (!isset($targetHolonsBySourceId[$sourceId])) {
+						continue;
+					}
+					if (!empty($mappedSourceTemplateIds[(int)$sourceId])) {
 						continue;
 					}
 
@@ -2366,7 +3004,20 @@
 						$holonIdMap
 					);
 
-					if (!$this->importCompactHolonPermissionRows($record, $targetHolonsBySourceId[$sourceId])) {
+					$templateSourceId = (int)($record['templateId'] ?? 0);
+					if (!empty($mappedSourceTemplateIds[$templateSourceId])) {
+						$mappedTemplate = $targetHolonsBySourceId[$templateSourceId] ?? null;
+						if ($mappedTemplate instanceof \dbObject\Holon) {
+							$this->alignImportedHolonPropertyPositionsWithTemplate(
+								$targetHolonsBySourceId[$sourceId],
+								$mappedTemplate
+							);
+						}
+					}
+					if (
+						empty($mappedSourceTemplateIds[$templateSourceId])
+						&& !$this->importCompactHolonPermissionRows($record, $targetHolonsBySourceId[$sourceId])
+					) {
 						throw new \RuntimeException("Les droits d'un holon importe n'ont pas pu etre recrees.");
 					}
 				}
@@ -2378,6 +3029,7 @@
 					'message' => "L'organisation a ete importee depuis le format compact.",
 					'rootHolon' => $targetRootHolon,
 					'holonIdMap' => $holonIdMap,
+					'warnings' => $calibrationWarnings,
 				);
 			} catch (\Throwable $exception) {
 				if ($pdo->inTransaction()) {
@@ -2736,16 +3388,24 @@
 				$project->set('IDuser', $targetUserId);
 				$project->set('title', $title !== '' ? $title : 'Projet OMO 1 #' . $sourceId);
 				$project->set('description', $record['description'] ?? null);
-				$project->set('status', self::omo1ImportProjectStatus($record['legacyStatusId'] ?? 0));
+				$project->set('status', array_key_exists('status', $record)
+					? \dbObject\Project::normalizeStatus($record['status'])
+					: self::omo1ImportProjectStatus($record['legacyStatusId'] ?? 0));
 				$project->set('planned_start_date', self::omo1ImportDate($record['plannedStartAt'] ?? null));
 				$project->set('planned_end_date', self::omo1ImportDate($record['plannedEndAt'] ?? null));
-				$project->set('project_size', \dbObject\Project::SIZE_M);
+				$project->set('priority', \dbObject\Project::normalizeLevel($record['priority'] ?? null));
+				$project->set('importance', \dbObject\Project::normalizeLevel($record['importance'] ?? null));
+				$project->set('calculated_importance', (float)($record['calculatedImportance'] ?? 0));
+				$project->set('capture_mode', \dbObject\Project::normalizeCaptureMode($record['captureMode'] ?? null));
+				$project->set('project_size', \dbObject\Project::normalizeSize($record['projectSize'] ?? \dbObject\Project::SIZE_M));
 				$project->set('project_kind', \dbObject\Project::KIND_STANDARD);
 				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
 				if ($createdAt) {
 					$project->set('created_at', $createdAt);
 				}
-				$project->set('active', !self::omo1ImportProjectIsArchived($record['legacyStatusId'] ?? 0));
+				$project->set('active', array_key_exists('active', $record)
+					? (bool)$record['active']
+					: !self::omo1ImportProjectIsArchived($record['legacyStatusId'] ?? 0));
 				self::omo1ImportSave($project, 'Un projet n a pas pu etre cree');
 				$projectIdMap[$sourceId] = (int)$project->getId();
 				$stats['projects'] += 1;
@@ -2766,21 +3426,9 @@
 				self::omo1ImportSave($project, 'La hierarchie des projets n a pas pu etre recreee');
 			}
 
-			foreach ($documentIdMap as $sourceDocumentId => $targetDocumentId) {
-				$sourceProjectId = isset($documentProjectSourceMap[$sourceDocumentId]) ? (int)$documentProjectSourceMap[$sourceDocumentId] : 0;
-				$targetProjectId = isset($projectIdMap[$sourceProjectId]) ? (int)$projectIdMap[$sourceProjectId] : 0;
-				if ($targetProjectId <= 0 || (int)$targetDocumentId <= 0) {
-					continue;
-				}
-
-				$link = new \dbObject\ProjectDocument();
-				$link->set('IDproject', $targetProjectId);
-				$link->set('IDdocument', (int)$targetDocumentId);
-				self::omo1ImportSave($link, 'Un lien projet-document n a pas pu etre cree');
-			}
 		}
 
-		protected static function omo1ImportTasks(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $projectIdMap, array &$stats)
+		protected static function omo1ImportTasks(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $projectIdMap, array &$taskIdMap, array &$stats)
 		{
 			foreach ($records as $record) {
 				if (!is_array($record) || (int)($record['sourceId'] ?? 0) <= 0) {
@@ -2790,7 +3438,7 @@
 				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId;
 				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
 				$targetHolonId = isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null;
-				$sourceProjectId = (int)($record['sourceProjectId'] ?? 0);
+				$sourceProjectId = (int)($record['sourceParentProjectId'] ?? ($record['sourceProjectId'] ?? 0));
 				$title = self::omo1ImportLimitText($record['title'] ?? '', 255);
 				$completedAt = $record['completedAt'] ?? null;
 				if (!self::omo1ImportDate($completedAt) && !empty($record['checks']) && is_array($record['checks'])) {
@@ -2808,18 +3456,187 @@
 				$task->set('IDproject_parent', isset($projectIdMap[$sourceProjectId]) ? (int)$projectIdMap[$sourceProjectId] : null);
 				$task->set('title', $title !== '' ? $title : 'Tache OMO 1 #' . (int)$record['sourceId']);
 				$task->set('description', $record['description'] ?? null);
-				$task->set('status', self::omo1ImportProjectStatus(0, $completedAt, $record['deletedAt'] ?? null));
+				$task->set('status', array_key_exists('status', $record)
+					? \dbObject\Project::normalizeStatus($record['status'])
+					: self::omo1ImportProjectStatus(0, $completedAt, $record['deletedAt'] ?? null));
 				$task->set('planned_start_date', self::omo1ImportDate($record['plannedStartAt'] ?? null));
 				$task->set('planned_end_date', self::omo1ImportDate($record['plannedEndAt'] ?? null));
-				$task->set('project_size', \dbObject\Project::SIZE_S);
+				$task->set('priority', \dbObject\Project::normalizeLevel($record['priority'] ?? null));
+				$task->set('importance', \dbObject\Project::normalizeLevel($record['importance'] ?? null));
+				$task->set('calculated_importance', (float)($record['calculatedImportance'] ?? 0));
+				$task->set('capture_mode', \dbObject\Project::normalizeCaptureMode($record['captureMode'] ?? null));
+				$task->set('project_size', \dbObject\Project::normalizeSize($record['projectSize'] ?? \dbObject\Project::SIZE_S));
 				$task->set('project_kind', \dbObject\Project::KIND_STANDARD);
 				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
 				if ($createdAt) {
 					$task->set('created_at', $createdAt);
 				}
-				$task->set('active', true);
+				$task->set('active', array_key_exists('active', $record) ? (bool)$record['active'] : true);
 				self::omo1ImportSave($task, 'Une tache n a pas pu etre importee');
+				$taskIdMap[(int)$record['sourceId']] = (int)$task->getId();
 				$stats['tasks'] += 1;
+			}
+
+			foreach ($records as $record) {
+				$sourceId = (int)($record['sourceId'] ?? 0);
+				$targetTaskId = isset($taskIdMap[$sourceId]) ? (int)$taskIdMap[$sourceId] : 0;
+				$sourceParentId = (int)($record['sourceParentProjectId'] ?? ($record['sourceProjectId'] ?? 0));
+				if ($targetTaskId <= 0 || $sourceParentId <= 0 || !isset($taskIdMap[$sourceParentId])) {
+					continue;
+				}
+				$task = new \dbObject\Project();
+				if (!$task->load($targetTaskId)) {
+					continue;
+				}
+				$task->set('IDproject_parent', (int)$taskIdMap[$sourceParentId]);
+				self::omo1ImportSave($task, 'La hierarchie des sous-projets n a pas pu etre recreee');
+			}
+		}
+
+		protected static function omo1ImportLinkDocumentsToProjects(array $documentIdMap, array $documentProjectSourceMap, array $projectIdMap, array $taskIdMap)
+		{
+			foreach ($documentIdMap as $sourceDocumentId => $targetDocumentId) {
+				$sourceProjectId = (int)($documentProjectSourceMap[$sourceDocumentId] ?? 0);
+				$targetProjectId = (int)($projectIdMap[$sourceProjectId] ?? ($taskIdMap[$sourceProjectId] ?? 0));
+				if ($targetProjectId <= 0 || (int)$targetDocumentId <= 0) {
+					continue;
+				}
+				$link = new \dbObject\ProjectDocument();
+				if ($link->load([['IDproject', $targetProjectId], ['IDdocument', (int)$targetDocumentId]])) {
+					continue;
+				}
+				$link->set('IDproject', $targetProjectId);
+				$link->set('IDdocument', (int)$targetDocumentId);
+				self::omo1ImportSave($link, 'Un lien projet-document n a pas pu etre cree');
+			}
+		}
+
+		protected static function omo1ImportChecklistRecurrence(array $record)
+		{
+			$frequency = \dbObject\RecurrenceSchedule::normalizeFrequency($record['frequency'] ?? null);
+			$schedule = \dbObject\RecurrenceSchedule::normalizeSchedule($frequency, $record['schedule'] ?? null);
+			return array($frequency, $schedule);
+		}
+
+		protected static function omo1ImportChecklistTemplateProject(\dbObject\Organization $organization, $holonId, $userId, $title, $description, $isActive)
+		{
+			$template = new \dbObject\Project();
+			$template->set('IDorganization', (int)$organization->getId());
+			$template->set('IDholon', (int)$holonId > 0 ? (int)$holonId : null);
+			$template->set('IDuser', (int)$userId > 0 ? (int)$userId : null);
+			$template->set('title', self::omo1ImportLimitText($title, 255));
+			$template->set('description', $description ?: null);
+			$template->set('status', \dbObject\Project::STATUS_READY);
+			$template->set('project_size', \dbObject\Project::SIZE_S);
+			$template->set('project_kind', \dbObject\Project::KIND_CHECKLIST_TEMPLATE);
+			$template->set('active', (bool)$isActive);
+			self::omo1ImportSave($template, 'Un projet modele de checklist n a pas pu etre cree');
+			return $template;
+		}
+
+		protected static function omo1ImportChecklists(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array &$stats)
+		{
+			foreach ($records as $recordIndex => $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
+				$targetHolonId = isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : 0;
+				if ($targetHolonId <= 0) {
+					continue;
+				}
+				$triggerData = isset($record['trigger']) && is_array($record['trigger']) ? $record['trigger'] : array();
+				$triggerType = \dbObject\ChecklistTrigger::normalizeTriggerType($triggerData['type'] ?? \dbObject\ChecklistTrigger::TYPE_CONTAINER);
+				$isStandalone = ($record['kind'] ?? '') === 'standalone' || $triggerType === \dbObject\ChecklistTrigger::TYPE_MANUAL;
+				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
+				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId;
+				$title = self::omo1ImportLimitText($record['title'] ?? '', 255);
+				if ($title === '') {
+					$title = $isStandalone ? 'Checklist OMO 1 #' . (int)($record['sourceId'] ?? ($recordIndex + 1)) : 'Checklists OMO 1';
+				}
+				$rootTemplate = self::omo1ImportChecklistTemplateProject(
+					$organization,
+					$targetHolonId,
+					$targetUserId,
+					$title,
+					$record['description'] ?? null,
+					!array_key_exists('active', $record) || (bool)$record['active']
+				);
+				$checklist = new \dbObject\Checklist();
+				$checklist->set('IDorganization', (int)$organization->getId());
+				$checklist->set('IDproject_template_root', (int)$rootTemplate->getId());
+				$checklist->set('IDchecklist_previous', null);
+				$checklist->set('IDdocument', null);
+				$checklist->set('status', \dbObject\Checklist::normalizeStatus($record['status'] ?? \dbObject\Checklist::STATUS_PUBLISHED));
+				$checklist->set('revision_note', $record['revisionNote'] ?? null);
+				$checklist->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
+				self::omo1ImportSave($checklist, 'Une checklist n a pas pu etre creee');
+
+				$trigger = new \dbObject\ChecklistTrigger();
+				$trigger->set('IDchecklist', (int)$checklist->getId());
+				$trigger->set('stable_key', self::omo1ImportLimitText($triggerData['stableKey'] ?? 'primary', 64));
+				$trigger->set('trigger_type', $isStandalone ? \dbObject\ChecklistTrigger::TYPE_MANUAL : \dbObject\ChecklistTrigger::TYPE_CONTAINER);
+				$trigger->set('overlap_policy', \dbObject\ChecklistTrigger::normalizeOverlapPolicy($triggerData['overlapPolicy'] ?? \dbObject\ChecklistTrigger::OVERLAP_REUSE_OPEN));
+				$trigger->set('enabled', $isStandalone && (!array_key_exists('enabled', $triggerData) || (bool)$triggerData['enabled']));
+				self::omo1ImportSave($trigger, 'Le declencheur de checklist n a pas pu etre cree');
+				$stats['checklists'] += 1;
+
+				if ($isStandalone) {
+					continue;
+				}
+				$items = isset($record['items']) && is_array($record['items']) ? $record['items'] : array();
+				foreach ($items as $itemIndex => $itemRecord) {
+					if (!is_array($itemRecord)) {
+						continue;
+					}
+					$itemSourceUserId = (int)($itemRecord['sourceUserId'] ?? 0);
+					$itemUserId = isset($userIdMap[$itemSourceUserId]) ? (int)$userIdMap[$itemSourceUserId] : (int)$actorUserId;
+					$itemTitle = self::omo1ImportLimitText($itemRecord['title'] ?? '', 255);
+					if ($itemTitle === '') {
+						$itemTitle = 'Checklist OMO 1 #' . (int)($itemRecord['sourceId'] ?? ($itemIndex + 1));
+					}
+					$itemActive = !array_key_exists('active', $itemRecord) || (bool)$itemRecord['active'];
+					$itemTemplate = self::omo1ImportChecklistTemplateProject(
+						$organization,
+						$targetHolonId,
+						$itemUserId,
+						$itemTitle,
+						$itemRecord['description'] ?? null,
+						$itemActive
+					);
+					$item = new \dbObject\ChecklistItem();
+					$item->set('IDchecklist', (int)$checklist->getId());
+					$item->set('IDproject_template', (int)$itemTemplate->getId());
+					$item->set('stable_key', self::omo1ImportLimitText($itemRecord['stableKey'] ?? ('item_' . ($itemIndex + 1)), 64));
+					$activationData = isset($itemRecord['activation']) && is_array($itemRecord['activation']) ? $itemRecord['activation'] : array();
+					$activationType = \dbObject\ChecklistItem::normalizeActivationType($activationData['type'] ?? \dbObject\ChecklistItem::ACTIVATION_IMMEDIATE);
+					$item->set('activation_type', $activationType);
+					$item->set('delay_value', $activationType === \dbObject\ChecklistItem::ACTIVATION_AFTER_START ? (int)($activationData['delayValue'] ?? 0) : 0);
+					$item->set('delay_unit', $activationType === \dbObject\ChecklistItem::ACTIVATION_AFTER_START ? \dbObject\ChecklistItem::normalizeDelayUnit($activationData['delayUnit'] ?? null) : null);
+					$item->set('display_lead_value', max(0, (int)($activationData['displayLeadValue'] ?? 0)));
+					$item->set('display_lead_unit', \dbObject\ChecklistItem::normalizeDelayUnit($activationData['displayLeadUnit'] ?? null));
+					$item->set('execution_duration_value', max(0, (int)($activationData['executionDurationValue'] ?? 0)));
+					$item->set('execution_duration_unit', \dbObject\ChecklistItem::normalizeDelayUnit($activationData['executionDurationUnit'] ?? null));
+					$item->set('position', max(1, (int)($itemRecord['position'] ?? ($itemIndex + 1))));
+					$item->set('active', $itemActive);
+					self::omo1ImportSave($item, 'Un element de checklist n a pas pu etre cree');
+					list($frequency, $schedule) = self::omo1ImportChecklistRecurrence(isset($itemRecord['recurrence']) && is_array($itemRecord['recurrence']) ? $itemRecord['recurrence'] : array());
+					if ($frequency !== null && $schedule !== null) {
+						$recurrence = new \dbObject\ChecklistItemRecurrence();
+						$recurrence->set('IDchecklistitem', (int)$item->getId());
+						$recurrence->set('frequency', $frequency);
+						$recurrence->set('schedule', $schedule);
+						$recurrence->set('display_lead_value', max(0, (int)($itemRecord['recurrence']['displayLeadValue'] ?? 0)));
+						$recurrence->set('display_lead_unit', \dbObject\ChecklistItem::normalizeDelayUnit($itemRecord['recurrence']['displayLeadUnit'] ?? null));
+						$recurrence->set('execution_duration_value', max(0, (int)($itemRecord['recurrence']['executionDurationValue'] ?? 0)));
+						$recurrence->set('execution_duration_unit', \dbObject\ChecklistItem::normalizeDelayUnit($itemRecord['recurrence']['executionDurationUnit'] ?? null));
+						$recurrence->set('enabled', $itemActive);
+						$nextTriggerAt = \dbObject\RecurrenceSchedule::getNextOccurrence($frequency, $schedule, new \DateTimeImmutable());
+						$recurrence->set('next_trigger_at', $nextTriggerAt);
+						self::omo1ImportSave($recurrence, 'La recurrence de checklist n a pas pu etre creee');
+					}
+					$stats['checklistItems'] += 1;
+				}
 			}
 		}
 
@@ -3184,7 +4001,7 @@
 			}
 		}
 
-		public static function importOmo1ExportAsNewOrganization(array $payload, array $requestedModules, $actorUserId, $organizationName = '')
+		public static function importOmo1ExportAsNewOrganization(array $payload, array $requestedModules, $actorUserId, $organizationName = '', array $templateCalibration = array())
 		{
 			$actorUserId = (int)$actorUserId;
 			if ($actorUserId <= 0) {
@@ -3194,7 +4011,7 @@
 				return array('status' => false, 'message' => 'Le fichier doit etre un export OMO compact version 4.');
 			}
 
-			$availableModules = array('structure', 'members', 'documents', 'projects', 'tasks', 'indicators', 'calendar', 'pv');
+			$availableModules = array('structure', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv');
 			$sourceModules = isset($payload['modules']) && is_array($payload['modules']) ? $payload['modules'] : array();
 			$selectedModules = array();
 			foreach ($availableModules as $module) {
@@ -3236,7 +4053,7 @@
 
 			try {
 				self::omo1ImportUserMembership($organization, $actorUserId, true);
-				$structureResult = $organization->importStructure($payload, $actorUserId);
+				$structureResult = $organization->importStructure($payload, $actorUserId, $templateCalibration);
 				if (empty($structureResult['status']) || !($structureResult['rootHolon'] ?? null) instanceof \dbObject\Holon) {
 					throw new \RuntimeException((string)($structureResult['message'] ?? 'La structure n a pas pu etre importee.'));
 				}
@@ -3252,11 +4069,14 @@
 				$documentIdMap = array();
 				$documentProjectSourceMap = array();
 				$projectIdMap = array();
+				$taskIdMap = array();
 				$eventIdMap = array();
 				$pendingUserIds = array();
 				$pendingInvitations = array();
-				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'documents' => 0, 'projects' => 0, 'tasks' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
-				$warnings = array();
+				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'documents' => 0, 'projects' => 0, 'tasks' => 0, 'checklists' => 0, 'checklistItems' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
+				$warnings = isset($structureResult['warnings']) && is_array($structureResult['warnings'])
+					? $structureResult['warnings']
+					: array();
 
 				if ($selectedModules['members']) {
 					$memberRecords = self::omo1ImportModuleRecords($payload, 'members');
@@ -3270,7 +4090,14 @@
 					self::omo1ImportProjects($organization, self::omo1ImportModuleRecords($payload, 'projects'), $actorUserId, $userIdMap, $holonIdMap, $documentIdMap, $documentProjectSourceMap, $projectIdMap, $stats);
 				}
 				if ($selectedModules['tasks']) {
-					self::omo1ImportTasks($organization, self::omo1ImportModuleRecords($payload, 'tasks'), $actorUserId, $userIdMap, $holonIdMap, $projectIdMap, $stats);
+					self::omo1ImportTasks($organization, self::omo1ImportModuleRecords($payload, 'tasks'), $actorUserId, $userIdMap, $holonIdMap, $projectIdMap, $taskIdMap, $stats);
+				}
+				if ($selectedModules['documents'] && ($selectedModules['projects'] || $selectedModules['tasks'])) {
+					self::omo1ImportLinkDocumentsToProjects($documentIdMap, $documentProjectSourceMap, $projectIdMap, $taskIdMap);
+				}
+				$organization->remapImportedProjectPropertyValues($projectIdMap, $taskIdMap);
+				if ($selectedModules['checklists']) {
+					self::omo1ImportChecklists($organization, self::omo1ImportModuleRecords($payload, 'checklists'), $actorUserId, $userIdMap, $holonIdMap, $stats);
 				}
 				if ($selectedModules['indicators']) {
 					self::omo1ImportIndicators($organization, self::omo1ImportModuleRecords($payload, 'indicators'), $actorUserId, $userIdMap, $holonIdMap, $stats);
@@ -3312,7 +4139,7 @@
 			}
 		}
 
-		public function importStructure(array $payload, $userId = 0)
+		public function importStructure(array $payload, $userId = 0, array $templateCalibration = array())
 		{
 			if ((int)$this->getId() <= 0) {
 				return array(
@@ -3345,7 +4172,7 @@
 				);
 			}
 
-			return $this->importStructureFromCompactGraph($payload, $userId);
+			return $this->importStructureFromCompactGraph($payload, $userId, $templateCalibration);
 		}
 
 		protected function cloneStructuralChildrenRecursively(\dbObject\Holon $sourceParent, $targetParentId, $targetRootHolonId, $userId, array &$sourceHolonsById, array &$targetHolonsBySourceId, array &$holonIdMap)
@@ -3369,6 +4196,12 @@
 				$targetChild->set('lockedbanner', (bool)$sourceChild->get('lockedbanner'));
 				$targetChild->set('unique', (bool)$sourceChild->get('unique'));
 				$targetChild->set('link', (bool)$sourceChild->get('link'));
+				$targetChild->set('admin_min', max(0, (int)$sourceChild->get('admin_min')));
+				$targetChild->set('admin_max', $sourceChild->get('admin_max') === null ? null : (int)$sourceChild->get('admin_max'));
+				$targetChild->set('lockedadminmin', (bool)$sourceChild->get('lockedadminmin'));
+				$targetChild->set('lockedadminmax', (bool)$sourceChild->get('lockedadminmax'));
+				$targetChild->set('adminminoverride', (bool)$sourceChild->get('adminminoverride'));
+				$targetChild->set('adminmaxoverride', (bool)$sourceChild->get('adminmaxoverride'));
 				$targetChild->set('color', $sourceChild->get('color') ?: null);
 				$targetChild->set('icon', $sourceChild->get('icon') ?: null);
 				$targetChild->set('banner', $sourceChild->get('banner') ?: null);
@@ -4087,6 +4920,7 @@
 				'templateCatalog' => array(),
 				'projectCatalog' => $this->getProjectListEditorCatalog(),
 				'templates' => array(),
+				'canAddTemplateProperties' => $contextHolon ? $contextHolon->isAllowed('CAN_ADD_TEMPLATE_PROPERTIES') : false,
 			);
 
 			foreach ($types as $type) {
@@ -4100,7 +4934,9 @@
 
 			$data['formats'] = $this->buildEditorPropertyFormats($formats);
 
-			$templateCatalogSource = $this->getAvailableTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0);
+			$templateCatalogSource = $scope === 'descendants'
+				? $this->getAllTemplateDefinitionHolons()
+				: $this->getAvailableTemplateDefinitionHolons($contextHolon ? (int)$contextHolon->getId() : 0);
 			$scopeContextHolonIds = $contextHolon ? array((int)$contextHolon->getId()) : array();
 			if ($scope === 'children' && $contextHolon) {
 				$scopeContextHolonIds = array((int)$contextHolon->getId());
@@ -4169,6 +5005,7 @@
 			$childrenByParent = array();
 			foreach ($templateCatalogSource as $template) {
 				$definitionHolonMeta = $resolveDefinitionHolonMeta((int)$template->get('IDholon_parent'));
+				$templateAdminBounds = $template->getEffectiveTemplateAdminBounds();
 
 				$data['templateCatalog'][] = array_merge(array(
 					'id' => (int)$template->getId(),
@@ -4181,6 +5018,11 @@
 					'lockedName' => (bool)$template->get('lockedname'),
 					'unique' => (bool)$template->get('unique'),
 					'link' => (bool)$template->get('link'),
+					'adminParent' => (bool)$template->get('adminparent'),
+					'adminMin' => $templateAdminBounds['min'],
+					'adminMax' => $templateAdminBounds['max'],
+					'lockedAdminMin' => !empty($templateAdminBounds['minLocked']),
+					'lockedAdminMax' => !empty($templateAdminBounds['maxLocked']),
 					'inheritsFromId' => (int)$template->get('IDholon_template'),
 					'definedInId' => (int)$definitionHolonMeta['id'],
 					'definedInName' => (string)$definitionHolonMeta['name'],
@@ -4191,6 +5033,7 @@
 
 			foreach ($templateTreeSource as $template) {
 				$templateNode = $template->toTemplateEditorNodeArray((int)$rootHolon->getId());
+				$templateNode['canAddProperties'] = $template->isAllowed('CAN_ADD_TEMPLATE_PROPERTIES');
 				$definitionHolonMeta = $resolveDefinitionHolonMeta((int)$template->get('IDholon_parent'));
 				$templateNode['definedInId'] = (int)$definitionHolonMeta['id'];
 				$templateNode['definedInName'] = (string)$definitionHolonMeta['name'];
@@ -4242,12 +5085,149 @@
 		protected function buildHolonDefinitionEditorNode(\dbObject\Holon $holon, $rootHolonId)
 		{
 			$node = $holon->toTemplateEditorNodeArray((int)$rootHolonId);
-			$node['properties'] = $holon->getTemplatePropertyDefinitions();
+			$node['properties'] = array_map(function ($property) use ($holon) {
+				$property['canEditValue'] = empty($property['effectiveLocked'])
+					&& $holon->isAllowed('CAN_EDIT_HOLON_PROPERTIES');
+				$property['canDelete'] = empty($property['inheritedMandatory'])
+					&& $holon->isAllowed('CAN_DELETE_HOLON_PROPERTIES');
+				return $property;
+			}, $holon->getTemplatePropertyDefinitions());
 			$node['children'] = array();
 			$node['shareAsTemplate'] = trim((string)$holon->get('templatename')) !== '';
 			$node['publicTemplateName'] = trim((string)$holon->get('templatename'));
+			$node['canAddProperties'] = $holon->isAllowed('CAN_ADD_HOLON_PROPERTIES');
 
 			return $node;
+		}
+
+		protected function normalizePropertyDefinitionForPermission(array $definition, $position)
+		{
+			$formatId = (int)($definition['formatId'] ?? 0);
+			$value = \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $definition['value'] ?? '');
+			if (!\dbObject\PropertyFormat::isHtmlFormat($formatId)) {
+				$value = trim((string)$value);
+			}
+
+			$listHolonTypeIds = \dbObject\Property::parseHolonTypeIds($definition['listHolonTypeIds'] ?? array());
+			sort($listHolonTypeIds);
+
+			return array(
+				'name' => trim((string)($definition['name'] ?? '')),
+				'formatId' => $formatId,
+				'listItemType' => \dbObject\Property::normalizeTemplateListItemType($definition['listItemType'] ?? ''),
+				'listHolonTypeIds' => $listHolonTypeIds,
+				'mandatory' => !empty($definition['mandatory']),
+				'locked' => !empty($definition['locked']),
+				'isLocal' => !empty($definition['isLocal']),
+				'value' => $value,
+				'position' => (int)$position,
+			);
+		}
+
+		protected function getPropertyDefinitionPermissionOperations(array $existingDefinitions, array $submittedDefinitions)
+		{
+			$existingById = array();
+			foreach (array_values($existingDefinitions) as $position => $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId > 0) {
+					$existingById[$propertyId] = array(
+						'definition' => $definition,
+						'position' => $position,
+					);
+				}
+			}
+
+			$operations = array();
+			$submittedIds = array();
+			foreach (array_values($submittedDefinitions) as $position => $definition) {
+				if (!is_array($definition) || trim((string)($definition['name'] ?? '')) === '') {
+					continue;
+				}
+
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId <= 0 || !isset($existingById[$propertyId])) {
+					$operations['add'] = true;
+					continue;
+				}
+
+				$submittedIds[$propertyId] = true;
+				if (
+					$this->normalizePropertyDefinitionForPermission($existingById[$propertyId]['definition'], $existingById[$propertyId]['position'])
+					!== $this->normalizePropertyDefinitionForPermission($definition, $position)
+				) {
+					$operations['edit'] = true;
+				}
+			}
+
+			foreach ($existingById as $propertyId => $existing) {
+				if (!isset($submittedIds[$propertyId])) {
+					$operations['delete'] = true;
+				}
+			}
+
+			return array_keys($operations);
+		}
+
+		protected function canApplyPropertyDefinitionChanges(\dbObject\Holon $permissionHolon, array $operations, $propertyScope)
+		{
+			$propertyScope = strtoupper(trim((string)$propertyScope));
+			$operationLabels = array(
+				'ADD' => 'ajouter',
+				'EDIT' => 'modifier',
+				'DELETE' => 'supprimer',
+			);
+			foreach ($operations as $operation) {
+				$operation = strtoupper(trim((string)$operation));
+				if (!in_array($operation, array('ADD', 'EDIT', 'DELETE'), true)) {
+					continue;
+				}
+
+				$permissionKey = 'CAN_' . $operation . '_' . $propertyScope . '_PROPERTIES';
+				if (!$permissionHolon->isAllowed($permissionKey)) {
+					return array(
+						'status' => false,
+						'message' => "Vous n'avez pas les droits pour " . $operationLabels[$operation] . ' les proprietes de ' . strtolower($propertyScope) . '.',
+					);
+				}
+			}
+
+			return array('status' => true);
+		}
+
+		protected function canEditSubmittedTemplatePropertyValues(\dbObject\Holon $holon, \dbObject\Holon $template, array $submittedValuesByPropertyId, array $propertyDefinitions)
+		{
+			$existingValuesByPropertyId = array();
+			if ((int)$holon->getId() > 0) {
+				foreach ($holon->getHolonProperties() as $holonProperty) {
+					$existingValuesByPropertyId[(int)$holonProperty->get('IDproperty')] = $holonProperty->get('value');
+				}
+			}
+
+			foreach ($propertyDefinitions as $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				$formatId = (int)($definition['formatId'] ?? 0);
+				if ($propertyId <= 0 || !array_key_exists($propertyId, $submittedValuesByPropertyId)) {
+					continue;
+				}
+
+				$submittedValue = \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $submittedValuesByPropertyId[$propertyId]);
+				$existingValue = \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $existingValuesByPropertyId[$propertyId] ?? '');
+				if (!\dbObject\PropertyFormat::isHtmlFormat($formatId)) {
+					$submittedValue = trim((string)$submittedValue);
+					$existingValue = trim((string)$existingValue);
+				}
+
+				if ($submittedValue === $existingValue || $template->isAllowed('CAN_EDIT_TEMPLATE_PROPERTIES')) {
+					continue;
+				}
+
+				return array(
+					'status' => false,
+					'message' => "Vous n'avez pas les droits pour modifier les proprietes de template.",
+				);
+			}
+
+			return array('status' => true);
 		}
 
 		public function getHolonDefinitionEditorData($holonId = 0)
@@ -4298,6 +5278,9 @@
 				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 				'templateCatalog' => array(),
 				'projectCatalog' => $this->getProjectListEditorCatalog(),
+				'authorityCatalog' => $this->getAuthorityListEditorCatalog(),
+				'authorityParentCatalog' => array(),
+				'authorityCanCreateRoot' => true,
 				'templates' => array(
 					$this->buildHolonDefinitionEditorNode($holon, (int)$rootHolon->getId()),
 				),
@@ -4380,6 +5363,23 @@
 			});
 
 			return $catalog;
+		}
+
+		protected function getAuthorityListEditorCatalog()
+		{
+			return \dbObject\Authority::getEditorCatalogForOrganization((int)$this->getId());
+		}
+
+		protected function getAuthorityParentEditorCatalog(?\dbObject\Holon $parentHolon = null)
+		{
+			$parentHolonId = $parentHolon instanceof \dbObject\Holon ? (int)$parentHolon->getId() : 0;
+			if ($parentHolonId <= 0) {
+				return array();
+			}
+
+			return array_values(array_filter($this->getAuthorityListEditorCatalog(), function ($authority) use ($parentHolonId) {
+				return (int)($authority['holonId'] ?? 0) === $parentHolonId;
+			}));
 		}
 
 		protected function canMoveHolonToParent(\dbObject\Holon $holon, \dbObject\Holon $targetParent, ?\dbObject\Holon $rootHolon = null)
@@ -5006,11 +6006,19 @@
 				'canCreate' => false,
 				'canEdit' => false,
 				'types' => array(),
+				'formats' => array(),
+				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
+				'canAddHolonProperties' => $editingHolon
+					? $editingHolon->isAllowed('CAN_ADD_HOLON_PROPERTIES')
+					: ($contextHolon ? $contextHolon->isAllowed('CAN_ADD_HOLON_PROPERTIES') : false),
 				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
 				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 				'templateCatalog' => array(),
 				'holonCatalog' => array(),
 				'projectCatalog' => array(),
+				'authorityCatalog' => array(),
+				'authorityParentCatalog' => array(),
+				'authorityCanCreateRoot' => $editingHolon && (int)$editingHolon->get('IDtypeholon') === 4,
 				'holon' => null,
 			);
 
@@ -5052,6 +6060,7 @@
 					$definitionHolonName = $definitionHolon->getDisplayName();
 					$definitionHolonLabel = $definitionHolon->getTemplateLabel();
 				}
+				$templateAdminBounds = $template->getEffectiveTemplateAdminBounds();
 
 				$data['templateCatalog'][] = array_merge(array(
 					'id' => (int)$template->getId(),
@@ -5064,6 +6073,11 @@
 					'lockedName' => (bool)$template->get('lockedname'),
 					'unique' => (bool)$template->get('unique'),
 					'link' => (bool)$template->get('link'),
+					'adminParent' => (bool)$template->get('adminparent'),
+					'adminMin' => $templateAdminBounds['min'],
+					'adminMax' => $templateAdminBounds['max'],
+					'lockedAdminMin' => !empty($templateAdminBounds['minLocked']),
+					'lockedAdminMax' => !empty($templateAdminBounds['maxLocked']),
 					'definedInId' => (int)$template->get('IDholon_parent'),
 					'definedInName' => $definitionHolonName,
 					'definedInLabel' => $definitionHolonLabel,
@@ -5083,10 +6097,21 @@
 				);
 			}
 
+			$formats = new \dbObject\ArrayPropertyFormat();
+			$formats->load(array(
+				'orderBy' => array(
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+			$data['formats'] = $this->buildEditorPropertyFormats($formats);
+
 			$this->buildSelectableHolonCatalog($rootHolon, $data['holonCatalog'], (int)$rootHolon->getId());
 			$data['projectCatalog'] = $this->getProjectListEditorCatalog();
+			$data['authorityCatalog'] = $this->getAuthorityListEditorCatalog();
+			$data['authorityParentCatalog'] = $this->getAuthorityParentEditorCatalog($contextHolon);
 
 			if ($editingHolon && $data['canEdit']) {
+				$editingAdminBounds = $editingHolon->getAdminMemberBounds();
 				$data['holon'] = array_merge(array(
 					'id' => (int)$editingHolon->getId(),
 					'name' => $editingHolon->getDisplayName(),
@@ -5101,6 +6126,13 @@
 					'nameLocked' => $isTemplateEditing ? (bool)$editingHolon->get('lockedname') : $editingHolon->isNameLockedByTemplate(),
 					'unique' => (bool)$editingHolon->get('unique'),
 					'link' => (bool)$editingHolon->get('link'),
+					'adminParent' => (bool)$editingHolon->get('adminparent'),
+					'adminMin' => $editingAdminBounds['min'],
+					'adminMax' => $editingAdminBounds['max'],
+					'lockedAdminMin' => $editingAdminBounds['minLocked'],
+					'lockedAdminMax' => $editingAdminBounds['maxLocked'],
+					'adminMinOverride' => $editingAdminBounds['minOverridden'],
+					'adminMaxOverride' => $editingAdminBounds['maxOverridden'],
 					'inheritedPermissions' => $this->buildHolonInheritedPermissionSnapshot($editingHolon),
 					'permissionAssignments' => \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$editingHolon->getId()),
 					'properties' => $isTemplateEditing
@@ -5110,6 +6142,37 @@
 			}
 
 			return $data;
+		}
+
+		protected function getSubmittedDirectHolonPropertyDefinitions(array $submittedDefinitions, array $templateDefinitions)
+		{
+			$templatePropertyIds = array();
+			foreach ($templateDefinitions as $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId > 0) {
+					$templatePropertyIds[$propertyId] = true;
+				}
+			}
+
+			$directDefinitions = array();
+			foreach ($submittedDefinitions as $position => $definition) {
+				if (!is_array($definition)) {
+					continue;
+				}
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId > 0 && isset($templatePropertyIds[$propertyId])) {
+					continue;
+				}
+				if (trim((string)($definition['name'] ?? '')) === '') {
+					continue;
+				}
+				$definition['position'] = (int)$position + 1;
+				$definition['isDirectProperty'] = true;
+				$definition['isTemplateProperty'] = false;
+				$directDefinitions[] = $definition;
+			}
+
+			return $directDefinitions;
 		}
 
 		// Enregistre holon edite
@@ -5129,6 +6192,60 @@
 			return array_values(array_filter(array_map('trim', $items), function ($item) {
 				return $item !== '';
 			}));
+		}
+
+		protected function parseHolonHistoryListItems($rawValue, $formatId)
+		{
+			if ((int)$formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+				$parts = \dbObject\PropertyFormat::getHtmlListParts($rawValue);
+				return array_values($parts['items']);
+			}
+
+			return $this->parseHolonHistoryListValue($rawValue);
+		}
+
+		protected function buildHolonHistoryListDisplayItem($item, $listItemType)
+		{
+			$listItemType = trim((string)$listItemType);
+			$itemId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+			$label = '';
+
+			if ($itemId > 0 && $listItemType === \dbObject\Property::LIST_ITEM_HOLON) {
+				$linkedHolon = new \dbObject\Holon();
+				if ($linkedHolon->load($itemId) && $this->containsHolon($linkedHolon)) {
+					$label = trim((string)$linkedHolon->getDisplayName());
+				}
+			}
+
+			if ($itemId > 0 && $listItemType === \dbObject\Property::LIST_ITEM_PROJECT) {
+				$project = new \dbObject\Project();
+				if ($project->load($itemId) && (int)$project->get('IDorganization') === (int)$this->getId()) {
+					$label = trim((string)$project->get('title'));
+				}
+			}
+
+			if ($itemId > 0 && $listItemType === \dbObject\Property::LIST_ITEM_AUTHORITY) {
+				$authority = new \dbObject\Authority();
+				if ($authority->load($itemId) && (int)$authority->getOrganizationId() === (int)$this->getId()) {
+					$label = trim((string)$authority->get('label'));
+				}
+			}
+
+			if ($itemId > 0 && $label !== '') {
+				return array(
+					'id' => $itemId,
+					'label' => $label,
+				);
+			}
+
+			return $item;
+		}
+
+		protected function buildHolonHistoryListDisplayItems(array $items, $listItemType)
+		{
+			return array_map(function ($item) use ($listItemType) {
+				return $this->buildHolonHistoryListDisplayItem($item, $listItemType);
+			}, array_values($items));
 		}
 
 		protected function mergeHolonHistoryListValues($ancestorValue, $currentValue)
@@ -5236,7 +6353,10 @@
 
 		protected function buildHolonInheritedPermissionSnapshot(\dbObject\Holon $holon)
 		{
-			$collectedAssignments = array();
+			$collectedAssignments = array(
+				\dbObject\HolonPermission::MEMBER_TYPE_MEMBER => array(),
+				\dbObject\HolonPermission::MEMBER_TYPE_ADMIN => array(),
+			);
 			$visitedTemplateIds = array();
 			$currentTemplateId = (int)$holon->get('IDholon_template');
 			$guard = 0;
@@ -5252,23 +6372,26 @@
 					break;
 				}
 
-				foreach (\dbObject\HolonPermission::getAssignmentKeyMapForHolon($currentTemplateId) as $permissionKey => $ranges) {
-					$permissionKey = trim((string)$permissionKey);
-					if ($permissionKey === '') {
-						continue;
-					}
-
-					if (!isset($collectedAssignments[$permissionKey])) {
-						$collectedAssignments[$permissionKey] = array();
-					}
-
-					foreach ((array)$ranges as $range) {
-						$range = trim((string)$range);
-						if ($range === '') {
+				foreach (\dbObject\HolonPermission::getAssignmentKeyMapForHolon($currentTemplateId) as $memberType => $profileAssignments) {
+					$memberType = \dbObject\HolonPermission::normalizeMemberType($memberType);
+					foreach ((array)$profileAssignments as $permissionKey => $ranges) {
+						$permissionKey = trim((string)$permissionKey);
+						if ($permissionKey === '') {
 							continue;
 						}
 
-						$collectedAssignments[$permissionKey][$range] = $range;
+						if (!isset($collectedAssignments[$memberType][$permissionKey])) {
+							$collectedAssignments[$memberType][$permissionKey] = array();
+						}
+
+						foreach ((array)$ranges as $range) {
+							$range = trim((string)$range);
+							if ($range === '') {
+								continue;
+							}
+
+							$collectedAssignments[$memberType][$permissionKey][$range] = $range;
+						}
 					}
 				}
 
@@ -5276,11 +6399,15 @@
 				$guard++;
 			}
 
-			foreach ($collectedAssignments as $permissionKey => $ranges) {
-				$collectedAssignments[$permissionKey] = array_values($ranges);
+			$snapshot = array();
+			foreach ($collectedAssignments as $memberType => $profileAssignments) {
+				foreach ($profileAssignments as $permissionKey => $ranges) {
+					$collectedAssignments[$memberType][$permissionKey] = array_values($ranges);
+				}
+				$snapshot[$memberType] = $this->buildPermissionSnapshotFromAssignmentMap($collectedAssignments[$memberType]);
 			}
 
-			return $this->buildPermissionSnapshotFromAssignmentMap($collectedAssignments);
+			return $snapshot;
 		}
 
 		protected function buildHolonHistoryPermissionSnapshot(\dbObject\Holon $holon)
@@ -5291,7 +6418,19 @@
 			}
 
 			$assignments = \dbObject\HolonPermission::getAssignmentKeyMapForHolon($holonId);
-			return $this->buildPermissionSnapshotFromAssignmentMap($assignments);
+			$snapshot = array();
+			foreach ($assignments as $memberType => $profileAssignments) {
+				$profileSnapshot = $this->buildPermissionSnapshotFromAssignmentMap((array)$profileAssignments);
+				foreach ($profileSnapshot as $permissionKey => $permissionSnapshot) {
+					$historyKey = $memberType . ':' . $permissionKey;
+					$permissionSnapshot['memberType'] = $memberType;
+					$profileLabel = $memberType === \dbObject\HolonPermission::MEMBER_TYPE_ADMIN ? 'Admin' : 'Membre';
+					$permissionSnapshot['name'] = $profileLabel . ' - ' . (string)($permissionSnapshot['name'] ?? $permissionKey);
+					$snapshot[$historyKey] = $permissionSnapshot;
+				}
+			}
+
+			return $snapshot;
 		}
 
 		protected function buildHolonHistorySnapshot(\dbObject\Holon $holon, array $options = array())
@@ -5324,9 +6463,12 @@
 					'localValue' => (string)($definition['value'] ?? ''),
 					'inheritedValue' => (string)($definition['inheritedValue'] ?? ''),
 					'visibleValue' => (string)$visibleValue,
-					'visibleItems' => $formatId === \dbObject\PropertyFormat::FORMAT_LIST
-					? $this->parseHolonHistoryListValue($visibleValue)
-					: array(),
+					'visibleItems' => \dbObject\PropertyFormat::isListFormat($formatId)
+						? $this->buildHolonHistoryListDisplayItems(
+							$this->parseHolonHistoryListItems($visibleValue, $formatId),
+							(string)($definition['listItemType'] ?? '')
+						)
+						: array(),
 				);
 			}
 
@@ -5359,6 +6501,13 @@
 					'lockedBanner' => (bool)$holon->get('lockedbanner'),
 					'unique' => (bool)$holon->get('unique'),
 					'link' => (bool)$holon->get('link'),
+					'adminParent' => (bool)$holon->get('adminparent'),
+					'adminMin' => max(0, (int)$holon->get('admin_min')),
+					'adminMax' => $holon->get('admin_max') === null ? null : (int)$holon->get('admin_max'),
+					'lockedAdminMin' => (bool)$holon->get('lockedadminmin'),
+					'lockedAdminMax' => (bool)$holon->get('lockedadminmax'),
+					'adminMinOverride' => (bool)$holon->get('adminminoverride'),
+					'adminMaxOverride' => (bool)$holon->get('adminmaxoverride'),
 				),
 				'properties' => $properties,
 				'permissions' => !empty($options['includePermissions'])
@@ -5897,11 +7046,48 @@
 				}
 			}
 
+			if ($listItemType === \dbObject\Property::LIST_ITEM_PROJECT) {
+				$projectId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+				if ($projectId > 0) {
+					$project = new \dbObject\Project();
+					if (
+						$project->load($projectId)
+						&& (int)$project->get('IDorganization') === (int)$this->getId()
+					) {
+						return $this->limitHolonHistoryText((string)$project->get('title'));
+					}
+				}
+			}
+
+			if ($listItemType === \dbObject\Property::LIST_ITEM_AUTHORITY) {
+				$authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+				if ($authorityId > 0) {
+					$authority = new \dbObject\Authority();
+					if (
+						$authority->load($authorityId)
+						&& (int)$authority->getOrganizationId() === (int)$this->getId()
+					) {
+						return $this->limitHolonHistoryText((string)$authority->get('label'));
+					}
+				}
+			}
+
 			if (is_array($item)) {
 				return $this->limitHolonHistoryText((string)($item['label'] ?? $item['value'] ?? ''));
 			}
 
 			return $this->limitHolonHistoryText((string)$item);
+		}
+
+		protected function buildHolonHistoryHtmlTextPreview($html)
+		{
+			$html = html_entity_decode(
+				strip_tags(str_ireplace(array('<br>', '<br/>', '<br />'), ' ', (string)$html)),
+				ENT_QUOTES | ENT_HTML5,
+				'UTF-8'
+			);
+
+			return $this->limitHolonHistoryText($html);
 		}
 
 		protected function buildHolonHistoryValuePreview(array $propertySnapshot, array $beforePropertySnapshot = array())
@@ -5910,7 +7096,7 @@
 			$value = (string)($propertySnapshot['visibleValue'] ?? '');
 			$beforeValue = (string)($beforePropertySnapshot['visibleValue'] ?? '');
 
-			if ($formatId === \dbObject\PropertyFormat::FORMAT_LIST) {
+			if (\dbObject\PropertyFormat::isListFormat($formatId)) {
 				$previews = array();
 				foreach (array_slice($propertySnapshot['visibleItems'] ?? array(), 0, 3) as $item) {
 					$preview = $this->buildHolonHistoryListItemPreview($item, $propertySnapshot['listItemType'] ?? '');
@@ -5932,16 +7118,19 @@
 			}
 
 			if ($formatId === \dbObject\PropertyFormat::FORMAT_HTML) {
-				$value = html_entity_decode(
-					strip_tags(str_ireplace(array('<br>', '<br/>', '<br />'), ' ', $value)),
-					ENT_QUOTES | ENT_HTML5,
-					'UTF-8'
-				);
-				$beforeValue = html_entity_decode(
-					strip_tags(str_ireplace(array('<br>', '<br/>', '<br />'), ' ', $beforeValue)),
-					ENT_QUOTES | ENT_HTML5,
-					'UTF-8'
-				);
+				$value = $this->buildHolonHistoryHtmlTextPreview($value);
+				$beforeValue = $this->buildHolonHistoryHtmlTextPreview($beforeValue);
+			}
+
+			if ($formatId === \dbObject\PropertyFormat::FORMAT_TEXT_HTML) {
+				$parts = \dbObject\PropertyFormat::getTextHtmlParts($value);
+				$previewParts = array_filter(array(
+					trim((string)$parts['text']),
+					$this->buildHolonHistoryHtmlTextPreview($parts['detail']),
+				), function ($part) {
+					return trim((string)$part) !== '';
+				});
+				return implode(' - ', $previewParts);
 			}
 
 			if (
@@ -6043,8 +7232,13 @@
 				'lockedName' => 'nom verrouille',
 				'lockedIcon' => 'icone verrouillee',
 				'lockedBanner' => 'banniere verrouillee',
+				'lockedAdminMin' => 'minimum d admins verrouille',
+				'lockedAdminMax' => 'maximum d admins verrouille',
+				'adminMinOverride' => 'minimum d admins redefini',
+				'adminMaxOverride' => 'maximum d admins redefini',
 				'unique' => 'unique',
 				'link' => 'lien',
+				'adminParent' => 'admin parent',
 			);
 			foreach ($templateBooleanFields as $field => $label) {
 				if ((bool)($beforeHolon[$field] ?? false) === (bool)($afterHolon[$field] ?? false)) {
@@ -6058,6 +7252,24 @@
 					'field' => $field,
 					'before' => (bool)($beforeHolon[$field] ?? false),
 					'after' => (bool)($afterHolon[$field] ?? false),
+				);
+			}
+
+			$templateIntegerFields = array(
+				'adminMin' => 'nombre minimum d admins',
+				'adminMax' => 'nombre maximum d admins',
+			);
+			foreach ($templateIntegerFields as $field => $label) {
+				if (($beforeHolon[$field] ?? null) === ($afterHolon[$field] ?? null)) {
+					continue;
+				}
+
+				$messages[] = 'le parametre "' . $label . '" a ete modifie';
+				$changes[] = array(
+					'type' => 'field_changed',
+					'field' => $field,
+					'before' => $beforeHolon[$field] ?? null,
+					'after' => $afterHolon[$field] ?? null,
 				);
 			}
 
@@ -6116,7 +7328,25 @@
 					continue;
 				}
 
-				if ($formatId === \dbObject\PropertyFormat::FORMAT_LIST) {
+				if (\dbObject\PropertyFormat::isListFormat($formatId)) {
+					if ($formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+						$beforeParts = \dbObject\PropertyFormat::getHtmlListParts((string)($beforeProperty['visibleValue'] ?? ''));
+						$afterParts = \dbObject\PropertyFormat::getHtmlListParts((string)($afterProperty['visibleValue'] ?? ''));
+						$beforeHtml = $this->buildHolonHistoryHtmlTextPreview($beforeParts['before'])
+							. ' ' . $this->buildHolonHistoryHtmlTextPreview($beforeParts['after']);
+						$afterHtml = $this->buildHolonHistoryHtmlTextPreview($afterParts['before'])
+							. ' ' . $this->buildHolonHistoryHtmlTextPreview($afterParts['after']);
+						if (trim($beforeHtml) !== trim($afterHtml)) {
+							$messages[] = 'le contenu HTML de ' . $propertyToken . ' a ete modifie'
+								. (($preview = $this->buildHolonHistoryChangedTextSnippet($beforeHtml, $afterHtml)) !== '' ? ' : ' . $preview : '');
+							$changes[] = array(
+								'type' => 'property_html_changed',
+								'propertyId' => (int)$propertyId,
+								'before' => $beforeParts,
+								'after' => $afterParts,
+							);
+						}
+					}
 					$beforeItemsByKey = array();
 					foreach ($beforeProperty['visibleItems'] ?? array() as $item) {
 						$key = $this->buildHolonHistoryListItemKey($item);
@@ -6401,6 +7631,365 @@
 			);
 		}
 
+		protected function recordAuthorityHistory(\dbObject\Holon $holon, $authorUserId, $action, $content, array $parameters = array())
+		{
+			$holonId = (int)$holon->getId();
+			$holonToken = \dbObject\History::buildReferenceToken(
+				'holon',
+				$holonId,
+				$holon->getDisplayName()
+			);
+			$content = trim((string)$content);
+			if ($holonId > 0 && strpos($content, \dbObject\History::buildHolonSearchNeedle($holonId)) === false) {
+				$content .= ' Autorite confiee a ' . $holonToken . '.';
+			}
+			$parameters['IDholon'] = $holonId;
+
+			\dbObject\History::createEntry(
+				(int)$this->getId(),
+				(int)$authorUserId,
+				(string)$action,
+				(string)$content,
+				$parameters,
+				(int)$holon->getContainingCircleId(false)
+			);
+		}
+
+		protected function getAuthorityHistoryLabel($authorityId)
+		{
+			$authorityId = (int)$authorityId;
+			if ($authorityId <= 0) {
+				return 'aucune autorite parente';
+			}
+
+			$authority = new \dbObject\Authority();
+			if (!$authority->load($authorityId)) {
+				return 'autorite #' . $authorityId;
+			}
+
+			$label = trim((string)$authority->get('label'));
+			return $label !== '' ? $label : 'autorite #' . $authorityId;
+		}
+
+		protected function syncSubmittedAuthorityPropertyValues(\dbObject\Holon $holon, array &$submittedValuesByPropertyId, array $propertyDefinitions, $authorUserId = 0)
+		{
+			$parseItems = static function ($rawValue, $formatId) {
+				$rawValue = trim((string)$rawValue);
+				if ($rawValue === '') {
+					return array();
+				}
+
+				$decoded = json_decode($rawValue, true);
+				if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+					return array();
+				}
+
+				if ((int)$formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+					return is_array($decoded['items'] ?? null) ? array_values($decoded['items']) : array();
+				}
+
+				return array_values($decoded);
+			};
+
+			$serializeItems = static function ($rawValue, $formatId, array $items) {
+				if ((int)$formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+					$parts = json_decode(trim((string)$rawValue), true);
+					if (!is_array($parts)) {
+						$parts = array();
+					}
+					$parts['items'] = array_values($items);
+					return json_encode($parts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+				}
+
+				return count($items) > 0
+					? json_encode(array_values($items), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+					: '';
+			};
+
+			$existingValuesByPropertyId = array();
+			foreach ($holon->getHolonProperties() as $holonProperty) {
+				$existingValuesByPropertyId[(int)$holonProperty->get('IDproperty')] = (string)$holonProperty->get('value');
+			}
+
+			$parentAuthorityIds = array();
+			$parentHolon = $holon->getParentHolon();
+			if ($parentHolon instanceof \dbObject\Holon) {
+				$parentAuthorities = new \dbObject\ArrayAuthority();
+				$parentAuthorities->loadForHolon((int)$parentHolon->getId());
+				foreach ($parentAuthorities as $parentAuthority) {
+					$parentAuthorityId = (int)$parentAuthority->getId();
+					if ($parentAuthorityId > 0) {
+						$parentAuthorityIds[$parentAuthorityId] = true;
+					}
+				}
+			}
+
+			foreach ($propertyDefinitions as $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				$formatId = (int)($definition['formatId'] ?? 0);
+				if (
+					$propertyId <= 0
+					|| (string)($definition['listItemType'] ?? '') !== \dbObject\Property::LIST_ITEM_AUTHORITY
+					|| !\dbObject\PropertyFormat::isListFormat($formatId)
+					|| !empty($definition['effectiveLocked'])
+				) {
+					continue;
+				}
+
+				$currentItems = $parseItems($existingValuesByPropertyId[$propertyId] ?? '', $formatId);
+				$allowedExistingIds = array();
+				foreach ($currentItems as $currentItem) {
+					$currentId = is_array($currentItem) ? (int)($currentItem['id'] ?? 0) : (int)$currentItem;
+					if ($currentId > 0) {
+						$allowedExistingIds[$currentId] = true;
+					}
+				}
+
+				$rawValue = (string)($submittedValuesByPropertyId[$propertyId] ?? '');
+				$submittedItems = $parseItems($rawValue, $formatId);
+				$resolvedIds = array();
+				$seenIds = array();
+
+				foreach ($submittedItems as $submittedItem) {
+					$existingId = is_array($submittedItem) ? (int)($submittedItem['id'] ?? 0) : (int)$submittedItem;
+					if ($existingId > 0) {
+						if (!isset($allowedExistingIds[$existingId])) {
+							return array(
+								'status' => false,
+								'message' => 'Une autorite existante ne peut pas etre ajoutee a cette propriete.',
+							);
+						}
+
+						$authority = new \dbObject\Authority();
+						if (
+							!$authority->load($existingId)
+							|| (int)$authority->get('IDholon') !== (int)$holon->getId()
+						) {
+							return array(
+								'status' => false,
+								'message' => 'Cette autorite ne peut pas etre modifiee depuis ce holon.',
+							);
+						}
+
+						$isDeletion = is_array($submittedItem) && !empty($submittedItem['delete']);
+						$before = array(
+							'label' => trim((string)$authority->get('label')),
+							'description' => trim((string)$authority->get('description')),
+							'parentId' => (int)$authority->get('IDauthority_parent'),
+							'parentLabel' => $this->getAuthorityHistoryLabel((int)$authority->get('IDauthority_parent')),
+						);
+						if ($isDeletion) {
+							$deletionPlan = is_array($submittedItem['deletionPlan'] ?? null)
+								? $submittedItem['deletionPlan']
+								: array();
+							$deletionResult = $authority->applyDeletionPlan($deletionPlan);
+							if (empty($deletionResult['status'])) {
+								return array(
+									'status' => false,
+									'message' => (string)($deletionResult['text'] ?? 'Cette autorite ne peut pas etre traitee.'),
+								);
+							}
+
+							$authorityRetained = !empty($deletionResult['authorityRetained']);
+							$reactivatedShellId = (int)($deletionResult['reactivatedShellId'] ?? 0);
+							$historyAction = $reactivatedShellId > 0
+								? 'authority_complete_delegation_reversed'
+								: ($authorityRetained ? 'authority_reassigned' : 'authority_deleted');
+							$historyContent = $reactivatedShellId > 0
+								? 'Annulation de la delegation complete de l autorite "' . $before['label'] . '" : l autorite source a ete reactivee.'
+								: ($authorityRetained
+									? 'Remontee de l autorite "' . $before['label'] . '" au holon parent.'
+									: 'Suppression de l autorite "' . $before['label'] . '".');
+							$propertyReferenceCount = (int)($deletionResult['movedPropertyReferenceCount'] ?? 0);
+							if ($propertyReferenceCount > 0) {
+								$historyContent .= ' ' . $propertyReferenceCount . ' rattachement' . ($propertyReferenceCount > 1 ? 's' : '') . ' de propriete remonte' . ($propertyReferenceCount > 1 ? 's' : '') . ' au holon parent.';
+							}
+							$this->recordAuthorityHistory(
+								$holon,
+								$authorUserId,
+								$historyAction,
+								$historyContent,
+								array(
+									'IDauthority' => $existingId,
+									'before' => $before,
+									'deletionPlan' => $deletionResult['plan'] ?? array(),
+									'deletedAuthorityIds' => $deletionResult['deletedAuthorityIds'] ?? array(),
+									'movedAuthorityIds' => $deletionResult['movedAuthorityIds'] ?? array(),
+									'deletedRuleIds' => $deletionResult['deletedRuleIds'] ?? array(),
+									'movedRuleIds' => $deletionResult['movedRuleIds'] ?? array(),
+									'movedPropertyReferenceCount' => $propertyReferenceCount,
+									'reactivatedShellId' => $reactivatedShellId,
+								)
+							);
+							continue;
+						}
+
+						if (is_array($submittedItem) && (
+							array_key_exists('label', $submittedItem)
+							|| array_key_exists('parentId', $submittedItem)
+							|| array_key_exists('description', $submittedItem)
+						)) {
+							$label = trim((string)($submittedItem['label'] ?? $before['label']));
+							$parentId = array_key_exists('parentId', $submittedItem)
+								? (int)$submittedItem['parentId']
+								: $before['parentId'];
+							$description = trim((string)($submittedItem['description'] ?? $before['description']));
+							$canCreateRootAuthority = (int)$holon->get('IDtypeholon') === 4;
+							if ($label === '' || ($parentId <= 0 && !$canCreateRootAuthority)) {
+								return array(
+									'status' => false,
+									'message' => $canCreateRootAuthority
+										? 'Chaque autorite doit avoir un nom.'
+										: 'Chaque autorite doit avoir un nom et une autorite parente.',
+								);
+							}
+							if ($parentId > 0 && !isset($parentAuthorityIds[$parentId])) {
+								return array(
+									'status' => false,
+									'message' => 'L autorite parente doit etre directement confiee au holon parent.',
+								);
+							}
+
+							$authority->set('label', $label);
+							$authority->set('IDauthority_parent', $parentId > 0 ? $parentId : null);
+							$authority->set('description', $description !== '' ? $description : null);
+							$saveResult = $authority->save();
+							if (empty($saveResult['status'])) {
+								return array(
+									'status' => false,
+									'message' => 'Cette autorite n a pas pu etre modifiee.',
+								);
+							}
+
+							$changes = array();
+							if ($before['label'] !== $label) {
+								$changes[] = 'le nom est passe de "' . $before['label'] . '" a "' . $label . '"';
+							}
+							if ($before['parentId'] !== $parentId) {
+								$changes[] = 'l autorite parente est maintenant "' . $this->getAuthorityHistoryLabel($parentId) . '"';
+							}
+							if ($before['description'] !== $description) {
+								$changes[] = 'la description a ete modifiee';
+							}
+							if (count($changes) > 0) {
+								$this->recordAuthorityHistory(
+									$holon,
+									$authorUserId,
+									'authority_updated',
+									'Modification de l autorite "' . $label . '" : ' . implode('; ', $changes) . '.',
+									array('IDauthority' => $existingId, 'before' => $before, 'after' => array(
+										'label' => $label,
+										'description' => $description,
+										'parentId' => $parentId,
+										'parentLabel' => $this->getAuthorityHistoryLabel($parentId),
+									))
+								);
+							}
+						}
+
+						if (!isset($seenIds[$existingId])) {
+							$seenIds[$existingId] = true;
+							$resolvedIds[] = $existingId;
+						}
+						continue;
+					}
+
+					if (!is_array($submittedItem)) {
+						continue;
+					}
+
+					$label = trim((string)($submittedItem['label'] ?? ''));
+					$parentId = (int)($submittedItem['parentId'] ?? 0);
+					$description = trim((string)($submittedItem['description'] ?? ''));
+					$delegationMode = (string)($submittedItem['delegationMode'] ?? 'partial');
+					$delegationMode = $delegationMode === 'complete' ? 'complete' : 'partial';
+					if ($delegationMode === 'partial' && $label === '' && $parentId <= 0 && $description === '') {
+						continue;
+					}
+					$canCreateRootAuthority = (int)$holon->get('IDtypeholon') === 4;
+					if (($delegationMode === 'partial' && $label === '') || ($delegationMode === 'complete' && $parentId <= 0) || ($parentId <= 0 && !$canCreateRootAuthority)) {
+						return array(
+							'status' => false,
+							'message' => $canCreateRootAuthority
+								? 'Chaque nouvelle autorite doit avoir un nom.'
+								: 'Chaque nouvelle autorite doit avoir un nom et une autorite parente.',
+						);
+					}
+					if ($parentId > 0 && !isset($parentAuthorityIds[$parentId])) {
+						return array(
+							'status' => false,
+							'message' => 'L autorite parente doit etre directement confiee au holon parent.',
+						);
+					}
+					$parentAuthority = null;
+					if ($parentId > 0) {
+						$parentAuthority = new \dbObject\Authority();
+						if (!$parentAuthority->load($parentId)) {
+							return array('status' => false, 'message' => 'L autorite parente est introuvable.');
+						}
+					}
+
+					if ($delegationMode === 'complete') {
+						$delegationResult = $parentAuthority->delegateCompletelyToHolon($holon);
+						if (empty($delegationResult['status'])) {
+							return array('status' => false, 'message' => (string)($delegationResult['text'] ?? 'La delegation complete a echoue.'));
+						}
+						$authorityId = (int)($delegationResult['authorityId'] ?? 0);
+						$delegatedAuthorityIds = is_array($delegationResult['authorityIds'] ?? null)
+							? $delegationResult['authorityIds']
+							: array($authorityId);
+						foreach ($delegatedAuthorityIds as $delegatedAuthorityId) {
+							$delegatedAuthorityId = (int)$delegatedAuthorityId;
+							if ($delegatedAuthorityId > 0 && !isset($seenIds[$delegatedAuthorityId])) {
+								$seenIds[$delegatedAuthorityId] = true;
+								$resolvedIds[] = $delegatedAuthorityId;
+							}
+						}
+						$this->recordAuthorityHistory(
+							$holon,
+							$authorUserId,
+							'authority_complete_delegated',
+							'Delegation complete de l autorite "' . trim((string)$parentAuthority->get('label')) . '".' . (!empty($delegationResult['createdShell']) ? ' Une coquille a ete conservee dans le holon parent.' : ''),
+							array(
+								'IDauthority' => $authorityId,
+								'sourceAuthorityId' => $parentId,
+								'createdShell' => !empty($delegationResult['createdShell']),
+								'movedRuleIds' => $delegationResult['movedRuleIds'] ?? array(),
+							)
+						);
+						continue;
+					}
+
+					if ($parentAuthority instanceof \dbObject\Authority && $parentAuthority->isShell()) {
+						return array('status' => false, 'message' => 'Une coquille de delegation complete ne peut pas etre la source d une delegation partielle.');
+					}
+
+					$authority = new \dbObject\Authority();
+					$authority->set('IDholon', (int)$holon->getId());
+					$authority->set('IDauthority_parent', $parentId > 0 ? $parentId : null);
+					$authority->set('label', $label);
+					$authority->set('description', $description !== '' ? $description : null);
+					$saveResult = $authority->save();
+					if (empty($saveResult['status']) || (int)$authority->getId() <= 0) {
+						return array(
+							'status' => false,
+							'message' => 'La nouvelle autorite n a pas pu etre creee.',
+						);
+					}
+
+					$authorityId = (int)$authority->getId();
+					if (!isset($seenIds[$authorityId])) {
+						$seenIds[$authorityId] = true;
+						$resolvedIds[] = $authorityId;
+					}
+				}
+
+				$submittedValuesByPropertyId[$propertyId] = $serializeItems($rawValue, $formatId, $resolvedIds);
+			}
+
+			return array('status' => true);
+		}
+
 		public function saveHolonEditorDefinition(array $payload, $userId = 0, $contextHolonId = 0, $holonId = 0)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
@@ -6649,11 +8238,71 @@
 				}
 			}
 
+			$submittedAdminMin = max(0, (int)($payload['adminMin'] ?? 0));
+			$submittedAdminMaxValue = $payload['adminMax'] ?? null;
+			$submittedAdminMax = $submittedAdminMaxValue === null || trim((string)$submittedAdminMaxValue) === ''
+				? null
+				: max(0, (int)$submittedAdminMaxValue);
+			$lockedAdminMin = $isTemplateEditing ? !empty($payload['lockedAdminMin']) : false;
+			$lockedAdminMax = $isTemplateEditing ? !empty($payload['lockedAdminMax']) : false;
+			$adminMinOverride = false;
+			$adminMaxOverride = false;
+			$effectiveAdminMin = $submittedAdminMin;
+			$effectiveAdminMax = $submittedAdminMax;
+			if (!$isTemplateEditing && $template instanceof \dbObject\Holon) {
+				$templateAdminBounds = $template->getEffectiveTemplateAdminBounds();
+				$adminMinOverride = !empty($payload['adminMinOverride']) && empty($templateAdminBounds['minLocked']);
+				$adminMaxOverride = !empty($payload['adminMaxOverride']) && empty($templateAdminBounds['maxLocked']);
+				$effectiveAdminMin = $adminMinOverride ? $submittedAdminMin : (int)$templateAdminBounds['min'];
+				$effectiveAdminMax = $adminMaxOverride ? $submittedAdminMax : $templateAdminBounds['max'];
+			}
+
+			if ($effectiveAdminMax !== null && $effectiveAdminMax < $effectiveAdminMin) {
+				return array(
+					'status' => false,
+					'message' => 'Le nombre maximum d admins doit etre superieur ou egal au minimum.',
+				);
+			}
+
+			$submittedDirectDefinitions = array();
+			if (!$isTemplateEditing) {
+				$submittedDirectDefinitions = $this->getSubmittedDirectHolonPropertyDefinitions(
+					is_array($payload['properties'] ?? null) ? array_values($payload['properties']) : array(),
+					$templateDefinitions
+				);
+				$existingDirectDefinitions = $isEditing
+					? array_values(array_filter($holon->getHolonEditorPropertyDefinitions(), function ($definition) {
+						return !empty($definition['isDirectProperty']);
+					}))
+					: array();
+				$propertyPermissionHolon = $holon ?: $contextHolon;
+				$propertyPermissionResult = $this->canApplyPropertyDefinitionChanges(
+					$propertyPermissionHolon,
+					$this->getPropertyDefinitionPermissionOperations($existingDirectDefinitions, $submittedDirectDefinitions),
+					'HOLON'
+				);
+				if (empty($propertyPermissionResult['status'])) {
+					return $propertyPermissionResult;
+				}
+			}
+
 			if ($name === '') {
 				return array(
 					'status' => false,
 					'message' => 'Le nom du holon est obligatoire.',
 				);
+			}
+
+			if (!$isTemplateEditing && $template instanceof \dbObject\Holon) {
+				$templatePropertyPermissionResult = $this->canEditSubmittedTemplatePropertyValues(
+					$holon ?: new \dbObject\Holon(),
+					$template,
+					$submittedValuesByPropertyId,
+					$templateDefinitions
+				);
+				if (empty($templatePropertyPermissionResult['status'])) {
+					return $templatePropertyPermissionResult;
+				}
 			}
 
 			if (!$holon) {
@@ -6677,6 +8326,18 @@
 			$holon->set('lockedbanner', $isTemplateEditing ? !empty($payload['lockedBanner']) : false);
 			$holon->set('unique', $isTemplateEditing ? !empty($payload['unique']) : false);
 			$holon->set('link', $isTemplateEditing ? !empty($payload['link']) : false);
+			$holon->set(
+				'adminparent',
+				$isTemplateEditing
+				&& $typeId === 1
+				&& (array_key_exists('adminParent', $payload) ? !empty($payload['adminParent']) : (bool)$holon->get('adminparent'))
+			);
+			$holon->set('admin_min', $isTemplateEditing || $adminMinOverride ? $submittedAdminMin : $effectiveAdminMin);
+			$holon->set('admin_max', $isTemplateEditing || $adminMaxOverride ? $submittedAdminMax : $effectiveAdminMax);
+			$holon->set('lockedadminmin', $lockedAdminMin);
+			$holon->set('lockedadminmax', $lockedAdminMax);
+			$holon->set('adminminoverride', $adminMinOverride);
+			$holon->set('adminmaxoverride', $adminMaxOverride);
 			$color = trim((string)($payload['color'] ?? ''));
 			$holon->set('color', $color !== '' ? $color : null);
 			$holon->set(
@@ -6703,6 +8364,26 @@
 			if ($isTemplateEditing) {
 				$holon->syncTemplateProperties($templateDefinitions, (int)$rootHolon->getId());
 			} else {
+				$resolvedDirectDefinitions = $holon->syncDirectEditorPropertyDefinitions(
+					$submittedDirectDefinitions,
+					(int)$rootHolon->getId()
+				);
+				$templateDefinitions = array_merge($templateDefinitions, $resolvedDirectDefinitions);
+				foreach ($resolvedDirectDefinitions as $definition) {
+					$propertyId = (int)($definition['id'] ?? 0);
+					if ($propertyId > 0) {
+						$submittedValuesByPropertyId[$propertyId] = $definition['value'] ?? '';
+					}
+				}
+
+				$authoritySyncResult = $this->syncSubmittedAuthorityPropertyValues($holon, $submittedValuesByPropertyId, $templateDefinitions, $userId);
+				if (empty($authoritySyncResult['status'])) {
+					return array(
+						'status' => false,
+						'message' => (string)($authoritySyncResult['message'] ?? 'Les autorites n ont pas pu etre enregistrees.'),
+					);
+				}
+
 				$holon->syncEditorPropertyValues($submittedValuesByPropertyId, $templateDefinitions);
 				if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
 					(int)$holon->getId(),
@@ -6945,13 +8626,6 @@
 				);
 			}
 
-			if (!$contextHolon->canEdit()) {
-				return array(
-					'status' => false,
-					'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
-				);
-			}
-
 			$templateName = trim((string)($payload['name'] ?? ''));
 			$iconValue = is_scalar($payload['icon'] ?? null) ? trim((string)$payload['icon']) : '';
 			$bannerValue = is_scalar($payload['banner'] ?? null) ? trim((string)$payload['banner']) : '';
@@ -7001,11 +8675,50 @@
 				);
 			}
 
-			if ($template->getId() > 0 && (int)$template->get('IDholon_parent') !== (int)$contextHolon->getId()) {
+			if ($template->getId() > 0) {
+				$templateContextHolon = $template->getParentHolon();
+				if (!$templateContextHolon || !$this->containsHolon($templateContextHolon)) {
+					return array(
+						'status' => false,
+						'message' => "Le contexte de definition du modele est invalide.",
+					);
+				}
+				$contextHolon = $templateContextHolon;
+			} else {
+				$definitionHolonId = (int)($payload['definitionHolonId'] ?? 0);
+				if ($definitionHolonId > 0 && $definitionHolonId !== (int)$rootHolon->getId()) {
+					$definitionHolon = new \dbObject\Holon();
+					if (!$definitionHolon->load($definitionHolonId) || !$this->containsHolon($definitionHolon)) {
+						return array(
+							'status' => false,
+							'message' => 'Le contexte de definition du modele est invalide.',
+						);
+					}
+					$contextHolon = $definitionHolon;
+				}
+			}
+
+			if (!$contextHolon->canEdit()) {
 				return array(
 					'status' => false,
-					'message' => "Ce modele n'est pas defini dans le holon courant.",
+					'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
 				);
+			}
+
+			$submittedProperties = is_array($payload['properties'] ?? null)
+				? array_values($payload['properties'])
+				: array();
+			$propertyPermissionHolon = $template->getId() > 0 ? $template : $contextHolon;
+			$propertyPermissionResult = $this->canApplyPropertyDefinitionChanges(
+				$propertyPermissionHolon,
+				$this->getPropertyDefinitionPermissionOperations(
+					$template->getId() > 0 ? $template->getTemplatePropertyDefinitions() : array(),
+					$submittedProperties
+				),
+				'TEMPLATE'
+			);
+			if (empty($propertyPermissionResult['status'])) {
+				return $propertyPermissionResult;
 			}
 
 			if ($template->getId() > 0) {
@@ -7071,6 +8784,40 @@
 				}
 			}
 
+			$adminMinValue = $payload['adminMin'] ?? null;
+			$adminMin = $adminMinValue === null || trim((string)$adminMinValue) === ''
+				? null
+				: max(0, (int)$adminMinValue);
+			$adminMaxValue = $payload['adminMax'] ?? null;
+			$adminMax = $adminMaxValue === null || trim((string)$adminMaxValue) === ''
+				? null
+				: max(0, (int)$adminMaxValue);
+			$inheritedAdminBounds = $inheritsTemplate
+				? $inheritsTemplate->getEffectiveTemplateAdminBounds()
+				: array('min' => 0, 'max' => null, 'minLocked' => false, 'maxLocked' => false);
+			$inheritedAdminMinimumLocked = !empty($inheritedAdminBounds['minLocked']);
+			$inheritedAdminMaximumLocked = !empty($inheritedAdminBounds['maxLocked']);
+			$lockedAdminMin = !$inheritedAdminMinimumLocked && !empty($payload['lockedAdminMin']);
+			$lockedAdminMax = !$inheritedAdminMaximumLocked && !empty($payload['lockedAdminMax']);
+			if ($inheritedAdminMinimumLocked) {
+				$adminMin = null;
+			}
+			if ($inheritedAdminMaximumLocked) {
+				$adminMax = null;
+			}
+			$effectiveAdminMin = $adminMin === null
+				? (int)$inheritedAdminBounds['min']
+				: $adminMin;
+			$effectiveAdminMax = $adminMax === null
+				? $inheritedAdminBounds['max']
+				: $adminMax;
+			if ($effectiveAdminMax !== null && $effectiveAdminMax < $effectiveAdminMin) {
+				return array(
+					'status' => false,
+					'message' => 'Le nombre maximum d admins doit etre superieur ou egal au minimum.',
+				);
+			}
+
 			$template->set('name', $templateName);
 			$template->set('templatename', $templateName);
 			$template->set('IDtypeholon', $typeId);
@@ -7088,6 +8835,13 @@
 			$template->set('lockedbanner', !empty($payload['lockedBanner']));
 			$template->set('unique', !empty($payload['unique']));
 			$template->set('link', !empty($payload['link']));
+			$template->set('adminparent', $typeId === 1 && !empty($payload['adminParent']));
+			$template->set('admin_min', $adminMin);
+			$template->set('admin_max', $adminMax);
+			$template->set('lockedadminmin', $lockedAdminMin);
+			$template->set('lockedadminmax', $lockedAdminMax);
+			$template->set('adminminoverride', false);
+			$template->set('adminmaxoverride', false);
 			$template->set('icon', $iconValue !== '' ? $iconValue : null);
 			$template->set('banner', $bannerValue !== '' ? $bannerValue : null);
 			$template->save();
@@ -7100,7 +8854,7 @@
 			}
 
 			$template->syncTemplateProperties(
-				is_array($payload['properties'] ?? null) ? $payload['properties'] : array(),
+				$submittedProperties,
 				(int)$rootHolon->getId()
 			);
 
@@ -7129,7 +8883,10 @@
 				'status' => true,
 				'message' => 'Modele enregistre.',
 				'template' => $template->toTemplateEditorArray((int)$rootHolon->getId()),
-				'data' => $this->getHolonTemplateEditorData((int)$contextHolon->getId(), $scope),
+				'data' => $this->getHolonTemplateEditorData(
+					$scope === 'descendants' ? (int)$rootHolon->getId() : (int)$contextHolon->getId(),
+					$scope
+				),
 			);
 		}
 
@@ -7147,22 +8904,30 @@
 				);
 			}
 
-			if (!$contextHolon->canEdit()) {
-				return array(
-					'status' => false,
-					'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
-				);
-			}
-
 			$template = new \dbObject\Holon();
 			if (
 				!$template->load($templateId)
 				|| !$template->isTemplateNode((int)$rootHolon->getId())
-				|| (int)$template->get('IDholon_parent') !== (int)$contextHolon->getId()
 			) {
 				return array(
 					'status' => false,
 					'message' => 'Le modele a supprimer est introuvable.',
+				);
+			}
+
+			$templateContextHolon = $template->getParentHolon();
+			if (!$templateContextHolon || !$this->containsHolon($templateContextHolon)) {
+				return array(
+					'status' => false,
+					'message' => 'Le modele a supprimer est introuvable.',
+				);
+			}
+			$contextHolon = $templateContextHolon;
+
+			if (!$contextHolon->canEdit()) {
+				return array(
+					'status' => false,
+					'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
 				);
 			}
 
@@ -7188,7 +8953,10 @@
 					'id' => $templateId,
 					'name' => $templateName,
 				),
-				'data' => $this->getHolonTemplateEditorData((int)$contextHolon->getId(), $scope),
+				'data' => $this->getHolonTemplateEditorData(
+					$scope === 'descendants' ? (int)$rootHolon->getId() : (int)$contextHolon->getId(),
+					$scope
+				),
 			);
 		}
 
@@ -7222,6 +8990,11 @@
 					'message' => "Vous n'avez pas les droits pour modifier cette organisation.",
 				);
 			}
+
+			$historyBeforeSnapshot = $this->buildHolonHistorySnapshot($holon, array(
+				'propertyMode' => 'template',
+				'includePermissions' => true,
+			));
 
 			$name = trim((string)($payload['name'] ?? ''));
 			if ($name === '') {
@@ -7257,6 +9030,15 @@
 				}, array_values($payload['properties']))
 				: array();
 
+			$propertyPermissionResult = $this->canApplyPropertyDefinitionChanges(
+				$holon,
+				$this->getPropertyDefinitionPermissionOperations($holon->getTemplatePropertyDefinitions(), $definitions),
+				'HOLON'
+			);
+			if (empty($propertyPermissionResult['status'])) {
+				return $propertyPermissionResult;
+			}
+
 			if ($shareAsTemplate && $publicTemplateName === '') {
 				return array(
 					'status' => false,
@@ -7287,7 +9069,66 @@
 				}
 			}
 
+			$submittedValuesByPropertyId = array();
+			foreach ($definitions as $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId > 0) {
+					$submittedValuesByPropertyId[$propertyId] = $definition['value'] ?? '';
+				}
+			}
+
+			$authoritySyncResult = $this->syncSubmittedAuthorityPropertyValues($holon, $submittedValuesByPropertyId, $definitions, $userId);
+			if (empty($authoritySyncResult['status'])) {
+				return array(
+					'status' => false,
+					'message' => (string)($authoritySyncResult['message'] ?? 'Les autorites n ont pas pu etre enregistrees.'),
+				);
+			}
+			foreach ($definitions as &$definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId > 0 && array_key_exists($propertyId, $submittedValuesByPropertyId)) {
+					$definition['value'] = $submittedValuesByPropertyId[$propertyId];
+				}
+			}
+			unset($definition);
+
 			$holon->syncTemplateProperties($definitions, (int)$rootHolon->getId());
+
+			$requiresAuthorityPostSync = false;
+			foreach ($definitions as $definition) {
+				if (
+					(int)($definition['id'] ?? 0) <= 0
+					&& (string)($definition['listItemType'] ?? '') === \dbObject\Property::LIST_ITEM_AUTHORITY
+					&& \dbObject\PropertyFormat::isListFormat((int)($definition['formatId'] ?? 0))
+				) {
+					$requiresAuthorityPostSync = true;
+					break;
+				}
+			}
+
+			if ($requiresAuthorityPostSync) {
+				$persistedDefinitions = $holon->getTemplatePropertyDefinitions();
+				$postSyncSubmittedValues = array();
+				foreach ($definitions as $index => $definition) {
+					$propertyId = (int)($definition['id'] ?? 0);
+					if ($propertyId <= 0) {
+						$propertyId = (int)($persistedDefinitions[$index]['id'] ?? 0);
+					}
+					if ($propertyId > 0) {
+						$postSyncSubmittedValues[$propertyId] = $definition['value'] ?? '';
+					}
+				}
+
+				$authorityPostSyncResult = $this->syncSubmittedAuthorityPropertyValues($holon, $postSyncSubmittedValues, $persistedDefinitions, $userId);
+				if (empty($authorityPostSyncResult['status'])) {
+					return array(
+						'status' => false,
+						'message' => (string)($authorityPostSyncResult['message'] ?? 'Les autorites n ont pas pu etre enregistrees.'),
+					);
+				}
+
+				$holon->syncEditorPropertyValues($postSyncSubmittedValues, $persistedDefinitions);
+			}
 
 			if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
 				(int)$holon->getId(),
@@ -7298,6 +9139,13 @@
 					'message' => "Les droits de l'organisation n'ont pas pu etre enregistres.",
 				);
 			}
+
+			$holon->load((int)$holon->getId(), true);
+			$historyAfterSnapshot = $this->buildHolonHistorySnapshot($holon, array(
+				'propertyMode' => 'template',
+				'includePermissions' => true,
+			));
+			$this->recordHolonUpdateHistory($holon, $userId, $historyBeforeSnapshot, $historyAfterSnapshot);
 
 			return array(
 				'status' => true,
@@ -8069,6 +9917,10 @@
 				|| !self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)
 				|| (int)$faq->get('isactive') !== 1
 			) {
+				return false;
+			}
+
+			if (!$faq->isLinkedApplicationVisibleInOrganization($organizationId)) {
 				return false;
 			}
 
@@ -9258,6 +11110,173 @@
 			return $results;
 		}
 
+		protected function searchTopbarProjectResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array(
+				'organization_id' => (int)$this->getId(),
+				'project_kind' => \dbObject\Project::KIND_STANDARD,
+			);
+			$titleExpr = "LOWER(COALESCE(p.title, ''))";
+			$descriptionExpr = "LOWER(COALESCE(p.description, ''))";
+			$titleScoreSql = self::buildTopbarSearchScoreSql($titleExpr, $terms, $params, 'project_title', array(
+				'exact' => 108,
+				'prefix' => 68,
+				'like' => 36,
+			));
+			$descriptionScoreSql = self::buildTopbarSearchScoreSql($descriptionExpr, $terms, $params, 'project_description', array(
+				'exact' => 34,
+				'prefix' => 22,
+				'like' => 12,
+			));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(array($titleExpr, $descriptionExpr), $terms, $params, 'project_prefilter');
+			$rows = self::fetchAll(
+				"SELECT
+					p.id,
+					p.title,
+					p.description,
+					p.status,
+					p.priority,
+					p.IDholon,
+					p.created_at,
+					(" . $titleScoreSql . " + " . $descriptionScoreSql . ") AS relevance
+				FROM project p
+				WHERE p.IDorganization = :organization_id
+				  AND p.active = 1
+				  AND p.project_kind = :project_kind
+				  AND " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, p.created_at DESC, p.id DESC
+				LIMIT " . max(1, (int)$limit),
+				$params
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+			$statusCatalog = \dbObject\Project::getStatusCatalog();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['IDholon'] ?? 0);
+				$subtitleParts = array();
+				if ($holonId > 0) {
+					$holon = new \dbObject\Holon();
+					if (!$holon->load($holonId) || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+						continue;
+					}
+					$subtitleParts[] = trim((string)$holon->getDisplayName());
+				}
+				$status = \dbObject\Project::normalizeStatus($row['status'] ?? '');
+				if (!empty($statusCatalog[$status]['label'])) {
+					$subtitleParts[] = (string)$statusCatalog[$status]['label'];
+				}
+				if ((int)($row['priority'] ?? 0) > 0) {
+					$subtitleParts[] = 'P' . (int)$row['priority'];
+				}
+
+				$title = trim((string)($row['title'] ?? ''));
+				$description = self::cleanTopbarSearchTextValue((string)($row['description'] ?? ''));
+				$excerptSource = self::getTopbarSearchTextScore($description, $terms) > 0
+					? $description
+					: $title;
+				$results[] = array(
+					'module' => 'projects',
+					'moduleLabel' => 'Projets',
+					'title' => $title !== '' ? $title : ('Projet #' . (int)($row['id'] ?? 0)),
+					'subtitle' => implode(' | ', array_filter($subtitleParts)),
+					'excerpt' => self::buildTopbarSearchSnippet($excerptSource, $query, 100, 220),
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['created_at'] ?? ''),
+					'action' => array(
+						'type' => 'project',
+						'projectId' => (int)($row['id'] ?? 0),
+						'holonId' => $holonId,
+					),
+				);
+			}
+
+			return $results;
+		}
+
+		protected function searchTopbarStatIndicatorResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array('organization_id' => (int)$this->getId());
+			$nameExpr = "LOWER(COALESCE(si.name, ''))";
+			$descriptionExpr = "LOWER(COALESCE(si.description, ''))";
+			$sourceExpr = "LOWER(COALESCE(si.source_url, ''))";
+			$nameScoreSql = self::buildTopbarSearchScoreSql($nameExpr, $terms, $params, 'stats_name', array('exact' => 108, 'prefix' => 68, 'like' => 36));
+			$descriptionScoreSql = self::buildTopbarSearchScoreSql($descriptionExpr, $terms, $params, 'stats_description', array('exact' => 34, 'prefix' => 22, 'like' => 12));
+			$sourceScoreSql = self::buildTopbarSearchScoreSql($sourceExpr, $terms, $params, 'stats_source', array('exact' => 20, 'prefix' => 12, 'like' => 6));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(array($nameExpr, $descriptionExpr, $sourceExpr), $terms, $params, 'stats_prefilter');
+			$rows = self::fetchAll(
+				"SELECT
+					si.id,
+					si.name,
+					si.description,
+					si.source_url,
+					si.measurement_frequency,
+					si.IDholon,
+					si.created_at,
+					(" . $nameScoreSql . " + " . $descriptionScoreSql . " + " . $sourceScoreSql . ") AS relevance
+				FROM stat_indicator si
+				WHERE si.IDorganization = :organization_id
+				  AND si.active = 1
+				  AND " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, si.created_at DESC, si.id DESC
+				LIMIT " . max(1, (int)$limit),
+				$params
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['IDholon'] ?? 0);
+				$subtitleParts = array();
+				if ($holonId > 0) {
+					$holon = new \dbObject\Holon();
+					if (!$holon->load($holonId) || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+						continue;
+					}
+					$subtitleParts[] = trim((string)$holon->getDisplayName());
+				}
+				$frequency = trim((string)($row['measurement_frequency'] ?? ''));
+
+				$name = trim((string)($row['name'] ?? ''));
+				$description = self::cleanTopbarSearchTextValue((string)($row['description'] ?? ''));
+				$sourceUrl = trim((string)($row['source_url'] ?? ''));
+				$excerptSource = self::getTopbarSearchTextScore($description, $terms) > 0
+					? $description
+					: (self::getTopbarSearchTextScore($sourceUrl, $terms) > 0 ? $sourceUrl : $name);
+				$results[] = array(
+					'module' => 'stats',
+					'moduleLabel' => 'Indicateurs',
+					'title' => $name !== '' ? $name : ('Indicateur #' . (int)($row['id'] ?? 0)),
+					'subtitle' => implode(' | ', array_filter($subtitleParts)),
+					'excerpt' => self::buildTopbarSearchSnippet($excerptSource, $query, 100, 220),
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['created_at'] ?? ''),
+					'action' => array(
+						'type' => 'stat_indicator',
+						'indicatorId' => (int)($row['id'] ?? 0),
+						'holonId' => $holonId,
+						'measurementFrequency' => $frequency,
+					),
+				);
+			}
+
+			return $results;
+		}
+
 		protected function searchTopbarCalendarResults($query, array $terms, $limit = 12, array $viewerContext = array())
 		{
 			if ((int)$this->getId() <= 0 || count($terms) === 0) {
@@ -9411,6 +11430,8 @@
 				'documents' => 'documents',
 				'pv' => 'documents',
 				'decision' => 'decision',
+				'projects' => 'projects',
+				'stats' => 'stats',
 			);
 			$enabledScopes = array();
 			foreach ($scopeAppHashes as $scopeId => $hash) {
@@ -9462,6 +11483,8 @@
 				'decision' => 0,
 				'faq' => 0,
 				'tutorials' => 0,
+				'projects' => 0,
+				'stats' => 0,
 			);
 			$results = array();
 
@@ -9517,6 +11540,18 @@
 					$counts['tutorials'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
+
+				if (isset($normalizedScopes['projects'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarProjectResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
+					$counts['projects'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
+				if (isset($normalizedScopes['stats'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarStatIndicatorResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
+					$counts['stats'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
 			}
 
 			$moduleOrder = array(
@@ -9528,6 +11563,8 @@
 				'pv' => 6,
 				'faq' => 7,
 				'tutorials' => 8,
+				'projects' => 9,
+				'stats' => 10,
 			);
 
 			usort($results, function ($left, $right) use ($moduleOrder) {
