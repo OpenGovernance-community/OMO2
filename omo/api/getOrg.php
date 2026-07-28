@@ -143,6 +143,10 @@ function omoGetOrgPanelSourceLang(): array
             'text' => '{memberName} - invitation en attente',
             'context' => 'Tooltip shown for a pending invited member avatar in the left panel.',
         ],
+		'leftbar.members.admin_tooltip' => [
+			'text' => '{memberName} - {adminLabel}',
+			'context' => 'Tooltip shown for an administrator member avatar in the left panel.',
+		],
         'leftbar.members.section_title' => [
             'text' => 'Membres',
             'context' => 'Section title shown above the member avatars in the left panel.',
@@ -986,6 +990,9 @@ if (!$canViewOrganization) {
     exit;
 }
 
+$organizationLexicon = $organization->getLexicon();
+$adminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
+
 $root = $organization->getEnabledStructuralRootHolon();
 if ($root === null) {
     require_once __DIR__ . '/organization_setup_panel.php';
@@ -1046,6 +1053,27 @@ $memberCards = $currentHolon->getAssociatedMemberCards(array(
 ));
 if (function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '' && !commonCurrentShareAllowsPeople()) {
     $memberCards = array();
+} else {
+    $directContextAdminUserIds = array_fill_keys(
+        $currentHolon->getDirectContextAdminUserIds($organizationId),
+        true
+    );
+
+    foreach ($memberCards as &$memberCard) {
+        $memberCard['isAdmin'] = isset($directContextAdminUserIds[(int)($memberCard['userId'] ?? 0)]);
+    }
+    unset($memberCard);
+
+    usort($memberCards, static function (array $left, array $right) {
+        if ((bool)($left['isAdmin'] ?? false) !== (bool)($right['isAdmin'] ?? false)) {
+            return !empty($left['isAdmin']) ? -1 : 1;
+        }
+
+        return strcmp(
+            omoApiSortKey((string)($left['displayName'] ?? '')),
+            omoApiSortKey((string)($right['displayName'] ?? ''))
+        );
+    });
 }
 $memberPreviewLimit = 8;
 $visibleMemberCards = array_slice($memberCards, 0, $memberPreviewLimit);
@@ -1193,9 +1221,11 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
             <div class="circle-members__row">
                 <div class="circle-members__list">
                     <?php foreach ($visibleMemberCards as $member): ?>
-                        <?php $memberTooltip = !empty($member['isPending'])
-                            ? t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']])
-                            : (string)$member['displayName']; ?>
+						<?php $memberTooltip = !empty($member['isPending'])
+							? t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']])
+							: (!empty($member['isAdmin'])
+								? t('leftbar.members.admin_tooltip', ['memberName' => $member['displayName'], 'adminLabel' => $adminLabel])
+								: (string)$member['displayName']); ?>
                         <?php
                         $memberPhotoUrl = trim((string)($member['photoUrl'] ?? ''));
                         $memberInitials = trim((string)($member['initials'] ?? ''));
@@ -1215,7 +1245,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                         $memberAvatarStyle = '--circle-member-avatar-bg: ' . $memberAvatarPalette['background'] . '; --circle-member-avatar-text: ' . $memberAvatarPalette['foreground'] . ';';
                         ?>
                         <span
-                            class="circle-member<?= !empty($member['isPending']) ? ' circle-member--pending' : '' ?>"
+                            class="circle-member<?= !empty($member['isAdmin']) ? ' circle-member--admin' : '' ?><?= !empty($member['isPending']) ? ' circle-member--pending' : '' ?>"
                             data-tooltip="<?= omoApiEscape($memberTooltip) ?>"
                             data-member-user-id="<?= (int)($member['userId'] ?? 0) ?>"
                             <?= $memberPhotoUrl === '' ? 'style="' . omoApiEscape($memberAvatarStyle) . '"' : '' ?>
@@ -1434,6 +1464,11 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 .circle-member--pending {
     opacity: 0.55;
     border-style: dashed;
+}
+
+.circle-member--admin {
+    border: 3px solid var(--color-primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 18%, transparent), var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.08));
 }
 
 .circle-member--add {

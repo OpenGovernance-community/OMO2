@@ -21,6 +21,8 @@ $organization = new Organization();
 $editorData = null;
 $errorMessage = '';
 $isHolonDefinitionMode = false;
+$adminLabel = 'Admin';
+$adminLabelLower = 'admin';
 
 if ($organizationId <= 0) {
     $errorMessage = omoHolonTemplateT('parameters.holon_templates.error.no_organization');
@@ -29,6 +31,11 @@ if ($organizationId <= 0) {
 } elseif ($organization->getEnabledStructuralRootHolon() === null) {
     $errorMessage = omoHolonTemplateT('parameters.holon_templates.error.structure_required');
 } else {
+	$organizationLexicon = $organization->getLexicon();
+	$adminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
+	$adminLabelLower = function_exists('mb_strtolower')
+		? mb_strtolower($adminLabel, 'UTF-8')
+		: strtolower($adminLabel);
     $rootHolon = $organization->getEnabledStructuralRootHolon();
     $templateContextHolon = $rootHolon;
     if ($contextHolonId > 0) {
@@ -71,6 +78,8 @@ $omoHolonTemplateTexts = [
     'mediaIconLabel' => omoHolonTemplateT('parameters.holon_templates.media.icon_label'),
     'mediaBannerLabel' => omoHolonTemplateT('parameters.holon_templates.media.banner_label'),
     'permissionSelf' => omoHolonTemplateT('parameters.holon_templates.permission.self'),
+    'permissionMembers' => omoHolonTemplateT('parameters.holon_templates.permission.members'),
+    'permissionAdmins' => omoHolonTemplateT('parameters.holon_templates.permission.admins', ['adminLabel' => $adminLabel]),
     'permissionChildren' => omoHolonTemplateT('parameters.holon_templates.permission.children'),
     'permissionParentCircleElements' => omoHolonTemplateT('parameters.holon_templates.permission.parent_circle_elements'),
     'permissionOrganization' => omoHolonTemplateT('parameters.holon_templates.permission.organization'),
@@ -280,6 +289,34 @@ $omoHolonTemplateTexts = [
                                         <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.flag.link'), ENT_QUOTES, 'UTF-8') ?></span>
                                         <small><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.flag.link_help'), ENT_QUOTES, 'UTF-8') ?></small>
                                     </label>
+                                    <label class="omo-template-flags__option" data-omo-template-role-flag hidden>
+                                        <input type="checkbox" id="omo-template-admin-parent">
+                                        <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.flag.admin_parent', ['adminLabel' => $adminLabel]), ENT_QUOTES, 'UTF-8') ?></span>
+                                        <small><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.flag.admin_parent_help', ['adminLabel' => $adminLabelLower]), ENT_QUOTES, 'UTF-8') ?></small>
+                                    </label>
+                                </div>
+
+                                <div class="omo-template-admin-bounds omo-field--full<?= $isHolonDefinitionMode ? ' omo-template-field--hidden' : '' ?>">
+                                    <div class="omo-template-admin-bounds__title"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.section.admin_bounds', ['adminLabel' => $adminLabel]), ENT_QUOTES, 'UTF-8') ?></div>
+                                    <p class="omo-template-admin-bounds__description"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.section.admin_bounds_description', ['adminLabel' => $adminLabelLower]), ENT_QUOTES, 'UTF-8') ?></p>
+                                    <div class="omo-template-admin-bounds__fields">
+                                        <div class="omo-field">
+                                            <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.admin_min', ['adminLabel' => $adminLabelLower]), ENT_QUOTES, 'UTF-8') ?></span>
+                                            <input type="number" id="omo-template-admin-min" min="0" step="1">
+                                            <label class="omo-template-admin-bounds__lock">
+                                                <input type="checkbox" id="omo-template-locked-admin-min">
+                                                <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.lock_admin_min'), ENT_QUOTES, 'UTF-8') ?></span>
+                                            </label>
+                                        </div>
+                                        <div class="omo-field">
+                                            <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.admin_max', ['adminLabel' => $adminLabelLower]), ENT_QUOTES, 'UTF-8') ?></span>
+                                            <input type="number" id="omo-template-admin-max" min="0" step="1" placeholder="<?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.admin_max_placeholder'), ENT_QUOTES, 'UTF-8') ?>">
+                                            <label class="omo-template-admin-bounds__lock">
+                                                <input type="checkbox" id="omo-template-locked-admin-max">
+                                                <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.lock_admin_max'), ENT_QUOTES, 'UTF-8') ?></span>
+                                            </label>
+                                        </div>
+                                    </div>
                                 </div>
 
                             </div>
@@ -301,14 +338,17 @@ $omoHolonTemplateTexts = [
                             <div class="omo-template-properties" id="omo-template-properties"></div>
                         </section>
 
-                        <section class="omo-template-section">
-                            <div class="omo-template-section__head">
-                                <div>
-                                    <div class="omo-template-section__title"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.section.permissions'), ENT_QUOTES, 'UTF-8') ?></div>
-                                    <p class="omo-template-section__description">
-                                        <?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.section.permissions_description'), ENT_QUOTES, 'UTF-8') ?>
-                                    </p>
+                        <section class="omo-template-section omo-template-section--permissions">
+                            <div class="omo-template-permissions__sticky-navigation">
+                                <div class="omo-template-section__head">
+                                    <div>
+                                        <div class="omo-template-section__title"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.section.permissions'), ENT_QUOTES, 'UTF-8') ?></div>
+                                        <p class="omo-template-section__description">
+                                            <?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.section.permissions_description'), ENT_QUOTES, 'UTF-8') ?>
+                                        </p>
+                                    </div>
                                 </div>
+                                <div class="omo-template-permissions__tabs" id="omo-template-permissions-tabs" role="tablist"></div>
                             </div>
 
                             <div class="omo-template-permissions" id="omo-template-permissions"></div>
@@ -436,6 +476,33 @@ $omoHolonTemplateTexts = [
 </div>
 
 <style>
+.omo-template-permissions__tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border, #d1d5db);
+}
+
+.omo-template-permissions__tab {
+    border: 0;
+    border-bottom: 2px solid transparent;
+    padding: 0.65rem 0.85rem;
+    background: transparent;
+    color: var(--color-text-light, #6b7280);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+}
+
+.omo-template-permissions__tab.is-active {
+    border-bottom-color: var(--color-primary, #2563eb);
+    color: var(--color-primary, #2563eb);
+}
+
+.omo-template-permissions__panel[hidden] {
+    display: none !important;
+}
+
 .omo-template-permissions__table {
     display: flex;
     flex-direction: column;
@@ -595,8 +662,14 @@ const omoHolonTemplateElements = {
     lockedBanner: omoHolonTemplateRoot.querySelector('#omo-template-locked-banner'),
     unique: omoHolonTemplateRoot.querySelector('#omo-template-unique'),
     link: omoHolonTemplateRoot.querySelector('#omo-template-link'),
+    adminParent: omoHolonTemplateRoot.querySelector('#omo-template-admin-parent'),
+    adminMin: omoHolonTemplateRoot.querySelector('#omo-template-admin-min'),
+    adminMax: omoHolonTemplateRoot.querySelector('#omo-template-admin-max'),
+	lockedAdminMin: omoHolonTemplateRoot.querySelector('#omo-template-locked-admin-min'),
+	lockedAdminMax: omoHolonTemplateRoot.querySelector('#omo-template-locked-admin-max'),
     addProperty: omoHolonTemplateRoot.querySelector('#omo-template-add-property'),
     properties: omoHolonTemplateRoot.querySelector('#omo-template-properties'),
+    permissionsTabs: omoHolonTemplateRoot.querySelector('#omo-template-permissions-tabs'),
     permissions: omoHolonTemplateRoot.querySelector('#omo-template-permissions'),
     selectionHint: omoHolonTemplateRoot.querySelector('#omo-template-selection-hint'),
     cancel: omoHolonTemplateRoot.querySelector('#omo-template-cancel'),
@@ -607,6 +680,28 @@ const omoHolonTemplateElements = {
     formDescription: omoHolonTemplateRoot.querySelector('#omo-template-form-description'),
     formBadges: omoHolonTemplateRoot.querySelector('#omo-template-form-badges')
 };
+
+function omoHolonTemplateSyncPermissionGroupStickyOffset() {
+    const navigation = omoHolonTemplateRoot.querySelector('.omo-template-permissions__sticky-navigation');
+    if (!navigation) {
+        return;
+    }
+
+    omoHolonTemplateRoot.style.setProperty(
+        '--omo-template-permission-group-sticky-top',
+        Math.max(0, navigation.getBoundingClientRect().height - 16) + 'px'
+    );
+}
+
+omoHolonTemplateSyncPermissionGroupStickyOffset();
+if (typeof window.ResizeObserver === 'function') {
+    const omoHolonTemplatePermissionNavigationObserver = new window.ResizeObserver(omoHolonTemplateSyncPermissionGroupStickyOffset);
+    const omoHolonTemplatePermissionNavigation = omoHolonTemplateRoot.querySelector('.omo-template-permissions__sticky-navigation');
+    if (omoHolonTemplatePermissionNavigation) {
+        omoHolonTemplatePermissionNavigationObserver.observe(omoHolonTemplatePermissionNavigation);
+    }
+}
+window.addEventListener('resize', omoHolonTemplateSyncPermissionGroupStickyOffset);
 
 const omoHolonTemplateMediaFields = {
     icon: null,
@@ -760,6 +855,67 @@ function omoHolonTemplateGetEffectiveTypeId(typeId, inheritsFromId) {
     }
 
     return Number(typeId || 0);
+}
+
+function omoHolonTemplateSyncRoleFlags() {
+    const roleFlag = omoHolonTemplateRoot.querySelector('[data-omo-template-role-flag]');
+    if (!roleFlag || !omoHolonTemplateElements.adminParent) {
+        return;
+    }
+
+    const effectiveTypeId = omoHolonTemplateGetEffectiveTypeId(
+        omoHolonTemplateElements.type.value || 0,
+        omoHolonTemplateGetEffectiveInheritanceIdFromParent(omoHolonTemplateElements.parent.value || 0)
+    );
+    const isRole = Number(effectiveTypeId) === 1;
+    roleFlag.hidden = !isRole;
+    omoHolonTemplateElements.adminParent.disabled = !isRole;
+    if (!isRole) {
+        omoHolonTemplateElements.adminParent.checked = false;
+    }
+}
+
+function omoHolonTemplateReadAdminBound(input) {
+    const rawValue = input ? String(input.value || '').trim() : '';
+    return rawValue === '' ? null : Math.max(0, Number(rawValue) || 0);
+}
+
+function omoHolonTemplateReadAdminLock(input) {
+    if (!input) {
+        return false;
+    }
+
+    return input.disabled
+        ? String(input.dataset.localValue || '0') === '1'
+        : Boolean(input.checked);
+}
+
+function omoHolonTemplateSyncAdminBounds(template) {
+    const inheritedMinimumLocked = Boolean(template && template.inheritedLockedAdminMin);
+    const inheritedMaximumLocked = Boolean(template && template.inheritedLockedAdminMax);
+
+    if (omoHolonTemplateElements.adminMin) {
+        omoHolonTemplateElements.adminMin.value = template && template.adminMin !== null && template.adminMin !== undefined && String(template.adminMin).trim() !== ''
+            ? String(Math.max(0, Number(template.adminMin) || 0))
+            : '';
+        omoHolonTemplateElements.adminMin.disabled = inheritedMinimumLocked;
+    }
+    if (omoHolonTemplateElements.adminMax) {
+        omoHolonTemplateElements.adminMax.value = template && template.adminMax !== null && template.adminMax !== undefined && String(template.adminMax).trim() !== ''
+            ? String(Math.max(0, Number(template.adminMax) || 0))
+            : '';
+        omoHolonTemplateElements.adminMax.disabled = inheritedMaximumLocked;
+    }
+    if (omoHolonTemplateElements.lockedAdminMin) {
+        omoHolonTemplateElements.lockedAdminMin.dataset.localValue = template && template.lockedAdminMin ? '1' : '0';
+        omoHolonTemplateElements.lockedAdminMin.checked = Boolean(template && (template.lockedAdminMin || inheritedMinimumLocked));
+        omoHolonTemplateElements.lockedAdminMin.disabled = inheritedMinimumLocked;
+    }
+    if (omoHolonTemplateElements.lockedAdminMax) {
+        omoHolonTemplateElements.lockedAdminMax.dataset.localValue = template && template.lockedAdminMax ? '1' : '0';
+        omoHolonTemplateElements.lockedAdminMax.checked = Boolean(template && (template.lockedAdminMax || inheritedMaximumLocked));
+        omoHolonTemplateElements.lockedAdminMax.disabled = inheritedMaximumLocked;
+    }
 }
 
 // Synchronise champ couleur
@@ -1103,6 +1259,11 @@ function omoHolonTemplateReadCurrentFormState() {
             : false,
         unique: Boolean(omoHolonTemplateElements.unique && omoHolonTemplateElements.unique.checked),
         link: Boolean(omoHolonTemplateElements.link && omoHolonTemplateElements.link.checked),
+        adminParent: Boolean(omoHolonTemplateElements.adminParent && omoHolonTemplateElements.adminParent.checked),
+        adminMin: omoHolonTemplateReadAdminBound(omoHolonTemplateElements.adminMin),
+        adminMax: omoHolonTemplateReadAdminBound(omoHolonTemplateElements.adminMax),
+		lockedAdminMin: omoHolonTemplateReadAdminLock(omoHolonTemplateElements.lockedAdminMin),
+		lockedAdminMax: omoHolonTemplateReadAdminLock(omoHolonTemplateElements.lockedAdminMax),
         inheritsFromId: effectiveInheritanceId,
         permissionAssignments: omoHolonTemplateReadPermissions(),
         properties: omoHolonTemplateReadProperties()
@@ -1122,59 +1283,92 @@ function omoHolonTemplateRenderPermissions(permissionAssignments) {
             { key: 'parent_circle_descendants', label: 'Cercle englobant et descendants' },
             { key: 'organization', label: omoHolonTemplateTexts.permissionOrganization || '' }
         ];
-    const assignments = permissionAssignments && typeof permissionAssignments === 'object'
-        ? permissionAssignments
-        : {};
+    const assignments = omoHolonTemplateNormalizePermissionProfiles(permissionAssignments);
 
-    if (!omoHolonTemplateElements.permissions) {
+    if (!omoHolonTemplateElements.permissions || !omoHolonTemplateElements.permissionsTabs) {
         return;
     }
 
     if (!permissionCatalog.length) {
+        omoHolonTemplateElements.permissionsTabs.innerHTML = '';
         omoHolonTemplateElements.permissions.innerHTML = '<div class="omo-template-properties__empty">' + omoHolonTemplateEscapeHtml(omoHolonTemplateTexts.permissionNoneAvailable || '') + '</div>';
+        omoHolonTemplateSyncPermissionGroupStickyOffset();
         return;
     }
 
-    let html = '<div class="omo-template-permissions__table">';
+    const profiles = [
+        { key: 'member', label: omoHolonTemplateTexts.permissionMembers || 'Membres' },
+        { key: 'admin', label: omoHolonTemplateTexts.permissionAdmins || 'Admins' }
+    ];
+    const permissionGroups = omoHolonTemplateGroupPermissionCatalog(permissionCatalog);
+    let tabsHtml = '';
+    profiles.forEach(function (profile, index) {
+        tabsHtml += '<button type="button" class="omo-template-permissions__tab' + (index === 0 ? ' is-active' : '') + '" data-permission-profile-tab="' + profile.key + '" role="tab" aria-selected="' + (index === 0 ? 'true' : 'false') + '">' + omoHolonTemplateEscapeHtml(profile.label) + '</button>';
+    });
+    let html = '';
 
-    permissionCatalog.forEach(function (permission) {
-        const permissionRangeOptions = Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
-            ? permission.rangeOptions
-            : rangeOptions;
-        const selectedRanges = omoHolonTemplateNormalizePermissionRanges(assignments[permission.key]);
+    profiles.forEach(function (profile, profileIndex) {
+        html += '<div class="omo-template-permissions__panel" data-permission-profile-panel="' + profile.key + '" role="tabpanel"' + (profileIndex === 0 ? '' : ' hidden') + '>';
+        permissionGroups.forEach(function (group) {
+            html += '<section class="omo-template-permissions__group" data-permission-group="' + omoHolonTemplateEscapeHtml(group.key) + '">'
+                + '<div class="omo-template-permissions__group-title">' + omoHolonTemplateEscapeHtml(group.title) + '</div>'
+                + '<div class="omo-template-permissions__table">';
+            group.permissions.forEach(function (permission) {
+                const permissionRangeOptions = Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
+                    ? permission.rangeOptions
+                    : rangeOptions;
 
-        html += ''
-            + '<div class="omo-template-permissions__row" data-permission-key="' + omoHolonTemplateEscapeHtml(permission.key) + '">'
-            + '  <div class="omo-template-permissions__main">'
-            + '      <div class="omo-template-permissions__title">' + omoHolonTemplateEscapeHtml(permission.title || permission.key) + '</div>'
-            + '      <div class="omo-template-permissions__meta">' + omoHolonTemplateEscapeHtml(permission.key) + '</div>';
+                html += ''
+                    + '<div class="omo-template-permissions__row" data-permission-profile="' + profile.key + '" data-permission-key="' + omoHolonTemplateEscapeHtml(permission.key) + '">'
+                    + '  <div class="omo-template-permissions__main">'
+                    + '      <div class="omo-template-permissions__title">' + omoHolonTemplateEscapeHtml(permission.title || permission.key) + '</div>'
+                    + '      <div class="omo-template-permissions__meta">' + omoHolonTemplateEscapeHtml(permission.key) + '</div>';
 
-        if (String(permission.description || '').trim() !== '') {
-            html += '<div class="omo-template-permissions__description">' + omoHolonTemplateEscapeHtml(permission.description) + '</div>';
-        }
+                if (String(permission.description || '').trim() !== '') {
+                    html += '<div class="omo-template-permissions__description">' + omoHolonTemplateEscapeHtml(permission.description) + '</div>';
+                }
 
-        html += ''
-            + '  </div>'
-            + '  <div class="omo-template-permissions__picker">'
-            + '      <div class="omo-template-permissions__tokens" data-permission-tokens></div>'
-            + '      <select class="omo-template-permissions__select" data-permission-select>'
-            + '          <option value="">' + omoHolonTemplateEscapeHtml(omoHolonTemplateTexts.permissionAddRange || '') + '</option>';
+                html += ''
+                    + '  </div>'
+                    + '  <div class="omo-template-permissions__picker">'
+                    + '      <div class="omo-template-permissions__tokens" data-permission-tokens></div>'
+                    + '      <select class="omo-template-permissions__select" data-permission-select>'
+                    + '          <option value="">' + omoHolonTemplateEscapeHtml(omoHolonTemplateTexts.permissionAddRange || '') + '</option>';
 
-        permissionRangeOptions.forEach(function (range) {
-            html += '<option value="' + omoHolonTemplateEscapeHtml(range.key) + '">' + omoHolonTemplateEscapeHtml(range.label || range.key) + '</option>';
+                permissionRangeOptions.forEach(function (range) {
+                    html += '<option value="' + omoHolonTemplateEscapeHtml(range.key) + '">' + omoHolonTemplateEscapeHtml(range.label || range.key) + '</option>';
+                });
+
+                html += ''
+                    + '      </select>'
+                    + '  </div>'
+                    + '</div>';
+            });
+            html += '</div></section>';
         });
-
-        html += ''
-            + '      </select>'
-            + '  </div>'
-            + '</div>';
-
+        html += '</div>';
     });
 
-    html += '</div>';
+    omoHolonTemplateElements.permissionsTabs.innerHTML = tabsHtml;
     omoHolonTemplateElements.permissions.innerHTML = html;
+    omoHolonTemplateSyncPermissionGroupStickyOffset();
+
+    Array.from(omoHolonTemplateElements.permissionsTabs.querySelectorAll('[data-permission-profile-tab]')).forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            const profileKey = String(tab.getAttribute('data-permission-profile-tab') || 'member');
+            Array.from(omoHolonTemplateElements.permissionsTabs.querySelectorAll('[data-permission-profile-tab]')).forEach(function (otherTab) {
+                const isActive = otherTab === tab;
+                otherTab.classList.toggle('is-active', isActive);
+                otherTab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+            Array.from(omoHolonTemplateElements.permissions.querySelectorAll('[data-permission-profile-panel]')).forEach(function (panel) {
+                panel.hidden = String(panel.getAttribute('data-permission-profile-panel') || '') !== profileKey;
+            });
+        });
+    });
 
     Array.from(omoHolonTemplateElements.permissions.querySelectorAll('[data-permission-key]')).forEach(function (row) {
+        const profileKey = String(row.getAttribute('data-permission-profile') || 'member');
         const permissionKey = String(row.getAttribute('data-permission-key') || '').trim();
         const permission = permissionCatalog.find(function (item) {
             return String(item && item.key ? item.key : '') === permissionKey;
@@ -1182,10 +1376,42 @@ function omoHolonTemplateRenderPermissions(permissionAssignments) {
         const permissionRangeOptions = permission && Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
             ? permission.rangeOptions
             : rangeOptions;
-        const selectedRanges = omoHolonTemplateNormalizePermissionRanges(assignments[permissionKey]);
+        const selectedRanges = omoHolonTemplateNormalizePermissionRanges(assignments[profileKey][permissionKey]);
         omoHolonTemplateBindPermissionRow(row, permissionRangeOptions);
         omoHolonTemplateSetPermissionRowRanges(row, selectedRanges, permissionRangeOptions);
     });
+}
+
+function omoHolonTemplateGroupPermissionCatalog(permissionCatalog) {
+    const groupsByKey = {};
+    const groups = [];
+
+    permissionCatalog.forEach(function (permission) {
+        const key = String(permission && permission.group ? permission.group : 'other');
+        if (!groupsByKey[key]) {
+            groupsByKey[key] = {
+                key: key,
+                title: String(permission && permission.groupTitle ? permission.groupTitle : 'Autres droits'),
+                order: Number(permission && permission.groupOrder ? permission.groupOrder : 999),
+                permissions: []
+            };
+            groups.push(groupsByKey[key]);
+        }
+        groupsByKey[key].permissions.push(permission);
+    });
+
+    return groups.sort(function (left, right) {
+        return left.order - right.order || left.title.localeCompare(right.title, 'fr', { sensitivity: 'base' });
+    });
+}
+
+function omoHolonTemplateNormalizePermissionProfiles(value) {
+    const source = value && typeof value === 'object' ? value : {};
+    const hasProfiles = Object.prototype.hasOwnProperty.call(source, 'member') || Object.prototype.hasOwnProperty.call(source, 'admin');
+    return {
+        member: hasProfiles && source.member && typeof source.member === 'object' ? source.member : (hasProfiles ? {} : source),
+        admin: hasProfiles && source.admin && typeof source.admin === 'object' ? source.admin : {}
+    };
 }
 
 function omoHolonTemplateReadPermissions() {
@@ -1193,8 +1419,9 @@ function omoHolonTemplateReadPermissions() {
         return {};
     }
 
-    const assignments = {};
+    const assignments = { member: {}, admin: {} };
     Array.from(omoHolonTemplateElements.permissions.querySelectorAll('[data-permission-key]')).forEach(function (row) {
+        const profileKey = String(row.getAttribute('data-permission-profile') || 'member');
         const permissionKey = String(row.getAttribute('data-permission-key') || '').trim();
         if (!permissionKey) {
             return;
@@ -1207,7 +1434,7 @@ function omoHolonTemplateReadPermissions() {
         });
 
         if (selectedRanges.length) {
-            assignments[permissionKey] = selectedRanges;
+            assignments[profileKey][permissionKey] = selectedRanges;
         }
     });
 
@@ -1365,6 +1592,21 @@ function omoHolonTemplateApplyInheritedMediaState(template) {
     template.effectiveBanner = String(template.banner || '').trim() !== '' ? String(template.banner || '') : template.inheritedBanner;
     template.effectiveLockedBanner = Boolean(template.lockedBanner || template.inheritedLockedBanner);
 
+    template.inheritedAdminMin = parentTemplate ? Number(parentTemplate.effectiveAdminMin || 0) : 0;
+    template.inheritedAdminMax = parentTemplate && parentTemplate.effectiveAdminMax !== null && parentTemplate.effectiveAdminMax !== undefined
+        ? Number(parentTemplate.effectiveAdminMax)
+        : null;
+    template.inheritedLockedAdminMin = parentTemplate ? Boolean(parentTemplate.effectiveLockedAdminMin) : false;
+    template.inheritedLockedAdminMax = parentTemplate ? Boolean(parentTemplate.effectiveLockedAdminMax) : false;
+    template.effectiveAdminMin = template.inheritedLockedAdminMin || template.adminMin === null || template.adminMin === undefined || String(template.adminMin).trim() === ''
+        ? template.inheritedAdminMin
+        : Math.max(0, Number(template.adminMin) || 0);
+    template.effectiveAdminMax = template.inheritedLockedAdminMax || template.adminMax === null || template.adminMax === undefined || String(template.adminMax).trim() === ''
+        ? template.inheritedAdminMax
+        : Math.max(0, Number(template.adminMax) || 0);
+    template.effectiveLockedAdminMin = Boolean(template.lockedAdminMin || template.inheritedLockedAdminMin);
+    template.effectiveLockedAdminMax = Boolean(template.lockedAdminMax || template.inheritedLockedAdminMax);
+
     return template;
 }
 
@@ -1395,6 +1637,15 @@ function omoHolonTemplateBuildDraft(inheritsFromId) {
         effectiveLockedBanner: false,
         unique: false,
         link: false,
+        adminParent: false,
+        adminMin: null,
+        adminMax: null,
+        lockedAdminMin: false,
+        lockedAdminMax: false,
+        inheritedLockedAdminMin: false,
+        inheritedLockedAdminMax: false,
+        effectiveLockedAdminMin: false,
+        effectiveLockedAdminMax: false,
         permissionAssignments: {},
         inheritsFromId: suggestedInheritanceId,
         properties: omoHolonTemplateComputeDraftProperties(suggestedInheritanceId, [])
@@ -2783,6 +3034,11 @@ function omoHolonTemplateFillForm(template) {
     if (omoHolonTemplateElements.link) {
         omoHolonTemplateElements.link.checked = Boolean(current.link);
     }
+    if (omoHolonTemplateElements.adminParent) {
+        omoHolonTemplateElements.adminParent.checked = Boolean(current.adminParent);
+    }
+    omoHolonTemplateSyncRoleFlags();
+    omoHolonTemplateSyncAdminBounds(current);
     if (omoHolonTemplateElements.sharePublic) {
         omoHolonTemplateElements.sharePublic.checked = Boolean(current.shareAsTemplate);
     }
@@ -2955,6 +3211,11 @@ function omoHolonTemplateSave(event) {
                     : false,
                 unique: Boolean(omoHolonTemplateElements.unique && omoHolonTemplateElements.unique.checked),
                 link: Boolean(omoHolonTemplateElements.link && omoHolonTemplateElements.link.checked),
+                adminParent: Boolean(omoHolonTemplateElements.adminParent && omoHolonTemplateElements.adminParent.checked),
+                adminMin: omoHolonTemplateReadAdminBound(omoHolonTemplateElements.adminMin),
+                adminMax: omoHolonTemplateReadAdminBound(omoHolonTemplateElements.adminMax),
+				lockedAdminMin: omoHolonTemplateReadAdminLock(omoHolonTemplateElements.lockedAdminMin),
+				lockedAdminMax: omoHolonTemplateReadAdminLock(omoHolonTemplateElements.lockedAdminMax),
                 inheritsFromId: omoHolonTemplateGetEffectiveInheritanceIdFromParent(omoHolonTemplateElements.parent.value || 0),
                 permissions: omoHolonTemplateReadPermissions(),
                 properties: omoHolonTemplateReadProperties()
@@ -3133,6 +3394,11 @@ if (omoHolonTemplateElements.root) {
                 return;
             }
             omoHolonTemplateRefreshInheritancePreview();
+            return;
+        }
+
+        if (event.target === omoHolonTemplateElements.type) {
+            omoHolonTemplateSyncRoleFlags();
             return;
         }
 
@@ -3757,6 +4023,57 @@ Promise.all([
     background: color-mix(in srgb, var(--color-surface) 90%, var(--color-surface-alt));
 }
 
+.omo-template-section--permissions {
+    position: relative;
+}
+
+.omo-template-permissions__sticky-navigation {
+    position: sticky;
+    top: -16px;
+    z-index: 10;
+    margin: -16px -16px 0;
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
+    background: color-mix(in srgb, var(--color-surface) 94%, var(--color-surface-alt));
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--color-text) 8%, transparent);
+    backdrop-filter: blur(8px);
+}
+
+.omo-template-permissions__sticky-navigation .omo-template-permissions__tabs {
+    margin: 12px 0 0;
+}
+
+.omo-template-permissions__tabs:empty {
+    display: none;
+}
+
+.omo-template-permissions__group {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.omo-template-permissions__group + .omo-template-permissions__group {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
+}
+
+.omo-template-permissions__group-title {
+    position: sticky;
+    top: var(--omo-template-permission-group-sticky-top, 0px);
+    z-index: 5;
+    margin: 0;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
+    border-radius: 0.65rem;
+    background: color-mix(in srgb, var(--color-surface) 96%, var(--color-surface-alt));
+    color: var(--color-text-light);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
 .omo-template-section__head {
     display: flex;
     justify-content: space-between;
@@ -3865,6 +4182,50 @@ Promise.all([
     line-height: 1.4;
 }
 
+.omo-template-admin-bounds {
+    display: grid;
+    gap: 8px;
+    padding: 14px 15px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-alt);
+}
+
+.omo-template-admin-bounds__title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.omo-template-admin-bounds__description {
+    margin: 0;
+    color: var(--color-text-light);
+    line-height: 1.4;
+}
+
+.omo-template-admin-bounds__fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.omo-template-admin-bounds__lock {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 8px;
+    color: var(--color-text-light);
+    font-size: 0.84rem;
+    font-weight: 600;
+}
+
+.omo-template-admin-bounds__lock input {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    accent-color: var(--color-primary);
+}
+
 .omo-template-media-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -3917,7 +4278,7 @@ Promise.all([
     line-height: 1.35;
 }
 
-.omo-field input,
+.omo-field input:not([type="checkbox"]):not([type="radio"]),
 .omo-field select,
 .omo-field textarea {
     display: block;
@@ -3933,7 +4294,7 @@ Promise.all([
     transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-.omo-field input:focus,
+.omo-field input:not([type="checkbox"]):not([type="radio"]):focus,
 .omo-field select:focus,
 .omo-field textarea:focus {
     outline: none;
@@ -4389,6 +4750,7 @@ Promise.all([
 @media (max-width: 1100px) {
     .omo-template-sidebar__stats,
     .omo-template-form__grid,
+	.omo-template-admin-bounds__fields,
     .omo-template-property__main,
     .omo-template-property__list-options {
         grid-template-columns: 1fr;

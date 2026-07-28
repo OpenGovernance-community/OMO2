@@ -907,6 +907,7 @@ function commonResolveOrganizationContext($defaultOrganizationId = 1)
         'logo' => (string)$organization->get('logo'),
         'banner' => (string)$organization->get('banner'),
         'color' => trim((string)$organization->get('color')),
+        'lexicon' => $organization->getLexicon(),
         'datecreation' => $organization->get('datecreation') instanceof \DateTimeInterface
             ? $organization->get('datecreation')->format('Y-m-d')
             : '',

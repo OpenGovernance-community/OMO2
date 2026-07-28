@@ -36,6 +36,12 @@ if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organi
     exit;
 }
 
+$organizationLexicon = $organization->getLexicon();
+$adminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
+$adminLabelLower = function_exists('mb_strtolower')
+	? mb_strtolower($adminLabel, 'UTF-8')
+	: strtolower($adminLabel);
+
 switch ($action) {
     case 'remove':
         if (!$holon->canEdit()) {
@@ -56,7 +62,7 @@ switch ($action) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
-                'message' => omoTeamT('team.api.no_right_manage_admin', [], $lang, $sourceLang),
+                'message' => omoTeamT('team.api.no_right_manage_admin', ['adminLabel' => $adminLabelLower], $lang, $sourceLang),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -68,7 +74,7 @@ switch ($action) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
-                'message' => omoTeamT('team.api.no_right_manage_admin', [], $lang, $sourceLang),
+                'message' => omoTeamT('team.api.no_right_manage_admin', ['adminLabel' => $adminLabelLower], $lang, $sourceLang),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -115,7 +121,7 @@ switch ($action) {
             http_response_code(404);
             echo json_encode(array(
                 'status' => false,
-                'message' => omoTeamT('team.api.pending_admin_invitation_not_found', [], $lang, $sourceLang),
+                'message' => omoTeamT('team.api.pending_admin_invitation_not_found', ['adminLabel' => $adminLabelLower], $lang, $sourceLang),
             ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }

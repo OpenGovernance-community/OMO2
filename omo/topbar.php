@@ -26,6 +26,10 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Declarer une tension',
             'context' => 'Topbar tension modal title in OMO pages.',
         ],
+        'topbar.tension.title_template' => [
+            'text' => 'Declarer {tensionArticle} {tensionLabel}',
+            'context' => 'Topbar tension modal title with the organization lexicon term.',
+        ],
         'topbar.tension.unavailable_html' => [
             'text' => '<p>Formulaire indisponible.</p>',
             'context' => 'Fallback HTML shown when the tension form cannot be loaded from the OMO topbar.',
@@ -135,19 +139,19 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Modal title used when opening the profile editor from the OMO topbar.',
         ],
         'topbar.profile.admin_mode.enable' => [
-            'text' => 'Activer le mode admin d organisation',
+            'text' => "Activer le mode Admin d'organisation",
             'context' => 'Button label used in the OMO topbar profile panel to enable organization admin mode for the current session.',
         ],
         'topbar.profile.admin_mode.disable' => [
-            'text' => 'Quitter le mode admin d organisation',
+            'text' => "Quitter le mode Admin d'organisation",
             'context' => 'Button label used in the OMO topbar profile panel to disable organization admin mode for the current session.',
         ],
         'topbar.profile.admin_mode.active' => [
-            'text' => 'Mode admin d organisation actif',
+            'text' => "Mode Admin d'organisation actif",
             'context' => 'Status label shown in the OMO topbar profile panel when organization admin mode is active.',
         ],
         'topbar.profile.admin_mode.inactive' => [
-            'text' => 'Mode admin d organisation inactif',
+            'text' => "Mode Admin d'organisation inactif",
             'context' => 'Status label shown in the OMO topbar profile panel when organization admin mode is inactive.',
         ],
         'topbar.profile.site_admin_mode.enable' => [
@@ -374,6 +378,16 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
     $translationOptions = !empty($options['translations']) && is_array($options['translations'])
         ? $options['translations']
         : [];
+    $organizationLexicon = \dbObject\Organization::normalizeLexicon(
+        is_array($organizationContext['lexicon'] ?? null)
+            ? $organizationContext['lexicon']
+            : array()
+    );
+    $tensionTerm = $organizationLexicon['tension'];
+    $tensionLabel = trim((string)$tensionTerm['label']);
+    $tensionLabelLower = function_exists('mb_strtolower')
+        ? mb_strtolower($tensionLabel, 'UTF-8')
+        : strtolower($tensionLabel);
 
     $config = [
         'appKey' => 'omo',
@@ -455,8 +469,11 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
         ],
         'tension' => [
             'enabled' => !$isDemoGuest && $variant === 'app' && $currentUserId > 0 && $hasOrganizationContext,
-            'buttonLabel' => omoTopbarTranslate('topbar.tension.button'),
-            'title' => omoTopbarTranslate('topbar.tension.title'),
+            'buttonLabel' => $tensionLabel,
+            'title' => omoTopbarTranslate('topbar.tension.title_template', [
+                'tensionArticle' => trim((string)($tensionTerm['article'] ?? 'une')),
+                'tensionLabel' => $tensionLabelLower,
+            ]),
             'url' => '/omo/api/tension_popup.php',
             'mode' => 'fetch',
             'iconUrl' => '/common/assets/icon-topbar-tension.png',
@@ -480,6 +497,7 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'bugReportUnavailableHtml' => omoTopbarTranslate('topbar.bug.unavailable_html'),
             'tensionUnavailableHtml' => omoTopbarTranslate('topbar.tension.unavailable_html'),
         ],
+        'lexicon' => $organizationLexicon,
     ];
 
     if ($variant === 'app') {

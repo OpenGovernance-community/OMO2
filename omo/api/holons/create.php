@@ -9,12 +9,19 @@ $holonId = (int)($_GET['hid'] ?? 0);
 $organization = new Organization();
 $editorData = null;
 $errorMessage = '';
+$adminLabel = 'Admin';
+$adminLabelLower = 'admin';
 
 if ($organizationId <= 0) {
     $errorMessage = "Aucune organisation n'est actuellement sélectionnée.";
 } elseif (!$organization->load($organizationId)) {
     $errorMessage = "L'organisation demandée est introuvable.";
 } else {
+	$organizationLexicon = $organization->getLexicon();
+	$adminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
+	$adminLabelLower = function_exists('mb_strtolower')
+		? mb_strtolower($adminLabel, 'UTF-8')
+		: strtolower($adminLabel);
     $editorData = $organization->getHolonCreationEditorData($contextHolonId, $holonId);
     if ($holonId > 0 && (($editorData['mode'] ?? 'create') !== 'edit')) {
         $errorMessage = "Le holon demandé est introuvable.";
@@ -79,6 +86,38 @@ if ($organizationId <= 0) {
                             </div>
 
                             <div class="omo-holon-create__template-meta" id="omo-holon-create-template-meta"></div>
+                        </section>
+
+                        <section class="omo-holon-create__section generic-section generic-section--stack" id="omo-holon-create-admin-bounds-section">
+                            <div class="omo-holon-create__section-head">
+                                <div>
+                                    <div class="omo-holon-create__section-title generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($adminLabel) ?></div>
+                                    <p class="omo-holon-create__section-description">Ces limites viennent du modele. Elles peuvent etre redefinies uniquement si le modele ne les verrouille pas.</p>
+                                </div>
+                            </div>
+                            <div class="omo-holon-create__admin-bounds">
+                                <label class="omo-holon-create__field">
+                                    <span class="omo-holon-create__admin-bound-head">
+                                        <span>Minimum de <?= omoApiEscape($adminLabelLower) ?></span>
+                                        <span class="omo-holon-create__color-toggle">
+                                            <input type="checkbox" id="omo-holon-create-admin-min-override">
+                                            <span>Redefinir</span>
+                                        </span>
+                                    </span>
+                                    <input type="number" id="omo-holon-create-admin-min" class="generic-form-control" min="0" step="1">
+                                </label>
+                                <label class="omo-holon-create__field">
+                                    <span class="omo-holon-create__admin-bound-head">
+                                        <span>Maximum de <?= omoApiEscape($adminLabelLower) ?></span>
+                                        <span class="omo-holon-create__color-toggle">
+                                            <input type="checkbox" id="omo-holon-create-admin-max-override">
+                                            <span>Redefinir</span>
+                                        </span>
+                                    </span>
+                                    <input type="number" id="omo-holon-create-admin-max" class="generic-form-control" min="0" step="1" placeholder="Sans limite">
+                                </label>
+                            </div>
+                            <small id="omo-holon-create-admin-bounds-help"></small>
                         </section>
 
                         <section class="omo-holon-create__section generic-section generic-section--stack">
@@ -190,6 +229,7 @@ const state = {
     data: <?= json_encode($editorData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
     statusTimer: null
 };
+const adminLexiconLabel = <?= json_encode($adminLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
 const root = document.getElementById('omo-holon-create-editor');
 if (!root) {
@@ -205,6 +245,12 @@ const elements = {
     colorEnabled: root.querySelector('#omo-holon-create-color-enabled'),
     colorBody: root.querySelector('#omo-holon-create-color-body'),
     color: root.querySelector('#omo-holon-create-color'),
+	adminBoundsSection: root.querySelector('#omo-holon-create-admin-bounds-section'),
+	adminMin: root.querySelector('#omo-holon-create-admin-min'),
+	adminMax: root.querySelector('#omo-holon-create-admin-max'),
+	adminMinOverride: root.querySelector('#omo-holon-create-admin-min-override'),
+	adminMaxOverride: root.querySelector('#omo-holon-create-admin-max-override'),
+	adminBoundsHelp: root.querySelector('#omo-holon-create-admin-bounds-help'),
     iconField: root.querySelector('#omo-holon-create-icon-field'),
     bannerField: root.querySelector('#omo-holon-create-banner-field'),
     meta: root.querySelector('#omo-holon-create-template-meta'),
@@ -333,8 +379,9 @@ function readPermissions() {
         return {};
     }
 
-    const assignments = {};
+    const assignments = { member: {}, admin: {} };
     Array.from(elements.permissions.querySelectorAll('[data-permission-key]')).forEach(function (row) {
+        const profileKey = String(row.getAttribute('data-permission-profile') || 'member');
         const permissionKey = String(row.getAttribute('data-permission-key') || '').trim();
         if (!permissionKey) {
             return;
@@ -347,11 +394,20 @@ function readPermissions() {
         });
 
         if (selectedRanges.length) {
-            assignments[permissionKey] = selectedRanges;
+            assignments[profileKey][permissionKey] = selectedRanges;
         }
     });
 
     return assignments;
+}
+
+function normalizePermissionProfiles(value) {
+    const source = value && typeof value === 'object' ? value : {};
+    const hasProfiles = Object.prototype.hasOwnProperty.call(source, 'member') || Object.prototype.hasOwnProperty.call(source, 'admin');
+    return {
+        member: hasProfiles && source.member && typeof source.member === 'object' ? source.member : (hasProfiles ? {} : source),
+        admin: hasProfiles && source.admin && typeof source.admin === 'object' ? source.admin : {}
+    };
 }
 
 function buildPermissionSummary(assignments) {
@@ -440,6 +496,68 @@ function buildInheritedPermissionSummary(inheritedPermissions) {
     }).filter(function (item) {
         return String(item.title || '').trim() !== '';
     }).sort(function (left, right) {
+        return String(left.title || '').localeCompare(String(right.title || ''), 'fr', { sensitivity: 'base' });
+    });
+}
+
+function buildLocalPermissionSummaryItems(assignments) {
+    const defaultRangeOptions = getPermissionRangeOptions();
+    const profiles = normalizePermissionProfiles(assignments);
+    const profileLabels = { member: 'Membres', admin: adminLexiconLabel };
+    const items = [];
+
+    Object.keys(profiles).forEach(function (profileKey) {
+        Object.keys(profiles[profileKey] || {}).forEach(function (permissionKey) {
+            const ranges = normalizePermissionRanges(profiles[profileKey][permissionKey]);
+            if (!ranges.length) {
+                return;
+            }
+
+            const permission = getPermissionCatalog().find(function (item) {
+                return String(item && item.key ? item.key : '') === String(permissionKey || '');
+            });
+            const rangeOptions = permission && Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
+                ? permission.rangeOptions
+                : defaultRangeOptions;
+
+            items.push({
+                title: getPermissionTitle(permissionKey) + ' (' + profileLabels[profileKey] + ')',
+                scope: ranges.map(function (rangeKey) {
+                    return getPermissionRangeLabel(rangeKey, rangeOptions);
+                }).filter(Boolean).join(' / ')
+            });
+        });
+    });
+
+    return items.sort(function (left, right) {
+        return String(left.title || '').localeCompare(String(right.title || ''), 'fr', { sensitivity: 'base' });
+    });
+}
+
+function buildInheritedPermissionSummary(inheritedPermissions) {
+    const profiles = normalizePermissionProfiles(inheritedPermissions);
+    const profileLabels = { member: 'Membres', admin: adminLexiconLabel };
+    const items = [];
+
+    Object.keys(profiles).forEach(function (profileKey) {
+        Object.keys(profiles[profileKey] || {}).forEach(function (permissionKey) {
+            const permission = profiles[profileKey][permissionKey] || null;
+            const visibleItems = permission && Array.isArray(permission.visibleItems) ? permission.visibleItems : [];
+            const title = permission ? String(permission.name || permission.shortname || permissionKey || '').trim() : String(permissionKey || '').trim();
+            if (!title) {
+                return;
+            }
+
+            items.push({
+                title: title + ' (' + profileLabels[profileKey] + ')',
+                scope: visibleItems.map(function (item) {
+                    return String(item && item.label ? item.label : '').trim();
+                }).filter(Boolean).join(' / ')
+            });
+        });
+    });
+
+    return items.sort(function (left, right) {
         return String(left.title || '').localeCompare(String(right.title || ''), 'fr', { sensitivity: 'base' });
     });
 }
@@ -557,9 +675,12 @@ function bindPermissionRow(row, rangeOptions) {
 function renderPermissions(permissionAssignments) {
     const permissionCatalog = getPermissionCatalog();
     const defaultRangeOptions = getPermissionRangeOptions();
-    const assignments = permissionAssignments && typeof permissionAssignments === 'object'
-        ? permissionAssignments
-        : {};
+    const assignments = normalizePermissionProfiles(permissionAssignments);
+    const profiles = [
+        { key: 'member', label: 'Membres' },
+        { key: 'admin', label: adminLexiconLabel }
+    ];
+    const permissionGroups = groupPermissionCatalog(permissionCatalog);
 
     if (!elements.permissions) {
         return;
@@ -571,44 +692,66 @@ function renderPermissions(permissionAssignments) {
         return;
     }
 
-    let html = '<div class="omo-holon-create__permission-table">';
-    permissionCatalog.forEach(function (permission) {
-        const permissionRangeOptions = Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
-            ? permission.rangeOptions
-            : defaultRangeOptions;
-
-        html += ''
-            + '<div class="omo-holon-create__permission-row" data-permission-key="' + escapeHtml(permission.key) + '">'
-            + '  <div class="omo-holon-create__permission-main">'
-            + '      <div class="omo-holon-create__permission-title">' + escapeHtml(permission.title || permission.key) + '</div>'
-            + '      <div class="omo-holon-create__permission-meta">' + escapeHtml(permission.key) + '</div>';
-
-        if (String(permission.description || '').trim() !== '') {
-            html += '<div class="omo-holon-create__permission-description">' + escapeHtml(permission.description) + '</div>';
-        }
-
-        html += ''
-            + '  </div>'
-            + '  <div class="omo-holon-create__permission-picker">'
-            + '      <div class="omo-holon-create__permission-tokens" data-permission-tokens></div>'
-            + '      <select class="omo-holon-create__permission-select generic-form-control" data-permission-select>'
-            + '          <option value="">Ajouter une portee...</option>';
-
-        permissionRangeOptions.forEach(function (range) {
-            html += '<option value="' + escapeHtml(range.key) + '">' + escapeHtml(range.label || range.key) + '</option>';
-        });
-
-        html += ''
-            + '      </select>'
-            + '  </div>'
-            + '</div>';
+    let html = '<div class="omo-holon-create__permission-tabs" role="tablist">';
+    profiles.forEach(function (profile, index) {
+        html += '<button type="button" class="omo-holon-create__permission-tab' + (index === 0 ? ' is-active' : '') + '" data-permission-profile-tab="' + profile.key + '" role="tab" aria-selected="' + (index === 0 ? 'true' : 'false') + '">' + escapeHtml(profile.label) + '</button>';
     });
     html += '</div>';
 
+    profiles.forEach(function (profile, profileIndex) {
+        html += '<div class="omo-holon-create__permission-panel" data-permission-profile-panel="' + profile.key + '" role="tabpanel"' + (profileIndex === 0 ? '' : ' hidden') + '>';
+        permissionGroups.forEach(function (group) {
+            html += '<section class="omo-holon-create__permission-group" data-permission-group="' + escapeHtml(group.key) + '">'
+                + '<div class="omo-holon-create__permission-group-title">' + escapeHtml(group.title) + '</div>'
+                + '<div class="omo-holon-create__permission-table">';
+            group.permissions.forEach(function (permission) {
+                const permissionRangeOptions = Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
+                    ? permission.rangeOptions
+                    : defaultRangeOptions;
+
+                html += '<div class="omo-holon-create__permission-row" data-permission-profile="' + profile.key + '" data-permission-key="' + escapeHtml(permission.key) + '">'
+                    + '<div class="omo-holon-create__permission-main">'
+                    + '<div class="omo-holon-create__permission-title">' + escapeHtml(permission.title || permission.key) + '</div>'
+                    + '<div class="omo-holon-create__permission-meta">' + escapeHtml(permission.key) + '</div>';
+
+                if (String(permission.description || '').trim() !== '') {
+                    html += '<div class="omo-holon-create__permission-description">' + escapeHtml(permission.description) + '</div>';
+                }
+
+                html += '</div><div class="omo-holon-create__permission-picker">'
+                    + '<div class="omo-holon-create__permission-tokens" data-permission-tokens></div>'
+                    + '<select class="omo-holon-create__permission-select generic-form-control" data-permission-select>'
+                    + '<option value="">Ajouter une portee...</option>';
+
+                permissionRangeOptions.forEach(function (range) {
+                    html += '<option value="' + escapeHtml(range.key) + '">' + escapeHtml(range.label || range.key) + '</option>';
+                });
+
+                html += '</select></div></div>';
+            });
+            html += '</div></section>';
+        });
+        html += '</div>';
+    });
+
     elements.permissions.innerHTML = html;
+    Array.from(elements.permissions.querySelectorAll('[data-permission-profile-tab]')).forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            const profileKey = String(tab.getAttribute('data-permission-profile-tab') || 'member');
+            Array.from(elements.permissions.querySelectorAll('[data-permission-profile-tab]')).forEach(function (otherTab) {
+                const isActive = otherTab === tab;
+                otherTab.classList.toggle('is-active', isActive);
+                otherTab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+            Array.from(elements.permissions.querySelectorAll('[data-permission-profile-panel]')).forEach(function (panel) {
+                panel.hidden = String(panel.getAttribute('data-permission-profile-panel') || '') !== profileKey;
+            });
+        });
+    });
 
     Array.from(elements.permissions.querySelectorAll('[data-permission-key]')).forEach(function (row) {
         const permissionKey = String(row.getAttribute('data-permission-key') || '').trim();
+        const profileKey = String(row.getAttribute('data-permission-profile') || 'member');
         const permission = permissionCatalog.find(function (item) {
             return String(item && item.key ? item.key : '') === permissionKey;
         }) || null;
@@ -617,10 +760,33 @@ function renderPermissions(permissionAssignments) {
             : defaultRangeOptions;
 
         bindPermissionRow(row, permissionRangeOptions);
-        setPermissionRowRanges(row, assignments[permissionKey], permissionRangeOptions);
+        setPermissionRowRanges(row, assignments[profileKey][permissionKey], permissionRangeOptions);
     });
 
     syncPermissionSummary();
+}
+
+function groupPermissionCatalog(permissionCatalog) {
+    const groupsByKey = {};
+    const groups = [];
+
+    permissionCatalog.forEach(function (permission) {
+        const key = String(permission && permission.group ? permission.group : 'other');
+        if (!groupsByKey[key]) {
+            groupsByKey[key] = {
+                key: key,
+                title: String(permission && permission.groupTitle ? permission.groupTitle : 'Autres droits'),
+                order: Number(permission && permission.groupOrder ? permission.groupOrder : 999),
+                permissions: []
+            };
+            groups.push(groupsByKey[key]);
+        }
+        groupsByKey[key].permissions.push(permission);
+    });
+
+    return groups.sort(function (left, right) {
+        return left.order - right.order || left.title.localeCompare(right.title, 'fr', { sensitivity: 'base' });
+    });
 }
 
 function getTemplates() {
@@ -723,6 +889,60 @@ function syncColorField() {
 
     if (elements.color) {
         elements.color.disabled = !isEnabled;
+    }
+}
+
+function normalizeAdminBound(value, allowEmpty) {
+    if (allowEmpty && (value === null || value === undefined || String(value).trim() === '')) {
+        return null;
+    }
+
+    return Math.max(0, Number(value || 0) || 0);
+}
+
+function syncAdminBounds(template) {
+    const editingHolon = getEditingHolon();
+    const minLocked = Boolean(template && template.lockedAdminMin);
+    const maxLocked = Boolean(template && template.lockedAdminMax);
+    const minOverridden = !minLocked && Boolean(editingHolon && editingHolon.adminMinOverride);
+    const maxOverridden = !maxLocked && Boolean(editingHolon && editingHolon.adminMaxOverride);
+    const minValue = minOverridden && editingHolon
+        ? normalizeAdminBound(editingHolon.adminMin, false)
+        : normalizeAdminBound(template && template.adminMin, false);
+    const maxValue = maxOverridden && editingHolon
+        ? normalizeAdminBound(editingHolon.adminMax, true)
+        : normalizeAdminBound(template && template.adminMax, true);
+
+    if (elements.adminBoundsSection) {
+        elements.adminBoundsSection.hidden = !template;
+    }
+    if (elements.adminMinOverride) {
+        elements.adminMinOverride.checked = minOverridden;
+        elements.adminMinOverride.disabled = minLocked;
+    }
+    if (elements.adminMaxOverride) {
+        elements.adminMaxOverride.checked = maxOverridden;
+        elements.adminMaxOverride.disabled = maxLocked;
+    }
+    if (elements.adminMin) {
+        elements.adminMin.value = String(minValue);
+        elements.adminMin.disabled = minLocked || !minOverridden;
+    }
+    if (elements.adminMax) {
+        elements.adminMax.value = maxValue === null ? '' : String(maxValue);
+        elements.adminMax.disabled = maxLocked || !maxOverridden;
+    }
+    if (elements.adminBoundsHelp) {
+        const locked = [];
+        if (minLocked) {
+            locked.push('minimum verrouille');
+        }
+        if (maxLocked) {
+            locked.push('maximum verrouille');
+        }
+        elements.adminBoundsHelp.textContent = locked.length
+            ? 'Le modele impose le ' + locked.join(' et le ') + '.'
+            : 'Cochez Redefinir pour appliquer une limite propre a ce holon.';
     }
 }
 
@@ -1622,6 +1842,7 @@ function renderEditorMeta(template, sourceProperties) {
 
     syncNameField(template);
     syncColorField();
+	 syncAdminBounds(template);
     renderMediaFields(template);
 }
 
@@ -1958,6 +2179,10 @@ function saveHolon(event) {
                     : '',
                 icon: mediaFields.icon ? mediaFields.icon.getValue() : '',
                 banner: mediaFields.banner ? mediaFields.banner.getValue() : '',
+				adminMin: normalizeAdminBound(elements.adminMin && elements.adminMin.value, false),
+				adminMax: normalizeAdminBound(elements.adminMax && elements.adminMax.value, true),
+				adminMinOverride: Boolean(elements.adminMinOverride && elements.adminMinOverride.checked),
+				adminMaxOverride: Boolean(elements.adminMaxOverride && elements.adminMaxOverride.checked),
                 permissions: readPermissions(),
                 properties: readProperties()
             };
@@ -2175,6 +2400,22 @@ if (elements.colorEnabled) {
     elements.colorEnabled.addEventListener('change', function () {
         syncColorField();
     });
+}
+
+if (elements.adminMinOverride) {
+	elements.adminMinOverride.addEventListener('change', function () {
+		if (elements.adminMin) {
+			elements.adminMin.disabled = !elements.adminMinOverride.checked;
+		}
+	});
+}
+
+if (elements.adminMaxOverride) {
+	elements.adminMaxOverride.addEventListener('change', function () {
+		if (elements.adminMax) {
+			elements.adminMax.disabled = !elements.adminMaxOverride.checked;
+		}
+	});
 }
 
 if (elements.permissionToggle) {
@@ -2588,9 +2829,62 @@ root.addEventListener('click', function (event) {
     line-height: 1.2;
 }
 
+.omo-holon-create__permission-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.omo-holon-create__permission-tab {
+    border: 0;
+    border-bottom: 2px solid transparent;
+    padding: 9px 12px;
+    background: transparent;
+    color: var(--color-text-light);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+}
+
+.omo-holon-create__permission-tab.is-active {
+    border-bottom-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.omo-holon-create__permission-panel[hidden] {
+    display: none !important;
+}
+
 .omo-holon-create__permission-table {
     display: grid;
     gap: 12px;
+}
+
+.omo-holon-create__permission-group {
+    display: grid;
+    gap: 10px;
+}
+
+.omo-holon-create__permission-group + .omo-holon-create__permission-group {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
+}
+
+.omo-holon-create__permission-group-title {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 7px 10px;
+    border: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--color-surface) 96%, var(--color-surface-alt));
+    color: var(--color-text-light);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .omo-holon-create__permission-row {
@@ -2691,6 +2985,24 @@ textarea.omo-holon-create__property-value:focus {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+}
+
+.omo-holon-create__admin-bounds {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.omo-holon-create__admin-bound-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+#omo-holon-create-admin-bounds-help {
+    color: var(--color-text-light);
+    line-height: 1.4;
 }
 
 .omo-holon-create__chip {
@@ -3044,7 +3356,8 @@ textarea.omo-holon-create__property-value:focus {
 
 @media (max-width: 1024px) {
     .omo-holon-create__layout,
-    .omo-holon-create__grid {
+    .omo-holon-create__grid,
+    .omo-holon-create__admin-bounds {
         grid-template-columns: 1fr;
     }
 

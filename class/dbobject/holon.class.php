@@ -14,12 +14,12 @@
 		{
 			return [
 				[['id'], 'required'],				// Champs obligatoires
-				[['id'], 'integer'],					
+				[['id', 'admin_min', 'admin_max'], 'integer'],
 				[['name','nomcomplet','templatename','accesskey'], 'string'],			// Texte libre
 				[['icon','banner'], 'sizedimage'],			// Images illustratives
 				[['datecreation','datemodification'], 'datetime'],	// Date avec precision des heures
 				[['IDuser','IDtypeholon','IDholon_parent','IDholon_template','IDorganization','IDholon_org'], 'fk'],				// Cle etrangeres
-				[['lockedname','lockedicon','lockedbanner','active','visible','mandatory','unique','link'], 'boolean'],				// Cle etrangeres
+				[['lockedname','lockedicon','lockedbanner','lockedadminmin','lockedadminmax','adminminoverride','adminmaxoverride','active','visible','mandatory','unique','link','adminparent'], 'boolean'],				// Cle etrangeres
 				[['color'], 'color'],				// Couleur au format hexadecimal
 				[['id'], 'safe'],								// Champs proteges (n'apparaissent pas dans les formulaires)
 			];
@@ -53,6 +53,11 @@
 				'lockedbanner' => 'Bannière verrouillée ?',
 				'unique' => 'Unique ?',
 				'link' => 'Lien ?',
+				'adminparent' => 'Admin parent ?',
+				'admin_min' => 'Nombre minimum d admins',
+				'admin_max' => 'Nombre maximum d admins',
+				'lockedadminmin' => 'Minimum d admins verrouille ?',
+				'lockedadminmax' => 'Maximum d admins verrouille ?',
 			];
 		}
 
@@ -890,33 +895,38 @@
 
 		public function getCompactExportPermissionRows()
 		{
-			$assignmentsByPermissionKey = \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$this->getId());
-			if (!is_array($assignmentsByPermissionKey) || count($assignmentsByPermissionKey) === 0) {
+			$assignmentsByMemberType = \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$this->getId());
+			if (!is_array($assignmentsByMemberType) || count($assignmentsByMemberType) === 0) {
 				return array();
 			}
 
 			$rows = array();
-			ksort($assignmentsByPermissionKey);
+			ksort($assignmentsByMemberType);
 
-			foreach ($assignmentsByPermissionKey as $permissionKey => $ranges) {
-				$permissionKey = trim((string)$permissionKey);
-				if ($permissionKey === '') {
-					continue;
-				}
-
-				$ranges = is_array($ranges) ? array_values($ranges) : array();
-				sort($ranges);
-
-				foreach ($ranges as $range) {
-					$range = trim((string)$range);
-					if ($range === '') {
+			foreach ($assignmentsByMemberType as $memberType => $assignmentsByPermissionKey) {
+				$memberType = \dbObject\HolonPermission::normalizeMemberType($memberType);
+				ksort($assignmentsByPermissionKey);
+				foreach ($assignmentsByPermissionKey as $permissionKey => $ranges) {
+					$permissionKey = trim((string)$permissionKey);
+					if ($permissionKey === '') {
 						continue;
 					}
 
-					$rows[] = array(
-						'permissionKey' => $permissionKey,
-						'range' => $range,
-					);
+					$ranges = is_array($ranges) ? array_values($ranges) : array();
+					sort($ranges);
+
+					foreach ($ranges as $range) {
+						$range = trim((string)$range);
+						if ($range === '') {
+							continue;
+						}
+
+						$rows[] = array(
+							'permissionKey' => $permissionKey,
+							'range' => $range,
+							'memberType' => $memberType,
+						);
+					}
 				}
 			}
 
@@ -990,6 +1000,34 @@
 
 			if ((bool)$this->get('link')) {
 				$record['link'] = true;
+			}
+
+			if ((bool)$this->get('adminparent')) {
+				$record['adminParent'] = true;
+			}
+
+			if ((int)$this->get('admin_min') > 0) {
+				$record['adminMin'] = (int)$this->get('admin_min');
+			}
+
+			if ($this->get('admin_max') !== null) {
+				$record['adminMax'] = (int)$this->get('admin_max');
+			}
+
+			if ((bool)$this->get('lockedadminmin')) {
+				$record['lockedAdminMin'] = true;
+			}
+
+			if ((bool)$this->get('lockedadminmax')) {
+				$record['lockedAdminMax'] = true;
+			}
+
+			if ((bool)$this->get('adminminoverride')) {
+				$record['adminMinOverride'] = true;
+			}
+
+			if ((bool)$this->get('adminmaxoverride')) {
+				$record['adminMaxOverride'] = true;
 			}
 
 			if (trim((string)$this->get('color')) !== '') {
@@ -1170,6 +1208,7 @@
 						'avatarSeed' => $membership->getAvatarSeedLabel(),
 						'holonIds' => array((int)$this->getId()),
 						'isPending' => $isPending,
+						'isAdmin' => $membership->isOrganizationAdmin(),
 						'canViewDetail' => $permission['canViewDetail'],
 					);
 					continue;
@@ -1181,6 +1220,7 @@
 					$cardsByUserId[$userId]['initials'] = $membership->getUserInitials();
 					$cardsByUserId[$userId]['avatarSeed'] = $membership->getAvatarSeedLabel();
 					$cardsByUserId[$userId]['isPending'] = false;
+					$cardsByUserId[$userId]['isAdmin'] = $membership->isOrganizationAdmin();
 					$cardsByUserId[$userId]['canViewDetail'] = $permission['canViewDetail'];
 				}
 			}
@@ -1188,6 +1228,10 @@
 			$cards = array_values($cardsByUserId);
 
 			usort($cards, static function (array $left, array $right) {
+				if ((bool)($left['isAdmin'] ?? false) !== (bool)($right['isAdmin'] ?? false)) {
+					return !empty($left['isAdmin']) ? -1 : 1;
+				}
+
 				return strcmp(
 					self::buildMemberSortKey($left['displayName'] ?? ''),
 					self::buildMemberSortKey($right['displayName'] ?? '')
@@ -1382,6 +1426,7 @@
 					uh.IDholon AS holon_id,
 					uh.active AS holon_active,
 					uh.active AS holon_effective_active,
+					uh.parameters AS holon_parameters,
 					COALESCE(uo.active, 0) AS organization_active,
 					CASE
 						WHEN inv.id IS NULL THEN 0
@@ -1423,6 +1468,7 @@
 						uh.IDholon AS holon_id,
 						uh.active AS holon_active,
 						uh.active AS holon_effective_active,
+						uh.parameters AS holon_parameters,
 						1 AS organization_active,
 						0 AS has_pending_invitation,
 						0 AS has_accepted_invitation
@@ -1511,6 +1557,7 @@
 						'avatarSeed' => $link->getAvatarSeedLabel((int)$options['organizationId']),
 						'holonIds' => array(),
 						'isPending' => false,
+						'isAdmin' => false,
 						'canViewDetail' => $permission['canViewDetail'],
 					);
 				}
@@ -1527,10 +1574,19 @@
 				) {
 					$cardsByUserId[$userId]['isPending'] = true;
 				}
+
+				$holonParameters = json_decode((string)($row['holon_parameters'] ?? ''), true);
+				if (is_array($holonParameters) && !empty($holonParameters['isAdmin'])) {
+					$cardsByUserId[$userId]['isAdmin'] = true;
+				}
 			}
 
 			$cards = array_values($cardsByUserId);
 			usort($cards, static function (array $left, array $right) {
+				if ((bool)($left['isAdmin'] ?? false) !== (bool)($right['isAdmin'] ?? false)) {
+					return !empty($left['isAdmin']) ? -1 : 1;
+				}
+
 				return strcmp(
 					self::buildMemberSortKey($left['displayName'] ?? ''),
 					self::buildMemberSortKey($right['displayName'] ?? '')
@@ -1732,7 +1788,263 @@
 				$userIds[$userId] = $userId;
 			}
 
+			if ((int)$this->get('IDtypeholon') === 2) {
+				foreach ($this->getChildren() as $child) {
+					if (!$child->isParentAdminRole()) {
+						continue;
+					}
+
+					$roleLinks = new \dbObject\ArrayUserHolon();
+					$roleLinks->loadActiveForHolonIds(array((int)$child->getId()));
+					foreach ($roleLinks as $roleLink) {
+						$userId = (int)$roleLink->get('IDuser');
+						if ($userId > 0 && $roleLink->isHolonAdmin()) {
+							$userIds[$userId] = $userId;
+						}
+					}
+				}
+			}
+
 			return array_values($userIds);
+		}
+
+		public function isParentAdminRole()
+		{
+			if ((int)$this->get('IDtypeholon') !== 1) {
+				return false;
+			}
+
+			if (trim((string)$this->get('templatename')) !== '') {
+				return $this->getEffectiveTemplateBooleanField('adminparent');
+			}
+
+			$template = $this->getTemplateHolon();
+			if ($template) {
+				return $template->getEffectiveTemplateBooleanField('adminparent');
+			}
+
+			return false;
+		}
+
+		public function getEffectiveTemplateAdminBounds()
+		{
+			$parentTemplate = $this->getTemplateHolon();
+			$parentBounds = $parentTemplate
+				? $parentTemplate->getEffectiveTemplateAdminBounds()
+				: array(
+					'min' => 0,
+					'max' => null,
+					'minLocked' => false,
+					'maxLocked' => false,
+				);
+			$hasParentTemplate = $parentTemplate instanceof self;
+			$rawMinimum = $this->get('admin_min');
+			$rawMaximum = $this->get('admin_max');
+			$hasLocalMinimum = $rawMinimum !== null && trim((string)$rawMinimum) !== '';
+			$hasLocalMaximum = $rawMaximum !== null && trim((string)$rawMaximum) !== '';
+			$minimum = $hasParentTemplate && (!$hasLocalMinimum || !empty($parentBounds['minLocked']))
+				? (int)$parentBounds['min']
+				: ($hasLocalMinimum ? max(0, (int)$rawMinimum) : 0);
+			$maximum = $hasParentTemplate && (!$hasLocalMaximum || !empty($parentBounds['maxLocked']))
+				? $parentBounds['max']
+				: ($hasLocalMaximum ? max(0, (int)$rawMaximum) : null);
+			if ($maximum !== null && $maximum < $minimum) {
+				$maximum = $minimum;
+			}
+
+			return array(
+				'min' => $minimum,
+				'max' => $maximum,
+				'minLocked' => !empty($parentBounds['minLocked']) || (bool)$this->get('lockedadminmin'),
+				'maxLocked' => !empty($parentBounds['maxLocked']) || (bool)$this->get('lockedadminmax'),
+			);
+		}
+
+		public function getAdminMemberBounds()
+		{
+			$template = $this->getTemplateHolon();
+			if (!$template && $this->isTemplateNode()) {
+				$template = $this;
+			}
+
+			if (!$template) {
+				return array(
+					'min' => 0,
+					'max' => null,
+					'templateId' => 0,
+					'minLocked' => false,
+					'maxLocked' => false,
+					'minOverridden' => false,
+					'maxOverridden' => false,
+				);
+			}
+
+			$templateBounds = $template->getEffectiveTemplateAdminBounds();
+			$isTemplate = (int)$template->getId() === (int)$this->getId();
+			$minimumLocked = !empty($templateBounds['minLocked']);
+			$maximumLocked = !empty($templateBounds['maxLocked']);
+			$minimumOverridden = !$isTemplate && !$minimumLocked && (bool)$this->get('adminminoverride');
+			$maximumOverridden = !$isTemplate && !$maximumLocked && (bool)$this->get('adminmaxoverride');
+			$minimum = $minimumOverridden
+				? max(0, (int)$this->get('admin_min'))
+				: (int)$templateBounds['min'];
+			$rawMaximum = $maximumOverridden ? $this->get('admin_max') : $templateBounds['max'];
+			$maximum = $rawMaximum === null || trim((string)$rawMaximum) === ''
+				? null
+				: max(0, (int)$rawMaximum);
+			if ($maximum !== null && $maximum < $minimum) {
+				$maximum = $minimum;
+			}
+
+			return array(
+				'min' => $minimum,
+				'max' => $maximum,
+				'templateId' => (int)$template->getId(),
+				'minLocked' => $minimumLocked,
+				'maxLocked' => $maximumLocked,
+				'minOverridden' => $minimumOverridden,
+				'maxOverridden' => $maximumOverridden,
+			);
+		}
+
+		public function getDirectActiveMemberUserIds($organizationId = 0)
+		{
+			$organizationId = (int)$organizationId > 0 ? (int)$organizationId : $this->resolveOrganizationId();
+			if ($organizationId <= 0) {
+				return array();
+			}
+
+			if ($this->isOrganizationHolon()) {
+				return $this->getOrganizationMemberUserIds($organizationId);
+			}
+
+			$rows = self::fetchAll(
+				'SELECT DISTINCT `IDuser` FROM `user_holon` WHERE `IDholon` = :holon_id AND `active` = 1',
+				array('holon_id' => (int)$this->getId())
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$userIds = array();
+			foreach ($rows as $row) {
+				$userId = (int)($row['IDuser'] ?? 0);
+				if ($userId > 0) {
+					$userIds[$userId] = $userId;
+				}
+			}
+
+			return array_values($userIds);
+		}
+
+		public function getAdminMemberConstraintState($organizationId = 0)
+		{
+			$organizationId = (int)$organizationId > 0 ? (int)$organizationId : $this->resolveOrganizationId();
+			$bounds = $this->getAdminMemberBounds();
+			$adminUserIds = $this->getDirectContextAdminUserIds($organizationId);
+			$memberUserIds = $this->getDirectActiveMemberUserIds($organizationId);
+
+			return array_merge($bounds, array(
+				'adminCount' => count($adminUserIds),
+				'memberCount' => count($memberUserIds),
+				'adminUserIds' => array_values(array_map('intval', $adminUserIds)),
+				'memberUserIds' => array_values(array_map('intval', $memberUserIds)),
+			));
+		}
+
+		public function validateMemberAdditionAdminBounds($userId, $isAdmin, array $options = array())
+		{
+			$userId = (int)$userId;
+			$isAdmin = (bool)$isAdmin;
+			$options = array_merge(array(
+				'organizationId' => $this->resolveOrganizationId(),
+				'canAssignAdmin' => true,
+				'includePendingAdmins' => true,
+			), $options);
+			$state = $this->getAdminMemberConstraintState((int)$options['organizationId']);
+			$adminUserIds = array_fill_keys(array_map('intval', $state['adminUserIds']), true);
+
+			if ($isAdmin) {
+				if (!isset($adminUserIds[$userId]) && $state['max'] !== null) {
+					$pendingAdminCount = 0;
+					if (!empty($options['includePendingAdmins'])) {
+						$pendingAdminCount = \dbObject\Invitation::countPendingRequestedHolonAdmins(
+							(int)$options['organizationId'],
+							(int)$this->getId(),
+							$userId
+						);
+					}
+
+					if ((int)$state['adminCount'] + $pendingAdminCount >= (int)$state['max']) {
+						return array(
+							'status' => false,
+							'message' => 'Ce role ne peut pas avoir plus de ' . (int)$state['max'] . ' admin(s).',
+						);
+					}
+				}
+
+				return array('status' => true);
+			}
+
+			if ((int)$state['min'] > 0 && (int)$state['adminCount'] < (int)$state['min']) {
+				return array(
+					'status' => false,
+					'message' => !empty($options['canAssignAdmin'])
+						? 'Ce role exige au moins ' . (int)$state['min'] . ' admin(s) avant de pouvoir ajouter un membre normal.'
+						: 'Ce role exige au moins ' . (int)$state['min'] . ' admin(s) avant de pouvoir ajouter un membre normal, et vous ne pouvez pas definir cet admin.',
+				);
+			}
+
+			return array('status' => true);
+		}
+
+		public function validateMemberAdminStatusChange($userId, $isAdmin, $organizationId = 0)
+		{
+			$userId = (int)$userId;
+			$isAdmin = (bool)$isAdmin;
+			$state = $this->getAdminMemberConstraintState($organizationId);
+			$adminUserIds = array_fill_keys(array_map('intval', $state['adminUserIds']), true);
+
+			if ($isAdmin) {
+				return $this->validateMemberAdditionAdminBounds($userId, true, array(
+					'organizationId' => $organizationId,
+				));
+			}
+
+			if (!isset($adminUserIds[$userId])) {
+				return array('status' => true);
+			}
+
+			if ((int)$state['adminCount'] - 1 < (int)$state['min']) {
+				return array(
+					'status' => false,
+					'message' => 'Cet admin ne peut pas devenir membre normal tant que le role ne compte pas au moins ' . (int)$state['min'] . ' admin(s).',
+				);
+			}
+
+			return array('status' => true);
+		}
+
+		public function validateDirectMemberRemovalAdminBounds($userId, $organizationId = 0)
+		{
+			$userId = (int)$userId;
+			$state = $this->getAdminMemberConstraintState($organizationId);
+			$adminUserIds = array_fill_keys(array_map('intval', $state['adminUserIds']), true);
+			$memberUserIds = array_fill_keys(array_map('intval', $state['memberUserIds']), true);
+			if (!isset($adminUserIds[$userId]) || !isset($memberUserIds[$userId])) {
+				return array('status' => true);
+			}
+
+			$remainingMemberCount = max(0, (int)$state['memberCount'] - 1);
+			$remainingAdminCount = max(0, (int)$state['adminCount'] - 1);
+			if ($remainingMemberCount > 0 && $remainingAdminCount < (int)$state['min']) {
+				return array(
+					'status' => false,
+					'message' => 'Ce retrait laisserait moins de ' . (int)$state['min'] . ' admin(s) alors que ce role compte encore des membres. Nommez ou conservez un admin avant ce retrait.',
+				);
+			}
+
+			return array('status' => true);
 		}
 
 		public function setMemberContextAdmin($userId, $isAdmin, $organizationId = 0)
@@ -1756,6 +2068,11 @@
 					'status' => false,
 					'message' => 'Le membre ou le contexte est invalide.',
 				);
+			}
+
+			$adminConstraintResult = $this->validateMemberAdminStatusChange($userId, $isAdmin, $organizationId);
+			if (empty($adminConstraintResult['status'])) {
+				return $adminConstraintResult;
 			}
 
 			if ($this->isOrganizationHolon()) {
@@ -1881,6 +2198,25 @@
 					'status' => false,
 					'message' => 'Le membre ou le contexte est invalide.',
 				);
+			}
+
+			$scopeHolonIdsForConstraintCheck = array();
+			$visitedHolonIdsForConstraintCheck = array();
+			$this->collectMemberScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIdsForConstraintCheck, $visitedHolonIdsForConstraintCheck);
+			foreach (array_values(array_unique(array_map('intval', $scopeHolonIdsForConstraintCheck))) as $scopeHolonId) {
+				if ($scopeHolonId <= 0) {
+					continue;
+				}
+
+				$scopeHolon = (int)$this->getId() === $scopeHolonId ? $this : new self();
+				if ($scopeHolon !== $this && !$scopeHolon->load($scopeHolonId)) {
+					continue;
+				}
+
+				$adminConstraintResult = $scopeHolon->validateDirectMemberRemovalAdminBounds($userId, $organizationId);
+				if (empty($adminConstraintResult['status'])) {
+					return $adminConstraintResult;
+				}
 			}
 
 			$pdo = \dbObject\DbObject::getPdo();
@@ -2324,8 +2660,9 @@
 			return $user;
 		}
 
-		public function addMember($userId = 0, $email = '')
+		public function addMember($userId = 0, $email = '', array $options = array())
 		{
+			$isAdmin = !empty($options['isAdmin']);
 			$currentUserId = function_exists('commonGetCurrentUserId')
 				? (int)\commonGetCurrentUserId()
 				: (int)($_SESSION['currentUser'] ?? 0);
@@ -2333,6 +2670,12 @@
 				return array(
 					'status' => false,
 					'message' => "Vous n'avez pas le droit d'ajouter un membre dans ce contexte.",
+				);
+			}
+			if ($isAdmin && !$this->userIsAllowed($currentUserId, 'CAN_ADD_ADMIN', false)) {
+				return array(
+					'status' => false,
+					'message' => "Vous n'avez pas le droit de gerer le statut admin dans ce contexte.",
 				);
 			}
 
@@ -2356,8 +2699,26 @@
 				$pdo->beginTransaction();
 
 				$user = $this->resolveMemberUser($userId, $email);
+				$adminConstraintResult = $this->validateMemberAdditionAdminBounds(
+					(int)$user->getId(),
+					$isAdmin,
+					array(
+						'organizationId' => $organizationId,
+						'canAssignAdmin' => $this->userIsAllowed($currentUserId, 'CAN_ADD_ADMIN', false),
+					)
+				);
+				if (empty($adminConstraintResult['status'])) {
+					throw new \RuntimeException((string)($adminConstraintResult['message'] ?? 'Les contraintes d admins ne sont pas respectees.'));
+				}
+
 				$invitationIssue = array();
 				$pendingInvitation = \dbObject\Invitation::findPendingForOrganizationUser($organizationId, (int)$user->getId());
+				if ($isAdmin && $pendingInvitation instanceof \dbObject\Invitation) {
+					$requestedAdminResult = $pendingInvitation->addRequestedHolonAdmin((int)$this->getId());
+					if (!is_array($requestedAdminResult) || empty($requestedAdminResult['status'])) {
+						throw new \RuntimeException("Le statut admin demande n'a pas pu etre memorise.");
+					}
+				}
 				$hasActiveOrganizationMembership = $this->hasActiveOrganizationMembership($user, $organizationId);
 				$requiresInvitation = !$hasActiveOrganizationMembership && !($pendingInvitation instanceof \dbObject\Invitation);
 				$canApprovePendingRequest = $pendingInvitation instanceof \dbObject\Invitation && $pendingInvitation->isMemberInitiatedRequest();
@@ -2365,6 +2726,8 @@
 					&& !$hasActiveOrganizationMembership
 					&& !$canApprovePendingRequest;
 				$isPendingAdd = $requiresInvitation || $keepsPendingInvitation;
+				$organizationMembership = null;
+				$holonMembership = null;
 
 				if ($canApprovePendingRequest) {
 					$approvalResult = $pendingInvitation->approveByAdmin([
@@ -2385,25 +2748,37 @@
 						$this->ensureHolonMembership($user, false);
 					}
 				} elseif ($requiresInvitation) {
-					$this->ensureOrganizationMembership($user, $organizationId, false);
+					$organizationMembership = $this->ensureOrganizationMembership($user, $organizationId, false);
 					if (!$this->isOrganizationHolon()) {
-						$this->ensureHolonMembership($user, false);
+						$holonMembership = $this->ensureHolonMembership($user, false);
 					}
 
 					$invitationIssue = \dbObject\Invitation::issue(
 						$organizationId,
 						(int)$user->getId(),
 						(int)\commonGetCurrentUserId(),
-						trim((string)$user->get('email'))
+						trim((string)$user->get('email')),
+						array(
+							'holonAdminId' => $isAdmin ? (int)$this->getId() : 0,
+						)
 					);
 
 					if (!empty($invitationIssue['created']) && isset($invitationIssue['invitation'])) {
 						$invitationIssue['invitation']->sendEmail();
 					}
 				} else {
-					$this->ensureOrganizationMembership($user, $organizationId, true);
+					$organizationMembership = $this->ensureOrganizationMembership($user, $organizationId, true);
 					if (!$this->isOrganizationHolon()) {
-						$this->ensureHolonMembership($user, true);
+						$holonMembership = $this->ensureHolonMembership($user, true);
+					}
+
+					if ($isAdmin) {
+						$saveResult = $this->isOrganizationHolon()
+							? $organizationMembership->setOrganizationAdmin(true)
+							: $holonMembership->setHolonAdmin(true);
+						if (!is_array($saveResult) || empty($saveResult['status'])) {
+							throw new \RuntimeException("Le statut admin n'a pas pu etre enregistre.");
+						}
 					}
 				}
 
@@ -2977,6 +3352,11 @@
 		public function toTemplateEditorArray($rootHolonId = 0)
 		{
 			$children = array();
+			$inheritedAdminTemplate = $this->getTemplateHolon();
+			$inheritedAdminBounds = $inheritedAdminTemplate
+				? $inheritedAdminTemplate->getEffectiveTemplateAdminBounds()
+				: array('min' => 0, 'max' => null, 'minLocked' => false, 'maxLocked' => false);
+			$effectiveAdminBounds = $this->getEffectiveTemplateAdminBounds();
 			foreach ($this->getTemplateChildren() as $child) {
 				$children[] = $child->toTemplateEditorArray($rootHolonId);
 			}
@@ -3004,6 +3384,21 @@
 				'effectiveLockedBanner' => (bool)$this->get('lockedbanner') || $this->isBannerLockedByTemplate(),
 				'unique' => (bool)$this->get('unique'),
 				'link' => (bool)$this->get('link'),
+				'adminParent' => (bool)$this->get('adminparent'),
+				'adminMin' => $this->get('admin_min') === null ? null : max(0, (int)$this->get('admin_min')),
+				'adminMax' => $this->get('admin_max') === null ? null : (int)$this->get('admin_max'),
+				'lockedAdminMin' => (bool)$this->get('lockedadminmin'),
+				'lockedAdminMax' => (bool)$this->get('lockedadminmax'),
+				'inheritedAdminMin' => $inheritedAdminBounds['min'],
+				'inheritedAdminMax' => $inheritedAdminBounds['max'],
+				'inheritedLockedAdminMin' => !empty($inheritedAdminBounds['minLocked']),
+				'inheritedLockedAdminMax' => !empty($inheritedAdminBounds['maxLocked']),
+				'effectiveAdminMin' => $effectiveAdminBounds['min'],
+				'effectiveAdminMax' => $effectiveAdminBounds['max'],
+				'effectiveLockedAdminMin' => !empty($effectiveAdminBounds['minLocked']),
+				'effectiveLockedAdminMax' => !empty($effectiveAdminBounds['maxLocked']),
+				'adminMinOverride' => (bool)$this->get('adminminoverride'),
+				'adminMaxOverride' => (bool)$this->get('adminmaxoverride'),
 				'parentId' => (int)$this->get('IDholon_parent'),
 				'inheritsFromId' => (int)$this->get('IDholon_template'),
 				'rootHolonId' => (int)$rootHolonId,
@@ -3015,6 +3410,12 @@
 
 		public function toTemplateEditorNodeArray($rootHolonId = 0)
 		{
+			$inheritedAdminTemplate = $this->getTemplateHolon();
+			$inheritedAdminBounds = $inheritedAdminTemplate
+				? $inheritedAdminTemplate->getEffectiveTemplateAdminBounds()
+				: array('min' => 0, 'max' => null, 'minLocked' => false, 'maxLocked' => false);
+			$effectiveAdminBounds = $this->getEffectiveTemplateAdminBounds();
+
 			return array(
 				'id' => (int)$this->getId(),
 				'name' => $this->getDisplayName(),
@@ -3038,6 +3439,21 @@
 				'effectiveLockedBanner' => (bool)$this->get('lockedbanner') || $this->isBannerLockedByTemplate(),
 				'unique' => (bool)$this->get('unique'),
 				'link' => (bool)$this->get('link'),
+				'adminParent' => (bool)$this->get('adminparent'),
+				'adminMin' => $this->get('admin_min') === null ? null : max(0, (int)$this->get('admin_min')),
+				'adminMax' => $this->get('admin_max') === null ? null : (int)$this->get('admin_max'),
+				'lockedAdminMin' => (bool)$this->get('lockedadminmin'),
+				'lockedAdminMax' => (bool)$this->get('lockedadminmax'),
+				'inheritedAdminMin' => $inheritedAdminBounds['min'],
+				'inheritedAdminMax' => $inheritedAdminBounds['max'],
+				'inheritedLockedAdminMin' => !empty($inheritedAdminBounds['minLocked']),
+				'inheritedLockedAdminMax' => !empty($inheritedAdminBounds['maxLocked']),
+				'effectiveAdminMin' => $effectiveAdminBounds['min'],
+				'effectiveAdminMax' => $effectiveAdminBounds['max'],
+				'effectiveLockedAdminMin' => !empty($effectiveAdminBounds['minLocked']),
+				'effectiveLockedAdminMax' => !empty($effectiveAdminBounds['maxLocked']),
+				'adminMinOverride' => (bool)$this->get('adminminoverride'),
+				'adminMaxOverride' => (bool)$this->get('adminmaxoverride'),
 				'parentId' => (int)$this->get('IDholon_parent'),
 				'inheritsFromId' => (int)$this->get('IDholon_template'),
 				'rootHolonId' => (int)$rootHolonId,
