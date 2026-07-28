@@ -823,8 +823,30 @@
 		public function getPropertyEntries(array $options = array()) {
 			$keyPrefix = isset($options['propertyKeyPrefix']) ? (string)$options['propertyKeyPrefix'] : 'd';
 			$entries = array();
+			$templatePositionsByPropertyId = array();
+			$templateLastPosition = 0;
+			$template = $this->getTemplateHolon();
+			if ($template instanceof self) {
+				foreach ($template->getTemplatePropertyDefinitions() as $templateDefinition) {
+					$propertyId = (int)($templateDefinition['id'] ?? 0);
+					$position = (int)($templateDefinition['position'] ?? 0);
+					if ($propertyId <= 0 || $position <= 0) {
+						continue;
+					}
+					$templatePositionsByPropertyId[$propertyId] = $position;
+					$templateLastPosition = max($templateLastPosition, $position);
+				}
+			}
 
 			foreach ($this->getPropertiesValue() as $property) {
+				$propertyId = (int)$property->get('IDproperty');
+				$propertyPosition = (int)($property->get('effective_position') ?: $property->get('position') ?: 0);
+				if (isset($templatePositionsByPropertyId[$propertyId])) {
+					$propertyPosition = (int)$templatePositionsByPropertyId[$propertyId];
+				} elseif ($templateLastPosition > 0) {
+					$propertyPosition = $templateLastPosition + max(1, $propertyPosition);
+				}
+
 				$value = $this->shouldHideLocalPropertyValue($property) ? null : $property->get('value');
 				$ancestor = $property->get('value_parents');
 				$effectiveValue = null;
@@ -836,11 +858,11 @@
 				}
 
 				$entries[] = array(
-					'id' => (int)$property->get('IDproperty'),
+					'id' => $propertyId,
 					'key' => $keyPrefix . $property->get('IDproperty'),
 					'shortname' => (string)$property->get('shortname'),
 					'name' => (string)$property->get('name'),
-					'position' => (int)($property->get('effective_position') ?: $property->get('position') ?: 0),
+					'position' => $propertyPosition,
 					'formatId' => (int)$property->get('IDpropertyformat'),
 					'formatName' => (string)$property->get('propertyformat_name'),
 					'listItemType' => (string)$property->get('listitemtype'),
@@ -854,6 +876,13 @@
 					'updatedByUserId' => (int)$property->get('IDusermodification'),
 				);
 			}
+
+			usort($entries, static function ($left, $right) {
+				$positionComparison = (int)($left['position'] ?? 0) <=> (int)($right['position'] ?? 0);
+				return $positionComparison !== 0
+					? $positionComparison
+					: ((int)($left['id'] ?? 0) <=> (int)($right['id'] ?? 0));
+			});
 
 			return $entries;
 		}

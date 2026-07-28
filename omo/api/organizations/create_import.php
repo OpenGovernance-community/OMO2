@@ -47,11 +47,38 @@ foreach ($availableModules as $module) {
 }
 
 $organizationName = trim((string)($_POST['organization_name'] ?? ''));
+$templateCalibration = array(
+    'templateRootHolonId' => (int)($_POST['organization_template_id'] ?? 0),
+    'mappings' => array(),
+);
+$rawTemplateMappings = trim((string)($_POST['template_mappings'] ?? ''));
+if ($rawTemplateMappings !== '') {
+    $postedTemplateMappings = json_decode($rawTemplateMappings, true);
+    if (!is_array($postedTemplateMappings)) {
+        http_response_code(400);
+        echo json_encode(array('status' => false, 'message' => 'Les correspondances de templates ne sont pas valides.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    foreach ($postedTemplateMappings as $sourceTemplateId => $targetTemplateId) {
+        $sourceTemplateId = (int)$sourceTemplateId;
+        $targetTemplateId = (int)$targetTemplateId;
+        if ($sourceTemplateId > 0 && $targetTemplateId > 0) {
+            $templateCalibration['mappings'][$sourceTemplateId] = $targetTemplateId;
+        }
+    }
+}
+if (count($templateCalibration['mappings']) > 0 && $templateCalibration['templateRootHolonId'] <= 0) {
+    http_response_code(400);
+    echo json_encode(array('status' => false, 'message' => 'Selectionnez le modele d organisation utilise pour les correspondances.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
 $result = \dbObject\Organization::importOmo1ExportAsNewOrganization(
     $payload,
     $requestedModules,
     $currentUserId,
-    $organizationName
+    $organizationName,
+    $templateCalibration
 );
 
 if (empty($result['status']) || !($result['organization'] ?? null) instanceof \dbObject\Organization) {

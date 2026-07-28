@@ -2388,6 +2388,48 @@
 			}
 		}
 
+		protected function alignImportedHolonPropertyPositionsWithTemplate(\dbObject\Holon $targetHolon, \dbObject\Holon $templateHolon)
+		{
+			$positionsByPropertyId = array();
+			$lastPosition = 0;
+			foreach ($templateHolon->getTemplatePropertyDefinitions() as $definition) {
+				$propertyId = (int)($definition['id'] ?? 0);
+				if ($propertyId <= 0 || isset($positionsByPropertyId[$propertyId])) {
+					continue;
+				}
+
+				$position = (int)($definition['position'] ?? 0);
+				if ($position <= 0) {
+					$position = $lastPosition + 1;
+				}
+				$positionsByPropertyId[$propertyId] = $position;
+				$lastPosition = max($lastPosition, $position);
+			}
+
+			$extraProperties = array();
+			foreach ($targetHolon->getHolonProperties() as $holonProperty) {
+				$propertyId = (int)$holonProperty->get('IDproperty');
+				if (isset($positionsByPropertyId[$propertyId])) {
+					$holonProperty->set('position', (int)$positionsByPropertyId[$propertyId]);
+					$holonProperty->save();
+					continue;
+				}
+				$extraProperties[] = $holonProperty;
+			}
+
+			usort($extraProperties, static function ($left, $right) {
+				$positionComparison = (int)$left->get('position') <=> (int)$right->get('position');
+				return $positionComparison !== 0
+					? $positionComparison
+					: ((int)$left->getId() <=> (int)$right->getId());
+			});
+			foreach ($extraProperties as $holonProperty) {
+				$lastPosition += 1;
+				$holonProperty->set('position', $lastPosition);
+				$holonProperty->save();
+			}
+		}
+
 		protected function importCompactHolonPermissionRows(array $record, \dbObject\Holon $targetHolon)
 		{
 			$targetHolonId = (int)$targetHolon->getId();
@@ -2425,7 +2467,370 @@
 			return \dbObject\HolonPermission::syncAssignmentsForHolon($targetHolonId, $assignmentsByPermissionKey);
 		}
 
-		protected function importStructureFromCompactGraph(array $payload, $userId = 0)
+		protected static function normalizeImportTemplateKey($value)
+		{
+			$value = trim((string)$value);
+			if ($value === '') {
+				return '';
+			}
+
+			$value = function_exists('mb_strtolower') ? mb_strtolower($value, 'UTF-8') : strtolower($value);
+			$asciiValue = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+			if (is_string($asciiValue) && $asciiValue !== '') {
+				$value = $asciiValue;
+			}
+
+			return trim((string)preg_replace('/[^a-z0-9]+/', '', $value));
+		}
+
+		protected static function getImportPropertyMatchKeys($shortname, $name)
+		{
+			$keys = array();
+			foreach (array($shortname, $name) as $value) {
+				$key = self::normalizeImportTemplateKey($value);
+				if ($key !== '') {
+					$keys[$key] = true;
+				}
+			}
+
+			$rdeKeys = array('rde', 'raisonetre', 'raisondetre', 'purpose');
+			foreach ($rdeKeys as $rdeKey) {
+				if (isset($keys[$rdeKey])) {
+					foreach ($rdeKeys as $aliasKey) {
+						$keys[$aliasKey] = true;
+					}
+					break;
+				}
+			}
+
+			return array_keys($keys);
+		}
+
+		protected static function isImportedTemplateRecord(array $record)
+		{
+			return trim((string)($record['templateName'] ?? '')) !== ''
+				|| (array_key_exists('visible', $record) && !(bool)$record['visible']);
+		}
+
+		protected function getImportTemplateNodes(\dbObject\Holon $templateRootHolon)
+		{
+			$nodes = array();
+			$visitedHolonIds = array();
+			$templateRootHolonId = (int)$templateRootHolon->getId();
+			$collectNodes = function (\dbObject\Holon $parentHolon) use (&$collectNodes, &$nodes, &$visitedHolonIds, $templateRootHolonId) {
+				$parentHolonId = (int)$parentHolon->getId();
+				if ($parentHolonId <= 0 || isset($visitedHolonIds[$parentHolonId])) {
+					return;
+				}
+				$visitedHolonIds[$parentHolonId] = true;
+
+				$children = new \dbObject\ArrayHolon();
+				$children->load(array(
+					'where' => array(
+						array('field' => 'IDholon_parent', 'value' => $parentHolonId),
+						array('field' => 'active', 'value' => 1),
+					),
+					'orderBy' => array(
+						array('field' => 'IDtypeholon', 'dir' => 'ASC'),
+						array('field' => 'name', 'dir' => 'ASC'),
+						array('field' => 'templatename', 'dir' => 'ASC'),
+						array('field' => 'id', 'dir' => 'ASC'),
+					),
+				));
+				foreach ($children as $childHolon) {
+					if ($childHolon->isTemplateNode($templateRootHolonId)) {
+						$nodes[(int)$childHolon->getId()] = $childHolon;
+					}
+					$collectNodes($childHolon);
+				}
+			};
+
+			$collectNodes($templateRootHolon);
+			return $nodes;
+		}
+
+		protected function getImportTemplateNodePath(\dbObject\Holon $nodeHolon, $templateRootHolonId)
+		{
+			$templateRootHolonId = (int)$templateRootHolonId;
+			$labels = array();
+			$currentHolon = $nodeHolon;
+			$visitedHolonIds = array();
+
+			while ($currentHolon instanceof \dbObject\Holon) {
+				$currentHolonId = (int)$currentHolon->getId();
+				if ($currentHolonId <= 0 || isset($visitedHolonIds[$currentHolonId])) {
+					break;
+				}
+				$visitedHolonIds[$currentHolonId] = true;
+				if ($currentHolonId === $templateRootHolonId) {
+					break;
+				}
+
+				$label = $currentHolon->isTemplateNode($templateRootHolonId)
+					? $this->getStructuralInitializationTemplateName($currentHolon)
+					: $currentHolon->getDisplayName();
+				if (trim((string)$label) !== '') {
+					$labels[] = trim((string)$label);
+				}
+
+				$parentHolonId = (int)$currentHolon->get('IDholon_parent');
+				if ($parentHolonId <= 0) {
+					break;
+				}
+				$parentHolon = new \dbObject\Holon();
+				$currentHolon = $parentHolon->load($parentHolonId) ? $parentHolon : null;
+			}
+
+			return implode(' > ', array_reverse($labels));
+		}
+
+		public function getStructuralImportTemplateCatalog()
+		{
+			$catalog = array();
+			foreach ($this->getStructuralInitializationTemplates() as $template) {
+				$templateRootHolonId = (int)($template['id'] ?? 0);
+				if ($templateRootHolonId <= 0) {
+					continue;
+				}
+
+				$templateRootHolon = new \dbObject\Holon();
+				if (!$templateRootHolon->load($templateRootHolonId)) {
+					continue;
+				}
+
+				$nodes = array();
+				foreach ($this->getImportTemplateNodes($templateRootHolon) as $nodeHolon) {
+					$nodes[] = array(
+						'id' => (int)$nodeHolon->getId(),
+						'name' => $this->getStructuralInitializationTemplateName($nodeHolon),
+						'path' => $this->getImportTemplateNodePath($nodeHolon, $templateRootHolonId),
+						'typeId' => (int)$nodeHolon->get('IDtypeholon'),
+						'parentId' => (int)$nodeHolon->get('IDholon_parent'),
+					);
+				}
+
+				$template['nodes'] = $nodes;
+				$catalog[] = $template;
+			}
+
+			return $catalog;
+		}
+
+		protected function cloneImportTemplateNodes(\dbObject\Holon $sourceTemplateRoot, \dbObject\Holon $targetRootHolon, $userId = 0)
+		{
+			$sourceNodesById = $this->getImportTemplateNodes($sourceTemplateRoot);
+			$targetNodesBySourceId = array();
+			$targetNodeIdMap = array();
+			$propertyIdMap = array();
+			$sourceRootHolonId = (int)$sourceTemplateRoot->getId();
+			$targetRootHolonId = (int)$targetRootHolon->getId();
+
+			foreach ($sourceNodesById as $sourceNodeId => $sourceNode) {
+				$sourceParentId = (int)$sourceNode->get('IDholon_parent');
+				$targetParentId = isset($targetNodeIdMap[$sourceParentId])
+					? (int)$targetNodeIdMap[$sourceParentId]
+					: $targetRootHolonId;
+
+				$targetNode = new \dbObject\Holon();
+				$targetNode->set('name', $sourceNode->get('name'));
+				$targetNode->set('nomcomplet', trim((string)$sourceNode->get('nomcomplet')) !== '' ? $sourceNode->get('nomcomplet') : null);
+				$targetNode->set('templatename', $sourceNode->get('templatename'));
+				$targetNode->set('IDtypeholon', (int)$sourceNode->get('IDtypeholon'));
+				$targetNode->set('IDholon_parent', $targetParentId);
+				$targetNode->set('IDholon_template', null);
+				$targetNode->set('IDholon_org', $targetRootHolonId);
+				$targetNode->set('IDorganization', null);
+				$targetNode->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)$sourceNode->get('IDuser'));
+				$targetNode->set('active', (bool)$sourceNode->get('active'));
+				$targetNode->set('visible', (bool)$sourceNode->get('visible'));
+				$targetNode->set('mandatory', (bool)$sourceNode->get('mandatory'));
+				$targetNode->set('lockedname', (bool)$sourceNode->get('lockedname'));
+				$targetNode->set('lockedicon', (bool)$sourceNode->get('lockedicon'));
+				$targetNode->set('lockedbanner', (bool)$sourceNode->get('lockedbanner'));
+				$targetNode->set('unique', (bool)$sourceNode->get('unique'));
+				$targetNode->set('link', (bool)$sourceNode->get('link'));
+				$targetNode->set('adminparent', (bool)$sourceNode->get('adminparent'));
+				$targetNode->set('admin_min', max(0, (int)$sourceNode->get('admin_min')));
+				$targetNode->set('admin_max', $sourceNode->get('admin_max') === null ? null : (int)$sourceNode->get('admin_max'));
+				$targetNode->set('lockedadminmin', (bool)$sourceNode->get('lockedadminmin'));
+				$targetNode->set('lockedadminmax', (bool)$sourceNode->get('lockedadminmax'));
+				$targetNode->set('adminminoverride', (bool)$sourceNode->get('adminminoverride'));
+				$targetNode->set('adminmaxoverride', (bool)$sourceNode->get('adminmaxoverride'));
+				$targetNode->set('color', $sourceNode->get('color') ?: null);
+				$targetNode->set('icon', $sourceNode->get('icon') ?: null);
+				$targetNode->set('banner', $sourceNode->get('banner') ?: null);
+				$targetNode->set('accesskey', $sourceNode->get('accesskey') ?: null);
+				$targetNode->save();
+				if ((int)$targetNode->getId() <= 0) {
+					throw new \RuntimeException("Un template du modele selectionne n'a pas pu etre copie.");
+				}
+
+				$targetNodesBySourceId[(int)$sourceNodeId] = $targetNode;
+				$targetNodeIdMap[(int)$sourceNodeId] = (int)$targetNode->getId();
+			}
+
+			foreach ($sourceNodesById as $sourceNodeId => $sourceNode) {
+				$targetNode = $targetNodesBySourceId[(int)$sourceNodeId];
+				$sourceTemplateId = (int)$sourceNode->get('IDholon_template');
+				$targetNode->set(
+					'IDholon_template',
+					isset($targetNodeIdMap[$sourceTemplateId]) ? (int)$targetNodeIdMap[$sourceTemplateId] : null
+				);
+				$targetNode->save();
+
+				$this->cloneStructuralHolonProperties(
+					$sourceNode,
+					$targetNode,
+					$sourceRootHolonId,
+					$targetRootHolonId,
+					$targetNodeIdMap,
+					$propertyIdMap
+				);
+				if (!$this->cloneStructuralHolonPermissions($sourceNode, $targetNode)) {
+					throw new \RuntimeException("Les droits d'un template du modele n'ont pas pu etre copies.");
+				}
+			}
+
+			return array(
+				'sourceNodesById' => $sourceNodesById,
+				'targetNodesBySourceId' => $targetNodesBySourceId,
+				'targetNodeIdMap' => $targetNodeIdMap,
+			);
+		}
+
+		protected function applyImportTemplateCalibration(array $recordsBySourceId, array $propertyDefinitions, \dbObject\Holon $targetRootHolon, array &$holonIdMap, array &$targetHolonsBySourceId, array &$propertyIdMap, array $calibration, $userId = 0)
+		{
+			$templateRootHolonId = (int)($calibration['templateRootHolonId'] ?? 0);
+			$mappings = isset($calibration['mappings']) && is_array($calibration['mappings']) ? $calibration['mappings'] : array();
+			if ($templateRootHolonId <= 0 || count($mappings) === 0) {
+				return array('mappedSourceTemplateIds' => array(), 'warnings' => array());
+			}
+
+			$templateRootHolon = new \dbObject\Holon();
+			if (
+				!$templateRootHolon->load($templateRootHolonId)
+				|| (int)$templateRootHolon->get('IDtypeholon') !== 4
+				|| !(bool)$templateRootHolon->get('active')
+				|| trim((string)$templateRootHolon->get('templatename')) === ''
+			) {
+				throw new \RuntimeException("Le modele d'organisation selectionne est introuvable.");
+			}
+
+			$clonedTemplates = $this->cloneImportTemplateNodes($templateRootHolon, $targetRootHolon, $userId);
+			$targetTemplateNodes = $clonedTemplates['targetNodesBySourceId'];
+			$mappedSourceTemplateIds = array();
+			$mappedTargetTemplateIds = array();
+			$warnings = array();
+			$propertyDefinitionsById = array();
+			foreach ($propertyDefinitions as $definition) {
+				$propertyDefinitionsById[(int)($definition['id'] ?? 0)] = $definition;
+			}
+
+			foreach ($mappings as $sourceTemplateId => $targetTemplateSourceId) {
+				$sourceTemplateId = (int)$sourceTemplateId;
+				$targetTemplateSourceId = (int)$targetTemplateSourceId;
+				$sourceRecord = $recordsBySourceId[$sourceTemplateId] ?? null;
+				$targetTemplate = $targetTemplateNodes[$targetTemplateSourceId] ?? null;
+				if (!is_array($sourceRecord) || !self::isImportedTemplateRecord($sourceRecord) || !($targetTemplate instanceof \dbObject\Holon)) {
+					throw new \RuntimeException('Une correspondance de template est invalide.');
+				}
+				if ((int)($sourceRecord['typeId'] ?? 0) !== (int)$targetTemplate->get('IDtypeholon')) {
+					throw new \RuntimeException('Les templates associes doivent etre du meme type de holon.');
+				}
+				if (isset($mappedTargetTemplateIds[$targetTemplateSourceId])) {
+					throw new \RuntimeException('Un template du modele ne peut etre associe qu a un seul template importe.');
+				}
+
+				$holonIdMap[$sourceTemplateId] = (int)$targetTemplate->getId();
+				$targetHolonsBySourceId[$sourceTemplateId] = $targetTemplate;
+				$mappedSourceTemplateIds[$sourceTemplateId] = true;
+				$mappedTargetTemplateIds[$targetTemplateSourceId] = true;
+
+				$targetPropertiesByKey = array();
+				foreach ($targetTemplate->getTemplatePropertyDefinitions() as $targetDefinition) {
+					$targetPropertyId = (int)($targetDefinition['id'] ?? 0);
+					if ($targetPropertyId <= 0) {
+						continue;
+					}
+					foreach (self::getImportPropertyMatchKeys($targetDefinition['shortname'] ?? '', $targetDefinition['name'] ?? '') as $targetPropertyKey) {
+						$targetPropertiesByKey[$targetPropertyKey] = $targetPropertyId;
+					}
+				}
+
+				$sourcePropertyIds = array();
+				$currentSourceTemplateRecord = $sourceRecord;
+				$visitedSourceTemplateIds = array();
+				while (is_array($currentSourceTemplateRecord)) {
+					$currentSourceTemplateId = (int)($currentSourceTemplateRecord['id'] ?? 0);
+					if ($currentSourceTemplateId <= 0 || isset($visitedSourceTemplateIds[$currentSourceTemplateId])) {
+						break;
+					}
+					$visitedSourceTemplateIds[$currentSourceTemplateId] = true;
+					foreach (($currentSourceTemplateRecord['properties'] ?? array()) as $sourcePropertyRow) {
+						$sourcePropertyId = (int)($sourcePropertyRow['propertyId'] ?? 0);
+						if ($sourcePropertyId > 0) {
+							$sourcePropertyIds[$sourcePropertyId] = true;
+						}
+					}
+					$currentSourceTemplateRecord = $recordsBySourceId[(int)($currentSourceTemplateRecord['templateId'] ?? 0)] ?? null;
+				}
+
+				foreach (array_keys($sourcePropertyIds) as $sourcePropertyId) {
+					$sourcePropertyId = (int)$sourcePropertyId;
+					$sourceDefinition = $propertyDefinitionsById[$sourcePropertyId] ?? null;
+					if (!is_array($sourceDefinition)) {
+						continue;
+					}
+
+					$targetPropertyId = 0;
+					foreach (self::getImportPropertyMatchKeys($sourceDefinition['shortname'] ?? '', $sourceDefinition['name'] ?? '') as $sourcePropertyKey) {
+						if (isset($targetPropertiesByKey[$sourcePropertyKey])) {
+							$targetPropertyId = (int)$targetPropertiesByKey[$sourcePropertyKey];
+							break;
+						}
+					}
+					if ($targetPropertyId <= 0) {
+						continue;
+					}
+
+					$targetProperty = new \dbObject\Property();
+					if (!$targetProperty->load($targetPropertyId)) {
+						continue;
+					}
+
+					$sourceFormatId = (int)($sourceDefinition['formatId'] ?? 0);
+					$sourceListItemType = null;
+					$sourceListHolonTypeIds = null;
+					if (\dbObject\PropertyFormat::isListFormat($sourceFormatId)) {
+						$sourceListItemType = \dbObject\Property::normalizeListItemType($sourceDefinition['listItemType'] ?? null);
+						$sourceListHolonTypeIds = \dbObject\Property::serializeHolonTypeIds($sourceDefinition['listHolonTypeIds'] ?? array());
+					}
+					if (
+						$sourceFormatId > 0
+						&& (
+							(int)$targetProperty->get('IDpropertyformat') !== $sourceFormatId
+							|| (string)$targetProperty->get('listitemtype') !== (string)$sourceListItemType
+							|| (string)$targetProperty->get('listholontypeids') !== (string)$sourceListHolonTypeIds
+						)
+					) {
+						$targetProperty->set('IDpropertyformat', $sourceFormatId);
+						$targetProperty->set('listitemtype', $sourceListItemType);
+						$targetProperty->set('listholontypeids', $sourceListHolonTypeIds);
+						$targetProperty->save();
+						$warnings[] = 'La propriete ' . trim((string)$sourceDefinition['name']) . ' conserve son format importe pour eviter une conversion ambigue.';
+					}
+
+					$propertyIdMap[$sourcePropertyId] = $targetPropertyId;
+				}
+			}
+
+			return array(
+				'mappedSourceTemplateIds' => $mappedSourceTemplateIds,
+				'warnings' => array_values(array_unique($warnings)),
+			);
+		}
+
+		protected function importStructureFromCompactGraph(array $payload, $userId = 0, array $calibration = array())
 		{
 			$records = $this->getImportedHolonRecords($payload);
 			$propertyDefinitions = $this->getImportedCompactPropertyDefinitions($payload);
@@ -2490,9 +2895,26 @@
 				$targetHolonsBySourceId = array(
 					$sourceRootId => $targetRootHolon,
 				);
+				$calibrationResult = $this->applyImportTemplateCalibration(
+					$recordsBySourceId,
+					$propertyDefinitions,
+					$targetRootHolon,
+					$holonIdMap,
+					$targetHolonsBySourceId,
+					$propertyIdMap,
+					$calibration,
+					$userId
+				);
+				$mappedSourceTemplateIds = $calibrationResult['mappedSourceTemplateIds'] ?? array();
+				$calibrationWarnings = $calibrationResult['warnings'] ?? array();
 
 				$pending = $recordsBySourceId;
 				unset($pending[$sourceRootId]);
+				foreach ($mappedSourceTemplateIds as $mappedSourceTemplateId => $isMapped) {
+					if ($isMapped) {
+						unset($pending[(int)$mappedSourceTemplateId]);
+					}
+				}
 
 				$guard = 0;
 				while (count($pending) > 0 && $guard < 1000) {
@@ -2527,6 +2949,9 @@
 					if (!isset($targetHolonsBySourceId[$sourceId])) {
 						continue;
 					}
+					if (!empty($mappedSourceTemplateIds[(int)$sourceId])) {
+						continue;
+					}
 
 					$templateSourceId = (int)($record['templateId'] ?? 0);
 					$targetHolon = $targetHolonsBySourceId[$sourceId];
@@ -2536,11 +2961,39 @@
 							? (int)$holonIdMap[$templateSourceId]
 							: null
 					);
+					if ($templateSourceId > 0 && !empty($mappedSourceTemplateIds[$templateSourceId])) {
+						$mappedTemplate = $targetHolonsBySourceId[$templateSourceId] ?? null;
+						if ($mappedTemplate instanceof \dbObject\Holon) {
+							$mappedTemplateName = trim((string)$mappedTemplate->getDisplayName());
+							if ($mappedTemplateName !== '' && (bool)$mappedTemplate->getEffectiveTemplateBooleanField('lockedname')) {
+								$targetHolon->set('name', $mappedTemplateName);
+							}
+							$targetHolon->set('color', null);
+							$targetHolon->set('icon', null);
+							$targetHolon->set('banner', null);
+							$targetHolon->set('mandatory', false);
+							$targetHolon->set('lockedname', false);
+							$targetHolon->set('lockedicon', false);
+							$targetHolon->set('lockedbanner', false);
+							$targetHolon->set('unique', false);
+							$targetHolon->set('link', false);
+							$targetHolon->set('adminparent', false);
+							$targetHolon->set('admin_min', 0);
+							$targetHolon->set('admin_max', null);
+							$targetHolon->set('lockedadminmin', false);
+							$targetHolon->set('lockedadminmax', false);
+							$targetHolon->set('adminminoverride', false);
+							$targetHolon->set('adminmaxoverride', false);
+						}
+					}
 					$targetHolon->save();
 				}
 
 				foreach ($recordsBySourceId as $sourceId => $record) {
 					if (!isset($targetHolonsBySourceId[$sourceId])) {
+						continue;
+					}
+					if (!empty($mappedSourceTemplateIds[(int)$sourceId])) {
 						continue;
 					}
 
@@ -2551,7 +3004,20 @@
 						$holonIdMap
 					);
 
-					if (!$this->importCompactHolonPermissionRows($record, $targetHolonsBySourceId[$sourceId])) {
+					$templateSourceId = (int)($record['templateId'] ?? 0);
+					if (!empty($mappedSourceTemplateIds[$templateSourceId])) {
+						$mappedTemplate = $targetHolonsBySourceId[$templateSourceId] ?? null;
+						if ($mappedTemplate instanceof \dbObject\Holon) {
+							$this->alignImportedHolonPropertyPositionsWithTemplate(
+								$targetHolonsBySourceId[$sourceId],
+								$mappedTemplate
+							);
+						}
+					}
+					if (
+						empty($mappedSourceTemplateIds[$templateSourceId])
+						&& !$this->importCompactHolonPermissionRows($record, $targetHolonsBySourceId[$sourceId])
+					) {
 						throw new \RuntimeException("Les droits d'un holon importe n'ont pas pu etre recrees.");
 					}
 				}
@@ -2563,6 +3029,7 @@
 					'message' => "L'organisation a ete importee depuis le format compact.",
 					'rootHolon' => $targetRootHolon,
 					'holonIdMap' => $holonIdMap,
+					'warnings' => $calibrationWarnings,
 				);
 			} catch (\Throwable $exception) {
 				if ($pdo->inTransaction()) {
@@ -3534,7 +4001,7 @@
 			}
 		}
 
-		public static function importOmo1ExportAsNewOrganization(array $payload, array $requestedModules, $actorUserId, $organizationName = '')
+		public static function importOmo1ExportAsNewOrganization(array $payload, array $requestedModules, $actorUserId, $organizationName = '', array $templateCalibration = array())
 		{
 			$actorUserId = (int)$actorUserId;
 			if ($actorUserId <= 0) {
@@ -3586,7 +4053,7 @@
 
 			try {
 				self::omo1ImportUserMembership($organization, $actorUserId, true);
-				$structureResult = $organization->importStructure($payload, $actorUserId);
+				$structureResult = $organization->importStructure($payload, $actorUserId, $templateCalibration);
 				if (empty($structureResult['status']) || !($structureResult['rootHolon'] ?? null) instanceof \dbObject\Holon) {
 					throw new \RuntimeException((string)($structureResult['message'] ?? 'La structure n a pas pu etre importee.'));
 				}
@@ -3607,7 +4074,9 @@
 				$pendingUserIds = array();
 				$pendingInvitations = array();
 				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'documents' => 0, 'projects' => 0, 'tasks' => 0, 'checklists' => 0, 'checklistItems' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
-				$warnings = array();
+				$warnings = isset($structureResult['warnings']) && is_array($structureResult['warnings'])
+					? $structureResult['warnings']
+					: array();
 
 				if ($selectedModules['members']) {
 					$memberRecords = self::omo1ImportModuleRecords($payload, 'members');
@@ -3670,7 +4139,7 @@
 			}
 		}
 
-		public function importStructure(array $payload, $userId = 0)
+		public function importStructure(array $payload, $userId = 0, array $templateCalibration = array())
 		{
 			if ((int)$this->getId() <= 0) {
 				return array(
@@ -3703,7 +4172,7 @@
 				);
 			}
 
-			return $this->importStructureFromCompactGraph($payload, $userId);
+			return $this->importStructureFromCompactGraph($payload, $userId, $templateCalibration);
 		}
 
 		protected function cloneStructuralChildrenRecursively(\dbObject\Holon $sourceParent, $targetParentId, $targetRootHolonId, $userId, array &$sourceHolonsById, array &$targetHolonsBySourceId, array &$holonIdMap)
