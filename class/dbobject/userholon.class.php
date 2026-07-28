@@ -225,7 +225,8 @@
 				SELECT DISTINCT
 					uh.IDholon,
 					uh.active AS holon_active,
-					uh.active AS holon_effective_active
+					uh.active AS holon_effective_active,
+					uh.parameters
 				FROM user_holon uh
 				WHERE uh.IDuser = :user_id
 				  AND uh.IDholon IN (" . implode(', ', $placeholders) . ")
@@ -234,7 +235,18 @@
 			";
 
 			$rows = \dbObject\DbObject::fetchAll($query, $params);
-			return $rows !== false ? $rows : array();
+			if ($rows === false || !is_array($rows)) {
+				return array();
+			}
+
+			foreach ($rows as &$row) {
+				$parameters = json_decode((string)($row['parameters'] ?? ''), true);
+				$row['is_admin'] = is_array($parameters) && !empty($parameters['isAdmin']);
+				unset($row['parameters']);
+			}
+			unset($row);
+
+			return $rows;
 		}
 
 		public static function fetchRawRowsForUserAndHolonIds($userId, array $holonIds)

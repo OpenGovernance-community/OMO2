@@ -61,6 +61,7 @@ $newFaq = new \dbObject\FAQ();
 $newFaq->set('IDorganization', $contextOrganizationId > 0 ? $contextOrganizationId : null);
 $newFaq->set('IDholon', $contextHolonId > 0 ? $contextHolonId : null);
 $newFaq->set('IDparcours', null);
+$newFaq->set('IDapplication', null);
 $newFaq->set('isactive', true);
 
 $popupReloadUrl = '/popup/faq.php';
@@ -106,6 +107,7 @@ if ($canManageAllFaqs) {
 	$editorFields[] = 'displayorder';
 	$editorFields[] = 'isactive';
 }
+
 ?>
 <div
 	class="faq-popup"

@@ -4672,7 +4672,9 @@ function omoGetTopbarSearchScopes() {
         team: true,
         calendar: true,
         documents: true,
-        decision: true
+        decision: true,
+        projects: true,
+        stats: true
     };
 
     document.querySelectorAll('#menu_sidebar .menu-item[data-hash][data-navigation-mode]').forEach(function (item) {
@@ -4885,6 +4887,50 @@ function omoOpenSearchCalendarEventResult(eventId, holonId) {
     return true;
 }
 
+function omoOpenSearchProjectResult(projectId, holonId) {
+    const projectRouteToken = omoBuildProjectRouteToken(projectId);
+    if (!projectRouteToken) {
+        return false;
+    }
+
+    omoClosePopupModalFromRoute();
+
+    const route = parseUrl();
+    if (!Number.isInteger(Number(route.oid)) || Number(route.oid) <= 0) {
+        return false;
+    }
+
+    const resolvedHolonId = Number(holonId);
+    const targetCid = Number.isInteger(resolvedHolonId) && resolvedHolonId > 0
+        ? resolvedHolonId
+        : null;
+
+    navigate(route.oid, targetCid, projectRouteToken);
+    return true;
+}
+
+function omoOpenSearchStatIndicatorResult(indicatorId, holonId) {
+    const indicatorRouteToken = omoBuildStatsIndicatorRouteToken(indicatorId);
+    if (!indicatorRouteToken) {
+        return false;
+    }
+
+    omoClosePopupModalFromRoute();
+
+    const route = parseUrl();
+    if (!Number.isInteger(Number(route.oid)) || Number(route.oid) <= 0) {
+        return false;
+    }
+
+    const resolvedHolonId = Number(holonId);
+    const targetCid = Number.isInteger(resolvedHolonId) && resolvedHolonId > 0
+        ? resolvedHolonId
+        : null;
+
+    navigate(route.oid, targetCid, indicatorRouteToken);
+    return true;
+}
+
 function omoExecuteFetchedScripts(container) {
     if (!container) {
         return;
@@ -5092,6 +5138,8 @@ window.omoBuildChecklistRouteToken = omoBuildChecklistRouteToken;
 window.omoBuildProjectRouteToken = omoBuildProjectRouteToken;
 window.omoOpenSearchCalendarEventResult = omoOpenSearchCalendarEventResult;
 window.omoOpenSearchDecisionResult = omoOpenSearchDecisionResult;
+window.omoOpenSearchProjectResult = omoOpenSearchProjectResult;
+window.omoOpenSearchStatIndicatorResult = omoOpenSearchStatIndicatorResult;
 window.omoBuildDocumentRouteToken = omoBuildDocumentRouteToken;
 window.omoOpenSearchDocumentResult = omoOpenSearchDocumentResult;
 window.omoOpenSearchTutorialResult = omoOpenSearchTutorialResult;

@@ -4,6 +4,7 @@ require_once dirname(__DIR__, 2) . '/common/avatar.php';
 require_once __DIR__ . '/projects/shared.php';
 use dbObject\ArrayOrganization;
 use dbObject\ArrayProject;
+use dbObject\Authority;
 use dbObject\Holon;
 use dbObject\HolonPermission;
 use dbObject\Permission;
@@ -73,6 +74,35 @@ function omoGetOrgPanelSourceLang(): array
             'text' => 'Mis a jour le {date} par {userName}',
             'context' => 'Update metadata shown below a left panel section when the updater is known.',
         ],
+        'leftbar.authority.delegated_count' => [
+            'one' => '{count} autorite deleguee',
+            'other' => '{count} autorites deleguees',
+            'context' => 'Count shown beside an authority that has direct delegated child authorities.',
+        ],
+        'leftbar.authority.delegated' => [
+            'text' => 'deleguee',
+            'context' => 'Status shown for an inactive authority shell after complete delegation.',
+        ],
+        'leftbar.authority.description' => [
+            'text' => 'Description',
+            'context' => 'Section title for the description of an authority.',
+        ],
+        'leftbar.authority.delegated_to' => [
+            'text' => 'Deleguee a',
+            'context' => 'Section title for direct child authority delegations.',
+        ],
+        'leftbar.authority.internal_children' => [
+            'text' => 'Sous-autorites',
+            'context' => 'Section title for authority descendants held by the same holon.',
+        ],
+        'leftbar.authority.inherited_from' => [
+            'text' => 'Heritee de',
+            'context' => 'Section title for the parent authority of an authority.',
+        ],
+        'leftbar.authority.root' => [
+            'text' => 'Autorite racine',
+            'context' => 'Fallback shown when an authority has no parent authority.',
+        ],
         'leftbar.empty.message' => [
             'text' => 'Aucun contenu n est encore renseigne pour ce holon.',
             'context' => 'Message shown in the left panel when the current holon has no visible content.',
@@ -113,6 +143,10 @@ function omoGetOrgPanelSourceLang(): array
             'text' => '{memberName} - invitation en attente',
             'context' => 'Tooltip shown for a pending invited member avatar in the left panel.',
         ],
+		'leftbar.members.admin_tooltip' => [
+			'text' => '{memberName} - {adminLabel}',
+			'context' => 'Tooltip shown for an administrator member avatar in the left panel.',
+		],
         'leftbar.members.section_title' => [
             'text' => 'Membres',
             'context' => 'Section title shown above the member avatars in the left panel.',
@@ -232,6 +266,28 @@ function omoFormatListItemValue($item, array $entry)
         return $projectTitleCache[$projectId];
     }
 
+    if ($listItemType === 'authority') {
+        static $authorityLabelCache = array();
+
+        $authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+        if ($authorityId <= 0) {
+            return is_scalar($item) ? trim((string)$item) : '';
+        }
+
+        if (!isset($authorityLabelCache[$authorityId])) {
+            $authority = new Authority();
+            $authorityLabelCache[$authorityId] = '';
+            if (
+                $authority->load($authorityId)
+                && (int)$authority->getOrganizationId() === (int)($_SESSION['currentOrganization'] ?? 0)
+            ) {
+                $authorityLabelCache[$authorityId] = trim((string)$authority->get('label'));
+            }
+        }
+
+        return $authorityLabelCache[$authorityId];
+    }
+
     if (is_array($item)) {
         return trim((string)($item['label'] ?? $item['value'] ?? ''));
     }
@@ -326,6 +382,182 @@ function omoRenderProjectReferenceItem($item, $source = '')
     return $html;
 }
 
+function omoGetAuthorityReferenceData($item)
+{
+    static $authorityCache = array();
+
+    $authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+    if ($authorityId <= 0) {
+        return null;
+    }
+
+    if (array_key_exists($authorityId, $authorityCache)) {
+        return $authorityCache[$authorityId];
+    }
+
+    $authorityCache[$authorityId] = null;
+    $authority = new Authority();
+    if (
+        !$authority->load($authorityId)
+        || (int)$authority->getOrganizationId() !== (int)($_SESSION['currentOrganization'] ?? 0)
+    ) {
+        return null;
+    }
+
+    $children = array();
+    foreach ($authority->getChildren() as $child) {
+        $label = trim((string)$child->get('label'));
+        if ($label !== '') {
+            $owner = $child->getHolon();
+            $children[] = array(
+                'id' => (int)$child->getId(),
+                'label' => $label,
+                'holonId' => $owner instanceof Holon ? (int)$owner->getId() : 0,
+                'holonLabel' => $owner instanceof Holon ? $owner->getFullDisplayName() : '',
+            );
+        }
+    }
+
+    $parentData = null;
+    $parent = $authority->getParent();
+    if ($parent instanceof Authority) {
+        $parentOwner = $parent->getHolon();
+        $parentData = array(
+            'label' => trim((string)$parent->get('label')),
+            'holonLabel' => $parentOwner instanceof Holon ? $parentOwner->getFullDisplayName() : '',
+        );
+    }
+
+    $authorityCache[$authorityId] = array(
+        'id' => $authorityId,
+        'ownerHolonId' => (int)$authority->get('IDholon'),
+        'parentId' => (int)$authority->get('IDauthority_parent'),
+        'label' => trim((string)$authority->get('label')),
+        'isShell' => $authority->isShell(),
+        'description' => trim((string)$authority->get('description')),
+        'parent' => $parentData,
+        'children' => $children,
+    );
+
+    return $authorityCache[$authorityId];
+}
+
+function omoRenderAuthorityInternalTree(array $referenceData, $ownerHolonId, array $visited = array())
+{
+    $authorityId = (int)($referenceData['id'] ?? 0);
+    if ($authorityId <= 0 || isset($visited[$authorityId])) {
+        return '';
+    }
+    $visited[$authorityId] = true;
+    $items = '';
+    foreach ($referenceData['children'] as $child) {
+        if ((int)($child['holonId'] ?? 0) !== (int)$ownerHolonId) {
+            continue;
+        }
+        $childData = omoGetAuthorityReferenceData((int)($child['id'] ?? 0));
+        if (!is_array($childData)) {
+            continue;
+        }
+        $label = omoApiEscape((string)$childData['label']);
+        if (!empty($childData['isShell'])) {
+            $label = '<em>' . $label . '</em>';
+        }
+        $nested = omoRenderAuthorityInternalTree($childData, $ownerHolonId, $visited);
+        $items .= '<li>' . $label . $nested . '</li>';
+    }
+
+    return $items !== '' ? '<ul class="section-authority-reference__children">' . $items . '</ul>' : '';
+}
+
+function omoRenderAuthorityReferenceItem($item, $source = '')
+{
+    $referenceData = omoGetAuthorityReferenceData($item);
+    if (!is_array($referenceData) || $referenceData['label'] === '') {
+        return '';
+    }
+
+    $className = 'section-authority-reference';
+    if ($source !== '') {
+        $className .= ' is-' . $source;
+    }
+
+    $children = $referenceData['children'];
+    $delegatedChildren = array_filter($children, static function ($child) use ($referenceData) {
+        $childHolonId = (int)($child['holonId'] ?? 0);
+        return $childHolonId > 0 && $childHolonId !== (int)($referenceData['ownerHolonId'] ?? 0);
+    });
+    $countLabel = count($delegatedChildren) > 0
+        ? '-' . t('leftbar.authority.delegated_count', array('count' => count($delegatedChildren)))
+        : '';
+    $statusLabel = !empty($referenceData['isShell']) ? t('leftbar.authority.delegated') : $countLabel;
+    $parent = is_array($referenceData['parent'] ?? null) ? $referenceData['parent'] : null;
+    $parentLabel = $parent ? trim((string)($parent['label'] ?? '')) : '';
+    $parentHolonLabel = $parent ? trim((string)($parent['holonLabel'] ?? '')) : '';
+    $html = '<li class="' . omoApiEscape($className) . '">';
+    $html .= '<details class="section-authority-reference__details">';
+    $authorityLabel = omoApiEscape($referenceData['label']);
+    if (!empty($referenceData['isShell'])) {
+        $authorityLabel = '<em>' . $authorityLabel . '</em>';
+    }
+    $html .= '<summary><span class="section-authority-reference__label">' . $authorityLabel . '</span>';
+    if ($statusLabel !== '') {
+        $html .= ' <span class="section-authority-reference__count">(' . omoApiEscape($statusLabel) . ')</span>';
+    }
+    $html .= '</summary>';
+    $html .= '<div class="section-authority-reference__body">';
+    $html .= '<section><h4>' . omoApiEscape(t('leftbar.authority.inherited_from')) . '</h4><div>'
+        . ($parentLabel !== ''
+            ? omoApiEscape($parentLabel) . ($parentHolonLabel !== '' ? ' <span class="section-authority-reference__holon">(' . omoApiEscape($parentHolonLabel) . ')</span>' : '')
+            : omoApiEscape(t('leftbar.authority.root')))
+        . '</div></section>';
+    if (trim((string)$referenceData['description']) !== '') {
+        $html .= '<section><h4>' . omoApiEscape(t('leftbar.authority.description')) . '</h4><div>'
+            . nl2br(omoApiEscape($referenceData['description'])) . '</div></section>';
+    }
+    $internalChildren = omoRenderAuthorityInternalTree($referenceData, (int)$referenceData['ownerHolonId']);
+    if ($internalChildren !== '') {
+        $html .= '<section><h4>' . omoApiEscape(t('leftbar.authority.internal_children')) . '</h4>' . $internalChildren . '</section>';
+    }
+    if (count($delegatedChildren) > 0) {
+        $html .= '<section><h4>' . omoApiEscape(t('leftbar.authority.delegated_to')) . '</h4><ul class="section-authority-reference__children">';
+        foreach ($delegatedChildren as $child) {
+            $childLabel = trim((string)($child['label'] ?? ''));
+            $holonLabel = trim((string)($child['holonLabel'] ?? ''));
+            if ($childLabel === '') {
+                continue;
+            }
+            $html .= '<li>' . omoApiEscape($childLabel)
+                . ($holonLabel !== '' ? ' <span class="section-authority-reference__holon">(' . omoApiEscape($holonLabel) . ')</span>' : '')
+                . '</li>';
+        }
+        $html .= '</ul></section>';
+    }
+    $html .= '</div></details></li>';
+
+    return $html;
+}
+
+function omoFilterTopLevelAuthorityItems(array $items)
+{
+    $itemsById = array();
+    foreach ($items as $item) {
+        $referenceData = omoGetAuthorityReferenceData($item);
+        if (is_array($referenceData)) {
+            $itemsById[(int)$referenceData['id']] = $referenceData;
+        }
+    }
+
+    return array_values(array_filter($items, static function ($item) use ($itemsById) {
+        $referenceData = omoGetAuthorityReferenceData($item);
+        if (!is_array($referenceData)) {
+            return true;
+        }
+        $parentId = (int)($referenceData['parentId'] ?? 0);
+        return !isset($itemsById[$parentId])
+            || (int)($itemsById[$parentId]['ownerHolonId'] ?? 0) !== (int)($referenceData['ownerHolonId'] ?? 0);
+    }));
+}
+
 function omoNormalizeDetailedListItem($item)
 {
     if (is_array($item)) {
@@ -363,10 +595,17 @@ function omoRenderHtmlBlock($html, $className = 'section-html')
 
 function omoRenderFormattedList(array $items, array $entry, $className = 'section-list')
 {
+    if ((string)($entry['listItemType'] ?? '') === 'authority') {
+        $items = omoFilterTopLevelAuthorityItems($items);
+    }
     $html = '<ul class="' . omoApiEscape($className) . '">';
     foreach ($items as $item) {
         if ((string)($entry['listItemType'] ?? '') === 'project') {
             $html .= omoRenderProjectReferenceItem($item);
+            continue;
+        }
+        if ((string)($entry['listItemType'] ?? '') === 'authority') {
+            $html .= omoRenderAuthorityReferenceItem($item);
             continue;
         }
         $formattedItem = omoFormatListItemValue($item, $entry);
@@ -418,6 +657,17 @@ function omoBuildListItemDescriptors(array $ancestorItems, array $currentItems)
 function omoRenderMixedList(array $ancestorItems, array $currentItems, array $entry, $className = 'section-list')
 {
     $descriptors = omoBuildListItemDescriptors($ancestorItems, $currentItems);
+    if ((string)($entry['listItemType'] ?? '') === 'authority') {
+        $topLevelItems = omoFilterTopLevelAuthorityItems(array_column($descriptors, 'item'));
+        $topLevelIds = array_fill_keys(array_map(static function ($item) {
+            $referenceData = omoGetAuthorityReferenceData($item);
+            return is_array($referenceData) ? (int)$referenceData['id'] : 0;
+        }, $topLevelItems), true);
+        $descriptors = array_values(array_filter($descriptors, static function ($descriptor) use ($topLevelIds) {
+            $referenceData = omoGetAuthorityReferenceData($descriptor['item']);
+            return !is_array($referenceData) || isset($topLevelIds[(int)$referenceData['id']]);
+        }));
+    }
     if (count($descriptors) === 0) {
         return '';
     }
@@ -426,6 +676,10 @@ function omoRenderMixedList(array $ancestorItems, array $currentItems, array $en
     foreach ($descriptors as $descriptor) {
         if ((string)($entry['listItemType'] ?? '') === 'project') {
             $html .= omoRenderProjectReferenceItem($descriptor['item'], $descriptor['source']);
+            continue;
+        }
+        if ((string)($entry['listItemType'] ?? '') === 'authority') {
+            $html .= omoRenderAuthorityReferenceItem($descriptor['item'], $descriptor['source']);
             continue;
         }
         $formattedItem = omoFormatListItemValue($descriptor['item'], $entry);
@@ -736,6 +990,9 @@ if (!$canViewOrganization) {
     exit;
 }
 
+$organizationLexicon = $organization->getLexicon();
+$adminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
+
 $root = $organization->getEnabledStructuralRootHolon();
 if ($root === null) {
     require_once __DIR__ . '/organization_setup_panel.php';
@@ -790,12 +1047,37 @@ $breadcrumb = array_values(array_filter($currentHolon->getPathHolons(), function
 $sections = omoBuildSections($currentHolon);
 $childNavigation = omoBuildChildNavigation($currentHolon);
 $holonTypeLabel = omoGetHolonHeaderLabel($currentHolon);
+$holonIconUrl = trim((string)$currentHolon->getEffectiveIcon());
+if ($holonIconUrl === 'newimage') {
+    $holonIconUrl = '';
+}
 $selectedNodeClass = 'node_' . (int)$currentHolon->getId();
 $memberCards = $currentHolon->getAssociatedMemberCards(array(
     'organizationId' => $organizationId,
 ));
 if (function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '' && !commonCurrentShareAllowsPeople()) {
     $memberCards = array();
+} else {
+    $directContextAdminUserIds = array_fill_keys(
+        $currentHolon->getDirectContextAdminUserIds($organizationId),
+        true
+    );
+
+    foreach ($memberCards as &$memberCard) {
+        $memberCard['isAdmin'] = isset($directContextAdminUserIds[(int)($memberCard['userId'] ?? 0)]);
+    }
+    unset($memberCard);
+
+    usort($memberCards, static function (array $left, array $right) {
+        if ((bool)($left['isAdmin'] ?? false) !== (bool)($right['isAdmin'] ?? false)) {
+            return !empty($left['isAdmin']) ? -1 : 1;
+        }
+
+        return strcmp(
+            omoApiSortKey((string)($left['displayName'] ?? '')),
+            omoApiSortKey((string)($right['displayName'] ?? ''))
+        );
+    });
 }
 $memberPreviewLimit = 8;
 $visibleMemberCards = array_slice($memberCards, 0, $memberPreviewLimit);
@@ -870,7 +1152,12 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
             <?php endif; ?>
         <?php endforeach; ?>
     </div>
-            <h2 class="circle-title generic-card-title generic-card-title--section"><?= omoApiEscape($currentHolon->getFullDisplayName()) ?></h2>
+            <h2 class="circle-title generic-card-title generic-card-title--section">
+                <?php if ($holonIconUrl !== ''): ?>
+                    <img class="circle-title__icon" src="<?= omoApiEscape($holonIconUrl) ?>" alt="">
+                <?php endif; ?>
+                <span><?= omoApiEscape($currentHolon->getFullDisplayName()) ?></span>
+            </h2>
         </div>
         <div class="circle-meta">
             <?php if ($hasHolonActions): ?>
@@ -943,9 +1230,11 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
             <div class="circle-members__row">
                 <div class="circle-members__list">
                     <?php foreach ($visibleMemberCards as $member): ?>
-                        <?php $memberTooltip = !empty($member['isPending'])
-                            ? t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']])
-                            : (string)$member['displayName']; ?>
+						<?php $memberTooltip = !empty($member['isPending'])
+							? t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']])
+							: (!empty($member['isAdmin'])
+								? t('leftbar.members.admin_tooltip', ['memberName' => $member['displayName'], 'adminLabel' => $adminLabel])
+								: (string)$member['displayName']); ?>
                         <?php
                         $memberPhotoUrl = trim((string)($member['photoUrl'] ?? ''));
                         $memberInitials = trim((string)($member['initials'] ?? ''));
@@ -965,7 +1254,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                         $memberAvatarStyle = '--circle-member-avatar-bg: ' . $memberAvatarPalette['background'] . '; --circle-member-avatar-text: ' . $memberAvatarPalette['foreground'] . ';';
                         ?>
                         <span
-                            class="circle-member<?= !empty($member['isPending']) ? ' circle-member--pending' : '' ?>"
+                            class="circle-member<?= !empty($member['isAdmin']) ? ' circle-member--admin' : '' ?><?= !empty($member['isPending']) ? ' circle-member--pending' : '' ?>"
                             data-tooltip="<?= omoApiEscape($memberTooltip) ?>"
                             data-member-user-id="<?= (int)($member['userId'] ?? 0) ?>"
                             <?= $memberPhotoUrl === '' ? 'style="' . omoApiEscape($memberAvatarStyle) . '"' : '' ?>
@@ -1140,7 +1429,19 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 }
 
 .circle-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin: 0;
+}
+
+.circle-title__icon {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
 }
 
 .circle-members {
@@ -1184,6 +1485,13 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 .circle-member--pending {
     opacity: 0.55;
     border-style: dashed;
+}
+
+.circle-member--admin {
+    border: 3px solid var(--color-surface, #fff);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.46), 0 0 0 1px rgba(15, 23, 42, 0.2);
+    height:50px;
+    width:50px;
 }
 
 .circle-member--add {
@@ -1403,6 +1711,65 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 .section-list li.is-inherited {
     font-style: italic;
     color: var(--color-text-light);
+}
+
+.section-authority-reference__details > summary {
+    cursor: pointer;
+    display: inline;
+    list-style: none;
+}
+
+.section-authority-reference__details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.section-authority-reference__label {
+    font-weight: 650;
+}
+
+.section-authority-reference__label > em {
+    font-weight: 400;
+    font-style: italic;
+}
+
+.section-authority-reference__count {
+    color: var(--color-text-light);
+    font-size: 0.9em;
+}
+
+.section-authority-reference__body {
+    display: grid;
+    gap: 10px;
+    margin-top: 8px;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-surface-alt) 56%, var(--color-surface));
+}
+
+.section-authority-reference__body section {
+    display: grid;
+    gap: 3px;
+}
+
+.section-authority-reference__body h4 {
+    margin: 0;
+    color: var(--color-text-light);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.section-authority-reference__holon {
+    color: var(--color-text-light);
+}
+
+.section-authority-reference__children {
+    margin: 6px 0 0;
+    padding-left: 20px;
+    display: grid;
+    gap: 3px;
 }
 
 .section-list .section-project-reference {

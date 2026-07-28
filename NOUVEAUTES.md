@@ -2,6 +2,93 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-28
+
+- L editeur de templates de holons est maintenant global depuis la racine: il affiche toutes les declinaisons et heritages sans choix de contexte, la navigation ne recharge plus les parametres, et ses deux colonnes defilent independamment.
+- L editeur de templates de holons utilise maintenant toute la surface du panneau et permet d ajuster la largeur de ses deux colonnes avec un separateur vertical. Les barres de defilement fines sont maintenant appliquees dans toute l interface OMO.
+- Les apercus d icone et de banniere de l editeur de templates suivent maintenant le modele selectionne et rechargent correctement les illustrations enregistrees.
+- L icone effective d un holon est maintenant affichee devant son nom dans le panneau de contexte lorsqu elle est definie.
+- Les personnes en charge affichees dans le panneau de contexte sont maintenant mises en evidence par un contour blanc et un halo sombre discret.
+- L editeur de template ouvert depuis le panneau de contexte utilise maintenant toute la largeur disponible en mode compact.
+- Les verrous d icone et de banniere d un template restent des regles pour ses instances sans bloquer l edition des illustrations du template lui-meme.
+- Le seed Docker a ete regenere depuis la base locale actuelle apres reinitialisation. Il contient les donnees courantes et les 137 migrations enregistrees dans `sql_migration`, avec le nom actuel de la migration d heritage des admins.
+- L import d une organisation OMO1 peut maintenant etre cale sur un modele d organisation: chaque template structurel importe peut etre associe manuellement a son equivalent du modele, y compris lorsqu il est defini plus bas dans la holarchie. Les roles associes reprennent alors ses droits et sa definition, tout en conservant leur nom importe lorsque le nom du template cible n est pas verrouille; les proprietes suivent l ordre du template cible, y compris dans la leftbar, et les alias RDE et Raison d etre sont reconnus comme une meme propriete. Les templates non associes restent importes tels quels. Lorsqu une propriete aurait besoin d une conversion ambigue, son format source est conserve pour ne pas perdre les donnees existantes.
+- Dans l editeur de templates de holons, l entete des droits et les onglets Membres et Admins restent visibles en haut de la zone de defilement de la liste des permissions.
+- Les droits sont maintenant classes par themes dans les editeurs de templates et de holons. Les titres de groupes restent visibles pendant le defilement de chaque liste.
+- Les bornes minimum et maximum d admins des templates peuvent maintenant rester vides pour heriter de leur ancetre. Un verrou pose sur une borne est applique a toute la descendance.
+- Les checkbox et boutons radio des champs de l editeur de templates ne recoivent plus le style reserve aux champs texte, afin de conserver une taille normale.
+
+## 2026-07-27
+
+- Correction du chargement des traductions du panneau Lexique afin de respecter la signature du chargeur de bundles OMO.
+- Un lexique propre a chaque organisation permet maintenant de personnaliser les termes Tension et Admin. Il est editable depuis une nouvelle carte des parametres; le menu de profil conserve le libelle fixe Admin d organisation.
+- La popup d ajout d une personne a un holon permet maintenant de la definir comme admin. Le droit est applique immediatement pour un membre actif ou memorise dans l invitation jusqu a sa validation.
+- Les permissions des holons peuvent maintenant etre definies separement pour les membres et les admins. Un membre admin cumule les droits generaux et les droits admin de son contexte, tandis qu un membre normal ne recoit que les droits generaux.
+- Les templates de holons peuvent maintenant definir un nombre minimum et maximum d admins, chacun verrouillable ou redefinissable par une instance. Le minimum est requis avant l ajout d un membre normal; le dernier admin peut toutefois etre retire lorsque le role devient vide.
+- Les admins directs du holon courant sont maintenant places en tete de sa liste de membres et leur vignette est mise en evidence, sans confondre les admins d un role enfant ou de l organisation.
+- Un template de role peut maintenant etre marque Admin parent: les admins de ses instances, y compris les roles templates specialises, deviennent aussi admins du cercle parent, pour les droits et la liste de membres.
+- Le terme Admin du lexique est maintenant repris dans la liste des membres et les ecrans de configuration des holons.
+- TEAM reprend aussi ce terme dans les badges, les actions et les confirmations lies au statut de membre admin.
+- L editeur de holon permet maintenant d ajouter, modifier et retirer des proprietes locales, avec nom, format, type de liste et valeur. Ces actions utilisent les droits de proprietes de holon et restent distinctes des proprietes heritees du template.
+- La fenetre Inserer un lien de Summernote adopte maintenant le theme sombre, y compris ses champs et ses actions espacees du bord, afin de conserver un contraste lisible.
+- Les droits distinguent maintenant les proprietes definies par un template de celles ajoutees directement sur un holon: ajout, modification et retrait disposent chacun de leur droit contextuel.
+- Une nouvelle page publique `index2.php` presente Open My Organization 2 sous l angle de la maturite organisationnelle. Elle detaille les principes, fonctionnalites, usages, possibilites de contribution et parcours de demonstration dans une mise en page responsive et accessible.
+- Les proprietes de type liste peuvent maintenant utiliser le type Autorite. Depuis la fiche d un holon, ce champ cree exclusivement de nouvelles autorites, rattachees au holon et a une autorite parente existante; le holon Organisation peut aussi creer les autorites racines sans parent. Le detail du holon les affiche ensuite sous forme de liste.
+- Les autorites affichees dans le detail d un holon indiquent maintenant leur nombre de delegations directes. Un clic sur leur nom affiche uniquement cette premiere liste d autorites deleguees.
+- La liste deroulee des delegations d autorite indique aussi le holon responsable de chaque autorite deleguee.
+- Le formulaire Nouvelle regle permet maintenant de rattacher la regle a une autorite directement confiee au holon courant, ou de la conserver locale a ce holon.
+- Les autorites disposent maintenant d une description facultative, renseignee a leur creation. Leur detail affiche l autorite dont elles heritent, leur description et leurs delegations directes.
+- L historique des proprietes remplace maintenant les identifiants bruts des projets et autorites par leurs libelles, et produit des apercus lisibles pour les listes et contenus HTML.
+- Dans les editeurs de proprietes, une autorite existante peut maintenant etre ouverte par un clic sur son nom, modifiee puis enregistree. La croix la supprime au prochain enregistrement; les delegations et regles restent rattachees a son parent lorsque cela est possible. Les modifications et suppressions disposent d entrees d historique explicites.
+- L editeur de holon utilise maintenant les notifications centralisees de l application pour signaler ses erreurs d enregistrement, avec son message local uniquement comme solution de repli hors de l interface OMO.
+- Les evenements d historique lies aux autorites sont maintenant rattaches explicitement au holon responsable, afin qu ils apparaissent dans l historique de sa fiche.
+- Les horodatages de l historique sont enregistres explicitement en UTC puis affiches dans le fuseau horaire detecte dans le navigateur de chaque utilisateur.
+- La suppression d une autorite dans les editeurs reste desormais visible avant enregistrement : la ligne est grisee et barree, et la meme croix permet d annuler cette suppression.
+- Les details des historiques de listes conservent maintenant les libelles des projets, holons et autorites au moment de la modification, au lieu d afficher leurs identifiants techniques.
+- Le detail d une modification d autorite affiche maintenant explicitement les anciennes et nouvelles valeurs du libelle, de la description et de l autorite parente.
+- Le choix d une autorite parente est maintenant limite aux autorites directement confiees au holon parent, avec une liste reduite a leurs seuls libelles.
+- La suppression d une autorite demande maintenant explicitement le devenir de l autorite, de ses sous-autorites et des regles attachees. Les elements conserves remontent au holon parent et a l autorite survivante la plus proche; les regles ainsi deplacees sont immediatement a revoir et expirent au plus tard deux mois plus tard.
+- Les choix de suppression affichent entre parentheses le nombre de sous-autorites et de regles effectivement concernees, recalcule selon les options selectionnees; les blocs sans element concerne ne sont pas affiches.
+- Lors du retrait d une autorite, la remontee au holon parent est maintenant le choix par defaut afin de privilegier la conservation des delegations.
+- La remontee d une autorite deplace aussi sa reference de la propriete Autorite vers le holon parent, afin que son affichage et son rattachement de donnees restent coherents.
+- La creation d une autorite commence maintenant par le choix de son parent et distingue delegation partielle et complete. Une delegation complete transmet toute la branche; une coquille en italique conserve le chemin lorsque le deplacement direct creerait un saut dans l arbre.
+- Les autorites et sous-autorites transmises par delegation complete restent toutes referencees dans la propriete du holon receveur apres l enregistrement du formulaire.
+- Lorsqu une delegation complete cree une coquille, ses regles sont transferees vers l autorite active. La coquille apparait en italique avec le statut deleguee, sans compteur de delegation.
+- Dans le detail d un holon, une branche d autorites detenue par ce meme holon est compacte en une seule autorite racine. Un clic affiche ensuite la hierarchie interne apres la description et avant les delegations vers d autres holons.
+- La liste du reglement affiche maintenant le holon, l autorite eventuelle, ainsi que les dates et personnes de creation et de derniere modification des regles. Ces personnes sont desormais enregistrees directement sur chaque nouvelle regle et modification.
+- Les cartes du reglement mettent maintenant le contenu normatif de la regle au premier plan, puis son intention. Les informations de suivi et de tracabilite sont repliees dans un volet discret.
+- Le Reglement propose maintenant le meme filtre compact de perimetre que les Projets : une barre pleine largeur sous le titre reunit la capsule de vue active, une recherche rapide et le menu Local, Enfants directs ou Descendants, avec les actions Appliquer et Enregistrer cette vue. Il affiche les regles effectivement applicables a au moins un holon du perimetre choisi.
+- Le Reglement propose maintenant aussi les capsules Ordre et Regroupement, memorisables avec le perimetre. Les regles peuvent etre ordonnees alphabetiquement, par creation ou par modification, puis presentees dans l arbre des holons ou des autorites avec des titres numerotes et sticky.
+- Les groupes imbriques du Reglement sont maintenant sans bordure. Le decalage de leurs titres sticky est calcule dans le navigateur selon la hauteur reelle de chaque titre parent, y compris lorsqu un libelle revient sur plusieurs lignes, et prime correctement sur le positionnement generique des listes.
+- Le menu des options d affichage du Reglement reste maintenant au-dessus des titres de rubrique sticky lorsqu il est ouvert.
+- Le regroupement du Reglement par autorite ignore maintenant les coquilles des delegations completes. Les autorites actives sont raccordees visuellement a leur premier ancetre actif, sans niveau de titre artificiel.
+- L editeur d autorites de l Organisation propose maintenant Sans racine. Ce choix affiche directement les champs de libelle et description pour creer ou modifier une autorite racine, meme lorsqu aucune autorite parente n existe encore.
+- La suppression d une autorite issue d une delegation complete annule maintenant cette delegation : la coquille source est reactivee et recueille les sous-autorites ou regles conservees, au lieu de rester inactive.
+- Lors de la suppression d un holon, ses autorites sont maintenant rattachees a son holon parent avec leurs branches et leurs references de proprietes. Les regles locales sont elles aussi conservees sur le parent; une delegation complete est annulee en reactivant sa coquille source.
+
+- L application Projets regroupe maintenant ses filtres de contexte, attribution, ordre et representation dans un champ compact : les choix actifs apparaissent en capsules et ouvrent un panneau commun vertical. Appliquer modifie la vue courante sans la memoriser, tandis que Enregistrer cette vue en fait la vue de base du holon pour la prochaine ouverture. Le champ propose aussi une recherche rapide locale qui masque correctement les projets sans correspondance.
+- L application Projets propose une premiere vue Gantt. Elle affiche les projets du perimetre sous forme d arbre, avec les sous-projets immediatement apres leur parent. Chaque borne de planification absente peut heriter de celle du parent ; les projets sans date effective restent visibles sans barre.
+- La vue Gantt garde maintenant les libelles de projets sur un fond opaque pendant le defilement. Le libelle compact de date reste dans sa barre, se fixe a cote de la colonne projet tant que la barre le permet, puis repart avec sa date de fin. La vue se positionne aussi automatiquement autour de la date du jour a l ouverture.
+- Les plages de dates du Gantt utilisent maintenant un format compact qui ne repete pas inutilement le mois ou l annee. Leur libelle reste limite a la largeur reelle de la barre et se termine par des points de suspension quand l espace manque.
+- L echelle du Gantt conserve maintenant au minimum 16 pixels par jour. Une barre d une seule journee occupe ainsi exactement la largeur d un jour, sans largeur minimale arbitraire.
+- Dans le Gantt, un clic sur la zone vide d une ligne recentre sa barre lorsqu elle est hors ecran. Les clics sur la barre datee ou sur la cellule gauche continuent d ouvrir le detail du projet.
+- Le Gantt met maintenant en evidence en rouge la cellule gauche des projets non termines dont la date de fin effective, propre ou heritee, est deja passee.
+- Dans la vue en liste triee par planification, les projets termines ne sont plus classes en retard lorsque leur date de fin est passee. Ils sont regroupes dans une section Termines placee tout en bas.
+- Le bouton Appliquer des filtres Projets conserve maintenant une vue temporaire prioritaire pendant toute la session de l onglet, y compris lors de la navigation. Enregistrer cette vue reste le seul moyen de remplacer la vue durable du holon et efface alors la variante temporaire.
+
+## 2026-07-26
+
+La recherche globale peut maintenant inclure les applications Projets et Indicateurs lorsqu elles sont actives. Leurs resultats respectent la periode et la visibilite du contexte, affichent un extrait contenant le terme trouve, puis ouvrent directement le detail correspondant par navigation hash. La frequence des indicateurs est traduite dans la langue de l interface.
+
+- Le menu Parametres propose maintenant un export JSON complet de l organisation, avec selection des modules, conservation de la structure et compatibilite avec l import OMO 2.
+- L import d organisation restaure maintenant les liens des proprietes de type liste de projets vers les projets et sous-projets importes.
+- Les proprietes `Strategie` de type HTML et liste conservent maintenant leur format composite lors de l import, au lieu d etre forcees en HTML simple.
+- L import d organisation repare maintenant les bases ou la migration des invitations etait enregistree sans avoir ajoute la colonne `request_origin`; les erreurs et avertissements de la popup passent aussi par les notifications centralisees.
+- L import d organisation declenche maintenant la maintenance cron simulee afin d activer immediatement les projets dus des checklistes importees.
+- Le seed Docker a ete regenere depuis la base MariaDB actuelle du conteneur. Il contient maintenant l etat courant des donnees ainsi que les 129 migrations enregistrees comme appliquees, pour permettre une restauration fidele apres recreation du volume.
+- Les FAQ peuvent maintenant etre liees de facon optionnelle a une application OMO. Le choix est regroupe dans le bloc Attachement et reserve aux administrateurs FAQ, comme le rattachement a un parcours; la base stocke ce lien, et les FAQ ainsi rattachees sont masquees quand l application correspondante n est pas activee dans l organisation courante.
+- La migration des FAQ repare aussi les bases dont `IDparcours` avait ete enregistree sans etre creee. Le seed Docker contient desormais ce schema et son historique de migration coherents.
+
 ## 2026-07-25
 
 - Les libellés français des indicateurs utilisent maintenant les apostrophes et accents manquants dans les actions, formulaires, messages d erreur et états vides.
@@ -68,6 +155,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - L import OMO 1 prend maintenant les proces-verbaux : chaque reunion exportee avec son historique devient un document PV lie a l evenement cree. Le titre du PV reprend la reunion et sa date; les mises en forme HTML des titres historiques sont conservees dans le contenu. Les entrees associees a une meme tension sont rassemblees dans un point unique portant le titre de la tension, avec les textes et actions lies dans son contenu. Les points d information OMO 1 restent identifies; les autres deviennent des points normaux.
 - Les points de PV issus d une tension reprennent maintenant l auteur de la tension OMO 1. Lorsque cette personne n est pas importee, le point reste sans auteur au lieu d etre attribue par erreur a la personne qui lance l import.
 - Les projets archives dans OMO 1 sont maintenant importes termines et inactifs dans OMO 2. Ils restent donc conserves dans les donnees, sans apparaitre dans les listes de projets actives.
+- Les checklistes OMO 1 sont maintenant exportees dans le format de containers OMO 2 et importees avec leurs projets modeles. Les checklistes a recurrence sont regroupees dans un container par role, avec une recurrence propre a chaque element; les checklistes sans declencheur temporel deviennent des checklistes individuelles a la demande. Leur historique de validation OMO 1 n est pas repris.
 - Une organisation creee par import OMO 1 reprend desormais la date de sa donnee historique la plus ancienne parmi les modules selectionnes. La recherche peut donc proposer toute la periode importee, au lieu d etre limitee a la date du jour de l import.
 - La propriete `Strategie` des structures OMO 1 est maintenant creee au format HTML. L import reconnait aussi ce champ dans les exports deja produits et assainit son contenu HTML avant enregistrement.
 - La carte `Importer une organisation` utilise maintenant son illustration dediee de chantier, dans le meme format que la carte de creation.
@@ -138,6 +226,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Un double-clic dans une colonne du Kanban Projets ouvre maintenant la creation d un projet avec le statut de la colonne deja selectionne.
 - Le formulaire de projet place maintenant l action principale avant Annuler et ne repete plus le titre ni le texte d introduction sous l entete.
 - Les droits contextuels CAN_CREATE_PROJECT et CAN_CREATE_INDICATOR sont maintenant disponibles et protegent la creation des projets et des indicateurs.
+- Le detail des projets propose maintenant un onglet Informations et un onglet Documents associes, avec ouverture des documents via leur route hash.
 
 ## 2026-07-19
 
@@ -1146,3 +1235,12 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Les indicateurs a completer utilisent maintenant un avertissement jaune pendant un delai de grace adapte a leur frequence. Le retard devient rouge uniquement apres ce delai et affiche alors son nombre de jours.
 - Les graphiques combines reprennent maintenant la severite de leurs indicateurs : jaune quand ils sont seulement a completer, rouge uniquement lorsqu au moins un indicateur est reellement en retard.
 - L editeur de FAQ nettoie maintenant ses instances Summernote avant chaque remplacement de popup ou de vue. La creation reste disponible lors des ouvertures successives, et le formulaire d edition initialise explicitement son editeur riche apres son chargement asynchrone.
+- Les documents associes depuis le detail d un projet utilisent maintenant la navigation hash de l application.
+- Les documents associes d un projet sont maintenant charges uniquement a l ouverture de leur onglet.
+- L onglet Documents affiche un cadre d etat vide avec une action Ajouter un fichier lorsqu aucun document n est associe.
+- Le menu contextuel des cartes Projet reste maintenant au-dessus des cartes voisines lorsqu il est ouvert.
+- Les taches du detail Projet peuvent maintenant etre archivees ou supprimees depuis leur selecteur de statut, avec confirmation avant suppression.
+- L archivage ou la suppression d une tache retire maintenant directement sa ligne du detail Projet, sans recharger le drawer.
+- Les taches sans holon propre heritent maintenant des droits de gestion de leur projet parent pour le statut, l archivage et la suppression.
+- Le detail d un projet affiche maintenant un lien texte vers ses sous-projets archives, avec leur nombre et une popup chargee a la demande.
+- Le lien des archives est maintenant presente dans une capsule grise avec le nombre dans un rond blanc.

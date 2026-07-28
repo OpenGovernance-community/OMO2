@@ -137,6 +137,19 @@ if ($projectHolon instanceof Holon) {
 }
 $hasSubprojectActions = $canCreateSubproject || count($attachableProjects) > 0;
 $subprojects = $projectsByParent[(int)$project->getId()] ?? [];
+$archivedSubprojects = new ArrayProject();
+$archivedSubprojects->loadForParent((int)$project->getId(), false);
+$archivedSubprojectCount = 0;
+foreach ($archivedSubprojects as $archivedSubproject) {
+    if ($archivedSubproject instanceof Project && (int)$archivedSubproject->get('active') !== 1) {
+        $archivedSubprojectCount++;
+    }
+}
+$archivedProjectsUrl = '/omo/api/projects/archives.php?oid=' . rawurlencode((string)$organizationId)
+    . '&id=' . rawurlencode((string)$projectId);
+if ((int)($_GET['cid'] ?? 0) > 0) {
+    $archivedProjectsUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
+}
 $statusSummaryMemo = [];
 $projectStatusSummary = omoProjectsBuildStatusBar($project, $projectsByParent, $statusSummaryMemo);
 $detailStatusOptions = [
@@ -147,6 +160,11 @@ $detailStatusOptions = [
     Project::STATUS_DONE,
     Project::STATUS_SOMEDAY,
 ];
+$documentsUrl = '/omo/api/projects/documents.php?oid=' . rawurlencode((string)$organizationId)
+    . '&id=' . rawurlencode((string)$projectId);
+if ((int)($_GET['cid'] ?? 0) > 0) {
+    $documentsUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
+}
 ?>
 <div
     class="omo-project-detail"
@@ -191,6 +209,13 @@ $detailStatusOptions = [
         </nav>
     <?php endif; ?>
 
+    <div class="generic-tabs omo-project-detail__tabs" data-generic-tabs>
+        <div class="generic-tabs__list" aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.tabs.information')) ?>">
+            <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omo-project-detail-information-<?= (int)$project->getId() ?>"><?= omoApiEscape(omoProjectsT('projects.detail.tabs.information')) ?></button>
+            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-project-detail-documents-<?= (int)$project->getId() ?>" data-omo-project-detail-documents-tab><?= omoApiEscape(omoProjectsT('projects.detail.tabs.documents')) ?></button>
+        </div>
+        <div class="generic-tabs__panels">
+            <div id="omo-project-detail-information-<?= (int)$project->getId() ?>" class="generic-tabs__panel omo-project-detail__tab-panel" data-generic-tab-panel>
     <section class="generic-section omo-project-detail__section">
         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoProjectsT('projects.detail.description')) ?></h3>
         <?php if ($description !== ''): ?>
@@ -260,6 +285,9 @@ $detailStatusOptions = [
                                 <?php foreach ($detailStatusOptions as $statusOption): ?>
                                     <option value="<?= omoApiEscape($statusOption) ?>"<?= $statusOption === $subprojectStatus ? ' selected' : '' ?>><?= omoApiEscape(omoProjectsStatusLabel($statusOption)) ?></option>
                                 <?php endforeach; ?>
+                                <option disabled>──────────</option>
+                                <option value="__archive__"><?= omoApiEscape(omoProjectsT('projects.detail.task.archive')) ?></option>
+                                <option value="__delete__"><?= omoApiEscape(omoProjectsT('projects.detail.task.delete')) ?></option>
                             </select>
                         <?php endif; ?>
                     </article>
@@ -267,6 +295,17 @@ $detailStatusOptions = [
                 </div>
             <?php else: ?>
                 <p class="omo-project-detail__muted"><?= omoApiEscape(omoProjectsT('projects.detail.subprojects_empty')) ?></p>
+            <?php endif; ?>
+            <?php if ($archivedSubprojectCount > 0): ?>
+                <a
+                    href="#"
+                    class="omo-project-detail__archives-link"
+                    data-omo-project-detail-archives-link
+                    data-omo-project-detail-archives-url="<?= omoApiEscape($archivedProjectsUrl) ?>"
+                >
+                    <span><?= omoApiEscape(omoProjectsT('projects.detail.archives.link')) ?></span>
+                    <span class="omo-project-detail__archives-count"><?= (int)$archivedSubprojectCount ?></span>
+                </a>
             <?php endif; ?>
         </section>
     <?php endif; ?>
@@ -300,5 +339,10 @@ $detailStatusOptions = [
             <p class="omo-project-detail__value"><?= omoApiEscape($parent instanceof Project ? (string)$parent->get('title') : omoProjectsT('projects.detail.none')) ?></p>
             <p class="omo-project-detail__created"><?= omoApiEscape(omoProjectsT('projects.detail.created')) ?> <?= omoApiEscape(omoProjectsFormatDate($createdAt)) ?></p>
         </section>
+    </div>
+            </div>
+            <div id="omo-project-detail-documents-<?= (int)$project->getId() ?>" class="generic-tabs__panel omo-project-detail__tab-panel" data-generic-tab-panel data-omo-project-detail-documents-panel data-omo-project-detail-documents-url="<?= omoApiEscape($documentsUrl) ?>" data-omo-project-detail-documents-loaded="0" hidden>
+            </div>
+        </div>
     </div>
 </div>

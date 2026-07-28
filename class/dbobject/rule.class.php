@@ -17,7 +17,7 @@ class Rule extends DbObject
         return [
             [['title', 'intention', 'description', 'review_date', 'expiration_date'], 'required'],
             [['id'], 'integer'],
-            [['IDauthority', 'IDholon'], 'fk'],
+            [['IDauthority', 'IDholon', 'IDuser_creation', 'IDuser_modification'], 'fk'],
             [['title', 'scope'], 'string'],
             [['intention', 'description'], 'html'],
             [['review_date', 'expiration_date'], 'date'],
@@ -40,6 +40,8 @@ class Rule extends DbObject
             'expiration_date' => 'Date d echeance',
             'created_at' => 'Date de creation',
             'updated_at' => 'Date de modification',
+            'IDuser_creation' => 'Creee par',
+            'IDuser_modification' => 'Modifiee par',
         ];
     }
 
@@ -137,10 +139,19 @@ class Rule extends DbObject
         $this->set('expiration_date', $expirationDate->format('Y-m-d'));
 
         $now = new \DateTime();
-        if ((int)$this->getId() <= 0 && !($this->get('created_at') instanceof \DateTimeInterface)) {
-            $this->set('created_at', $now);
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0);
+        if ((int)$this->getId() <= 0) {
+            if (!($this->get('created_at') instanceof \DateTimeInterface)) {
+                $this->set('created_at', $now);
+            }
+            if ((int)$this->get('IDuser_creation') <= 0 && $currentUserId > 0) {
+                $this->set('IDuser_creation', $currentUserId);
+            }
         }
         $this->set('updated_at', $now);
+        if ($currentUserId > 0) {
+            $this->set('IDuser_modification', $currentUserId);
+        }
 
         return parent::save();
     }
@@ -166,6 +177,18 @@ class Rule extends DbObject
 
         $authority = $this->getAuthority();
         return $authority instanceof Authority ? $authority->getHolon() : null;
+    }
+
+    public function getCreatedByUser()
+    {
+        $user = new User();
+        return $user->load((int)$this->get('IDuser_creation')) ? $user : null;
+    }
+
+    public function getUpdatedByUser()
+    {
+        $user = new User();
+        return $user->load((int)$this->get('IDuser_modification')) ? $user : null;
     }
 
     public function canEdit()
