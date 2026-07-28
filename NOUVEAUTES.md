@@ -4,6 +4,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-28
 
+- Le seed Docker a ete regenere depuis la base locale actuelle apres reinitialisation. Il contient les donnees courantes et les 137 migrations enregistrees dans `sql_migration`, avec le nom actuel de la migration d heritage des admins.
+- L import d une organisation OMO1 peut maintenant etre cale sur un modele d organisation: chaque template structurel importe peut etre associe manuellement a son equivalent du modele, y compris lorsqu il est defini plus bas dans la holarchie. Les roles associes reprennent alors ses droits et sa definition, tout en conservant leur nom importe lorsque le nom du template cible n est pas verrouille; les proprietes suivent l ordre du template cible, y compris dans la leftbar, et les alias RDE et Raison d etre sont reconnus comme une meme propriete. Les templates non associes restent importes tels quels. Lorsqu une propriete aurait besoin d une conversion ambigue, son format source est conserve pour ne pas perdre les donnees existantes.
 - Dans l editeur de templates de holons, l entete des droits et les onglets Membres et Admins restent visibles en haut de la zone de defilement de la liste des permissions.
 - Les droits sont maintenant classes par themes dans les editeurs de templates et de holons. Les titres de groupes restent visibles pendant le defilement de chaque liste.
 - Les bornes minimum et maximum d admins des templates peuvent maintenant rester vides pour heriter de leur ancetre. Un verrou pose sur une borne est applique a toute la descendance.
