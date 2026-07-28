@@ -81,97 +81,128 @@ class Permission extends DbObject
                 'title' => 'Ajouter un membre',
                 'description' => 'Autorise l ajout d un membre dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'members',
             ],
             'CAN_ADD_ADMIN' => [
                 'title' => 'Definir un admin de contexte',
                 'description' => 'Autorise l attribution ou le retrait du statut admin dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'members',
             ],
             'CAN_CREATE_DOCUMENT' => [
                 'title' => 'Creer des fichiers',
                 'description' => 'Autorise la creation de fichiers dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'content',
             ],
             'CAN_CREATE_DECISION' => [
                 'title' => 'Creer des prises de decision',
                 'description' => 'Autorise la creation de prises de decision dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'content',
             ],
             'CAN_CREATE_EVENT' => [
                 'title' => 'Creer des dates',
                 'description' => 'Autorise la creation de dates dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'content',
             ],
             'CAN_DELETE_EVENT' => [
                 'title' => 'Supprimer des dates',
                 'description' => 'Autorise la suppression de dates dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'content',
             ],
             'CAN_CLAIM_PV' => [
                 'title' => 'Devenir secretaire de PV',
                 'description' => 'Autorise a prendre le role de secretaire pendant une reunion associee a un PV.',
                 'iscontextual' => true,
+                'group' => 'content',
             ],
             'CAN_CREATE_FAQ' => [
                 'title' => 'Creer des FAQ',
                 'description' => 'Autorise la creation de FAQ dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'content',
             ],
             'CAN_CREATE_PROJECT' => [
                 'title' => 'Creer des projets',
                 'description' => 'Autorise la creation de projets dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'steering',
             ],
             'CAN_CREATE_INDICATOR' => [
                 'title' => 'Creer des indicateurs',
                 'description' => 'Autorise la creation d indicateurs dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'steering',
             ],
             'CAN_EDIT_TEMPLATE_PROPERTIES' => [
                 'title' => 'Modifier les proprietes de templates',
                 'description' => 'Autorise la modification des proprietes definies par les templates dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'properties',
             ],
             'CAN_ADD_TEMPLATE_PROPERTIES' => [
                 'title' => 'Ajouter des proprietes de templates',
                 'description' => 'Autorise l ajout de proprietes definies par les templates dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'properties',
             ],
             'CAN_DELETE_TEMPLATE_PROPERTIES' => [
                 'title' => 'Supprimer les proprietes de templates',
                 'description' => 'Autorise le retrait des proprietes definies par les templates dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'properties',
             ],
             'CAN_EDIT_HOLON_PROPERTIES' => [
                 'title' => 'Modifier les proprietes de holons',
                 'description' => 'Autorise la modification des proprietes ajoutees directement a un holon dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'properties',
             ],
             'CAN_ADD_HOLON_PROPERTIES' => [
                 'title' => 'Ajouter des proprietes de holons',
                 'description' => 'Autorise l ajout de proprietes directement sur un holon dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'properties',
             ],
             'CAN_DELETE_HOLON_PROPERTIES' => [
                 'title' => 'Supprimer les proprietes de holons',
                 'description' => 'Autorise le retrait des proprietes ajoutees directement a un holon dans le contexte cible.',
                 'iscontextual' => true,
+                'group' => 'properties',
             ],
             'CAN_ADD_APP' => [
                 'title' => 'Gerer les applications',
                 'description' => 'Autorise la gestion des applications actives et de leur ordre dans l organisation.',
                 'iscontextual' => false,
+                'group' => 'organization',
             ],
             'CAN_CREATE_PARCOURS' => [
                 'title' => 'Creer des parcours',
                 'description' => 'Autorise la creation, l import, la suppression et le detachement de parcours dans le contexte cible.',
                 'iscontextual' => false,
+                'group' => 'steering',
             ],
             'CAN_EDIT_PARCOURS' => [
                 'title' => 'Editer des parcours',
                 'description' => 'Autorise la modification du contenu des parcours proprietaires et de leurs missions dans le contexte cible.',
                 'iscontextual' => false,
+                'group' => 'steering',
             ],
+        ];
+    }
+
+    public static function getEditorGroupCatalog()
+    {
+        return [
+            'members' => ['title' => 'Membres et roles', 'order' => 10],
+            'content' => ['title' => 'Contenus et reunions', 'order' => 20],
+            'steering' => ['title' => 'Pilotage', 'order' => 30],
+            'properties' => ['title' => 'Proprietes', 'order' => 40],
+            'organization' => ['title' => 'Organisation', 'order' => 50],
+            'other' => ['title' => 'Autres droits', 'order' => 999],
         ];
     }
 
@@ -300,18 +331,41 @@ class Permission extends DbObject
             ],
         ]);
 
+        $groups = self::getEditorGroupCatalog();
         $catalog = [];
         foreach ($permissions as $permission) {
             $permissionKey = (string)$permission->get('permission_key');
+            $definition = self::getBuiltInDefinition($permissionKey);
+            $groupKey = trim((string)($definition['group'] ?? 'other'));
+            if (!isset($groups[$groupKey])) {
+                $groupKey = 'other';
+            }
             $catalog[] = [
                 'id' => (int)$permission->getId(),
                 'key' => $permissionKey,
                 'title' => (string)$permission->get('title'),
                 'description' => (string)$permission->get('description'),
+                'group' => $groupKey,
+                'groupTitle' => (string)$groups[$groupKey]['title'],
+                'groupOrder' => (int)$groups[$groupKey]['order'],
                 'isContextual' => $permission->isContextual(),
                 'rangeOptions' => \dbObject\HolonPermission::getEditorRangeCatalogForPermission($permissionKey, $permission->isContextual()),
             ];
         }
+
+        usort($catalog, static function ($left, $right) {
+            $groupOrderComparison = ((int)$left['groupOrder']) <=> ((int)$right['groupOrder']);
+            if ($groupOrderComparison !== 0) {
+                return $groupOrderComparison;
+            }
+
+            $titleComparison = strcasecmp((string)$left['title'], (string)$right['title']);
+            if ($titleComparison !== 0) {
+                return $titleComparison;
+            }
+
+            return strcasecmp((string)$left['key'], (string)$right['key']);
+        });
 
         return $catalog;
     }

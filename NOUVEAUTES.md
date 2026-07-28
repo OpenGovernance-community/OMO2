@@ -2,8 +2,24 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-28
+
+- Dans l editeur de templates de holons, l entete des droits et les onglets Membres et Admins restent visibles en haut de la zone de defilement de la liste des permissions.
+- Les droits sont maintenant classes par themes dans les editeurs de templates et de holons. Les titres de groupes restent visibles pendant le defilement de chaque liste.
+- Les bornes minimum et maximum d admins des templates peuvent maintenant rester vides pour heriter de leur ancetre. Un verrou pose sur une borne est applique a toute la descendance.
+- Les checkbox et boutons radio des champs de l editeur de templates ne recoivent plus le style reserve aux champs texte, afin de conserver une taille normale.
+
 ## 2026-07-27
 
+- Correction du chargement des traductions du panneau Lexique afin de respecter la signature du chargeur de bundles OMO.
+- Un lexique propre a chaque organisation permet maintenant de personnaliser les termes Tension et Admin. Il est editable depuis une nouvelle carte des parametres; le menu de profil conserve le libelle fixe Admin d organisation.
+- La popup d ajout d une personne a un holon permet maintenant de la definir comme admin. Le droit est applique immediatement pour un membre actif ou memorise dans l invitation jusqu a sa validation.
+- Les permissions des holons peuvent maintenant etre definies separement pour les membres et les admins. Un membre admin cumule les droits generaux et les droits admin de son contexte, tandis qu un membre normal ne recoit que les droits generaux.
+- Les templates de holons peuvent maintenant definir un nombre minimum et maximum d admins, chacun verrouillable ou redefinissable par une instance. Le minimum est requis avant l ajout d un membre normal; le dernier admin peut toutefois etre retire lorsque le role devient vide.
+- Les admins directs du holon courant sont maintenant places en tete de sa liste de membres et leur vignette est mise en evidence, sans confondre les admins d un role enfant ou de l organisation.
+- Un template de role peut maintenant etre marque Admin parent: les admins de ses instances, y compris les roles templates specialises, deviennent aussi admins du cercle parent, pour les droits et la liste de membres.
+- Le terme Admin du lexique est maintenant repris dans la liste des membres et les ecrans de configuration des holons.
+- TEAM reprend aussi ce terme dans les badges, les actions et les confirmations lies au statut de membre admin.
 - L editeur de holon permet maintenant d ajouter, modifier et retirer des proprietes locales, avec nom, format, type de liste et valeur. Ces actions utilisent les droits de proprietes de holon et restent distinctes des proprietes heritees du template.
 - La fenetre Inserer un lien de Summernote adopte maintenant le theme sombre, y compris ses champs et ses actions espacees du bord, afin de conserver un contraste lisible.
 - Les droits distinguent maintenant les proprietes definies par un template de celles ajoutees directement sur un holon: ajout, modification et retrait disposent chacun de leur droit contextuel.

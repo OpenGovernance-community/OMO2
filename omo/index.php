@@ -1507,6 +1507,7 @@ window.omoConfig = <?=
             'host' => $organizationContext['host'],
             'routeMode' => $organizationContext['routeMode'] ?? 'host',
             'translationLocale' => omoGetTranslationLocale(),
+            'lexicon' => $organizationContext['lexicon'] ?? \dbObject\Organization::getDefaultLexicon(),
             'rootHolonId' => $organizationRootHolonId,
             'structureEnabled' => $isStructureApplicationEnabled,
             'orgLookupError' => $organizationContext['error'],

@@ -12,6 +12,7 @@ if (!function_exists('commonBuildOmoPublicOrganizationContext')) {
                 'logo' => '',
                 'banner' => '',
                 'color' => '',
+                'lexicon' => \dbObject\Organization::getDefaultLexicon(),
                 'host' => commonGetRequestHost(),
             ];
         }
@@ -24,6 +25,7 @@ if (!function_exists('commonBuildOmoPublicOrganizationContext')) {
             'logo' => (string)$organization->get('logo'),
             'banner' => (string)$organization->get('banner'),
             'color' => trim((string)$organization->get('color')),
+            'lexicon' => $organization->getLexicon(),
             'datecreation' => $organization->get('datecreation') instanceof \DateTimeInterface
                 ? $organization->get('datecreation')->format('Y-m-d')
                 : '',

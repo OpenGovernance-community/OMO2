@@ -65,9 +65,15 @@ function omoExportEncodePermissionsForCsv(array $permissionRows)
         }
 
         $range = trim((string)($row['range'] ?? ''));
+        $memberType = trim((string)($row['memberType'] ?? 'member'));
+        if ($memberType === '') {
+            $memberType = 'member';
+        }
+
+        $permissionValue = $memberType . ':' . $permissionKey;
         $items[] = $range !== ''
-            ? ($permissionKey . '@' . $range)
-            : $permissionKey;
+            ? ($permissionValue . '@' . $range)
+            : $permissionValue;
     }
 
     return implode('|', $items);
@@ -334,6 +340,13 @@ function omoExportAppendXmlHolonNode(DOMDocument $document, DOMElement $parent, 
             'lockedBanner',
             'unique',
             'link',
+            'adminParent',
+            'adminMin',
+            'adminMax',
+            'lockedAdminMin',
+            'lockedAdminMax',
+            'adminMinOverride',
+            'adminMaxOverride',
             'color',
             'icon',
             'banner',
@@ -372,7 +385,7 @@ function omoExportAppendXmlHolonNode(DOMDocument $document, DOMElement $parent, 
                 $document,
                 $permissionNode,
                 $permissionRow,
-                array('permissionKey', 'range')
+                array('permissionKey', 'range', 'memberType')
             );
             $permissionsNode->appendChild($permissionNode);
         }

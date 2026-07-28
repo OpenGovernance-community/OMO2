@@ -153,6 +153,68 @@
 			$this->set('parameters', $parameters);
 		}
 
+		public static function getDefaultLexicon(): array
+		{
+			return array(
+				'tension' => array(
+					'label' => 'Tension',
+					'article' => 'une',
+				),
+				'admin' => array(
+					'label' => 'Admin',
+				),
+			);
+		}
+
+		public static function normalizeLexicon(array $lexicon): array
+		{
+			$defaults = self::getDefaultLexicon();
+			$normalized = $defaults;
+
+			foreach ($defaults as $key => $defaultTerm) {
+				$value = $lexicon[$key] ?? array();
+				if (is_string($value)) {
+					$value = array('label' => $value);
+				}
+				if (!is_array($value)) {
+					$value = array();
+				}
+
+				$label = trim((string)($value['label'] ?? ''));
+				if ($label !== '') {
+					$normalized[$key]['label'] = function_exists('mb_substr')
+						? mb_substr($label, 0, 80, 'UTF-8')
+						: substr($label, 0, 80);
+				}
+
+				if (array_key_exists('article', $defaultTerm)) {
+					$article = trim((string)($value['article'] ?? ''));
+					if ($article !== '') {
+						$normalized[$key]['article'] = function_exists('mb_substr')
+							? mb_substr($article, 0, 20, 'UTF-8')
+							: substr($article, 0, 20);
+					}
+				}
+			}
+
+			return $normalized;
+		}
+
+		public function getLexicon(): array
+		{
+			$parameters = $this->getParametersArray();
+			$lexicon = $parameters['lexicon'] ?? array();
+
+			return self::normalizeLexicon(is_array($lexicon) ? $lexicon : array());
+		}
+
+		public function setLexicon(array $lexicon): void
+		{
+			$parameters = $this->getParametersArray();
+			$parameters['lexicon'] = self::normalizeLexicon($lexicon);
+			$this->setParametersArray($parameters);
+		}
+
 		public function getApplicationLinkByDirectory(string $directory, bool $activeOnly = false): ?\dbObject\OrganizationApplication
 		{
 			$organizationId = (int)$this->getId();
@@ -2253,6 +2315,15 @@
 			$targetHolon->set('lockedbanner', !empty($record['lockedBanner']));
 			$targetHolon->set('unique', !empty($record['unique']));
 			$targetHolon->set('link', !empty($record['link']));
+			$targetHolon->set('adminparent', !empty($record['adminParent']) && (int)$targetHolon->get('IDtypeholon') === 1);
+			$targetHolon->set('admin_min', max(0, (int)($record['adminMin'] ?? 0)));
+			$targetHolon->set('admin_max', array_key_exists('adminMax', $record) && trim((string)$record['adminMax']) !== ''
+				? max(0, (int)$record['adminMax'])
+				: null);
+			$targetHolon->set('lockedadminmin', !empty($record['lockedAdminMin']));
+			$targetHolon->set('lockedadminmax', !empty($record['lockedAdminMax']));
+			$targetHolon->set('adminminoverride', !empty($record['adminMinOverride']));
+			$targetHolon->set('adminmaxoverride', !empty($record['adminMaxOverride']));
 			$targetHolon->set('color', trim((string)($record['color'] ?? '')) !== '' ? $record['color'] : null);
 			$targetHolon->set('icon', trim((string)($record['icon'] ?? '')) !== '' ? $record['icon'] : null);
 			$targetHolon->set('banner', trim((string)($record['banner'] ?? '')) !== '' ? $record['banner'] : null);
@@ -2325,7 +2396,10 @@
 			}
 
 			$rows = $record['permissions'] ?? array();
-			$assignmentsByPermissionKey = array();
+			$assignmentsByPermissionKey = array(
+				\dbObject\HolonPermission::MEMBER_TYPE_MEMBER => array(),
+				\dbObject\HolonPermission::MEMBER_TYPE_ADMIN => array(),
+			);
 
 			if (is_array($rows)) {
 				foreach ($rows as $row) {
@@ -2335,15 +2409,16 @@
 
 					$permissionKey = trim((string)($row['permissionKey'] ?? ''));
 					$range = trim((string)($row['range'] ?? ''));
+					$memberType = \dbObject\HolonPermission::normalizeMemberType($row['memberType'] ?? \dbObject\HolonPermission::MEMBER_TYPE_MEMBER);
 					if ($permissionKey === '' || $range === '') {
 						continue;
 					}
 
-					if (!isset($assignmentsByPermissionKey[$permissionKey])) {
-						$assignmentsByPermissionKey[$permissionKey] = array();
+					if (!isset($assignmentsByPermissionKey[$memberType][$permissionKey])) {
+						$assignmentsByPermissionKey[$memberType][$permissionKey] = array();
 					}
 
-					$assignmentsByPermissionKey[$permissionKey][] = $range;
+					$assignmentsByPermissionKey[$memberType][$permissionKey][] = $range;
 				}
 			}
 
@@ -3652,6 +3727,12 @@
 				$targetChild->set('lockedbanner', (bool)$sourceChild->get('lockedbanner'));
 				$targetChild->set('unique', (bool)$sourceChild->get('unique'));
 				$targetChild->set('link', (bool)$sourceChild->get('link'));
+				$targetChild->set('admin_min', max(0, (int)$sourceChild->get('admin_min')));
+				$targetChild->set('admin_max', $sourceChild->get('admin_max') === null ? null : (int)$sourceChild->get('admin_max'));
+				$targetChild->set('lockedadminmin', (bool)$sourceChild->get('lockedadminmin'));
+				$targetChild->set('lockedadminmax', (bool)$sourceChild->get('lockedadminmax'));
+				$targetChild->set('adminminoverride', (bool)$sourceChild->get('adminminoverride'));
+				$targetChild->set('adminmaxoverride', (bool)$sourceChild->get('adminmaxoverride'));
 				$targetChild->set('color', $sourceChild->get('color') ?: null);
 				$targetChild->set('icon', $sourceChild->get('icon') ?: null);
 				$targetChild->set('banner', $sourceChild->get('banner') ?: null);
@@ -4453,6 +4534,7 @@
 			$childrenByParent = array();
 			foreach ($templateCatalogSource as $template) {
 				$definitionHolonMeta = $resolveDefinitionHolonMeta((int)$template->get('IDholon_parent'));
+				$templateAdminBounds = $template->getEffectiveTemplateAdminBounds();
 
 				$data['templateCatalog'][] = array_merge(array(
 					'id' => (int)$template->getId(),
@@ -4465,6 +4547,11 @@
 					'lockedName' => (bool)$template->get('lockedname'),
 					'unique' => (bool)$template->get('unique'),
 					'link' => (bool)$template->get('link'),
+					'adminParent' => (bool)$template->get('adminparent'),
+					'adminMin' => $templateAdminBounds['min'],
+					'adminMax' => $templateAdminBounds['max'],
+					'lockedAdminMin' => !empty($templateAdminBounds['minLocked']),
+					'lockedAdminMax' => !empty($templateAdminBounds['maxLocked']),
 					'inheritsFromId' => (int)$template->get('IDholon_template'),
 					'definedInId' => (int)$definitionHolonMeta['id'],
 					'definedInName' => (string)$definitionHolonMeta['name'],
@@ -5502,6 +5589,7 @@
 					$definitionHolonName = $definitionHolon->getDisplayName();
 					$definitionHolonLabel = $definitionHolon->getTemplateLabel();
 				}
+				$templateAdminBounds = $template->getEffectiveTemplateAdminBounds();
 
 				$data['templateCatalog'][] = array_merge(array(
 					'id' => (int)$template->getId(),
@@ -5514,6 +5602,11 @@
 					'lockedName' => (bool)$template->get('lockedname'),
 					'unique' => (bool)$template->get('unique'),
 					'link' => (bool)$template->get('link'),
+					'adminParent' => (bool)$template->get('adminparent'),
+					'adminMin' => $templateAdminBounds['min'],
+					'adminMax' => $templateAdminBounds['max'],
+					'lockedAdminMin' => !empty($templateAdminBounds['minLocked']),
+					'lockedAdminMax' => !empty($templateAdminBounds['maxLocked']),
 					'definedInId' => (int)$template->get('IDholon_parent'),
 					'definedInName' => $definitionHolonName,
 					'definedInLabel' => $definitionHolonLabel,
@@ -5547,6 +5640,7 @@
 			$data['authorityParentCatalog'] = $this->getAuthorityParentEditorCatalog($contextHolon);
 
 			if ($editingHolon && $data['canEdit']) {
+				$editingAdminBounds = $editingHolon->getAdminMemberBounds();
 				$data['holon'] = array_merge(array(
 					'id' => (int)$editingHolon->getId(),
 					'name' => $editingHolon->getDisplayName(),
@@ -5561,6 +5655,13 @@
 					'nameLocked' => $isTemplateEditing ? (bool)$editingHolon->get('lockedname') : $editingHolon->isNameLockedByTemplate(),
 					'unique' => (bool)$editingHolon->get('unique'),
 					'link' => (bool)$editingHolon->get('link'),
+					'adminParent' => (bool)$editingHolon->get('adminparent'),
+					'adminMin' => $editingAdminBounds['min'],
+					'adminMax' => $editingAdminBounds['max'],
+					'lockedAdminMin' => $editingAdminBounds['minLocked'],
+					'lockedAdminMax' => $editingAdminBounds['maxLocked'],
+					'adminMinOverride' => $editingAdminBounds['minOverridden'],
+					'adminMaxOverride' => $editingAdminBounds['maxOverridden'],
 					'inheritedPermissions' => $this->buildHolonInheritedPermissionSnapshot($editingHolon),
 					'permissionAssignments' => \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$editingHolon->getId()),
 					'properties' => $isTemplateEditing
@@ -5781,7 +5882,10 @@
 
 		protected function buildHolonInheritedPermissionSnapshot(\dbObject\Holon $holon)
 		{
-			$collectedAssignments = array();
+			$collectedAssignments = array(
+				\dbObject\HolonPermission::MEMBER_TYPE_MEMBER => array(),
+				\dbObject\HolonPermission::MEMBER_TYPE_ADMIN => array(),
+			);
 			$visitedTemplateIds = array();
 			$currentTemplateId = (int)$holon->get('IDholon_template');
 			$guard = 0;
@@ -5797,23 +5901,26 @@
 					break;
 				}
 
-				foreach (\dbObject\HolonPermission::getAssignmentKeyMapForHolon($currentTemplateId) as $permissionKey => $ranges) {
-					$permissionKey = trim((string)$permissionKey);
-					if ($permissionKey === '') {
-						continue;
-					}
-
-					if (!isset($collectedAssignments[$permissionKey])) {
-						$collectedAssignments[$permissionKey] = array();
-					}
-
-					foreach ((array)$ranges as $range) {
-						$range = trim((string)$range);
-						if ($range === '') {
+				foreach (\dbObject\HolonPermission::getAssignmentKeyMapForHolon($currentTemplateId) as $memberType => $profileAssignments) {
+					$memberType = \dbObject\HolonPermission::normalizeMemberType($memberType);
+					foreach ((array)$profileAssignments as $permissionKey => $ranges) {
+						$permissionKey = trim((string)$permissionKey);
+						if ($permissionKey === '') {
 							continue;
 						}
 
-						$collectedAssignments[$permissionKey][$range] = $range;
+						if (!isset($collectedAssignments[$memberType][$permissionKey])) {
+							$collectedAssignments[$memberType][$permissionKey] = array();
+						}
+
+						foreach ((array)$ranges as $range) {
+							$range = trim((string)$range);
+							if ($range === '') {
+								continue;
+							}
+
+							$collectedAssignments[$memberType][$permissionKey][$range] = $range;
+						}
 					}
 				}
 
@@ -5821,11 +5928,15 @@
 				$guard++;
 			}
 
-			foreach ($collectedAssignments as $permissionKey => $ranges) {
-				$collectedAssignments[$permissionKey] = array_values($ranges);
+			$snapshot = array();
+			foreach ($collectedAssignments as $memberType => $profileAssignments) {
+				foreach ($profileAssignments as $permissionKey => $ranges) {
+					$collectedAssignments[$memberType][$permissionKey] = array_values($ranges);
+				}
+				$snapshot[$memberType] = $this->buildPermissionSnapshotFromAssignmentMap($collectedAssignments[$memberType]);
 			}
 
-			return $this->buildPermissionSnapshotFromAssignmentMap($collectedAssignments);
+			return $snapshot;
 		}
 
 		protected function buildHolonHistoryPermissionSnapshot(\dbObject\Holon $holon)
@@ -5836,7 +5947,19 @@
 			}
 
 			$assignments = \dbObject\HolonPermission::getAssignmentKeyMapForHolon($holonId);
-			return $this->buildPermissionSnapshotFromAssignmentMap($assignments);
+			$snapshot = array();
+			foreach ($assignments as $memberType => $profileAssignments) {
+				$profileSnapshot = $this->buildPermissionSnapshotFromAssignmentMap((array)$profileAssignments);
+				foreach ($profileSnapshot as $permissionKey => $permissionSnapshot) {
+					$historyKey = $memberType . ':' . $permissionKey;
+					$permissionSnapshot['memberType'] = $memberType;
+					$profileLabel = $memberType === \dbObject\HolonPermission::MEMBER_TYPE_ADMIN ? 'Admin' : 'Membre';
+					$permissionSnapshot['name'] = $profileLabel . ' - ' . (string)($permissionSnapshot['name'] ?? $permissionKey);
+					$snapshot[$historyKey] = $permissionSnapshot;
+				}
+			}
+
+			return $snapshot;
 		}
 
 		protected function buildHolonHistorySnapshot(\dbObject\Holon $holon, array $options = array())
@@ -5907,6 +6030,13 @@
 					'lockedBanner' => (bool)$holon->get('lockedbanner'),
 					'unique' => (bool)$holon->get('unique'),
 					'link' => (bool)$holon->get('link'),
+					'adminParent' => (bool)$holon->get('adminparent'),
+					'adminMin' => max(0, (int)$holon->get('admin_min')),
+					'adminMax' => $holon->get('admin_max') === null ? null : (int)$holon->get('admin_max'),
+					'lockedAdminMin' => (bool)$holon->get('lockedadminmin'),
+					'lockedAdminMax' => (bool)$holon->get('lockedadminmax'),
+					'adminMinOverride' => (bool)$holon->get('adminminoverride'),
+					'adminMaxOverride' => (bool)$holon->get('adminmaxoverride'),
 				),
 				'properties' => $properties,
 				'permissions' => !empty($options['includePermissions'])
@@ -6631,8 +6761,13 @@
 				'lockedName' => 'nom verrouille',
 				'lockedIcon' => 'icone verrouillee',
 				'lockedBanner' => 'banniere verrouillee',
+				'lockedAdminMin' => 'minimum d admins verrouille',
+				'lockedAdminMax' => 'maximum d admins verrouille',
+				'adminMinOverride' => 'minimum d admins redefini',
+				'adminMaxOverride' => 'maximum d admins redefini',
 				'unique' => 'unique',
 				'link' => 'lien',
+				'adminParent' => 'admin parent',
 			);
 			foreach ($templateBooleanFields as $field => $label) {
 				if ((bool)($beforeHolon[$field] ?? false) === (bool)($afterHolon[$field] ?? false)) {
@@ -6646,6 +6781,24 @@
 					'field' => $field,
 					'before' => (bool)($beforeHolon[$field] ?? false),
 					'after' => (bool)($afterHolon[$field] ?? false),
+				);
+			}
+
+			$templateIntegerFields = array(
+				'adminMin' => 'nombre minimum d admins',
+				'adminMax' => 'nombre maximum d admins',
+			);
+			foreach ($templateIntegerFields as $field => $label) {
+				if (($beforeHolon[$field] ?? null) === ($afterHolon[$field] ?? null)) {
+					continue;
+				}
+
+				$messages[] = 'le parametre "' . $label . '" a ete modifie';
+				$changes[] = array(
+					'type' => 'field_changed',
+					'field' => $field,
+					'before' => $beforeHolon[$field] ?? null,
+					'after' => $afterHolon[$field] ?? null,
 				);
 			}
 
@@ -7614,6 +7767,32 @@
 				}
 			}
 
+			$submittedAdminMin = max(0, (int)($payload['adminMin'] ?? 0));
+			$submittedAdminMaxValue = $payload['adminMax'] ?? null;
+			$submittedAdminMax = $submittedAdminMaxValue === null || trim((string)$submittedAdminMaxValue) === ''
+				? null
+				: max(0, (int)$submittedAdminMaxValue);
+			$lockedAdminMin = $isTemplateEditing ? !empty($payload['lockedAdminMin']) : false;
+			$lockedAdminMax = $isTemplateEditing ? !empty($payload['lockedAdminMax']) : false;
+			$adminMinOverride = false;
+			$adminMaxOverride = false;
+			$effectiveAdminMin = $submittedAdminMin;
+			$effectiveAdminMax = $submittedAdminMax;
+			if (!$isTemplateEditing && $template instanceof \dbObject\Holon) {
+				$templateAdminBounds = $template->getEffectiveTemplateAdminBounds();
+				$adminMinOverride = !empty($payload['adminMinOverride']) && empty($templateAdminBounds['minLocked']);
+				$adminMaxOverride = !empty($payload['adminMaxOverride']) && empty($templateAdminBounds['maxLocked']);
+				$effectiveAdminMin = $adminMinOverride ? $submittedAdminMin : (int)$templateAdminBounds['min'];
+				$effectiveAdminMax = $adminMaxOverride ? $submittedAdminMax : $templateAdminBounds['max'];
+			}
+
+			if ($effectiveAdminMax !== null && $effectiveAdminMax < $effectiveAdminMin) {
+				return array(
+					'status' => false,
+					'message' => 'Le nombre maximum d admins doit etre superieur ou egal au minimum.',
+				);
+			}
+
 			$submittedDirectDefinitions = array();
 			if (!$isTemplateEditing) {
 				$submittedDirectDefinitions = $this->getSubmittedDirectHolonPropertyDefinitions(
@@ -7676,6 +7855,18 @@
 			$holon->set('lockedbanner', $isTemplateEditing ? !empty($payload['lockedBanner']) : false);
 			$holon->set('unique', $isTemplateEditing ? !empty($payload['unique']) : false);
 			$holon->set('link', $isTemplateEditing ? !empty($payload['link']) : false);
+			$holon->set(
+				'adminparent',
+				$isTemplateEditing
+				&& $typeId === 1
+				&& (array_key_exists('adminParent', $payload) ? !empty($payload['adminParent']) : (bool)$holon->get('adminparent'))
+			);
+			$holon->set('admin_min', $isTemplateEditing || $adminMinOverride ? $submittedAdminMin : $effectiveAdminMin);
+			$holon->set('admin_max', $isTemplateEditing || $adminMaxOverride ? $submittedAdminMax : $effectiveAdminMax);
+			$holon->set('lockedadminmin', $lockedAdminMin);
+			$holon->set('lockedadminmax', $lockedAdminMax);
+			$holon->set('adminminoverride', $adminMinOverride);
+			$holon->set('adminmaxoverride', $adminMaxOverride);
 			$color = trim((string)($payload['color'] ?? ''));
 			$holon->set('color', $color !== '' ? $color : null);
 			$holon->set(
@@ -8106,6 +8297,40 @@
 				}
 			}
 
+			$adminMinValue = $payload['adminMin'] ?? null;
+			$adminMin = $adminMinValue === null || trim((string)$adminMinValue) === ''
+				? null
+				: max(0, (int)$adminMinValue);
+			$adminMaxValue = $payload['adminMax'] ?? null;
+			$adminMax = $adminMaxValue === null || trim((string)$adminMaxValue) === ''
+				? null
+				: max(0, (int)$adminMaxValue);
+			$inheritedAdminBounds = $inheritsTemplate
+				? $inheritsTemplate->getEffectiveTemplateAdminBounds()
+				: array('min' => 0, 'max' => null, 'minLocked' => false, 'maxLocked' => false);
+			$inheritedAdminMinimumLocked = !empty($inheritedAdminBounds['minLocked']);
+			$inheritedAdminMaximumLocked = !empty($inheritedAdminBounds['maxLocked']);
+			$lockedAdminMin = !$inheritedAdminMinimumLocked && !empty($payload['lockedAdminMin']);
+			$lockedAdminMax = !$inheritedAdminMaximumLocked && !empty($payload['lockedAdminMax']);
+			if ($inheritedAdminMinimumLocked) {
+				$adminMin = null;
+			}
+			if ($inheritedAdminMaximumLocked) {
+				$adminMax = null;
+			}
+			$effectiveAdminMin = $adminMin === null
+				? (int)$inheritedAdminBounds['min']
+				: $adminMin;
+			$effectiveAdminMax = $adminMax === null
+				? $inheritedAdminBounds['max']
+				: $adminMax;
+			if ($effectiveAdminMax !== null && $effectiveAdminMax < $effectiveAdminMin) {
+				return array(
+					'status' => false,
+					'message' => 'Le nombre maximum d admins doit etre superieur ou egal au minimum.',
+				);
+			}
+
 			$template->set('name', $templateName);
 			$template->set('templatename', $templateName);
 			$template->set('IDtypeholon', $typeId);
@@ -8123,6 +8348,13 @@
 			$template->set('lockedbanner', !empty($payload['lockedBanner']));
 			$template->set('unique', !empty($payload['unique']));
 			$template->set('link', !empty($payload['link']));
+			$template->set('adminparent', $typeId === 1 && !empty($payload['adminParent']));
+			$template->set('admin_min', $adminMin);
+			$template->set('admin_max', $adminMax);
+			$template->set('lockedadminmin', $lockedAdminMin);
+			$template->set('lockedadminmax', $lockedAdminMax);
+			$template->set('adminminoverride', false);
+			$template->set('adminmaxoverride', false);
 			$template->set('icon', $iconValue !== '' ? $iconValue : null);
 			$template->set('banner', $bannerValue !== '' ? $bannerValue : null);
 			$template->save();

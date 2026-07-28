@@ -256,6 +256,7 @@ function commonRenderTopbar(array $options = [])
             'iconUrl' => (string)($options['tension']['iconUrl'] ?? '/common/assets/icon-topbar-tension.png'),
             'appendCurrentRouteContext' => !empty($options['tension']['appendCurrentRouteContext']),
         ],
+        'lexicon' => is_array($options['lexicon'] ?? null) ? $options['lexicon'] : [],
         'profile' => [
             'enabled' => array_key_exists('enabled', $options['profile'] ?? []) ? !empty($options['profile']['enabled']) : true,
             'editLabel' => (string)($options['profile']['editLabel'] ?? 'Editer le profil'),
