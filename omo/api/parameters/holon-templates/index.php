@@ -58,6 +58,8 @@ if ($organizationId <= 0) {
     }
 }
 
+$showTemplateWelcome = !$isHolonDefinitionMode && $selectedTemplateId <= 0;
+
 $omoHolonTemplateTexts = [
     'mediaIconLabel' => omoHolonTemplateT('parameters.holon_templates.media.icon_label'),
     'mediaBannerLabel' => omoHolonTemplateT('parameters.holon_templates.media.banner_label'),
@@ -72,6 +74,8 @@ $omoHolonTemplateTexts = [
     'permissionNoneSelected' => omoHolonTemplateT('parameters.holon_templates.permission.none_selected'),
     'permissionRemoveRange' => omoHolonTemplateT('parameters.holon_templates.permission.remove_range'),
     'confirmInheritanceChange' => omoHolonTemplateT('parameters.holon_templates.confirm.inheritance_change'),
+    'adminMaxPlaceholder' => omoHolonTemplateT('parameters.holon_templates.field.admin_max_placeholder'),
+    'adminBoundInheritedPlaceholder' => omoHolonTemplateT('parameters.holon_templates.field.admin_bound_inherited_placeholder'),
     'summaryModelOne' => omoHolonTemplateT('parameters.holon_templates.summary.model_one'),
     'summaryModelOther' => omoHolonTemplateT('parameters.holon_templates.summary.model_other'),
     'summaryPropertyOne' => omoHolonTemplateT('parameters.holon_templates.summary.property_one'),
@@ -126,6 +130,9 @@ $omoHolonTemplateTexts = [
     'formDefinitionDescription' => omoHolonTemplateT('parameters.holon_templates.form.organization_description'),
     'formExistingModelDescription' => omoHolonTemplateT('parameters.holon_templates.form.existing_model_description'),
     'formNewModelDescriptionShort' => omoHolonTemplateT('parameters.holon_templates.form.new_model_description_short'),
+    'formWelcomeTitle' => omoHolonTemplateT('parameters.holon_templates.form.welcome_title'),
+    'formWelcomeDescription' => omoHolonTemplateT('parameters.holon_templates.form.welcome_description'),
+    'formWelcomeAction' => omoHolonTemplateT('parameters.holon_templates.form.welcome_action'),
     'saveErrorOrganization' => omoHolonTemplateT('parameters.holon_templates.error.save_organization'),
     'saveErrorModel' => omoHolonTemplateT('parameters.holon_templates.error.save_model'),
     'savedModel' => omoHolonTemplateT('parameters.holon_templates.status.saved_model'),
@@ -180,22 +187,31 @@ $omoHolonTemplateTexts = [
                 ></div>
 
                 <section class="omo-template-form-panel">
-                    <div class="omo-template-form-panel__header">
-                        <div>
-                            <div class="omo-template-editor__eyebrow"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.form.eyebrow'), ENT_QUOTES, 'UTF-8') ?></div>
-                            <h3 class="omo-template-form-panel__title" id="omo-template-form-title"><?= htmlspecialchars($isHolonDefinitionMode ? omoHolonTemplateT('parameters.holon_templates.form.organization') : omoHolonTemplateT('parameters.holon_templates.form.new_model'), ENT_QUOTES, 'UTF-8') ?></h3>
-                            <p class="omo-template-form-panel__description" id="omo-template-form-description">
-                                <?= $isHolonDefinitionMode
-                                    ? htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.form.organization_description'), ENT_QUOTES, 'UTF-8')
-                                    : htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.form.new_model_description'), ENT_QUOTES, 'UTF-8') ?>
-                            </p>
-                        </div>
-                        <div class="omo-template-form-panel__badges" id="omo-template-form-badges"></div>
-                    </div>
-
                     <div class="omo-template-editor__status" id="omo-template-status" hidden></div>
 
-                    <form id="omo-template-form" class="omo-template-form">
+                    <div class="omo-template-welcome" id="omo-template-welcome"<?= $showTemplateWelcome ? '' : ' hidden' ?>>
+                        <div class="generic-hero-panel accent omo-template-welcome__content">
+                            <h3 class="generic-card-title generic-card-title--section"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.form.welcome_title'), ENT_QUOTES, 'UTF-8') ?></h3>
+                            <p><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.form.welcome_description'), ENT_QUOTES, 'UTF-8') ?></p>
+                            <button type="button" class="omo-button omo-button--primary" data-template-action="new-root"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.form.welcome_action'), ENT_QUOTES, 'UTF-8') ?></button>
+                        </div>
+                    </div>
+
+                    <div id="omo-template-form-content"<?= $showTemplateWelcome ? ' hidden' : '' ?>>
+                        <div class="omo-template-form-panel__header">
+                            <div>
+                                <div class="omo-template-editor__eyebrow"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.form.eyebrow'), ENT_QUOTES, 'UTF-8') ?></div>
+                                <h3 class="omo-template-form-panel__title" id="omo-template-form-title"><?= htmlspecialchars($isHolonDefinitionMode ? omoHolonTemplateT('parameters.holon_templates.form.organization') : omoHolonTemplateT('parameters.holon_templates.form.new_model'), ENT_QUOTES, 'UTF-8') ?></h3>
+                                <p class="omo-template-form-panel__description" id="omo-template-form-description">
+                                    <?= $isHolonDefinitionMode
+                                        ? htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.form.organization_description'), ENT_QUOTES, 'UTF-8')
+                                        : htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.form.new_model_description'), ENT_QUOTES, 'UTF-8') ?>
+                                </p>
+                            </div>
+                            <div class="omo-template-form-panel__badges" id="omo-template-form-badges"></div>
+                        </div>
+
+                        <form id="omo-template-form" class="omo-template-form">
                         <section class="omo-template-section">
                             <div class="omo-template-section__title"><?= htmlspecialchars($isHolonDefinitionMode ? omoHolonTemplateT('parameters.holon_templates.section.holon') : omoHolonTemplateT('parameters.holon_templates.section.structure'), ENT_QUOTES, 'UTF-8') ?></div>
 
@@ -254,7 +270,7 @@ $omoHolonTemplateTexts = [
                                     <div class="omo-template-admin-bounds__fields">
                                         <div class="omo-field">
                                             <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.admin_min', ['adminLabel' => $adminLabelLower]), ENT_QUOTES, 'UTF-8') ?></span>
-                                            <input type="number" id="omo-template-admin-min" min="0" step="1">
+                                            <input type="number" id="omo-template-admin-min" min="0" step="1" placeholder="0">
                                             <label class="omo-template-admin-bounds__lock">
                                                 <input type="checkbox" id="omo-template-locked-admin-min">
                                                 <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.lock_admin_min'), ENT_QUOTES, 'UTF-8') ?></span>
@@ -420,7 +436,8 @@ $omoHolonTemplateTexts = [
                             <?php endif; ?>
                             <button type="submit" class="omo-button omo-button--primary"><?= htmlspecialchars($isHolonDefinitionMode ? omoHolonTemplateT('parameters.holon_templates.action.save_organization') : omoHolonTemplateT('parameters.holon_templates.action.save_model'), ENT_QUOTES, 'UTF-8') ?></button>
                         </div>
-                    </form>
+                        </form>
+                    </div>
                 </section>
             </div>
         <?php endif; ?>
@@ -623,6 +640,8 @@ const omoHolonTemplateElements = {
     properties: omoHolonTemplateRoot.querySelector('#omo-template-properties'),
     permissionsTabs: omoHolonTemplateRoot.querySelector('#omo-template-permissions-tabs'),
     permissions: omoHolonTemplateRoot.querySelector('#omo-template-permissions'),
+    welcome: omoHolonTemplateRoot.querySelector('#omo-template-welcome'),
+    formContent: omoHolonTemplateRoot.querySelector('#omo-template-form-content'),
     selectionHint: omoHolonTemplateRoot.querySelector('#omo-template-selection-hint'),
     cancel: omoHolonTemplateRoot.querySelector('#omo-template-cancel'),
     deleteButton: omoHolonTemplateRoot.querySelector('#omo-template-delete'),
@@ -799,7 +818,7 @@ function omoHolonTemplateBootstrapInitialRender() {
     ) {
         omoHolonTemplateSelect(Number(omoHolonTemplateState.data.templates[0].id || 0));
     } else {
-        omoHolonTemplateFillForm(omoHolonTemplateBuildDraft(0));
+        omoHolonTemplateShowWelcome();
     }
 }
 
@@ -887,20 +906,46 @@ function omoHolonTemplateReadAdminLock(input) {
         : Boolean(input.checked);
 }
 
+function omoHolonTemplateFormatAdminBoundPlaceholder(value, isMaximum, isInherited) {
+    const isUnlimited = isMaximum && (value === null || value === undefined || String(value).trim() === '');
+    const formattedValue = isUnlimited
+        ? (omoHolonTemplateTexts.adminMaxPlaceholder || 'sans limite')
+        : String(Math.max(0, Number(value) || 0));
+
+    if (!isInherited) {
+        return formattedValue;
+    }
+
+    return String(omoHolonTemplateTexts.adminBoundInheritedPlaceholder || 'Hérité ({value})')
+        .replace('{value}', formattedValue);
+}
+
 function omoHolonTemplateSyncAdminBounds(template) {
     const inheritedMinimumLocked = Boolean(template && template.inheritedLockedAdminMin);
     const inheritedMaximumLocked = Boolean(template && template.inheritedLockedAdminMax);
+    const parentTemplate = template ? omoHolonTemplateFind(template.inheritsFromId) : null;
+    const hasInheritedBounds = Boolean(parentTemplate);
 
     if (omoHolonTemplateElements.adminMin) {
         omoHolonTemplateElements.adminMin.value = template && template.adminMin !== null && template.adminMin !== undefined && String(template.adminMin).trim() !== ''
             ? String(Math.max(0, Number(template.adminMin) || 0))
             : '';
+        omoHolonTemplateElements.adminMin.placeholder = omoHolonTemplateFormatAdminBoundPlaceholder(
+            template ? template.inheritedAdminMin : 0,
+            false,
+            hasInheritedBounds
+        );
         omoHolonTemplateElements.adminMin.disabled = inheritedMinimumLocked;
     }
     if (omoHolonTemplateElements.adminMax) {
         omoHolonTemplateElements.adminMax.value = template && template.adminMax !== null && template.adminMax !== undefined && String(template.adminMax).trim() !== ''
             ? String(Math.max(0, Number(template.adminMax) || 0))
             : '';
+        omoHolonTemplateElements.adminMax.placeholder = omoHolonTemplateFormatAdminBoundPlaceholder(
+            template ? template.inheritedAdminMax : null,
+            true,
+            hasInheritedBounds
+        );
         omoHolonTemplateElements.adminMax.disabled = inheritedMaximumLocked;
     }
     if (omoHolonTemplateElements.lockedAdminMin) {
@@ -2994,7 +3039,32 @@ function omoHolonTemplateRenderFormBadges(template) {
     omoHolonTemplateElements.formBadges.innerHTML = badges.join('');
 }
 
+function omoHolonTemplateShowWelcome() {
+    if (omoHolonTemplateIsHolonDefinitionMode()) {
+        return;
+    }
+
+    omoHolonTemplateState.selectedId = null;
+    if (omoHolonTemplateElements.welcome) {
+        omoHolonTemplateElements.welcome.hidden = false;
+    }
+    if (omoHolonTemplateElements.formContent) {
+        omoHolonTemplateElements.formContent.hidden = true;
+    }
+    omoHolonTemplateRenderTree();
+}
+
+function omoHolonTemplateShowForm() {
+    if (omoHolonTemplateElements.welcome) {
+        omoHolonTemplateElements.welcome.hidden = true;
+    }
+    if (omoHolonTemplateElements.formContent) {
+        omoHolonTemplateElements.formContent.hidden = false;
+    }
+}
+
 function omoHolonTemplateFillForm(template, options) {
+    omoHolonTemplateShowForm();
     const current = template || omoHolonTemplateBuildDraft();
     const settings = options && typeof options === 'object' ? options : {};
     const isExisting = Number(current.id || 0) > 0;
@@ -3150,9 +3220,7 @@ function omoHolonTemplateDelete() {
             }
 
             omoHolonTemplateState.data = result.data.data || omoHolonTemplateState.data;
-            omoHolonTemplateState.selectedId = null;
-            omoHolonTemplateRenderTree();
-            omoHolonTemplateFillForm(omoHolonTemplateBuildDraft());
+            omoHolonTemplateShowWelcome();
             omoHolonTemplateShowStatus(result.data.message || (omoHolonTemplateTexts.deletedModel || ''), 'success');
 
             if (omoHolonTemplateState.compactMode) {
@@ -4725,6 +4793,35 @@ Promise.all([
 .omo-template-form__hint {
     color: var(--color-text-light);
     font-size: 0.9rem;
+}
+
+.omo-template-welcome {
+    display: grid;
+    min-height: 280px;
+    place-items: center;
+    padding: 24px;
+}
+
+.omo-template-welcome[hidden],
+#omo-template-form-content[hidden] {
+    display: none !important;
+}
+
+.omo-template-welcome__content {
+    display: grid;
+    gap: 14px;
+    max-width: 620px;
+    text-align: center;
+}
+
+.omo-template-welcome__content p {
+    margin: 0;
+    color: var(--color-text-light);
+    line-height: 1.5;
+}
+
+.omo-template-welcome__content .omo-button {
+    justify-self: center;
 }
 
 .omo-button {
