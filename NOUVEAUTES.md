@@ -2,6 +2,10 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-29
+
+- Le titre Applications de la leftbar conserve le meme positionnement et la meme transition que les entrees d applications lors du repli du menu.
+
 ## 2026-07-28
 
 - L editeur de templates de holons est maintenant global depuis la racine: il affiche toutes les declinaisons et heritages sans choix de contexte, la navigation ne recharge plus les parametres, et ses deux colonnes defilent independamment.
@@ -12,6 +16,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - L editeur de template ouvert depuis le panneau de contexte utilise maintenant toute la largeur disponible en mode compact.
 - Les verrous d icone et de banniere d un template restent des regles pour ses instances sans bloquer l edition des illustrations du template lui-meme.
 - Le seed Docker a ete regenere depuis la base locale actuelle apres reinitialisation. Il contient les donnees courantes et les 137 migrations enregistrees dans `sql_migration`, avec le nom actuel de la migration d heritage des admins.
+- Les applications actives d une organisation creee depuis un import OMO1 suivent maintenant les sections choisies: Structure reste active, puis Team, Documents, Projets, Checklist, Indicateurs et Calendrier sont actives seulement lorsque leurs donnees sont importees. Quand toutes les sections importables sont reprises, toutes les applications sont activees.
 - L import d une organisation OMO1 peut maintenant etre cale sur un modele d organisation: chaque template structurel importe peut etre associe manuellement a son equivalent du modele, y compris lorsqu il est defini plus bas dans la holarchie. Les roles associes reprennent alors ses droits et sa definition, tout en conservant leur nom importe lorsque le nom du template cible n est pas verrouille; les proprietes suivent l ordre du template cible, y compris dans la leftbar, et les alias RDE et Raison d etre sont reconnus comme une meme propriete. Les templates non associes restent importes tels quels. Lorsqu une propriete aurait besoin d une conversion ambigue, son format source est conserve pour ne pas perdre les donnees existantes.
 - Dans l editeur de templates de holons, l entete des droits et les onglets Membres et Admins restent visibles en haut de la zone de defilement de la liste des permissions.
 - Les droits sont maintenant classes par themes dans les editeurs de templates et de holons. Les titres de groupes restent visibles pendant le defilement de chaque liste.
@@ -1246,5 +1251,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Les bornes minimum et maximum d administrateurs indiquent maintenant clairement leur valeur heritee dans l editeur de modeles de holons.
 - L editeur de modeles de holons ouvre maintenant sur un ecran d accueil, au lieu d afficher directement un formulaire de nouveau modele.
 - L ecran d accueil de l editeur de modeles disparait correctement des l ouverture du formulaire de creation.
+- Les cartes de parametres sont maintenant visibles pour les admins sans activer leur mode admin; seul l editeur de modeles de holons demande encore cette activation explicite.
+- La carte Lexique utilise maintenant son icone de dictionnaire dediee.
 - Le detail d un projet affiche maintenant un lien texte vers ses sous-projets archives, avec leur nombre et une popup chargee a la demande.
 - Le lien des archives est maintenant presente dans une capsule grise avec le nombre dans un rond blanc.
