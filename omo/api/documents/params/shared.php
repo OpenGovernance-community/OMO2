@@ -98,9 +98,16 @@ if (!function_exists('omoDocumentsParamsCanManage')) {
             return false;
         }
 
-        return function_exists('commonUserHasAdminOverride')
-            ? commonUserHasAdminOverride($userId, $organizationId)
-            : false;
+        if (
+            function_exists('commonUserHasSiteAdminOverride')
+            && commonUserHasSiteAdminOverride($userId)
+        ) {
+            return true;
+        }
+
+        return $userId === (int)commonGetCurrentUserId()
+            && function_exists('commonCurrentUserCanUseAdminMode')
+            && commonCurrentUserCanUseAdminMode($organizationId);
     }
 }
 
