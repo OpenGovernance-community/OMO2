@@ -1242,5 +1242,9 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Les taches du detail Projet peuvent maintenant etre archivees ou supprimees depuis leur selecteur de statut, avec confirmation avant suppression.
 - L archivage ou la suppression d une tache retire maintenant directement sa ligne du detail Projet, sans recharger le drawer.
 - Les taches sans holon propre heritent maintenant des droits de gestion de leur projet parent pour le statut, l archivage et la suppression.
+- Les invitations peuvent a nouveau verifier les contraintes d administration d une organisation sans appeler une methode protegee du holon.
+- Les bornes minimum et maximum d administrateurs indiquent maintenant clairement leur valeur heritee dans l editeur de modeles de holons.
+- L editeur de modeles de holons ouvre maintenant sur un ecran d accueil, au lieu d afficher directement un formulaire de nouveau modele.
+- L ecran d accueil de l editeur de modeles disparait correctement des l ouverture du formulaire de creation.
 - Le detail d un projet affiche maintenant un lien texte vers ses sous-projets archives, avec leur nombre et une popup chargee a la demande.
 - Le lien des archives est maintenant presente dans une capsule grise avec le nombre dans un rond blanc.

@@ -1124,7 +1124,7 @@
 			return preg_replace('/[^a-z0-9]+/', ' ', $value);
 		}
 
-		protected function isOrganizationHolon()
+		public function isOrganizationHolon()
 		{
 			return (int)$this->get('IDtypeholon') === 4;
 		}
