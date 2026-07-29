@@ -53,10 +53,20 @@ if (!function_exists('omoProjectsParamsT')) {
 if (!function_exists('omoProjectsParamsCanManage')) {
     function omoProjectsParamsCanManage(int $organizationId, int $userId): bool
     {
-        return $organizationId > 0
-            && $userId > 0
-            && function_exists('commonUserHasAdminOverride')
-            && commonUserHasAdminOverride($userId, $organizationId);
+        if ($organizationId <= 0 || $userId <= 0) {
+            return false;
+        }
+
+        if (
+            function_exists('commonUserHasSiteAdminOverride')
+            && commonUserHasSiteAdminOverride($userId)
+        ) {
+            return true;
+        }
+
+        return $userId === (int)commonGetCurrentUserId()
+            && function_exists('commonCurrentUserCanUseAdminMode')
+            && commonCurrentUserCanUseAdminMode($organizationId);
     }
 }
 

@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/translation.php';
+require_once __DIR__ . '/access.php';
 
 use dbObject\Organization;
 
@@ -22,6 +23,16 @@ if (!$organization->load($organizationId)) {
     echo json_encode([
         'status' => 'error',
         'message' => omoHolonTemplateT('parameters.holon_templates.error.organization_not_found'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+$adminModeAccess = omoHolonTemplateAdminModeAccess($organizationId);
+if (empty($adminModeAccess['status'])) {
+    http_response_code(403);
+    echo json_encode([
+        'status' => 'error',
+        'message' => (string)($adminModeAccess['message'] ?? omoHolonTemplateT('parameters.holon_templates.error.admin_required')),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }

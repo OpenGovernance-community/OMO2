@@ -1385,7 +1385,10 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
 
-    <div class="sidebar-toggle" id="sidebar-toggle">☰</div>
+    <div class="sidebar-toggle" id="sidebar-toggle">
+        <span class="icon" aria-hidden="true">&#9776;</span>
+        <span class="label">Applications</span>
+    </div>
 
     <div class="menu" id="menu_sidebar">
         
