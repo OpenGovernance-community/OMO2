@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/translation.php';
+require_once __DIR__ . '/access.php';
 
 use dbObject\Organization;
 
@@ -25,6 +26,8 @@ if ($organizationId <= 0) {
     $errorMessage = omoHolonTemplateT('parameters.holon_templates.error.no_organization');
 } elseif (!$organization->load($organizationId)) {
     $errorMessage = omoHolonTemplateT('parameters.holon_templates.error.organization_not_found');
+} elseif (empty(($adminModeAccess = omoHolonTemplateAdminModeAccess($organizationId))['status'])) {
+    $errorMessage = (string)($adminModeAccess['message'] ?? omoHolonTemplateT('parameters.holon_templates.error.admin_required'));
 } elseif ($organization->getEnabledStructuralRootHolon() === null) {
     $errorMessage = omoHolonTemplateT('parameters.holon_templates.error.structure_required');
 } else {
@@ -3870,7 +3873,6 @@ Promise.all([
     align-content: start;
     gap: 14px;
     min-height: 0;
-    padding: 16px;
     background:
         radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 42%),
         linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 7%, var(--color-surface)) 0%, var(--color-surface) 140px);
@@ -3887,8 +3889,9 @@ Promise.all([
     z-index: 2;
     display: grid;
     gap: 10px;
-    padding-bottom: 2px;
+    padding: 10px;
     background: color-mix(in srgb, var(--color-surface) 94%, var(--color-surface-alt));
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--color-text) 8%, transparent);
 }
 
 .omo-template-editor__layout--compact .omo-template-sidebar {
@@ -3929,10 +3932,7 @@ Promise.all([
 .omo-template-tree-wrap {
     display: grid;
     gap: 10px;
-    padding: 14px;
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-surface) 88%, var(--color-surface-alt));
-    border: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
+    padding: 10px;
 }
 
 .omo-template-tree-wrap__title {
@@ -3959,7 +3959,7 @@ Promise.all([
 .omo-template-tree__list {
     list-style: none;
     margin: 0;
-    padding: 0 0 0 16px;
+    padding: 8px 0 0 16px;
     border-left: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
 }
 

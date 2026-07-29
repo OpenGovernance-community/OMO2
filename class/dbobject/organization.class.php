@@ -830,6 +830,104 @@
 			);
 		}
 
+		public function synchronizeOmo1ImportedApplicationLinks(array $selectedModules, array $sourceModules): array
+		{
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0) {
+				return array(
+					'status' => false,
+					'message' => 'Organisation invalide.',
+				);
+			}
+
+			$activeApplicationKeys = array(
+				'structure' => true,
+			);
+			$moduleApplicationMap = array(
+				'members' => array('team'),
+				'documents' => array('documents'),
+				'projects' => array('projects'),
+				'tasks' => array('projects'),
+				'checklists' => array('checklist'),
+				'indicators' => array('stats'),
+				'calendar' => array('calendar'),
+				'pv' => array('calendar'),
+			);
+			foreach ($moduleApplicationMap as $module => $applicationKeys) {
+				if (empty($selectedModules[$module])) {
+					continue;
+				}
+				foreach ($applicationKeys as $applicationKey) {
+					$activeApplicationKeys[$applicationKey] = true;
+				}
+			}
+
+			$importedAllAvailableModules = true;
+			foreach (array_keys($moduleApplicationMap) as $module) {
+				if (empty($sourceModules[$module]['selected']) || empty($selectedModules[$module])) {
+					$importedAllAvailableModules = false;
+					break;
+				}
+			}
+
+			$applications = new \dbObject\ArrayApplication();
+			$applications->load(array(
+				'orderBy' => array(
+					array('field' => 'position', 'dir' => 'ASC'),
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+			$links = new \dbObject\ArrayOrganizationApplication();
+			$links->load(array(
+				'where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+				),
+			));
+			$linksByApplicationId = array();
+			foreach ($links as $link) {
+				$linksByApplicationId[(int)$link->get('IDapplication')] = $link;
+			}
+
+			$activeDirectories = array();
+			foreach ($applications as $application) {
+				$applicationId = (int)$application->getId();
+				if ($applicationId <= 0) {
+					continue;
+				}
+
+				$directory = strtolower(trim((string)$application->get('directory')));
+				$hash = strtolower(trim((string)$application->get('hash')));
+				$applicationKey = $directory !== '' ? $directory : $hash;
+				$shouldBeActive = $importedAllAvailableModules
+					|| ($applicationKey !== '' && isset($activeApplicationKeys[$applicationKey]));
+				$link = $linksByApplicationId[$applicationId] ?? null;
+				if (!($link instanceof \dbObject\OrganizationApplication)) {
+					$link = new \dbObject\OrganizationApplication();
+					$link->set('IDorganization', $organizationId);
+					$link->set('IDapplication', $applicationId);
+					$link->set('position', (int)$application->get('position'));
+				}
+				$link->set('active', $shouldBeActive ? 1 : 0);
+				$saveResult = $link->save();
+				if (!is_array($saveResult) || empty($saveResult['status'])) {
+					return array(
+						'status' => false,
+						'message' => 'Impossible de configurer les applications de l organisation importee.',
+					);
+				}
+
+				if ($shouldBeActive && $applicationKey !== '') {
+					$activeDirectories[] = $applicationKey;
+				}
+			}
+
+			return array(
+				'status' => true,
+				'activeApplications' => array_values(array_unique($activeDirectories)),
+				'importedAllAvailableModules' => $importedAllAvailableModules,
+			);
+		}
+
 		protected static function buildIntPlaceholders(array $ids, $prefix, array &$params)
 		{
 			$placeholders = array();
@@ -4064,6 +4162,10 @@
 					throw new \RuntimeException('La connexion a la base de donnees est indisponible.');
 				}
 				$pdo->beginTransaction();
+				$applicationSync = $organization->synchronizeOmo1ImportedApplicationLinks($selectedModules, $sourceModules);
+				if (empty($applicationSync['status'])) {
+					throw new \RuntimeException((string)($applicationSync['message'] ?? 'Les applications de l organisation n ont pas pu etre configurees.'));
+				}
 				$holonIdMap = isset($structureResult['holonIdMap']) && is_array($structureResult['holonIdMap']) ? $structureResult['holonIdMap'] : array();
 				$userIdMap = array();
 				$documentIdMap = array();
@@ -4125,6 +4227,7 @@
 					'rootHolon' => $structureResult['rootHolon'],
 					'stats' => $stats,
 					'warnings' => array_values(array_unique($warnings)),
+					'applications' => $applicationSync['activeApplications'] ?? array(),
 				);
 			} catch (\Throwable $exception) {
 				$pdo = \dbObject\DbObject::getPdo();

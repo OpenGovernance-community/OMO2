@@ -1065,21 +1065,15 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
     height: 48px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    padding: 0 12px;
     cursor: pointer;
 }
 
-.sidebar.expanded .sidebar-toggle {
-    justify-content: flex-start;
-    gap: 12px;
-    padding: 0 12px;
-}
-
-.sidebar.expanded .sidebar-toggle::after {
-    content: "Applications";
-    font-size: 0.95rem;
-    font-weight: 600;
-    white-space: nowrap;
+.sidebar-toggle .icon {
+    flex: 0 0 24px;
+    font-size: 24px;
+    line-height: 1;
 }
 
 /* MENU */
@@ -2835,19 +2829,6 @@ body.view-right .mobile-nav button[data-view="right"]::after {
         z-index: 20;
         transform: translateX(-100%);
         transition: transform 0.25s ease;
-    }
-
-    .sidebar-toggle {
-        justify-content: flex-start;
-        gap: 12px;
-        padding: 0 12px;
-    }
-
-    .sidebar-toggle::after {
-        content: "Applications";
-        font-size: 0.95rem;
-        font-weight: 600;
-        white-space: nowrap;
     }
 
     .sidebar .label {
