@@ -4,6 +4,9 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-30
 
+- L import OMO1 avec modele permet maintenant de faire correspondre explicitement les proprietes dont les noms different. Les listes d autorites compatibles sont preselectionnees, les domaines locaux sont convertis en vrais objets Autorite et les regles importees peuvent ainsi leur etre rattachees.
+- L export OMO1 distingue maintenant les valeurs locales des valeurs heritees pour les instances de holon. Lorsqu un nouveau modele est applique a l import, seules les raisons d etre, attendus et autorites reellement propres a l instance sont conserves en surcharge; les anciens exports sans ce marquage sont aussi nettoyes par comparaison avec leur template source.
+- Le menu d actions des cartes d organisation dans OMO est maintenant detache de la carte et se positionne automatiquement au-dessus ou au-dessous du bouton selon l espace disponible, sans etre coupe par le debordement de la carte.
 - L edition d un holon affiche maintenant en lecture seule les valeurs locales et heritees meme lorsque le champ n est pas modifiable, et indique simplement l absence de droits de modification au lieu de presenter cela comme un verrou du modele.
 - L export OMO1 force maintenant l ecriture de la propriete Attendus sur les templates structurels depuis le contenu resolu du role source traduit. La revision du generateur passe a v7 pour identifier ce format.
 - L export OMO1 normalise maintenant les textes des listes avant leur serialisation JSON. Un attendu contenant un ancien encodage ne fait ainsi plus disparaitre silencieusement toute la propriete Attendus; la revision du generateur passe a v8 et expose aussi la valeur de propriete calculee dans le diagnostic structurel.
