@@ -470,7 +470,12 @@ function omoRenderDirectoryCard(array $directoryCardData)
                         aria-expanded="false"
                         aria-label="<?= htmlspecialchars(t('app.directory.menu.actions_aria_label', ['organizationName' => $organizationName])) ?>"
                     >...</button>
-                    <div class="omo-org-card-menu__panel" data-omo-org-menu-panel>
+                    <div
+                        class="omo-org-card-menu__panel"
+                        data-omo-org-menu-panel
+                        data-organization-id="<?= (int)$accessibleOrganization->getId() ?>"
+                        data-organization-name="<?= htmlspecialchars($organizationName, ENT_QUOTES, 'UTF-8') ?>"
+                    >
                         <?php if (!$isSystemOrganizationAdmin) { ?>
                         <button
                             type="button"
@@ -910,6 +915,17 @@ if ($isOrganizationHub && !$isDemoGuest) {
             box-shadow: 0 18px 42px color-mix(in srgb, var(--color-text, #0f172a) 16%, transparent);
         }
 
+        .omo-org-card-menu__panel.is-portal {
+            position: fixed;
+            z-index: 1000;
+            display: flex;
+            top: auto;
+            right: auto;
+            width: min(280px, calc(100vw - 20px));
+            max-height: min(360px, calc(100dvh - 20px));
+            overflow-y: auto;
+        }
+
         .omo-org-card-menu.is-open .omo-org-card-menu__panel {
             display: flex;
         }
@@ -999,14 +1015,93 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 });
             }
 
+            function getMenuPanel(menu) {
+                return menu._omoPanel || menu.querySelector('[data-omo-org-menu-panel]');
+            }
+
+            function restoreMenuPanel(menu) {
+                var panel = getMenuPanel(menu);
+                var placeholder = panel ? panel._omoOriginPlaceholder : null;
+
+                if (!panel) {
+                    return;
+                }
+
+                if (placeholder && placeholder.parentNode) {
+                    placeholder.parentNode.insertBefore(panel, placeholder);
+                    placeholder.parentNode.removeChild(placeholder);
+                }
+
+                panel._omoOriginPlaceholder = null;
+                panel.classList.remove('is-portal', 'is-above');
+                panel.style.left = '';
+                panel.style.top = '';
+                panel.style.maxHeight = '';
+            }
+
+            function closeMenu(menu) {
+                var trigger = menu.querySelector('[data-omo-org-menu-trigger]');
+                menu.classList.remove('is-open');
+                restoreMenuPanel(menu);
+
+                if (trigger) {
+                    trigger.setAttribute('aria-expanded', 'false');
+                }
+            }
+
             function closeMenus() {
-                document.querySelectorAll('[data-omo-org-card-menu].is-open').forEach(function (menu) {
-                    var trigger = menu.querySelector('[data-omo-org-menu-trigger]');
-                    menu.classList.remove('is-open');
-                    if (trigger) {
-                        trigger.setAttribute('aria-expanded', 'false');
-                    }
-                });
+                document.querySelectorAll('[data-omo-org-card-menu].is-open').forEach(closeMenu);
+            }
+
+            function positionMenu(menu) {
+                var trigger = menu.querySelector('[data-omo-org-menu-trigger]');
+                var panel = getMenuPanel(menu);
+
+                if (!trigger || !panel || !panel.classList.contains('is-portal')) {
+                    return;
+                }
+
+                var triggerRect = trigger.getBoundingClientRect();
+                var viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+                var viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+                var viewportPadding = 10;
+                var gap = 8;
+                var spaceAbove = Math.max(0, triggerRect.top - viewportPadding - gap);
+                var spaceBelow = Math.max(0, viewportHeight - triggerRect.bottom - viewportPadding - gap);
+                var openAbove = spaceAbove >= spaceBelow;
+
+                panel.style.maxHeight = Math.min(360, Math.max(80, openAbove ? spaceAbove : spaceBelow)) + 'px';
+                var panelRect = panel.getBoundingClientRect();
+                var left = Math.min(
+                    Math.max(viewportPadding, triggerRect.right - panelRect.width),
+                    Math.max(viewportPadding, viewportWidth - panelRect.width - viewportPadding)
+                );
+                var top = openAbove
+                    ? triggerRect.top - panelRect.height - gap
+                    : triggerRect.bottom + gap;
+
+                panel.classList.toggle('is-above', openAbove);
+                panel.style.left = Math.round(left) + 'px';
+                panel.style.top = Math.round(Math.max(viewportPadding, top)) + 'px';
+            }
+
+            function openMenu(menu) {
+                var panel = getMenuPanel(menu);
+
+                if (!panel) {
+                    return;
+                }
+
+                menu._omoPanel = panel;
+                var placeholder = document.createElement('span');
+                placeholder.hidden = true;
+                placeholder.setAttribute('aria-hidden', 'true');
+                panel.parentNode.insertBefore(placeholder, panel);
+                panel._omoOriginPlaceholder = placeholder;
+                document.body.appendChild(panel);
+                panel.classList.add('is-portal');
+                menu.classList.add('is-open');
+                positionMenu(menu);
             }
 
             function openCreateModal() {
@@ -1110,8 +1205,8 @@ if ($isOrganizationHub && !$isDemoGuest) {
                     closeMenus();
 
                     if (shouldOpen) {
-                        menu.classList.add('is-open');
                         trigger.setAttribute('aria-expanded', 'true');
+                        openMenu(menu);
                     }
 
                     return;
@@ -1123,13 +1218,14 @@ if ($isOrganizationHub && !$isDemoGuest) {
                     event.stopPropagation();
 
                     var card = actionButton.closest('[data-organization-id]');
-                    if (!card) {
+                    var menuPanel = actionButton.closest('[data-omo-org-menu-panel]');
+                    if (!card && !menuPanel) {
                         return;
                     }
 
                     var action = actionButton.getAttribute('data-omo-org-action') || '';
-                    var organizationId = card.getAttribute('data-organization-id') || '';
-                    var organizationName = card.getAttribute('data-organization-name') || window.omoDirectoryTranslations.defaultOrganizationName;
+                    var organizationId = (card || menuPanel).getAttribute('data-organization-id') || '';
+                    var organizationName = (card || menuPanel).getAttribute('data-organization-name') || window.omoDirectoryTranslations.defaultOrganizationName;
                     var confirmMessage = '';
 
                     if (action === 'leave') {
@@ -1207,6 +1303,14 @@ if ($isOrganizationHub && !$isDemoGuest) {
                     closeMenus();
                 }
             });
+
+            window.addEventListener('resize', function () {
+                document.querySelectorAll('[data-omo-org-card-menu].is-open').forEach(positionMenu);
+            });
+
+            window.addEventListener('scroll', function () {
+                document.querySelectorAll('[data-omo-org-card-menu].is-open').forEach(positionMenu);
+            }, true);
         })();
     </script>
     <?php if ($isSiteAdmin) { ?>

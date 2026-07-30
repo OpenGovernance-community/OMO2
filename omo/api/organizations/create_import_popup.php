@@ -18,6 +18,11 @@ $sourceLang = array(
     'organization_import.mapping.duplicate' => array('text' => 'Un template du modele ne peut etre associe qu a un seul template importe.', 'context' => 'Validation error when a target template is mapped twice.'),
     'organization_import.mapping.none' => array('text' => 'Aucun template structurel a associer dans ce fichier.', 'context' => 'Empty template mapping state.'),
     'organization_import.mapping.title' => array('text' => 'Correspondance des templates structurels', 'context' => 'Title of template mapping section.'),
+    'organization_import.property_mapping.duplicate' => array('text' => 'Une propriete du modele ne peut remplacer qu une seule propriete importee.', 'context' => 'Validation error when a target property is mapped twice.'),
+    'organization_import.property_mapping.empty' => array('text' => 'Conserver la propriete importee', 'context' => 'Empty option in a property mapping selector.'),
+    'organization_import.property_mapping.help' => array('text' => 'Confirmez les equivalences de proprietes lorsque leurs noms different. Les listes d autorites compatibles sont proposees automatiquement.', 'context' => 'Help text for property mappings during organization import.'),
+    'organization_import.property_mapping.none' => array('text' => 'Aucune propriete a faire correspondre pour les templates selectionnes.', 'context' => 'Empty property mapping state.'),
+    'organization_import.property_mapping.title' => array('text' => 'Correspondance des proprietes', 'context' => 'Title of property mapping section.'),
     'organization_import.field.sections' => array('text' => 'Contenu a importer', 'context' => 'Section picker legend in the organization import popup.'),
     'organization_import.help' => array('text' => 'Cette action cree une nouvelle organisation. La structure est toujours importee. Les taches OMO 1 deviennent des projets enfants et les checklistes recurrentes deviennent des conteneurs.', 'context' => 'Help text in the organization import popup.'),
     'organization_import.module.checklists' => array('text' => 'Checklists', 'context' => 'Checklists module label in the organization import popup.'),
@@ -98,6 +103,12 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             <p><?= htmlspecialchars(t('organization_import.mapping.help', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
             <div class="omo-create-import__mapping-list" data-omo-create-import-mapping-list="1"></div>
             <input type="hidden" name="template_mappings" value="{}" data-omo-create-import-mapping-value="1">
+            <div class="omo-create-import__property-mappings" data-omo-create-import-property-mappings="1" hidden>
+                <div class="generic-card-title generic-card-title--small"><?= htmlspecialchars(t('organization_import.property_mapping.title', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
+                <p><?= htmlspecialchars(t('organization_import.property_mapping.help', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
+                <div class="omo-create-import__mapping-list" data-omo-create-import-property-mapping-list="1"></div>
+            </div>
+            <input type="hidden" name="property_mappings" value="{}" data-omo-create-import-property-mapping-value="1">
         </section>
 
         <fieldset class="omo-create-import__modules">
@@ -156,6 +167,8 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
 .omo-create-import__mapping-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 10px; }
 .omo-create-import__mapping-source { font-weight: 600; }
 .omo-create-import__mapping-empty { margin: 0; color: var(--color-text-light, #64748b); }
+.omo-create-import__property-mappings { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--color-border, #d1d5db); }
+.omo-create-import__property-mappings[hidden] { display: none !important; }
 .omo-create-import__waiting { min-height: 290px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; }
 .omo-create-import__waiting h3, .omo-create-import__waiting p { margin: 0; }
 .omo-create-import__waiting p { max-width: 440px; color: var(--color-text-light, #64748b); line-height: 1.5; }
@@ -179,6 +192,9 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     var mappingsPanel = root.querySelector('[data-omo-create-import-mappings="1"]');
     var mappingsList = root.querySelector('[data-omo-create-import-mapping-list="1"]');
     var mappingsValue = form ? form.querySelector('[data-omo-create-import-mapping-value="1"]') : null;
+    var propertyMappingsPanel = root.querySelector('[data-omo-create-import-property-mappings="1"]');
+    var propertyMappingsList = root.querySelector('[data-omo-create-import-property-mapping-list="1"]');
+    var propertyMappingsValue = form ? form.querySelector('[data-omo-create-import-property-mapping-value="1"]') : null;
     var submitButton = root.querySelector('[data-omo-create-import-submit="1"]');
     var feedback = root.querySelector('[data-omo-create-import-feedback="1"]');
     var cancelButton = root.querySelector('[data-omo-create-import-cancel="1"]');
@@ -187,6 +203,8 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     var templateCatalog = <?= json_encode($templateCatalog, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     var importPayload = null;
     var templateMappings = {};
+    var propertyMappings = {};
+    var touchedPropertyMappings = {};
     var isImporting = false;
     var ui = <?= json_encode(array(
         'fileError' => t('organization_import.error.file', array(), $lang, $sourceLang),
@@ -195,6 +213,9 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         'mappingDuplicate' => t('organization_import.mapping.duplicate', array(), $lang, $sourceLang),
         'mappingEmpty' => t('organization_import.mapping.empty', array(), $lang, $sourceLang),
         'mappingNone' => t('organization_import.mapping.none', array(), $lang, $sourceLang),
+        'propertyMappingDuplicate' => t('organization_import.property_mapping.duplicate', array(), $lang, $sourceLang),
+        'propertyMappingEmpty' => t('organization_import.property_mapping.empty', array(), $lang, $sourceLang),
+        'propertyMappingNone' => t('organization_import.property_mapping.none', array(), $lang, $sourceLang),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
     function setFeedback(message, isError) {
@@ -288,6 +309,10 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         if (mappingsValue) { mappingsValue.value = JSON.stringify(templateMappings); }
     }
 
+    function syncPropertyMappingsValue() {
+        if (propertyMappingsValue) { propertyMappingsValue.value = JSON.stringify(propertyMappings); }
+    }
+
     function hasDuplicateTemplateMappings() {
         var usedTargetIds = {};
         return Object.keys(templateMappings).some(function (sourceId) {
@@ -297,6 +322,226 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             usedTargetIds[targetId] = true;
             return false;
         });
+    }
+
+    function hasDuplicatePropertyMappings() {
+        var usedTargetIds = {};
+        return Object.keys(propertyMappings).some(function (sourceId) {
+            var targetId = Number(propertyMappings[sourceId] || 0);
+            if (targetId <= 0) { return false; }
+            if (usedTargetIds[targetId]) { return true; }
+            usedTargetIds[targetId] = true;
+            return false;
+        });
+    }
+
+    function normalizeMappingKey(value) {
+        var normalized = String(value || '').trim().toLocaleLowerCase();
+        if (typeof normalized.normalize === 'function') {
+            normalized = normalized.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+        return normalized.replace(/[^a-z0-9]+/g, '');
+    }
+
+    function propertyMatchKeys(property) {
+        var keys = {};
+        [property && property.shortname, property && property.name].forEach(function (value) {
+            var key = normalizeMappingKey(value);
+            if (key) { keys[key] = true; }
+        });
+        var aliasGroups = [
+            ['rde', 'raisonetre', 'raisondetre', 'purpose'],
+            ['autorite', 'autorites', 'domainedautorite', 'domainesdautorite', 'domainautorite', 'domainesautorite', 'authority', 'authorities', 'authoritydomain', 'authoritydomains']
+        ];
+        aliasGroups.forEach(function (aliases) {
+            if (aliases.some(function (alias) { return !!keys[alias]; })) {
+                aliases.forEach(function (alias) { keys[alias] = true; });
+            }
+        });
+        return Object.keys(keys);
+    }
+
+    function isAuthorityListProperty(property) {
+        var listItemType = String(property && property.listItemType || '').trim().toLocaleLowerCase();
+        return listItemType === 'authority' || listItemType === 'autorite';
+    }
+
+    function propertyFormatLabel(property) {
+        var formatName = String(property && property.formatName || '').trim();
+        var listItemType = String(property && property.listItemType || '').trim();
+        if (formatName && listItemType) { return formatName + ' - ' + listItemType; }
+        return formatName || listItemType || '';
+    }
+
+    function importedHolonsById() {
+        var byId = {};
+        flattenHolons(importPayload && importPayload.holons, []).forEach(function (node) {
+            var nodeId = Number(node && node.id || 0);
+            if (nodeId > 0) { byId[nodeId] = node; }
+        });
+        return byId;
+    }
+
+    function collectImportedTemplatePropertyIds(sourceTemplateId, nodesById) {
+        var propertyIds = {};
+        var visited = {};
+        var currentId = Number(sourceTemplateId || 0);
+        while (currentId > 0 && !visited[currentId] && nodesById[currentId]) {
+            visited[currentId] = true;
+            var node = nodesById[currentId];
+            (Array.isArray(node.properties) ? node.properties : []).forEach(function (row) {
+                var propertyId = Number(row && row.propertyId || 0);
+                if (propertyId > 0) { propertyIds[propertyId] = true; }
+            });
+            currentId = Number(node.templateId || 0);
+        }
+        return propertyIds;
+    }
+
+    function findAutomaticPropertyMapping(sourceProperty, targetProperties) {
+        var sourceKeys = propertyMatchKeys(sourceProperty);
+        var namedMatches = targetProperties.filter(function (targetProperty) {
+            var targetKeys = propertyMatchKeys(targetProperty);
+            return sourceKeys.some(function (key) { return targetKeys.indexOf(key) !== -1; });
+        });
+        if (namedMatches.length === 1) {
+            return Number(namedMatches[0].id || 0);
+        }
+        if (isAuthorityListProperty(sourceProperty)) {
+            var authorityMatches = targetProperties.filter(isAuthorityListProperty);
+            if (authorityMatches.length === 1) {
+                return Number(authorityMatches[0].id || 0);
+            }
+        }
+        return 0;
+    }
+
+    function renderPropertyMappings() {
+        if (!propertyMappingsPanel || !propertyMappingsList) {
+            syncPropertyMappingsValue();
+            return;
+        }
+        propertyMappingsList.replaceChildren();
+        var model = selectedTemplateModel();
+        var sourceDefinitions = Array.isArray(importPayload && importPayload.propertyDefinitions)
+            ? importPayload.propertyDefinitions
+            : [];
+        var sourceDefinitionsById = {};
+        sourceDefinitions.forEach(function (definition) {
+            var propertyId = Number(definition && definition.id || 0);
+            if (propertyId > 0) { sourceDefinitionsById[propertyId] = definition; }
+        });
+        var nodesById = importedHolonsById();
+        var sourcePropertyIds = {};
+        var targetPropertiesById = {};
+        var targetPropertyIdsBySourcePropertyId = {};
+
+        Object.keys(templateMappings).forEach(function (sourceTemplateId) {
+            var targetTemplateId = Number(templateMappings[sourceTemplateId] || 0);
+            if (targetTemplateId <= 0 || !model) { return; }
+            var sourceIds = collectImportedTemplatePropertyIds(Number(sourceTemplateId), nodesById);
+            Object.keys(sourceIds).forEach(function (propertyId) { sourcePropertyIds[propertyId] = true; });
+            var targetNode = (Array.isArray(model.nodes) ? model.nodes : []).find(function (node) {
+                return Number(node && node.id || 0) === targetTemplateId;
+            });
+            var currentTargetPropertyIds = {};
+            (Array.isArray(targetNode && targetNode.properties) ? targetNode.properties : []).forEach(function (property) {
+                var propertyId = Number(property && property.id || 0);
+                if (propertyId > 0) {
+                    targetPropertiesById[propertyId] = property;
+                    currentTargetPropertyIds[propertyId] = true;
+                }
+            });
+            Object.keys(sourceIds).forEach(function (sourcePropertyId) {
+                if (!targetPropertyIdsBySourcePropertyId[sourcePropertyId]) {
+                    targetPropertyIdsBySourcePropertyId[sourcePropertyId] = Object.assign({}, currentTargetPropertyIds);
+                    return;
+                }
+                Object.keys(targetPropertyIdsBySourcePropertyId[sourcePropertyId]).forEach(function (targetPropertyId) {
+                    if (!currentTargetPropertyIds[targetPropertyId]) {
+                        delete targetPropertyIdsBySourcePropertyId[sourcePropertyId][targetPropertyId];
+                    }
+                });
+            });
+        });
+
+        var sourceProperties = Object.keys(sourcePropertyIds).map(function (propertyId) {
+            return sourceDefinitionsById[Number(propertyId)] || null;
+        }).filter(Boolean).sort(function (left, right) {
+            return String(left.name || left.shortname || '').localeCompare(String(right.name || right.shortname || ''));
+        });
+        var targetProperties = Object.keys(targetPropertiesById).map(function (propertyId) {
+            return targetPropertiesById[propertyId];
+        }).sort(function (left, right) {
+            return String(left.name || left.shortname || '').localeCompare(String(right.name || right.shortname || ''));
+        });
+
+        Object.keys(propertyMappings).forEach(function (sourcePropertyId) {
+            var mappedTargetPropertyId = Number(propertyMappings[sourcePropertyId] || 0);
+            if (
+                !sourcePropertyIds[sourcePropertyId]
+                || !targetPropertyIdsBySourcePropertyId[sourcePropertyId]
+                || !targetPropertyIdsBySourcePropertyId[sourcePropertyId][mappedTargetPropertyId]
+            ) {
+                delete propertyMappings[sourcePropertyId];
+            }
+        });
+        propertyMappingsPanel.hidden = sourceProperties.length === 0 || targetProperties.length === 0;
+        if (propertyMappingsPanel.hidden) {
+            syncPropertyMappingsValue();
+            return;
+        }
+
+        if (sourceProperties.length === 0) {
+            var empty = document.createElement('p');
+            empty.className = 'omo-create-import__mapping-empty';
+            empty.textContent = ui.propertyMappingNone;
+            propertyMappingsList.appendChild(empty);
+            syncPropertyMappingsValue();
+            return;
+        }
+
+        sourceProperties.forEach(function (sourceProperty) {
+            var sourcePropertyId = Number(sourceProperty.id || 0);
+            var compatibleTargetProperties = Object.keys(targetPropertyIdsBySourcePropertyId[sourcePropertyId] || {}).map(function (propertyId) {
+                return targetPropertiesById[propertyId] || null;
+            }).filter(Boolean).sort(function (left, right) {
+                return String(left.name || left.shortname || '').localeCompare(String(right.name || right.shortname || ''));
+            });
+            var selectedId = Number(propertyMappings[sourcePropertyId] || 0);
+            if (selectedId <= 0 && !touchedPropertyMappings[sourcePropertyId]) {
+                selectedId = findAutomaticPropertyMapping(sourceProperty, compatibleTargetProperties);
+                if (selectedId > 0) { propertyMappings[sourcePropertyId] = selectedId; }
+            }
+
+            var row = document.createElement('label');
+            row.className = 'omo-create-import__mapping-row';
+            var source = document.createElement('span');
+            source.className = 'omo-create-import__mapping-source';
+            var sourceFormat = propertyFormatLabel(sourceProperty);
+            source.textContent = String(sourceProperty.name || sourceProperty.shortname || 'Propriete') + (sourceFormat ? ' (' + sourceFormat + ')' : '');
+            var select = document.createElement('select');
+            select.className = 'generic-form-control';
+            select.setAttribute('data-omo-create-import-property-mapping-source', String(sourcePropertyId));
+            appendOption(select, 0, ui.propertyMappingEmpty);
+            compatibleTargetProperties.forEach(function (targetProperty) {
+                var targetFormat = propertyFormatLabel(targetProperty);
+                appendOption(
+                    select,
+                    Number(targetProperty.id || 0),
+                    String(targetProperty.name || targetProperty.shortname || 'Propriete') + (targetFormat ? ' (' + targetFormat + ')' : '')
+                );
+            });
+            if (selectedId > 0 && targetPropertyIdsBySourcePropertyId[sourcePropertyId] && targetPropertyIdsBySourcePropertyId[sourcePropertyId][selectedId]) {
+                select.value = String(selectedId);
+            } else {
+                delete propertyMappings[sourcePropertyId];
+            }
+            row.appendChild(source);
+            row.appendChild(select);
+            propertyMappingsList.appendChild(row);
+        });
+        syncPropertyMappingsValue();
     }
 
     function appendOption(select, value, label) {
@@ -314,6 +559,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         mappingsList.replaceChildren();
         if (!model || !importPayload) {
             syncTemplateMappingsValue();
+            renderPropertyMappings();
             return;
         }
 
@@ -323,6 +569,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             empty.textContent = ui.mappingNone;
             mappingsList.appendChild(empty);
             syncTemplateMappingsValue();
+            renderPropertyMappings();
             return;
         }
 
@@ -356,6 +603,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             mappingsList.appendChild(row);
         });
         syncTemplateMappingsValue();
+        renderPropertyMappings();
     }
 
     if (fileInput) {
@@ -367,6 +615,8 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
                 try {
                     importPayload = JSON.parse(String(reader.result || ''));
                     templateMappings = {};
+                    propertyMappings = {};
+                    touchedPropertyMappings = {};
                     setModuleAvailability(importPayload);
                     renderTemplateMappings();
                 } catch (error) { showError(ui.genericError); }
@@ -385,10 +635,25 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
                 delete templateMappings[mappingSourceId];
             }
             syncTemplateMappingsValue();
+            renderPropertyMappings();
+            return;
+        }
+        var propertyMappingSourceId = Number(event.target.getAttribute('data-omo-create-import-property-mapping-source') || 0);
+        if (propertyMappingSourceId > 0) {
+            var propertyMappingTargetId = Number(event.target.value || 0);
+            touchedPropertyMappings[propertyMappingSourceId] = true;
+            if (propertyMappingTargetId > 0) {
+                propertyMappings[propertyMappingSourceId] = propertyMappingTargetId;
+            } else {
+                delete propertyMappings[propertyMappingSourceId];
+            }
+            syncPropertyMappingsValue();
             return;
         }
         if (event.target === templateSelect) {
             templateMappings = {};
+            propertyMappings = {};
+            touchedPropertyMappings = {};
             renderTemplateMappings();
             return;
         }
@@ -413,6 +678,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         event.preventDefault();
         if (!fileInput || !fileInput.files || !fileInput.files[0]) { showError(ui.fileError); return; }
         if (hasDuplicateTemplateMappings()) { showError(ui.mappingDuplicate); return; }
+        if (hasDuplicatePropertyMappings()) { showError(ui.propertyMappingDuplicate); return; }
         submitButton.disabled = true;
         setFeedback('', false);
         setImportWaiting(true);
