@@ -499,7 +499,7 @@ function omoRenderAuthorityReferenceItem($item, $source = '')
     if (!empty($referenceData['isShell'])) {
         $authorityLabel = '<em>' . $authorityLabel . '</em>';
     }
-    $html .= '<summary><span class="section-authority-reference__label">' . $authorityLabel . '</span>';
+    $html .= '<summary><span class="section-authority-reference__label generic-title generic-title--compact">' . $authorityLabel . '</span>';
     if ($statusLabel !== '') {
         $html .= ' <span class="section-authority-reference__count">(' . omoApiEscape($statusLabel) . ')</span>';
     }
@@ -580,7 +580,7 @@ function omoRenderTextBlock($text, $className = 'section-text')
         return '';
     }
 
-    return '<div class="' . omoApiEscape($className) . '">' . nl2br(omoApiEscape($text)) . '</div>';
+    return '<div class="' . omoApiEscape($className) . ' generic-description generic-description--small generic-description--primary">' . nl2br(omoApiEscape($text)) . '</div>';
 }
 
 function omoRenderHtmlBlock($html, $className = 'section-html')
@@ -1135,29 +1135,35 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
     <div class="circle-header">
         <div>
-            <div class="circle-kicker generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($holonTypeLabel) ?></div>
- <div class="breadcrumb">
-        <?php foreach ($breadcrumb as $index => $crumb): ?>
-            <?php if ($index > 0): ?>
-                <span class="separator">&rsaquo;</span>
-            <?php endif; ?>
+            <div class="breadcrumb">
+                <?php foreach ($breadcrumb as $index => $crumb): ?>
+                    <?php if ($index > 0): ?>
+                        <span class="separator">&rsaquo;</span>
+                    <?php endif; ?>
 
-            <?php $isActive = ((int)$crumb->getId() === (int)$currentHolon->getId()); ?>
-            <?php if (!$isActive): ?>
-            <span class="crumb<?= $isActive ? ' active' : '' ?>"
-                  data-cid="<?= (int)$crumb->getId() ?>"
-                  data-is-root="<?= $index === 0 ? '1' : '0' ?>">
-                <?= omoApiEscape($crumb->getFullDisplayName()) ?>
-            </span>
-            <?php endif; ?>
-        <?php endforeach; ?>
-    </div>
-            <h2 class="circle-title generic-card-title generic-card-title--section">
+                    <?php $isActive = ((int)$crumb->getId() === (int)$currentHolon->getId()); ?>
+                    <?php if (!$isActive): ?>
+                    <span class="crumb<?= $isActive ? ' active' : '' ?>"
+                          data-cid="<?= (int)$crumb->getId() ?>"
+                          data-is-root="<?= $index === 0 ? '1' : '0' ?>">
+                        <?= omoApiEscape($crumb->getFullDisplayName()) ?>
+                    </span>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+            <div class="circle-title-row">
                 <?php if ($holonIconUrl !== ''): ?>
-                    <img class="circle-title__icon" src="<?= omoApiEscape($holonIconUrl) ?>" alt="">
+                    <div class="circle-title__icon">
+                        <img src="<?= omoApiEscape($holonIconUrl) ?>" alt="">
+                    </div>
                 <?php endif; ?>
-                <span><?= omoApiEscape($currentHolon->getFullDisplayName()) ?></span>
-            </h2>
+                <div class="circle-title-copy">
+                    <div class="circle-kicker generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($holonTypeLabel) ?></div>
+                    <h2 class="circle-title generic-card-title generic-card-title--section">
+                        <span><?= omoApiEscape($currentHolon->getFullDisplayName()) ?></span>
+                    </h2>
+                </div>
+            </div>
         </div>
         <div class="circle-meta">
             <?php if ($hasHolonActions): ?>
@@ -1298,7 +1304,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     <?php if (count($sections) === 0): ?>
         <div class="circle-section generic-section generic-accordion generic-accordion--card">
             <div class="circle-section__title generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.empty.section_title')) ?></div>
-            <p class="section-text"><?= omoApiEscape(t('leftbar.empty.message')) ?></p>
+            <p class="section-text generic-description generic-description--small generic-description--primary"><?= omoApiEscape(t('leftbar.empty.message')) ?></p>
         </div>
     <?php endif; ?>
 
@@ -1381,6 +1387,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     align-items: center;
     flex-wrap: wrap;
     gap: 6px;
+    margin-bottom: 8px;
 }
 
 .crumb {
@@ -1425,23 +1432,42 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 }
 
 .circle-kicker {
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 
-.circle-title {
+.circle-title-row {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.circle-title-copy {
+    min-width: 0;
+}
+
+.circle-title {
     margin: 0;
 }
 
 .circle-title__icon {
-    width: 28px;
-    height: 28px;
-    flex: 0 0 28px;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    box-sizing: border-box;
+    border: 2px solid #fff;
+    border-radius: 3px;
+    background: #fff;
+}
+
+.circle-title__icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
 }
 
 .circle-members {
@@ -1642,10 +1668,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     margin-bottom: 8px;
 }
 
-.section-text,
-.section-inherited__text {
-    font-size: 14px;
-    line-height: 1.5;
+.section-text {
     white-space: pre-line;
 }
 
@@ -1721,10 +1744,6 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
 .section-authority-reference__details > summary::-webkit-details-marker {
     display: none;
-}
-
-.section-authority-reference__label {
-    font-weight: 650;
 }
 
 .section-authority-reference__label > em {
@@ -2000,10 +2019,6 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     border-radius: var(--radius-md);
     background: var(--color-surface-alt, #f0f2f5);
     border: 1px dashed var(--color-border);
-}
-
-.section-inherited__label {
-    margin-bottom: 6px;
 }
 
 .child-nav-group + .child-nav-group {

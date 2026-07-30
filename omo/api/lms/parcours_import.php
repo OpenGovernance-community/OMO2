@@ -74,15 +74,6 @@ $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organi
     margin: 0 0 8px;
 }
 
-.lms-import-parcours-hero p,
-.lms-import-parcours-card p,
-.lms-import-parcours-item__copy p,
-.lms-import-parcours-empty {
-    margin: 0;
-    color: var(--text-light);
-    line-height: 1.5;
-}
-
 .lms-import-parcours-card {
     border: 1px solid var(--border-color);
     display: grid;
@@ -207,14 +198,14 @@ $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organi
 
 <div class="lms-import-parcours-view" data-lms-parcours-importer="1">
     <section class="lms-import-parcours-hero">
-        <h2><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.hero.title')); ?></h2>
-        <p><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.hero.intro')); ?></p>
+        <h2 class="generic-title generic-title--large"><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.hero.title')); ?></h2>
+        <p class="generic-description"><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.hero.intro')); ?></p>
     </section>
 
     <section class="lms-import-parcours-card">
         <div>
-            <h3><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.catalog.title')); ?></h3>
-            <p><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.catalog.intro')); ?></p>
+            <h3 class="generic-title generic-title--big"><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.catalog.title')); ?></h3>
+            <p class="generic-description"><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.catalog.intro')); ?></p>
         </div>
 
         <?php if (count($importableParcours) > 0): ?>
@@ -226,7 +217,7 @@ $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organi
 
         <div class="lms-import-parcours-list">
             <?php if (count($importableParcours) === 0): ?>
-                <div class="lms-import-parcours-empty"><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.empty')); ?></div>
+                <div class="lms-import-parcours-empty generic-description"><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.empty')); ?></div>
             <?php else: ?>
                 <?php foreach ($importableParcours as $item): ?>
                     <?php
@@ -248,13 +239,13 @@ $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organi
                         <div class="lms-import-parcours-item__copy">
                             <div>
                                 <span class="lms-import-parcours-item__type"><?php echo htmlspecialchars($isPack ? lmsParcoursImportT('lms.parcours_import.type.pack') : lmsParcoursImportT('lms.parcours_import.type.parcours')); ?></span>
-                                <strong><?php echo htmlspecialchars((string)($item['title'] ?? '')); ?></strong>
+                                <strong class="generic-title generic-title--compact"><?php echo htmlspecialchars((string)($item['title'] ?? '')); ?></strong>
                                 <?php if (trim((string)($item['description'] ?? '')) !== ''): ?>
-                                    <p><?php echo htmlspecialchars((string)$item['description']); ?></p>
+                                    <p class="generic-description generic-description--compact"><?php echo htmlspecialchars((string)$item['description']); ?></p>
                                 <?php endif; ?>
                             </div>
 
-                            <div class="lms-import-parcours-item__meta">
+                            <div class="lms-import-parcours-item__meta generic-meta generic-meta--compact">
                                 <?php if (!empty($item['isbasic'])): ?>
                                     <span><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.badge.basic')); ?></span>
                                 <?php endif; ?>
@@ -275,7 +266,7 @@ $importableParcours = \dbObject\Parcours::fetchImportableForOrganization($organi
                         ><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.action.import')); ?></button>
                     </article>
                 <?php endforeach; ?>
-                <div class="lms-import-parcours-empty" data-lms-import-parcours-empty-search="1" hidden><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.empty_search')); ?></div>
+                <div class="lms-import-parcours-empty generic-description" data-lms-import-parcours-empty-search="1" hidden><?php echo htmlspecialchars(lmsParcoursImportT('lms.parcours_import.empty_search')); ?></div>
             <?php endif; ?>
         </div>
 

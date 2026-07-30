@@ -1269,6 +1269,10 @@
 				$this->set("id",self::getDbh()->insert_id);
 			}
 			if ($result) {
+				// Keep subsequent loads in this request consistent with the value just saved.
+				// This is especially important when a second synchronization reads a
+				// holon property immediately after its first write.
+				self::$preload[$this->tableName()."_".$this->_id] = $this;
 				return array ("status"=>true, "text"=>"Saved!", "id"=>"0".$this->_id);
 			} else {
 				return array ("status"=>false, "text"=>"Error saving record.", "query"=>$query);

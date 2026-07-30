@@ -3,6 +3,8 @@ namespace dbObject;
 
 class Rule extends DbObject
 {
+	protected $preserveImportedAuditMetadata = false;
+
     public const SCOPE_GLOBAL = 'global';
     public const SCOPE_DESCENDANTS = 'descendants';
     public const SCOPE_LOCAL = 'local';
@@ -15,7 +17,7 @@ class Rule extends DbObject
     public static function rules()
     {
         return [
-            [['title', 'intention', 'description', 'review_date', 'expiration_date'], 'required'],
+            [['title', 'description', 'review_date', 'expiration_date'], 'required'],
             [['id'], 'integer'],
             [['IDauthority', 'IDholon', 'IDuser_creation', 'IDuser_modification'], 'fk'],
             [['title', 'scope'], 'string'],
@@ -51,7 +53,7 @@ class Rule extends DbObject
             'IDauthority' => 'Autorite precise dans laquelle cette regle est definie.',
             'IDholon' => 'Holon auquel une regle locale est directement rattachee.',
             'intention' => 'Pourquoi cette regle a ete creee.',
-            'description' => 'Contenu HTML de la regle.',
+            'description' => 'Contenu HTML simple de la regle: texte, mise en forme, listes et liens.',
             'scope' => 'Global, descendants ou uniquement le contexte local.',
             'review_date' => 'Date a laquelle la regle doit etre requestionnee.',
             'expiration_date' => 'Apres cette date, la regle n est plus valide.',
@@ -82,6 +84,13 @@ class Rule extends DbObject
         return 'expiration_date ASC, review_date ASC, id ASC';
     }
 
+    public static function sanitizeContentHtml($html)
+    {
+        $html = is_scalar($html) ? (string)$html : '';
+        $allowedTags = '<p><br><strong><b><em><i><u><ul><ol><li><a><h1><h2><h3><blockquote>';
+        return PropertyFormat::sanitizeHtml(strip_tags($html, $allowedTags));
+    }
+
     public static function scopes()
     {
         return [self::SCOPE_GLOBAL, self::SCOPE_DESCENDANTS, self::SCOPE_LOCAL];
@@ -98,13 +107,13 @@ class Rule extends DbObject
         $authorityId = (int)$this->get('IDauthority');
         $holonId = (int)$this->get('IDholon');
         $title = trim((string)$this->get('title'));
-        $intention = trim((string)$this->get('intention'));
-        $description = trim((string)$this->get('description'));
+        $intention = self::sanitizeContentHtml($this->get('intention'));
+        $description = self::sanitizeContentHtml($this->get('description'));
         $reviewDate = $this->normalizeDate($this->get('review_date'));
         $expirationDate = $this->normalizeDate($this->get('expiration_date'));
 
-        if ($title === '' || $intention === '' || $description === '' || !$reviewDate || !$expirationDate) {
-            return ['status' => false, 'text' => 'A rule requires a title, intention, description, review date and expiration date.'];
+        if ($title === '' || $description === '' || !$reviewDate || !$expirationDate) {
+            return ['status' => false, 'text' => 'A rule requires a title, description, review date and expiration date.'];
         }
 
         if (($authorityId <= 0 && $holonId <= 0) || ($authorityId > 0 && $holonId > 0)) {
@@ -132,7 +141,7 @@ class Rule extends DbObject
         }
 
         $this->set('title', $title);
-        $this->set('intention', $intention);
+        $this->set('intention', $intention !== '' ? $intention : null);
         $this->set('description', $description);
         $this->set('scope', $authorityId > 0 ? self::normalizeScope($this->get('scope')) : self::SCOPE_LOCAL);
         $this->set('review_date', $reviewDate->format('Y-m-d'));
@@ -141,19 +150,26 @@ class Rule extends DbObject
         $now = new \DateTime();
         $currentUserId = function_exists('commonGetCurrentUserId') ? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0);
         if ((int)$this->getId() <= 0) {
-            if (!($this->get('created_at') instanceof \DateTimeInterface)) {
+            if (!$this->preserveImportedAuditMetadata && !($this->get('created_at') instanceof \DateTimeInterface)) {
                 $this->set('created_at', $now);
             }
-            if ((int)$this->get('IDuser_creation') <= 0 && $currentUserId > 0) {
+            if (!$this->preserveImportedAuditMetadata && (int)$this->get('IDuser_creation') <= 0 && $currentUserId > 0) {
                 $this->set('IDuser_creation', $currentUserId);
             }
         }
-        $this->set('updated_at', $now);
-        if ($currentUserId > 0) {
+        if (!$this->preserveImportedAuditMetadata || !($this->get('updated_at') instanceof \DateTimeInterface)) {
+            $this->set('updated_at', $now);
+        }
+        if (!$this->preserveImportedAuditMetadata && $currentUserId > 0) {
             $this->set('IDuser_modification', $currentUserId);
         }
 
         return parent::save();
+    }
+
+    public function preserveImportedAuditMetadata($preserve = true)
+    {
+        $this->preserveImportedAuditMetadata = (bool)$preserve;
     }
 
     public function getAuthority()

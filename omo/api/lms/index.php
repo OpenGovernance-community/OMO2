@@ -170,12 +170,6 @@ foreach ($parcours as $parcoursItem) {
             margin: 0 0 8px;
         }
 
-        .lms-parcours-section__intro p {
-            margin: 0;
-            color: var(--text-light);
-            line-height: 1.5;
-        }
-
         .card {
             border: 1px solid var(--border-color);
             border-radius: var(--border-radius);
@@ -668,8 +662,8 @@ if (!$isEmbedded) {
 <section class="lms-parcours-section" id="lms-parcours-section-completed" <?php echo count($completedParcours) === 0 ? 'hidden' : ''; ?>>
     <div class="lms-parcours-separator">
         <div class="lms-parcours-section__intro">
-            <h2><?php echo htmlspecialchars(lmsIndexT('lms.index.section.completed')); ?></h2>
-            <p><?php echo htmlspecialchars(lmsIndexT('lms.index.section.completed_intro')); ?></p>
+            <h2 class="generic-title generic-title--section"><?php echo htmlspecialchars(lmsIndexT('lms.index.section.completed')); ?></h2>
+            <p class="generic-description"><?php echo htmlspecialchars(lmsIndexT('lms.index.section.completed_intro')); ?></p>
         </div>
     </div>
 
@@ -743,8 +737,8 @@ if (!$isEmbedded) {
 <section class="lms-parcours-section" id="lms-parcours-section-packs">
     <div class="lms-parcours-separator">
         <div class="lms-parcours-section__intro">
-            <h2><?php echo htmlspecialchars(lmsIndexT('lms.index.section.packs')); ?></h2>
-            <p><?php echo htmlspecialchars(lmsIndexT('lms.index.section.packs_intro')); ?></p>
+            <h2 class="generic-title generic-title--section"><?php echo htmlspecialchars(lmsIndexT('lms.index.section.packs')); ?></h2>
+            <p class="generic-description"><?php echo htmlspecialchars(lmsIndexT('lms.index.section.packs_intro')); ?></p>
         </div>
     </div>
 
@@ -2404,15 +2398,15 @@ function createMissionQuestionChoiceRow(index) {
     row.className = 'lms-question-choice-row';
     row.setAttribute('data-lms-question-choice-row', '1');
     row.innerHTML = `
-        <label class="lms-question-choice-row__label">
-            <span>${lmsIndexText.choiceLabel}</span>
-            <input type="text" name="choices[${index}][label]" required>
+        <label class="lms-question-choice-row__label generic-form-field">
+            <span class="generic-form-label">${lmsIndexText.choiceLabel}</span>
+            <input type="text" name="choices[${index}][label]" class="generic-form-control" required>
         </label>
         <label class="lms-question-choice-row__correct">
             <input type="checkbox" name="choices[${index}][is_correct]" value="1">
             <span>${lmsIndexText.correctChoiceLabel}</span>
         </label>
-        <button type="button" class="lms-question-choice-row__remove" data-lms-remove-question-choice="1">${lmsIndexText.removeLabel}</button>
+        <button type="button" class="lms-question-choice-row__remove generic-action-button generic-action-button--secondary" data-lms-remove-question-choice="1">${lmsIndexText.removeLabel}</button>
     `;
     return row;
 }

@@ -40,7 +40,7 @@ if (!function_exists('omoSharePopupFormatDateTimeInput')) {
 $context = omoShareResolveManageContext($_GET);
 if (empty($context['status'])) {
     ?>
-    <div class="omo-share-popup omo-share-popup--error"><?= htmlspecialchars((string)($context['message'] ?? 'Erreur.'), ENT_QUOTES, 'UTF-8') ?></div>
+    <div class="omo-share-popup omo-share-popup--error generic-soft-panel"><?= htmlspecialchars((string)($context['message'] ?? 'Erreur.'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -53,7 +53,7 @@ $defaultLabel = $currentHolon->getDisplayName();
 $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . rawurlencode((string)$currentHolon->getId());
 ?>
 <div
-    class="omo-share-popup"
+    class="omo-share-popup generic-stack generic-stack--flush"
     id="omoSharePopupRoot"
     data-oid="<?= (int)$organizationId ?>"
     data-cid="<?= (int)$currentHolon->getId() ?>"
@@ -62,35 +62,20 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
 >
     <style>
     .omo-share-popup {
-        display: grid;
-        gap: 0;
         color: var(--color-text, #1f2937);
     }
 
-    .omo-share-popup__header {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-    }
-
     .omo-share-popup__header-copy {
-        display: grid;
-        gap: 8px;
+        --generic-drawer-header-copy-gap: var(--generic-space-2);
         min-width: 0;
     }
 
     .omo-share-popup__shell {
-        display: grid;
-        gap: 18px;
-        padding: 16px 18px 18px;
+        --generic-drawer-content-gap: var(--generic-space-4);
     }
 
     .omo-share-popup--error {
-        padding: 18px;
-        border-radius: var(--radius-md);
-        background: var(--color-surface-alt, #f0f2f5);
         color: var(--color-text-light, #6b7280);
-        border: 1px solid var(--color-border, #e5e7eb);
     }
 
     .omo-share-popup__hero h2,
@@ -98,21 +83,10 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
         margin: 0;
     }
 
-    .omo-share-popup__hero p,
-    .omo-share-popup__section-text {
-        margin: 0;
-        color: var(--color-text-light, #6b7280);
-        line-height: 1.5;
-    }
 
     .omo-share-popup__feedback {
-        min-height: 20px;
+        --generic-feedback-min-height: 20px;
         font-size: 13px;
-        color: #b91c1c;
-    }
-
-    .omo-share-popup__feedback.is-success {
-        color: #166534;
     }
 
     .omo-share-popup__section,
@@ -213,22 +187,10 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
         grid-column: 1 / -1;
     }
 
-    .omo-share-popup__label {
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--color-text, #1f2937);
-    }
-
     .omo-share-popup__input {
         --generic-form-control-padding-block: 10px;
         --generic-form-control-border: var(--color-border-strong, #cbd5e1);
         --generic-form-control-background: var(--color-surface, #ffffff);
-    }
-
-    .omo-share-popup__hint {
-        font-size: 12px;
-        color: var(--color-text-light, #6b7280);
-        line-height: 1.45;
     }
 
     .omo-share-popup__permissions {
@@ -263,14 +225,14 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
             <p>Le lien demarrera sur <strong><?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?></strong> et pourra etre transmis a des personnes externes.</p>
         </div>
     </div>
-    <div class="omo-share-popup__shell">
+    <div class="omo-share-popup__shell generic-drawer-content">
 
-    <div id="omoSharePopupFeedback" class="omo-share-popup__feedback"></div>
+    <div id="omoSharePopupFeedback" class="omo-share-popup__feedback generic-feedback"></div>
 
     <div class="omo-share-popup__list" id="omoSharePopupListSection"<?= $hasExistingLinks ? '' : ' hidden' ?>>
         <div class="omo-share-popup__section">
             <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large">Liens existants</h3>
-            <p class="omo-share-popup__section-text">Tu peux copier, modifier, supprimer ou ajouter un nouveau lien de partage pour ce holon.</p>
+            <p class="omo-share-popup__section-text generic-description">Tu peux copier, modifier, supprimer ou ajouter un nouveau lien de partage pour ce holon.</p>
         </div>
 
         <div class="omo-share-popup__cards">
@@ -343,7 +305,7 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
     <div class="omo-share-popup__form-panel" id="omoSharePopupFormSection"<?= $hasExistingLinks ? ' hidden' : '' ?>>
         <div class="omo-share-popup__section">
             <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large" id="omoSharePopupFormTitle"><?= $hasExistingLinks ? 'Nouveau lien de partage' : 'Creer un lien de partage' ?></h3>
-            <p class="omo-share-popup__section-text" id="omoSharePopupFormIntro"><?= $hasExistingLinks ? 'Configure un nouveau lien ou modifie un lien existant.' : 'Aucun lien n existe encore pour ce holon. Creons le premier.' ?></p>
+            <p class="omo-share-popup__section-text generic-description" id="omoSharePopupFormIntro"><?= $hasExistingLinks ? 'Configure un nouveau lien ou modifie un lien existant.' : 'Aucun lien n existe encore pour ce holon. Creons le premier.' ?></p>
         </div>
 
         <form class="omo-share-popup__form" id="omoSharePopupForm">
@@ -353,21 +315,21 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
 
             <div class="omo-share-popup__grid">
                 <div class="omo-share-popup__field">
-                    <label class="omo-share-popup__label" for="omoSharePopupLabel">Libelle interne</label>
+                    <label class="omo-share-popup__label generic-form-label" for="omoSharePopupLabel">Libelle interne</label>
                     <input class="omo-share-popup__input generic-form-control" type="text" id="omoSharePopupLabel" name="label" maxlength="150" value="<?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?>">
-                    <div class="omo-share-popup__hint">Ce libelle est interne et servira a retrouver le lien.</div>
+                    <div class="omo-share-popup__hint generic-help-text">Ce libelle est interne et servira a retrouver le lien.</div>
                 </div>
 
                 <div class="omo-share-popup__field">
-                    <label class="omo-share-popup__label" for="omoSharePopupExpiration">Expiration</label>
+                    <label class="omo-share-popup__label generic-form-label" for="omoSharePopupExpiration">Expiration</label>
                     <input class="omo-share-popup__input generic-form-control" type="datetime-local" id="omoSharePopupExpiration" name="dateexpiration">
-                    <div class="omo-share-popup__hint">Laisse vide pour un lien sans date de fin.</div>
+                    <div class="omo-share-popup__hint generic-help-text">Laisse vide pour un lien sans date de fin.</div>
                 </div>
 
                 <div class="omo-share-popup__field omo-share-popup__field--full">
-                    <label class="omo-share-popup__label" for="omoSharePopupPassword">Mot de passe optionnel</label>
+                    <label class="omo-share-popup__label generic-form-label" for="omoSharePopupPassword">Mot de passe optionnel</label>
                     <input class="omo-share-popup__input generic-form-control" type="password" id="omoSharePopupPassword" name="password" autocomplete="new-password">
-                    <div class="omo-share-popup__hint" id="omoSharePopupPasswordHint">Si un mot de passe est defini, il sera demande a l ouverture du lien.</div>
+                    <div class="omo-share-popup__hint generic-help-text" id="omoSharePopupPasswordHint">Si un mot de passe est defini, il sera demande a l ouverture du lien.</div>
                 </div>
 
                 <label class="omo-share-popup__check omo-share-popup__field--full" id="omoSharePopupClearPasswordWrap" hidden>

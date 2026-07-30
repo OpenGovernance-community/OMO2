@@ -240,9 +240,9 @@
             row.setAttribute('data-omo-stats-reference-point', '');
             row.setAttribute('data-endpoint', isEndpoint ? '1' : '0');
             row.innerHTML = '<div class="omo-stats-reference-point__badge"></div>'
-                + '<label class="omo-stats-field"><span></span><input type="number" class="generic-form-control" min="0" max="100" step="0.2" data-omo-stats-point-position required></label>'
-                + '<label class="omo-stats-field omo-stats-field--date"><span></span><input type="datetime-local" class="generic-form-control" data-omo-stats-point-date readonly aria-readonly="true"></label>'
-                + '<label class="omo-stats-field"><span></span><input type="number" class="generic-form-control" step="any" data-omo-stats-point-value required></label>'
+                + '<label class="omo-stats-field generic-form-field"><span class="generic-form-label"></span><input type="number" class="generic-form-control" min="0" max="100" step="0.2" data-omo-stats-point-position required></label>'
+                + '<label class="omo-stats-field generic-form-field omo-stats-field--date"><span class="generic-form-label"></span><input type="datetime-local" class="generic-form-control" data-omo-stats-point-date readonly aria-readonly="true"></label>'
+                + '<label class="omo-stats-field generic-form-field"><span class="generic-form-label"></span><input type="number" class="generic-form-control" step="any" data-omo-stats-point-value required></label>'
                 + (isEndpoint ? '' : '<button type="button" class="generic-action-button generic-action-button--danger omo-stats-reference-point__remove" data-omo-stats-remove-reference-point></button>');
             var fields = row.querySelectorAll('.omo-stats-field span');
             row.querySelector('.omo-stats-reference-point__badge').textContent = isEndpoint ? (labels.endpoint || 'Endpoint') : (labels.intermediate || 'Intermediate');

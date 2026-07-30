@@ -44,7 +44,7 @@ if (
 $documents = omoProjectsGetVisibleDocuments($project, $organizationId, $projectHolon);
 if (count($documents) === 0) {
     echo '<div class="generic-soft-panel omo-project-detail__documents-empty">'
-        . '<p class="omo-project-detail__muted">' . omoApiEscape(omoProjectsT('projects.detail.documents.empty')) . '</p>'
+        . '<p class="omo-project-detail__muted generic-description generic-description--small">' . omoApiEscape(omoProjectsT('projects.detail.documents.empty')) . '</p>'
         . '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-detail-add-document>'
         . omoApiEscape(omoProjectsT('projects.detail.documents.add'))
         . '</button></div>';

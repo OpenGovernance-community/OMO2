@@ -39,7 +39,7 @@ if (!is_array($payload)) {
     exit;
 }
 
-$availableModules = array('structure', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv');
+$availableModules = array('structure', 'rules', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv');
 $requestedModules = array();
 $postedModules = isset($_POST['modules']) && is_array($_POST['modules']) ? $_POST['modules'] : array();
 foreach ($availableModules as $module) {

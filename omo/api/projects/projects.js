@@ -102,7 +102,7 @@
             return;
         }
         panel.setAttribute('data-omo-project-detail-documents-loading', '1');
-        panel.innerHTML = '<p class="omo-project-detail__muted">' + escapeHtml(texts.documentsLoading || 'Chargement...') + '</p>';
+        panel.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts.documentsLoading || 'Chargement...') + '</p>';
         fetch(resolveUrl(url), {credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}})
             .then(function (response) {
                 if (!response.ok) {
@@ -116,7 +116,7 @@
                 panel.removeAttribute('data-omo-project-detail-documents-loading');
             })
             .catch(function () {
-                panel.innerHTML = '<p class="omo-project-detail__muted">' + escapeHtml(texts.documentsError || 'Impossible de charger les documents.') + '</p>';
+                panel.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts.documentsError || 'Impossible de charger les documents.') + '</p>';
                 panel.removeAttribute('data-omo-project-detail-documents-loading');
             });
     }
@@ -925,7 +925,7 @@
         var currentHolonId = Number(card.getAttribute('data-project-holon-id') || 0);
         var organizationId = Number(root.getAttribute('data-omo-projects-oid') || 0);
         var html = '<div class="omo-project-move-dialog">'
-            + '<p class="omo-project-move-dialog__hint">' + escapeHtml(texts.moveHint) + '</p>'
+            + '<p class="omo-project-move-dialog__hint generic-help-text">' + escapeHtml(texts.moveHint) + '</p>'
             + '<div data-omo-project-move-picker></div>'
             + '<p class="omo-project-move-dialog__error" data-omo-project-move-error hidden></p>'
             + '<div class="omo-project-move-dialog__actions">'
@@ -1007,10 +1007,10 @@
         var html = '<div class="omo-project-attach-dialog omo-resource-picker">'
             + '<aside class="omo-resource-picker__navigation" data-omo-project-attach-scope></aside>'
             + '<div class="omo-resource-picker__content">'
-            + '<p class="omo-project-move-dialog__hint">' + escapeHtml(texts.attachHint) + '</p>'
+            + '<p class="omo-project-move-dialog__hint generic-help-text">' + escapeHtml(texts.attachHint) + '</p>'
             + '<label class="omo-resource-picker__quick-search"><input class="generic-form-control" type="search" data-omo-project-attach-search aria-label="' + escapeHtml(texts.attachSearch) + '" placeholder="' + escapeHtml(texts.attachSearch) + '"></label>'
             + '<select class="generic-form-control omo-project-parent-picker__select" size="10" data-omo-project-attach-select></select>'
-            + '<p class="omo-project-parent-picker__empty" data-omo-project-attach-empty hidden></p>'
+            + '<p class="omo-project-parent-picker__empty generic-description generic-description--small" data-omo-project-attach-empty hidden></p>'
             + '<p class="omo-project-move-dialog__error" data-omo-project-attach-error hidden></p>'
             + '<div class="omo-project-parent-picker__actions">'
             + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-attach-cancel>' + escapeHtml(texts.cancel) + '</button>'

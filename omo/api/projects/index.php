@@ -506,7 +506,8 @@ $projectTexts = [
     'archivesTitle' => omoProjectsT('projects.detail.archives.title'),
 ];
 ?>
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260727-project-gantt-overdue">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260729-projects">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
@@ -536,7 +537,7 @@ $projectTexts = [
                     <svg viewBox="0 0 24 24"><path d="M4 5.5h6l1.8 2H20v11H4z"/><path d="M4 8h16"/></svg>
                 </span>
                 <div class="omo-panel-view__header-copy">
-                    <div class="omo-projects__title-row">
+                    <div class="omo-projects__title-row generic-title-row generic-title-row--center">
                         <h2 class="omo-panel-view__title"><?= omoApiEscape(omoProjectsT('projects.title')) ?></h2>
                         <span class="omo-panel-view__count"><?= (int)($projectView === 'list' ? count($listProjectItems) : ($projectView === 'gantt' ? count($ganttRows) : $projectCount)) ?></span>
                     </div>
@@ -654,7 +655,7 @@ $projectTexts = [
                                     aria-label="<?= omoApiEscape($projectTitle) ?>"
                                 >
                                     <div class="omo-project-card__topline">
-                                        <span class="omo-project-card__context"><?= omoApiEscape($item['contextLabel']) ?></span>
+                                        <span class="omo-project-card__context generic-meta generic-meta--compact"><?= omoApiEscape($item['contextLabel']) ?></span>
                                         <span class="omo-project-card__topline-actions">
                                             <span class="omo-project-card__size" title="<?= omoApiEscape(omoProjectsT('projects.detail.size')) ?>"><?= omoApiEscape($projectSize) ?></span>
                                             <?php if ($item['priority'] !== null): ?><span class="generic-project-priority generic-project-priority--p<?= (int)$item['priority'] ?>" title="<?= omoApiEscape(omoProjectsT('projects.detail.priority')) ?>">P<?= (int)$item['priority'] ?></span><?php endif; ?>
@@ -670,8 +671,8 @@ $projectTexts = [
                                             <?php endif; ?>
                                         </span>
                                     </div>
-                                    <h4 class="omo-project-card__title"><?= omoApiEscape($projectTitle) ?></h4>
-                                    <div class="omo-project-card__meta">
+                                    <h4 class="omo-project-card__title generic-title generic-title--item"><?= omoApiEscape($projectTitle) ?></h4>
+                                    <div class="omo-project-card__meta generic-meta generic-meta--compact">
                                         <span><?= omoApiEscape($responsibleLabel) ?></span>
                                         <?php if ($plannedEnd !== ''): ?><time datetime="<?= omoApiEscape((string)$plannedEnd) ?>"><?= omoApiEscape($plannedEnd) ?></time><?php endif; ?>
                                     </div>

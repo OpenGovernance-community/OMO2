@@ -10,7 +10,7 @@ $currentUserId = (int)commonGetCurrentUserId();
 if ($organizationId <= 0 || $currentUserId <= 0) {
     http_response_code(403);
     ?>
-    <div class="omo-access-request-popup__empty">Vous devez etre connecte pour envoyer une demande d acces.</div>
+    <div class="omo-access-request-popup__empty generic-description">Vous devez etre connecte pour envoyer une demande d acces.</div>
     <?php
     exit;
 }
@@ -19,7 +19,7 @@ $organization = new Organization();
 if (!$organization->load($organizationId)) {
     http_response_code(404);
     ?>
-    <div class="omo-access-request-popup__empty">L organisation demandee est introuvable.</div>
+    <div class="omo-access-request-popup__empty generic-description">L organisation demandee est introuvable.</div>
     <?php
     exit;
 }
@@ -27,7 +27,7 @@ if (!$organization->load($organizationId)) {
 if (commonUserHasOrganizationAccess($currentUserId, $organizationId)) {
     http_response_code(409);
     ?>
-    <div class="omo-access-request-popup__empty">Votre compte a deja acces a cette organisation.</div>
+    <div class="omo-access-request-popup__empty generic-description">Votre compte a deja acces a cette organisation.</div>
     <?php
     exit;
 }
@@ -60,72 +60,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 <style>
-    .omo-access-request-popup {
-        display: grid;
-        gap: 0;
-        color: var(--color-text, #1f2937);
-    }
-
-    .omo-access-request-popup__header {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-    }
-
-    .omo-access-request-popup__header-copy {
-        display: grid;
-        gap: 4px;
-    }
-
-    .omo-access-request-popup__shell {
-        display: grid;
-        gap: 16px;
-        padding: 16px 18px 18px;
-    }
-
-    .omo-access-request-popup__intro,
-    .omo-access-request-popup__hint,
-    .omo-access-request-popup__status,
-    .omo-access-request-popup__empty {
-        color: var(--topbar-panel-muted, #64748b);
-        line-height: 1.5;
-        margin: 0;
-    }
-
-    .omo-access-request-popup__group {
-        display: grid;
-        gap: 8px;
-    }
-
-    .omo-access-request-popup__label {
-        font-weight: 700;
-    }
-
     .omo-access-request-popup__textarea {
         min-height: 132px;
         resize: vertical;
     }
 
-    .omo-access-request-popup__feedback {
-        min-height: 22px;
-        color: #b91c1c;
-        font-weight: 600;
-    }
-
-    .omo-access-request-popup__feedback.is-success {
-        color: #15803d;
-    }
-
-    .omo-access-request-popup__actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-    }
 </style>
 
 <form
     id="omoAccessRequestPopupForm"
-    class="omo-access-request-popup"
+    class="omo-access-request-popup generic-stack generic-stack--flush"
     action="/omo/api/organization/access_request_popup.php?oid=<?= (int)$organizationId ?>"
     method="post"
 >
@@ -136,21 +80,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
-    <div class="omo-access-request-popup__shell">
-        <p class="omo-access-request-popup__intro">
+    <div class="omo-access-request-popup__shell generic-drawer-content">
+        <p class="omo-access-request-popup__intro generic-description">
             Envoyez un court message aux administrateurs de
             <strong><?= omoApiEscape(trim((string)$organization->get('name')) !== '' ? trim((string)$organization->get('name')) : 'cette organisation') ?></strong>
             pour expliquer pourquoi vous souhaitez rejoindre cet espace.
         </p>
 
         <?php if ($hasPendingMemberRequest): ?>
-            <p class="omo-access-request-popup__status">
+            <p class="omo-access-request-popup__status generic-description">
                 Une demande est deja en attente pour cette organisation. Vous pouvez toutefois mettre a jour votre message ci-dessous et renvoyer la demande.
             </p>
         <?php endif; ?>
 
-        <div class="omo-access-request-popup__group">
-            <label class="omo-access-request-popup__label" for="omoAccessRequestMessage">Votre message</label>
+        <div class="omo-access-request-popup__group generic-stack generic-stack--compact">
+            <label class="omo-access-request-popup__label generic-form-label" for="omoAccessRequestMessage">Votre message</label>
             <textarea
                 id="omoAccessRequestMessage"
                 name="message"
@@ -158,14 +102,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 maxlength="2000"
                 placeholder="Bonjour, je souhaite rejoindre cette organisation pour..."
             ><?= $hasPendingMemberRequest ? omoApiEscape($pendingInvitation->getRequestMessage()) : '' ?></textarea>
-            <div class="omo-access-request-popup__hint">
+            <div class="omo-access-request-popup__hint generic-help-text generic-help-text--regular">
                 Le message est optionnel, mais il aide les administrateurs a comprendre votre demande.
             </div>
         </div>
 
-        <div id="omoAccessRequestPopupFeedback" class="omo-access-request-popup__feedback"></div>
+        <div id="omoAccessRequestPopupFeedback" class="omo-access-request-popup__feedback generic-feedback"></div>
 
-        <div class="omo-access-request-popup__actions">
+        <div class="omo-access-request-popup__actions generic-action-row">
             <button type="submit" id="omoAccessRequestPopupSubmit" class="generic-action-button generic-action-button--main">
                 Envoyer la demande
             </button>

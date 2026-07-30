@@ -104,35 +104,35 @@ usort($referencePoints, static function (StatIndicatorReferencePoint $left, Stat
 
 ob_start();
 ?>
-<section class="generic-soft-panel omo-stats-schedule" data-omo-stats-schedule>
-    <div class="omo-stats-schedule__heading">
-        <div>
+<section class="generic-section generic-section--stack generic-form-section omo-stats-schedule" data-omo-stats-schedule>
+    <div class="omo-stats-schedule__heading generic-form-section__heading">
+        <div class="generic-form-section__copy">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.form.schedule_title')) ?></h3>
-            <p><?= omoApiEscape(omoStatsT('stats.form.schedule_help')) ?></p>
+            <p class="generic-description"><?= omoApiEscape(omoStatsT('stats.form.schedule_help')) ?></p>
         </div>
     </div>
-    <div class="omo-stats-schedule__fields">
-        <label class="omo-stats-field">
-            <span><?= omoApiEscape(omoStatsT('stats.form.frequency')) ?></span>
+    <div class="omo-stats-schedule__fields generic-form-grid">
+        <label class="omo-stats-field generic-form-field">
+            <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.form.frequency')) ?></span>
             <select class="generic-form-control" name="measurement_frequency" data-omo-stats-measurement-frequency>
                 <?php foreach ($measurementFrequencyOptions as $option): ?>
                     <option value="<?= omoApiEscape((string)$option['value']) ?>"<?= (string)$option['value'] === (string)$measurementFrequency ? ' selected' : '' ?>><?= omoApiEscape((string)$option['label']) ?></option>
                 <?php endforeach; ?>
             </select>
         </label>
-        <label class="omo-stats-field" data-omo-stats-measurement-schedule-field>
-            <span><?= omoApiEscape(omoStatsT('stats.form.schedule')) ?></span>
+        <label class="omo-stats-field generic-form-field" data-omo-stats-measurement-schedule-field>
+            <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.form.schedule')) ?></span>
             <select class="generic-form-control" name="measurement_schedule" data-omo-stats-measurement-schedule data-selected-schedule="<?= omoApiEscape((string)$measurementSchedule) ?>"></select>
         </label>
     </div>
 </section>
-<section class="generic-soft-panel omo-stats-ceiling-editor" data-omo-stats-ceiling-editor hidden>
-    <div class="omo-stats-ceiling-editor__heading">
+<section class="generic-section generic-section--stack generic-form-section omo-stats-ceiling-editor" data-omo-stats-ceiling-editor hidden>
+    <div class="omo-stats-ceiling-editor__heading generic-form-section__copy">
         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.form.ceiling_title')) ?></h3>
-        <p><?= omoApiEscape(omoStatsT('stats.form.ceiling_help')) ?></p>
+        <p class="generic-description"><?= omoApiEscape(omoStatsT('stats.form.ceiling_help')) ?></p>
     </div>
-    <label class="omo-stats-field">
-        <span><?= omoApiEscape(omoStatsT('stats.form.ceiling_value')) ?></span>
+    <label class="omo-stats-field generic-form-field">
+        <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.form.ceiling_value')) ?></span>
         <input
             type="number"
             class="generic-form-control"
@@ -144,11 +144,11 @@ ob_start();
         >
     </label>
 </section>
-<div class="omo-stats-reference-editor" data-omo-stats-reference-editor>
-    <div class="omo-stats-reference-editor__heading">
-        <div>
+<div class="omo-stats-reference-editor generic-section generic-section--stack generic-form-section" data-omo-stats-reference-editor>
+    <div class="omo-stats-reference-editor__heading generic-form-section__heading">
+        <div class="generic-form-section__copy">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.form.reference_title')) ?></h3>
-            <p><?= omoApiEscape(omoStatsT('stats.form.reference_help')) ?></p>
+            <p class="generic-description"><?= omoApiEscape(omoStatsT('stats.form.reference_help')) ?></p>
         </div>
         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-add-reference-point><?= omoApiEscape(omoStatsT('stats.form.add_point')) ?></button>
     </div>
@@ -162,8 +162,8 @@ ob_start();
             ?>
             <div class="omo-stats-reference-point generic-soft-panel" data-omo-stats-reference-point data-endpoint="<?= $isEndpoint ? '1' : '0' ?>">
                 <div class="omo-stats-reference-point__badge"><?= omoApiEscape(omoStatsT($isEndpoint ? 'stats.form.endpoint' : 'stats.form.intermediate')) ?></div>
-                <label class="omo-stats-field">
-                    <span><?= omoApiEscape(omoStatsT('stats.form.position')) ?></span>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.form.position')) ?></span>
                     <input
                         type="number"
                         class="generic-form-control"
@@ -177,8 +177,8 @@ ob_start();
                         required
                     >
                 </label>
-                <label class="omo-stats-field omo-stats-field--date">
-                    <span><?= omoApiEscape(omoStatsT($isEndpoint ? 'stats.form.point_date' : 'stats.form.point_date_auto')) ?></span>
+                <label class="omo-stats-field generic-form-field omo-stats-field--date">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT($isEndpoint ? 'stats.form.point_date' : 'stats.form.point_date_auto')) ?></span>
                     <input
                         type="datetime-local"
                         class="generic-form-control"
@@ -189,8 +189,8 @@ ob_start();
                         <?= $isEndpoint ? '' : 'readonly aria-readonly="true"' ?>
                     >
                 </label>
-                <label class="omo-stats-field">
-                    <span><?= omoApiEscape(omoStatsT('stats.form.point_value')) ?></span>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.form.point_value')) ?></span>
                     <input
                         type="number"
                         class="generic-form-control"
@@ -211,7 +211,7 @@ ob_start();
 <input type="hidden" name="stats_action" value="save_indicator">
 <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
 <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
-<div class="omo-stats-editor__actions">
+<div class="omo-stats-editor__actions generic-form-actions generic-form-actions--stack-mobile">
     <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-cancel-editor data-indicator-id="<?= (int)$indicatorId ?>"><?= omoApiEscape(omoStatsT('stats.action.cancel')) ?></button>
     <button type="submit" class="generic-action-button generic-action-button--main" data-omo-stats-save-editor><?= omoApiEscape(omoStatsT('stats.action.save')) ?></button>
 </div>
@@ -225,17 +225,14 @@ $params = [
     'afterTableHtml' => $afterTableHtml,
 ];
 ?>
-<div class="omo-stats-editor" data-omo-stats-editor data-indicator-id="<?= (int)$indicatorId ?>">
+<div class="omo-stats-editor generic-drawer-content" data-omo-stats-editor data-indicator-id="<?= (int)$indicatorId ?>">
     <div
         hidden
         data-omo-subdrawer-header
         data-omo-subdrawer-title="<?= omoApiEscape(omoStatsT($indicatorId > 0 ? 'stats.form.edit_title' : 'stats.form.create_title')) ?>"
         data-omo-subdrawer-description="<?= omoApiEscape(omoStatsT('stats.form.intro')) ?>"
     ></div>
-    <section class="generic-hero-panel accent omo-stats-editor__intro">
-        <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape(omoStatsT($indicatorId > 0 ? 'stats.form.edit_title' : 'stats.form.create_title')) ?></h2>
-        <p><?= omoApiEscape(omoStatsT('stats.form.intro')) ?></p>
-    </section>
+
     <?php $indicator->display('adminEdit.php', $params); ?>
 </div>
 <script src="/omo/api/stats/reference-editor.js?v=20260724-ceiling"></script>
@@ -562,9 +559,9 @@ $params = [
         row.setAttribute('data-endpoint', '0');
         row.innerHTML = ''
             + '<div class="omo-stats-reference-point__badge"></div>'
-            + '<label class="omo-stats-field"><span></span><input type="number" class="generic-form-control" name="reference_points[0][position_percent]" min="0" max="100" step="0.2" data-omo-stats-point-position required></label>'
-            + '<label class="omo-stats-field omo-stats-field--date"><span></span><input type="datetime-local" class="generic-form-control" name="reference_points[0][point_at]" data-omo-stats-point-date readonly aria-readonly="true"></label>'
-            + '<label class="omo-stats-field"><span></span><input type="number" class="generic-form-control" name="reference_points[0][value]" step="any" data-omo-stats-point-value required></label>'
+            + '<label class="omo-stats-field generic-form-field"><span class="generic-form-label"></span><input type="number" class="generic-form-control" name="reference_points[0][position_percent]" min="0" max="100" step="0.2" data-omo-stats-point-position required></label>'
+            + '<label class="omo-stats-field generic-form-field omo-stats-field--date"><span class="generic-form-label"></span><input type="datetime-local" class="generic-form-control" name="reference_points[0][point_at]" data-omo-stats-point-date readonly aria-readonly="true"></label>'
+            + '<label class="omo-stats-field generic-form-field"><span class="generic-form-label"></span><input type="number" class="generic-form-control" name="reference_points[0][value]" step="any" data-omo-stats-point-value required></label>'
             + '<button type="button" class="generic-action-button generic-action-button--danger omo-stats-reference-point__remove" data-omo-stats-remove-reference-point></button>';
         row.querySelector('.omo-stats-reference-point__badge').textContent = labels.intermediate;
         row.querySelectorAll('.omo-stats-field span')[0].textContent = labels.position;

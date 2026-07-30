@@ -247,29 +247,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 <style>
-.omo-calendar-invitations-popup {
-    display: grid;
-    gap: 0;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-calendar-invitations-popup__header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
-.omo-calendar-invitations-popup__header-copy {
-    display: grid;
-    gap: 4px;
-}
-
-.omo-calendar-invitations-popup__shell {
-    display: grid;
-    gap: 16px;
-    padding: 16px 18px 18px;
-}
-
 .omo-calendar-invitations-editor,
 .omo-calendar-invitations-editor__tab-panel,
 .omo-calendar-invitations-editor__checklist,
@@ -290,19 +267,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     --generic-tabs-panel-padding-inline: 14px;
 }
 
-.omo-calendar-invitations-editor__hint {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
-    line-height: 1.6;
-}
-
 .omo-calendar-invitations-editor__filter {
     width: 100%;
 }
 
 .omo-calendar-invitations-editor__empty {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
     font-style: italic;
 }
 
@@ -357,31 +326,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     min-height: 120px;
 }
 
-.omo-calendar-invitations-popup__feedback {
-    min-height: 22px;
-    color: #b91c1c;
-    font-weight: 600;
-}
-
-.omo-calendar-invitations-popup__feedback.is-success {
-    color: #15803d;
-}
-
 .omo-calendar-invitations-popup__empty {
     padding: 18px;
     color: var(--color-text, #1f2937);
 }
 
-.omo-calendar-invitations-popup__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
 </style>
 
 <form
     id="omoCalendarInvitationsPopupForm"
-    class="omo-calendar-invitations-popup"
+    class="omo-calendar-invitations-popup generic-stack generic-stack--flush"
     action="<?= omoApiEscape($popupActionUrl) ?>"
     method="post"
 >
@@ -391,7 +345,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.title')) ?></h3>
         </div>
     </div>
-    <div class="omo-calendar-invitations-popup__shell">
+    <div class="omo-calendar-invitations-popup__shell generic-drawer-content">
         <?= omoCalendarRenderInvitationEditor($editorState, $lang, $sourceLang, 'omoApiEscape', [
             'instanceId' => 'omoCalendarPopupInvitations',
             'holonFieldName' => 'holon_ids[]',
@@ -400,9 +354,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'showFooterHint' => false,
         ]) ?>
 
-        <div id="omoCalendarInvitationsPopupFeedback" class="omo-calendar-invitations-popup__feedback"></div>
+        <div id="omoCalendarInvitationsPopupFeedback" class="omo-calendar-invitations-popup__feedback generic-feedback"></div>
 
-        <div class="omo-calendar-invitations-popup__actions">
+        <div class="omo-calendar-invitations-popup__actions generic-action-row">
             <button type="submit" id="omoCalendarInvitationsPopupSubmit" class="generic-action-button generic-action-button--main">
                 <?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.submit')) ?>
             </button>

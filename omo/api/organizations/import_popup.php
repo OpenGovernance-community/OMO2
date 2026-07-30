@@ -21,14 +21,14 @@ if (
     <div class="omo-import-popup__hero generic-hero-panel accent">
         <div class="omo-import-popup__kicker generic-card-title generic-card-title--eyebrow">Import JSON</div>
         <h3 class="omo-import-popup__title generic-card-title generic-card-title--large">Importer une organisation</h3>
-        <p class="omo-import-popup__text">Selectionnez un fichier JSON exporte depuis le menu structure. L'import reconstruit les holons, roles, proprietes et les references internes du sous-arbre.</p>
+        <p class="omo-import-popup__text generic-description">Selectionnez un fichier JSON exporte depuis le menu structure. L'import reconstruit les holons, roles, proprietes et les references internes du sous-arbre.</p>
     </div>
 
     <form class="omo-import-popup__form" data-omo-org-import-form="1" enctype="multipart/form-data">
         <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
 
         <label class="omo-import-popup__field">
-            <span class="omo-import-popup__label">Fichier JSON</span>
+            <span class="omo-import-popup__label generic-form-label">Fichier JSON</span>
             <input
                 type="file"
                 name="structure_file"
@@ -38,7 +38,7 @@ if (
             >
         </label>
 
-        <div class="omo-import-popup__hint">
+        <div class="omo-import-popup__hint generic-help-text">
             Conseil: creez d'abord une organisation vide, puis importez un fichier genere par `Export` depuis la vue structure.
         </div>
 
@@ -63,14 +63,8 @@ if (
     --generic-hero-radius: var(--radius-md);
 }
 
-.omo-import-popup__title {
-    margin: 0;
-}
-
 .omo-import-popup__text {
-    margin: 10px 0 0;
-    line-height: 1.5;
-    color: var(--color-text-light, #6b7280);
+    margin-top: 10px;
 }
 
 .omo-import-popup__form {
@@ -89,18 +83,8 @@ if (
     gap: 8px;
 }
 
-.omo-import-popup__label {
-    font-weight: 600;
-}
-
 .omo-import-popup__input {
     --generic-form-control-padding-block: 10px;
-}
-
-.omo-import-popup__hint {
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--color-text-light, #6b7280);
 }
 
 .omo-import-popup__actions {

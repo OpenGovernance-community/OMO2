@@ -27,20 +27,20 @@ $lexicon = $organization->getLexicon();
 $tensionTerm = $lexicon['tension'];
 $adminTerm = $lexicon['admin'];
 ?>
-<div class="omo-lexicon-editor" data-omo-lexicon-editor>
-    <div class="omo-lexicon-editor__intro">
+<div class="omo-lexicon-editor generic-stack generic-stack--roomy" data-omo-lexicon-editor>
+    <div class="omo-lexicon-editor__intro generic-stack generic-stack--compact">
         <h2 class="generic-card-title generic-card-title--large"><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.title')) ?></h2>
-        <p><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.description')) ?></p>
+        <p class="generic-description"><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.description')) ?></p>
     </div>
 
-    <form class="omo-lexicon-editor__form" data-omo-lexicon-form>
-        <section class="generic-section omo-lexicon-editor__section">
+    <form class="omo-lexicon-editor__form generic-form-stack" data-omo-lexicon-form>
+        <section class="generic-section generic-section--stack generic-section--roomy omo-lexicon-editor__section">
             <div class="generic-section__header">
                 <h3 class="generic-card-title generic-card-title--medium"><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.tension.label')) ?></h3>
-                <p><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.tension.help')) ?></p>
+                <p class="generic-description"><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.tension.help')) ?></p>
             </div>
             <div class="omo-lexicon-editor__fields">
-                <label class="omo-lexicon-editor__field">
+                <label class="omo-lexicon-editor__field generic-form-field">
                     <span><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.tension.label')) ?></span>
                     <input
                         type="text"
@@ -51,7 +51,7 @@ $adminTerm = $lexicon['admin'];
                         required
                     >
                 </label>
-                <label class="omo-lexicon-editor__field">
+                <label class="omo-lexicon-editor__field generic-form-field">
                     <span><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.tension.article')) ?></span>
                     <input
                         type="text"
@@ -61,17 +61,17 @@ $adminTerm = $lexicon['admin'];
                         maxlength="20"
                         required
                     >
-                    <small><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.tension.article_help')) ?></small>
+                    <small class="generic-help-text"><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.tension.article_help')) ?></small>
                 </label>
             </div>
         </section>
 
-        <section class="generic-section omo-lexicon-editor__section">
+        <section class="generic-section generic-section--stack generic-section--roomy omo-lexicon-editor__section">
             <div class="generic-section__header">
                 <h3 class="generic-card-title generic-card-title--medium"><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.admin.label')) ?></h3>
-                <p><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.admin.help')) ?></p>
+                <p class="generic-description"><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.admin.help')) ?></p>
             </div>
-            <label class="omo-lexicon-editor__field">
+            <label class="omo-lexicon-editor__field generic-form-field">
                 <span><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.term.admin.label')) ?></span>
                 <input
                     type="text"
@@ -84,8 +84,8 @@ $adminTerm = $lexicon['admin'];
             </label>
         </section>
 
-        <div class="omo-lexicon-editor__feedback" data-omo-lexicon-feedback aria-live="polite"></div>
-        <div class="omo-lexicon-editor__actions">
+        <div class="omo-lexicon-editor__feedback generic-feedback" data-omo-lexicon-feedback aria-live="polite"></div>
+        <div class="omo-lexicon-editor__actions generic-form-actions">
             <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-lexicon-reset><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.action.reset')) ?></button>
             <button type="submit" class="generic-action-button generic-action-button--main" data-omo-lexicon-save><?= omoLexiconEscape(omoLexiconT('parameters.lexicon.action.save')) ?></button>
         </div>
@@ -93,28 +93,6 @@ $adminTerm = $lexicon['admin'];
 </div>
 
 <style>
-.omo-lexicon-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    padding: 4px;
-}
-
-.omo-lexicon-editor__intro,
-.omo-lexicon-editor__section {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.omo-lexicon-editor__intro p,
-.omo-lexicon-editor__section p,
-.omo-lexicon-editor__field small {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
-    line-height: 1.45;
-}
-
 .omo-lexicon-editor__fields {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(150px, 0.35fr);
@@ -122,34 +100,10 @@ $adminTerm = $lexicon['admin'];
 }
 
 .omo-lexicon-editor__field {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
     font-weight: 700;
 }
 
-.omo-lexicon-editor__field small {
-    font-weight: 400;
-}
-
-.omo-lexicon-editor__feedback {
-    min-height: 22px;
-}
-
-.omo-lexicon-editor__feedback.is-success {
-    color: var(--color-success, #15803d);
-}
-
-.omo-lexicon-editor__feedback.is-error {
-    color: var(--color-danger, #b91c1c);
-}
-
-.omo-lexicon-editor__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    flex-wrap: wrap;
-}
+.omo-lexicon-editor__field small { font-weight: 400; }
 
 @media (max-width: 620px) {
     .omo-lexicon-editor__fields {
@@ -182,7 +136,7 @@ $adminTerm = $lexicon['admin'];
         }
 
         feedback.textContent = String(message || '');
-        feedback.className = 'omo-lexicon-editor__feedback' + (kind ? ' is-' + kind : '');
+        feedback.className = 'omo-lexicon-editor__feedback generic-feedback' + (kind ? ' is-' + kind : '');
     }
 
     if (resetButton) {

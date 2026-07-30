@@ -253,7 +253,8 @@ foreach ($pickerItems as $indicator) {
 }
 $displayItemCount = count($statsEntries);
 ?>
-<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260724-ceiling-minimum">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
+<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260729-view-filter">
 <div
     class="omo-stats omo-panel-view"
     id="omo-stats-root"
@@ -261,7 +262,11 @@ $displayItemCount = count($statsEntries);
     data-omo-stats-cid="<?= $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0 ?>"
     data-omo-stats-route-cid="<?= (int)$currentHolonId ?>"
     data-omo-stats-root-hid="<?= $rootHolon instanceof Holon ? (int)$rootHolon->getId() : 0 ?>"
-    data-omo-stats-scope="<?= omoApiEscape($statsScope) ?>"
+    data-omo-stats-current-scope="<?= omoApiEscape($statsScope) ?>"
+    data-omo-stats-current-sort="<?= omoApiEscape($statsSort) ?>"
+    data-omo-stats-current-view="cards"
+    data-omo-view-filter-pending="1"
+    aria-busy="true"
     data-omo-stats-current-url="<?= omoApiEscape($currentUrl) ?>"
     data-omo-stats-create-url="<?= omoApiEscape($createUrl) ?>"
     data-omo-stats-detail-url="<?= omoApiEscape($detailBaseUrl) ?>"
@@ -278,7 +283,7 @@ $displayItemCount = count($statsEntries);
                 <div class="omo-panel-view__header-copy">
                     <div class="omo-stats__title-row">
                         <h2 class="omo-panel-view__title"><?= omoApiEscape(omoStatsT('stats.title')) ?></h2>
-                        <span class="omo-panel-view__count"><?= $displayItemCount ?></span>
+                        <span class="omo-panel-view__count" data-omo-stats-header-count><?= $displayItemCount ?></span>
                     </div>
                 </div>
             </div>
@@ -300,35 +305,47 @@ $displayItemCount = count($statsEntries);
             <?php endif; ?>
         </div>
         <div class="omo-panel-view__header-secondary">
-            <div class="omo-scope-toolbar__main">
-                <?php if (count($availableScopes) > 1): ?>
-                    <div
-                        class="omo-scope-toggle"
-                        data-omo-scope-switch="<?= omoApiEscape($statsScope) ?>"
-                        style="--omo-scope-option-count: <?= count($availableScopes) ?>; --omo-scope-active-index: <?= (int)$scopeActiveIndex ?>;"
-                    >
-                        <?php foreach ($availableScopes as $scopeIndex => $scopeKey): ?>
-                            <button
-                                type="button"
-                                class="omo-scope-toggle__button<?= $statsScope === $scopeKey ? ' is-active' : '' ?>"
-                                data-omo-stats-scope="<?= omoApiEscape($scopeKey) ?>"
-                                data-omo-scope-option="<?= omoApiEscape($scopeKey) ?>"
-                                data-omo-scope-index="<?= (int)$scopeIndex ?>"
-                                aria-pressed="<?= $statsScope === $scopeKey ? 'true' : 'false' ?>"
-                            ><span class="omo-scope-toggle__text"><?= omoApiEscape($scopeLabels[$scopeKey] ?? $scopeKey) ?></span></button>
-                        <?php endforeach; ?>
+            <div class="omo-stats__filter-toolbar omo-view-filter" data-omo-stats-filter-control role="group" aria-label="<?= omoApiEscape(omoStatsT('stats.filters.aria')) ?>">
+                <div class="omo-view-filter__input">
+                    <div class="omo-view-filter__chips">
+                        <button type="button" class="omo-view-filter__chip" data-omo-stats-filter-toggle data-omo-stats-scope-chip aria-expanded="false" aria-controls="omo-stats-filter-panel"><?= omoApiEscape((string)($scopeLabels[$statsScope] ?? $statsScope)) ?></button>
+                        <button type="button" class="omo-view-filter__chip" data-omo-stats-filter-toggle data-omo-stats-sort-chip aria-expanded="false" aria-controls="omo-stats-filter-panel"><?= omoApiEscape(omoStatsT('stats.controls.sort.' . $statsSort)) ?></button>
+                        <button type="button" class="omo-view-filter__chip" data-omo-stats-filter-toggle data-omo-stats-view-chip aria-expanded="false" aria-controls="omo-stats-filter-panel"><?= omoApiEscape(omoStatsT('stats.view.cards')) ?></button>
                     </div>
-                <?php endif; ?>
-            </div>
-            <div class="omo-stats__header-view-controls">
-                <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoStatsT('stats.controls.sort.aria')) ?>">
-                    <button type="button" class="omo-segmented__button<?= $statsSort === 'temporal' ? ' is-active' : '' ?>" data-omo-stats-sort="temporal" aria-pressed="<?= $statsSort === 'temporal' ? 'true' : 'false' ?>"><?= omoApiEscape(omoStatsT('stats.controls.sort.temporal')) ?></button>
-                    <button type="button" class="omo-segmented__button<?= $statsSort === 'alpha' ? ' is-active' : '' ?>" data-omo-stats-sort="alpha" aria-pressed="<?= $statsSort === 'alpha' ? 'true' : 'false' ?>"><?= omoApiEscape(omoStatsT('stats.controls.sort.alpha')) ?></button>
+                    <label class="omo-view-filter__search">
+                        <input type="search" class="generic-form-control" data-omo-stats-quick-search placeholder="<?= omoApiEscape(omoStatsT('stats.search.placeholder')) ?>" aria-label="<?= omoApiEscape(omoStatsT('stats.search.aria')) ?>" autocomplete="off">
+                    </label>
                 </div>
-                <div class="omo-segmented" aria-label="<?= omoApiEscape(omoStatsT('stats.title')) ?>">
-                    <button type="button" class="omo-segmented__button is-active" data-omo-stats-view="cards" aria-pressed="true"><?= omoApiEscape(omoStatsT('stats.view.cards')) ?></button>
-                    <button type="button" class="omo-segmented__button" data-omo-stats-view="compact" aria-pressed="false"><?= omoApiEscape(omoStatsT('stats.view.compact')) ?></button>
-                </div>
+                <section id="omo-stats-filter-panel" class="omo-view-filter__panel generic-soft-panel generic-soft-panel--stack" data-omo-stats-filter-panel hidden>
+                    <div class="omo-view-filter__panel-grid">
+                        <div class="omo-view-filter__group">
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoStatsT('stats.filters.scope')) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoStatsT('stats.filters.scope')) ?>">
+                                <?php foreach ($availableScopes as $scopeKey): ?>
+                                    <button type="button" class="omo-segmented__button<?= $statsScope === $scopeKey ? ' is-active' : '' ?>" data-omo-stats-scope="<?= omoApiEscape($scopeKey) ?>" aria-pressed="<?= $statsScope === $scopeKey ? 'true' : 'false' ?>"><?= omoApiEscape((string)($scopeLabels[$scopeKey] ?? $scopeKey)) ?></button>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <div class="omo-view-filter__group">
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoStatsT('stats.filters.sort')) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoStatsT('stats.controls.sort.aria')) ?>">
+                                <button type="button" class="omo-segmented__button<?= $statsSort === 'temporal' ? ' is-active' : '' ?>" data-omo-stats-sort="temporal" aria-pressed="<?= $statsSort === 'temporal' ? 'true' : 'false' ?>"><?= omoApiEscape(omoStatsT('stats.controls.sort.temporal')) ?></button>
+                                <button type="button" class="omo-segmented__button<?= $statsSort === 'alpha' ? ' is-active' : '' ?>" data-omo-stats-sort="alpha" aria-pressed="<?= $statsSort === 'alpha' ? 'true' : 'false' ?>"><?= omoApiEscape(omoStatsT('stats.controls.sort.alpha')) ?></button>
+                            </div>
+                        </div>
+                        <div class="omo-view-filter__group">
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoStatsT('stats.filters.view')) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoStatsT('stats.filters.view')) ?>">
+                                <button type="button" class="omo-segmented__button is-active" data-omo-stats-view="cards" aria-pressed="true"><?= omoApiEscape(omoStatsT('stats.view.cards')) ?></button>
+                                <button type="button" class="omo-segmented__button" data-omo-stats-view="compact" aria-pressed="false"><?= omoApiEscape(omoStatsT('stats.view.compact')) ?></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="omo-view-filter__actions">
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-filter-apply><?= omoApiEscape(omoStatsT('stats.filters.apply')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-stats-filter-save><?= omoApiEscape(omoStatsT('stats.filters.save_view')) ?></button>
+                    </div>
+                </section>
             </div>
         </div>
     </header>
@@ -337,7 +354,10 @@ $displayItemCount = count($statsEntries);
         <div class="omo-panel-view__body_content omo-stats__body">
             <section data-omo-stats-view-panel="cards">
                 <?php if ($displayItemCount === 0): ?>
-                    <div class="omo-empty-state"><?= omoApiEscape(omoStatsT($emptyKey)) ?></div>
+                    <section class="generic-hero-panel accent generic-empty-hero" data-omo-stats-default-empty>
+                        <h3 class="generic-empty-hero__title"><?= omoApiEscape(omoStatsT('stats.empty.title')) ?></h3>
+                        <p class="generic-empty-hero__text"><?= omoApiEscape(omoStatsT($emptyKey)) ?></p>
+                    </section>
                 <?php else: ?>
                     <div class="omo-stats-grid">
                         <?php $currentStatsCategory = null; ?>
@@ -352,7 +372,7 @@ $displayItemCount = count($statsEntries);
                                 endif;
                                 $currentStatsCategory = $statsEntry['category'];
                             ?>
-                                <section class="omo-panel-group generic-file-list__group omo-stats__sort-group">
+                                <section class="omo-panel-group generic-file-list__group omo-stats__sort-group" data-omo-stats-search-group>
                                     <h3 class="omo-panel-group__title generic-file-list__group-title"><?= omoApiEscape($currentStatsCategory) ?></h3>
                                     <div class="omo-stats-grid omo-stats__sort-group-items">
                             <?php endif; ?>
@@ -361,6 +381,7 @@ $displayItemCount = count($statsEntries);
                             <article
                                 class="generic-section omo-stats-card omo-stats-card--group<?= $groupOverdueSeverity === 'error' ? ' omo-stats-card--overdue' : ($groupOverdueSeverity === 'warning' ? ' omo-stats-card--warning' : '') ?>"
                                 data-omo-stats-group-id="<?= (int)$group->getId() ?>"
+                                data-omo-stats-search-item
                                 tabindex="0"
                                 role="button"
                                 aria-label="<?= omoApiEscape(omoStatsT('stats.card.open', ['name' => (string)$group->get('name')])) ?>"
@@ -411,6 +432,7 @@ $displayItemCount = count($statsEntries);
                             <article
                                 class="generic-section omo-stats-card<?= $overdueSeverity === 'error' ? ' omo-stats-card--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-card--warning' : '') ?>"
                                 data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"
+                                data-omo-stats-search-item
                                 tabindex="0"
                                 role="button"
                                 aria-label="<?= omoApiEscape(omoStatsT('stats.card.open', ['name' => $indicatorName])) ?>"
@@ -460,7 +482,7 @@ $displayItemCount = count($statsEntries);
                                             <time><?= omoApiEscape(omoStatsFormatDateTime($latestValue->get('measured_at'), false)) ?></time>
                                         </span>
                                     <?php else: ?>
-                                        <strong class="omo-stats-card__empty-value"><?= omoApiEscape(omoStatsT('stats.card.no_value')) ?></strong>
+                                        <strong class="omo-stats-card__empty-value generic-meta"><?= omoApiEscape(omoStatsT('stats.card.no_value')) ?></strong>
                                     <?php endif; ?>
                                 </div>
                             </article>
@@ -476,7 +498,10 @@ $displayItemCount = count($statsEntries);
 
             <section class="generic-file-list generic-file-list--structured omo-stats-compact" data-omo-stats-view-panel="compact" hidden>
                 <?php if ($displayItemCount === 0): ?>
-                    <div class="omo-empty-state"><?= omoApiEscape(omoStatsT($emptyKey)) ?></div>
+                    <section class="generic-hero-panel accent generic-empty-hero" data-omo-stats-default-empty>
+                        <h3 class="generic-empty-hero__title"><?= omoApiEscape(omoStatsT('stats.empty.title')) ?></h3>
+                        <p class="generic-empty-hero__text"><?= omoApiEscape(omoStatsT($emptyKey)) ?></p>
+                    </section>
                 <?php else: ?>
                         <?php $currentStatsCategory = null; ?>
                         <?php foreach ($statsEntries as $statsEntry): ?>
@@ -490,7 +515,7 @@ $displayItemCount = count($statsEntries);
                                 endif;
                                 $currentStatsCategory = $statsEntry['category'];
                             ?>
-                                <section class="omo-panel-group generic-file-list__group omo-stats__sort-group">
+                                <section class="omo-panel-group generic-file-list__group omo-stats__sort-group" data-omo-stats-search-group>
                                     <h3 class="omo-panel-group__title generic-file-list__group-title"><?= omoApiEscape($currentStatsCategory) ?></h3>
                                     <div class="omo-stats-compact__sort-group-table omo-panel-view__body_content generic-file-list__table">
                                         <div class="generic-file-list__header">
@@ -502,7 +527,7 @@ $displayItemCount = count($statsEntries);
                             <?php endif; ?>
                             <?php if ($statsEntry['kind'] === 'group'): ?>
                             <?php $groupItem = $statsEntry['data']; $group = $groupItem['group']; $latestSumValue = $groupItem['latestSumValue']; $groupOverdueSeverity = $groupItem['overdueSeverity']; ?>
-                            <article class="generic-file-list__item-shell">
+                            <article class="generic-file-list__item-shell" data-omo-stats-search-item>
                                 <div
                                     class="generic-file-list__row omo-stats-compact__row omo-stats-compact__row--group<?= $groupOverdueSeverity === 'error' ? ' omo-stats-compact__row--overdue' : ($groupOverdueSeverity === 'warning' ? ' omo-stats-compact__row--warning' : '') ?>"
                                     data-omo-stats-group-id="<?= (int)$group->getId() ?>"
@@ -554,7 +579,7 @@ $displayItemCount = count($statsEntries);
                             $referencePercentage = $item['referencePercentage'];
                             $indicatorName = trim((string)$indicator->get('name'));
                             ?>
-                            <article class="generic-file-list__item-shell">
+                            <article class="generic-file-list__item-shell" data-omo-stats-search-item>
                                 <div
                                     class="generic-file-list__row omo-stats-compact__row<?= $item['overdueSeverity'] === 'error' ? ' omo-stats-compact__row--overdue' : ($item['overdueSeverity'] === 'warning' ? ' omo-stats-compact__row--warning' : '') ?>"
                                     data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"
@@ -613,6 +638,7 @@ $displayItemCount = count($statsEntries);
                         <?php endif; ?>
                 <?php endif; ?>
             </section>
+            <div class="omo-empty-state omo-stats__search-empty" data-omo-stats-search-empty hidden><?= omoApiEscape(omoStatsT('stats.search.empty')) ?></div>
         </div>
     </div>
 
@@ -656,12 +682,19 @@ $displayItemCount = count($statsEntries);
     var createUrl = root.getAttribute('data-omo-stats-create-url') || '';
     var detailBaseUrl = root.getAttribute('data-omo-stats-detail-url') || '';
     var groupDetailBaseUrl = root.getAttribute('data-omo-stats-group-detail-url') || '';
-    var currentScope = root.getAttribute('data-omo-stats-scope') || 'contextual';
+    var currentScope = root.getAttribute('data-omo-stats-current-scope') || 'contextual';
     var routeCid = Number(root.getAttribute('data-omo-stats-route-cid') || 0);
     var initialIndicatorId = Number(root.getAttribute('data-omo-stats-open-indicator-id') || 0);
     var requestToken = 0;
     var listNeedsRefresh = false;
-    var storageKey = 'omoStatsDisplayMode';
+    var savedViewsStorageKey = 'omo.stats.saved-views.v1';
+    var sessionViewsStorageKey = 'omo.stats.session-views.v1';
+    var searchStorageKey = 'omo.stats.quick-search.v1';
+    var currentSort = root.getAttribute('data-omo-stats-current-sort') === 'alpha' ? 'alpha' : 'temporal';
+    var currentView = 'cards';
+    var currentSearch = '';
+    var pendingFilters = null;
+    var filterPanelOpen = false;
     var texts = <?= json_encode([
         'loading' => omoStatsT('stats.loading'),
         'loadError' => omoStatsT('stats.error.load'),
@@ -819,30 +852,100 @@ $displayItemCount = count($statsEntries);
         return scope === 'children' || scope === 'descendants' ? scope : 'contextual';
     }
 
-    function buildScopeUrl(scope) {
+    function normalizeSort(sortName) {
+        return sortName === 'alpha' ? 'alpha' : 'temporal';
+    }
+
+    function normalizeView(viewName) {
+        return viewName === 'compact' ? 'compact' : 'cards';
+    }
+
+    function getPreferencesContextKey() {
+        return String(root.getAttribute('data-omo-stats-oid') || '0')
+            + ':' + String(root.getAttribute('data-omo-stats-cid') || '0');
+    }
+
+    function readStoredValue(storage, storageKey) {
+        try {
+            var rawValue = storage.getItem(storageKey);
+            var values = rawValue ? JSON.parse(rawValue) : null;
+            return values && typeof values === 'object'
+                ? values[getPreferencesContextKey()] || null
+                : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function writeStoredFilters(storage, storageKey, filters) {
+        try {
+            var rawValue = storage.getItem(storageKey);
+            var values = rawValue ? JSON.parse(rawValue) : {};
+            if (!values || typeof values !== 'object') {
+                values = {};
+            }
+            values[getPreferencesContextKey()] = {
+                scope: normalizeScope(filters.scope),
+                sort: normalizeSort(filters.sort),
+                view: normalizeView(filters.view)
+            };
+            storage.setItem(storageKey, JSON.stringify(values));
+        } catch (error) {
+        }
+    }
+
+    function clearTemporaryFilters() {
+        try {
+            var rawValue = window.sessionStorage.getItem(sessionViewsStorageKey);
+            var values = rawValue ? JSON.parse(rawValue) : {};
+            if (!values || typeof values !== 'object') {
+                return;
+            }
+            delete values[getPreferencesContextKey()];
+            window.sessionStorage.setItem(sessionViewsStorageKey, JSON.stringify(values));
+        } catch (error) {
+        }
+    }
+
+    function readStoredSearch() {
+        var value = readStoredValue(window.sessionStorage, searchStorageKey);
+        return typeof value === 'string' ? value : '';
+    }
+
+    function writeStoredSearch(value) {
+        try {
+            var rawValue = window.sessionStorage.getItem(searchStorageKey);
+            var values = rawValue ? JSON.parse(rawValue) : {};
+            if (!values || typeof values !== 'object') {
+                values = {};
+            }
+            values[getPreferencesContextKey()] = String(value || '');
+            window.sessionStorage.setItem(searchStorageKey, JSON.stringify(values));
+        } catch (error) {
+        }
+    }
+
+    function buildScopeUrl(scope, sortName) {
         var organizationId = Number(root.getAttribute('data-omo-stats-oid') || 0);
         var query = ['oid=' + encodeURIComponent(String(organizationId))];
         var nextScope = normalizeScope(scope);
+        var nextSort = normalizeSort(sortName);
         if (routeCid > 0) {
             query.push('cid=' + encodeURIComponent(String(routeCid)));
         }
         if (nextScope !== 'contextual') {
             query.push('stats_scope=' + encodeURIComponent(nextScope));
         }
-        try {
-            var currentSort = new URL(currentUrl, window.location.origin).searchParams.get('stats_sort');
-            if (currentSort === 'alpha' || currentSort === 'temporal') {
-                query.push('stats_sort=' + encodeURIComponent(currentSort));
-            }
-        } catch (error) {
-            // Keep the default sort when the current URL cannot be parsed.
-        }
+        query.push('stats_sort=' + encodeURIComponent(nextSort));
         return '/omo/api/stats/index.php?' + query.join('&');
     }
 
     function setLoading(isLoading) {
         root.classList.toggle('is-loading', Boolean(isLoading));
-        Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-scope]'), function (button) {
+        Array.prototype.forEach.call(root.querySelectorAll(
+            '[data-omo-stats-filter-toggle], [data-omo-stats-scope], [data-omo-stats-sort], '
+            + '[data-omo-stats-view], [data-omo-stats-filter-apply], [data-omo-stats-filter-save]'
+        ), function (button) {
             button.disabled = Boolean(isLoading);
         });
     }
@@ -865,7 +968,9 @@ $displayItemCount = count($statsEntries);
     }
 
     function applyView(viewName) {
-        var view = viewName === 'compact' ? 'compact' : 'cards';
+        var view = normalizeView(viewName);
+        currentView = view;
+        root.setAttribute('data-omo-stats-current-view', view);
         Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-view]'), function (button) {
             var active = button.getAttribute('data-omo-stats-view') === view;
             button.classList.toggle('is-active', active);
@@ -874,10 +979,191 @@ $displayItemCount = count($statsEntries);
         Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-view-panel]'), function (panel) {
             panel.hidden = panel.getAttribute('data-omo-stats-view-panel') !== view;
         });
-        try {
-            window.localStorage.setItem(storageKey, view);
-        } catch (error) {
+        var activeButton = root.querySelector('[data-omo-stats-view="' + view + '"]');
+        var viewChip = root.querySelector('[data-omo-stats-view-chip]');
+        if (activeButton && viewChip) {
+            viewChip.textContent = activeButton.textContent.trim();
         }
+        applyQuickSearch();
+    }
+
+    function normalizeSearch(value) {
+        return String(value || '')
+            .toLocaleLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim();
+    }
+
+    function applyQuickSearch() {
+        var query = normalizeSearch(currentSearch);
+        var activePanel = root.querySelector('[data-omo-stats-view-panel="' + currentView + '"]');
+        Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-search-item]'), function (item) {
+            item.hidden = query !== '' && normalizeSearch(item.textContent || '').indexOf(query) === -1;
+        });
+        Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-search-group]'), function (group) {
+            group.hidden = query !== '' && !group.querySelector('[data-omo-stats-search-item]:not([hidden])');
+        });
+        Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-default-empty]'), function (empty) {
+            empty.hidden = query !== '';
+        });
+
+        var visibleCount = activePanel
+            ? activePanel.querySelectorAll('[data-omo-stats-search-item]:not([hidden])').length
+            : 0;
+        var empty = root.querySelector('[data-omo-stats-search-empty]');
+        if (empty) {
+            empty.hidden = query === '' || visibleCount > 0;
+        }
+        var headerCount = root.querySelector('[data-omo-stats-header-count]');
+        if (headerCount) {
+            headerCount.textContent = query === ''
+                ? String(<?= (int)$displayItemCount ?>)
+                : String(visibleCount);
+        }
+    }
+
+    function getActiveFilters() {
+        return {
+            scope: normalizeScope(currentScope),
+            sort: normalizeSort(currentSort),
+            view: normalizeView(currentView)
+        };
+    }
+
+    function normalizeFilters(filters) {
+        var active = getActiveFilters();
+        var scope = normalizeScope(filters && filters.scope);
+        if (!root.querySelector('[data-omo-stats-scope="' + scope + '"]')) {
+            scope = active.scope;
+        }
+        return {
+            scope: scope,
+            sort: normalizeSort(filters && filters.sort),
+            view: normalizeView(filters && filters.view)
+        };
+    }
+
+    function syncFilterChoices() {
+        if (!pendingFilters) {
+            return;
+        }
+        pendingFilters = normalizeFilters(pendingFilters);
+        [
+            {selector: '[data-omo-stats-scope]', attribute: 'data-omo-stats-scope', value: pendingFilters.scope},
+            {selector: '[data-omo-stats-sort]', attribute: 'data-omo-stats-sort', value: pendingFilters.sort},
+            {selector: '[data-omo-stats-view]', attribute: 'data-omo-stats-view', value: pendingFilters.view}
+        ].forEach(function (choice) {
+            Array.prototype.forEach.call(root.querySelectorAll(choice.selector), function (button) {
+                var active = button.getAttribute(choice.attribute) === choice.value;
+                button.classList.toggle('is-active', active);
+                button.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+        });
+    }
+
+    function handleFilterOutsidePointerDown(event) {
+        var control = root.querySelector('[data-omo-stats-filter-control]');
+        if (control && control.contains(event.target)) {
+            return;
+        }
+        closeFilterPanel(true, false);
+    }
+
+    function openFilterPanel() {
+        var panel = root.querySelector('[data-omo-stats-filter-panel]');
+        if (!panel || filterPanelOpen) {
+            return;
+        }
+        pendingFilters = getActiveFilters();
+        syncFilterChoices();
+        panel.hidden = false;
+        filterPanelOpen = true;
+        Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-filter-toggle]'), function (button) {
+            button.setAttribute('aria-expanded', 'true');
+        });
+        document.addEventListener('pointerdown', handleFilterOutsidePointerDown, true);
+    }
+
+    function closeFilterPanel(applyChanges, saveView) {
+        var panel = root.querySelector('[data-omo-stats-filter-panel]');
+        if (!filterPanelOpen) {
+            return;
+        }
+        filterPanelOpen = false;
+        if (panel) {
+            panel.hidden = true;
+        }
+        Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-filter-toggle]'), function (button) {
+            button.setAttribute('aria-expanded', 'false');
+        });
+        document.removeEventListener('pointerdown', handleFilterOutsidePointerDown, true);
+
+        if (!applyChanges || !pendingFilters) {
+            pendingFilters = null;
+            return;
+        }
+
+        var active = getActiveFilters();
+        var next = normalizeFilters(pendingFilters);
+        pendingFilters = null;
+        if (saveView) {
+            writeStoredFilters(window.localStorage, savedViewsStorageKey, next);
+            clearTemporaryFilters();
+        } else {
+            writeStoredFilters(window.sessionStorage, sessionViewsStorageKey, next);
+        }
+
+        if (next.scope !== active.scope || next.sort !== active.sort) {
+            currentScope = next.scope;
+            currentSort = next.sort;
+            refreshRoot(buildScopeUrl(next.scope, next.sort));
+            return;
+        }
+        applyView(next.view);
+        syncFilterChips();
+    }
+
+    function syncFilterChips() {
+        [
+            {button: '[data-omo-stats-scope="' + currentScope + '"]', chip: '[data-omo-stats-scope-chip]'},
+            {button: '[data-omo-stats-sort="' + currentSort + '"]', chip: '[data-omo-stats-sort-chip]'},
+            {button: '[data-omo-stats-view="' + currentView + '"]', chip: '[data-omo-stats-view-chip]'}
+        ].forEach(function (entry) {
+            var button = root.querySelector(entry.button);
+            var chip = root.querySelector(entry.chip);
+            if (button && chip) {
+                chip.textContent = button.textContent.trim();
+            }
+        });
+    }
+
+    function initializeViewFilter() {
+        currentSearch = readStoredSearch();
+        var quickSearch = root.querySelector('[data-omo-stats-quick-search]');
+        if (quickSearch) {
+            quickSearch.value = currentSearch;
+        }
+        var temporary = readStoredValue(window.sessionStorage, sessionViewsStorageKey);
+        var saved = readStoredValue(window.localStorage, savedViewsStorageKey);
+        var preferences = normalizeFilters(temporary || saved || getActiveFilters());
+        if (Number.isInteger(initialIndicatorId) && initialIndicatorId > 0) {
+            preferences.scope = currentScope;
+            preferences.sort = currentSort;
+        }
+        if (preferences.scope !== currentScope || preferences.sort !== currentSort) {
+            currentScope = preferences.scope;
+            currentSort = preferences.sort;
+            refreshRoot(buildScopeUrl(preferences.scope, preferences.sort)).catch(function () {
+                root.removeAttribute('data-omo-view-filter-pending');
+                root.removeAttribute('aria-busy');
+            });
+            return;
+        }
+        applyView(preferences.view);
+        syncFilterChips();
+        root.removeAttribute('data-omo-view-filter-pending');
+        root.removeAttribute('aria-busy');
     }
 
     function executeFetchedScripts(container) {
@@ -1387,37 +1673,69 @@ $displayItemCount = count($statsEntries);
         }
     }
 
-    Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-scope]'), function (button) {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-filter-toggle]'), function (button) {
         button.addEventListener('click', function () {
-            var nextScope = normalizeScope(button.getAttribute('data-omo-stats-scope') || '');
-            if (nextScope !== currentScope) {
-                currentScope = nextScope;
-                refreshRoot(buildScopeUrl(nextScope));
+            if (filterPanelOpen) {
+                closeFilterPanel(true, false);
+            } else {
+                openFilterPanel();
             }
         });
     });
 
-    Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-sort]'), function (button) {
-        button.addEventListener('click', function () {
-            var nextSort = button.getAttribute('data-omo-stats-sort') === 'alpha' ? 'alpha' : 'temporal';
-            var nextUrl;
-            try {
-                nextUrl = new URL(currentUrl, window.location.origin);
-                nextUrl.searchParams.set('stats_sort', nextSort);
-                nextUrl = nextUrl.pathname + nextUrl.search;
-            } catch (error) {
-                nextUrl = currentUrl;
+    var filterPanel = root.querySelector('[data-omo-stats-filter-panel]');
+    if (filterPanel) {
+        filterPanel.addEventListener('click', function (event) {
+            var applyButton = event.target.closest('[data-omo-stats-filter-apply]');
+            if (applyButton) {
+                event.preventDefault();
+                closeFilterPanel(true, false);
+                return;
             }
-            if (nextUrl !== currentUrl) {
-                refreshRoot(nextUrl);
+            var saveButton = event.target.closest('[data-omo-stats-filter-save]');
+            if (saveButton) {
+                event.preventDefault();
+                closeFilterPanel(true, true);
+                return;
+            }
+            var scopeButton = event.target.closest('[data-omo-stats-scope]');
+            if (scopeButton && pendingFilters) {
+                pendingFilters.scope = normalizeScope(scopeButton.getAttribute('data-omo-stats-scope') || '');
+                syncFilterChoices();
+                return;
+            }
+            var sortButton = event.target.closest('[data-omo-stats-sort]');
+            if (sortButton && pendingFilters) {
+                pendingFilters.sort = normalizeSort(sortButton.getAttribute('data-omo-stats-sort') || '');
+                syncFilterChoices();
+                return;
+            }
+            var viewButton = event.target.closest('[data-omo-stats-view]');
+            if (viewButton && pendingFilters) {
+                pendingFilters.view = normalizeView(viewButton.getAttribute('data-omo-stats-view') || '');
+                syncFilterChoices();
             }
         });
-    });
+    }
 
-    Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-view]'), function (button) {
-        button.addEventListener('click', function () {
-            applyView(button.getAttribute('data-omo-stats-view') || 'cards');
+    var quickSearch = root.querySelector('[data-omo-stats-quick-search]');
+    if (quickSearch) {
+        quickSearch.addEventListener('input', function () {
+            currentSearch = quickSearch.value || '';
+            writeStoredSearch(currentSearch);
+            applyQuickSearch();
         });
+        quickSearch.addEventListener('search', function () {
+            currentSearch = quickSearch.value || '';
+            writeStoredSearch(currentSearch);
+            applyQuickSearch();
+        });
+    }
+
+    root.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && filterPanelOpen) {
+            closeFilterPanel(false, false);
+        }
     });
 
     Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-indicator-id]'), function (item) {
@@ -1754,12 +2072,7 @@ $displayItemCount = count($statsEntries);
         window.addEventListener('omo-stats-route-change', root.__omoStatsRouteHandler);
     }
 
-    var preferredView = 'cards';
-    try {
-        preferredView = window.localStorage.getItem(storageKey) || 'cards';
-    } catch (error) {
-    }
-    applyView(preferredView);
+    initializeViewFilter();
 
     if (Number.isInteger(initialIndicatorId) && initialIndicatorId > 0) {
         window.setTimeout(function () {

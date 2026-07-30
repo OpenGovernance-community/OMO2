@@ -57,5 +57,5 @@ $hasArchivedProject = false;
     <?php endforeach; ?>
 </div>
 <?php if (!$hasArchivedProject): ?>
-    <p class="omo-project-detail__muted"><?= omoApiEscape(omoProjectsT('projects.detail.archives.empty')) ?></p>
+    <p class="omo-project-detail__muted generic-description generic-description--small"><?= omoApiEscape(omoProjectsT('projects.detail.archives.empty')) ?></p>
 <?php endif; ?>

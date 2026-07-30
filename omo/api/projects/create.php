@@ -152,7 +152,7 @@ $formTexts = [
     'saveError' => omoProjectsT('projects.error.save'),
 ];
 ?>
-<div class="omo-project-form" data-omo-project-form-root>
+<div class="omo-project-form generic-drawer-content" data-omo-project-form-root>
     <div
         hidden
         data-omo-subdrawer-header
@@ -163,46 +163,46 @@ $formTexts = [
         <button type="button" form="<?= $formId ?>" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-omo-projects-cancel-create><?= omoApiEscape(omoProjectsT('projects.action.cancel')) ?></button>
     </div>
 
-    <form id="<?= $formId ?>" class="omo-project-form__fields" action="/omo/api/projects/action.php" method="post" novalidate>
+    <form id="<?= $formId ?>" class="omo-project-form__fields generic-form-stack" action="/omo/api/projects/action.php" method="post" novalidate>
         <input type="hidden" name="project_action" value="save_project">
         <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
         <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
         <?php if ($isEdit): ?><input type="hidden" name="id" value="<?= (int)$projectId ?>"><?php endif; ?>
 
-        <section class="generic-section generic-section--stack omo-project-form__section">
-            <div class="omo-project-form__field">
-                <label for="omo-project-title"><?= omoApiEscape(omoProjectsT('projects.field.title')) ?></label>
+        <section class="generic-section generic-section--stack generic-form-section omo-project-form__section">
+            <div class="omo-project-form__field generic-form-field">
+                <label class="generic-form-label" for="omo-project-title"><?= omoApiEscape(omoProjectsT('projects.field.title')) ?></label>
                 <input id="omo-project-title" class="generic-form-control" type="text" name="title" maxlength="255" required autofocus value="<?= omoApiEscape((string)$project->get('title')) ?>" autocomplete="off">
             </div>
-            <div class="omo-project-form__field">
-                <label for="omo-project-description"><?= omoApiEscape(omoProjectsT('projects.field.description')) ?></label>
+            <div class="omo-project-form__field generic-form-field">
+                <label class="generic-form-label" for="omo-project-description"><?= omoApiEscape(omoProjectsT('projects.field.description')) ?></label>
                 <textarea id="omo-project-description" class="generic-form-control" name="description" rows="5" placeholder="<?= omoApiEscape(omoProjectsT('projects.field.description_placeholder')) ?>"><?= omoApiEscape((string)$project->get('description')) ?></textarea>
             </div>
         </section>
 
-        <section class="generic-soft-panel generic-soft-panel--stack omo-project-form__section">
+        <section class="generic-section generic-section--stack generic-form-section omo-project-form__section">
             <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoProjectsT('projects.form.assignment')) ?></h3>
-            <div class="omo-project-form__grid omo-project-form__grid--assignment">
-                <div class="omo-project-form__field">
-                    <label for="omo-project-holon-label"><?= omoApiEscape(omoProjectsT('projects.field.holon')) ?></label>
+            <div class="omo-project-form__grid omo-project-form__grid--assignment generic-form-grid">
+                <div class="omo-project-form__field generic-form-field">
+                    <label class="generic-form-label" for="omo-project-holon-label"><?= omoApiEscape(omoProjectsT('projects.field.holon')) ?></label>
                     <div class="omo-project-form__parent-control">
                         <input id="omo-project-holon-label" class="generic-form-control" type="text" value="<?= omoApiEscape($assignedHolonLabel) ?>" readonly>
                         <input type="hidden" name="IDholon" value="<?= $assignedHolonId > 0 ? $assignedHolonId : '' ?>" data-omo-project-holon-id>
                         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-holon-picker><?= omoApiEscape(omoProjectsT('projects.holon.choose')) ?></button>
                     </div>
                 </div>
-                <div class="omo-project-form__field">
-                    <label for="omo-project-responsible"><?= omoApiEscape(omoProjectsT('projects.field.responsible')) ?></label>
+                <div class="omo-project-form__field generic-form-field">
+                    <label class="generic-form-label" for="omo-project-responsible"><?= omoApiEscape(omoProjectsT('projects.field.responsible')) ?></label>
                     <select id="omo-project-responsible" class="generic-form-control" name="IDuser">
                         <option value=""><?= omoApiEscape(omoProjectsT('projects.responsible.none')) ?></option>
                         <?php foreach ($responsibleOptions as $responsible): ?>
                             <option value="<?= (int)$responsible['id'] ?>"<?= (int)$project->get('IDuser') === (int)$responsible['id'] ? ' selected' : '' ?>><?= omoApiEscape($responsible['label']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <small><?= omoApiEscape(omoProjectsT('projects.responsible.help')) ?></small>
+                    <small class="generic-help-text"><?= omoApiEscape(omoProjectsT('projects.responsible.help')) ?></small>
                 </div>
-                <div class="omo-project-form__field">
-                    <label for="omo-project-parent-label"><?= omoApiEscape(omoProjectsT('projects.field.parent')) ?></label>
+                <div class="omo-project-form__field generic-form-field">
+                    <label class="generic-form-label" for="omo-project-parent-label"><?= omoApiEscape(omoProjectsT('projects.field.parent')) ?></label>
                     <div class="omo-project-form__parent-control">
                         <input id="omo-project-parent-label" class="generic-form-control" type="text" value="<?= omoApiEscape($parentTitle) ?>" placeholder="<?= omoApiEscape(omoProjectsT('projects.parent.none')) ?>" readonly>
                         <input type="hidden" name="IDproject_parent" value="<?= $parentId > 0 ? $parentId : '' ?>" data-omo-project-parent-id>
@@ -212,48 +212,48 @@ $formTexts = [
             </div>
         </section>
 
-        <section class="generic-section generic-section--stack omo-project-form__section">
+        <section class="generic-section generic-section--stack generic-form-section omo-project-form__section">
             <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoProjectsT('projects.form.planning')) ?></h3>
-            <div class="omo-project-form__grid">
-                <div class="omo-project-form__field">
-                    <label for="omo-project-status"><?= omoApiEscape(omoProjectsT('projects.field.status')) ?></label>
+            <div class="omo-project-form__grid generic-form-grid">
+                <div class="omo-project-form__field generic-form-field">
+                    <label class="generic-form-label" for="omo-project-status"><?= omoApiEscape(omoProjectsT('projects.field.status')) ?></label>
                     <select id="omo-project-status" class="generic-form-control" name="status">
                         <?php foreach ($statuses as $status => $catalog): ?>
                             <option value="<?= omoApiEscape($status) ?>"<?= $status === $selectedStatus ? ' selected' : '' ?>><?= omoApiEscape(omoProjectsStatusLabel($status)) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="omo-project-form__field">
-                    <label for="omo-project-size"><?= omoApiEscape(omoProjectsT('projects.field.size')) ?></label>
+                <div class="omo-project-form__field generic-form-field">
+                    <label class="generic-form-label" for="omo-project-size"><?= omoApiEscape(omoProjectsT('projects.field.size')) ?></label>
                     <select id="omo-project-size" class="generic-form-control" name="project_size">
                         <?php foreach (Project::sizes() as $size): ?>
                             <option value="<?= omoApiEscape($size) ?>"<?= $size === $selectedSize ? ' selected' : '' ?>><?= omoApiEscape($size) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="omo-project-form__field">
-                    <label for="omo-project-start"><?= omoApiEscape(omoProjectsT('projects.field.start_date')) ?></label>
+                <div class="omo-project-form__field generic-form-field">
+                    <label class="generic-form-label" for="omo-project-start"><?= omoApiEscape(omoProjectsT('projects.field.start_date')) ?></label>
                     <input id="omo-project-start" class="generic-form-control" type="date" name="planned_start_date" value="<?= omoApiEscape($formatDateValue($project->get('planned_start_date'))) ?>" data-omo-project-start-date>
                 </div>
-                <div class="omo-project-form__field">
-                    <label for="omo-project-end"><?= omoApiEscape(omoProjectsT('projects.field.end_date')) ?></label>
+                <div class="omo-project-form__field generic-form-field">
+                    <label class="generic-form-label" for="omo-project-end"><?= omoApiEscape(omoProjectsT('projects.field.end_date')) ?></label>
                     <input id="omo-project-end" class="generic-form-control" type="date" name="planned_end_date" value="<?= omoApiEscape($formatDateValue($project->get('planned_end_date'))) ?>" data-omo-project-end-date>
                 </div>
             </div>
         </section>
 
-        <section class="generic-soft-panel generic-soft-panel--stack omo-project-form__section">
+        <section class="generic-section generic-section--stack generic-form-section omo-project-form__section">
             <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoProjectsT('projects.form.attention')) ?></h3>
-            <div class="omo-project-form__grid">
+            <div class="omo-project-form__grid generic-form-grid">
                 <?php foreach (['priority', 'importance'] as $levelField): ?>
                     <?php
                     $isPriority = $levelField === 'priority';
                     $levelValue = $isPriority ? $selectedPriority : $selectedImportance;
                     $sliderValue = $isPriority && $levelValue > 0 ? 6 - $levelValue : $levelValue;
                     ?>
-                    <div class="omo-project-form__field omo-project-form__level-field">
+                    <div class="omo-project-form__field generic-form-field omo-project-form__level-field">
                         <div class="omo-project-form__label-row">
-                            <label for="omo-project-<?= $levelField ?>"><?= omoApiEscape(omoProjectsT('projects.field.' . $levelField)) ?></label>
+                            <label class="generic-form-label" for="omo-project-<?= $levelField ?>"><?= omoApiEscape(omoProjectsT('projects.field.' . $levelField)) ?></label>
                             <output for="omo-project-<?= $levelField ?>" data-omo-project-level-output><?= $levelValue > 0 ? ($isPriority ? 'P' . $levelValue : $levelValue . '/5') : omoApiEscape(omoProjectsT('projects.level.none')) ?></output>
                         </div>
                         <?php if ($isPriority): ?><input type="hidden" name="priority" value="<?= $levelValue ?>" data-omo-project-priority-value><?php endif; ?>
@@ -264,15 +264,15 @@ $formTexts = [
             </div>
         </section>
 
-        <section class="generic-accordion generic-accordion--card generic-accordion--collapsible is-collapsed omo-project-form__section" data-generic-accordion>
+        <section class="generic-accordion generic-accordion--card generic-accordion--collapsible generic-form-section is-collapsed omo-project-form__section" data-generic-accordion>
             <div class="generic-accordion__header">
                 <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoProjectsT('projects.form.more_options')) ?></h3>
                 <button type="button" class="generic-accordion__toggle" data-generic-accordion-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoProjectsT('projects.form.more_options_toggle')) ?>">&#9662;</button>
             </div>
             <div class="generic-accordion__content">
-                <div class="omo-project-form__grid">
-                    <div class="omo-project-form__field">
-                        <label for="omo-project-capture-mode"><?= omoApiEscape(omoProjectsT('projects.field.capture_mode')) ?></label>
+                <div class="omo-project-form__grid generic-form-grid">
+                    <div class="omo-project-form__field generic-form-field">
+                        <label class="generic-form-label" for="omo-project-capture-mode"><?= omoApiEscape(omoProjectsT('projects.field.capture_mode')) ?></label>
                         <select id="omo-project-capture-mode" class="generic-form-control" name="capture_mode">
                             <?php foreach (Project::getCaptureModeCatalog() as $captureMode => $catalog): ?>
                                 <option value="<?= omoApiEscape($captureMode) ?>"<?= $captureMode === $selectedCaptureMode ? ' selected' : '' ?>><?= omoApiEscape(omoProjectsCaptureModeLabel($captureMode)) ?></option>
@@ -283,7 +283,7 @@ $formTexts = [
             </div>
         </section>
 
-        <p class="omo-project-form__feedback" data-omo-project-form-feedback hidden aria-live="polite"></p>
+        <p class="omo-project-form__feedback generic-feedback" data-omo-project-form-feedback hidden aria-live="polite"></p>
     </form>
 </div>
 <script>
@@ -339,7 +339,7 @@ $formTexts = [
             + '<div class="omo-resource-picker__content">'
             + '<label class="omo-resource-picker__quick-search"><input class="generic-form-control" type="search" data-omo-project-parent-search aria-label="' + escapeHtml(texts.parentPickerSearch) + '" placeholder="' + escapeHtml(texts.parentPickerSearch) + '"></label>'
             + '<select class="generic-form-control omo-project-parent-picker__select" size="10" data-omo-project-parent-select></select>'
-            + '<p class="omo-project-parent-picker__empty" data-omo-project-parent-empty hidden></p>'
+            + '<p class="omo-project-parent-picker__empty generic-description generic-description--small" data-omo-project-parent-empty hidden></p>'
             + '<div class="omo-project-parent-picker__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-parent-cancel>' + escapeHtml(texts.cancel) + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-project-parent-confirm>' + escapeHtml(texts.parentPickerChoose) + '</button></div></div></div>';
         window.commonTopbarOpenModal(texts.parentPickerTitle, html, 'html');
         var modal = document.getElementById('commonTopbarModalBody');
@@ -404,7 +404,7 @@ $formTexts = [
     root.querySelector('[data-omo-project-holon-picker]').addEventListener('click', function () {
         if (typeof window.commonTopbarOpenModal !== 'function' || typeof window.omoMountHolonScopePicker !== 'function') return;
         var html = '<div class="omo-project-holon-picker">'
-            + '<p class="omo-project-move-dialog__hint">' + escapeHtml(texts.holonPickerHint) + '</p>'
+            + '<p class="omo-project-move-dialog__hint generic-help-text">' + escapeHtml(texts.holonPickerHint) + '</p>'
             + '<div data-omo-project-holon-scope></div>'
             + '<div class="omo-project-parent-picker__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-holon-cancel>' + escapeHtml(texts.cancel) + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-project-holon-confirm>' + escapeHtml(texts.holonPickerConfirm) + '</button></div></div>';
         window.commonTopbarOpenModal(texts.holonPickerTitle, html, 'html');

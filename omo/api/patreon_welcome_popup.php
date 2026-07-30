@@ -24,19 +24,19 @@ if (!$patreonConfigured) {
     exit;
 }
 ?>
-<div class="omo-patreon-welcome">
+<div class="omo-patreon-welcome generic-stack generic-stack--flush">
     <div class="omo-patreon-welcome__header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy omo-patreon-welcome__header-copy">
             <div class="omo-patreon-welcome__eyebrow">OpenGovernance</div>
-            <h3 class="omo-patreon-welcome__title">Contribuez au developpement du logiciel</h3>
-            <p class="omo-patreon-welcome__text">
+            <h3 class="omo-patreon-welcome__title generic-title generic-title--large">Contribuez au developpement du logiciel</h3>
+            <p class="omo-patreon-welcome__text generic-description generic-description--relaxed">
                 Si cet outil vous est utile, vous pouvez soutenir son evolution sur
                 <a href="https://www.patreon.com/cw/OpenGovernance" target="_blank" rel="noopener noreferrer">Patreon</a>.
                 La video ci-dessous presente le projet et sa direction.
             </p>
         </div>
     </div>
-    <div class="omo-patreon-welcome__shell">
+    <div class="omo-patreon-welcome__shell generic-drawer-content">
 
     <div class="omo-patreon-welcome__video">
         <iframe
@@ -61,7 +61,7 @@ if (!$patreonConfigured) {
             Se connecter avec Patreon
         </button>
         <?php elseif ($patreonConnected): ?>
-        <div class="omo-patreon-welcome__status omo-patreon-welcome__status--success">
+        <div class="omo-patreon-welcome__status omo-patreon-welcome__status--success generic-soft-panel">
             Votre compte Patreon est deja connecte.
         </div>
         <?php endif; ?>
@@ -71,26 +71,15 @@ if (!$patreonConfigured) {
 
 <style>
 .omo-patreon-welcome {
-    display: grid;
-    gap: 0;
     color: #0f172a;
 }
 
-.omo-patreon-welcome__header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
 .omo-patreon-welcome__header-copy {
-    display: grid;
-    gap: 10px;
+    --generic-drawer-header-copy-gap: var(--generic-space-2);
 }
 
 .omo-patreon-welcome__shell {
-    display: grid;
-    gap: 18px;
-    padding: 16px 18px 18px;
+    --generic-drawer-content-gap: var(--generic-space-4);
 }
 
 .omo-patreon-welcome__eyebrow {
@@ -102,15 +91,7 @@ if (!$patreonConfigured) {
 }
 
 .omo-patreon-welcome__title {
-    margin: 0;
     font-size: 26px;
-    line-height: 1.2;
-}
-
-.omo-patreon-welcome__text {
-    margin: 0;
-    color: #475569;
-    line-height: 1.6;
 }
 
 .omo-patreon-welcome__text a {
@@ -163,8 +144,6 @@ if (!$patreonConfigured) {
 }
 
 .omo-patreon-welcome__status {
-    padding: 11px 14px;
-    border-radius: var(--radius-md);
     font-weight: 600;
 }
 
