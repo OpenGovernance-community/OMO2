@@ -62,9 +62,13 @@ class OrganizationExport
                 'name' => (string)$organization->get('name'),
                 'shortname' => (string)$organization->get('shortname'),
                 'color' => (string)$organization->get('color'),
+                'logo' => (string)$organization->get('logo'),
+                'banner' => (string)$organization->get('banner'),
             ],
             'holons' => $compact['holons'] ?? [],
             'propertyDefinitions' => $compact['propertyDefinitions'] ?? [],
+			'authorities' => $compact['authorities'] ?? [],
+			'rules' => $compact['rules'] ?? [],
             'modules' => [],
         ];
 

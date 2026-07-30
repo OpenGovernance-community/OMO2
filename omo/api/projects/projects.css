@@ -25,137 +25,10 @@
     stroke-width: 1.7;
 }
 
-.omo-projects__title-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
 .omo-projects__header-actions {
     display: flex;
     align-items: center;
     gap: 10px;
-}
-
-.omo-projects__filter-toolbar {
-    position: relative;
-    z-index: 16;
-    grid-column: 1 / -1;
-    min-width: 0;
-}
-
-.omo-projects__filter-input {
-    display: flex;
-    align-items: stretch;
-    min-height: 46px;
-    overflow: hidden;
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: var(--radius-md, 14px);
-    background: var(--color-surface, #fff);
-    box-shadow: var(--shadow-sm, 0 6px 14px rgba(15, 23, 42, .05));
-}
-
-.omo-projects__filter-input:focus-within {
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 48%, var(--color-border, #d1d5db));
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
-}
-
-.omo-projects__filter-chips {
-    display: flex;
-    flex: 0 1 auto;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    max-width: 72%;
-    padding: 6px 8px;
-    overflow-x: auto;
-    scrollbar-width: thin;
-}
-
-.omo-projects__filter-chip {
-    flex: 0 0 auto;
-    min-height: 30px;
-    padding: 4px 10px;
-    border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 20%, var(--color-border, #d1d5db));
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface-alt, #f8fafc));
-    color: var(--color-text, #1f2937);
-    cursor: pointer;
-    font: inherit;
-    font-size: .78rem;
-    font-weight: 750;
-    line-height: 1;
-    white-space: nowrap;
-}
-
-.omo-projects__filter-chip:hover,
-.omo-projects__filter-chip:focus-visible {
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 54%, var(--color-border, #d1d5db));
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 15%, var(--color-surface-alt, #f8fafc));
-    outline: none;
-}
-
-.omo-projects__filter-search {
-    display: flex;
-    flex: 1 1 190px;
-    align-items: center;
-    min-width: 130px;
-    border-left: 1px solid var(--color-border, #d1d5db);
-}
-
-.omo-projects__filter-search .generic-form-control {
-    width: 100%;
-    min-height: 44px;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-}
-
-.omo-projects__filter-search .generic-form-control:focus {
-    box-shadow: none;
-}
-
-.omo-projects__filter-panel {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    left: 0;
-    z-index: 20;
-    --generic-soft-panel-padding-block: 14px;
-    --generic-soft-panel-padding-inline: 14px;
-    --generic-soft-panel-background: var(--color-surface, #fff);
-    box-shadow: var(--shadow-md, 0 18px 42px rgba(15, 23, 42, .18));
-}
-
-.omo-projects__filter-panel[hidden] {
-    display: none;
-}
-
-.omo-projects__filter-panel-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 14px;
-}
-
-.omo-projects__filter-group {
-    display: grid;
-    align-content: start;
-    gap: 7px;
-    min-width: 0;
-}
-
-.omo-projects__filter-group .omo-segmented {
-    max-width: 100%;
-    overflow-x: auto;
-}
-
-.omo-projects__filter-panel-actions {
-    display: flex;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding-top: 2px;
 }
 
 .omo-projects__search-empty {
@@ -426,12 +299,6 @@
     letter-spacing: .04em;
 }
 
-.omo-project-card__context,
-.omo-project-card__meta {
-    color: var(--color-text-light, #64748b);
-    font-size: .75rem;
-}
-
 .omo-project-card__context {
     overflow: hidden;
     font-weight: 700;
@@ -451,11 +318,6 @@
     gap: 14px;
 }
 
-.omo-project-move-dialog__hint {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
-}
-
 .omo-project-move-dialog__actions {
     display: flex;
     flex-wrap: wrap;
@@ -468,14 +330,6 @@
     color: var(--color-danger, #dc2626);
     font-size: .86rem;
     font-weight: 700;
-}
-
-.omo-project-card__title {
-    margin: 0;
-    color: var(--color-text, #1f2937);
-    font-size: .98rem;
-    line-height: 1.3;
-    overflow-wrap: anywhere;
 }
 
 .omo-project-card__meta span {
@@ -967,8 +821,7 @@
 .omo-project-gantt-row--review { --omo-project-status-color: var(--omo-project-status-review); }
 .omo-project-gantt-row--someday { --omo-project-status-color: var(--omo-project-status-someday); }
 
-.omo-project-detail,
-.omo-project-form {
+.omo-project-detail {
     display: grid;
     gap: 14px;
 }
@@ -1224,55 +1077,12 @@
     overflow-wrap: anywhere;
 }
 
-.omo-project-detail__description,
-.omo-project-detail__muted,
-.omo-project-detail__created {
-    color: var(--color-text-light, #64748b);
-    font-size: .9rem;
-    line-height: 1.6;
-}
-
-.omo-project-detail__muted,
-.omo-project-detail__created {
-    margin: 0;
-}
-
-.omo-project-form__fields {
-    display: grid;
-    gap: 14px;
-}
-
-.omo-project-form__section {
-    min-width: 0;
-}
-
-.omo-project-form__field {
-    display: grid;
-    gap: 6px;
-    min-width: 0;
-}
-
-.omo-project-form__field > label,
-.omo-project-form__label-row label {
-    color: var(--color-text, #1f2937);
-    font-size: .86rem;
-    font-weight: 800;
-}
-
-.omo-project-form__field small {
-    color: var(--color-text-light, #64748b);
-    font-size: .76rem;
-    line-height: 1.4;
-}
-
 .omo-project-form__grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
+    --generic-form-grid-min: 190px;
 }
 
 .omo-project-form__grid--assignment {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    --generic-form-grid-min: 280px;
 }
 
 .omo-project-form__parent-control {
@@ -1338,12 +1148,6 @@
 
 .omo-project-parent-picker__select {
     min-height: 250px;
-}
-
-.omo-project-parent-picker__empty {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
-    font-size: .86rem;
 }
 
 .omo-project-parent-picker__actions {
@@ -1425,11 +1229,6 @@
     }
 
     .omo-project-detail__grid {
-        grid-template-columns: 1fr;
-    }
-
-    .omo-project-form__grid,
-    .omo-project-form__grid--assignment {
         grid-template-columns: 1fr;
     }
 

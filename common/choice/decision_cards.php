@@ -161,7 +161,7 @@ if (!function_exists('commonChoiceRenderDecisionCard')) {
                     . '<span class="omo-decisions-card__owner-avatar">' . $ownerAvatarHtml . '</span>'
                     . '<span class="omo-decisions-card__summary-copy">'
                         . '<span class="omo-decisions-card__summary-top">'
-                            . '<span class="omo-decisions-card__title-line"><span class="omo-decisions-card__title">' . $escape($title) . '</span>' . $titleIconHtml . '</span>'
+                            . '<span class="omo-decisions-card__title-line"><span class="omo-decisions-card__title generic-title generic-title--item">' . $escape($title) . '</span>' . $titleIconHtml . '</span>'
                             . ($statusLabel !== '' ? '<span class="omo-decisions-card__status">' . $escape($statusLabel) . '</span>' : '')
                         . '</span>'
                         . '<span class="omo-decisions-card__summary-bottom">'
@@ -174,7 +174,7 @@ if (!function_exists('commonChoiceRenderDecisionCard')) {
                 . $actionsHtml
             . '</div>'
             . '<div class="omo-decisions-card__content generic-accordion__content">'
-                . ($description !== '' ? '<p class="omo-decisions-card__description">' . $description . '</p>' : '')
+                . ($description !== '' ? '<p class="omo-decisions-card__description generic-description">' . $description . '</p>' : '')
                 . ($metaHtml !== '' ? '<div class="omo-decisions-card__meta">' . $metaHtml . '</div>' : '')
                 . ($statsHtml !== '' ? '<div class="omo-decisions-card__stats">' . $statsHtml . '</div>' : '')
                 . ($dateHtml !== '' ? '<div class="omo-decisions-card__dates">' . $dateHtml . '</div>' : '')

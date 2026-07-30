@@ -304,7 +304,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     });
 }
 ?>
-<div class="omo-document-editor">
+<div class="omo-document-editor generic-drawer-content">
     <?php if (!$canUseForm): ?>
         <div class="omo-empty-state"><?= $escape($formErrorMessage !== '' ? $formErrorMessage : ($isEditing ? omoDocumentsCreateT('documents.create.error.edit') : omoDocumentsCreateT('documents.create.error.create'))) ?></div>
     <?php else: ?>
@@ -330,7 +330,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 data-omo-document-editor-submit
             ><?= $escape($isEditing ? omoDocumentsCreateT('documents.create.action.save') : omoDocumentsCreateT('documents.create.action.create')) ?></button>
         </div>
-        <form id="<?= $escape($documentFormId) ?>" class="omo-document-editor__form" action="/omo/api/documents/save.php" method="post" enctype="multipart/form-data" data-omo-document-create-form>
+        <form id="<?= $escape($documentFormId) ?>" class="omo-document-editor__form generic-form-stack" action="/omo/api/documents/save.php" method="post" enctype="multipart/form-data" data-omo-document-create-form>
             <input type="hidden" name="oid" value="<?= $escape($organizationId) ?>">
             <input type="hidden" name="cid" value="<?= $escape($contextHolonId) ?>">
             <input type="hidden" name="parent_document_id" value="<?= (int)$parentDocumentId ?>">
@@ -338,10 +338,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 <input type="hidden" name="id" value="<?= (int)$document->getId() ?>">
             <?php endif; ?>
 
-            <div class="omo-document-editor__grid">
-                <div class="omo-document-editor__meta-row">
-                    <label class="omo-document-editor__field">
-                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.type')) ?></span>
+            <div class="omo-document-editor__grid generic-section generic-section--stack generic-form-section">
+                <div class="omo-document-editor__meta-row generic-form-grid">
+                    <label class="omo-document-editor__field generic-form-field">
+                        <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.type')) ?></span>
                         <select
                             name="document_type"
                             class="generic-form-control"
@@ -361,7 +361,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         <?php endif; ?>
                     </label>
 
-                    <div class="omo-document-editor__field">
+                    <div class="omo-document-editor__field generic-form-field">
                         <?= commonRenderObjectVisibilitySelector(array(
                             'inputName' => 'visibility_type',
                             'fieldLabel' => omoDocumentsCreateT('documents.create.field.visibility'),
@@ -374,7 +374,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         )) ?>
                     </div>
 
-                    <div class="omo-document-editor__field">
+                    <div class="omo-document-editor__field generic-form-field">
                         <?= commonRenderObjectVisibilitySelector(array(
                             'inputName' => 'edit_visibility_type',
                             'fieldLabel' => omoDocumentsCreateT('documents.create.field.edit_visibility'),
@@ -388,8 +388,8 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     </div>
                 </div>
 
-                <label class="omo-document-editor__field">
-                    <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.title')) ?></span>
+                <label class="omo-document-editor__field generic-form-field">
+                    <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.title')) ?></span>
                     <input
                         type="text"
                         name="title"
@@ -403,14 +403,14 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 </label>
 
                 <?php if ($parentFolderTitle !== ''): ?>
-                    <div class="omo-document-editor__field">
-                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.parent_folder')) ?></span>
-                        <div class="omo-document-editor__hint"><?= $escape($parentFolderTitle) ?></div>
+                    <div class="omo-document-editor__field generic-form-field">
+                        <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.parent_folder')) ?></span>
+                        <div class="omo-document-editor__hint generic-help-text"><?= $escape($parentFolderTitle) ?></div>
                     </div>
                 <?php endif; ?>
 
-                <label class="omo-document-editor__field">
-                    <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.description')) ?></span>
+                <label class="omo-document-editor__field generic-form-field">
+                    <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.description')) ?></span>
                     <textarea
                         name="description"
                         class="generic-form-control"
@@ -419,8 +419,8 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     ><?= $escape($documentDescription) ?></textarea>
                 </label>
 
-                <div class="omo-document-editor__field">
-                    <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.tags')) ?></span>
+                <div class="omo-document-editor__field generic-form-field">
+                    <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.tags')) ?></span>
                     <input type="hidden" name="keywords" value="<?= $escape($documentKeywords) ?>" data-omo-document-tags-hidden>
                     <div class="omo-document-editor__tag-editor generic-form-control" data-omo-document-tags-editor>
                         <div class="omo-document-editor__tag-list" data-omo-document-tags-list></div>
@@ -433,20 +433,20 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             data-omo-document-tags-input
                         >
                     </div>
-                    <span class="omo-document-editor__hint"><?= $escape(omoDocumentsCreateT('documents.create.field.tags_hint')) ?></span>
+                    <span class="omo-document-editor__hint generic-help-text"><?= $escape(omoDocumentsCreateT('documents.create.field.tags_hint')) ?></span>
                 </div>
 
                 <div class="omo-document-editor__content-section" data-omo-document-content-section<?= $documentType !== Document::TYPE_HTML ? ' hidden' : '' ?>>
-                    <div class="omo-document-editor__field" data-omo-document-content-field>
-                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.html')) ?></span>
+                    <div class="omo-document-editor__field generic-form-field" data-omo-document-content-field>
+                        <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.html')) ?></span>
                         <div class="omo-document-editor__html" data-omo-document-editor-html></div>
                         <div class="omo-document-editor__dictation-status" data-omo-document-dictation-status hidden></div>
                     </div>
                 </div>
 
-                <div class="omo-document-editor__field" data-omo-document-pv-section<?= $documentType !== Document::TYPE_PV ? ' hidden' : '' ?>>
-                    <label class="omo-document-editor__field">
-                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_template')) ?></span>
+                <div class="omo-document-editor__field generic-form-field" data-omo-document-pv-section<?= $documentType !== Document::TYPE_PV ? ' hidden' : '' ?>>
+                    <label class="omo-document-editor__field generic-form-field">
+                        <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_template')) ?></span>
                         <select name="pv_template_id" class="generic-form-control">
                             <option value="0"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_template_none')) ?></option>
                             <?php foreach ($pvTemplatesPayload as $pvTemplateOption): ?>
@@ -454,13 +454,13 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             <?php endforeach; ?>
                         </select>
                     </label>
-                    <span class="omo-document-editor__hint"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_template_hint')) ?></span>
-                    <span class="omo-document-editor__hint"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_hint')) ?></span>
+                    <span class="omo-document-editor__hint generic-help-text"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_template_hint')) ?></span>
+                    <span class="omo-document-editor__hint generic-help-text"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_hint')) ?></span>
                 </div>
 
                 <div class="omo-document-editor__external-section" data-omo-document-external-section<?= $documentType !== Document::TYPE_EXTERNAL_LINK ? ' hidden' : '' ?>>
-                    <label class="omo-document-editor__field">
-                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.external_url')) ?></span>
+                    <label class="omo-document-editor__field generic-form-field">
+                        <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.external_url')) ?></span>
                         <input
                             type="url"
                             name="external_url"
@@ -471,7 +471,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             data-omo-document-external-url
                             value="<?= $escape($documentExternalUrl) ?>"
                         >
-                        <span class="omo-document-editor__hint"><?= $escape(omoDocumentsCreateT('documents.create.field.external_url_hint')) ?></span>
+                        <span class="omo-document-editor__hint generic-help-text"><?= $escape(omoDocumentsCreateT('documents.create.field.external_url_hint')) ?></span>
                     </label>
 
                     <label class="omo-document-editor__checkbox">
@@ -486,15 +486,15 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 </div>
 
                 <div class="omo-document-editor__upload-section" data-omo-document-upload-section<?= $documentType !== Document::TYPE_UPLOADED_FILE ? ' hidden' : '' ?>>
-                    <label class="omo-document-editor__field">
-                        <span class="omo-document-editor__label"><?= $escape(omoDocumentsCreateT('documents.create.field.upload')) ?></span>
+                    <label class="omo-document-editor__field generic-form-field">
+                        <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.upload')) ?></span>
                         <input
                             type="file"
                             name="uploaded_file"
                             class="generic-form-control"
                             data-omo-document-upload-input
                         >
-                        <span class="omo-document-editor__hint">
+                        <span class="omo-document-editor__hint generic-help-text">
                             <?php if ($nextcloudDocumentsAvailable): ?>
                                 <?= $escape(omoDocumentsCreateT('documents.create.upload.hint_nextcloud')) ?>
                             <?php else: ?>
@@ -525,37 +525,15 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
             <div class="omo-document-editor__status" data-omo-document-editor-status hidden></div>
 
-            <div class="omo-document-editor__actions">
+            <div class="omo-document-editor__actions generic-form-actions generic-form-actions--stack-mobile">
             </div>
         </form>
     <?php endif; ?>
 </div>
 
 <style>
-.omo-document-editor {
-    padding: 20px;
-}
-
-.omo-document-editor__form {
-    display: grid;
-    gap: 18px;
-}
-
-.omo-document-editor__grid {
-    display: grid;
-    gap: 16px;
-}
-
 .omo-document-editor__meta-row {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
-    align-items: start;
-}
-
-.omo-document-editor__field {
-    display: grid;
-    gap: 8px;
+    --generic-form-grid-min: 230px;
 }
 
 .omo-document-editor [hidden] {
@@ -634,17 +612,6 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     color: var(--color-text-light);
 }
 
-.omo-document-editor__label {
-    font-size: 0.92rem;
-    font-weight: 600;
-    color: var(--color-text);
-}
-
-.omo-document-editor__hint {
-    color: var(--color-text-light);
-    font-size: 0.82rem;
-}
-
 .omo-document-editor__checkbox {
     display: flex;
     align-items: center;
@@ -695,12 +662,6 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     color: #991b1b;
 }
 
-.omo-document-editor__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-}
-
 .omo-document-editor__dictation-status {
     margin-top: 10px;
     padding: 10px 12px;
@@ -730,19 +691,6 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     color: #166534;
 }
 
-@media (max-width: 768px) {
-    .omo-document-editor {
-        padding: 14px;
-    }
-
-    .omo-document-editor__meta-row {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .omo-document-editor__actions {
-        flex-direction: column-reverse;
-    }
-}
 </style>
 
 <script>
@@ -1205,11 +1153,11 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         const modalHtml = ''
             + '<div class="omo-document-embed-picker">'
             + '  <label class="omo-document-embed-picker__field">'
-            + '    <span class="omo-document-embed-picker__label">Recherche</span>'
+            + '    <span class="omo-document-embed-picker__label generic-form-label">Recherche</span>'
             + '    <input type="search" class="generic-form-control" data-omo-document-embed-search placeholder="' + escapeHtml(uiText.embedSearchPlaceholder || '') + '">'
             + '  </label>'
             + '  <label class="omo-document-embed-picker__field">'
-            + '    <span class="omo-document-embed-picker__label">Documents visibles</span>'
+            + '    <span class="omo-document-embed-picker__label generic-form-label">Documents visibles</span>'
             + '    <select class="generic-form-control omo-document-embed-picker__select" data-omo-document-embed-select size="10"></select>'
             + '  </label>'
             + '  <div class="omo-document-embed-picker__preview">'

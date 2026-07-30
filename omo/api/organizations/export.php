@@ -25,7 +25,9 @@ $organization = new Organization();
 if (!$organization->load($organizationId)) {
     omoOrganizationExportError(404, 'Organisation introuvable.');
 }
-if (!commonCurrentUserHasOrganizationAccess($organizationId) || !$organization->canEdit()) {
+$canExportOrganization = commonCurrentUserCanUseAdminMode($organizationId)
+    || commonCurrentUserIsSiteAdminModeEnabled();
+if (!$canExportOrganization) {
     omoOrganizationExportError(403, 'Acces reserve aux administrateurs de cette organisation.');
 }
 

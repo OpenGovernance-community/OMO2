@@ -147,6 +147,7 @@ if ($hasStructureContext && $currentHolonId > 0 && (int)$currentHolon->getId() !
 $canToggleTeamScope = $hasStructureContext && $currentHolon instanceof Holon;
 $availableTeamScopes = omoApiGetAvailableContextScopes($canToggleTeamScope, $currentHolon, $rootHolon);
 $teamScope = omoApiNormalizeContextScope($_GET['team_scope'] ?? 'contextual', $availableTeamScopes);
+$teamQuickSearch = trim((string)($_GET['team_query'] ?? ''));
 $teamScopeActiveIndex = omoApiResolveContextScopeIndex($teamScope, $availableTeamScopes);
 $teamScopeLabels = array(
     'contextual' => omoTeamT('team.scope.contextual', [], $lang, $sourceLang),
@@ -233,7 +234,7 @@ if ($intlLocale === '') {
     $intlLocale = 'fr';
 }
 $formatter = class_exists('IntlDateFormatter')
-    ? new IntlDateFormatter($intlLocale, IntlDateFormatter::MEDIUM, IntlDateFormatter::NONE)
+    ? new IntlDateFormatter($intlLocale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, null, null, 'dd MMMM yyyy')
     : null;
 
 $formatDate = static function ($value) use ($formatter): string {
@@ -304,8 +305,6 @@ foreach ($rawMemberCards as $rawCard) {
     $globalJoinedAt = $hasMembership
         ? $membership->getGlobalCreatedAt()
         : ($hasUser && $user->get('datecreation') instanceof DateTimeInterface ? $user->get('datecreation') : null);
-    $effectiveLastSeen = $organizationLastSeen instanceof DateTimeInterface ? $organizationLastSeen : $globalLastSeen;
-
     $effectiveJoinedAt = $organizationJoinedAt instanceof DateTimeInterface ? $organizationJoinedAt : $globalJoinedAt;
     $displayName = trim((string)($rawCard['displayName'] ?? ''));
     if ($displayName === '' && $hasMembership) {
@@ -356,10 +355,25 @@ foreach ($rawMemberCards as $rawCard) {
     }
 
     $latlong = $hasUser ? omoTeamNormalizeLatLong($user->get('latlong')) : null;
+    $resolvedDisplayName = $displayName !== ''
+        ? $displayName
+        : omoTeamT('team.member.user_fallback', ['userId' => (string)$userId], $lang, $sourceLang);
+    $memberSearchText = trim(implode(' ', array_filter(array(
+        $resolvedDisplayName,
+        $firstName,
+        $lastName,
+        $phone,
+        $email,
+        $username,
+        $secondary,
+        $isPending ? omoTeamT('team.member.pending', [], $lang, $sourceLang) : '',
+        $isContextAdmin ? omoTeamT('team.member.admin_context', ['adminLabel' => $adminLabel], $lang, $sourceLang) : '',
+        $isOrganizationAdmin ? omoTeamT('team.member.admin_organization', ['adminLabel' => $adminLabel], $lang, $sourceLang) : '',
+    ), static fn ($value): bool => trim((string)$value) !== '')));
 
     $memberCards[] = array(
         'userId' => $userId,
-        'displayName' => $displayName !== '' ? $displayName : omoTeamT('team.member.user_fallback', ['userId' => (string)$userId], $lang, $sourceLang),
+        'displayName' => $resolvedDisplayName,
         'firstName' => $firstName,
         'lastName' => $lastName,
         'phone' => $phone,
@@ -374,8 +388,12 @@ foreach ($rawMemberCards as $rawCard) {
         'isPending' => $isPending,
         'joinedAtLabel' => $effectiveJoinedAt instanceof DateTimeInterface ? $formatDate($effectiveJoinedAt) : '',
         'lastSeenLabel' => $formatLastSeenLabel($organizationLastSeen, $globalLastSeen),
+        'organizationLastSeenLabel' => $organizationLastSeen instanceof DateTimeInterface ? $formatDate($organizationLastSeen) : '',
+        'siteLastSeenLabel' => $globalLastSeen instanceof DateTimeInterface ? $formatDate($globalLastSeen) : '',
+        'createdAtLabel' => $globalJoinedAt instanceof DateTimeInterface ? $formatDate($globalJoinedAt) : '',
         'canViewDetail' => $canViewUserDetail,
         'latlong' => $latlong,
+        'searchText' => $memberSearchText,
     );
 }
 
@@ -432,6 +450,7 @@ $mapMemberPayload = array_map(static function (array $card): array {
         'isOrganizationAdmin' => !empty($card['isOrganizationAdmin']),
         'isPending' => !empty($card['isPending']),
         'canViewDetail' => !empty($card['canViewDetail']),
+        'searchText' => (string)($card['searchText'] ?? ''),
         'lat' => (float)$card['latlong']['lat'],
         'long' => (float)$card['latlong']['long'],
     );
@@ -444,6 +463,7 @@ if ($leafletMapsEnabled) {
 }
 ?>
 <?= $leafletAssetsHtml ?>
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
 <div
     class="omo-team omo-panel-view"
     id="omo-team-root"
@@ -451,6 +471,10 @@ if ($leafletMapsEnabled) {
     data-team-cid="<?= $hasStructureContext ? (int)$currentHolon->getId() : 0 ?>"
     data-team-root-hid="<?= $hasStructureContext ? (int)$rootHolon->getId() : 0 ?>"
     data-team-scope="<?= omoApiEscape($teamScope) ?>"
+    data-team-view="cards"
+    data-team-query="<?= omoApiEscape($teamQuickSearch) ?>"
+    data-team-preferences-pending="1"
+    aria-busy="true"
 >
     <div class="omo-team__hero omo-panel-view__header omo-panel-view__header--stacked">
         <div class="omo-panel-view__header-main">
@@ -464,7 +488,7 @@ if ($leafletMapsEnabled) {
                     </svg>
                 </span>
                 <div class="omo-panel-view__header-copy">
-                    <div class="omo-team__title-row">
+                    <div class="omo-team__title-row generic-title-row">
                         <h2 class="omo-panel-view__title"><?= omoApiEscape(omoTeamT('team.title', [], $lang, $sourceLang)) ?></h2>
                         <span class="omo-panel-view__count"><?= omoApiEscape(count($memberCards)) ?></span>
                     </div>
@@ -482,37 +506,42 @@ if ($leafletMapsEnabled) {
             <?php endif; ?>
         </div>
         <div class="omo-panel-view__header-secondary omo-team__header-secondary">
-            <div class="omo-team__header-controls">
-                <?php if ($canToggleTeamScope): ?>
-                    <div
-                        class="omo-scope-toggle omo-team__scope-toggle"
-                        role="tablist"
-                        aria-label="<?= omoApiEscape(omoTeamT('team.scope.members_aria', [], $lang, $sourceLang)) ?>"
-                        data-omo-scope-switch="<?= omoApiEscape($teamScope) ?>"
-                        style="--omo-scope-option-count: <?= (int)count($availableTeamScopes) ?>; --omo-scope-active-index: <?= (int)$teamScopeActiveIndex ?>;"
-                    >
-                        <?php foreach ($availableTeamScopes as $scopeIndex => $scopeKey): ?>
-                            <?php $scopeLabel = (string)($teamScopeLabels[$scopeKey] ?? $scopeKey); ?>
-                            <button
-                                type="button"
-                                class="omo-scope-toggle__button<?= $teamScope === $scopeKey ? ' is-active' : '' ?>"
-                                aria-label="<?= omoApiEscape($scopeLabel) ?>"
-                                data-team-scope-toggle="<?= omoApiEscape($scopeKey) ?>"
-                                data-omo-scope-option="<?= omoApiEscape($scopeKey) ?>"
-                                data-omo-scope-index="<?= (int)$scopeIndex ?>"
-                                aria-pressed="<?= $teamScope === $scopeKey ? 'true' : 'false' ?>"
-                                onclick="return window.omoToggleTeamScope ? window.omoToggleTeamScope(this, event) : false;"
-                            ><span class="omo-scope-toggle__text"><?= omoApiEscape($scopeLabel) ?></span></button>
-                        <?php endforeach; ?>
+            <div class="omo-team__filter-toolbar omo-view-filter" data-team-filter-control role="group" aria-label="<?= omoApiEscape(omoTeamT('team.filters.aria', [], $lang, $sourceLang)) ?>">
+                <div class="omo-team__filter-input omo-view-filter__input">
+                    <div class="omo-team__filter-chips omo-view-filter__chips">
+                        <button type="button" class="omo-team__filter-chip omo-view-filter__chip" data-team-filter-toggle data-team-filter-scope-chip aria-expanded="false" aria-controls="omo-team-filter-panel"><?= omoApiEscape((string)($teamScopeLabels[$teamScope] ?? $teamScope)) ?></button>
+                        <button type="button" class="omo-team__filter-chip omo-view-filter__chip" data-team-filter-toggle data-team-filter-view-chip aria-expanded="false" aria-controls="omo-team-filter-panel"><?= omoApiEscape(omoTeamT('team.view.cards', [], $lang, $sourceLang)) ?></button>
                     </div>
-                <?php endif; ?>
-                <div class="omo-segmented omo-team__view-switch" role="tablist" aria-label="<?= omoApiEscape(omoTeamT('team.view.choice_aria', [], $lang, $sourceLang)) ?>">
-                    <button type="button" class="omo-team__view-button omo-segmented__button is-active" data-team-view-button="cards" aria-pressed="true"><?= omoApiEscape(omoTeamT('team.view.cards', [], $lang, $sourceLang)) ?></button>
-                    <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="compact" aria-pressed="false"><?= omoApiEscape(omoTeamT('team.view.compact', [], $lang, $sourceLang)) ?></button>
-                    <?php if ($leafletMapsEnabled): ?>
-                    <button type="button" class="omo-team__view-button omo-segmented__button" data-team-view-button="map" aria-pressed="false"><?= omoApiEscape(omoTeamT('team.view.map', [], $lang, $sourceLang)) ?></button>
-                    <?php endif; ?>
+                    <label class="omo-team__filter-search omo-view-filter__search">
+                        <input type="search" class="generic-form-control" data-team-quick-search value="<?= omoApiEscape($teamQuickSearch) ?>" placeholder="<?= omoApiEscape(omoTeamT('team.search.placeholder', [], $lang, $sourceLang)) ?>" aria-label="<?= omoApiEscape(omoTeamT('team.search.aria', [], $lang, $sourceLang)) ?>" autocomplete="off">
+                    </label>
                 </div>
+                <section id="omo-team-filter-panel" class="omo-team__filter-panel omo-view-filter__panel generic-soft-panel generic-soft-panel--stack" data-team-filter-panel hidden>
+                    <div class="omo-team__filter-panel-grid omo-view-filter__panel-grid">
+                        <div class="omo-team__filter-group omo-view-filter__group">
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoTeamT('team.filters.scope', [], $lang, $sourceLang)) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoTeamT('team.scope.members_aria', [], $lang, $sourceLang)) ?>">
+                                <?php foreach ($availableTeamScopes as $scopeKey): ?>
+                                    <button type="button" class="omo-segmented__button<?= $teamScope === $scopeKey ? ' is-active' : '' ?>" data-team-filter-scope="<?= omoApiEscape($scopeKey) ?>" aria-pressed="<?= $teamScope === $scopeKey ? 'true' : 'false' ?>"><?= omoApiEscape((string)($teamScopeLabels[$scopeKey] ?? $scopeKey)) ?></button>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <div class="omo-team__filter-group omo-view-filter__group">
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoTeamT('team.filters.view', [], $lang, $sourceLang)) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoTeamT('team.view.choice_aria', [], $lang, $sourceLang)) ?>">
+                                <button type="button" class="omo-segmented__button is-active" data-team-filter-view="cards" aria-pressed="true"><?= omoApiEscape(omoTeamT('team.view.cards', [], $lang, $sourceLang)) ?></button>
+                                <button type="button" class="omo-segmented__button" data-team-filter-view="compact" aria-pressed="false"><?= omoApiEscape(omoTeamT('team.view.compact', [], $lang, $sourceLang)) ?></button>
+                                <?php if ($leafletMapsEnabled): ?>
+                                <button type="button" class="omo-segmented__button" data-team-filter-view="map" aria-pressed="false"><?= omoApiEscape(omoTeamT('team.view.map', [], $lang, $sourceLang)) ?></button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="omo-team__filter-actions omo-view-filter__actions">
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-team-filter-apply><?= omoApiEscape(omoTeamT('team.filters.apply', [], $lang, $sourceLang)) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--main" data-team-filter-save><?= omoApiEscape(omoTeamT('team.filters.save_view', [], $lang, $sourceLang)) ?></button>
+                    </div>
+                </section>
             </div>
         </div>
     </div>
@@ -520,11 +549,11 @@ if ($leafletMapsEnabled) {
         <div class="omo-panel-view__body_content">
         <section class="omo-team__view-panel" data-team-view-panel="cards">
         <?php if (count($memberCards) === 0): ?>
-            <div class="omo-team__empty omo-empty-state">
+            <div class="omo-team__empty omo-empty-state" data-team-default-empty>
                 <?= omoApiEscape($teamEmptyMessage) ?>
             </div>
         <?php else: ?>
-            <div class="omo-team__grid omo-card-grid omo-card-grid--fixed">
+            <div class="omo-team__grid omo-card-grid omo-card-grid--fixed" data-team-items-container="cards">
                 <?php foreach ($memberCards as $card): ?>
                     <article
                         class="omo-team-card omo-card<?= $card['canViewDetail'] ? ' omo-card--interactive' : '' ?><?= $card['isPending'] ? ' omo-team-card--pending' : '' ?>"
@@ -532,6 +561,8 @@ if ($leafletMapsEnabled) {
                         data-open-user-context="1"
                         <?php endif; ?>
                         data-user-id="<?= (int)$card['userId'] ?>"
+                        data-team-member-item
+                        data-team-member-search="<?= omoApiEscape((string)$card['searchText']) ?>"
                         data-context-admin="<?= $card['isContextAdmin'] ? '1' : '0' ?>"
                         data-member-pending="<?= $card['isPending'] ? '1' : '0' ?>"
                         <?php if ($card['canViewDetail']): ?>
@@ -592,7 +623,6 @@ if ($leafletMapsEnabled) {
                             <?php else: ?>
                                 <div class="omo-team-card__photo-placeholder">
                                     <span class="omo-team-card__initials"><?= omoApiEscape($card['initials']) ?></span>
-                                    <span class="omo-team-card__photo-label"><?= omoApiEscape(omoTeamT('team.member.photo_coming', [], $lang, $sourceLang)) ?></span>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -615,8 +645,8 @@ if ($leafletMapsEnabled) {
 
                             <div class="omo-team-card__meta">
                                 <div class="omo-team-card__meta-row">
-                                    <span class="omo-team-card__meta-label"><?= omoApiEscape(omoTeamT('team.member.email', [], $lang, $sourceLang)) ?></span>
-                                    <span class="omo-team-card__meta-value<?= $card['email'] === '' ? ' omo-team-card__meta-value--muted' : '' ?>">
+                                    <span class="omo-team-card__meta-label generic-meta-label generic-meta-label--compact"><?= omoApiEscape(omoTeamT('team.member.email', [], $lang, $sourceLang)) ?></span>
+                                    <span class="omo-team-card__meta-value generic-meta-value generic-meta-value--compact<?= $card['email'] === '' ? ' omo-team-card__meta-value--muted' : '' ?>">
                                         <?= omoApiEscape($card['email'] !== '' ? $card['email'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang)) ?>
                                     </span>
                                 </div>
@@ -624,16 +654,23 @@ if ($leafletMapsEnabled) {
 
                             <div class="omo-team-card__dates">
                                 <div class="omo-team-card__date">
-                                    <span class="omo-team-card__date-label"><?= omoApiEscape(omoTeamT('team.member.added', [], $lang, $sourceLang)) ?></span>
-                                    <span class="omo-team-card__date-value<?= $card['joinedAtLabel'] === '' ? ' omo-team-card__date-value--muted' : '' ?>">
-                                        <?= omoApiEscape($card['joinedAtLabel'] !== '' ? $card['joinedAtLabel'] : 'N/A') ?>
+                                    <span class="omo-team-card__date-label"><?= omoApiEscape(omoTeamT('team.member.organization_connection', [], $lang, $sourceLang)) ?></span>
+                                    <span class="omo-team-card__date-value<?= $card['organizationLastSeenLabel'] === '' ? ' omo-team-card__date-value--muted' : '' ?>">
+                                        <?= omoApiEscape($card['organizationLastSeenLabel'] !== '' ? $card['organizationLastSeenLabel'] : omoTeamT('team.member.never', [], $lang, $sourceLang)) ?>
                                     </span>
                                 </div>
 
                                 <div class="omo-team-card__date">
-                                    <span class="omo-team-card__date-label"><?= omoApiEscape(omoTeamT('team.member.last_connection', [], $lang, $sourceLang)) ?></span>
-                                    <span class="omo-team-card__date-value<?= $card['lastSeenLabel'] === '' ? ' omo-team-card__date-value--muted' : '' ?>">
-                                        <?= omoApiEscape($card['lastSeenLabel'] !== '' ? $card['lastSeenLabel'] : omoTeamT('team.member.never', [], $lang, $sourceLang)) ?>
+                                    <span class="omo-team-card__date-label"><?= omoApiEscape(omoTeamT('team.member.site_connection', [], $lang, $sourceLang)) ?></span>
+                                    <span class="omo-team-card__date-value<?= $card['siteLastSeenLabel'] === '' ? ' omo-team-card__date-value--muted' : '' ?>">
+                                        <?= omoApiEscape($card['siteLastSeenLabel'] !== '' ? $card['siteLastSeenLabel'] : omoTeamT('team.member.never', [], $lang, $sourceLang)) ?>
+                                    </span>
+                                </div>
+
+                                <div class="omo-team-card__date">
+                                    <span class="omo-team-card__date-label"><?= omoApiEscape(omoTeamT('team.member.created', [], $lang, $sourceLang)) ?></span>
+                                    <span class="omo-team-card__date-value<?= $card['createdAtLabel'] === '' ? ' omo-team-card__date-value--muted' : '' ?>">
+                                        <?= omoApiEscape($card['createdAtLabel'] !== '' ? $card['createdAtLabel'] : 'N/A') ?>
                                     </span>
                                 </div>
                             </div>
@@ -645,11 +682,11 @@ if ($leafletMapsEnabled) {
         </section>
         <section class="omo-team__view-panel omo-team__view-panel--compact generic-file-list generic-file-list--structured" data-team-view-panel="compact" hidden>
         <?php if (count($memberCards) === 0): ?>
-            <div class="omo-team__empty omo-empty-state">
+            <div class="omo-team__empty omo-empty-state" data-team-default-empty>
                 <?= omoApiEscape($teamEmptyMessage) ?>
             </div>
         <?php else: ?>
-            <div class="omo-team__compact-list-shell">
+            <div class="omo-team__compact-list-shell" data-team-items-container="compact">
                 <div class="omo-team__compact-list generic-file-list__table">
                     <div class="omo-team__compact-list-header generic-file-list__header">
                         <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--name"><?= omoApiEscape(omoTeamT('team.column.name', [], $lang, $sourceLang)) ?></div>
@@ -710,7 +747,7 @@ if ($leafletMapsEnabled) {
                             }
                         }
                         ?>
-                        <article class="omo-team__compact-item-shell generic-file-list__item-shell">
+                        <article class="omo-team__compact-item-shell generic-file-list__item-shell" data-team-member-item data-team-member-search="<?= omoApiEscape((string)$card['searchText']) ?>">
                             <div
                                 class="omo-team__compact-row generic-file-list__row<?= $card['canViewDetail'] ? ' omo-team__compact-row--interactive' : '' ?><?= $card['isPending'] ? ' omo-team__compact-row--pending' : '' ?>"
                                 <?php if ($card['canViewDetail']): ?>
@@ -770,12 +807,12 @@ if ($leafletMapsEnabled) {
         <?php if ($leafletMapsEnabled): ?>
         <section class="omo-team__view-panel" data-team-view-panel="map" hidden>
             <?php if (count($mapMembers) === 0): ?>
-                <div class="omo-team__empty omo-empty-state">
+                <div class="omo-team__empty omo-empty-state" data-team-default-empty>
                     <?= omoApiEscape($teamMapEmptyMessage) ?>
                 </div>
             <?php else: ?>
                 <div class="omo-team__map-shell">
-                    <div class="omo-team__map-summary">
+                    <div class="omo-team__map-summary" data-team-map-summary>
                         <?= omoApiEscape(omoTeamT('team.map.summary', ['count' => (string)count($mapMembers)], $lang, $sourceLang)) ?>
                     </div>
                     <div id="omo-team-map" class="omo-team__map" data-team-map="1"></div>
@@ -783,6 +820,7 @@ if ($leafletMapsEnabled) {
             <?php endif; ?>
         </section>
         <?php endif; ?>
+        <div class="omo-team__search-empty omo-empty-state" data-team-search-empty hidden><?= omoApiEscape(omoTeamT('team.search.empty', [], $lang, $sourceLang)) ?></div>
         </div>
     </div>
 </div>
@@ -792,24 +830,22 @@ if ($leafletMapsEnabled) {
     --omo-panel-view-app-icon-accent: #0f766e;
 }
 
-.omo-team__title-row {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
 .omo-team__header-secondary {
     align-items: end;
 }
 
-.omo-team__header-controls {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    width: 100%;
+.omo-team-card[hidden],
+.omo-team__compact-item-shell[hidden],
+.omo-team__grid[hidden],
+.omo-team__compact-list-shell[hidden],
+.omo-team__map-shell[hidden],
+.omo-team__empty[hidden],
+.omo-team__search-empty[hidden] {
+    display: none !important;
+}
+
+.omo-team__search-empty {
+    margin: 16px 0;
 }
 
 .omo-team__header-action {
@@ -822,18 +858,6 @@ if ($leafletMapsEnabled) {
 
 .omo-team__add-member-button {
     white-space: nowrap;
-}
-
-.omo-team__view-switch {
-    justify-self: end;
-}
-
-.omo-team__scope-toggle {
-    flex: 0 0 auto;
-}
-
-.omo-team__view-button {
-    min-width: 0;
 }
 
 .omo-team__view-panel[hidden] {
@@ -1189,8 +1213,6 @@ if ($leafletMapsEnabled) {
 .omo-team-card__photo-placeholder {
     display: grid;
     place-items: center;
-    gap: 2px;
-    padding: 6px;
     text-align: center;
 }
 
@@ -1198,19 +1220,13 @@ if ($leafletMapsEnabled) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
+    width: 100%;
+    height: 100%;
     border-radius: 999px;
     background: var(--color-primary);
     color: var(--color-text-inverse);
-    font-size: 0.72rem;
+    font-size: 1rem;
     font-weight: 700;
-}
-
-.omo-team-card__photo-label {
-    font-size: 0.52rem;
-    line-height: 1.1;
-    color: var(--color-text-light);
 }
 
 .omo-team-card__body {
@@ -1344,17 +1360,8 @@ if ($leafletMapsEnabled) {
     gap: 1px;
 }
 
-.omo-team-card__meta-label {
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--color-text-light);
-}
-
 .omo-team-card__meta-value {
     word-break: break-word;
-    font-size: 0.8rem;
 }
 
 .omo-team-card__meta-value--muted {
@@ -1363,15 +1370,16 @@ if ($leafletMapsEnabled) {
 
 .omo-team-card__dates {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    gap: 7px;
     padding-top: 8px;
     border-top: 1px solid var(--color-border);
 }
 
 .omo-team-card__date {
     display: grid;
-    gap: 1px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    align-items: baseline;
+    gap: 8px;
     min-width: 0;
 }
 
@@ -1399,10 +1407,6 @@ if ($leafletMapsEnabled) {
         justify-content: flex-start;
     }
 
-    .omo-team__header-controls {
-        width: 100%;
-        justify-content: flex-start;
-    }
 }
 
 @media (max-width: 560px) {
@@ -1412,22 +1416,6 @@ if ($leafletMapsEnabled) {
 
     .omo-team__add-member-button {
         width: 100%;
-    }
-
-    .omo-team__view-switch {
-        display: flex;
-        width: 100%;
-        justify-self: stretch;
-    }
-
-    .omo-team__scope-toggle {
-        width: 100%;
-        justify-content: stretch;
-    }
-
-    .omo-team__view-button {
-        flex: 1 1 calc(50% - 4px);
-        text-align: center;
     }
 
     .omo-team__grid {
@@ -1473,10 +1461,13 @@ $teamJsTranslations = [
     'confirmRevokeAdmin' => omoTeamT('team.confirm.revoke_context_admin', ['name' => '{name}', 'context' => '{context}', 'adminLabel' => $adminLabelLower], $lang, $sourceLang),
     'updateFailed' => omoTeamT('team.message.update_failed', [], $lang, $sourceLang),
     'updateFailedLater' => omoTeamT('team.message.update_failed_later', [], $lang, $sourceLang),
+    'mapSummaryOne' => omoTeamT('team.map.summary_one', [], $lang, $sourceLang),
+    'mapSummaryOther' => omoTeamT('team.map.summary_other', ['count' => '{count}'], $lang, $sourceLang),
 ];
 ?>
 <script>
-var omoTeamViewStorageKey = <?= json_encode('omo-team-view:' . (int)$organizationId . ':' . ($hasStructureContext ? (int)$currentHolon->getId() : 0), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+var omoTeamSavedViewsStorageKey = 'omo.team.saved-views.v1';
+var omoTeamSessionViewsStorageKey = 'omo.team.session-views.v1';
 var omoTeamMapEnabled = <?= $leafletMapsEnabled ? 'true' : 'false' ?>;
 var omoTeamMapMembers = <?= json_encode($mapMemberPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 var omoTeamInitialScope = <?= json_encode($teamScope, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -1484,6 +1475,10 @@ var omoTeamText = <?= json_encode($teamJsTranslations, JSON_UNESCAPED_UNICODE | 
 var omoTeamLeafletMap = null;
 var omoTeamLeafletLayer = null;
 var omoTeamLeafletTileState = {layer: null, theme: null};
+var omoTeamCurrentView = 'cards';
+var omoTeamCurrentSearch = '';
+var omoTeamPendingFilters = null;
+var omoTeamFilterPanelOpen = false;
 
 function omoTeamEscapeHtml(value) {
     return String(value == null ? '' : value)
@@ -1516,6 +1511,63 @@ function omoTeamNormalizeScope(scopeValue) {
     return normalizedScope === 'children' || normalizedScope === 'descendants' ? normalizedScope : 'contextual';
 }
 
+function omoTeamNormalizeView(viewValue) {
+    const normalizedView = String(viewValue || '').trim().toLowerCase();
+    if (normalizedView === 'map' && omoTeamMapEnabled) {
+        return 'map';
+    }
+    return normalizedView === 'compact' ? 'compact' : 'cards';
+}
+
+function omoTeamGetContextKey() {
+    const root = document.getElementById('omo-team-root');
+    return String(root ? (root.getAttribute('data-team-oid') || '0') : '0')
+        + ':' + String(root ? (root.getAttribute('data-team-cid') || '0') : '0');
+}
+
+function omoTeamReadViewPreferences(storage, storageKey) {
+    try {
+        const storedValue = storage.getItem(storageKey);
+        const views = storedValue ? JSON.parse(storedValue) : null;
+        if (!views || typeof views !== 'object') {
+            return null;
+        }
+        const preferences = views[omoTeamGetContextKey()];
+        return preferences && typeof preferences === 'object' ? preferences : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function omoTeamWriteViewPreferences(storage, storageKey, filters) {
+    try {
+        const storedValue = storage.getItem(storageKey);
+        let views = storedValue ? JSON.parse(storedValue) : {};
+        if (!views || typeof views !== 'object') {
+            views = {};
+        }
+        views[omoTeamGetContextKey()] = {
+            scope: omoTeamNormalizeScope(filters.scope),
+            view: omoTeamNormalizeView(filters.view)
+        };
+        storage.setItem(storageKey, JSON.stringify(views));
+    } catch (error) {
+    }
+}
+
+function omoTeamClearSessionViewPreferences() {
+    try {
+        const storedValue = window.sessionStorage.getItem(omoTeamSessionViewsStorageKey);
+        const views = storedValue ? JSON.parse(storedValue) : {};
+        if (!views || typeof views !== 'object') {
+            return;
+        }
+        delete views[omoTeamGetContextKey()];
+        window.sessionStorage.setItem(omoTeamSessionViewsStorageKey, JSON.stringify(views));
+    } catch (error) {
+    }
+}
+
 function omoTeamBuildScopeUrl(scopeValue) {
     const root = document.getElementById('omo-team-root');
     const organizationId = Number(root ? (root.getAttribute('data-team-oid') || 0) : 0);
@@ -1534,6 +1586,10 @@ function omoTeamBuildScopeUrl(scopeValue) {
 
     if (resolvedScope !== 'contextual') {
         query.push('team_scope=' + encodeURIComponent(resolvedScope));
+    }
+    const quickSearch = root ? String(root.getAttribute('data-team-query') || '').trim() : '';
+    if (quickSearch !== '') {
+        query.push('team_query=' + encodeURIComponent(quickSearch));
     }
 
     return '/omo/api/team/index.php' + (query.length > 0 ? '?' + query.join('&') : '');
@@ -1570,15 +1626,10 @@ function omoTeamSetScopeLoadingState(targetScope, isLoading) {
     }
 }
 
-window.omoToggleTeamScope = function (button, event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-
+function omoTeamChangeScope(scopeValue) {
     const root = document.getElementById('omo-team-root');
     const currentScope = omoTeamNormalizeScope(root ? root.getAttribute('data-team-scope') : omoTeamInitialScope);
-    const targetScope = omoTeamNormalizeScope(button ? button.getAttribute('data-team-scope-toggle') : '');
+    const targetScope = omoTeamNormalizeScope(scopeValue);
 
     if (targetScope === currentScope) {
         return false;
@@ -1618,25 +1669,33 @@ window.omoToggleTeamScope = function (button, event) {
 
     window.location.href = nextUrl;
     return false;
+}
+
+window.omoToggleTeamScope = function (button, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    return omoTeamChangeScope(button ? button.getAttribute('data-team-scope-toggle') : '');
 };
 
 function omoTeamApplyView(viewName) {
-    const normalizedView = viewName === 'map' && omoTeamMapEnabled
-        ? 'map'
-        : (viewName === 'compact' ? 'compact' : 'cards');
-    $('[data-team-view-button]').each(function () {
-        const isActive = $(this).data('team-view-button') === normalizedView;
-        $(this).toggleClass('is-active', isActive).attr('aria-pressed', isActive ? 'true' : 'false');
-    });
+    const normalizedView = omoTeamNormalizeView(viewName);
+    const root = document.getElementById('omo-team-root');
+    omoTeamCurrentView = normalizedView;
+    if (root) {
+        root.setAttribute('data-team-view', normalizedView);
+    }
 
     $('[data-team-view-panel]').each(function () {
         const shouldShow = $(this).data('team-view-panel') === normalizedView;
         $(this).prop('hidden', !shouldShow);
     });
 
-    try {
-        window.sessionStorage.setItem(omoTeamViewStorageKey, normalizedView);
-    } catch (error) {
+    const viewButton = root ? root.querySelector('[data-team-filter-view="' + normalizedView + '"]') : null;
+    const viewChip = root ? root.querySelector('[data-team-filter-view-chip]') : null;
+    if (viewButton && viewChip) {
+        viewChip.textContent = viewButton.textContent.trim();
     }
 
     if (normalizedView === 'map' && omoTeamMapEnabled) {
@@ -1648,6 +1707,214 @@ function omoTeamApplyView(viewName) {
             omoTeamEnsureMapReady();
         }
     }
+    omoTeamApplyQuickSearch();
+}
+
+function omoTeamNormalizeSearch(value) {
+    return String(value || '')
+        .toLocaleLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+}
+
+function omoTeamMemberMatchesSearch(member, query) {
+    if (query === '') {
+        return true;
+    }
+    return omoTeamNormalizeSearch(member && member.searchText ? member.searchText : '').indexOf(query) !== -1;
+}
+
+function omoTeamUpdateMapSummary(count) {
+    const root = document.getElementById('omo-team-root');
+    const summary = root ? root.querySelector('[data-team-map-summary]') : null;
+    if (!summary) {
+        return;
+    }
+    const template = count === 1 ? omoTeamText.mapSummaryOne : omoTeamText.mapSummaryOther;
+    summary.textContent = omoTeamFormatText(template, {count: String(count)});
+}
+
+function omoTeamApplyQuickSearch() {
+    const root = document.getElementById('omo-team-root');
+    if (!root) {
+        return;
+    }
+    const query = omoTeamNormalizeSearch(omoTeamCurrentSearch);
+    root.querySelectorAll('[data-team-member-item]').forEach(function (memberNode) {
+        const searchableText = memberNode.getAttribute('data-team-member-search') || memberNode.textContent || '';
+        memberNode.hidden = query !== '' && omoTeamNormalizeSearch(searchableText).indexOf(query) === -1;
+    });
+    root.querySelectorAll('[data-team-default-empty]').forEach(function (emptyNode) {
+        emptyNode.hidden = query !== '';
+    });
+
+    let visibleCount = 0;
+    if (omoTeamCurrentView === 'map') {
+        visibleCount = omoTeamMapMembers.filter(function (member) {
+            return omoTeamMemberMatchesSearch(member, query);
+        }).length;
+        const mapShell = root.querySelector('.omo-team__map-shell');
+        if (mapShell) {
+            mapShell.hidden = query !== '' && visibleCount === 0;
+        }
+        omoTeamUpdateMapSummary(visibleCount);
+        if (omoTeamLeafletMap) {
+            omoTeamEnsureMapReady();
+        }
+    } else {
+        const activePanel = root.querySelector('[data-team-view-panel="' + omoTeamCurrentView + '"]');
+        visibleCount = activePanel
+            ? activePanel.querySelectorAll('[data-team-member-item]:not([hidden])').length
+            : 0;
+        const itemsContainer = root.querySelector('[data-team-items-container="' + omoTeamCurrentView + '"]');
+        if (itemsContainer) {
+            itemsContainer.hidden = query !== '' && visibleCount === 0;
+        }
+    }
+
+    const empty = root.querySelector('[data-team-search-empty]');
+    if (empty) {
+        empty.hidden = query === '' || visibleCount > 0;
+    }
+}
+
+function omoTeamGetActiveFilters() {
+    const root = document.getElementById('omo-team-root');
+    return {
+        scope: omoTeamNormalizeScope(root ? root.getAttribute('data-team-scope') : omoTeamInitialScope),
+        view: omoTeamNormalizeView(omoTeamCurrentView)
+    };
+}
+
+function omoTeamNormalizeFilters(filters) {
+    const root = document.getElementById('omo-team-root');
+    const active = omoTeamGetActiveFilters();
+    let scope = omoTeamNormalizeScope(filters && filters.scope);
+    if (!root || !root.querySelector('[data-team-filter-scope="' + scope + '"]')) {
+        scope = active.scope;
+    }
+    return {
+        scope: scope,
+        view: omoTeamNormalizeView(filters && filters.view)
+    };
+}
+
+function omoTeamSyncFilterChoices() {
+    const root = document.getElementById('omo-team-root');
+    const panel = root ? root.querySelector('[data-team-filter-panel]') : null;
+    if (!panel || !omoTeamPendingFilters) {
+        return;
+    }
+    omoTeamPendingFilters = omoTeamNormalizeFilters(omoTeamPendingFilters);
+    panel.querySelectorAll('[data-team-filter-scope]').forEach(function (button) {
+        const active = button.getAttribute('data-team-filter-scope') === omoTeamPendingFilters.scope;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    panel.querySelectorAll('[data-team-filter-view]').forEach(function (button) {
+        const active = button.getAttribute('data-team-filter-view') === omoTeamPendingFilters.view;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+}
+
+function omoTeamHandleFilterOutsidePointerDown(event) {
+    const root = document.getElementById('omo-team-root');
+    const control = root ? root.querySelector('[data-team-filter-control]') : null;
+    if (control && control.contains(event.target)) {
+        return;
+    }
+    omoTeamCloseFilterPanel(true, false);
+}
+
+function omoTeamOpenFilterPanel() {
+    const root = document.getElementById('omo-team-root');
+    const panel = root ? root.querySelector('[data-team-filter-panel]') : null;
+    if (!root || !panel || omoTeamFilterPanelOpen) {
+        return;
+    }
+    omoTeamPendingFilters = omoTeamGetActiveFilters();
+    omoTeamSyncFilterChoices();
+    panel.hidden = false;
+    omoTeamFilterPanelOpen = true;
+    root.querySelectorAll('[data-team-filter-toggle]').forEach(function (button) {
+        button.setAttribute('aria-expanded', 'true');
+    });
+    document.addEventListener('pointerdown', omoTeamHandleFilterOutsidePointerDown, true);
+}
+
+function omoTeamCloseFilterPanel(applyChanges, saveView) {
+    const root = document.getElementById('omo-team-root');
+    const panel = root ? root.querySelector('[data-team-filter-panel]') : null;
+    if (!root || !omoTeamFilterPanelOpen) {
+        return;
+    }
+    omoTeamFilterPanelOpen = false;
+    if (panel) {
+        panel.hidden = true;
+    }
+    root.querySelectorAll('[data-team-filter-toggle]').forEach(function (button) {
+        button.setAttribute('aria-expanded', 'false');
+    });
+    document.removeEventListener('pointerdown', omoTeamHandleFilterOutsidePointerDown, true);
+
+    if (!applyChanges || !omoTeamPendingFilters) {
+        omoTeamPendingFilters = null;
+        return;
+    }
+
+    const active = omoTeamGetActiveFilters();
+    const next = omoTeamNormalizeFilters(omoTeamPendingFilters);
+    omoTeamPendingFilters = null;
+    if (saveView) {
+        omoTeamWriteViewPreferences(window.localStorage, omoTeamSavedViewsStorageKey, next);
+        omoTeamClearSessionViewPreferences();
+    } else {
+        omoTeamWriteViewPreferences(window.sessionStorage, omoTeamSessionViewsStorageKey, next);
+    }
+
+    if (next.scope !== active.scope) {
+        omoTeamChangeScope(next.scope);
+        return;
+    }
+    omoTeamApplyView(next.view);
+}
+
+function omoTeamRevealRoot() {
+    const root = document.getElementById('omo-team-root');
+    if (!root) {
+        return;
+    }
+    root.removeAttribute('data-team-preferences-pending');
+    root.removeAttribute('aria-busy');
+}
+
+function omoTeamInitializeFilters() {
+    const root = document.getElementById('omo-team-root');
+    if (!root) {
+        return;
+    }
+    const temporary = omoTeamReadViewPreferences(window.sessionStorage, omoTeamSessionViewsStorageKey);
+    const saved = omoTeamReadViewPreferences(window.localStorage, omoTeamSavedViewsStorageKey);
+    const preferences = omoTeamNormalizeFilters(temporary || saved || {
+        scope: root.getAttribute('data-team-scope') || omoTeamInitialScope,
+        view: 'cards'
+    });
+    const currentScope = omoTeamNormalizeScope(root.getAttribute('data-team-scope') || omoTeamInitialScope);
+    omoTeamCurrentSearch = root.getAttribute('data-team-query') || '';
+    if (preferences.scope !== currentScope) {
+        omoTeamChangeScope(preferences.scope);
+        return;
+    }
+
+    omoTeamApplyView(preferences.view);
+    const scopeButton = root.querySelector('[data-team-filter-scope="' + currentScope + '"]');
+    const scopeChip = root.querySelector('[data-team-filter-scope-chip]');
+    if (scopeButton && scopeChip) {
+        scopeChip.textContent = scopeButton.textContent.trim();
+    }
+    omoTeamRevealRoot();
 }
 
 function omoTeamEnsureMapReady() {
@@ -1671,9 +1938,19 @@ function omoTeamEnsureMapReady() {
         }
 
         omoTeamLeafletLayer = L.layerGroup().addTo(omoTeamLeafletMap);
-        const bounds = [];
+    }
 
-        omoTeamMapMembers.forEach(function (member) {
+    if (!omoTeamLeafletLayer) {
+        omoTeamLeafletLayer = L.layerGroup().addTo(omoTeamLeafletMap);
+    }
+    omoTeamLeafletLayer.clearLayers();
+    const query = omoTeamNormalizeSearch(omoTeamCurrentSearch);
+    const visibleMapMembers = omoTeamMapMembers.filter(function (member) {
+        return omoTeamMemberMatchesSearch(member, query);
+    });
+    const bounds = [];
+
+    visibleMapMembers.forEach(function (member) {
             const lat = Number(member.lat);
             const lng = Number(member.long);
             if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
@@ -1742,15 +2019,14 @@ function omoTeamEnsureMapReady() {
 
             marker.addTo(omoTeamLeafletLayer);
             bounds.push([lat, lng]);
-        });
+    });
 
-        if (bounds.length === 1) {
-            omoTeamLeafletMap.setView(bounds[0], 13);
-        } else if (bounds.length > 1) {
-            omoTeamLeafletMap.fitBounds(bounds, {padding: [28, 28]});
-        } else {
-            omoTeamLeafletMap.setView([46.8182, 8.2275], 7);
-        }
+    if (bounds.length === 1) {
+        omoTeamLeafletMap.setView(bounds[0], 13);
+    } else if (bounds.length > 1) {
+        omoTeamLeafletMap.fitBounds(bounds, {padding: [28, 28]});
+    } else {
+        omoTeamLeafletMap.setView([46.8182, 8.2275], 7);
     }
 
     window.setTimeout(function () {
@@ -1765,27 +2041,72 @@ function omoTeamEnsureMapReady() {
     }, 250);
 }
 
-$(document)
-  .off('click.omoTeamViewToggle', '[data-team-view-button]')
-  .on('click.omoTeamViewToggle', '[data-team-view-button]', function () {
-    omoTeamApplyView(String($(this).data('team-view-button') || 'cards'));
-  });
-
 $(function () {
-    let initialView = 'cards';
-    try {
-        initialView = window.sessionStorage.getItem(omoTeamViewStorageKey) || 'cards';
-    } catch (error) {
+    const root = document.getElementById('omo-team-root');
+    if (!root) {
+        return;
     }
 
-    omoTeamApplyView(initialView);
-    if (typeof window.commonWhenLeafletReady === 'function') {
-        window.commonWhenLeafletReady(function () {
-            if (($('[data-team-view-button].is-active').data('team-view-button') || 'cards') === 'map') {
-                omoTeamEnsureMapReady();
+    root.querySelectorAll('[data-team-filter-toggle]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            if (omoTeamFilterPanelOpen) {
+                omoTeamCloseFilterPanel(true, false);
+            } else {
+                omoTeamOpenFilterPanel();
+            }
+        });
+    });
+
+    const panel = root.querySelector('[data-team-filter-panel]');
+    if (panel) {
+        panel.addEventListener('click', function (event) {
+            const applyButton = event.target.closest('[data-team-filter-apply]');
+            if (applyButton) {
+                event.preventDefault();
+                omoTeamCloseFilterPanel(true, false);
+                return;
+            }
+            const saveButton = event.target.closest('[data-team-filter-save]');
+            if (saveButton) {
+                event.preventDefault();
+                omoTeamCloseFilterPanel(true, true);
+                return;
+            }
+            const scopeButton = event.target.closest('[data-team-filter-scope]');
+            if (scopeButton && omoTeamPendingFilters) {
+                omoTeamPendingFilters.scope = omoTeamNormalizeScope(scopeButton.getAttribute('data-team-filter-scope'));
+                omoTeamSyncFilterChoices();
+                return;
+            }
+            const viewButton = event.target.closest('[data-team-filter-view]');
+            if (viewButton && omoTeamPendingFilters) {
+                omoTeamPendingFilters.view = omoTeamNormalizeView(viewButton.getAttribute('data-team-filter-view'));
+                omoTeamSyncFilterChoices();
             }
         });
     }
+
+    const quickSearch = root.querySelector('[data-team-quick-search]');
+    if (quickSearch) {
+        quickSearch.addEventListener('input', function () {
+            omoTeamCurrentSearch = quickSearch.value || '';
+            root.setAttribute('data-team-query', omoTeamCurrentSearch);
+            omoTeamApplyQuickSearch();
+        });
+        quickSearch.addEventListener('search', function () {
+            omoTeamCurrentSearch = quickSearch.value || '';
+            root.setAttribute('data-team-query', omoTeamCurrentSearch);
+            omoTeamApplyQuickSearch();
+        });
+    }
+
+    root.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && omoTeamFilterPanelOpen) {
+            omoTeamCloseFilterPanel(false, false);
+        }
+    });
+
+    omoTeamInitializeFilters();
 });
 
 function omoCloseTeamMemberMenus() {
@@ -1978,6 +2299,10 @@ $(document)
             }
             if (currentTeamScope !== 'contextual') {
                 drawerUrl += '&team_scope=' + encodeURIComponent(currentTeamScope);
+            }
+            const currentTeamQuery = teamRoot ? String(teamRoot.getAttribute('data-team-query') || '').trim() : '';
+            if (currentTeamQuery !== '') {
+                drawerUrl += '&team_query=' + encodeURIComponent(currentTeamQuery);
             }
             refreshDrawer('drawer_team', drawerUrl);
         }

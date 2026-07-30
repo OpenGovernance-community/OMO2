@@ -11,11 +11,11 @@ $canManage = $organizationLoaded && omoProjectsParamsCanManage($organizationId, 
 $config = $organizationLoaded ? omoProjectsParamsGetConfig($organization) : \dbObject\ProjectImportanceCalculator::getDefaultConfig();
 ?>
 <div class="omo-projects-params" data-omo-projects-params-root>
-    <section class="generic-section generic-section--stack">
+    <section class="generic-section generic-section--stack generic-section--roomy">
         <div>
             <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoProjectsParamsT('projects.params.application'), ENT_QUOTES, 'UTF-8') ?></div>
             <h2 class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoProjectsParamsT('projects.params.title'), ENT_QUOTES, 'UTF-8') ?></h2>
-            <p class="omo-projects-params__description"><?= htmlspecialchars(omoProjectsParamsT('projects.params.description'), ENT_QUOTES, 'UTF-8') ?></p>
+            <p class="omo-projects-params__description generic-description"><?= htmlspecialchars(omoProjectsParamsT('projects.params.description'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
         <?php if ($userId <= 0): ?>
             <div class="omo-empty-state"><?= htmlspecialchars(omoProjectsParamsT('projects.params.error.login'), ENT_QUOTES, 'UTF-8') ?></div>
@@ -26,44 +26,36 @@ $config = $organizationLoaded ? omoProjectsParamsGetConfig($organization) : \dbO
         <?php elseif (!$canManage): ?>
             <div class="omo-empty-state"><?= htmlspecialchars(omoProjectsParamsT('projects.params.error.forbidden'), ENT_QUOTES, 'UTF-8') ?></div>
         <?php else: ?>
-            <p class="omo-projects-params__hint"><?= htmlspecialchars(omoProjectsParamsT('projects.params.formula'), ENT_QUOTES, 'UTF-8') ?></p>
-            <form action="/omo/api/projects/params/save.php" method="post" data-omo-projects-params-form>
+            <p class="omo-projects-params__hint generic-description"><?= htmlspecialchars(omoProjectsParamsT('projects.params.formula'), ENT_QUOTES, 'UTF-8') ?></p>
+            <form class="generic-form-stack" action="/omo/api/projects/params/save.php" method="post" data-omo-projects-params-form>
                 <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
-                <div class="omo-projects-params__grid">
-                    <label>
+                <div class="omo-projects-params__grid generic-form-grid">
+                    <label class="generic-form-field">
                         <span class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoProjectsParamsT('projects.params.parent_weight'), ENT_QUOTES, 'UTF-8') ?></span>
                         <input class="generic-form-control" name="parent_weight" type="number" min="0" max="1" step="0.01" value="<?= htmlspecialchars((string)$config['parentWeight'], ENT_QUOTES, 'UTF-8') ?>">
                         <small><?= htmlspecialchars(omoProjectsParamsT('projects.params.parent_weight_hint'), ENT_QUOTES, 'UTF-8') ?></small>
                     </label>
-                    <div class="omo-projects-params__derived">
+                    <div class="omo-projects-params__derived generic-soft-panel generic-form-field">
                         <span class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoProjectsParamsT('projects.params.local_weight'), ENT_QUOTES, 'UTF-8') ?></span>
                         <strong data-omo-projects-local-weight><?= htmlspecialchars((string)round((1 - $config['parentWeight']) * 100), ENT_QUOTES, 'UTF-8') ?> %</strong>
                     </div>
-                    <label>
+                    <label class="generic-form-field">
                         <span class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoProjectsParamsT('projects.params.depth_penalty'), ENT_QUOTES, 'UTF-8') ?></span>
                         <input class="generic-form-control" name="depth_penalty" type="number" min="0" step="0.01" value="<?= htmlspecialchars((string)$config['depthPenalty'], ENT_QUOTES, 'UTF-8') ?>">
                         <small><?= htmlspecialchars(omoProjectsParamsT('projects.params.depth_penalty_hint'), ENT_QUOTES, 'UTF-8') ?></small>
                     </label>
                 </div>
-                <div class="omo-projects-params__actions">
+                <div class="omo-projects-params__actions generic-form-actions">
                     <button class="generic-action-button generic-action-button--main" type="submit" data-omo-projects-params-submit><?= htmlspecialchars(omoProjectsParamsT('projects.params.save'), ENT_QUOTES, 'UTF-8') ?></button>
                 </div>
-                <div class="omo-projects-params__feedback" data-omo-projects-params-feedback hidden></div>
+                <div class="omo-projects-params__feedback generic-soft-panel generic-feedback" data-omo-projects-params-feedback hidden></div>
             </form>
         <?php endif; ?>
     </section>
 </div>
 <style>
-.omo-projects-params__description, .omo-projects-params__hint { margin: 8px 0 0; color: var(--color-text-light, #64748b); line-height: 1.5; }
-.omo-projects-params__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
-.omo-projects-params__grid label, .omo-projects-params__derived { display: grid; align-content: start; gap: 8px; }
+.omo-projects-params__description, .omo-projects-params__hint { margin-top: var(--generic-space-2); }
 .omo-projects-params__grid small { color: var(--color-text-light, #64748b); line-height: 1.4; }
-.omo-projects-params__derived { padding: 12px; border: 1px solid var(--color-border, #dbe4ee); border-radius: var(--radius-md); background: var(--color-surface-alt, #f8fafc); }
-.omo-projects-params__actions { display: flex; justify-content: flex-end; margin-top: 18px; }
-.omo-projects-params__feedback { margin-top: 12px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--color-surface-alt, #f8fafc); }
-.omo-projects-params__feedback.is-error { color: #b91c1c; }
-.omo-projects-params__feedback.is-success { color: #166534; }
-@media (max-width: 640px) { .omo-projects-params__grid { grid-template-columns: 1fr; } }
 </style>
 <script>
 (function () {
@@ -87,7 +79,7 @@ $config = $organizationLoaded ? omoProjectsParamsGetConfig($organization) : \dbO
 
             feedback.hidden = false;
             feedback.textContent = String(message || '');
-            feedback.className = 'omo-projects-params__feedback ' + (isError ? 'is-error' : 'is-success');
+            feedback.className = 'omo-projects-params__feedback generic-soft-panel generic-feedback ' + (isError ? 'is-error' : 'is-success');
         };
         if (input) input.addEventListener('input', refreshWeight);
         form.addEventListener('submit', function (event) {

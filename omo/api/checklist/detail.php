@@ -155,7 +155,7 @@ $formatDelay = static function ($value, $unit) {
             <span class="omo-checklist-status omo-checklist-status--<?= omoApiEscape(Checklist::normalizeStatus($checklist->get('status'))) ?>"><?= omoApiEscape(omoChecklistStatusLabel($checklist->get('status'))) ?></span>
             <h3 class="generic-card-title generic-card-title--large"><?= omoApiEscape((string)$templateRoot->get('title')) ?></h3>
             <?php if (trim((string)$templateRoot->get('description')) !== ''): ?>
-                <div class="omo-simple-html-render omo-checklist-detail__description"><?= (string)$templateRoot->get('description') ?></div>
+                <div class="omo-simple-html-render omo-checklist-detail__description generic-description generic-description--relaxed"><?= (string)$templateRoot->get('description') ?></div>
             <?php else: ?>
                 <p><?= omoApiEscape(omoChecklistT('checklist.detail.no_description')) ?></p>
             <?php endif; ?>
@@ -278,14 +278,14 @@ $formatDelay = static function ($value, $unit) {
                     <div class="omo-checklist-flow__index"><?= (int)$position + 1 ?></div>
                     <div class="omo-checklist-flow__copy">
                         <div class="omo-checklist-flow__title-row">
-                            <h4><?= omoApiEscape((string)$project->get('title')) ?></h4>
+                            <h4 class="generic-title generic-title--item"><?= omoApiEscape((string)$project->get('title')) ?></h4>
                             <div class="omo-checklist-flow__title-actions">
                                 <span class="omo-checklist-flow__role"><?= omoApiEscape($itemHolonLabel) ?></span>
                                 <?php if ($canEdit): ?><button type="button" class="generic-action-button generic-action-button--secondary" data-checklist-open-item-form data-url="<?= omoApiEscape($itemEditUrl) ?>"><?= omoApiEscape(omoChecklistT('checklist.action.edit_item')) ?></button><?php endif; ?>
                             </div>
                         </div>
-                        <?php if ($parentProject instanceof Project): ?><div class="omo-checklist-flow__parent"><?= omoApiEscape(omoChecklistT('checklist.form.parent')) ?> : <?= omoApiEscape((string)$parentProject->get('title')) ?></div><?php endif; ?>
-                        <?php if (trim((string)$project->get('description')) !== ''): ?><div class="omo-simple-html-render omo-checklist-flow__description"><?= (string)$project->get('description') ?></div><?php endif; ?>
+                        <?php if ($parentProject instanceof Project): ?><div class="omo-checklist-flow__parent generic-description generic-description--small"><?= omoApiEscape(omoChecklistT('checklist.form.parent')) ?> : <?= omoApiEscape((string)$parentProject->get('title')) ?></div><?php endif; ?>
+                        <?php if (trim((string)$project->get('description')) !== ''): ?><div class="omo-simple-html-render omo-checklist-flow__description generic-description generic-description--small"><?= (string)$project->get('description') ?></div><?php endif; ?>
                         <?php if (count($itemProjectInstances) > 0): ?>
                             <div class="omo-checklist-flow__instances" aria-label="<?= omoApiEscape(omoChecklistT('checklist.detail.project_instance_count', ['count' => count($itemProjectInstances)])) ?>">
                                 <?php foreach ($itemProjectInstances as $instance): ?>

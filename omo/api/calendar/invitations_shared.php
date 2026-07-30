@@ -743,7 +743,7 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
                                 <?php omoCalendarRenderInvitationHolonTreeNode($holonTree, $escape, t('calendar.invitations.current', [], $lang, $sourceLang), (string)$options['holonFieldName']); ?>
                             <?php endif; ?>
                         </div>
-                        <p class="omo-calendar-invitations-editor__empty" data-omo-calendar-holon-empty hidden><?= $escape(t('calendar.invitations.filter_empty', [], $lang, $sourceLang)) ?></p>
+                        <p class="omo-calendar-invitations-editor__empty generic-description generic-description--small" data-omo-calendar-holon-empty hidden><?= $escape(t('calendar.invitations.filter_empty', [], $lang, $sourceLang)) ?></p>
                     </div>
                     <?php endif; ?>
 
@@ -785,7 +785,7 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
                                 </label>
                             <?php endforeach; ?>
                         </div>
-                        <p class="omo-calendar-invitations-editor__empty" data-omo-calendar-member-empty hidden><?= $escape(t('calendar.invitations.filter_empty', [], $lang, $sourceLang)) ?></p>
+                        <p class="omo-calendar-invitations-editor__empty generic-description generic-description--small" data-omo-calendar-member-empty hidden><?= $escape(t('calendar.invitations.filter_empty', [], $lang, $sourceLang)) ?></p>
                         <p class="omo-calendar-invitations-editor__hint">
                             <?= $escape($hasHolonStructure
                                 ? t('calendar.invitations.members_hint_structure', [], $lang, $sourceLang)

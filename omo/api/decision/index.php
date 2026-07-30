@@ -245,6 +245,30 @@ $sourceLang = [
         'text' => 'Descendants',
         'context' => 'Label used to show decisions from the current holon and its descendants.',
     ],
+    'decisions.index.view_filter.aria' => [
+        'text' => 'Filtres des prises de décision',
+        'context' => 'Accessible label for the compact decision filters.',
+    ],
+    'decisions.index.view_filter.scope' => [
+        'text' => 'Contexte',
+        'context' => 'Heading for decision scope choices.',
+    ],
+    'decisions.index.view_filter.status' => [
+        'text' => 'État',
+        'context' => 'Heading for decision status choices.',
+    ],
+    'decisions.index.view_filter.presentation' => [
+        'text' => 'Présentation',
+        'context' => 'Heading for decision sort and density choices.',
+    ],
+    'decisions.index.view_filter.apply' => [
+        'text' => 'Appliquer',
+        'context' => 'Button applying temporary decision filters.',
+    ],
+    'decisions.index.view_filter.save' => [
+        'text' => 'Enregistrer cette vue',
+        'context' => 'Button saving the decision view for current context.',
+    ],
     'decisions.index.filters.status.all' => [
         'text' => 'Toutes',
         'context' => 'Status filter label showing every decision.',
@@ -1282,6 +1306,7 @@ if (!is_string($payloadJson)) {
     $payloadJson = '{"items":[],"openDecisionId":0,"openDecisionMode":"default","groups":[],"statusFilters":[],"statusCounts":{},"typeOptions":[],"methodOptions":[],"holonOptions":[],"text":{},"newUrl":"","refreshUrl":""}';
 }
 ?>
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
 <div
     class="omo-decisions omo-panel-view"
     id="omo-decisions-root"
@@ -1289,6 +1314,8 @@ if (!is_string($payloadJson)) {
     data-omo-decision-scope="<?= $escape($decisionScope) ?>"
     data-omo-decision-oid="<?= (int)$currentOrganizationId ?>"
     data-omo-decision-cid="<?= (int)$normalizedCurrentHolonId ?>"
+    data-omo-view-filter-pending="1"
+    aria-busy="true"
 >
     <script type="application/json" data-omo-decisions-payload><?= $payloadJson ?></script>
     <div class="omo-panel-view__header omo-panel-view__header--stacked omo-decisions__hero">
@@ -1304,7 +1331,7 @@ if (!is_string($payloadJson)) {
                     </svg>
                 </span>
                 <div class="omo-panel-view__header-copy">
-                    <div class="omo-decisions__title-row">
+                    <div class="omo-decisions__title-row generic-title-row">
                         <h2 class="omo-panel-view__title"><?= $escape(t('decisions.index.title', [], $lang, $sourceLang)) ?></h2>
                         <span class="omo-panel-view__count" data-omo-decisions-count><?= $escape((string)count($decisionEntries)) ?></span>
                     </div>
@@ -1318,105 +1345,68 @@ if (!is_string($payloadJson)) {
                 <?php endif; ?>
             </div>
         </div>
-        <?php if ($canToggleDecisionScope || count($decisionEntries) > 0): ?>
         <div class="omo-panel-view__header-secondary omo-decisions__header-secondary">
-            <?php if ($canToggleDecisionScope): ?>
-            <div class="omo-decisions__scope-slot">
-                <div
-                    class="omo-scope-toggle"
-                    role="tablist"
-                    aria-label="Portee des decisions"
-                    data-omo-scope-switch="<?= $escape($decisionScope) ?>"
-                    style="--omo-scope-option-count: <?= (int)count($availableDecisionScopes) ?>; --omo-scope-active-index: <?= (int)$decisionScopeActiveIndex ?>;"
-                >
-                    <?php foreach ($availableDecisionScopes as $scopeIndex => $scopeKey): ?>
-                        <?php $scopeLabel = t('decisions.index.scope.' . $scopeKey, [], $lang, $sourceLang); ?>
-                        <button
-                            type="button"
-                            class="omo-scope-toggle__button<?= $decisionScope === $scopeKey ? ' is-active' : '' ?>"
-                            aria-label="<?= $escape($scopeLabel) ?>"
-                            data-omo-decision-scope-toggle="<?= $escape($scopeKey) ?>"
-                            data-omo-scope-option="<?= $escape($scopeKey) ?>"
-                            data-omo-scope-index="<?= (int)$scopeIndex ?>"
-                            aria-pressed="<?= $decisionScope === $scopeKey ? 'true' : 'false' ?>"
-                            onclick="return window.omoToggleDecisionsScope ? window.omoToggleDecisionsScope(this, event) : false;"
-                        ><span class="omo-scope-toggle__text"><?= $escape($scopeLabel) ?></span></button>
-                    <?php endforeach; ?>
+            <div class="omo-decisions__filter-toolbar omo-view-filter" data-omo-decisions-filter-control role="group" aria-label="<?= $escape(t('decisions.index.view_filter.aria', [], $lang, $sourceLang)) ?>">
+                <div class="omo-view-filter__input">
+                    <div class="omo-view-filter__chips">
+                        <button type="button" class="omo-view-filter__chip" data-omo-decisions-filter-toggle data-omo-decisions-scope-chip aria-expanded="false" aria-controls="omo-decisions-filter-panel"><?= $escape(t('decisions.index.scope.' . $decisionScope, [], $lang, $sourceLang)) ?></button>
+                        <button type="button" class="omo-view-filter__chip" data-omo-decisions-filter-toggle data-omo-decisions-type-chip aria-expanded="false" aria-controls="omo-decisions-filter-panel"><?= $escape(t('decisions.index.filters.type.all', [], $lang, $sourceLang)) ?></button>
+                        <button type="button" class="omo-view-filter__chip" data-omo-decisions-filter-toggle data-omo-decisions-method-chip aria-expanded="false" aria-controls="omo-decisions-filter-panel"><?= $escape(t('decisions.index.filters.method.all', [], $lang, $sourceLang)) ?></button>
+                        <button type="button" class="omo-view-filter__chip" data-omo-decisions-filter-toggle data-omo-decisions-sort-chip aria-expanded="false" aria-controls="omo-decisions-filter-panel"><?= $escape(t('decisions.index.controls.sort.time', [], $lang, $sourceLang)) ?></button>
+                        <button type="button" class="omo-view-filter__chip" data-omo-decisions-filter-toggle data-omo-decisions-density-chip aria-expanded="false" aria-controls="omo-decisions-filter-panel"><?= $escape(t('decisions.index.controls.density.detail', [], $lang, $sourceLang)) ?></button>
+                    </div>
+                    <label class="omo-view-filter__search">
+                        <input type="search" class="generic-form-control" data-omo-decisions-search placeholder="<?= $escape(t('decisions.index.filters.search.placeholder', [], $lang, $sourceLang)) ?>" aria-label="<?= $escape(t('decisions.index.filters.search.label', [], $lang, $sourceLang)) ?>" autocomplete="off">
+                    </label>
                 </div>
-            </div>
-            <?php endif; ?>
-            <div class="omo-decisions__controls omo-panel-controls" data-omo-decisions-display-controls<?= count($decisionEntries) > 0 ? '' : ' hidden' ?>>
-                <div class="omo-segmented" role="group" aria-label="<?= $escape(t('decisions.index.controls.sort.aria', [], $lang, $sourceLang)) ?>">
-                    <button type="button" class="omo-segmented__button is-active" aria-label="<?= $escape(t('decisions.index.controls.sort.time', [], $lang, $sourceLang)) ?>" data-omo-decisions-sort="time" data-omo-segmented-option="temporal" aria-pressed="true"><span class="omo-segmented__text"><?= $escape(t('decisions.index.controls.sort.time', [], $lang, $sourceLang)) ?></span></button>
-                    <button type="button" class="omo-segmented__button" aria-label="<?= $escape(t('decisions.index.controls.sort.alpha', [], $lang, $sourceLang)) ?>" data-omo-decisions-sort="alpha" data-omo-segmented-option="alphabetical" aria-pressed="false"><span class="omo-segmented__text"><?= $escape(t('decisions.index.controls.sort.alpha', [], $lang, $sourceLang)) ?></span></button>
-                </div>
-                <div class="omo-segmented" role="group" aria-label="<?= $escape(t('decisions.index.controls.density.aria', [], $lang, $sourceLang)) ?>">
-                    <button type="button" class="omo-segmented__button is-active" data-omo-decisions-density="detail" aria-pressed="true"><?= $escape(t('decisions.index.controls.density.detail', [], $lang, $sourceLang)) ?></button>
-                    <button type="button" class="omo-segmented__button" data-omo-decisions-density="compact" aria-pressed="false"><?= $escape(t('decisions.index.controls.density.compact', [], $lang, $sourceLang)) ?></button>
-                </div>
+                <section id="omo-decisions-filter-panel" class="omo-view-filter__panel generic-soft-panel generic-soft-panel--stack" data-omo-decisions-filter-panel hidden>
+                    <div class="omo-view-filter__panel-grid">
+                        <div class="omo-view-filter__group">
+                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.view_filter.scope', [], $lang, $sourceLang)) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= $escape(t('decisions.index.view_filter.scope', [], $lang, $sourceLang)) ?>">
+                                <?php foreach ($availableDecisionScopes as $scopeKey): ?>
+                                    <?php $scopeLabel = t('decisions.index.scope.' . $scopeKey, [], $lang, $sourceLang); ?>
+                                    <button type="button" class="omo-segmented__button<?= $decisionScope === $scopeKey ? ' is-active' : '' ?>" data-omo-decision-scope-toggle="<?= $escape($scopeKey) ?>" aria-pressed="<?= $decisionScope === $scopeKey ? 'true' : 'false' ?>"><?= $escape($scopeLabel) ?></button>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <div class="omo-view-filter__group">
+                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.filters.type.label', [], $lang, $sourceLang)) ?></span>
+                            <div class="omo-segmented" data-omo-decisions-type-choices role="group" aria-label="<?= $escape(t('decisions.index.filters.type.label', [], $lang, $sourceLang)) ?>"></div>
+                            <select data-omo-decisions-type hidden></select>
+                        </div>
+                        <div class="omo-view-filter__group">
+                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.filters.method.label', [], $lang, $sourceLang)) ?></span>
+                            <div class="omo-segmented" data-omo-decisions-method-choices role="group" aria-label="<?= $escape(t('decisions.index.filters.method.label', [], $lang, $sourceLang)) ?>"></div>
+                            <select data-omo-decisions-method hidden></select>
+                        </div>
+                        <div class="omo-view-filter__group">
+                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.view_filter.presentation', [], $lang, $sourceLang)) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= $escape(t('decisions.index.controls.sort.aria', [], $lang, $sourceLang)) ?>">
+                                <button type="button" class="omo-segmented__button is-active" data-omo-decisions-sort="time" aria-pressed="true"><?= $escape(t('decisions.index.controls.sort.time', [], $lang, $sourceLang)) ?></button>
+                                <button type="button" class="omo-segmented__button" data-omo-decisions-sort="alpha" aria-pressed="false"><?= $escape(t('decisions.index.controls.sort.alpha', [], $lang, $sourceLang)) ?></button>
+                            </div>
+                            <div class="omo-segmented" role="group" aria-label="<?= $escape(t('decisions.index.controls.density.aria', [], $lang, $sourceLang)) ?>">
+                                <button type="button" class="omo-segmented__button is-active" data-omo-decisions-density="detail" aria-pressed="true"><?= $escape(t('decisions.index.controls.density.detail', [], $lang, $sourceLang)) ?></button>
+                                <button type="button" class="omo-segmented__button" data-omo-decisions-density="compact" aria-pressed="false"><?= $escape(t('decisions.index.controls.density.compact', [], $lang, $sourceLang)) ?></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="omo-view-filter__actions">
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decisions-filter-apply><?= $escape(t('decisions.index.view_filter.apply', [], $lang, $sourceLang)) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-decisions-filter-save><?= $escape(t('decisions.index.view_filter.save', [], $lang, $sourceLang)) ?></button>
+                    </div>
+                </section>
             </div>
         </div>
-        <?php endif; ?>
     </div>
 
-    <div class="omo-decisions__filters" aria-label="Filtres">
-        
-            <div class="omo-decisions__status-scroll" data-omo-decisions-status-scroll>
-                <button
-                    type="button"
-                    class="omo-decisions__status-scroll-button omo-decisions__status-scroll-button--prev"
-                    data-omo-decisions-status-scroll-prev
-                    aria-label="Defiler les etats vers la gauche"
-                    hidden
-                >&lt;</button>
-                <div class="omo-decisions__status-tabs" data-omo-decisions-status-tabs></div>
-                <button
-                    type="button"
-                    class="omo-decisions__status-scroll-button omo-decisions__status-scroll-button--next"
-                    data-omo-decisions-status-scroll-next
-                    aria-label="Defiler les etats vers la droite"
-                    hidden
-                >&gt;</button>
-            </div>
-            <button
-                type="button"
-                class="generic-action-button generic-action-button--secondary omo-decisions__filters-toggle"
-                data-omo-decisions-filters-toggle
-                aria-expanded="false"
-            >
-                <?= $escape(t('decisions.index.filters.toggle.show', [], $lang, $sourceLang)) ?>
-            </button>
-        
-
-        <section class="omo-decisions__filters-panel generic-section generic-section--stack" data-omo-decisions-filters-panel hidden>
-            <div class="omo-decisions__filters-grid">
-                <label class="omo-decisions__field omo-decisions__field--full">
-                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.filters.search.label', [], $lang, $sourceLang)) ?></span>
-                    <input
-                        type="search"
-                        class="generic-form-control"
-                        data-omo-decisions-search
-                        placeholder="<?= $escape(t('decisions.index.filters.search.placeholder', [], $lang, $sourceLang)) ?>"
-                    >
-                </label>
-
-                <label class="omo-decisions__field">
-                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.filters.type.label', [], $lang, $sourceLang)) ?></span>
-                    <select class="generic-form-control" data-omo-decisions-type></select>
-                </label>
-
-                <label class="omo-decisions__field">
-                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.index.filters.method.label', [], $lang, $sourceLang)) ?></span>
-                    <select class="generic-form-control" data-omo-decisions-method></select>
-                </label>
-            </div>
-
-            <div class="omo-decisions__filter-actions">
-                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decisions-reset>
-                    <?= $escape(t('decisions.index.filters.reset', [], $lang, $sourceLang)) ?>
-                </button>
-            </div>
-        </section>
+    <div class="omo-decisions__filters" aria-label="<?= $escape(t('decisions.index.view_filter.status', [], $lang, $sourceLang)) ?>">
+        <div class="omo-decisions__status-scroll" data-omo-decisions-status-scroll>
+            <button type="button" class="omo-decisions__status-scroll-button omo-decisions__status-scroll-button--prev" data-omo-decisions-status-scroll-prev aria-label="Defiler les etats vers la gauche" hidden>&lt;</button>
+            <div class="omo-decisions__status-tabs" data-omo-decisions-status-tabs></div>
+            <button type="button" class="omo-decisions__status-scroll-button omo-decisions__status-scroll-button--next" data-omo-decisions-status-scroll-next aria-label="Defiler les etats vers la droite" hidden>&gt;</button>
+        </div>
     </div>
 
     <div class="omo-panel-view__body">
@@ -1448,19 +1438,12 @@ if (!is_string($payloadJson)) {
 </div>
 
 <script src="/common/drawer/subdrawer.js"></script>
-<link rel="stylesheet" href="/common/choice/decision_cards.css">
+<link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260729-style-1">
 <script src="/common/choice/decision_cards.js"></script>
 
 <style>
 .omo-decisions {
     min-height: 100%;
-}
-
-.omo-decisions__title-row {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    flex-wrap: wrap;
 }
 
 .omo-decisions__app-icon {
@@ -1503,6 +1486,11 @@ if (!is_string($payloadJson)) {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border-bottom: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 80%, transparent);
+}
+
+.omo-decisions__hero {
+    z-index: 30;
+    overflow: visible;
 }
 
 .omo-decisions__status-bar {
@@ -1662,7 +1650,7 @@ if (!is_string($payloadJson)) {
 .omo-decisions__state {
     color: var(--color-text-light, #475569);
     line-height: 1.6;
-    margin:20px;
+    margin: var(--generic-container-margin, 20px);
 }
 
 .omo-decisions__list {
@@ -1836,20 +1824,6 @@ if (!is_string($payloadJson)) {
     display: none !important;
 }
 
-.omo-decisions__empty-title,
-.omo-decisions__no-results-title {
-    margin: 0;
-    font-size: 1.1rem;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-decisions__empty-text,
-.omo-decisions__no-results-text {
-    margin: 0;
-    color: var(--color-text-light, #475569);
-    line-height: 1.6;
-}
-
 @media (max-width: 720px) {
     .omo-decisions__status-bar,
     .omo-decisions-card__header {
@@ -1977,7 +1951,9 @@ function omoDecisionParseIndexPayload(node) {
 
 const payloadNode = root.querySelector('[data-omo-decisions-payload]');
 const payload = omoDecisionParseIndexPayload(payloadNode) || <?= $payloadJson ?>;
-const omoDecisionsPreferencesStorageKey = 'omoDecisionsDisplayPreferences';
+const omoDecisionsSavedViewsStorageKey = 'omo.decisions.saved-views.v1';
+const omoDecisionsSessionViewsStorageKey = 'omo.decisions.session-views.v1';
+const omoDecisionsSearchStorageKey = 'omo.decisions.quick-search.v1';
 const elements = {
     newButton: root.querySelector('[data-omo-decisions-new]'),
     count: root.querySelector('[data-omo-decisions-count]'),
@@ -1991,7 +1967,11 @@ const elements = {
     search: root.querySelector('[data-omo-decisions-search]'),
     type: root.querySelector('[data-omo-decisions-type]'),
     method: root.querySelector('[data-omo-decisions-method]'),
+    typeChoices: root.querySelector('[data-omo-decisions-type-choices]'),
+    methodChoices: root.querySelector('[data-omo-decisions-method-choices]'),
     reset: root.querySelector('[data-omo-decisions-reset]'),
+    filterControl: root.querySelector('[data-omo-decisions-filter-control]'),
+    viewFilterPanel: root.querySelector('[data-omo-decisions-filter-panel]'),
     state: root.querySelector('[data-omo-decisions-state]'),
     list: root.querySelector('[data-omo-decisions-list]'),
     editorDrawer: root.querySelector('[data-omo-decision-editor-drawer]'),
@@ -2009,17 +1989,19 @@ if (decisionDrawerController) {
 const collator = typeof Intl !== 'undefined' && typeof Intl.Collator === 'function'
     ? new Intl.Collator('fr', { sensitivity: 'base', numeric: true })
     : null;
-const savedPreferences = omoDecisionsReadPreferences();
+const savedPreferences = omoDecisionsReadViewPreferences();
 const state = {
-    status: 'active',
-    search: '',
-    type: 'all',
-    method: 'all',
+    status: savedPreferences.status,
+    search: omoDecisionsReadSearch(),
+    type: savedPreferences.type,
+    method: savedPreferences.method,
     filtersExpanded: false,
     sort: savedPreferences.sort,
     density: savedPreferences.density
 };
 let omoDecisionIndexRefreshToken = 0;
+let pendingViewFilters = null;
+let decisionFilterPanelOpen = false;
 
 function omoDecisionDebugLog(stage, details) {
     if (!window.console || typeof window.console.log !== 'function') {
@@ -2067,57 +2049,98 @@ function omoDecisionsNormalizeDensityPreference(value) {
         : 'detail';
 }
 
-function omoDecisionsReadPreferences() {
-    let rawValue = '';
+function omoDecisionsNormalizeScopePreference(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    return normalized === 'children' || normalized === 'descendants' ? normalized : 'contextual';
+}
 
+function omoDecisionsGetPreferencesContextKey() {
+    return String(root.getAttribute('data-omo-decision-oid') || '0')
+        + ':' + String(root.getAttribute('data-omo-decision-cid') || '0');
+}
+
+function omoDecisionsReadStoredValue(storage, storageKey) {
     try {
-        rawValue = window.localStorage
-            ? String(window.localStorage.getItem(omoDecisionsPreferencesStorageKey) || '')
-            : '';
+        const values = JSON.parse(storage.getItem(storageKey) || '{}');
+        return values && typeof values === 'object' ? values[omoDecisionsGetPreferencesContextKey()] || null : null;
     } catch (error) {
-        rawValue = '';
-    }
-
-    if (rawValue === '') {
-        return {
-            sort: 'time',
-            density: 'detail'
-        };
-    }
-
-    try {
-        const parsed = JSON.parse(rawValue);
-
-        return {
-            sort: omoDecisionsNormalizeSortPreference(parsed && parsed.sort ? parsed.sort : null),
-            density: omoDecisionsNormalizeDensityPreference(parsed && parsed.density ? parsed.density : null)
-        };
-    } catch (error) {
-        return {
-            sort: 'time',
-            density: 'detail'
-        };
+        return null;
     }
 }
 
-function omoDecisionsWritePreferences(preferences) {
-    const normalizedPreferences = {
-        sort: omoDecisionsNormalizeSortPreference(preferences && preferences.sort ? preferences.sort : null),
-        density: omoDecisionsNormalizeDensityPreference(preferences && preferences.density ? preferences.density : null)
-    };
-
+function omoDecisionsWriteStoredValue(storage, storageKey, value) {
     try {
-        if (window.localStorage) {
-            window.localStorage.setItem(
-                omoDecisionsPreferencesStorageKey,
-                JSON.stringify(normalizedPreferences)
-            );
-        }
+        const values = JSON.parse(storage.getItem(storageKey) || '{}');
+        const map = values && typeof values === 'object' ? values : {};
+        map[omoDecisionsGetPreferencesContextKey()] = value;
+        storage.setItem(storageKey, JSON.stringify(map));
     } catch (error) {
     }
+}
+
+function omoDecisionsNormalizeViewPreferences(preferences) {
+    const values = preferences && typeof preferences === 'object' ? preferences : {};
+    return {
+        scope: omoDecisionsNormalizeScopePreference(values.scope),
+        status: String(values.status || 'active'),
+        type: String(values.type || 'all'),
+        method: String(values.method || 'all'),
+        sort: omoDecisionsNormalizeSortPreference(values.sort),
+        density: omoDecisionsNormalizeDensityPreference(values.density)
+    };
+}
+
+function omoDecisionsReadViewPreferences() {
+    const temporary = omoDecisionsReadStoredValue(window.sessionStorage, omoDecisionsSessionViewsStorageKey);
+    const saved = omoDecisionsReadStoredValue(window.localStorage, omoDecisionsSavedViewsStorageKey);
+    return omoDecisionsNormalizeViewPreferences(temporary || saved);
+}
+
+function omoDecisionsReadSearch() {
+    const search = omoDecisionsReadStoredValue(window.sessionStorage, omoDecisionsSearchStorageKey);
+    return typeof search === 'string' ? search : '';
+}
+
+function omoDecisionsWriteSearch(search) {
+    omoDecisionsWriteStoredValue(window.sessionStorage, omoDecisionsSearchStorageKey, String(search || ''));
+}
+
+function omoDecisionsClearTemporaryViewPreferences() {
+    try {
+        const values = JSON.parse(window.sessionStorage.getItem(omoDecisionsSessionViewsStorageKey) || '{}');
+        if (!values || typeof values !== 'object') {
+            return;
+        }
+        delete values[omoDecisionsGetPreferencesContextKey()];
+        window.sessionStorage.setItem(omoDecisionsSessionViewsStorageKey, JSON.stringify(values));
+    } catch (error) {
+    }
+}
+
+function omoDecisionsWriteViewPreferences(storage, storageKey, preferences) {
+    omoDecisionsWriteStoredValue(
+        storage,
+        storageKey,
+        omoDecisionsNormalizeViewPreferences(preferences)
+    );
+}
+
+function omoDecisionsGetCurrentViewFilters() {
+    return {
+        scope: omoDecisionGetCurrentScope(),
+        status: state.status,
+        type: state.type,
+        method: state.method,
+        sort: state.sort,
+        density: state.density
+    };
+}
+
+function omoDecisionsWritePreferences(preferences) {
+    omoDecisionsWriteViewPreferences(window.sessionStorage, omoDecisionsSessionViewsStorageKey, preferences);
 
     window.dispatchEvent(new CustomEvent('omo-decisions-preferences-change', {
-        detail: normalizedPreferences
+        detail: omoDecisionsNormalizeViewPreferences(preferences)
     }));
 }
 
@@ -2127,6 +2150,224 @@ function omoDecisionGetCurrentScope() {
         return 'descendants';
     }
     return normalizedScope === 'children' || normalizedScope === 'descendants' ? normalizedScope : 'contextual';
+}
+
+function omoDecisionsFindOptionLabel(select, value) {
+    if (!select) {
+        return '';
+    }
+    const option = Array.prototype.find.call(select.options || [], function (candidate) {
+        return String(candidate.value || '') === String(value || '');
+    });
+    return option ? String(option.textContent || '').trim() : '';
+}
+
+function omoDecisionsFindStatusLabel(value) {
+    const filter = (Array.isArray(payload.statusFilters) ? payload.statusFilters : []).find(function (item) {
+        return String(item && item.key ? item.key : '') === String(value || '');
+    });
+    return filter ? String(filter.label || '').trim() : '';
+}
+
+function omoDecisionsRenderChoiceButtons(container, options, attribute, selectedValue) {
+    if (!container) {
+        return;
+    }
+    container.replaceChildren();
+    (Array.isArray(options) ? options : []).forEach(function (option) {
+        const value = String(option && option.value !== undefined ? option.value : '');
+        const button = document.createElement('button');
+        const active = value === String(selectedValue || 'all');
+        button.type = 'button';
+        button.className = 'omo-segmented__button' + (active ? ' is-active' : '');
+        button.setAttribute(attribute, value);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        button.textContent = String(option && option.label !== undefined ? option.label : value);
+        container.appendChild(button);
+    });
+}
+
+function omoDecisionsSyncFilterChips() {
+    const currentScope = omoDecisionGetCurrentScope();
+    const entries = [
+        {chip: '[data-omo-decisions-scope-chip]', label: function () {
+            const button = root.querySelector('[data-omo-decision-scope-toggle="' + currentScope + '"]');
+            return button ? String(button.textContent || '').trim() : '';
+        }},
+        {chip: '[data-omo-decisions-status-chip]', label: function () { return omoDecisionsFindStatusLabel(state.status); }},
+        {chip: '[data-omo-decisions-type-chip]', label: function () { return omoDecisionsFindOptionLabel(elements.type, state.type); }},
+        {chip: '[data-omo-decisions-method-chip]', label: function () { return omoDecisionsFindOptionLabel(elements.method, state.method); }},
+        {chip: '[data-omo-decisions-sort-chip]', label: function () {
+            const button = root.querySelector('[data-omo-decisions-sort="' + state.sort + '"]');
+            return button ? String(button.textContent || '').trim() : '';
+        }},
+        {chip: '[data-omo-decisions-density-chip]', label: function () {
+            const button = root.querySelector('[data-omo-decisions-density="' + state.density + '"]');
+            return button ? String(button.textContent || '').trim() : '';
+        }}
+    ];
+    entries.forEach(function (entry) {
+        const chip = root.querySelector(entry.chip);
+        const label = entry.label();
+        if (chip && label !== '') {
+            chip.textContent = label;
+        }
+    });
+}
+
+function omoDecisionsSyncFilterChoices() {
+    if (!pendingViewFilters) {
+        return;
+    }
+    const filters = omoDecisionsNormalizeViewPreferences(pendingViewFilters);
+    if (!root.querySelector('[data-omo-decision-scope-toggle="' + filters.scope + '"]')) {
+        filters.scope = omoDecisionGetCurrentScope();
+    }
+    filters.status = omoDecisionsFindStatusLabel(filters.status) !== '' ? filters.status : state.status;
+    filters.type = omoDecisionsFindOptionLabel(elements.type, filters.type) !== '' ? filters.type : 'all';
+    filters.method = omoDecisionsFindOptionLabel(elements.method, filters.method) !== '' ? filters.method : 'all';
+    pendingViewFilters = filters;
+
+    root.querySelectorAll('[data-omo-decision-scope-toggle]').forEach(function (button) {
+        const active = String(button.getAttribute('data-omo-decision-scope-toggle') || '') === filters.scope;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    root.querySelectorAll('[data-status]').forEach(function (button) {
+        const active = String(button.getAttribute('data-status') || '') === filters.status;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    root.querySelectorAll('[data-omo-decisions-sort]').forEach(function (button) {
+        const active = String(button.getAttribute('data-omo-decisions-sort') || '') === filters.sort;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    root.querySelectorAll('[data-omo-decisions-density]').forEach(function (button) {
+        const active = String(button.getAttribute('data-omo-decisions-density') || '') === filters.density;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    root.querySelectorAll('[data-omo-decisions-type-choice]').forEach(function (button) {
+        const active = String(button.getAttribute('data-omo-decisions-type-choice') || '') === filters.type;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    root.querySelectorAll('[data-omo-decisions-method-choice]').forEach(function (button) {
+        const active = String(button.getAttribute('data-omo-decisions-method-choice') || '') === filters.method;
+        button.classList.toggle('is-active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    if (elements.type) {
+        elements.type.value = filters.type;
+    }
+    if (elements.method) {
+        elements.method.value = filters.method;
+    }
+}
+
+function omoDecisionsBuildScopeUrl(scope) {
+    const query = ['oid=' + encodeURIComponent(String(root.getAttribute('data-omo-decision-oid') || '0'))];
+    const holonId = Number(root.getAttribute('data-omo-decision-cid') || 0);
+    if (holonId > 0) {
+        query.push('cid=' + encodeURIComponent(String(holonId)));
+    }
+    const normalizedScope = omoDecisionsNormalizeScopePreference(scope);
+    if (normalizedScope !== 'contextual') {
+        query.push('decision_scope=' + encodeURIComponent(normalizedScope));
+    }
+    return '/omo/api/decision/index.php?' + query.join('&');
+}
+
+function omoDecisionsRefreshScope(scope) {
+    if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
+        window.location.href = omoDecisionsBuildScopeUrl(scope);
+        return;
+    }
+    root.classList.add('is-loading');
+    window.omoReplaceFetchedPanelRoot({
+        rootSelector: '#omo-decisions-root',
+        currentRoot: root,
+        url: omoDecisionsBuildScopeUrl(scope),
+        setLoadingState: function (loading) {
+            root.classList.toggle('is-loading', !!loading);
+        }
+    }).catch(function () {
+        root.classList.remove('is-loading');
+        root.removeAttribute('data-omo-view-filter-pending');
+        root.removeAttribute('aria-busy');
+    });
+}
+
+function omoDecisionsCloseFilterPanel(applyChanges, saveView) {
+    if (!decisionFilterPanelOpen) {
+        return;
+    }
+    decisionFilterPanelOpen = false;
+    if (elements.viewFilterPanel) {
+        elements.viewFilterPanel.hidden = true;
+    }
+    root.querySelectorAll('[data-omo-decisions-filter-toggle]').forEach(function (button) {
+        button.setAttribute('aria-expanded', 'false');
+    });
+    document.removeEventListener('pointerdown', omoDecisionsHandleFilterOutsidePointerDown, true);
+    if (!applyChanges || !pendingViewFilters) {
+        pendingViewFilters = null;
+        return;
+    }
+    const next = omoDecisionsNormalizeViewPreferences(pendingViewFilters);
+    pendingViewFilters = null;
+    if (saveView) {
+        omoDecisionsWriteViewPreferences(window.localStorage, omoDecisionsSavedViewsStorageKey, next);
+        omoDecisionsClearTemporaryViewPreferences();
+    } else {
+        omoDecisionsWritePreferences(next);
+    }
+    if (next.scope !== omoDecisionGetCurrentScope()) {
+        omoDecisionsRefreshScope(next.scope);
+        return;
+    }
+    state.status = next.status;
+    state.type = restoreSelectValue(elements.type, next.type);
+    state.method = restoreSelectValue(elements.method, next.method);
+    state.sort = next.sort;
+    state.density = next.density;
+    renderList();
+}
+
+function omoDecisionsHandleFilterOutsidePointerDown(event) {
+    if (elements.filterControl && elements.filterControl.contains(event.target)) {
+        return;
+    }
+    omoDecisionsCloseFilterPanel(true, false);
+}
+
+function omoDecisionsOpenFilterPanel() {
+    if (!elements.viewFilterPanel || decisionFilterPanelOpen) {
+        return;
+    }
+    pendingViewFilters = omoDecisionsGetCurrentViewFilters();
+    omoDecisionsSyncFilterChoices();
+    elements.viewFilterPanel.hidden = false;
+    decisionFilterPanelOpen = true;
+    root.querySelectorAll('[data-omo-decisions-filter-toggle]').forEach(function (button) {
+        button.setAttribute('aria-expanded', 'true');
+    });
+    document.addEventListener('pointerdown', omoDecisionsHandleFilterOutsidePointerDown, true);
+}
+
+function omoDecisionsInitializeViewFilter() {
+    const preferredScope = Number(payload.openDecisionId || 0) > 0
+        ? omoDecisionGetCurrentScope()
+        : savedPreferences.scope;
+    if (preferredScope !== omoDecisionGetCurrentScope()) {
+        omoDecisionsRefreshScope(preferredScope);
+        return true;
+    }
+    omoDecisionsSyncFilterChips();
+    root.removeAttribute('data-omo-view-filter-pending');
+    root.removeAttribute('aria-busy');
+    return false;
 }
 
 window.omoToggleDecisionsScope = function (button, event) {
@@ -2288,6 +2529,8 @@ function applyDecisionIndexPayload(nextPayload) {
 
     populateSelect(elements.type, payload.typeOptions);
     populateSelect(elements.method, payload.methodOptions);
+    omoDecisionsRenderChoiceButtons(elements.typeChoices, payload.typeOptions, 'data-omo-decisions-type-choice', state.type);
+    omoDecisionsRenderChoiceButtons(elements.methodChoices, payload.methodOptions, 'data-omo-decisions-method-choice', state.method);
 
     state.status = preservedState.status;
     state.search = preservedState.search;
@@ -2849,6 +3092,7 @@ function syncDisplayButtons() {
         button.classList.toggle('is-active', isActive);
         button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     });
+    omoDecisionsSyncFilterChips();
 }
 
 function resetListPresentation() {
@@ -3455,7 +3699,7 @@ function renderCard(item) {
             + '<span class="omo-decisions-card__owner-avatar">' + ownerAvatarHtml + '</span>'
             + '<span class="omo-decisions-card__summary-copy">'
                 + '<span class="omo-decisions-card__summary-top">'
-                    + '<span class="omo-decisions-card__title-line"><span class="omo-decisions-card__title">' + escapeHtml(item.title || '') + '</span>' + buildDecisionVisibilityIconHtml(item, 'omo-decisions-card__title-icon') + '</span>'
+                    + '<span class="omo-decisions-card__title-line"><span class="omo-decisions-card__title generic-title generic-title--item">' + escapeHtml(item.title || '') + '</span>' + buildDecisionVisibilityIconHtml(item, 'omo-decisions-card__title-icon') + '</span>'
                     + '<span class="omo-decisions-card__status">' + escapeHtml(item.statusLabel || '') + '</span>'
                 + '</span>'
                 + '<span class="omo-decisions-card__summary-bottom">'
@@ -3468,7 +3712,7 @@ function renderCard(item) {
         + actionsHtml
         + '</div>'
         + '<div class="omo-decisions-card__content generic-accordion__content">'
-            + (description !== '' ? '<p class="omo-decisions-card__description">' + escapeHtml(description) + '</p>' : '')
+            + (description !== '' ? '<p class="omo-decisions-card__description generic-description">' + escapeHtml(description) + '</p>' : '')
             + '<div class="omo-decisions-card__meta">' + metaBits.join('') + '</div>'
             + '<div class="omo-decisions-card__stats">'
                 + '<div class="omo-decisions-card__stat"><strong>' + String(Number(item.proposalCount || 0)) + '</strong><span>' + escapeHtml(payload.text.proposalsLabel || 'Propositions') + '</span></div>'
@@ -3489,10 +3733,10 @@ function renderCard(item) {
 function buildStateCardHtml(title, text, buttonLabel, buttonUrl) {
     let html = '<div class="omo-decisions__state-content">';
     if (title) {
-        html += '<h3 class="omo-decisions__empty-title">' + escapeHtml(title) + '</h3>';
+        html += '<h3 class="omo-decisions__empty-title generic-title generic-title--card">' + escapeHtml(title) + '</h3>';
     }
     if (text) {
-        html += '<p class="omo-decisions__empty-text">' + escapeHtml(text) + '</p>';
+        html += '<p class="omo-decisions__empty-text generic-description generic-description--relaxed">' + escapeHtml(text) + '</p>';
     }
     if (buttonLabel && buttonUrl) {
         html += '<button type="button" class="generic-action-button generic-action-button--main" data-open-url="' + escapeHtml(buttonUrl) + '">' + escapeHtml(buttonLabel) + '</button>';
@@ -3502,8 +3746,8 @@ function buildStateCardHtml(title, text, buttonLabel, buttonUrl) {
 }
 
 function renderNoResults() {
-    return '<h3 class="omo-decisions__no-results-title">' + escapeHtml(payload.text.noResultsTitle || '') + '</h3>'
-        + '<p class="omo-decisions__no-results-text">' + escapeHtml(payload.text.noResultsText || '') + '</p>';
+    return '<h3 class="omo-decisions__no-results-title generic-title generic-title--card">' + escapeHtml(payload.text.noResultsTitle || '') + '</h3>'
+        + '<p class="omo-decisions__no-results-text generic-description generic-description--relaxed">' + escapeHtml(payload.text.noResultsText || '') + '</p>';
 }
 
 function renderList() {
@@ -3960,12 +4204,21 @@ try {
 
     populateSelect(elements.type, payload.typeOptions);
     populateSelect(elements.method, payload.methodOptions);
+    state.type = restoreSelectValue(elements.type, state.type);
+    state.method = restoreSelectValue(elements.method, state.method);
+    omoDecisionsRenderChoiceButtons(elements.typeChoices, payload.typeOptions, 'data-omo-decisions-type-choice', state.type);
+    omoDecisionsRenderChoiceButtons(elements.methodChoices, payload.methodOptions, 'data-omo-decisions-method-choice', state.method);
+    if (elements.search) {
+        elements.search.value = state.search;
+    }
     renderList();
     omoDecisionDebugLog('bootstrap:afterRender', {
         initialized: String(root.getAttribute('data-omo-decisions-initialized') || ''),
         listChildCount: elements.list ? elements.list.childElementCount : null
     });
-    window.setTimeout(openInitialDecisionFromPayload, 0);
+    if (!omoDecisionsInitializeViewFilter()) {
+        window.setTimeout(openInitialDecisionFromPayload, 0);
+    }
 } catch (error) {
     root.setAttribute('data-omo-decisions-initialized', '0');
     omoDecisionDebugError('bootstrap:error', error, {
@@ -4099,11 +4352,67 @@ omoDecisionRegisterGlobalListener(window, 'resize', function () {
 
 omoDecisionRegisterGlobalListener(window, 'resize', syncStatusTabsOverflow);
 
+root.querySelectorAll('[data-omo-decisions-filter-toggle]').forEach(function (button) {
+    button.addEventListener('click', function () {
+        if (decisionFilterPanelOpen) {
+            omoDecisionsCloseFilterPanel(true, false);
+        } else {
+            omoDecisionsOpenFilterPanel();
+        }
+    });
+});
+
+if (elements.viewFilterPanel) {
+    elements.viewFilterPanel.addEventListener('click', function (event) {
+        if (event.target.closest('[data-omo-decisions-filter-apply]')) {
+            event.preventDefault();
+            omoDecisionsCloseFilterPanel(true, false);
+            return;
+        }
+        if (event.target.closest('[data-omo-decisions-filter-save]')) {
+            event.preventDefault();
+            omoDecisionsCloseFilterPanel(true, true);
+            return;
+        }
+        const scopeButton = event.target.closest('[data-omo-decision-scope-toggle]');
+        if (scopeButton && pendingViewFilters) {
+            pendingViewFilters.scope = omoDecisionsNormalizeScopePreference(
+                scopeButton.getAttribute('data-omo-decision-scope-toggle')
+            );
+            omoDecisionsSyncFilterChoices();
+            return;
+        }
+        const typeButton = event.target.closest('[data-omo-decisions-type-choice]');
+        if (typeButton && pendingViewFilters) {
+            pendingViewFilters.type = String(typeButton.getAttribute('data-omo-decisions-type-choice') || 'all');
+            omoDecisionsSyncFilterChoices();
+            return;
+        }
+        const methodButton = event.target.closest('[data-omo-decisions-method-choice]');
+        if (methodButton && pendingViewFilters) {
+            pendingViewFilters.method = String(methodButton.getAttribute('data-omo-decisions-method-choice') || 'all');
+            omoDecisionsSyncFilterChoices();
+        }
+    });
+}
+
+root.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && decisionFilterPanelOpen) {
+        omoDecisionsCloseFilterPanel(false, false);
+    }
+});
+
 root.querySelectorAll('[data-omo-decisions-sort]').forEach(function (button) {
     button.addEventListener('click', function () {
         const nextSort = omoDecisionsNormalizeSortPreference(
             button.getAttribute('data-omo-decisions-sort')
         );
+
+        if (decisionFilterPanelOpen && pendingViewFilters) {
+            pendingViewFilters.sort = nextSort;
+            omoDecisionsSyncFilterChoices();
+            return;
+        }
 
         if (nextSort === state.sort) {
             return;
@@ -4123,6 +4432,12 @@ root.querySelectorAll('[data-omo-decisions-density]').forEach(function (button) 
         const nextDensity = omoDecisionsNormalizeDensityPreference(
             button.getAttribute('data-omo-decisions-density')
         );
+
+        if (decisionFilterPanelOpen && pendingViewFilters) {
+            pendingViewFilters.density = nextDensity;
+            omoDecisionsSyncFilterChoices();
+            return;
+        }
 
         if (nextDensity === state.density) {
             return;
@@ -4199,7 +4514,13 @@ if (elements.statusTabs) {
             return;
         }
 
-        state.status = String(button.getAttribute('data-status') || 'all');
+        const nextStatus = String(button.getAttribute('data-status') || 'all');
+        if (decisionFilterPanelOpen && pendingViewFilters) {
+            pendingViewFilters.status = nextStatus;
+            omoDecisionsSyncFilterChoices();
+            return;
+        }
+        state.status = nextStatus;
         renderList();
     });
 }
@@ -4207,12 +4528,18 @@ if (elements.statusTabs) {
 if (elements.search) {
     elements.search.addEventListener('input', function () {
         state.search = String(elements.search.value || '');
+        omoDecisionsWriteSearch(state.search);
         renderList();
     });
 }
 
 if (elements.type) {
     elements.type.addEventListener('change', function () {
+        if (decisionFilterPanelOpen && pendingViewFilters) {
+            pendingViewFilters.type = String(elements.type.value || 'all');
+            omoDecisionsSyncFilterChoices();
+            return;
+        }
         state.type = String(elements.type.value || 'all');
         renderList();
     });
@@ -4220,6 +4547,11 @@ if (elements.type) {
 
 if (elements.method) {
     elements.method.addEventListener('change', function () {
+        if (decisionFilterPanelOpen && pendingViewFilters) {
+            pendingViewFilters.method = String(elements.method.value || 'all');
+            omoDecisionsSyncFilterChoices();
+            return;
+        }
         state.method = String(elements.method.value || 'all');
         renderList();
     });

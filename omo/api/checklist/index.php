@@ -119,7 +119,8 @@ $texts = [
     'loadingError' => omoChecklistT('checklist.error.load'),
 ];
 ?>
-<link rel="stylesheet" href="/omo/api/checklist/checklist.css?v=20260722-shared-subdrawer-width">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
+<link rel="stylesheet" href="/omo/api/checklist/checklist.css?v=20260729-compact-list-2">
 <div
     class="omo-checklist omo-panel-view"
     id="omo-checklist-root"
@@ -131,15 +132,17 @@ $texts = [
     data-checklist-detail-url="<?= omoApiEscape($detailUrl) ?>"
     data-checklist-open-checklist-id="<?= (int)$openChecklistId ?>"
     data-checklist-texts="<?= omoApiEscape(json_encode($texts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+    data-omo-view-filter-pending="1"
+    aria-busy="true"
 >
     <header class="omo-checklist__header omo-panel-view__header omo-panel-view__header--stacked">
         <div class="omo-panel-view__header-main">
             <div class="omo-panel-view__title-cluster">
                 <span class="omo-panel-view__app-icon omo-checklist__app-icon" aria-hidden="true"><img src="/omo/images/tools/checklist.png" alt=""></span>
                 <div class="omo-panel-view__header-copy">
-                    <div class="omo-checklist__title-row">
+                    <div class="omo-checklist__title-row generic-title-row generic-title-row--center">
                         <h2 class="omo-panel-view__title"><?= omoApiEscape(omoChecklistT('checklist.title')) ?></h2>
-                        <span class="omo-panel-view__count"><?= count($checklistRows) ?></span>
+                        <span class="omo-panel-view__count" data-checklist-header-count data-checklist-total-count="<?= count($checklistRows) ?>"><?= count($checklistRows) ?></span>
                     </div>
                     <p class="omo-panel-view__description"><?= omoApiEscape(omoChecklistT('checklist.description')) ?></p>
                 </div>
@@ -148,37 +151,43 @@ $texts = [
                 <button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-checklist-open-create><?= omoApiEscape(omoChecklistT('checklist.action.new')) ?></button>
             <?php endif; ?>
         </div>
-        <?php if (count($availableScopes) > 1): ?>
-            <div class="omo-panel-view__header-secondary">
-                <div class="omo-scope-toolbar__main">
-                    <div
-                        class="omo-scope-toggle"
-                        data-omo-scope-switch="<?= omoApiEscape($checklistScope) ?>"
-                        style="--omo-scope-option-count: <?= count($availableScopes) ?>; --omo-scope-active-index: <?= (int)$scopeActiveIndex ?>;"
-                    >
-                        <?php foreach ($availableScopes as $scopeIndex => $scopeKey): ?>
-                            <button
-                                type="button"
-                                class="omo-scope-toggle__button<?= $checklistScope === $scopeKey ? ' is-active' : '' ?>"
-                                data-checklist-scope-option="<?= omoApiEscape($scopeKey) ?>"
-                                data-omo-scope-option="<?= omoApiEscape($scopeKey) ?>"
-                                data-omo-scope-index="<?= (int)$scopeIndex ?>"
-                                aria-pressed="<?= $checklistScope === $scopeKey ? 'true' : 'false' ?>"
-                            ><span class="omo-scope-toggle__text"><?= omoApiEscape(omoChecklistT('checklist.scope.' . $scopeKey)) ?></span></button>
-                        <?php endforeach; ?>
+        <div class="omo-panel-view__header-secondary">
+            <div class="omo-checklist__filter-toolbar omo-view-filter" data-checklist-filter-control role="group" aria-label="<?= omoApiEscape(omoChecklistT('checklist.filters.aria')) ?>">
+                <div class="omo-view-filter__input">
+                    <div class="omo-view-filter__chips">
+                        <button type="button" class="omo-view-filter__chip" data-checklist-filter-toggle data-checklist-scope-chip aria-expanded="false" aria-controls="omo-checklist-filter-panel"><?= omoApiEscape(omoChecklistT('checklist.scope.' . $checklistScope)) ?></button>
                     </div>
+                    <label class="omo-view-filter__search">
+                        <input type="search" class="generic-form-control" data-checklist-quick-search placeholder="<?= omoApiEscape(omoChecklistT('checklist.search.placeholder')) ?>" aria-label="<?= omoApiEscape(omoChecklistT('checklist.search.aria')) ?>" autocomplete="off">
+                    </label>
                 </div>
+                <section id="omo-checklist-filter-panel" class="omo-view-filter__panel generic-soft-panel generic-soft-panel--stack" data-checklist-filter-panel hidden>
+                    <div class="omo-view-filter__panel-grid">
+                        <div class="omo-view-filter__group">
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoChecklistT('checklist.filters.scope')) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoChecklistT('checklist.filters.scope')) ?>">
+                                <?php foreach ($availableScopes as $scopeKey): ?>
+                                    <button type="button" class="omo-segmented__button<?= $checklistScope === $scopeKey ? ' is-active' : '' ?>" data-checklist-scope-option="<?= omoApiEscape($scopeKey) ?>" aria-pressed="<?= $checklistScope === $scopeKey ? 'true' : 'false' ?>"><?= omoApiEscape(omoChecklistT('checklist.scope.' . $scopeKey)) ?></button>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="omo-view-filter__actions">
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-checklist-filter-apply><?= omoApiEscape(omoChecklistT('checklist.filters.apply')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--main" data-checklist-filter-save><?= omoApiEscape(omoChecklistT('checklist.filters.save_view')) ?></button>
+                    </div>
+                </section>
             </div>
-        <?php endif; ?>
+        </div>
     </header>
 
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content omo-checklist__body">
             <?php if (count($checklistRows) === 0): ?>
-                <div class="omo-empty-state"><?= omoApiEscape(omoChecklistT('checklist.empty.' . $checklistScope)) ?></div>
+                <div class="omo-empty-state" data-checklist-default-empty><?= omoApiEscape(omoChecklistT('checklist.empty.' . $checklistScope)) ?></div>
             <?php else: ?>
-                <div class="generic-file-list generic-file-list--structured omo-checklist-list">
-                    <div class="generic-file-list__table">
+                <div class="generic-file-list generic-file-list--structured omo-checklist-list-container">
+                    <div class="omo-checklist-list omo-documents__list omo-panel-view__body_content omo-documents__list--compact generic-file-list__table">
                         <div class="generic-file-list__header" aria-hidden="true">
                             <span class="generic-file-list__header-cell"><?= omoApiEscape(omoChecklistT('checklist.form.title')) ?></span>
                             <span class="generic-file-list__header-cell"><?= omoApiEscape(omoChecklistT('checklist.detail.context')) ?></span>
@@ -187,7 +196,7 @@ $texts = [
                         </div>
                         <?php foreach ($checklistRows as $row): ?>
                             <?php $checklist = $row['checklist']; ?>
-                            <div class="generic-file-list__item-shell">
+                            <div class="generic-file-list__item-shell" data-checklist-search-item>
                                 <article
                                     class="generic-file-list__row omo-checklist-list__row"
                                     data-checklist-open-detail
@@ -218,6 +227,7 @@ $texts = [
                     </div>
                 </div>
             <?php endif; ?>
+            <div class="omo-empty-state omo-checklist__search-empty" data-checklist-search-empty hidden><?= omoApiEscape(omoChecklistT('checklist.search.empty')) ?></div>
         </div>
     </div>
 
@@ -239,4 +249,4 @@ $texts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
-<script src="/omo/api/checklist/checklist.js?v=20260722-checklist-detail-route"></script>
+<script src="/omo/api/checklist/checklist.js?v=20260729-view-filter"></script>

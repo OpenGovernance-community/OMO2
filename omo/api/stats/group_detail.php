@@ -81,7 +81,7 @@ foreach ($series as $seriesIndex => $seriesItem) {
         <?php endif; ?>
     </div>
 
-    <div class="omo-stats-detail__meta omo-stats-detail__meta--compact">
+    <div class="omo-stats-detail__meta omo-stats-detail__meta--compact generic-meta">
         <span><strong><?= omoApiEscape(omoStatsT('stats.card.member_count', ['count' => count($sourceIndicators)])) ?></strong></span>
         <?php if ($chartMinValue !== null): ?>
             <span><strong><?= omoApiEscape(omoStatsT('stats.detail.chart_min_value')) ?> :</strong> <?= omoApiEscape(omoStatsFormatNumber($chartMinValue)) ?></span>

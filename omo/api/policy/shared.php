@@ -21,6 +21,7 @@ if (!function_exists('omoPolicySourceLang')) {
             'policy.group' => ['text' => 'Regroupement', 'context' => 'Label for the policy rule grouping selector.'],
             'policy.group.holon' => ['text' => 'Par holon', 'context' => 'Policy rules grouped by holon tree.'],
             'policy.group.authority' => ['text' => 'Par autorite', 'context' => 'Policy rules grouped by authority tree.'],
+            'policy.group.none' => ['text' => 'Sans regroupement', 'context' => 'Policy rules displayed in one flat list without grouping.'],
             'policy.group.local_rules' => ['text' => 'Regles locales - {holon}', 'context' => 'Local rules when policy rules are grouped by authority.'],
             'policy.group.unnamed_authority' => ['text' => 'Autorite sans libelle', 'context' => 'Fallback title for an authority without a label.'],
             'policy.group.unknown' => ['text' => 'Rattachement inconnu', 'context' => 'Fallback title for a rule without a usable holon or authority.'],
@@ -33,12 +34,15 @@ if (!function_exists('omoPolicySourceLang')) {
             'policy.empty.contextual' => ['text' => 'Aucune regle dans ce contexte.', 'context' => 'Empty policy list for the local scope.'],
             'policy.empty.children' => ['text' => 'Aucune regle dans ce contexte ou ses enfants directs.', 'context' => 'Empty policy list for the direct children scope.'],
             'policy.empty.descendants' => ['text' => 'Aucune regle dans ce contexte ou ses descendants.', 'context' => 'Empty policy list for the descendants scope.'],
+            'policy.empty.title' => ['text' => 'Aucune regle pour le moment', 'context' => 'Title for the policy empty state.'],
             'policy.new' => ['text' => 'Nouvelle regle', 'context' => 'Create a new rule.'],
+            'policy.edit' => ['text' => 'Modifier la regle', 'context' => 'Edit an existing rule.'],
             'policy.empty' => ['text' => 'Aucune regle dans ce contexte.', 'context' => 'Empty policy list.'],
-            'policy.intentpolicy.descriptionion' => ['text' => 'Intention', 'context' => 'Rule intent section title.'],
-            '_label' => ['text' => 'Regle', 'context' => 'Rule content section title.'],
+            'policy.intention' => ['text' => 'Intention', 'context' => 'Rule intent section title.'],
             'policy.review' => ['text' => 'A requestionner le {date}', 'context' => 'Rule review date label.'],
             'policy.expiration' => ['text' => 'Echeance le {date}', 'context' => 'Rule expiration date label.'],
+            'policy.status.review' => ['text' => 'A verifier', 'context' => 'Status badge for a rule whose review date has been reached.'],
+            'policy.status.expired' => ['text' => 'Obsolete', 'context' => 'Status badge for a rule past its expiration date.'],
             'policy.created' => ['text' => 'Creee le {date} par {user}', 'context' => 'Rule creation metadata.'],
             'policy.updated' => ['text' => 'Modifiee le {date} par {user}', 'context' => 'Rule modification metadata.'],
             'policy.holon' => ['text' => 'Holon : {holon}', 'context' => 'Rule holon attachment metadata.'],
@@ -46,6 +50,8 @@ if (!function_exists('omoPolicySourceLang')) {
             'policy.documentation' => ['text' => 'Informations et tracabilite', 'context' => 'Collapsed legal and audit metadata for a rule.'],
             'policy.drawer.title' => ['text' => 'Nouvelle regle', 'context' => 'Rule creation drawer title.'],
             'policy.drawer.description' => ['text' => 'Cette regle peut etre rattachee au holon courant ou a l une de ses autorites.', 'context' => 'Rule creation drawer description.'],
+            'policy.drawer.title_edit' => ['text' => 'Modifier la regle', 'context' => 'Rule edit drawer title.'],
+            'policy.drawer.description_edit' => ['text' => 'Modifiez le contenu, le rattachement ou les dates de cette regle.', 'context' => 'Rule edit drawer description.'],
             'policy.field.title' => ['text' => 'Titre', 'context' => 'Rule title field.'],
             'policy.field.intention' => ['text' => 'Intention', 'context' => 'Rule intent field.'],
             'policy.field.description' => ['text' => 'Regle', 'context' => 'Rule HTML content field.'],
@@ -62,6 +68,7 @@ if (!function_exists('omoPolicySourceLang')) {
             'policy.error.load' => ['text' => 'Impossible de charger le formulaire.', 'context' => 'Local rule editor load error.'],
             'policy.error.save' => ['text' => 'Impossible d enregistrer la regle.', 'context' => 'Rule save error.'],
             'policy.success.save' => ['text' => 'Regle enregistree.', 'context' => 'Rule creation confirmation.'],
+            'policy.success.update' => ['text' => 'Regle modifiee.', 'context' => 'Rule update confirmation.'],
         ];
     }
 }
@@ -130,13 +137,17 @@ if (!function_exists('omoPolicyNormalizeSort')) {
 if (!function_exists('omoPolicyNormalizeGroup')) {
     function omoPolicyNormalizeGroup($group)
     {
-        return $group === 'authority' ? 'authority' : 'holon';
+        return $group === 'authority' ? 'authority' : ($group === 'none' ? 'none' : 'holon');
     }
 }
 
 if (!function_exists('omoPolicyGetDirectAuthorities')) {
-    function omoPolicyGetDirectAuthorities(Holon $holon)
+    function omoPolicyGetDirectAuthorities(Holon $holon, ?Organization $organization = null)
     {
+        if ($organization instanceof Organization) {
+            $organization->ensureTemplateAuthorityInstancesForHolon($holon);
+        }
+
         $authorities = new ArrayAuthority();
         $authorities->loadForHolon((int)$holon->getId());
         return $authorities;

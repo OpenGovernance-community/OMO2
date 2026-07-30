@@ -781,7 +781,7 @@ if ($isEditMode) {
         . '&id=' . rawurlencode((string)(int)$event->getId());
 }
 ?>
-<div class="omo-calendar-create">
+<div class="omo-calendar-create generic-drawer-content">
     <div
         hidden
         data-omo-calendar-drawer-header
@@ -805,10 +805,10 @@ if ($isEditMode) {
         ><?= omoApiEscape($drawerSubmitLabel) ?></button>
     </div>
 
-    <div class="generic-section generic-section--stack omo-calendar-create__shell">
+    <div class="omo-calendar-create__shell generic-form-stack">
         <form
             id="<?= omoApiEscape($calendarFormId) ?>"
-            class="omo-calendar-create__form"
+            class="omo-calendar-create__form generic-form-stack"
             method="post"
             action="/omo/api/calendar/create.php?oid=<?= (int)$organizationId ?><?= $currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '' ?><?= $isEditMode ? '&id=' . (int)$event->getId() : '' ?>"
             data-omo-calendar-create-form
@@ -824,9 +824,9 @@ if ($isEditMode) {
                 </div>
                 <div class="generic-tabs__panels">
                     <div id="omoCalendarCreateTabEvent" class="generic-tabs__panel omo-calendar-create__tab-panel" data-generic-tab-panel>
-                        <div class="omo-calendar-create__grid">
-                            <label class="omo-calendar-create__field">
-                                <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.title')) ?></span>
+                        <div class="omo-calendar-create__grid generic-form-grid">
+                            <label class="omo-calendar-create__field generic-form-field">
+                                <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.title')) ?></span>
                                 <input
                                     type="text"
                                     name="title"
@@ -838,8 +838,8 @@ if ($isEditMode) {
                             </label>
 
                             <?php if ($hasStructureApplication): ?>
-                            <label class="omo-calendar-create__field">
-                                <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.holon')) ?></span>
+                            <label class="omo-calendar-create__field generic-form-field">
+                                <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.holon')) ?></span>
                                 <select name="IDholon" class="generic-form-control" data-omo-calendar-context-holon>
                                     <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.none')) ?></option>
                                     <?php foreach (['circle', 'role'] as $typeKey): ?>
@@ -853,8 +853,8 @@ if ($isEditMode) {
                             </label>
                             <?php endif; ?>
 
-                            <label class="omo-calendar-create__field">
-                                <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.start')) ?></span>
+                            <label class="omo-calendar-create__field generic-form-field">
+                                <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.start')) ?></span>
                                 <input
                                     type="datetime-local"
                                     name="start_at"
@@ -864,8 +864,8 @@ if ($isEditMode) {
                                 >
                             </label>
 
-                            <label class="omo-calendar-create__field">
-                                <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.end')) ?></span>
+                            <label class="omo-calendar-create__field generic-form-field">
+                                <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.end')) ?></span>
                                 <input
                                     type="datetime-local"
                                     name="end_at"
@@ -876,8 +876,8 @@ if ($isEditMode) {
                             </label>
                         </div>
 
-                        <label class="omo-calendar-create__field">
-                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.description')) ?></span>
+                        <label class="omo-calendar-create__field generic-form-field">
+                            <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.description')) ?></span>
                             <textarea
                                 name="description"
                                 class="generic-form-control"
@@ -889,14 +889,14 @@ if ($isEditMode) {
                             <span><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.all_day')) ?></span>
                         </label>
 
-                        <section class="generic-soft-panel generic-soft-panel--stack omo-calendar-create__block">
-                            <div class="omo-calendar-create__block-head">
+                        <section class="generic-section generic-section--stack generic-form-section omo-calendar-create__block">
+                            <div class="omo-calendar-create__block-head generic-form-section__heading">
                                 <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.location_mode')) ?></h3>
                             </div>
 
-                            <div class="omo-calendar-create__grid">
-                                <label class="omo-calendar-create__field">
-                                    <span class="omo-calendar-create__label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.location_mode')) ?></span>
+                            <div class="omo-calendar-create__grid generic-form-grid">
+                                <label class="omo-calendar-create__field generic-form-field">
+                                    <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.location_mode')) ?></span>
                                     <select name="location_mode" class="generic-form-control" data-omo-calendar-location-mode>
                                         <?php foreach ($locationModeOptions as $optionValue => $optionLabel): ?>
                                             <option value="<?= omoApiEscape((string)$optionValue) ?>"<?= (string)$optionValue === $locationModeDefault ? ' selected' : '' ?>>
@@ -906,8 +906,8 @@ if ($isEditMode) {
                                     </select>
                                 </label>
 
-                                <label class="omo-calendar-create__field" data-omo-calendar-location-address-field<?= in_array($locationModeDefault, [Event::LOCATION_MODE_IN_PERSON, Event::LOCATION_MODE_HYBRID], true) ? '' : ' hidden' ?>>
-                                    <span class="omo-calendar-create__label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.location_address')) ?></span>
+                                <label class="omo-calendar-create__field generic-form-field" data-omo-calendar-location-address-field<?= in_array($locationModeDefault, [Event::LOCATION_MODE_IN_PERSON, Event::LOCATION_MODE_HYBRID], true) ? '' : ' hidden' ?>>
+                                    <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.location_address')) ?></span>
                                     <input
                                         type="text"
                                         name="location_address"
@@ -917,8 +917,8 @@ if ($isEditMode) {
                                     >
                                 </label>
 
-                                <label class="omo-calendar-create__field" data-omo-calendar-location-video-field<?= in_array($locationModeDefault, [Event::LOCATION_MODE_VIRTUAL, Event::LOCATION_MODE_HYBRID], true) ? '' : ' hidden' ?>>
-                                    <span class="omo-calendar-create__label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.video_url')) ?></span>
+                                <label class="omo-calendar-create__field generic-form-field" data-omo-calendar-location-video-field<?= in_array($locationModeDefault, [Event::LOCATION_MODE_VIRTUAL, Event::LOCATION_MODE_HYBRID], true) ? '' : ' hidden' ?>>
+                                    <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.video_url')) ?></span>
                                     <input
                                         type="url"
                                         name="video_meeting_url"
@@ -930,8 +930,8 @@ if ($isEditMode) {
                             </div>
                         </section>
 
-                        <section class="generic-soft-panel generic-soft-panel--stack omo-calendar-create__block" data-omo-calendar-document-block>
-                            <div class="omo-calendar-create__block-head">
+                        <section class="generic-section generic-section--stack generic-form-section omo-calendar-create__block" data-omo-calendar-document-block>
+                            <div class="omo-calendar-create__block-head generic-form-section__heading">
                                 <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?></h3>
                                 <?php if ($associatedDocument instanceof Document): ?>
                                     <span class="omo-calendar-create__pill"><?= omoApiEscape($associatedDocument->getDocumentTypeLabel()) ?></span>
@@ -942,9 +942,9 @@ if ($isEditMode) {
                                 <input type="hidden" name="document_type" value="<?= omoApiEscape($documentTypeDefault) ?>" data-omo-calendar-document-type>
                                 <div data-omo-calendar-document-fields>
                                     <div class="omo-calendar-create__document-summary">
-                                        <span class="omo-calendar-create__label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.current')) ?></span>
+                                        <span class="omo-calendar-create__label generic-form-label generic-form-label--eyebrow"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.current')) ?></span>
                                         <strong class="omo-calendar-create__document-title"><?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : omoCalendarCreateT('calendar.create.document.empty_title')) ?></strong>
-                                        <p class="omo-calendar-create__hint"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.help_existing')) ?></p>
+                                        <p class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.help_existing')) ?></p>
                                         <?php if ($associatedDocumentUrl !== ''): ?>
                                             <button
                                                 type="button"
@@ -957,8 +957,8 @@ if ($isEditMode) {
                                     </div>
                                 </div>
                             <?php else: ?>
-                                <label class="omo-calendar-create__field">
-                                    <span class="omo-calendar-create__label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?></span>
+                                <label class="omo-calendar-create__field generic-form-field">
+                                    <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?></span>
                                     <select name="document_type" class="generic-form-control" data-omo-calendar-document-type>
                                         <?php foreach ($documentTypeOptions as $optionValue => $optionLabel): ?>
                                             <option value="<?= omoApiEscape((string)$optionValue) ?>"<?= (string)$optionValue === $documentTypeDefault ? ' selected' : '' ?>>
@@ -968,8 +968,8 @@ if ($isEditMode) {
                                     </select>
                                 </label>
                                 <div data-omo-calendar-document-fields<?= $documentTypeDefault !== '' ? '' : ' hidden' ?>>
-                                    <label class="omo-calendar-create__field">
-                                        <span class="omo-calendar-create__label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_title')) ?></span>
+                                    <label class="omo-calendar-create__field generic-form-field">
+                                        <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_title')) ?></span>
                                         <input
                                             type="text"
                                             name="document_title"
@@ -978,17 +978,17 @@ if ($isEditMode) {
                                             maxlength="255"
                                         >
                                     </label>
-                                    <label class="omo-calendar-create__field" data-omo-calendar-pv-template-field<?= $documentTypeDefault === Document::TYPE_PV ? '' : ' hidden' ?>>
-                                        <span class="omo-calendar-create__label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template')) ?></span>
+                                    <label class="omo-calendar-create__field generic-form-field" data-omo-calendar-pv-template-field<?= $documentTypeDefault === Document::TYPE_PV ? '' : ' hidden' ?>>
+                                        <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template')) ?></span>
                                         <select name="pv_template_id" class="generic-form-control">
                                             <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template_none')) ?></option>
                                             <?php foreach ($pvTemplatesPayload as $pvTemplateOption): ?>
                                                 <option value="<?= (int)$pvTemplateOption['id'] ?>"><?= omoApiEscape((string)$pvTemplateOption['label']) ?></option>
                                             <?php endforeach; ?>
                                         </select>
-                                        <span class="omo-calendar-create__hint"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template_hint')) ?></span>
+                                        <span class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template_hint')) ?></span>
                                     </label>
-                                    <p class="omo-calendar-create__hint"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.help_create')) ?></p>
+                                    <p class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.help_create')) ?></p>
                                     <p class="omo-calendar-create__notice"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.created_notice')) ?></p>
                                 </div>
                             <?php endif; ?>
@@ -1008,40 +1008,19 @@ if ($isEditMode) {
             </div>
 
             <div class="omo-calendar-create__footer">
-                <div class="omo-calendar-create__feedback" data-omo-calendar-create-feedback></div>
+                <div class="omo-calendar-create__feedback generic-feedback" data-omo-calendar-create-feedback></div>
             </div>
         </form>
     </div>
 </div>
 
 <style>
-.omo-calendar-create {
-    padding: 18px;
-}
-
-.omo-calendar-create__shell,
-.omo-calendar-create__form,
-.omo-calendar-create__field,
-.omo-calendar-create__head,
-.omo-calendar-create__block {
-    display: grid;
-    gap: 10px;
-}
-
 .omo-calendar-create [hidden] {
     display: none !important;
 }
 
-.omo-calendar-create__text {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
-    line-height: 1.6;
-}
-
 .omo-calendar-create__grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    --generic-form-grid-min: 260px;
 }
 
 .omo-calendar-create__tabs {
@@ -1052,28 +1031,6 @@ if ($isEditMode) {
 .omo-calendar-create__tab-panel {
     display: grid;
     gap: 14px;
-}
-
-.omo-calendar-create__block-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.omo-calendar-create__label {
-    color: var(--color-text-light, #64748b);
-    font-size: 0.85rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-}
-
-.omo-calendar-create__hint {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
-    line-height: 1.6;
 }
 
 .omo-calendar-create__pill {
@@ -1152,19 +1109,11 @@ if ($isEditMode) {
     gap: 8px;
 }
 
-.omo-calendar-invitations-editor__hint {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
-    line-height: 1.6;
-}
-
 .omo-calendar-invitations-editor__filter {
     width: 100%;
 }
 
 .omo-calendar-invitations-editor__empty {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
     font-style: italic;
 }
 
@@ -1220,14 +1169,6 @@ if ($isEditMode) {
 }
 
 @media (max-width: 720px) {
-    .omo-calendar-create {
-        padding: 14px;
-    }
-
-    .omo-calendar-create__grid {
-        grid-template-columns: 1fr;
-    }
-
     .omo-calendar-create__footer {
         flex-direction: column;
         align-items: stretch;

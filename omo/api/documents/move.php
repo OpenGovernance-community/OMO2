@@ -69,34 +69,34 @@ if ($documentId <= 0) {
 }
 ?>
 <?php if ($errorMessage !== ''): ?>
-    <div class="omo-document-move__empty"><?= omoApiEscape($errorMessage) ?></div>
+    <div class="omo-document-move__empty generic-description"><?= omoApiEscape($errorMessage) ?></div>
 <?php else: ?>
-    <form id="omo-document-move-form" class="omo-document-move">
+    <form id="omo-document-move-form" class="omo-document-move generic-stack generic-stack--flush">
         <div class="omo-document-move__header generic-drawer-header generic-drawer-header--sticky">
             <div class="generic-drawer-header__copy omo-document-move__header-copy">
                 <div class="generic-card-title generic-card-title--eyebrow">Document</div>
                 <h3 class="generic-card-title generic-card-title--medium">Déplacer un document</h3>
             </div>
         </div>
-        <div class="omo-document-move__shell">
-        <div class="omo-document-move__intro">
+        <div class="omo-document-move__shell generic-drawer-content">
+        <div class="omo-document-move__intro generic-description">
             <strong><?= omoApiEscape((string)($moveData['document']['title'] ?? '')) ?></strong>
             <span>&rarr;</span>
         </div>
 
-        <label class="omo-document-move__field">
+        <label class="omo-document-move__field generic-stack generic-stack--compact">
             <span><?= omoApiEscape(omoDocumentsMoveT('documents.move.field.destination')) ?></span>
             <input type="search" id="omo-document-move-search" class="generic-form-control" placeholder="<?= omoApiEscape(omoDocumentsMoveT('documents.move.field.search_placeholder')) ?>">
         </label>
 
-        <label class="omo-document-move__field">
+        <label class="omo-document-move__field generic-stack generic-stack--compact">
             <select id="omo-document-move-destination" class="omo-document-move__select generic-form-control" size="10" required></select>
         </label>
 
-        <div id="omo-document-move-hint" class="omo-document-move__hint"></div>
-        <div id="omo-document-move-status" class="omo-document-move__status" hidden></div>
+        <div id="omo-document-move-hint" class="omo-document-move__hint generic-help-text"></div>
+        <div id="omo-document-move-status" class="omo-document-move__status generic-feedback" hidden></div>
 
-        <div class="omo-document-move__actions">
+        <div class="omo-document-move__actions generic-action-row">
             <button type="button" class="omo-document-move__button generic-action-button generic-action-button--secondary" id="omo-document-move-cancel"><?= omoApiEscape(omoDocumentsMoveT('documents.move.action.cancel')) ?></button>
             <button type="submit" class="omo-document-move__button generic-action-button generic-action-button--main" id="omo-document-move-submit"><?= omoApiEscape(omoDocumentsMoveT('documents.move.action.submit')) ?></button>
         </div>
@@ -149,14 +149,14 @@ function clearStatus() {
     }
 
     elements.status.hidden = true;
-    elements.status.className = 'omo-document-move__status';
+    elements.status.className = 'omo-document-move__status generic-feedback';
     elements.status.innerHTML = '';
 }
 
 function showStatus(message, tone) {
     clearStatus();
     elements.status.hidden = false;
-    elements.status.className = 'omo-document-move__status is-' + tone;
+    elements.status.className = 'omo-document-move__status generic-feedback is-' + tone;
     elements.status.innerHTML = '<div class="omo-document-move__status-copy">' + escapeHtml(message) + '</div>';
     state.statusTimer = window.setTimeout(clearStatus, 12000);
 }
@@ -339,39 +339,10 @@ elements.cancel.addEventListener('click', closeMovePopup);
 <?php endif; ?>
 
 <style>
-.omo-document-move,
 .omo-document-move__empty {
     display: grid;
     gap: 16px;
     color: var(--color-text, #1f2937);
-}
-
-.omo-document-move {
-    gap: 0;
-}
-
-.omo-document-move__header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
-.omo-document-move__header-copy {
-    display: grid;
-    gap: 4px;
-}
-
-.omo-document-move__shell {
-    display: grid;
-    gap: 16px;
-    padding: 16px 18px 18px;
-}
-
-.omo-document-move__intro,
-.omo-document-move__hint,
-.omo-document-move__empty {
-    color: var(--topbar-panel-muted, #64748b);
-    line-height: 1.45;
 }
 
 .omo-document-move__empty {
@@ -382,35 +353,14 @@ elements.cancel.addEventListener('click', closeMovePopup);
     display: flex;
     align-items: center;
     gap: 8px;
-    margin: 0;
-}
-
-.omo-document-move__field {
-    display: grid;
-    gap: 8px;
 }
 
 .omo-document-move__select {
     min-height: 240px;
 }
 
-.omo-document-move__status {
-    min-height: 22px;
-    color: #b91c1c;
-    font-weight: 600;
-}
-
 .omo-document-move__status[hidden] {
     display: none !important;
 }
 
-.omo-document-move__status.is-error {
-    color: #b91c1c;
-}
-
-.omo-document-move__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
 </style>

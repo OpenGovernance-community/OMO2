@@ -99,7 +99,7 @@ if (
     )
 ) {
     ?>
-    <div class="omo-share-popup omo-share-popup--error"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.error.unavailable'), ENT_QUOTES, 'UTF-8') ?></div>
+    <div class="omo-share-popup omo-share-popup--error generic-soft-panel"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.error.unavailable'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php
     exit;
 }
@@ -114,7 +114,7 @@ if ($defaultLabel === '') {
 $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$documentId);
 ?>
 <div
-    class="omo-share-popup"
+    class="omo-share-popup generic-stack generic-stack--flush"
     id="omoDocumentSharePopupRoot"
     data-document-id="<?= (int)$documentId ?>"
     data-popup-url="<?= htmlspecialchars($popupUrl, ENT_QUOTES, 'UTF-8') ?>"
@@ -122,34 +122,19 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
 >
     <style>
 .omo-share-popup {
-    display: grid;
-    gap: 0;
     color: var(--color-text, #1f2937);
 }
 
-.omo-share-popup__header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
 .omo-share-popup__header-copy {
-    display: grid;
-    gap: 8px;
+    --generic-drawer-header-copy-gap: var(--generic-space-2);
     min-width: 0;
 }
 
 .omo-share-popup__shell {
-    display: grid;
-    gap: 18px;
-    padding: 16px 18px 18px;
+    --generic-drawer-content-gap: var(--generic-space-4);
 }
     .omo-share-popup--error {
-        padding: 18px;
-        border-radius: var(--radius-md);
-        background: var(--color-surface-alt, #f0f2f5);
         color: var(--color-text-light, #6b7280);
-        border: 1px solid var(--color-border, #e5e7eb);
     }
     .omo-share-popup__hero,
     .omo-share-popup__section,
@@ -165,24 +150,13 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
     .omo-share-popup__section-title {
         margin: 0;
     }
-    .omo-share-popup__hero p,
-    .omo-share-popup__section-text,
-    .omo-share-popup__hint {
-        margin: 0;
-        color: var(--color-text-light, #6b7280);
-        line-height: 1.5;
-    }
     .omo-share-popup__list[hidden],
     .omo-share-popup__form-panel[hidden] {
         display: none;
     }
     .omo-share-popup__feedback {
-        min-height: 20px;
+        --generic-feedback-min-height: 20px;
         font-size: 13px;
-        color: #b91c1c;
-    }
-    .omo-share-popup__feedback.is-success {
-        color: #166534;
     }
     .omo-share-popup__card {
         --generic-section-gap: 10px;
@@ -230,10 +204,6 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
     .omo-share-popup__field--full {
         grid-column: 1 / -1;
     }
-    .omo-share-popup__label {
-        font-size: 13px;
-        font-weight: 700;
-    }
     .omo-share-popup__check {
         display: grid;
         grid-template-columns: auto 1fr;
@@ -249,14 +219,14 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
             <p>Le lien ouvrira directement le contenu de <strong><?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?></strong>.</p>
         </div>
     </div>
-    <div class="omo-share-popup__shell">
+    <div class="omo-share-popup__shell generic-drawer-content">
 
-    <div id="omoDocumentSharePopupFeedback" class="omo-share-popup__feedback"></div>
+    <div id="omoDocumentSharePopupFeedback" class="omo-share-popup__feedback generic-feedback"></div>
 
     <div class="omo-share-popup__list" id="omoDocumentSharePopupListSection"<?= $hasExistingLinks ? '' : ' hidden' ?>>
         <div class="omo-share-popup__section">
             <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.list.title'), ENT_QUOTES, 'UTF-8') ?></h3>
-            <p class="omo-share-popup__section-text"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.list.intro'), ENT_QUOTES, 'UTF-8') ?></p>
+            <p class="omo-share-popup__section-text generic-description"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.list.intro'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
 
         <div class="omo-share-popup__cards">
@@ -321,7 +291,7 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
     <div class="omo-share-popup__form-panel" id="omoDocumentSharePopupFormSection"<?= $hasExistingLinks ? ' hidden' : '' ?>>
         <div class="omo-share-popup__section">
             <h3 class="omo-share-popup__section-title generic-card-title generic-card-title--large" id="omoDocumentSharePopupFormTitle"><?= htmlspecialchars($hasExistingLinks ? omoDocumentsSharePopupT('documents.share.form.title_new') : omoDocumentsSharePopupT('documents.share.form.title_first'), ENT_QUOTES, 'UTF-8') ?></h3>
-            <p class="omo-share-popup__section-text" id="omoDocumentSharePopupFormIntro"><?= htmlspecialchars($hasExistingLinks ? omoDocumentsSharePopupT('documents.share.form.intro_new') : omoDocumentsSharePopupT('documents.share.form.intro_first'), ENT_QUOTES, 'UTF-8') ?></p>
+            <p class="omo-share-popup__section-text generic-description" id="omoDocumentSharePopupFormIntro"><?= htmlspecialchars($hasExistingLinks ? omoDocumentsSharePopupT('documents.share.form.intro_new') : omoDocumentsSharePopupT('documents.share.form.intro_first'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
 
         <form class="omo-share-popup__form" id="omoDocumentSharePopupForm">
@@ -330,21 +300,21 @@ $popupUrl = '/omo/api/documents/share_popup.php?id=' . rawurlencode((string)$doc
 
             <div class="omo-share-popup__grid">
                 <div class="omo-share-popup__field">
-                    <label class="omo-share-popup__label" for="omoDocumentSharePopupLabel"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.label'), ENT_QUOTES, 'UTF-8') ?></label>
+                    <label class="omo-share-popup__label generic-form-label" for="omoDocumentSharePopupLabel"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.label'), ENT_QUOTES, 'UTF-8') ?></label>
                     <input class="generic-form-control" type="text" id="omoDocumentSharePopupLabel" name="label" maxlength="150" value="<?= htmlspecialchars($defaultLabel, ENT_QUOTES, 'UTF-8') ?>">
-                    <div class="omo-share-popup__hint"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.label_hint'), ENT_QUOTES, 'UTF-8') ?></div>
+                    <div class="omo-share-popup__hint generic-help-text"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.label_hint'), ENT_QUOTES, 'UTF-8') ?></div>
                 </div>
 
                 <div class="omo-share-popup__field">
-                    <label class="omo-share-popup__label" for="omoDocumentSharePopupExpiration"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.expiration'), ENT_QUOTES, 'UTF-8') ?></label>
+                    <label class="omo-share-popup__label generic-form-label" for="omoDocumentSharePopupExpiration"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.expiration'), ENT_QUOTES, 'UTF-8') ?></label>
                     <input class="generic-form-control" type="datetime-local" id="omoDocumentSharePopupExpiration" name="dateexpiration">
-                    <div class="omo-share-popup__hint"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.expiration_hint'), ENT_QUOTES, 'UTF-8') ?></div>
+                    <div class="omo-share-popup__hint generic-help-text"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.expiration_hint'), ENT_QUOTES, 'UTF-8') ?></div>
                 </div>
 
                 <div class="omo-share-popup__field omo-share-popup__field--full">
-                    <label class="omo-share-popup__label" for="omoDocumentSharePopupPassword"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.password'), ENT_QUOTES, 'UTF-8') ?></label>
+                    <label class="omo-share-popup__label generic-form-label" for="omoDocumentSharePopupPassword"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.password'), ENT_QUOTES, 'UTF-8') ?></label>
                     <input class="generic-form-control" type="password" id="omoDocumentSharePopupPassword" name="password" autocomplete="new-password">
-                    <div class="omo-share-popup__hint" id="omoDocumentSharePopupPasswordHint"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.password_hint'), ENT_QUOTES, 'UTF-8') ?></div>
+                    <div class="omo-share-popup__hint generic-help-text" id="omoDocumentSharePopupPasswordHint"><?= htmlspecialchars(omoDocumentsSharePopupT('documents.share.form.password_hint'), ENT_QUOTES, 'UTF-8') ?></div>
                 </div>
 
                 <label class="omo-share-popup__check omo-share-popup__field--full" id="omoDocumentSharePopupClearPasswordWrap" hidden>

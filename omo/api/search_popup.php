@@ -137,9 +137,6 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
             --topbar-input-bg: color-mix(in srgb, var(--color-surface-raised, #ffffff) 94%, var(--color-surface-alt, #f8fafc));
             --topbar-input-border: color-mix(in srgb, var(--color-border, #d1d5db) 88%, transparent);
             --topbar-input-text: var(--color-text, #0f172a);
-            position: sticky;
-            top: 0;
-            z-index: 2;
             margin: 0;
             border-radius: 0;
         }

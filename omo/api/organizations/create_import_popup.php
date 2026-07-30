@@ -22,11 +22,15 @@ $sourceLang = array(
     'organization_import.help' => array('text' => 'Cette action cree une nouvelle organisation. La structure est toujours importee. Les taches OMO 1 deviennent des projets enfants et les checklistes recurrentes deviennent des conteneurs.', 'context' => 'Help text in the organization import popup.'),
     'organization_import.module.checklists' => array('text' => 'Checklists', 'context' => 'Checklists module label in the organization import popup.'),
     'organization_import.loading' => array('text' => 'Import en cours...', 'context' => 'Loading label shown during organization import.'),
+    'organization_import.wait.title' => array('text' => 'Veuillez patienter', 'context' => 'Title of the full import waiting screen.'),
+    'organization_import.wait.description' => array('text' => 'Ce processus peut prendre quelques minutes. Ne fermez pas cette fenetre pendant l import.', 'context' => 'Description of the full import waiting screen.'),
+    'organization_import.wait.progress' => array('text' => 'Importation en cours...', 'context' => 'Indeterminate progress label of the full import waiting screen.'),
     'organization_import.module.calendar' => array('text' => 'Calendrier', 'context' => 'Calendar module label in the organization import popup.'),
     'organization_import.module.documents' => array('text' => 'Documents', 'context' => 'Documents module label in the organization import popup.'),
     'organization_import.module.indicators' => array('text' => 'Indicateurs', 'context' => 'Indicators module label in the organization import popup.'),
     'organization_import.module.members' => array('text' => 'Membres et roles', 'context' => 'Members module label in the organization import popup.'),
     'organization_import.module.projects' => array('text' => 'Projets', 'context' => 'Projects module label in the organization import popup.'),
+    'organization_import.module.rules' => array('text' => 'Regles', 'context' => 'Rules module label in the organization import popup.'),
     'organization_import.module.pv' => array('text' => 'Proces-verbaux', 'context' => 'Meeting minutes module label in the organization import popup.'),
     'organization_import.module.structure' => array('text' => 'Structure', 'context' => 'Structure module label in the organization import popup.'),
     'organization_import.module.tasks' => array('text' => 'Taches', 'context' => 'Tasks module label in the organization import popup.'),
@@ -46,6 +50,7 @@ if ($currentUserId <= 0) {
 $modules = array(
     'structure' => t('organization_import.module.structure', array(), $lang, $sourceLang),
     'members' => t('organization_import.module.members', array(), $lang, $sourceLang),
+    'rules' => t('organization_import.module.rules', array(), $lang, $sourceLang),
     'documents' => t('organization_import.module.documents', array(), $lang, $sourceLang),
     'projects' => t('organization_import.module.projects', array(), $lang, $sourceLang),
     'tasks' => t('organization_import.module.tasks', array(), $lang, $sourceLang),
@@ -117,6 +122,16 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         </div>
     </form>
 
+    <section class="omo-create-import__waiting generic-section" data-omo-create-import-waiting="1" hidden aria-live="polite" aria-busy="true">
+        <div class="omo-create-import__waiting-spinner" aria-hidden="true"></div>
+        <h3 class="generic-card-title generic-card-title--large"><?= htmlspecialchars(t('organization_import.wait.title', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></h3>
+        <p><?= htmlspecialchars(t('organization_import.wait.description', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
+        <div class="omo-create-import__waiting-progress" role="progressbar" aria-label="<?= htmlspecialchars(t('organization_import.wait.progress', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?>" aria-valuemin="0" aria-valuemax="100">
+            <span></span>
+        </div>
+        <small><?= htmlspecialchars(t('organization_import.wait.progress', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></small>
+    </section>
+
     <div class="omo-create-import__feedback generic-soft-panel" data-omo-create-import-feedback="1" hidden></div>
 </div>
 
@@ -124,6 +139,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
 .omo-create-import { display: flex; flex-direction: column; gap: 16px; color: var(--color-text, #1f2937); }
 .omo-create-import .generic-drawer-header p { margin: 8px 0 0; color: var(--color-text-light, #64748b); line-height: 1.45; }
 .omo-create-import__form { --generic-section-padding-block: 18px; --generic-section-padding-inline: 18px; }
+.omo-create-import__form[hidden], .omo-create-import__waiting[hidden] { display: none !important; }
 .omo-create-import__field { display: flex; flex-direction: column; gap: 7px; font-weight: 600; }
 .omo-create-import__field small, .omo-create-import__module small { color: var(--color-text-light, #64748b); font-size: 12px; font-weight: 400; }
 .omo-create-import__modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 9px; margin: 0; padding: 14px; border: 1px solid var(--color-border, #d1d5db); border-radius: var(--radius-md); }
@@ -140,6 +156,15 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
 .omo-create-import__mapping-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 10px; }
 .omo-create-import__mapping-source { font-weight: 600; }
 .omo-create-import__mapping-empty { margin: 0; color: var(--color-text-light, #64748b); }
+.omo-create-import__waiting { min-height: 290px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; }
+.omo-create-import__waiting h3, .omo-create-import__waiting p { margin: 0; }
+.omo-create-import__waiting p { max-width: 440px; color: var(--color-text-light, #64748b); line-height: 1.5; }
+.omo-create-import__waiting-spinner { width: 34px; height: 34px; border: 4px solid color-mix(in srgb, var(--color-primary, #2563eb) 22%, transparent); border-top-color: var(--color-primary, #2563eb); border-radius: 50%; animation: omo-create-import-spin 0.9s linear infinite; }
+.omo-create-import__waiting-progress { width: min(100%, 400px); height: 10px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--color-primary, #2563eb) 16%, transparent); }
+.omo-create-import__waiting-progress span { display: block; width: 38%; height: 100%; border-radius: inherit; background: var(--color-primary, #2563eb); animation: omo-create-import-progress 1.45s ease-in-out infinite; }
+.omo-create-import__waiting small { color: var(--color-text-light, #64748b); }
+@keyframes omo-create-import-spin { to { transform: rotate(360deg); } }
+@keyframes omo-create-import-progress { from { transform: translateX(-120%); } to { transform: translateX(365%); } }
 @media (max-width: 620px) { .omo-create-import__mapping-row { grid-template-columns: 1fr; } }
 </style>
 
@@ -157,10 +182,12 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     var submitButton = root.querySelector('[data-omo-create-import-submit="1"]');
     var feedback = root.querySelector('[data-omo-create-import-feedback="1"]');
     var cancelButton = root.querySelector('[data-omo-create-import-cancel="1"]');
-    var moduleNames = ['structure', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv'];
+    var waiting = root.querySelector('[data-omo-create-import-waiting="1"]');
+    var moduleNames = ['structure', 'rules', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv'];
     var templateCatalog = <?= json_encode($templateCatalog, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     var importPayload = null;
     var templateMappings = {};
+    var isImporting = false;
     var ui = <?= json_encode(array(
         'fileError' => t('organization_import.error.file', array(), $lang, $sourceLang),
         'genericError' => t('organization_import.error.generic', array(), $lang, $sourceLang),
@@ -196,7 +223,19 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     }
 
     function closeModal() {
+        if (isImporting) { return; }
         if (typeof window.commonTopbarCloseModal === 'function') { window.commonTopbarCloseModal(); }
+    }
+
+    function setImportWaiting(active) {
+        isImporting = !!active;
+        if (form) { form.hidden = !!active; }
+        if (waiting) { waiting.hidden = !active; }
+        if (active && typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(function () {
+                root.scrollIntoView({ block: 'start' });
+            });
+        }
     }
 
     function setModuleAvailability(payload) {
@@ -375,7 +414,8 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         if (!fileInput || !fileInput.files || !fileInput.files[0]) { showError(ui.fileError); return; }
         if (hasDuplicateTemplateMappings()) { showError(ui.mappingDuplicate); return; }
         submitButton.disabled = true;
-        setFeedback(ui.loading, false);
+        setFeedback('', false);
+        setImportWaiting(true);
         fetch('/omo/api/organizations/create_import.php', { method: 'POST', body: new FormData(form), credentials: 'same-origin' })
             .then(function (response) { return response.json().catch(function () { return null; }).then(function (data) { return { ok: response.ok, data: data }; }); })
             .then(function (result) {
@@ -385,14 +425,15 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
                 var usedGlobalFeedback = false;
                 if (message) { usedGlobalFeedback = notifyGlobal(message, 'success') || usedGlobalFeedback; }
                 if (warnings) { usedGlobalFeedback = notifyGlobal(warnings, 'warning') || usedGlobalFeedback; }
-                if (usedGlobalFeedback) {
-                    setFeedback('', false);
-                } else {
-                    setFeedback(message + (warnings ? '\n\n' + warnings : ''), false);
+                setFeedback(message + (warnings ? '\n\n' + warnings : ''), false);
+                if (result.data.redirect) {
+                    window.setTimeout(function () { window.location.href = result.data.redirect; }, warnings ? 5000 : 450);
                 }
-                if (result.data.redirect) { window.setTimeout(function () { window.location.href = result.data.redirect; }, 450); }
             })
-            .catch(function (error) { showError(error && error.message ? error.message : ui.genericError); })
+            .catch(function (error) {
+                setImportWaiting(false);
+                showError(error && error.message ? error.message : ui.genericError);
+            })
             .finally(function () { submitButton.disabled = false; });
     });
 })();

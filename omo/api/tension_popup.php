@@ -43,55 +43,22 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
 }
 ?>
 <div
-    class="omo-tension-popup"
+    class="omo-tension-popup generic-stack generic-stack--flush"
     id="omoTensionPopup"
     data-submit-url="<?= htmlspecialchars($formAction, ENT_QUOTES, 'UTF-8') ?>"
     data-default-oid="<?= (int)$organizationId ?>"
     data-default-cid="<?= $contextHolon instanceof \dbObject\Holon ? (int)$contextHolon->getId() : 0 ?>"
 >
     <style>
-    .omo-tension-popup {
-        display: grid;
-        gap: 0;
-        color: var(--color-text, #1f2937);
-    }
-
-    .omo-tension-popup__panel,
-    .omo-tension-popup__error {
-        --generic-section-padding-block: 18px;
-    }
-
-    .omo-tension-popup__header {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-    }
-
     .omo-tension-popup__header-copy {
-        display: grid;
-        gap: 10px;
-        min-width: 0;
-    }
-
-    .omo-tension-popup__shell {
-        display: grid;
-        gap: 16px;
-        padding: 16px 18px 18px;
+        --generic-drawer-header-copy-gap: var(--generic-space-2);
     }
 
     .omo-tension-popup__hero {
         min-width: 0;
     }
 
-    .omo-tension-popup__hero-copy,
-    .omo-tension-popup__form,
-    .omo-tension-popup__field {
-        display: grid;
-        gap: 10px;
-    }
-
     .omo-tension-popup__hero p,
-    .omo-tension-popup__hint,
     .omo-tension-popup__feedback {
         margin: 0;
         line-height: 1.5;
@@ -154,23 +121,8 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
     }
 
     .omo-tension-popup__feedback {
-        min-height: 24px;
+        --generic-feedback-min-height: 24px;
         font-size: 0.95rem;
-    }
-
-    .omo-tension-popup__feedback.is-error {
-        color: #b91c1c;
-    }
-
-    .omo-tension-popup__feedback.is-success {
-        color: #166534;
-    }
-
-    .omo-tension-popup__actions {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        gap: 10px;
     }
 
     @media (max-width: 640px) {
@@ -213,15 +165,15 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
                 <img src="/common/assets/icon-topbar-tension.png" alt="">
             </div>
         </div>
-        <div class="omo-tension-popup__shell">
+        <div class="omo-tension-popup__shell generic-drawer-content">
         <div class="omo-tension-popup__panel generic-section generic-section--stack">
             <h3 class="generic-card-title generic-card-title--medium">Saisir la tension</h3>
-            <p class="omo-tension-popup__hint">Le titre doit rester tres court, maximum 3 mots. La description reste en texte simple.</p>
+            <p class="omo-tension-popup__hint generic-help-text">Le titre doit rester tres court, maximum 3 mots. La description reste en texte simple.</p>
 
-            <form class="omo-tension-popup__form" id="omoTensionForm">
+            <form class="omo-tension-popup__form generic-stack generic-stack--compact" id="omoTensionForm">
                 <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
 
-                <div class="omo-tension-popup__field">
+                <div class="omo-tension-popup__field generic-stack generic-stack--compact">
                     <label for="omoTensionTitle">Titre</label>
                     <input
                         type="text"
@@ -233,13 +185,13 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
                         placeholder="Ex: roles flous"
                         required
                     >
-                    <small class="omo-tension-popup__hint" data-omo-tension-title-hint>3 mots maximum.</small>
+                    <small class="omo-tension-popup__hint generic-help-text" data-omo-tension-title-hint>3 mots maximum.</small>
                 </div>
 
-                <div class="omo-tension-popup__field">
+                <div class="omo-tension-popup__field generic-stack generic-stack--compact">
                     <label for="omoTensionHolon">Holon</label>
                     <?php if ($contextHolon instanceof \dbObject\Holon && !$currentContextSelectable): ?>
-                        <small class="omo-tension-popup__hint">Le holon courant n est pas selectionnable directement. Son chemin reste visible en grise ci-dessous.</small>
+                        <small class="omo-tension-popup__hint generic-help-text">Le holon courant n est pas selectionnable directement. Son chemin reste visible en grise ci-dessous.</small>
                     <?php endif; ?>
                     <select class="generic-form-control" id="omoTensionHolon" name="IDholon">
                         <?php
@@ -274,7 +226,7 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
                     </select>
                 </div>
 
-                <div class="omo-tension-popup__field">
+                <div class="omo-tension-popup__field generic-stack generic-stack--compact">
                     <label for="omoTensionDescription">Description</label>
                     <textarea
                         class="generic-form-control"
@@ -286,9 +238,9 @@ if ($organizationId > 0 && $organization->load($organizationId)) {
                     ><?= htmlspecialchars($defaultDescription, ENT_QUOTES, 'UTF-8') ?></textarea>
                 </div>
 
-                <div class="omo-tension-popup__feedback" id="omoTensionFeedback" aria-live="polite"></div>
+                <div class="omo-tension-popup__feedback generic-feedback" id="omoTensionFeedback" aria-live="polite"></div>
 
-                <div class="omo-tension-popup__actions">
+                <div class="omo-tension-popup__actions generic-action-row">
                     <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-tension-cancel>Annuler</button>
                     <button type="submit" class="generic-action-button generic-action-button--main" id="omoTensionSubmit">Enregistrer</button>
                 </div>

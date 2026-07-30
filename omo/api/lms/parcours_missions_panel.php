@@ -28,19 +28,19 @@ $hasOrganizationAccess = !empty($managementContext['hasOrganizationAccess']);
 
 if ($currentUserId <= 0 || !$hasOrganizationAccess || $organizationId <= 0 || $parcoursId <= 0) {
     http_response_code(403);
-    echo '<div class="lms-parcours-missions__empty">' . htmlspecialchars(lmsParcoursMissionsPanelT('lms.parcours_missions_panel.error.access_denied')) . '</div>';
+    echo '<div class="lms-parcours-missions__empty generic-description">' . htmlspecialchars(lmsParcoursMissionsPanelT('lms.parcours_missions_panel.error.access_denied')) . '</div>';
     exit;
 }
 
 if (($managementContext['link'] ?? null) === null || !(($managementContext['parcours'] ?? null) instanceof \dbObject\Parcours)) {
     http_response_code(404);
-    echo '<div class="lms-parcours-missions__empty">' . htmlspecialchars(lmsParcoursMissionsPanelT('lms.parcours_missions_panel.error.not_found')) . '</div>';
+    echo '<div class="lms-parcours-missions__empty generic-description">' . htmlspecialchars(lmsParcoursMissionsPanelT('lms.parcours_missions_panel.error.not_found')) . '</div>';
     exit;
 }
 
 if (empty($managementContext['canEditContent'])) {
     http_response_code(403);
-    echo '<div class="lms-parcours-missions__empty">' . htmlspecialchars(lmsParcoursMissionsPanelT('lms.parcours_missions_panel.error.cannot_edit')) . '</div>';
+    echo '<div class="lms-parcours-missions__empty generic-description">' . htmlspecialchars(lmsParcoursMissionsPanelT('lms.parcours_missions_panel.error.cannot_edit')) . '</div>';
     exit;
 }
 

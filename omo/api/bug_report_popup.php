@@ -27,35 +27,10 @@ if ($currentUserId > 0 && $featureEnabled) {
     $patreonConnected = $patreonConnection !== false && $patreonConnection->isConnected();
 }
 ?>
-<div class="omo-bug-report-popup" id="omoBugReportPopup" data-submit-url="/omo/api/bug_report_submit.php">
+<div class="omo-bug-report-popup generic-stack generic-stack--flush" id="omoBugReportPopup" data-submit-url="/omo/api/bug_report_submit.php">
     <style>
-    .omo-bug-report-popup {
-        display: grid;
-        gap: 0;
-        color: var(--color-text, #1f2937);
-    }
-
-    .omo-bug-report-popup__panel,
-    .omo-bug-report-popup__error {
-        --generic-section-padding-block: 18px;
-    }
-
-    .omo-bug-report-popup__header {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-    }
-
     .omo-bug-report-popup__header-copy {
-        display: grid;
-        gap: 10px;
-        min-width: 0;
-    }
-
-    .omo-bug-report-popup__shell {
-        display: grid;
-        gap: 16px;
-        padding: 16px 18px 18px;
+        --generic-drawer-header-copy-gap: var(--generic-space-2);
     }
 
     .omo-bug-report-popup__hero {
@@ -64,8 +39,7 @@ if ($currentUserId > 0 && $featureEnabled) {
 
     .omo-bug-report-popup__hero p,
     .omo-bug-report-popup__error p,
-    .omo-bug-report-popup__error li,
-    .omo-bug-report-popup__hint {
+    .omo-bug-report-popup__error li {
         margin: 0;
         line-height: 1.5;
         color: var(--color-text-light, #6b7280);
@@ -127,16 +101,6 @@ if ($currentUserId > 0 && $featureEnabled) {
         padding-left: 18px;
     }
 
-    .omo-bug-report-popup__form {
-        display: grid;
-        gap: 16px;
-    }
-
-    .omo-bug-report-popup__field {
-        display: grid;
-        gap: 8px;
-    }
-
     .omo-bug-report-popup__field label {
         font-weight: 700;
     }
@@ -156,18 +120,9 @@ if ($currentUserId > 0 && $featureEnabled) {
     }
 
     .omo-bug-report-popup__feedback {
-        min-height: 24px;
+        --generic-feedback-min-height: 24px;
         font-size: 0.95rem;
         line-height: 1.5;
-        color: var(--color-text-light, #6b7280);
-    }
-
-    .omo-bug-report-popup__feedback.is-error {
-        color: #b91c1c;
-    }
-
-    .omo-bug-report-popup__feedback.is-success {
-        color: #166534;
     }
 
     .omo-bug-report-popup__feedback a {
@@ -178,13 +133,6 @@ if ($currentUserId > 0 && $featureEnabled) {
     .omo-bug-report-popup__connect-actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
-    }
-
-    .omo-bug-report-popup__actions {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: flex-end;
         gap: 10px;
     }
 
@@ -227,7 +175,7 @@ if ($currentUserId > 0 && $featureEnabled) {
             <img src="/img/punaise.png" alt="">
         </div>
     </div>
-    <div class="omo-bug-report-popup__shell">
+    <div class="omo-bug-report-popup__shell generic-drawer-content">
 
     <?php if ($currentUserId <= 0): ?>
         <div class="omo-bug-report-popup__error generic-section generic-section--stack">
@@ -261,10 +209,10 @@ if ($currentUserId > 0 && $featureEnabled) {
     <?php else: ?>
         <div class="omo-bug-report-popup__panel generic-section generic-section--stack">
             <h3 class="generic-card-title generic-card-title--medium">Decrire le bug</h3>
-            <p class="omo-bug-report-popup__hint">Le contexte courant sera ajoute automatiquement: URL, titre de page, navigateur, langue, fuseau horaire, viewport, theme et utilisateur.</p>
+            <p class="omo-bug-report-popup__hint generic-help-text">Le contexte courant sera ajoute automatiquement: URL, titre de page, navigateur, langue, fuseau horaire, viewport, theme et utilisateur.</p>
 
-            <form class="omo-bug-report-popup__form" id="omoBugReportForm">
-                <div class="omo-bug-report-popup__field">
+            <form class="omo-bug-report-popup__form generic-stack generic-stack--roomy" id="omoBugReportForm">
+                <div class="omo-bug-report-popup__field generic-stack generic-stack--compact">
                     <label for="omoBugReportTitle">Titre</label>
                     <input
                         type="text"
@@ -277,7 +225,7 @@ if ($currentUserId > 0 && $featureEnabled) {
                     >
                 </div>
 
-                <div class="omo-bug-report-popup__field">
+                <div class="omo-bug-report-popup__field generic-stack generic-stack--compact">
                     <label for="omoBugReportDescription">Description</label>
                     <textarea
                         id="omoBugReportDescription"
@@ -289,7 +237,7 @@ if ($currentUserId > 0 && $featureEnabled) {
                     ></textarea>
                 </div>
 
-                <div class="omo-bug-report-popup__field">
+                <div class="omo-bug-report-popup__field generic-stack generic-stack--compact">
                     <label for="omoBugReportAttachments">Fichiers ou captures</label>
                     <input
                         type="file"
@@ -299,13 +247,13 @@ if ($currentUserId > 0 && $featureEnabled) {
                         accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.log,.zip"
                         multiple
                     >
-                    <p class="omo-bug-report-popup__hint">Les fichiers joints seront stockes sur le serveur et leur lien sera public dans l issue GitHub. Formats acceptes: PNG, JPG, GIF, WEBP, PDF, TXT, LOG, ZIP.</p>
+                    <p class="omo-bug-report-popup__hint generic-help-text">Les fichiers joints seront stockes sur le serveur et leur lien sera public dans l issue GitHub. Formats acceptes: PNG, JPG, GIF, WEBP, PDF, TXT, LOG, ZIP.</p>
                     <div class="omo-bug-report-popup__file-list" id="omoBugReportFileList" hidden></div>
                 </div>
 
-                <div class="omo-bug-report-popup__feedback" id="omoBugReportFeedback" aria-live="polite"></div>
+                <div class="omo-bug-report-popup__feedback generic-feedback" id="omoBugReportFeedback" aria-live="polite"></div>
 
-                <div class="omo-bug-report-popup__actions">
+                <div class="omo-bug-report-popup__actions generic-action-row">
                     <button type="button" class="generic-action-button generic-action-button--secondary" id="omoBugReportClose">Fermer</button>
                     <button type="submit" class="generic-action-button generic-action-button--main" id="omoBugReportSubmit">Envoyer vers GitHub</button>
                 </div>

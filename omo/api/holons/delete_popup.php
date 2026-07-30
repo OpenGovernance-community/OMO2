@@ -58,11 +58,11 @@ $descendantCount = $holon->countVisibleDescendants();
 $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
 ?>
 <?php if ($errorMessage !== ''): ?>
-    <div class="omo-holon-delete__empty"><?= omoApiEscape($errorMessage) ?></div>
+    <div class="omo-holon-delete__empty generic-description"><?= omoApiEscape($errorMessage) ?></div>
 <?php else: ?>
     <form
         id="omoHolonDeletePopupForm"
-        class="omo-holon-delete"
+        class="omo-holon-delete generic-stack generic-stack--flush"
         action="api/holons/delete_popup.php?hid=<?= (int)$holon->getId() ?>"
         method="post"
     >
@@ -72,10 +72,10 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
                 <h3 class="generic-card-title generic-card-title--medium">Supprimer un holon</h3>
             </div>
         </div>
-        <div class="omo-holon-delete__shell">
+        <div class="omo-holon-delete__shell generic-drawer-content">
         <div class="omo-holon-delete__intro">
-            <div class="omo-holon-delete__eyebrow">Suppression</div>
-            <div class="omo-holon-delete__title">
+            <div class="omo-holon-delete__eyebrow generic-title generic-title--eyebrow">Suppression</div>
+            <div class="omo-holon-delete__title generic-title generic-title--medium">
                 Supprimer <?= omoApiEscape($typeLabel) ?> <strong><?= omoApiEscape($holon->getDisplayName()) ?></strong> ?
             </div>
         </div>
@@ -86,13 +86,13 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
             </div>
         <?php endif; ?>
 
-        <div class="omo-holon-delete__hint">
+        <div class="omo-holon-delete__hint generic-description generic-description--compact">
             Cette fenetre pourra ensuite accueillir des options complementaires pour gerer le contenu rattache.
         </div>
 
-        <div id="omoHolonDeletePopupFeedback" class="omo-holon-delete__feedback"></div>
+        <div id="omoHolonDeletePopupFeedback" class="omo-holon-delete__feedback generic-feedback"></div>
 
-        <div class="omo-holon-delete__actions">
+        <div class="omo-holon-delete__actions generic-action-row">
             <button type="button" id="omoHolonDeletePopupCancel" class="omo-holon-delete__button generic-action-button generic-action-button--secondary">
                 Annuler
             </button>
@@ -204,50 +204,14 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
     </script>
 
     <style>
-        .omo-holon-delete,
         .omo-holon-delete__empty {
             display: grid;
             gap: 16px;
             color: var(--color-text, #1f2937);
         }
 
-        .omo-holon-delete {
-            gap: 0;
-        }
-
-        .omo-holon-delete__header {
-            position: sticky;
-            top: 0;
-            z-index: 2;
-        }
-
-        .omo-holon-delete__header-copy {
-            display: grid;
-            gap: 4px;
-        }
-
-        .omo-holon-delete__shell {
-            display: grid;
-            gap: 16px;
-            padding: 16px 18px 18px;
-        }
-
-        .omo-holon-delete__eyebrow,
-        .omo-holon-delete__hint,
-        .omo-holon-delete__empty {
-            color: var(--topbar-panel-muted, #64748b);
-            line-height: 1.45;
-        }
-
         .omo-holon-delete__empty {
             padding: 18px;
-        }
-
-        .omo-holon-delete__eyebrow {
-            font-size: 0.82rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-weight: 700;
         }
 
         .omo-holon-delete__intro,
@@ -256,28 +220,12 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
             gap: 8px;
         }
 
-        .omo-holon-delete__title {
-            line-height: 1.45;
-        }
-
         .omo-holon-delete__warning {
             padding: 12px 14px;
             border-radius: var(--radius-md);
             background: color-mix(in srgb, #dc2626 10%, white);
             color: #991b1b;
             border: 1px solid color-mix(in srgb, #dc2626 22%, transparent);
-        }
-
-        .omo-holon-delete__feedback {
-            min-height: 22px;
-            color: #b91c1c;
-            font-weight: 600;
-        }
-
-        .omo-holon-delete__actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
         }
 
     </style>

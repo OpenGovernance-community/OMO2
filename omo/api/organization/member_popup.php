@@ -9,7 +9,7 @@ $currentUserId = (int)commonGetCurrentUserId();
 if ($organizationId <= 0 || $currentUserId <= 0) {
     http_response_code(403);
     ?>
-    <div class="omo-organization-member-popup__empty">Vous devez etre connecte a une organisation pour inviter un membre.</div>
+    <div class="omo-organization-member-popup__empty generic-description">Vous devez etre connecte a une organisation pour inviter un membre.</div>
     <?php
     exit;
 }
@@ -18,7 +18,7 @@ $organization = new Organization();
 if (!$organization->load($organizationId)) {
     http_response_code(404);
     ?>
-    <div class="omo-organization-member-popup__empty">L organisation demandee est introuvable.</div>
+    <div class="omo-organization-member-popup__empty generic-description">L organisation demandee est introuvable.</div>
     <?php
     exit;
 }
@@ -26,7 +26,7 @@ if (!$organization->load($organizationId)) {
 if (!$organization->canEdit()) {
     http_response_code(403);
     ?>
-    <div class="omo-organization-member-popup__empty">Vous n avez pas le droit d ajouter un membre dans cette organisation.</div>
+    <div class="omo-organization-member-popup__empty generic-description">Vous n avez pas le droit d ajouter un membre dans cette organisation.</div>
     <?php
     exit;
 }
@@ -56,76 +56,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 <style>
-    .omo-organization-member-popup {
-        display: grid;
-        gap: 0;
-        color: var(--color-text, #1f2937);
-    }
-
-    .omo-organization-member-popup__header {
-        position: sticky;
-        top: 0;
-        z-index: 2;
-    }
-
-    .omo-organization-member-popup__header-copy {
-        display: grid;
-        gap: 4px;
-    }
-
-    .omo-organization-member-popup__shell {
-        display: grid;
-        gap: 16px;
-        padding: 16px 18px 18px;
-    }
-
-    .omo-organization-member-popup__intro {
-        color: var(--topbar-panel-muted, #64748b);
-        line-height: 1.5;
-        margin: 0;
-    }
-
-    .omo-organization-member-popup__group {
-        display: grid;
-        gap: 8px;
-    }
-
-    .omo-organization-member-popup__label {
-        font-weight: 700;
-    }
-
-    .omo-organization-member-popup__hint {
-        color: var(--topbar-panel-muted, #64748b);
-        font-size: 0.92rem;
-        line-height: 1.45;
-    }
-
-    .omo-organization-member-popup__actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-    }
-
-    .omo-organization-member-popup__feedback {
-        min-height: 22px;
-        color: #b91c1c;
-        font-weight: 600;
-    }
-
-    .omo-organization-member-popup__feedback.is-success {
-        color: #15803d;
-    }
-
     .omo-organization-member-popup__empty {
         padding: 18px;
-        color: var(--topbar-panel-muted, #64748b);
-        line-height: 1.5;
     }
 </style>
 
 <form
     id="omoOrganizationMemberPopupForm"
-    class="omo-organization-member-popup"
+    class="omo-organization-member-popup generic-stack generic-stack--flush"
     action="/omo/api/organization/member_popup.php?oid=<?= (int)$organizationId ?>"
     method="post"
 >
@@ -136,14 +74,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
-    <div class="omo-organization-member-popup__shell">
-        <p class="omo-organization-member-popup__intro">
+    <div class="omo-organization-member-popup__shell generic-drawer-content">
+        <p class="omo-organization-member-popup__intro generic-description">
             Invitez une personne dans <strong><?= omoApiEscape(trim((string)$organization->get('name')) !== '' ? trim((string)$organization->get('name')) : 'cette organisation') ?></strong>
             en saisissant son adresse e-mail.
         </p>
 
-        <div class="omo-organization-member-popup__group">
-            <label class="omo-organization-member-popup__label" for="omoOrganizationMemberEmail">Adresse e-mail</label>
+        <div class="omo-organization-member-popup__group generic-stack generic-stack--compact">
+            <label class="omo-organization-member-popup__label generic-form-label" for="omoOrganizationMemberEmail">Adresse e-mail</label>
             <input
                 type="email"
                 id="omoOrganizationMemberEmail"
@@ -153,14 +91,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 inputmode="email"
                 autocomplete="email"
             >
-            <div class="omo-organization-member-popup__hint">
+            <div class="omo-organization-member-popup__hint generic-help-text generic-help-text--regular">
                 Si cette adresse existe deja, le profil existant sera rattache a l organisation. Sinon, une invitation sera preparee pour cette adresse.
             </div>
         </div>
 
-        <div id="omoOrganizationMemberPopupFeedback" class="omo-organization-member-popup__feedback"></div>
+        <div id="omoOrganizationMemberPopupFeedback" class="omo-organization-member-popup__feedback generic-feedback"></div>
 
-        <div class="omo-organization-member-popup__actions">
+        <div class="omo-organization-member-popup__actions generic-action-row">
             <button type="submit" id="omoOrganizationMemberPopupSubmit" class="generic-action-button generic-action-button--main">
                 Inviter
             </button>

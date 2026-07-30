@@ -112,12 +112,12 @@ $packChildren = $isPackParcours
 <?php if ($isPackParcours): ?>
 <div class="lms-pack-children">
     <div class="lms-pack-children__intro">
-        <h2><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.pack.title')); ?></h2>
-        <p><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.pack.intro')); ?></p>
+        <h2 class="generic-title generic-title--section"><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.pack.title')); ?></h2>
+        <p class="generic-description"><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.pack.intro')); ?></p>
     </div>
 
     <?php if (count($packChildren) === 0): ?>
-        <div class="lms-pack-children__empty"><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.pack.empty')); ?></div>
+        <div class="lms-pack-children__empty generic-description"><?php echo htmlspecialchars(lmsParcoursContentT('lms.parcours_content.pack.empty')); ?></div>
     <?php else: ?>
         <div class="missions lms-pack-children__grid">
             <?php foreach ($packChildren as $childParcours): ?>
