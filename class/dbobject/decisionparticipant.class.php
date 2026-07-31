@@ -254,11 +254,22 @@ class DecisionParticipant extends DbObject
         return (int)$this->get('IDuser') <= 0 && trim((string)$this->get('email')) !== '';
     }
 
-    public function getIdentityLabel()
+    public function getIdentityLabel($organizationId = 0)
     {
         $displayName = trim((string)$this->get('display_name'));
         if ($displayName !== '') {
             return $displayName;
+        }
+
+        $userId = (int)$this->get('IDuser');
+        if ($userId > 0) {
+            $user = new user();
+            if ($user->load($userId)) {
+                $userDisplayName = trim((string)$user->getScopedDisplayName((int)$organizationId));
+                if ($userDisplayName !== '') {
+                    return $userDisplayName;
+                }
+            }
         }
 
         $email = trim((string)$this->get('email'));

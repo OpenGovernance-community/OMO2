@@ -9,6 +9,12 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Toutes les etiquettes temporelles de la frise publique utilisent maintenant une taille plus discrete, et leurs cartes s ajustent au texte sans retour a la ligne.
 - La barre de la frise publique est remontee pour rapprocher ses marqueurs des etiquettes temporelles.
 - Le titre principal des scrutins publics utilise de nouveau la taille standard d un H1.
+- Le recapitulatif public des options indique maintenant lorsque les propositions et leurs discussions sont ouvertes pendant la consultation, avec la precision sur l anonymat des discussions.
+- Le contenu des cartes Organisateur, Methode, Invites et Options de la page publique est affiche dans une taille plus discrete, sans modifier leurs titres.
+- La carte Organisateur regroupe maintenant le nom en gras et son contexte sur une seule ligne.
+- Les metadonnees des propositions regroupent maintenant leur auteur et leur date de creation ou modification dans une phrase plus concise.
+- Les acces publics par code e-mail reutilisent maintenant le nom du compte reconnu lorsqu un participant lie a un utilisateur n a pas encore de nom affiche.
+- La resolution des acces publics privilegie maintenant le participant lie au membre de l organisation et rattache les anciens participants e-mail au compte reconnu, y compris lorsque l organisation utilise une adresse e-mail distincte.
 - Les parametres de gestion affichent maintenant chaque option sur une seule ligne. Les trois methodes de scrutin proposent aussi l option "Autoriser les votes anonymes" : lorsqu elle est activee, chaque participant peut choisir un vote anonyme; sinon la case reste desactivee et reflete le vote anonyme impose par le scrutin.
 - Les propositions de decision disposent maintenant d une discussion reservee aux participants lies a un compte, avec messages en bulles, photos ou initiales et notifications systeme. L auteur peut modifier sa proposition depuis une action distincte sur la carte; chaque modification est signalee dans la discussion et l identite reste attachee a la bonne proposition lors des reordonnancements.
 - Une discussion de proposition ouverte recherche maintenant les nouveaux messages toutes les dix secondes et les ajoute sans interrompre la lecture; cette actualisation s arrete avec la fermeture de la popup.

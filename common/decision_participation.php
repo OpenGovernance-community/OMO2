@@ -441,10 +441,18 @@ function commonDecisionParticipationBuildOptionLines($decision, array $context)
     }
 
     $anonymousFlags = [];
+    $consultationProposalFlags = [];
+    $proposalDiscussionAnonymousFlags = [];
     foreach ($groups as $group) {
         $config = omoDecisionBuildMethodConfig($group);
         if (array_key_exists('is_anonymous', $config)) {
             $anonymousFlags[] = !empty($config['is_anonymous']);
+        }
+        if (!empty($config['allow_consultation_proposals'])) {
+            $consultationProposalFlags[] = true;
+        }
+        if (!empty($config['allow_proposal_discussions'])) {
+            $proposalDiscussionAnonymousFlags[] = !empty($config['is_anonymous']);
         }
     }
 
@@ -457,6 +465,28 @@ function commonDecisionParticipationBuildOptionLines($decision, array $context)
         } else {
             $lines[] = 'Le caractere anonyme peut varier selon les blocs';
         }
+    }
+
+    if (count($consultationProposalFlags) > 0) {
+        $lines[] = count($consultationProposalFlags) === count($groups)
+            ? 'Vous pouvez faire des propositions durant la consultation'
+            : 'Vous pouvez faire des propositions durant la consultation pour certains blocs';
+    }
+
+    if (count($proposalDiscussionAnonymousFlags) > 0) {
+        $allGroupsAllowDiscussions = count($proposalDiscussionAnonymousFlags) === count($groups);
+        $uniqueDiscussionAnonymousFlags = array_values(array_unique($proposalDiscussionAnonymousFlags));
+        $discussionLine = $allGroupsAllowDiscussions
+            ? 'Vous pouvez discuter les propositions pendant la consultation'
+            : 'Vous pouvez discuter les propositions pendant la consultation pour certains blocs';
+
+        if (count($uniqueDiscussionAnonymousFlags) === 1) {
+            $discussionLine .= $uniqueDiscussionAnonymousFlags[0]
+                ? ' de façon anonyme'
+                : ', anonymement si vous le souhaitez';
+        }
+
+        $lines[] = $discussionLine;
     }
 
     return $lines;
@@ -922,7 +952,9 @@ if ((($context['accessMode'] ?? '') === 'public') && $participant instanceof Dec
 
 $organizationName = $organization ? trim((string)$organization->get('name')) : 'Organisation';
 $decisionTitle = $decision ? trim((string)$decision->get('title')) : 'Prise de decision';
-$participantLabel = $participant ? trim((string)$participant->getIdentityLabel()) : '';
+$participantLabel = $participant
+    ? trim((string)$participant->getIdentityLabel($organization ? (int)$organization->getId() : 0))
+    : '';
 $accentColor = $organization ? trim((string)$organization->get('color')) : '';
 $organizationContext = commonBuildOmoPublicOrganizationContext($organization);
 $publicHelpItems = commonBuildOmoPublicHelpItems('decision', $organizationName);
@@ -1067,10 +1099,9 @@ ob_start();
                             <?php if (trim((string)($organizerData['label'] ?? '')) !== ''): ?>
                             <div class="generic-soft-panel generic-soft-panel--stack">
                                 <span class="generic-card-title generic-card-title--small">Organisateur</span>
-                                <strong><?= omoApiEscape((string)$organizerData['label']) ?></strong>
-                                <?php if (trim((string)($organizerData['scope'] ?? '')) !== ''): ?>
-                                <span class="decision-public-context-scope"><?= omoApiEscape((string)$organizerData['scope']) ?></span>
-                                <?php endif; ?>
+                                <span class="decision-public-context-organizer">
+                                    <strong><?= omoApiEscape((string)$organizerData['label']) ?></strong><?php if (trim((string)($organizerData['scope'] ?? '')) !== ''): ?>, <span class="decision-public-context-scope"><?= omoApiEscape((string)$organizerData['scope']) ?></span><?php endif; ?>
+                                </span>
                             </div>
                             <?php endif; ?>
 
@@ -1327,6 +1358,12 @@ if (empty($context['status'])) {
             padding-left: 18px;
             color: var(--color-text-light, #475569);
             line-height: 1.7;
+            font-size: 13px;
+        }
+
+        .decision-public-context-grid .generic-soft-panel > strong,
+        .decision-public-context-organizer {
+            font-size: 13px;
         }
 
         .decision-public-context-contact--footer {
@@ -1353,7 +1390,7 @@ if (empty($context['status'])) {
             --decision-public-timeline-marker-size: 16px;
             --decision-public-timeline-marker-top: calc(var(--decision-public-timeline-axis-top) - 6px);
             position: relative;
-            min-height: 248px;
+            min-height: 218px;
             padding: 8px 10px 26px;
         }
 
