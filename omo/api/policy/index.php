@@ -159,15 +159,16 @@ $createUrl = '/omo/api/policy/edit.php?oid=' . rawurlencode((string)$organizatio
 $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . rawurlencode((string)$currentHolon->getId());
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
-<div class="omo-policy omo-panel-view" id="omo-policy-root" data-policy-oid="<?= (int)$organizationId ?>" data-policy-cid="<?= (int)$currentHolon->getId() ?>" data-policy-index-url="<?= omoApiEscape($indexUrl) ?>" data-policy-scope="<?= omoApiEscape($policyScope) ?>" data-policy-sort="<?= omoApiEscape($policySort) ?>" data-policy-group="<?= omoApiEscape($policyGroup) ?>" data-policy-create-url="<?= omoApiEscape($createUrl) ?>" data-policy-load-error="<?= omoApiEscape(omoPolicyT('policy.error.load')) ?>" data-policy-save-error="<?= omoApiEscape(omoPolicyT('policy.error.save')) ?>">
+<div class="omo-policy omo-panel-view" id="omo-policy-root" data-policy-oid="<?= (int)$organizationId ?>" data-policy-cid="<?= (int)$currentHolon->getId() ?>" data-policy-index-url="<?= omoApiEscape($indexUrl) ?>" data-policy-scope="<?= omoApiEscape($policyScope) ?>" data-policy-sort="<?= omoApiEscape($policySort) ?>" data-policy-group="<?= omoApiEscape($policyGroup) ?>" data-policy-create-url="<?= omoApiEscape($createUrl) ?>" data-policy-load-error="<?= omoApiEscape(omoPolicyT('policy.error.load')) ?>" data-policy-save-error="<?= omoApiEscape(omoPolicyT('policy.error.save')) ?>" data-policy-delete-confirm="<?= omoApiEscape(omoPolicyT('policy.delete.confirm')) ?>" data-policy-delete-error="<?= omoApiEscape(omoPolicyT('policy.error.delete')) ?>">
     <header class="omo-panel-view__header omo-panel-view__header--stacked">
         <div class="omo-panel-view__header-main">
             <div class="omo-panel-view__title-cluster">
+                <span class="omo-panel-view__app-icon omo-policy__app-icon" aria-hidden="true"><img src="images/tools/policy.png" alt=""></span>
                 <div class="omo-panel-view__header-copy">
-                    <div class="omo-panel-view__title-row"><h2 class="omo-panel-view__title"><?= omoApiEscape(omoPolicyT('policy.title')) ?></h2><span class="omo-panel-view__count"><?= count($rules) ?></span></div>
+                    <div class="omo-panel-view__title-row generic-title-row generic-title-row--center"><h2 class="omo-panel-view__title"><?= omoApiEscape(omoPolicyT('policy.title')) ?></h2><span class="omo-panel-view__count"><?= count($rules) ?></span></div>
                 </div>
             </div>
-            <?php if ($canCreate): ?><button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-policy-new><?= omoApiEscape(omoPolicyT('policy.new')) ?></button><?php endif; ?>
+            <?php if ($canCreate): ?><div class="omo-panel-view__header-actions" data-omo-header-actions><button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-policy-new><?= omoApiEscape(omoPolicyT('policy.new')) ?></button></div><?php endif; ?>
         </div>
         <div class="omo-panel-view__header-secondary">
             <div class="omo-context-filter omo-view-filter" data-policy-filter-control role="group" aria-label="<?= omoApiEscape(omoPolicyT('policy.filters.aria')) ?>">
@@ -255,6 +256,7 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
                                 <button type="button" class="generic-menu-toggle omo-policy__rule-menu-toggle" data-policy-rule-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="<?= omoApiEscape(omoPolicyT('policy.edit')) ?>">...</button>
                                 <div class="generic-menu-panel omo-policy__rule-menu-panel" data-policy-rule-menu-panel role="menu" hidden>
                                     <button type="button" class="generic-menu-item" data-policy-rule-edit data-policy-edit-url="<?= omoApiEscape($ruleEditUrl) ?>" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.edit')) ?></button>
+                                    <button type="button" class="generic-menu-item generic-menu-item--danger" data-policy-rule-delete data-policy-rule-id="<?= (int)$rule->getId() ?>" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.delete')) ?></button>
                                 </div>
                             </div>
                         <?php endif; ?>
@@ -580,6 +582,44 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
             event.stopPropagation();
             closeRuleMenus();
             openPolicyDrawer(editButton.getAttribute('data-policy-edit-url') || '');
+            return;
+        }
+
+        var deleteButton = event.target.closest('[data-policy-rule-delete]');
+        if (deleteButton && root.contains(deleteButton)) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeRuleMenus();
+
+            var ruleId = deleteButton.getAttribute('data-policy-rule-id') || '';
+            var confirmation = root.dataset.policyDeleteConfirm || '';
+            if (!ruleId || (confirmation !== '' && !window.confirm(confirmation))) return;
+
+            deleteButton.disabled = true;
+            var payload = new FormData();
+            payload.append('oid', root.dataset.policyOid || '0');
+            payload.append('cid', root.dataset.policyCid || '0');
+            payload.append('rule_id', ruleId);
+            payload.append('action', 'delete');
+
+            fetch('/omo/api/policy/action.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {'X-Requested-With': 'XMLHttpRequest'},
+                body: payload
+            }).then(function (response) {
+                return response.json().then(function (data) {
+                    return {ok: response.ok, data: data};
+                });
+            }).then(function (result) {
+                if (!result.ok || !result.data || !result.data.success) {
+                    throw new Error(result.data && result.data.message ? result.data.message : (root.dataset.policyDeleteError || ''));
+                }
+                window.omoPolicyAfterSave();
+            }).catch(function (error) {
+                deleteButton.disabled = false;
+                window.alert(error && error.message ? error.message : (root.dataset.policyDeleteError || ''));
+            });
             return;
         }
 

@@ -534,7 +534,7 @@ $projectTexts = [
         <div class="omo-panel-view__header-main">
             <div class="omo-panel-view__title-cluster">
                 <span class="omo-panel-view__app-icon omo-projects__app-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M4 5.5h6l1.8 2H20v11H4z"/><path d="M4 8h16"/></svg>
+                    <img src="images/tools/product.png" alt="">
                 </span>
                 <div class="omo-panel-view__header-copy">
                     <div class="omo-projects__title-row generic-title-row generic-title-row--center">
@@ -544,7 +544,7 @@ $projectTexts = [
                 </div>
             </div>
             <?php if ($canCreate): ?>
-                <div class="omo-projects__header-actions">
+                <div class="omo-projects__header-actions" data-omo-header-actions>
                     <button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-omo-projects-open-create><?= omoApiEscape(omoProjectsT('projects.action.new')) ?></button>
                 </div>
             <?php endif; ?>

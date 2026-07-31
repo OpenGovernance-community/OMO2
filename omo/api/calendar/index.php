@@ -1258,23 +1258,20 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     aria-busy="true"
     data-omo-calendar-open-event-id="<?= (int)$openEventTargetId ?>"
 >
-    <div class="omo-calendar__header omo-panel-view__header">
-        <div class="omo-calendar__header-main">
+    <div class="omo-calendar__header omo-panel-view__header omo-panel-view__header--stacked">
+        <div class="omo-calendar__header-main omo-panel-view__header-main">
             <div class="omo-calendar__title-cluster">
-                <span class="omo-calendar__app-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <rect x="3.5" y="4.5" width="17" height="16" rx="4"></rect>
-                        <path d="M7.5 2.75v3.5M16.5 2.75v3.5M3.5 9.25h17"></path>
-                    </svg>
+                <span class="omo-panel-view__app-icon omo-calendar__app-icon" aria-hidden="true">
+                    <img src="images/tools/calendar.png" alt="">
                 </span>
                 <div class="omo-panel-view__header-copy">
-                    <div class="omo-calendar__title-row">
+                    <div class="omo-calendar__title-row generic-title-row generic-title-row--center">
                         <h2 class="omo-panel-view__title"><?= omoApiEscape(omoCalendarT('calendar.page.title')) ?></h2>
                         <span class="omo-calendar__count omo-panel-view__count" data-omo-calendar-header-count><?= omoApiEscape((string)$headerCount) ?></span>
                     </div>
                 </div>
             </div>
-            <div class="omo-calendar__header-actions">
+            <div class="omo-calendar__header-actions" data-omo-header-actions>
                 <div class="omo-calendar__today-actions">
                     <button
                         type="button"
@@ -1319,7 +1316,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 <?php endif; ?>
             </div>
         </div>
-        <div class="omo-calendar__header-secondary">
+        <div class="omo-calendar__header-secondary omo-panel-view__header-secondary">
             <div class="omo-calendar__filter-toolbar omo-view-filter" data-omo-calendar-filter-control role="group" aria-label="<?= omoApiEscape(omoCalendarT('calendar.filters.aria')) ?>">
                 <div class="omo-view-filter__input">
                     <div class="omo-view-filter__chips">

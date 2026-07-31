@@ -1194,7 +1194,7 @@ if (empty($context['status'])) {
     <script>if (typeof sharedApplyDocumentTheme === 'function') { sharedApplyDocumentTheme(); }</script>
     <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="/common/assets/omo_public_pages.css">
-    <link rel="stylesheet" href="/omo/assets/css/styles.css">
+    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260731-mobile-header-menu">
 <?php endif; ?>
     <style>
         :root {

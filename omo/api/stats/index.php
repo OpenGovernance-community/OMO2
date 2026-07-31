@@ -254,7 +254,7 @@ foreach ($pickerItems as $indicator) {
 $displayItemCount = count($statsEntries);
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
-<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260729-view-filter">
+<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260731-app-header-4">
 <div
     class="omo-stats omo-panel-view"
     id="omo-stats-root"
@@ -278,17 +278,17 @@ $displayItemCount = count($statsEntries);
         <div class="omo-panel-view__header-main">
             <div class="omo-panel-view__title-cluster">
                 <span class="omo-panel-view__app-icon omo-stats__app-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M4 19V5M4 19H21M7 15l4-4 3 2 5-7"/><circle cx="7" cy="15" r="1"/><circle cx="11" cy="11" r="1"/><circle cx="14" cy="13" r="1"/><circle cx="19" cy="6" r="1"/></svg>
+                    <img src="images/tools/stats.png" alt="">
                 </span>
                 <div class="omo-panel-view__header-copy">
-                    <div class="omo-stats__title-row">
+                    <div class="omo-stats__title-row generic-title-row generic-title-row--center">
                         <h2 class="omo-panel-view__title"><?= omoApiEscape(omoStatsT('stats.title')) ?></h2>
                         <span class="omo-panel-view__count" data-omo-stats-header-count><?= $displayItemCount ?></span>
                     </div>
                 </div>
             </div>
             <?php if ($canCreateIndicator || $canManage): ?>
-                <div class="omo-stats__header-actions">
+                <div class="omo-stats__header-actions" data-omo-header-actions>
                     <?php if ($canCreateIndicator): ?>
                         <button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-omo-stats-open-create><?= omoApiEscape(omoStatsT('stats.action.new')) ?></button>
                     <?php endif; ?>

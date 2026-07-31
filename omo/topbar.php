@@ -102,9 +102,17 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Erreur de chargement',
             'context' => 'Fallback message displayed inside the OMO topbar modal or drawer when remote content fails to load.',
         ],
+        'topbar.load_error_description' => [
+            'text' => 'Le contenu n’a pas pu être chargé. Vérifiez votre connexion puis réessayez.',
+            'context' => 'Additional explanation displayed below the OMO topbar remote content loading error.',
+        ],
         'topbar.loading' => [
             'text' => 'Chargement...',
             'context' => 'Temporary message displayed inside the OMO topbar modal or drawer while remote content is loading.',
+        ],
+        'topbar.retry' => [
+            'text' => 'Réessayer',
+            'context' => 'Button label used to retry loading OMO topbar remote content.',
         ],
         'topbar.modal.default_title' => [
             'text' => 'Panneau',
@@ -491,6 +499,8 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
         'translations' => [
             'loadingLabel' => omoTopbarTranslate('topbar.loading'),
             'loadErrorLabel' => omoTopbarTranslate('topbar.load_error'),
+            'loadErrorDescription' => omoTopbarTranslate('topbar.load_error_description'),
+            'retryLabel' => omoTopbarTranslate('topbar.retry'),
             'helpFallbackLabel' => omoTopbarTranslate('topbar.help.fallback_label'),
             'helpUnavailableHtml' => omoTopbarTranslate('topbar.help.unavailable_html'),
             'helpPendingHtml' => omoTopbarTranslate('topbar.help.pending_html'),

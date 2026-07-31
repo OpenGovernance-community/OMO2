@@ -37,6 +37,8 @@ if (!function_exists('omoPolicySourceLang')) {
             'policy.empty.title' => ['text' => 'Aucune regle pour le moment', 'context' => 'Title for the policy empty state.'],
             'policy.new' => ['text' => 'Nouvelle regle', 'context' => 'Create a new rule.'],
             'policy.edit' => ['text' => 'Modifier la regle', 'context' => 'Edit an existing rule.'],
+            'policy.delete' => ['text' => 'Supprimer la règle', 'context' => 'Delete an existing rule.'],
+            'policy.delete.confirm' => ['text' => "Supprimer cette règle ?\n\nCette action est définitive.", 'context' => 'Confirmation shown before deleting an existing rule.'],
             'policy.empty' => ['text' => 'Aucune regle dans ce contexte.', 'context' => 'Empty policy list.'],
             'policy.intention' => ['text' => 'Intention', 'context' => 'Rule intent section title.'],
             'policy.review' => ['text' => 'A requestionner le {date}', 'context' => 'Rule review date label.'],
@@ -67,8 +69,10 @@ if (!function_exists('omoPolicySourceLang')) {
             'policy.error.method' => ['text' => 'Cette action doit etre envoyee en POST.', 'context' => 'Invalid HTTP method.'],
             'policy.error.load' => ['text' => 'Impossible de charger le formulaire.', 'context' => 'Local rule editor load error.'],
             'policy.error.save' => ['text' => 'Impossible d enregistrer la regle.', 'context' => 'Rule save error.'],
+            'policy.error.delete' => ['text' => 'Impossible de supprimer la règle.', 'context' => 'Rule delete error.'],
             'policy.success.save' => ['text' => 'Regle enregistree.', 'context' => 'Rule creation confirmation.'],
             'policy.success.update' => ['text' => 'Regle modifiee.', 'context' => 'Rule update confirmation.'],
+            'policy.success.delete' => ['text' => 'Règle supprimée.', 'context' => 'Rule deletion confirmation.'],
         ];
     }
 }

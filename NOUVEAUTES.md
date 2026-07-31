@@ -2,11 +2,24 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-07-31
+
+- Sur mobile, les actions des headers d application sont maintenant regroupees dans un menu hamburger en haut a droite, sans modifier les actions disponibles.
+- Sur mobile, le hamburger reste maintenant sur la meme ligne que le titre et s aligne a droite.
+- Sur mobile, le menu des Indicateurs affiche directement les actions Importer et Grouper, sans sous-menu « ... ».
+- La phrase d introduction des Checklistes a été retirée du header pour laisser davantage de place aux filtres.
+- Le retrait horizontal du filtre Calendrier utilise maintenant le même composant de header que les autres applications.
+- Les boutons d action des headers ont maintenant la meme hauteur que les boutons de menu « ... », tandis que le bouton mobile d ajout conserve son format carré.
+- Les headers des pages d application OMO reutilisent maintenant les images officielles de la leftbar dans un carre noir plus grand, colle en haut a gauche, avec le compteur sur la meme ligne que le titre; les filtres gardent leur retrait et leurs espacements sont ajustes pour ce format.
+- Les erreurs de chargement des drawers sont maintenant presentees dans un panneau plus lisible avec un bouton « Reessayer » qui relance uniquement le contenu du drawer, sans recharger la page.
+
 ## 2026-07-30
 
 - L import OMO1 avec modele permet maintenant de faire correspondre explicitement les proprietes dont les noms different. Les listes d autorites compatibles sont preselectionnees, les domaines locaux sont convertis en vrais objets Autorite et les regles importees peuvent ainsi leur etre rattachees.
 - L export OMO1 distingue maintenant les valeurs locales des valeurs heritees pour les instances de holon. Lorsqu un nouveau modele est applique a l import, seules les raisons d etre, attendus et autorites reellement propres a l instance sont conserves en surcharge; les anciens exports sans ce marquage sont aussi nettoyes par comparaison avec leur template source.
 - Le menu d actions des cartes d organisation dans OMO est maintenant detache de la carte et se positionne automatiquement au-dessus ou au-dessous du bouton selon l espace disponible, sans etre coupe par le debordement de la carte.
+- Les images WebP choisies pour le logo ou la banniere sont maintenant recadrees puis envoyees en JPEG depuis l editeur d organisation. Cela evite l erreur de sauvegarde lorsque le serveur PHP ne dispose pas du support GD WebP.
+- Le menu d actions des regles permet maintenant de supprimer une regle apres confirmation, avec controle des droits cote serveur et rechargement de la liste apres succes.
 - L edition d un holon affiche maintenant en lecture seule les valeurs locales et heritees meme lorsque le champ n est pas modifiable, et indique simplement l absence de droits de modification au lieu de presenter cela comme un verrou du modele.
 - L export OMO1 force maintenant l ecriture de la propriete Attendus sur les templates structurels depuis le contenu resolu du role source traduit. La revision du generateur passe a v7 pour identifier ce format.
 - L export OMO1 normalise maintenant les textes des listes avant leur serialisation JSON. Un attendu contenant un ancien encodage ne fait ainsi plus disparaitre silencieusement toute la propriete Attendus; la revision du generateur passe a v8 et expose aussi la valeur de propriete calculee dans le diagnostic structurel.
