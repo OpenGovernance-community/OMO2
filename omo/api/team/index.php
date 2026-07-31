@@ -480,12 +480,7 @@ if ($leafletMapsEnabled) {
         <div class="omo-panel-view__header-main">
             <div class="omo-panel-view__title-cluster">
                 <span class="omo-panel-view__app-icon omo-team__app-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M7.5 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path>
-                        <path d="M16.5 10a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path>
-                        <path d="M3.5 18.5a4.5 4.5 0 0 1 8 0"></path>
-                        <path d="M13 18.5a3.8 3.8 0 0 1 7 0"></path>
-                    </svg>
+                    <img src="images/tools/team.png" alt="">
                 </span>
                 <div class="omo-panel-view__header-copy">
                     <div class="omo-team__title-row generic-title-row">
@@ -495,7 +490,7 @@ if ($leafletMapsEnabled) {
                 </div>
             </div>
             <?php if ($canAddCurrentHolonMembers): ?>
-                <div class="omo-team__header-action">
+                <div class="omo-team__header-action" data-omo-header-actions>
                     <button
                         type="button"
                         class="generic-action-button generic-action-button--main omo-team__add-member-button"

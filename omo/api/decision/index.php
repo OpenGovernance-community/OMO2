@@ -1322,13 +1322,7 @@ if (!is_string($payloadJson)) {
         <div class="omo-panel-view__header-main">
             <div class="omo-panel-view__title-cluster">
                 <span class="omo-panel-view__app-icon omo-decisions__app-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M7 6.5h10"></path>
-                        <path d="M7 11.5h6"></path>
-                        <path d="M7 16.5h5"></path>
-                        <path d="M15 15.5l1.6 1.6L20 13.7"></path>
-                        <rect x="4" y="3.5" width="16" height="17" rx="3"></rect>
-                    </svg>
+                    <img src="images/tools/decision.png" alt="">
                 </span>
                 <div class="omo-panel-view__header-copy">
                     <div class="omo-decisions__title-row generic-title-row">
@@ -1337,7 +1331,7 @@ if (!is_string($payloadJson)) {
                     </div>
                 </div>
             </div>
-            <div class="omo-panel-view__aside omo-decisions__header-actions">
+            <div class="omo-panel-view__aside omo-decisions__header-actions" data-omo-header-actions>
                 <?php if ($canCreateDecision): ?>
                 <button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" aria-label="<?= $escape(t('decisions.index.new', [], $lang, $sourceLang)) ?>" data-omo-decisions-new>
                     <span class="omo-mobile-corner-action__text"><?= $escape(t('decisions.index.new', [], $lang, $sourceLang)) ?></span>

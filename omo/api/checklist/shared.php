@@ -13,7 +13,6 @@ if (!function_exists('omoChecklistSourceLang')) {
     {
         return [
             'checklist.title' => ['text' => 'Checklists', 'context' => 'Main title of the checklist application.'],
-            'checklist.description' => ['text' => 'Des processus réutilisables qui deviennent des projets au bon moment.', 'context' => 'Introduction of the checklist application.'],
             'checklist.action.new' => ['text' => 'Ajouter', 'context' => 'Button opening checklist creation.'],
             'checklist.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening checklist edition.'],
             'checklist.action.close' => ['text' => 'Fermer', 'context' => 'Button closing the checklist drawer.'],

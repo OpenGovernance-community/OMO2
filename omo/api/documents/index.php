@@ -684,12 +684,7 @@ if (!is_string($documentsPayload)) {
         <div class="omo-panel-view__header-main">
             <div class="omo-panel-view__title-cluster">
                 <span class="omo-panel-view__app-icon omo-documents__app-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                        <path d="M14 3.5v4a1.5 1.5 0 0 0 1.5 1.5h4"></path>
-                        <path d="M8 13h8"></path>
-                        <path d="M8 17h5"></path>
-                        <path d="M13.5 3.5H8A2.5 2.5 0 0 0 5.5 6v12A2.5 2.5 0 0 0 8 20.5h8A2.5 2.5 0 0 0 18.5 18V8.5z"></path>
-                    </svg>
+                    <img src="images/tools/documents-folder.png" alt="">
                 </span>
                 <div class="omo-panel-view__header-copy">
                     <div class="omo-documents__title-row generic-title-row">
@@ -703,7 +698,7 @@ if (!is_string($documentsPayload)) {
                     </div>
                 </div>
             </div>
-            <div class="omo-panel-view__aside omo-documents__header-main-actions">
+            <div class="omo-panel-view__aside omo-documents__header-main-actions" data-omo-header-actions>
                 <?php if ($canCreateDocument): ?>
                     <button
                         type="button"

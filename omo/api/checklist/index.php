@@ -138,17 +138,18 @@ $texts = [
     <header class="omo-checklist__header omo-panel-view__header omo-panel-view__header--stacked">
         <div class="omo-panel-view__header-main">
             <div class="omo-panel-view__title-cluster">
-                <span class="omo-panel-view__app-icon omo-checklist__app-icon" aria-hidden="true"><img src="/omo/images/tools/checklist.png" alt=""></span>
+                <span class="omo-panel-view__app-icon omo-checklist__app-icon" aria-hidden="true"><img src="images/tools/bucket-list.png" alt=""></span>
                 <div class="omo-panel-view__header-copy">
                     <div class="omo-checklist__title-row generic-title-row generic-title-row--center">
                         <h2 class="omo-panel-view__title"><?= omoApiEscape(omoChecklistT('checklist.title')) ?></h2>
                         <span class="omo-panel-view__count" data-checklist-header-count data-checklist-total-count="<?= count($checklistRows) ?>"><?= count($checklistRows) ?></span>
                     </div>
-                    <p class="omo-panel-view__description"><?= omoApiEscape(omoChecklistT('checklist.description')) ?></p>
                 </div>
             </div>
             <?php if ($canCreate): ?>
-                <button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-checklist-open-create><?= omoApiEscape(omoChecklistT('checklist.action.new')) ?></button>
+                <div class="omo-panel-view__header-actions" data-omo-header-actions>
+                    <button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-checklist-open-create><?= omoApiEscape(omoChecklistT('checklist.action.new')) ?></button>
+                </div>
             <?php endif; ?>
         </div>
         <div class="omo-panel-view__header-secondary">

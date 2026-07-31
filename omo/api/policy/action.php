@@ -11,6 +11,7 @@ if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') $respo
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_POST['oid'] ?? 0));
 $currentHolonId = isset($_POST['cid']) && is_numeric($_POST['cid']) ? (int)$_POST['cid'] : 0;
 $ruleId = isset($_POST['rule_id']) && is_numeric($_POST['rule_id']) ? (int)$_POST['rule_id'] : 0;
+$action = strtolower(trim((string)($_POST['action'] ?? 'save')));
 $rule = new Rule();
 if ($ruleId > 0) {
     if (!$rule->load($ruleId)) $respond(false, omoPolicyT('policy.error.load'), 404);
@@ -21,6 +22,10 @@ if ($ruleId > 0) {
 }
 $context = omoPolicyResolveContext($organizationId, $currentHolonId);
 if (empty($context['status']) || !omoPolicyCanCreateLocalRule($context)) $respond(false, omoPolicyT('policy.error.forbidden'), 403);
+if ($action === 'delete') {
+    if ($ruleId <= 0 || !$rule->delete()) $respond(false, omoPolicyT('policy.error.delete'), 422);
+    $respond(true, omoPolicyT('policy.success.delete'));
+}
 $authorityId = isset($_POST['authority_id']) && is_numeric($_POST['authority_id'])
     ? (int)$_POST['authority_id']
     : ($ruleId > 0 ? (int)$rule->get('IDauthority') : 0);

@@ -671,13 +671,6 @@ function displayField($object, $key, $default = null, $filter = null, ?array $tr
                             };
                         }
 
-                        if (normalized.indexOf('image/webp') !== -1 || normalized.match(/\.webp(?:$|\?)/)) {
-                            return {
-                                mime: 'image/webp',
-                                extension: 'webp'
-                            };
-                        }
-
                         return {
                             mime: 'image/jpeg',
                             extension: 'jpg'
@@ -1755,8 +1748,6 @@ echo "</div>";
 
                         if (blob.type === 'image/png') {
                             extension = 'png';
-                        } else if (blob.type === 'image/webp') {
-                            extension = 'webp';
                         }
 
                         formData.append(key, blob, key + '.' + extension);
