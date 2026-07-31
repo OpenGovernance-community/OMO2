@@ -76,7 +76,7 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
         $parcoursId = (int)$parcoursId;
         $parcours = new \dbObject\Parcours();
         if (!$parcours->load($parcoursId)) {
-            return '<div class="lms-parcours-missions__empty">' . htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.error.not_found')) . '</div>';
+            return '<div class="lms-parcours-missions__empty generic-description">' . htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.error.not_found')) . '</div>';
         }
 
         $prerequisiteManager = lmsRenderParcoursPrerequisiteManager($organizationId, $parcoursId);
@@ -100,21 +100,21 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
         ob_start();
         ?>
         <section
-            class="lms-parcours-missions"
+            class="lms-parcours-missions generic-section generic-section--stack generic-form-section"
             data-lms-parcours-prerequisite-manager="1"
             data-parcours-id="<?php echo (int)$parcoursId; ?>"
             data-organization-id="<?php echo (int)$organizationId; ?>"
         >
-            <div class="lms-parcours-missions__header">
-                <div>
-                    <h3><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.prerequisites.title')); ?></h3>
-                    <p><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.prerequisites.intro')); ?></p>
+            <div class="lms-parcours-missions__header generic-form-section__heading">
+                <div class="generic-form-section__copy">
+                    <h3 class="generic-title generic-title--medium"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.prerequisites.title')); ?></h3>
+                    <p class="generic-description"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.prerequisites.intro')); ?></p>
                 </div>
-                <button type="button" class="lms-parcours-missions__add-button" data-lms-open-prerequisite-picker="1"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.prerequisites.add')); ?></button>
+                <button type="button" class="lms-parcours-missions__add-button generic-action-button generic-action-button--secondary" data-lms-open-prerequisite-picker="1"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.prerequisites.add')); ?></button>
             </div>
 
             <?php if (count($prerequisites) === 0): ?>
-                <div class="lms-parcours-missions__empty"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.prerequisites.empty')); ?></div>
+                <div class="lms-parcours-missions__empty generic-description"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.prerequisites.empty')); ?></div>
             <?php else: ?>
                 <div class="lms-parcours-missions__list" data-lms-prerequisite-list="1">
                     <?php foreach ($prerequisites as $prerequisite): ?>
@@ -180,7 +180,7 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
 
                     <div class="lms-parcours-mission-picker__list" data-lms-prerequisite-picker-list="1">
                         <?php if (count($availableParcours) === 0): ?>
-                            <div class="lms-parcours-mission-picker__empty"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.prerequisites.empty_picker')); ?></div>
+                            <div class="lms-parcours-mission-picker__empty generic-description generic-description--compact"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.prerequisites.empty_picker')); ?></div>
                         <?php else: ?>
                             <?php foreach ($availableParcours as $availableParcoursItem): ?>
                                 <?php
@@ -195,15 +195,15 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
                                     data-search-text="<?php echo htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>"
                                 >
                                     <div class="lms-parcours-mission-picker__copy">
-                                        <strong><?php echo htmlspecialchars((string)($availableParcoursItem['title'] ?? '')); ?></strong>
+                                        <strong class="generic-title generic-title--compact"><?php echo htmlspecialchars((string)($availableParcoursItem['title'] ?? '')); ?></strong>
                                         <?php if (trim((string)($availableParcoursItem['description'] ?? '')) !== ''): ?>
-                                            <p><?php echo htmlspecialchars((string)$availableParcoursItem['description']); ?></p>
+                                            <p class="generic-description generic-description--compact"><?php echo htmlspecialchars((string)$availableParcoursItem['description']); ?></p>
                                         <?php endif; ?>
                                     </div>
                                     <button type="button" data-lms-add-prerequisite-id="<?php echo (int)($availableParcoursItem['id'] ?? 0); ?>"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.add')); ?></button>
                                 </article>
                             <?php endforeach; ?>
-                            <div class="lms-parcours-mission-picker__empty" data-lms-prerequisite-picker-empty-search="1" hidden><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.prerequisites.empty_search')); ?></div>
+                            <div class="lms-parcours-mission-picker__empty generic-description generic-description--compact" data-lms-prerequisite-picker-empty-search="1" hidden><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.prerequisites.empty_search')); ?></div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -219,46 +219,47 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
         $parcoursId = (int)$parcoursId;
         ob_start();
         ?>
-        <div class="lms-parcours-mission-creator" data-lms-mission-creator-view="1" hidden>
-            <div class="lms-parcours-mission-creator__header">
-                <button type="button" class="lms-parcours-mission-creator__back" data-lms-back-to-mission-picker="1"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.back')); ?></button>
-                <div>
-                    <h4><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.title')); ?></h4>
-                    <p><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.intro')); ?></p>
+        <div class="lms-parcours-mission-creator generic-form-stack" data-lms-mission-creator-view="1" hidden>
+            <div class="lms-parcours-mission-creator__header generic-form-section__heading">
+                <button type="button" class="lms-parcours-mission-creator__back generic-action-button generic-action-button--secondary" data-lms-back-to-mission-picker="1"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.back')); ?></button>
+                <div class="generic-form-section__copy">
+                    <h4 class="generic-title generic-title--medium"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.title')); ?></h4>
+                    <p class="generic-description"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.intro')); ?></p>
                 </div>
             </div>
 
             <form
                 method="post"
                 action="<?php echo htmlspecialchars(omoLmsBuildPath('/parcours_mission_create.php')); ?>"
+                class="generic-form-stack"
                 data-lms-mission-create-form="1"
                 data-parcours-id="<?php echo $parcoursId; ?>"
             >
-                <div class="lms-parcours-mission-creator__grid">
-                    <label class="lms-parcours-mission-creator__field">
-                        <span><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.field_title')); ?></span>
-                        <input type="text" name="title" maxlength="150" required>
+                <div class="lms-parcours-mission-creator__grid generic-form-grid">
+                    <label class="lms-parcours-mission-creator__field generic-form-field">
+                        <span class="generic-form-label"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.field_title')); ?></span>
+                        <input type="text" name="title" maxlength="150" class="generic-form-control" required>
                     </label>
 
-                    <label class="lms-parcours-mission-creator__field lms-parcours-mission-creator__field--full">
-                        <span><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.field_resume')); ?></span>
-                        <textarea name="resume" rows="3" required></textarea>
+                    <label class="lms-parcours-mission-creator__field lms-parcours-mission-creator__field--full generic-form-field generic-form-field--full">
+                        <span class="generic-form-label"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.field_resume')); ?></span>
+                        <textarea name="resume" rows="3" class="generic-form-control" required></textarea>
                     </label>
 
-                    <label class="lms-parcours-mission-creator__field lms-parcours-mission-creator__field--full">
-                        <span><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.field_video')); ?></span>
-                        <input type="text" name="video" maxlength="1000" placeholder="https://...">
+                    <label class="lms-parcours-mission-creator__field lms-parcours-mission-creator__field--full generic-form-field generic-form-field--full">
+                        <span class="generic-form-label"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.field_video')); ?></span>
+                        <input type="text" name="video" maxlength="1000" class="generic-form-control" placeholder="https://...">
                     </label>
 
-                    <label class="lms-parcours-mission-creator__field lms-parcours-mission-creator__field--full">
-                        <span><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.field_html')); ?></span>
-                        <textarea name="html" rows="8" placeholder="<?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.placeholder_html')); ?>"></textarea>
+                    <label class="lms-parcours-mission-creator__field lms-parcours-mission-creator__field--full generic-form-field generic-form-field--full">
+                        <span class="generic-form-label"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.field_html')); ?></span>
+                        <textarea name="html" rows="8" class="generic-form-control" placeholder="<?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.placeholder_html')); ?>"></textarea>
                     </label>
                 </div>
 
-                <div class="lms-parcours-mission-creator__actions">
-                    <button type="button" class="lms-parcours-mission-creator__cancel" data-lms-back-to-mission-picker="1"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.cancel')); ?></button>
-                    <button type="submit" class="lms-parcours-mission-creator__submit" data-lms-mission-create-submit="1"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.submit')); ?></button>
+                <div class="lms-parcours-mission-creator__actions generic-form-actions generic-form-actions--stack-mobile">
+                    <button type="button" class="lms-parcours-mission-creator__cancel generic-action-button generic-action-button--secondary" data-lms-back-to-mission-picker="1"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.cancel')); ?></button>
+                    <button type="submit" class="lms-parcours-mission-creator__submit generic-action-button generic-action-button--main" data-lms-mission-create-submit="1"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.mission_create.submit')); ?></button>
                 </div>
             </form>
         </div>
@@ -277,23 +278,23 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
         ob_start();
         ?>
         <section
-            class="lms-parcours-missions"
+            class="lms-parcours-missions generic-section generic-section--stack generic-form-section"
             data-lms-parcours-content-manager="1"
             data-lms-parcours-mission-manager="1"
             data-lms-manager-type="mission"
             data-parcours-id="<?php echo (int)$parcoursId; ?>"
             data-organization-id="<?php echo (int)$organizationId; ?>"
         >
-            <div class="lms-parcours-missions__header">
-                <div>
-                    <h3><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.missions.title')); ?></h3>
-                    <p><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.missions.intro')); ?></p>
+            <div class="lms-parcours-missions__header generic-form-section__heading">
+                <div class="generic-form-section__copy">
+                    <h3 class="generic-title generic-title--medium"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.missions.title')); ?></h3>
+                    <p class="generic-description"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.missions.intro')); ?></p>
                 </div>
-                <button type="button" class="lms-parcours-missions__add-button" data-lms-open-mission-picker="1"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.add')); ?></button>
+                <button type="button" class="lms-parcours-missions__add-button generic-action-button generic-action-button--secondary" data-lms-open-mission-picker="1"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.add')); ?></button>
             </div>
 
             <?php if (count($missions) === 0): ?>
-                <div class="lms-parcours-missions__empty"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.missions.empty')); ?></div>
+                <div class="lms-parcours-missions__empty generic-description"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.missions.empty')); ?></div>
             <?php else: ?>
                 <div class="lms-parcours-missions__list" data-lms-parcours-mission-list="1">
                     <?php foreach ($missions as $mission): ?>
@@ -367,7 +368,7 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
 
                         <div class="lms-parcours-mission-picker__list" data-lms-mission-picker-list="1">
                             <?php if (count($availableMissions) === 0): ?>
-                                <div class="lms-parcours-mission-picker__empty"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.missions.empty_picker')); ?></div>
+                                <div class="lms-parcours-mission-picker__empty generic-description generic-description--compact"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.missions.empty_picker')); ?></div>
                             <?php else: ?>
                                 <?php foreach ($availableMissions as $mission): ?>
                                     <?php
@@ -382,15 +383,15 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
                                         data-search-text="<?php echo htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>"
                                     >
                                         <div class="lms-parcours-mission-picker__copy">
-                                            <strong><?php echo htmlspecialchars((string)($mission['title'] ?? '')); ?></strong>
+                                            <strong class="generic-title generic-title--compact"><?php echo htmlspecialchars((string)($mission['title'] ?? '')); ?></strong>
                                             <?php if (trim((string)($mission['resume'] ?? '')) !== ''): ?>
-                                                <p><?php echo htmlspecialchars((string)$mission['resume']); ?></p>
+                                                <p class="generic-description generic-description--compact"><?php echo htmlspecialchars((string)$mission['resume']); ?></p>
                                             <?php endif; ?>
                                         </div>
                                         <button type="button" data-lms-add-mission-id="<?php echo (int)($mission['id'] ?? 0); ?>"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.add')); ?></button>
                                     </article>
                                 <?php endforeach; ?>
-                                <div class="lms-parcours-mission-picker__empty" data-lms-mission-picker-empty-search="1" hidden><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.missions.empty_search')); ?></div>
+                                <div class="lms-parcours-mission-picker__empty generic-description generic-description--compact" data-lms-mission-picker-empty-search="1" hidden><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.missions.empty_search')); ?></div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -414,23 +415,23 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
         ob_start();
         ?>
         <section
-            class="lms-parcours-missions"
+            class="lms-parcours-missions generic-section generic-section--stack generic-form-section"
             data-lms-parcours-content-manager="1"
             data-lms-parcours-pack-manager="1"
             data-lms-manager-type="pack"
             data-parcours-id="<?php echo (int)$parcoursId; ?>"
             data-organization-id="<?php echo (int)$organizationId; ?>"
         >
-            <div class="lms-parcours-missions__header">
-                <div>
-                    <h3><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.pack.title')); ?></h3>
-                    <p><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.pack.intro')); ?></p>
+            <div class="lms-parcours-missions__header generic-form-section__heading">
+                <div class="generic-form-section__copy">
+                    <h3 class="generic-title generic-title--medium"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.pack.title')); ?></h3>
+                    <p class="generic-description"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.pack.intro')); ?></p>
                 </div>
-                <button type="button" class="lms-parcours-missions__add-button" data-lms-open-pack-picker="1"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.add')); ?></button>
+                <button type="button" class="lms-parcours-missions__add-button generic-action-button generic-action-button--secondary" data-lms-open-pack-picker="1"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.add')); ?></button>
             </div>
 
             <?php if (count($children) === 0): ?>
-                <div class="lms-parcours-missions__empty"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.pack.empty')); ?></div>
+                <div class="lms-parcours-missions__empty generic-description"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.pack.empty')); ?></div>
             <?php else: ?>
                 <div class="lms-parcours-missions__list" data-lms-pack-parcours-list="1">
                     <?php foreach ($children as $child): ?>
@@ -502,7 +503,7 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
 
                     <div class="lms-parcours-mission-picker__list" data-lms-pack-picker-list="1">
                         <?php if (count($availableParcours) === 0): ?>
-                            <div class="lms-parcours-mission-picker__empty"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.pack.empty_picker')); ?></div>
+                            <div class="lms-parcours-mission-picker__empty generic-description generic-description--compact"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.pack.empty_picker')); ?></div>
                         <?php else: ?>
                             <?php foreach ($availableParcours as $availableParcoursItem): ?>
                                 <?php
@@ -517,15 +518,15 @@ if (!function_exists('lmsRenderParcoursMissionManager')) {
                                     data-search-text="<?php echo htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>"
                                 >
                                     <div class="lms-parcours-mission-picker__copy">
-                                        <strong><?php echo htmlspecialchars((string)($availableParcoursItem['title'] ?? '')); ?></strong>
+                                        <strong class="generic-title generic-title--compact"><?php echo htmlspecialchars((string)($availableParcoursItem['title'] ?? '')); ?></strong>
                                         <?php if (trim((string)($availableParcoursItem['description'] ?? '')) !== ''): ?>
-                                            <p><?php echo htmlspecialchars((string)$availableParcoursItem['description']); ?></p>
+                                            <p class="generic-description generic-description--compact"><?php echo htmlspecialchars((string)$availableParcoursItem['description']); ?></p>
                                         <?php endif; ?>
                                     </div>
                                     <button type="button" data-lms-add-pack-child-id="<?php echo (int)($availableParcoursItem['id'] ?? 0); ?>"><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.common.add')); ?></button>
                                 </article>
                             <?php endforeach; ?>
-                            <div class="lms-parcours-mission-picker__empty" data-lms-pack-picker-empty-search="1" hidden><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.pack.empty_search')); ?></div>
+                            <div class="lms-parcours-mission-picker__empty generic-description generic-description--compact" data-lms-pack-picker-empty-search="1" hidden><?php echo htmlspecialchars(lmsParcoursEditorT('lms.parcours_editor.pack.empty_search')); ?></div>
                         <?php endif; ?>
                     </div>
                 </div>

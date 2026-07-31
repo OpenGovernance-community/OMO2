@@ -219,9 +219,9 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
     <section class="generic-section omo-project-detail__section">
         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoProjectsT('projects.detail.description')) ?></h3>
         <?php if ($description !== ''): ?>
-            <div class="omo-simple-html-render omo-project-detail__description"><?= $description ?></div>
+            <div class="omo-simple-html-render omo-project-detail__description generic-description generic-description--small generic-description--relaxed"><?= $description ?></div>
         <?php else: ?>
-            <p class="omo-project-detail__muted"><?= omoApiEscape(omoProjectsT('projects.detail.empty_description')) ?></p>
+            <p class="omo-project-detail__muted generic-description generic-description--small"><?= omoApiEscape(omoProjectsT('projects.detail.empty_description')) ?></p>
         <?php endif; ?>
     </section>
 
@@ -294,7 +294,7 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                     <?php endforeach; ?>
                 </div>
             <?php else: ?>
-                <p class="omo-project-detail__muted"><?= omoApiEscape(omoProjectsT('projects.detail.subprojects_empty')) ?></p>
+                <p class="omo-project-detail__muted generic-description generic-description--small"><?= omoApiEscape(omoProjectsT('projects.detail.subprojects_empty')) ?></p>
             <?php endif; ?>
             <?php if ($archivedSubprojectCount > 0): ?>
                 <a
@@ -337,7 +337,7 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
         <section class="generic-soft-panel omo-project-detail__section">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoProjectsT('projects.detail.parent')) ?></h3>
             <p class="omo-project-detail__value"><?= omoApiEscape($parent instanceof Project ? (string)$parent->get('title') : omoProjectsT('projects.detail.none')) ?></p>
-            <p class="omo-project-detail__created"><?= omoApiEscape(omoProjectsT('projects.detail.created')) ?> <?= omoApiEscape(omoProjectsFormatDate($createdAt)) ?></p>
+            <p class="omo-project-detail__created generic-meta"><?= omoApiEscape(omoProjectsT('projects.detail.created')) ?> <?= omoApiEscape(omoProjectsFormatDate($createdAt)) ?></p>
         </section>
     </div>
             </div>

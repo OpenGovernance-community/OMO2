@@ -39,7 +39,7 @@ if (!is_array($payload)) {
     exit;
 }
 
-$availableModules = array('structure', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv');
+$availableModules = array('structure', 'rules', 'members', 'documents', 'projects', 'tasks', 'checklists', 'indicators', 'calendar', 'pv');
 $requestedModules = array();
 $postedModules = isset($_POST['modules']) && is_array($_POST['modules']) ? $_POST['modules'] : array();
 foreach ($availableModules as $module) {
@@ -50,6 +50,7 @@ $organizationName = trim((string)($_POST['organization_name'] ?? ''));
 $templateCalibration = array(
     'templateRootHolonId' => (int)($_POST['organization_template_id'] ?? 0),
     'mappings' => array(),
+    'propertyMappings' => array(),
 );
 $rawTemplateMappings = trim((string)($_POST['template_mappings'] ?? ''));
 if ($rawTemplateMappings !== '') {
@@ -65,6 +66,23 @@ if ($rawTemplateMappings !== '') {
         $targetTemplateId = (int)$targetTemplateId;
         if ($sourceTemplateId > 0 && $targetTemplateId > 0) {
             $templateCalibration['mappings'][$sourceTemplateId] = $targetTemplateId;
+        }
+    }
+}
+$rawPropertyMappings = trim((string)($_POST['property_mappings'] ?? ''));
+if ($rawPropertyMappings !== '') {
+    $postedPropertyMappings = json_decode($rawPropertyMappings, true);
+    if (!is_array($postedPropertyMappings)) {
+        http_response_code(400);
+        echo json_encode(array('status' => false, 'message' => 'Les correspondances de proprietes ne sont pas valides.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    foreach ($postedPropertyMappings as $sourcePropertyId => $targetPropertyId) {
+        $sourcePropertyId = (int)$sourcePropertyId;
+        $targetPropertyId = (int)$targetPropertyId;
+        if ($sourcePropertyId > 0 && $targetPropertyId > 0) {
+            $templateCalibration['propertyMappings'][$sourcePropertyId] = $targetPropertyId;
         }
     }
 }

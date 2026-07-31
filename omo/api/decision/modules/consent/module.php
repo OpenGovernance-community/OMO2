@@ -300,7 +300,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             <?php endif; ?>
 
             <?php if ($isManageMode): ?>
-            <form class="omo-decision-consent__form" action="/omo/api/decision/modules/consent/save.php" method="post" data-omo-decision-consent-form>
+            <form class="omo-decision-consent__form generic-form-stack" action="/omo/api/decision/modules/consent/save.php" method="post" data-omo-decision-consent-form>
                 <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                 <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                 <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
@@ -486,7 +486,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
                     <div class="omo-decision-consent__proposal-list" data-omo-decision-consent-proposal-list>
                         <?php foreach ($proposalItems as $index => $proposalItem): ?>
-                        <div class="omo-decision-consent__proposal-card<?= $canEditProposals ? '' : ' omo-decision-consent__proposal-card--locked' ?>" data-omo-decision-consent-proposal-card>
+                        <div class="omo-decision-consent__proposal-card omo-decision-proposal-card generic-section<?= $canEditProposals ? '' : ' omo-decision-consent__proposal-card--locked omo-decision-proposal-card--locked' ?>" data-omo-decision-consent-proposal-card>
                             <?php if ($canEditProposals): ?>
                             <button type="button" class="omo-decision-consent__proposal-drag" data-omo-decision-consent-proposal-drag aria-label="<?= $escape(t('decisions.consent.field.proposals_reorder', [], $lang, $sourceLang)) ?>">::</button>
                             <?php endif; ?>
@@ -498,7 +498,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                             </div>
                             <div class="omo-decision-consent__proposal-menu" data-omo-decision-consent-proposal-menu>
                                 <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-consent__proposal-menu-toggle" data-omo-decision-consent-proposal-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Actions">...</button>
-                                <div class="omo-decision-consent__proposal-menu-panel" data-omo-decision-consent-proposal-menu-panel role="menu" hidden>
+                                <div class="omo-decision-consent__proposal-menu-panel omo-decision-proposal-menu-panel generic-soft-panel" data-omo-decision-consent-proposal-menu-panel role="menu" hidden>
                                     <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-consent__proposal-menu-item" data-omo-decision-consent-proposal-settings role="menuitem"><?= $escape(t('decisions.consent.field.proposal_details', [], $lang, $sourceLang)) ?></button>
                                     <?php if ($canEditProposals): ?>
                                     <button type="button" class="generic-action-button generic-action-button--danger omo-decision-consent__proposal-menu-item" data-omo-decision-consent-proposal-remove role="menuitem"><?= $escape(t('decisions.consent.field.proposals_remove', [], $lang, $sourceLang)) ?></button>
@@ -544,7 +544,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 <?php endif; ?>
 
                 <?php if ($isParticipateMode): ?>
-                <form class="omo-decision-consent__form" action="/omo/api/decision/modules/consent/respond.php" method="post" data-omo-decision-consent-response-form>
+                <form class="omo-decision-consent__form generic-form-stack" action="/omo/api/decision/modules/consent/respond.php" method="post" data-omo-decision-consent-response-form>
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
@@ -633,7 +633,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         $summaryChoiceIconUrl = trim((string)($summaryChoiceUi['icon_url'] ?? ''));
                         $summaryChoiceIconStyle = $summaryChoiceIconUrl !== '' ? '--omo-consent-choice-icon: url(\'' . $summaryChoiceIconUrl . '\');' : '';
                         ?>
-                        <div class="omo-decision-consent__result-card<?= $selectedChoice !== '' ? ' is-selected' : '' ?>">
+                        <div class="omo-decision-consent__result-card generic-soft-panel generic-soft-panel--stack<?= $selectedChoice !== '' ? ' is-selected' : '' ?>">
                             <div class="omo-decision-consent__result-head">
                                 <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
                                 <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-consent__text', 'omo-decision-consent__link') ?>
@@ -1044,7 +1044,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
                     const createProposalCard = function (value) {
                         const card = document.createElement('div');
-                        card.className = 'omo-decision-consent__proposal-card';
+                        card.className = 'omo-decision-consent__proposal-card omo-decision-proposal-card generic-section';
                         card.setAttribute('data-omo-decision-consent-proposal-card', '');
 
                         const dragButton = document.createElement('button');
@@ -1094,7 +1094,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         menuToggle.textContent = '...';
 
                         const menuPanel = document.createElement('div');
-                        menuPanel.className = 'omo-decision-consent__proposal-menu-panel';
+                        menuPanel.className = 'omo-decision-consent__proposal-menu-panel omo-decision-proposal-menu-panel generic-soft-panel';
                         menuPanel.setAttribute('data-omo-decision-consent-proposal-menu-panel', '');
                         menuPanel.setAttribute('role', 'menu');
                         menuPanel.hidden = true;
@@ -1467,7 +1467,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         </script>
 
         <style>
-        .omo-decision-consent__form {display:grid; gap:10px;}
+        .omo-decision-consent__form {display:grid; gap:var(--generic-form-gap, var(--generic-space-4, 16px));}
         .omo-decision-consent {
             display: grid;
             gap: 16px;
@@ -1491,12 +1491,6 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 12px;
-        }
-
-        .omo-decision-consent__text {
-            margin: 0;
-            color: var(--color-text-light, #475569);
-            line-height: 1.6;
         }
 
         .omo-decision-consent__textarea {
@@ -1534,21 +1528,6 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             gap: 12px;
         }
 
-        .omo-decision-consent__proposal-card {
-            display: grid;
-            grid-template-columns: auto minmax(0, 1fr) auto;
-            gap: 10px;
-            align-items: center;
-            padding: 12px;
-            border-radius: var(--radius-md);
-            border: 1px solid color-mix(in srgb, var(--color-text-light, #64748b) 14%, white);
-            background: white;
-        }
-
-        .omo-decision-consent__proposal-card--locked {
-            grid-template-columns: minmax(0, 1fr) auto;
-        }
-
         .omo-decision-consent__proposal-placeholder {
             border: 1px dashed color-mix(in srgb, var(--color-primary, #2563eb) 32%, white);
             border-radius: var(--radius-md);
@@ -1576,25 +1555,6 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         .omo-decision-consent__proposal-menu-toggle {
             min-width: 42px;
             padding-inline: 12px;
-        }
-
-        .omo-decision-consent__proposal-menu-panel {
-            position: absolute;
-            top: calc(100% + 6px);
-            right: 0;
-            min-width: 180px;
-            display: grid;
-            gap: 6px;
-            padding: 8px;
-            border: 1px solid var(--color-border, #d1d5db);
-            border-radius: var(--radius-md);
-            background: var(--color-surface, #ffffff);
-            box-shadow: 0 16px 30px rgba(15, 23, 42, 0.14);
-            z-index: 5;
-        }
-
-        .omo-decision-consent__proposal-menu-panel[hidden] {
-            display: none;
         }
 
         .omo-decision-consent__proposal-menu-item {
@@ -1731,16 +1691,6 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             --omo-consent-choice-border-selected: #2f8f46;
             --omo-consent-choice-text: #166534;
             --omo-consent-choice-shadow: 0 10px 24px rgba(47, 143, 70, 0.17);
-        }
-
-        .omo-decision-consent__result-card,
-        .omo-decision-consent__choice-card {
-            display: grid;
-            gap: 12px;
-            padding: 14px;
-            border-radius: var(--radius-md);
-            border: 1px solid color-mix(in srgb, var(--color-text-light, #64748b) 14%, white);
-            background: white;
         }
 
         .omo-decision-consent__result-card.is-selected {

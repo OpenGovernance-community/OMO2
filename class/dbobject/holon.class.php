@@ -142,6 +142,10 @@
 				return false;
 			}
 
+			if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($currentUserId, $organizationId)) {
+				return true;
+			}
+
 			if (function_exists('commonUserHasOrganizationMembership')) {
 				return \commonUserHasOrganizationMembership($currentUserId, $organizationId);
 			}
@@ -710,6 +714,23 @@
 			return $circle ? (int)$circle->getId() : 0;
 		}
 
+		public function getAuthorityParentHolon($includeSelf = false)
+		{
+			$current = $includeSelf ? $this : $this->getParentHolon();
+			$guard = 0;
+
+			while ($current !== null && $guard < 100) {
+				if (in_array((int)$current->get('IDtypeholon'), array(2, 4), true)) {
+					return $current;
+				}
+
+				$current = $current->getParentHolon();
+				$guard += 1;
+			}
+
+			return null;
+		}
+
 		public function getPathHolons($includeSelf = true) {
 			$path = array();
 			$current = $includeSelf ? $this : $this->getParentHolon();
@@ -820,6 +841,25 @@
 			return false;
 		}
 
+		protected function getTemplateAuthorityInstanceIdMap()
+		{
+			$map = array();
+			$authorities = new \dbObject\ArrayAuthority();
+			$authorities->loadForHolon((int)$this->getId());
+			foreach ($authorities as $authority) {
+				$sourceAuthorityId = (int)$authority->get('IDauthority_template');
+				if ($sourceAuthorityId > 0) {
+					$map[$sourceAuthorityId] = (int)$authority->getId();
+				}
+			}
+			return $map;
+		}
+
+		protected function remapTemplateAuthorityListValue($value, $formatId, array $authorityIdMap)
+		{
+			return \dbObject\PropertyFormat::remapListReferenceIds($value, $formatId, $authorityIdMap);
+		}
+
 		public function getPropertyEntries(array $options = array()) {
 			$keyPrefix = isset($options['propertyKeyPrefix']) ? (string)$options['propertyKeyPrefix'] : 'd';
 			$entries = array();
@@ -838,6 +878,7 @@
 				}
 			}
 
+			$templateAuthorityIdMap = $this->getTemplateAuthorityInstanceIdMap();
 			foreach ($this->getPropertiesValue() as $property) {
 				$propertyId = (int)$property->get('IDproperty');
 				$propertyPosition = (int)($property->get('effective_position') ?: $property->get('position') ?: 0);
@@ -855,6 +896,12 @@
 					$effectiveValue = (string)$value;
 				} elseif ($ancestor !== null && trim((string)$ancestor) !== '') {
 					$effectiveValue = (string)$ancestor;
+				}
+				if ((string)$property->get('listitemtype') === \dbObject\Property::LIST_ITEM_AUTHORITY && \dbObject\PropertyFormat::isListFormat((int)$property->get('IDpropertyformat'))) {
+					$formatId = (int)$property->get('IDpropertyformat');
+					$value = $this->remapTemplateAuthorityListValue($value, $formatId, $templateAuthorityIdMap);
+					$ancestor = $this->remapTemplateAuthorityListValue($ancestor, $formatId, $templateAuthorityIdMap);
+					$effectiveValue = $this->remapTemplateAuthorityListValue($effectiveValue, $formatId, $templateAuthorityIdMap);
 				}
 
 				$entries[] = array(
@@ -3131,6 +3178,7 @@
 		{
 			$definitionsByPropertyId = array();
 			$templatePropertyIds = array();
+			$templateAuthorityIdMap = $this->getTemplateAuthorityInstanceIdMap();
 			$templateCanEditProperties = false;
 
 			$templateId = (int)$this->get('IDholon_template');
@@ -3185,6 +3233,13 @@
 
 				$definition['value'] = $localValue !== null ? (string)$localValue : '';
 				$definition['inheritedValue'] = $inheritedValue !== null ? (string)$inheritedValue : (string)($definition['inheritedValue'] ?? '');
+				if ((string)($definition['listItemType'] ?? '') === \dbObject\Property::LIST_ITEM_AUTHORITY && \dbObject\PropertyFormat::isListFormat((int)($definition['formatId'] ?? 0))) {
+					$definition['inheritedValue'] = $this->remapTemplateAuthorityListValue(
+						$definition['inheritedValue'],
+						(int)$definition['formatId'],
+						$templateAuthorityIdMap
+					);
+				}
 				$definition['effectiveMandatory'] = (bool)$property->get('mandatory');
 				$definition['effectiveLocked'] = (bool)$property->get('locked');
 				$definition['canEditValue'] = !((bool)$property->get('locked'))

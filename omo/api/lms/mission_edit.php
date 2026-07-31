@@ -140,16 +140,13 @@ $params['afterTableHtml'] = ob_get_clean();
 <style>
 .lms-mission-editor-view {
     display: grid;
-    gap: 18px;
+    gap: 0;
 }
 
-.lms-mission-editor-card,
 .lms-mission-related {
-    padding: 20px 22px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    background: var(--bg-card);
-    box-shadow: var(--shadow);
+    --generic-section-gap: var(--generic-space-4, 16px);
+}
+
 .lms-mission-editor-header {
     top: 0;
     margin: 0;
@@ -158,18 +155,6 @@ $params['afterTableHtml'] = ob_get_clean();
 
 .lms-mission-editor-header.generic-drawer-header {
     --generic-drawer-header-z: 8;
-    --generic-drawer-header-padding: 20px 22px;
-    --generic-drawer-header-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
-}
-
-.lms-mission-editor-header h2 {
-    margin: 0 0 8px;
-}
-
-.lms-mission-editor-header p {
-    margin: 0;
-    color: var(--text-light);
-    line-height: 1.5;
 }
 
 .lms-mission-editor-branch {
@@ -184,7 +169,6 @@ $params['afterTableHtml'] = ob_get_clean();
 
 .lms-mission-related {
     display: grid;
-    gap: 16px;
 }
 
 .lms-parcours-mission-item {
@@ -367,8 +351,7 @@ $params['afterTableHtml'] = ob_get_clean();
     min-width: 0;
 }
 
-.lms-mission-related__item p,
-.lms-mission-related__empty {
+.lms-mission-related__item p {
     margin: 0;
     color: var(--text-light);
     line-height: 1.5;
@@ -432,18 +415,7 @@ $params['afterTableHtml'] = ob_get_clean();
 }
 
 .lms-mission-creator-form__grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-}
-
-.lms-mission-creator-form__field {
-    display: grid;
-    gap: 6px;
-}
-
-.lms-mission-creator-form__field span {
-    font-weight: 600;
+    --generic-form-grid-min: 240px;
 }
 
 .lms-mission-creator-form__check {
@@ -474,15 +446,8 @@ $params['afterTableHtml'] = ob_get_clean();
     color: var(--color-text, #1f2937);
 }
 
-.lms-mission-creator-form__field--full {
-    grid-column: 1 / -1;
-}
-
 .lms-mission-creator-form__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 16px;
+    --generic-action-row-gap: var(--generic-space-3, 12px);
 }
 
 .lms-question-choice-list {
@@ -603,13 +568,6 @@ $params['afterTableHtml'] = ob_get_clean();
     display: block;
 }
 
-.lms-parcours-mission-picker__copy p,
-.lms-parcours-mission-picker__empty {
-    margin: 0;
-    color: var(--text-light);
-    line-height: 1.5;
-}
-
 .lms-parcours-mission-picker__empty {
     padding: 16px 18px;
     border-radius: var(--radius-md);
@@ -641,22 +599,24 @@ $params['afterTableHtml'] = ob_get_clean();
 <div class="lms-mission-editor-view" data-lms-mission-editor="1" data-mission-id="<?php echo $missionId; ?>" data-parcours-id="<?php echo $parcoursId; ?>">
     <section class="lms-mission-editor-header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy">
-            <h2><?php echo htmlspecialchars((string)$mission->get('title')); ?></h2>
-            <p><?php echo htmlspecialchars(lmsMissionEditT('lms.mission_edit.hero.intro')); ?></p>
+            <h2 class="generic-title generic-title--large"><?php echo htmlspecialchars((string)$mission->get('title')); ?></h2>
+            <p class="generic-description"><?php echo htmlspecialchars(lmsMissionEditT('lms.mission_edit.hero.intro')); ?></p>
         </div>
         <div class="generic-drawer-header__actions">
-            <button type="button" data-lms-back-to-parcours-editor="1"><?php echo htmlspecialchars(lmsMissionEditT('lms.mission_edit.action.back')); ?></button>
-            <button type="button" id="lms-save-mission-submit"><?php echo htmlspecialchars(lmsMissionEditT('lms.mission_edit.action.save')); ?></button>
+            <button type="button" class="generic-action-button generic-action-button--secondary" data-lms-back-to-parcours-editor="1"><?php echo htmlspecialchars(lmsMissionEditT('lms.mission_edit.action.back')); ?></button>
+            <button type="button" class="generic-action-button generic-action-button--main" id="lms-save-mission-submit"><?php echo htmlspecialchars(lmsMissionEditT('lms.mission_edit.action.save')); ?></button>
         </div>
     </section>
 
-    <section class="lms-mission-editor-card">
-        <?php $mission->display('adminEdit.php', $params); ?>
-    </section>
+    <div class="lms-mission-editor-content generic-drawer-content">
+        <section class="lms-mission-editor-card">
+            <?php $mission->display('adminEdit.php', $params); ?>
+        </section>
 
-    <?php echo lmsRenderMissionDependencyManager($parcoursId, $missionId); ?>
-    <?php echo lmsRenderMissionHomeworkManager($parcoursId, $missionId); ?>
-    <?php echo lmsRenderMissionQuestionManager($parcoursId, $missionId); ?>
+        <?php echo lmsRenderMissionDependencyManager($parcoursId, $missionId); ?>
+        <?php echo lmsRenderMissionHomeworkManager($parcoursId, $missionId); ?>
+        <?php echo lmsRenderMissionQuestionManager($parcoursId, $missionId); ?>
+    </div>
 </div>
 <script>
 (function () {

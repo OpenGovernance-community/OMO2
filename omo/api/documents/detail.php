@@ -330,7 +330,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
     --omo-document-detail-article-max-width: 920px;
     --omo-document-detail-article-margin-inline: auto;
     min-height: 100%;
-    padding: 20px;
+    padding: var(--generic-layout-gutter, 20px);
     background: var(--color-bg);
 }
 

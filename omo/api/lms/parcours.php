@@ -222,12 +222,6 @@ $organizationColor = commonGetOrganizationExplicitColor($org);
 			gap: 18px;
 		}
 
-		.lms-pack-children__intro p,
-		.lms-pack-children__empty {
-			color: var(--text-light);
-			line-height: 1.5;
-		}
-
 		.lms-pack-children__empty {
 			padding: 16px 18px;
 			border: 1px solid var(--border-color);

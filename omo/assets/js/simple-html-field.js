@@ -572,7 +572,7 @@
         };
     }
 
-    function buildSanitizedNode(sourceNode, ownerDocument) {
+    function buildSanitizedNode(sourceNode, ownerDocument, options) {
         if (!sourceNode) {
             return ownerDocument.createDocumentFragment();
         }
@@ -602,7 +602,7 @@
             return ownerDocument.createDocumentFragment();
         }
 
-        if (isAllowedDocumentEmbedElement(sourceNode)) {
+        if ((!options || !options.simpleOnly) && isAllowedDocumentEmbedElement(sourceNode)) {
             const embedNode = ownerDocument.createElement('span');
             embedNode.setAttribute('class', 'omo-document-embed');
             embedNode.setAttribute('contenteditable', 'false');
@@ -620,13 +620,13 @@
             }
 
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
-                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument, options));
             });
 
             return embedNode;
         }
 
-        if (isAllowedDecisionEmbedElement(sourceNode)) {
+        if ((!options || !options.simpleOnly) && isAllowedDecisionEmbedElement(sourceNode)) {
             const embedNode = ownerDocument.createElement('span');
             embedNode.setAttribute('class', 'omo-decision-embed');
             embedNode.setAttribute('contenteditable', 'false');
@@ -649,13 +649,13 @@
             }
 
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
-                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument, options));
             });
 
             return embedNode;
         }
 
-        if (isAllowedEventEmbedElement(sourceNode)) {
+        if ((!options || !options.simpleOnly) && isAllowedEventEmbedElement(sourceNode)) {
             const embedNode = ownerDocument.createElement('span');
             embedNode.setAttribute('class', 'omo-event-embed');
             embedNode.setAttribute('contenteditable', 'false');
@@ -670,13 +670,13 @@
             });
 
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
-                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument, options));
             });
 
             return embedNode;
         }
 
-        if (isAllowedProjectEmbedElement(sourceNode)) {
+        if ((!options || !options.simpleOnly) && isAllowedProjectEmbedElement(sourceNode)) {
             const embedNode = ownerDocument.createElement('span');
             embedNode.setAttribute('class', 'omo-project-embed');
             embedNode.setAttribute('contenteditable', 'false');
@@ -689,13 +689,13 @@
             }
 
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
-                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+                appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument, options));
             });
 
             return embedNode;
         }
 
-        if (isAllowedChecklistEmbedElement(sourceNode)) {
+        if ((!options || !options.simpleOnly) && isAllowedChecklistEmbedElement(sourceNode)) {
             const embedNode = ownerDocument.createElement('span');
             embedNode.setAttribute('class', 'omo-checklist-embed');
             embedNode.setAttribute('contenteditable', 'false');
@@ -707,12 +707,12 @@
                 const childNode = Array.from(sourceNode.children || []).find(function (candidate) {
                     return String(candidate.tagName || '').toUpperCase() === tagName;
                 });
-                if (childNode) appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument));
+                if (childNode) appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument, options));
             });
             return embedNode;
         }
 
-        if (isAllowedIndicatorEmbedElement(sourceNode)) {
+        if ((!options || !options.simpleOnly) && isAllowedIndicatorEmbedElement(sourceNode)) {
             const embedNode = ownerDocument.createElement('span');
             const sourceClassName = ' ' + String(sourceNode.getAttribute('class') || '').trim() + ' ';
             const isOverdue = getElementAttributeValue(sourceNode, 'data-omo-indicator-overdue').trim() === '1'
@@ -798,12 +798,6 @@
             H2: true,
             H3: true,
             BLOCKQUOTE: true,
-            TABLE: true,
-            THEAD: true,
-            TBODY: true,
-            TR: true,
-            TH: true,
-            TD: true,
             BR: true,
             STRONG: true,
             B: true,
@@ -816,10 +810,19 @@
             A: true
         };
 
+        if (!options || !options.simpleOnly) {
+            allowedTags.TABLE = true;
+            allowedTags.THEAD = true;
+            allowedTags.TBODY = true;
+            allowedTags.TR = true;
+            allowedTags.TH = true;
+            allowedTags.TD = true;
+        }
+
         if (!allowedTags[normalizedTagName]) {
             const fragment = ownerDocument.createDocumentFragment();
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
-                appendSanitizedChild(fragment, buildSanitizedNode(childNode, ownerDocument));
+                appendSanitizedChild(fragment, buildSanitizedNode(childNode, ownerDocument, options));
             });
             return fragment;
         }
@@ -829,7 +832,7 @@
             if (!href) {
                 const anchorFragment = ownerDocument.createDocumentFragment();
                 Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
-                    appendSanitizedChild(anchorFragment, buildSanitizedNode(childNode, ownerDocument));
+                    appendSanitizedChild(anchorFragment, buildSanitizedNode(childNode, ownerDocument, options));
                 });
                 return anchorFragment;
             }
@@ -844,7 +847,7 @@
             }
 
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
-                appendSanitizedChild(anchorNode, buildSanitizedNode(childNode, ownerDocument));
+                appendSanitizedChild(anchorNode, buildSanitizedNode(childNode, ownerDocument, options));
             });
 
             return anchorNode;
@@ -865,7 +868,7 @@
         }
 
         Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
-            appendSanitizedChild(elementNode, buildSanitizedNode(childNode, ownerDocument));
+            appendSanitizedChild(elementNode, buildSanitizedNode(childNode, ownerDocument, options));
         });
 
         return elementNode;
@@ -888,7 +891,7 @@
         return textValue ? rawHtml : '';
     }
 
-    function sanitizeHtml(html) {
+    function sanitizeHtml(html, options) {
         const parser = new window.DOMParser();
         const parsed = parser.parseFromString('<div>' + String(html || '') + '</div>', 'text/html');
         const sourceRoot = parsed.body && parsed.body.firstElementChild ? parsed.body.firstElementChild : parsed.body;
@@ -896,7 +899,7 @@
         const wrapper = cleanDocument.createElement('div');
 
         Array.from(sourceRoot.childNodes || []).forEach(function (childNode) {
-            appendSanitizedChild(wrapper, buildSanitizedNode(childNode, cleanDocument));
+            appendSanitizedChild(wrapper, buildSanitizedNode(childNode, cleanDocument, options));
         });
 
         const sanitized = wrapper.innerHTML
@@ -949,6 +952,7 @@
             disabled: false,
             height: 180,
             minHeight: null,
+            simpleOnly: false,
             customButtons: [],
             indicatorValueUi: null,
             onChange: null,
@@ -957,7 +961,11 @@
             onDoubleClick: null
         }, options || {});
 
-        const safeInitialValue = sanitizeHtml(state.value);
+        const sanitizerOptions = state.simpleOnly ? {simpleOnly: true} : null;
+        const sanitizeEditorHtml = function (value) {
+            return sanitizeHtml(value, sanitizerOptions);
+        };
+        const safeInitialValue = sanitizeEditorHtml(state.value);
         const editorId = 'omo-html-field-' + Math.random().toString(36).slice(2);
         const textareaId = editorId + '-textarea';
         let destroyed = false;
@@ -992,7 +1000,7 @@
         }
 
         function setRawValue(nextValue) {
-            state.value = sanitizeHtml(nextValue);
+            state.value = sanitizeEditorHtml(nextValue);
             if (textarea) {
                 textarea.value = state.value;
             }
@@ -1000,10 +1008,10 @@
 
         function getValue() {
             if (initialized && $editor) {
-                return sanitizeHtml($editor.summernote('code'));
+                return sanitizeEditorHtml($editor.summernote('code'));
             }
 
-            return sanitizeHtml(state.value);
+            return sanitizeEditorHtml(state.value);
         }
 
         function getEditableElement() {
@@ -1220,7 +1228,7 @@
         }
 
         function insertHtmlAtCursor(nextHtml) {
-            const safeHtml = sanitizeHtml(nextHtml);
+            const safeHtml = sanitizeEditorHtml(nextHtml);
             if (!safeHtml) {
                 return '';
             }
@@ -1281,7 +1289,7 @@
         }
 
         function replaceNodeWithHtml(targetNode, nextHtml, shouldEmitChange) {
-            const safeHtml = sanitizeHtml(nextHtml);
+            const safeHtml = sanitizeEditorHtml(nextHtml);
             const editable = getEditableElement();
             const emitChangeAfterReplace = shouldEmitChange !== false;
 
@@ -1379,7 +1387,7 @@
 
         function replaceMarkerWithHtml(markerNode, nextHtml) {
             const editable = getEditableElement();
-            const safeHtml = sanitizeHtml(nextHtml);
+            const safeHtml = sanitizeEditorHtml(nextHtml);
 
             if (!editable || !markerNode || !editable.contains(markerNode)) {
                 return insertHtmlAtCursor(safeHtml);

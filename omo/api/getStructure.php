@@ -144,8 +144,8 @@ function omoRenderStructureEmptyPlaceholder(array $lang, array $sourceLang): voi
     ?>
 <div class="omo-structure-empty-panel">
     <div class="generic-section omo-structure-empty-panel__card">
-        <div class="generic-card-title omo-structure-empty-panel__title"><?= omoApiEscape(t('structure.placeholder.title', [], $lang, $sourceLang)) ?></div>
-        <p class="omo-structure-empty-panel__text"><?= omoApiEscape(t('structure.placeholder.text', [], $lang, $sourceLang)) ?></p>
+        <div class="generic-title generic-title--card omo-structure-empty-panel__title"><?= omoApiEscape(t('structure.placeholder.title', [], $lang, $sourceLang)) ?></div>
+        <p class="generic-description omo-structure-empty-panel__text"><?= omoApiEscape(t('structure.placeholder.text', [], $lang, $sourceLang)) ?></p>
         <button type="button" class="generic-action-button generic-action-button--main" data-omo-open-structure-drawer="1"><?= omoApiEscape(t('structure.placeholder.action', [], $lang, $sourceLang)) ?></button>
     </div>
 </div>
@@ -170,8 +170,6 @@ function omoRenderStructureEmptyPlaceholder(array $lang, array $sourceLang): voi
 
 .omo-structure-empty-panel__text {
     margin: 0 0 16px;
-    line-height: 1.5;
-    color: var(--color-text-light, #6b7280);
 }
 </style>
 
@@ -194,8 +192,8 @@ function omoRenderStructureDisabledPlaceholder(array $lang, array $sourceLang): 
     ?>
 <div class="omo-structure-empty-panel">
     <div class="generic-section omo-structure-empty-panel__card">
-        <div class="generic-card-title omo-structure-empty-panel__title"><?= omoApiEscape(t('structure.actions.menu_aria', [], $lang, $sourceLang)) ?></div>
-        <p class="omo-structure-empty-panel__text"><?= omoApiEscape(t('structure.message.disabled', [], $lang, $sourceLang)) ?></p>
+        <div class="generic-title generic-title--card omo-structure-empty-panel__title"><?= omoApiEscape(t('structure.actions.menu_aria', [], $lang, $sourceLang)) ?></div>
+        <p class="generic-description omo-structure-empty-panel__text"><?= omoApiEscape(t('structure.message.disabled', [], $lang, $sourceLang)) ?></p>
     </div>
 </div>
     <?php
@@ -766,10 +764,6 @@ input:checked + .slider::before {
   border-radius: var(--radius-md);
   background: var(--color-surface-alt, #f8fafc);
   border: 1px solid var(--color-border, #e5e7eb);
-}
-
-.role-property-detail-card__title {
-  font-weight: 600;
 }
 
 .role-property-detail-card__body {
@@ -1457,7 +1451,7 @@ function renderDetailListPropertyHtml(entry) {
       let html = `<div class="role-property-detail-card">`;
 
       if (detailItem.title) {
-        html += `<div class="role-property-detail-card__title">${escapeHtml(detailItem.title)}</div>`;
+        html += `<div class="role-property-detail-card__title generic-title generic-title--compact">${escapeHtml(detailItem.title)}</div>`;
       }
 
       if (detailItem.description) {

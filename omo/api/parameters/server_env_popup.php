@@ -51,40 +51,20 @@ $serverEnvClientTexts = [
 ];
 ?>
 <div
-    class="omo-server-env-popup"
+    class="omo-server-env-popup generic-stack generic-stack--flush"
     id="omoServerEnvPopup"
     data-popup-url="/omo/api/parameters/server_env_popup.php"
     data-unlock-url="/omo/api/parameters/server_env_unlock.php"
     data-save-url="/omo/api/parameters/server_env_save.php"
 >
     <style>
-    .omo-server-env-popup {
-        display: grid;
-        gap: 0;
-        color: var(--color-text, #1f2937);
-    }
-
     .omo-server-env-popup__panel,
-    .omo-server-env-popup__error,
-    .omo-server-env-popup__feedback {
-        --generic-section-padding-block: 18px;
-    }
-
-    .omo-server-env-popup__header {
-        position: sticky;
-        top: 0;
-        z-index: 2;
+    .omo-server-env-popup__error {
+        --generic-section-gap: var(--generic-container-gap);
     }
 
     .omo-server-env-popup__header-copy {
-        display: grid;
-        gap: 10px;
-    }
-
-    .omo-server-env-popup__shell {
-        display: grid;
-        gap: 16px;
-        padding: 16px 18px 18px;
+        --generic-drawer-header-copy-gap: var(--generic-space-2);
     }
 
     .omo-server-env-popup__hero {
@@ -92,11 +72,7 @@ $serverEnvClientTexts = [
         gap: 10px;
     }
 
-    .omo-server-env-popup__hero p,
-    .omo-server-env-popup__intro,
-    .omo-server-env-popup__section-intro,
-    .omo-server-env-popup__help,
-    .omo-server-env-popup__hint {
+    .omo-server-env-popup__hero p {
         margin: 0;
         line-height: 1.5;
         color: var(--color-text-light, #6b7280);
@@ -132,28 +108,6 @@ $serverEnvClientTexts = [
         color: inherit;
     }
 
-    .omo-server-env-popup__form,
-    .omo-server-env-popup__unlock-form {
-        display: grid;
-        gap: 16px;
-    }
-
-    .omo-server-env-popup__field {
-        display: grid;
-        gap: 8px;
-    }
-
-    .omo-server-env-popup__field label,
-    .omo-server-env-popup__label {
-        font-weight: 700;
-    }
-
-    .omo-server-env-popup__grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
-    }
-
     .omo-server-env-popup__label-row {
         display: flex;
         gap: 10px;
@@ -178,18 +132,8 @@ $serverEnvClientTexts = [
         color: #166534;
     }
 
-    .omo-server-env-popup__actions {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        gap: 10px;
-    }
-
     .omo-server-env-popup__feedback {
         display: none;
-        border: 1px solid #d1d5db;
-        background: #f8fafc;
-        color: #475569;
     }
 
     .omo-server-env-popup__feedback.is-visible {
@@ -208,11 +152,6 @@ $serverEnvClientTexts = [
         color: #166534;
     }
 
-    @media (max-width: 900px) {
-        .omo-server-env-popup__grid {
-            grid-template-columns: 1fr;
-        }
-    }
     </style>
 
     <div class="omo-server-env-popup__header generic-drawer-header generic-drawer-header--sticky">
@@ -226,7 +165,7 @@ $serverEnvClientTexts = [
             </div>
         </div>
     </div>
-    <div class="omo-server-env-popup__shell">
+    <div class="omo-server-env-popup__shell generic-drawer-content">
 
     <?php if (!$hasLocalPassword): ?>
         <div class="omo-server-env-popup__error generic-section generic-section--stack">
@@ -236,10 +175,10 @@ $serverEnvClientTexts = [
     <?php elseif (!$isUnlocked): ?>
         <div class="omo-server-env-popup__panel generic-section generic-section--stack">
             <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.unlock.title'), ENT_QUOTES, 'UTF-8') ?></h3>
-            <p class="omo-server-env-popup__intro"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.unlock.description'), ENT_QUOTES, 'UTF-8') ?></p>
+            <p class="omo-server-env-popup__intro generic-description"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.unlock.description'), ENT_QUOTES, 'UTF-8') ?></p>
 
-            <form id="omoServerEnvUnlockForm" class="omo-server-env-popup__unlock-form">
-                <div class="omo-server-env-popup__field">
+            <form id="omoServerEnvUnlockForm" class="omo-server-env-popup__unlock-form generic-form-stack">
+                <div class="omo-server-env-popup__field generic-form-field">
                     <label for="omoServerEnvUnlockPassword"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.unlock.password_label'), ENT_QUOTES, 'UTF-8') ?></label>
                     <input
                         type="password"
@@ -251,9 +190,9 @@ $serverEnvClientTexts = [
                     >
                 </div>
 
-                <div id="omoServerEnvUnlockFeedback" class="omo-server-env-popup__feedback" aria-live="polite"></div>
+                <div id="omoServerEnvUnlockFeedback" class="omo-server-env-popup__feedback generic-soft-panel generic-feedback" aria-live="polite"></div>
 
-                <div class="omo-server-env-popup__actions">
+                <div class="omo-server-env-popup__actions generic-form-actions">
                     <button type="button" class="generic-action-button generic-action-button--secondary" id="omoServerEnvClose"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.action.close'), ENT_QUOTES, 'UTF-8') ?></button>
                     <button type="submit" class="generic-action-button generic-action-button--main" id="omoServerEnvUnlockSubmit"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.unlock.submit'), ENT_QUOTES, 'UTF-8') ?></button>
                 </div>
@@ -262,17 +201,17 @@ $serverEnvClientTexts = [
     <?php else: ?>
         <div class="omo-server-env-popup__panel generic-section generic-section--stack">
             <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.edit.title', ['target' => $serverEnvTargetLabel]), ENT_QUOTES, 'UTF-8') ?></h3>
-            <p class="omo-server-env-popup__hint"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.edit.secret_hint'), ENT_QUOTES, 'UTF-8') ?></p>
+            <p class="omo-server-env-popup__hint generic-help-text"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.edit.secret_hint'), ENT_QUOTES, 'UTF-8') ?></p>
 
-            <form id="omoServerEnvForm" class="omo-server-env-popup__form">
+            <form id="omoServerEnvForm" class="omo-server-env-popup__form generic-form-stack">
                 <?php foreach ($serverEnvSections as $section): ?>
                 <section class="generic-soft-panel generic-soft-panel--stack">
                     <div>
                         <h4 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars((string)$section['title'], ENT_QUOTES, 'UTF-8') ?></h4>
-                        <p class="omo-server-env-popup__section-intro"><?= htmlspecialchars((string)$section['intro'], ENT_QUOTES, 'UTF-8') ?></p>
+                        <p class="omo-server-env-popup__section-intro generic-description"><?= htmlspecialchars((string)$section['intro'], ENT_QUOTES, 'UTF-8') ?></p>
                     </div>
 
-                    <div class="omo-server-env-popup__grid">
+                    <div class="omo-server-env-popup__grid generic-form-grid">
                         <?php foreach ($section['fields'] as $field): ?>
                             <?php
                             $key = (string)$field['key'];
@@ -280,9 +219,9 @@ $serverEnvClientTexts = [
                             $fieldValue = (string)($serverEnvDisplayValues[$key] ?? '');
                             $isSecret = !empty($field['secret']);
                             ?>
-                            <label class="omo-server-env-popup__field" for="omoServerEnvField<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>">
+                            <label class="omo-server-env-popup__field generic-form-field" for="omoServerEnvField<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>">
                                 <span class="omo-server-env-popup__label-row">
-                                    <span class="omo-server-env-popup__label"><?= htmlspecialchars((string)$field['label'], ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span class="omo-server-env-popup__label generic-form-label"><?= htmlspecialchars((string)$field['label'], ENT_QUOTES, 'UTF-8') ?></span>
                                     <?php if ($isSecret): ?>
                                     <span
                                         class="omo-server-env-popup__secret-state<?= !empty($serverEnvSecretStates[$key]) ? ' is-configured' : '' ?>"
@@ -316,7 +255,7 @@ $serverEnvClientTexts = [
                                 <?php endif; ?>
 
                                 <?php if (!empty($field['help'])): ?>
-                                <span class="omo-server-env-popup__help"><?= htmlspecialchars((string)$field['help'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="omo-server-env-popup__help generic-help-text"><?= htmlspecialchars((string)$field['help'], ENT_QUOTES, 'UTF-8') ?></span>
                                 <?php endif; ?>
                             </label>
                         <?php endforeach; ?>
@@ -324,9 +263,9 @@ $serverEnvClientTexts = [
                 </section>
                 <?php endforeach; ?>
 
-                <div id="omoServerEnvFeedback" class="omo-server-env-popup__feedback" aria-live="polite"></div>
+                <div id="omoServerEnvFeedback" class="omo-server-env-popup__feedback generic-soft-panel generic-feedback" aria-live="polite"></div>
 
-                <div class="omo-server-env-popup__actions">
+                <div class="omo-server-env-popup__actions generic-form-actions">
                     <button type="button" class="generic-action-button generic-action-button--secondary" id="omoServerEnvClose"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.action.close'), ENT_QUOTES, 'UTF-8') ?></button>
                     <button type="submit" class="generic-action-button generic-action-button--main" id="omoServerEnvSubmit"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.action.save', ['target' => $serverEnvTargetLabel]), ENT_QUOTES, 'UTF-8') ?></button>
                 </div>
@@ -378,12 +317,12 @@ $serverEnvClientTexts = [
         if (message && typeof window.commonNotify === 'function') {
             window.commonNotify(message, type === 'success' ? 'success' : 'error');
             node.textContent = '';
-            node.className = 'omo-server-env-popup__feedback';
+            node.className = 'omo-server-env-popup__feedback generic-soft-panel generic-feedback';
             return;
         }
 
         node.textContent = message || '';
-        node.className = 'omo-server-env-popup__feedback';
+        node.className = 'omo-server-env-popup__feedback generic-soft-panel generic-feedback';
 
         if (!message) {
             return;

@@ -110,6 +110,114 @@ function omoEscapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+let omoMobileHeaderMenuSequence = 0;
+
+function omoInitMobileHeaderMenus(container) {
+    if (!container || typeof container.querySelectorAll !== 'function') {
+        return;
+    }
+
+    const hosts = [];
+    if (container.matches && container.matches('[data-omo-header-actions]')) {
+        hosts.push(container);
+    }
+    container.querySelectorAll('[data-omo-header-actions]').forEach(function (host) {
+        hosts.push(host);
+    });
+
+    hosts.forEach(function (host) {
+        if (host.dataset.omoHeaderActionsReady === '1') {
+            return;
+        }
+
+        const actions = Array.from(host.children);
+        if (actions.length === 0) {
+            return;
+        }
+
+        omoMobileHeaderMenuSequence += 1;
+        const menuId = 'omo-mobile-header-actions-' + String(omoMobileHeaderMenuSequence);
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'omo-panel-view__mobile-actions-toggle';
+        toggle.setAttribute('aria-label', 'Actions');
+        toggle.setAttribute('aria-controls', menuId);
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.innerHTML = '<span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>';
+
+        const menu = document.createElement('div');
+        menu.id = menuId;
+        menu.className = 'omo-panel-view__mobile-actions-menu';
+        menu.setAttribute('role', 'menu');
+        menu.hidden = false;
+
+        actions.forEach(function (action) {
+            menu.appendChild(action);
+        });
+
+        host.appendChild(toggle);
+        host.appendChild(menu);
+        host.dataset.omoHeaderActionsReady = '1';
+
+        toggle.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+            omoCloseMobileHeaderMenus();
+            if (!isOpen) {
+                menu.hidden = false;
+                toggle.setAttribute('aria-expanded', 'true');
+                host.classList.add('is-mobile-menu-open');
+            }
+        });
+
+        menu.addEventListener('click', function (event) {
+            const nestedMenuToggle = event.target.closest('.generic-menu-toggle');
+            if (!nestedMenuToggle) {
+                omoCloseMobileHeaderMenu(host);
+            }
+        });
+    });
+
+    if (window.__omoMobileHeaderMenuEventsBound === true) {
+        return;
+    }
+
+    window.__omoMobileHeaderMenuEventsBound = true;
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('[data-omo-header-actions]')) {
+            omoCloseMobileHeaderMenus();
+        }
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            omoCloseMobileHeaderMenus();
+        }
+    });
+}
+
+function omoCloseMobileHeaderMenu(host) {
+    if (!host) {
+        return;
+    }
+
+    const toggle = host.querySelector('.omo-panel-view__mobile-actions-toggle');
+    const menu = host.querySelector('.omo-panel-view__mobile-actions-menu');
+    if (menu) {
+        menu.hidden = false;
+    }
+    if (toggle) {
+        toggle.setAttribute('aria-expanded', 'false');
+    }
+    host.classList.remove('is-mobile-menu-open');
+}
+
+function omoCloseMobileHeaderMenus() {
+    document.querySelectorAll('[data-omo-header-actions].is-mobile-menu-open').forEach(function (host) {
+        omoCloseMobileHeaderMenu(host);
+    });
+}
+
 function omoIsExecutableScriptTag(script) {
     if (!script || script.tagName !== 'SCRIPT') {
         return false;
@@ -788,6 +896,43 @@ function omoResolveDrawer(id = '') {
     };
 }
 
+function omoGetLoadText(path, fallback) {
+    const translations = window.commonTopbarConfig && window.commonTopbarConfig.translations
+        ? window.commonTopbarConfig.translations
+        : {};
+    const value = translations[path];
+    return typeof value === 'string' && value !== '' ? value : fallback;
+}
+
+function omoEscapeHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function omoRenderLoadError($target) {
+    const errorLabel = omoGetLoadText('loadErrorLabel', 'Erreur de chargement');
+    const errorDescription = omoGetLoadText(
+        'loadErrorDescription',
+        'Le contenu n’a pas pu être chargé. Vérifiez votre connexion puis réessayez.'
+    );
+    const retryLabel = omoGetLoadText('retryLabel', 'Réessayer');
+
+    $target.html([
+        '<div class="common-topbar-remote-state common-topbar-remote-state--error" role="alert">',
+        '<div class="common-topbar-remote-state__icon" aria-hidden="true">!</div>',
+        '<div class="common-topbar-remote-state__content">',
+        '<h3 class="common-topbar-remote-state__title">' + omoEscapeHtml(errorLabel) + '</h3>',
+        '<p class="common-topbar-remote-state__description">' + omoEscapeHtml(errorDescription) + '</p>',
+        '<button type="button" class="generic-action-button generic-action-button--main" data-omo-reload-content>' + omoEscapeHtml(retryLabel) + '</button>',
+        '</div>',
+        '</div>'
+    ].join(''));
+}
+
 function loadContent(target, url, type = 'panel', onLoaded = null) {
 
     const $target = $(target);
@@ -795,6 +940,9 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
     const requestId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const resolvedUrl = omoResolveAppUrl(url);
     const shouldTraceDecisionLoad = omoShouldTraceDecisionLoad($target, resolvedUrl);
+
+    $target.attr('data-omo-load-url', resolvedUrl);
+    $target.attr('data-omo-load-type', type);
 
     if (shouldTraceDecisionLoad) {
         omoTraceDecisionLoad('loadContent:start', {
@@ -847,7 +995,9 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
             });
 
             $target.html(temp.innerHTML);
+            omoInitMobileHeaderMenus($target.get(0));
             omoExecuteFetchedScripts(scriptSource);
+            omoInitMobileHeaderMenus($target.get(0));
 
             if (shouldTraceDecisionLoad || containsDecisionRoot) {
                 omoTraceDecisionLoad('loadContent:afterScriptExecution', {
@@ -878,7 +1028,7 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
                 });
             }
 
-            $target.html('<div class="error">Erreur de chargement</div>');
+            omoRenderLoadError($target);
 
         },
 
@@ -3782,6 +3932,18 @@ function omoOpenSearchTutorialResult(parcoursId, missionId = null) {
     );
 }
 
+$(document).on('click', '[data-omo-reload-content]', function (e) {
+    e.preventDefault();
+
+    const $target = $(this).closest('[data-omo-load-url]');
+    const url = $target.attr('data-omo-load-url') || '';
+    const type = $target.attr('data-omo-load-type') || 'panel';
+
+    if ($target.length && url !== '') {
+        loadContent($target, url, type);
+    }
+});
+
 $(document).on('click', '[data-hash]', function (e) {
 
     e.preventDefault();
@@ -5031,7 +5193,9 @@ function omoReplaceFetchedPanelRoot(options = {}) {
             }
 
             currentRoot.parentNode.replaceChild(nextRoot, currentRoot);
+            omoInitMobileHeaderMenus(nextRoot);
             omoExecuteFetchedScripts(scriptSource);
+            omoInitMobileHeaderMenus(nextRoot);
             return nextRoot;
         })
         .finally(function () {

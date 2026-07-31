@@ -99,6 +99,86 @@
 			);
 		}
 
+		public static function remapListReferenceIds($value, $formatId, array $referenceIdMap)
+		{
+			$value = trim((string)$value);
+			$formatId = (int)$formatId;
+			if ($value === '' || !self::isListFormat($formatId) || count($referenceIdMap) === 0) {
+				return $value;
+			}
+
+			$isHtmlList = $formatId === self::FORMAT_HTML_LIST;
+			$decoded = json_decode($value, true);
+			$htmlList = $isHtmlList
+				? array('before' => '', 'items' => array(), 'after' => '')
+				: null;
+			$items = array();
+
+			if (is_array($decoded)) {
+				if ($isHtmlList) {
+					$htmlList = $decoded;
+					$items = is_array($decoded['items'] ?? null) ? array_values($decoded['items']) : array();
+				} else {
+					$items = array_values($decoded);
+				}
+			} else {
+				$segments = preg_split('/(?<=[\]\}])\s*\|\s*(?=[\[\{])/', $value);
+				$decodedSegmentCount = 0;
+				foreach ($segments as $segment) {
+					$segmentValue = json_decode((string)$segment, true);
+					if (!is_array($segmentValue)) {
+						continue;
+					}
+					$decodedSegmentCount += 1;
+					if ($isHtmlList) {
+						if ($htmlList['before'] === '' && trim((string)($segmentValue['before'] ?? '')) !== '') {
+							$htmlList['before'] = (string)$segmentValue['before'];
+						}
+						if (trim((string)($segmentValue['after'] ?? '')) !== '') {
+							$htmlList['after'] = (string)$segmentValue['after'];
+						}
+						$segmentItems = is_array($segmentValue['items'] ?? null) ? $segmentValue['items'] : array();
+					} else {
+						$segmentItems = $segmentValue;
+					}
+					foreach ($segmentItems as $item) {
+						$items[] = $item;
+					}
+				}
+				if ($decodedSegmentCount === 0) {
+					return $value;
+				}
+			}
+
+			$remappedItems = array();
+			$seenItems = array();
+			foreach ($items as $item) {
+				$itemId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+				if ($itemId > 0 && isset($referenceIdMap[$itemId])) {
+					if (is_array($item)) {
+						$item['id'] = (int)$referenceIdMap[$itemId];
+					} else {
+						$item = (int)$referenceIdMap[$itemId];
+					}
+				}
+				$itemKey = is_array($item)
+					? json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+					: (string)$item;
+				if (isset($seenItems[$itemKey])) {
+					continue;
+				}
+				$seenItems[$itemKey] = true;
+				$remappedItems[] = $item;
+			}
+
+			if ($isHtmlList) {
+				$htmlList['items'] = $remappedItems;
+				return json_encode($htmlList, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+			}
+
+			return json_encode($remappedItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		}
+
 		public static function normalizeValueForStorage($formatId, $value)
 		{
 			if ((int)$formatId === self::FORMAT_TEXT_HTML) {

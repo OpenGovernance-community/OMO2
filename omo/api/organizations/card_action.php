@@ -93,11 +93,14 @@ switch ($action) {
 
 		$organizationName = trim((string)$organization->get('name'));
 		$deleted = $organization->delete();
+		$deleteError = method_exists($organization, 'getLastDeleteError')
+			? trim((string)$organization->getLastDeleteError())
+			: '';
 		$response = array(
 			'status' => (bool)$deleted,
 			'message' => $deleted
 				? (($organizationName !== '' ? $organizationName : 'L organisation') . ' a ete supprimee.')
-				: "L'organisation n'a pas pu etre supprimee.",
+				: ($deleteError !== '' ? $deleteError : "L'organisation n'a pas pu etre supprimee."),
 		);
 		break;
 }

@@ -5,10 +5,6 @@
     --omo-stats-overdue: #dc2626;
 }
 
-.omo-stats__app-icon {
-    --omo-panel-view-app-icon-accent: var(--omo-stats-accent);
-}
-
 .omo-stats__title-row,
 .omo-stats-card__header,
 .omo-stats-reference-editor__heading {
@@ -49,6 +45,34 @@
     display: none;
 }
 
+@media (max-width: 1024px) {
+    .omo-panel-view__mobile-actions-menu > .omo-stats__more-menu {
+        display: contents;
+    }
+
+    .omo-panel-view__mobile-actions-menu > .omo-stats__more-menu > .omo-stats__more-toggle {
+        display: none;
+    }
+
+    .omo-panel-view__mobile-actions-menu > .omo-stats__more-menu > .omo-stats__more-menu-panel {
+        position: static;
+        display: grid !important;
+        min-width: 0;
+        max-width: none;
+        gap: 6px;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .omo-panel-view__mobile-actions-menu > .omo-stats__more-menu > .omo-stats__more-menu-panel > .generic-menu-item {
+        width: 100%;
+        text-align: left;
+    }
+}
+
 .omo-stats-picker {
     display: grid;
     gap: 14px;
@@ -73,30 +97,24 @@
     gap: 10px;
 }
 
-.omo-stats__title-row {
-    justify-content: flex-start;
-    align-items: baseline;
-}
-
-.omo-stats__header .omo-panel-view__header-secondary {
-    align-items: center;
-}
-
-.omo-stats__header-view-controls {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
 .omo-stats__body {
     --omo-stats-body-padding: 18px;
-    padding: var(--omo-stats-body-padding);
+    padding: 0px var(--omo-stats-body-padding);
 }
 
 [data-omo-stats-view-panel][hidden] {
     display: none !important;
+}
+
+[data-omo-stats-search-item][hidden],
+[data-omo-stats-search-group][hidden],
+.omo-stats__search-empty[hidden],
+[data-omo-stats-default-empty][hidden] {
+    display: none !important;
+}
+
+.omo-stats__search-empty {
+    margin: 0;
 }
 
 .omo-stats-grid {
@@ -295,11 +313,6 @@
 
 .omo-stats-card__footer > time {
     grid-column: 2;
-}
-
-.omo-stats-card__footer .omo-stats-card__empty-value {
-    font-size: 0.88rem;
-    color: var(--color-text-light, #64748b);
 }
 
 .omo-stats-chart {
@@ -607,19 +620,9 @@
     padding: 18px;
 }
 
-.omo-stats-detail,
-.omo-stats-editor {
+.omo-stats-detail {
     display: grid;
     gap: 18px;
-}
-
-.omo-stats-editor__intro p,
-.omo-stats-schedule__heading p,
-.omo-stats-reference-editor__heading p,
-.omo-stats-quick-value p {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
-    line-height: 1.55;
 }
 
 .omo-stats-detail__meta {
@@ -627,8 +630,6 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 8px 16px;
-    color: var(--color-text-light, #64748b);
-    font-size: 0.88rem;
 }
 
 .omo-stats-detail__meta strong {
@@ -824,10 +825,11 @@
 
 .omo-stats-field {
     display: grid;
-    gap: 6px;
+    align-content: start;
+    gap: var(--generic-form-field-gap, var(--generic-space-2, 8px));
     min-width: 0;
-    color: var(--color-text-light, #64748b);
-    font-size: 0.82rem;
+    color: var(--color-text, #1f2937);
+    font-size: var(--generic-type-size-sm, 0.84rem);
     font-weight: 700;
 }
 
@@ -849,32 +851,12 @@
     margin: 0;
 }
 
-.omo-stats-editor .admin-edit__panel {
-    display: grid;
-    gap: 20px;
-}
-
-.omo-stats-schedule {
-    display: grid;
-    gap: 14px;
-}
-
-.omo-stats-schedule__heading > div {
-    display: grid;
-    gap: 6px;
-}
-
 .omo-stats-schedule__fields {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    --generic-form-grid-min: 240px;
 }
 
 .omo-stats-reference-editor {
-    display: grid;
-    gap: 14px;
-    padding-top: 18px;
-    border-top: 1px solid var(--color-border, #d1d5db);
+    min-width: 0;
 }
 
 .omo-stats-reference-editor[hidden] {
@@ -882,28 +864,15 @@
 }
 
 .omo-stats-ceiling-editor {
-    display: grid;
-    gap: 14px;
-    padding-top: 18px;
-    border-top: 1px solid var(--color-border, #d1d5db);
+    min-width: 0;
 }
 
 .omo-stats-ceiling-editor[hidden] {
     display: none !important;
 }
 
-.omo-stats-ceiling-editor__heading {
-    display: grid;
-    gap: 6px;
-}
-
 .omo-stats-reference-editor__heading {
     align-items: flex-start;
-}
-
-.omo-stats-reference-editor__heading > div {
-    display: grid;
-    gap: 6px;
 }
 
 .omo-stats-reference-editor__points {
@@ -1009,9 +978,6 @@
 }
 
 .omo-stats-editor__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
     padding-top: 4px;
 }
 

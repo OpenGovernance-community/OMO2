@@ -71,7 +71,7 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         <?php endif; ?>
     </div>
 
-    <div class="omo-stats-detail__meta omo-stats-detail__meta--compact">
+    <div class="omo-stats-detail__meta omo-stats-detail__meta--compact generic-meta">
         <span><strong><?= omoApiEscape(omoStatsT('stats.card.context')) ?> :</strong> <?= omoApiEscape($contextLabel) ?></span>
             <?php if ($overdueSeverity === 'warning'): ?>
                 <span class="omo-stats-overdue-label omo-stats-overdue-label--warning"><?= omoApiEscape(omoStatsT('stats.card.to_complete')) ?></span>
@@ -141,7 +141,7 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         <form class="generic-section generic-section--stack omo-stats-quick-value" data-omo-stats-add-value-form>
             <div>
                 <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.detail.add_title')) ?></h3>
-                <p><?= omoApiEscape(omoStatsT('stats.detail.add_help')) ?></p>
+                <p class="generic-description"><?= omoApiEscape(omoStatsT('stats.detail.add_help')) ?></p>
             </div>
             <input type="hidden" name="stats_action" value="add_value">
             <input type="hidden" name="indicator_id" value="<?= (int)$indicatorId ?>">

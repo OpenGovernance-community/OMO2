@@ -133,7 +133,7 @@ if ($currentHolonId > 0) {
     $detailUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
 }
 ?>
-<div class="omo-checklist-editor omo-checklist-step-editor" data-checklist-editor>
+<div class="omo-checklist-editor omo-checklist-step-editor generic-drawer-content" data-checklist-editor>
     <div
         hidden
         data-omo-subdrawer-header
@@ -143,15 +143,15 @@ if ($currentHolonId > 0) {
         <button type="submit" form="omo-checklist-item-form" class="generic-action-button generic-action-button--main" data-omo-subdrawer-action><?= omoApiEscape(omoChecklistT('checklist.action.save_item')) ?></button>
         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-checklist-back-detail data-url="<?= omoApiEscape($detailUrl) ?>"><?= omoApiEscape(omoChecklistT('checklist.action.cancel')) ?></button>
     </div>
-    <form id="omo-checklist-item-form" action="/omo/api/checklist/action.php" method="post" data-checklist-item-form data-checklist-container="<?= $isContainerChecklist ? '1' : '0' ?>" data-item-schedule-options="<?= omoApiEscape(json_encode($recurrenceScheduleOptions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>">
+    <form id="omo-checklist-item-form" class="generic-form-stack" action="/omo/api/checklist/action.php" method="post" data-checklist-item-form data-checklist-container="<?= $isContainerChecklist ? '1' : '0' ?>" data-item-schedule-options="<?= omoApiEscape(json_encode($recurrenceScheduleOptions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>">
         <input type="hidden" name="checklist_action" value="save_item">
         <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
         <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
         <input type="hidden" name="checklist_id" value="<?= (int)$checklistId ?>">
         <?php if ($isEdit): ?><input type="hidden" name="id" value="<?= (int)$itemId ?>"><?php endif; ?>
 
-        <section class="generic-section omo-checklist-item-editor" data-checklist-item-row>
-            <div class="omo-checklist-form-grid">
+        <section class="generic-section generic-section--stack generic-form-section omo-checklist-item-editor" data-checklist-item-row>
+            <div class="omo-checklist-form-grid generic-form-grid">
                 <label class="omo-checklist-field omo-checklist-field--wide">
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.item_title')) ?></span>
                     <input class="generic-form-control" type="text" name="title" value="<?= omoApiEscape((string)$project->get('title')) ?>" maxlength="255" required autofocus>
@@ -206,14 +206,14 @@ if ($currentHolonId > 0) {
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <div class="generic-soft-panel omo-checklist-field omo-checklist-field--wide">
+                <div class="generic-section generic-section--stack generic-form-section omo-checklist-field omo-checklist-field--wide">
                     <div class="omo-checklist-item-editor__header">
                         <div>
                             <h3 class="generic-card-title"><?= omoApiEscape(omoChecklistT('checklist.form.item_timing')) ?></h3>
                             <p><?= omoApiEscape(omoChecklistT('checklist.form.item_timing_help')) ?></p>
                         </div>
                     </div>
-                    <div class="omo-checklist-form-grid">
+                    <div class="omo-checklist-form-grid generic-form-grid">
                         <label class="omo-checklist-field">
                             <span><?= omoApiEscape(omoChecklistT('checklist.form.display_lead')) ?></span>
                             <input class="generic-form-control" type="number" name="display_lead_value" value="<?= (int)$displayLeadValue ?>" min="0" max="3650" step="1">
@@ -241,14 +241,14 @@ if ($currentHolonId > 0) {
                     </div>
                 </div>
                 <?php if ($isContainerChecklist): ?>
-                    <div class="generic-soft-panel omo-checklist-field omo-checklist-field--wide" data-checklist-item-recurrence>
+                    <div class="generic-section generic-section--stack generic-form-section omo-checklist-field omo-checklist-field--wide" data-checklist-item-recurrence>
                         <div class="omo-checklist-item-editor__header">
                             <div>
                                 <h3 class="generic-card-title"><?= omoApiEscape(omoChecklistT('checklist.form.item_recurrence')) ?></h3>
                                 <p><?= omoApiEscape(omoChecklistT('checklist.form.item_recurrence_help')) ?></p>
                             </div>
                         </div>
-                        <div class="omo-checklist-form-grid">
+                        <div class="omo-checklist-form-grid generic-form-grid">
                             <label class="omo-checklist-field">
                                 <span><?= omoApiEscape(omoChecklistT('checklist.form.frequency')) ?></span>
                                 <select class="generic-form-control" name="recurrence_frequency" data-checklist-item-frequency>
