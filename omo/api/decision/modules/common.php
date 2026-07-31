@@ -1279,6 +1279,124 @@ if (!function_exists('omoDecisionBuildMethodConfig')) {
     }
 }
 
+if (!function_exists('omoDecisionProposalGetSourceLang')) {
+    function omoDecisionProposalGetSourceLang()
+    {
+        return [
+            'decisions.proposals.add_title' => [
+                'text' => 'Ajouter une proposition',
+                'context' => 'Title of the public consultation proposal form.',
+            ],
+            'decisions.proposals.open_intro' => [
+                'text' => 'La consultation est ouverte. Vous pouvez proposer une nouvelle option avec son contexte et un lien d’information.',
+                'context' => 'Introduction shown above the public consultation proposal form.',
+            ],
+            'decisions.proposals.order_hint' => [
+                'text' => 'La proposition sera ajoutée à la fin de la liste. Son ordre détaillé reste gérable ensuite dans l’interface principale.',
+                'context' => 'Helper text explaining how a public consultation proposal is initially ordered.',
+            ],
+            'decisions.proposals.feedback_success_one' => [
+                'text' => 'Proposition ajoutée à la consultation.',
+                'context' => 'Success message after adding one public consultation proposal.',
+            ],
+            'decisions.proposals.feedback_success_other' => [
+                'text' => '{count} propositions ajoutées à la consultation.',
+                'context' => 'Success message after adding several public consultation proposals.',
+            ],
+            'decisions.proposals.feedback_duplicate' => [
+                'text' => 'Toutes les propositions soumises existent déjà.',
+                'context' => 'Feedback shown when submitted public proposals are all duplicates.',
+            ],
+            'decisions.proposals.feedback_empty' => [
+                'text' => 'Ajoutez au moins une proposition.',
+                'context' => 'Feedback shown when no public proposal was submitted.',
+            ],
+            'decisions.proposals.feedback_denied' => [
+                'text' => 'Ce lien ne permet pas d’ajouter des propositions pour le moment.',
+                'context' => 'Feedback shown when the public proposal link is no longer available.',
+            ],
+            'decisions.proposals.feedback_error' => [
+                'text' => 'Impossible d’ajouter la proposition pour le moment.',
+                'context' => 'Feedback shown when a public proposal cannot be saved.',
+            ],
+            'decisions.proposals.title_label' => [
+                'text' => 'Titre',
+                'context' => 'Title field label in the public consultation proposal form.',
+            ],
+            'decisions.proposals.title_placeholder' => [
+                'text' => 'Nom de la proposition',
+                'context' => 'Title field placeholder in the public consultation proposal form.',
+            ],
+            'decisions.proposals.description_label' => [
+                'text' => 'Description',
+                'context' => 'Description field label in the public consultation proposal form.',
+            ],
+            'decisions.proposals.description_placeholder' => [
+                'text' => 'Contexte, détails, arguments utiles…',
+                'context' => 'Description field placeholder in the public consultation proposal form.',
+            ],
+            'decisions.proposals.info_url_label' => [
+                'text' => 'URL d’information',
+                'context' => 'Information URL field label in the public consultation proposal form.',
+            ],
+            'decisions.proposals.submit' => [
+                'text' => 'Ajouter la proposition',
+                'context' => 'Submit button in the public consultation proposal form.',
+            ],
+            'decisions.proposals.denied.option_disabled' => [
+                'text' => 'L’ajout de propositions n’est pas activé pour ce scrutin.',
+                'context' => 'Error shown when public proposal submission is disabled for the decision.',
+            ],
+            'decisions.proposals.denied.consultation_not_started' => [
+                'text' => 'La consultation n’a pas encore commencé.',
+                'context' => 'Error shown when the consultation has not started yet.',
+            ],
+            'decisions.proposals.denied.evaluation_started' => [
+                'text' => 'La phase de vote a déjà commencé.',
+                'context' => 'Error shown when evaluation has already started.',
+            ],
+            'decisions.proposals.denied.participant_not_found' => [
+                'text' => 'Aucun participant autorisé n’a été retrouvé pour ce lien ou ce compte.',
+                'context' => 'Error shown when no authorized participant can be found.',
+            ],
+            'decisions.proposals.denied.participant_inactive' => [
+                'text' => 'Ce participant n’est plus actif pour ce scrutin.',
+                'context' => 'Error shown when the participant is inactive.',
+            ],
+            'decisions.proposals.denied.participant_status_declined' => [
+                'text' => 'Votre participation a été refusée pour ce scrutin.',
+                'context' => 'Error shown when the participant declined the decision.',
+            ],
+            'decisions.proposals.denied.participant_status_revoked' => [
+                'text' => 'Votre accès à ce scrutin a été révoqué.',
+                'context' => 'Error shown when the participant access was revoked.',
+            ],
+            'decisions.proposals.denied.invalid_decision' => [
+                'text' => 'Le scrutin n’a pas pu être chargé.',
+                'context' => 'Error shown when the decision cannot be loaded.',
+            ],
+            'decisions.proposals.denied.default' => [
+                'text' => 'Ce lien ne permet pas d’ajouter des propositions pour le moment.',
+                'context' => 'Fallback error for public proposal submission.',
+            ],
+        ];
+    }
+}
+
+if (!function_exists('omoDecisionProposalT')) {
+    function omoDecisionProposalT($key, array $variables = [])
+    {
+        static $sourceLang = null;
+        static $lang = null;
+        if ($sourceLang === null) {
+            $sourceLang = omoDecisionProposalGetSourceLang();
+            $lang = omoLoadTranslationBundle('omo_decision_proposals', $sourceLang);
+        }
+
+        return t($key, $variables, $lang, $sourceLang);
+    }
+}
+
 if (!function_exists('omoDecisionCanSubmitConsultationProposal')) {
     function omoDecisionGetConsultationProposalAvailability($decision, array $context)
     {
@@ -1404,23 +1522,23 @@ if (!function_exists('omoDecisionGetConsultationProposalDeniedMessage')) {
     {
         switch (trim((string)$reason)) {
             case 'option_disabled':
-                return 'L ajout de propositions n est pas active pour ce scrutin.';
+                return omoDecisionProposalT('decisions.proposals.denied.option_disabled');
             case 'consultation_not_started':
-                return 'La consultation n a pas encore commence.';
+                return omoDecisionProposalT('decisions.proposals.denied.consultation_not_started');
             case 'evaluation_started':
-                return 'La phase de vote a deja commence.';
+                return omoDecisionProposalT('decisions.proposals.denied.evaluation_started');
             case 'participant_not_found':
-                return 'Aucun participant autorise n a ete retrouve pour ce lien ou ce compte.';
+                return omoDecisionProposalT('decisions.proposals.denied.participant_not_found');
             case 'participant_inactive':
-                return 'Ce participant n est plus actif pour ce scrutin.';
+                return omoDecisionProposalT('decisions.proposals.denied.participant_inactive');
             case 'participant_status_declined':
-                return 'Votre participation a ete refusee pour ce scrutin.';
+                return omoDecisionProposalT('decisions.proposals.denied.participant_status_declined');
             case 'participant_status_revoked':
-                return 'Votre acces a ce scrutin a ete revoque.';
+                return omoDecisionProposalT('decisions.proposals.denied.participant_status_revoked');
             case 'invalid_decision':
-                return 'Le scrutin n a pas pu etre charge.';
+                return omoDecisionProposalT('decisions.proposals.denied.invalid_decision');
             default:
-                return 'Ce lien ne permet pas d ajouter des propositions pour le moment.';
+                return omoDecisionProposalT('decisions.proposals.denied.default');
         }
     }
 }
@@ -1470,29 +1588,29 @@ if (!function_exists('omoDecisionRenderConsultationProposalPublicPanel')) {
             $feedbackClass = ' style="background:color-mix(in srgb, var(--color-success, #16a34a) 10%, var(--color-surface, #ffffff));border-color:color-mix(in srgb, var(--color-success, #16a34a) 28%, var(--color-surface, #ffffff));"';
             $feedbackType = 'success';
             $feedbackMessage = $feedbackCount > 1
-                ? $feedbackCount . ' propositions ajoutees a la consultation.'
-                : 'Proposition ajoutee a la consultation.';
+                ? omoDecisionProposalT('decisions.proposals.feedback_success_other', ['count' => $feedbackCount])
+                : omoDecisionProposalT('decisions.proposals.feedback_success_one');
         } elseif ($feedbackStatus === 'duplicate') {
             $feedbackClass = ' style="background:color-mix(in srgb, var(--color-warning, #f59e0b) 10%, var(--color-surface, #ffffff));border-color:color-mix(in srgb, var(--color-warning, #f59e0b) 28%, var(--color-surface, #ffffff));"';
-            $feedbackMessage = 'Toutes les propositions soumises existent deja.';
+            $feedbackMessage = omoDecisionProposalT('decisions.proposals.feedback_duplicate');
         } elseif ($feedbackStatus === 'empty') {
             $feedbackClass = ' style="background:color-mix(in srgb, var(--color-warning, #f59e0b) 10%, var(--color-surface, #ffffff));border-color:color-mix(in srgb, var(--color-warning, #f59e0b) 28%, var(--color-surface, #ffffff));"';
-            $feedbackMessage = 'Ajoutez au moins une proposition.';
+            $feedbackMessage = omoDecisionProposalT('decisions.proposals.feedback_empty');
         } elseif ($feedbackStatus === 'denied') {
             $feedbackClass = ' style="background:color-mix(in srgb, var(--color-warning, #f59e0b) 10%, var(--color-surface, #ffffff));border-color:color-mix(in srgb, var(--color-warning, #f59e0b) 28%, var(--color-surface, #ffffff));"';
-            $feedbackMessage = 'Ce lien ne permet pas d ajouter des propositions pour le moment.';
+            $feedbackMessage = omoDecisionProposalT('decisions.proposals.feedback_denied');
         } elseif ($feedbackStatus === 'error') {
             $feedbackClass = ' style="background:color-mix(in srgb, var(--color-danger, #dc2626) 8%, var(--color-surface, #ffffff));border-color:color-mix(in srgb, var(--color-danger, #dc2626) 24%, var(--color-surface, #ffffff));"';
             $feedbackType = 'error';
-            $feedbackMessage = 'Impossible d ajouter la proposition pour le moment.';
+            $feedbackMessage = omoDecisionProposalT('decisions.proposals.feedback_error');
         }
 
         $returnUrl = omoDecisionBuildConsultationProposalReturnUrl($context);
         $html = '<div class="generic-soft-panel generic-soft-panel--stack' . $extraClass . '">'
             . '<div style="display:grid;gap:6px;">'
-                . '<h2 class="generic-card-title generic-card-title--section" style="margin:0;">Ajouter une proposition</h2>'
-                . '<p style="margin:0;color:var(--color-text-light,#475569);line-height:1.6;">La consultation est ouverte. Vous pouvez proposer une nouvelle option avec son contexte et un lien d information.</p>'
-                . '<p style="margin:0;color:var(--color-text-light,#64748b);font-size:13px;line-height:1.5;">La proposition sera ajoutee a la fin de la liste. Son ordre detaille reste gerable ensuite dans l interface principale.</p>'
+                . '<h2 class="generic-card-title generic-card-title--section" style="margin:0;">' . $escape(omoDecisionProposalT('decisions.proposals.add_title')) . '</h2>'
+                . '<p style="margin:0;color:var(--color-text-light,#475569);line-height:1.6;">' . $escape(omoDecisionProposalT('decisions.proposals.open_intro')) . '</p>'
+                . '<p style="margin:0;color:var(--color-text-light,#64748b);font-size:13px;line-height:1.5;">' . $escape(omoDecisionProposalT('decisions.proposals.order_hint')) . '</p>'
             . '</div>';
 
         if ($feedbackMessage !== '') {
@@ -1518,21 +1636,21 @@ if (!function_exists('omoDecisionRenderConsultationProposalPublicPanel')) {
                 . omoDecisionRenderPublicTokenInput($context, $escape)
                 . '<div style="display:grid;gap:10px;">'
                     . '<label style="display:grid;gap:6px;">'
-                        . '<span class="generic-card-title generic-card-title--small">Titre</span>'
-                        . '<input type="text" class="generic-form-control" name="consultation_proposal_title" value="" placeholder="Nom de la proposition" required>'
+                        . '<span class="generic-card-title generic-card-title--small">' . $escape(omoDecisionProposalT('decisions.proposals.title_label')) . '</span>'
+                        . '<input type="text" class="generic-form-control" name="consultation_proposal_title" value="" placeholder="' . $escape(omoDecisionProposalT('decisions.proposals.title_placeholder')) . '" required>'
                     . '</label>'
                     . '<label style="display:grid;gap:6px;">'
-                        . '<span class="generic-card-title generic-card-title--small">Description</span>'
-                        . '<textarea class="generic-form-control" name="consultation_proposal_description" rows="4" placeholder="Contexte, details, arguments utiles..."></textarea>'
+                        . '<span class="generic-card-title generic-card-title--small">' . $escape(omoDecisionProposalT('decisions.proposals.description_label')) . '</span>'
+                        . '<textarea class="generic-form-control" name="consultation_proposal_description" rows="4" placeholder="' . $escape(omoDecisionProposalT('decisions.proposals.description_placeholder')) . '"></textarea>'
                     . '</label>'
                     . '<label style="display:grid;gap:6px;">'
-                        . '<span class="generic-card-title generic-card-title--small">URL d information</span>'
+                        . '<span class="generic-card-title generic-card-title--small">' . $escape(omoDecisionProposalT('decisions.proposals.info_url_label')) . '</span>'
                         . '<input type="url" class="generic-form-control" name="consultation_proposal_info_url" value="" placeholder="https://...">'
                     . '</label>'
                 . '</div>'
                 . '<div data-omo-decision-consultation-proposal-feedback hidden></div>'
                 . '<div style="display:flex;justify-content:flex-end;">'
-                    . '<button type="submit" class="generic-action-button generic-action-button--main">Ajouter la proposition</button>'
+                    . '<button type="submit" class="generic-action-button generic-action-button--main">' . $escape(omoDecisionProposalT('decisions.proposals.submit')) . '</button>'
                 . '</div>'
             . '</form>'
         . '</div>';
