@@ -13,7 +13,6 @@ if (!function_exists('omoChecklistSourceLang')) {
     {
         return [
             'checklist.title' => ['text' => 'Checklists', 'context' => 'Main title of the checklist application.'],
-            'checklist.description' => ['text' => 'Des processus réutilisables qui deviennent des projets au bon moment.', 'context' => 'Introduction of the checklist application.'],
             'checklist.action.new' => ['text' => 'Ajouter', 'context' => 'Button opening checklist creation.'],
             'checklist.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening checklist edition.'],
             'checklist.action.close' => ['text' => 'Fermer', 'context' => 'Button closing the checklist drawer.'],
@@ -29,6 +28,13 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.scope.contextual' => ['text' => 'Local', 'context' => 'Scope showing checklists attached to the current holon.'],
             'checklist.scope.children' => ['text' => 'Enfants directs', 'context' => 'Scope showing checklists attached to the current holon and direct children.'],
             'checklist.scope.descendants' => ['text' => 'Descendants', 'context' => 'Scope showing checklists attached to the current holon and descendants.'],
+            'checklist.filters.aria' => ['text' => 'Filtres des checklists', 'context' => 'Accessible label for compact checklist filters.'],
+            'checklist.filters.scope' => ['text' => 'Contexte', 'context' => 'Heading for checklist scope choices.'],
+            'checklist.filters.apply' => ['text' => 'Appliquer', 'context' => 'Button applying temporary checklist filters.'],
+            'checklist.filters.save_view' => ['text' => 'Enregistrer cette vue', 'context' => 'Button saving checklist view for current context.'],
+            'checklist.search.aria' => ['text' => 'Filtrer les checklists affichees', 'context' => 'Accessible label for checklist quick search.'],
+            'checklist.search.placeholder' => ['text' => 'Filtrer les checklists', 'context' => 'Placeholder for checklist quick search.'],
+            'checklist.search.empty' => ['text' => 'Aucune checklist ne correspond a cette recherche.', 'context' => 'Empty state when checklist quick search has no result.'],
             'checklist.empty.contextual' => ['text' => 'Aucune checklist dans ce contexte.', 'context' => 'Empty state for local checklist scope.'],
             'checklist.empty.children' => ['text' => 'Aucune checklist dans ce contexte ou ses enfants directs.', 'context' => 'Empty state for direct children scope.'],
             'checklist.empty.descendants' => ['text' => 'Aucune checklist dans ce contexte ou ses descendants.', 'context' => 'Empty state for descendant scope.'],

@@ -3,6 +3,8 @@ namespace dbObject;
 
 class Authority extends DbObject
 {
+	public const IMPORT_NEEDS_PARENT_MARKER = '[OMO1_IMPORT_NEEDS_PARENT]';
+
     public const DELETION_DELETE = 'delete';
     public const DELETION_REASSIGN = 'reassign';
 
@@ -16,9 +18,9 @@ class Authority extends DbObject
         return [
             [['IDholon', 'label'], 'required'],
             [['id'], 'integer'],
-            [['IDholon', 'IDauthority_parent'], 'fk'],
+            [['IDholon', 'IDauthority_parent', 'IDauthority_template'], 'fk'],
             [['label', 'description'], 'string'],
-            [['is_shell'], 'boolean'],
+            [['is_shell', 'is_local', 'template_origin_lost'], 'boolean'],
             [['created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],
         ];
@@ -30,9 +32,12 @@ class Authority extends DbObject
             'id' => 'ID',
             'IDholon' => 'Holon responsable',
             'IDauthority_parent' => 'Autorite parente',
+            'IDauthority_template' => 'Autorite source du template',
             'label' => 'Autorite',
             'description' => 'Description',
             'is_shell' => 'Coquille de delegation complete',
+            'is_local' => 'Autorite locale',
+            'template_origin_lost' => 'Origine template perdue',
             'created_at' => 'Date de creation',
             'updated_at' => 'Date de modification',
         ];
@@ -43,9 +48,12 @@ class Authority extends DbObject
         return [
             'IDholon' => 'Holon auquel cette autorite est confiee.',
             'IDauthority_parent' => 'Domaine plus large dont cette autorite est issue.',
+            'IDauthority_template' => 'Autorite du template ayant cree cette instance.',
             'label' => 'Domaine precis sur lequel le holon peut exercer son autorite.',
             'description' => 'Description plus detaillee du domaine couvert par cette autorite.',
             'is_shell' => 'Marque une autorite conservee uniquement comme jalon apres une delegation complete.',
+            'is_local' => 'Permet a une autorite de demarrer une hierarchie locale au holon.',
+            'template_origin_lost' => 'Indique qu une instance conservee n est plus reliee a son autorite source.',
         ];
     }
 
@@ -69,7 +77,7 @@ class Authority extends DbObject
         }
 
         $rows = self::fetchAll(
-            'SELECT a.`id`, a.`label`, a.`description`, a.`is_shell`, a.`IDauthority_parent`, a.`IDholon`,
+            'SELECT a.`id`, a.`label`, a.`description`, a.`is_shell`, a.`is_local`, a.`template_origin_lost`, a.`IDauthority_template`, a.`IDauthority_parent`, a.`IDholon`, h.`visible` AS holon_visible, h.`templatename` AS holon_template_name,
                     (SELECT COUNT(*) FROM `rule` r WHERE r.`IDauthority` = a.`id`) AS rule_count,
                     h.`name` AS holon_name, h.`nomcomplet` AS holon_full_name
              FROM `authority` a
@@ -90,11 +98,18 @@ class Authority extends DbObject
                 continue;
             }
 
-            $catalogById[$authorityId] = [
-                'id' => $authorityId,
-                'label' => trim((string)($row['label'] ?? '')),
-                'description' => trim((string)($row['description'] ?? '')),
-                'isShell' => !empty($row['is_shell']),
+			$catalogById[$authorityId] = [
+				'id' => $authorityId,
+				'label' => trim((string)($row['label'] ?? '')),
+				'description' => trim(str_replace(self::IMPORT_NEEDS_PARENT_MARKER, '', (string)($row['description'] ?? ''))),
+				'isShell' => !empty($row['is_shell']),
+				'isLocal' => !empty($row['is_local']),
+				'templateAuthorityId' => (int)($row['IDauthority_template'] ?? 0),
+				'templateOriginLost' => !empty($row['template_origin_lost']),
+				'isTemplateInstance' => (int)($row['IDauthority_template'] ?? 0) > 0 && empty($row['template_origin_lost']),
+				'isTemplateSource' => (int)($row['IDauthority_template'] ?? 0) <= 0
+					&& (empty($row['holon_visible']) || trim((string)($row['holon_template_name'] ?? '')) !== ''),
+				'needsParent' => strpos((string)($row['description'] ?? ''), self::IMPORT_NEEDS_PARENT_MARKER) !== false,
                 'parentId' => (int)($row['IDauthority_parent'] ?? 0),
                 'holonId' => (int)($row['IDholon'] ?? 0),
                 'ruleCount' => (int)($row['rule_count'] ?? 0),
@@ -135,7 +150,10 @@ class Authority extends DbObject
         $this->set('label', $label);
         $this->set('description', $description !== '' ? $description : null);
         $this->set('IDauthority_parent', $parentId > 0 ? $parentId : null);
+        $this->set('IDauthority_template', (int)$this->get('IDauthority_template') > 0 ? (int)$this->get('IDauthority_template') : null);
         $this->set('is_shell', !empty($this->get('is_shell')) ? 1 : 0);
+        $this->set('is_local', !empty($this->get('is_local')) ? 1 : 0);
+        $this->set('template_origin_lost', !empty($this->get('template_origin_lost')) ? 1 : 0);
 
         if ($parentId > 0) {
             if ($authorityId > 0 && $parentId === $authorityId) {
@@ -171,7 +189,7 @@ class Authority extends DbObject
         return parent::save();
     }
 
-    public function getHolon()
+	public function getHolon()
     {
         $holon = new Holon();
         return $holon->load((int)$this->get('IDholon')) ? $holon : null;
@@ -238,6 +256,16 @@ class Authority extends DbObject
     public function isShell()
     {
         return !empty($this->get('is_shell'));
+    }
+
+    public function isTemplateInstance()
+    {
+        return (int)$this->get('IDauthority_template') > 0 && empty($this->get('template_origin_lost'));
+    }
+
+    public function hasLostTemplateOrigin()
+    {
+        return !empty($this->get('template_origin_lost'));
     }
 
     public function delegateCompletelyToHolon(Holon $targetHolon)

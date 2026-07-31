@@ -616,7 +616,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                 <?php endif; ?>
 
                 <form
-                    class="omo-decision-vote__form"
+                    class="omo-decision-vote__form generic-form-stack"
                     action="/omo/api/decision/modules/vote/save.php"
                     method="post"
                     data-omo-decision-vote-form
@@ -905,7 +905,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         <div class="omo-decision-vote__proposal-list" data-omo-decision-vote-proposal-list>
                             <?php foreach ($proposalItems as $proposalIndex => $proposalItem): ?>
                             <div
-                                class="omo-decision-vote__proposal-card<?= $canEditProposals ? '' : ' omo-decision-vote__proposal-card--locked' ?>"
+                                class="omo-decision-vote__proposal-card omo-decision-proposal-card generic-section<?= $canEditProposals ? '' : ' omo-decision-vote__proposal-card--locked omo-decision-proposal-card--locked' ?>"
                                 data-omo-decision-vote-proposal-card
                                 draggable="<?= $canEditProposals ? 'true' : 'false' ?>"
                             >
@@ -944,7 +944,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                         aria-expanded="false"
                                         aria-label="Actions"
                                     >...</button>
-                                    <div class="omo-decision-vote__proposal-menu-panel" data-omo-decision-vote-proposal-menu-panel role="menu" hidden>
+                                    <div class="omo-decision-vote__proposal-menu-panel omo-decision-proposal-menu-panel generic-soft-panel" data-omo-decision-vote-proposal-menu-panel role="menu" hidden>
                                         <button
                                             type="button"
                                             class="generic-action-button generic-action-button--secondary omo-decision-vote__proposal-menu-item"
@@ -1026,7 +1026,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
 
                 <?php if ($isParticipateMode): ?>
                 <form
-                    class="omo-decision-vote__form"
+                    class="omo-decision-vote__form generic-form-stack"
                     action="/omo/api/decision/modules/vote/respond.php"
                     method="post"
                     data-omo-decision-vote-response-form
@@ -1750,7 +1750,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
 
                         const createProposalCard = function (value) {
                             const card = document.createElement('div');
-                            card.className = 'omo-decision-vote__proposal-card';
+                            card.className = 'omo-decision-vote__proposal-card omo-decision-proposal-card generic-section';
                             card.setAttribute('data-omo-decision-vote-proposal-card', '1');
                             card.setAttribute('draggable', 'true');
                             card.innerHTML = ''
@@ -1763,7 +1763,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                 + '</div>'
                                 + '<div class="omo-decision-vote__proposal-menu" data-omo-decision-vote-proposal-menu>'
                                 + '    <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-vote__proposal-menu-toggle" data-omo-decision-vote-proposal-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Actions">...</button>'
-                                + '    <div class="omo-decision-vote__proposal-menu-panel" data-omo-decision-vote-proposal-menu-panel role="menu" hidden>'
+                                + '    <div class="omo-decision-vote__proposal-menu-panel omo-decision-proposal-menu-panel generic-soft-panel" data-omo-decision-vote-proposal-menu-panel role="menu" hidden>'
                                 + '        <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-vote__proposal-menu-item" data-omo-decision-vote-proposal-settings role="menuitem">' + String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details') + '</button>'
                                 + '        <button type="button" class="generic-action-button generic-action-button--danger omo-decision-vote__proposal-menu-item" data-omo-decision-vote-proposal-remove role="menuitem">' + String(payload.texts && payload.texts.proposalRemove ? payload.texts.proposalRemove : 'Supprimer') + '</button>'
                                 + '    </div>'
@@ -2147,11 +2147,15 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
 
         .omo-decision-vote__head,
         .omo-decision-vote__copy,
-        .omo-decision-vote__form,
         .omo-decision-vote__field,
         .omo-decision-vote__notice {
             display: grid;
             gap: 8px;
+        }
+
+        .omo-decision-vote__form {
+            display: grid;
+            gap: var(--generic-form-gap, var(--generic-space-4, 16px));
         }
 
         .omo-decision-vote__head {
@@ -2165,13 +2169,6 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 12px;
-        }
-
-        .omo-decision-vote__text,
-        .omo-decision-vote__hint {
-            margin: 0;
-            color: var(--color-text-light, #475569);
-            line-height: 1.6;
         }
 
         .omo-decision-vote__textarea {
@@ -2243,7 +2240,6 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             font-size: 0.92rem;
         }
 
-        .omo-decision-vote__proposal-card,
         .omo-decision-vote__readonly-item,
         .omo-decision-vote__option {
             display: grid;
@@ -2258,10 +2254,6 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         .omo-decision-vote__proposal-card {
             grid-template-columns: auto minmax(0, 1fr) auto;
             transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
-        }
-
-        .omo-decision-vote__proposal-card--locked {
-            grid-template-columns: minmax(0, 1fr) auto;
         }
 
         .omo-decision-vote__proposal-card.is-dragging {
@@ -2318,25 +2310,6 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         .omo-decision-vote__proposal-menu-toggle {
             min-width: 42px;
             padding-inline: 12px;
-        }
-
-        .omo-decision-vote__proposal-menu-panel {
-            position: absolute;
-            top: calc(100% + 6px);
-            right: 0;
-            min-width: 180px;
-            display: grid;
-            gap: 6px;
-            padding: 8px;
-            border: 1px solid var(--color-border, #d1d5db);
-            border-radius: var(--radius-md);
-            background: var(--color-surface, #ffffff);
-            box-shadow: 0 16px 30px rgba(15, 23, 42, 0.14);
-            z-index: 5;
-        }
-
-        .omo-decision-vote__proposal-menu-panel[hidden] {
-            display: none;
         }
 
         .omo-decision-vote__proposal-menu-item {

@@ -372,7 +372,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                 </div>
                 <?php endif; ?>
 
-                <form class="omo-decision-majority-judgment__form" action="/omo/api/decision/modules/majority_judgment/save.php" method="post" data-omo-decision-majority-judgment-form>
+                <form class="omo-decision-majority-judgment__form generic-form-stack" action="/omo/api/decision/modules/majority_judgment/save.php" method="post" data-omo-decision-majority-judgment-form>
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
@@ -607,7 +607,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.proposals', [], $lang, $sourceLang)) ?></span>
                         <div class="omo-decision-majority-judgment__proposal-list" data-omo-decision-mj-proposal-list>
                             <?php foreach ($proposalItems as $proposalIndex => $proposalItem): ?>
-                            <div class="omo-decision-majority-judgment__proposal-card<?= $canEditProposals ? '' : ' omo-decision-majority-judgment__proposal-card--locked' ?>" data-omo-decision-mj-proposal-card draggable="<?= $canEditProposals ? 'true' : 'false' ?>">
+                            <div class="omo-decision-majority-judgment__proposal-card omo-decision-proposal-card generic-section<?= $canEditProposals ? '' : ' omo-decision-majority-judgment__proposal-card--locked omo-decision-proposal-card--locked' ?>" data-omo-decision-mj-proposal-card draggable="<?= $canEditProposals ? 'true' : 'false' ?>">
                                 <?php if ($canEditProposals): ?>
                                 <button type="button" class="omo-decision-majority-judgment__proposal-drag" data-omo-decision-mj-proposal-drag title="<?= $escape(t('decisions.majority_judgment.field.proposals_reorder', [], $lang, $sourceLang)) ?>" aria-label="<?= $escape(t('decisions.majority_judgment.field.proposals_reorder', [], $lang, $sourceLang)) ?>">&#8942;&#8942;</button>
                                 <?php endif; ?>
@@ -619,7 +619,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 </div>
                                 <div class="omo-decision-majority-judgment__proposal-menu" data-omo-decision-mj-proposal-menu>
                                     <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-majority-judgment__proposal-menu-toggle" data-omo-decision-mj-proposal-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Actions">...</button>
-                                    <div class="omo-decision-majority-judgment__proposal-menu-panel" data-omo-decision-mj-proposal-menu-panel role="menu" hidden>
+                                    <div class="omo-decision-majority-judgment__proposal-menu-panel omo-decision-proposal-menu-panel generic-soft-panel" data-omo-decision-mj-proposal-menu-panel role="menu" hidden>
                                         <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-majority-judgment__proposal-menu-item" data-omo-decision-mj-proposal-settings role="menuitem"><?= $escape(t('decisions.majority_judgment.field.proposal_details', [], $lang, $sourceLang)) ?></button>
                                         <?php if ($canEditProposals): ?>
                                         <button type="button" class="generic-action-button generic-action-button--danger omo-decision-majority-judgment__proposal-menu-item" data-omo-decision-mj-proposal-remove role="menuitem"><?= $escape(t('decisions.majority_judgment.field.proposals_remove', [], $lang, $sourceLang)) ?></button>
@@ -669,7 +669,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                 <?php endif; ?>
 
                 <?php if ($isParticipateMode): ?>
-                <form class="omo-decision-majority-judgment__form" action="/omo/api/decision/modules/majority_judgment/respond.php" method="post" data-omo-decision-mj-response-form>
+                <form class="omo-decision-majority-judgment__form generic-form-stack" action="/omo/api/decision/modules/majority_judgment/respond.php" method="post" data-omo-decision-mj-response-form>
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
@@ -772,7 +772,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         $noOpinionCountUnweighted = (int)($statUnweighted['no_opinion_count'] ?? 0);
                         ?>
                         <div
-                            class="omo-decision-majority-judgment__result-card<?= array_key_exists($proposalId, $selectedScores) ? ' is-selected' : '' ?>"
+                            class="omo-decision-majority-judgment__result-card generic-soft-panel generic-soft-panel--stack<?= array_key_exists($proposalId, $selectedScores) ? ' is-selected' : '' ?>"
                             data-omo-decision-mj-result-item
                             data-omo-decision-mj-result-rank="<?= $escape((string)($resultRankIndex + 1)) ?>"
                             data-omo-decision-mj-result-position="<?= $escape((string)$proposalPosition) ?>"
@@ -1494,7 +1494,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
 
                         const createProposalCard = function (value) {
                             const card = document.createElement('div');
-                            card.className = 'omo-decision-majority-judgment__proposal-card';
+                            card.className = 'omo-decision-majority-judgment__proposal-card omo-decision-proposal-card generic-section';
                             card.setAttribute('data-omo-decision-mj-proposal-card', '1');
                             card.setAttribute('draggable', 'true');
                             card.innerHTML = ''
@@ -1507,7 +1507,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 + '</div>'
                                 + '<div class="omo-decision-majority-judgment__proposal-menu" data-omo-decision-mj-proposal-menu>'
                                 + '    <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-majority-judgment__proposal-menu-toggle" data-omo-decision-mj-proposal-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Actions">...</button>'
-                                + '    <div class="omo-decision-majority-judgment__proposal-menu-panel" data-omo-decision-mj-proposal-menu-panel role="menu" hidden>'
+                                + '    <div class="omo-decision-majority-judgment__proposal-menu-panel omo-decision-proposal-menu-panel generic-soft-panel" data-omo-decision-mj-proposal-menu-panel role="menu" hidden>'
                                 + '        <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-majority-judgment__proposal-menu-item" data-omo-decision-mj-proposal-settings role="menuitem">' + String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details') + '</button>'
                                 + '        <button type="button" class="generic-action-button generic-action-button--danger omo-decision-majority-judgment__proposal-menu-item" data-omo-decision-mj-proposal-remove role="menuitem">' + String(payload.texts && payload.texts.proposalRemove ? payload.texts.proposalRemove : 'Supprimer') + '</button>'
                                 + '    </div>'
@@ -1909,12 +1909,6 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             gap: 12px;
         }
 
-        .omo-decision-majority-judgment__text {
-            margin: 0;
-            color: var(--color-text-light, #475569);
-            line-height: 1.6;
-        }
-
         .omo-decision-majority-judgment__textarea {
             min-height: 110px;
         }
@@ -1957,21 +1951,6 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             font-size: 0.92rem;
         }
 
-        .omo-decision-majority-judgment__proposal-card {
-            display: grid;
-            grid-template-columns: auto minmax(0, 1fr) auto;
-            gap: 10px;
-            align-items: center;
-            padding: 12px;
-            border-radius: var(--radius-md);
-            border: 1px solid color-mix(in srgb, var(--color-text-light, #64748b) 14%, white);
-            background: white;
-        }
-
-        .omo-decision-majority-judgment__proposal-card--locked {
-            grid-template-columns: minmax(0, 1fr) auto;
-        }
-
         .omo-decision-majority-judgment__proposal-drag {
             border: 0;
             background: transparent;
@@ -1994,25 +1973,6 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         .omo-decision-majority-judgment__proposal-menu-toggle {
             min-width: 42px;
             padding-inline: 12px;
-        }
-
-        .omo-decision-majority-judgment__proposal-menu-panel {
-            position: absolute;
-            top: calc(100% + 6px);
-            right: 0;
-            min-width: 180px;
-            display: grid;
-            gap: 6px;
-            padding: 8px;
-            border: 1px solid var(--color-border, #d1d5db);
-            border-radius: var(--radius-md);
-            background: var(--color-surface, #ffffff);
-            box-shadow: 0 16px 30px rgba(15, 23, 42, 0.14);
-            z-index: 5;
-        }
-
-        .omo-decision-majority-judgment__proposal-menu-panel[hidden] {
-            display: none;
         }
 
         .omo-decision-majority-judgment__proposal-menu-item {
@@ -2210,12 +2170,6 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
 
         .omo-decision-majority-judgment__result-card,
         .omo-decision-majority-judgment__rating-card {
-            display: grid;
-            gap: 12px;
-            padding: 14px;
-            border-radius: var(--radius-md);
-            border: 1px solid color-mix(in srgb, var(--color-text-light, #64748b) 14%, white);
-            background: var(--color-surface, #ffffff);
             touch-action: pan-y pinch-zoom;
         }
 

@@ -260,6 +260,34 @@
         candidates[candidates.length - 1].classList.add('common-topbar__sticky-actions');
     }
 
+    function escapeHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function renderRemoteError(container) {
+        var errorLabel = getConfigTextValue('translations.loadErrorLabel', 'Erreur de chargement');
+        var errorDescription = getConfigTextValue(
+            'translations.loadErrorDescription',
+            'Le contenu n’a pas pu être chargé. Vérifiez votre connexion puis réessayez.'
+        );
+        var retryLabel = getConfigTextValue('translations.retryLabel', 'Réessayer');
+
+        container.innerHTML = ''
+            + '<div class="common-topbar-remote-state common-topbar-remote-state--error" role="alert">'
+            + '  <div class="common-topbar-remote-state__icon" aria-hidden="true">!</div>'
+            + '  <div class="common-topbar-remote-state__content">'
+            + '    <h3 class="common-topbar-remote-state__title">' + escapeHtml(errorLabel) + '</h3>'
+            + '    <p class="common-topbar-remote-state__description">' + escapeHtml(errorDescription) + '</p>'
+            + '    <button type="button" class="generic-action-button generic-action-button--main" data-topbar-remote-retry>' + escapeHtml(retryLabel) + '</button>'
+            + '  </div>'
+            + '</div>';
+    }
+
     function renderRemoteContent(container, url) {
         if (!container) {
             return;
@@ -268,7 +296,11 @@
         var resolvedUrl = (typeof window.omoResolveAppUrl === 'function')
             ? window.omoResolveAppUrl(url)
             : url;
+        var requestId = String(Date.now()) + '_' + Math.random().toString(36).slice(2);
 
+        container.setAttribute('data-topbar-remote-container', '1');
+        container.setAttribute('data-topbar-remote-url', String(url || ''));
+        container.__commonTopbarRemoteRequestId = requestId;
         runContainerCleanup(container);
         container.innerHTML = '<div class="loading">' + getConfigTextValue('translations.loadingLabel', 'Chargement...') + '</div>';
 
@@ -286,6 +318,10 @@
                 return response.text();
             })
             .then(function (html) {
+                if (container.__commonTopbarRemoteRequestId !== requestId) {
+                    return;
+                }
+
                 container.innerHTML = html;
                 executeEmbeddedScripts(container);
                 enhanceScrollablePanel(container);
@@ -294,7 +330,11 @@
                 }, 0);
             })
             .catch(function () {
-                container.innerHTML = '<div class="loading">' + getConfigTextValue('translations.loadErrorLabel', 'Erreur de chargement') + '</div>';
+                if (container.__commonTopbarRemoteRequestId !== requestId) {
+                    return;
+                }
+
+                renderRemoteError(container);
             });
     }
 
@@ -1349,6 +1389,17 @@
     }
 
     document.addEventListener('click', function (event) {
+        var remoteRetry = event.target.closest('[data-topbar-remote-retry]');
+        if (remoteRetry) {
+            event.preventDefault();
+            var remoteContainer = remoteRetry.closest('[data-topbar-remote-container]');
+            var remoteUrl = remoteContainer ? remoteContainer.getAttribute('data-topbar-remote-url') || '' : '';
+            if (remoteContainer && remoteUrl) {
+                renderRemoteContent(remoteContainer, remoteUrl);
+            }
+            return;
+        }
+
         var preferenceTrigger = event.target.closest('[data-topbar-preference-trigger]');
         if (preferenceTrigger) {
             event.preventDefault();

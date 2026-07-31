@@ -37,34 +37,34 @@ if ($organizationId <= 0) {
 }
 ?>
 <?php if ($errorMessage !== ''): ?>
-    <div class="omo-holon-move__empty"><?= omoApiEscape($errorMessage) ?></div>
+    <div class="omo-holon-move__empty generic-description"><?= omoApiEscape($errorMessage) ?></div>
 <?php else: ?>
-    <form id="omo-holon-move-form" class="omo-holon-move">
+    <form id="omo-holon-move-form" class="omo-holon-move generic-stack generic-stack--flush">
         <div class="omo-holon-move__header generic-drawer-header generic-drawer-header--sticky">
             <div class="generic-drawer-header__copy omo-holon-move__header-copy">
                 <div class="generic-card-title generic-card-title--eyebrow">Holon</div>
                 <h3 class="generic-card-title generic-card-title--medium">Deplacer un holon</h3>
             </div>
         </div>
-        <div class="omo-holon-move__shell">
-        <div class="omo-holon-move__intro">
+        <div class="omo-holon-move__shell generic-drawer-content">
+        <div class="omo-holon-move__intro generic-description">
             <strong><?= omoApiEscape((string)($moveData['holon']['name'] ?? '')) ?></strong>
             <span>&rarr;</span>
         </div>
 
-        <label class="omo-holon-move__field">
+        <label class="omo-holon-move__field generic-stack generic-stack--compact">
             <span>Ou ca va</span>
             <input type="search" id="omo-holon-move-search" class="generic-form-control" placeholder="Rechercher une destination">
         </label>
 
-        <label class="omo-holon-move__field">
+        <label class="omo-holon-move__field generic-stack generic-stack--compact">
             <select id="omo-holon-move-destination" class="omo-holon-move__select generic-form-control" size="10" required></select>
         </label>
 
-        <div id="omo-holon-move-hint" class="omo-holon-move__hint"></div>
-        <div id="omo-holon-move-status" class="omo-holon-move__status" hidden></div>
+        <div id="omo-holon-move-hint" class="omo-holon-move__hint generic-help-text"></div>
+        <div id="omo-holon-move-status" class="omo-holon-move__status generic-feedback" hidden></div>
 
-        <div class="omo-holon-move__actions">
+        <div class="omo-holon-move__actions generic-action-row">
             <button type="button" class="omo-holon-move__button generic-action-button generic-action-button--secondary" id="omo-holon-move-cancel">Annuler</button>
             <button type="submit" class="omo-holon-move__button generic-action-button generic-action-button--main" id="omo-holon-move-submit">Deplacer</button>
         </div>
@@ -111,14 +111,14 @@ function clearStatus() {
     }
 
     elements.status.hidden = true;
-    elements.status.className = 'omo-holon-move__status';
+    elements.status.className = 'omo-holon-move__status generic-feedback';
     elements.status.innerHTML = '';
 }
 
 function showStatus(message, tone) {
     clearStatus();
     elements.status.hidden = false;
-    elements.status.className = 'omo-holon-move__status is-' + tone;
+    elements.status.className = 'omo-holon-move__status generic-feedback is-' + tone;
     elements.status.innerHTML = '<div class="omo-holon-move__status-copy">' + escapeHtml(message) + '</div>';
     state.statusTimer = window.setTimeout(clearStatus, 12000);
 }
@@ -311,39 +311,10 @@ elements.cancel.addEventListener('click', closeMoveDrawer);
 <?php endif; ?>
 
 <style>
-.omo-holon-move,
 .omo-holon-move__empty {
     display: grid;
     gap: 16px;
     color: var(--color-text, #1f2937);
-}
-
-.omo-holon-move {
-    gap: 0;
-}
-
-.omo-holon-move__header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
-.omo-holon-move__header-copy {
-    display: grid;
-    gap: 4px;
-}
-
-.omo-holon-move__shell {
-    display: grid;
-    gap: 16px;
-    padding: 16px 18px 18px;
-}
-
-.omo-holon-move__intro,
-.omo-holon-move__hint,
-.omo-holon-move__empty {
-    color: var(--topbar-panel-muted, #64748b);
-    line-height: 1.45;
 }
 
 .omo-holon-move__empty {
@@ -354,36 +325,14 @@ elements.cancel.addEventListener('click', closeMoveDrawer);
     display: flex;
     align-items: center;
     gap: 8px;
-    margin: 0;
-}
-
-.omo-holon-move__field {
-    display: grid;
-    gap: 8px;
 }
 
 .omo-holon-move__select {
     min-height: 240px;
 }
 
-.omo-holon-move__status {
-    min-height: 22px;
-    color: #b91c1c;
-    font-weight: 600;
-}
-
 .omo-holon-move__status[hidden] {
     display: none !important;
-}
-
-.omo-holon-move__status.is-error {
-    color: #b91c1c;
-}
-
-.omo-holon-move__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
 }
 
 </style>

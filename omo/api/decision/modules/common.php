@@ -409,8 +409,6 @@ if (!function_exists('omoDecisionRenderVoteWeightEditorAssets')) {
             . '.omo-decision-vote-weight-editor__actions{display:flex;align-items:flex-end;justify-content:flex-end;min-height:100%;}'
             . '.omo-decision-vote-weight-editor__toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}'
             . '.omo-decision-vote-weight-editor__toggle{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}'
-            . '.omo-decision-vote-weight-editor__empty{margin:0;color:var(--color-text-soft,#6b7280);font-size:.92rem;}'
-            . '.omo-decision-vote-weight-editor__hint{margin:0;color:var(--color-text-soft,#6b7280);font-size:.9rem;}'
             . '.omo-decision-vote-weight-selector{display:grid;gap:12px;}'
             . '.omo-decision-vote-weight-selector__buttons{display:flex;gap:8px;flex-wrap:wrap;}'
             . '.omo-decision-vote-weight-selector__button{display:grid;gap:2px;min-width:120px;text-align:center;}'
@@ -651,8 +649,8 @@ if (!function_exists('omoDecisionRenderVoteWeightEditor')) {
                     <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-vote-weight-add <?= $canEdit ? '' : 'disabled' ?>><?= $escape(t('decisions.edit.block_settings.vote_weighting_add', [], $lang, $sourceLang)) ?></button>
                 </div>
                 <div class="omo-decision-vote-weight-editor__list" data-omo-decision-vote-weight-list></div>
-                <p class="omo-decision-vote-weight-editor__empty" data-omo-decision-vote-weight-empty hidden><?= $escape(t('decisions.edit.block_settings.vote_weighting_fixed_hint', [], $lang, $sourceLang)) ?></p>
-                <p class="omo-decision-vote-weight-editor__hint"><?= $escape(t('decisions.edit.block_settings.vote_weighting_fixed_hint', [], $lang, $sourceLang)) ?></p>
+                <p class="omo-decision-vote-weight-editor__empty generic-meta" data-omo-decision-vote-weight-empty hidden><?= $escape(t('decisions.edit.block_settings.vote_weighting_fixed_hint', [], $lang, $sourceLang)) ?></p>
+                <p class="omo-decision-vote-weight-editor__hint generic-meta"><?= $escape(t('decisions.edit.block_settings.vote_weighting_fixed_hint', [], $lang, $sourceLang)) ?></p>
             </div>
             <template data-omo-decision-vote-weight-row-template>
                 <div class="omo-decision-vote-weight-editor__row" data-omo-decision-vote-weight-row>

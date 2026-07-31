@@ -166,7 +166,7 @@ $params = array(
 <style>
 .lms-create-parcours-view {
     display: grid;
-    gap: 18px;
+    gap: 0;
 }
 
 .lms-create-parcours-header {
@@ -177,23 +177,6 @@ $params = array(
 
 .lms-create-parcours-header.generic-drawer-header {
     --generic-drawer-header-z: 8;
-    --generic-drawer-header-padding: 20px 22px;
-    --generic-drawer-header-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
-}
-
-.lms-create-parcours-header h2 {
-    margin: 0 0 8px;
-}
-
-.lms-create-parcours-header p {
-    margin: 0;
-    color: var(--text-light);
-    line-height: 1.5;
-}
-
-.lms-create-parcours-card {
-    padding: 20px 22px;
-    background: var(--bg-card);
 }
 
 .lms-create-parcours-cancel,
@@ -202,28 +185,17 @@ $params = array(
     margin-top: 0;
 }
 
-.lms-create-parcours-cancel {
-    background: var(--border-color);
-    color: var(--text-main);
-}
-
 .lms-create-parcours-note,
 .lms-parcours-missions {
-    padding: 20px 22px;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    background: var(--bg-card);
-    box-shadow: var(--shadow);
+    --generic-section-gap: var(--generic-space-4, 16px);
 }
 
 .lms-create-parcours-note {
-    color: var(--text-light);
-    line-height: 1.5;
+    color: var(--color-text-light, var(--text-light));
 }
 
 .lms-parcours-missions {
     display: grid;
-    gap: 16px;
 }
 
 .lms-parcours-missions__header {
@@ -251,7 +223,6 @@ $params = array(
     padding: 16px 18px;
     border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--primary) 7%, var(--bg-main));
-    color: var(--text-light);
 }
 
 .lms-parcours-missions__list {
@@ -458,16 +429,10 @@ $params = array(
     margin-bottom: 6px;
 }
 
-.lms-parcours-mission-picker__copy p {
-    margin: 0;
-    color: var(--text-light);
-}
-
 .lms-parcours-mission-picker__empty {
     padding: 16px 18px;
     border-radius: var(--radius-md);
     background: color-mix(in srgb, var(--primary) 7%, var(--bg-main));
-    color: var(--text-light);
 }
 
 .lms-parcours-mission-picker__item[hidden],
@@ -485,48 +450,18 @@ $params = array(
 }
 
 .lms-parcours-mission-creator {
-    display: grid;
     grid-template-rows: auto minmax(0, 1fr);
-    gap: 16px;
     min-height: 0;
     overflow: auto;
     padding-right: 4px;
 }
 
 .lms-parcours-mission-creator__header {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-}
-
-.lms-parcours-mission-creator__header h4 {
-    margin: 0 0 6px;
-}
-
-.lms-parcours-mission-creator__header p {
-    margin: 0;
-    color: var(--text-light);
-}
-
-.lms-parcours-mission-creator__back,
-.lms-parcours-mission-creator__cancel {
-    background: var(--border-color);
-    color: var(--text-main);
+    justify-content: flex-start;
 }
 
 .lms-parcours-mission-creator__grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-}
-
-.lms-parcours-mission-creator__field {
-    display: grid;
-    gap: 6px;
-}
-
-.lms-parcours-mission-creator__field span {
-    font-weight: 600;
+    --generic-form-grid-min: 240px;
 }
 
 .lms-parcours-mission-creator__field input,
@@ -534,14 +469,8 @@ $params = array(
     width: 100%;
 }
 
-.lms-parcours-mission-creator__field--full {
-    grid-column: 1 / -1;
-}
-
 .lms-parcours-mission-creator__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
+    --generic-action-row-gap: var(--generic-space-3, 12px);
 }
 
 @media (max-width: 720px) {
@@ -580,24 +509,26 @@ $params = array(
 <div class="lms-create-parcours-view">
     <section class="lms-create-parcours-header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy">
-            <h2><?php echo htmlspecialchars($drawerTitle); ?></h2>
-            <p><?php echo htmlspecialchars($drawerIntro); ?></p>
+            <h2 class="generic-title generic-title--large"><?php echo htmlspecialchars($drawerTitle); ?></h2>
+            <p class="generic-description"><?php echo htmlspecialchars($drawerIntro); ?></p>
         </div>
         <div class="generic-drawer-header__actions">
-            <button type="button" class="lms-create-parcours-cancel" onclick="closeDrawer()"><?php echo htmlspecialchars(lmsParcoursCreateT('lms.parcours_create.action.cancel')); ?></button>
-            <button type="button" class="lms-create-parcours-save" id="lms-create-parcours-submit"><?php echo htmlspecialchars($submitLabel); ?></button>
+            <button type="button" class="lms-create-parcours-cancel generic-action-button generic-action-button--secondary" onclick="closeDrawer()"><?php echo htmlspecialchars(lmsParcoursCreateT('lms.parcours_create.action.cancel')); ?></button>
+            <button type="button" class="lms-create-parcours-save generic-action-button generic-action-button--main" id="lms-create-parcours-submit"><?php echo htmlspecialchars($submitLabel); ?></button>
         </div>
     </section>
 
-    <section class="lms-create-parcours-card">
-        <?php $parcours->display('adminEdit.php', $params); ?>
-    </section>
-
-    <?php if ($isEditMode): ?>
-        <?php echo lmsRenderParcoursContentManager($organizationId, $parcoursId); ?>
-    <?php else: ?>
-        <section class="lms-create-parcours-note">
-            <?php echo htmlspecialchars(lmsParcoursCreateT('lms.parcours_create.note.after_create')); ?>
+    <div class="lms-create-parcours-content generic-drawer-content">
+        <section class="lms-create-parcours-card">
+            <?php $parcours->display('adminEdit.php', $params); ?>
         </section>
-    <?php endif; ?>
+
+        <?php if ($isEditMode): ?>
+            <?php echo lmsRenderParcoursContentManager($organizationId, $parcoursId); ?>
+        <?php else: ?>
+            <section class="lms-create-parcours-note generic-section generic-form-section">
+                <?php echo htmlspecialchars(lmsParcoursCreateT('lms.parcours_create.note.after_create')); ?>
+            </section>
+        <?php endif; ?>
+    </div>
 </div>

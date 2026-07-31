@@ -157,7 +157,7 @@ $brandHref = $shareLink->buildShareUrl($initialCid);
     <script src="/shared_functions.js"></script>
     <script>sharedApplyDocumentTheme();</script>
     <link rel="stylesheet" href="/common/assets/omo_public_pages.css">
-    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260718-drawer-header-gap">
+    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260731-mobile-header-menu">
     <base href="/omo/">
     <style>
     :root {
@@ -295,7 +295,7 @@ window.omoConfig = <?= json_encode(array(
     'shareAllowsPeopleDetail' => $shareLink->allowsPeopleDetail(),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/omo/assets/js/app.js?v=20260720-projects-drawer-refresh"></script>
+<script src="/omo/assets/js/app.js?v=20260731-mobile-header-menu"></script>
 <script src="/omo/assets/js/structure-mini-map.js"></script>
 <script>
 $(document).ready(function () {

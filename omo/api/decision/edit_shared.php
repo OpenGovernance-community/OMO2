@@ -331,9 +331,9 @@ if (!function_exists('omoDecisionRenderEditorGroupSwitch')) {
             return;
         }
         ?>
-        <section class="generic-soft-panel generic-soft-panel--stack omo-decision-edit__group-switch">
-            <div class="omo-decision-edit__section-head">
-                <div>
+        <section class="generic-section generic-section--stack generic-form-section omo-decision-edit__group-switch">
+            <div class="omo-decision-edit__section-head generic-form-section__heading">
+                <div class="generic-form-section__copy">
                     <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.groups.title', [], $lang, $baseSourceLang)) ?></h3>
                     <p class="omo-decision-edit__lead"><?= $escape(t('decisions.edit.groups.text', [], $lang, $baseSourceLang)) ?></p>
                 </div>
@@ -409,7 +409,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
 ?>
 <div class="omo-decision-edit omo-panel-view">
     <div class="omo-panel-view__body">
-        <div class="omo-panel-view__body_content omo-decision-edit__stack">
+        <div class="omo-panel-view__body_content omo-decision-edit__stack generic-drawer-content generic-form-stack">
             
 
             <?php if (false && $isEditing && $intent === 'manage'): ?>
@@ -455,9 +455,9 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
             <?php endif; ?>
 
             <?php if ((!$isEditing && $selectedMethod === '') || ($isEditing && $groupAction === 'create' && $selectedMethod === '')): ?>
-            <section class="generic-section generic-section--stack">
-                <div class="omo-decision-edit__section-head">
-                    <div>
+            <section class="generic-section generic-section--stack generic-form-section">
+                <div class="omo-decision-edit__section-head generic-form-section__heading">
+                    <div class="generic-form-section__copy">
                         <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.choose_title', [], $lang, $baseSourceLang)) ?></h3>
                         <p class="omo-decision-edit__lead"><?= $escape($isEditing ? 'Choisissez la methode du nouveau groupe.' : t('decisions.edit.choose_text', [], $lang, $baseSourceLang)) ?></p>
                     </div>
@@ -506,7 +506,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
 
                 <?php if (!$isEditing): ?>
                 <form
-                    class="generic-soft-panel generic-soft-panel--stack omo-decision-edit__import-panel"
+                    class="generic-section generic-section--stack generic-form-section omo-decision-edit__import-panel"
                     action="/omo/api/decision/import.php"
                     method="post"
                     enctype="multipart/form-data"
@@ -516,19 +516,19 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="intent" value="manage">
 
-                    <div class="omo-decision-edit__section-head">
-                        <div>
+                    <div class="omo-decision-edit__section-head generic-form-section__heading">
+                        <div class="generic-form-section__copy">
                             <h4 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.import.title', [], $lang, $baseSourceLang)) ?></h4>
                             <p class="omo-decision-edit__lead"><?= $escape(t('decisions.edit.import.text', [], $lang, $baseSourceLang)) ?></p>
                         </div>
                     </div>
 
-                    <label class="omo-decision-edit__import-field">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.import.file_label', [], $lang, $baseSourceLang)) ?></span>
+                    <label class="omo-decision-edit__import-field generic-form-field">
+                        <span class="generic-form-label"><?= $escape(t('decisions.edit.import.file_label', [], $lang, $baseSourceLang)) ?></span>
                         <input type="file" class="generic-form-control" name="import_file" accept=".csv,.json,.xml" required>
                     </label>
 
-                    <div class="omo-decision-edit__import-actions">
+                    <div class="omo-decision-edit__import-actions generic-form-actions">
                         <button type="submit" class="generic-action-button generic-action-button--secondary" data-omo-decision-import-submit>
                             <?= $escape(t('decisions.edit.import.button', [], $lang, $baseSourceLang)) ?>
                         </button>
@@ -553,7 +553,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                 ]);
                 ?>
             <?php else: ?>
-            <section class="generic-section generic-section--stack">
+            <section class="generic-section generic-section--stack generic-form-section">
                 <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.unsupported_title', [], $lang, $baseSourceLang)) ?></h3>
                 <p class="omo-decision-edit__text"><?= $escape(t('decisions.edit.unsupported_text', [], $lang, $baseSourceLang)) ?></p>
                 <?php if ($isEditing): ?>
@@ -684,8 +684,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
 
 <style>
 .omo-decision-edit__stack {
-    display: grid;
-    gap: 16px;
+    --generic-form-gap: var(--generic-space-4, 16px);
 }
 
 .omo-decision-edit__summary-grid,
@@ -695,17 +694,9 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
     gap: 12px;
 }
 
-.omo-decision-edit__section-head,
 .omo-decision-edit__module-copy {
     display: grid;
     gap: 8px;
-}
-
-.omo-decision-edit__import-panel,
-.omo-decision-edit__import-field,
-.omo-decision-edit__import-actions {
-    display: grid;
-    gap: 10px;
 }
 
 .omo-decision-edit__module-card {
@@ -738,13 +729,6 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
 
 .omo-decision-edit__module-action {
     align-self: start;
-}
-
-.omo-decision-edit__lead,
-.omo-decision-edit__text {
-    margin: 0;
-    color: var(--color-text-light, #475569);
-    line-height: 1.6;
 }
 
 .omo-decision-edit__feedback {

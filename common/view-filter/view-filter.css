@@ -1,0 +1,162 @@
+.omo-view-filter,
+.omo-projects__filter-toolbar {
+    position: relative;
+    z-index: 16;
+    grid-column: 1 / -1;
+    min-width: 0;
+    width: 100%;
+}
+
+[data-team-preferences-pending="1"],
+[data-omo-view-filter-pending="1"] {
+    visibility: hidden;
+}
+
+.omo-view-filter__input,
+.omo-projects__filter-input {
+    display: flex;
+    align-items: stretch;
+    min-height: 34px;
+    overflow: hidden;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: 18px;
+    background: var(--color-surface, #fff);
+    box-shadow: var(--shadow-sm, 0 6px 14px rgba(15, 23, 42, .05));
+}
+
+.omo-view-filter__input:focus-within,
+.omo-projects__filter-input:focus-within {
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 48%, var(--color-border, #d1d5db));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
+}
+
+.omo-view-filter__chips,
+.omo-projects__filter-chips {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    max-width: 72%;
+    padding: 2px 2px;
+    overflow-x: auto;
+    background: color-mix(in srgb, var(--color-surface-alt, #f3f4f6) 48%, var(--color-surface, #ffffff));
+    scrollbar-width: thin;
+}
+
+.omo-view-filter__chip,
+.omo-projects__filter-chip {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    min-height: 28px;
+    padding: 3px 10px;
+    border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 72%, transparent);
+    border-radius: 999px;
+    background: var(--color-surface, #fff);
+    box-shadow: 0 2px 7px rgba(15, 23, 42, .12);
+    color: var(--color-text, #1f2937);
+    cursor: pointer;
+    font: inherit;
+    font-size: .78rem;
+    font-weight: 750;
+    line-height: 1;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.omo-view-filter__chip:hover,
+.omo-view-filter__chip:focus-visible,
+.omo-projects__filter-chip:hover,
+.omo-projects__filter-chip:focus-visible {
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 54%, var(--color-border, #d1d5db));
+    background: var(--color-surface, #fff);
+    box-shadow: 0 3px 10px rgba(15, 23, 42, .16);
+    outline: none;
+}
+
+.omo-view-filter__search,
+.omo-projects__filter-search {
+    display: flex;
+    flex: 1 1 190px;
+    align-items: center;
+    min-width: 130px;
+    border-left: 1px solid var(--color-border, #d1d5db);
+}
+
+.omo-view-filter__search .generic-form-control,
+.omo-projects__filter-search .generic-form-control {
+    width: 100%;
+    --generic-form-control-min-height: 32px;
+    --generic-form-control-padding-block: 3px;
+    min-height: 32px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.omo-view-filter__search .generic-form-control:focus,
+.omo-projects__filter-search .generic-form-control:focus {
+    box-shadow: none;
+}
+
+.omo-view-filter__panel,
+.omo-projects__filter-panel {
+    position: absolute;
+    top: calc(100% + var(--generic-space-2, 8px));
+    right: 0;
+    left: 0;
+    z-index: 20;
+    --generic-soft-panel-padding-block: var(--generic-space-3, 12px);
+    --generic-soft-panel-padding-inline: var(--generic-space-3, 12px);
+    --generic-soft-panel-background: var(--generic-container-surface, var(--color-surface, #fff));
+    box-shadow: var(--shadow-md, 0 18px 42px rgba(15, 23, 42, .18));
+}
+
+.omo-view-filter__panel[hidden],
+.omo-view-filter__panel.is-filter-hidden,
+.omo-projects__filter-panel[hidden] {
+    display: none;
+}
+
+.omo-view-filter__panel-grid,
+.omo-projects__filter-panel-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--generic-container-gap, 12px);
+}
+
+.omo-view-filter__group,
+.omo-projects__filter-group {
+    display: grid;
+    align-content: start;
+    gap: var(--generic-space-2, 8px);
+    min-width: 0;
+}
+
+.omo-view-filter__group .omo-segmented,
+.omo-projects__filter-group .omo-segmented {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.omo-view-filter__actions,
+.omo-projects__filter-panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: var(--generic-space-2, 8px);
+    padding-top: 2px;
+}
+
+@media (max-width: 760px) {
+    .omo-view-filter__chips {
+        max-width: 66%;
+    }
+
+    .omo-view-filter__search {
+        flex-basis: 110px;
+        min-width: 100px;
+    }
+}

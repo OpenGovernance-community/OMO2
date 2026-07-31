@@ -7,17 +7,26 @@
     display: none !important;
 }
 
+.omo-checklist__header {
+    z-index: 30;
+    overflow: visible;
+}
+
+[data-checklist-search-item][hidden],
+.omo-checklist__search-empty[hidden],
+[data-checklist-default-empty][hidden] {
+    display: none !important;
+}
+
+.omo-checklist__search-empty {
+    margin: 0;
+}
+
 .omo-checklist__app-icon img,
 .omo-checklist-list__icon img {
     width: 100%;
     height: 100%;
     object-fit: contain;
-}
-
-.omo-checklist__title-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
 }
 
 .omo-checklist__body {
@@ -26,9 +35,29 @@
     overflow: auto;
 }
 
+.omo-checklist-list-container {
+    --generic-file-list-table-margin-inline: var(--generic-file-list-padding-inline-start);
+}
+
 .omo-checklist-list {
     --generic-file-list-columns: minmax(280px, 2fr) minmax(150px, .9fr) minmax(180px, 1.15fr) minmax(105px, .6fr);
     --generic-file-list-menu-space: 0px;
+    display: grid;
+    gap: 0;
+    margin-block: 10px;
+    margin-inline: var(--generic-file-list-table-margin-inline);
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 82%, white 18%);
+    background: var(--color-surface, #fff);
+    overflow: visible;
+}
+
+.omo-checklist-list > .generic-file-list__item-shell {
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 82%, white 18%);
+}
+
+.omo-checklist-list > .generic-file-list__item-shell:last-of-type {
+    border-bottom: 0;
 }
 
 .omo-checklist-list__row {
@@ -79,26 +108,19 @@
     font-weight: 800;
 }
 
-.omo-checklist-editor,
 .omo-checklist-detail {
     display: flex;
     flex-direction: column;
-    gap: 18px;
-    padding: 20px;
+    gap: var(--generic-space-4, 16px);
+    padding: var(--generic-layout-gutter, 20px);
 }
 
-.omo-checklist-editor form,
 .omo-checklist-editor__items-section {
     display: flex;
     flex-direction: column;
     gap: 18px;
 }
 
-.omo-checklist-editor__section {
-    margin: 0;
-}
-
-.omo-checklist-editor__section-heading,
 .omo-checklist-detail__section-heading {
     display: flex;
     align-items: flex-start;
@@ -106,14 +128,11 @@
     gap: 16px;
 }
 
-.omo-checklist-editor__section-heading h3,
 .omo-checklist-detail__section-heading h3,
-.omo-checklist-editor__section-heading p,
 .omo-checklist-detail__section-heading p {
     margin: 0;
 }
 
-.omo-checklist-editor__section-heading p,
 .omo-checklist-detail__section-heading p {
     margin-top: 5px;
     color: var(--color-text-light, #64748b);
@@ -122,19 +141,18 @@
 
 .omo-checklist-form-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-    margin-top: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: var(--generic-space-4, 16px);
 }
 
 .omo-checklist-field {
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
+    display: grid;
+    align-content: start;
+    gap: var(--generic-form-field-gap, var(--generic-space-2, 8px));
     min-width: 0;
     color: var(--color-text, #1f2937);
-    font-size: .82rem;
-    font-weight: 750;
+    font-size: var(--generic-type-size-sm, .84rem);
+    font-weight: 700;
 }
 
 .omo-checklist-field--wide {
@@ -204,8 +222,6 @@
 .omo-checklist-activation__intro,
 .omo-checklist-activation__notice {
     margin: 8px 0 0;
-    color: var(--color-text-light, #64748b);
-    line-height: 1.55;
 }
 
 .omo-checklist-field small {
@@ -243,11 +259,6 @@
 
 .omo-checklist-detail__hero-copy h3 {
     margin: 10px 0 8px;
-}
-
-.omo-checklist-detail__description {
-    color: var(--color-text-light, #64748b);
-    line-height: 1.6;
 }
 
 .omo-checklist-detail__summary {
@@ -401,12 +412,6 @@
     font-size: .72rem;
 }
 
-.omo-checklist-flow__title-row h4 {
-    margin: 0;
-    color: var(--color-text, #1f2937);
-    font-size: 1rem;
-}
-
 .omo-checklist-flow__role {
     padding: 4px 8px;
     border-radius: 999px;
@@ -419,9 +424,6 @@
 .omo-checklist-flow__parent,
 .omo-checklist-flow__description {
     margin-top: 6px;
-    color: var(--color-text-light, #64748b);
-    font-size: .84rem;
-    line-height: 1.5;
 }
 
 .omo-checklist-flow__instances {

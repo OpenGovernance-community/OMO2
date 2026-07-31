@@ -876,6 +876,65 @@ html[data-theme="dark"] .common-topbar-profile-preference__icon--theme-dark {
     overflow: auto;
 }
 
+.common-topbar-remote-state {
+    --common-remote-state-accent: var(--color-primary, #2563eb);
+    min-height: min(360px, 48vh);
+    display: grid;
+    place-items: center;
+    gap: 16px;
+    padding: clamp(28px, 7vw, 72px) 24px;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.common-topbar-remote-state--error {
+    --common-remote-state-accent: var(--color-danger, #b91c1c);
+}
+
+.common-topbar-remote-state__content {
+    width: min(100%, 420px);
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    padding: 24px;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: var(--radius-lg, 10px);
+    background: var(--color-surface-alt, #f8fafc);
+    box-shadow: var(--shadow-sm, 0 8px 20px rgba(15, 23, 42, 0.08));
+}
+
+.common-topbar-remote-state__icon {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--common-remote-state-accent) 12%, var(--color-surface, #ffffff));
+    color: var(--common-remote-state-accent);
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.common-topbar-remote-state__title,
+.common-topbar-remote-state__description {
+    margin: 0;
+}
+
+.common-topbar-remote-state__title {
+    color: var(--color-text, #1f2937);
+    font-size: var(--generic-title-size-medium, 16px);
+}
+
+.common-topbar-remote-state__description {
+    max-width: 34rem;
+    color: var(--color-text-light, #64748b);
+    line-height: 1.55;
+}
+
+.common-topbar-remote-state .generic-action-button {
+    margin-top: 6px;
+}
+
 .common-topbar-modal__iframe {
     width: 100%;
     min-height: 70vh;

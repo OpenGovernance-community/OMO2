@@ -59,7 +59,7 @@ if ($isEdit) {
     }
 }
 ?>
-<div class="omo-checklist-editor" data-checklist-editor>
+<div class="omo-checklist-editor generic-drawer-content" data-checklist-editor>
     <div
         hidden
         data-omo-subdrawer-header
@@ -71,6 +71,7 @@ if ($isEdit) {
     </div>
     <form
         id="omo-checklist-editor-form"
+        class="generic-form-stack"
         action="/omo/api/checklist/action.php"
         method="post"
         data-checklist-editor-form
@@ -81,9 +82,9 @@ if ($isEdit) {
         <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
         <?php if ($isEdit): ?><input type="hidden" name="id" value="<?= (int)$checklistId ?>"><?php endif; ?>
 
-        <section class="generic-section omo-checklist-editor__section">
+        <section class="generic-section generic-section--stack generic-form-section omo-checklist-editor__section">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoChecklistT('checklist.form.identity')) ?></h3>
-            <div class="omo-checklist-form-grid">
+            <div class="omo-checklist-form-grid generic-form-grid">
                 <label class="omo-checklist-field omo-checklist-field--wide">
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.title')) ?></span>
                     <input class="generic-form-control" type="text" name="title" value="<?= omoApiEscape((string)$templateRoot->get('title')) ?>" maxlength="255" required autofocus>
@@ -107,14 +108,14 @@ if ($isEdit) {
             </div>
         </section>
 
-        <section class="generic-soft-panel omo-checklist-editor__section" data-checklist-trigger-section>
-            <div class="omo-checklist-editor__section-heading">
-                <div>
+        <section class="generic-section generic-section--stack generic-form-section omo-checklist-editor__section" data-checklist-trigger-section>
+            <div class="omo-checklist-editor__section-heading generic-form-section__heading">
+                <div class="generic-form-section__copy">
                     <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoChecklistT('checklist.form.trigger')) ?></h3>
-                    <p><?= omoApiEscape(omoChecklistT('checklist.form.trigger_help')) ?></p>
+                    <p class="generic-description"><?= omoApiEscape(omoChecklistT('checklist.form.trigger_help')) ?></p>
                 </div>
             </div>
-            <div class="omo-checklist-form-grid">
+            <div class="omo-checklist-form-grid generic-form-grid">
                 <label class="omo-checklist-field">
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.trigger_type')) ?></span>
                     <select class="generic-form-control" name="trigger_type" data-checklist-trigger-type>
@@ -146,6 +147,6 @@ if ($isEdit) {
                 </label>
             </div>
         </section>
-        <div class="omo-checklist-feedback" data-checklist-editor-feedback aria-live="polite"></div>
+        <div class="omo-checklist-feedback generic-feedback" data-checklist-editor-feedback aria-live="polite"></div>
     </form>
 </div>

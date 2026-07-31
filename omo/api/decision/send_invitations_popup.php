@@ -144,44 +144,8 @@ $canSendPending = !$isDraft && $recipientCount > 0;
 $canSendAll = !$isDraft && $allRecipientCount > 0;
 ?>
 <style>
-.omo-decision-send-invitations-popup {
-    display: grid;
-    gap: 0;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-decision-send-invitations-popup__header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
-.omo-decision-send-invitations-popup__header-copy {
-    display: grid;
-    gap: 4px;
-}
-
-.omo-decision-send-invitations-popup__shell {
-    display: grid;
-    gap: 16px;
-    padding: 16px 18px 18px;
-}
-
-.omo-decision-send-invitations-popup__intro,
-.omo-decision-send-invitations-popup__hint {
-    margin: 0;
-    color: var(--topbar-panel-muted, #64748b);
-    line-height: 1.6;
-}
-
 .omo-decision-send-invitations-popup__textarea {
     min-height: 220px;
-}
-
-.omo-decision-send-invitations-popup__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
 }
 
 .omo-decision-send-invitations-popup__split {
@@ -240,20 +204,11 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
     box-shadow: none;
 }
 
-.omo-decision-send-invitations-popup__feedback {
-    min-height: 22px;
-    color: #b91c1c;
-    font-weight: 600;
-}
-
-.omo-decision-send-invitations-popup__feedback.is-success {
-    color: #15803d;
-}
 </style>
 
 <form
     id="omoDecisionSendInvitationsPopupForm"
-    class="omo-decision-send-invitations-popup"
+    class="omo-decision-send-invitations-popup generic-stack generic-stack--flush"
     action="/omo/api/decision/send_invitations_popup.php?oid=<?= (int)$organizationId ?>&cid=<?= (int)$targetHolonId ?>&id=<?= (int)$decision->getId() ?>&method=<?= urlencode($method) ?>"
     method="post"
 >
@@ -264,9 +219,9 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
             <h3 class="generic-card-title generic-card-title--medium">Envoyer les invitations</h3>
         </div>
     </div>
-    <div class="omo-decision-send-invitations-popup__shell">
+    <div class="omo-decision-send-invitations-popup__shell generic-drawer-content">
 
-    <p class="omo-decision-send-invitations-popup__intro">
+    <p class="omo-decision-send-invitations-popup__intro generic-description generic-description--relaxed">
         <?php if ($recipientCount > 0): ?>
         Personnalisez le message qui sera envoye a <?= (int)$recipientCount ?> destinataire<?= (int)$recipientCount === 1 ? '' : 's' ?> n ayant pas encore repondu.
         <?php elseif ($allRecipientCount > 0): ?>
@@ -277,15 +232,15 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
     </p>
 
     <?php if ($isDraft): ?>
-    <p class="omo-decision-send-invitations-popup__hint">
+    <p class="omo-decision-send-invitations-popup__hint generic-description generic-description--relaxed">
         Ce scrutin est encore en brouillon. Sortez-le du brouillon avant d envoyer les invitations.
     </p>
     <?php elseif ($allRecipientCount === 0): ?>
-    <p class="omo-decision-send-invitations-popup__hint">
+    <p class="omo-decision-send-invitations-popup__hint generic-description generic-description--relaxed">
         Aucun destinataire avec une adresse e-mail valide n a ete trouve pour ce scrutin.
     </p>
     <?php else: ?>
-    <p class="omo-decision-send-invitations-popup__hint">
+    <p class="omo-decision-send-invitations-popup__hint generic-description generic-description--relaxed">
         L action principale relance seulement les participants qui n ont pas encore repondu. La fleche permet aussi d envoyer le lien a tout le monde, y compris a l auteur s il fait partie des participants.
     </p>
     <?php endif; ?>
@@ -298,9 +253,9 @@ $canSendAll = !$isDraft && $allRecipientCount > 0;
         <?= ($isDraft || $allRecipientCount === 0) ? 'disabled' : '' ?>
     ><?= omoApiEscape($messageValue) ?></textarea>
 
-    <div id="omoDecisionSendInvitationsPopupFeedback" class="omo-decision-send-invitations-popup__feedback"></div>
+    <div id="omoDecisionSendInvitationsPopupFeedback" class="omo-decision-send-invitations-popup__feedback generic-feedback"></div>
 
-    <div class="omo-decision-send-invitations-popup__actions">
+    <div class="omo-decision-send-invitations-popup__actions generic-action-row">
         <div class="omo-decision-send-invitations-popup__split">
             <button
                 type="submit"

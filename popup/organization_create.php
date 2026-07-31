@@ -616,8 +616,6 @@ $organizationRoutingLockedMessage = "Le nom court et le domaine sont reserves au
 
                         if (blob.type === 'image/png') {
                             extension = 'png';
-                        } else if (blob.type === 'image/webp') {
-                            extension = 'webp';
                         }
 
                         formData.append(key, blob, key + '.' + extension);

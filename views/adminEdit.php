@@ -671,13 +671,6 @@ function displayField($object, $key, $default = null, $filter = null, ?array $tr
                             };
                         }
 
-                        if (normalized.indexOf('image/webp') !== -1 || normalized.match(/\.webp(?:$|\?)/)) {
-                            return {
-                                mime: 'image/webp',
-                                extension: 'webp'
-                            };
-                        }
-
                         return {
                             mime: 'image/jpeg',
                             extension: 'jpg'
@@ -888,7 +881,7 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
         --admin-edit-border-strong: var(--color-border-strong, #cbd5e1);
         --admin-edit-text: var(--color-text, #111827);
         --admin-edit-muted: var(--color-text-light, #6b7280);
-        --admin-edit-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+        --admin-edit-shadow: none;
         color: var(--admin-edit-text);
     }
 
@@ -928,19 +921,13 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
         font-size: 0.95rem;
     }
 
-    .admin-edit__actions {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
     .admin-edit__panel {
-        --generic-soft-panel-padding-block: 24px;
-        --generic-soft-panel-padding-inline: 24px;
-        --generic-soft-panel-radius: 22px;
+        --generic-soft-panel-padding-block: var(--generic-container-padding-block, 16px);
+        --generic-soft-panel-padding-inline: var(--generic-container-padding-inline, 16px);
+        --generic-soft-panel-radius: var(--generic-container-radius, var(--radius-md, 6px));
         --generic-soft-panel-border: var(--admin-edit-border);
         --generic-soft-panel-background: var(--admin-edit-surface);
+        --generic-soft-panel-gap: var(--generic-space-4, 16px);
         box-shadow: var(--admin-edit-shadow);
     }
 
@@ -958,12 +945,13 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
     }
 
     .admin-edit table.dbobjecttable th {
-        width: 240px;
-        min-width: 220px;
+        width: 220px;
+        min-width: 200px;
         text-align: left;
-        padding: 16px 18px 0 0;
+        padding: 13px var(--generic-space-4, 16px) 0 0;
         color: var(--admin-edit-text);
         font-weight: 700;
+        font-size: var(--generic-type-size-sm, 0.84rem);
         line-height: 1.45;
     }
 
@@ -1020,12 +1008,12 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
     #formulaire-edit select,
     #formulaire-edit textarea {
         width: 100%;
-        min-height: 44px;
-        padding: 11px 12px;
-        border: 1px solid var(--color-border, #d1d5db);
-        border-radius: 12px;
-        background: var(--color-bg, #f8fafc);
-        color: var(--color-text, #1f2937);
+        min-height: var(--generic-form-control-min-height, 44px);
+        padding: var(--generic-form-control-padding-block, 11px) var(--generic-form-control-padding-inline, 12px);
+        border: 1px solid var(--generic-form-control-border, var(--color-border, #d1d5db));
+        border-radius: var(--generic-form-control-radius, var(--radius-md, 6px));
+        background: var(--generic-form-control-background, var(--color-bg, #f8fafc));
+        color: var(--generic-form-control-color, var(--color-text, #1f2937));
         font: inherit;
         line-height: 1.45;
         transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
@@ -1238,8 +1226,8 @@ $adminEditCharCountTemplate = adminEditTranslate('admin_edit.length.progress', [
         }
 
         .admin-edit__panel {
-            padding: 18px;
-            border-radius: 18px;
+            padding: var(--generic-container-padding-block, 16px) var(--generic-container-padding-inline, 16px);
+            border-radius: var(--generic-container-radius, var(--radius-md, 6px));
         }
 
         .admin-edit table.dbobjecttable,
@@ -1284,7 +1272,7 @@ $adminEditToolbarTitle = $this->getId() != ""
     ? adminEditTranslate('admin_edit.toolbar.edit', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang)
     : adminEditTranslate('admin_edit.toolbar.create', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang);
 echo "<div class='admin-edit'>";
-echo "<form id='formulaire-edit' method='POST' enctype='multipart/form-data'";
+echo "<form id='formulaire-edit' class='generic-form-stack' method='POST' enctype='multipart/form-data'";
 if (isset($params["action"]) && $params["action"]) {
     echo " action='" . $params["action"] . "'";
 }
@@ -1293,14 +1281,14 @@ echo "<input type='hidden' name='MAX_FILE_SIZE' value='300000000' />";
 
 // Navigation buttons
 if ($params["buttons"]) {
-    echo "<div class='admin-edit__toolbar'><div class='admin-edit__toolbar-inner'><div class='admin-edit__toolbar-copy'><h2 class='admin-edit__toolbar-title'>" . htmlspecialchars($adminEditToolbarTitle, ENT_QUOTES, 'UTF-8') . "</h2><p class='admin-edit__toolbar-text'>" . htmlspecialchars(adminEditTranslate('admin_edit.toolbar.text', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "</p></div><div class='admin-edit__actions'><input type='button' class='generic-action-button generic-action-button--secondary admin-edit__action--secondary' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.cancel', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "' onclick='history.go(-1)'> <input id='btn_submit' class='generic-action-button generic-action-button--main' type='button' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.save', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
+    echo "<div class='admin-edit__toolbar'><div class='admin-edit__toolbar-inner'><div class='admin-edit__toolbar-copy'><h2 class='admin-edit__toolbar-title'>" . htmlspecialchars($adminEditToolbarTitle, ENT_QUOTES, 'UTF-8') . "</h2><p class='admin-edit__toolbar-text'>" . htmlspecialchars(adminEditTranslate('admin_edit.toolbar.text', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "</p></div><div class='admin-edit__actions generic-form-actions generic-form-actions--stack-mobile'><input type='button' class='generic-action-button generic-action-button--secondary admin-edit__action--secondary' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.cancel', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "' onclick='history.go(-1)'> <input id='btn_submit' class='generic-action-button generic-action-button--main' type='button' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.save', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
 
     if ($params["displayDraft"]) {
         echo "<input id='btn_save' class='generic-action-button generic-action-button--secondary admin-edit__draft-button' type='button' value='" . htmlspecialchars(adminEditTranslate('admin_edit.action.save_draft', [], $this, $adminEditTranslationBundle, $adminEditTranslationSourceLang), ENT_QUOTES, 'UTF-8') . "'>";
     }
     echo "</div></div></div>";
 }
-echo "<div class='admin-edit__panel generic-soft-panel'>";
+echo "<div class='admin-edit__panel generic-soft-panel generic-soft-panel--stack'>";
 echo "<table class='dbobjecttable'>";
 $id = false;
 $allowProtectedFields = !empty($params["allowProtectedFields"]);
@@ -1760,8 +1748,6 @@ echo "</div>";
 
                         if (blob.type === 'image/png') {
                             extension = 'png';
-                        } else if (blob.type === 'image/webp') {
-                            extension = 'webp';
                         }
 
                         formData.append(key, blob, key + '.' + extension);

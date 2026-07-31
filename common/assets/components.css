@@ -1,7 +1,55 @@
 @import url('/common/assets/theme.css');
 
 :root {
+    --radius-sm: 4px;
     --radius-md: 6px;
+    --radius-lg: 10px;
+    --generic-space-1: 4px;
+    --generic-space-2: 8px;
+    --generic-space-3: 12px;
+    --generic-space-4: 16px;
+    --generic-space-5: 20px;
+    --generic-space-6: 24px;
+    --generic-type-size-xs: 0.78rem;
+    --generic-type-size-micro: 0.7rem;
+    --generic-type-size-sm: 0.84rem;
+    --generic-type-size-body: 0.92rem;
+    --generic-type-size-compact: 0.8rem;
+    --generic-type-size-md: 1rem;
+    --generic-type-size-lg: 1.125rem;
+    --generic-type-line-tight: 1.2;
+    --generic-type-line-title: 1.3;
+    --generic-type-line-body: 1.55;
+    --generic-type-line-relaxed: 1.6;
+    --generic-title-size-eyebrow: 11px;
+    --generic-title-size-small: 13px;
+    --generic-title-size-medium: 16px;
+    --generic-title-size-big: 18px;
+    --generic-title-size-section: 20px;
+    --generic-title-size-large: 22px;
+    --generic-title-size-drawer: 1.35rem;
+    --generic-title-size-page: 1.5rem;
+    --generic-title-row-gap: 10px;
+    --generic-layout-gutter: var(--generic-space-5);
+    --generic-container-gap: var(--generic-space-3);
+    --generic-container-margin: var(--generic-layout-gutter);
+    --generic-container-padding-block: var(--generic-space-4);
+    --generic-container-padding-inline: var(--generic-space-4);
+    --generic-container-radius: var(--radius-md);
+    --generic-container-border: var(--color-border, #e5e7eb);
+    --generic-container-surface: var(--color-surface, #ffffff);
+    --generic-container-surface-alt: var(--color-surface-alt, #f8fafc);
+    --generic-container-surface-gradient:
+        linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--generic-container-surface) 94%, transparent),
+            color-mix(in srgb, var(--generic-container-surface-alt) 88%, transparent)
+        );
+    --generic-container-surface-accent:
+        radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary, #2563eb) 16%, transparent), transparent 48%),
+        linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--generic-container-surface)), var(--generic-container-surface));
+    --generic-feedback-error: #b91c1c;
+    --generic-feedback-success: #15803d;
     --project-status-someday: #8993a3;
     --project-status-ready: #5b7ea6;
     --project-status-in-progress: #c69a4b;
@@ -81,11 +129,11 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
 
 .generic-section,
 .omo-card {
-    --generic-section-padding-block: 16px;
-    --generic-section-padding-inline: 18px;
-    --generic-section-border: var(--color-border, #e5e7eb);
-    --generic-section-radius: var(--radius-md);
-    --generic-section-background: var(--color-surface, #ffffff);
+    --generic-section-padding-block: var(--generic-container-padding-block);
+    --generic-section-padding-inline: var(--generic-container-padding-inline);
+    --generic-section-border: var(--generic-container-border);
+    --generic-section-radius: var(--generic-container-radius);
+    --generic-section-background: var(--generic-container-surface);
     --generic-section-shadow: none;
     display: block;
     padding: var(--generic-section-padding-block) var(--generic-section-padding-inline);
@@ -97,9 +145,9 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
 
 .generic-title-section {
     --generic-section-radius: 0px;
-    --generic-section-padding-block: 16px;
-    --generic-section-padding-inline: 18px;
-    --generic-section-border: var(--color-border, #e5e7eb);
+    --generic-section-padding-block: var(--generic-container-padding-block);
+    --generic-section-padding-inline: var(--generic-container-padding-inline);
+    --generic-section-border: var(--generic-container-border);
     border-bottom: 1px solid var(--generic-section-border);
     padding: var(--generic-section-padding-block) var(--generic-section-padding-inline);
 }
@@ -120,12 +168,46 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
     box-shadow: none;
 }
 
+.generic-section--flush {
+    --generic-section-padding-block: 0px;
+    --generic-section-padding-inline: 0px;
+}
+
+.generic-section--spaced {
+    margin: var(--generic-container-margin);
+}
+
+.generic-section--spaced-inline {
+    margin-inline: var(--generic-container-margin);
+}
+
+.generic-section--roomy {
+    --generic-section-gap: var(--generic-container-gap);
+}
+
+.generic-stack {
+    display: grid;
+    gap: var(--generic-stack-gap, var(--generic-container-gap));
+}
+
+.generic-stack--compact {
+    --generic-stack-gap: var(--generic-space-2);
+}
+
+.generic-stack--roomy {
+    --generic-stack-gap: var(--generic-space-4);
+}
+
+.generic-stack--flush {
+    --generic-stack-gap: 0px;
+}
+
 .generic-soft-panel, .generic-soft-panel-square {
-    --generic-soft-panel-padding-block: 12px;
-    --generic-soft-panel-padding-inline: 14px;
+    --generic-soft-panel-padding-block: var(--generic-space-3);
+    --generic-soft-panel-padding-inline: var(--generic-space-3);
     --generic-soft-panel-radius: 0px;
-    --generic-soft-panel-border: var(--color-border, #d1d5db);
-    --generic-soft-panel-background: var(--color-surface-alt, #f8fafc);
+    --generic-soft-panel-border: var(--generic-container-border);
+    --generic-soft-panel-background: var(--generic-container-surface-alt);
     display: block;
     padding: var(--generic-soft-panel-padding-block) var(--generic-soft-panel-padding-inline);
     border: 1px solid var(--generic-soft-panel-border);
@@ -133,25 +215,24 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
     background: var(--generic-soft-panel-background);
 }
 .generic-soft-panel {
-    --generic-soft-panel-radius: var(--radius-md);
+    --generic-soft-panel-radius: var(--generic-container-radius);
 }
 
 .generic-soft-panel--stack {
     display: grid;
-    gap: var(--generic-soft-panel-gap, 10px);
+    gap: var(--generic-soft-panel-gap, var(--generic-space-2));
+}
+
+.generic-soft-panel.generic-stack {
+    display: grid;
 }
 
 .generic-hero-panel {
-    --generic-hero-gap: 8px;
-    --generic-hero-padding: 18px;
-    --generic-hero-radius: var(--radius-md);
-    --generic-hero-border: var(--color-border, #e5e7eb);
-    --generic-hero-background:
-        linear-gradient(
-            135deg,
-            color-mix(in srgb, var(--color-surface, #ffffff) 94%, transparent),
-            color-mix(in srgb, var(--color-surface-alt, #f0f2f5) 88%, transparent)
-        );
+    --generic-hero-gap: var(--generic-space-2);
+    --generic-hero-padding: var(--generic-container-padding-block);
+    --generic-hero-radius: var(--generic-container-radius);
+    --generic-hero-border: var(--generic-container-border);
+    --generic-hero-background: var(--generic-container-surface-gradient);
     --generic-hero-shadow: none;
     display: grid;
     gap: var(--generic-hero-gap);
@@ -163,9 +244,7 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
 }
 
 .generic-hero-panel.accent {
-    --generic-hero-background:
-        radial-gradient(circle at top right, color-mix(in srgb, var(--color-primary, #2563eb) 16%, transparent), transparent 48%),
-        linear-gradient(135deg, color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface, #fff)), var(--color-surface, #fff));
+    --generic-hero-background: var(--generic-container-surface-accent);
     --generic-hero-border: color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #d1d5db));
 }
 .generic-hero-panel.fill {
@@ -173,10 +252,32 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
     border-radius: 0;
 }
 
+.generic-empty-hero {
+    --generic-empty-hero-margin: var(--generic-container-margin);
+    display: grid;
+    gap: var(--generic-space-2);
+    margin: var(--generic-empty-hero-margin);
+}
+
+.generic-empty-hero__title,
+.generic-empty-hero__text {
+    margin: 0;
+}
+
+.generic-empty-hero__title {
+    color: var(--color-text, #1f2937);
+    font-size: 1.1rem;
+}
+
+.generic-empty-hero__text {
+    color: var(--color-text-light, #475569);
+    line-height: 1.6;
+}
+
 .generic-drawer-header {
-    --generic-drawer-header-padding: 18px 20px;
-    --generic-drawer-header-gap: 16px;
-    --generic-drawer-header-border: var(--color-border, #e5e7eb);
+    --generic-drawer-header-padding: var(--generic-space-4) var(--generic-layout-gutter);
+    --generic-drawer-header-gap: var(--generic-space-4);
+    --generic-drawer-header-border: var(--generic-container-border);
     --generic-drawer-header-background:
         linear-gradient(
             180deg,
@@ -206,13 +307,15 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
 .generic-drawer-header__copy {
     min-width: 0;
     flex: 1 1 auto;
+    display: grid;
+    gap: var(--generic-drawer-header-copy-gap, var(--generic-space-1));
 }
 
 .generic-drawer-header__actions {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 12px;
+    gap: var(--generic-space-3);
     flex: 0 0 auto;
     flex-wrap: wrap;
 }
@@ -220,8 +323,85 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
 [data-omo-subdrawer-actions] {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--generic-space-2);
     flex-wrap: wrap;
+}
+
+.generic-drawer-content {
+    --generic-drawer-content-gap: var(--generic-space-4);
+    --generic-drawer-content-padding-block: var(--generic-space-4);
+    --generic-drawer-content-padding-inline: var(--generic-container-padding-inline);
+    display: grid;
+    gap: var(--generic-drawer-content-gap);
+    padding: var(--generic-drawer-content-padding-block) var(--generic-drawer-content-padding-inline);
+}
+
+.generic-action-row,
+.generic-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--generic-action-row-gap, var(--generic-space-2));
+}
+
+.generic-form-stack {
+    display: grid;
+    gap: var(--generic-form-gap, var(--generic-space-4));
+}
+
+.generic-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--generic-form-grid-min, 220px)), 1fr));
+    gap: var(--generic-form-grid-gap, var(--generic-space-4));
+}
+
+.generic-form-field {
+    display: grid;
+    align-content: start;
+    gap: var(--generic-form-field-gap, var(--generic-space-2));
+}
+
+.generic-form-field--full {
+    grid-column: 1 / -1;
+}
+
+.generic-form-section {
+    --generic-section-gap: var(--generic-space-4);
+    min-width: 0;
+    margin: 0;
+}
+
+.generic-form-section__heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--generic-space-3);
+    flex-wrap: wrap;
+}
+
+.generic-form-section__copy {
+    display: grid;
+    gap: var(--generic-space-1);
+    min-width: 0;
+}
+
+.generic-form-actions--stack-mobile {
+    width: 100%;
+}
+
+.generic-feedback {
+    min-height: var(--generic-feedback-min-height, 22px);
+    color: var(--generic-feedback-error);
+    font-weight: 600;
+}
+
+.generic-feedback.is-success {
+    color: var(--generic-feedback-success);
+}
+
+.generic-feedback.is-error {
+    color: var(--generic-feedback-error);
 }
 
 .omo-resource-picker { display: grid; grid-template-columns: minmax(300px, 0.7fr) minmax(0, 1fr); gap: 18px; }
@@ -235,44 +415,189 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
 .omo-resource-picker__quick-search .generic-form-control { padding-left: 42px; }
 @media (max-width: 768px) { .omo-resource-picker { display: block; } .omo-resource-picker__navigation { display: none; } }
 
+.generic-title,
 .generic-card-title {
     margin: 0;
     font-weight: 600;
-    line-height: 1.2;
+    line-height: var(--generic-type-line-tight);
     color: var(--color-text-light, #6b7280);
 }
 
+.generic-title--eyebrow,
 .generic-card-title--eyebrow {
-    font-size: 11px;
+    font-size: var(--generic-title-size-eyebrow);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
 }
 
+.generic-title--small,
 .generic-card-title--small {
-    font-size: 13px;
+    font-size: var(--generic-title-size-small);
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
 
+.generic-title--medium,
 .generic-card-title--medium {
-    font-size: 16px;
+    font-size: var(--generic-title-size-medium);
     color: var(--color-text, #1f2937);
 }
 
+.generic-title--big,
 .generic-card-title--big {
-    font-size: 18px;
+    font-size: var(--generic-title-size-big);
     color: var(--color-text, #1f2937);
 }
 
+.generic-title--section,
 .generic-card-title--section {
-    font-size: 20px;
+    font-size: var(--generic-title-size-section);
     color: var(--color-text, #1f2937);
 }
 
+.generic-title--large,
 .generic-card-title--large {
-    font-size: 22px;
+    font-size: var(--generic-title-size-large);
     color: var(--color-text, #1f2937);
+}
+
+.generic-title--item,
+.generic-title--card {
+    color: var(--color-text, #1f2937);
+    font-size: var(--generic-type-size-md);
+    font-weight: 700;
+    line-height: var(--generic-type-line-title);
+    overflow-wrap: anywhere;
+}
+
+.generic-title--compact {
+    color: var(--color-text, #1f2937);
+    font-size: var(--generic-type-size-body);
+    font-weight: 700;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.generic-title--subsection {
+    color: var(--color-text-light, #64748b);
+    font-size: var(--generic-type-size-body);
+    font-weight: 700;
+    line-height: var(--generic-type-line-title);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.generic-title--hero {
+    color: inherit;
+    font-size: var(--generic-title-size-hero, 1.75rem);
+    font-weight: 700;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+}
+
+.generic-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--generic-title-row-gap);
+    flex-wrap: wrap;
+}
+
+.generic-title-row--center {
+    align-items: center;
+}
+
+.generic-description {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    line-height: var(--generic-type-line-body);
+    overflow-wrap: anywhere;
+}
+
+.generic-description--small {
+    font-size: var(--generic-type-size-sm);
+}
+
+.generic-description--card {
+    font-size: var(--generic-type-size-body);
+}
+
+.generic-description--compact {
+    font-size: var(--generic-type-size-compact);
+    line-height: 1.4;
+}
+
+.generic-description--primary {
+    color: var(--color-text, #1f2937);
+}
+
+.generic-description--relaxed {
+    line-height: var(--generic-type-line-relaxed);
+}
+
+.generic-help-text {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    font-size: var(--generic-type-size-sm);
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.generic-help-text--regular {
+    font-size: var(--generic-type-size-body);
+}
+
+.generic-meta {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    font-size: var(--generic-type-size-sm);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.generic-meta--compact {
+    font-size: var(--generic-type-size-xs);
+    line-height: 1.35;
+}
+
+.generic-meta-label {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    font-size: var(--generic-type-size-xs);
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.generic-meta-label--compact {
+    font-size: var(--generic-type-size-micro);
+}
+
+.generic-meta-value {
+    margin: 0;
+    color: var(--color-text, #1f2937);
+    font-size: var(--generic-type-size-body);
+    font-weight: 600;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.generic-meta-value--compact {
+    font-size: var(--generic-type-size-compact);
+}
+
+.generic-form-label {
+    color: var(--color-text, #1f2937);
+    font-size: var(--generic-type-size-sm);
+    font-weight: 700;
+    line-height: var(--generic-type-line-title);
+}
+
+.generic-form-label--eyebrow {
+    color: var(--color-text-light, #64748b);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
 }
 
 .black-icon {
@@ -1225,6 +1550,11 @@ textarea.generic-form-control {
 }
 
 @media (max-width: 768px) {
+    .generic-drawer-content {
+        --generic-drawer-content-padding-block: var(--generic-space-3);
+        --generic-drawer-content-padding-inline: var(--generic-space-3);
+    }
+
     .generic-drawer-header {
         flex-direction: column;
         align-items: stretch;
@@ -1232,6 +1562,15 @@ textarea.generic-form-control {
 
     .generic-drawer-header__actions {
         justify-content: flex-start;
+    }
+
+    .generic-form-actions--stack-mobile {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .generic-form-actions--stack-mobile > .generic-action-button {
+        width: 100%;
     }
 
     .generic-file-list--structured .generic-file-list__header {

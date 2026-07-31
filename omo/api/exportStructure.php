@@ -562,6 +562,8 @@ $payload = array(
         'name' => (string)$organization->get('name'),
         'shortname' => (string)$organization->get('shortname'),
         'color' => (string)$organization->get('color'),
+        'logo' => (string)$organization->get('logo'),
+        'banner' => (string)$organization->get('banner'),
     ),
     'holons' => $compactExportData['holons'],
     'propertyDefinitions' => $compactExportData['propertyDefinitions'],

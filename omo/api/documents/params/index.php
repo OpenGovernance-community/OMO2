@@ -28,8 +28,8 @@ $visibilityDefaults = $organizationLoaded
     : \dbObject\Document::getApplicationDefaultScopeTypes(0);
 $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-folder.png';
 ?>
-<div class="omo-documents-params" data-omo-documents-params-root>
-    <section class="generic-section generic-section--stack omo-documents-params__panel">
+<div class="omo-documents-params generic-stack generic-stack--roomy" data-omo-documents-params-root>
+    <section class="generic-section generic-section--stack generic-section--roomy omo-documents-params__panel">
         <div class="omo-documents-params__hero">
             <span class="omo-documents-params__icon-shell">
                 <img src="<?= htmlspecialchars($iconUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" class="omo-documents-params__icon black-icon" loading="lazy">
@@ -37,7 +37,7 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
             <div class="omo-documents-params__copy">
                 <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?></div>
                 <h2 class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.title'), ENT_QUOTES, 'UTF-8') ?></h2>
-                <p class="omo-documents-params__description"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.description'), ENT_QUOTES, 'UTF-8') ?></p>
+                <p class="omo-documents-params__description generic-description"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.description'), ENT_QUOTES, 'UTF-8') ?></p>
             </div>
         </div>
 
@@ -50,7 +50,7 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
         <?php elseif (!$canManage): ?>
             <div class="omo-empty-state"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.error.forbidden'), ENT_QUOTES, 'UTF-8') ?></div>
         <?php else: ?>
-            <div class="omo-documents-params__status<?= $nextcloudConfigured ? ' is-ready' : '' ?>">
+            <div class="omo-documents-params__status generic-soft-panel<?= $nextcloudConfigured ? ' is-ready' : '' ?>">
                 <?= htmlspecialchars(
                     $nextcloudConfigured
                         ? omoDocumentsParamsT('documents.params.status.ready')
@@ -61,16 +61,16 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
             </div>
 
             <?php if ($usesLegacyConfig): ?>
-                <div class="omo-documents-params__legacy">
+                <div class="omo-documents-params__legacy generic-soft-panel">
                     <?= htmlspecialchars(omoDocumentsParamsT('documents.params.status.legacy'), ENT_QUOTES, 'UTF-8') ?>
                 </div>
             <?php endif; ?>
 
-            <form class="omo-documents-params__form" data-omo-documents-params-form action="/omo/api/documents/params/save.php" method="post">
+            <form class="omo-documents-params__form generic-form-stack" data-omo-documents-params-form action="/omo/api/documents/params/save.php" method="post">
                 <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
 
-                <div class="omo-documents-params__grid">
-                    <label class="omo-documents-params__field omo-documents-params__field--full">
+                <div class="omo-documents-params__grid generic-form-grid">
+                    <label class="omo-documents-params__field omo-documents-params__field--full generic-form-field generic-form-field--full">
                         <span class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.base_url'), ENT_QUOTES, 'UTF-8') ?></span>
                         <input
                             type="url"
@@ -81,10 +81,10 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                             placeholder="https://cloud.example.com/nextcloud"
                             value="<?= htmlspecialchars((string)$nextcloudConfig['baseUrl'], ENT_QUOTES, 'UTF-8') ?>"
                         >
-                        <span class="omo-documents-params__hint"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.base_url_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.base_url_hint'), ENT_QUOTES, 'UTF-8') ?></span>
                     </label>
 
-                    <label class="omo-documents-params__field">
+                    <label class="omo-documents-params__field generic-form-field">
                         <span class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.username'), ENT_QUOTES, 'UTF-8') ?></span>
                         <input
                             type="text"
@@ -97,7 +97,7 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                         >
                     </label>
 
-                    <label class="omo-documents-params__field">
+                    <label class="omo-documents-params__field generic-form-field">
                         <span class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.password'), ENT_QUOTES, 'UTF-8') ?></span>
                         <input
                             type="password"
@@ -113,10 +113,10 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                                 'UTF-8'
                             ) ?>"
                         >
-                        <span class="omo-documents-params__hint"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.password_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.password_hint'), ENT_QUOTES, 'UTF-8') ?></span>
                     </label>
 
-                    <label class="omo-documents-params__field omo-documents-params__field--full">
+                    <label class="omo-documents-params__field omo-documents-params__field--full generic-form-field generic-form-field--full">
                         <span class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.folder'), ENT_QUOTES, 'UTF-8') ?></span>
                         <input
                             type="text"
@@ -127,10 +127,10 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                             placeholder="Documents/OMO"
                             value="<?= htmlspecialchars((string)$nextcloudConfig['folder'], ENT_QUOTES, 'UTF-8') ?>"
                         >
-                        <span class="omo-documents-params__hint"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.folder_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.folder_hint'), ENT_QUOTES, 'UTF-8') ?></span>
                     </label>
 
-                    <div class="omo-documents-params__field omo-documents-params__field--full">
+                    <div class="omo-documents-params__field omo-documents-params__field--full generic-form-field generic-form-field--full">
                         <?= commonRenderObjectVisibilitySelector(array(
                             'inputName' => 'default_visibility_type',
                             'fieldLabel' => omoDocumentsParamsT('documents.params.field.default_visibility'),
@@ -142,7 +142,7 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                         )) ?>
                     </div>
 
-                    <div class="omo-documents-params__field omo-documents-params__field--full">
+                    <div class="omo-documents-params__field omo-documents-params__field--full generic-form-field generic-form-field--full">
                         <?= commonRenderObjectVisibilitySelector(array(
                             'inputName' => 'default_edit_visibility_type',
                             'fieldLabel' => omoDocumentsParamsT('documents.params.field.default_edit_visibility'),
@@ -155,36 +155,26 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                     </div>
 
                     <?php if ($nextcloudConfigured): ?>
-                        <label class="omo-documents-params__checkbox omo-documents-params__field--full">
+                        <label class="omo-documents-params__checkbox omo-documents-params__field--full generic-form-field--full">
                             <input type="checkbox" name="nextcloud_clear_config" value="1">
                             <span><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.clear'), ENT_QUOTES, 'UTF-8') ?></span>
                         </label>
                     <?php endif; ?>
                 </div>
 
-                <div class="omo-documents-params__actions">
+                <div class="omo-documents-params__actions generic-form-actions">
                     <button type="submit" class="generic-action-button generic-action-button--main" data-omo-documents-params-submit>
                         <?= htmlspecialchars(omoDocumentsParamsT('documents.params.action.save'), ENT_QUOTES, 'UTF-8') ?>
                     </button>
                 </div>
 
-                <div class="omo-documents-params__feedback" data-omo-documents-params-feedback hidden></div>
+                <div class="omo-documents-params__feedback generic-soft-panel generic-feedback" data-omo-documents-params-feedback hidden></div>
             </form>
         <?php endif; ?>
     </section>
 </div>
 
 <style>
-.omo-documents-params {
-    display: grid;
-    gap: 18px;
-}
-
-.omo-documents-params__panel {
-    --generic-section-padding-block: 18px;
-    --generic-section-padding-inline: 18px;
-}
-
 .omo-documents-params__hero {
     display: flex;
     align-items: flex-start;
@@ -214,18 +204,8 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
     gap: 6px;
 }
 
-.omo-documents-params__description {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
-    line-height: 1.55;
-}
-
 .omo-documents-params__status,
 .omo-documents-params__legacy {
-    padding: 12px 14px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border, #dbe4ee);
-    background: var(--color-surface-alt, #f8fafc);
     color: var(--color-text-light, #475569);
 }
 
@@ -241,32 +221,6 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
     background: color-mix(in srgb, #f59e0b 8%, var(--color-surface, #ffffff));
 }
 
-.omo-documents-params__form {
-    display: grid;
-    gap: 16px;
-}
-
-.omo-documents-params__grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-}
-
-.omo-documents-params__field {
-    display: grid;
-    gap: 8px;
-}
-
-.omo-documents-params__field--full {
-    grid-column: 1 / -1;
-}
-
-.omo-documents-params__hint {
-    color: var(--color-text-light, #64748b);
-    font-size: 0.84rem;
-    line-height: 1.45;
-}
-
 .omo-documents-params__checkbox {
     display: flex;
     align-items: center;
@@ -274,16 +228,7 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
     color: var(--color-text, #0f172a);
 }
 
-.omo-documents-params__actions {
-    display: flex;
-    justify-content: flex-end;
-}
-
 .omo-documents-params__feedback {
-    padding: 12px 14px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border, #dbe4ee);
-    background: var(--color-surface-alt, #f8fafc);
     color: var(--color-text-light, #475569);
 }
 

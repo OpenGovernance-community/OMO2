@@ -349,8 +349,8 @@ $invitationContext = [
                         <svg viewBox="0 0 24 24" focusable="false"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3v4M16 3v4M4 10h16"></path></svg>
                     </span>
                     <div>
-                        <span class="omo-calendar-detail__meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.schedule')) ?></span>
-                        <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape($scheduleLabel) ?></strong>
+                        <span class="omo-calendar-detail__meta-label generic-meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.schedule')) ?></span>
+                        <strong class="omo-calendar-detail__meta-value generic-meta-value"><?= omoApiEscape($scheduleLabel) ?></strong>
                     </div>
                 </div>
                 <div class="omo-calendar-detail__meta-card">
@@ -358,8 +358,8 @@ $invitationContext = [
                         <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="6" r="3"></circle><circle cx="5" cy="17" r="3"></circle><circle cx="19" cy="17" r="3"></circle></svg>
                     </span>
                     <div>
-                        <span class="omo-calendar-detail__meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.context')) ?></span>
-                        <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape($contextLabel !== '' ? $contextLabel : trim((string)$organization->get('name'))) ?></strong>
+                        <span class="omo-calendar-detail__meta-label generic-meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.context')) ?></span>
+                        <strong class="omo-calendar-detail__meta-value generic-meta-value"><?= omoApiEscape($contextLabel !== '' ? $contextLabel : trim((string)$organization->get('name'))) ?></strong>
                     </div>
                 </div>
                 <div class="omo-calendar-detail__meta-card">
@@ -367,8 +367,8 @@ $invitationContext = [
                         <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="8"></circle><path d="m8.5 12 2.3 2.3 4.8-5"></path></svg>
                     </span>
                     <div>
-                        <span class="omo-calendar-detail__meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.status')) ?></span>
-                        <strong class="omo-calendar-detail__meta-value omo-calendar-detail__status-value<?= $normalizedStatus === Event::STATUS_CONFIRMED ? ' is-confirmed' : '' ?>"><?= omoApiEscape($statusLabel) ?></strong>
+                        <span class="omo-calendar-detail__meta-label generic-meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.status')) ?></span>
+                        <strong class="omo-calendar-detail__meta-value generic-meta-value omo-calendar-detail__status-value<?= $normalizedStatus === Event::STATUS_CONFIRMED ? ' is-confirmed' : '' ?>"><?= omoApiEscape($statusLabel) ?></strong>
                     </div>
                 </div>
                 <div class="omo-calendar-detail__meta-card">
@@ -376,8 +376,8 @@ $invitationContext = [
                         <svg viewBox="0 0 24 24" focusable="false"><path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z"></path><circle cx="12" cy="10" r="2"></circle></svg>
                     </span>
                     <div>
-                        <span class="omo-calendar-detail__meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.location')) ?></span>
-                        <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape($locationSummary !== '' ? $locationSummary : omoCalendarDetailT('calendar.detail.empty.location')) ?></strong>
+                        <span class="omo-calendar-detail__meta-label generic-meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.location')) ?></span>
+                        <strong class="omo-calendar-detail__meta-value generic-meta-value"><?= omoApiEscape($locationSummary !== '' ? $locationSummary : omoCalendarDetailT('calendar.detail.empty.location')) ?></strong>
                     </div>
                 </div>
             </div>
@@ -388,9 +388,9 @@ $invitationContext = [
                 <section class="generic-section generic-section--stack omo-calendar-detail__content">
                     <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.description')) ?></h3>
                     <?php if ($description !== ''): ?>
-                        <div class="omo-calendar-detail__description"><?= nl2br(omoApiEscape($description)) ?></div>
+                        <div class="omo-calendar-detail__description generic-description generic-description--primary generic-description--relaxed"><?= nl2br(omoApiEscape($description)) ?></div>
                     <?php else: ?>
-                        <p class="omo-calendar-detail__empty"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.description')) ?></p>
+                        <p class="omo-calendar-detail__empty generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.description')) ?></p>
                     <?php endif; ?>
                 </section>
 
@@ -415,7 +415,7 @@ $invitationContext = [
                             </div>
                         <?php endif; ?>
                     <?php else: ?>
-                        <p class="omo-calendar-detail__empty"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.location')) ?></p>
+                        <p class="omo-calendar-detail__empty generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.location')) ?></p>
                     <?php endif; ?>
                 </section>
 
@@ -440,7 +440,7 @@ $invitationContext = [
                             ><?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.open_document')) ?></button>
                         <?php endif; ?>
                     <?php else: ?>
-                        <p class="omo-calendar-detail__empty"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.document')) ?></p>
+                        <p class="omo-calendar-detail__empty generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.document')) ?></p>
                     <?php endif; ?>
                 </section>
 
@@ -532,18 +532,10 @@ $invitationContext = [
 
     .omo-calendar-detail__meta-label {
         display: block;
-        color: var(--color-text-light, #64748b);
-        font-size: 0.8rem;
-        font-weight: 700;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
     }
 
     .omo-calendar-detail__meta-value {
         display: block;
-        color: var(--color-text, #1f2937);
-        line-height: 1.5;
-        overflow-wrap: anywhere;
     }
 
     .omo-calendar-detail__status-value.is-confirmed {
@@ -567,18 +559,6 @@ $invitationContext = [
     .omo-calendar-detail__content {
         gap: 12px;
         min-width: 0;
-    }
-
-    .omo-calendar-detail__description,
-    .omo-calendar-detail__empty {
-        margin: 0;
-        color: var(--color-text, #1f2937);
-        line-height: 1.65;
-        white-space: normal;
-    }
-
-    .omo-calendar-detail__empty {
-        color: var(--color-text-light, #64748b);
     }
 
     .omo-calendar-detail__location-mode,

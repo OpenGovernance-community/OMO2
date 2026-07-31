@@ -53,7 +53,7 @@ if ($currentHolonId > 0) {
 
         <section class="generic-section omo-checklist-editor__section">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoChecklistT('checklist.form.activate_title')) ?></h3>
-            <p class="omo-checklist-activation__intro"><?= omoApiEscape(omoChecklistT('checklist.form.activate_intro')) ?></p>
+            <p class="omo-checklist-activation__intro generic-description"><?= omoApiEscape(omoChecklistT('checklist.form.activate_intro')) ?></p>
             <div class="omo-checklist-form-grid">
                 <label class="omo-checklist-field omo-checklist-field--wide">
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.instance_title')) ?></span>
@@ -73,7 +73,7 @@ if ($currentHolonId > 0) {
                 <?php endif; ?>
             </div>
             <?php if ($openRunCount > 0): ?>
-                <p class="omo-checklist-activation__notice"><?= omoApiEscape(omoChecklistT('checklist.detail.open_run_count', ['count' => $openRunCount])) ?></p>
+                <p class="omo-checklist-activation__notice generic-description"><?= omoApiEscape(omoChecklistT('checklist.detail.open_run_count', ['count' => $openRunCount])) ?></p>
             <?php endif; ?>
         </section>
         <div class="omo-checklist-feedback" data-checklist-editor-feedback aria-live="polite"></div>

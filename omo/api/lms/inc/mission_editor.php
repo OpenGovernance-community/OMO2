@@ -74,17 +74,17 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
 
         ob_start();
         ?>
-        <section class="lms-mission-related" data-lms-mission-dependency-manager="1" data-mission-id="<?php echo $missionId; ?>" data-parcours-id="<?php echo $parcoursId; ?>">
-            <div class="lms-mission-related__header">
-                <div>
-                    <h3><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.dependencies.title')); ?></h3>
-                    <p><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.dependencies.intro')); ?></p>
+        <section class="lms-mission-related generic-section generic-section--stack generic-form-section" data-lms-mission-dependency-manager="1" data-mission-id="<?php echo $missionId; ?>" data-parcours-id="<?php echo $parcoursId; ?>">
+            <div class="lms-mission-related__header generic-form-section__heading">
+                <div class="generic-form-section__copy">
+                    <h3 class="generic-title generic-title--medium"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.dependencies.title')); ?></h3>
+                    <p class="generic-description"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.dependencies.intro')); ?></p>
                 </div>
-                <button type="button" data-lms-open-mission-dependency-picker="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.dependencies.add')); ?></button>
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-lms-open-mission-dependency-picker="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.dependencies.add')); ?></button>
             </div>
 
             <?php if (count($dependencies) === 0): ?>
-                <div class="lms-mission-related__empty"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.dependencies.empty')); ?></div>
+                <div class="lms-mission-related__empty generic-description"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.dependencies.empty')); ?></div>
             <?php else: ?>
                 <div class="lms-mission-related__list" data-lms-mission-dependency-list="1">
                     <?php foreach ($dependencies as $dependency): ?>
@@ -147,7 +147,7 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
 
                     <div class="lms-parcours-mission-picker__list" data-lms-mission-dependency-picker-list="1">
                         <?php if (count($availableMissions) === 0): ?>
-                            <div class="lms-parcours-mission-picker__empty"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.dependencies.empty_picker')); ?></div>
+                            <div class="lms-parcours-mission-picker__empty generic-description generic-description--compact"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.dependencies.empty_picker')); ?></div>
                         <?php else: ?>
                             <?php foreach ($availableMissions as $availableMission): ?>
                                 <?php
@@ -162,15 +162,15 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
                                     data-search-text="<?php echo htmlspecialchars($searchText, ENT_QUOTES, 'UTF-8'); ?>"
                                 >
                                     <div class="lms-parcours-mission-picker__copy">
-                                        <strong><?php echo htmlspecialchars((string)($availableMission['title'] ?? '')); ?></strong>
+                                        <strong class="generic-title generic-title--compact"><?php echo htmlspecialchars((string)($availableMission['title'] ?? '')); ?></strong>
                                         <?php if (trim((string)($availableMission['resume'] ?? '')) !== ''): ?>
-                                            <p><?php echo htmlspecialchars((string)$availableMission['resume']); ?></p>
+                                            <p class="generic-description generic-description--compact"><?php echo htmlspecialchars((string)$availableMission['resume']); ?></p>
                                         <?php endif; ?>
                                     </div>
                                     <button type="button" data-lms-add-mission-dependency-id="<?php echo (int)($availableMission['id'] ?? 0); ?>"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.add')); ?></button>
                                 </article>
                             <?php endforeach; ?>
-                            <div class="lms-parcours-mission-picker__empty" data-lms-mission-dependency-picker-empty-search="1" hidden><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.dependencies.empty_search')); ?></div>
+                            <div class="lms-parcours-mission-picker__empty generic-description generic-description--compact" data-lms-mission-dependency-picker-empty-search="1" hidden><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.dependencies.empty_search')); ?></div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -189,17 +189,17 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
 
         ob_start();
         ?>
-        <section class="lms-mission-related" data-lms-homework-manager="1" data-mission-id="<?php echo $missionId; ?>" data-parcours-id="<?php echo $parcoursId; ?>">
-            <div class="lms-mission-related__header">
-                <div>
-                    <h3><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.title')); ?></h3>
-                    <p><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.intro')); ?></p>
+        <section class="lms-mission-related generic-section generic-section--stack generic-form-section" data-lms-homework-manager="1" data-mission-id="<?php echo $missionId; ?>" data-parcours-id="<?php echo $parcoursId; ?>">
+            <div class="lms-mission-related__header generic-form-section__heading">
+                <div class="generic-form-section__copy">
+                    <h3 class="generic-title generic-title--medium"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.title')); ?></h3>
+                    <p class="generic-description"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.intro')); ?></p>
                 </div>
-                <button type="button" data-lms-open-homework-creator="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.add')); ?></button>
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-lms-open-homework-creator="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.add')); ?></button>
             </div>
 
             <?php if (count($homeworks) === 0): ?>
-                <div class="lms-mission-related__empty"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.empty')); ?></div>
+                <div class="lms-mission-related__empty generic-description"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.empty')); ?></div>
             <?php else: ?>
                 <div class="lms-mission-related__list" data-lms-homework-list="1">
                     <?php foreach ($homeworks as $homework): ?>
@@ -238,19 +238,19 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
             <form
                 method="post"
                 action="<?php echo htmlspecialchars(omoLmsBuildPath('/mission_homework_create.php')); ?>"
-                class="lms-mission-creator-form"
+                class="lms-mission-creator-form generic-form-stack"
                 data-lms-homework-create-form="1"
                 hidden
             >
                 <input type="hidden" name="id" value="">
-                <div class="lms-mission-creator-form__grid">
-                    <label class="lms-mission-creator-form__field">
-                        <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.field_title')); ?></span>
+                <div class="lms-mission-creator-form__grid generic-form-grid">
+                    <label class="lms-mission-creator-form__field generic-form-field">
+                        <span class="generic-form-label"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.field_title')); ?></span>
                         <input type="text" name="title" maxlength="150" class="generic-form-control" required>
                     </label>
 
-                    <label class="lms-mission-creator-form__field lms-mission-creator-form__field--full">
-                        <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.field_detail')); ?></span>
+                    <label class="lms-mission-creator-form__field lms-mission-creator-form__field--full generic-form-field generic-form-field--full">
+                        <span class="generic-form-label"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.field_detail')); ?></span>
                         <textarea name="detail" rows="4" class="generic-form-control summernote" data-editor-profile="simple"></textarea>
                     </label>
 
@@ -261,7 +261,7 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
                     </label>
                 </div>
 
-                <div class="lms-mission-creator-form__actions">
+                <div class="lms-mission-creator-form__actions generic-form-actions generic-form-actions--stack-mobile">
                     <button type="button" class="generic-action-button generic-action-button--secondary" data-lms-close-homework-creator="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.cancel')); ?></button>
                     <button type="submit" class="generic-action-button generic-action-button--main" data-lms-homework-create-submit="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.homeworks.submit')); ?></button>
                 </div>
@@ -279,15 +279,15 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
         for ($index = 0; $index < $choiceCount; $index++) {
             ?>
             <div class="lms-question-choice-row" data-lms-question-choice-row="1">
-                <label class="lms-question-choice-row__label">
-                    <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.choice')); ?></span>
-                    <input type="text" name="choices[<?php echo $index; ?>][label]" required>
+                <label class="lms-question-choice-row__label generic-form-field">
+                    <span class="generic-form-label"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.choice')); ?></span>
+                    <input type="text" name="choices[<?php echo $index; ?>][label]" class="generic-form-control" required>
                 </label>
                 <label class="lms-question-choice-row__correct">
                     <input type="checkbox" name="choices[<?php echo $index; ?>][is_correct]" value="1">
                     <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.correct_answer')); ?></span>
                 </label>
-                <button type="button" class="lms-question-choice-row__remove" data-lms-remove-question-choice="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.delete')); ?></button>
+                <button type="button" class="lms-question-choice-row__remove generic-action-button generic-action-button--secondary" data-lms-remove-question-choice="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.delete')); ?></button>
             </div>
             <?php
         }
@@ -303,17 +303,17 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
 
         ob_start();
         ?>
-        <section class="lms-mission-related" data-lms-question-manager="1" data-mission-id="<?php echo $missionId; ?>" data-parcours-id="<?php echo $parcoursId; ?>">
-            <div class="lms-mission-related__header">
-                <div>
-                    <h3><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.title')); ?></h3>
-                    <p><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.intro')); ?></p>
+        <section class="lms-mission-related generic-section generic-section--stack generic-form-section" data-lms-question-manager="1" data-mission-id="<?php echo $missionId; ?>" data-parcours-id="<?php echo $parcoursId; ?>">
+            <div class="lms-mission-related__header generic-form-section__heading">
+                <div class="generic-form-section__copy">
+                    <h3 class="generic-title generic-title--medium"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.title')); ?></h3>
+                    <p class="generic-description"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.intro')); ?></p>
                 </div>
-                <button type="button" data-lms-open-question-creator="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.add')); ?></button>
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-lms-open-question-creator="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.add')); ?></button>
             </div>
 
             <?php if (count($questions) === 0): ?>
-                <div class="lms-mission-related__empty"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.empty')); ?></div>
+                <div class="lms-mission-related__empty generic-description"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.empty')); ?></div>
             <?php else: ?>
                 <div class="lms-mission-related__list" data-lms-question-list="1">
                     <?php foreach ($questions as $question): ?>
@@ -359,39 +359,39 @@ if (!function_exists('lmsRenderMissionHomeworkManager')) {
             <form
                 method="post"
                 action="<?php echo htmlspecialchars(omoLmsBuildPath('/mission_question_create.php')); ?>"
-                class="lms-mission-creator-form"
+                class="lms-mission-creator-form generic-form-stack"
                 data-lms-question-create-form="1"
                 hidden
             >
                 <input type="hidden" name="id" value="">
-                <div class="lms-mission-creator-form__grid">
-                    <label class="lms-mission-creator-form__field lms-mission-creator-form__field--full">
-                        <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.field_question')); ?></span>
-                        <textarea name="question" rows="3" required></textarea>
+                <div class="lms-mission-creator-form__grid generic-form-grid">
+                    <label class="lms-mission-creator-form__field lms-mission-creator-form__field--full generic-form-field generic-form-field--full">
+                        <span class="generic-form-label"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.field_question')); ?></span>
+                        <textarea name="question" rows="3" class="generic-form-control" required></textarea>
                     </label>
 
-                    <label class="lms-mission-creator-form__field lms-mission-creator-form__field--full">
-                        <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.field_answer')); ?></span>
-                        <textarea name="answer" rows="4" required></textarea>
+                    <label class="lms-mission-creator-form__field lms-mission-creator-form__field--full generic-form-field generic-form-field--full">
+                        <span class="generic-form-label"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.field_answer')); ?></span>
+                        <textarea name="answer" rows="4" class="generic-form-control" required></textarea>
                     </label>
 
-                    <label class="lms-mission-creator-form__field lms-mission-creator-form__field--full">
-                        <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.field_detail')); ?></span>
-                        <textarea name="detail" rows="3"></textarea>
+                    <label class="lms-mission-creator-form__field lms-mission-creator-form__field--full generic-form-field generic-form-field--full">
+                        <span class="generic-form-label"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.field_detail')); ?></span>
+                        <textarea name="detail" rows="3" class="generic-form-control"></textarea>
                     </label>
 
-                    <div class="lms-mission-creator-form__field lms-mission-creator-form__field--full">
-                        <span><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.field_choices')); ?></span>
+                    <div class="lms-mission-creator-form__field lms-mission-creator-form__field--full generic-form-field generic-form-field--full">
+                        <span class="generic-form-label"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.field_choices')); ?></span>
                         <div class="lms-question-choice-list" data-lms-question-choice-list="1">
                             <?php echo lmsRenderMissionQuestionChoiceRows(2); ?>
                         </div>
-                        <button type="button" class="lms-question-choice-list__add" data-lms-add-question-choice="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.add_choice')); ?></button>
+                        <button type="button" class="lms-question-choice-list__add generic-action-button generic-action-button--secondary" data-lms-add-question-choice="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.add_choice')); ?></button>
                     </div>
                 </div>
 
-                <div class="lms-mission-creator-form__actions">
-                    <button type="button" data-lms-close-question-creator="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.cancel')); ?></button>
-                    <button type="submit" data-lms-question-create-submit="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.submit')); ?></button>
+                <div class="lms-mission-creator-form__actions generic-form-actions generic-form-actions--stack-mobile">
+                    <button type="button" class="generic-action-button generic-action-button--secondary" data-lms-close-question-creator="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.common.cancel')); ?></button>
+                    <button type="submit" class="generic-action-button generic-action-button--main" data-lms-question-create-submit="1"><?php echo htmlspecialchars(lmsMissionEditorT('lms.mission_editor.questions.submit')); ?></button>
                 </div>
             </form>
         </section>

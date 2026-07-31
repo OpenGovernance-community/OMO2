@@ -185,7 +185,8 @@ if (!checklogin()) {
                 <span class="styleguide-pill">generic-section</span>
                 <span class="styleguide-pill">generic-soft-panel</span>
                 <span class="styleguide-pill">generic-hero-panel</span>
-                <span class="styleguide-pill">generic-card-title</span>
+                <span class="styleguide-pill">generic-title</span>
+                <span class="styleguide-pill">generic-description</span>
                 <span class="styleguide-pill">generic-action-button</span>
                 <span class="styleguide-pill">generic-drag-handle</span>
                 <span class="styleguide-pill">generic-form-control</span>
@@ -196,23 +197,58 @@ if (!checklogin()) {
         </section>
 
         <section class="generic-section generic-section--stack">
-            <div class="generic-card-title generic-card-title--eyebrow">Titres</div>
+            <div class="generic-card-title generic-card-title--eyebrow">Typographie</div>
             <div class="styleguide-grid">
                 <div class="generic-soft-panel generic-soft-panel--stack">
-                    <div class="generic-card-title generic-card-title--eyebrow">Eyebrow</div>
-                    <div class="generic-card-title generic-card-title--small">Small</div>
-                    <div class="generic-card-title generic-card-title--medium">Medium</div>
-                    <div class="generic-card-title generic-card-title--big">Big</div>
-                    <div class="generic-card-title generic-card-title--section">Section</div>
-                    <div class="generic-card-title generic-card-title--large">Large</div>
+                    <div class="generic-title generic-title--eyebrow">Eyebrow</div>
+                    <div class="generic-title generic-title--small">Small</div>
+                    <div class="generic-title generic-title--medium">Medium</div>
+                    <div class="generic-title generic-title--big">Big</div>
+                    <div class="generic-title generic-title--section">Section</div>
+                    <div class="generic-title generic-title--large">Large</div>
+                    <div class="generic-title generic-title--hero">Titre hero</div>
+                    <div class="generic-title generic-title--card">Titre de carte ou fiche</div>
+                    <div class="generic-title generic-title--compact">Titre de liste compacte</div>
+                    <div class="generic-title generic-title--subsection">Sous-section</div>
+                    <p class="generic-description">Description standard, secondaire et lisible.</p>
+                    <p class="generic-description generic-description--card">Description de carte ou de fiche.</p>
+                    <p class="generic-description generic-description--compact">Description de ligne compacte.</p>
+                    <div>
+                        <span class="generic-meta-label">Contexte</span>
+                        <span class="generic-meta-value">Information secondaire</span>
+                    </div>
+                    <label class="generic-form-label">Libelle de formulaire</label>
+                    <p class="generic-help-text">Texte d aide plus compact pour un formulaire.</p>
                 </div>
-                <pre class="styleguide-code">generic-card-title
-generic-card-title--eyebrow
-generic-card-title--small
-generic-card-title--medium
-generic-card-title--big
-generic-card-title--section
-generic-card-title--large</pre>
+                <pre class="styleguide-code">generic-title
+generic-title--eyebrow
+generic-title--small
+generic-title--medium
+generic-title--big
+generic-title--section
+generic-title--large
+generic-title--hero
+generic-title--card
+generic-title--compact
+generic-title--subsection
+generic-description
+generic-description--small
+generic-description--card
+generic-description--compact
+generic-description--primary
+generic-description--relaxed
+generic-meta
+generic-meta--compact
+generic-meta-label
+generic-meta-label--compact
+generic-meta-value
+generic-meta-value--compact
+generic-form-label
+generic-form-label--eyebrow
+generic-help-text
+generic-help-text--regular
+
+generic-card-title reste un alias compatible.</pre>
             </div>
         </section>
 
@@ -273,24 +309,30 @@ span.generic-drag-handle.generic-drag-handle--static</pre>
         <section class="generic-section generic-section--stack">
             <div class="generic-card-title generic-card-title--eyebrow">Champs</div>
             <div class="styleguide-grid">
-                <form class="styleguide-form generic-soft-panel generic-soft-panel--stack">
-                    <label class="styleguide-field">
-                        <span class="styleguide-label">Input texte</span>
+                <form class="styleguide-form generic-section generic-section--stack generic-form-section generic-form-stack">
+                    <div class="generic-form-section__heading">
+                        <div class="generic-form-section__copy">
+                            <div class="generic-title generic-title--medium">Exemple de formulaire</div>
+                            <div class="generic-description">Une section, des champs et une rangee d actions reutilisables dans les drawers.</div>
+                        </div>
+                    </div>
+                    <label class="styleguide-field generic-form-field">
+                        <span class="styleguide-label generic-form-label">Input texte</span>
                         <input type="text" class="generic-form-control" value="Exemple de saisie">
                     </label>
-                    <label class="styleguide-field">
-                        <span class="styleguide-label">Select</span>
+                    <label class="styleguide-field generic-form-field">
+                        <span class="styleguide-label generic-form-label">Select</span>
                         <select class="generic-form-control">
                             <option>Choix 1</option>
                             <option>Choix 2</option>
                         </select>
                     </label>
-                    <label class="styleguide-field">
-                        <span class="styleguide-label">Textarea</span>
+                    <label class="styleguide-field generic-form-field">
+                        <span class="styleguide-label generic-form-label">Textarea</span>
                         <textarea class="generic-form-control" rows="4">Texte multi-lignes de demonstration.</textarea>
                     </label>
-                    <label class="styleguide-field">
-                        <span class="styleguide-label">Select editable</span>
+                    <label class="styleguide-field generic-form-field">
+                        <span class="styleguide-label generic-form-label">Select editable</span>
                         <div class="generic-editable-select" data-generic-editable-select>
                             <div class="generic-editable-select__control">
                                 <input
@@ -310,8 +352,21 @@ span.generic-drag-handle.generic-drag-handle--static</pre>
                             </div>
                         </div>
                     </label>
+                    <div class="generic-form-actions generic-form-actions--stack-mobile">
+                        <button type="button" class="generic-action-button generic-action-button--secondary">Annuler</button>
+                        <button type="button" class="generic-action-button generic-action-button--main">Enregistrer</button>
+                    </div>
                 </form>
-                <pre class="styleguide-code">input.generic-form-control
+                <pre class="styleguide-code">generic-drawer-content
+generic-form-stack
+generic-section generic-section--stack generic-form-section
+generic-form-section__heading
+generic-form-section__copy
+generic-form-grid
+generic-form-field
+generic-form-label
+generic-form-actions generic-form-actions--stack-mobile
+input.generic-form-control
 select.generic-form-control
 textarea.generic-form-control
 div.generic-editable-select[data-generic-editable-select]

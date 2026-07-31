@@ -406,36 +406,6 @@ $memberships = new ArrayUserOrganization();
 $memberships->loadActiveForOrganization($organizationId);
 ?>
 <style>
-.omo-decision-invitations-popup {
-    display: grid;
-    gap: 0;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-decision-invitations-popup__header {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
-.omo-decision-invitations-popup__header-copy {
-    display: grid;
-    gap: 4px;
-}
-
-.omo-decision-invitations-popup__shell {
-    display: grid;
-    gap: 16px;
-    padding: 16px 18px 18px;
-}
-
-.omo-decision-invitations-popup__intro,
-.omo-decision-invitations-popup__hint {
-    margin: 0;
-    color: var(--topbar-panel-muted, #64748b);
-    line-height: 1.5;
-}
-
 .omo-decision-invitations-popup__group {
     display: grid;
     gap: 10px;
@@ -548,22 +518,6 @@ $memberships->loadActiveForOrganization($organizationId);
     min-height: 120px;
 }
 
-.omo-decision-invitations-popup__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.omo-decision-invitations-popup__feedback {
-    min-height: 22px;
-    color: #b91c1c;
-    font-weight: 600;
-}
-
-.omo-decision-invitations-popup__feedback.is-success {
-    color: #15803d;
-}
-
 .omo-decision-invitations-popup__public-empty {
     margin: 0;
     color: var(--topbar-panel-muted, #64748b);
@@ -573,7 +527,7 @@ $memberships->loadActiveForOrganization($organizationId);
 
 <form
     id="omoDecisionInvitationsPopupForm"
-    class="omo-decision-invitations-popup"
+    class="omo-decision-invitations-popup generic-stack generic-stack--flush"
     action="/omo/api/decision/invitations_popup.php?oid=<?= (int)$organizationId ?>&cid=<?= (int)$targetHolonId ?>&id=<?= (int)$decision->getId() ?>&method=<?= urlencode($method) ?>"
     method="post"
 >
@@ -583,13 +537,13 @@ $memberships->loadActiveForOrganization($organizationId);
             <h3 class="generic-card-title generic-card-title--medium">Invitations</h3>
         </div>
     </div>
-    <div class="omo-decision-invitations-popup__shell">
-    <p class="omo-decision-invitations-popup__intro">
+    <div class="omo-decision-invitations-popup__shell generic-drawer-content">
+    <p class="omo-decision-invitations-popup__intro generic-description">
         <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.intro', ['context_label' => $currentContextLabel])) ?>
     </p>
 
     <?php if (!$hasHolonStructure): ?>
-    <p class="omo-decision-invitations-popup__hint">
+    <p class="omo-decision-invitations-popup__hint generic-description">
         <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.no_structure')) ?>
     </p>
     <?php endif; ?>
@@ -611,7 +565,7 @@ $memberships->loadActiveForOrganization($organizationId);
             <?php if ($hasHolonStructure): ?>
             <div id="omoDecisionInvitationsTabHolons" class="generic-tabs__panel omo-decision-invitations-popup__tab-panel" data-generic-tab-panel>
                 <strong><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.holons_title')) ?></strong>
-                <p class="omo-decision-invitations-popup__hint">
+                <p class="omo-decision-invitations-popup__hint generic-description">
                     <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.holons_hint')) ?>
                 </p>
                 <div class="omo-decision-invitations-popup__checklist">
@@ -653,7 +607,7 @@ $memberships->loadActiveForOrganization($organizationId);
                         </label>
                     <?php endforeach; ?>
                 </div>
-                <p class="omo-decision-invitations-popup__hint">
+                <p class="omo-decision-invitations-popup__hint generic-description">
                     <?= omoApiEscape($hasHolonStructure
                         ? omoDecisionInvitationsPopupT('decisions.invitations_popup.members_hint_structure')
                         : omoDecisionInvitationsPopupT('decisions.invitations_popup.members_hint_flat')) ?>
@@ -668,7 +622,7 @@ $memberships->loadActiveForOrganization($organizationId);
                     class="omo-decision-invitations-popup__textarea generic-form-control"
                     placeholder="<?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.guests_placeholder')) ?>"
                 ><?= omoApiEscape(implode("\n", $selectedEmails)) ?></textarea>
-                <p class="omo-decision-invitations-popup__hint">
+                <p class="omo-decision-invitations-popup__hint generic-description">
                     <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.guests_hint')) ?>
                 </p>
             </div>
@@ -709,16 +663,16 @@ $memberships->loadActiveForOrganization($organizationId);
                 </p>
                 <?php endif; ?>
 
-                <p class="omo-decision-invitations-popup__hint">
+                <p class="omo-decision-invitations-popup__hint generic-description">
                     <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.public_people_hint')) ?>
                 </p>
             </div>
         </div>
     </div>
 
-    <div id="omoDecisionInvitationsPopupFeedback" class="omo-decision-invitations-popup__feedback"></div>
+    <div id="omoDecisionInvitationsPopupFeedback" class="omo-decision-invitations-popup__feedback generic-feedback"></div>
 
-    <div class="omo-decision-invitations-popup__actions">
+    <div class="omo-decision-invitations-popup__actions generic-action-row">
         <button type="submit" id="omoDecisionInvitationsPopupSubmit" class="generic-action-button generic-action-button--main">
             <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.submit')) ?>
         </button>
