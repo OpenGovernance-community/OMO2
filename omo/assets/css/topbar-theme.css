@@ -85,7 +85,7 @@ html[data-theme] .common-topbar-drawer__header {
 }
 
 html[data-theme] .common-help-card {
-    background: var(--color-surface-alt);
+    background: var(--color-surface);
     border-color: var(--color-border);
 }
 

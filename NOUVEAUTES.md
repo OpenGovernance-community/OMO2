@@ -1377,3 +1377,9 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Le formulaire public d ajout de propositions utilise maintenant un bundle de traduction dedie et ses textes francais ont ete corriges (accents, apostrophes et ponctuation), y compris le message de lien invalide.
 - La legende du jugement majoritaire affiche desormais des reperes courts (1, 2, 3, -, 4, 5, 6) sur les petits ecrans, tout en conservant les libelles complets sur ordinateur.
 - Le contexte de l organisateur n affiche plus deux fois l organisation lorsque le holon racine est utilise ; les roles, groupes et cercles restent precises.
+- Le menu Aide des pages publiques explique maintenant ce qu est OpenMyOrganization et le role de la page courante. La version Decision detaille le contexte du scrutin, les acces, les propositions, les discussions et les resultats.
+- Les contenus d aide de la topbar utilisent maintenant un fond blanc de popup, coherent avec les autres fenetres de l interface.
+- Les cartes de contenu du menu Aide ne repetent plus le titre deja present dans l entete de la popup et les explications d OMO et de la page publique de decision ont ete completees.
+- La presentation d OpenMyOrganization dans le menu Aide est maintenant centree sur la cooperation, la clarification des roles, la prise de decision et la documentation des regles, processus et projets.
+- La politique de confidentialite est maintenant un document complet : projet non lucratif et open source, absence de revente ou de profilage commercial, hebergement Infomaniak, auto-hebergement, donnees traitees, conservation, securite et droits des personnes. Son affichage en popup dispose aussi d un retrait interieur.
+- Le menu Aide affiche maintenant sous ses blocs l adresse e-mail de l administrateur du serveur avec le libelle Webmaster.
