@@ -1383,3 +1383,5 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - La presentation d OpenMyOrganization dans le menu Aide est maintenant centree sur la cooperation, la clarification des roles, la prise de decision et la documentation des regles, processus et projets.
 - La politique de confidentialite est maintenant un document complet : projet non lucratif et open source, absence de revente ou de profilage commercial, hebergement Infomaniak, auto-hebergement, donnees traitees, conservation, securite et droits des personnes. Son affichage en popup dispose aussi d un retrait interieur.
 - Le menu Aide affiche maintenant sous ses blocs l adresse e-mail de l administrateur du serveur avec le libelle Webmaster.
+- La page publique des scrutins affiche elle aussi l adresse e-mail du webmaster sous les blocs du menu Aide.
+- Le lien Webmaster des pages publiques utilise aussi l adresse MAIL_USER comme repli lorsque l adresse d administrateur dediee n est pas definie.

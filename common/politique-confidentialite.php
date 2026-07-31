@@ -9,6 +9,9 @@ $privacyContactEmail = trim((string)($GLOBALS['siteAdminEmail'] ?? ''));
 if ($privacyContactEmail === '' && function_exists('envValue')) {
     $privacyContactEmail = trim((string)envValue('INSTALL_ADMIN_EMAIL', ''));
 }
+if ($privacyContactEmail === '' && function_exists('envValue')) {
+    $privacyContactEmail = trim((string)envValue('MAIL_USER', ''));
+}
 $privacyContact = filter_var($privacyContactEmail, FILTER_VALIDATE_EMAIL)
     ? '<a href="mailto:' . htmlspecialchars($privacyContactEmail, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($privacyContactEmail, ENT_QUOTES, 'UTF-8') . '</a>'
     : 'l’adresse de contact présentée dans le menu Aide';

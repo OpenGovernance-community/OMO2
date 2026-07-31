@@ -360,6 +360,9 @@ function omoGetTopbarHelpLinks(): array
     if ($adminEmail === '' && function_exists('envValue')) {
         $adminEmail = trim((string)envValue('INSTALL_ADMIN_EMAIL', ''));
     }
+    if ($adminEmail === '' && function_exists('envValue')) {
+        $adminEmail = trim((string)envValue('MAIL_USER', ''));
+    }
 
     if ($adminEmail !== '' && filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
         $helpLinks[] = [
