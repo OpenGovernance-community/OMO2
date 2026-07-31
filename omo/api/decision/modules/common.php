@@ -1577,7 +1577,7 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
     {
         return [
             'decisions.invitations.title' => [
-                'text' => 'Participants invites',
+                'text' => 'Participants invités',
                 'context' => 'Shared section title for explicit decision invitations.',
             ],
             'decisions.invitations.configure' => [
@@ -1597,11 +1597,11 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
                 'context' => 'Topbar modal title used by the send invitations popup.',
             ],
             'decisions.invitations.unsaved' => [
-                'text' => 'Enregistrez d abord ce scrutin pour inviter d autres personnes ou structures.',
+                'text' => 'Enregistrez d’abord ce scrutin pour inviter d’autres personnes ou structures.',
                 'context' => 'Hint shown before a decision exists and invitations cannot be configured yet.',
             ],
             'decisions.invitations.default_scope' => [
-                'text' => 'Par defaut, seuls les membres du contexte courant participent.',
+                'text' => 'Par défaut, seuls les membres du contexte courant participent.',
                 'context' => 'Summary shown when no explicit invitations exist.',
             ],
             'decisions.invitations.current_scope_included' => [
@@ -1613,41 +1613,46 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
                 'context' => 'Summary fragment when the current holon is not explicitly invited.',
             ],
             'decisions.invitations.additional_people' => [
-                'one' => '+1 personne supplementaire',
-                'other' => '+{count} personnes supplementaires',
+                'one' => '+1 personne supplémentaire',
+                'other' => '+{count} personnes supplémentaires',
                 'context' => 'Summary fragment for additional invited users and emails.',
             ],
+            'decisions.invitations.total_people' => [
+                'one' => '1 personne au total',
+                'other' => '{count} personnes au total',
+                'context' => 'Summary fragment showing the total number of unique people represented by the invitations.',
+            ],
             'decisions.invitations.public_opt_in_count' => [
-                'one' => '1 personne ajoutee via le lien public',
-                'other' => '{count} personnes ajoutees via le lien public',
+                'one' => '1 personne ajoutée via le lien public',
+                'other' => '{count} personnes ajoutées via le lien public',
                 'context' => 'Summary fragment for participants who requested access from the public link.',
             ],
             'decisions.invitations.public_opt_in_label' => [
-                'text' => 'Ajoutes via lien public',
+                'text' => 'Ajoutés via le lien public',
                 'context' => 'Label shown before listing people who joined through the public link.',
             ],
             'decisions.invitations.public_opt_in_member_badge' => [
-                'text' => 'Ajoute via lien public',
+                'text' => 'Ajouté via le lien public',
                 'context' => 'Small note shown on an organization member row when the person already joined from the public link.',
             ],
             'decisions.invitations.public_opt_in_guest_label' => [
-                'text' => 'Personnes deja ajoutees via le lien public',
+                'text' => 'Personnes déjà ajoutées via le lien public',
                 'context' => 'Label shown near guest emails for people who already joined from the public link.',
             ],
             'decisions.invitations.public_opt_in_guest_hint' => [
-                'text' => 'Ces personnes restent distinctes des invitations explicites, mais elles ont deja demande un acces.',
+                'text' => 'Ces personnes restent distinctes des invitations explicites, mais elles ont déjà demandé un accès.',
                 'context' => 'Hint shown near the list of people who already joined from the public link.',
             ],
             'decisions.invitations.inline_intro' => [
-                'text' => 'Definissez ici les participants explicites du scrutin. Sans invitation explicite, seuls les membres du contexte courant restent autorises.',
+                'text' => 'Définissez ici les participants explicites du scrutin. Sans invitation explicite, seuls les membres du contexte courant restent autorisés.',
                 'context' => 'Intro text shown in the inline invitation editor inside the main decision form.',
             ],
             'decisions.invitations.inline_no_structure' => [
-                'text' => 'Cette organisation n a pas encore de structure. Vous pouvez inviter directement des membres de l organisation ou des adresses e-mail externes.',
+                'text' => 'Cette organisation n’a pas encore de structure. Vous pouvez inviter directement des membres de l’organisation ou des adresses e-mail externes.',
                 'context' => 'Hint shown in the inline invitation editor when the organization has no holon structure.',
             ],
             'decisions.invitations.inline_save_hint' => [
-                'text' => 'Ces invitations seront enregistrees avec le scrutin.',
+                'text' => 'Ces invitations seront enregistrées avec le scrutin.',
                 'context' => 'Helper text shown below the inline invitation editor before the main decision form is saved.',
             ],
             'decisions.invitations.tab.holons' => [
@@ -1659,27 +1664,27 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
                 'context' => 'Tab label for invited members in the inline invitation editor.',
             ],
             'decisions.invitations.tab.guests' => [
-                'text' => 'Invites',
+                'text' => 'Invités',
                 'context' => 'Tab label for invited guest emails in the inline invitation editor.',
             ],
             'decisions.invitations.inline_holons_title' => [
-                'text' => 'Holons invites',
+                'text' => 'Holons invités',
                 'context' => 'Section title for invited holons in the inline invitation editor.',
             ],
             'decisions.invitations.inline_holons_hint' => [
-                'text' => 'Le holon courant apparait ici comme n importe quel autre. S il n est pas coche, ses membres ne seront pas inclus des qu une invitation explicite existe.',
+                'text' => 'Le holon courant apparaît ici comme n’importe quel autre. S’il n’est pas coché, ses membres ne seront pas inclus dès qu’une invitation explicite existe.',
                 'context' => 'Hint for the invited holons tab in the inline invitation editor.',
             ],
             'decisions.invitations.inline_members_title' => [
-                'text' => 'Membres supplementaires de l organisation',
+                'text' => 'Membres supplémentaires de l’organisation',
                 'context' => 'Section title for invited members in the inline invitation editor.',
             ],
             'decisions.invitations.inline_members_hint_structure' => [
-                'text' => 'Cochez les membres a inviter individuellement, en plus des holons selectionnes.',
+                'text' => 'Cochez les membres à inviter individuellement, en plus des holons sélectionnés.',
                 'context' => 'Hint for invited members when a holon structure exists in the inline invitation editor.',
             ],
             'decisions.invitations.inline_members_hint_flat' => [
-                'text' => 'Cochez les membres a inviter individuellement. Sans structure, ils representent le contexte organisationnel.',
+                'text' => 'Cochez les membres à inviter individuellement. Sans structure, ils représentent le contexte organisationnel.',
                 'context' => 'Hint for invited members when no holon structure exists in the inline invitation editor.',
             ],
             'decisions.invitations.inline_guests_title' => [
@@ -1691,7 +1696,7 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
                 'context' => 'Textarea placeholder for guest email invitations in the inline invitation editor.',
             ],
             'decisions.invitations.inline_guests_hint' => [
-                'text' => 'Une adresse par ligne. Les invitations seront envoyees plus tard.',
+                'text' => 'Une adresse par ligne. Les invitations seront envoyées plus tard.',
                 'context' => 'Hint below the guest email textarea in the inline invitation editor.',
             ],
             'decisions.invitations.inline_public_open_title' => [
@@ -1699,14 +1704,112 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
                 'context' => 'Title of the public self-registration checkbox in the inline invitation editor.',
             ],
             'decisions.invitations.inline_public_open_hint' => [
-                'text' => 'Toute personne disposant du lien public peut demander un code par e-mail. Si son adresse n est pas encore associee a ce scrutin, un participant est cree automatiquement.',
+                'text' => 'Toute personne disposant du lien public peut demander un code par e-mail. Si son adresse n’est pas encore associée à ce scrutin, un participant est créé automatiquement.',
                 'context' => 'Hint for the public self-registration checkbox in the inline invitation editor.',
             ],
             'decisions.invitations.inline_current_holon' => [
                 'text' => '(courant)',
                 'context' => 'Suffix shown next to the current holon in the inline invitation editor tree.',
             ],
+            'decisions.invitations.tabs_aria' => [
+                'text' => 'Catégories d’invitations',
+                'context' => 'Accessibility label for the invitation editor tabs.',
+            ],
+            'decisions.invitations.email.context' => [
+                'text' => 'Contexte',
+                'context' => 'Context label in a decision invitation email.',
+            ],
+            'decisions.invitations.email.start' => [
+                'text' => 'Début',
+                'context' => 'Consultation start label in a decision invitation email.',
+            ],
+            'decisions.invitations.email.end' => [
+                'text' => 'Fin',
+                'context' => 'Consultation end label in a decision invitation email.',
+            ],
+            'decisions.invitations.email.default_title' => [
+                'text' => 'Prise de décision',
+                'context' => 'Fallback decision title in a decision invitation email.',
+            ],
+            'decisions.invitations.email.open_decision' => [
+                'text' => 'Ouvrir la prise de décision',
+                'context' => 'Button label in a decision invitation email.',
+            ],
+            'decisions.invitations.email.open_vote' => [
+                'text' => 'Ouvrir directement le scrutin',
+                'context' => 'Button label in a personal access code email.',
+            ],
+            'decisions.invitations.email.footer' => [
+                'text' => 'Ce message a été envoyé depuis {organization}.',
+                'context' => 'Footer in a decision invitation email.',
+            ],
+            'decisions.invitations.email.invalid_recipient' => [
+                'text' => 'Aucune adresse e-mail valide n’a été trouvée pour ce participant.',
+                'context' => 'Error returned when an invitation recipient has no valid email address.',
+            ],
+            'decisions.invitations.email.invalid_link' => [
+                'text' => 'Impossible de générer un lien public valide pour ce participant.',
+                'context' => 'Error returned when a personal invitation link cannot be generated.',
+            ],
+            'decisions.invitations.email.send_link_failed' => [
+                'text' => 'Impossible d’envoyer ce lien pour le moment.',
+                'context' => 'Error returned when a personal invitation email cannot be sent.',
+            ],
+            'decisions.invitations.email.access_subject' => [
+                'text' => 'Code d’accès à la prise de décision',
+                'context' => 'Default subject for a personal access code email.',
+            ],
+            'decisions.invitations.email.greeting' => [
+                'text' => 'Bonjour,',
+                'context' => 'Greeting in a personal access code email.',
+            ],
+            'decisions.invitations.email.request_intro' => [
+                'text' => 'Vous avez demandé un accès à la prise de décision « {title} ».',
+                'context' => 'Introductory sentence in a personal access code email.',
+            ],
+            'decisions.invitations.email.request_instructions' => [
+                'text' => 'Vous pouvez soit cliquer sur le lien personnel reçu dans cet e-mail, soit copier le code ci-dessous sur la page publique pour continuer.',
+                'context' => 'Instructions in a personal access code email.',
+            ],
+            'decisions.invitations.email.code_expiry' => [
+                'text' => 'Ce code est valable jusqu’au {date}.',
+                'context' => 'Code expiry sentence in a personal access code email.',
+            ],
+            'decisions.invitations.email.goodbye' => [
+                'text' => 'À bientôt,',
+                'context' => 'Closing in a personal access code email.',
+            ],
+            'decisions.invitations.email.valid_until' => [
+                'text' => 'Valable jusqu’au {date}.',
+                'context' => 'Code expiry label displayed near the code in an email.',
+            ],
+            'decisions.invitations.email.direct_link' => [
+                'text' => 'Lien direct personnel',
+                'context' => 'Direct link label in a personal access code email.',
+            ],
+            'decisions.invitations.email.invalid_code' => [
+                'text' => 'Impossible de générer un code d’accès pour le moment.',
+                'context' => 'Error returned when an access code cannot be generated.',
+            ],
+            'decisions.invitations.email.send_code_failed' => [
+                'text' => 'Impossible d’envoyer ce code pour le moment.',
+                'context' => 'Error returned when a personal access code email cannot be sent.',
+            ],
         ];
+    }
+}
+
+if (!function_exists('omoDecisionInvitationT')) {
+    function omoDecisionInvitationT($key, array $variables = [])
+    {
+        static $sourceLang = null;
+        static $lang = null;
+        if ($sourceLang === null) {
+            $sourceLang = omoDecisionInvitationGetSourceLang();
+            $lang = omoLoadTranslationBundle('omo_decision_invitations', $sourceLang);
+        }
+
+        return t($key, $variables, $lang, $sourceLang);
     }
 }
 
@@ -2262,7 +2365,7 @@ if (!function_exists('omoDecisionRenderInlineInvitationSection')) {
             <input type="hidden" name="invitation_inline_enabled" value="1">
 
             <div class="generic-tabs omo-decision-invitations-editor__tabs" data-generic-tabs>
-                <div class="generic-tabs__list" aria-label="Categories d invitations">
+                <div class="generic-tabs__list" aria-label="<?= $escape(t('decisions.invitations.tabs_aria', [], $lang, $sourceLang)) ?>">
                     <?php if ($hasHolonStructure): ?>
                     <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="<?= $escape($holonsTabId) ?>"><?= $escape(t('decisions.invitations.tab.holons', [], $lang, $sourceLang)) ?></button>
                     <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="<?= $escape($membersTabId) ?>"><?= $escape(t('decisions.invitations.tab.members', [], $lang, $sourceLang)) ?></button>
@@ -2375,7 +2478,7 @@ if (!function_exists('omoDecisionSendParticipantAccessEmail')) {
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return [
                 'status' => false,
-                'message' => 'Aucune adresse e-mail valide n a ete trouvee pour ce participant.',
+                'message' => omoDecisionInvitationT('decisions.invitations.email.invalid_recipient'),
             ];
         }
 
@@ -2383,7 +2486,7 @@ if (!function_exists('omoDecisionSendParticipantAccessEmail')) {
         if ($accessUrl === '') {
             return [
                 'status' => false,
-                'message' => 'Impossible de generer un lien public valide pour ce participant.',
+                'message' => omoDecisionInvitationT('decisions.invitations.email.invalid_link'),
             ];
         }
 
@@ -2411,19 +2514,19 @@ if (!function_exists('omoDecisionSendParticipantAccessEmail')) {
         $holon = $decision->getHolonObject();
         $detailsItems = [];
         if ($holon instanceof Holon) {
-            $detailsItems[] = '<li><strong>Contexte</strong>: '
+            $detailsItems[] = '<li><strong>' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.context')) . '</strong> : '
                 . commonMailEscape(trim((string)$holon->getTemplateLabel(true)) . ' ' . trim((string)$holon->getDisplayName()))
                 . '</li>';
         }
 
         $consultationStart = DecisionProcess::normalizeDateTimeValue($decision->get('consultation_start_at'));
         if ($consultationStart instanceof DateTimeInterface) {
-            $detailsItems[] = '<li><strong>Debut</strong>: ' . commonMailEscape($consultationStart->format('d.m.Y H:i')) . '</li>';
+            $detailsItems[] = '<li><strong>' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.start')) . '</strong> : ' . commonMailEscape($consultationStart->format('d.m.Y H:i')) . '</li>';
         }
 
         $consultationEnd = DecisionProcess::normalizeDateTimeValue($decision->get('consultation_end_at'));
         if ($consultationEnd instanceof DateTimeInterface) {
-            $detailsItems[] = '<li><strong>Fin</strong>: ' . commonMailEscape($consultationEnd->format('d.m.Y H:i')) . '</li>';
+            $detailsItems[] = '<li><strong>' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.end')) . '</strong> : ' . commonMailEscape($consultationEnd->format('d.m.Y H:i')) . '</li>';
         }
 
         $detailsHtml = count($detailsItems) > 0
@@ -2435,19 +2538,19 @@ if (!function_exists('omoDecisionSendParticipantAccessEmail')) {
             'brand_color' => $organization ? trim((string)$organization->get('color')) : '',
             'logo_url' => $organization ? trim((string)$organization->get('logo')) : '',
             'banner_url' => $organization ? trim((string)$organization->get('banner')) : '',
-            'heading' => $decisionTitle !== '' ? $decisionTitle : 'Prise de decision',
+            'heading' => $decisionTitle !== '' ? $decisionTitle : omoDecisionInvitationT('decisions.invitations.email.default_title'),
             'intro_html' => commonMailTextToHtml($message),
             'details_html' => $detailsHtml,
-            'button_label' => 'Ouvrir la prise de decision',
+            'button_label' => omoDecisionInvitationT('decisions.invitations.email.open_decision'),
             'button_url' => $accessUrl,
-            'footer_html' => '<p style="margin:0;">Ce message a ete envoye depuis ' . commonMailEscape($organizationName) . '.</p>',
+            'footer_html' => '<p style="margin:0;">' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.footer', ['organization' => $organizationName])) . '</p>',
         ]);
 
         $mailSent = myHTMLMail([$fromAddress, $organizationName !== '' ? $organizationName : 'Organisation'], $email, $subject, $html);
         if (!$mailSent) {
             return [
                 'status' => false,
-                'message' => 'Impossible d envoyer ce lien pour le moment.',
+                'message' => omoDecisionInvitationT('decisions.invitations.email.send_link_failed'),
             ];
         }
 
@@ -2470,7 +2573,7 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return [
                 'status' => false,
-                'message' => 'Aucune adresse e-mail valide n a ete trouvee pour ce participant.',
+                'message' => omoDecisionInvitationT('decisions.invitations.email.invalid_recipient'),
             ];
         }
 
@@ -2478,7 +2581,7 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
         if (empty($codeResult['status'])) {
             return [
                 'status' => false,
-                'message' => trim((string)($codeResult['message'] ?? 'Impossible de generer un code d acces pour le moment.')),
+                'message' => trim((string)($codeResult['message'] ?? omoDecisionInvitationT('decisions.invitations.email.invalid_code'))),
             ];
         }
 
@@ -2499,7 +2602,7 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
 
         $subject = trim((string)$subject);
         if ($subject === '') {
-            $subject = 'Code d acces a la prise de decision';
+            $subject = omoDecisionInvitationT('decisions.invitations.email.access_subject');
             if ($decisionTitle !== '') {
                 $subject .= ' : ' . $decisionTitle;
             }
@@ -2517,27 +2620,27 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
             : '';
 
         $messageLines = [
-            'Bonjour,',
+            omoDecisionInvitationT('decisions.invitations.email.greeting'),
             '',
-            'Vous avez demande un acces a la prise de decision "' . ($decisionTitle !== '' ? $decisionTitle : 'sans titre') . '".',
-            'Vous pouvez soit cliquer sur le lien personnel recu dans cet e-mail, soit copier le code ci-dessous sur la page publique pour continuer.',
+            omoDecisionInvitationT('decisions.invitations.email.request_intro', ['title' => $decisionTitle !== '' ? $decisionTitle : omoDecisionInvitationT('decisions.invitations.email.default_title')]),
+            omoDecisionInvitationT('decisions.invitations.email.request_instructions'),
         ];
         if ($expiresLabel !== '') {
-            $messageLines[] = 'Ce code est valable jusqu au ' . $expiresLabel . '.';
+            $messageLines[] = omoDecisionInvitationT('decisions.invitations.email.code_expiry', ['date' => $expiresLabel]);
         }
         $messageLines[] = '';
-        $messageLines[] = 'A bientot,';
+        $messageLines[] = omoDecisionInvitationT('decisions.invitations.email.goodbye');
         $messageLines[] = $organizationName;
 
         $codeHtml = '<div style="display:inline-block;padding:16px 22px;background:#f3f4f6;border-radius:var(--radius-md);border:1px solid #e5e7eb;font:700 32px/1.2 Consolas, Monaco, monospace;letter-spacing:0.22em;color:#111827;">'
             . commonMailEscape((string)($codeResult['code'] ?? ''))
             . '</div>';
         if ($expiresLabel !== '') {
-            $codeHtml .= '<p style="margin:14px 0 0;color:#64748b;line-height:1.6;">Valable jusqu au ' . commonMailEscape($expiresLabel) . '.</p>';
+            $codeHtml .= '<p style="margin:14px 0 0;color:#64748b;line-height:1.6;">' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.valid_until', ['date' => $expiresLabel])) . '</p>';
         }
         if ($directAccessUrl !== '') {
             $codeHtml .= '<div style="margin-top:18px;">'
-                . '<p style="margin:0 0 8px;color:#111827;line-height:1.6;"><strong>Lien direct personnel</strong></p>'
+                . '<p style="margin:0 0 8px;color:#111827;line-height:1.6;"><strong>' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.direct_link')) . '</strong></p>'
                 . '<div style="padding:12px 14px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:var(--radius-md);word-break:break-all;line-height:1.6;">'
                 . '<a href="' . commonMailEscape($directAccessUrl) . '" style="color:#2563eb;text-decoration:none;">' . commonMailEscape($directAccessUrl) . '</a>'
                 . '</div>'
@@ -2549,12 +2652,12 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
             'brand_color' => $organization ? trim((string)$organization->get('color')) : '',
             'logo_url' => $organization ? trim((string)$organization->get('logo')) : '',
             'banner_url' => $organization ? trim((string)$organization->get('banner')) : '',
-            'heading' => $decisionTitle !== '' ? $decisionTitle : 'Prise de decision',
+            'heading' => $decisionTitle !== '' ? $decisionTitle : omoDecisionInvitationT('decisions.invitations.email.default_title'),
             'intro_html' => commonMailTextToHtml(implode("\n", $messageLines)),
             'details_html' => $codeHtml,
-            'button_label' => 'Ouvrir directement le scrutin',
+            'button_label' => omoDecisionInvitationT('decisions.invitations.email.open_vote'),
             'button_url' => $directAccessUrl !== '' ? $directAccessUrl : $publicRequestUrl,
-            'footer_html' => '<p style="margin:0;">Ce message a ete envoye depuis ' . commonMailEscape($organizationName) . '.</p>',
+            'footer_html' => '<p style="margin:0;">' . commonMailEscape(omoDecisionInvitationT('decisions.invitations.email.footer', ['organization' => $organizationName])) . '</p>',
         ]);
 
         $mailSent = myHTMLMail([$fromAddress, $organizationName !== '' ? $organizationName : 'Organisation'], $email, $subject, $html);
@@ -2562,7 +2665,7 @@ if (!function_exists('omoDecisionSendParticipantAccessCodeEmail')) {
             $participant->clearPublicAccessCode();
             return [
                 'status' => false,
-                'message' => 'Impossible d envoyer ce code pour le moment.',
+                'message' => omoDecisionInvitationT('decisions.invitations.email.send_code_failed'),
             ];
         }
 
@@ -2595,6 +2698,7 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             'publicUrl' => '',
             'sendEnabled' => false,
             'invitationCount' => 0,
+            'recipientCount' => 0,
             'hasExplicitInvitations' => false,
             'publicOptInEntries' => [],
             'summary' => '',
@@ -2620,6 +2724,9 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
         $data['publicUrl'] = $decision->getGenericPublicAccessUrl('view');
         $data['sendEnabled'] = count($decision->getInvitationEmailRecipients()) > 0
             && DecisionProcess::normalizeStatus($decision->get('status')) !== DecisionProcess::STATUS_DRAFT;
+        $data['recipientCount'] = method_exists($decision, 'getInvitationRecipientCount')
+            ? (int)$decision->getInvitationRecipientCount(false)
+            : 0;
         $hasPublicSelfRegistration = method_exists($decision, 'isPublicSelfRegistrationEnabled')
             && $decision->isPublicSelfRegistrationEnabled();
         $publicOptInState = omoDecisionExtractPublicOptInSelections($decision);
@@ -2646,6 +2753,9 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             }
             if ($publicOptInState['count'] > 0) {
                 $defaultSummary .= ' ' . t('decisions.invitations.public_opt_in_count', ['count' => (string)$publicOptInState['count']], $lang, $sourceLang) . '.';
+            }
+            if ($data['recipientCount'] > 0) {
+                $defaultSummary .= ' ' . t('decisions.invitations.total_people', ['count' => (string)$data['recipientCount']], $lang, $sourceLang) . '.';
             }
 
             $data['summary'] = $defaultSummary;
@@ -2696,6 +2806,9 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
         }
         if ($publicOptInState['count'] > 0) {
             $summaryParts[] = t('decisions.invitations.public_opt_in_count', ['count' => (string)$publicOptInState['count']], $lang, $sourceLang);
+        }
+        if ($data['recipientCount'] > 0) {
+            $summaryParts[] = t('decisions.invitations.total_people', ['count' => (string)$data['recipientCount']], $lang, $sourceLang);
         }
 
         $data['summary'] = implode(' - ', array_filter($summaryParts, static function ($value) {

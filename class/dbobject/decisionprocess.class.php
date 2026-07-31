@@ -1381,6 +1381,103 @@ class DecisionProcess extends DbObject
         return $organization->load($organizationId) ? $organization : null;
     }
 
+    public function getInvitationRecipientCount($includeOwner = false)
+    {
+        $organizationId = (int)$this->get('IDorganization');
+        $ownerUserId = (int)$this->get('IDuser');
+        $userIds = [];
+        $emails = [];
+        $holonIds = [];
+        $activeInvitations = [];
+
+        foreach ($this->getInvitations(true) as $invitation) {
+            if (!($invitation instanceof \dbObject\DecisionInvitation)) {
+                continue;
+            }
+
+            if (\dbObject\DecisionInvitation::normalizeStatus($invitation->get('status')) === \dbObject\DecisionInvitation::STATUS_REVOKED) {
+                continue;
+            }
+
+            $activeInvitations[] = $invitation;
+        }
+
+        if (count($activeInvitations) === 0) {
+            $defaultHolonId = (int)$this->get('IDholon');
+            if ($defaultHolonId > 0) {
+                $holonIds[] = $defaultHolonId;
+            }
+        } else {
+            foreach ($activeInvitations as $invitation) {
+                $type = \dbObject\DecisionInvitation::normalizeType($invitation->get('invitation_type'));
+                if ($type === \dbObject\DecisionInvitation::TYPE_HOLON) {
+                    $holonId = (int)$invitation->get('IDholon');
+                    if ($holonId > 0) {
+                        $holonIds[] = $holonId;
+                    }
+                    continue;
+                }
+
+                if ($type === \dbObject\DecisionInvitation::TYPE_USER) {
+                    $userId = (int)$invitation->get('IDuser');
+                    if ($userId > 0) {
+                        $userIds[$userId] = true;
+                    }
+                    continue;
+                }
+
+                $email = mb_strtolower(trim((string)$invitation->get('email')), 'UTF-8');
+                if ($email !== '') {
+                    $emails[$email] = true;
+                }
+            }
+        }
+
+        $holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), static function ($holonId) {
+            return $holonId > 0;
+        })));
+
+        if (count($holonIds) > 0) {
+            $holonMembers = new \dbObject\ArrayUserHolon();
+            $holonMembers->loadActiveForHolonIds($holonIds);
+            foreach ($holonMembers as $membership) {
+                $userId = (int)$membership->get('IDuser');
+                if ($userId > 0) {
+                    $userIds[$userId] = true;
+                }
+            }
+
+            $organization = $this->getOrganizationObject();
+            $rootHolon = $organization ? $organization->getEnabledStructuralRootHolon() : null;
+            $rootHolonId = $rootHolon instanceof \dbObject\Holon ? (int)$rootHolon->getId() : 0;
+            if ($rootHolonId > 0 && in_array($rootHolonId, $holonIds, true)) {
+                $organizationMembers = new \dbObject\ArrayUserOrganization();
+                $organizationMembers->loadActiveForOrganization($organizationId);
+                foreach ($organizationMembers as $membership) {
+                    $userId = (int)$membership->get('IDuser');
+                    if ($userId > 0) {
+                        $userIds[$userId] = true;
+                    }
+                }
+            }
+        } elseif (count($activeInvitations) === 0 && $organizationId > 0) {
+            $organizationMembers = new \dbObject\ArrayUserOrganization();
+            $organizationMembers->loadActiveForOrganization($organizationId);
+            foreach ($organizationMembers as $membership) {
+                $userId = (int)$membership->get('IDuser');
+                if ($userId > 0) {
+                    $userIds[$userId] = true;
+                }
+            }
+        }
+
+        if (!$includeOwner && $ownerUserId > 0) {
+            unset($userIds[$ownerUserId]);
+        }
+
+        return count($userIds) + count($emails);
+    }
+
     public function getHolonObject()
     {
         $holonId = (int)$this->get('IDholon');
@@ -1476,27 +1573,27 @@ class DecisionProcess extends DbObject
         $messageLines = [
             'Bonjour,',
             '',
-            'Vous etes invite a participer a la prise de decision "' . ($title !== '' ? $title : 'sans titre') . '" dans ' . $organizationName . '.',
+            'Vous êtes invité à participer à la prise de décision « ' . ($title !== '' ? $title : 'sans titre') . ' » dans ' . $organizationName . '.',
         ];
 
         if ($holon) {
-            $messageLines[] = 'Contexte: ' . trim((string)$holon->getTemplateLabel(true)) . ' ' . trim((string)$holon->getDisplayName()) . '.';
+            $messageLines[] = 'Contexte : ' . trim((string)$holon->getTemplateLabel(true)) . ' ' . trim((string)$holon->getDisplayName()) . '.';
         }
 
         $consultationStart = self::normalizeDateTimeValue($this->get('consultation_start_at'));
         $consultationEnd = self::normalizeDateTimeValue($this->get('consultation_end_at'));
 
         if ($consultationStart instanceof \DateTimeInterface) {
-            $messageLines[] = 'Debut: ' . $consultationStart->format('d.m.Y H:i') . '.';
+            $messageLines[] = 'Début : ' . $consultationStart->format('d.m.Y H:i') . '.';
         }
         if ($consultationEnd instanceof \DateTimeInterface) {
-            $messageLines[] = 'Fin: ' . $consultationEnd->format('d.m.Y H:i') . '.';
+            $messageLines[] = 'Fin : ' . $consultationEnd->format('d.m.Y H:i') . '.';
         }
 
         $messageLines[] = '';
-        $messageLines[] = 'Vous pouvez consulter les details du scrutin en ouvrant le lien ci-dessous.';
+        $messageLines[] = 'Vous pouvez consulter les détails du scrutin en ouvrant le lien ci-dessous.';
         $messageLines[] = '';
-        $messageLines[] = 'A bientot,';
+        $messageLines[] = 'À bientôt,';
         $messageLines[] = $organizationName;
 
         return implode("\n", $messageLines);
@@ -1505,7 +1602,7 @@ class DecisionProcess extends DbObject
     public function buildDefaultInvitationEmailSubject()
     {
         $title = trim((string)$this->get('title'));
-        $subject = 'Acces a la prise de decision';
+        $subject = 'Accès à la prise de décision';
         if ($title !== '') {
             $subject .= ' : ' . $title;
         }
@@ -1930,10 +2027,10 @@ class DecisionProcess extends DbObject
         $messageLines = [
             'Bonjour,',
             '',
-            'Vous avez demande un acces a la prise de decision "' . ($title !== '' ? $title : 'sans titre') . '" dans ' . $organizationName . '.',
+            'Vous avez demandé un accès à la prise de décision « ' . ($title !== '' ? $title : 'sans titre') . ' » dans ' . $organizationName . '.',
             'Utilisez le lien ci-dessous pour ouvrir directement la page de participation.',
             '',
-            'A bientot,',
+            'À bientôt,',
             $organizationName,
         ];
 

@@ -47,7 +47,7 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Notice shown when some schedule fields are also locked after submitted votes.',
             ],
             'decisions.vote.notice.consultation_proposals' => [
-                'text' => 'Les propositions restent ajustables pendant la consultation tant qu aucune reponse n a ete soumise.',
+            'text' => 'Les propositions restent ajustables pendant la consultation tant qu’aucune réponse n’a été soumise.',
                 'context' => 'Notice shown when proposal editing remains allowed during consultation.',
             ],
             'decisions.vote.notice.results' => [
@@ -87,11 +87,11 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Label for the status field.',
             ],
             'decisions.vote.field.consultation_start' => [
-                'text' => 'Début de consultation',
+            'text' => 'Début de la consultation',
                 'context' => 'Label for the consultation start date field.',
             ],
             'decisions.vote.field.consultation_end' => [
-                'text' => 'Fin de consultation',
+            'text' => 'Fin de la consultation',
                 'context' => 'Label for the consultation end date field.',
             ],
             'decisions.vote.field.evaluation_start' => [
@@ -127,19 +127,23 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Visible label prefix for one proposal input row.',
             ],
             'decisions.vote.field.proposal_details' => [
-                'text' => 'Details',
+            'text' => 'Détails',
                 'context' => 'Button label opening the proposal detail popup.',
             ],
             'decisions.vote.field.proposal_description' => [
-                'text' => 'Description de la proposition',
+            'text' => 'Description de la proposition',
                 'context' => 'Label for the proposal description field.',
             ],
             'decisions.vote.field.proposal_info_url' => [
-                'text' => 'URL d information',
+                'text' => 'URL d’information',
                 'context' => 'Label for the proposal info URL field.',
             ],
+            'decisions.vote.field.proposal_actions' => [
+                'text' => 'Actions',
+                'context' => 'Accessibility label for the proposal actions menu.',
+            ],
             'decisions.vote.field.settings' => [
-                'text' => 'Parametres du vote',
+            'text' => 'Paramètres du vote',
                 'context' => 'Section title for vote-specific settings.',
             ],
             'decisions.vote.field.choice_mode' => [
@@ -171,7 +175,7 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Label for allowing account users to discuss proposals.',
             ],
             'decisions.vote.field.multiple_hint' => [
-                'text' => 'Choisissez jusqu a {count} propositions.',
+            'text' => 'Choisissez jusqu’à {count} propositions.',
                 'context' => 'Help text shown when a participant can select several proposals.',
             ],
             'decisions.vote.field.multiple_hint_unlimited' => [
@@ -199,19 +203,19 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Label for the vote share of one proposal.',
             ],
             'decisions.vote.field.distribution' => [
-                'text' => 'Repartition graphique des votes',
+            'text' => 'Répartition graphique des votes',
                 'context' => 'Label for the vote result percentage bar.',
             ],
             'decisions.vote.results_compare.toggle' => [
-                'text' => 'Afficher le resultat non pondere',
+            'text' => 'Afficher le résultat non pondéré',
                 'context' => 'Checkbox label used to reveal the unweighted result comparison.',
             ],
             'decisions.vote.results_compare.unweighted' => [
-                'text' => 'Resultat non pondere',
+            'text' => 'Résultat non pondéré',
                 'context' => 'Title shown above the unweighted comparison block.',
             ],
             'decisions.vote.results_sort.aria' => [
-                'text' => 'Ordre d affichage des resultats',
+            'text' => 'Ordre d’affichage des résultats',
                 'context' => 'Aria label for the simple vote results sort switch.',
             ],
             'decisions.vote.results_sort.rank' => [
@@ -223,7 +227,7 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Button label used to sort simple vote results by saved proposal order.',
             ],
             'decisions.vote.results_sort.alpha' => [
-                'text' => 'Alphabetique',
+            'text' => 'Alphabétique',
                 'context' => 'Button label used to sort simple vote results alphabetically.',
             ],
             'decisions.vote.option.type.decision' => [
@@ -259,11 +263,11 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Archived status option in the simple vote editor.',
             ],
             'decisions.vote.option.choice_mode.single' => [
-                'text' => 'Une seule reponse',
+            'text' => 'Une seule réponse',
                 'context' => 'Option label for a single choice vote.',
             ],
             'decisions.vote.option.choice_mode.multiple' => [
-                'text' => 'Plusieurs reponses',
+            'text' => 'Plusieurs réponses',
                 'context' => 'Option label for a multiple choice vote.',
             ],
             'decisions.vote.option.common.yes' => [
@@ -275,19 +279,19 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Generic no option label.',
             ],
             'decisions.vote.placeholder.title' => [
-                'text' => 'Ex. Quelle option preferez-vous ?',
+            'text' => 'Ex. Quelle option préférez-vous ?',
                 'context' => 'Placeholder for the group title field.',
             ],
             'decisions.vote.placeholder.description' => [
-                'text' => 'Precisez la question, les nuances et les criteres utiles...',
+            'text' => 'Précisez la question, les nuances et les critères utiles…',
                 'context' => 'Placeholder for the group description field.',
             ],
             'decisions.vote.placeholder.process_title' => [
-                'text' => 'Ex. Preparation de la sortie annuelle',
+            'text' => 'Ex. Préparation de la sortie annuelle',
                 'context' => 'Placeholder for the decision process title field.',
             ],
             'decisions.vote.placeholder.process_description' => [
-                'text' => 'Contexte global, informations communes, cadre de la consultation...',
+            'text' => 'Contexte global, informations communes, cadre de la consultation…',
                 'context' => 'Placeholder for the decision process description field.',
             ],
             'decisions.vote.placeholder.proposals' => [
@@ -307,11 +311,11 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Submit label for an existing simple vote.',
             ],
             'decisions.vote.action.saving' => [
-                'text' => 'Enregistrement...',
+            'text' => 'Enregistrement…',
                 'context' => 'Temporary label while the simple vote form is saving.',
             ],
             'decisions.vote.action.proposal_apply' => [
-                'text' => 'Enregistrer les details',
+            'text' => 'Enregistrer les détails',
                 'context' => 'Button label used to save proposal detail popup fields.',
             ],
             'decisions.vote.action.submit_response' => [
@@ -323,7 +327,7 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Submit label when updating an existing vote response.',
             ],
             'decisions.vote.action.submitting_response' => [
-                'text' => 'Enregistrement du vote...',
+            'text' => 'Enregistrement du vote…',
                 'context' => 'Temporary label while the vote response is saving.',
             ],
             'decisions.vote.feedback.success' => [
@@ -551,6 +555,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                 'proposalRemove' => t('decisions.vote.field.proposals_remove', [], $lang, $sourceLang),
                 'proposalReorder' => t('decisions.vote.field.proposals_reorder', [], $lang, $sourceLang),
                 'proposalDetails' => t('decisions.vote.field.proposal_details', [], $lang, $sourceLang),
+                'proposalActions' => t('decisions.vote.field.proposal_actions', [], $lang, $sourceLang),
                 'proposalDescriptionLabel' => t('decisions.vote.field.proposal_description', [], $lang, $sourceLang),
                 'proposalInfoUrlLabel' => t('decisions.vote.field.proposal_info_url', [], $lang, $sourceLang),
                 'proposalApply' => t('decisions.vote.action.proposal_apply', [], $lang, $sourceLang),
@@ -990,7 +995,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                         data-omo-decision-vote-proposal-menu-toggle
                                         aria-haspopup="menu"
                                         aria-expanded="false"
-                                        aria-label="Actions"
+                            aria-label="<?= $escape(t('decisions.vote.field.proposal_actions', [], $lang, $sourceLang)) ?>"
                                     >...</button>
                                     <div class="omo-decision-vote__proposal-menu-panel omo-decision-proposal-menu-panel generic-soft-panel" data-omo-decision-vote-proposal-menu-panel role="menu" hidden>
                                         <button
@@ -1845,7 +1850,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                 + '    <input type="hidden" name="proposal_ids[]" value="0">'
                                 + '</div>'
                                 + '<div class="omo-decision-vote__proposal-menu" data-omo-decision-vote-proposal-menu>'
-                                + '    <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-vote__proposal-menu-toggle" data-omo-decision-vote-proposal-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Actions">...</button>'
+                                + '    <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-vote__proposal-menu-toggle" data-omo-decision-vote-proposal-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="' + String(payload.texts && payload.texts.proposalActions ? payload.texts.proposalActions : 'Actions') + '">...</button>'
                                 + '    <div class="omo-decision-vote__proposal-menu-panel omo-decision-proposal-menu-panel generic-soft-panel" data-omo-decision-vote-proposal-menu-panel role="menu" hidden>'
                                 + '        <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-vote__proposal-menu-item" data-omo-decision-vote-proposal-settings role="menuitem">' + String(payload.texts && payload.texts.proposalDetails ? payload.texts.proposalDetails : 'Details') + '</button>'
                                 + '        <button type="button" class="generic-action-button generic-action-button--danger omo-decision-vote__proposal-menu-item" data-omo-decision-vote-proposal-remove role="menuitem">' + String(payload.texts && payload.texts.proposalRemove ? payload.texts.proposalRemove : 'Supprimer') + '</button>'
