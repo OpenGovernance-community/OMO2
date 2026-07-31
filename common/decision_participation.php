@@ -26,6 +26,116 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
 
+if (!function_exists('commonDecisionParticipationGetSourceLang')) {
+    function commonDecisionParticipationGetSourceLang()
+    {
+        return [
+            'decisions.public.default_organization' => ['text' => 'Organisation', 'context' => 'Fallback organization name on the public decision page.'],
+            'decisions.public.default_title' => ['text' => 'Prise de décision', 'context' => 'Fallback decision title on the public page.'],
+            'decisions.public.method.simple_vote' => ['text' => 'Vote simple', 'context' => 'Public label for the simple vote method.'],
+            'decisions.public.method.majority_judgment' => ['text' => 'Jugement majoritaire', 'context' => 'Public label for the majority judgment method.'],
+            'decisions.public.method.consent' => ['text' => 'Consentement', 'context' => 'Public label for the consent method.'],
+            'decisions.public.method.unknown' => ['text' => 'Mode de décision', 'context' => 'Fallback public label for an unknown decision method.'],
+            'decisions.public.type.consultation' => ['text' => 'consultation', 'context' => 'Public label for a consultation process.'],
+            'decisions.public.type.decision' => ['text' => 'décision', 'context' => 'Public label for a decision process.'],
+            'decisions.public.timeline.now' => ['text' => 'Maintenant', 'context' => 'Current moment label on the public decision timeline.'],
+            'decisions.public.timeline.consultation_start' => ['text' => 'Début de la consultation', 'context' => 'Consultation start milestone label.'],
+            'decisions.public.timeline.consultation_end' => ['text' => 'Fin de la consultation', 'context' => 'Consultation end milestone label.'],
+            'decisions.public.timeline.evaluation_start' => ['text' => 'Début du vote', 'context' => 'Evaluation start milestone label.'],
+            'decisions.public.timeline.evaluation_end' => ['text' => 'Fin du vote', 'context' => 'Evaluation end milestone label.'],
+            'decisions.public.timeline.results' => ['text' => 'Résultats', 'context' => 'Results milestone label.'],
+            'decisions.public.timeline.title' => ['text' => 'Étapes du scrutin', 'context' => 'Public timeline accordion title.'],
+            'decisions.public.timeline.hint' => ['text' => 'Afficher la représentation graphique', 'context' => 'Public timeline accordion hint.'],
+            'decisions.public.timeline.waiting_consultation' => ['text' => 'En attente du début de la consultation le {date}', 'context' => 'Timeline summary before consultation starts.'],
+            'decisions.public.timeline.waiting_vote' => ['text' => 'En attente du début du vote le {date}', 'context' => 'Timeline summary before evaluation starts.'],
+            'decisions.public.timeline.consultation_until' => ['text' => 'En consultation jusqu’au {date}', 'context' => 'Timeline summary while consultation is open with an end date.'],
+            'decisions.public.timeline.consultation_open' => ['text' => 'En consultation', 'context' => 'Timeline summary while consultation is open without an end date.'],
+            'decisions.public.timeline.vote_until' => ['text' => 'Vote ouvert jusqu’au {date}', 'context' => 'Timeline summary while voting is open with an end date.'],
+            'decisions.public.timeline.vote_open' => ['text' => 'Vote ouvert', 'context' => 'Timeline summary while voting is open without an end date.'],
+            'decisions.public.timeline.finished' => ['text' => 'Terminé', 'context' => 'Timeline summary after the decision is finished.'],
+            'decisions.public.timeline.segment_consultation' => ['text' => 'Consultation', 'context' => 'Timeline segment label for consultation.'],
+            'decisions.public.timeline.segment_vote' => ['text' => 'Vote', 'context' => 'Timeline segment label for evaluation.'],
+            'decisions.public.timeline.segment_results' => ['text' => 'Résultats', 'context' => 'Timeline segment label for results.'],
+            'decisions.public.options.responses_editable' => ['text' => 'Vos réponses sont modifiables.', 'context' => 'Public option indicating that responses can still be changed.'],
+            'decisions.public.options.responses_locked' => ['text' => 'Vos réponses ne sont plus modifiables.', 'context' => 'Public option indicating that responses can no longer be changed.'],
+            'decisions.public.options.results_hidden' => ['text' => 'Les résultats ne sont pas visibles avant la fin du vote.', 'context' => 'Public option indicating that results are hidden.'],
+            'decisions.public.options.results_visible' => ['text' => 'Les résultats sont visibles.', 'context' => 'Public option indicating that results are visible.'],
+            'decisions.public.options.anonymous' => ['text' => 'Ce scrutin est anonyme.', 'context' => 'Public option indicating that the decision is anonymous.'],
+            'decisions.public.options.not_anonymous' => ['text' => 'Ce scrutin n’est pas anonyme.', 'context' => 'Public option indicating that the decision is not anonymous.'],
+            'decisions.public.options.mixed_anonymity' => ['text' => 'Le caractère anonyme peut varier selon les blocs.', 'context' => 'Public option indicating mixed anonymity settings.'],
+            'decisions.public.options.proposals_all' => ['text' => 'Vous pouvez faire des propositions durant la consultation.', 'context' => 'Public option when proposals are allowed in every block.'],
+            'decisions.public.options.proposals_some' => ['text' => 'Vous pouvez faire des propositions durant la consultation pour certains blocs.', 'context' => 'Public option when proposals are allowed in some blocks.'],
+            'decisions.public.options.discussions_all' => ['text' => 'Vous pouvez discuter les propositions pendant la consultation', 'context' => 'Public option when discussions are allowed in every block.'],
+            'decisions.public.options.discussions_some' => ['text' => 'Vous pouvez discuter les propositions pendant la consultation pour certains blocs', 'context' => 'Public option when discussions are allowed in some blocks.'],
+            'decisions.public.options.discussions_anonymous' => ['text' => ' de façon anonyme.', 'context' => 'Suffix when discussion anonymity is mandatory.'],
+            'decisions.public.options.discussions_optional_anonymity' => ['text' => ', anonymement si vous le souhaitez.', 'context' => 'Suffix when participants may discuss anonymously.'],
+            'decisions.public.context.organizer' => ['text' => 'Organisateur', 'context' => 'Public context card title for the organizer.'],
+            'decisions.public.context.method' => ['text' => 'Méthode', 'context' => 'Public context card title for one method.'],
+            'decisions.public.context.methods' => ['text' => 'Méthodes', 'context' => 'Public context card title for several methods.'],
+            'decisions.public.context.invited' => ['text' => 'Invités', 'context' => 'Public context card title for invited participants.'],
+            'decisions.public.context.options' => ['text' => 'Options', 'context' => 'Public context card title for decision options.'],
+            'decisions.public.context.contact_organizer' => ['text' => 'Contacter l’organisateur :', 'context' => 'Public contact label for the organizer.'],
+            'decisions.public.block' => ['text' => 'Bloc {index}', 'context' => 'Public label for a decision block.'],
+            'decisions.public.block_unavailable' => ['text' => 'Ce bloc ne dispose pas encore d’une interface disponible.', 'context' => 'Fallback shown when a public decision block has no renderer.'],
+            'decisions.public.access.invalid_decision' => ['text' => 'Cette prise de décision est introuvable.', 'context' => 'Public access error when the decision cannot be found.'],
+            'decisions.public.access.invalid_email' => ['text' => 'Merci de saisir une adresse e-mail valide.', 'context' => 'Public access error for an invalid email address.'],
+            'decisions.public.access.sync_failed' => ['text' => 'Impossible de vérifier les participants autorisés pour le moment.', 'context' => 'Public access error when participants cannot be synchronized.'],
+            'decisions.public.access.participant_unavailable' => ['text' => 'Cette adresse e-mail est déjà liée à un participant qui ne peut plus utiliser ce scrutin.', 'context' => 'Public access error for an unavailable participant.'],
+            'decisions.public.access.create_failed' => ['text' => 'Impossible de créer cette participation pour le moment.', 'context' => 'Public access error when participation creation fails.'],
+            'decisions.public.access.not_allowed_open' => ['text' => 'Cette adresse e-mail ne peut pas être utilisée pour ce scrutin pour le moment.', 'context' => 'Public access error when open registration does not accept the email.'],
+            'decisions.public.access.not_allowed_invited' => ['text' => 'Cette adresse e-mail ne fait pas partie des personnes autorisées à participer à ce scrutin.', 'context' => 'Public access error when the email is not invited.'],
+            'decisions.public.access.empty_code' => ['text' => 'Merci de saisir le code reçu par e-mail.', 'context' => 'Public access error for an empty access code.'],
+            'decisions.public.access.missing_code' => ['text' => 'Aucun code valide n’a été trouvé pour cette adresse. Demandez-en un nouveau.', 'context' => 'Public access error when no code exists.'],
+            'decisions.public.access.expired_code' => ['text' => 'Ce code a expiré. Demandez-en un nouveau depuis cette page.', 'context' => 'Public access error for an expired code.'],
+            'decisions.public.access.invalid_code' => ['text' => 'Le code saisi est incorrect.', 'context' => 'Public access error for an invalid code.'],
+            'decisions.public.access.consume_failed' => ['text' => 'Le code est correct, mais l’accès n’a pas pu être finalisé. Réessayez dans un instant.', 'context' => 'Public access error when code consumption fails.'],
+            'decisions.public.access.code_verification_failed' => ['text' => 'Impossible de vérifier ce code pour le moment.', 'context' => 'Fallback public access error during code verification.'],
+            'decisions.public.access.finalize_failed' => ['text' => 'Le lien personnel n’a pas pu être finalisé. Réessayez dans un instant.', 'context' => 'Public access error when the personal link cannot be finalized.'],
+            'decisions.public.access.code_valid' => ['text' => 'Code valide. Redirection en cours…', 'context' => 'Public access success after code verification.'],
+            'decisions.public.access.code_sent' => ['text' => 'Un code personnel et un lien direct viennent d’être envoyés à {email}.', 'context' => 'Public access success after sending an access code.'],
+            'decisions.public.status.unavailable' => ['text' => 'Ce lien ne permet pas d’accéder à cette prise de décision.', 'context' => 'Public status when the decision cannot be accessed.'],
+            'decisions.public.status.request_open' => ['text' => 'Entrez votre adresse e-mail pour recevoir un code personnel de participation.', 'context' => 'Public access prompt when self-registration is open.'],
+            'decisions.public.status.request_invited' => ['text' => 'Entrez votre adresse e-mail autorisée pour recevoir un code personnel de participation.', 'context' => 'Public access prompt when only invited emails may request access.'],
+            'decisions.public.status.can_participate' => ['text' => 'Vous pouvez participer à ce scrutin depuis cette page publique.', 'context' => 'Public status when participation is available.'],
+            'decisions.public.access.title_eyebrow' => ['text' => 'Accès public', 'context' => 'Eyebrow title on the public access request form.'],
+            'decisions.public.access.title' => ['text' => 'Recevoir mon accès personnel', 'context' => 'Title on the public access request form.'],
+            'decisions.public.access.open_description' => ['text' => 'Saisissez votre adresse e-mail pour recevoir un code personnel ainsi qu’un lien direct personnel. Si cette adresse n’est pas encore associée à ce scrutin, une participation sera créée automatiquement.', 'context' => 'Description of open public access registration.'],
+            'decisions.public.access.invited_description' => ['text' => 'Saisissez l’adresse e-mail autorisée pour ce scrutin afin de recevoir un code personnel ainsi qu’un lien direct de participation.', 'context' => 'Description of invited public access registration.'],
+            'decisions.public.access.email' => ['text' => 'Adresse e-mail', 'context' => 'Email field label on the public access form.'],
+            'decisions.public.access.email_placeholder' => ['text' => 'nom@exemple.org', 'context' => 'Email field placeholder on the public access form.'],
+            'decisions.public.access.code' => ['text' => 'Code reçu par e-mail', 'context' => 'Access code field label on the public access form.'],
+            'decisions.public.access.code_placeholder' => ['text' => '123456', 'context' => 'Access code field placeholder on the public access form.'],
+            'decisions.public.access.send' => ['text' => 'Envoyer mon accès', 'context' => 'Button requesting a public access code.'],
+            'decisions.public.access.resend' => ['text' => 'Renvoyer le code', 'context' => 'Button resending a public access code.'],
+            'decisions.public.access.enter' => ['text' => 'Accéder au scrutin', 'context' => 'Button validating the public access code.'],
+            'decisions.public.navigation.help' => ['text' => 'Aide', 'context' => 'Public decision page help label.'],
+            'decisions.public.navigation.aria' => ['text' => 'Navigation du scrutin', 'context' => 'Public decision page mobile navigation label.'],
+            'decisions.public.navigation.info' => ['text' => 'Infos', 'context' => 'Public decision page mobile information tab.'],
+            'decisions.public.navigation.decision' => ['text' => 'Scrutin', 'context' => 'Public decision page mobile decision tab.'],
+            'decisions.public.banner' => ['text' => 'Scrutin public organisé pour {organization}', 'context' => 'Public decision page banner.'],
+            'decisions.public.banner_prefix' => ['text' => 'Scrutin public organisé pour', 'context' => 'Prefix in the public decision page banner before the organization name.'],
+            'decisions.public.banner_personal_access' => ['text' => ' · accès personnel de {participant}', 'context' => 'Personal access suffix in the public decision page banner.'],
+            'decisions.public.js.invalid_response' => ['text' => 'Réponse invalide du serveur.', 'context' => 'JavaScript fallback when the proposal response is invalid.'],
+            'decisions.public.js.proposal_add_failed' => ['text' => 'Impossible d’ajouter la proposition pour le moment.', 'context' => 'JavaScript fallback when adding a consultation proposal fails.'],
+            'decisions.public.js.access_process_failed' => ['text' => 'Impossible de traiter cette demande pour le moment.', 'context' => 'JavaScript fallback when processing a public access request fails.'],
+            'decisions.public.js.code_sent' => ['text' => 'Code envoyé.', 'context' => 'JavaScript fallback after sending a public access code.'],
+            'decisions.public.js.proposal_placeholder' => ['text' => 'Proposition', 'context' => 'JavaScript prefix for a consultation proposal input placeholder.'],
+            'decisions.public.js.remove_proposal' => ['text' => 'Supprimer', 'context' => 'JavaScript label for removing a consultation proposal input.'],
+        ];
+    }
+}
+
+$commonDecisionParticipationSourceLang = commonDecisionParticipationGetSourceLang();
+$commonDecisionParticipationLang = omoLoadTranslationBundle('omo_decision_public', $commonDecisionParticipationSourceLang);
+
+if (!function_exists('commonDecisionParticipationT')) {
+    function commonDecisionParticipationT($key, array $variables = [])
+    {
+        global $commonDecisionParticipationLang, $commonDecisionParticipationSourceLang;
+        return t($key, $variables, $commonDecisionParticipationLang, $commonDecisionParticipationSourceLang);
+    }
+}
+
 function commonDecisionParticipationParseDateTime($value)
 {
     if ($value instanceof DateTimeInterface) {
@@ -86,23 +196,23 @@ function commonDecisionParticipationGetMethodLabel($method)
 {
     $method = DecisionProcess::normalizeEvaluationMethod($method);
     if ($method === DecisionProcess::METHOD_SIMPLE_VOTE) {
-        return 'Vote simple';
+        return commonDecisionParticipationT('decisions.public.method.simple_vote');
     }
     if ($method === DecisionProcess::METHOD_MAJORITY_JUDGMENT) {
-        return 'Jugement majoritaire';
+        return commonDecisionParticipationT('decisions.public.method.majority_judgment');
     }
     if ($method === DecisionProcess::METHOD_CONSENT) {
-        return 'Consentement';
+        return commonDecisionParticipationT('decisions.public.method.consent');
     }
 
-    return 'Mode de decision';
+    return commonDecisionParticipationT('decisions.public.method.unknown');
 }
 
 function commonDecisionParticipationGetDecisionTypeLabel($decisionType)
 {
     return trim((string)$decisionType) === DecisionProcess::TYPE_CONSULTATION
-        ? 'consultation'
-        : 'decision';
+        ? commonDecisionParticipationT('decisions.public.type.consultation')
+        : commonDecisionParticipationT('decisions.public.type.decision');
 }
 
 function commonDecisionParticipationGetTimelineDates(DecisionProcess $decision)
@@ -145,7 +255,7 @@ function commonDecisionParticipationBuildTimelineItems(DecisionProcess $decision
 
     $items = [
         [
-            'label' => 'Maintenant',
+            'label' => commonDecisionParticipationT('decisions.public.timeline.now'),
             'date' => new DateTimeImmutable('now'),
             'is_now' => true,
             'show_date' => true,
@@ -153,10 +263,10 @@ function commonDecisionParticipationBuildTimelineItems(DecisionProcess $decision
     ];
 
     $milestones = [
-        ['label' => 'Debut consultation', 'value' => $dates['consultation_start']],
-        ['label' => 'Fin consultation', 'value' => $dates['consultation_end']],
-        ['label' => 'Debut vote', 'value' => $dates['evaluation_start']],
-        ['label' => 'Fin vote', 'value' => $dates['evaluation_end']],
+        ['label' => commonDecisionParticipationT('decisions.public.timeline.consultation_start'), 'value' => $dates['consultation_start']],
+        ['label' => commonDecisionParticipationT('decisions.public.timeline.consultation_end'), 'value' => $dates['consultation_end']],
+        ['label' => commonDecisionParticipationT('decisions.public.timeline.evaluation_start'), 'value' => $dates['evaluation_start']],
+        ['label' => commonDecisionParticipationT('decisions.public.timeline.evaluation_end'), 'value' => $dates['evaluation_end']],
     ];
 
     foreach ($milestones as $milestone) {
@@ -176,7 +286,7 @@ function commonDecisionParticipationBuildTimelineItems(DecisionProcess $decision
     $resultsDate = $dates['results'];
     if ($resultsDate instanceof DateTimeInterface) {
         $items[] = [
-            'label' => 'Resultats',
+            'label' => commonDecisionParticipationT('decisions.public.timeline.results'),
             'date' => $resultsDate,
             'is_now' => false,
             'show_date' => true,
@@ -212,12 +322,12 @@ function commonDecisionParticipationBuildTimelineSummary(DecisionProcess $decisi
     $status = DecisionProcess::normalizeStatus($decision->get('status'));
 
     $summary = [
-        'title' => 'Etapes du scrutin',
-        'hint' => 'Afficher la representation graphique',
+        'title' => commonDecisionParticipationT('decisions.public.timeline.title'),
+        'hint' => commonDecisionParticipationT('decisions.public.timeline.hint'),
     ];
 
     if ($consultationStart instanceof DateTimeInterface && $now < $consultationStart) {
-        $summary['title'] = 'En attente du debut de la consultation le ' . commonDecisionParticipationFormatDateTime($consultationStart);
+        $summary['title'] = commonDecisionParticipationT('decisions.public.timeline.waiting_consultation', ['date' => commonDecisionParticipationFormatDateTime($consultationStart)]);
         return $summary;
     }
 
@@ -226,7 +336,7 @@ function commonDecisionParticipationBuildTimelineSummary(DecisionProcess $decisi
         && $evaluationStart instanceof DateTimeInterface
         && $now < $evaluationStart
     ) {
-        $summary['title'] = 'En attente du debut du vote le ' . commonDecisionParticipationFormatDateTime($evaluationStart);
+        $summary['title'] = commonDecisionParticipationT('decisions.public.timeline.waiting_vote', ['date' => commonDecisionParticipationFormatDateTime($evaluationStart)]);
         return $summary;
     }
 
@@ -241,8 +351,8 @@ function commonDecisionParticipationBuildTimelineSummary(DecisionProcess $decisi
         && !($evaluationStart instanceof DateTimeInterface && $evaluationStart <= $now)
     ) {
         $summary['title'] = $consultationLimit instanceof DateTimeInterface
-            ? 'En consultation jusqu au ' . commonDecisionParticipationFormatDateTime($consultationLimit)
-            : 'En consultation';
+            ? commonDecisionParticipationT('decisions.public.timeline.consultation_until', ['date' => commonDecisionParticipationFormatDateTime($consultationLimit)])
+            : commonDecisionParticipationT('decisions.public.timeline.consultation_open');
         return $summary;
     }
 
@@ -252,12 +362,12 @@ function commonDecisionParticipationBuildTimelineSummary(DecisionProcess $decisi
         && $consultationStart <= $now
         && $now < $evaluationStart
     ) {
-        $summary['title'] = 'En attente du debut du scrutin le ' . commonDecisionParticipationFormatDateTime($evaluationStart);
+        $summary['title'] = commonDecisionParticipationT('decisions.public.timeline.waiting_vote', ['date' => commonDecisionParticipationFormatDateTime($evaluationStart)]);
         return $summary;
     }
 
     if ($evaluationStart instanceof DateTimeInterface && $now < $evaluationStart) {
-        $summary['title'] = 'En attente du debut du scrutin le ' . commonDecisionParticipationFormatDateTime($evaluationStart);
+        $summary['title'] = commonDecisionParticipationT('decisions.public.timeline.waiting_vote', ['date' => commonDecisionParticipationFormatDateTime($evaluationStart)]);
         return $summary;
     }
 
@@ -269,18 +379,18 @@ function commonDecisionParticipationBuildTimelineSummary(DecisionProcess $decisi
     ) {
         $evaluationLimit = $evaluationEnd instanceof DateTimeInterface ? $evaluationEnd : $resultsDate;
         $summary['title'] = $evaluationLimit instanceof DateTimeInterface
-            ? 'Vote ouvert jusqu au ' . commonDecisionParticipationFormatDateTime($evaluationLimit)
-            : 'Vote ouvert';
+            ? commonDecisionParticipationT('decisions.public.timeline.vote_until', ['date' => commonDecisionParticipationFormatDateTime($evaluationLimit)])
+            : commonDecisionParticipationT('decisions.public.timeline.vote_open');
         return $summary;
     }
 
     if (DecisionProcess::getStatusRank($status) >= DecisionProcess::getStatusRank(DecisionProcess::STATUS_RESULTS)) {
-        $summary['title'] = 'Termine';
+        $summary['title'] = commonDecisionParticipationT('decisions.public.timeline.finished');
         return $summary;
     }
 
     if ($evaluationEnd instanceof DateTimeInterface && $evaluationEnd <= $now) {
-        $summary['title'] = 'Termine';
+        $summary['title'] = commonDecisionParticipationT('decisions.public.timeline.finished');
         return $summary;
     }
 
@@ -333,7 +443,7 @@ function commonDecisionParticipationBuildMethodSummary($decision)
 {
     if (!$decision instanceof DecisionProcess) {
         return [
-            'label' => 'Methode',
+            'label' => commonDecisionParticipationT('decisions.public.context.method'),
             'value' => '',
         ];
     }
@@ -341,7 +451,7 @@ function commonDecisionParticipationBuildMethodSummary($decision)
     $groups = commonDecisionParticipationGetRenderableGroups($decision);
     if (count($groups) === 0) {
         return [
-            'label' => 'Methode',
+            'label' => commonDecisionParticipationT('decisions.public.context.method'),
             'value' => '',
         ];
     }
@@ -353,7 +463,9 @@ function commonDecisionParticipationBuildMethodSummary($decision)
     }
 
     return [
-        'label' => count($parts) > 1 ? 'Methodes' : 'Methode',
+        'label' => count($parts) > 1
+            ? commonDecisionParticipationT('decisions.public.context.methods')
+            : commonDecisionParticipationT('decisions.public.context.method'),
         'value' => implode(' / ', array_values(array_unique($parts))),
     ];
 }
@@ -364,7 +476,7 @@ function commonDecisionParticipationBuildInvitationSummary($decision, $organizat
         return '';
     }
 
-    $organizationName = $organization ? trim((string)$organization->get('name')) : 'Organisation';
+    $organizationName = $organization ? trim((string)$organization->get('name')) : commonDecisionParticipationT('decisions.public.default_organization');
     $holonLabels = [];
     $additionalPeopleCount = 0;
 
@@ -429,15 +541,15 @@ function commonDecisionParticipationBuildOptionLines($decision, array $context)
     $status = DecisionProcess::normalizeStatus($decision->get('status'));
 
     if ($status === DecisionProcess::STATUS_RESULTS || $status === DecisionProcess::STATUS_ARCHIVED) {
-        $lines[] = 'Vos reponses ne sont plus modifiables';
+        $lines[] = commonDecisionParticipationT('decisions.public.options.responses_locked');
     } else {
-        $lines[] = 'Vos reponses sont modifiables';
+        $lines[] = commonDecisionParticipationT('decisions.public.options.responses_editable');
     }
 
     if (DecisionProcess::getStatusRank($status) < DecisionProcess::getStatusRank(DecisionProcess::STATUS_RESULTS)) {
-        $lines[] = 'Les resultats ne sont pas visibles avant la fin du vote';
+        $lines[] = commonDecisionParticipationT('decisions.public.options.results_hidden');
     } else {
-        $lines[] = 'Les resultats sont visibles';
+        $lines[] = commonDecisionParticipationT('decisions.public.options.results_visible');
     }
 
     $anonymousFlags = [];
@@ -460,30 +572,32 @@ function commonDecisionParticipationBuildOptionLines($decision, array $context)
         $uniqueFlags = array_values(array_unique($anonymousFlags));
         if (count($uniqueFlags) === 1) {
             $lines[] = $uniqueFlags[0]
-                ? 'Ce sondage est anonyme'
-                : 'Ce sondage n est pas anonyme';
+                ? commonDecisionParticipationT('decisions.public.options.anonymous')
+                : commonDecisionParticipationT('decisions.public.options.not_anonymous');
         } else {
-            $lines[] = 'Le caractere anonyme peut varier selon les blocs';
+            $lines[] = commonDecisionParticipationT('decisions.public.options.mixed_anonymity');
         }
     }
 
     if (count($consultationProposalFlags) > 0) {
         $lines[] = count($consultationProposalFlags) === count($groups)
-            ? 'Vous pouvez faire des propositions durant la consultation'
-            : 'Vous pouvez faire des propositions durant la consultation pour certains blocs';
+            ? commonDecisionParticipationT('decisions.public.options.proposals_all')
+            : commonDecisionParticipationT('decisions.public.options.proposals_some');
     }
 
     if (count($proposalDiscussionAnonymousFlags) > 0) {
         $allGroupsAllowDiscussions = count($proposalDiscussionAnonymousFlags) === count($groups);
         $uniqueDiscussionAnonymousFlags = array_values(array_unique($proposalDiscussionAnonymousFlags));
         $discussionLine = $allGroupsAllowDiscussions
-            ? 'Vous pouvez discuter les propositions pendant la consultation'
-            : 'Vous pouvez discuter les propositions pendant la consultation pour certains blocs';
+            ? commonDecisionParticipationT('decisions.public.options.discussions_all')
+            : commonDecisionParticipationT('decisions.public.options.discussions_some');
 
         if (count($uniqueDiscussionAnonymousFlags) === 1) {
             $discussionLine .= $uniqueDiscussionAnonymousFlags[0]
-                ? ' de façon anonyme'
-                : ', anonymement si vous le souhaitez';
+                ? commonDecisionParticipationT('decisions.public.options.discussions_anonymous')
+                : commonDecisionParticipationT('decisions.public.options.discussions_optional_anonymity');
+        } else {
+            $discussionLine .= '.';
         }
 
         $lines[] = $discussionLine;
@@ -538,7 +652,7 @@ function commonDecisionParticipationRenderGroupBlocks(DecisionProcess $decision,
             $definition = $registry[$method] ?? null;
             $groupTitle = trim((string)$group->get('title'));
             if ($groupTitle === '') {
-                $groupTitle = 'Bloc ' . (string)($groupIndex + 1);
+                $groupTitle = commonDecisionParticipationT('decisions.public.block', ['index' => (string)($groupIndex + 1)]);
             }
             $groupDescription = trim((string)$group->get('description'));
             $groupContext = $context;
@@ -556,7 +670,7 @@ function commonDecisionParticipationRenderGroupBlocks(DecisionProcess $decision,
                 <div class="generic-soft-panel-square generic-soft-panel--stack decision-public-group__header decision-public-group__header--sticky">
                     <div class="decision-public-group__header-top">
                         <span class="decision-public-group__badge">
-                            Bloc <?= omoApiEscape((string)($groupIndex + 1)) ?> · <?= omoApiEscape(commonDecisionParticipationGetMethodLabel($method)) ?> · <?= omoApiEscape(commonDecisionParticipationGetDecisionTypeLabel($group->get('decision_type'))) ?>
+                            <?= omoApiEscape(commonDecisionParticipationT('decisions.public.block', ['index' => (string)($groupIndex + 1)])) ?> · <?= omoApiEscape(commonDecisionParticipationGetMethodLabel($method)) ?> · <?= omoApiEscape(commonDecisionParticipationGetDecisionTypeLabel($group->get('decision_type'))) ?>
                         </span>
                     </div>
                     <h2 class="decision-public-group__title"><?= omoApiEscape($groupTitle) ?></h2>
@@ -596,7 +710,7 @@ function commonDecisionParticipationRenderGroupBlocks(DecisionProcess $decision,
                     ?>
                 <?php else: ?>
                 <div class="generic-soft-panel generic-soft-panel--stack">
-                    <p style="margin:0;line-height:1.6;">Ce bloc n a pas encore d interface disponible.</p>
+                    <p style="margin:0;line-height:1.6;"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.block_unavailable')) ?></p>
                 </div>
                 <?php endif; ?>
             </section>
@@ -611,18 +725,18 @@ function commonDecisionParticipationGetPublicAccessRequestDeniedMessage($reason,
 {
     switch (trim((string)$reason)) {
         case 'invalid_email':
-            return 'Merci de saisir une adresse e-mail valide.';
+            return commonDecisionParticipationT('decisions.public.access.invalid_email');
         case 'sync_failed':
-            return 'Impossible de verifier les participants autorises pour le moment.';
+            return commonDecisionParticipationT('decisions.public.access.sync_failed');
         case 'participant_unavailable':
-            return 'Cette adresse e-mail est deja liee a un participant qui ne peut plus utiliser ce scrutin.';
+            return commonDecisionParticipationT('decisions.public.access.participant_unavailable');
         case 'create_failed':
-            return 'Impossible de creer cette participation pour le moment.';
+            return commonDecisionParticipationT('decisions.public.access.create_failed');
         case 'not_allowed':
         default:
             return $allowPublicSelfRegistration
-                ? 'Cette adresse e-mail ne peut pas etre utilisee pour ce scrutin pour le moment.'
-                : 'Cette adresse e-mail ne fait pas partie des personnes autorisees a ce scrutin.';
+                ? commonDecisionParticipationT('decisions.public.access.not_allowed_open')
+                : commonDecisionParticipationT('decisions.public.access.not_allowed_invited');
     }
 }
 
@@ -630,17 +744,17 @@ function commonDecisionParticipationGetPublicAccessCodeErrorMessage($reason)
 {
     switch (trim((string)$reason)) {
         case 'empty_code':
-            return 'Merci de saisir le code recu par e-mail.';
+            return commonDecisionParticipationT('decisions.public.access.empty_code');
         case 'missing_code':
-            return 'Aucun code valide n a ete trouve pour cette adresse. Demandez-en un nouveau.';
+            return commonDecisionParticipationT('decisions.public.access.missing_code');
         case 'expired_code':
-            return 'Ce code a expire. Demandez-en un nouveau depuis cette page.';
+            return commonDecisionParticipationT('decisions.public.access.expired_code');
         case 'invalid_code':
-            return 'Le code saisi est incorrect.';
+            return commonDecisionParticipationT('decisions.public.access.invalid_code');
         case 'consume_failed':
-            return 'Le code est correct, mais l acces n a pas pu etre finalise. Reessayez dans un instant.';
+            return commonDecisionParticipationT('decisions.public.access.consume_failed');
         default:
-            return 'Impossible de verifier ce code pour le moment.';
+            return commonDecisionParticipationT('decisions.public.access.code_verification_failed');
     }
 }
 
@@ -765,7 +879,7 @@ function commonDecisionParticipationBuildTimelineSegments(DecisionProcess $decis
     );
     if ($consultationStart !== null && $consultationEnd !== null && $consultationEnd > $consultationStart) {
         $segments[] = [
-            'label' => 'Consultation',
+            'label' => commonDecisionParticipationT('decisions.public.timeline.segment_consultation'),
             'class' => 'consultation',
             'left' => $consultationStart,
             'width' => $consultationEnd - $consultationStart,
@@ -782,7 +896,7 @@ function commonDecisionParticipationBuildTimelineSegments(DecisionProcess $decis
         $openWidth = min($openWidth, $availableWidth);
         $dotPositions = $buildOpenDots($consultationStart + $openWidth);
         $segments[] = [
-            'label' => 'Consultation',
+            'label' => commonDecisionParticipationT('decisions.public.timeline.segment_consultation'),
             'class' => 'consultation',
             'left' => $consultationStart,
             'width' => $openWidth,
@@ -800,7 +914,7 @@ function commonDecisionParticipationBuildTimelineSegments(DecisionProcess $decis
     );
     if ($evaluationStart !== null && $evaluationEnd !== null && $evaluationEnd > $evaluationStart) {
         $segments[] = [
-            'label' => 'Vote',
+            'label' => commonDecisionParticipationT('decisions.public.timeline.segment_vote'),
             'class' => 'evaluation',
             'left' => $evaluationStart,
             'width' => $evaluationEnd - $evaluationStart,
@@ -817,7 +931,7 @@ function commonDecisionParticipationBuildTimelineSegments(DecisionProcess $decis
         $openWidth = min($openWidth, $availableWidth);
         $dotPositions = $buildOpenDots($evaluationStart + $openWidth);
         $segments[] = [
-            'label' => 'Vote',
+            'label' => commonDecisionParticipationT('decisions.public.timeline.segment_vote'),
             'class' => 'evaluation',
             'left' => $evaluationStart,
             'width' => $openWidth,
@@ -830,7 +944,7 @@ function commonDecisionParticipationBuildTimelineSegments(DecisionProcess $decis
     $resultsStart = $buildPosition($dates['results']);
     if ($resultsStart !== null && 90 > $resultsStart) {
         $segments[] = [
-            'label' => 'Resultats',
+            'label' => commonDecisionParticipationT('decisions.public.timeline.segment_results'),
             'class' => 'results',
             'left' => $resultsStart,
             'width' => 90 - $resultsStart,
@@ -864,7 +978,7 @@ if ($requiresPublicAccessEmail && (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'PO
     if (!$decision instanceof DecisionProcess) {
         omoDecisionModuleJsonResponse(404, [
             'status' => false,
-            'message' => 'Cette prise de decision est introuvable.',
+            'message' => commonDecisionParticipationT('decisions.public.access.invalid_decision'),
         ]);
     }
 
@@ -873,7 +987,7 @@ if ($requiresPublicAccessEmail && (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'PO
     if ($requestedEmail === '' || !filter_var($requestedEmail, FILTER_VALIDATE_EMAIL)) {
         omoDecisionModuleJsonResponse(422, [
             'status' => false,
-            'message' => 'Merci de saisir une adresse e-mail valide.',
+            'message' => commonDecisionParticipationT('decisions.public.access.invalid_email'),
         ]);
     }
 
@@ -902,13 +1016,13 @@ if ($requiresPublicAccessEmail && (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'PO
         if ($redirectUrl === '') {
             omoDecisionModuleJsonResponse(500, [
                 'status' => false,
-                'message' => 'Le lien personnel n a pas pu etre finalise. Reessayez dans un instant.',
+                'message' => commonDecisionParticipationT('decisions.public.access.finalize_failed'),
             ]);
         }
 
         omoDecisionModuleJsonResponse(200, [
             'status' => true,
-            'message' => 'Code valide. Redirection en cours...',
+            'message' => commonDecisionParticipationT('decisions.public.access.code_valid'),
             'redirectUrl' => $redirectUrl,
         ]);
     }
@@ -929,13 +1043,13 @@ if ($requiresPublicAccessEmail && (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'PO
     if (empty($sendResult['status'])) {
         omoDecisionModuleJsonResponse(500, [
             'status' => false,
-            'message' => trim((string)($sendResult['message'] ?? 'Impossible d envoyer le code d acces pour le moment.')),
+            'message' => trim((string)($sendResult['message'] ?? commonDecisionParticipationT('decisions.public.access.finalize_failed'))),
         ]);
     }
 
     omoDecisionModuleJsonResponse(200, [
         'status' => true,
-        'message' => 'Un code personnel et un lien direct viennent d etre envoyes a ' . trim((string)($sendResult['email'] ?? $requestedEmail)) . '.',
+        'message' => commonDecisionParticipationT('decisions.public.access.code_sent', ['email' => trim((string)($sendResult['email'] ?? $requestedEmail))]),
         'nextAction' => 'verify_code',
     ]);
 }
@@ -950,8 +1064,9 @@ if ((($context['accessMode'] ?? '') === 'public') && $participant instanceof Dec
     }
 }
 
-$organizationName = $organization ? trim((string)$organization->get('name')) : 'Organisation';
-$decisionTitle = $decision ? trim((string)$decision->get('title')) : 'Prise de decision';
+$organizationName = $organization ? trim((string)$organization->get('name')) : commonDecisionParticipationT('decisions.public.default_organization');
+$decisionTitle = $decision ? trim((string)$decision->get('title')) : commonDecisionParticipationT('decisions.public.default_title');
+$decisionPublicLocale = function_exists('omoGetTranslationLocale') ? omoGetTranslationLocale() : 'fr';
 $participantLabel = $participant
     ? trim((string)$participant->getIdentityLabel($organization ? (int)$organization->getId() : 0))
     : '';
@@ -964,10 +1079,10 @@ $timelineItems = $decision ? commonDecisionParticipationBuildTimelineItems($deci
 $timelineData = commonDecisionParticipationBuildTimelineData($timelineItems, $decision);
 $timelineSegments = $decision ? commonDecisionParticipationBuildTimelineSegments($decision, $timelineData) : [];
 $timelineSummary = $decision ? commonDecisionParticipationBuildTimelineSummary($decision) : [
-    'title' => 'Etapes du scrutin',
-    'hint' => 'Cliquez pour voir le contexte du vote',
+    'title' => commonDecisionParticipationT('decisions.public.timeline.title'),
+    'hint' => commonDecisionParticipationT('decisions.public.timeline.hint'),
 ];
-$timelineSummary['hint'] = 'Cliquez pour voir le contexte du vote';
+$timelineSummary['hint'] = commonDecisionParticipationT('decisions.public.timeline.hint');
 $escape = 'omoApiEscape';
 $organizerData = commonDecisionParticipationBuildOrganizerData($decision, $organization, $context);
 $methodSummary = commonDecisionParticipationBuildMethodSummary($decision);
@@ -982,21 +1097,21 @@ if (trim((string)($organizerData['email'] ?? '')) !== '') {
     ob_start();
     ?>
         <section class="generic-soft-panel-square decision-public-context-contact<?= $requiresPublicAccessEmail ? ' decision-public-context-contact--footer' : '' ?>">
-            <span>Contacter l organisateur: </span>
+            <span><?= omoApiEscape(commonDecisionParticipationT('decisions.public.context.contact_organizer')) ?> </span>
             <a href="mailto:<?= omoApiEscape((string)$organizerData['email']) ?>"><?= omoApiEscape((string)$organizerData['email']) ?></a>
         </section>
     <?php
     $decisionPublicOrganizerContactHtml = (string)ob_get_clean();
 }
-$statusCopy = 'Ce lien ne permet pas d acceder a cette prise de decision.';
+$statusCopy = commonDecisionParticipationT('decisions.public.status.unavailable');
 if (!empty($context['status'])) {
     if ($requiresPublicAccessEmail) {
         $statusCopy = $allowPublicSelfRegistration
-            ? 'Entrez votre adresse e-mail pour recevoir un code personnel de participation.'
-            : 'Entrez votre adresse e-mail autorisee pour recevoir un code personnel de participation.';
+            ? commonDecisionParticipationT('decisions.public.status.request_open')
+            : commonDecisionParticipationT('decisions.public.status.request_invited');
     } else {
         $statusCopy = !empty($context['canParticipate'])
-            ? 'Vous pouvez participer a ce scrutin depuis cette page publique.'
+            ? commonDecisionParticipationT('decisions.public.status.can_participate')
             : '';
     }
 }
@@ -1006,14 +1121,14 @@ ob_start();
         <section class="generic-hero-panel fill accent decision-public-hero">
             <?php if (!$isResultsDisplay): ?>
             <div class="decision-public-eyebrow">
-                <strong><?= omoApiEscape($organizationName !== '' ? $organizationName : 'Organisation') ?></strong>
+                <strong><?= omoApiEscape($organizationName !== '' ? $organizationName : commonDecisionParticipationT('decisions.public.default_organization')) ?></strong>
                 <?php if ($participantLabel !== ''): ?>
                 <span>&middot;</span>
                 <span><?= omoApiEscape($participantLabel) ?></span>
                 <?php endif; ?>
             </div>
             <?php endif; ?>
-            <h1><?= omoApiEscape($decisionTitle !== '' ? $decisionTitle : 'Prise de decision') ?></h1>
+            <h1><?= omoApiEscape($decisionTitle !== '' ? $decisionTitle : commonDecisionParticipationT('decisions.public.default_title')) ?></h1>
             <?php if (!$isResultsDisplay && $statusCopy !== ''): ?>
             <p class="decision-public-status"><?= omoApiEscape($statusCopy) ?></p>
             <?php endif; ?>
@@ -1033,8 +1148,8 @@ ob_start();
                 aria-expanded="false"
             >
                 <span class="decision-public-timeline-summary-copy">
-                    <span class="decision-public-timeline-summary-title"><?= omoApiEscape((string)($timelineSummary['title'] ?? 'Etapes du scrutin')) ?></span>
-                    <span class="decision-public-timeline-summary-hint"><?= omoApiEscape((string)($timelineSummary['hint'] ?? 'Afficher la representation graphique')) ?></span>
+                    <span class="decision-public-timeline-summary-title"><?= omoApiEscape((string)($timelineSummary['title'] ?? commonDecisionParticipationT('decisions.public.timeline.title'))) ?></span>
+                    <span class="decision-public-timeline-summary-hint"><?= omoApiEscape((string)($timelineSummary['hint'] ?? commonDecisionParticipationT('decisions.public.timeline.hint'))) ?></span>
                 </span>
                 <span class="generic-accordion__toggle" aria-hidden="true">&#9662;</span>
             </button>
@@ -1098,7 +1213,7 @@ ob_start();
                         <div class="decision-public-context-grid">
                             <?php if (trim((string)($organizerData['label'] ?? '')) !== ''): ?>
                             <div class="generic-soft-panel generic-soft-panel--stack">
-                                <span class="generic-card-title generic-card-title--small">Organisateur</span>
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.context.organizer')) ?></span>
                                 <span class="decision-public-context-organizer">
                                     <strong><?= omoApiEscape((string)$organizerData['label']) ?></strong><?php if (trim((string)($organizerData['scope'] ?? '')) !== ''): ?>, <span class="decision-public-context-scope"><?= omoApiEscape((string)$organizerData['scope']) ?></span><?php endif; ?>
                                 </span>
@@ -1107,14 +1222,14 @@ ob_start();
 
                             <?php if (trim((string)($methodSummary['value'] ?? '')) !== ''): ?>
                             <div class="generic-soft-panel generic-soft-panel--stack">
-                                <span class="generic-card-title generic-card-title--small"><?= omoApiEscape((string)($methodSummary['label'] ?? 'Methode')) ?></span>
+                                <span class="generic-card-title generic-card-title--small"><?= omoApiEscape((string)($methodSummary['label'] ?? commonDecisionParticipationT('decisions.public.context.method'))) ?></span>
                                 <strong><?= omoApiEscape((string)($methodSummary['value'] ?? '')) ?></strong>
                             </div>
                             <?php endif; ?>
 
                             <?php if ($invitationSummary !== ''): ?>
                             <div class="generic-soft-panel generic-soft-panel--stack">
-                                <span class="generic-card-title generic-card-title--small">Invites</span>
+                                <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.context.invited')) ?></span>
                                 <strong><?= omoApiEscape($invitationSummary) ?></strong>
                             </div>
                             <?php endif; ?>
@@ -1122,7 +1237,7 @@ ob_start();
 
                         <?php if (count($optionLines) > 0): ?>
                         <div class="generic-soft-panel generic-soft-panel--stack">
-                            <span class="generic-card-title generic-card-title--small">Options</span>
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.context.options')) ?></span>
                             <ul class="decision-public-context-list">
                                 <?php foreach ($optionLines as $optionLine): ?>
                                 <li><?= omoApiEscape((string)$optionLine) ?></li>
@@ -1146,12 +1261,12 @@ ob_start();
             <div class="decision-public-access-request-shell">
                 <section class="generic-section generic-section--stack decision-public-access-request">
                     <div class="decision-public-access-request__header">
-                        <span class="generic-card-title generic-card-title--eyebrow">Acces public</span>
-                        <span class="generic-card-title generic-card-title--section">Recevoir mon acces personnel</span>
+                        <span class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.access.title_eyebrow')) ?></span>
+                        <span class="generic-card-title generic-card-title--section"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.access.title')) ?></span>
                         <p class="decision-public-access-request__text">
                             <?= $allowPublicSelfRegistration
-                                ? 'Saisissez votre adresse e-mail pour recevoir un code personnel ainsi qu un lien direct personnel. Si cette adresse n est pas encore associee a ce scrutin, une participation sera creee automatiquement.'
-                                : 'Saisissez l adresse e-mail autorisee pour ce scrutin afin de recevoir un code personnel ainsi qu un lien direct de participation.' ?>
+                                ? omoApiEscape(commonDecisionParticipationT('decisions.public.access.open_description'))
+                                : omoApiEscape(commonDecisionParticipationT('decisions.public.access.invited_description')) ?>
                         </p>
                     </div>
                     <form
@@ -1162,19 +1277,19 @@ ob_start();
                     >
                         <input type="hidden" name="public_access_action" id="decisionPublicAccessRequestAction" value="request_code">
                         <div class="decision-public-access-request__field">
-                            <label class="generic-card-title generic-card-title--small" for="decisionPublicAccessRequestEmail">Adresse e-mail</label>
+                            <label class="generic-card-title generic-card-title--small" for="decisionPublicAccessRequestEmail"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.access.email')) ?></label>
                             <input
                                 id="decisionPublicAccessRequestEmail"
                                 name="email"
                                 type="email"
                                 class="generic-form-control"
                                 autocomplete="email"
-                                placeholder="nom@exemple.org"
+                                placeholder="<?= omoApiEscape(commonDecisionParticipationT('decisions.public.access.email_placeholder')) ?>"
                                 required
                             >
                         </div>
                         <div class="decision-public-access-request__field" id="decisionPublicAccessRequestCodeRow" hidden>
-                            <label class="generic-card-title generic-card-title--small" for="decisionPublicAccessRequestCode">Code recu par e-mail</label>
+                            <label class="generic-card-title generic-card-title--small" for="decisionPublicAccessRequestCode"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.access.code')) ?></label>
                             <input
                                 id="decisionPublicAccessRequestCode"
                                 name="code"
@@ -1183,21 +1298,21 @@ ob_start();
                                 inputmode="numeric"
                                 autocomplete="one-time-code"
                                 maxlength="6"
-                                placeholder="123456"
+                                placeholder="<?= omoApiEscape(commonDecisionParticipationT('decisions.public.access.code_placeholder')) ?>"
                             >
                         </div>
                         <div id="decisionPublicAccessRequestFeedback" class="decision-public-access-request__feedback" aria-live="polite"></div>
                         <div class="decision-public-access-request__actions" id="decisionPublicAccessRequestSendActions">
                             <button type="submit" id="decisionPublicAccessRequestSendSubmit" class="generic-action-button generic-action-button--main">
-                                Envoyer mon acces
+                                <?= omoApiEscape(commonDecisionParticipationT('decisions.public.access.send')) ?>
                             </button>
                         </div>
                         <div class="decision-public-access-request__actions" id="decisionPublicAccessRequestVerifyActions" hidden>
                             <button type="button" id="decisionPublicAccessRequestResend" class="generic-action-button generic-action-button--secondary">
-                                Renvoyer le code
+                                <?= omoApiEscape(commonDecisionParticipationT('decisions.public.access.resend')) ?>
                             </button>
                             <button type="submit" id="decisionPublicAccessRequestVerifySubmit" class="generic-action-button generic-action-button--main">
-                                Acceder au scrutin
+                                <?= omoApiEscape(commonDecisionParticipationT('decisions.public.access.enter')) ?>
                             </button>
                         </div>
                     </form>
@@ -1217,11 +1332,11 @@ if (empty($context['status'])) {
 ?>
 <?php if (!$isEmbedded): ?>
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="<?= omoApiEscape($decisionPublicLocale) ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= omoApiEscape($decisionTitle !== '' ? $decisionTitle : 'Prise de decision') ?></title>
+    <title><?= omoApiEscape($decisionTitle !== '' ? $decisionTitle : commonDecisionParticipationT('decisions.public.default_title')) ?></title>
     <script src="/shared_functions.js"></script>
     <script>if (typeof sharedApplyDocumentTheme === 'function') { sharedApplyDocumentTheme(); }</script>
     <link rel="stylesheet" href="/shared_css.css">
@@ -1895,13 +2010,13 @@ if (empty($context['status'])) {
                     'enabled' => false,
                 ],
                 'helpItems' => $publicHelpItems,
-                'helpLabel' => 'Aide',
+                'helpLabel' => commonDecisionParticipationT('decisions.public.navigation.help'),
             ]);
             ?>
             <div class="omo-public-banner decision-public-banner">
-                Scrutin public organise pour <strong><?= omoApiEscape($organizationName !== '' ? $organizationName : 'Organisation') ?></strong>
+                <?= omoApiEscape(commonDecisionParticipationT('decisions.public.banner_prefix')) ?> <strong><?= omoApiEscape($organizationName !== '' ? $organizationName : commonDecisionParticipationT('decisions.public.default_organization')) ?></strong>
                 <?php if ($participantLabel !== ''): ?>
-                &middot; acces personnel de <?= omoApiEscape($participantLabel) ?>
+                <?= omoApiEscape(commonDecisionParticipationT('decisions.public.banner_personal_access', ['participant' => $participantLabel])) ?>
                 <?php endif; ?>
             </div>
             <div class="content decision-public-workspace">
@@ -1917,9 +2032,9 @@ if (empty($context['status'])) {
                     </div>
                 </section>
             </div>
-            <nav class="mobile-nav" id="omo-mobile-nav" aria-label="Navigation du scrutin">
-                <button type="button" data-view="left">Infos</button>
-                <button type="button" data-view="right">Scrutin</button>
+            <nav class="mobile-nav" id="omo-mobile-nav" aria-label="<?= omoApiEscape(commonDecisionParticipationT('decisions.public.navigation.aria')) ?>">
+                <button type="button" data-view="left"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.navigation.info')) ?></button>
+                <button type="button" data-view="right"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.navigation.decision')) ?></button>
             </nav>
         </div>
     </div>
@@ -1933,6 +2048,15 @@ if (empty($context['status'])) {
 <?php endif; ?>
     <script>
         (function () {
+            var decisionPublicTranslations = <?= json_encode([
+                'defaultTitle' => commonDecisionParticipationT('decisions.public.default_title'),
+                'invalidResponse' => commonDecisionParticipationT('decisions.public.js.invalid_response'),
+                'proposalAddFailed' => commonDecisionParticipationT('decisions.public.js.proposal_add_failed'),
+                'accessProcessFailed' => commonDecisionParticipationT('decisions.public.js.access_process_failed'),
+                'codeSent' => commonDecisionParticipationT('decisions.public.js.code_sent'),
+                'proposalPlaceholderPrefix' => commonDecisionParticipationT('decisions.public.js.proposal_placeholder'),
+                'removeProposal' => commonDecisionParticipationT('decisions.public.js.remove_proposal'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
             var body = document.body;
             var leftPanel = document.getElementById('panel-left');
             var content = document.querySelector('.decision-public-workspace');
@@ -2221,7 +2345,7 @@ if (empty($context['status'])) {
                 var drawerTitle = drawerTitleNode ? String(drawerTitleNode.textContent || '').trim() : '';
                 if (typeof window.omoRefreshDecisionView === 'function') {
                     window.omoRefreshDecisionView(targetUrl, {
-                        title: drawerTitle || 'Prise de decision',
+                        title: drawerTitle || decisionPublicTranslations.defaultTitle,
                         source: 'consultation_proposal'
                     });
                     return;
@@ -2236,7 +2360,7 @@ if (empty($context['status'])) {
                         || (drawer && !drawer.hidden)
                     )
                 ) {
-                    window.commonTopbarOpenDrawer(drawerTitle || 'Prise de decision', targetUrl, 'fetch');
+                    window.commonTopbarOpenDrawer(drawerTitle || decisionPublicTranslations.defaultTitle, targetUrl, 'fetch');
                     return;
                 }
 
@@ -2249,7 +2373,7 @@ if (empty($context['status'])) {
                     var input = rows[rowIndex].querySelector('input[name="consultation_proposals[]"]');
                     var removeButton = rows[rowIndex].querySelector('[data-omo-decision-consultation-proposal-remove]');
                     if (input) {
-                        input.setAttribute('placeholder', 'Proposition ' + String(rowIndex + 1));
+                        input.setAttribute('placeholder', decisionPublicTranslations.proposalPlaceholderPrefix + ' ' + String(rowIndex + 1));
                     }
                     if (removeButton) {
                         removeButton.disabled = rows.length <= 1;
@@ -2274,7 +2398,7 @@ if (empty($context['status'])) {
                 var removeButton = document.createElement('button');
                 removeButton.type = 'button';
                 removeButton.className = 'generic-action-button generic-action-button--secondary';
-                removeButton.textContent = 'Supprimer';
+                removeButton.textContent = decisionPublicTranslations.removeProposal;
                 removeButton.setAttribute('data-omo-decision-consultation-proposal-remove', '');
 
                 row.appendChild(input);
@@ -2354,7 +2478,7 @@ if (empty($context['status'])) {
                                 return {
                                     status: false,
                                     feedbackStatus: 'error',
-                                    message: 'Reponse invalide du serveur.',
+                                    message: decisionPublicTranslations.invalidResponse,
                                     redirectUrl: ''
                                 };
                             });
@@ -2375,12 +2499,12 @@ if (empty($context['status'])) {
                             setFeedback(
                                 targetForm,
                                 feedbackType,
-                                payload && payload.message ? payload.message : 'Impossible d ajouter la proposition pour le moment.'
+                                payload && payload.message ? payload.message : decisionPublicTranslations.proposalAddFailed
                             );
                         })
                         .catch(function () {
                             setSubmitting(targetForm, false);
-                            setFeedback(targetForm, 'error', 'Impossible d ajouter la proposition pour le moment.');
+                            setFeedback(targetForm, 'error', decisionPublicTranslations.proposalAddFailed);
                         });
                 });
             }
@@ -2464,12 +2588,12 @@ if (empty($context['status'])) {
                         if (!result.ok || !result.data || !result.data.status) {
                             accessRequestFeedback.textContent = result.data && result.data.message
                                 ? result.data.message
-                                : 'Impossible de traiter cette demande pour le moment.';
+                                : decisionPublicTranslations.accessProcessFailed;
                             setAccessRequestSubmitting(false);
                             return;
                         }
 
-                        accessRequestFeedback.textContent = result.data.message || 'Code envoye.';
+                        accessRequestFeedback.textContent = result.data.message || decisionPublicTranslations.codeSent;
                         accessRequestFeedback.classList.add('is-success');
 
                         if (result.data && result.data.redirectUrl) {
@@ -2491,7 +2615,7 @@ if (empty($context['status'])) {
                         setAccessRequestSubmitting(false);
                     })
                     .catch(function () {
-                        accessRequestFeedback.textContent = 'Impossible de traiter cette demande pour le moment.';
+                        accessRequestFeedback.textContent = decisionPublicTranslations.accessProcessFailed;
                         setAccessRequestSubmitting(false);
                     });
             }

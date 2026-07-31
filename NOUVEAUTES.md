@@ -33,6 +33,9 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Le choix personnel de publier anonymement est memorise localement pour chaque compte et scrutin, puis expire au debut de l evaluation ou a la fin de la consultation.
 - Dans les scrutins publics, chaque proposition est maintenant presentee dans une carte generique blanche, clairement separee du panneau gris reserve a l ajout de proposition.
 - Les retours de soumission de propositions depuis un scrutin public utilisent maintenant les notifications de la topbar pour les succes, avertissements et erreurs, avec un panneau local uniquement en repli.
+- L interface publique des scrutins dispose maintenant d un bundle de traduction dedie couvrant la frise, le contexte, les options, l acces par e-mail, les messages JavaScript et les libelles de navigation.
+- Les textes sources des invitations, des courriels d acces et des trois methodes de scrutin ont ete relus et harmonises en francais avec accents, apostrophes et ponctuation.
+- Le resume des invitations dans la gestion indique maintenant le nombre total de personnes representees par les holons et les invitations individuelles, en supprimant les doublons.
 - Les scrutins a vote simple ou jugement majoritaire peuvent maintenant etre crees sans proposition lorsque les participants sont autorises a en ajouter pendant une periode de consultation complete; une ou plusieurs propositions initiales continuent d exiger au moins deux choix.
 - Sur mobile, les actions des headers d application sont maintenant regroupees dans un menu hamburger en haut a droite, sans modifier les actions disponibles.
 - Sur mobile, le hamburger reste maintenant sur la meme ligne que le titre et s aligne a droite.
