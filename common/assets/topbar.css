@@ -1050,7 +1050,7 @@ html[data-theme="dark"] .common-topbar-profile-preference__icon--theme-dark {
     padding: 16px;
     border: 1px solid var(--color-border, var(--greyColor, #dddddd));
     border-radius: var(--radius-md);
-    background: var(--color-surface-alt, var(--verylight-bg-color, #f9fafb));
+    background: var(--color-surface, var(--whiteColor, #ffffff));
 }
 
 .common-help-card h4 {
@@ -1144,7 +1144,7 @@ html[data-theme] .common-topbar__sticky-actions {
 }
 
 html[data-theme] .common-help-card {
-    background: var(--color-surface-alt);
+    background: var(--color-surface);
     border-color: var(--color-border);
 }
 
