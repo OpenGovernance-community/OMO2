@@ -1054,17 +1054,26 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
         $createdValue = $createdAt instanceof \DateTimeInterface ? $createdAt->format('Y-m-d H:i:s') : trim((string)$createdAt);
         $updatedValue = $updatedAt instanceof \DateTimeInterface ? $updatedAt->format('Y-m-d H:i:s') : trim((string)$updatedAt);
         $wasModified = $createdValue !== '' && $updatedValue !== '' && $updatedValue > $createdValue;
-        $dateLabel = omoDecisionFormatProposalDateLabel($wasModified ? $updatedAt : $createdAt);
+        $proposalDate = $wasModified ? $updatedAt : $createdAt;
+        if ($proposalDate instanceof \DateTimeInterface) {
+            $dateLabel = $proposalDate->format('d.m.Y');
+        } else {
+            try {
+                $dateLabel = (new \DateTimeImmutable(trim((string)$proposalDate)))->format('d.m.Y');
+            } catch (\Throwable $exception) {
+                $dateLabel = '';
+            }
+        }
 
-        $items = [
-            '<span>Proposé par <strong>' . $escape($authorName) . '</strong></span>',
-        ];
+        $authorLine = '<span>Proposée par <strong>' . $escape($authorName) . '</strong>';
         if ($dateLabel !== '') {
-            $items[] = '<span data-omo-proposal-date>'
-                . ($wasModified ? 'Modifiée le ' : 'Proposée le ')
+            $authorLine .= '<span data-omo-proposal-date>, '
+                . ($wasModified ? 'modifiée le ' : 'le ')
                 . $escape($dateLabel)
                 . '</span>';
         }
+        $authorLine .= '</span>';
+        $items = [$authorLine];
 
         if ($proposal->areDiscussionsEnabled()) {
             $summary = omoDecisionGetProposalDiscussionSummary($proposal, $context);

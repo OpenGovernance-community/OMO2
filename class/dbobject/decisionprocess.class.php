@@ -1338,12 +1338,16 @@ class DecisionProcess extends DbObject
              INNER JOIN `user` u ON u.`id` = uo.`IDuser`
              WHERE uo.`IDorganization` = :organization_id
                AND uo.`active` = 1
-               AND LOWER(COALESCE(NULLIF(uo.`email`, ''), u.`email`)) = :email
+               AND (
+                    LOWER(NULLIF(uo.`email`, '')) = :scoped_email
+                    OR LOWER(u.`email`) = :user_email
+               )
              ORDER BY uo.`id` DESC
              LIMIT 1",
             [
                 'organization_id' => $organizationId,
-                'email' => $email,
+                'scoped_email' => $email,
+                'user_email' => $email,
             ]
         );
 
@@ -1791,12 +1795,23 @@ class DecisionProcess extends DbObject
                     }
                 } else {
                     $registerParticipantCandidate($userParticipant);
+                    $participantCandidates = array_values(array_filter($participantCandidates, static function ($candidate) use ($userParticipant) {
+                        return (int)$candidate->getId() !== (int)$userParticipant->getId();
+                    }));
+                    array_unshift($participantCandidates, $userParticipant);
                 }
             }
         }
 
         $emailParticipant = \dbObject\DecisionParticipant::findByDecisionAndEmail((int)$this->getId(), $email);
         if ($emailParticipant instanceof \dbObject\DecisionParticipant) {
+            if (is_array($organizationMember) && (int)$emailParticipant->get('IDuser') <= 0) {
+                $emailParticipant->set('IDuser', (int)$organizationMember['user_id']);
+                $emailParticipant->set('email', null);
+                $emailParticipant->set('display_name', trim((string)$organizationMember['display_name']) !== '' ? trim((string)$organizationMember['display_name']) : $email);
+                $emailParticipant->set('parameters', $buildPublicAccessParticipantParameters('user'));
+                $emailParticipant->save();
+            }
             $participantStatus = \dbObject\DecisionParticipant::normalizeStatus($emailParticipant->get('status'));
             if ((int)$emailParticipant->get('active') !== 1 || in_array($participantStatus, [
                 \dbObject\DecisionParticipant::STATUS_DECLINED,
