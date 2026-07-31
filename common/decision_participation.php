@@ -109,6 +109,7 @@ if (!function_exists('commonDecisionParticipationGetSourceLang')) {
             'decisions.public.access.resend' => ['text' => 'Renvoyer le code', 'context' => 'Button resending a public access code.'],
             'decisions.public.access.enter' => ['text' => 'Accéder au scrutin', 'context' => 'Button validating the public access code.'],
             'decisions.public.navigation.help' => ['text' => 'Aide', 'context' => 'Public decision page help label.'],
+            'decisions.public.help.webmaster' => ['text' => 'Webmaster : {email}', 'context' => 'Server administrator email link shown below the public decision help items.'],
             'decisions.public.navigation.aria' => ['text' => 'Navigation du scrutin', 'context' => 'Public decision page mobile navigation label.'],
             'decisions.public.navigation.info' => ['text' => 'Infos', 'context' => 'Public decision page mobile information tab.'],
             'decisions.public.navigation.decision' => ['text' => 'Scrutin', 'context' => 'Public decision page mobile decision tab.'],
@@ -1094,6 +1095,20 @@ $participantLabel = $participant
 $accentColor = $organization ? trim((string)$organization->get('color')) : '';
 $organizationContext = commonBuildOmoPublicOrganizationContext($organization);
 $publicHelpItems = commonBuildOmoPublicHelpItems('decision', $organizationName);
+$publicHelpLinks = [];
+$publicAdminEmail = trim((string)($GLOBALS['siteAdminEmail'] ?? ''));
+if ($publicAdminEmail === '' && function_exists('envValue')) {
+    $publicAdminEmail = trim((string)envValue('INSTALL_ADMIN_EMAIL', ''));
+}
+if ($publicAdminEmail === '' && function_exists('envValue')) {
+    $publicAdminEmail = trim((string)envValue('MAIL_USER', ''));
+}
+if ($publicAdminEmail !== '' && filter_var($publicAdminEmail, FILTER_VALIDATE_EMAIL)) {
+    $publicHelpLinks[] = [
+        'label' => commonDecisionParticipationT('decisions.public.help.webmaster', ['email' => $publicAdminEmail]),
+        'href' => 'mailto:' . $publicAdminEmail,
+    ];
+}
 $publicPageBrandHref = (string)($_SERVER['REQUEST_URI'] ?? '/');
 $decisionGroups = $decision ? commonDecisionParticipationGetRenderableGroups($decision) : [];
 $timelineItems = $decision ? commonDecisionParticipationBuildTimelineItems($decision) : [];
@@ -2044,6 +2059,7 @@ if (empty($context['status'])) {
                     'enabled' => false,
                 ],
                 'helpItems' => $publicHelpItems,
+                'helpLinks' => $publicHelpLinks,
                 'helpLabel' => commonDecisionParticipationT('decisions.public.navigation.help'),
             ]);
             ?>
