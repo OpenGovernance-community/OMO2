@@ -28,7 +28,7 @@ if (!function_exists('omoDecisionMajorityJudgmentGetDefaultMentionOptions')) {
             2 => ['label' => 'Passable', 'active' => 1],
             3 => ['label' => 'Sans avis', 'active' => 1],
             4 => ['label' => 'Assez bien', 'active' => 1],
-            5 => ['label' => 'Tres bien', 'active' => 1],
+            5 => ['label' => 'Très bien', 'active' => 1],
             6 => ['label' => 'Excellent', 'active' => 1],
         ];
     }
