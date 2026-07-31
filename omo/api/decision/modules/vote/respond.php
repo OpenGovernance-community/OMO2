@@ -76,6 +76,8 @@ if (DecisionProcess::normalizeEvaluationMethod($decisionGroup->get('evaluation_m
 }
 
 $voteConfig = omoDecisionVoteBuildConfig($decisionGroup);
+$responseIsAnonymous = !empty($voteConfig['is_anonymous'])
+    || (!empty($voteConfig['allow_anonymous_votes']) && !empty($_POST['is_anonymous']));
 $choiceMode = (string)$voteConfig['choice_mode'];
 $maxChoices = (int)$voteConfig['max_choices'];
 $proposalIds = [];
@@ -146,7 +148,8 @@ $response->set('parameters', omoDecisionVoteBuildResponseParameters(
     $selectedPositions,
     $selectedTitles,
     $_POST['vote_weight'] ?? null,
-    $voteConfig
+    $voteConfig,
+    $responseIsAnonymous
 ));
 
 $saveResult = $response->save();

@@ -605,23 +605,31 @@
 
     function updateColumnCounts() {
         root.querySelectorAll('[data-omo-projects-column]').forEach(function (column) {
-            var cards = column.querySelector('[data-omo-projects-cards]');
-            var count = cards
-                ? Array.prototype.filter.call(cards.querySelectorAll('[data-omo-project-card]'), function (card) {
-                    return !card.hidden;
-                }).length
+            var status = column.getAttribute('data-omo-projects-column') || '';
+            var cards = Array.prototype.slice.call(root.querySelectorAll('[data-omo-projects-cards="' + status + '"]'));
+            var count = cards.length > 0
+                ? cards.reduce(function (total, cardsContainer) {
+                    return total + Array.prototype.filter.call(cardsContainer.querySelectorAll('[data-omo-project-card]'), function (card) {
+                        return !card.hidden;
+                    }).length;
+                }, 0)
                 : 0;
             var countNode = column.querySelector('[data-omo-projects-column-count]');
-            var emptyNode = column.querySelector('[data-omo-projects-column-empty]');
             if (countNode) {
                 countNode.textContent = String(count);
             }
-            if (count === 0 && !emptyNode && cards) {
+
+            if (cards.length !== 1 || !column.contains(cards[0])) {
+                return;
+            }
+            var cardsContainer = cards[0];
+            var emptyNode = column.querySelector('[data-omo-projects-column-empty]');
+            if (count === 0 && !emptyNode) {
                 emptyNode = document.createElement('div');
                 emptyNode.className = 'omo-projects__column-empty';
                 emptyNode.setAttribute('data-omo-projects-column-empty', '');
                 emptyNode.textContent = texts.emptyColumn;
-                cards.appendChild(emptyNode);
+                cardsContainer.appendChild(emptyNode);
             } else if (count > 0 && emptyNode) {
                 emptyNode.remove();
             }
@@ -650,6 +658,9 @@
 
         root.querySelectorAll('[data-omo-projects-list-group]').forEach(function (group) {
             group.hidden = !group.querySelector('[data-omo-project-list-item]:not([hidden])');
+        });
+        root.querySelectorAll('[data-omo-projects-kanban-row]').forEach(function (row) {
+            row.hidden = !row.querySelector('[data-omo-project-card]:not([hidden])');
         });
         var board = root.querySelector('[data-omo-projects-board]');
         var list = root.querySelector('[data-omo-projects-list]');
@@ -808,6 +819,10 @@
             column.classList.toggle('is-mobile-active', index === mobileColumnIndex);
         });
         var currentColumn = columnNodes[mobileColumnIndex];
+        var currentStatus = currentColumn ? (currentColumn.getAttribute('data-omo-projects-column') || '') : '';
+        root.querySelectorAll('[data-omo-projects-kanban-cell]').forEach(function (cell) {
+            cell.classList.toggle('is-mobile-active', cell.getAttribute('data-status') === currentStatus);
+        });
         var labelNode = root.querySelector('[data-omo-projects-column-label]');
         var previousButton = root.querySelector('[data-omo-projects-column-prev]');
         var nextButton = root.querySelector('[data-omo-projects-column-next]');
@@ -823,8 +838,21 @@
         }
     }
 
+    function syncGroupedKanbanHeaderOffset() {
+        root.querySelectorAll('.omo-projects__board--grouped').forEach(function (board) {
+            var header = board.querySelector('.omo-projects__kanban-grid-header');
+            if (!header) {
+                return;
+            }
+            board.style.setProperty('--omo-projects-kanban-header-offset', String(header.offsetHeight) + 'px');
+        });
+    }
+
     function moveCard(card, nextStatus) {
-        var target = root.querySelector('[data-omo-projects-cards="' + nextStatus + '"]');
+        var group = card ? card.closest('[data-omo-projects-kanban-row]') : null;
+        var target = group
+            ? group.querySelector('[data-omo-projects-cards="' + nextStatus + '"]')
+            : root.querySelector('[data-omo-projects-cards="' + nextStatus + '"]');
         if (!card || !target) {
             return;
         }
@@ -1234,13 +1262,13 @@
         });
     });
 
-    root.querySelectorAll('[data-omo-projects-column]').forEach(function (column) {
+    root.querySelectorAll('[data-omo-projects-column], [data-omo-projects-kanban-cell]').forEach(function (column) {
         column.addEventListener('dblclick', function (event) {
             if (event.target.closest('[data-omo-project-card], button, select, input, textarea, a, [contenteditable="true"]')) {
                 return;
             }
 
-            pendingCreateStatus = column.getAttribute('data-omo-projects-column') || '';
+            pendingCreateStatus = column.getAttribute('data-omo-projects-column') || column.getAttribute('data-status') || '';
             pendingCreateUrl = '';
             navigateProject(0, 'create', buildCreateUrl(pendingCreateStatus));
         });
@@ -1689,8 +1717,10 @@
 
     window.addEventListener('omo-projects-route-change', handleProjectRouteChange);
     window.addEventListener('omo-runtime-maintenance', handleRuntimeMaintenance);
+    window.addEventListener('resize', syncGroupedKanbanHeaderOffset);
 
     applyQuickSearch();
+    syncGroupedKanbanHeaderOffset();
     updateMobileColumn();
     scrollGanttToToday();
     var isApplyingStoredDisplayPreferences = applyStoredDisplayPreferences();

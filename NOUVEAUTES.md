@@ -4,6 +4,30 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-31
 
+- Dans l interface publique des scrutins, la description precede maintenant le contexte de vote et la colonne de contexte elle-meme peut defiler sur toute sa hauteur sans etirer artificiellement ses blocs.
+- Le message generique indiquant qu un scrutin public peut etre consulte est retire de son en-tete.
+- Toutes les etiquettes temporelles de la frise publique utilisent maintenant une taille plus discrete, et leurs cartes s ajustent au texte sans retour a la ligne.
+- La barre de la frise publique est remontee pour rapprocher ses marqueurs des etiquettes temporelles.
+- Le titre principal des scrutins publics utilise de nouveau la taille standard d un H1.
+- Les parametres de gestion affichent maintenant chaque option sur une seule ligne. Les trois methodes de scrutin proposent aussi l option "Autoriser les votes anonymes" : lorsqu elle est activee, chaque participant peut choisir un vote anonyme; sinon la case reste desactivee et reflete le vote anonyme impose par le scrutin.
+- Les propositions de decision disposent maintenant d une discussion reservee aux participants lies a un compte, avec messages en bulles, photos ou initiales et notifications systeme. L auteur peut modifier sa proposition depuis une action distincte sur la carte; chaque modification est signalee dans la discussion et l identite reste attachee a la bonne proposition lors des reordonnancements.
+- Une discussion de proposition ouverte recherche maintenant les nouveaux messages toutes les dix secondes et les ajoute sans interrompre la lecture; cette actualisation s arrete avec la fermeture de la popup.
+- Les notifications de modification d une proposition proposent maintenant un detail avant/apres, avec les mots retires et ajoutes mis en evidence comme dans l historique des holons.
+- Les messages des discussions de proposition signalent maintenant l administrateur du scrutin et l auteur de la proposition, y compris lorsqu une personne cumule les deux roles.
+- Les popups de discussion et de modification des propositions sont maintenant centrees et disposent d un espacement interieur regulier sur ordinateur comme sur mobile.
+- Les cartes de proposition affichent maintenant leur auteur, leur date de creation ou de derniere modification et un resume de leur discussion adapte a la derniere intervention du participant.
+- Les trois methodes de scrutin proposent maintenant un reglage pour autoriser ou masquer les discussions de proposition; l API applique egalement cette restriction et les scrutins existants restent autorises par defaut.
+- Dans un scrutin anonyme, les participants aux discussions utilisent maintenant un pseudonyme stable derive du scrutin et du compte; l auteur de la proposition reste signale sans etre identifie et l administrateur conserve son nom.
+- Les fenetres de parametrage des trois methodes de scrutin disposent maintenant d une marge interne uniforme et de boutons d action compacts places cote a cote.
+- Le contenu d une popup topbar peut maintenant demander sa propre largeur maximale; les parametres de scrutin, le chat et l edition des propositions utilisent des largeurs adaptees sans marges laterales artificielles.
+- Pendant la consultation, le titre, la description, les propositions, les questions et les parametres du scrutin restent modifiables jusqu au debut effectif de l evaluation; ils sont ensuite verrouilles cote interface et cote sauvegarde.
+- La sauvegarde des scrutins conserve maintenant les identifiants des propositions existantes, ce qui evite de les recreer et preserve leurs discussions associees; une migration rattache aussi les fils orphelins aux propositions actives correspondantes.
+- Chaque message de discussion conserve desormais son propre statut anonyme. Les messages deja publies dans les discussions actuellement anonymes sont proteges lors de la migration, et un participant peut choisir de publier anonymement dans une discussion nominative.
+- La case de publication anonyme des discussions est maintenant transmise au serveur afin d afficher le pseudonyme du participant.
+- Le choix personnel de publier anonymement est memorise localement pour chaque compte et scrutin, puis expire au debut de l evaluation ou a la fin de la consultation.
+- Dans les scrutins publics, chaque proposition est maintenant presentee dans une carte generique blanche, clairement separee du panneau gris reserve a l ajout de proposition.
+- Les retours de soumission de propositions depuis un scrutin public utilisent maintenant les notifications de la topbar pour les succes, avertissements et erreurs, avec un panneau local uniquement en repli.
+- Les scrutins a vote simple ou jugement majoritaire peuvent maintenant etre crees sans proposition lorsque les participants sont autorises a en ajouter pendant une periode de consultation complete; une ou plusieurs propositions initiales continuent d exiger au moins deux choix.
 - Sur mobile, les actions des headers d application sont maintenant regroupees dans un menu hamburger en haut a droite, sans modifier les actions disponibles.
 - Sur mobile, le hamburger reste maintenant sur la meme ligne que le titre et s aligne a droite.
 - Sur mobile, le menu des Indicateurs affiche directement les actions Importer et Grouper, sans sous-menu « ... ».
@@ -1321,6 +1345,15 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - La carte Lexique utilise maintenant son icone de dictionnaire dediee.
 - Le detail d un projet affiche maintenant un lien texte vers ses sous-projets archives, avec leur nombre et une popup chargee a la demande.
 - Le lien des archives est maintenant presente dans une capsule grise avec le nombre dans un rond blanc.
+- Le Kanban groupe est maintenant organise en lignes completes: chaque holon, priorite ou niveau d importance dispose de son propre Kanban horizontal, aligne sur toutes les colonnes de statut.
+- Les libelles des groupes du Kanban restent visibles sous les colonnes de statut pendant le defilement vertical.
+- Les separations de groupes du Kanban sont maintenant des barres completes sticky, avec leur libelle conserve a gauche.
+- Les barres de separation du Kanban reutilisent maintenant le style generique de la vue Liste.
+- Le libelle d une barre de separation Kanban reste ancre a gauche pendant le defilement horizontal.
+- Les entetes Kanban affichent uniquement le statut, et les separateurs sticky touchent directement l entete des colonnes.
+- Les groupes d importance strategique du Kanban affichent maintenant leur niveau calcule sous forme d etoiles.
+- Les separateurs sticky du Kanban mesurent maintenant automatiquement la hauteur reelle de l entete des colonnes.
+- Les groupes d importance strategique du Kanban utilisent l importance calculee, arrondie au niveau entier le plus proche.
 - 2026-07-29 : La liste des modeles lors de l ajout d un holon suit maintenant le chemin des espaces de la racine vers l espace courant, avec un groupe nomme pour chaque espace hebergeur.
 - 2026-07-29 : Le contenu de Reglement n est plus entoure d un cadre blanc ; seules ses sections conservent leur presentation propre.
 - 2026-07-29 : Le sous-drawer de Reglement passe maintenant au-dessus de l entete fixe de son drawer parent.

@@ -39,6 +39,7 @@
 .omo-project-list-item[hidden],
 .omo-project-gantt-row[hidden],
 .omo-projects__list-group[hidden],
+.omo-projects__kanban-row[hidden],
 .omo-projects__board[hidden],
 .omo-projects__list[hidden],
 .omo-projects__gantt[hidden],
@@ -71,6 +72,119 @@
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x proximity;
+}
+
+.omo-projects__board--grouped {
+    --omo-projects-kanban-header-offset: 68px;
+    display: block;
+    padding: 0 2px 8px;
+    overflow: auto;
+    scroll-snap-type: none;
+}
+
+.omo-projects__kanban-grid-header,
+.omo-projects__kanban-row-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(270px, 1fr));
+    min-width: 1620px;
+}
+
+.omo-projects__kanban-grid-header {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    overflow: hidden;
+    background: var(--color-surface, #fff);
+    box-shadow: var(--shadow-sm, 0 8px 20px rgba(15, 23, 42, .06));
+}
+
+.omo-projects__kanban-grid-header-cell {
+    min-width: 0;
+    min-height: 48px;
+    padding: 11px 13px;
+    border-left: 1px solid var(--color-border, #e5e7eb);
+    background: color-mix(in srgb, var(--color-surface, #fff) 92%, var(--color-surface-alt, #f8fafc));
+}
+
+.omo-projects__kanban-grid-header-cell:first-child {
+    border-left: 0;
+}
+
+.omo-projects__kanban-grid-header-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.omo-projects__kanban-grid-header-title h3 {
+    margin: 0;
+    color: var(--color-text, #1f2937);
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.omo-projects__kanban-rows {
+    display: grid;
+    min-width: 1620px;
+}
+
+.omo-projects__kanban-row {
+    display: grid;
+}
+
+.omo-projects__kanban-row-title {
+    position: sticky;
+    top: var(--omo-projects-kanban-header-offset);
+    z-index: 6;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.omo-projects__kanban-row-title-label {
+    position: sticky;
+    left: 12px;
+}
+
+.omo-projects__importance-stars {
+    position: sticky;
+    left: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.omo-projects__importance-star {
+    color: color-mix(in srgb, var(--color-border, #d1d5db) 82%, var(--color-text-light, #64748b) 18%);
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.omo-projects__importance-star.is-active {
+    color: #d49a3a;
+}
+
+.omo-projects__kanban-row-grid {
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: var(--radius-md, 14px);
+    overflow: visible;
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 78%, var(--color-surface, #fff));
+    box-shadow: var(--shadow-sm, 0 8px 20px rgba(15, 23, 42, .04));
+}
+
+.omo-projects__kanban-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
+    min-height: 104px;
+    padding: 10px;
+    gap: 10px;
+    border-left: 1px solid var(--color-border, #e5e7eb);
+}
+
+.omo-projects__kanban-cell:first-child {
+    border-left: 0;
 }
 
 .omo-projects__column {
@@ -1216,6 +1330,34 @@
 
     .omo-projects__column.is-mobile-active {
         display: flex;
+    }
+
+    .omo-projects__board--grouped {
+        display: block;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    .omo-projects__board--grouped .omo-projects__kanban-grid-header,
+    .omo-projects__board--grouped .omo-projects__kanban-row-grid,
+    .omo-projects__board--grouped .omo-projects__kanban-rows {
+        min-width: 0;
+        grid-template-columns: 1fr;
+    }
+
+    .omo-projects__board--grouped .omo-projects__kanban-grid-header-cell,
+    .omo-projects__board--grouped .omo-projects__kanban-cell {
+        display: none;
+        border-left: 0;
+    }
+
+    .omo-projects__board--grouped .omo-projects__kanban-grid-header-cell.is-mobile-active,
+    .omo-projects__board--grouped .omo-projects__kanban-cell.is-mobile-active {
+        display: flex;
+    }
+
+    .omo-projects__board--grouped .omo-projects__kanban-grid-header-cell.is-mobile-active {
+        display: block;
     }
 
     .omo-project-card__status-control {

@@ -325,6 +325,9 @@
                 container.innerHTML = html;
                 executeEmbeddedScripts(container);
                 enhanceScrollablePanel(container);
+                if (container.id === 'commonTopbarModalBody') {
+                    syncModalPanelPreferredWidth(container);
+                }
                 window.setTimeout(function () {
                     enhanceScrollablePanel(container);
                 }, 0);
@@ -415,6 +418,28 @@
 
     function getModalPanel() {
         return document.querySelector('#commonTopbarModal .common-topbar-modal__panel');
+    }
+
+    function syncModalPanelPreferredWidth(body) {
+        var panel = getModalPanel();
+        var widthSource;
+        var requestedWidth;
+        if (!panel) {
+            return;
+        }
+
+        panel.style.removeProperty('--common-topbar-modal-max-width');
+        if (!body) {
+            return;
+        }
+
+        widthSource = body.querySelector('[data-topbar-modal-max-width]');
+        requestedWidth = widthSource
+            ? String(widthSource.getAttribute('data-topbar-modal-max-width') || '').trim()
+            : '';
+        if (/^(?:[1-9]\d{1,3})(?:\.\d+)?(?:px|rem|em|vw)$/.test(requestedWidth)) {
+            panel.style.setProperty('--common-topbar-modal-max-width', requestedWidth);
+        }
     }
 
     function applyModalPanelOffset(offsetX, offsetY) {
@@ -582,6 +607,7 @@
         closeDrawer();
         closeModal();
         resetModalPanelOffset();
+        syncModalPanelPreferredWidth(null);
         body.setAttribute('data-topbar-modal-url', String(content || ''));
         titleNode.textContent = title || getConfigTextValue('modal.defaultTitle', 'Panneau');
         if (mode === 'iframe') {
@@ -592,6 +618,7 @@
         } else {
             body.innerHTML = content || '';
             enhanceScrollablePanel(body);
+            syncModalPanelPreferredWidth(body);
         }
 
         modal.hidden = false;
@@ -632,6 +659,7 @@
         }
         stopModalDrag();
         modal.hidden = true;
+        syncModalPanelPreferredWidth(null);
         if (body) {
             runContainerCleanup(body);
             body.innerHTML = '';

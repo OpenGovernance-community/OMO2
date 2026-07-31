@@ -76,6 +76,8 @@ if (DecisionProcess::normalizeEvaluationMethod($decisionGroup->get('evaluation_m
 }
 
 $config = omoDecisionMajorityJudgmentBuildConfig($decisionGroup);
+$responseIsAnonymous = !empty($config['is_anonymous'])
+    || (!empty($config['allow_anonymous_votes']) && !empty($_POST['is_anonymous']));
 $activeMentions = (array)($config['mentions'] ?? []);
 $scoreMap = [];
 $proposalMeta = [];
@@ -122,7 +124,7 @@ if (!$response) {
 }
 
 $response->set('status', DecisionResponse::STATUS_SUBMITTED);
-$response->set('parameters', omoDecisionMajorityJudgmentBuildResponseParameters($scoreMap, $proposalMeta, $config, $_POST['vote_weight'] ?? null));
+$response->set('parameters', omoDecisionMajorityJudgmentBuildResponseParameters($scoreMap, $proposalMeta, $config, $_POST['vote_weight'] ?? null, $responseIsAnonymous));
 
 $saveResult = $response->save();
 if (empty($saveResult['status'])) {

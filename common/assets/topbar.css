@@ -826,7 +826,7 @@ html[data-theme="dark"] .common-topbar-profile-preference__icon--theme-dark {
 .common-topbar-modal__panel {
     position: relative;
     z-index: 1;
-    width: min(920px, calc(100vw - 32px));
+    width: min(var(--common-topbar-modal-max-width, 920px), calc(100vw - 32px));
     max-height: calc(100dvh - 40px);
     margin: 20px auto;
     display: flex;
