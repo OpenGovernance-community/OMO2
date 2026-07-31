@@ -420,14 +420,28 @@ function commonDecisionParticipationBuildOrganizerData($decision, $organization,
         }
     }
 
-    $scopeParts = [];
-    if ($organization) {
-        $scopeParts[] = trim((string)$organization->get('name'));
-    }
-
     $effectiveHolon = $context['effectiveHolon'] ?? null;
-    if ($effectiveHolon instanceof Holon) {
-        $scopeParts[] = trim((string)$effectiveHolon->getTemplateLabel(true)) . ' ' . trim((string)$effectiveHolon->getDisplayName());
+    $rootHolon = $organization && method_exists($organization, 'getEnabledStructuralRootHolon')
+        ? $organization->getEnabledStructuralRootHolon()
+        : null;
+    $isRootHolon = $effectiveHolon instanceof Holon
+        && $rootHolon instanceof Holon
+        && (int)$effectiveHolon->getId() === (int)$rootHolon->getId();
+
+    $scopeParts = [];
+    if ($isRootHolon) {
+        $rootHolonName = trim((string)$effectiveHolon->getDisplayName());
+        $scopeParts[] = $rootHolonName !== ''
+            ? $rootHolonName
+            : ($organization ? trim((string)$organization->get('name')) : '');
+    } else {
+        if ($organization) {
+            $scopeParts[] = trim((string)$organization->get('name'));
+        }
+
+        if ($effectiveHolon instanceof Holon) {
+            $scopeParts[] = trim((string)$effectiveHolon->getTemplateLabel(true)) . ' ' . trim((string)$effectiveHolon->getDisplayName());
+        }
     }
 
     return [
@@ -621,12 +635,19 @@ function commonDecisionParticipationRenderMajorityJudgmentLegend(DecisionGroup $
     ?>
     <div class="decision-public-group__legend" style="--decision-public-group-legend-count: <?= omoApiEscape((string)count($legendItems)) ?>;">
         <?php foreach ($legendItems as $legendItem): ?>
+        <?php
+        $legendScore = (int)($legendItem['score'] ?? 0);
+        $legendShortLabel = !empty($legendItem['is_no_opinion'])
+            ? '-'
+            : (string)($legendScore < 3 ? $legendScore + 1 : $legendScore);
+        ?>
         <span
             class="decision-public-group__legend-item"
             style="--decision-public-group-legend-color: <?= omoApiEscape((string)$legendItem['color']) ?>; --decision-public-group-legend-text: <?= omoApiEscape((string)$legendItem['text_color']) ?>;"
             title="<?= omoApiEscape((string)$legendItem['label']) ?>"
         >
-            <span class="decision-public-group__legend-label"><?= omoApiEscape((string)$legendItem['label']) ?></span>
+            <span class="decision-public-group__legend-label decision-public-group__legend-label--full"><?= omoApiEscape((string)$legendItem['label']) ?></span>
+            <span class="decision-public-group__legend-label decision-public-group__legend-label--short" aria-hidden="true"><?= omoApiEscape($legendShortLabel) ?></span>
         </span>
         <?php endforeach; ?>
     </div>
@@ -1878,6 +1899,10 @@ if (empty($context['status'])) {
             overflow-wrap: anywhere;
         }
 
+        .decision-public-group__legend-label--short {
+            display: none;
+        }
+
         .decision-public-group__header--sticky {
             position: sticky;
             top: calc(var(--decision-public-sticky-top) + var(--decision-public-sticky-gap));
@@ -1963,6 +1988,15 @@ if (empty($context['status'])) {
                 min-height: 30px;
                 padding: 6px 4px;
                 font-size: 10px;
+            }
+
+            .decision-public-group__legend-label--full {
+                display: none;
+            }
+
+            .decision-public-group__legend-label--short {
+                display: block;
+                white-space: nowrap;
             }
 
             .decision-public-timeline {

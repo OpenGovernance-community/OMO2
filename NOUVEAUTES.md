@@ -1375,3 +1375,5 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - 2026-07-30 : L export OMO 1 reprend maintenant le format de proprietes et les profils de droits des templates structurels OMO 2 : droits des roles, liens Pilotage, Memoire et Representation, avec strategie HTML-liste et domaines exportes comme texte avant conversion en autorites.
 - 2026-07-30 : Les domaines d autorite de l export OMO 1 sont maintenant declares directement comme une liste d objets authority, avec remappage de leurs identifiants lors de l import.
 - Le formulaire public d ajout de propositions utilise maintenant un bundle de traduction dedie et ses textes francais ont ete corriges (accents, apostrophes et ponctuation), y compris le message de lien invalide.
+- La legende du jugement majoritaire affiche desormais des reperes courts (1, 2, 3, -, 4, 5, 6) sur les petits ecrans, tout en conservant les libelles complets sur ordinateur.
+- Le contexte de l organisateur n affiche plus deux fois l organisation lorsque le holon racine est utilise ; les roles, groupes et cercles restent precises.
