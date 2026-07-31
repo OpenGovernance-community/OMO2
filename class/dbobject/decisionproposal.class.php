@@ -30,24 +30,24 @@ class DecisionProposal extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDdecision_process' => 'Prise de decision',
-            'IDdecision_group' => 'Groupe de decision',
+            'IDdecision_process' => 'Prise de décision',
+            'IDdecision_group' => 'Groupe de décision',
             'IDuser_author' => 'Auteur',
             'title' => 'Titre',
             'description' => 'Description',
-            'info_url' => 'Lien d information',
+            'info_url' => 'Lien d’information',
             'position' => 'Ordre',
-            'parameters' => 'Parametres',
-            'active' => 'Active',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'parameters' => 'Paramètres',
+            'active' => 'Activée',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'parameters' => 'Metadonnees specifiques a une proposition ou a une methode.',
+            'parameters' => 'Métadonnées spécifiques à une proposition ou à une méthode.',
         ];
     }
 
@@ -226,7 +226,7 @@ class DecisionProposal extends DbObject
             return [
                 'status' => false,
                 'reason' => 'invalid_url',
-                'message' => 'Le lien d information n est pas valide.',
+                'message' => 'Le lien d’information n’est pas valide.',
             ];
         }
 

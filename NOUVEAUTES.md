@@ -1374,3 +1374,4 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - 2026-07-30 : L import des domaines d autorite peut maintenant reconstruire la liste sur un holon lorsque l export OMO 1 contient les domaines dans le module Regles mais pas dans les proprietes du holon.
 - 2026-07-30 : L export OMO 1 reprend maintenant le format de proprietes et les profils de droits des templates structurels OMO 2 : droits des roles, liens Pilotage, Memoire et Representation, avec strategie HTML-liste et domaines exportes comme texte avant conversion en autorites.
 - 2026-07-30 : Les domaines d autorite de l export OMO 1 sont maintenant declares directement comme une liste d objets authority, avec remappage de leurs identifiants lors de l import.
+- Le formulaire public d ajout de propositions utilise maintenant un bundle de traduction dedie et ses textes francais ont ete corriges (accents, apostrophes et ponctuation), y compris le message de lien invalide.
