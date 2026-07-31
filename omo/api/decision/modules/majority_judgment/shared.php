@@ -208,7 +208,9 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildConfig')) {
             && (
                 array_key_exists('mention_options', $decisionOrParameters)
                 || array_key_exists('is_anonymous', $decisionOrParameters)
+                || array_key_exists('allow_anonymous_votes', $decisionOrParameters)
                 || array_key_exists('allow_consultation_proposals', $decisionOrParameters)
+                || array_key_exists('allow_proposal_discussions', $decisionOrParameters)
             );
 
         if ($isConfigLikeArray) {
@@ -260,7 +262,9 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildConfig')) {
 
         return [
             'is_anonymous' => !empty($methodParameters['is_anonymous']),
+            'allow_anonymous_votes' => !empty($methodParameters['allow_anonymous_votes']),
             'allow_consultation_proposals' => !empty($methodParameters['allow_consultation_proposals']),
+            'allow_proposal_discussions' => !array_key_exists('allow_proposal_discussions', $methodParameters) || !empty($methodParameters['allow_proposal_discussions']),
             'scale_size' => count($activeScores),
             'mentions' => $mentions,
             'all_mentions' => $allMentions,
@@ -403,7 +407,9 @@ if (!function_exists('omoDecisionMajorityJudgmentMergeConfigIntoParameters')) {
         $normalizedConfig = omoDecisionMajorityJudgmentBuildConfig($config);
 
         $methodParameters['is_anonymous'] = !empty($normalizedConfig['is_anonymous']) ? 1 : 0;
+        $methodParameters['allow_anonymous_votes'] = !empty($normalizedConfig['allow_anonymous_votes']) ? 1 : 0;
         $methodParameters['allow_consultation_proposals'] = !empty($normalizedConfig['allow_consultation_proposals']) ? 1 : 0;
+        $methodParameters['allow_proposal_discussions'] = !empty($normalizedConfig['allow_proposal_discussions']) ? 1 : 0;
         $methodParameters['mention_customization_enabled'] = !empty($normalizedConfig['mention_customization_enabled']) ? 1 : 0;
         $methodParameters['scale_size'] = (int)count((array)($normalizedConfig['active_scores'] ?? []));
         $methodParameters['mention_options'] = [];
@@ -466,7 +472,7 @@ if (!function_exists('omoDecisionMajorityJudgmentExtractVoteWeightSelection')) {
 }
 
 if (!function_exists('omoDecisionMajorityJudgmentBuildResponseParameters')) {
-    function omoDecisionMajorityJudgmentBuildResponseParameters(array $scoreMap, array $proposalMeta = [], $configOrParameters = null, $selectedWeight = null)
+    function omoDecisionMajorityJudgmentBuildResponseParameters(array $scoreMap, array $proposalMeta = [], $configOrParameters = null, $selectedWeight = null, $isAnonymous = false)
     {
         $config = omoDecisionMajorityJudgmentBuildConfig($configOrParameters);
         $mentions = (array)($config['all_mentions'] ?? omoDecisionMajorityJudgmentGetMentions(null, true));
@@ -497,6 +503,7 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildResponseParameters')) {
                 'details' => $scoreDetails,
                 'vote_weight' => (string)$weightPayload['vote_weight'],
                 'vote_weight_label' => (string)$weightPayload['vote_weight_label'],
+                'is_anonymous' => !empty($isAnonymous) ? 1 : 0,
             ],
         ];
     }

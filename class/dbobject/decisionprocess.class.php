@@ -17,6 +17,31 @@ class DecisionProcess extends DbObject
     const METHOD_MAJORITY_JUDGMENT = 'majority_judgment';
     const METHOD_CONSENT = 'consent';
 
+    public function getAnonymousPseudonymForUser($userId)
+    {
+        $userId = (int)$userId;
+        if ($userId <= 0) {
+            return 'Participant anonyme';
+        }
+
+        $animals = [
+            'Renard', 'Lynx', 'Hibou', 'Faucon', 'Castor', 'Panda', 'Koala', 'Jaguar',
+            'Bison', 'Dauphin', 'Gecko', 'Lama', 'Manchot', 'Pélican', 'Blaireau', 'Chamois',
+            'Corbeau', 'Écureuil', 'Héron', 'Léopard', 'Morse', 'Orque', 'Puma', 'Toucan',
+        ];
+        $traits = [
+            'serein', 'curieux', 'vaillant', 'patient', 'inventif', 'attentif', 'jovial', 'paisible',
+            'audacieux', 'discret', 'solidaire', 'vif', 'réfléchi', 'créatif', 'tenace', 'chaleureux',
+            'prudent', 'malicieux', 'loyal', 'agile', 'calme', 'brillant', 'franc', 'rêveur',
+        ];
+        $hash = hash('sha256', (int)$this->getId() . ':' . $userId);
+        $animalIndex = (int)(hexdec(substr($hash, 0, 6)) % count($animals));
+        $traitIndex = (int)(hexdec(substr($hash, 6, 6)) % count($traits));
+        $suffix = strtoupper(substr($hash, 12, 3));
+
+        return $animals[$animalIndex] . ' ' . $traits[$traitIndex] . ' · ' . $suffix;
+    }
+
     public static function tableName()
     {
         return 'decision_process';

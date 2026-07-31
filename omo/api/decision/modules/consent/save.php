@@ -32,8 +32,8 @@ $currentUserId = (int)$context['currentUserId'];
 $organizationId = (int)$context['organizationId'];
 $targetHolonId = (int)$context['targetHolonId'];
 $decisionId = $decision instanceof DecisionProcess ? (int)$decision->getId() : 0;
-$coreLocked = $decision instanceof DecisionProcess ? $decision->hasConsultationStarted() : false;
-$startDatesLocked = $decision instanceof DecisionProcess ? $decision->hasSubmittedResponses() : false;
+$coreLocked = $decision instanceof DecisionProcess ? $decision->hasEvaluationStarted() : false;
+$startDatesLocked = $coreLocked || ($decision instanceof DecisionProcess && $decision->hasSubmittedResponses());
 
 $processTitle = trim((string)($_POST['process_title'] ?? ''));
 $processDescription = trim((string)($_POST['process_description'] ?? ''));
@@ -47,7 +47,9 @@ $consultationEndAt = trim((string)($_POST['consultation_end_at'] ?? ''));
 $evaluationStartAt = trim((string)($_POST['evaluation_start_at'] ?? ''));
 $evaluationEndAt = trim((string)($_POST['evaluation_end_at'] ?? ''));
 $isAnonymous = !empty($_POST['is_anonymous']);
+$allowAnonymousVotes = !empty($_POST['allow_anonymous_votes']);
 $allowConsultationProposals = !empty($_POST['allow_consultation_proposals']);
+$allowProposalDiscussions = !empty($_POST['allow_proposal_discussions']);
 $voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig([
     'enabled' => !empty($_POST['vote_weight_enabled']),
     'question' => $_POST['vote_weight_question'] ?? '',
@@ -56,7 +58,8 @@ $voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig([
 $proposalItems = omoDecisionBuildProposalItemsFromInput(
     $_POST['proposals'] ?? [],
     $_POST['proposal_descriptions'] ?? [],
-    $_POST['proposal_info_urls'] ?? []
+    $_POST['proposal_info_urls'] ?? [],
+    $_POST['proposal_ids'] ?? []
 );
 
 if (!$coreLocked && $processTitle === '') {
@@ -112,12 +115,24 @@ $currentConfig = $decision instanceof DecisionProcess
     ? omoDecisionConsentBuildConfig($selectedGroup instanceof DecisionGroup ? $selectedGroup : $decision->get('parameters'))
     : [
         'is_anonymous' => $isAnonymous,
+        'allow_anonymous_votes' => $allowAnonymousVotes,
         'allow_consultation_proposals' => $allowConsultationProposals,
+        'allow_proposal_discussions' => $allowProposalDiscussions,
         'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
         'vote_weight_question' => (string)$voteWeightConfig['question'],
         'vote_weight_options' => (array)$voteWeightConfig['options'],
     ];
-$canEditProposals = !$coreLocked || (!$startDatesLocked && !empty($currentConfig['allow_consultation_proposals']));
+$canEditSettings = !$coreLocked;
+$configToSave = [
+    'is_anonymous' => $canEditSettings ? $isAnonymous : !empty($currentConfig['is_anonymous']),
+    'allow_anonymous_votes' => $canEditSettings ? $allowAnonymousVotes : !empty($currentConfig['allow_anonymous_votes']),
+    'allow_consultation_proposals' => $canEditSettings ? $allowConsultationProposals : !empty($currentConfig['allow_consultation_proposals']),
+    'allow_proposal_discussions' => $canEditSettings ? $allowProposalDiscussions : !empty($currentConfig['allow_proposal_discussions']),
+    'vote_weight_enabled' => $canEditSettings ? !empty($voteWeightConfig['enabled']) : !empty($currentConfig['vote_weight_enabled']),
+    'vote_weight_question' => $canEditSettings ? (string)$voteWeightConfig['question'] : (string)($currentConfig['vote_weight_question'] ?? ''),
+    'vote_weight_options' => $canEditSettings ? (array)$voteWeightConfig['options'] : (array)($currentConfig['vote_weight_options'] ?? []),
+];
+$canEditProposals = !$coreLocked;
 
 if ($canEditProposals && count($proposalItems) < 1) {
     omoDecisionModuleJsonResponse(400, [
@@ -147,11 +162,10 @@ try {
 
     if (!$startDatesLocked) {
         $decision->set('consultation_start_at', $consultationStartAt !== '' ? $consultationStartAt : null);
+        $decision->set('consultation_end_at', $consultationEndAt !== '' ? $consultationEndAt : null);
         $decision->set('evaluation_start_at', $evaluationStartAt !== '' ? $evaluationStartAt : null);
+        $decision->set('evaluation_end_at', $evaluationEndAt !== '' ? $evaluationEndAt : null);
     }
-
-    $decision->set('consultation_end_at', $consultationEndAt !== '' ? $consultationEndAt : null);
-    $decision->set('evaluation_end_at', $evaluationEndAt !== '' ? $evaluationEndAt : null);
 
     $decisionGroup = $selectedGroup instanceof DecisionGroup ? $selectedGroup : null;
     $primaryGroup = $decision instanceof DecisionProcess ? $decision->getPrimaryGroup(false) : null;
@@ -167,11 +181,13 @@ try {
     $parameters = omoDecisionConsentMergeConfigIntoParameters(
         $decisionGroup instanceof DecisionGroup ? $decisionGroup->get('parameters') : $decision->get('parameters'),
         [
-            'is_anonymous' => $isAnonymous,
-            'allow_consultation_proposals' => $allowConsultationProposals,
-            'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
-            'vote_weight_question' => (string)$voteWeightConfig['question'],
-            'vote_weight_options' => (array)$voteWeightConfig['options'],
+            'is_anonymous' => !empty($configToSave['is_anonymous']),
+            'allow_anonymous_votes' => !empty($configToSave['allow_anonymous_votes']),
+            'allow_consultation_proposals' => !empty($configToSave['allow_consultation_proposals']),
+            'allow_proposal_discussions' => !empty($configToSave['allow_proposal_discussions']),
+            'vote_weight_enabled' => !empty($configToSave['vote_weight_enabled']),
+            'vote_weight_question' => (string)$configToSave['vote_weight_question'],
+            'vote_weight_options' => (array)$configToSave['vote_weight_options'],
         ],
         [
             'proposal_count' => $proposalCount,
@@ -234,32 +250,41 @@ try {
             if ((int)$proposal->get('active') !== 1) {
                 continue;
             }
-            $existingActiveProposals[] = $proposal;
+            $existingActiveProposals[(int)$proposal->getId()] = $proposal;
         }
 
+        $savedProposalIds = [];
         foreach ($proposalItems as $index => $proposalItem) {
-            $proposal = $existingActiveProposals[$index] ?? new DecisionProposal();
+            $proposalId = (int)($proposalItem['id'] ?? 0);
+            if ($proposalId > 0 && !isset($existingActiveProposals[$proposalId])) {
+                throw new RuntimeException('proposal_context_mismatch');
+            }
+            $proposal = $proposalId > 0 ? $existingActiveProposals[$proposalId] : new DecisionProposal();
             $proposal->set('IDdecision_process', $decisionId);
             $proposal->set('IDdecision_group', $decisionGroupId);
+            if ($proposalId <= 0) {
+                $proposal->set('IDuser_author', $currentUserId > 0 ? $currentUserId : null);
+            }
             $proposal->set('title', (string)$proposalItem['title']);
             $proposal->set('description', $proposalItem['description'] ?? null);
             $proposal->set('info_url', $proposalItem['info_url'] ?? null);
             $proposal->set('position', $index + 1);
-            $proposal->set('parameters', [
-                omoDecisionConsentGetMethodKey() => [
-                    'ballot_position' => $index + 1,
-                ],
-            ]);
+            $proposalParameters = omoDecisionModuleDecodeParameters($proposal->get('parameters'));
+            $proposalParameters[omoDecisionConsentGetMethodKey()] = ['ballot_position' => $index + 1];
+            $proposal->set('parameters', $proposalParameters);
             $proposal->set('active', 1);
 
             $saveProposal = $proposal->save();
             if (empty($saveProposal['status'])) {
                 throw new RuntimeException('proposal_save_failed');
             }
+            $savedProposalIds[(int)$proposal->getId()] = true;
         }
 
-        for ($index = count($proposalItems); $index < count($existingActiveProposals); $index++) {
-            $proposal = $existingActiveProposals[$index];
+        foreach ($existingActiveProposals as $existingProposalId => $proposal) {
+            if (isset($savedProposalIds[(int)$existingProposalId])) {
+                continue;
+            }
             $proposal->set('active', 0);
             $saveProposal = $proposal->save();
             if (empty($saveProposal['status'])) {

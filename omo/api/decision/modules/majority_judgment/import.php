@@ -22,7 +22,9 @@ if (!function_exists('omoDecisionMajorityJudgmentImportBlock')) {
             $config = omoDecisionMajorityJudgmentBuildConfig([
                 'mention_options' => omoDecisionMajorityJudgmentGetDefaultMentionOptions(),
                 'is_anonymous' => !empty($config['is_anonymous']),
+                'allow_anonymous_votes' => !empty($config['allow_anonymous_votes']),
                 'allow_consultation_proposals' => !empty($config['allow_consultation_proposals']),
+                'allow_proposal_discussions' => !empty($config['allow_proposal_discussions']),
             ]);
         }
 

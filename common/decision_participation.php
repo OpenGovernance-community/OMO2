@@ -965,7 +965,7 @@ if (!empty($context['status'])) {
     } else {
         $statusCopy = !empty($context['canParticipate'])
             ? 'Vous pouvez participer a ce scrutin depuis cette page publique.'
-            : 'Vous pouvez consulter ce scrutin depuis cette page publique.';
+            : '';
     }
 }
 
@@ -982,10 +982,16 @@ ob_start();
             </div>
             <?php endif; ?>
             <h1><?= omoApiEscape($decisionTitle !== '' ? $decisionTitle : 'Prise de decision') ?></h1>
-            <?php if (!$isResultsDisplay): ?>
+            <?php if (!$isResultsDisplay && $statusCopy !== ''): ?>
             <p class="decision-public-status"><?= omoApiEscape($statusCopy) ?></p>
             <?php endif; ?>
         </section>
+
+        <?php if ($decisionDescription !== ''): ?>
+        <section class="generic-title-section generic-section--stack decision-public-title-block">
+            <p><?= nl2br(omoApiEscape($decisionDescription)) ?></p>
+        </section>
+        <?php endif; ?>
 
         <section class="generic-title-section generic-section--stack generic-accordion--card generic-accordion--collapsible is-collapsed decision-public-timeline-accordion" data-decision-public-timeline>
             <button
@@ -1098,11 +1104,6 @@ ob_start();
             </div>
         </section>
 
-        <?php if ($decisionDescription !== ''): ?>
-        <section class="generic-title-section generic-section--stack decision-public-title-block">
-            <p><?= nl2br(omoApiEscape($decisionDescription)) ?></p>
-        </section>
-        <?php endif; ?>
 <?php
 $decisionPublicContextHtml = (string)ob_get_clean();
 
@@ -1246,6 +1247,8 @@ if (empty($context['status'])) {
 
         .decision-public-context-panel {
             background: var(--color-surface, #ffffff);
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         .decision-public-main-panel {
@@ -1257,12 +1260,19 @@ if (empty($context['status'])) {
             min-width: 0;
             min-height: 0;
             display: grid;
-            gap: 16px;
         }
 
         .decision-public-panel-scroll--main {
             flex: 1 auto 1;
             overflow-y: auto;
+        }
+
+        .decision-public-panel-scroll--context {
+            flex: 0 0 auto;
+            min-height: 0;
+            align-content: start;
+            align-items: start;
+            overflow: visible;
         }
 
         .decision-public-panel-scroll--access-request {
@@ -1292,8 +1302,6 @@ if (empty($context['status'])) {
 
         .decision-public-hero h1 {
             margin: 0;
-            font-size: clamp(32px, 5vw, 46px);
-            line-height: 1.04;
         }
 
         .decision-public-title-block p {
@@ -1339,7 +1347,7 @@ if (empty($context['status'])) {
         }
 
         .decision-public-timeline {
-            --decision-public-timeline-axis-top: 112px;
+            --decision-public-timeline-axis-top: 100px;
             --decision-public-timeline-card-top: 6px;
             --decision-public-timeline-card-bottom: 154px;
             --decision-public-timeline-marker-size: 16px;
@@ -1493,13 +1501,13 @@ if (empty($context['status'])) {
         }
 
         .decision-public-timeline-item[data-lane="top"] .decision-public-timeline-connector {
-            top: 78px;
+            top: calc(var(--decision-public-timeline-axis-top) - 34px);
             height: 28px;
         }
 
         .decision-public-timeline-item[data-lane="bottom"] .decision-public-timeline-connector {
-            top: 122px;
-            height: 28px;
+            top: calc(var(--decision-public-timeline-axis-top) + 10px);
+            height: calc(140px - var(--decision-public-timeline-axis-top));
         }
 
         .decision-public-timeline-marker {
@@ -1529,7 +1537,7 @@ if (empty($context['status'])) {
         .decision-public-timeline-card {
             position: absolute;
             left: 0;
-            width: min(188px, 32vw);
+            width: max-content;
             display: grid;
             gap: 4px;
             text-align: center;
@@ -1565,12 +1573,14 @@ if (empty($context['status'])) {
             font-weight: 700;
             color: var(--color-text, #0f172a);
             line-height: 1.25;
-            font-size: 15px;
+            font-size: 10px;
+            white-space: nowrap;
         }
 
         .decision-public-timeline-date {
             color: var(--color-text-light, #64748b);
-            font-size: 13px;
+            font-size: 10px;
+            white-space: nowrap;
         }
 
         .decision-public-content {
@@ -1804,7 +1814,7 @@ if (empty($context['status'])) {
             }
 
             .decision-public-timeline {
-                --decision-public-timeline-axis-top: 118px;
+                --decision-public-timeline-axis-top: 106px;
                 --decision-public-timeline-card-top: 0px;
                 --decision-public-timeline-card-bottom: 166px;
                 min-height: 282px;
@@ -1813,7 +1823,7 @@ if (empty($context['status'])) {
             }
 
             .decision-public-timeline-card {
-                width: 140px;
+                width: max-content;
             }
 
             .decision-public-timeline-summary-title {
@@ -2097,6 +2107,13 @@ if (empty($context['status'])) {
                     return;
                 }
 
+                if (typeof window.commonNotify === 'function') {
+                    window.commonNotify(String(message), type || 'error');
+                    container.hidden = true;
+                    container.innerHTML = '';
+                    return;
+                }
+
                 var tint = 'var(--color-warning, #f59e0b)';
                 if (type === 'success') {
                     tint = 'var(--color-success, #16a34a)';
@@ -2111,6 +2128,43 @@ if (empty($context['status'])) {
                     + 'border-color:color-mix(in srgb, ' + tint + ' 28%, var(--color-surface, #ffffff));">'
                     + '<p style="margin:0;line-height:1.5;">' + escapeHtml(message) + '</p>'
                     + '</div>';
+            }
+
+            function showPendingConsultationProposalNotifications() {
+                var notifications = document.querySelectorAll('[data-omo-decision-consultation-proposal-notification]');
+                var handledByTopbar = false;
+                for (var notificationIndex = 0; notificationIndex < notifications.length; notificationIndex += 1) {
+                    var notification = notifications[notificationIndex];
+                    var message = String(notification.getAttribute('data-omo-decision-consultation-proposal-notification-message') || '');
+                    var type = String(notification.getAttribute('data-omo-decision-consultation-proposal-notification-type') || 'warning');
+
+                    if (message === '') {
+                        notification.remove();
+                        continue;
+                    }
+
+                    if (typeof window.commonNotify === 'function') {
+                        window.commonNotify(message, type);
+                        notification.remove();
+                        handledByTopbar = true;
+                        continue;
+                    }
+
+                    notification.hidden = false;
+                }
+
+                if (handledByTopbar && typeof window.history !== 'undefined' && typeof window.history.replaceState === 'function') {
+                    var currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.delete('consultation_proposal_status');
+                    currentUrl.searchParams.delete('consultation_proposal_count');
+                    window.history.replaceState({}, document.title, currentUrl.pathname + currentUrl.search + currentUrl.hash);
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', showPendingConsultationProposalNotifications, { once: true });
+            } else {
+                showPendingConsultationProposalNotifications();
             }
 
             function setSubmitting(form, isSubmitting) {
