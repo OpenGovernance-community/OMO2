@@ -87,11 +87,19 @@ class TelegramChatDestination extends DbObject
         $configuredUserId = (int)$configuredUserId;
 
         if ($chatId === '' || $organizationId <= 0 || $destinationType === '' || $destinationId <= 0 || $configuredUserId <= 0) {
-            return null;
+            return [
+                'status' => false,
+                'message' => 'Invalid Telegram destination data.',
+                'destination' => null,
+            ];
         }
 
         if (!self::isStorageAvailable()) {
-            return null;
+            return [
+                'status' => false,
+                'message' => 'Telegram destination storage is unavailable.',
+                'destination' => null,
+            ];
         }
 
         $destination = new self();
@@ -114,7 +122,20 @@ class TelegramChatDestination extends DbObject
         $destination->set('updated_at', $now);
 
         $result = $destination->save();
-        return is_array($result) && !empty($result['status']) ? $destination : null;
+        if (is_array($result) && !empty($result['status'])) {
+            return [
+                'status' => true,
+                'message' => '',
+                'destination' => $destination,
+            ];
+        }
+
+        return [
+            'status' => false,
+            'message' => trim((string)($result['text'] ?? 'Telegram destination save failed.')),
+            'dbError' => \dbObject\DbObject::getLastDbError(),
+            'destination' => null,
+        ];
     }
 
     public function deactivate()
