@@ -27,7 +27,7 @@ class StatIndicator extends DbObject
             [['name', 'source_url', 'reference_type', 'measurement_frequency', 'measurement_schedule'], 'string'],
             [['description'], 'text'],
             [['chart_min_value'], 'float'],
-            [['active'], 'boolean'],
+            [['show_cumulative', 'active'], 'boolean'],
             [['created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],
         ];
@@ -47,6 +47,7 @@ class StatIndicator extends DbObject
             'measurement_frequency' => 'Fréquence de mesure',
             'measurement_schedule' => 'Moment attendu',
             'chart_min_value' => 'Valeur basse du graphique',
+            'show_cumulative' => 'Afficher le cumul',
             'active' => 'Actif',
             'created_at' => 'Création',
             'updated_at' => 'Mise à jour',
@@ -62,6 +63,7 @@ class StatIndicator extends DbObject
             'measurement_frequency' => 'Cadence attendue pour la saisie des valeurs.',
             'measurement_schedule' => 'Heure, jour ou mois attendu selon la cadence. Cette information est facultative.',
             'chart_min_value' => 'Borne facultative incluse dans l échelle verticale du graphique.',
+            'show_cumulative' => 'Affiche les mesures en barres et leur cumul sur une seconde échelle.',
         ];
     }
 
@@ -137,6 +139,7 @@ class StatIndicator extends DbObject
     public function save()
     {
         $this->set('reference_type', self::normalizeReferenceType($this->get('reference_type')));
+        $this->set('show_cumulative', (int)$this->get('show_cumulative') > 0 ? 1 : 0);
         $measurementFrequency = self::normalizeMeasurementFrequency($this->get('measurement_frequency'));
         $this->set('measurement_frequency', $measurementFrequency);
         $this->set('measurement_schedule', self::normalizeMeasurementSchedule($measurementFrequency, $this->get('measurement_schedule')));

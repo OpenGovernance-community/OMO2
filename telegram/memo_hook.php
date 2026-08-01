@@ -489,6 +489,278 @@
 		return $options;
 	}
 
+	function telegramUserCanUseOrganization(\dbObject\User $user, int $organizationId): bool {
+		if ((int)$user->getId() <= 0 || $organizationId <= 0) {
+			return false;
+		}
+
+		$organizations = new \dbObject\ArrayOrganization();
+		$organizations->loadAccessibleForUser((int)$user->getId(), $organizationId, 1);
+		return count($organizations) > 0;
+	}
+
+	function telegramRoleCanReceiveGroupMemos(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $role): bool {
+		return (int)$role->get('IDtypeholon') === 1
+			&& (bool)$role->get('active')
+			&& (bool)$role->get('visible')
+			&& telegramUserCanCreateDocumentInHolon($user, $organization, $role);
+	}
+
+	function telegramProjectCanReceiveGroupMemos(\dbObject\User $user, \dbObject\Project $project): bool {
+		$organizationId = (int)$project->get('IDorganization');
+		$holonId = (int)$project->get('IDholon');
+		if (
+			(int)$user->getId() <= 0
+			|| $organizationId <= 0
+			|| !(bool)$project->get('active')
+			|| \dbObject\Project::normalizeKind($project->get('project_kind')) !== \dbObject\Project::KIND_STANDARD
+		) {
+			return false;
+		}
+
+		return \dbObject\Document::canCreateInOrganizationContext(
+			$organizationId,
+			$holonId > 0 ? $holonId : null,
+			(int)$user->getId(),
+			0,
+			false
+		);
+	}
+
+	function telegramHolonHasGroupRoleDestination(\dbObject\User $user, \dbObject\Organization $organization, \dbObject\Holon $holon, array &$availabilityCache = array()): bool {
+		$cacheKey = (int)$user->getId().'_'.(int)$organization->getId().'_'.(int)$holon->getId();
+		if (array_key_exists($cacheKey, $availabilityCache)) {
+			return (bool)$availabilityCache[$cacheKey];
+		}
+
+		if (telegramRoleCanReceiveGroupMemos($user, $organization, $holon)) {
+			$availabilityCache[$cacheKey] = true;
+			return true;
+		}
+
+		foreach (getVisibleHolonChildren($holon) as $child) {
+			if (telegramHolonHasGroupRoleDestination($user, $organization, $child, $availabilityCache)) {
+				$availabilityCache[$cacheKey] = true;
+				return true;
+			}
+		}
+
+		$availabilityCache[$cacheKey] = false;
+		return false;
+	}
+
+	function telegramLoadEligibleGroupProjects(\dbObject\User $user, int $organizationId): array {
+		$projects = new \dbObject\ArrayProject();
+		$projects->loadForOrganization($organizationId, true, \dbObject\Project::KIND_STANDARD);
+		$eligibleProjects = array();
+		foreach ($projects as $project) {
+			if ($project instanceof \dbObject\Project && telegramProjectCanReceiveGroupMemos($user, $project)) {
+				$eligibleProjects[(int)$project->getId()] = $project;
+			}
+		}
+		return $eligibleProjects;
+	}
+
+	function telegramOrganizationHasGroupDestination(\dbObject\User $user, \dbObject\Organization $organization): bool {
+		$rootHolon = $organization->getStructuralRootHolon();
+		$availabilityCache = array();
+		if ($rootHolon instanceof \dbObject\Holon && telegramHolonHasGroupRoleDestination($user, $organization, $rootHolon, $availabilityCache)) {
+			return true;
+		}
+
+		return count(telegramLoadEligibleGroupProjects($user, (int)$organization->getId())) > 0;
+	}
+
+	function buildTelegramGroupRolePrompt(\dbObject\User $user, int $organizationId = 0, int $holonId = 0): array {
+		if ((int)$user->getId() <= 0) {
+			return array('text' => "Connectez d'abord votre compte Telegram au bot en message prive avec /connect.", 'buttons' => null);
+		}
+
+		if ($organizationId <= 0) {
+			$organizations = new \dbObject\ArrayOrganization();
+			$organizations->loadAccessibleForUser((int)$user->getId());
+			$buttons = array();
+			foreach ($organizations as $organization) {
+				if ($organization instanceof \dbObject\Organization && telegramOrganizationHasGroupDestination($user, $organization)) {
+					$buttons[] = array(array(
+						'text' => trim((string)$organization->get('name')),
+						'callback_data' => 'tg_dest_org_'.(int)$organization->getId(),
+					));
+				}
+			}
+
+			if (count($buttons) === 0) {
+				return array('text' => "Aucune organisation avec une destination autorisee n'est disponible.", 'buttons' => null);
+			}
+
+			$buttons[] = array(array('text' => 'Annuler', 'callback_data' => 'tg_dest_cancel'));
+			return array('text' => "Connecter ce groupe\n\nChoisissez une organisation.", 'buttons' => $buttons);
+		}
+
+		$organization = new \dbObject\Organization();
+		if (!$organization->load($organizationId) || !telegramUserCanUseOrganization($user, $organizationId)) {
+			return buildTelegramGroupRolePrompt($user, 0, 0);
+		}
+
+		$rootHolon = $organization->getStructuralRootHolon();
+		if (!($rootHolon instanceof \dbObject\Holon)) {
+			return array('text' => "La structure de cette organisation est introuvable.", 'buttons' => array(array(array('text' => 'Organisations', 'callback_data' => 'tg_dest_root'))));
+		}
+
+		$currentHolon = $rootHolon;
+		if ($holonId > 0) {
+			$candidate = new \dbObject\Holon();
+			if (
+				$candidate->load($holonId)
+				&& in_array((int)$candidate->get('IDtypeholon'), array(1, 2), true)
+				&& (bool)$candidate->get('active')
+				&& (bool)$candidate->get('visible')
+				&& $organization->containsHolon($candidate)
+			) {
+				$currentHolon = $candidate;
+			}
+		}
+
+		$availabilityCache = array();
+		$buttons = array();
+		foreach (getVisibleHolonChildren($currentHolon) as $child) {
+			if (!telegramHolonHasGroupRoleDestination($user, $organization, $child, $availabilityCache)) {
+				continue;
+			}
+
+			if ((int)$child->get('IDtypeholon') === 1) {
+				if (telegramRoleCanReceiveGroupMemos($user, $organization, $child)) {
+					$buttons[] = array(array(
+						'text' => 'Role : '.trim((string)$child->getDisplayName()),
+						'callback_data' => 'tg_dest_role_'.$organizationId.'_'.(int)$child->getId(),
+					));
+				}
+				if (count(getVisibleHolonChildren($child)) > 0) {
+					$buttons[] = array(array(
+						'text' => 'Explorer le role : '.trim((string)$child->getDisplayName()),
+						'callback_data' => 'tg_dest_holon_'.$organizationId.'_'.(int)$child->getId(),
+					));
+				}
+				continue;
+			}
+
+			if ((int)$child->get('IDtypeholon') === 2) {
+				$buttons[] = array(array(
+					'text' => 'Cercle : '.trim((string)$child->getDisplayName()),
+					'callback_data' => 'tg_dest_holon_'.$organizationId.'_'.(int)$child->getId(),
+				));
+			}
+		}
+
+		if (count(telegramLoadEligibleGroupProjects($user, $organizationId)) > 0) {
+			$buttons[] = array(array(
+				'text' => 'Explorer les projets',
+				'callback_data' => 'tg_dest_projects_'.$organizationId.'_0',
+			));
+		}
+
+		$parent = $currentHolon->getParentHolon();
+		if ($currentHolon !== $rootHolon && $parent instanceof \dbObject\Holon) {
+			$buttons[] = array(array('text' => 'Retour', 'callback_data' => 'tg_dest_holon_'.$organizationId.'_'.(int)$parent->getId()));
+		}
+		$buttons[] = array(
+			array('text' => 'Organisations', 'callback_data' => 'tg_dest_root'),
+			array('text' => 'Annuler', 'callback_data' => 'tg_dest_cancel'),
+		);
+
+		$text = "Connecter ce groupe\n\nStructure : ".buildHolonPathLabel($organization, $currentHolon === $rootHolon ? null : $currentHolon);
+		$text .= "\n\nLes cercles servent uniquement a naviguer. Choisissez un role ou explorez les projets.";
+		return array('text' => $text, 'buttons' => $buttons);
+	}
+
+	function buildTelegramGroupProjectPrompt(\dbObject\User $user, int $organizationId, int $parentProjectId = 0): array {
+		if (!telegramUserCanUseOrganization($user, $organizationId)) {
+			return buildTelegramGroupRolePrompt($user, 0, 0);
+		}
+
+		$projects = new \dbObject\ArrayProject();
+		$projects->loadForOrganization($organizationId, true, \dbObject\Project::KIND_STANDARD);
+		$projectsById = array();
+		$childrenByParent = array();
+		foreach ($projects as $project) {
+			if (!($project instanceof \dbObject\Project)) {
+				continue;
+			}
+			$projectId = (int)$project->getId();
+			$projectsById[$projectId] = $project;
+			$childrenByParent[(int)$project->get('IDproject_parent')][] = $project;
+		}
+
+		$hasEligibleDescendant = function (int $projectId) use (&$hasEligibleDescendant, $childrenByParent, $projectsById, $user): bool {
+			$project = $projectsById[$projectId] ?? null;
+			if ($project instanceof \dbObject\Project && telegramProjectCanReceiveGroupMemos($user, $project)) {
+				return true;
+			}
+			foreach ($childrenByParent[$projectId] ?? array() as $child) {
+				if ($child instanceof \dbObject\Project && $hasEligibleDescendant((int)$child->getId())) {
+					return true;
+				}
+			}
+			return false;
+		};
+
+		if ($parentProjectId > 0 && !isset($projectsById[$parentProjectId])) {
+			$parentProjectId = 0;
+		}
+
+		$buttons = array();
+		foreach ($childrenByParent[$parentProjectId] ?? array() as $project) {
+			if (!($project instanceof \dbObject\Project) || !$hasEligibleDescendant((int)$project->getId())) {
+				continue;
+			}
+
+			$projectId = (int)$project->getId();
+			$title = trim((string)$project->get('title'));
+			if (telegramProjectCanReceiveGroupMemos($user, $project)) {
+				$buttons[] = array(array('text' => 'Projet : '.$title, 'callback_data' => 'tg_dest_project_'.$organizationId.'_'.$projectId));
+			}
+			if (count($childrenByParent[$projectId] ?? array()) > 0) {
+				$buttons[] = array(array('text' => 'Explorer : '.$title, 'callback_data' => 'tg_dest_projects_'.$organizationId.'_'.$projectId));
+			}
+		}
+
+		if ($parentProjectId > 0) {
+			$parent = $projectsById[$parentProjectId]->getParent();
+			$buttons[] = array(array('text' => 'Retour', 'callback_data' => 'tg_dest_projects_'.$organizationId.'_'.($parent ? (int)$parent->getId() : 0)));
+		}
+		$buttons[] = array(
+			array('text' => 'Structure', 'callback_data' => 'tg_dest_org_'.$organizationId),
+			array('text' => 'Annuler', 'callback_data' => 'tg_dest_cancel'),
+		);
+
+		$path = array();
+		$current = $parentProjectId > 0 ? ($projectsById[$parentProjectId] ?? null) : null;
+		while ($current instanceof \dbObject\Project) {
+			array_unshift($path, trim((string)$current->get('title')));
+			$current = $current->getParent();
+		}
+		$text = "Connecter ce groupe a un projet\n\n".(count($path) > 0 ? 'Projet : '.implode(' > ', $path) : 'Choisissez un projet.');
+		return array('text' => $text, 'buttons' => $buttons);
+	}
+
+	function telegramGroupDestinationLabel(\dbObject\TelegramChatDestination $destination): string {
+		$context = $destination->getDocumentContext();
+		if (!is_array($context)) {
+			return 'destination invalide';
+		}
+
+		if (($context['type'] ?? '') === \dbObject\TelegramChatDestination::TYPE_ROLE && ($context['role'] ?? null) instanceof \dbObject\Holon) {
+			$organization = new \dbObject\Organization();
+			if ($organization->load((int)$context['organizationId'])) {
+				return 'role '.buildHolonPathLabel($organization, $context['role']);
+			}
+			return 'role '.trim((string)$context['role']->getDisplayName());
+		}
+
+		$project = $context['project'] ?? null;
+		return $project instanceof \dbObject\Project ? 'projet '.trim((string)$project->get('title')) : 'destination invalide';
+	}
+
 	function buildClassificationPrompt(\dbObject\User $user, int $selectedOrganizationId = 0, int $selectedHolonId = 0): array {
 		if ($user->getId() <= 0) {
 			return array(
@@ -737,6 +1009,116 @@
 			return;
 		}
 
+		if (strpos($callbackData, 'tg_dest_') === 0) {
+			if ((int)$user->getId() <= 0) {
+				answerCallbackQuery($callbackId, "Connectez d'abord votre compte Telegram en prive.");
+				return;
+			}
+
+			if ((int)$chatId === $actorId) {
+				answerCallbackQuery($callbackId, 'Cette configuration doit etre faite dans un groupe.');
+				return;
+			}
+
+			if ($callbackData === 'tg_dest_cancel') {
+				deleteMessage($chatId, (int)$message['message_id'], $threadId);
+				answerCallbackQuery($callbackId, 'Configuration annulee.');
+				return;
+			}
+
+			if ($callbackData === 'tg_dest_root') {
+				$prompt = buildTelegramGroupRolePrompt($user, 0, 0);
+				editMessageText($chatId, (int)$message['message_id'], $prompt['text'], $prompt['buttons'], $threadId);
+				answerCallbackQuery($callbackId);
+				return;
+			}
+
+			if (preg_match('/^tg_dest_org_(\d+)$/', $callbackData, $matches)) {
+				$prompt = buildTelegramGroupRolePrompt($user, (int)$matches[1], 0);
+				editMessageText($chatId, (int)$message['message_id'], $prompt['text'], $prompt['buttons'], $threadId);
+				answerCallbackQuery($callbackId);
+				return;
+			}
+
+			if (preg_match('/^tg_dest_holon_(\d+)_(\d+)$/', $callbackData, $matches)) {
+				$prompt = buildTelegramGroupRolePrompt($user, (int)$matches[1], (int)$matches[2]);
+				editMessageText($chatId, (int)$message['message_id'], $prompt['text'], $prompt['buttons'], $threadId);
+				answerCallbackQuery($callbackId);
+				return;
+			}
+
+			if (preg_match('/^tg_dest_projects_(\d+)_(\d+)$/', $callbackData, $matches)) {
+				$prompt = buildTelegramGroupProjectPrompt($user, (int)$matches[1], (int)$matches[2]);
+				editMessageText($chatId, (int)$message['message_id'], $prompt['text'], $prompt['buttons'], $threadId);
+				answerCallbackQuery($callbackId);
+				return;
+			}
+
+			if (preg_match('/^tg_dest_role_(\d+)_(\d+)$/', $callbackData, $matches)) {
+				$organizationId = (int)$matches[1];
+				$role = new \dbObject\Holon();
+				$organization = new \dbObject\Organization();
+				if (
+					!$organization->load($organizationId)
+					|| !telegramUserCanUseOrganization($user, $organizationId)
+					|| !$role->load((int)$matches[2])
+					|| !$organization->containsHolon($role)
+					|| !telegramRoleCanReceiveGroupMemos($user, $organization, $role)
+				) {
+					answerCallbackQuery($callbackId, "Cette destination n'est plus autorisee.");
+					return;
+				}
+
+				$destination = \dbObject\TelegramChatDestination::saveForTelegramChat(
+					$chatId,
+					$threadId,
+					$organizationId,
+					\dbObject\TelegramChatDestination::TYPE_ROLE,
+					(int)$role->getId(),
+					(int)$user->getId()
+				);
+				if (!$destination) {
+					answerCallbackQuery($callbackId, "Impossible d'enregistrer la destination.");
+					return;
+				}
+
+				editMessageText($chatId, (int)$message['message_id'], "Ce groupe est connecte au role : ".buildHolonPathLabel($organization, $role).".\nLes prochains vocaux seront ajoutes a ce contexte.", null, $threadId);
+				answerCallbackQuery($callbackId, 'Role connecte.');
+				return;
+			}
+
+			if (preg_match('/^tg_dest_project_(\d+)_(\d+)$/', $callbackData, $matches)) {
+				$organizationId = (int)$matches[1];
+				$project = new \dbObject\Project();
+				if (
+					!telegramUserCanUseOrganization($user, $organizationId)
+					|| !$project->load((int)$matches[2])
+					|| (int)$project->get('IDorganization') !== $organizationId
+					|| !telegramProjectCanReceiveGroupMemos($user, $project)
+				) {
+					answerCallbackQuery($callbackId, "Cette destination n'est plus autorisee.");
+					return;
+				}
+
+				$destination = \dbObject\TelegramChatDestination::saveForTelegramChat(
+					$chatId,
+					$threadId,
+					$organizationId,
+					\dbObject\TelegramChatDestination::TYPE_PROJECT,
+					(int)$project->getId(),
+					(int)$user->getId()
+				);
+				if (!$destination) {
+					answerCallbackQuery($callbackId, "Impossible d'enregistrer la destination.");
+					return;
+				}
+
+				editMessageText($chatId, (int)$message['message_id'], "Ce groupe est connecte au projet : ".trim((string)$project->get('title')).".\nLes prochains vocaux seront lies a ce projet.", null, $threadId);
+				answerCallbackQuery($callbackId, 'Projet connecte.');
+				return;
+			}
+		}
+
 		if ($callbackData === 'btn_options') {
 			answerCallbackQuery($callbackId, "Choisissez une action.");
 			return;
@@ -937,9 +1319,38 @@
 		$actorId = isset($message['from']['id']) ? (int)$message['from']['id'] : 0;
 		$chatId = $message['chat']['id'] ?? null;
 		$threadId = getMessageThreadId($message);
+		$isPrivateChat = isTelegramPrivateChat($message);
+		$groupDestinationContext = null;
 
 		if ($actorId <= 0 || $chatId === null || !isset($message['voice'])) {
 			return;
+		}
+
+		if ((int)$user->getId() <= 0) {
+			sendMessage($chatId, "Votre compte Telegram doit etre connecte avec /connect en message prive avant d'envoyer un memo vocal.", null, $threadId);
+			return;
+		}
+
+		if (!$isPrivateChat) {
+			$groupDestination = \dbObject\TelegramChatDestination::findByTelegramChat($chatId, $threadId);
+			$groupDestinationContext = $groupDestination instanceof \dbObject\TelegramChatDestination
+				? $groupDestination->getDocumentContext()
+				: null;
+			if (!is_array($groupDestinationContext)) {
+				sendMessage($chatId, "Ce groupe n'est pas encore connecte a un role ou un projet. Une personne autorisee peut envoyer /connect.", null, $threadId);
+				return;
+			}
+
+			if (!\dbObject\Document::canCreateInOrganizationContext(
+				(int)$groupDestinationContext['organizationId'],
+				(int)$groupDestinationContext['holonId'] > 0 ? (int)$groupDestinationContext['holonId'] : null,
+				(int)$user->getId(),
+				0,
+				false
+			)) {
+				sendMessage($chatId, "Vous n'avez plus le droit d'envoyer des memos vers cette destination.", null, $threadId);
+				return;
+			}
 		}
 
 		if (!patreonUserCanUseAi((int)$user->getId())) {
@@ -1081,11 +1492,33 @@
 				$doc->set("keywords", $keywords);
 				$doc->set("IDuser", $user->getId());
 
-				if (($message['chat']['id'] ?? null) != ($message['from']['id'] ?? null)) {
+				if (is_array($groupDestinationContext)) {
+					$doc->set("IDorganization", (int)$groupDestinationContext['organizationId']);
+					$doc->set("IDholon", (int)$groupDestinationContext['holonId'] > 0 ? (int)$groupDestinationContext['holonId'] : null);
+				}
+
+				if (!$isPrivateChat) {
 					$doc->set("codeview", bin2hex(random_bytes(10)));
 				}
 
-				$doc->save();
+				$saveResult = $doc->save();
+				if (!is_array($saveResult) || empty($saveResult['status']) || (int)$doc->getId() <= 0) {
+					throw new \RuntimeException('telegram_document_save_failed');
+				}
+
+				if (
+					is_array($groupDestinationContext)
+					&& ($groupDestinationContext['type'] ?? '') === \dbObject\TelegramChatDestination::TYPE_PROJECT
+					&& ($groupDestinationContext['project'] ?? null) instanceof \dbObject\Project
+				) {
+					$projectDocument = new \dbObject\ProjectDocument();
+					$projectDocument->set('IDproject', (int)$groupDestinationContext['project']->getId());
+					$projectDocument->set('IDdocument', (int)$doc->getId());
+					$projectDocumentResult = $projectDocument->save();
+					if (!is_array($projectDocumentResult) || empty($projectDocumentResult['status'])) {
+						throw new \RuntimeException('telegram_project_document_save_failed');
+					}
+				}
 
 				$data->lastDoc = $doc->getId();
 				saveLocalSession($data, $actorId);
@@ -1145,8 +1578,8 @@
 			$help = "Commandes disponibles:\n".
 				"/help - Afficher cette aide\n".
 				"/whois - Afficher le nom du serveur\n".
-				"/connect - Connecter le compte ou le groupe\n".
-				"/cancel - Supprimer la connexion Telegram\n".
+				"/connect - Connecter votre compte en prive, ou ce groupe a un role ou projet\n".
+				"/cancel - Supprimer la connexion Telegram ou la destination du groupe\n".
 				"/time - Afficher l'heure du serveur\n".
 				"/start - Afficher le statut de connexion\n".
 				"/stop - Desactiver le traitement des messages\n".
@@ -1166,7 +1599,26 @@
 
 		if ($command === '/cancel') {
 			if (!isTelegramPrivateChat($message)) {
-				sendMessage($chatId, "Envoyez /cancel dans une discussion privee avec le bot pour supprimer votre connexion Telegram.", null, $threadId);
+				$destination = \dbObject\TelegramChatDestination::findByTelegramChat($chatId, $threadId);
+				$context = $destination instanceof \dbObject\TelegramChatDestination ? $destination->getDocumentContext() : null;
+				$canDisconnect = is_array($context)
+					&& \dbObject\Document::canCreateInOrganizationContext(
+						(int)$context['organizationId'],
+						(int)$context['holonId'] > 0 ? (int)$context['holonId'] : null,
+						(int)$user->getId(),
+						0,
+						false
+					);
+				if (!$destination || !$canDisconnect) {
+					sendMessage($chatId, "Ce groupe n'a pas de destination que vous pouvez supprimer.", null, $threadId);
+					return;
+				}
+
+				if ($destination->deactivate()) {
+					sendMessage($chatId, "La destination Telegram de ce groupe a ete supprimee.", null, $threadId);
+				} else {
+					sendMessage($chatId, "Impossible de supprimer la destination Telegram de ce groupe.", null, $threadId);
+				}
 				return;
 			}
 
@@ -1204,7 +1656,13 @@
 				}
 				sendMessage($chatId, $messageText, null, $threadId);
 			} else {
-				sendMessage($chatId, "Pour connecter ce groupe a un projet, editer les proprietes du projet avec les informations suivantes:\n\nChat ID: ".$chatId.", Group: ".$threadId, null, $threadId);
+				if ((int)$user->getId() <= 0) {
+					sendMessage($chatId, "Votre compte Telegram doit d'abord etre connecte en message prive. Ouvrez une discussion privee avec le bot et envoyez /connect.", null, $threadId);
+					return;
+				}
+
+				$prompt = buildTelegramGroupRolePrompt($user, 0, 0);
+				sendMessage($chatId, $prompt['text'], $prompt['buttons'], $threadId);
 			}
 			return;
 		}
@@ -1240,7 +1698,18 @@
 			saveLocalSession($data, $actorId);
 
 			if (!isTelegramPrivateChat($message)) {
-				sendMessage($chatId, "Bienvenue dans EasyMEMO. Envoyez /connect en message prive pour relier votre compte Telegram.", null, $threadId);
+				if ($user->getId() <= 0) {
+					sendMessage($chatId, "Bienvenue dans EasyMEMO. Connectez d'abord votre compte Telegram en message prive avec /connect.", null, $threadId);
+					return;
+				}
+
+				$destination = \dbObject\TelegramChatDestination::findByTelegramChat($chatId, $threadId);
+				if ($destination instanceof \dbObject\TelegramChatDestination && is_array($destination->getDocumentContext())) {
+					sendMessage($chatId, "Bienvenue dans EasyMEMO. Ce groupe est connecte a ".telegramGroupDestinationLabel($destination).".", null, $threadId);
+					return;
+				}
+
+				sendMessage($chatId, "Bienvenue dans EasyMEMO. Votre compte Telegram est connecte a ".getTelegramConnectedUserLabel($user).". Envoyez /connect pour relier ce groupe a un role ou un projet.", null, $threadId);
 				return;
 			}
 

@@ -24,7 +24,8 @@
     var currentListSort = ['priority', 'importance', 'holon'].indexOf(root.getAttribute('data-omo-projects-list-sort')) !== -1
         ? root.getAttribute('data-omo-projects-list-sort')
         : 'planned';
-    var displayPreferencesStorageKey = 'omo.projects.saved-views.v1';
+    var displayPreferencesStorageKey = 'omo.projects.saved-views.v2';
+    var legacyDisplayPreferencesStorageKey = 'omo.projects.saved-views.v1';
     var temporaryDisplayPreferencesStorageKey = 'omo.projects.session-views.v1';
     var columns = [];
     var texts = {
@@ -55,6 +56,7 @@
     var initialOpenProjectMode = root.getAttribute('data-omo-projects-open-project-mode') || '';
     var pendingCreateStatus = '';
     var pendingCreateUrl = '';
+    var draggedProjectCard = null;
     var filterControl = root.querySelector('[data-omo-projects-filter-control]');
     var filterPanel = root.querySelector('[data-omo-projects-filter-panel]');
     var quickSearchInput = root.querySelector('[data-omo-projects-quick-search]');
@@ -138,11 +140,18 @@
         }
 
         var board = root.querySelector('[data-omo-projects-board]');
-        return board ? {view: 'kanban', left: board.scrollLeft} : null;
+        return board ? {view: 'kanban', left: board.scrollLeft, top: board.scrollTop} : null;
     }
 
-    function restoreContentScrollPosition(nextRoot, position) {
-        if (!nextRoot || !position) {
+    function restoreContentScrollPosition(nextRoot, position, afterRestore) {
+        if (!nextRoot) {
+            return;
+        }
+
+        if (!position) {
+            if (typeof afterRestore === 'function') {
+                afterRestore();
+            }
             return;
         }
 
@@ -151,6 +160,9 @@
                 var list = nextRoot.querySelector('[data-omo-projects-list]');
                 if (list) {
                     list.scrollTop = position.top;
+                }
+                if (typeof afterRestore === 'function') {
+                    afterRestore();
                 }
                 return;
             }
@@ -161,12 +173,53 @@
                     gantt.scrollLeft = position.left;
                     gantt.scrollTop = position.top;
                 }
+                if (typeof afterRestore === 'function') {
+                    afterRestore();
+                }
                 return;
             }
 
             var board = nextRoot.querySelector('[data-omo-projects-board]');
             if (board) {
                 board.scrollLeft = position.left;
+                board.scrollTop = position.top || 0;
+            }
+            if (typeof afterRestore === 'function') {
+                afterRestore();
+            }
+        });
+    }
+
+    function revealKanbanProjectIfNeeded(nextRoot, projectId) {
+        var resolvedProjectId = Number(projectId || 0);
+        if (!nextRoot || !Number.isInteger(resolvedProjectId) || resolvedProjectId <= 0) {
+            return;
+        }
+
+        window.requestAnimationFrame(function () {
+            var board = nextRoot.querySelector('[data-omo-projects-board]');
+            var card = nextRoot.querySelector('[data-omo-project-card][data-project-id="' + String(resolvedProjectId) + '"]');
+            if (!board || !card) {
+                return;
+            }
+
+            var boardRect = board.getBoundingClientRect();
+            var header = board.querySelector('.omo-projects__kanban-grid-header');
+            var headerRect = header ? header.getBoundingClientRect() : null;
+            var visibleTop = Math.max(boardRect.top, headerRect ? headerRect.bottom : boardRect.top) + 8;
+            var visibleBottom = boardRect.bottom - 12;
+            var cardRect = card.getBoundingClientRect();
+            var nextTop = board.scrollTop;
+
+            if (cardRect.top < visibleTop) {
+                nextTop += cardRect.top - visibleTop;
+            } else if (cardRect.bottom > visibleBottom) {
+                nextTop += cardRect.bottom - visibleBottom;
+            }
+
+            nextTop = Math.max(0, Math.min(nextTop, board.scrollHeight - board.clientHeight));
+            if (nextTop !== board.scrollTop) {
+                board.scrollTop = nextTop;
             }
         });
     }
@@ -243,6 +296,7 @@
     function refreshRoot(url, options) {
         var targetUrl = url || currentUrl;
         var preserveScroll = Boolean(options && options.preserveScroll);
+        var revealProjectId = Number(options && options.revealProjectId || 0);
         var scrollPosition = preserveScroll ? captureContentScrollPosition() : null;
         if (!targetUrl) {
             return Promise.resolve(null);
@@ -262,7 +316,9 @@
                 window.removeEventListener('omo-runtime-maintenance', handleRuntimeMaintenance);
             }
         }).then(function (nextRoot) {
-            restoreContentScrollPosition(nextRoot, scrollPosition);
+            restoreContentScrollPosition(nextRoot, scrollPosition, function () {
+                revealKanbanProjectIfNeeded(nextRoot, revealProjectId);
+            });
             return nextRoot;
         });
     }
@@ -416,18 +472,55 @@
             + ':' + String(root.getAttribute('data-omo-projects-cid') || '0');
     }
 
-    function getStoredDisplayPreferences() {
+    function getDisplayPreferencesStore() {
         try {
             var storedValue = window.localStorage.getItem(displayPreferencesStorageKey);
             var savedViews = storedValue ? JSON.parse(storedValue) : null;
-            if (!savedViews || typeof savedViews !== 'object') {
-                return null;
+            if (savedViews && typeof savedViews === 'object' && savedViews.contexts && typeof savedViews.contexts === 'object') {
+                return {
+                    defaultView: savedViews.defaultView && typeof savedViews.defaultView === 'object' ? savedViews.defaultView : null,
+                    contexts: savedViews.contexts
+                };
             }
-            var preferences = savedViews[getDisplayPreferencesContextKey()];
-            return preferences && typeof preferences === 'object' ? preferences : null;
+
+            var legacyValue = window.localStorage.getItem(legacyDisplayPreferencesStorageKey);
+            var legacyViews = legacyValue ? JSON.parse(legacyValue) : null;
+            return {
+                defaultView: null,
+                contexts: legacyViews && typeof legacyViews === 'object' ? legacyViews : {}
+            };
         } catch (error) {
-            return null;
+            return {defaultView: null, contexts: {}};
         }
+    }
+
+    function saveDisplayPreferencesStore(store) {
+        try {
+            window.localStorage.setItem(displayPreferencesStorageKey, JSON.stringify({
+                defaultView: store.defaultView && typeof store.defaultView === 'object' ? store.defaultView : null,
+                contexts: store.contexts && typeof store.contexts === 'object' ? store.contexts : {}
+            }));
+        } catch (error) {
+            // Local storage can be unavailable in private or restricted browsing contexts.
+        }
+    }
+
+    function createDisplayPreferences(scope, view, listSort, assignment) {
+        return {
+            scope: scope === 'global' ? 'descendants' : (scope === 'descendants' || scope === 'children' ? scope : 'contextual'),
+            view: view === 'list' || view === 'gantt' ? view : 'kanban',
+            sort: listSort === 'priority' || listSort === 'importance' || listSort === 'holon' ? listSort : 'planned',
+            assignment: assignment === 'mine' ? 'mine' : 'all'
+        };
+    }
+
+    function getStoredDisplayPreferences() {
+        var preferences = getDisplayPreferencesStore().contexts[getDisplayPreferencesContextKey()];
+        return preferences && typeof preferences === 'object' ? preferences : null;
+    }
+
+    function getDefaultDisplayPreferences() {
+        return getDisplayPreferencesStore().defaultView;
     }
 
     function getTemporaryDisplayPreferences() {
@@ -451,12 +544,7 @@
             if (!temporaryViews || typeof temporaryViews !== 'object') {
                 temporaryViews = {};
             }
-            temporaryViews[getDisplayPreferencesContextKey()] = {
-                scope: scope === 'global' ? 'descendants' : (scope === 'descendants' || scope === 'children' ? scope : 'contextual'),
-                view: view === 'list' || view === 'gantt' ? view : 'kanban',
-                sort: listSort === 'priority' || listSort === 'importance' || listSort === 'holon' ? listSort : 'planned',
-                assignment: assignment === 'mine' ? 'mine' : 'all'
-            };
+            temporaryViews[getDisplayPreferencesContextKey()] = createDisplayPreferences(scope, view, listSort, assignment);
             window.sessionStorage.setItem(temporaryDisplayPreferencesStorageKey, JSON.stringify(temporaryViews));
         } catch (error) {
             // Session storage can be unavailable in private or restricted browsing contexts.
@@ -477,27 +565,41 @@
         }
     }
 
-    function storeDisplayPreferences(scope, view, listSort, assignment) {
+    function clearAllTemporaryDisplayPreferences() {
         try {
-            var storedValue = window.localStorage.getItem(displayPreferencesStorageKey);
-            var savedViews = storedValue ? JSON.parse(storedValue) : {};
-            if (!savedViews || typeof savedViews !== 'object') {
-                savedViews = {};
-            }
-            savedViews[getDisplayPreferencesContextKey()] = {
-                scope: scope === 'global' ? 'descendants' : (scope === 'descendants' || scope === 'children' ? scope : 'contextual'),
-                view: view === 'list' || view === 'gantt' ? view : 'kanban',
-                sort: listSort === 'priority' || listSort === 'importance' || listSort === 'holon' ? listSort : 'planned',
-                assignment: assignment === 'mine' ? 'mine' : 'all'
-            };
-            window.localStorage.setItem(displayPreferencesStorageKey, JSON.stringify(savedViews));
+            window.sessionStorage.removeItem(temporaryDisplayPreferencesStorageKey);
         } catch (error) {
-            // Local storage can be unavailable in private or restricted browsing contexts.
+            // Session storage can be unavailable in private or restricted browsing contexts.
         }
     }
 
+    function storeDisplayPreferences(scope, view, listSort, assignment) {
+        var store = getDisplayPreferencesStore();
+        store.contexts[getDisplayPreferencesContextKey()] = createDisplayPreferences(scope, view, listSort, assignment);
+        saveDisplayPreferencesStore(store);
+    }
+
+    function storeDefaultDisplayPreferences(scope, view, listSort, assignment) {
+        var store = getDisplayPreferencesStore();
+        store.defaultView = createDisplayPreferences(scope, view, listSort, assignment);
+        saveDisplayPreferencesStore(store);
+    }
+
+    function clearCurrentDisplayPreferences() {
+        var store = getDisplayPreferencesStore();
+        delete store.contexts[getDisplayPreferencesContextKey()];
+        saveDisplayPreferencesStore(store);
+    }
+
+    function applyDisplayPreferences(next, active) {
+        if (next.scope === active.scope && next.assignment === active.assignment && next.sort === active.sort && next.view === active.view) {
+            return;
+        }
+        refreshRoot(buildProjectsUrl(next.scope, next.view, next.sort, next.assignment, currentQuickSearch));
+    }
+
     function applyStoredDisplayPreferences() {
-        var preferences = getTemporaryDisplayPreferences() || getStoredDisplayPreferences();
+        var preferences = getTemporaryDisplayPreferences() || getStoredDisplayPreferences() || getDefaultDisplayPreferences();
         if (!preferences) {
             return false;
         }
@@ -722,6 +824,12 @@
             button.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
         filterPanel.querySelectorAll('[data-omo-projects-sort]').forEach(function (button) {
+            var isHolonSort = button.getAttribute('data-omo-projects-sort') === 'holon';
+            var canUseHolonSort = filters.scope === 'children' || filters.scope === 'descendants';
+            if (isHolonSort) {
+                button.disabled = !canUseHolonSort;
+                button.setAttribute('aria-disabled', canUseHolonSort ? 'false' : 'true');
+            }
             var active = button.getAttribute('data-omo-projects-sort') === filters.sort;
             button.classList.toggle('is-active', active);
             button.setAttribute('aria-pressed', active ? 'true' : 'false');
@@ -737,6 +845,23 @@
         document.removeEventListener('pointerdown', handleProjectFilterOutsidePointerDown, true);
     }
 
+    function closeProjectFilterMoreMenu() {
+        if (!filterPanel) {
+            return;
+        }
+        filterPanel.querySelectorAll('[data-omo-projects-filter-more-menu]').forEach(function (menu) {
+            var panel = menu.querySelector('[data-omo-projects-filter-more-panel]');
+            var toggle = menu.querySelector('[data-omo-projects-filter-more-toggle]');
+            if (panel) {
+                panel.hidden = true;
+            }
+            menu.classList.remove('is-open');
+            if (toggle) {
+                toggle.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+
     function closeProjectFilterPanel(applyChanges, saveView) {
         if (!filterPanelIsOpen) {
             return;
@@ -749,6 +874,7 @@
             button.setAttribute('aria-expanded', 'false');
         });
         removeProjectFilterOutsideHandler();
+        closeProjectFilterMoreMenu();
 
         if (!applyChanges || !pendingDisplayFilters) {
             pendingDisplayFilters = null;
@@ -767,7 +893,47 @@
         if (next.scope === active.scope && next.assignment === active.assignment && next.sort === active.sort && next.view === active.view) {
             return;
         }
-        refreshRoot(buildProjectsUrl(next.scope, next.view, next.sort, next.assignment, currentQuickSearch));
+        applyDisplayPreferences(next, active);
+    }
+
+    function applyProjectFilterMoreAction(action) {
+        if (!filterPanelIsOpen || !pendingDisplayFilters) {
+            return;
+        }
+
+        var active = getActiveDisplayFilters();
+        var next = normalizeDisplayFilters(pendingDisplayFilters);
+        closeProjectFilterPanel(false, false);
+
+        if (action === 'set-default') {
+            clearCurrentDisplayPreferences();
+            clearTemporaryDisplayPreferences();
+            storeDefaultDisplayPreferences(next.scope, next.view, next.sort, next.assignment);
+            applyDisplayPreferences(next, active);
+            return;
+        }
+
+        if (action === 'apply-everywhere') {
+            var store = getDisplayPreferencesStore();
+            store.defaultView = createDisplayPreferences(next.scope, next.view, next.sort, next.assignment);
+            store.contexts = {};
+            saveDisplayPreferencesStore(store);
+            clearAllTemporaryDisplayPreferences();
+            applyDisplayPreferences(next, active);
+            return;
+        }
+
+        if (action === 'restore-default') {
+            clearCurrentDisplayPreferences();
+            clearTemporaryDisplayPreferences();
+            var defaultView = getDefaultDisplayPreferences() || {
+                scope: 'contextual',
+                view: 'kanban',
+                sort: 'planned',
+                assignment: 'all'
+            };
+            applyDisplayPreferences(normalizeDisplayFilters(defaultView), active);
+        }
     }
 
     function handleProjectFilterOutsidePointerDown(event) {
@@ -782,6 +948,7 @@
             return;
         }
         pendingDisplayFilters = getActiveDisplayFilters();
+        closeProjectFilterMoreMenu();
         syncFilterPanelChoices();
         filterPanel.hidden = false;
         filterPanelIsOpen = true;
@@ -848,26 +1015,76 @@
         });
     }
 
-    function moveCard(card, nextStatus) {
+    function getKanbanRowData(element) {
+        var row = element ? element.closest('[data-omo-projects-kanban-row]') : null;
+        if (!row) {
+            return null;
+        }
+        return {
+            node: row,
+            kind: row.getAttribute('data-omo-projects-kanban-group-kind') || '',
+            value: row.getAttribute('data-omo-projects-kanban-group-value') || ''
+        };
+    }
+
+    function getKanbanDropMutation(card, target) {
+        var sourceRow = getKanbanRowData(card);
+        var targetRow = getKanbanRowData(target);
+        if (!sourceRow || !targetRow || sourceRow.node === targetRow.node) {
+            return {allowed: true, fields: null};
+        }
+        if (targetRow.kind === 'holon' && Number(targetRow.value || 0) > 0) {
+            return {
+                allowed: true,
+                fields: {
+                    group_kind: 'holon',
+                    target_holon_id: targetRow.value
+                }
+            };
+        }
+        if (targetRow.kind === 'priority') {
+            return {
+                allowed: true,
+                fields: {
+                    group_kind: 'priority',
+                    target_priority: targetRow.value
+                }
+            };
+        }
+        return {allowed: false, fields: null};
+    }
+
+    function moveCard(card, nextStatus, targetOverride) {
         var group = card ? card.closest('[data-omo-projects-kanban-row]') : null;
-        var target = group
+        var target = targetOverride || (group
             ? group.querySelector('[data-omo-projects-cards="' + nextStatus + '"]')
-            : root.querySelector('[data-omo-projects-cards="' + nextStatus + '"]');
+            : root.querySelector('[data-omo-projects-cards="' + nextStatus + '"]'));
         if (!card || !target) {
             return;
         }
         var currentStatus = card.getAttribute('data-project-status') || '';
-        if (currentStatus === nextStatus) {
+        var mutation = getKanbanDropMutation(card, target);
+        if (!mutation.allowed) {
+            return;
+        }
+        if (currentStatus === nextStatus && !mutation.fields) {
             updateColumnCounts();
             return;
         }
+        var statusSelect = card.querySelector('[data-omo-project-status-select]');
         card.classList.add('is-pending-status');
-        postStatus(card.getAttribute('data-project-id'), nextStatus).then(function () {
-            refreshRoot(currentUrl, {preserveScroll: true});
+        var request = mutation.fields
+            ? postProjectAction(card.getAttribute('data-project-id'), 'update_kanban_position', Object.assign({status: nextStatus}, mutation.fields))
+            : postStatus(card.getAttribute('data-project-id'), nextStatus);
+        request.then(function () {
+            refreshRoot(currentUrl, {
+                preserveScroll: true,
+                revealProjectId: Number(card.getAttribute('data-project-id') || 0)
+            });
         }).catch(function (error) {
             card.classList.remove('is-pending-status');
-            if (select) {
-                select.value = currentStatus;
+            if (statusSelect) {
+                statusSelect.value = currentStatus;
             }
             window.omoNotify(error.message || texts.statusUpdateError, 'error');
         });
@@ -1158,6 +1375,10 @@
         var projectId = Number(card.getAttribute('data-project-id') || 0);
         var subprojectCount = Number(card.getAttribute('data-project-subproject-count') || 0);
         var status = card.getAttribute('data-project-status') || '';
+        if (action === 'edit' && projectId > 0) {
+            navigateProject(projectId, 'edit', buildEditUrl(projectId));
+            return;
+        }
         if (action === 'move') {
             openMoveDialog(card);
             return;
@@ -1188,6 +1409,28 @@
 
     if (filterPanel) {
         filterPanel.addEventListener('click', function (event) {
+            var moreToggle = event.target.closest('[data-omo-projects-filter-more-toggle]');
+            if (moreToggle) {
+                event.preventDefault();
+                event.stopPropagation();
+                var moreMenu = moreToggle.closest('[data-omo-projects-filter-more-menu]');
+                var morePanel = moreMenu ? moreMenu.querySelector('[data-omo-projects-filter-more-panel]') : null;
+                var isMoreMenuOpen = !!morePanel && !morePanel.hidden;
+                closeProjectFilterMoreMenu();
+                if (!isMoreMenuOpen && morePanel) {
+                    morePanel.hidden = false;
+                    moreMenu.classList.add('is-open');
+                    moreToggle.setAttribute('aria-expanded', 'true');
+                }
+                return;
+            }
+            var moreAction = event.target.closest('[data-omo-projects-filter-more-action]');
+            if (moreAction) {
+                event.preventDefault();
+                event.stopPropagation();
+                applyProjectFilterMoreAction(moreAction.getAttribute('data-omo-projects-filter-more-action') || '');
+                return;
+            }
             var applyButton = event.target.closest('[data-omo-projects-filter-apply]');
             if (applyButton) {
                 closeProjectFilterPanel(true, false);
@@ -1570,32 +1813,50 @@
 
     root.querySelectorAll('[data-omo-project-card][draggable="true"]').forEach(function (card) {
         card.addEventListener('dragstart', function (event) {
+            draggedProjectCard = card;
             card.classList.add('dragging');
             event.dataTransfer.effectAllowed = 'move';
             event.dataTransfer.setData('text/plain', card.getAttribute('data-project-id') || '');
         });
         card.addEventListener('dragend', function () {
+            draggedProjectCard = null;
             card.classList.remove('dragging');
-            root.querySelectorAll('.omo-projects__column-cards.is-drag-over').forEach(function (container) {
+            root.querySelectorAll('[data-omo-projects-cards].is-drag-over, [data-omo-projects-cards].is-drop-forbidden').forEach(function (container) {
                 container.classList.remove('is-drag-over');
+                container.classList.remove('is-drop-forbidden');
             });
         });
     });
 
     root.querySelectorAll('[data-omo-projects-cards]').forEach(function (container) {
         container.addEventListener('dragover', function (event) {
+            var mutation = getKanbanDropMutation(draggedProjectCard, container);
+            if (!mutation.allowed) {
+                if (event.dataTransfer) {
+                    event.dataTransfer.dropEffect = 'none';
+                }
+                container.classList.remove('is-drag-over');
+                container.classList.add('is-drop-forbidden');
+                return;
+            }
             event.preventDefault();
+            if (event.dataTransfer) {
+                event.dataTransfer.dropEffect = 'move';
+            }
+            container.classList.remove('is-drop-forbidden');
             container.classList.add('is-drag-over');
         });
         container.addEventListener('dragleave', function () {
             container.classList.remove('is-drag-over');
+            container.classList.remove('is-drop-forbidden');
         });
         container.addEventListener('drop', function (event) {
             event.preventDefault();
             container.classList.remove('is-drag-over');
+            container.classList.remove('is-drop-forbidden');
             var projectId = event.dataTransfer.getData('text/plain');
             var card = root.querySelector('[data-omo-project-card][data-project-id="' + projectId + '"]');
-            moveCard(card, container.getAttribute('data-status') || '');
+            moveCard(card, container.getAttribute('data-status') || '', container);
         });
     });
 

@@ -258,6 +258,7 @@ if ($action === 'save_indicator') {
     $indicator->set('measurement_frequency', $measurementFrequency);
     $indicator->set('measurement_schedule', $measurementSchedule);
     $indicator->set('chart_min_value', $chartMinValue);
+    $indicator->set('show_cumulative', !empty($_POST['show_cumulative']) ? 1 : 0);
 
     $pdo = \dbObject\DbObject::getPdo();
     $startedTransaction = false;

@@ -96,6 +96,55 @@ if (
     omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
 }
 
+if ($action === 'update_kanban_position') {
+    if (!($existingProject instanceof Project) || $projectId <= 0) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.not_found'), [], 404);
+    }
+
+    $status = trim((string)($_POST['status'] ?? ''));
+    if (!in_array($status, Project::statuses(), true)) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.status'), [], 422);
+    }
+
+    $groupKind = strtolower(trim((string)($_POST['group_kind'] ?? '')));
+    if ($groupKind === 'holon') {
+        $targetHolonId = isset($_POST['target_holon_id']) && is_numeric($_POST['target_holon_id'])
+            ? (int)$_POST['target_holon_id']
+            : 0;
+        $targetHolon = new Holon();
+        $rootHolon = $context['rootHolon'] ?? null;
+        if (
+            $targetHolonId <= 0
+            || !$targetHolon->load($targetHolonId)
+            || !($rootHolon instanceof Holon)
+            || !$targetHolon->isDescendantOf((int)$rootHolon->getId(), true)
+            || !$targetHolon->canEdit()
+        ) {
+            omoProjectsActionRespond(false, omoProjectsT('projects.error.holon'), [], 422);
+        }
+        $existingProject->set('IDholon', $targetHolonId);
+    } elseif ($groupKind === 'priority') {
+        $targetPriorityRaw = trim((string)($_POST['target_priority'] ?? ''));
+        if ($targetPriorityRaw !== '' && (!is_numeric($targetPriorityRaw) || (int)$targetPriorityRaw < 0 || (int)$targetPriorityRaw > 5)) {
+            omoProjectsActionRespond(false, omoProjectsT('projects.error.action'), [], 422);
+        }
+        $existingProject->set('priority', Project::normalizeLevel($targetPriorityRaw));
+    } else {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.action'), [], 422);
+    }
+
+    $existingProject->set('status', $status);
+    $saveResult = $existingProject->save();
+    if (!is_array($saveResult) || empty($saveResult['status'])) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
+    }
+
+    omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), [
+        'id' => (int)$existingProject->getId(),
+        'status' => Project::normalizeStatus($existingProject->get('status')),
+    ]);
+}
+
 if ($action === 'update_status') {
     $status = trim((string)($_POST['status'] ?? ''));
     if ($projectId <= 0 || !in_array($status, Project::statuses(), true)) {

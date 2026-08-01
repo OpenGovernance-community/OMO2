@@ -253,8 +253,8 @@ foreach ($pickerItems as $indicator) {
 }
 $displayItemCount = count($statsEntries);
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
-<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260731-app-header-4">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
+<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260801-cumulative">
 <div
     class="omo-stats omo-panel-view"
     id="omo-stats-root"
@@ -342,8 +342,16 @@ $displayItemCount = count($statsEntries);
                         </div>
                     </div>
                     <div class="omo-view-filter__actions">
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-filter-apply><?= omoApiEscape(omoStatsT('stats.filters.apply')) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-stats-filter-save><?= omoApiEscape(omoStatsT('stats.filters.save_view')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-stats-filter-apply><?= omoApiEscape(omoStatsT('stats.filters.apply')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-filter-save><?= omoApiEscape(omoStatsT('stats.filters.save_view')) ?></button>
+                        <div class="generic-menu omo-view-filter__actions-more" data-omo-stats-filter-more-menu>
+                            <button type="button" class="generic-menu-toggle" data-omo-stats-filter-more-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoStatsT('stats.filters.more_actions')) ?>">&#8942;</button>
+                            <div class="generic-menu-panel" data-omo-stats-filter-more-panel role="menu" hidden>
+                                <button type="button" class="generic-menu-item" data-omo-stats-filter-more-action="apply-everywhere" role="menuitem"><?= omoApiEscape(omoStatsT('stats.filters.apply_everywhere')) ?></button>
+                                <button type="button" class="generic-menu-item" data-omo-stats-filter-more-action="set-default" role="menuitem"><?= omoApiEscape(omoStatsT('stats.filters.set_default')) ?></button>
+                                <button type="button" class="generic-menu-item" data-omo-stats-filter-more-action="restore-default" role="menuitem"><?= omoApiEscape(omoStatsT('stats.filters.restore_default')) ?></button>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -687,7 +695,8 @@ $displayItemCount = count($statsEntries);
     var initialIndicatorId = Number(root.getAttribute('data-omo-stats-open-indicator-id') || 0);
     var requestToken = 0;
     var listNeedsRefresh = false;
-    var savedViewsStorageKey = 'omo.stats.saved-views.v1';
+    var savedViewsStorageKey = 'omo.stats.saved-views.v2';
+    var legacySavedViewsStorageKey = 'omo.stats.saved-views.v1';
     var sessionViewsStorageKey = 'omo.stats.session-views.v1';
     var searchStorageKey = 'omo.stats.quick-search.v1';
     var currentSort = root.getAttribute('data-omo-stats-current-sort') === 'alpha' ? 'alpha' : 'temporal';
@@ -865,6 +874,73 @@ $displayItemCount = count($statsEntries);
             + ':' + String(root.getAttribute('data-omo-stats-cid') || '0');
     }
 
+    function createStoredFilters(filters) {
+        return {
+            scope: normalizeScope(filters && filters.scope),
+            sort: normalizeSort(filters && filters.sort),
+            view: normalizeView(filters && filters.view)
+        };
+    }
+
+    function getStoredFiltersStore() {
+        try {
+            var storedValue = window.localStorage.getItem(savedViewsStorageKey);
+            var savedViews = storedValue ? JSON.parse(storedValue) : null;
+            if (savedViews && typeof savedViews === 'object' && savedViews.contexts && typeof savedViews.contexts === 'object') {
+                return {
+                    defaultView: savedViews.defaultView && typeof savedViews.defaultView === 'object' ? savedViews.defaultView : null,
+                    contexts: savedViews.contexts
+                };
+            }
+
+            var legacyValue = window.localStorage.getItem(legacySavedViewsStorageKey);
+            var legacyViews = legacyValue ? JSON.parse(legacyValue) : null;
+            return {
+                defaultView: null,
+                contexts: legacyViews && typeof legacyViews === 'object' ? legacyViews : {}
+            };
+        } catch (error) {
+            return {defaultView: null, contexts: {}};
+        }
+    }
+
+    function saveStoredFiltersStore(store) {
+        try {
+            window.localStorage.setItem(savedViewsStorageKey, JSON.stringify({
+                defaultView: store.defaultView && typeof store.defaultView === 'object' ? store.defaultView : null,
+                contexts: store.contexts && typeof store.contexts === 'object' ? store.contexts : {}
+            }));
+        } catch (error) {
+        }
+    }
+
+    function getStoredFilters() {
+        var filters = getStoredFiltersStore().contexts[getPreferencesContextKey()];
+        return filters && typeof filters === 'object' ? filters : null;
+    }
+
+    function getDefaultStoredFilters() {
+        return getStoredFiltersStore().defaultView;
+    }
+
+    function storeFilters(filters) {
+        var store = getStoredFiltersStore();
+        store.contexts[getPreferencesContextKey()] = createStoredFilters(filters);
+        saveStoredFiltersStore(store);
+    }
+
+    function storeDefaultFilters(filters) {
+        var store = getStoredFiltersStore();
+        store.defaultView = createStoredFilters(filters);
+        saveStoredFiltersStore(store);
+    }
+
+    function clearStoredFilters() {
+        var store = getStoredFiltersStore();
+        delete store.contexts[getPreferencesContextKey()];
+        saveStoredFiltersStore(store);
+    }
+
     function readStoredValue(storage, storageKey) {
         try {
             var rawValue = storage.getItem(storageKey);
@@ -884,11 +960,7 @@ $displayItemCount = count($statsEntries);
             if (!values || typeof values !== 'object') {
                 values = {};
             }
-            values[getPreferencesContextKey()] = {
-                scope: normalizeScope(filters.scope),
-                sort: normalizeSort(filters.sort),
-                view: normalizeView(filters.view)
-            };
+            values[getPreferencesContextKey()] = createStoredFilters(filters);
             storage.setItem(storageKey, JSON.stringify(values));
         } catch (error) {
         }
@@ -903,6 +975,13 @@ $displayItemCount = count($statsEntries);
             }
             delete values[getPreferencesContextKey()];
             window.sessionStorage.setItem(sessionViewsStorageKey, JSON.stringify(values));
+        } catch (error) {
+        }
+    }
+
+    function clearAllTemporaryFilters() {
+        try {
+            window.sessionStorage.removeItem(sessionViewsStorageKey);
         } catch (error) {
         }
     }
@@ -944,7 +1023,8 @@ $displayItemCount = count($statsEntries);
         root.classList.toggle('is-loading', Boolean(isLoading));
         Array.prototype.forEach.call(root.querySelectorAll(
             '[data-omo-stats-filter-toggle], [data-omo-stats-scope], [data-omo-stats-sort], '
-            + '[data-omo-stats-view], [data-omo-stats-filter-apply], [data-omo-stats-filter-save]'
+            + '[data-omo-stats-view], [data-omo-stats-filter-apply], [data-omo-stats-filter-save], '
+            + '[data-omo-stats-filter-more-toggle], [data-omo-stats-filter-more-action]'
         ), function (button) {
             button.disabled = Boolean(isLoading);
         });
@@ -1062,6 +1142,33 @@ $displayItemCount = count($statsEntries);
         });
     }
 
+    function applyFilters(filters, active) {
+        var next = normalizeFilters(filters);
+        var previous = active || getActiveFilters();
+        if (next.scope !== previous.scope || next.sort !== previous.sort) {
+            currentScope = next.scope;
+            currentSort = next.sort;
+            refreshRoot(buildScopeUrl(next.scope, next.sort));
+            return;
+        }
+        applyView(next.view);
+        syncFilterChips();
+    }
+
+    function closeFilterMoreMenu() {
+        Array.prototype.forEach.call(root.querySelectorAll('[data-omo-stats-filter-more-menu]'), function (menu) {
+            var panel = menu.querySelector('[data-omo-stats-filter-more-panel]');
+            var toggle = menu.querySelector('[data-omo-stats-filter-more-toggle]');
+            if (panel) {
+                panel.hidden = true;
+            }
+            menu.classList.remove('is-open');
+            if (toggle) {
+                toggle.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+
     function handleFilterOutsidePointerDown(event) {
         var control = root.querySelector('[data-omo-stats-filter-control]');
         if (control && control.contains(event.target)) {
@@ -1076,6 +1183,7 @@ $displayItemCount = count($statsEntries);
             return;
         }
         pendingFilters = getActiveFilters();
+        closeFilterMoreMenu();
         syncFilterChoices();
         panel.hidden = false;
         filterPanelOpen = true;
@@ -1098,6 +1206,7 @@ $displayItemCount = count($statsEntries);
             button.setAttribute('aria-expanded', 'false');
         });
         document.removeEventListener('pointerdown', handleFilterOutsidePointerDown, true);
+        closeFilterMoreMenu();
 
         if (!applyChanges || !pendingFilters) {
             pendingFilters = null;
@@ -1108,20 +1217,51 @@ $displayItemCount = count($statsEntries);
         var next = normalizeFilters(pendingFilters);
         pendingFilters = null;
         if (saveView) {
-            writeStoredFilters(window.localStorage, savedViewsStorageKey, next);
+            storeFilters(next);
             clearTemporaryFilters();
         } else {
             writeStoredFilters(window.sessionStorage, sessionViewsStorageKey, next);
         }
 
-        if (next.scope !== active.scope || next.sort !== active.sort) {
-            currentScope = next.scope;
-            currentSort = next.sort;
-            refreshRoot(buildScopeUrl(next.scope, next.sort));
+        applyFilters(next, active);
+    }
+
+    function applyFilterMoreAction(action) {
+        if (!filterPanelOpen || !pendingFilters) {
             return;
         }
-        applyView(next.view);
-        syncFilterChips();
+
+        var active = getActiveFilters();
+        var next = normalizeFilters(pendingFilters);
+        closeFilterPanel(false, false);
+
+        if (action === 'set-default') {
+            clearStoredFilters();
+            clearTemporaryFilters();
+            storeDefaultFilters(next);
+            applyFilters(next, active);
+            return;
+        }
+
+        if (action === 'apply-everywhere') {
+            var store = getStoredFiltersStore();
+            store.defaultView = createStoredFilters(next);
+            store.contexts = {};
+            saveStoredFiltersStore(store);
+            clearAllTemporaryFilters();
+            applyFilters(next, active);
+            return;
+        }
+
+        if (action === 'restore-default') {
+            clearStoredFilters();
+            clearTemporaryFilters();
+            applyFilters(getDefaultStoredFilters() || {
+                scope: 'contextual',
+                sort: 'temporal',
+                view: 'cards'
+            }, active);
+        }
     }
 
     function syncFilterChips() {
@@ -1145,8 +1285,9 @@ $displayItemCount = count($statsEntries);
             quickSearch.value = currentSearch;
         }
         var temporary = readStoredValue(window.sessionStorage, sessionViewsStorageKey);
-        var saved = readStoredValue(window.localStorage, savedViewsStorageKey);
-        var preferences = normalizeFilters(temporary || saved || getActiveFilters());
+        var saved = getStoredFilters();
+        var defaultFilters = getDefaultStoredFilters();
+        var preferences = normalizeFilters(temporary || saved || defaultFilters || getActiveFilters());
         if (Number.isInteger(initialIndicatorId) && initialIndicatorId > 0) {
             preferences.scope = currentScope;
             preferences.sort = currentSort;
@@ -1686,6 +1827,28 @@ $displayItemCount = count($statsEntries);
     var filterPanel = root.querySelector('[data-omo-stats-filter-panel]');
     if (filterPanel) {
         filterPanel.addEventListener('click', function (event) {
+            var moreToggle = event.target.closest('[data-omo-stats-filter-more-toggle]');
+            if (moreToggle) {
+                event.preventDefault();
+                event.stopPropagation();
+                var moreMenu = moreToggle.closest('[data-omo-stats-filter-more-menu]');
+                var morePanel = moreMenu ? moreMenu.querySelector('[data-omo-stats-filter-more-panel]') : null;
+                var isMoreMenuOpen = !!morePanel && !morePanel.hidden;
+                closeFilterMoreMenu();
+                if (!isMoreMenuOpen && morePanel) {
+                    morePanel.hidden = false;
+                    moreMenu.classList.add('is-open');
+                    moreToggle.setAttribute('aria-expanded', 'true');
+                }
+                return;
+            }
+            var moreAction = event.target.closest('[data-omo-stats-filter-more-action]');
+            if (moreAction) {
+                event.preventDefault();
+                event.stopPropagation();
+                applyFilterMoreAction(moreAction.getAttribute('data-omo-stats-filter-more-action') || '');
+                return;
+            }
             var applyButton = event.target.closest('[data-omo-stats-filter-apply]');
             if (applyButton) {
                 event.preventDefault();
