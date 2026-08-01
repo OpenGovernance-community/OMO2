@@ -1048,13 +1048,28 @@
 			}
 
 			if (preg_match('/^tg_dest_projects_(\d+)_(\d+)$/', $callbackData, $matches)) {
-				$prompt = buildTelegramGroupProjectPrompt($user, (int)$matches[1], (int)$matches[2]);
-				editMessageText($chatId, (int)$message['message_id'], $prompt['text'], $prompt['buttons'], $threadId);
-				answerCallbackQuery($callbackId);
+				try {
+					$prompt = buildTelegramGroupProjectPrompt($user, (int)$matches[1], (int)$matches[2]);
+					$updated = editMessageText($chatId, (int)$message['message_id'], $prompt['text'], $prompt['buttons'], $threadId);
+					if (!$updated) {
+						sendMessage($chatId, $prompt['text'], $prompt['buttons'], $threadId);
+					}
+					answerCallbackQuery($callbackId);
+				} catch (\Throwable $exception) {
+					error_log('Telegram project destination navigation failed: '.$exception->getMessage());
+					sendMessage($chatId, "Impossible d'afficher les projets pour le moment. Le detail a ete enregistre dans le journal PHP.", null, $threadId);
+					answerCallbackQuery($callbackId, 'Erreur lors du chargement des projets.');
+				}
 				return;
 			}
 
 			if (preg_match('/^tg_dest_role_(\d+)_(\d+)$/', $callbackData, $matches)) {
+				if (!\dbObject\TelegramChatDestination::isStorageAvailable()) {
+					editMessageText($chatId, (int)$message['message_id'], "La destination Telegram ne peut pas encore etre enregistree: la migration SQL telegram-chat-destinations doit etre executee sur ce serveur.", null, $threadId);
+					answerCallbackQuery($callbackId, 'Migration SQL manquante.');
+					return;
+				}
+
 				$organizationId = (int)$matches[1];
 				$role = new \dbObject\Holon();
 				$organization = new \dbObject\Organization();
@@ -1088,6 +1103,12 @@
 			}
 
 			if (preg_match('/^tg_dest_project_(\d+)_(\d+)$/', $callbackData, $matches)) {
+				if (!\dbObject\TelegramChatDestination::isStorageAvailable()) {
+					editMessageText($chatId, (int)$message['message_id'], "La destination Telegram ne peut pas encore etre enregistree: la migration SQL telegram-chat-destinations doit etre executee sur ce serveur.", null, $threadId);
+					answerCallbackQuery($callbackId, 'Migration SQL manquante.');
+					return;
+				}
+
 				$organizationId = (int)$matches[1];
 				$project = new \dbObject\Project();
 				if (
