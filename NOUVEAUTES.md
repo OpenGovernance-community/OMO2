@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-07-31
 
+- L espacement entre le logo et le nom de l organisation dans la barre superieure est maintenant retabli apres la separation de leurs liens.
 - Dans la barre superieure des scrutins publics, le logo renvoie vers le site de base et le nom de l organisation utilise maintenant son shortname lorsque le routage par sous-domaine est disponible, afin de conserver le bon contexte local.
 - Dans l interface publique des scrutins, la description precede maintenant le contexte de vote et la colonne de contexte elle-meme peut defiler sur toute sa hauteur sans etirer artificiellement ses blocs.
 - Le message generique indiquant qu un scrutin public peut etre consulte est retire de son en-tete.
