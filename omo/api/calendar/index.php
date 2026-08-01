@@ -104,8 +104,24 @@ $sourceLang = [
         'context' => 'Button applying temporary calendar filter choices.',
     ],
     'calendar.filters.save_view' => [
-        'text' => 'Enregistrer cette vue',
+        'text' => 'Enregistrer la vue',
         'context' => 'Button saving calendar filter choices for the current context.',
+    ],
+    'calendar.filters.more_actions' => [
+        'text' => 'Autres options de vue',
+        'context' => 'Accessible label for additional calendar view preference actions.',
+    ],
+    'calendar.filters.apply_everywhere' => [
+        'text' => 'Appliquer partout',
+        'context' => 'Action setting the current calendar view as the default and clearing specific views.',
+    ],
+    'calendar.filters.set_default' => [
+        'text' => 'Définir comme vue par défaut',
+        'context' => 'Action saving the current calendar view as the default view.',
+    ],
+    'calendar.filters.restore_default' => [
+        'text' => 'Restaurer la vue par défaut',
+        'context' => 'Action removing the current holon specific calendar view.',
     ],
     'calendar.search.aria' => [
         'text' => 'Filtrer les événements affichés',
@@ -1241,7 +1257,7 @@ foreach ($calendarScopes as $scopeKey) {
 $headerCount = (int)($viewCountsByScope[$calendarScope][$viewMode] ?? 0);
 $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? '');
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
 <div
     class="omo-calendar omo-panel-view"
     id="omo-calendar-root"
@@ -1396,8 +1412,16 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         </div>
                     </div>
                     <div class="omo-view-filter__actions">
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-calendar-filter-apply><?= omoApiEscape(omoCalendarT('calendar.filters.apply')) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-calendar-filter-save><?= omoApiEscape(omoCalendarT('calendar.filters.save_view')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-calendar-filter-apply><?= omoApiEscape(omoCalendarT('calendar.filters.apply')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-calendar-filter-save><?= omoApiEscape(omoCalendarT('calendar.filters.save_view')) ?></button>
+                        <div class="generic-menu omo-view-filter__actions-more" data-omo-calendar-filter-more-menu>
+                            <button type="button" class="generic-menu-toggle" data-omo-calendar-filter-more-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoCalendarT('calendar.filters.more_actions')) ?>">&#8942;</button>
+                            <div class="generic-menu-panel" data-omo-calendar-filter-more-panel role="menu" hidden>
+                                <button type="button" class="generic-menu-item" data-omo-calendar-filter-more-action="apply-everywhere" role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.filters.apply_everywhere')) ?></button>
+                                <button type="button" class="generic-menu-item" data-omo-calendar-filter-more-action="set-default" role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.filters.set_default')) ?></button>
+                                <button type="button" class="generic-menu-item" data-omo-calendar-filter-more-action="restore-default" role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.filters.restore_default')) ?></button>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -1725,7 +1749,8 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
         var currentScope = normalizeScopeName(root.getAttribute('data-omo-calendar-scope') || 'contextual');
         var canCreateEvent = root.getAttribute('data-omo-calendar-can-create') === '1';
-        var calendarSavedViewsStorageKey = 'omo.calendar.saved-views.v1';
+        var calendarSavedViewsStorageKey = 'omo.calendar.saved-views.v2';
+        var legacyCalendarSavedViewsStorageKey = 'omo.calendar.saved-views.v1';
         var calendarSessionViewsStorageKey = 'omo.calendar.session-views.v1';
         var calendarSearchStorageKey = 'omo.calendar.quick-search.v1';
         var currentSearch = '';
@@ -1910,6 +1935,72 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 + ':' + String(root.getAttribute('data-omo-calendar-cid') || '0');
         }
 
+        function createCalendarPreferences(preferences) {
+            return {
+                scope: normalizeScopeName(preferences && preferences.scope),
+                view: normalizeViewPreference(preferences && preferences.view)
+            };
+        }
+
+        function getCalendarPreferencesStore() {
+            try {
+                var storedValue = window.localStorage.getItem(calendarSavedViewsStorageKey);
+                var savedViews = storedValue ? JSON.parse(storedValue) : null;
+                if (savedViews && typeof savedViews === 'object' && savedViews.contexts && typeof savedViews.contexts === 'object') {
+                    return {
+                        defaultView: savedViews.defaultView && typeof savedViews.defaultView === 'object' ? savedViews.defaultView : null,
+                        contexts: savedViews.contexts
+                    };
+                }
+
+                var legacyValue = window.localStorage.getItem(legacyCalendarSavedViewsStorageKey);
+                var legacyViews = legacyValue ? JSON.parse(legacyValue) : null;
+                return {
+                    defaultView: null,
+                    contexts: legacyViews && typeof legacyViews === 'object' ? legacyViews : {}
+                };
+            } catch (error) {
+                return {defaultView: null, contexts: {}};
+            }
+        }
+
+        function saveCalendarPreferencesStore(store) {
+            try {
+                window.localStorage.setItem(calendarSavedViewsStorageKey, JSON.stringify({
+                    defaultView: store.defaultView && typeof store.defaultView === 'object' ? store.defaultView : null,
+                    contexts: store.contexts && typeof store.contexts === 'object' ? store.contexts : {}
+                }));
+            } catch (error) {
+            }
+        }
+
+        function getCalendarStoredPreferences() {
+            var preferences = getCalendarPreferencesStore().contexts[getCalendarPreferencesContextKey()];
+            return preferences && typeof preferences === 'object' ? preferences : null;
+        }
+
+        function getCalendarDefaultPreferences() {
+            return getCalendarPreferencesStore().defaultView;
+        }
+
+        function storeCalendarPreferences(preferences) {
+            var store = getCalendarPreferencesStore();
+            store.contexts[getCalendarPreferencesContextKey()] = createCalendarPreferences(preferences);
+            saveCalendarPreferencesStore(store);
+        }
+
+        function storeCalendarDefaultPreferences(preferences) {
+            var store = getCalendarPreferencesStore();
+            store.defaultView = createCalendarPreferences(preferences);
+            saveCalendarPreferencesStore(store);
+        }
+
+        function clearCalendarStoredPreferences() {
+            var store = getCalendarPreferencesStore();
+            delete store.contexts[getCalendarPreferencesContextKey()];
+            saveCalendarPreferencesStore(store);
+        }
+
         function readCalendarStoredValue(storage, storageKey) {
             try {
                 var rawValue = storage.getItem(storageKey);
@@ -1929,10 +2020,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 if (!values || typeof values !== 'object') {
                     values = {};
                 }
-                values[getCalendarPreferencesContextKey()] = {
-                    scope: normalizeScopeName(preferences && preferences.scope),
-                    view: normalizeViewPreference(preferences && preferences.view)
-                };
+                values[getCalendarPreferencesContextKey()] = createCalendarPreferences(preferences);
                 storage.setItem(storageKey, JSON.stringify(values));
             } catch (error) {
             }
@@ -1947,6 +2035,13 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 }
                 delete values[getCalendarPreferencesContextKey()];
                 window.sessionStorage.setItem(calendarSessionViewsStorageKey, JSON.stringify(values));
+            } catch (error) {
+            }
+        }
+
+        function clearAllCalendarTemporaryPreferences() {
+            try {
+                window.sessionStorage.removeItem(calendarSessionViewsStorageKey);
             } catch (error) {
             }
         }
@@ -2885,6 +2980,27 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             });
         }
 
+        function applyCalendarFilters(filters) {
+            var next = normalizeCalendarFilters(filters);
+            currentScope = next.scope;
+            var nextMeta = resolveViewMeta(next.view, currentScope);
+            setActiveView(next.view, nextMeta.url, nextMeta.count, nextMeta.summary);
+        }
+
+        function closeCalendarFilterMoreMenu() {
+            root.querySelectorAll('[data-omo-calendar-filter-more-menu]').forEach(function (menu) {
+                var panel = menu.querySelector('[data-omo-calendar-filter-more-panel]');
+                var toggle = menu.querySelector('[data-omo-calendar-filter-more-toggle]');
+                if (panel) {
+                    panel.hidden = true;
+                }
+                menu.classList.remove('is-open');
+                if (toggle) {
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
         function handleCalendarFilterOutsidePointerDown(event) {
             var control = root.querySelector('[data-omo-calendar-filter-control]');
             if (control && control.contains(event.target)) {
@@ -2899,6 +3015,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 return;
             }
             pendingDisplayFilters = getActiveCalendarFilters();
+            closeCalendarFilterMoreMenu();
             syncCalendarFilterChoices();
             panel.hidden = false;
             filterPanelOpen = true;
@@ -2921,6 +3038,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 button.setAttribute('aria-expanded', 'false');
             });
             document.removeEventListener('pointerdown', handleCalendarFilterOutsidePointerDown, true);
+            closeCalendarFilterMoreMenu();
 
             if (!applyChanges || !pendingDisplayFilters) {
                 pendingDisplayFilters = null;
@@ -2930,15 +3048,46 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             var next = normalizeCalendarFilters(pendingDisplayFilters);
             pendingDisplayFilters = null;
             if (saveView) {
-                writeCalendarPreferences(window.localStorage, calendarSavedViewsStorageKey, next);
+                storeCalendarPreferences(next);
                 clearCalendarTemporaryPreferences();
             } else {
                 writeCalendarPreferences(window.sessionStorage, calendarSessionViewsStorageKey, next);
             }
 
-            currentScope = next.scope;
-            var nextMeta = resolveViewMeta(next.view, currentScope);
-            setActiveView(next.view, nextMeta.url, nextMeta.count, nextMeta.summary);
+            applyCalendarFilters(next);
+        }
+
+        function applyCalendarFilterMoreAction(action) {
+            if (!filterPanelOpen || !pendingDisplayFilters) {
+                return;
+            }
+
+            var next = normalizeCalendarFilters(pendingDisplayFilters);
+            closeCalendarFilterPanel(false, false);
+
+            if (action === 'set-default') {
+                clearCalendarStoredPreferences();
+                clearCalendarTemporaryPreferences();
+                storeCalendarDefaultPreferences(next);
+                applyCalendarFilters(next);
+                return;
+            }
+
+            if (action === 'apply-everywhere') {
+                var store = getCalendarPreferencesStore();
+                store.defaultView = createCalendarPreferences(next);
+                store.contexts = {};
+                saveCalendarPreferencesStore(store);
+                clearAllCalendarTemporaryPreferences();
+                applyCalendarFilters(next);
+                return;
+            }
+
+            if (action === 'restore-default') {
+                clearCalendarStoredPreferences();
+                clearCalendarTemporaryPreferences();
+                applyCalendarFilters(getCalendarDefaultPreferences() || {scope: 'contextual', view: 'month'});
+            }
         }
 
         function initializeCalendarViewFilter() {
@@ -2948,8 +3097,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 quickSearch.value = currentSearch;
             }
             var temporary = readCalendarStoredValue(window.sessionStorage, calendarSessionViewsStorageKey);
-            var saved = readCalendarStoredValue(window.localStorage, calendarSavedViewsStorageKey);
-            var preferences = normalizeCalendarFilters(temporary || saved || getActiveCalendarFilters());
+            var saved = getCalendarStoredPreferences();
+            var defaultView = getCalendarDefaultPreferences();
+            var preferences = normalizeCalendarFilters(temporary || saved || defaultView || getActiveCalendarFilters());
             if (initialOpenEventId > 0) {
                 preferences = getActiveCalendarFilters();
             }
@@ -3116,6 +3266,28 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         var calendarFilterPanel = root.querySelector('[data-omo-calendar-filter-panel]');
         if (calendarFilterPanel) {
             calendarFilterPanel.addEventListener('click', function (event) {
+                var moreToggle = event.target.closest('[data-omo-calendar-filter-more-toggle]');
+                if (moreToggle) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    var moreMenu = moreToggle.closest('[data-omo-calendar-filter-more-menu]');
+                    var morePanel = moreMenu ? moreMenu.querySelector('[data-omo-calendar-filter-more-panel]') : null;
+                    var isMoreMenuOpen = !!morePanel && !morePanel.hidden;
+                    closeCalendarFilterMoreMenu();
+                    if (!isMoreMenuOpen && morePanel) {
+                        morePanel.hidden = false;
+                        moreMenu.classList.add('is-open');
+                        moreToggle.setAttribute('aria-expanded', 'true');
+                    }
+                    return;
+                }
+                var moreAction = event.target.closest('[data-omo-calendar-filter-more-action]');
+                if (moreAction) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    applyCalendarFilterMoreAction(moreAction.getAttribute('data-omo-calendar-filter-more-action') || '');
+                    return;
+                }
                 var applyButton = event.target.closest('[data-omo-calendar-filter-apply]');
                 if (applyButton) {
                     event.preventDefault();

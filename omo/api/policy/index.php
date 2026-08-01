@@ -158,7 +158,7 @@ $canCreate = omoPolicyCanCreateLocalRule($context);
 $createUrl = '/omo/api/policy/edit.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . rawurlencode((string)$currentHolon->getId());
 $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . rawurlencode((string)$currentHolon->getId());
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
 <div class="omo-policy omo-panel-view" id="omo-policy-root" data-policy-oid="<?= (int)$organizationId ?>" data-policy-cid="<?= (int)$currentHolon->getId() ?>" data-policy-index-url="<?= omoApiEscape($indexUrl) ?>" data-policy-scope="<?= omoApiEscape($policyScope) ?>" data-policy-sort="<?= omoApiEscape($policySort) ?>" data-policy-group="<?= omoApiEscape($policyGroup) ?>" data-policy-create-url="<?= omoApiEscape($createUrl) ?>" data-policy-load-error="<?= omoApiEscape(omoPolicyT('policy.error.load')) ?>" data-policy-save-error="<?= omoApiEscape(omoPolicyT('policy.error.save')) ?>" data-policy-delete-confirm="<?= omoApiEscape(omoPolicyT('policy.delete.confirm')) ?>" data-policy-delete-error="<?= omoApiEscape(omoPolicyT('policy.error.delete')) ?>">
     <header class="omo-panel-view__header omo-panel-view__header--stacked">
         <div class="omo-panel-view__header-main">
@@ -208,8 +208,16 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
                         </div>
                     </div>
                     <div class="omo-context-filter__actions omo-view-filter__actions">
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-policy-filter-apply><?= omoApiEscape(omoPolicyT('policy.filters.apply')) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--main" data-policy-filter-save><?= omoApiEscape(omoPolicyT('policy.filters.save_view')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--main" data-policy-filter-apply><?= omoApiEscape(omoPolicyT('policy.filters.apply')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-policy-filter-save><?= omoApiEscape(omoPolicyT('policy.filters.save_view')) ?></button>
+                        <div class="generic-menu omo-view-filter__actions-more" data-policy-filter-more-menu>
+                            <button type="button" class="generic-menu-toggle" data-policy-filter-more-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoPolicyT('policy.filters.more_actions')) ?>">&#8942;</button>
+                            <div class="generic-menu-panel" data-policy-filter-more-panel role="menu" hidden>
+                                <button type="button" class="generic-menu-item" data-policy-filter-more-action="apply-everywhere" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.filters.apply_everywhere')) ?></button>
+                                <button type="button" class="generic-menu-item" data-policy-filter-more-action="set-default" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.filters.set_default')) ?></button>
+                                <button type="button" class="generic-menu-item" data-policy-filter-more-action="restore-default" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.filters.restore_default')) ?></button>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -329,7 +337,8 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
     var quickSearchEmpty = root.querySelector('[data-policy-search-empty]');
     var pendingView = null;
     var filterPanelIsOpen = false;
-    var savedViewsStorageKey = 'omo.policy.saved-views.v1';
+    var savedViewsStorageKey = 'omo.policy.saved-views.v2';
+    var legacySavedViewsStorageKey = 'omo.policy.saved-views.v1';
     var temporaryViewsStorageKey = 'omo.policy.session-views.v1';
     var currentQuickSearch = '';
     var refreshRoot = function (url) {
@@ -371,6 +380,63 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
     var viewsMatch = function (left, right) {
         return left.scope === right.scope && left.sort === right.sort && left.group === right.group;
     };
+    var getSavedViewsStore = function () {
+        try {
+            var storedValue = window.localStorage.getItem(savedViewsStorageKey);
+            var savedViews = storedValue ? JSON.parse(storedValue) : null;
+            if (savedViews && typeof savedViews === 'object' && savedViews.contexts && typeof savedViews.contexts === 'object') {
+                return {
+                    defaultView: savedViews.defaultView && typeof savedViews.defaultView === 'object'
+                        ? savedViews.defaultView
+                        : null,
+                    contexts: savedViews.contexts
+                };
+            }
+
+            var legacyValue = window.localStorage.getItem(legacySavedViewsStorageKey);
+            var legacyViews = legacyValue ? JSON.parse(legacyValue) : null;
+            return {
+                defaultView: null,
+                contexts: legacyViews && typeof legacyViews === 'object' ? legacyViews : {}
+            };
+        } catch (error) {
+            return {defaultView: null, contexts: {}};
+        }
+    };
+    var saveSavedViewsStore = function (store) {
+        try {
+            window.localStorage.setItem(savedViewsStorageKey, JSON.stringify({
+                defaultView: store.defaultView && typeof store.defaultView === 'object'
+                    ? store.defaultView
+                    : null,
+                contexts: store.contexts && typeof store.contexts === 'object' ? store.contexts : {}
+            }));
+        } catch (error) {
+            // Storage can be unavailable in private or restricted browsing contexts.
+        }
+    };
+    var getStoredPreference = function () {
+        var preference = getSavedViewsStore().contexts[policyPreferenceKey()];
+        return preference && typeof preference === 'object' ? preference : null;
+    };
+    var getDefaultPreference = function () {
+        return getSavedViewsStore().defaultView;
+    };
+    var storePreference = function (view) {
+        var store = getSavedViewsStore();
+        store.contexts[policyPreferenceKey()] = normalizeView(view);
+        saveSavedViewsStore(store);
+    };
+    var storeDefaultPreference = function (view) {
+        var store = getSavedViewsStore();
+        store.defaultView = normalizeView(view);
+        saveSavedViewsStore(store);
+    };
+    var clearStoredPreference = function () {
+        var store = getSavedViewsStore();
+        delete store.contexts[policyPreferenceKey()];
+        saveSavedViewsStore(store);
+    };
     var readPreference = function (storage) {
         try {
             var value = storage.getItem(storage === window.localStorage ? savedViewsStorageKey : temporaryViewsStorageKey);
@@ -399,6 +465,13 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
             if (!preferences || typeof preferences !== 'object') return;
             delete preferences[policyPreferenceKey()];
             window.sessionStorage.setItem(temporaryViewsStorageKey, JSON.stringify(preferences));
+        } catch (error) {
+            // Storage can be unavailable in private or restricted browsing contexts.
+        }
+    };
+    var clearAllTemporaryPreferences = function () {
+        try {
+            window.sessionStorage.removeItem(temporaryViewsStorageKey);
         } catch (error) {
             // Storage can be unavailable in private or restricted browsing contexts.
         }
@@ -446,12 +519,26 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
     var removeFilterOutsideHandler = function () {
         document.removeEventListener('pointerdown', handleFilterOutsidePointerDown, true);
     };
+    var applyView = function (view) {
+        var nextView = normalizeView(view);
+        if (!viewsMatch(nextView, currentView())) refreshRoot(policyViewUrl(nextView));
+    };
+    var closeFilterMoreMenu = function () {
+        root.querySelectorAll('[data-policy-filter-more-menu]').forEach(function (menu) {
+            var panel = menu.querySelector('[data-policy-filter-more-panel]');
+            var toggle = menu.querySelector('[data-policy-filter-more-toggle]');
+            if (panel) panel.hidden = true;
+            menu.classList.remove('is-open');
+            if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        });
+    };
     var closeFilterPanel = function (applyChanges, saveView) {
         if (!filterPanelIsOpen) return;
         filterPanelIsOpen = false;
         filterPanel.classList.add('is-filter-hidden');
         root.querySelectorAll('[data-policy-filter-toggle]').forEach(function (button) { button.setAttribute('aria-expanded', 'false'); });
         removeFilterOutsideHandler();
+        closeFilterMoreMenu();
         if (!applyChanges || pendingView === null) {
             pendingView = null;
             return;
@@ -459,12 +546,43 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         var nextView = normalizeView(pendingView);
         pendingView = null;
         if (saveView) {
-            writePreference(window.localStorage, nextView);
+            storePreference(nextView);
             clearTemporaryPreference();
         } else {
             writePreference(window.sessionStorage, nextView);
         }
-        if (!viewsMatch(nextView, currentView())) refreshRoot(policyViewUrl(nextView));
+        applyView(nextView);
+    };
+    var applyFilterMoreAction = function (action) {
+        if (!filterPanelIsOpen || pendingView === null) return;
+        var nextView = normalizeView(pendingView);
+        closeFilterPanel(false, false);
+
+        if (action === 'set-default') {
+            clearStoredPreference();
+            clearTemporaryPreference();
+            storeDefaultPreference(nextView);
+            applyView(nextView);
+            return;
+        }
+        if (action === 'apply-everywhere') {
+            var store = getSavedViewsStore();
+            store.defaultView = normalizeView(nextView);
+            store.contexts = {};
+            saveSavedViewsStore(store);
+            clearAllTemporaryPreferences();
+            applyView(nextView);
+            return;
+        }
+        if (action === 'restore-default') {
+            clearStoredPreference();
+            clearTemporaryPreference();
+            applyView(getDefaultPreference() || {
+                scope: 'contextual',
+                sort: 'alpha',
+                group: 'holon'
+            });
+        }
     };
     var handleFilterOutsidePointerDown = function (event) {
         if (!filterControl || filterControl.contains(event.target)) return;
@@ -473,6 +591,7 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
     var openFilterPanel = function () {
         if (!filterControl || !filterPanel || filterPanelIsOpen) return;
         pendingView = currentView();
+        closeFilterMoreMenu();
         syncViewChoices();
         filterPanel.classList.remove('is-filter-hidden');
         filterPanelIsOpen = true;
@@ -504,6 +623,28 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
     });
     if (filterPanel) {
         filterPanel.addEventListener('click', function (event) {
+            var moreToggle = event.target.closest('[data-policy-filter-more-toggle]');
+            if (moreToggle) {
+                event.preventDefault();
+                event.stopPropagation();
+                var moreMenu = moreToggle.closest('[data-policy-filter-more-menu]');
+                var morePanel = moreMenu ? moreMenu.querySelector('[data-policy-filter-more-panel]') : null;
+                var isMoreMenuOpen = !!morePanel && !morePanel.hidden;
+                closeFilterMoreMenu();
+                if (!isMoreMenuOpen && morePanel) {
+                    morePanel.hidden = false;
+                    moreMenu.classList.add('is-open');
+                    moreToggle.setAttribute('aria-expanded', 'true');
+                }
+                return;
+            }
+            var moreAction = event.target.closest('[data-policy-filter-more-action]');
+            if (moreAction) {
+                event.preventDefault();
+                event.stopPropagation();
+                applyFilterMoreAction(moreAction.getAttribute('data-policy-filter-more-action') || '');
+                return;
+            }
             if (event.target.closest('[data-policy-filter-apply]')) {
                 closeFilterPanel(true, false);
                 return;
@@ -530,7 +671,7 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
                 syncViewChoices();
             }
         });
-        var preferredView = readPreference(window.sessionStorage) || readPreference(window.localStorage);
+        var preferredView = readPreference(window.sessionStorage) || getStoredPreference() || getDefaultPreference();
         if (preferredView && !viewsMatch(normalizeView(preferredView), currentView())) {
             refreshRoot(policyViewUrl(normalizeView(preferredView)));
         }

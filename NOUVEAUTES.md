@@ -2,6 +2,13 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-01
+
+- Le bot Telegram peut maintenant etre connecte depuis un groupe a un role ou a un projet. Une personne doit d abord avoir relie son compte Telegram en prive; elle navigue ensuite parmi ses organisations, cercles, roles et projets autorises. Les vocaux du groupe sont alors ajoutes au contexte choisi et lies au projet lorsque celui-ci est selectionne.
+- La FAQ explique maintenant comment synchroniser les contacts et les reunions OMO sur un telephone ou un ordinateur avec CardDAV et CalDAV.
+- Un indicateur peut maintenant afficher ses mesures sous forme de barres et leur cumul sous forme de courbe, avec une echelle propre de chaque cote. Le cumul conserve son historique quelle que soit la periode affichee : une trajectoire datee fixe son debut, tandis qu un indicateur sans trajectoire datee repart de sa premiere mesure.
+- Apres la sauvegarde d un document existant, le sous-drawer reste ouvert sur le meme document en mode vue.
+
 ## 2026-07-31
 
 - L espacement entre le logo et le nom de l organisation dans la barre superieure est maintenant retabli apres la separation de leurs liens.
@@ -1364,6 +1371,19 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Les entetes Kanban affichent uniquement le statut, et les separateurs sticky touchent directement l entete des colonnes.
 - Les groupes d importance strategique du Kanban affichent maintenant leur niveau calcule sous forme d etoiles.
 - Les separateurs sticky du Kanban mesurent maintenant automatiquement la hauteur reelle de l entete des colonnes.
+- Le glisser-deposer inter-lignes du Kanban peut maintenant changer le holon ou la priorite; les lignes d importance calculee refusent ces depots.
+- Le tri Holon reste visible mais grise et indisponible en portee Locale.
+- Le Kanban conserve maintenant ses scrolls horizontal et vertical apres un deplacement, puis recentre la carte deplacee si elle a quitte la zone visible.
+- Le menu contextuel des cartes Projet propose maintenant Modifier et ouvre l editeur via la navigation hash.
+- Les options d affichage des Projets gerent maintenant une vue par defaut et des surcharges par holon, avec les actions Appliquer partout, Definir comme vue par defaut et Restaurer la vue par defaut dans un menu dedie.
+- Les boutons des options d affichage sont maintenant alignes sur la hauteur du menu a trois points.
+- Le Calendrier reprend les memes actions de vue temporaire, par holon ou par defaut que les Projets.
+- Les Indicateurs reprennent les memes actions de vue temporaire, par holon ou par defaut que les Projets.
+- Les Documents reprennent les memes actions de vue temporaire, par holon ou par defaut que les Projets, et leur menu de vue passe au-dessus des separateurs temporels sticky.
+- Les Decisions reprennent les memes actions de vue temporaire, par holon ou par defaut que les Projets, pour tous leurs filtres et modes de presentation.
+- Team reprend les memes actions de vue temporaire, par holon ou par defaut que les Projets.
+- Les Regles reprennent les memes actions de vue temporaire, par holon ou par defaut que les Projets.
+- Definir comme vue par defaut applique maintenant immediatement cette vue et retire la surcharge du holon courant dans toutes les applications concernees.
 - Les groupes d importance strategique du Kanban utilisent l importance calculee, arrondie au niveau entier le plus proche.
 - 2026-07-29 : La liste des modeles lors de l ajout d un holon suit maintenant le chemin des espaces de la racine vers l espace courant, avec un groupe nomme pour chaque espace hebergeur.
 - 2026-07-29 : Le contenu de Reglement n est plus entoure d un cadre blanc ; seules ses sections conservent leur presentation propre.

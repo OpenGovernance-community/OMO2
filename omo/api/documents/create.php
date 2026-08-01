@@ -2382,6 +2382,8 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     throw new Error(payload && payload.message ? payload.message : 'save_failed');
                 }
 
+                const savedDocumentId = editingDocumentId;
+
                 const refreshPromise = typeof window.omoRefreshDocumentsPanel === 'function'
                     ? window.omoRefreshDocumentsPanel()
                     : Promise.resolve(null);
@@ -2391,7 +2393,19 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     cleanupDictation({ discard: true });
                     cleanupRewrite({ keepStatus: true });
                     cleanupSummarize({ keepStatus: true });
-                    if (typeof window.omoCloseDocumentEditorDrawer === 'function') {
+
+                    if (savedDocumentId > 0) {
+                        if (typeof window.omoCloseDocumentEditorDrawer === 'function') {
+                            window.omoCloseDocumentEditorDrawer({
+                                returnToDetail: true,
+                                force: true
+                            });
+                        }
+
+                        if (typeof window.omoOpenDrawerHashState === 'function') {
+                            window.omoOpenDrawerHashState('documents-d' + String(savedDocumentId));
+                        }
+                    } else if (typeof window.omoCloseDocumentEditorDrawer === 'function') {
                         window.omoCloseDocumentEditorDrawer({ returnToDetail: true });
                     }
                 });

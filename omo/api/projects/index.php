@@ -37,6 +37,7 @@ $projectListSort = in_array($projectListSort, ['priority', 'importance', 'holon'
 if ($projectListSort === 'holon' && !in_array($projectScope, ['children', 'descendants'], true)) {
     $projectListSort = 'planned';
 }
+$canUseHolonSort = in_array($projectScope, ['children', 'descendants'], true);
 $openProjectTargetId = isset($_GET['open_project_id']) && is_numeric($_GET['open_project_id']) ? (int)$_GET['open_project_id'] : 0;
 $openProjectMode = strtolower(trim((string)($_GET['open_project_mode'] ?? '')));
 if (!in_array($openProjectMode, ['detail', 'edit', 'create'], true)) {
@@ -316,10 +317,12 @@ foreach ($projectsByStatus as $statusItems) {
 }
 
 $kanbanGroups = [];
-if ($projectListSort === 'holon' || $projectListSort === 'priority') {
+if ($projectListSort === 'holon') {
     foreach ($listProjectGroups as $groupKey => $group) {
         $kanbanGroups[$groupKey] = [
             'label' => (string)$group['label'],
+            'kind' => 'holon',
+            'value' => (string)(int)str_replace('holon-', '', (string)$groupKey),
             'importanceLevel' => null,
             'items' => array_fill_keys($columns, []),
         ];
@@ -332,10 +335,27 @@ if ($projectListSort === 'holon' || $projectListSort === 'priority') {
             $kanbanGroups[$groupKey]['items'][$status][] = $kanbanItemsById[$projectId];
         }
     }
+} elseif ($projectListSort === 'priority') {
+    foreach ([1, 2, 3, 4, 5, 0] as $priorityLevel) {
+        $kanbanGroups['priority-' . $priorityLevel] = [
+            'label' => $priorityLevel > 0 ? ('P' . $priorityLevel) : omoProjectsT('projects.list.priority.none'),
+            'kind' => 'priority',
+            'value' => (string)$priorityLevel,
+            'importanceLevel' => null,
+            'items' => array_fill_keys($columns, []),
+        ];
+    }
+    foreach ($kanbanItemsById as $kanbanItem) {
+        $priorityLevel = Project::normalizeLevel($kanbanItem['priority'] ?? null) ?? 0;
+        $status = Project::normalizeStatus($kanbanItem['project']->get('status'));
+        $kanbanGroups['priority-' . $priorityLevel]['items'][$status][] = $kanbanItem;
+    }
 } elseif ($projectListSort === 'importance') {
     foreach ([5, 4, 3, 2, 1, 0] as $importanceLevel) {
         $kanbanGroups['importance-' . $importanceLevel] = [
             'label' => $importanceLevel > 0 ? ($importanceLevel . '/5') : omoProjectsT('projects.importance.none'),
+            'kind' => 'importance',
+            'value' => (string)$importanceLevel,
             'importanceLevel' => $importanceLevel > 0 ? $importanceLevel : null,
             'items' => array_fill_keys($columns, []),
         ];
@@ -348,7 +368,11 @@ if ($projectListSort === 'holon' || $projectListSort === 'priority') {
         $kanbanGroups['importance-' . $importanceLevel]['items'][Project::normalizeStatus($kanbanItem['project']->get('status'))][] = $kanbanItem;
     }
 }
-$kanbanGroups = array_values(array_filter($kanbanGroups, static function (array $group): bool {
+$hasKanbanProjects = count($kanbanItemsById) > 0;
+$kanbanGroups = array_values(array_filter($kanbanGroups, static function (array $group) use ($hasKanbanProjects): bool {
+    if (($group['kind'] ?? '') === 'priority') {
+        return $hasKanbanProjects;
+    }
     foreach ($group['items'] as $items) {
         if (count($items) > 0) {
             return true;
@@ -392,6 +416,7 @@ $renderKanbanCard = static function (array $item, string $status) use ($context,
                     <div class="generic-menu omo-project-card__menu" data-omo-project-menu>
                         <button type="button" class="generic-menu-toggle omo-project-card__menu-toggle" data-omo-project-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape($projectTitle) ?>">&#8942;</button>
                         <div class="generic-menu-panel omo-project-card__menu-panel" data-omo-project-menu-panel role="menu" hidden>
+                            <button type="button" class="generic-menu-item" data-omo-project-action="edit" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.edit')) ?></button>
                             <button type="button" class="generic-menu-item" data-omo-project-action="move" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.move')) ?></button>
                             <button type="button" class="generic-menu-item" data-omo-project-action="archive" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.archive')) ?></button>
                             <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-project-action="delete" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.delete')) ?></button>
@@ -619,8 +644,8 @@ $projectTexts = [
     'archivesTitle' => omoProjectsT('projects.detail.archives.title'),
 ];
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260731-kanban-auto-header-offset">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260801-project-holon-sort-disabled">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
@@ -699,7 +724,7 @@ $projectTexts = [
                                 <button type="button" class="omo-segmented__button<?= $projectListSort === 'priority' ? ' is-active' : '' ?>" data-omo-projects-sort="priority" aria-pressed="<?= $projectListSort === 'priority' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.priority')) ?></button>
                                 <button type="button" class="omo-segmented__button<?= $projectListSort === 'importance' ? ' is-active' : '' ?>" data-omo-projects-sort="importance" aria-pressed="<?= $projectListSort === 'importance' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.importance')) ?></button>
                                 <?php if (in_array('children', $availableScopes, true) || in_array('descendants', $availableScopes, true)): ?>
-                                    <button type="button" class="omo-segmented__button<?= $projectListSort === 'holon' ? ' is-active' : '' ?>" data-omo-projects-sort="holon" aria-pressed="<?= $projectListSort === 'holon' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.sort.holon')) ?></button>
+                                    <button type="button" class="omo-segmented__button<?= $projectListSort === 'holon' ? ' is-active' : '' ?>" data-omo-projects-sort="holon" aria-pressed="<?= $projectListSort === 'holon' ? 'true' : 'false' ?>"<?= $canUseHolonSort ? '' : ' disabled aria-disabled="true"' ?>><?= omoApiEscape(omoProjectsT('projects.sort.holon')) ?></button>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -713,8 +738,16 @@ $projectTexts = [
                         </div>
                     </div>
                     <div class="omo-projects__filter-panel-actions">
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-filter-apply><?= omoApiEscape(omoProjectsT('projects.filters.apply')) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-projects-filter-save><?= omoApiEscape(omoProjectsT('projects.filters.save_view')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-projects-filter-apply><?= omoApiEscape(omoProjectsT('projects.filters.apply')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-filter-save><?= omoApiEscape(omoProjectsT('projects.filters.save_view')) ?></button>
+                        <div class="generic-menu omo-projects__filter-panel-actions-more" data-omo-projects-filter-more-menu>
+                            <button type="button" class="generic-menu-toggle" data-omo-projects-filter-more-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoProjectsT('projects.filters.more_actions')) ?>">&#8942;</button>
+                            <div class="generic-menu-panel" data-omo-projects-filter-more-panel role="menu" hidden>
+                                <button type="button" class="generic-menu-item" data-omo-projects-filter-more-action="apply-everywhere" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.filters.apply_everywhere')) ?></button>
+                                <button type="button" class="generic-menu-item" data-omo-projects-filter-more-action="set-default" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.filters.set_default')) ?></button>
+                                <button type="button" class="generic-menu-item" data-omo-projects-filter-more-action="restore-default" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.filters.restore_default')) ?></button>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -744,7 +777,12 @@ $projectTexts = [
                 </div>
                 <div class="omo-projects__kanban-rows">
                     <?php foreach ($kanbanGroups as $kanbanGroup): ?>
-                        <section class="omo-projects__kanban-row" data-omo-projects-kanban-row>
+                        <section
+                            class="omo-projects__kanban-row"
+                            data-omo-projects-kanban-row
+                            data-omo-projects-kanban-group-kind="<?= omoApiEscape($kanbanGroup['kind']) ?>"
+                            data-omo-projects-kanban-group-value="<?= omoApiEscape($kanbanGroup['value']) ?>"
+                        >
                             <h3 class="generic-file-list__group-title omo-projects__kanban-row-title">
                                 <?php if ($kanbanGroup['importanceLevel'] !== null): ?>
                                     <span class="omo-projects__importance-stars" role="img" aria-label="<?= omoApiEscape(omoProjectsT('projects.sort.importance') . ': ' . $kanbanGroup['importanceLevel'] . '/5') ?>">
@@ -833,6 +871,7 @@ $projectTexts = [
                                                 <div class="generic-menu omo-project-card__menu" data-omo-project-menu>
                                                     <button type="button" class="generic-menu-toggle omo-project-card__menu-toggle" data-omo-project-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape($projectTitle) ?>">&#8942;</button>
                                                     <div class="generic-menu-panel omo-project-card__menu-panel" data-omo-project-menu-panel role="menu" hidden>
+                                                        <button type="button" class="generic-menu-item" data-omo-project-action="edit" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.edit')) ?></button>
                                                         <button type="button" class="generic-menu-item" data-omo-project-action="move" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.move')) ?></button>
                                                         <button type="button" class="generic-menu-item" data-omo-project-action="archive" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.archive')) ?></button>
                                                         <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-project-action="delete" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.delete')) ?></button>
@@ -984,4 +1023,4 @@ $projectTexts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
-<script src="/omo/api/projects/projects.js?v=20260731-kanban-header-offset"></script>
+<script src="/omo/api/projects/projects.js?v=20260801-default-view-applies"></script>
