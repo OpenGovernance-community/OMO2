@@ -5,7 +5,9 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 ## 2026-08-01
 
 - Le bot Telegram peut maintenant etre connecte depuis un groupe a un role ou a un projet. Une personne doit d abord avoir relie son compte Telegram en prive; elle navigue ensuite parmi ses organisations, cercles, roles et projets autorises. Les vocaux du groupe sont alors ajoutes au contexte choisi et lies au projet lorsque celui-ci est selectionne.
-- La navigation Telegram des destinations de groupe inclut les groupes et les cercles. L ouverture d un role propose maintenant explicitement sa selection ou les seuls projets rattaches a ce role, et les erreurs d enregistrement conservent leur detail SQL dans les journaux.
+- La navigation Telegram des destinations de groupe inclut les groupes et les cercles. L ouverture d un role propose maintenant explicitement sa selection ou les projets rattaches a ce role, et les erreurs d enregistrement conservent leur detail SQL dans les journaux.
+- Les groupes Telegram sans sujet utilisent maintenant une destination principale explicite, ce qui evite une erreur SQL lors de leur connexion.
+- Un vocal Telegram ignore parce que la transcription est arretee ou parce qu il dure moins de dix secondes recoit maintenant une explication dans la discussion.
 - La FAQ explique maintenant comment synchroniser les contacts et les reunions OMO sur un telephone ou un ordinateur avec CardDAV et CalDAV.
 - Un indicateur peut maintenant afficher ses mesures sous forme de barres et leur cumul sous forme de courbe, avec une echelle propre de chaque cote. Le cumul conserve son historique quelle que soit la periode affichee : une trajectoire datee fixe son debut, tandis qu un indicateur sans trajectoire datee repart de sa premiere mesure.
 - Apres la sauvegarde d un document existant, le sous-drawer reste ouvert sur le meme document en mode vue.

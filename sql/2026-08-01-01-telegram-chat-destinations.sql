@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS `telegram_chat_destination` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
     `telegram_chat_id` varchar(32) NOT NULL,
-    `telegram_thread_id` varchar(32) NOT NULL DEFAULT '',
+    `telegram_thread_id` varchar(32) NOT NULL DEFAULT '__main__',
     `IDorganization` int(11) NOT NULL,
     `destination_type` varchar(20) NOT NULL,
     `IDholon` int(11) DEFAULT NULL,

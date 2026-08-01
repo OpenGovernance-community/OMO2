@@ -5,6 +5,7 @@ class TelegramChatDestination extends DbObject
 {
     public const TYPE_ROLE = 'role';
     public const TYPE_PROJECT = 'project';
+    public const MAIN_THREAD_ID = '__main__';
 
     public static function tableName()
     {
@@ -57,10 +58,16 @@ class TelegramChatDestination extends DbObject
         return in_array($value, [self::TYPE_ROLE, self::TYPE_PROJECT], true) ? $value : '';
     }
 
+    public static function normalizeThreadId($value)
+    {
+        $threadId = trim((string)$value);
+        return $threadId === '' ? self::MAIN_THREAD_ID : $threadId;
+    }
+
     public static function findByTelegramChat($chatId, $threadId = null)
     {
         $chatId = trim((string)$chatId);
-        $threadId = $threadId === null ? '' : trim((string)$threadId);
+        $threadId = self::normalizeThreadId($threadId);
         if ($chatId === '') {
             return null;
         }
@@ -77,14 +84,15 @@ class TelegramChatDestination extends DbObject
         ]) ? $destination : null;
     }
 
-    public static function saveForTelegramChat($chatId, $threadId, $organizationId, $destinationType, $destinationId, $configuredUserId)
+    public static function saveForTelegramChat($chatId, $threadId, $organizationId, $destinationType, $destinationId, $configuredUserId, $sourceRoleId = 0)
     {
         $chatId = trim((string)$chatId);
-        $threadId = $threadId === null ? '' : trim((string)$threadId);
+        $threadId = self::normalizeThreadId($threadId);
         $organizationId = (int)$organizationId;
         $destinationType = self::normalizeDestinationType($destinationType);
         $destinationId = (int)$destinationId;
         $configuredUserId = (int)$configuredUserId;
+        $sourceRoleId = (int)$sourceRoleId;
 
         if ($chatId === '' || $organizationId <= 0 || $destinationType === '' || $destinationId <= 0 || $configuredUserId <= 0) {
             return [
@@ -111,7 +119,7 @@ class TelegramChatDestination extends DbObject
         $destination->set('telegram_thread_id', $threadId);
         $destination->set('IDorganization', $organizationId);
         $destination->set('destination_type', $destinationType);
-        $destination->set('IDholon', $destinationType === self::TYPE_ROLE ? $destinationId : null);
+        $destination->set('IDholon', $destinationType === self::TYPE_ROLE ? $destinationId : ($sourceRoleId > 0 ? $sourceRoleId : null));
         $destination->set('IDproject', $destinationType === self::TYPE_PROJECT ? $destinationId : null);
         $destination->set('IDuser_configured', $configuredUserId);
         $destination->set('active', true);
@@ -152,7 +160,7 @@ class TelegramChatDestination extends DbObject
 
     public function getRole()
     {
-        if (self::normalizeDestinationType($this->get('destination_type')) !== self::TYPE_ROLE) {
+        if (!in_array(self::normalizeDestinationType($this->get('destination_type')), [self::TYPE_ROLE, self::TYPE_PROJECT], true)) {
             return null;
         }
 
@@ -208,11 +216,27 @@ class TelegramChatDestination extends DbObject
                 return null;
             }
 
+            $role = $this->getRole();
+            if ($role instanceof Holon) {
+                $organization = new Organization();
+                $projectHolon = $project->getHolon();
+                if (
+                    !(bool)$role->get('active')
+                    || !(bool)$role->get('visible')
+                    || !$organization->load($organizationId)
+                    || !$organization->containsHolon($role)
+                    || !($projectHolon instanceof Holon)
+                    || !$projectHolon->isDescendantOf($role, true)
+                ) {
+                    return null;
+                }
+            }
+
             return [
                 'type' => self::TYPE_PROJECT,
                 'organizationId' => $organizationId,
-                'holonId' => (int)$project->get('IDholon'),
-                'role' => null,
+                'holonId' => $role instanceof Holon ? (int)$role->getId() : (int)$project->get('IDholon'),
+                'role' => $role,
                 'project' => $project,
             ];
         }
