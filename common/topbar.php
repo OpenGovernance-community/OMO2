@@ -217,6 +217,8 @@ function commonRenderTopbar(array $options = [])
         'userName' => (string)($options['userName'] ?? commonGetCurrentUserDisplayName() ?: 'Profil'),
         'brandAlt' => (string)($options['brandAlt'] ?? ($organizationContext['name'] ?? ($options['appLabel'] ?? 'Application'))),
         'brandHref' => (string)($options['brandHref'] ?? $brandHref),
+        'brandLogoHref' => (string)($options['brandLogoHref'] ?? ($options['brandHref'] ?? $brandHref)),
+        'brandLabelHref' => (string)($options['brandLabelHref'] ?? ($options['brandHref'] ?? $brandHref)),
         'brandLabel' => $brandLabel,
         'logoutPath' => (string)($options['logoutPath'] ?? '/common/logout.php'),
         'logoutReturnTo' => commonNormalizeLocalPath($options['logoutReturnTo'] ?? ($_SERVER['REQUEST_URI'] ?? '/'), '/'),
@@ -391,17 +393,24 @@ function commonRenderTopbar(array $options = [])
 <header class="topbar common-topbar" data-app-key="<?= htmlspecialchars($config['appKey']) ?>">
     <div class="common-topbar__left">
         <a
-            href="<?= htmlspecialchars($config['brandHref']) ?>"
-            class="common-topbar__brand-link"
+            href="<?= htmlspecialchars($config['brandLogoHref']) ?>"
+            class="common-topbar__brand-link common-topbar__brand-link--logo"
             title="<?= htmlspecialchars($config['brandAlt']) ?>"
+            aria-label="<?= htmlspecialchars($config['brandAlt']) ?>"
         >
             <span class="common-topbar__brand">
                 <img src="<?= htmlspecialchars($brandLogo) ?>" alt="<?= htmlspecialchars($config['brandAlt']) ?>" class="common-topbar__brand-logo">
             </span>
-            <?php if ($config['brandLabel'] !== ''): ?>
-                <span class="common-topbar__brand-name"><?= htmlspecialchars($config['brandLabel']) ?></span>
-            <?php endif; ?>
         </a>
+        <?php if ($config['brandLabel'] !== ''): ?>
+            <a
+                href="<?= htmlspecialchars($config['brandLabelHref']) ?>"
+                class="common-topbar__brand-link common-topbar__brand-link--name"
+                title="<?= htmlspecialchars($config['brandLabel']) ?>"
+            >
+                <span class="common-topbar__brand-name"><?= htmlspecialchars($config['brandLabel']) ?></span>
+            </a>
+        <?php endif; ?>
     </div>
 
     <div class="common-topbar__actions">

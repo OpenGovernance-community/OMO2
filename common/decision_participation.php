@@ -1109,7 +1109,20 @@ if ($publicAdminEmail !== '' && filter_var($publicAdminEmail, FILTER_VALIDATE_EM
         'href' => 'mailto:' . $publicAdminEmail,
     ];
 }
-$publicPageBrandHref = (string)($_SERVER['REQUEST_URI'] ?? '/');
+$publicSiteBaseHref = function_exists('envValue')
+    ? trim((string)envValue('SITE_URL', ''))
+    : '';
+if ($publicSiteBaseHref === '') {
+    $publicSiteBaseHref = '/';
+}
+$publicOrganizationHref = '/omo/';
+if ($organization && method_exists($organization, 'getId') && (int)$organization->getId() > 0) {
+    $publicOrganizationHref = commonBuildOrganizationHomeUrl(
+        (int)$organization->getId(),
+        (string)$organization->get('shortname'),
+        commonGetRootHost()
+    );
+}
 $decisionGroups = $decision ? commonDecisionParticipationGetRenderableGroups($decision) : [];
 $timelineItems = $decision ? commonDecisionParticipationBuildTimelineItems($decision) : [];
 $timelineData = commonDecisionParticipationBuildTimelineData($timelineItems, $decision);
@@ -2050,7 +2063,9 @@ if (empty($context['status'])) {
                 'appKey' => 'omo-decision-public',
                 'appLabel' => 'OMO',
                 'organization' => $organizationContext,
-                'brandHref' => $publicPageBrandHref,
+                'brandHref' => $publicSiteBaseHref,
+                'brandLogoHref' => $publicSiteBaseHref,
+                'brandLabelHref' => $publicOrganizationHref,
                 'brandLabel' => $organizationName,
                 'profile' => [
                     'enabled' => false,
