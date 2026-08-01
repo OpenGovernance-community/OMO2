@@ -37,6 +37,11 @@
     text-decoration: none;
 }
 
+.common-topbar__brand-link--name {
+    margin-left: 12px;
+    gap: 0;
+}
+
 .common-topbar__brand {
     width: var(--topbar-height, 56px);
     height: var(--topbar-height, 56px);
@@ -1169,6 +1174,10 @@ html[data-theme] .common-help-card p {
 
     .common-topbar__brand-link {
         gap: 0;
+    }
+
+    .common-topbar__brand-link--name {
+        display: none;
     }
 
     .common-topbar__brand-name {
