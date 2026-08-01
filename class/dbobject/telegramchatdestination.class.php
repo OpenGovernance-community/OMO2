@@ -46,6 +46,11 @@ class TelegramChatDestination extends DbObject
         return 'updated_at DESC, id DESC';
     }
 
+    public static function isStorageAvailable()
+    {
+        return self::tableExists(self::tableName());
+    }
+
     public static function normalizeDestinationType($value)
     {
         $value = trim(strtolower((string)$value));
@@ -57,6 +62,10 @@ class TelegramChatDestination extends DbObject
         $chatId = trim((string)$chatId);
         $threadId = $threadId === null ? '' : trim((string)$threadId);
         if ($chatId === '') {
+            return null;
+        }
+
+        if (!self::isStorageAvailable()) {
             return null;
         }
 
@@ -78,6 +87,10 @@ class TelegramChatDestination extends DbObject
         $configuredUserId = (int)$configuredUserId;
 
         if ($chatId === '' || $organizationId <= 0 || $destinationType === '' || $destinationId <= 0 || $configuredUserId <= 0) {
+            return null;
+        }
+
+        if (!self::isStorageAvailable()) {
             return null;
         }
 
