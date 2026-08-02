@@ -8,6 +8,7 @@
 		public const TYPE_UPLOADED_FILE = 'uploaded_file';
 		public const TYPE_FOLDER = 'folder';
 		public const TYPE_PV = 'pv';
+		public const TYPE_ETHERPAD = 'etherpad';
 		public const PV_STAGE_PREPARATION = 'preparation';
 		public const PV_STAGE_MEETING = 'meeting';
 		public const PV_STAGE_REVIEW = 'review';
@@ -25,8 +26,8 @@
 		{
 			return [
 				[['title'], 'required'],						// Champs obligatoires
-			[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'storedfilesize'], 'integer'],				// Nombres entiers
-				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime'], 'string'],	// Chaines de caractere
+				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'storedfilesize'], 'integer'],				// Nombres entiers
+				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'etherpadpadid'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
 				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDuser_pv_editor', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
@@ -72,6 +73,7 @@
 				'storedfilename' => 'Nom original du fichier',
 				'storedfilemime' => 'Type MIME du fichier',
 				'storedfilesize' => 'Taille du fichier',
+				'etherpadpadid' => 'Identifiant du pad Etherpad',
 			];
 		}
 
@@ -94,7 +96,7 @@
 				'IDdocument_parent' => 'Dossier qui contient ce document',
 				'dateedition' => 'Date du dernier signal de presence pendant l edition',
 				'datecontentedition' => 'Date de mise a jour du brouillon temporaire',
-				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes et les dossiers',
+				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes, les telechargements, les pads Etherpad, les PV et les dossiers',
 				'pvstage' => 'Etape actuelle du flux d un document PV: preparation, reunion, relecture ou valide',
 				'is_template' => 'Permet d utiliser la structure et le contenu de ce PV lors d une nouvelle creation',
 				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la reunion et peut modifier tous les points.',
@@ -105,6 +107,7 @@
 				'storedfilename' => 'Nom du fichier televerse par l utilisateur',
 				'storedfilemime' => 'Type MIME detecte pour le fichier distant',
 				'storedfilesize' => 'Taille du fichier distant en octets',
+				'etherpadpadid' => 'Identifiant technique du pad associe a ce document',
 			];
 		}
 
@@ -118,6 +121,7 @@
 				'storedfilepath' => 1000,
 				'storedfilename' => 255,
 				'storedfilemime' => 255,
+				'etherpadpadid' => 255,
 			];
 		}
 
@@ -236,10 +240,25 @@
 		{
 			$pdo = self::getPdo();
 			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+			$organization = null;
 
 			try {
 				if ($startedTransaction) {
 					$pdo->beginTransaction();
+				}
+
+				if ($this->isEtherpadDocument() && $this->getEtherpadPadId() !== '') {
+					require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+					$organization = new \dbObject\Organization();
+					$organizationId = (int)$this->get('IDorganization');
+					if ($organizationId <= 0 || !$organization->load($organizationId)) {
+						throw new \RuntimeException('etherpad_organization_missing');
+					}
+
+					$etherpadDeleteResult = omoEtherpadDeleteDocumentPad($organization, $this->getEtherpadPadId());
+					if (!is_array($etherpadDeleteResult) || empty($etherpadDeleteResult['status'])) {
+						throw new \RuntimeException('etherpad_delete_failed');
+					}
 				}
 
 				if (!$this->deleteResourceRows() || !parent::delete()) {
@@ -1469,6 +1488,10 @@
 				return self::TYPE_PV;
 			}
 
+			if ($documentType === self::TYPE_ETHERPAD) {
+				return self::TYPE_ETHERPAD;
+			}
+
 			return self::TYPE_HTML;
 		}
 
@@ -1573,6 +1596,7 @@
 				self::TYPE_UPLOADED_FILE => 'Telechargement',
 				self::TYPE_FOLDER => 'Dossier',
 				self::TYPE_PV => 'PV',
+				self::TYPE_ETHERPAD => 'Etherpad',
 			);
 		}
 
@@ -1606,6 +1630,43 @@
 		public function isPvDocument(): bool
 		{
 			return $this->getDocumentType() === self::TYPE_PV;
+		}
+
+		public function isEtherpadDocument(): bool
+		{
+			return $this->getDocumentType() === self::TYPE_ETHERPAD;
+		}
+
+		public function getEtherpadPadId(): string
+		{
+			return $this->isEtherpadDocument() ? trim((string)$this->get('etherpadpadid')) : '';
+		}
+
+		public static function organizationHasEtherpadDocuments(int $organizationId): bool
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return false;
+			}
+
+			return self::fetchRow(
+				'select `id` from `document` where `IDorganization` = :organization_id and `documenttype` = :document_type and `etherpadpadid` is not null and `etherpadpadid` <> :empty_pad_id limit 1',
+				array(
+					'organization_id' => $organizationId,
+					'document_type' => self::TYPE_ETHERPAD,
+					'empty_pad_id' => '',
+				)
+			) !== false;
+		}
+
+		public function buildEtherpadOpenUrl(): string
+		{
+			if (!$this->isEtherpadDocument() || (int)$this->getId() <= 0) {
+				return '';
+			}
+
+			return '/omo/api/documents/etherpad/open.php?id='
+				. rawurlencode((string)(int)$this->getId());
 		}
 
 		public function canBeEmbedded(): bool
@@ -2365,6 +2426,54 @@
 				. '</div>';
 		}
 
+		protected function renderEtherpadForViewer(): string
+		{
+			$openUrl = $this->buildEtherpadOpenUrl();
+			if ($openUrl === '' || $this->getEtherpadPadId() === '') {
+				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Aucun pad Etherpad n est associe a ce document.</div>';
+			}
+
+			require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+			$organization = new \dbObject\Organization();
+			$etherpadOrigin = $organization->load((int)$this->get('IDorganization'))
+				? omoEtherpadGetOrigin($organization)
+				: '';
+			$themeOriginAttribute = $etherpadOrigin !== ''
+				? ' data-omo-theme-message-origin="' . htmlspecialchars($etherpadOrigin, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"'
+				: '';
+
+			return '<div class="omo-document-etherpad">'
+				. '<iframe class="omo-document-etherpad__frame" src="'
+				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+				. '"' . $themeOriginAttribute . ' loading="lazy" allow="clipboard-read; clipboard-write" referrerpolicy="same-origin"></iframe>'
+				. '</div>';
+		}
+
+		protected function renderEtherpadSnapshotForViewer(): string
+		{
+			$padId = $this->getEtherpadPadId();
+			$organizationId = (int)$this->get('IDorganization');
+			if ($padId === '' || $organizationId <= 0) {
+				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Aucun pad Etherpad n est associe a ce document.</div>';
+			}
+
+			require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+			$organization = new \dbObject\Organization();
+			if (!$organization->load($organizationId) || !omoEtherpadHasConfig($organization)) {
+				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Le serveur Etherpad n est pas disponible.</div>';
+			}
+
+			$htmlResult = omoEtherpadApiRequest($organization, 'getHTML', array('padID' => $padId));
+			$html = (string)($htmlResult['data']['html'] ?? '');
+			if (!($htmlResult['status'] ?? false)) {
+				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Impossible de charger le contenu Etherpad.</div>';
+			}
+
+			return '<div class="omo-document-etherpad-snapshot">'
+				. \dbObject\PropertyFormat::sanitizeHtml($html)
+				. '</div>';
+		}
+
 		protected function renderUploadedFileForViewer(): string
 		{
 			if (!$this->hasStoredFile()) {
@@ -2613,6 +2722,10 @@
 				return $this->renderUploadedFileForViewer();
 			}
 
+			if ($this->isEtherpadDocument()) {
+				return $this->renderEtherpadForViewer();
+			}
+
 			return $this->renderResolvedHtmlForViewer(
 				(string)$this->get('content'),
 				(int)$this->get('IDorganization')
@@ -2663,6 +2776,9 @@
 					$this->getStoredFileMimeType(),
 					(string)$this->getStoredFileSize(),
 				));
+			} elseif ($this->isEtherpadDocument()) {
+				$renderedContent = $this->renderEtherpadSnapshotForViewer();
+				$contentHashSource = $renderedContent;
 			} else {
 				$renderedContent = $this->renderResolvedHtmlForViewer($content, (int)$this->get('IDorganization'));
 				$contentHashSource = $content;
@@ -3803,6 +3919,10 @@
 			$pdo = self::getPdo();
 			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
 			$organization = new \dbObject\Organization();
+			$createdEtherpadPadId = '';
+			if ($documentType === self::TYPE_ETHERPAD) {
+				require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+			}
 
 			try {
 				if ($startedTransaction) {
@@ -3845,6 +3965,17 @@
 					return array(
 						'status' => false,
 						'text' => 'Le stockage Nextcloud n est pas configure pour cette organisation.',
+					);
+				}
+
+				if ($documentType === self::TYPE_ETHERPAD && !omoEtherpadCanUseEditingSessions($organization)) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Le serveur Etherpad ou son domaine de session n est pas configure pour cette organisation.',
 					);
 				}
 
@@ -3957,8 +4088,47 @@
 					}
 				}
 
+				if ($documentType === self::TYPE_ETHERPAD) {
+					$etherpadResult = omoEtherpadCreateDocumentPad(
+						$organization,
+						$organizationId,
+						$userId,
+						$this->getCreatedByDisplayName(),
+						''
+					);
+					if (!is_array($etherpadResult) || empty($etherpadResult['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($etherpadResult)
+							? $etherpadResult
+							: array('status' => false, 'text' => 'Impossible de creer le pad Etherpad.');
+					}
+
+					$createdEtherpadPadId = trim((string)($etherpadResult['padId'] ?? ''));
+					$this->set('etherpadpadid', $createdEtherpadPadId !== '' ? $createdEtherpadPadId : null);
+					$etherpadSaveResult = $this->save();
+					if (!is_array($etherpadSaveResult) || ($etherpadSaveResult['status'] ?? false) !== true) {
+						if ($createdEtherpadPadId !== '') {
+							omoEtherpadDeleteDocumentPad($organization, $createdEtherpadPadId);
+						}
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($etherpadSaveResult)
+							? $etherpadSaveResult
+							: array('status' => false, 'text' => 'Impossible d enregistrer le pad Etherpad.');
+					}
+				}
+
 				if ($startedTransaction && $pdo->inTransaction()) {
 					$pdo->commit();
+				}
+
+				if ($createdEtherpadPadId !== '') {
+					$contextSaveResult['etherpadPadId'] = $createdEtherpadPadId;
 				}
 
 				if ($resolvedParentDocument instanceof \dbObject\Document) {
@@ -3967,6 +4137,9 @@
 
 				return $contextSaveResult;
 			} catch (\Throwable $exception) {
+				if ($createdEtherpadPadId !== '' && $organization instanceof \dbObject\Organization && (int)$organization->getId() > 0) {
+					omoEtherpadDeleteDocumentPad($organization, $createdEtherpadPadId);
+				}
 				if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
 					$pdo->rollBack();
 				}

@@ -20,6 +20,11 @@ $nextcloudConfig = $organizationLoaded
     ? omoDocumentsParamsGetNextcloudConfig($organization, $organizationApplication, true)
     : omoDocumentsParamsNormalizeNextcloudConfig(array());
 $nextcloudConfigured = omoDocumentsParamsHasNextcloudConfig($nextcloudConfig);
+$etherpadConfig = $organizationLoaded
+    ? omoDocumentsParamsGetEtherpadConfig($organization, $organizationApplication)
+    : array('baseUrl' => '', 'apiKey' => '', 'hasBaseUrlOverride' => false, 'hasApiKeyOverride' => false);
+$etherpadApiConfigured = $organizationLoaded && omoDocumentsParamsHasEtherpadConfig($etherpadConfig);
+$etherpadConfigured = $etherpadApiConfigured && omoEtherpadCanUseEditingSessions($organization);
 $usesLegacyConfig = $organizationLoaded
     ? omoDocumentsParamsUsesLegacyNextcloudConfig($organization, $organizationApplication)
     : false;
@@ -60,6 +65,18 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                 ) ?>
             </div>
 
+            <div class="omo-documents-params__status generic-soft-panel<?= $etherpadConfigured ? ' is-ready' : '' ?>">
+                <?= htmlspecialchars(
+                    $etherpadConfigured
+                        ? omoDocumentsParamsT('documents.params.status.etherpad_ready')
+                        : ($etherpadApiConfigured
+                            ? omoDocumentsParamsT('documents.params.status.etherpad_cookie_missing')
+                            : omoDocumentsParamsT('documents.params.status.etherpad_empty')),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>
+            </div>
+
             <?php if ($usesLegacyConfig): ?>
                 <div class="omo-documents-params__legacy generic-soft-panel">
                     <?= htmlspecialchars(omoDocumentsParamsT('documents.params.status.legacy'), ENT_QUOTES, 'UTF-8') ?>
@@ -70,6 +87,10 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                 <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
 
                 <div class="omo-documents-params__grid generic-form-grid">
+                    <h3 class="generic-card-title generic-card-title--small generic-form-field--full">
+                        <?= htmlspecialchars(omoDocumentsParamsT('documents.params.section.nextcloud'), ENT_QUOTES, 'UTF-8') ?>
+                    </h3>
+
                     <label class="omo-documents-params__field omo-documents-params__field--full generic-form-field generic-form-field--full">
                         <span class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.base_url'), ENT_QUOTES, 'UTF-8') ?></span>
                         <input
@@ -130,6 +151,43 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                         <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.folder_hint'), ENT_QUOTES, 'UTF-8') ?></span>
                     </label>
 
+                    <h3 class="generic-card-title generic-card-title--small generic-form-field--full">
+                        <?= htmlspecialchars(omoDocumentsParamsT('documents.params.section.etherpad'), ENT_QUOTES, 'UTF-8') ?>
+                    </h3>
+
+                    <label class="omo-documents-params__field omo-documents-params__field--full generic-form-field generic-form-field--full">
+                        <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.etherpad_base_url'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <input
+                            type="url"
+                            name="etherpad_base_url"
+                            class="generic-form-control"
+                            maxlength="500"
+                            autocomplete="off"
+                            placeholder="https://doc.example.org"
+                            value="<?= htmlspecialchars((string)($etherpadConfig['baseUrlOverride'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                        >
+                        <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.etherpad_base_url_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                    </label>
+
+                    <label class="omo-documents-params__field generic-form-field">
+                        <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.etherpad_api_key'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <input
+                            type="password"
+                            name="etherpad_api_key"
+                            class="generic-form-control"
+                            maxlength="255"
+                            autocomplete="new-password"
+                            placeholder="<?= htmlspecialchars(
+                                $etherpadConfig['hasApiKeyOverride']
+                                    ? omoDocumentsParamsT('documents.params.field.etherpad_api_key_placeholder_keep')
+                                    : omoDocumentsParamsT('documents.params.field.etherpad_api_key_placeholder_new'),
+                                ENT_QUOTES,
+                                'UTF-8'
+                            ) ?>"
+                        >
+                        <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.etherpad_api_key_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                    </label>
+
                     <div class="omo-documents-params__field omo-documents-params__field--full generic-form-field generic-form-field--full">
                         <?= commonRenderObjectVisibilitySelector(array(
                             'inputName' => 'default_visibility_type',
@@ -158,6 +216,13 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                         <label class="omo-documents-params__checkbox omo-documents-params__field--full generic-form-field--full">
                             <input type="checkbox" name="nextcloud_clear_config" value="1">
                             <span><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.clear'), ENT_QUOTES, 'UTF-8') ?></span>
+                        </label>
+                    <?php endif; ?>
+
+                    <?php if ($etherpadConfig['hasBaseUrlOverride'] || $etherpadConfig['hasApiKeyOverride']): ?>
+                        <label class="omo-documents-params__checkbox omo-documents-params__field--full generic-form-field--full">
+                            <input type="checkbox" name="etherpad_clear_config" value="1">
+                            <span><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.etherpad_clear'), ENT_QUOTES, 'UTF-8') ?></span>
                         </label>
                     <?php endif; ?>
                 </div>

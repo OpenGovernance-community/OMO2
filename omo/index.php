@@ -565,7 +565,7 @@ function omoRenderDirectoryActionCard(array $actionCardData)
 
 $omoPwaBodyEndHtml = '<script src="/omo/assets/js/install.js" defer></script>';
 $omoThemeBootstrapHtml = implode(PHP_EOL, [
-    '<script src="/shared_functions.js"></script>',
+    '<script src="/shared_functions.js?v=20260802-etherpad-theme-sync"></script>',
     '<link rel="stylesheet" href="/shared_css.css">',
     '<script>sharedApplyDocumentTheme();</script>',
 ]);

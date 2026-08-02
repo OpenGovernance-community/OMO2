@@ -17,6 +17,35 @@ services:
       - ./:/var/www/html
       - ./docker/app/.env:/var/www/html/.env
 
+  etherpad:
+    build:
+      context: ./docker/etherpad
+      dockerfile: Dockerfile
+    image: omo-etherpad:local
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        plugin_state=/opt/etherpad-lite/var/installed_plugins.json;
+        if ! grep -q '"name":"ep_omo_theme"' "$$plugin_state" 2>/dev/null; then rm -f "$$plugin_state"; fi;
+        exec pnpm run prod
+    environment:
+      NODE_ENV: production
+      TITLE: OMO Etherpad local
+      PUBLIC_URL: https://doc.localtest.me
+      AUTHENTICATION_METHOD: apikey
+      EDIT_ONLY: "true"
+      REQUIRE_SESSION: "false"
+      REQUIRE_AUTHENTICATION: "false"
+      TRUST_PROXY: "true"
+      DB_TYPE: dirty
+      DB_FILENAME: var/dirty.db
+      COOKIE_SAME_SITE: None
+      PRIVACY_UPDATE_CHECK: "false"
+    volumes:
+      - etherpad_data:/opt/etherpad-lite/var
+      - ./docker/etherpad/APIKEY.txt:/opt/etherpad-lite/APIKEY.txt:ro
+
   db:
     image: mariadb:11.4
     environment:
@@ -59,3 +88,4 @@ services:
 
 volumes:
   db_data:
+  etherpad_data:

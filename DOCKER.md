@@ -6,6 +6,7 @@ Cette configuration sert a lancer une version locale reproductible du projet ave
 - MariaDB 11.4
 - Mailpit pour tester les emails en local
 - phpMyAdmin pour inspecter la base locale
+- Etherpad local pour tester les documents collaboratifs
 - prise en charge de `short_open_tag`
 - acceptation de `localhost`, `demo.localhost`, `org1.localhost`, `org2.localhost`
 - acceptation d'un domaine de dev partage recommande avec wildcard DNS : `localtest.me`, `demo.localtest.me`, `org1.localtest.me`
@@ -101,6 +102,7 @@ L'application sera disponible sur :
 - `https://any-subdomain.localtest.me`
 - Mailpit : `http://localhost:8025`
 - phpMyAdmin : `http://localhost:8081`
+- Etherpad : `https://doc.localtest.me`
 
 Adresses de demonstration utiles :
 
@@ -166,6 +168,8 @@ En production, avec un domaine racine comme `opengov.tools`, le meme mecanisme d
 - `https://org2.opengov.tools/omo/`
 
 Dans cette configuration, les cookies peuvent etre poses sur `.localtest.me` et donc etre partages entre les sous-domaines, ce qui simule beaucoup mieux la production.
+
+Le service Etherpad local est preconfigure pour OMO et passe par le certificat HTTPS local partage avec Apache. Copier les valeurs Etherpad de `docker/app/.env.private.example` dans `docker/app/.env.private`, puis utiliser OMO et Etherpad en HTTPS. Si un ancien fichier prive contient encore des variables Etherpad vides, les supprimer ou les remplacer par les valeurs de l exemple, car ce fichier prive est prioritaire. Son image inclut aussi le module qui synchronise le theme defini dans OMO avec l iframe Etherpad.
 
 `localtest.me` n'est pas "publie" par Docker sur Internet du projet : c'est simplement un domaine public qui renvoie automatiquement vers `127.0.0.1`, ce qui evite toute configuration DNS locale supplementaire.
 
