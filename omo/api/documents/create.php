@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/etherpad.php';
 require_once dirname(__DIR__, 3) . '/common/patreon.php';
 require_once dirname(__DIR__, 3) . '/common/openai_text.php';
 require_once dirname(__DIR__, 3) . '/common/object_visibility_selector.php';
@@ -22,6 +23,7 @@ $sourceLang = [
     'documents.create.type.external' => ['text' => 'Lien externe', 'context' => 'Option label for external links.'],
     'documents.create.type.uploaded' => ['text' => 'Fichier téléversé', 'context' => 'Option label for uploaded files.'],
     'documents.create.type.pv' => ['text' => 'PV', 'context' => 'Option label for PV documents.'],
+    'documents.create.type.etherpad' => ['text' => 'Document Etherpad', 'context' => 'Option label for Etherpad documents.'],
     'documents.create.type.folder' => ['text' => 'Dossier', 'context' => 'Option label for folders.'],
     'documents.create.field.title' => ['text' => 'Titre', 'context' => 'Label of the document title field.'],
     'documents.create.field.title_placeholder' => ['text' => 'Nom du document', 'context' => 'Placeholder shown in the document title field.'],
@@ -40,6 +42,8 @@ $sourceLang = [
     'documents.create.field.external_url_hint' => ['text' => 'Utilisez une adresse complète en http:// ou https://.', 'context' => 'Hint shown below the external URL field.'],
     'documents.create.field.open_new_window' => ['text' => 'Ouvrir dans une nouvelle fenêtre', 'context' => 'Checkbox label used for external links.'],
     'documents.create.field.pv_hint' => ['text' => 'Le contenu du PV se preparera ensuite dans l editeur PV dedie.', 'context' => 'Hint shown when creating a PV document from the generic document creator.'],
+    'documents.create.field.etherpad_hint' => ['text' => 'Un nouveau pad sera cree sur le serveur Etherpad de cette organisation.', 'context' => 'Hint shown when creating an Etherpad document.'],
+    'documents.create.field.etherpad_missing' => ['text' => 'Aucun serveur Etherpad n est configure pour cette organisation.', 'context' => 'Hint shown when Etherpad is not configured.'],
     'documents.create.field.pv_template' => ['text' => 'Modele de base', 'context' => 'Label of the optional PV template selector.'],
     'documents.create.field.pv_template_none' => ['text' => 'PV vide', 'context' => 'Empty option of the PV template selector.'],
     'documents.create.field.pv_template_hint' => ['text' => 'Les groupes, points et contenus du modele seront copies sans leurs auteurs ni leurs invites.', 'context' => 'Help text below the PV template selector.'],
@@ -132,6 +136,7 @@ $pvTemplatesPayload = array();
 $organization = new Organization();
 $organizationLoaded = $organizationId > 0 && $organization->load($organizationId);
 $nextcloudDocumentsAvailable = $organizationLoaded && $organization->hasNextcloudDocumentStorage();
+$etherpadDocumentsAvailable = $organizationLoaded && omoEtherpadCanUseEditingSessions($organization);
 
 if (!$isEditing && $organizationLoaded) {
     $pvTemplates = new \dbObject\ArrayDocument();
@@ -353,6 +358,9 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             <?php if ($nextcloudDocumentsAvailable || $documentType === Document::TYPE_UPLOADED_FILE): ?>
                                 <option value="<?= $escape(Document::TYPE_UPLOADED_FILE) ?>" <?= $documentType === Document::TYPE_UPLOADED_FILE ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.uploaded')) ?></option>
                             <?php endif; ?>
+                            <?php if ($etherpadDocumentsAvailable || $documentType === Document::TYPE_ETHERPAD): ?>
+                                <option value="<?= $escape(Document::TYPE_ETHERPAD) ?>" <?= $documentType === Document::TYPE_ETHERPAD ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.etherpad')) ?></option>
+                            <?php endif; ?>
                             <option value="<?= $escape(Document::TYPE_PV) ?>" <?= $documentType === Document::TYPE_PV ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.pv')) ?></option>
                             <option value="<?= $escape(Document::TYPE_FOLDER) ?>" <?= $documentType === Document::TYPE_FOLDER ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.folder')) ?></option>
                         </select>
@@ -456,6 +464,15 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     </label>
                     <span class="omo-document-editor__hint generic-help-text"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_template_hint')) ?></span>
                     <span class="omo-document-editor__hint generic-help-text"><?= $escape(omoDocumentsCreateT('documents.create.field.pv_hint')) ?></span>
+                </div>
+
+                <div class="omo-document-editor__field generic-form-field" data-omo-document-etherpad-section<?= $documentType !== Document::TYPE_ETHERPAD ? ' hidden' : '' ?>>
+                    <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.type.etherpad')) ?></span>
+                    <span class="omo-document-editor__hint generic-help-text">
+                        <?= $escape($etherpadDocumentsAvailable || $documentType === Document::TYPE_ETHERPAD
+                            ? omoDocumentsCreateT('documents.create.field.etherpad_hint')
+                            : omoDocumentsCreateT('documents.create.field.etherpad_missing')) ?>
+                    </span>
                 </div>
 
                 <div class="omo-document-editor__external-section" data-omo-document-external-section<?= $documentType !== Document::TYPE_EXTERNAL_LINK ? ' hidden' : '' ?>>
@@ -716,6 +733,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     const pvSection = form.querySelector('[data-omo-document-pv-section]');
     const externalSection = form.querySelector('[data-omo-document-external-section]');
     const uploadSection = form.querySelector('[data-omo-document-upload-section]');
+    const etherpadSection = form.querySelector('[data-omo-document-etherpad-section]');
     const externalUrlField = form.querySelector('[data-omo-document-external-url]');
     const uploadInput = form.querySelector('[data-omo-document-upload-input]');
     const uploadHasExistingFile = <?= $documentType === Document::TYPE_UPLOADED_FILE && $documentHasStoredFile ? 'true' : 'false' ?>;
@@ -778,6 +796,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         const isPvDocument = getSelectedDocumentType() === 'pv';
         const isExternalLink = getSelectedDocumentType() === 'external_link';
         const isUploadedFile = isUploadedFileTypeSelected();
+        const isEtherpad = getSelectedDocumentType() === 'etherpad';
 
         if (contentSection) {
             contentSection.hidden = !isHtmlDocument;
@@ -797,6 +816,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
         if (uploadSection) {
             uploadSection.hidden = !isUploadedFile;
+        }
+
+        if (etherpadSection) {
+            etherpadSection.hidden = !isEtherpad;
         }
 
         if (uploadInput) {

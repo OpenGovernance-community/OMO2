@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/invitations_shared.php';
+require_once dirname(__DIR__, 3) . '/common/etherpad.php';
 
 use dbObject\ArrayHolon;
 use dbObject\Document;
@@ -225,17 +226,22 @@ function omoCalendarParseLocalDateTime($rawValue)
     }
 }
 
-function omoCalendarDocumentTypeOptions(bool $nextcloudDocumentsAvailable): array
+function omoCalendarDocumentTypeOptions(bool $nextcloudDocumentsAvailable, bool $etherpadDocumentsAvailable = false): array
 {
     $options = [
         '' => omoCalendarCreateT('calendar.create.document.none'),
         Document::TYPE_HTML => (string)Document::getDocumentTypeCatalog()[Document::TYPE_HTML],
         Document::TYPE_EXTERNAL_LINK => (string)Document::getDocumentTypeCatalog()[Document::TYPE_EXTERNAL_LINK],
+        Document::TYPE_ETHERPAD => (string)Document::getDocumentTypeCatalog()[Document::TYPE_ETHERPAD],
         Document::TYPE_PV => (string)Document::getDocumentTypeCatalog()[Document::TYPE_PV],
     ];
 
     if ($nextcloudDocumentsAvailable) {
         $options[Document::TYPE_UPLOADED_FILE] = (string)Document::getDocumentTypeCatalog()[Document::TYPE_UPLOADED_FILE];
+    }
+
+    if (!$etherpadDocumentsAvailable) {
+        unset($options[Document::TYPE_ETHERPAD]);
     }
 
     return $options;
@@ -317,6 +323,7 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
 $hasStructureApplication = $organization->isStructureApplicationEnabled($currentUserId);
 $rootHolon = $hasStructureApplication ? $organization->getEnabledStructuralRootHolon($currentUserId) : null;
 $nextcloudDocumentsAvailable = $organization->hasNextcloudDocumentStorage();
+$etherpadDocumentsAvailable = omoEtherpadCanUseEditingSessions($organization);
 
 $event = new Event();
 $isEditMode = false;
@@ -531,7 +538,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($linkedDocument instanceof Document) {
         $resolvedDocumentType = $linkedDocument->getDocumentType();
     } elseif ($requestedDocumentType !== '') {
-        $documentOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable);
+        $documentOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable, $etherpadDocumentsAvailable);
         if (!array_key_exists($requestedDocumentType, $documentOptions)) {
             echo json_encode([
                 'status' => false,
@@ -582,6 +589,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $pdo = \dbObject\DbObject::getPdo();
     $startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+    $createdEtherpadPadId = '';
+    $cleanupCreatedEtherpadPad = static function () use ($organization, &$createdEtherpadPadId): void {
+        if ($createdEtherpadPadId === '') {
+            return;
+        }
+
+        omoEtherpadDeleteDocumentPad($organization, $createdEtherpadPadId);
+        $createdEtherpadPadId = '';
+    };
 
     try {
         if ($startedTransaction) {
@@ -639,11 +655,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 exit;
             }
+            if ($linkedDocument->isEtherpadDocument()) {
+                $createdEtherpadPadId = trim((string)($documentCreateResult['etherpadPadId'] ?? $linkedDocument->getEtherpadPadId()));
+            }
             $syncDocumentDateResult = $event->syncAssociatedDocumentEventDate();
             if (!is_array($syncDocumentDateResult) || empty($syncDocumentDateResult['status'])) {
                 if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
                     $pdo->rollBack();
                 }
+                $cleanupCreatedEtherpadPad();
 
                 echo json_encode([
                     'status' => false,
@@ -682,6 +702,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
                 $pdo->rollBack();
             }
+            $cleanupCreatedEtherpadPad();
 
             echo json_encode([
                 'status' => false,
@@ -695,10 +716,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
             $pdo->commit();
         }
+        $createdEtherpadPadId = '';
     } catch (\Throwable $exception) {
         if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
+        $cleanupCreatedEtherpadPad();
 
         echo json_encode([
             'status' => false,
@@ -749,7 +772,7 @@ $videoMeetingUrlDefault = trim((string)($locationDisplayData['videoUrl'] ?? ''))
 
 $documentTypeDefault = $associatedDocument instanceof Document ? $associatedDocument->getDocumentType() : '';
 $documentTitleDefault = '';
-$documentTypeOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable);
+$documentTypeOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable, $etherpadDocumentsAvailable);
 $canOpenAssociatedDocument = $associatedDocument instanceof Document
     && (
         $associatedDocument->isPvDocument() && !$associatedDocument->isPvValidated()

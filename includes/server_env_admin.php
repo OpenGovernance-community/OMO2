@@ -106,6 +106,40 @@ function serverEnvAdminGetEditableSections()
                 ],
             ],
         ],
+        'etherpad' => [
+            'title' => serverEnvAdminT('parameters.server_env.section.etherpad.title', 'Etherpad'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.etherpad.intro', 'Connexion globale au serveur Etherpad utilise par les documents collaboratifs.'),
+            'fields' => [
+                [
+                    'key' => 'ETHERPAD_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_URL.label', 'URL du serveur Etherpad'),
+                    'type' => 'url',
+                    'placeholder' => 'https://doc.opengov.tools',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_URL.help', 'Adresse de base du serveur Etherpad, sans /p/ ni /api/.'),
+                ],
+                [
+                    'key' => 'ETHERPAD_API_KEY',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_API_KEY.label', 'Cle API Etherpad'),
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
+                ],
+                [
+                    'key' => 'ETHERPAD_API_VERSION',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_API_VERSION.label', 'Version de l API Etherpad'),
+                    'type' => 'text',
+                    'placeholder' => '1.3.1',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_API_VERSION.help', 'Version renvoyee par le point d entree /api du serveur Etherpad.'),
+                ],
+                [
+                    'key' => 'ETHERPAD_COOKIE_DOMAIN',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_COOKIE_DOMAIN.label', 'Domaine de partage des cookies'),
+                    'type' => 'text',
+                    'placeholder' => '.opengov.tools',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERPAD_COOKIE_DOMAIN.help', 'Domaine commun a OMO et Etherpad, par exemple .opengov.tools. Laissez vide seulement si les deux utilisent exactement le meme host.'),
+                ],
+            ],
+        ],
         'mail' => [
             'title' => serverEnvAdminT('parameters.server_env.section.mail.title', 'E-mail'),
             'intro' => serverEnvAdminT('parameters.server_env.section.mail.intro', 'Configuration SMTP generale du serveur.'),
@@ -457,6 +491,39 @@ function serverEnvAdminValidateValues(array $values)
 
     if (isset($values['MAIL_PORT']) && $values['MAIL_PORT'] !== '' && !ctype_digit((string)$values['MAIL_PORT'])) {
         $errors[] = 'Le port SMTP doit etre numerique.';
+    }
+
+    foreach (array('ETHERPAD_URL') as $etherpadUrlKey) {
+        $etherpadUrl = trim((string)($values[$etherpadUrlKey] ?? ''));
+        if ($etherpadUrl === '') {
+            continue;
+        }
+
+        $parsedEtherpadUrl = parse_url($etherpadUrl);
+        $etherpadScheme = is_array($parsedEtherpadUrl) ? strtolower((string)($parsedEtherpadUrl['scheme'] ?? '')) : '';
+        $etherpadHost = is_array($parsedEtherpadUrl) ? trim((string)($parsedEtherpadUrl['host'] ?? '')) : '';
+        if (
+            !is_array($parsedEtherpadUrl)
+            || !in_array($etherpadScheme, ['http', 'https'], true)
+            || $etherpadHost === ''
+            || isset($parsedEtherpadUrl['user'])
+            || isset($parsedEtherpadUrl['pass'])
+            || isset($parsedEtherpadUrl['query'])
+            || isset($parsedEtherpadUrl['fragment'])
+        ) {
+            $errors[] = serverEnvAdminT(
+                'parameters.server_env.error.invalid_etherpad_url',
+                'L URL Etherpad doit etre une adresse http ou https valide.'
+            );
+        }
+    }
+
+    $etherpadApiVersion = trim((string)($values['ETHERPAD_API_VERSION'] ?? ''));
+    if ($etherpadApiVersion !== '' && preg_match('/^[0-9]+(?:\.[0-9]+)*$/', $etherpadApiVersion) !== 1) {
+        $errors[] = serverEnvAdminT(
+            'parameters.server_env.error.invalid_etherpad_api_version',
+            'La version de l API Etherpad doit etre numerique, par exemple 1.3.1.'
+        );
     }
 
     $patreonRedirect = trim((string)($values['PATREON_REDIRECT_URI'] ?? ''));

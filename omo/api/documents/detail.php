@@ -530,6 +530,20 @@ if ($associatedEvent instanceof \dbObject\Event) {
     justify-self: flex-start;
 }
 
+.omo-document-detail__content .omo-document-etherpad {
+    width: 100%;
+    min-height: 70vh;
+}
+
+.omo-document-detail__content .omo-document-etherpad__frame {
+    display: block;
+    width: 100%;
+    min-height: 70vh;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
 .omo-document-detail__content .omo-document-embed {
     display: grid;
     gap: 10px;

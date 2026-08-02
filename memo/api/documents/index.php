@@ -68,6 +68,8 @@ foreach ($documents as $document) {
         $typeLabel = 'Lien';
     } elseif ($documentType === \dbObject\Document::TYPE_UPLOADED_FILE) {
         $typeLabel = 'Fichier';
+    } elseif ($documentType === \dbObject\Document::TYPE_ETHERPAD) {
+        $typeLabel = 'Etherpad';
     }
 
     $documentEntries[] = array(

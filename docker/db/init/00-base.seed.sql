@@ -827,6 +827,7 @@ CREATE TABLE `document` (
   `storedfilename` varchar(255) DEFAULT NULL,
   `storedfilemime` varchar(255) DEFAULT NULL,
   `storedfilesize` int(11) DEFAULT NULL,
+  `etherpadpadid` varchar(255) DEFAULT NULL,
   `IDdocument_parent` int(11) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `datemodification` datetime DEFAULT NULL,
