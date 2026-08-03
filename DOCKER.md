@@ -169,7 +169,7 @@ En production, avec un domaine racine comme `opengov.tools`, le meme mecanisme d
 
 Dans cette configuration, les cookies peuvent etre poses sur `.localtest.me` et donc etre partages entre les sous-domaines, ce qui simule beaucoup mieux la production.
 
-Le service Etherpad local est preconfigure pour OMO et passe par le certificat HTTPS local partage avec Apache. Copier les valeurs Etherpad de `docker/app/.env.private.example` dans `docker/app/.env.private`, puis utiliser OMO et Etherpad en HTTPS. Si un ancien fichier prive contient encore des variables Etherpad vides, les supprimer ou les remplacer par les valeurs de l exemple, car ce fichier prive est prioritaire. Son image inclut aussi le module qui synchronise le theme defini dans OMO avec l iframe Etherpad.
+Le service Etherpad local est preconfigure pour OMO et passe par le certificat HTTPS local partage avec Apache. Copier les valeurs Etherpad de `docker/app/.env.private.example` dans `docker/app/.env.private` et celles de `docker/etherpad/.env.private.example` dans `docker/etherpad/.env.private`, puis utiliser OMO et Etherpad en HTTPS. Si un ancien fichier prive contient encore des variables Etherpad vides, les supprimer ou les remplacer par les valeurs de l exemple, car ce fichier prive est prioritaire. Etherpad utilise une base MariaDB separee sur le meme serveur que OMO. Son image inclut aussi le module qui synchronise le theme defini dans OMO avec l iframe Etherpad.
 
 `localtest.me` n'est pas "publie" par Docker sur Internet du projet : c'est simplement un domaine public qui renvoie automatiquement vers `127.0.0.1`, ce qui evite toute configuration DNS locale supplementaire.
 

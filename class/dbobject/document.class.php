@@ -186,7 +186,7 @@
 				return $this->isPvCreatorOrEditor($userId);
 			}
 
-			return $this->canEditInOrganizationContext($organizationId, $userId, false);
+			return $this->canManageInOrganizationContext($organizationId, $userId, false);
 		}
 
 		public function canDeleteDocument(bool $allowEventDocument = false): bool
@@ -745,6 +745,44 @@
 			return $this->currentViewerCanAccessEditVisibility($documentOrganizationId);
 		}
 
+		public function canManageInOrganizationContext(int $organizationId, ?int $userId = null, bool $useSessionCache = true): bool
+		{
+			$documentOrganizationId = (int)$this->get('IDorganization');
+			$organizationId = (int)$organizationId;
+			$userId = $userId !== null
+				? (int)$userId
+				: (
+					function_exists('commonGetCurrentUserId')
+						? (int)\commonGetCurrentUserId()
+						: (int)($_SESSION['currentUser'] ?? 0)
+				);
+
+			if ($userId <= 0) {
+				return false;
+			}
+
+			if ($documentOrganizationId <= 0) {
+				return $organizationId <= 0 && $userId === (int)$this->get('IDuser');
+			}
+
+			if (
+				$organizationId !== $documentOrganizationId
+				|| (function_exists('commonUserHasOrganizationAccess')
+					&& !\commonUserHasOrganizationAccess($userId, $documentOrganizationId))
+				|| !$this->currentViewerCanAccessVisibility($documentOrganizationId)
+			) {
+				return false;
+			}
+
+			return self::canCreateInOrganizationContext(
+				$documentOrganizationId,
+				(int)$this->get('IDholon') > 0 ? (int)$this->get('IDholon') : null,
+				$userId,
+				(int)$this->get('IDdocument_parent'),
+				$useSessionCache
+			);
+		}
+
 		public function canMoveInOrganizationContext(int $organizationId, int $userId): bool
 		{
 			$organizationId = (int)$organizationId;
@@ -755,7 +793,7 @@
 			}
 
 			return ($this->isPvDocument() && $this->canUserManagePvDocument($userId))
-				|| $this->canEditInOrganizationContext($organizationId, $userId, false);
+				|| $this->canManageInOrganizationContext($organizationId, $userId, false);
 		}
 
 		protected function normalizeScopeTypeForCurrentContext(string $visibilityType, string $fallbackType): string
@@ -1596,7 +1634,7 @@
 				self::TYPE_UPLOADED_FILE => 'Telechargement',
 				self::TYPE_FOLDER => 'Dossier',
 				self::TYPE_PV => 'PV',
-				self::TYPE_ETHERPAD => 'Etherpad',
+				self::TYPE_ETHERPAD => 'Document collaboratif',
 			);
 		}
 
@@ -4165,26 +4203,32 @@
 			}
 
 			$canManagePvDocument = $this->isPvDocument() && $this->canUserManagePvDocument($userId);
-			if ($userId <= 0 || (!$canManagePvDocument && !$this->canEditInOrganizationContext($organizationId, $userId, false))) {
+			$canManageDocument = !$this->isPvDocument()
+				&& $this->canManageInOrganizationContext($organizationId, $userId, false);
+			$canEditContent = !$this->isPvDocument()
+				&& $this->canEditInOrganizationContext($organizationId, $userId, false);
+			if (
+				$userId <= 0
+				|| ($this->isPvDocument() && !$canManagePvDocument)
+				|| (!$this->isPvDocument() && !$canManageDocument && !$canEditContent)
+			) {
 				return array(
 					'status' => false,
 					'text' => 'Acces refuse.',
 				);
 			}
 
-			if ($this->isPvDocument() && !$canManagePvDocument) {
-				return array(
-					'status' => false,
-					'text' => 'Acces refuse.',
-				);
+			$usesEditLock = $canEditContent && $this->supportsHtmlContent();
+			if ($usesEditLock) {
+				$lockResult = $this->touchEditLock($organizationId, $userId);
+				if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
+					return $lockResult;
+				}
 			}
 
-			$lockResult = $this->touchEditLock($organizationId, $userId);
-			if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
-				return $lockResult;
-			}
-
-			$title = trim((string)($values['title'] ?? ''));
+			$title = $canManageDocument || $canManagePvDocument
+				? trim((string)($values['title'] ?? ''))
+				: trim((string)$this->get('title'));
 			if ($title === '') {
 				return array(
 					'status' => false,
@@ -4192,19 +4236,26 @@
 				);
 			}
 
-			$description = trim((string)($values['description'] ?? ''));
+			$description = $canManageDocument || $canManagePvDocument
+				? trim((string)($values['description'] ?? ''))
+				: trim((string)$this->get('description'));
 			$documentType = $this->getDocumentType();
-			$uploadedFile = $documentType === self::TYPE_UPLOADED_FILE
+			$uploadedFile = $canEditContent && $documentType === self::TYPE_UPLOADED_FILE
 				? self::extractValidUploadedFile($values['uploaded_file'] ?? null)
 				: null;
-			$removeUploadedFile = $documentType === self::TYPE_UPLOADED_FILE && !empty($values['remove_uploaded_file']);
+			$removeUploadedFile = $canEditContent && $documentType === self::TYPE_UPLOADED_FILE && !empty($values['remove_uploaded_file']);
 			$content = $documentType === self::TYPE_HTML
-				? \dbObject\PropertyFormat::sanitizeHtml((string)($values['content'] ?? ''))
+				? ($canEditContent
+					? \dbObject\PropertyFormat::sanitizeHtml((string)($values['content'] ?? ''))
+					: (string)$this->get('content'))
 				: '';
 			$externalUrl = $documentType === self::TYPE_EXTERNAL_LINK
-				? self::sanitizeExternalUrl($values['external_url'] ?? '')
+				? ($canEditContent
+					? self::sanitizeExternalUrl($values['external_url'] ?? '')
+					: $this->getExternalUrl())
 				: '';
-			$openInNewWindow = $documentType === self::TYPE_EXTERNAL_LINK && !empty($values['open_in_new_window']);
+			$openInNewWindow = $documentType === self::TYPE_EXTERNAL_LINK
+				&& ($canEditContent ? !empty($values['open_in_new_window']) : $this->shouldOpenExternalLinkInNewWindow());
 			if ($documentType === self::TYPE_EXTERNAL_LINK && $externalUrl === '') {
 				return array(
 					'status' => false,
@@ -4217,19 +4268,25 @@
 					'text' => 'Aucun fichier n est actuellement associe a ce document.',
 				);
 			}
-			$keywords = trim((string)($values['keywords'] ?? ''));
-			$visibilityType = $this->resolveScopeTypeInput(
-				$values,
-				'visibility_type',
-				self::getDefaultVisibilityTypeForOrganization($organizationId),
-				false
-			);
-			$editVisibilityType = $this->resolveScopeTypeInput(
-				$values,
-				'edit_visibility_type',
-				self::getDefaultEditVisibilityTypeForOrganization($organizationId),
-				false
-			);
+			$keywords = $canManageDocument || $canManagePvDocument
+				? trim((string)($values['keywords'] ?? ''))
+				: trim((string)$this->get('keywords'));
+			$visibilityType = $canManageDocument || $canManagePvDocument
+				? $this->resolveScopeTypeInput(
+					$values,
+					'visibility_type',
+					self::getDefaultVisibilityTypeForOrganization($organizationId),
+					false
+				)
+				: '';
+			$editVisibilityType = $canManageDocument || $canManagePvDocument
+				? $this->resolveScopeTypeInput(
+					$values,
+					'edit_visibility_type',
+					self::getDefaultEditVisibilityTypeForOrganization($organizationId),
+					false
+				)
+				: '';
 			$now = new \DateTimeImmutable();
 
 			$this->set('title', $title);
@@ -4288,6 +4345,7 @@
 				if (
 					!$isWithoutContext
 					&& $documentType === self::TYPE_UPLOADED_FILE
+					&& ($uploadedFile !== null || $removeUploadedFile)
 					&& !$organization->hasNextcloudDocumentStorage()
 				) {
 					if ($startedTransaction && $pdo->inTransaction()) {
@@ -4350,7 +4408,7 @@
 					}
 				}
 
-				if (!$isWithoutContext) {
+				if (!$isWithoutContext && ($canManageDocument || $canManagePvDocument)) {
 					$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);
 					if (!is_array($visibilitySaveResult) || ($visibilitySaveResult['status'] ?? false) !== true) {
 						if ($startedTransaction && $pdo->inTransaction()) {
@@ -4378,7 +4436,9 @@
 					$this->refreshAncestorFolderActivity();
 				}
 
-				$this->releaseEditLock($userId, true);
+				if ($usesEditLock) {
+					$this->releaseEditLock($userId, true);
+				}
 
 				return $saveResult;
 			} catch (\Throwable $exception) {
