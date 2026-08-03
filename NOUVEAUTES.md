@@ -2,6 +2,10 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-03
+
+- L import d une organisation permet maintenant de preparer les invitations des membres sans envoyer immediatement leurs e-mails. L envoi reste active par defaut et peut etre reporte depuis une case de la fenetre d import.
+
 ## 2026-08-01
 
 - Le bot Telegram peut maintenant etre connecte depuis un groupe a un role ou a un projet. Une personne doit d abord avoir relie son compte Telegram en prive; elle navigue ensuite parmi ses organisations, cercles, roles et projets autorises. Les vocaux du groupe sont alors ajoutes au contexte choisi et lies au projet lorsque celui-ci est selectionne.

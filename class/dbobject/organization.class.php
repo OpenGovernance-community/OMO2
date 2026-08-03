@@ -5391,9 +5391,11 @@
 			}
 		}
 
-		public static function importOmo1ExportAsNewOrganization(array $payload, array $requestedModules, $actorUserId, $organizationName = '', array $templateCalibration = array())
+		public static function importOmo1ExportAsNewOrganization(array $payload, array $requestedModules, $actorUserId, $organizationName = '', array $templateCalibration = array(), array $importOptions = array())
 		{
 			$actorUserId = (int)$actorUserId;
+			$sendMemberInvitationEmails = !array_key_exists('sendMemberInvitationEmails', $importOptions)
+				|| !empty($importOptions['sendMemberInvitationEmails']);
 			if ($actorUserId <= 0) {
 				return array('status' => false, 'message' => 'Connexion requise.');
 			}
@@ -5544,12 +5546,14 @@
 					self::omo1ImportPvs($organization, self::omo1ImportModuleRecords($payload, 'pv'), $actorUserId, $userIdMap, $holonIdMap, $eventIdMap, $stats);
 				}
 				$pdo->commit();
-				foreach ($pendingInvitations as $pendingInvitation) {
-					try {
-						$pendingInvitation->sendEmail();
-						$stats['invitations'] += 1;
-					} catch (\Throwable $exception) {
-						$warnings[] = 'L invitation pour ' . trim((string)$pendingInvitation->get('email')) . ' n a pas pu etre envoyee.';
+				if ($sendMemberInvitationEmails) {
+					foreach ($pendingInvitations as $pendingInvitation) {
+						try {
+							$pendingInvitation->sendEmail();
+							$stats['invitations'] += 1;
+						} catch (\Throwable $exception) {
+							$warnings[] = 'L invitation pour ' . trim((string)$pendingInvitation->get('email')) . ' n a pas pu etre envoyee.';
+						}
 					}
 				}
 
