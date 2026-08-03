@@ -1236,7 +1236,8 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
             <div class="circle-members__row">
                 <div class="circle-members__list">
                     <?php foreach ($visibleMemberCards as $member): ?>
-						<?php $memberTooltip = !empty($member['isPending'])
+						<?php $hasPendingInvitation = !empty($member['hasPendingInvitation']);
+						$memberTooltip = $hasPendingInvitation
 							? t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']])
 							: (!empty($member['isAdmin'])
 								? t('leftbar.members.admin_tooltip', ['memberName' => $member['displayName'], 'adminLabel' => $adminLabel])
@@ -1260,7 +1261,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                         $memberAvatarStyle = '--circle-member-avatar-bg: ' . $memberAvatarPalette['background'] . '; --circle-member-avatar-text: ' . $memberAvatarPalette['foreground'] . ';';
                         ?>
                         <span
-                            class="circle-member<?= !empty($member['isAdmin']) ? ' circle-member--admin' : '' ?><?= !empty($member['isPending']) ? ' circle-member--pending' : '' ?>"
+                            class="circle-member<?= !empty($member['isAdmin']) ? ' circle-member--admin' : '' ?><?= $hasPendingInvitation ? ' circle-member--pending' : '' ?>"
                             data-tooltip="<?= omoApiEscape($memberTooltip) ?>"
                             data-member-user-id="<?= (int)($member['userId'] ?? 0) ?>"
                             <?= $memberPhotoUrl === '' ? 'style="' . omoApiEscape($memberAvatarStyle) . '"' : '' ?>
@@ -1279,6 +1280,9 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                                 >
                             <?php else: ?>
                                 <span class="circle-member__initials"><?= omoApiEscape($memberInitials) ?></span>
+                            <?php endif; ?>
+                            <?php if ($hasPendingInvitation): ?>
+                                <span class="circle-member__invitation-icon" aria-hidden="true">&#9993;</span>
                             <?php endif; ?>
                         </span>
                     <?php endforeach; ?>
@@ -1498,7 +1502,8 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     width: 34px;
     height: 34px;
     border-radius: 999px;
-    overflow: hidden;
+    position: relative;
+    overflow: visible;
     border: 1px solid var(--color-border);
     background: var(--circle-member-avatar-bg, color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-alt, #f0f2f5)));
     box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.08));
@@ -1509,7 +1514,6 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 }
 
 .circle-member--pending {
-    opacity: 0.55;
     border-style: dashed;
 }
 
@@ -1538,6 +1542,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     height: 100%;
     object-fit: cover;
     display: block;
+    border-radius: inherit;
 }
 
 .circle-member--pending .circle-member__photo {
@@ -1550,6 +1555,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     justify-content: center;
     width: 100%;
     height: 100%;
+    border-radius: inherit;
     font-size: 12px;
     font-weight: 700;
     color: var(--circle-member-avatar-text, var(--color-text));
@@ -1557,6 +1563,25 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
 .circle-member--pending .circle-member__initials {
     color: var(--color-text-light);
+}
+
+.circle-member__invitation-icon {
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
+    border: 1px solid var(--color-surface, #fff);
+    border-radius: 999px;
+    background: var(--color-primary, #2563eb);
+    color: var(--color-text-inverse, #fff);
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(15, 23, 42, 0.16));
+    font-size: 9px;
+    line-height: 1;
+    pointer-events: none;
 }
 
 .circle-meta {

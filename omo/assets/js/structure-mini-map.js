@@ -908,10 +908,24 @@
             labelsToDraw.push({
               node: labelNode,
               color: labelStyle.fill,
-              stroke: labelStyle.stroke
+              stroke: labelStyle.stroke,
+              depth: Number(node.depth || 0),
+              isRole: String(node.type || '') === '1',
+              isHovered: isHovered
             });
           }
         });
+
+      labelsToDraw.sort(function (left, right) {
+        const leftPriority = left.isHovered ? 2 : (left.isRole ? 0 : 1);
+        const rightPriority = right.isHovered ? 2 : (right.isRole ? 0 : 1);
+
+        if (leftPriority !== rightPriority) {
+          return leftPriority - rightPriority;
+        }
+
+        return left.depth - right.depth;
+      });
 
       labelsToDraw.forEach(function (labelEntry) {
         drawNodeLabel(ctx, labelEntry.node, labelEntry.color, labelEntry.stroke);

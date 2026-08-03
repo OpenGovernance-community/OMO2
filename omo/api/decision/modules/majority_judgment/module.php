@@ -650,7 +650,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 <div class="omo-decision-majority-judgment__proposal-main">
                                     <span class="omo-decision-majority-judgment__proposal-label" data-omo-decision-mj-proposal-label><?= $escape(str_replace('{index}', (string)($proposalIndex + 1), t('decisions.majority_judgment.field.proposals_item', ['index' => (string)($proposalIndex + 1)], $lang, $sourceLang))) ?></span>
                                     <input type="text" name="proposals[]" class="generic-form-control" value="<?= $escape((string)$proposalItem['title']) ?>" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.proposals', [], $lang, $sourceLang)) ?>" <?= $canEditProposals ? '' : 'disabled' ?>>
-                                    <input type="hidden" name="proposal_descriptions[]" value="<?= $escape((string)($proposalItem['description'] ?? '')) ?>" data-omo-decision-mj-proposal-description>
+                                    <textarea hidden aria-hidden="true" name="proposal_descriptions[]" data-omo-decision-mj-proposal-description><?= $escape((string)($proposalItem['description'] ?? '')) ?></textarea>
                                     <input type="hidden" name="proposal_info_urls[]" value="<?= $escape((string)($proposalItem['info_url'] ?? '')) ?>" data-omo-decision-mj-proposal-info-url>
                                     <input type="hidden" name="proposal_ids[]" value="<?= $escape((int)($proposalItem['id'] ?? 0)) ?>">
                                 </div>
@@ -1487,7 +1487,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                         + '<div class="generic-section generic-section--stack" style="display:grid;gap:12px;">'
                                         + '  <label style="display:grid;gap:6px;">'
                                         + '    <span class="generic-card-title generic-card-title--small">' + String(payload.texts && payload.texts.proposalDescriptionLabel ? payload.texts.proposalDescriptionLabel : 'Description') + '</span>'
-                                        + '    <textarea class="generic-form-control" rows="6" data-omo-decision-mj-proposal-modal-description></textarea>'
+                                        + '    <div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-decision-mj-proposal-modal-description></div><textarea hidden aria-hidden="true" data-omo-proposal-html-value></textarea></div>'
                                         + '  </label>'
                                         + '  <label style="display:grid;gap:6px;">'
                                         + '    <span class="generic-card-title generic-card-title--small">' + String(payload.texts && payload.texts.proposalInfoUrlLabel ? payload.texts.proposalInfoUrlLabel : 'URL') + '</span>'
@@ -1509,8 +1509,11 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                     const modalInfoUrl = modalBody.querySelector('[data-omo-decision-mj-proposal-modal-info-url]');
                                     const modalCancel = modalBody.querySelector('[data-omo-decision-mj-proposal-modal-cancel]');
                                     const modalApply = modalBody.querySelector('[data-omo-decision-mj-proposal-modal-apply]');
+                                    if (modalDescription && window.omoProposalHtml && typeof window.omoProposalHtml.mount === 'function') {
+                                        window.omoProposalHtml.mount(modalDescription, {value: descriptionInput ? String(descriptionInput.value || '') : ''});
+                                    }
                                     if (modalDescription) {
-                                        modalDescription.value = descriptionInput ? String(descriptionInput.value || '') : '';
+                                        modalDescription.setAttribute('data-omo-proposal-html-initial', descriptionInput ? String(descriptionInput.value || '') : '');
                                     }
                                     if (modalInfoUrl) {
                                         modalInfoUrl.value = infoUrlInput ? String(infoUrlInput.value || '') : '';
@@ -1524,8 +1527,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                     }
                                     if (modalApply) {
                                         modalApply.addEventListener('click', function () {
-                                            if (descriptionInput && modalDescription) {
-                                                descriptionInput.value = String(modalDescription.value || '').trim();
+                                            if (descriptionInput && modalDescription && window.omoProposalHtml && typeof window.omoProposalHtml.getValue === 'function') {
+                                                descriptionInput.value = String(window.omoProposalHtml.getValue(modalDescription) || '').trim();
                                             }
                                             if (infoUrlInput && modalInfoUrl) {
                                                 infoUrlInput.value = String(modalInfoUrl.value || '').trim();
@@ -1566,7 +1569,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 + '<div class="omo-decision-majority-judgment__proposal-main">'
                                 + '    <span class="omo-decision-majority-judgment__proposal-label" data-omo-decision-mj-proposal-label></span>'
                                 + '    <input type="text" name="proposals[]" class="generic-form-control" placeholder="' + String(payload.texts && payload.texts.proposalPlaceholder ? payload.texts.proposalPlaceholder : 'Nom de la proposition') + '">'
-                                + '    <input type="hidden" name="proposal_descriptions[]" value="" data-omo-decision-mj-proposal-description>'
+                                + '    <textarea hidden aria-hidden="true" name="proposal_descriptions[]" data-omo-decision-mj-proposal-description></textarea>'
                                 + '    <input type="hidden" name="proposal_info_urls[]" value="" data-omo-decision-mj-proposal-info-url>'
                                 + '    <input type="hidden" name="proposal_ids[]" value="0">'
                                 + '</div>'

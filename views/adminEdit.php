@@ -1603,6 +1603,40 @@ echo "</div>";
                 ];
             }
 
+            options.buttons = {
+                omoHighlight: function () {
+                    return $.summernote.ui.button({
+                        contents: 'Surlignage',
+                        tooltip: 'Modifier le surlignage',
+                        click: function () {
+                            field.summernote('saveRange');
+                            var picker = document.createElement('input');
+                            picker.type = 'color';
+                            picker.value = '#fff59d';
+                            picker.style.position = 'fixed';
+                            picker.style.left = '-10000px';
+                            picker.style.top = '0';
+                            picker.addEventListener('change', function () {
+                                field.summernote('restoreRange');
+                                field.summernote('backColor', picker.value);
+                                picker.remove();
+                            }, {once: true});
+                            document.body.appendChild(picker);
+                            picker.click();
+                            window.setTimeout(function () {
+                                if (picker.isConnected) {
+                                    picker.remove();
+                                }
+                            }, 120000);
+                        }
+                    }).render();
+                }
+            };
+            var colorGroupIndex = options.toolbar.findIndex(function (group) {
+                return group[0] === 'para';
+            });
+            options.toolbar.splice(colorGroupIndex >= 0 ? colorGroupIndex : options.toolbar.length, 0, ['color', ['omoHighlight']]);
+
             options.callbacks = {
                 onChange: function (contents) {
                     field.val(contents);

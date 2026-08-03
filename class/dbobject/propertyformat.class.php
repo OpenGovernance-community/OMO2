@@ -238,7 +238,7 @@
 			}
 
 			if (!class_exists('\DOMDocument')) {
-				$fallback = strip_tags($html, '<p><br><strong><b><em><i><u><ul><ol><li><a><h1><h2><h3><blockquote><table><thead><tbody><tr><th><td>');
+				$fallback = strip_tags($html, '<p><br><strong><b><em><i><u><span><ul><ol><li><a><h1><h2><h3><blockquote><table><thead><tbody><tr><th><td>');
 				return self::isEmptyValue(self::FORMAT_TEXT, $fallback) ? '' : trim($fallback);
 			}
 
@@ -524,6 +524,7 @@
 				'em',
 				'i',
 				'u',
+				'span',
 				'ul',
 				'ol',
 				'li',
@@ -574,6 +575,11 @@
 				}
 			} else {
 				$element = $document->createElement($tagName);
+			}
+
+			$safeBackgroundColorStyle = self::sanitizeBackgroundColorStyle(self::getDomNodeAttributeValue($node, 'style'));
+			if ($safeBackgroundColorStyle !== '') {
+				$element->setAttribute('style', $safeBackgroundColorStyle);
 			}
 
 			foreach (iterator_to_array($node->childNodes) as $childNode) {
@@ -818,6 +824,31 @@
 			}
 
 			return preg_match('/^(https?:|mailto:|tel:)/i', $url) ? $url : '';
+		}
+
+		protected static function sanitizeBackgroundColorStyle($style)
+		{
+			$safeDeclarations = array();
+			foreach (explode(';', (string)$style) as $declaration) {
+				$separator = strpos($declaration, ':');
+				if ($separator === false || $separator < 1) {
+					continue;
+				}
+
+				$property = strtolower(trim(substr($declaration, 0, $separator)));
+				$value = strtolower(trim(substr($declaration, $separator + 1)));
+				if ($property !== 'background-color') {
+					continue;
+				}
+
+				if (!preg_match('/^(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\(\s*[-+0-9.%]+(?:\s*,\s*[-+0-9.%]+){2,3}\s*\)|[a-z]{1,32})$/i', $value)) {
+					continue;
+				}
+
+				$safeDeclarations[] = $property . ': ' . $value;
+			}
+
+			return implode('; ', $safeDeclarations);
 		}
 
 		protected static function extractInnerHtml(\DOMNode $node)

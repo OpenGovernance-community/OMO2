@@ -25,7 +25,7 @@ $sourceLang = array(
     'organization_import.property_mapping.title' => array('text' => 'Correspondance des proprietes', 'context' => 'Title of property mapping section.'),
     'organization_import.field.sections' => array('text' => 'Contenu a importer', 'context' => 'Section picker legend in the organization import popup.'),
     'organization_import.field.send_invitations' => array('text' => "Envoyer les e-mails d'invitation aux membres", 'context' => 'Checkbox controlling whether imported members immediately receive invitation emails.'),
-    'organization_import.field.send_invitations_hint' => array('text' => "Décochez cette option pour préparer les invitations sans envoyer d'e-mail. Elles pourront être envoyées plus tard depuis la fiche de chaque membre.", 'context' => 'Help text for delaying imported member invitation emails.'),
+    'organization_import.field.send_invitations_hint' => array('text' => "Décochez cette option pour importer les membres sans créer leurs invitations. Elles pourront être envoyées plus tard depuis la fiche de chaque membre.", 'context' => 'Help text for importing members without creating invitations.'),
     'organization_import.help' => array('text' => 'Cette action cree une nouvelle organisation. La structure est toujours importee. Les taches OMO 1 deviennent des projets enfants et les checklistes recurrentes deviennent des conteneurs.', 'context' => 'Help text in the organization import popup.'),
     'organization_import.module.checklists' => array('text' => 'Checklists', 'context' => 'Checklists module label in the organization import popup.'),
     'organization_import.loading' => array('text' => 'Import en cours...', 'context' => 'Loading label shown during organization import.'),

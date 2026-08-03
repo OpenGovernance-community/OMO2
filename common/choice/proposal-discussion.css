@@ -32,11 +32,50 @@
     flex-basis: 100%;
 }
 
-.omo-proposal-live-description {
+.omo-proposal-live-description,
+.omo-proposal-html-render {
     margin: 8px 0 0;
     color: var(--color-text-light, #475569);
     line-height: 1.55;
-    white-space: pre-wrap;
+}
+
+.omo-proposal-live-description p,
+.omo-proposal-live-description h1,
+.omo-proposal-live-description h2,
+.omo-proposal-live-description h3,
+.omo-proposal-live-description ul,
+.omo-proposal-live-description ol,
+.omo-proposal-live-description blockquote,
+.omo-proposal-live-description table,
+.omo-proposal-html-render p,
+.omo-proposal-html-render h1,
+.omo-proposal-html-render h2,
+.omo-proposal-html-render h3,
+.omo-proposal-html-render ul,
+.omo-proposal-html-render ol,
+.omo-proposal-html-render blockquote,
+.omo-proposal-html-render table {
+    margin-top: 0;
+}
+
+.omo-proposal-live-description p:last-child,
+.omo-proposal-live-description ul:last-child,
+.omo-proposal-live-description ol:last-child,
+.omo-proposal-live-description blockquote:last-child,
+.omo-proposal-live-description table:last-child,
+.omo-proposal-html-render p:last-child,
+.omo-proposal-html-render ul:last-child,
+.omo-proposal-html-render ol:last-child,
+.omo-proposal-html-render blockquote:last-child,
+.omo-proposal-html-render table:last-child {
+    margin-bottom: 0;
+}
+
+.omo-proposal-live-description ul,
+.omo-proposal-live-description ol,
+.omo-proposal-html-render ul,
+.omo-proposal-html-render ol {
+    padding-left: 22px;
 }
 
 .omo-proposal-live-link {

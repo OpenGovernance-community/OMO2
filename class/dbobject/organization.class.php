@@ -3976,8 +3976,9 @@
 			self::omo1ImportSave($membership, 'Le lien membre n a pas pu etre cree');
 		}
 
-		protected static function omo1ImportMembers(\dbObject\Organization $organization, array $records, $actorUserId, array &$userIdMap, array &$pendingUserIds, array &$pendingInvitations, array &$stats, array &$warnings)
+		protected static function omo1ImportMembers(\dbObject\Organization $organization, array $records, $actorUserId, array &$userIdMap, array &$pendingUserIds, array &$pendingInvitations, array &$stats, array &$warnings, $createMemberInvitations = true)
 		{
+			$createMemberInvitations = (bool)$createMemberInvitations;
 			foreach ($records as $record) {
 				if (!is_array($record)) {
 					continue;
@@ -4023,14 +4024,16 @@
 				self::omo1ImportUserMembership($organization, $targetUserId, $isAdmin, $record, $isActor);
 				if (!$isActor) {
 					$pendingUserIds[$targetUserId] = true;
-					$invitationIssue = \dbObject\Invitation::issue(
-						(int)$organization->getId(),
-						$targetUserId,
-						(int)$actorUserId,
-						trim((string)$user->get('email'))
-					);
-					if (!empty($invitationIssue['created']) && isset($invitationIssue['invitation'])) {
-						$pendingInvitations[(int)$invitationIssue['invitation']->getId()] = $invitationIssue['invitation'];
+					if ($createMemberInvitations) {
+						$invitationIssue = \dbObject\Invitation::issue(
+							(int)$organization->getId(),
+							$targetUserId,
+							(int)$actorUserId,
+							trim((string)$user->get('email'))
+						);
+						if (!empty($invitationIssue['created']) && isset($invitationIssue['invitation'])) {
+							$pendingInvitations[(int)$invitationIssue['invitation']->getId()] = $invitationIssue['invitation'];
+						}
 					}
 				}
 				$stats['members'] += 1;
@@ -5489,7 +5492,7 @@
 
 				if ($selectedModules['members']) {
 					$memberRecords = self::omo1ImportModuleRecords($payload, 'members');
-					self::omo1ImportMembers($organization, $memberRecords, $actorUserId, $userIdMap, $pendingUserIds, $pendingInvitations, $stats, $warnings);
+					self::omo1ImportMembers($organization, $memberRecords, $actorUserId, $userIdMap, $pendingUserIds, $pendingInvitations, $stats, $warnings, $sendMemberInvitationEmails);
 					self::omo1ImportRoleAssignments($memberRecords, $userIdMap, $holonIdMap, $pendingUserIds, $stats);
 				}
 				if ($selectedModules['rules']) {

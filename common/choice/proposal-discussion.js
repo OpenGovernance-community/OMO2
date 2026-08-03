@@ -15,6 +15,17 @@
         }
     }
 
+    function sanitizeProposalHtml(value) {
+        value = String(value || '');
+        if (window.omoSimpleHtmlField && typeof window.omoSimpleHtmlField.sanitizeHtml === 'function') {
+            return window.omoSimpleHtmlField.sanitizeHtml(value);
+        }
+
+        var fallback = document.createElement('div');
+        fallback.textContent = value;
+        return fallback.innerHTML.replace(/\r\n?|\n/g, '<br>');
+    }
+
     function parseContext(button) {
         try {
             var parsed = JSON.parse(String(button.getAttribute('data-proposal-context') || '{}'));
@@ -129,7 +140,7 @@
         return ''
             + '<form class="omo-proposal-popup-content omo-proposal-editor" data-omo-proposal-editor data-topbar-modal-max-width="660px">'
             + '  <label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Titre</span><input class="generic-form-control" type="text" name="title" maxlength="190" required></label>'
-            + '  <label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Description</span><textarea class="generic-form-control" name="description" rows="6" maxlength="10000"></textarea></label>'
+            + '  <label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Description</span><div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-proposal-editor-description></div><textarea hidden aria-hidden="true" name="description" data-omo-proposal-html-value></textarea></div></label>'
             + '  <label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Lien d information</span><input class="generic-form-control" type="url" name="info_url" maxlength="500" placeholder="https://..."></label>'
             + '  <div style="display:flex;justify-content:flex-end;gap:8px;"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-proposal-editor-cancel>Annuler</button><button type="submit" class="generic-action-button generic-action-button--main">Enregistrer</button></div>'
             + '</form>';
@@ -453,12 +464,12 @@
         var actions = card.querySelector('[data-omo-proposal-discussion-actions]');
         var knownDescription = card.querySelector('.omo-decision-vote__text, .omo-decision-majority-judgment__text, .omo-decision-consent__text, .omo-proposal-live-description');
         if (!knownDescription && proposal.description && actions) {
-            knownDescription = document.createElement('p');
+            knownDescription = document.createElement('div');
             knownDescription.className = 'omo-proposal-live-description';
             actions.parentNode.insertBefore(knownDescription, actions);
         }
         if (knownDescription) {
-            knownDescription.textContent = String(proposal.description || '');
+            knownDescription.innerHTML = sanitizeProposalHtml(proposal.description || '');
             knownDescription.hidden = !proposal.description;
         }
         var knownLink = card.querySelector('.omo-decision-vote__link, .omo-decision-majority-judgment__link, .omo-decision-consent__link, .omo-proposal-live-link');
@@ -594,6 +605,12 @@
         if (!form) {
             return;
         }
+        var descriptionEditor = form.querySelector('[data-omo-proposal-editor-description]');
+        if (descriptionEditor && window.omoProposalHtml && typeof window.omoProposalHtml.mount === 'function') {
+            window.omoProposalHtml.mount(descriptionEditor).catch(function () {
+                descriptionEditor.setAttribute('data-omo-proposal-html-error', '1');
+            });
+        }
 
         var query = new URLSearchParams();
         appendContext(query, context);
@@ -605,7 +622,11 @@
             .then(function (payload) {
                 var proposal = payload.proposal || {};
                 form.elements.title.value = String(proposal.title || '');
-                form.elements.description.value = String(proposal.description || '');
+                if (descriptionEditor && window.omoProposalHtml && typeof window.omoProposalHtml.setValue === 'function') {
+                    window.omoProposalHtml.setValue(descriptionEditor, String(proposal.description || ''));
+                } else {
+                    form.elements.description.value = String(proposal.description || '');
+                }
                 form.elements.info_url.value = String(proposal.infoUrl || '');
                 Array.prototype.forEach.call(form.elements, function (field) {
                     field.disabled = false;

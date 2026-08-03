@@ -890,8 +890,14 @@ if (!function_exists('omoDecisionRenderProposalSupplementHtml')) {
 
         $html = '';
         if ($description !== '') {
-            $classAttribute = trim((string)$descriptionClass) !== '' ? ' class="' . $escape(trim((string)$descriptionClass)) . '"' : '';
-            $html .= '<p' . $classAttribute . '>' . nl2br($escape($description)) . '</p>';
+            $descriptionClasses = trim((string)$descriptionClass);
+            $descriptionClasses = trim($descriptionClasses . ' omo-proposal-html-render');
+            $classAttribute = $descriptionClasses !== '' ? ' class="' . $escape($descriptionClasses) . '"' : '';
+            $descriptionHtml = \dbObject\PropertyFormat::sanitizeHtml($description);
+            if ($descriptionHtml !== '' && !preg_match('/<[^>]+>/', $descriptionHtml)) {
+                $descriptionHtml = nl2br($descriptionHtml);
+            }
+            $html .= '<div' . $classAttribute . '>' . $descriptionHtml . '</div>';
         }
 
         if ($infoUrl !== null) {
@@ -972,6 +978,21 @@ if (!function_exists('omoDecisionFormatProposalDateLabel')) {
     }
 }
 
+if (!function_exists('omoDecisionResolveExternalParticipantName')) {
+    function omoDecisionResolveExternalParticipantName(DecisionParticipant $participant)
+    {
+        $displayName = trim((string)$participant->get('display_name'));
+        $email = trim((string)$participant->get('email'));
+        $candidate = $displayName !== '' ? $displayName : $email;
+        $atPosition = strrpos($candidate, '@');
+        if ($atPosition !== false) {
+            $candidate = substr($candidate, 0, $atPosition);
+        }
+
+        return trim((string)$candidate);
+    }
+}
+
 if (!function_exists('omoDecisionResolveProposalParticipantName')) {
     function omoDecisionResolveProposalParticipantName(DecisionProcess $decision, $userId, $fallbackName = '', $anonymous = false)
     {
@@ -1044,7 +1065,14 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
 
         $isAnonymous = $proposal->isAnonymous();
         $authorUserId = $proposal->getAuthorUserId();
-        $authorName = omoDecisionResolveProposalParticipantName($decision, $authorUserId, '', $isAnonymous);
+        $authorFallbackName = '';
+        if (!$isAnonymous && method_exists($proposal, 'getAuthorParticipant')) {
+            $authorParticipant = $proposal->getAuthorParticipant();
+            if ($authorParticipant instanceof DecisionParticipant) {
+                $authorFallbackName = omoDecisionResolveExternalParticipantName($authorParticipant);
+            }
+        }
+        $authorName = omoDecisionResolveProposalParticipantName($decision, $authorUserId, $authorFallbackName, $isAnonymous);
         if ($authorName === '') {
             $authorName = $isAnonymous ? 'Auteur anonyme' : 'Auteur inconnu';
         }
@@ -1151,6 +1179,8 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
 
         $alreadyRendered = true;
         return '<link rel="stylesheet" href="/common/choice/proposal-discussion.css">'
+            . '<script src="/omo/assets/js/simple-html-field.js" defer></script>'
+            . '<script src="/common/choice/proposal-html.js" defer></script>'
             . '<script src="/common/choice/proposal-discussion.js" defer></script>';
     }
 }
@@ -1641,7 +1671,10 @@ if (!function_exists('omoDecisionRenderConsultationProposalPublicPanel')) {
                     . '</label>'
                     . '<label style="display:grid;gap:6px;">'
                         . '<span class="generic-card-title generic-card-title--small">' . $escape(omoDecisionProposalT('decisions.proposals.description_label')) . '</span>'
-                        . '<textarea class="generic-form-control" name="consultation_proposal_description" rows="4" placeholder="' . $escape(omoDecisionProposalT('decisions.proposals.description_placeholder')) . '"></textarea>'
+                        . '<div data-omo-proposal-html-field>'
+                            . '<div class="omo-proposal-html-editor" data-omo-proposal-html-editor></div>'
+                            . '<textarea hidden aria-hidden="true" name="consultation_proposal_description" data-omo-proposal-html-value></textarea>'
+                        . '</div>'
                     . '</label>'
                     . '<label style="display:grid;gap:6px;">'
                         . '<span class="generic-card-title generic-card-title--small">' . $escape(omoDecisionProposalT('decisions.proposals.info_url_label')) . '</span>'
