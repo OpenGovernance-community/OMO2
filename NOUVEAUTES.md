@@ -4,6 +4,9 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-03
 
+- Le resume de l espace OMO devient un Tableau de pilotage avec les perimetres Local, Enfants directs et Descendants, des vues memorisables par holon, et les projets ainsi que les indicateurs en retard en tete.
+- Les actions de vue du Tableau de pilotage et son empilement avec les drawers sont fiabilises.
+- Les alertes de projets et d indicateurs en retard ne sont affichees que lorsqu elles sont utiles, avec une presentation en deux colonnes sur grand ecran.
 - Les elements de checklist disposent maintenant d un menu pour les supprimer, les deplacer vers une autre checklist via le selecteur de cercles, ou extraire une recurrence de conteneur dans sa propre checklist recurrente.
 - Les propositions ajoutees par des personnes invitees uniquement par e-mail affichent maintenant le nom local de leur adresse, sans exposer le domaine; le lien vers le participant deja memorise est reutilise.
 - L import d une organisation permet maintenant d importer les membres sans creer ni envoyer leurs invitations. L envoi reste active par defaut et peut etre reporte depuis une case de la fenetre d import.
@@ -11,6 +14,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Dans la mini structure, le nom du cercle survole reste maintenant lisible au-dessus des noms de roles.
 - Les descriptions des checklists utilisent maintenant un editeur HTML Summernote et conservent leur mise en page dans les vues de liste et de detail.
 - Les descriptions des propositions de scrutin utilisent maintenant un editeur HTML Summernote avec un bouton de surlignage, et sont affichees avec un HTML filtre dans les cartes, la page publique et les popups d edition.
+- Le bouton de surlignage reprend maintenant l icone dediee et ouvre une petite palette de six couleurs douces predefinies.
 
 ## 2026-08-01
 

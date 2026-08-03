@@ -12,8 +12,8 @@
         return field ? field.querySelector('[data-omo-proposal-html-value]') : null;
     }
 
-    function openBackgroundColorPicker(api) {
-        if (!api || typeof api.applyBackgroundColor !== 'function') {
+    function openBackgroundColorPalette(api, anchor) {
+        if (!api || typeof api.applyBackgroundColor !== 'function' || !window.omoHighlightPalette) {
             return;
         }
 
@@ -21,23 +21,12 @@
             api.saveRange();
         }
 
-        var picker = document.createElement('input');
-        picker.type = 'color';
-        picker.value = '#fff59d';
-        picker.style.position = 'fixed';
-        picker.style.left = '-10000px';
-        picker.style.top = '0';
-        picker.addEventListener('change', function () {
-            api.applyBackgroundColor(picker.value);
-            picker.remove();
-        }, {once: true});
-        document.body.appendChild(picker);
-        picker.click();
-        window.setTimeout(function () {
-            if (picker.isConnected) {
-                picker.remove();
+        window.omoHighlightPalette.open({
+            anchor: anchor,
+            onSelect: function (color) {
+                api.applyBackgroundColor(color);
             }
-        }, 120000);
+        });
     }
 
     function mount(host, options) {
@@ -71,9 +60,10 @@
                         name: 'omoProposalHighlight',
                         group: 'color',
                         label: 'Surlignage',
+                        contents: '<img src="/omo/images/tools/surligneur.png" alt="" class="omo-simple-html-highlight-icon">',
                         title: 'Modifier le surlignage',
                         onClick: function (context) {
-                            openBackgroundColorPicker(context.api);
+                            openBackgroundColorPalette(context.api, context.event && context.event.currentTarget);
                         }
                     }],
                     onChange: function (value) {
