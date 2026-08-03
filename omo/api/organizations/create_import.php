@@ -47,6 +47,9 @@ foreach ($availableModules as $module) {
 }
 
 $organizationName = trim((string)($_POST['organization_name'] ?? ''));
+$importOptions = array(
+    'sendMemberInvitationEmails' => !empty($_POST['send_member_invitations']),
+);
 $templateCalibration = array(
     'templateRootHolonId' => (int)($_POST['organization_template_id'] ?? 0),
     'mappings' => array(),
@@ -96,7 +99,8 @@ $result = \dbObject\Organization::importOmo1ExportAsNewOrganization(
     $requestedModules,
     $currentUserId,
     $organizationName,
-    $templateCalibration
+    $templateCalibration,
+    $importOptions
 );
 
 if (empty($result['status']) || !($result['organization'] ?? null) instanceof \dbObject\Organization) {
