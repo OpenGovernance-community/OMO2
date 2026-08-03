@@ -218,6 +218,42 @@ class DecisionProposal extends DbObject
         return (int)$userId > 0 && $this->getAuthorUserId() === (int)$userId;
     }
 
+    public function archiveByAuthor($userId)
+    {
+        $userId = (int)$userId;
+        if (!$this->canBeEditedByUser($userId)) {
+            return [
+                'status' => false,
+                'reason' => 'forbidden',
+                'message' => 'Vous ne pouvez supprimer que vos propres propositions.',
+            ];
+        }
+
+        if ((int)$this->get('active') !== 1) {
+            return [
+                'status' => false,
+                'reason' => 'not_found',
+                'message' => 'Cette proposition n est plus active.',
+            ];
+        }
+
+        $this->set('active', 0);
+        $this->set('updated_at', new \DateTimeImmutable('now'));
+        $saveResult = $this->save();
+        if (!is_array($saveResult) || empty($saveResult['status'])) {
+            return [
+                'status' => false,
+                'reason' => 'save_failed',
+                'message' => 'La proposition ne peut pas être supprimée pour le moment.',
+            ];
+        }
+
+        return [
+            'status' => true,
+            'message' => 'Proposition supprimée.',
+        ];
+    }
+
     public function updateContentByAuthor($userId, $title, $description, $infoUrl)
     {
         $userId = (int)$userId;

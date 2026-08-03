@@ -8,10 +8,31 @@
 
     var discussionUrl = '/omo/api/decision/modules/proposals/discussion.php';
     var editUrl = '/omo/api/decision/modules/proposals/edit.php';
+    var deleteUrl = '/omo/api/decision/modules/proposals/delete.php';
 
     function notify(message, type) {
         if (typeof window.commonNotify === 'function') {
             window.commonNotify(String(message || ''), type || 'error');
+        }
+    }
+
+    function closeProposalActionMenus(except) {
+        Array.prototype.forEach.call(document.querySelectorAll('[data-omo-proposal-action-menu-panel]'), function (panel) {
+            var menu = panel.closest('[data-omo-proposal-action-menu]');
+            var toggle = menu ? menu.querySelector('[data-omo-proposal-action-menu-toggle]') : null;
+            if (panel !== except) {
+                panel.hidden = true;
+                if (toggle) {
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            }
+        });
+    }
+
+    function removeDeletedProposal(button) {
+        var card = button.closest('.generic-section');
+        if (card && card.parentNode) {
+            card.parentNode.removeChild(card);
         }
     }
 
@@ -408,11 +429,35 @@
         }
     }
 
-    function syncProposal(root, proposal) {
+    function updateDiscussionCount(button, count) {
+        if (!button) {
+            return;
+        }
+        var countNode = button.closest('[data-omo-proposal-discussion-actions]')
+            ? button.closest('[data-omo-proposal-discussion-actions]').querySelector('[data-omo-proposal-discussion-count]')
+            : null;
+        count = Math.max(0, Number(count || 0));
+        if (!countNode) {
+            return;
+        }
+        countNode.hidden = count <= 0;
+        countNode.setAttribute('data-message-count', String(count));
+        countNode.title = 'Nombre de messages : ' + String(count);
+        countNode.setAttribute('aria-label', 'Nombre de messages : ' + String(count));
+        var valueNode = countNode.querySelector('[data-omo-proposal-discussion-count-value]');
+        if (valueNode) {
+            valueNode.textContent = String(count);
+        }
+    }
+
+    function syncProposal(root, proposal, messageCount) {
         root.__omoProposal = proposal || {};
         var title = root.querySelector('[data-omo-proposal-chat-title]');
         if (title) {
             title.textContent = String(proposal.title || 'Proposition');
+        }
+        if (typeof messageCount !== 'undefined') {
+            updateDiscussionCount(root.__omoDiscussionButton, messageCount);
         }
     }
 
@@ -449,6 +494,9 @@
         var card = button.closest('.generic-section');
         if (!card) {
             return;
+        }
+        if (Object.prototype.hasOwnProperty.call(proposal || {}, 'discussionMessageCount')) {
+            updateDiscussionCount(button, proposal.discussionMessageCount);
         }
         var title = card.querySelector('strong');
         if (title) {
@@ -502,7 +550,7 @@
             query.append('after_id', String(root.__omoLastMessageId));
         }
         root.__omoDiscussionLoadPromise = requestJson(discussionUrl + '?' + query.toString()).then(function (payload) {
-            syncProposal(root, payload.proposal || {});
+            syncProposal(root, payload.proposal || {}, payload.discussionMessageCount);
             syncDiscussionMode(root, payload);
             renderMessages(root, payload.messages || []);
             root.__omoLastMessageId = Math.max(
@@ -577,7 +625,7 @@
             requestJson(discussionUrl, {method: 'POST', body: body})
                 .then(function (payload) {
                     composer.elements.content.value = '';
-                    syncProposal(root, payload.proposal || {});
+                    syncProposal(root, payload.proposal || {}, payload.discussionMessageCount);
                     syncDiscussionMode(root, payload);
                     renderMessages(root, payload.messages || []);
                 })
@@ -682,6 +730,7 @@
         }
         root.__omoContext = parseContext(button);
         root.__omoProposalId = Number(button.getAttribute('data-proposal-id') || 0);
+        root.__omoDiscussionButton = button;
         bindModal(root, button);
         loadDiscussion(root).catch(function (error) {
             var list = root.querySelector('[data-omo-proposal-chat-messages]');
@@ -699,6 +748,53 @@
             }
         });
     }
+
+    document.addEventListener('click', function (event) {
+        var toggle = event.target.closest('[data-omo-proposal-action-menu-toggle]');
+        if (toggle) {
+            event.preventDefault();
+            event.stopPropagation();
+            var menu = toggle.closest('[data-omo-proposal-action-menu]');
+            var panel = menu ? menu.querySelector('[data-omo-proposal-action-menu-panel]') : null;
+            if (panel) {
+                var shouldOpen = panel.hidden;
+                closeProposalActionMenus(panel);
+                panel.hidden = !shouldOpen;
+                toggle.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            }
+            return;
+        }
+
+        var deleteButton = event.target.closest('[data-omo-proposal-delete-open]');
+        if (deleteButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeProposalActionMenus();
+            if (!window.confirm('Supprimer cette proposition ?')) {
+                return;
+            }
+
+            var context = parseContext(deleteButton);
+            var body = new FormData();
+            appendContext(body, context);
+            body.append('proposal_id', String(deleteButton.getAttribute('data-proposal-id') || 0));
+            deleteButton.disabled = true;
+            requestJson(deleteUrl, {method: 'POST', body: body})
+                .then(function (payload) {
+                    removeDeletedProposal(deleteButton);
+                    notify(payload.message || 'Proposition supprimée.', 'success');
+                })
+                .catch(function (error) {
+                    notify(error.message, 'error');
+                    deleteButton.disabled = false;
+                });
+            return;
+        }
+
+        if (!event.target.closest('[data-omo-proposal-action-menu]')) {
+            closeProposalActionMenus();
+        }
+    }, true);
 
     document.addEventListener('click', function (event) {
         var button = event.target.closest('[data-omo-proposal-discussion-open]');

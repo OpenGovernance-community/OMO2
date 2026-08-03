@@ -696,7 +696,9 @@ function commonDecisionParticipationRenderGroupBlocks(DecisionProcess $decision,
                         </span>
                     </div>
                     <h2 class="decision-public-group__title"><?= omoApiEscape($groupTitle) ?></h2>
-                    <?php if ($groupDescription !== ''): ?>
+        </div>
+               <div class="generic-soft-panel-square generic-soft-panel--stack decision-public-group__header decision-public-group__header">
+                     <?php if ($groupDescription !== ''): ?>
                     <p class="decision-public-group__description"><?= nl2br(omoApiEscape($groupDescription)) ?></p>
                     <?php endif; ?>
                     <?php if ($majorityLegend !== ''): ?>

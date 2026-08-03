@@ -74,6 +74,9 @@ if (empty($result['status'])) {
     omoDecisionModuleJsonResponse($statusCode, $result);
 }
 
+$discussionSummary = omoDecisionGetProposalDiscussionSummary($proposal, $context);
+$discussionMessageCount = (int)($discussionSummary['total_messages'] ?? 0);
+
 omoDecisionModuleJsonResponse(200, [
     'status' => true,
     'changed' => !empty($result['changed']),
@@ -84,6 +87,7 @@ omoDecisionModuleJsonResponse(200, [
         'description' => trim((string)$proposal->get('description')),
         'infoUrl' => trim((string)$proposal->get('info_url')),
         'updatedLabel' => omoDecisionFormatProposalDateLabel($proposal->get('updated_at')),
+        'discussionMessageCount' => $discussionMessageCount,
     ],
 ]);
 

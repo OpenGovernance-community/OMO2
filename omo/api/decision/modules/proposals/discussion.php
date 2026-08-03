@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/context.php';
 require_once dirname(__DIR__) . '/common.php';
 
 use dbObject\ChatMessage;
+use dbObject\ChatThread;
 use dbObject\DecisionProposal;
 use dbObject\User;
 
@@ -116,6 +117,7 @@ if ($requestMethod === 'POST') {
 }
 
 $messages = [];
+$discussionMessageCount = 0;
 if ($thread) {
     foreach ($thread->getMessages(300, $afterMessageId) as $message) {
         if ($message instanceof ChatMessage) {
@@ -148,6 +150,13 @@ if ($thread) {
             $messages[] = $messageData;
         }
     }
+    $discussionSummary = ChatThread::getSubjectDiscussionSummaries(
+        (int)$thread->get('IDorganization'),
+        ChatThread::SUBJECT_DECISION_PROPOSAL,
+        [(int)$proposal->getId()],
+        $viewerUserId
+    );
+    $discussionMessageCount = (int)($discussionSummary[(int)$proposal->getId()]['total_messages'] ?? 0);
 }
 
 omoDecisionProposalDiscussionRespond(200, [
@@ -161,6 +170,7 @@ omoDecisionProposalDiscussionRespond(200, [
     'discussionIsAnonymous' => $discussionIsAnonymous,
     'viewerUserId' => $viewerUserId,
     'anonymousPreferenceExpiresAt' => $anonymousPreferenceExpiresAt,
+    'discussionMessageCount' => $discussionMessageCount,
     'messages' => $messages,
     'lastMessageId' => count($messages) > 0
         ? (int)$messages[count($messages) - 1]['id']
