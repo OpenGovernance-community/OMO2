@@ -16,6 +16,7 @@ require_once dirname(__DIR__) . '/common/admin_edit_translation.php';
 <?php if (!isset($params['includeComponentAssets']) || $params['includeComponentAssets'] !== false) { ?>
 <link rel="stylesheet" href="/common/assets/components.css">
 <?php } ?>
+<script src="/common/choice/highlight-palette.js"></script>
 <style>
     .admin-edit .navTab a {
         border: 1px solid var(--admin-edit-border-strong, #cbd5e1);
@@ -1606,28 +1607,19 @@ echo "</div>";
             options.buttons = {
                 omoHighlight: function () {
                     return $.summernote.ui.button({
-                        contents: 'Surlignage',
+                        contents: '<img src="/omo/images/tools/surligneur.png" alt="" style="display:block;width:18px;height:18px;object-fit:contain;">',
                         tooltip: 'Modifier le surlignage',
-                        click: function () {
+                        click: function (event) {
                             field.summernote('saveRange');
-                            var picker = document.createElement('input');
-                            picker.type = 'color';
-                            picker.value = '#fff59d';
-                            picker.style.position = 'fixed';
-                            picker.style.left = '-10000px';
-                            picker.style.top = '0';
-                            picker.addEventListener('change', function () {
-                                field.summernote('restoreRange');
-                                field.summernote('backColor', picker.value);
-                                picker.remove();
-                            }, {once: true});
-                            document.body.appendChild(picker);
-                            picker.click();
-                            window.setTimeout(function () {
-                                if (picker.isConnected) {
-                                    picker.remove();
-                                }
-                            }, 120000);
+                            if (window.omoHighlightPalette) {
+                                window.omoHighlightPalette.open({
+                                    anchor: event && event.currentTarget,
+                                    onSelect: function (color) {
+                                        field.summernote('restoreRange');
+                                        field.summernote('backColor', color);
+                                    }
+                                });
+                            }
                         }
                     }).render();
                 }

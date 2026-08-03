@@ -1179,6 +1179,7 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
 
         $alreadyRendered = true;
         return '<link rel="stylesheet" href="/common/choice/proposal-discussion.css">'
+            . '<script src="/common/choice/highlight-palette.js" defer></script>'
             . '<script src="/omo/assets/js/simple-html-field.js" defer></script>'
             . '<script src="/common/choice/proposal-html.js" defer></script>'
             . '<script src="/common/choice/proposal-discussion.js" defer></script>';

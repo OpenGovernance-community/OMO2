@@ -39,6 +39,7 @@
             + '.omo-simple-html-field .note-editor.note-frame{border:1px solid var(--color-border,#d1d5db);border-radius:var(--radius-md);background:var(--color-surface,#fff);}'
             + '.omo-simple-html-field .note-toolbar{position:sticky;top:0;z-index:6;border-bottom:1px solid var(--color-border,#d1d5db);background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 88%,white);border-top-left-radius:var(--radius-md);border-top-right-radius:var(--radius-md);padding:8px;box-shadow:0 8px 18px -18px rgba(15,23,42,.45);}'
             + '.omo-simple-html-field .note-btn{border-radius:var(--radius-md);border-color:var(--color-border,#d1d5db);}'
+            + '.omo-simple-html-field .omo-simple-html-highlight-icon{display:block;width:18px;height:18px;object-fit:contain;}'
             + '.omo-simple-html-field .note-editing-area{overflow:visible;}'
             + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;height:auto!important;overflow-y:hidden!important;padding:14px;line-height:1.55;color:var(--color-text,#1f2937);}'
             + '.omo-simple-html-field .note-placeholder{color:var(--color-text-light,#6b7280);}'
@@ -1248,11 +1249,16 @@
             const title = resolvedState && resolvedState.title !== undefined
                 ? String(resolvedState.title || '')
                 : null;
+            const contents = resolvedState && resolvedState.contents !== undefined
+                ? String(resolvedState.contents || '')
+                : null;
             const isDisabled = !!(resolvedState && resolvedState.disabled);
             const isHidden = !!(resolvedState && resolvedState.hidden);
             const isActive = !!(resolvedState && resolvedState.active);
 
-            if (label !== null) {
+            if (contents !== null) {
+                $button.html(contents);
+            } else if (label !== null) {
                 $button.html(escapeHtml(label));
             }
 
@@ -1617,7 +1623,9 @@
                         }
 
                         const $button = ui.button({
-                            contents: escapeHtml(buttonConfig.label),
+                            contents: buttonConfig.contents !== undefined
+                                ? String(buttonConfig.contents || '')
+                                : escapeHtml(buttonConfig.label),
                             tooltip: buttonConfig.title,
                             className: buttonConfig.className,
                             click: function (event) {
@@ -1642,6 +1650,7 @@
                         $button.attr('data-omo-toolbar-button-name', buttonConfig.name);
                         applyToolbarButtonState(buttonConfig.name, {
                             label: buttonConfig.label,
+                            contents: buttonConfig.contents,
                             title: buttonConfig.title,
                             hidden: !!buttonConfig.hidden,
                             disabled: !!buttonConfig.disabled,

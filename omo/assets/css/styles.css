@@ -818,6 +818,48 @@ body {
     overflow-y: auto;
 }
 
+.omo-personal-space__body {
+    overflow: hidden;
+    padding: 0;
+}
+
+.omo-personal-space.omo-panel-view > .omo-personal-space__header.omo-panel-view__header {
+    z-index: 9;
+}
+
+.omo-personal-space__filter-toolbar {
+    z-index: 16;
+}
+
+.omo-personal-space__overdue-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: var(--generic-container-gap);
+}
+
+.omo-personal-space__card--overdue {
+    --generic-section-background: color-mix(in srgb, var(--color-danger, #dc2626) 9%, var(--color-surface, #ffffff));
+    --generic-section-border: color-mix(in srgb, var(--color-danger, #dc2626) 38%, var(--color-border, #d1d5db));
+    --generic-section-shadow: 0 14px 28px color-mix(in srgb, var(--color-danger, #dc2626) 14%, transparent);
+    border-inline-start: 4px solid color-mix(in srgb, var(--color-danger, #dc2626) 62%, var(--color-border, #d1d5db));
+}
+
+.omo-personal-space__item-button--overdue {
+    border-color: color-mix(in srgb, var(--color-danger, #dc2626) 32%, var(--color-border, #d1d5db));
+}
+
+.omo-personal-space__tag--danger {
+    background: color-mix(in srgb, var(--color-danger, #dc2626) 12%, var(--color-surface-alt));
+    color: color-mix(in srgb, var(--color-danger, #dc2626) 82%, var(--color-text));
+}
+
+@media (max-width: 760px) {
+    .omo-personal-space__overdue-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .omo-personal-space__hero,
 .omo-personal-space__card {
     --generic-section-radius: var(--radius-md);

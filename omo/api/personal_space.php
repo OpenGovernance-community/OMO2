@@ -75,22 +75,18 @@ $sourceLang = [
         'text' => 'Indicateurs en retard',
         'context' => 'Title of the overdue indicators dashboard card.',
     ],
-    'personal_space.overdue.empty' => [
-        'text' => 'Aucun element en retard dans ce contexte.',
-        'context' => 'Empty state for an overdue dashboard section.',
-    ],
     'personal_space.overdue.days' => [
         'one' => '{count} jour de retard',
         'other' => '{count} jours de retard',
         'context' => 'Overdue duration displayed beside an overdue dashboard item.',
     ],
+    'personal_space.overdue.to_complete' => [
+        'text' => 'A completer',
+        'context' => 'Status shown for an indicator that is overdue but still within its grace period.',
+    ],
     'personal_space.heading' => [
         'text' => 'Espace personnel',
         'context' => 'Main title of the personal space panel shown on the right side of the OMO workspace.',
-    ],
-    'personal_space.intro' => [
-        'text' => 'Un résumé rapide des sujets qui vous concernent dans cet espace.',
-        'context' => 'Intro text displayed below the personal space title.',
     ],
     'personal_space.empty' => [
         'text' => 'Aucun résumé personnel disponible avec les applications actives pour le moment.',
@@ -640,7 +636,9 @@ $historyItems = is_array($structureHistory['items'] ?? null) ? $structureHistory
                         <h2 class="omo-panel-view__title"><?= omoApiEscape(t('personal_space.title', [], $lang, $sourceLang)) ?></h2>
                         <span class="omo-panel-view__count omo-panel-view__overdue-count"><?= count($overdueProjects) + count($overdueIndicators) ?></span>
                     </div>
-                    <p class="omo-panel-view__description"><?= omoApiEscape($currentUserId > 0 ? t('personal_space.intro', [], $lang, $sourceLang) : t('personal_space.login_required', [], $lang, $sourceLang)) ?></p>
+                    <?php if ($currentUserId <= 0): ?>
+                        <p class="omo-panel-view__description"><?= omoApiEscape(t('personal_space.login_required', [], $lang, $sourceLang)) ?></p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -691,14 +689,19 @@ $historyItems = is_array($structureHistory['items'] ?? null) ? $structureHistory
                 <p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.empty', [], $lang, $sourceLang)) ?></p>
             </section>
         <?php else: ?>
-            <?php if (!empty($enabledAppHashes['projects'])): ?>
+            <?php $hasOverdueProjects = !empty($enabledAppHashes['projects']) && $overdueProjects !== array(); ?>
+            <?php $hasOverdueIndicators = !empty($enabledAppHashes['stats']) && $overdueIndicators !== array(); ?>
+            <?php if ($hasOverdueProjects || $hasOverdueIndicators): ?>
+                <div class="omo-personal-space__overdue-grid">
+            <?php endif; ?>
+
+            <?php if ($hasOverdueProjects): ?>
                 <section class="generic-section generic-section--stack omo-personal-space__card omo-personal-space__card--overdue">
                     <div class="omo-personal-space__section-head">
                         <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(t('personal_space.section.projects_overdue', [], $lang, $sourceLang)) ?></span>
                         <button type="button" class="omo-personal-space__section-action" data-omo-personal-space-route-token="projects"<?= $personalSpaceForcedOpenScope !== '' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($personalSpaceForcedOpenScope) . '"' : '' ?>><?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?></button>
                     </div>
-                    <?php if ($overdueProjects !== array()): ?>
-                        <div class="omo-personal-space__item-list">
+                    <div class="omo-personal-space__item-list">
                             <?php foreach ($overdueProjects as $overdueProject): ?>
                                 <button type="button" class="omo-personal-space__item-button omo-personal-space__item-button--overdue" data-omo-personal-space-project-id="<?= (int)$overdueProject['id'] ?>" data-omo-personal-space-project-holon-id="<?= (int)$overdueProject['holonId'] ?>">
                                     <span class="omo-personal-space__item-topline">
@@ -708,35 +711,31 @@ $historyItems = is_array($structureHistory['items'] ?? null) ? $structureHistory
                                     <span class="omo-personal-space__item-meta"><?= omoApiEscape($overdueProject['holonLabel']) ?> · <?= omoApiEscape($overdueProject['plannedEnd']->format('d.m.Y')) ?></span>
                                 </button>
                             <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
-                        <p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.overdue.empty', [], $lang, $sourceLang)) ?></p>
-                    <?php endif; ?>
+                    </div>
                 </section>
             <?php endif; ?>
 
-            <?php if (!empty($enabledAppHashes['stats'])): ?>
+            <?php if ($hasOverdueIndicators): ?>
                 <section class="generic-section generic-section--stack omo-personal-space__card omo-personal-space__card--overdue">
                     <div class="omo-personal-space__section-head">
                         <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(t('personal_space.section.indicators_overdue', [], $lang, $sourceLang)) ?></span>
                         <button type="button" class="omo-personal-space__section-action" data-omo-personal-space-route-token="stats"<?= $personalSpaceForcedOpenScope !== '' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($personalSpaceForcedOpenScope) . '"' : '' ?>><?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?></button>
                     </div>
-                    <?php if ($overdueIndicators !== array()): ?>
-                        <div class="omo-personal-space__item-list">
+                    <div class="omo-personal-space__item-list">
                             <?php foreach ($overdueIndicators as $overdueIndicator): ?>
                                 <button type="button" class="omo-personal-space__item-button omo-personal-space__item-button--overdue" data-omo-personal-space-indicator-id="<?= (int)$overdueIndicator['id'] ?>" data-omo-personal-space-indicator-holon-id="<?= (int)$currentHolonId ?>">
                                     <span class="omo-personal-space__item-topline">
                                         <span class="omo-personal-space__item-title"><?= omoApiEscape($overdueIndicator['title']) ?></span>
-                                        <span class="omo-personal-space__tag omo-personal-space__tag--danger"><?= omoApiEscape($overdueIndicator['severity'] === 'warning' ? 'A completer' : t('personal_space.overdue.days', ['count' => (string)$overdueIndicator['overdueDays']], $lang, $sourceLang)) ?></span>
+                                        <span class="omo-personal-space__tag omo-personal-space__tag--danger"><?= omoApiEscape($overdueIndicator['severity'] === 'warning' ? t('personal_space.overdue.to_complete', [], $lang, $sourceLang) : t('personal_space.overdue.days', ['count' => (string)$overdueIndicator['overdueDays']], $lang, $sourceLang)) ?></span>
                                     </span>
                                     <span class="omo-personal-space__item-meta"><?= omoApiEscape($overdueIndicator['contextLabel']) ?></span>
                                 </button>
                             <?php endforeach; ?>
-                        </div>
-                    <?php else: ?>
-                        <p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.overdue.empty', [], $lang, $sourceLang)) ?></p>
-                    <?php endif; ?>
+                    </div>
                 </section>
+            <?php endif; ?>
+            <?php if ($hasOverdueProjects || $hasOverdueIndicators): ?>
+                </div>
             <?php endif; ?>
 
             <?php if (!empty($enabledAppHashes['decision']) && is_array($decisionSummary)): ?>
@@ -1091,35 +1090,51 @@ $historyItems = is_array($structureHistory['items'] ?? null) ? $structureHistory
         scopeChip.setAttribute('aria-expanded', 'true');
     }
 
-    root.addEventListener('click', function (event) {
-        var scopeButton = event.target.closest('[data-omo-personal-space-scope]');
-        if (scopeButton) {
-            pendingScope = normalizeScope(scopeButton.getAttribute('data-omo-personal-space-scope') || '');
-            syncChoices(pendingScope);
-            return;
-        }
+    if (scopeChip) {
+        scopeChip.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
 
-        if (event.target.closest('[data-omo-personal-space-filter-toggle]')) {
             if (filterPanel && filterPanel.hidden) {
                 openFilter();
             } else {
                 closeFilter(false, false);
             }
-            return;
-        }
+        });
+    }
 
-        if (event.target.closest('[data-omo-personal-space-filter-apply]')) {
+    root.querySelectorAll('[data-omo-personal-space-scope]').forEach(function (scopeButton) {
+        scopeButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            pendingScope = normalizeScope(scopeButton.getAttribute('data-omo-personal-space-scope') || '');
+            syncChoices(pendingScope);
+        });
+    });
+
+    var applyButton = root.querySelector('[data-omo-personal-space-filter-apply]');
+    if (applyButton) {
+        applyButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
             closeFilter(true, false);
-            return;
-        }
+        });
+    }
 
-        if (event.target.closest('[data-omo-personal-space-filter-save]')) {
+    var saveButton = root.querySelector('[data-omo-personal-space-filter-save]');
+    if (saveButton) {
+        saveButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
             closeFilter(true, true);
-            return;
-        }
+        });
+    }
 
-        var moreToggle = event.target.closest('[data-omo-personal-space-filter-more-toggle]');
-        if (moreToggle) {
+    var moreToggle = root.querySelector('[data-omo-personal-space-filter-more-toggle]');
+    if (moreToggle) {
+        moreToggle.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
             var morePanel = root.querySelector('[data-omo-personal-space-filter-more-panel]');
             var isOpen = morePanel && !morePanel.hidden;
             closeMoreMenu();
@@ -1127,11 +1142,13 @@ $historyItems = is_array($structureHistory['items'] ?? null) ? $structureHistory
                 morePanel.hidden = false;
                 moreToggle.setAttribute('aria-expanded', 'true');
             }
-            return;
-        }
+        });
+    }
 
-        var moreAction = event.target.closest('[data-omo-personal-space-filter-more-action]');
-        if (moreAction) {
+    root.querySelectorAll('[data-omo-personal-space-filter-more-action]').forEach(function (moreAction) {
+        moreAction.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
             var action = moreAction.getAttribute('data-omo-personal-space-filter-more-action') || '';
             var nextScope = normalizeScope(pendingScope === null ? currentScope : pendingScope);
             var active = readStore(storageKey);
@@ -1154,8 +1171,7 @@ $historyItems = is_array($structureHistory['items'] ?? null) ? $structureHistory
                 clearTemporary();
                 refresh(active.defaultView && active.defaultView.scope ? active.defaultView.scope : 'contextual');
             }
-            return;
-        }
+        });
     });
 
     document.addEventListener('pointerdown', function (event) {

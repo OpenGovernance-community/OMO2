@@ -2205,9 +2205,10 @@ function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null, option
 
     const statsIndicatorRoute = omoParseStatsIndicatorRouteToken(normalizedRouteToken);
     if (statsIndicatorRoute) {
+        const statsScope = omoNormalizeDrawerForcedScope(options.forcedScope) || 'descendants';
         return {
             drawer: 'drawer_stats',
-            url: `api/stats/index.php?open_indicator_id=${encodeURIComponent(statsIndicatorRoute.indicatorId)}&stats_scope=descendants`,
+            url: 'api/stats/index.php?open_indicator_id=' + encodeURIComponent(statsIndicatorRoute.indicatorId) + '&stats_scope=' + encodeURIComponent(statsScope),
             navigationMode: 'drawer'
         };
     }
@@ -2237,7 +2238,8 @@ function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null, option
 
     const projectRoute = omoParseProjectRouteToken(normalizedRouteToken);
     if (projectRoute) {
-        let url = 'api/projects/index.php?open_project_mode=' + encodeURIComponent(projectRoute.mode);
+        const projectScope = omoNormalizeDrawerForcedScope(options.forcedScope) || 'descendants';
+        let url = 'api/projects/index.php?open_project_mode=' + encodeURIComponent(projectRoute.mode) + '&project_scope=' + encodeURIComponent(projectScope);
         if (projectRoute.projectId > 0) {
             url += '&open_project_id=' + encodeURIComponent(projectRoute.projectId);
         }
@@ -4033,6 +4035,15 @@ $(document).on('click', '[data-omo-personal-space-project-id]', function (e) {
         return;
     }
 
+    const dashboardRoot = $(this).closest('#omo-personal-space-root');
+    const dashboardScope = String(dashboardRoot.attr('data-omo-personal-space-scope') || '').trim();
+    if (dashboardScope && typeof window.omoOpenDrawerHashState === 'function' && typeof window.omoBuildProjectRouteToken === 'function') {
+        window.omoOpenDrawerHashState(window.omoBuildProjectRouteToken(projectId), {
+            forcedScope: dashboardScope
+        });
+        return;
+    }
+
     window.omoOpenSearchProjectResult(projectId, holonId);
 });
 
@@ -4042,6 +4053,15 @@ $(document).on('click', '[data-omo-personal-space-indicator-id]', function (e) {
     const indicatorId = Number($(this).attr('data-omo-personal-space-indicator-id') || 0);
     const holonId = Number($(this).attr('data-omo-personal-space-indicator-holon-id') || 0);
     if (!Number.isInteger(indicatorId) || indicatorId <= 0 || typeof window.omoOpenSearchStatIndicatorResult !== 'function') {
+        return;
+    }
+
+    const dashboardRoot = $(this).closest('#omo-personal-space-root');
+    const dashboardScope = String(dashboardRoot.attr('data-omo-personal-space-scope') || '').trim();
+    if (dashboardScope && typeof window.omoOpenDrawerHashState === 'function' && typeof window.omoBuildStatsIndicatorRouteToken === 'function') {
+        window.omoOpenDrawerHashState(window.omoBuildStatsIndicatorRouteToken(indicatorId), {
+            forcedScope: dashboardScope
+        });
         return;
     }
 
