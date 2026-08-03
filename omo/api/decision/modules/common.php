@@ -1194,12 +1194,19 @@ if (!function_exists('omoDecisionRenderProposalDiscussionActions')) {
         }
         $canDiscuss = omoDecisionCanAccessProposalDiscussion($proposal, $context);
         $canEdit = omoDecisionCanEditProposalFromPublicInterface($proposal, $context);
+        $discussionSummary = $canDiscuss ? omoDecisionGetProposalDiscussionSummary($proposal, $context) : [];
+        $discussionMessageCount = max(0, (int)($discussionSummary['total_messages'] ?? 0));
         $contextPayload = omoDecisionModuleEncodeJsonPayload(omoDecisionBuildProposalDiscussionContextPayload($context));
         $html = '';
         if ($canDiscuss || $canEdit) {
             $html = '<div class="omo-proposal-discussion-actions" data-omo-proposal-discussion-actions>';
         }
         if ($canDiscuss) {
+            $discussionCountHidden = $discussionMessageCount > 0 ? '' : ' hidden';
+            $discussionCountLabel = 'Nombre de messages : ' . (string)$discussionMessageCount;
+            $html .= '<span class="omo-proposal-discussion-count" data-omo-proposal-discussion-count data-message-count="' . $escape($discussionMessageCount) . '" title="' . $escape($discussionCountLabel) . '" aria-label="' . $escape($discussionCountLabel) . '"' . $discussionCountHidden . '>'
+                    . '<span class="omo-proposal-discussion-count-value" data-omo-proposal-discussion-count-value>' . $escape($discussionMessageCount) . '</span>'
+                . '</span>';
             $html .= '<button type="button" class="generic-action-button generic-action-button--secondary omo-proposal-discussion-button"'
                     . ' data-omo-proposal-discussion-open'
                     . ' data-proposal-id="' . (int)$proposal->getId() . '"'
@@ -1214,6 +1221,12 @@ if (!function_exists('omoDecisionRenderProposalDiscussionActions')) {
                     . ' data-proposal-context="' . $escape($contextPayload) . '">'
                     . 'Modifier la proposition'
                 . '</button>';
+            $html .= '<div class="omo-proposal-action-menu generic-menu" data-omo-proposal-action-menu>'
+                    . '<button type="button" class="omo-proposal-action-menu__toggle generic-menu-toggle" data-omo-proposal-action-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Autres actions">...</button>'
+                    . '<div class="omo-proposal-action-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-proposal-action-menu-panel role="menu" hidden>'
+                        . '<button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-proposal-delete-open data-proposal-id="' . (int)$proposal->getId() . '" data-proposal-context="' . $escape($contextPayload) . '" role="menuitem">Supprimer</button>'
+                    . '</div>'
+                . '</div>';
         }
         if ($canDiscuss || $canEdit) {
             $html .= '</div>';

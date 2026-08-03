@@ -15,6 +15,11 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les descriptions des checklists utilisent maintenant un editeur HTML Summernote et conservent leur mise en page dans les vues de liste et de detail.
 - Les descriptions des propositions de scrutin utilisent maintenant un editeur HTML Summernote avec un bouton de surlignage, et sont affichees avec un HTML filtre dans les cartes, la page publique et les popups d edition.
 - Le bouton de surlignage reprend maintenant l icone dediee et ouvre une petite palette de six couleurs douces predefinies.
+- Le compteur de messages des discussions est maintenant aligne verticalement avec son bouton et rapproche de celui-ci.
+- L auteur d une proposition peut maintenant la retirer depuis un menu d actions, avant le debut du scrutin, avec une suppression logique qui preserve les donnees associees.
+- Le panneau du menu d actions des propositions respecte maintenant correctement son etat masque au chargement.
+- Le menu d actions des propositions reprend maintenant les composants generiques utilises par les menus des indicateurs.
+- Les boutons d actions des propositions utilisent maintenant la meme hauteur compacte que le bouton de menu `...`.
 
 ## 2026-08-01
 
