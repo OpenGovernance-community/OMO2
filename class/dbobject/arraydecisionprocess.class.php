@@ -187,7 +187,7 @@ class ArrayDecisionProcess extends ArrayDbObject
         return $visibleDecisions;
     }
 
-    public function buildPersonalSpaceSummary($organizationId, $userId, $holonId = 0, $previewLimit = 3)
+    public function buildPersonalSpaceSummary($organizationId, $userId, $holonId = 0, $previewLimit = 3, ?array $scopeHolonIds = null)
     {
         $organizationId = (int)$organizationId;
         $userId = (int)$userId;
@@ -214,11 +214,23 @@ class ArrayDecisionProcess extends ArrayDbObject
         }
 
         $this->loadForPersonalSpace($organizationId, $holonId);
+        $scopeHolonIdMap = null;
+        if (is_array($scopeHolonIds)) {
+            $scopeHolonIdMap = array_fill_keys(array_values(array_unique(array_filter(array_map('intval', $scopeHolonIds), static function ($candidateId) {
+                return $candidateId > 0;
+            }))), true);
+        }
         $scopedEmail = $this->resolveViewerScopedEmail($userId, $organizationId);
         $statusCatalog = \dbObject\DecisionProcess::getStatusCatalog();
 
         foreach ($this as $decision) {
             if (!($decision instanceof \dbObject\DecisionProcess) || (int)$decision->getId() <= 0) {
+                continue;
+            }
+            if (
+                is_array($scopeHolonIdMap)
+                && !isset($scopeHolonIdMap[(int)$decision->get('IDholon')])
+            ) {
                 continue;
             }
 

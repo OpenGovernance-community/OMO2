@@ -2359,6 +2359,10 @@ function buildDrawerUrl(baseUrl, oid, cid = null, options = {}) {
             url += `&document_scope=${encodeURIComponent(forcedScope)}`;
         } else if (baseUrl.indexOf('api/calendar/') !== -1) {
             url += `&scope=${encodeURIComponent(forcedScope)}`;
+        } else if (baseUrl.indexOf('api/stats/') !== -1) {
+            url += '&stats_scope=' + encodeURIComponent(forcedScope);
+        } else if (baseUrl.indexOf('api/projects/') !== -1) {
+            url += '&project_scope=' + encodeURIComponent(forcedScope);
         } else if (baseUrl.indexOf('api/team/') !== -1) {
             url += `&team_scope=${encodeURIComponent(forcedScope)}`;
         }
@@ -4018,6 +4022,30 @@ $(document).on('click', '[data-omo-personal-space-calendar-event-id]', function 
     }
 
     window.omoOpenSearchCalendarEventResult(eventId, holonId);
+});
+
+$(document).on('click', '[data-omo-personal-space-project-id]', function (e) {
+    e.preventDefault();
+
+    const projectId = Number($(this).attr('data-omo-personal-space-project-id') || 0);
+    const holonId = Number($(this).attr('data-omo-personal-space-project-holon-id') || 0);
+    if (!Number.isInteger(projectId) || projectId <= 0 || typeof window.omoOpenSearchProjectResult !== 'function') {
+        return;
+    }
+
+    window.omoOpenSearchProjectResult(projectId, holonId);
+});
+
+$(document).on('click', '[data-omo-personal-space-indicator-id]', function (e) {
+    e.preventDefault();
+
+    const indicatorId = Number($(this).attr('data-omo-personal-space-indicator-id') || 0);
+    const holonId = Number($(this).attr('data-omo-personal-space-indicator-holon-id') || 0);
+    if (!Number.isInteger(indicatorId) || indicatorId <= 0 || typeof window.omoOpenSearchStatIndicatorResult !== 'function') {
+        return;
+    }
+
+    window.omoOpenSearchStatIndicatorResult(indicatorId, holonId);
 });
 
 $(document).on('click', '[data-omo-personal-space-user-id]', function (e) {

@@ -17,7 +17,7 @@ class DecisionProposal extends DbObject
             [['id', 'position'], 'integer'],
             [['IDdecision_process', 'IDdecision_group', 'IDuser_author'], 'fk'],
             [['title'], 'string'],
-            [['description'], 'text'],
+            [['description'], 'html'],
             [['info_url'], 'string'],
             [['parameters'], 'parameters'],
             [['active'], 'boolean'],
@@ -66,6 +66,7 @@ class DecisionProposal extends DbObject
 
     public function save()
     {
+        $this->set('description', \dbObject\PropertyFormat::sanitizeHtml((string)$this->get('description')));
         $decisionGroupId = (int)$this->get('IDdecision_group');
         $decisionProcessId = (int)$this->get('IDdecision_process');
 
@@ -165,11 +166,7 @@ class DecisionProposal extends DbObject
             return $authorUserId;
         }
 
-        $parameters = $this->get('parameters');
-        if (!is_array($parameters)) {
-            $parameters = json_decode((string)$parameters, true);
-        }
-        $participantId = is_array($parameters) ? (int)($parameters['added_by_participant_id'] ?? 0) : 0;
+        $participantId = $this->getAuthorParticipantId();
         if ($participantId <= 0) {
             return 0;
         }
@@ -181,6 +178,32 @@ class DecisionProposal extends DbObject
         }
 
         return (int)$participant->get('IDuser');
+    }
+
+    public function getAuthorParticipantId()
+    {
+        $parameters = $this->get('parameters');
+        if (!is_array($parameters)) {
+            $parameters = json_decode((string)$parameters, true);
+        }
+
+        return is_array($parameters) ? (int)($parameters['added_by_participant_id'] ?? 0) : 0;
+    }
+
+    public function getAuthorParticipant()
+    {
+        $participantId = $this->getAuthorParticipantId();
+        if ($participantId <= 0) {
+            return null;
+        }
+
+        $participant = new \dbObject\DecisionParticipant();
+        if (!$participant->load($participantId)
+            || (int)$participant->get('IDdecision_process') !== (int)$this->get('IDdecision_process')) {
+            return null;
+        }
+
+        return $participant;
     }
 
     public function getAuthorUser()
@@ -199,7 +222,7 @@ class DecisionProposal extends DbObject
     {
         $userId = (int)$userId;
         $title = trim((string)$title);
-        $description = trim((string)$description);
+        $description = \dbObject\PropertyFormat::sanitizeHtml((string)$description);
         $infoUrl = trim((string)$infoUrl);
         if (!$this->canBeEditedByUser($userId)) {
             return [

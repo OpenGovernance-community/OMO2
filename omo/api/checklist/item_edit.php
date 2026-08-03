@@ -156,10 +156,17 @@ if ($currentHolonId > 0) {
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.item_title')) ?></span>
                     <input class="generic-form-control" type="text" name="title" value="<?= omoApiEscape((string)$project->get('title')) ?>" maxlength="255" required autofocus>
                 </label>
-                <label class="omo-checklist-field omo-checklist-field--wide">
+                <div class="omo-checklist-field omo-checklist-field--wide">
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.item_description')) ?></span>
-                    <textarea class="generic-form-control" name="description" rows="5"><?= omoApiEscape((string)$project->get('description')) ?></textarea>
-                </label>
+                    <div class="omo-checklist-html-editor-container" data-checklist-html-editor-container>
+                        <div
+                            class="omo-checklist-html-editor"
+                            data-checklist-html-editor
+                            data-checklist-html-editor-placeholder="<?= omoApiEscape(omoChecklistT('checklist.form.item_description_placeholder')) ?>"
+                        ></div>
+                        <textarea name="description" hidden aria-hidden="true" data-checklist-html-value><?= omoApiEscape((string)$project->get('description')) ?></textarea>
+                    </div>
+                </div>
                 <label class="omo-checklist-field omo-checklist-field--wide">
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.holon')) ?></span>
                     <select class="generic-form-control" name="IDholon" required>

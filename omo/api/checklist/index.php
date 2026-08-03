@@ -120,7 +120,7 @@ $texts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
-<link rel="stylesheet" href="/omo/api/checklist/checklist.css?v=20260729-compact-list-2">
+<link rel="stylesheet" href="/omo/api/checklist/checklist.css?v=20260803-item-actions">
 <div
     class="omo-checklist omo-panel-view"
     id="omo-checklist-root"
@@ -250,4 +250,5 @@ $texts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
-<script src="/omo/api/checklist/checklist.js?v=20260729-view-filter"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20260724-pv-embed-status"></script>
+<script src="/omo/api/checklist/checklist.js?v=20260803-item-actions-3"></script>

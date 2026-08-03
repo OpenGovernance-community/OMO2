@@ -1259,7 +1259,8 @@
 			}
 
 			$memberships = new \dbObject\ArrayUserOrganization();
-			$memberships->loadVisibleForOrganization($organizationId);
+			$memberships->loadVisibleForOrganization($organizationId, true);
+			$pendingInvitationUserIds = \dbObject\Invitation::getPendingAdminUserIdsForOrganization($organizationId);
 
 			$cardsByUserId = array();
 			foreach ($memberships as $membership) {
@@ -1269,6 +1270,7 @@
 				}
 
 				$isPending = !(bool)$membership->get('active');
+				$hasPendingInvitation = isset($pendingInvitationUserIds[$userId]);
 
 				$permission = self::resolveMemberPermission($userId, false, $organizationId);
 				if (!$permission['canView']) {
@@ -1284,6 +1286,7 @@
 						'avatarSeed' => $membership->getAvatarSeedLabel(),
 						'holonIds' => array((int)$this->getId()),
 						'isPending' => $isPending,
+						'hasPendingInvitation' => $hasPendingInvitation,
 						'isAdmin' => $membership->isOrganizationAdmin(),
 						'canViewDetail' => $permission['canViewDetail'],
 					);
@@ -1296,6 +1299,7 @@
 					$cardsByUserId[$userId]['initials'] = $membership->getUserInitials();
 					$cardsByUserId[$userId]['avatarSeed'] = $membership->getAvatarSeedLabel();
 					$cardsByUserId[$userId]['isPending'] = false;
+					$cardsByUserId[$userId]['hasPendingInvitation'] = false;
 					$cardsByUserId[$userId]['isAdmin'] = $membership->isOrganizationAdmin();
 					$cardsByUserId[$userId]['canViewDetail'] = $permission['canViewDetail'];
 				}
@@ -1488,6 +1492,7 @@
 			$params = array(
 				'uo_organization_id' => $organizationId,
 				'inv_pending_organization_id' => $organizationId,
+				'inv_request_origin_member' => \dbObject\Invitation::REQUEST_ORIGIN_MEMBER,
 			);
 
 			foreach ($holonIds as $index => $holonId) {
@@ -1508,6 +1513,10 @@
 						WHEN inv.id IS NULL THEN 0
 						ELSE 1
 					END AS has_pending_invitation,
+					CASE
+						WHEN inv.id IS NULL OR inv.request_origin = :inv_request_origin_member THEN 0
+						ELSE 1
+					END AS has_pending_admin_invitation,
 					0 AS has_accepted_invitation
 				FROM user_holon uh
 				INNER JOIN `user` u ON u.id = uh.IDuser
@@ -1524,6 +1533,7 @@
 				  AND (
 					uh.active = 1
 					OR inv.id IS NOT NULL
+					OR (uo.id IS NOT NULL AND uo.active = 0)
 				  )
 				ORDER BY
 					COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
@@ -1547,6 +1557,7 @@
 						uh.parameters AS holon_parameters,
 						1 AS organization_active,
 						0 AS has_pending_invitation,
+						0 AS has_pending_admin_invitation,
 						0 AS has_accepted_invitation
 					FROM user_holon uh
 					INNER JOIN `user` u ON u.id = uh.IDuser
@@ -1633,6 +1644,7 @@
 						'avatarSeed' => $link->getAvatarSeedLabel((int)$options['organizationId']),
 						'holonIds' => array(),
 						'isPending' => false,
+						'hasPendingInvitation' => false,
 						'isAdmin' => false,
 						'canViewDetail' => $permission['canViewDetail'],
 					);
@@ -1649,6 +1661,9 @@
 					|| (bool)($row['has_pending_invitation'] ?? false)
 				) {
 					$cardsByUserId[$userId]['isPending'] = true;
+				}
+				if ((bool)($row['has_pending_admin_invitation'] ?? false)) {
+					$cardsByUserId[$userId]['hasPendingInvitation'] = true;
 				}
 
 				$holonParameters = json_decode((string)($row['holon_parameters'] ?? ''), true);

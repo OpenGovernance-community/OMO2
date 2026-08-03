@@ -97,6 +97,41 @@
 			return $item;
 		}
 
+		public static function getPendingAdminUserIdsForOrganization($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return array();
+			}
+
+			$rows = self::fetchAll(
+				"SELECT DISTINCT IDuser
+				 FROM invitation
+				 WHERE IDorganization = :organization_id
+				   AND status = 'pending'
+				   AND active = 1
+				   AND (dateexpiration IS NULL OR dateexpiration > NOW())
+				   AND (request_origin IS NULL OR request_origin != :request_origin_member)",
+				array(
+					'organization_id' => $organizationId,
+					'request_origin_member' => self::REQUEST_ORIGIN_MEMBER,
+				)
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$userIds = array();
+			foreach ($rows as $row) {
+				$userId = (int)($row['IDuser'] ?? 0);
+				if ($userId > 0) {
+					$userIds[$userId] = $userId;
+				}
+			}
+
+			return $userIds;
+		}
+
 		public static function countPendingRequestedHolonAdmins($organizationId, $holonId, $excludeUserId = 0)
 		{
 			$organizationId = (int)$organizationId;

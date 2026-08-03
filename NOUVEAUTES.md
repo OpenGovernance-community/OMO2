@@ -4,7 +4,13 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-03
 
-- L import d une organisation permet maintenant de preparer les invitations des membres sans envoyer immediatement leurs e-mails. L envoi reste active par defaut et peut etre reporte depuis une case de la fenetre d import.
+- Les elements de checklist disposent maintenant d un menu pour les supprimer, les deplacer vers une autre checklist via le selecteur de cercles, ou extraire une recurrence de conteneur dans sa propre checklist recurrente.
+- Les propositions ajoutees par des personnes invitees uniquement par e-mail affichent maintenant le nom local de leur adresse, sans exposer le domaine; le lien vers le participant deja memorise est reutilise.
+- L import d une organisation permet maintenant d importer les membres sans creer ni envoyer leurs invitations. L envoi reste active par defaut et peut etre reporte depuis une case de la fenetre d import.
+- Les membres importes sans invitation restent visibles comme comptes a inviter, y compris dans leurs roles. L invitation est creee au premier envoi, et une enveloppe distingue les invitations deja envoyees dans la structure.
+- Dans la mini structure, le nom du cercle survole reste maintenant lisible au-dessus des noms de roles.
+- Les descriptions des checklists utilisent maintenant un editeur HTML Summernote et conservent leur mise en page dans les vues de liste et de detail.
+- Les descriptions des propositions de scrutin utilisent maintenant un editeur HTML Summernote avec un bouton de surlignage, et sont affichees avec un HTML filtre dans les cartes, la page publique et les popups d edition.
 
 ## 2026-08-01
 

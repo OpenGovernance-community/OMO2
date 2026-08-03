@@ -572,6 +572,29 @@
         };
     }
 
+    function sanitizeBackgroundColorStyle(styleValue) {
+        var safeDeclarations = [];
+        String(styleValue || '').split(';').forEach(function (declaration) {
+            var separator = declaration.indexOf(':');
+            if (separator < 1) {
+                return;
+            }
+
+            var property = declaration.slice(0, separator).trim().toLowerCase();
+            var value = declaration.slice(separator + 1).trim().toLowerCase();
+            if (property !== 'background-color') {
+                return;
+            }
+
+            if (!/^(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\(\s*[-+0-9.%]+(?:\s*,\s*[-+0-9.%]+){2,3}\s*\)|[a-z]{1,32})$/i.test(value)) {
+                return;
+            }
+
+            safeDeclarations.push(property + ': ' + value);
+        });
+        return safeDeclarations.join('; ');
+    }
+
     function buildSanitizedNode(sourceNode, ownerDocument, options) {
         if (!sourceNode) {
             return ownerDocument.createDocumentFragment();
@@ -804,6 +827,7 @@
             EM: true,
             I: true,
             U: true,
+            SPAN: true,
             UL: true,
             OL: true,
             LI: true,
@@ -846,6 +870,11 @@
                 anchorNode.setAttribute('rel', 'noopener noreferrer');
             }
 
+            const safeAnchorBackgroundColorStyle = sanitizeBackgroundColorStyle(sourceNode.getAttribute('style') || '');
+            if (safeAnchorBackgroundColorStyle) {
+                anchorNode.setAttribute('style', safeAnchorBackgroundColorStyle);
+            }
+
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
                 appendSanitizedChild(anchorNode, buildSanitizedNode(childNode, ownerDocument, options));
             });
@@ -854,6 +883,10 @@
         }
 
         const elementNode = ownerDocument.createElement(normalizedTagName.toLowerCase());
+        const safeBackgroundColorStyle = sanitizeBackgroundColorStyle(sourceNode.getAttribute('style') || '');
+        if (safeBackgroundColorStyle) {
+            elementNode.setAttribute('style', safeBackgroundColorStyle);
+        }
         if (normalizedTagName === 'TH' || normalizedTagName === 'TD') {
             const colspan = Number.parseInt(sourceNode.getAttribute('colspan') || '', 10);
             const rowspan = Number.parseInt(sourceNode.getAttribute('rowspan') || '', 10);
@@ -1163,6 +1196,23 @@
                     state.onChange(getValue(), container.__omoSimpleHtmlField || null);
                 } catch (error) {
                 }
+            }
+        }
+
+        function applyBackgroundColor(color) {
+            color = String(color || '').trim();
+            if (!/^#[0-9a-f]{6}$/i.test(color) || !initialized || !$editor) {
+                return false;
+            }
+
+            restoreRange();
+            try {
+                $editor.summernote('backColor', color);
+                setRawValue($editor.summernote('code'));
+                emitChange();
+                return true;
+            } catch (error) {
+                return false;
             }
         }
 
@@ -1719,6 +1769,7 @@
             getSelectedText: getSelectedText,
             hasSelection: hasSelection,
             getPlainText: getPlainText,
+            applyBackgroundColor: applyBackgroundColor,
             getEditableElement: getEditableElement,
             setToolbarButtonState: applyToolbarButtonState,
             destroy: destroy

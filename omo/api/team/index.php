@@ -202,7 +202,7 @@ if ($hasStructureContext) {
     $contextAdminUserIds = array_fill_keys($currentHolon->getDirectContextAdminUserIds($organizationId), true);
 } else {
     $memberships = new ArrayUserOrganization();
-    $memberships->loadVisibleForOrganization($organizationId);
+    $memberships->loadVisibleForOrganization($organizationId, true);
 
     foreach ($memberships as $membership) {
         if (!$membership instanceof UserOrganization) {
@@ -293,6 +293,7 @@ foreach ($rawMemberCards as $rawCard) {
     $canViewUserDetail = $hasUser ? $user->canViewDetail() : false;
 
     $isPending = !empty($rawCard['isPending']) || ($hasMembership && !(bool)$membership->get('active'));
+    $hasPendingInvitation = !empty($rawCard['hasPendingInvitation']);
     $isOrganizationAdmin = $hasMembership ? $membership->isOrganizationAdmin() : false;
     $isContextAdmin = $hasStructureContext
         ? isset($contextAdminUserIds[$userId])
@@ -366,7 +367,9 @@ foreach ($rawMemberCards as $rawCard) {
         $email,
         $username,
         $secondary,
-        $isPending ? omoTeamT('team.member.pending', [], $lang, $sourceLang) : '',
+        $hasPendingInvitation
+            ? omoTeamT('team.member.invitation_pending', [], $lang, $sourceLang)
+            : ($isPending ? omoTeamT('team.member.to_invite', [], $lang, $sourceLang) : ''),
         $isContextAdmin ? omoTeamT('team.member.admin_context', ['adminLabel' => $adminLabel], $lang, $sourceLang) : '',
         $isOrganizationAdmin ? omoTeamT('team.member.admin_organization', ['adminLabel' => $adminLabel], $lang, $sourceLang) : '',
     ), static fn ($value): bool => trim((string)$value) !== '')));
@@ -386,6 +389,7 @@ foreach ($rawMemberCards as $rawCard) {
         'isContextAdmin' => $isContextAdmin,
         'isDirectContextMember' => isset($directContextMemberUserIds[$userId]),
         'isPending' => $isPending,
+        'hasPendingInvitation' => $hasPendingInvitation,
         'joinedAtLabel' => $effectiveJoinedAt instanceof DateTimeInterface ? $formatDate($effectiveJoinedAt) : '',
         'lastSeenLabel' => $formatLastSeenLabel($organizationLastSeen, $globalLastSeen),
         'organizationLastSeenLabel' => $organizationLastSeen instanceof DateTimeInterface ? $formatDate($organizationLastSeen) : '',
@@ -449,6 +453,7 @@ $mapMemberPayload = array_map(static function (array $card): array {
         'isContextAdmin' => !empty($card['isContextAdmin']),
         'isOrganizationAdmin' => !empty($card['isOrganizationAdmin']),
         'isPending' => !empty($card['isPending']),
+        'hasPendingInvitation' => !empty($card['hasPendingInvitation']),
         'canViewDetail' => !empty($card['canViewDetail']),
         'searchText' => (string)($card['searchText'] ?? ''),
         'lat' => (float)$card['latlong']['lat'],
@@ -586,7 +591,7 @@ if ($leafletMapsEnabled) {
                                         aria-label="<?= omoApiEscape(omoTeamT('team.member.actions_for', ['name' => (string)$card['displayName']], $lang, $sourceLang)) ?>"
                                     >...</button>
                                     <div class="omo-team-card__menu-panel" data-team-member-menu-panel="1" hidden>
-                                        <?php if ($canRemoveCurrentHolonMembers && $card['isPending']): ?>
+                                        <?php if ($canRemoveCurrentHolonMembers && $card['hasPendingInvitation']): ?>
                                             <button
                                                 type="button"
                                                 class="omo-team-card__menu-item omo-team-card__menu-item--danger"
@@ -594,7 +599,7 @@ if ($leafletMapsEnabled) {
                                                 data-user-id="<?= (int)$card['userId'] ?>"
                                             ><?= omoApiEscape(omoTeamT('team.action.cancel_invitation', [], $lang, $sourceLang)) ?></button>
                                         <?php endif; ?>
-                                        <?php if ($canRemoveCurrentHolonMembers && !$card['isPending']): ?>
+                                        <?php if ($canRemoveCurrentHolonMembers && !$card['hasPendingInvitation']): ?>
                                             <button
                                                 type="button"
                                                 class="omo-team-card__menu-item omo-team-card__menu-item--danger"
@@ -639,8 +644,10 @@ if ($leafletMapsEnabled) {
                                     <?php endif; ?>
                                 </div>
 
-                                <?php if ($card['isPending']): ?>
-                                    <span class="omo-team-card__badge omo-team-card__badge--pending"><?= omoApiEscape(omoTeamT('team.member.pending', [], $lang, $sourceLang)) ?></span>
+                                <?php if ($card['hasPendingInvitation']): ?>
+                                    <span class="omo-team-card__badge omo-team-card__badge--pending"><?= omoApiEscape(omoTeamT('team.member.invitation_pending', [], $lang, $sourceLang)) ?></span>
+                                <?php elseif ($card['isPending']): ?>
+                                    <span class="omo-team-card__badge omo-team-card__badge--pending"><?= omoApiEscape(omoTeamT('team.member.to_invite', [], $lang, $sourceLang)) ?></span>
                                 <?php elseif ($card['isContextAdmin']): ?>
                                     <span class="omo-team-card__badge"><?= omoApiEscape(omoTeamT('team.member.admin_short', ['adminLabel' => $adminLabel], $lang, $sourceLang)) ?></span>
                                 <?php endif; ?>
@@ -729,9 +736,14 @@ if ($leafletMapsEnabled) {
                             $compactFirstNameLabel = '';
                         }
 
-                        if ($card['isPending']) {
+                        if ($card['hasPendingInvitation']) {
                             $compactPrivilegeLabels[] = array(
-                                    'label' => omoTeamT('team.member.pending', [], $lang, $sourceLang),
+                                    'label' => omoTeamT('team.member.invitation_pending', [], $lang, $sourceLang),
+                                'className' => 'omo-team__compact-badge omo-team__compact-badge--pending',
+                            );
+                        } elseif ($card['isPending']) {
+                            $compactPrivilegeLabels[] = array(
+                                'label' => omoTeamT('team.member.to_invite', [], $lang, $sourceLang),
                                 'className' => 'omo-team__compact-badge omo-team__compact-badge--pending',
                             );
                         } else {

@@ -527,7 +527,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                             <div class="omo-decision-consent__proposal-field">
                                 <span class="generic-card-title generic-card-title--small" data-omo-decision-consent-proposal-label><?= $escape(str_replace('{index}', (string)($index + 1), t('decisions.consent.field.proposals_item', ['index' => (string)($index + 1)], $lang, $sourceLang))) ?></span>
                                 <input type="text" class="generic-form-control" name="proposals[]" value="<?= $escape((string)$proposalItem['title']) ?>" placeholder="<?= $escape(t('decisions.consent.placeholder.proposals', [], $lang, $sourceLang)) ?>" <?= $canEditProposals ? '' : 'readonly' ?>>
-                                <input type="hidden" name="proposal_descriptions[]" value="<?= $escape((string)($proposalItem['description'] ?? '')) ?>" data-omo-decision-consent-proposal-description>
+                                <textarea hidden aria-hidden="true" name="proposal_descriptions[]" data-omo-decision-consent-proposal-description><?= $escape((string)($proposalItem['description'] ?? '')) ?></textarea>
                                 <input type="hidden" name="proposal_info_urls[]" value="<?= $escape((string)($proposalItem['info_url'] ?? '')) ?>" data-omo-decision-consent-proposal-info-url>
                                 <input type="hidden" name="proposal_ids[]" value="<?= $escape((int)($proposalItem['id'] ?? 0)) ?>">
                             </div>
@@ -1012,7 +1012,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                                     + '<div class="generic-section generic-section--stack" style="display:grid;gap:12px;">'
                                     + '  <label style="display:grid;gap:6px;">'
                                     + '    <span class="generic-card-title generic-card-title--small">' + String(payload.texts && payload.texts.proposalDescriptionLabel ? payload.texts.proposalDescriptionLabel : 'Description') + '</span>'
-                                    + '    <textarea class="generic-form-control" rows="6" data-omo-decision-consent-proposal-modal-description></textarea>'
+                                    + '    <div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-decision-consent-proposal-modal-description></div><textarea hidden aria-hidden="true" data-omo-proposal-html-value></textarea></div>'
                                     + '  </label>'
                                     + '  <label style="display:grid;gap:6px;">'
                                     + '    <span class="generic-card-title generic-card-title--small">' + String(payload.texts && payload.texts.proposalInfoUrlLabel ? payload.texts.proposalInfoUrlLabel : 'URL') + '</span>'
@@ -1034,8 +1034,11 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                                 const modalInfoUrl = modalBody.querySelector('[data-omo-decision-consent-proposal-modal-info-url]');
                                 const modalCancel = modalBody.querySelector('[data-omo-decision-consent-proposal-modal-cancel]');
                                 const modalApply = modalBody.querySelector('[data-omo-decision-consent-proposal-modal-apply]');
+                                if (modalDescription && window.omoProposalHtml && typeof window.omoProposalHtml.mount === 'function') {
+                                    window.omoProposalHtml.mount(modalDescription, {value: descriptionInput ? String(descriptionInput.value || '') : ''});
+                                }
                                 if (modalDescription) {
-                                    modalDescription.value = descriptionInput ? String(descriptionInput.value || '') : '';
+                                    modalDescription.setAttribute('data-omo-proposal-html-initial', descriptionInput ? String(descriptionInput.value || '') : '');
                                 }
                                 if (modalInfoUrl) {
                                     modalInfoUrl.value = infoUrlInput ? String(infoUrlInput.value || '') : '';
@@ -1049,8 +1052,8 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                                 }
                                 if (modalApply) {
                                     modalApply.addEventListener('click', function () {
-                                        if (descriptionInput && modalDescription) {
-                                            descriptionInput.value = String(modalDescription.value || '').trim();
+                                        if (descriptionInput && modalDescription && window.omoProposalHtml && typeof window.omoProposalHtml.getValue === 'function') {
+                                            descriptionInput.value = String(window.omoProposalHtml.getValue(modalDescription) || '').trim();
                                         }
                                         if (infoUrlInput && modalInfoUrl) {
                                             infoUrlInput.value = String(modalInfoUrl.value || '').trim();
@@ -1120,8 +1123,9 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         input.value = String(value || '');
                         input.placeholder = String(payload.texts && payload.texts.proposalPlaceholder ? payload.texts.proposalPlaceholder : '');
 
-                        const descriptionInput = document.createElement('input');
-                        descriptionInput.type = 'hidden';
+                        const descriptionInput = document.createElement('textarea');
+                        descriptionInput.hidden = true;
+                        descriptionInput.setAttribute('aria-hidden', 'true');
                         descriptionInput.name = 'proposal_descriptions[]';
                         descriptionInput.value = '';
                         descriptionInput.setAttribute('data-omo-decision-consent-proposal-description', '');
