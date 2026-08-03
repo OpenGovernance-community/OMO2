@@ -23,7 +23,7 @@ $sourceLang = [
     'documents.create.type.external' => ['text' => 'Lien externe', 'context' => 'Option label for external links.'],
     'documents.create.type.uploaded' => ['text' => 'Fichier téléversé', 'context' => 'Option label for uploaded files.'],
     'documents.create.type.pv' => ['text' => 'PV', 'context' => 'Option label for PV documents.'],
-    'documents.create.type.etherpad' => ['text' => 'Document Etherpad', 'context' => 'Option label for Etherpad documents.'],
+    'documents.create.type.etherpad' => ['text' => 'Document collaboratif', 'context' => 'Option label for Etherpad documents.'],
     'documents.create.type.folder' => ['text' => 'Dossier', 'context' => 'Option label for folders.'],
     'documents.create.field.title' => ['text' => 'Titre', 'context' => 'Label of the document title field.'],
     'documents.create.field.title_placeholder' => ['text' => 'Nom du document', 'context' => 'Placeholder shown in the document title field.'],
@@ -82,6 +82,8 @@ $document = new Document();
 $isEditing = false;
 $canCreate = false;
 $canUseForm = $canCreate;
+$canManageDocument = false;
+$canEditDocumentContent = false;
 $formErrorMessage = '';
 $openAiAvailable = commonOpenAiGetApiKey() !== '';
 $canUseAiTools = $openAiAvailable && patreonUserCanUseAi($currentUserId);
@@ -90,22 +92,33 @@ if ($documentId > 0) {
     $isEditing = $document->load($documentId);
     if ($isEditing) {
         $organizationId = (int)$document->get('IDorganization');
-        $isEditing = $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
+        $canManageDocument = !$document->isPvDocument()
+            && $document->canManageInOrganizationContext($organizationId, $currentUserId, false);
+        $canEditDocumentContent = !$document->isPvDocument()
+            && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
     }
-    $canUseForm = $isEditing;
+    $canUseForm = $isEditing && ($canManageDocument || $canEditDocumentContent);
 
     if ($canUseForm && $document->isPvDocument()) {
         $canUseForm = false;
         $formErrorMessage = omoDocumentsCreateT('documents.create.error.pv_unsupported');
     }
 
-    if ($canUseForm) {
+    if ($canUseForm && $document->isEtherpadDocument() && !$canManageDocument) {
+        $canUseForm = false;
+    }
+
+    if ($canUseForm && $canEditDocumentContent && $document->supportsHtmlContent()) {
         $lockResult = $document->touchEditLock($organizationId, $currentUserId);
         if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
             $canUseForm = false;
             $formErrorMessage = trim((string)($lockResult['text'] ?? 'Ce document est deja en cours d edition.'));
         }
     }
+}
+
+if ($isEditing && !$canEditDocumentContent) {
+    $canUseAiTools = false;
 }
 
 $visibilityOptions = ObjectVisibility::getVisibilityTypeOptions();
@@ -344,6 +357,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             <?php endif; ?>
 
             <div class="omo-document-editor__grid generic-section generic-section--stack generic-form-section">
+                <fieldset class="omo-document-editor__metadata"<?= $isEditing && !$canManageDocument ? ' disabled' : '' ?>>
                 <div class="omo-document-editor__meta-row generic-form-grid">
                     <label class="omo-document-editor__field generic-form-field">
                         <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.type')) ?></span>
@@ -443,11 +457,16 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     </div>
                     <span class="omo-document-editor__hint generic-help-text"><?= $escape(omoDocumentsCreateT('documents.create.field.tags_hint')) ?></span>
                 </div>
+                </fieldset>
 
                 <div class="omo-document-editor__content-section" data-omo-document-content-section<?= $documentType !== Document::TYPE_HTML ? ' hidden' : '' ?>>
                     <div class="omo-document-editor__field generic-form-field" data-omo-document-content-field>
                         <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.html')) ?></span>
-                        <div class="omo-document-editor__html" data-omo-document-editor-html></div>
+                        <?php if ($isEditing && !$canEditDocumentContent): ?>
+                            <div class="omo-document-editor__content-readonly generic-soft-panel"><?= \dbObject\PropertyFormat::sanitizeHtml($documentContent) ?></div>
+                        <?php else: ?>
+                            <div class="omo-document-editor__html" data-omo-document-editor-html></div>
+                        <?php endif; ?>
                         <div class="omo-document-editor__dictation-status" data-omo-document-dictation-status hidden></div>
                     </div>
                 </div>
@@ -487,6 +506,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             placeholder="<?= $escape(omoDocumentsCreateT('documents.create.field.external_url_placeholder')) ?>"
                             data-omo-document-external-url
                             value="<?= $escape($documentExternalUrl) ?>"
+                            <?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>
                         >
                         <span class="omo-document-editor__hint generic-help-text"><?= $escape(omoDocumentsCreateT('documents.create.field.external_url_hint')) ?></span>
                     </label>
@@ -497,6 +517,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             name="open_in_new_window"
                             value="1"
                             <?= $documentOpenInNewWindow ? ' checked' : '' ?>
+                            <?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>
                         >
                         <span><?= $escape(omoDocumentsCreateT('documents.create.field.open_new_window')) ?></span>
                     </label>
@@ -510,6 +531,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             name="uploaded_file"
                             class="generic-form-control"
                             data-omo-document-upload-input
+                            <?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>
                         >
                         <span class="omo-document-editor__hint generic-help-text">
                             <?php if ($nextcloudDocumentsAvailable): ?>
@@ -533,7 +555,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         </div>
 
                         <label class="omo-document-editor__checkbox">
-                            <input type="checkbox" name="remove_uploaded_file" value="1">
+                            <input type="checkbox" name="remove_uploaded_file" value="1"<?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>>
                             <span><?= $escape(omoDocumentsCreateT('documents.create.upload.remove')) ?></span>
                         </label>
                     <?php endif; ?>
@@ -555,6 +577,73 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
 .omo-document-editor [hidden] {
     display: none !important;
+}
+
+.omo-document-editor__metadata {
+    display: contents;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.omo-document-editor__metadata:disabled .generic-form-label,
+.omo-document-editor__metadata:disabled .generic-help-text {
+    color: var(--color-text-light);
+    opacity: 0.72;
+}
+
+.omo-document-editor__metadata:disabled .generic-form-control,
+.omo-document-editor__metadata:disabled .omo-document-editor__tag-editor,
+.omo-document-editor__metadata:disabled .omo-visibility-choice {
+    border-color: color-mix(in srgb, var(--color-border, #d1d5db) 72%, var(--color-text-light, #64748b));
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 86%, var(--color-text-light, #64748b) 14%);
+    color: var(--color-text-light);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border, #d1d5db) 70%, var(--color-text-light, #64748b));
+}
+
+.omo-document-editor__metadata:disabled .generic-form-control,
+.omo-document-editor__metadata:disabled .omo-document-editor__tag-editor,
+.omo-document-editor__metadata:disabled .omo-visibility-choice,
+.omo-document-editor__metadata:disabled .omo-visibility-choice__button,
+.omo-document-editor__metadata:disabled .omo-document-editor__tag-input,
+.omo-document-editor__metadata:disabled .omo-document-editor__tag-remove {
+    cursor: not-allowed !important;
+}
+
+.omo-document-editor__metadata:disabled .omo-document-editor__tag-editor {
+    cursor: not-allowed;
+}
+
+.omo-document-editor__metadata:disabled .omo-document-editor__tag {
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 80%, var(--color-text-light, #64748b) 20%);
+    color: var(--color-text-light);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border, #d1d5db) 68%, var(--color-text-light, #64748b));
+}
+
+.omo-document-editor__metadata:disabled .omo-visibility-choice {
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 78%, var(--color-text-light, #64748b) 22%);
+}
+
+.omo-document-editor__metadata:disabled .omo-visibility-choice::before {
+    background: color-mix(in srgb, var(--color-surface, #ffffff) 78%, var(--color-text-light, #64748b) 22%);
+    box-shadow: none;
+}
+
+.omo-document-editor__metadata:disabled .omo-visibility-choice__button {
+    color: var(--color-text-light);
+    opacity: 0.58;
+}
+
+.omo-document-editor__metadata:disabled .omo-visibility-choice__input:checked + .omo-visibility-choice__button {
+    color: var(--color-text-light);
+    opacity: 0.9;
+}
+
+.omo-document-editor__content-readonly {
+    min-height: 160px;
+    color: var(--color-text-light);
+    opacity: 0.7;
 }
 
 .omo-document-editor__tag-editor {
@@ -749,7 +838,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         'embedInsert' => omoDocumentsCreateT('documents.create.embed.insert'),
         'tagRemove' => omoDocumentsCreateT('documents.create.field.tags_remove'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-    const editingDocumentId = <?= $isEditing ? (int)$document->getId() : 0 ?>;
+    const editingDocumentId = <?= $isEditing && $canEditDocumentContent && $document->supportsHtmlContent() ? (int)$document->getId() : 0 ?>;
     const editLockEndpointUrl = '/omo/api/documents/edit_lock.php';
     const editLockHeartbeatIntervalMs = <?= (int)(\dbObject\Document::getDraftHeartbeatIntervalSeconds() * 1000) ?>;
     const draftSyncDebounceMs = 1000;

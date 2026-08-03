@@ -48,7 +48,7 @@ if (
     exit;
 }
 
-if ($title === '') {
+if ($documentId <= 0 && $title === '') {
     http_response_code(422);
     echo json_encode(array(
         'status' => false,
@@ -95,9 +95,13 @@ if ($documentId > 0) {
 
     $canManagePvDocument = $document->isPvDocument()
         && $document->canUserManagePvDocument($currentUserId);
+    $canManageDocument = !$document->isPvDocument()
+        && $document->canManageInOrganizationContext($organizationId, $currentUserId, false);
+    $canEditDocumentContent = !$document->isPvDocument()
+        && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
     if (
         ($organizationId > 0 && !commonCurrentUserHasOrganizationAccess($organizationId))
-        || (!$canManagePvDocument && !$document->canEditInOrganizationContext($organizationId, $currentUserId, false))
+        || (!$canManagePvDocument && !$canManageDocument && !$canEditDocumentContent)
     ) {
         http_response_code(403);
         echo json_encode(array(

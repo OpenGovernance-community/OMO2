@@ -548,7 +548,10 @@ foreach ($documents as $document) {
         'canDelete' => $canManageLifecycle && $document->canDeleteDocument(),
         'canEdit' => $document->isPvDocument()
             ? $canOpenPvEditor
-            : $document->canEditInOrganizationContext($documentOrganizationId),
+            : (
+                $document->canManageInOrganizationContext($documentOrganizationId)
+                || (!$document->isEtherpadDocument() && $document->canEditInOrganizationContext($documentOrganizationId))
+            ),
         'editUrl' => $document->isPvDocument()
             ? $pvPreparationUrl
             : ('/omo/api/documents/create.php?id=' . $documentId
@@ -629,7 +632,14 @@ if ($initialOpenDocumentId > 0) {
             'hasUpcomingPvEvent' => $requestedCanOpenDirectly ? $requestedOpenDocument->hasUpcomingAssociatedEvent() : false,
             'canEdit' => $requestedOpenDocument->isPvDocument()
                 ? $requestedCanOpenPvEditor
-                : ($requestedCanView && $requestedOpenDocument->canEditInOrganizationContext($currentOrganizationId)),
+                : (
+                    $requestedCanView
+                    && (
+                        $requestedOpenDocument->canManageInOrganizationContext($currentOrganizationId)
+                        || (!$requestedOpenDocument->isEtherpadDocument()
+                            && $requestedOpenDocument->canEditInOrganizationContext($currentOrganizationId))
+                    )
+                ),
             'editUrl' => $requestedOpenDocument->isPvDocument()
                 ? ($requestedCanOpenPvEditor ? $requestedOpenDocument->buildPvEditorUrl($currentOrganizationId) : '')
                 : ($requestedCanView
@@ -853,6 +863,7 @@ if (!is_string($documentsPayload)) {
                                                         <img
                                                             src="<?= $escape($entry['visibilityIconUrl']) ?>"
                                                             alt=""
+                                                            class="black-icon"
                                                             loading="lazy"
                                                         >
                                                     </span>
@@ -861,6 +872,7 @@ if (!is_string($documentsPayload)) {
                                                         <img
                                                             src="<?= $escape($entry['editVisibilityIconUrl']) ?>"
                                                             alt=""
+                                                            class="black-icon"
                                                             loading="lazy"
                                                         >
                                                     </span>
@@ -1509,6 +1521,7 @@ if (!is_string($documentsPayload)) {
                                     icon.setAttribute('aria-hidden', 'true');
 
                                     const image = document.createElement('img');
+                                    image.className = 'black-icon';
                                     image.src = iconUrl;
                                     image.alt = '';
                                     image.loading = 'lazy';

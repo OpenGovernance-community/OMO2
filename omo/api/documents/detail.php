@@ -114,8 +114,12 @@ $pdfExportUrl = $document->isPvDocument()
     ? '/omo/api/documents/pv/export_pdf.php?id=' . rawurlencode((string)(int)$document->getId())
         . '&oid=' . rawurlencode((string)$organizationId)
     : '';
+$canManageDocument = !$document->isPvDocument()
+    && $document->canManageInOrganizationContext($organizationId, $currentUserId, false);
+$canEditDocumentContent = !$document->isPvDocument()
+    && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
 $canEditDocument = !$document->isPvDocument()
-    && $document->canEditInOrganizationContext($organizationId, $currentUserId);
+    && ($canManageDocument || (!$document->isEtherpadDocument() && $canEditDocumentContent));
 $editUrl = $canEditDocument
     ? '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)
         . ($holonId > 0 ? '&cid=' . rawurlencode((string)$holonId) : '')

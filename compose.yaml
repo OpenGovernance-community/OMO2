@@ -22,12 +22,18 @@ services:
       context: ./docker/etherpad
       dockerfile: Dockerfile
     image: omo-etherpad:local
+    env_file:
+      - ./docker/etherpad/.env.private
+    depends_on:
+      db:
+        condition: service_healthy
     command:
       - /bin/sh
       - -ec
       - >-
         plugin_state=/opt/etherpad-lite/var/installed_plugins.json;
-        if ! grep -q '"name":"ep_omo_theme"' "$$plugin_state" 2>/dev/null; then rm -f "$$plugin_state"; fi;
+        plugin_package=/opt/etherpad-lite/var/plugin_packages/ep_omo_theme/ep.json;
+        if ! grep -q '"name":"ep_omo_theme"' "$$plugin_state" 2>/dev/null || ! test -f "$$plugin_package"; then rm -f "$$plugin_state"; fi;
         exec pnpm run prod
     environment:
       NODE_ENV: production
@@ -38,8 +44,10 @@ services:
       REQUIRE_SESSION: "false"
       REQUIRE_AUTHENTICATION: "false"
       TRUST_PROXY: "true"
-      DB_TYPE: dirty
-      DB_FILENAME: var/dirty.db
+      DB_TYPE: mysql
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_CHARSET: utf8mb4
       COOKIE_SAME_SITE: None
       PRIVACY_UPDATE_CHECK: "false"
     volumes:

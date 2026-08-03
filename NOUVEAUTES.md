@@ -9,6 +9,11 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - 2026-08-02 : La connexion Etherpad ne demande a nouveau qu une seule URL publique; Docker reconnait automatiquement son certificat local pour les appels API HTTPS d OMO.
 - 2026-08-02 : Les sessions Etherpad sont transmises avec le format requis par son client Web, ce qui retablit l ouverture des pads prives dans l iframe OMO.
 - 2026-08-02 : Etherpad local suit maintenant le choix de theme clair, sombre ou systeme defini dans OMO, y compris lorsque ce choix differe de celui du navigateur.
+- 2026-08-02 : Etherpad local utilise maintenant une base MariaDB dediee sur le serveur de base de donnees OMO, au lieu du fichier DirtyDB local.
+- 2026-08-02 : Les droits des documents distinguent maintenant la gestion du document et l edition de son contenu : CAN_CREATE_DOCUMENT protege les metadonnees et les actions structurelles, tandis que la portee d edition propre au document autorise le contenu HTML, les liens, les fichiers et les pads Etherpad.
+- 2026-08-02 : Les icones de visibilite et d edition de la liste des documents restent maintenant lisibles en mode sombre.
+- 2026-08-02 : Le formulaire des documents distingue visuellement les metadonnees non modifiables, avec des controles grises et un curseur d interdiction.
+- 2026-08-02 : Le type de document Etherpad est presente comme un document collaboratif dans les interfaces destinees aux utilisateurs.
 
 ## 2026-08-01
 

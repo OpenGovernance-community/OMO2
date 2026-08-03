@@ -69,7 +69,7 @@ foreach ($documents as $document) {
     } elseif ($documentType === \dbObject\Document::TYPE_UPLOADED_FILE) {
         $typeLabel = 'Fichier';
     } elseif ($documentType === \dbObject\Document::TYPE_ETHERPAD) {
-        $typeLabel = 'Etherpad';
+        $typeLabel = 'Document collaboratif';
     }
 
     $documentEntries[] = array(
@@ -92,7 +92,8 @@ foreach ($documents as $document) {
         'groupLabel' => (string)($group['label'] ?? 'Trop loin'),
         'sortTitle' => memoApiSortKey($document->get('title')),
         'detailUrl' => '/memo/api/documents/detail.php?id=' . (int)$document->getId(),
-        'canEdit' => $document->canEditInOrganizationContext($organizationId),
+		'canEdit' => $document->canManageInOrganizationContext($organizationId)
+			|| (!$document->isEtherpadDocument() && $document->canEditInOrganizationContext($organizationId)),
         'editUrl' => '/omo/api/documents/create.php'
             . '?id=' . (int)$document->getId()
             . ($organizationId > 0 ? '&oid=' . $organizationId : '')
