@@ -1208,14 +1208,18 @@
 			$params = array('organization_id' => $organizationId);
 
 			if (self::tableExists('checklist_run_item') && self::tableExists('checklist_run')) {
+				$runItemParams = array(
+					'run_organization_id' => $organizationId,
+					'checklist_organization_id' => $organizationId,
+				);
 				if (!self::execute(
 					"DELETE run_item
 					FROM checklist_run_item run_item
 					INNER JOIN checklist_run run ON run.id = run_item.IDchecklistrun
 					LEFT JOIN checklist checklist ON checklist.id = run.IDchecklist
-					WHERE run.IDorganization = :organization_id
-					   OR checklist.IDorganization = :organization_id",
-					$params
+					WHERE run.IDorganization = :run_organization_id
+					   OR checklist.IDorganization = :checklist_organization_id",
+					$runItemParams
 				)) {
 					return false;
 				}
@@ -1235,13 +1239,17 @@
 			}
 
 			if (self::tableExists('checklist_run')) {
+				$runParams = array(
+					'run_organization_id' => $organizationId,
+					'checklist_organization_id' => $organizationId,
+				);
 				if (!self::execute(
 					"DELETE run
 					FROM checklist_run run
 					LEFT JOIN checklist checklist ON checklist.id = run.IDchecklist
-					WHERE run.IDorganization = :organization_id
-					   OR checklist.IDorganization = :organization_id",
-					$params
+					WHERE run.IDorganization = :run_organization_id
+					   OR checklist.IDorganization = :checklist_organization_id",
+					$runParams
 				)) {
 					return false;
 				}
