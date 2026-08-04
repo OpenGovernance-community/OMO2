@@ -34,6 +34,115 @@ if (!function_exists('commonBuildOmoPublicOrganizationContext')) {
     }
 }
 
+if (!function_exists('commonOmoPublicPagesGetSourceLang')) {
+    function commonOmoPublicPagesGetSourceLang()
+    {
+        return [
+            'common.public_help.organization_fallback' => [
+                'text' => 'l’organisation concernée',
+                'context' => 'Fallback organization reference used in public help content when no organization name is available.',
+            ],
+            'common.public_help.omo.title' => [
+                'text' => 'Qu’est-ce qu’OpenMyOrganization ?',
+                'context' => 'Title of the public help entry explaining OpenMyOrganization.',
+            ],
+            'common.public_help.omo.description' => [
+                'text' => 'Présentation rapide du logiciel',
+                'context' => 'Short description of the public help entry explaining OpenMyOrganization.',
+            ],
+            'common.public_help.omo.paragraph_1' => [
+                'text' => 'OpenMyOrganization (OMO) est un logiciel collaboratif conçu pour aider une organisation à rendre sa structure, ses responsabilités et son fonctionnement plus clairs. Il permet de représenter les organisations, groupes, cercles, rôles et responsabilités, puis de centraliser les informations utiles au travail collectif.',
+                'context' => 'First paragraph explaining the purpose and organizational structure of OpenMyOrganization.',
+            ],
+            'common.public_help.omo.paragraph_2' => [
+                'text' => 'Selon les applications activées, OMO accompagne les prises de décision, les projets, les documents et procès-verbaux, le calendrier, les indicateurs, les checklists ainsi que les règles et autorités. Les droits d’accès dépendent du contexte et des responsabilités de chacun.',
+                'context' => 'Second paragraph listing the main OpenMyOrganization applications and access model.',
+            ],
+            'common.public_help.omo.paragraph_3' => [
+                'text' => 'En rassemblant ces éléments dans leur contexte, OMO facilite la coopération au quotidien : les rôles et les responsabilités de chacun sont plus clairs, les décisions peuvent être préparées et suivies collectivement, et les règles, processus et projets restent documentés et accessibles.',
+                'context' => 'Third paragraph presenting the practical collaborative value of OpenMyOrganization.',
+            ],
+            'common.public_help.page.title' => [
+                'text' => 'À quoi sert cette page ?',
+                'context' => 'Title of the public help entry explaining the current public page.',
+            ],
+            'common.public_help.page.generic_description' => [
+                'text' => 'Comprendre cette page publique',
+                'context' => 'Short description of the generic public page help entry.',
+            ],
+            'common.public_help.page.generic_paragraph' => [
+                'text' => 'Cette page publique présente une partie du contenu partagé par {organization}. Elle ne donne pas accès aux espaces internes qui ne font pas partie du lien public.',
+                'context' => 'Explanation of a generic public OpenMyOrganization page.',
+            ],
+            'common.public_help.page.decision_description' => [
+                'text' => 'Comprendre ce scrutin public',
+                'context' => 'Short description of the public decision page help entry.',
+            ],
+            'common.public_help.page.decision_paragraph_1' => [
+                'text' => 'Cette page est la porte d’accès publique à une prise de décision organisée par {organization}. Elle présente le contexte, les questions, la méthode choisie, les étapes et les règles utiles pour comprendre comment la consultation et le scrutin vont se dérouler.',
+                'context' => 'First paragraph explaining the purpose of the public decision page.',
+            ],
+            'common.public_help.page.decision_paragraph_2' => [
+                'text' => 'Selon les paramètres du scrutin et votre accès, vous pouvez consulter les informations, demander un accès personnel par e-mail, participer à la consultation ou au vote, et consulter les résultats lorsque leur publication est autorisée.',
+                'context' => 'Second paragraph explaining available actions on the public decision page.',
+            ],
+            'common.public_help.page.decision_paragraph_3' => [
+                'text' => 'Lorsque les propositions sont autorisées, vous pouvez aussi en ajouter pendant la consultation. Si les discussions sont activées, les participants disposant d’un compte peuvent échanger sur chaque proposition et, selon les paramètres, choisir de publier leur message anonymement.',
+                'context' => 'Third paragraph explaining public proposals and proposal discussions.',
+            ],
+            'common.public_help.page.decision_paragraph_4' => [
+                'text' => 'Le panneau d’informations sert de repère pendant tout le processus : il rappelle qui organise le scrutin, pour qui il est ouvert, quelles sont les étapes prévues et quelles options de participation sont disponibles.',
+                'context' => 'Fourth paragraph explaining how the information panel helps participants follow the public decision process.',
+            ],
+            'common.public_help.page.share_description' => [
+                'text' => 'Comprendre cette structure partagée',
+                'context' => 'Short description of the public structure page help entry.',
+            ],
+            'common.public_help.page.share_paragraph_1' => [
+                'text' => 'Cette page sert à parcourir une structure organisationnelle partagée publiquement par {organization}. Vous pouvez y explorer les cercles, les rôles et les relations visibles dans le périmètre partagé.',
+                'context' => 'First paragraph explaining the public shared structure page.',
+            ],
+            'common.public_help.page.share_paragraph_2' => [
+                'text' => 'Elle ne permet pas d’accéder aux espaces internes ni aux informations qui ne font pas partie du lien public.',
+                'context' => 'Second paragraph explaining the limits of the public shared structure page.',
+            ],
+            'common.public_help.privacy.label' => [
+                'text' => 'Politique de confidentialité',
+                'context' => 'Label of the privacy policy entry in the public help menu.',
+            ],
+            'common.public_help.privacy.description' => [
+                'text' => 'Traitement des données et cadre provisoire',
+                'context' => 'Description of the privacy policy entry in the public help menu.',
+            ],
+        ];
+    }
+
+    function commonOmoPublicPagesT($key, array $variables = [])
+    {
+        static $sourceLang = null;
+        static $bundle = null;
+
+        if ($sourceLang === null) {
+            $sourceLang = commonOmoPublicPagesGetSourceLang();
+        }
+
+        if ($bundle === null && function_exists('omoLoadTranslationBundle')) {
+            $bundle = omoLoadTranslationBundle('common_omo_public_pages', $sourceLang);
+        }
+
+        if (function_exists('t')) {
+            return t($key, $variables, $bundle, $sourceLang);
+        }
+
+        $text = (string)($sourceLang[$key]['text'] ?? $key);
+        foreach ($variables as $variable => $value) {
+            $text = str_replace('{' . $variable . '}', (string)$value, $text);
+        }
+
+        return $text;
+    }
+}
+
 if (!function_exists('commonBuildOmoPublicHelpItems')) {
     function commonBuildOmoPublicHelpCardHtml($title, array $paragraphs = [])
     {
@@ -65,62 +174,65 @@ if (!function_exists('commonBuildOmoPublicHelpItems')) {
 
         $organizationHtml = $organizationName !== ''
             ? '<strong>' . htmlspecialchars($organizationName, ENT_QUOTES, 'UTF-8') . '</strong>'
-            : 'l organisation concernee';
+            : commonOmoPublicPagesT('common.public_help.organization_fallback');
 
         $whatIsOmoHtml = commonBuildOmoPublicHelpCardHtml(
-            'Qu est-ce que OpenMyOrganization ?',
+            '',
             [
-                'OpenMyOrganization (OMO) est un environnement collaboratif qui peut regrouper la structure d une organisation, ses roles, ses decisions, ses documents et d autres espaces de coordination.',
-                'Les pages publiques d OMO servent a partager seulement une partie choisie du contenu. Le lien que vous avez recu n ouvre donc pas toute l organisation, mais uniquement le perimetre rendu visible par ' . $organizationHtml . '.',
+                commonOmoPublicPagesT('common.public_help.omo.paragraph_1'),
+                commonOmoPublicPagesT('common.public_help.omo.paragraph_2'),
+                commonOmoPublicPagesT('common.public_help.omo.paragraph_3'),
             ]
         );
 
-        $pagePurposeTitle = 'A quoi sert cette page ?';
-        $pagePurposeDescription = 'Comprendre cette page publique';
+        $pagePurposeTitle = commonOmoPublicPagesT('common.public_help.page.title');
+        $pagePurposeDescription = commonOmoPublicPagesT('common.public_help.page.generic_description');
         $pagePurposeHtml = commonBuildOmoPublicHelpCardHtml(
-            $pagePurposeTitle,
+            '',
             [
-                'Cette page publique est diffusee avec OpenMyOrganization (OMO).',
+                commonOmoPublicPagesT('common.public_help.page.generic_paragraph', ['organization' => $organizationHtml]),
             ]
         );
 
         if ($pageType === 'decision') {
-            $pagePurposeDescription = 'Comprendre ce scrutin public';
+            $pagePurposeDescription = commonOmoPublicPagesT('common.public_help.page.decision_description');
             $pagePurposeHtml = commonBuildOmoPublicHelpCardHtml(
-                $pagePurposeTitle,
+                '',
                 [
-                    'Cette page sert a consulter ou a participer a un scrutin partage publiquement par ' . $organizationHtml . '.',
-                    'Selon le lien recu et votre situation, vous pouvez lire le contexte du scrutin, demander un acces personnel, voter, puis consulter les resultats lorsque leur publication est autorisee.',
+                    commonOmoPublicPagesT('common.public_help.page.decision_paragraph_1', ['organization' => $organizationHtml]),
+                    commonOmoPublicPagesT('common.public_help.page.decision_paragraph_2'),
+                    commonOmoPublicPagesT('common.public_help.page.decision_paragraph_3'),
+                    commonOmoPublicPagesT('common.public_help.page.decision_paragraph_4'),
                 ]
             );
         } elseif ($pageType === 'share') {
-            $pagePurposeDescription = 'Comprendre cette structure partagee';
+            $pagePurposeDescription = commonOmoPublicPagesT('common.public_help.page.share_description');
             $pagePurposeHtml = commonBuildOmoPublicHelpCardHtml(
-                $pagePurposeTitle,
+                '',
                 [
-                    'Cette page sert a parcourir une structure organisationnelle partagee publiquement par ' . $organizationHtml . '.',
-                    'Vous pouvez y explorer les cercles, les roles et les relations visibles dans le perimetre partage, sans acceder aux espaces internes qui ne font pas partie du lien public.',
+                    commonOmoPublicPagesT('common.public_help.page.share_paragraph_1', ['organization' => $organizationHtml]),
+                    commonOmoPublicPagesT('common.public_help.page.share_paragraph_2'),
                 ]
             );
         }
 
         return [
             [
-                'label' => 'Qu est-ce que OpenMyOrganization ?',
-                'title' => 'Qu est-ce que OpenMyOrganization ?',
-                'description' => 'Presentation rapide de l outil',
+                'label' => commonOmoPublicPagesT('common.public_help.omo.title'),
+                'title' => commonOmoPublicPagesT('common.public_help.omo.title'),
+                'description' => commonOmoPublicPagesT('common.public_help.omo.description'),
                 'html' => $whatIsOmoHtml,
             ],
             [
-                'label' => 'A quoi sert cette page ?',
+                'label' => $pagePurposeTitle,
                 'title' => $pagePurposeTitle,
                 'description' => $pagePurposeDescription,
                 'html' => $pagePurposeHtml,
             ],
             [
-                'label' => 'Politique de confidentialite',
-                'title' => 'Politique de confidentialite',
-                'description' => 'Traitement des donnees et cadre provisoire',
+                'label' => commonOmoPublicPagesT('common.public_help.privacy.label'),
+                'title' => commonOmoPublicPagesT('common.public_help.privacy.label'),
+                'description' => commonOmoPublicPagesT('common.public_help.privacy.description'),
                 'url' => '/common/politique-confidentialite.php?embed=1',
                 'mode' => 'fetch',
             ],

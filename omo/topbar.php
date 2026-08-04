@@ -70,6 +70,10 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Politique de confidentialite',
             'context' => 'Label of the privacy policy text link shown in the OMO topbar help menu.',
         ],
+        'topbar.help.webmaster.label' => [
+            'text' => 'Webmaster : {email}',
+            'context' => 'Label of the server administrator email link shown below the public help items.',
+        ],
         'topbar.help.terms.label' => [
             'text' => 'Conditions generales',
             'context' => 'Label of the terms and conditions text link shown in the OMO topbar help menu.',
@@ -356,10 +360,13 @@ function omoGetTopbarHelpLinks(): array
     if ($adminEmail === '' && function_exists('envValue')) {
         $adminEmail = trim((string)envValue('INSTALL_ADMIN_EMAIL', ''));
     }
+    if ($adminEmail === '' && function_exists('envValue')) {
+        $adminEmail = trim((string)envValue('MAIL_USER', ''));
+    }
 
     if ($adminEmail !== '' && filter_var($adminEmail, FILTER_VALIDATE_EMAIL)) {
         $helpLinks[] = [
-            'label' => $adminEmail,
+            'label' => omoTopbarTranslate('topbar.help.webmaster.label', ['email' => $adminEmail]),
             'href' => 'mailto:' . $adminEmail,
         ];
     }

@@ -561,23 +561,23 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 			return;
 		}
 		?>
-		<div class="faq-popup__scope-grid" data-faq-scope-fields>
+		<div class="faq-popup__scope-grid generic-form-grid" data-faq-scope-fields>
 			<input type="hidden" name="IDorganization" value="<?= $selectedOrganizationId > 0 ? $selectedOrganizationId : $contextOrganizationId ?>">
 			<input type="hidden" name="IDholon" value="<?= $selectedHolonId > 0 ? $selectedHolonId : '' ?>">
 			<input type="hidden" name="IDparcours" value="<?= $selectedParcoursId > 0 ? $selectedParcoursId : '' ?>">
 			<?php if ($isContextualOnly): ?>
-				<div class="faq-popup__scope-field">
-					<label class="faq-popup__scope-label">Attachement</label>
-					<div class="faq-popup__scope-fixed">
+				<div class="faq-popup__scope-field generic-form-field">
+					<label class="faq-popup__scope-label generic-form-label">Attachement</label>
+					<div class="faq-popup__scope-fixed generic-soft-panel">
 						<?= htmlspecialchars($selectedHolonId > 0 ? 'Holon courant' : 'Organisation courante', ENT_QUOTES, 'UTF-8') ?>
 					</div>
 				</div>
 			<?php else: ?>
 				<?php if ($canManageAllFaqs): ?>
-					<div class="faq-popup__scope-field faq-popup__scope-field--full" data-faq-scope-organization-shell>
-						<label class="faq-popup__scope-label" for="faqScopeOrganization">Organisation</label>
+					<div class="faq-popup__scope-field faq-popup__scope-field--full generic-form-field generic-form-field--full" data-faq-scope-organization-shell>
+						<label class="faq-popup__scope-label generic-form-label" for="faqScopeOrganization">Organisation</label>
 						<select
-							class="faq-popup__scope-control"
+							class="faq-popup__scope-control generic-form-control"
 							id="faqScopeOrganization"
 							data-faq-scope-organization
 						>
@@ -593,10 +593,10 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 						</select>
 					</div>
 				<?php endif; ?>
-				<div class="faq-popup__scope-field">
-					<label class="faq-popup__scope-label" for="faqScopeType">Attachement</label>
+				<div class="faq-popup__scope-field generic-form-field">
+					<label class="faq-popup__scope-label generic-form-label" for="faqScopeType">Attachement</label>
 					<select
-						class="faq-popup__scope-control"
+						class="faq-popup__scope-control generic-form-control"
 						id="faqScopeType"
 						data-faq-scope-kind
 					>
@@ -608,10 +608,10 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 					</select>
 				</div>
 				<?php if ($canLinkApplication): ?>
-					<div class="faq-popup__scope-field">
-						<label class="faq-popup__scope-label" for="faqScopeApplication">Application</label>
+					<div class="faq-popup__scope-field generic-form-field">
+						<label class="faq-popup__scope-label generic-form-label" for="faqScopeApplication">Application</label>
 						<select
-							class="faq-popup__scope-control"
+							class="faq-popup__scope-control generic-form-control"
 							id="faqScopeApplication"
 							name="IDapplication"
 						>
@@ -631,10 +631,10 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 						</select>
 					</div>
 				<?php endif; ?>
-				<div class="faq-popup__scope-field" data-faq-scope-holon-shell>
-					<label class="faq-popup__scope-label" for="faqScopeHolon">Holon</label>
+				<div class="faq-popup__scope-field generic-form-field" data-faq-scope-holon-shell>
+					<label class="faq-popup__scope-label generic-form-label" for="faqScopeHolon">Holon</label>
 					<select
-						class="faq-popup__scope-control"
+						class="faq-popup__scope-control generic-form-control"
 						id="faqScopeHolon"
 						data-faq-scope-holon
 					>
@@ -657,10 +657,10 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 						<?php endforeach; ?>
 					</select>
 				</div>
-				<div class="faq-popup__scope-field" data-faq-scope-parcours-shell>
-					<label class="faq-popup__scope-label" for="faqScopeParcours">Parcours</label>
+				<div class="faq-popup__scope-field generic-form-field" data-faq-scope-parcours-shell>
+					<label class="faq-popup__scope-label generic-form-label" for="faqScopeParcours">Parcours</label>
 					<select
-						class="faq-popup__scope-control"
+						class="faq-popup__scope-control generic-form-control"
 						id="faqScopeParcours"
 						data-faq-scope-parcours
 					>

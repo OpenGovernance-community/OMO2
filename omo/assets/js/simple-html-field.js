@@ -39,6 +39,7 @@
             + '.omo-simple-html-field .note-editor.note-frame{border:1px solid var(--color-border,#d1d5db);border-radius:var(--radius-md);background:var(--color-surface,#fff);}'
             + '.omo-simple-html-field .note-toolbar{position:sticky;top:0;z-index:6;border-bottom:1px solid var(--color-border,#d1d5db);background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 88%,white);border-top-left-radius:var(--radius-md);border-top-right-radius:var(--radius-md);padding:8px;box-shadow:0 8px 18px -18px rgba(15,23,42,.45);}'
             + '.omo-simple-html-field .note-btn{border-radius:var(--radius-md);border-color:var(--color-border,#d1d5db);}'
+            + '.omo-simple-html-field .omo-simple-html-highlight-icon{display:block;width:18px;height:18px;object-fit:contain;}'
             + '.omo-simple-html-field .note-editing-area{overflow:visible;}'
             + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;height:auto!important;overflow-y:hidden!important;padding:14px;line-height:1.55;color:var(--color-text,#1f2937);}'
             + '.omo-simple-html-field .note-placeholder{color:var(--color-text-light,#6b7280);}'
@@ -572,6 +573,29 @@
         };
     }
 
+    function sanitizeBackgroundColorStyle(styleValue) {
+        var safeDeclarations = [];
+        String(styleValue || '').split(';').forEach(function (declaration) {
+            var separator = declaration.indexOf(':');
+            if (separator < 1) {
+                return;
+            }
+
+            var property = declaration.slice(0, separator).trim().toLowerCase();
+            var value = declaration.slice(separator + 1).trim().toLowerCase();
+            if (property !== 'background-color') {
+                return;
+            }
+
+            if (!/^(?:#[0-9a-f]{3,8}|(?:rgb|hsl)a?\(\s*[-+0-9.%]+(?:\s*,\s*[-+0-9.%]+){2,3}\s*\)|[a-z]{1,32})$/i.test(value)) {
+                return;
+            }
+
+            safeDeclarations.push(property + ': ' + value);
+        });
+        return safeDeclarations.join('; ');
+    }
+
     function buildSanitizedNode(sourceNode, ownerDocument, options) {
         if (!sourceNode) {
             return ownerDocument.createDocumentFragment();
@@ -804,6 +828,7 @@
             EM: true,
             I: true,
             U: true,
+            SPAN: true,
             UL: true,
             OL: true,
             LI: true,
@@ -846,6 +871,11 @@
                 anchorNode.setAttribute('rel', 'noopener noreferrer');
             }
 
+            const safeAnchorBackgroundColorStyle = sanitizeBackgroundColorStyle(sourceNode.getAttribute('style') || '');
+            if (safeAnchorBackgroundColorStyle) {
+                anchorNode.setAttribute('style', safeAnchorBackgroundColorStyle);
+            }
+
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
                 appendSanitizedChild(anchorNode, buildSanitizedNode(childNode, ownerDocument, options));
             });
@@ -854,6 +884,10 @@
         }
 
         const elementNode = ownerDocument.createElement(normalizedTagName.toLowerCase());
+        const safeBackgroundColorStyle = sanitizeBackgroundColorStyle(sourceNode.getAttribute('style') || '');
+        if (safeBackgroundColorStyle) {
+            elementNode.setAttribute('style', safeBackgroundColorStyle);
+        }
         if (normalizedTagName === 'TH' || normalizedTagName === 'TD') {
             const colspan = Number.parseInt(sourceNode.getAttribute('colspan') || '', 10);
             const rowspan = Number.parseInt(sourceNode.getAttribute('rowspan') || '', 10);
@@ -1166,6 +1200,23 @@
             }
         }
 
+        function applyBackgroundColor(color) {
+            color = String(color || '').trim();
+            if (!/^#[0-9a-f]{6}$/i.test(color) || !initialized || !$editor) {
+                return false;
+            }
+
+            restoreRange();
+            try {
+                $editor.summernote('backColor', color);
+                setRawValue($editor.summernote('code'));
+                emitChange();
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+
         function emitDoubleClick(targetNode, event) {
             if (typeof state.onDoubleClick === 'function') {
                 try {
@@ -1198,11 +1249,16 @@
             const title = resolvedState && resolvedState.title !== undefined
                 ? String(resolvedState.title || '')
                 : null;
+            const contents = resolvedState && resolvedState.contents !== undefined
+                ? String(resolvedState.contents || '')
+                : null;
             const isDisabled = !!(resolvedState && resolvedState.disabled);
             const isHidden = !!(resolvedState && resolvedState.hidden);
             const isActive = !!(resolvedState && resolvedState.active);
 
-            if (label !== null) {
+            if (contents !== null) {
+                $button.html(contents);
+            } else if (label !== null) {
                 $button.html(escapeHtml(label));
             }
 
@@ -1567,7 +1623,9 @@
                         }
 
                         const $button = ui.button({
-                            contents: escapeHtml(buttonConfig.label),
+                            contents: buttonConfig.contents !== undefined
+                                ? String(buttonConfig.contents || '')
+                                : escapeHtml(buttonConfig.label),
                             tooltip: buttonConfig.title,
                             className: buttonConfig.className,
                             click: function (event) {
@@ -1592,6 +1650,7 @@
                         $button.attr('data-omo-toolbar-button-name', buttonConfig.name);
                         applyToolbarButtonState(buttonConfig.name, {
                             label: buttonConfig.label,
+                            contents: buttonConfig.contents,
                             title: buttonConfig.title,
                             hidden: !!buttonConfig.hidden,
                             disabled: !!buttonConfig.disabled,
@@ -1719,6 +1778,7 @@
             getSelectedText: getSelectedText,
             hasSelection: hasSelection,
             getPlainText: getPlainText,
+            applyBackgroundColor: applyBackgroundColor,
             getEditableElement: getEditableElement,
             setToolbarButtonState: applyToolbarButtonState,
             destroy: destroy

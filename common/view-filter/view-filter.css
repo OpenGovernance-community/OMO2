@@ -150,6 +150,27 @@
     padding-top: 2px;
 }
 
+.omo-view-filter__actions > .generic-action-button,
+.omo-projects__filter-panel-actions > .generic-action-button {
+    min-height: 34px;
+    height: 34px;
+    padding-block: 4px;
+}
+
+.omo-view-filter__actions-more,
+.omo-projects__filter-panel-actions-more {
+    position: relative;
+}
+
+.omo-view-filter__actions-more > .generic-menu-panel,
+.omo-projects__filter-panel-actions-more > .generic-menu-panel {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + var(--generic-space-2, 8px));
+    z-index: 21;
+    white-space: nowrap;
+}
+
 @media (max-width: 760px) {
     .omo-view-filter__chips {
         max-width: 66%;

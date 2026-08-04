@@ -78,15 +78,23 @@
 			}
 		}
 
-		public function loadVisibleForOrganization($organizationId)
+		public function loadVisibleForOrganization($organizationId, $includeInactive = false)
 		{
 			$organizationId = (int)$organizationId;
+			$includeInactive = (bool)$includeInactive;
 
 			$this->exchangeArray([]);
 
 			if ($organizationId <= 0) {
 				return;
 			}
+
+			$visibilityCondition = $includeInactive
+				? '1 = 1'
+				: "
+					uo.active = 1
+					OR inv.id IS NOT NULL
+				";
 
 			$query = "
 				SELECT DISTINCT uo.id
@@ -99,10 +107,7 @@
 					AND inv.active = 1
 					AND (inv.dateexpiration IS NULL OR inv.dateexpiration > NOW())
 				WHERE uo.IDorganization = :organization_id
-				  AND (
-					uo.active = 1
-					OR inv.id IS NOT NULL
-				  )
+				  AND (" . $visibilityCondition . ")
 				ORDER BY
 				  COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
 				  COALESCE(NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
@@ -115,12 +120,13 @@
 			]);
 
 			if ($rows === false) {
+				$fallbackVisibilityCondition = $includeInactive ? '1 = 1' : 'uo.active = 1';
 				$fallbackQuery = "
 					SELECT uo.id
 					FROM user_organization uo
 					INNER JOIN `user` u ON u.id = uo.IDuser
 					WHERE uo.IDorganization = :organization_id
-					  AND uo.active = 1
+					  AND " . $fallbackVisibilityCondition . "
 					ORDER BY
 					  COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
 					  COALESCE(NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,

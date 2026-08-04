@@ -2,8 +2,89 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-04
+
+- La popup FAQ ouverte depuis le menu Aide de la topbar garde une marge interne generique dans son contenu defilant, tandis que sa barre de defilement reste au bord de la fenetre.
+- Les cartes de reponses de la FAQ utilisent maintenant la primitive generique `generic-soft-panel`, sans ombre, avec un format plus compact pour afficher davantage de questions.
+- La FAQ compacte davantage ses questions et aligne son bouton Ajouter, sa recherche et son selecteur de contexte sur les composants generiques et le selecteur OMO des documents.
+- Le champ de recherche de la FAQ reprend l icone commune de la topbar, ancree a gauche avec un retrait interieur generique du texte.
+- Les questions de la FAQ utilisent maintenant un chevron pour indiquer clairement l ouverture et la fermeture de leur reponse.
+- Les styles de la FAQ ont ete simplifies en reutilisant les sections, piles, panneaux, titres, descriptions, formulaires et actions generiques; les regles specifiques restantes couvrent uniquement son mecanisme d ouverture, ses medias et son vote.
+- Le retour au listing de la FAQ utilise maintenant le bouton secondaire generique et reste aligne a droite dans le detail.
+- L entete du detail FAQ rapproche la capsule de contexte et le titre du haut de la fenetre, sans eloigner les actions standard.
+
+## 2026-08-03
+
+- Apres la modification d un document URL configure pour s ouvrir dans une nouvelle fenetre, le drawer se ferme maintenant au lieu de rouvrir le detail qui declencherait cette nouvelle fenetre.
+- Les couleurs de fond HTML autorisees a la sauvegarde sont maintenant conservees lors de l affichage des documents et de leurs contenus integres.
+- Les textes de documents integres indiquent maintenant aussi leur holon source dans le title et font apparaitre une surface gris tres legere au survol, adaptee au theme clair ou sombre; dans les imbrications, seul le niveau survole est mis en evidence.
+- Les documents integres mais inaccessibles affichent maintenant leur titre sans lien inutile vers le document protege.
+- Les documents integres dans le detail d un document affichent maintenant directement leur contenu, sans cadre, titre ni liens de navigation; leur source reste disponible au survol.
+- Le resume de l espace OMO devient un Tableau de pilotage avec les perimetres Local, Enfants directs et Descendants, des vues memorisables par holon, et les projets ainsi que les indicateurs en retard en tete.
+- Les actions de vue du Tableau de pilotage et son empilement avec les drawers sont fiabilises.
+- Les alertes de projets et d indicateurs en retard ne sont affichees que lorsqu elles sont utiles, avec une presentation en deux colonnes sur grand ecran.
+- Les elements de checklist disposent maintenant d un menu pour les supprimer, les deplacer vers une autre checklist via le selecteur de cercles, ou extraire une recurrence de conteneur dans sa propre checklist recurrente.
+- Les propositions ajoutees par des personnes invitees uniquement par e-mail affichent maintenant le nom local de leur adresse, sans exposer le domaine; le lien vers le participant deja memorise est reutilise.
+- L import d une organisation permet maintenant d importer les membres sans creer ni envoyer leurs invitations. L envoi reste active par defaut et peut etre reporte depuis une case de la fenetre d import.
+- Les membres importes sans invitation restent visibles comme comptes a inviter, y compris dans leurs roles. L invitation est creee au premier envoi, et une enveloppe distingue les invitations deja envoyees dans la structure.
+- L import OMO 1 des documents reprend maintenant leur visibilite publique, organisation, cercle, role ou proprietaire. Une portee impossible a reconstruire est restreinte au proprietaire, jamais elargie a l organisation.
+- Dans la mini structure, le nom du cercle survole reste maintenant lisible au-dessus des noms de roles.
+- Les descriptions des checklists utilisent maintenant un editeur HTML Summernote et conservent leur mise en page dans les vues de liste et de detail.
+- Les descriptions des propositions de scrutin utilisent maintenant un editeur HTML Summernote avec un bouton de surlignage, et sont affichees avec un HTML filtre dans les cartes, la page publique et les popups d edition.
+- Le bouton de surlignage reprend maintenant l icone dediee et ouvre une petite palette de six couleurs douces predefinies.
+- Le compteur de messages des discussions est maintenant aligne verticalement avec son bouton et rapproche de celui-ci.
+- L auteur d une proposition peut maintenant la retirer depuis un menu d actions, avant le debut du scrutin, avec une suppression logique qui preserve les donnees associees.
+- Le panneau du menu d actions des propositions respecte maintenant correctement son etat masque au chargement.
+- Le menu d actions des propositions reprend maintenant les composants generiques utilises par les menus des indicateurs.
+- Les boutons d actions des propositions utilisent maintenant la meme hauteur compacte que le bouton de menu `...`.
+
+## 2026-08-01
+
+- Le bot Telegram peut maintenant etre connecte depuis un groupe a un role ou a un projet. Une personne doit d abord avoir relie son compte Telegram en prive; elle navigue ensuite parmi ses organisations, cercles, roles et projets autorises. Les vocaux du groupe sont alors ajoutes au contexte choisi et lies au projet lorsque celui-ci est selectionne.
+- La navigation Telegram des destinations de groupe inclut les groupes et les cercles. L ouverture d un role propose maintenant explicitement sa selection ou les projets rattaches a ce role, et les erreurs d enregistrement conservent leur detail SQL dans les journaux.
+- Les groupes Telegram sans sujet utilisent maintenant une destination principale explicite, ce qui evite une erreur SQL lors de leur connexion.
+- Un vocal Telegram ignore parce que la transcription est arretee ou parce qu il dure moins de dix secondes recoit maintenant une explication dans la discussion.
+- La FAQ explique maintenant comment synchroniser les contacts et les reunions OMO sur un telephone ou un ordinateur avec CardDAV et CalDAV.
+- Un indicateur peut maintenant afficher ses mesures sous forme de barres et leur cumul sous forme de courbe, avec une echelle propre de chaque cote. Le cumul conserve son historique quelle que soit la periode affichee : une trajectoire datee fixe son debut, tandis qu un indicateur sans trajectoire datee repart de sa premiere mesure.
+- Apres la sauvegarde d un document existant, le sous-drawer reste ouvert sur le meme document en mode vue.
+
 ## 2026-07-31
 
+- L espacement entre le logo et le nom de l organisation dans la barre superieure est maintenant retabli apres la separation de leurs liens.
+- Dans la barre superieure des scrutins publics, le logo renvoie vers le site de base et le nom de l organisation utilise maintenant son shortname lorsque le routage par sous-domaine est disponible, afin de conserver le bon contexte local.
+- Dans l interface publique des scrutins, la description precede maintenant le contexte de vote et la colonne de contexte elle-meme peut defiler sur toute sa hauteur sans etirer artificiellement ses blocs.
+- Le message generique indiquant qu un scrutin public peut etre consulte est retire de son en-tete.
+- Toutes les etiquettes temporelles de la frise publique utilisent maintenant une taille plus discrete, et leurs cartes s ajustent au texte sans retour a la ligne.
+- La barre de la frise publique est remontee pour rapprocher ses marqueurs des etiquettes temporelles.
+- Le titre principal des scrutins publics utilise de nouveau la taille standard d un H1.
+- Le recapitulatif public des options indique maintenant lorsque les propositions et leurs discussions sont ouvertes pendant la consultation, avec la precision sur l anonymat des discussions.
+- Le contenu des cartes Organisateur, Methode, Invites et Options de la page publique est affiche dans une taille plus discrete, sans modifier leurs titres.
+- La carte Organisateur regroupe maintenant le nom en gras et son contexte sur une seule ligne.
+- Les metadonnees des propositions regroupent maintenant leur auteur et leur date de creation ou modification dans une phrase plus concise.
+- Les acces publics par code e-mail reutilisent maintenant le nom du compte reconnu lorsqu un participant lie a un utilisateur n a pas encore de nom affiche.
+- La resolution des acces publics privilegie maintenant le participant lie au membre de l organisation et rattache les anciens participants e-mail au compte reconnu, y compris lorsque l organisation utilise une adresse e-mail distincte.
+- Les parametres de gestion affichent maintenant chaque option sur une seule ligne. Les trois methodes de scrutin proposent aussi l option "Autoriser les votes anonymes" : lorsqu elle est activee, chaque participant peut choisir un vote anonyme; sinon la case reste desactivee et reflete le vote anonyme impose par le scrutin.
+- Les propositions de decision disposent maintenant d une discussion reservee aux participants lies a un compte, avec messages en bulles, photos ou initiales et notifications systeme. L auteur peut modifier sa proposition depuis une action distincte sur la carte; chaque modification est signalee dans la discussion et l identite reste attachee a la bonne proposition lors des reordonnancements.
+- Une discussion de proposition ouverte recherche maintenant les nouveaux messages toutes les dix secondes et les ajoute sans interrompre la lecture; cette actualisation s arrete avec la fermeture de la popup.
+- Les notifications de modification d une proposition proposent maintenant un detail avant/apres, avec les mots retires et ajoutes mis en evidence comme dans l historique des holons.
+- Les messages des discussions de proposition signalent maintenant l administrateur du scrutin et l auteur de la proposition, y compris lorsqu une personne cumule les deux roles.
+- Les popups de discussion et de modification des propositions sont maintenant centrees et disposent d un espacement interieur regulier sur ordinateur comme sur mobile.
+- Les cartes de proposition affichent maintenant leur auteur, leur date de creation ou de derniere modification et un resume de leur discussion adapte a la derniere intervention du participant.
+- Les trois methodes de scrutin proposent maintenant un reglage pour autoriser ou masquer les discussions de proposition; l API applique egalement cette restriction et les scrutins existants restent autorises par defaut.
+- Dans un scrutin anonyme, les participants aux discussions utilisent maintenant un pseudonyme stable derive du scrutin et du compte; l auteur de la proposition reste signale sans etre identifie et l administrateur conserve son nom.
+- Les fenetres de parametrage des trois methodes de scrutin disposent maintenant d une marge interne uniforme et de boutons d action compacts places cote a cote.
+- Le contenu d une popup topbar peut maintenant demander sa propre largeur maximale; les parametres de scrutin, le chat et l edition des propositions utilisent des largeurs adaptees sans marges laterales artificielles.
+- Pendant la consultation, le titre, la description, les propositions, les questions et les parametres du scrutin restent modifiables jusqu au debut effectif de l evaluation; ils sont ensuite verrouilles cote interface et cote sauvegarde.
+- La sauvegarde des scrutins conserve maintenant les identifiants des propositions existantes, ce qui evite de les recreer et preserve leurs discussions associees; une migration rattache aussi les fils orphelins aux propositions actives correspondantes.
+- Chaque message de discussion conserve desormais son propre statut anonyme. Les messages deja publies dans les discussions actuellement anonymes sont proteges lors de la migration, et un participant peut choisir de publier anonymement dans une discussion nominative.
+- La case de publication anonyme des discussions est maintenant transmise au serveur afin d afficher le pseudonyme du participant.
+- Le choix personnel de publier anonymement est memorise localement pour chaque compte et scrutin, puis expire au debut de l evaluation ou a la fin de la consultation.
+- Dans les scrutins publics, chaque proposition est maintenant presentee dans une carte generique blanche, clairement separee du panneau gris reserve a l ajout de proposition.
+- Les retours de soumission de propositions depuis un scrutin public utilisent maintenant les notifications de la topbar pour les succes, avertissements et erreurs, avec un panneau local uniquement en repli.
+- L interface publique des scrutins dispose maintenant d un bundle de traduction dedie couvrant la frise, le contexte, les options, l acces par e-mail, les messages JavaScript et les libelles de navigation.
+- Les textes sources des invitations, des courriels d acces et des trois methodes de scrutin ont ete relus et harmonises en francais avec accents, apostrophes et ponctuation.
+- Le resume des invitations dans la gestion indique maintenant le nombre total de personnes representees par les holons et les invitations individuelles, en supprimant les doublons.
+- Les scrutins a vote simple ou jugement majoritaire peuvent maintenant etre crees sans proposition lorsque les participants sont autorises a en ajouter pendant une periode de consultation complete; une ou plusieurs propositions initiales continuent d exiger au moins deux choix.
 - Sur mobile, les actions des headers d application sont maintenant regroupees dans un menu hamburger en haut a droite, sans modifier les actions disponibles.
 - Sur mobile, le hamburger reste maintenant sur la meme ligne que le titre et s aligne a droite.
 - Sur mobile, le menu des Indicateurs affiche directement les actions Importer et Grouper, sans sous-menu « ... ».
@@ -1321,6 +1402,28 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - La carte Lexique utilise maintenant son icone de dictionnaire dediee.
 - Le detail d un projet affiche maintenant un lien texte vers ses sous-projets archives, avec leur nombre et une popup chargee a la demande.
 - Le lien des archives est maintenant presente dans une capsule grise avec le nombre dans un rond blanc.
+- Le Kanban groupe est maintenant organise en lignes completes: chaque holon, priorite ou niveau d importance dispose de son propre Kanban horizontal, aligne sur toutes les colonnes de statut.
+- Les libelles des groupes du Kanban restent visibles sous les colonnes de statut pendant le defilement vertical.
+- Les separations de groupes du Kanban sont maintenant des barres completes sticky, avec leur libelle conserve a gauche.
+- Les barres de separation du Kanban reutilisent maintenant le style generique de la vue Liste.
+- Le libelle d une barre de separation Kanban reste ancre a gauche pendant le defilement horizontal.
+- Les entetes Kanban affichent uniquement le statut, et les separateurs sticky touchent directement l entete des colonnes.
+- Les groupes d importance strategique du Kanban affichent maintenant leur niveau calcule sous forme d etoiles.
+- Les separateurs sticky du Kanban mesurent maintenant automatiquement la hauteur reelle de l entete des colonnes.
+- Le glisser-deposer inter-lignes du Kanban peut maintenant changer le holon ou la priorite; les lignes d importance calculee refusent ces depots.
+- Le tri Holon reste visible mais grise et indisponible en portee Locale.
+- Le Kanban conserve maintenant ses scrolls horizontal et vertical apres un deplacement, puis recentre la carte deplacee si elle a quitte la zone visible.
+- Le menu contextuel des cartes Projet propose maintenant Modifier et ouvre l editeur via la navigation hash.
+- Les options d affichage des Projets gerent maintenant une vue par defaut et des surcharges par holon, avec les actions Appliquer partout, Definir comme vue par defaut et Restaurer la vue par defaut dans un menu dedie.
+- Les boutons des options d affichage sont maintenant alignes sur la hauteur du menu a trois points.
+- Le Calendrier reprend les memes actions de vue temporaire, par holon ou par defaut que les Projets.
+- Les Indicateurs reprennent les memes actions de vue temporaire, par holon ou par defaut que les Projets.
+- Les Documents reprennent les memes actions de vue temporaire, par holon ou par defaut que les Projets, et leur menu de vue passe au-dessus des separateurs temporels sticky.
+- Les Decisions reprennent les memes actions de vue temporaire, par holon ou par defaut que les Projets, pour tous leurs filtres et modes de presentation.
+- Team reprend les memes actions de vue temporaire, par holon ou par defaut que les Projets.
+- Les Regles reprennent les memes actions de vue temporaire, par holon ou par defaut que les Projets.
+- Definir comme vue par defaut applique maintenant immediatement cette vue et retire la surcharge du holon courant dans toutes les applications concernees.
+- Les groupes d importance strategique du Kanban utilisent l importance calculee, arrondie au niveau entier le plus proche.
 - 2026-07-29 : La liste des modeles lors de l ajout d un holon suit maintenant le chemin des espaces de la racine vers l espace courant, avec un groupe nomme pour chaque espace hebergeur.
 - 2026-07-29 : Le contenu de Reglement n est plus entoure d un cadre blanc ; seules ses sections conservent leur presentation propre.
 - 2026-07-29 : Le sous-drawer de Reglement passe maintenant au-dessus de l entete fixe de son drawer parent.
@@ -1332,3 +1435,14 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - 2026-07-30 : L import des domaines d autorite peut maintenant reconstruire la liste sur un holon lorsque l export OMO 1 contient les domaines dans le module Regles mais pas dans les proprietes du holon.
 - 2026-07-30 : L export OMO 1 reprend maintenant le format de proprietes et les profils de droits des templates structurels OMO 2 : droits des roles, liens Pilotage, Memoire et Representation, avec strategie HTML-liste et domaines exportes comme texte avant conversion en autorites.
 - 2026-07-30 : Les domaines d autorite de l export OMO 1 sont maintenant declares directement comme une liste d objets authority, avec remappage de leurs identifiants lors de l import.
+- Le formulaire public d ajout de propositions utilise maintenant un bundle de traduction dedie et ses textes francais ont ete corriges (accents, apostrophes et ponctuation), y compris le message de lien invalide.
+- La legende du jugement majoritaire affiche desormais des reperes courts (1, 2, 3, -, 4, 5, 6) sur les petits ecrans, tout en conservant les libelles complets sur ordinateur.
+- Le contexte de l organisateur n affiche plus deux fois l organisation lorsque le holon racine est utilise ; les roles, groupes et cercles restent precises.
+- Le menu Aide des pages publiques explique maintenant ce qu est OpenMyOrganization et le role de la page courante. La version Decision detaille le contexte du scrutin, les acces, les propositions, les discussions et les resultats.
+- Les contenus d aide de la topbar utilisent maintenant un fond blanc de popup, coherent avec les autres fenetres de l interface.
+- Les cartes de contenu du menu Aide ne repetent plus le titre deja present dans l entete de la popup et les explications d OMO et de la page publique de decision ont ete completees.
+- La presentation d OpenMyOrganization dans le menu Aide est maintenant centree sur la cooperation, la clarification des roles, la prise de decision et la documentation des regles, processus et projets.
+- La politique de confidentialite est maintenant un document complet : projet non lucratif et open source, absence de revente ou de profilage commercial, hebergement Infomaniak, auto-hebergement, donnees traitees, conservation, securite et droits des personnes. Son affichage en popup dispose aussi d un retrait interieur.
+- Le menu Aide affiche maintenant sous ses blocs l adresse e-mail de l administrateur du serveur avec le libelle Webmaster.
+- La page publique des scrutins affiche elle aussi l adresse e-mail du webmaster sous les blocs du menu Aide.
+- Le lien Webmaster des pages publiques utilise aussi l adresse MAIL_USER comme repli lorsque l adresse d administrateur dediee n est pas definie.

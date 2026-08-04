@@ -266,8 +266,24 @@ $sourceLang = [
         'context' => 'Button applying temporary decision filters.',
     ],
     'decisions.index.view_filter.save' => [
-        'text' => 'Enregistrer cette vue',
+        'text' => 'Enregistrer la vue',
         'context' => 'Button saving the decision view for current context.',
+    ],
+    'decisions.index.view_filter.more_actions' => [
+        'text' => 'Autres options de vue',
+        'context' => 'Accessible label for additional decision view preference actions.',
+    ],
+    'decisions.index.view_filter.apply_everywhere' => [
+        'text' => 'Appliquer partout',
+        'context' => 'Action setting the current decision view as the default and clearing specific views.',
+    ],
+    'decisions.index.view_filter.set_default' => [
+        'text' => 'Définir comme vue par défaut',
+        'context' => 'Action saving the current decision view as the default view.',
+    ],
+    'decisions.index.view_filter.restore_default' => [
+        'text' => 'Restaurer la vue par défaut',
+        'context' => 'Action removing the current holon specific decision view.',
     ],
     'decisions.index.filters.status.all' => [
         'text' => 'Toutes',
@@ -1306,7 +1322,7 @@ if (!is_string($payloadJson)) {
     $payloadJson = '{"items":[],"openDecisionId":0,"openDecisionMode":"default","groups":[],"statusFilters":[],"statusCounts":{},"typeOptions":[],"methodOptions":[],"holonOptions":[],"text":{},"newUrl":"","refreshUrl":""}';
 }
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
 <div
     class="omo-decisions omo-panel-view"
     id="omo-decisions-root"
@@ -1387,8 +1403,16 @@ if (!is_string($payloadJson)) {
                         </div>
                     </div>
                     <div class="omo-view-filter__actions">
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decisions-filter-apply><?= $escape(t('decisions.index.view_filter.apply', [], $lang, $sourceLang)) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-decisions-filter-save><?= $escape(t('decisions.index.view_filter.save', [], $lang, $sourceLang)) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-decisions-filter-apply><?= $escape(t('decisions.index.view_filter.apply', [], $lang, $sourceLang)) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decisions-filter-save><?= $escape(t('decisions.index.view_filter.save', [], $lang, $sourceLang)) ?></button>
+                        <div class="generic-menu omo-view-filter__actions-more" data-omo-decisions-filter-more-menu>
+                            <button type="button" class="generic-menu-toggle" data-omo-decisions-filter-more-toggle aria-expanded="false" aria-label="<?= $escape(t('decisions.index.view_filter.more_actions', [], $lang, $sourceLang)) ?>">&#8942;</button>
+                            <div class="generic-menu-panel" data-omo-decisions-filter-more-panel role="menu" hidden>
+                                <button type="button" class="generic-menu-item" data-omo-decisions-filter-more-action="apply-everywhere" role="menuitem"><?= $escape(t('decisions.index.view_filter.apply_everywhere', [], $lang, $sourceLang)) ?></button>
+                                <button type="button" class="generic-menu-item" data-omo-decisions-filter-more-action="set-default" role="menuitem"><?= $escape(t('decisions.index.view_filter.set_default', [], $lang, $sourceLang)) ?></button>
+                                <button type="button" class="generic-menu-item" data-omo-decisions-filter-more-action="restore-default" role="menuitem"><?= $escape(t('decisions.index.view_filter.restore_default', [], $lang, $sourceLang)) ?></button>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -1945,7 +1969,8 @@ function omoDecisionParseIndexPayload(node) {
 
 const payloadNode = root.querySelector('[data-omo-decisions-payload]');
 const payload = omoDecisionParseIndexPayload(payloadNode) || <?= $payloadJson ?>;
-const omoDecisionsSavedViewsStorageKey = 'omo.decisions.saved-views.v1';
+const omoDecisionsSavedViewsStorageKey = 'omo.decisions.saved-views.v2';
+const omoDecisionsLegacySavedViewsStorageKey = 'omo.decisions.saved-views.v1';
 const omoDecisionsSessionViewsStorageKey = 'omo.decisions.session-views.v1';
 const omoDecisionsSearchStorageKey = 'omo.decisions.quick-search.v1';
 const elements = {
@@ -2053,6 +2078,69 @@ function omoDecisionsGetPreferencesContextKey() {
         + ':' + String(root.getAttribute('data-omo-decision-cid') || '0');
 }
 
+function omoDecisionsGetSavedViewsStore() {
+    try {
+        const rawValue = window.localStorage.getItem(omoDecisionsSavedViewsStorageKey);
+        const savedViews = rawValue ? JSON.parse(rawValue) : null;
+        if (savedViews && typeof savedViews === 'object' && savedViews.contexts && typeof savedViews.contexts === 'object') {
+            return {
+                defaultView: savedViews.defaultView && typeof savedViews.defaultView === 'object'
+                    ? savedViews.defaultView
+                    : null,
+                contexts: savedViews.contexts
+            };
+        }
+
+        const legacyValue = window.localStorage.getItem(omoDecisionsLegacySavedViewsStorageKey);
+        const legacyViews = legacyValue ? JSON.parse(legacyValue) : null;
+        return {
+            defaultView: null,
+            contexts: legacyViews && typeof legacyViews === 'object' ? legacyViews : {}
+        };
+    } catch (error) {
+        return {defaultView: null, contexts: {}};
+    }
+}
+
+function omoDecisionsSaveViewsStore(store) {
+    try {
+        window.localStorage.setItem(omoDecisionsSavedViewsStorageKey, JSON.stringify({
+            defaultView: store.defaultView && typeof store.defaultView === 'object'
+                ? store.defaultView
+                : null,
+            contexts: store.contexts && typeof store.contexts === 'object' ? store.contexts : {}
+        }));
+    } catch (error) {
+    }
+}
+
+function omoDecisionsGetStoredViewPreferences() {
+    const preferences = omoDecisionsGetSavedViewsStore().contexts[omoDecisionsGetPreferencesContextKey()];
+    return preferences && typeof preferences === 'object' ? preferences : null;
+}
+
+function omoDecisionsGetDefaultViewPreferences() {
+    return omoDecisionsGetSavedViewsStore().defaultView;
+}
+
+function omoDecisionsStoreViewPreferences(preferences) {
+    const store = omoDecisionsGetSavedViewsStore();
+    store.contexts[omoDecisionsGetPreferencesContextKey()] = omoDecisionsNormalizeViewPreferences(preferences);
+    omoDecisionsSaveViewsStore(store);
+}
+
+function omoDecisionsStoreDefaultViewPreferences(preferences) {
+    const store = omoDecisionsGetSavedViewsStore();
+    store.defaultView = omoDecisionsNormalizeViewPreferences(preferences);
+    omoDecisionsSaveViewsStore(store);
+}
+
+function omoDecisionsClearStoredViewPreferences() {
+    const store = omoDecisionsGetSavedViewsStore();
+    delete store.contexts[omoDecisionsGetPreferencesContextKey()];
+    omoDecisionsSaveViewsStore(store);
+}
+
 function omoDecisionsReadStoredValue(storage, storageKey) {
     try {
         const values = JSON.parse(storage.getItem(storageKey) || '{}');
@@ -2086,8 +2174,9 @@ function omoDecisionsNormalizeViewPreferences(preferences) {
 
 function omoDecisionsReadViewPreferences() {
     const temporary = omoDecisionsReadStoredValue(window.sessionStorage, omoDecisionsSessionViewsStorageKey);
-    const saved = omoDecisionsReadStoredValue(window.localStorage, omoDecisionsSavedViewsStorageKey);
-    return omoDecisionsNormalizeViewPreferences(temporary || saved);
+    const saved = omoDecisionsGetStoredViewPreferences();
+    const defaultView = omoDecisionsGetDefaultViewPreferences();
+    return omoDecisionsNormalizeViewPreferences(temporary || saved || defaultView);
 }
 
 function omoDecisionsReadSearch() {
@@ -2107,6 +2196,13 @@ function omoDecisionsClearTemporaryViewPreferences() {
         }
         delete values[omoDecisionsGetPreferencesContextKey()];
         window.sessionStorage.setItem(omoDecisionsSessionViewsStorageKey, JSON.stringify(values));
+    } catch (error) {
+    }
+}
+
+function omoDecisionsClearAllTemporaryViewPreferences() {
+    try {
+        window.sessionStorage.removeItem(omoDecisionsSessionViewsStorageKey);
     } catch (error) {
     }
 }
@@ -2293,6 +2389,34 @@ function omoDecisionsRefreshScope(scope) {
     });
 }
 
+function omoDecisionsApplyViewFilters(preferences) {
+    const next = omoDecisionsNormalizeViewPreferences(preferences);
+    if (next.scope !== omoDecisionGetCurrentScope()) {
+        omoDecisionsRefreshScope(next.scope);
+        return;
+    }
+    state.status = next.status;
+    state.type = restoreSelectValue(elements.type, next.type);
+    state.method = restoreSelectValue(elements.method, next.method);
+    state.sort = next.sort;
+    state.density = next.density;
+    renderList();
+}
+
+function omoDecisionsCloseFilterMoreMenu() {
+    root.querySelectorAll('[data-omo-decisions-filter-more-menu]').forEach(function (menu) {
+        const panel = menu.querySelector('[data-omo-decisions-filter-more-panel]');
+        const toggle = menu.querySelector('[data-omo-decisions-filter-more-toggle]');
+        if (panel) {
+            panel.hidden = true;
+        }
+        menu.classList.remove('is-open');
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+    });
+}
+
 function omoDecisionsCloseFilterPanel(applyChanges, saveView) {
     if (!decisionFilterPanelOpen) {
         return;
@@ -2305,6 +2429,7 @@ function omoDecisionsCloseFilterPanel(applyChanges, saveView) {
         button.setAttribute('aria-expanded', 'false');
     });
     document.removeEventListener('pointerdown', omoDecisionsHandleFilterOutsidePointerDown, true);
+    omoDecisionsCloseFilterMoreMenu();
     if (!applyChanges || !pendingViewFilters) {
         pendingViewFilters = null;
         return;
@@ -2312,21 +2437,52 @@ function omoDecisionsCloseFilterPanel(applyChanges, saveView) {
     const next = omoDecisionsNormalizeViewPreferences(pendingViewFilters);
     pendingViewFilters = null;
     if (saveView) {
-        omoDecisionsWriteViewPreferences(window.localStorage, omoDecisionsSavedViewsStorageKey, next);
+        omoDecisionsStoreViewPreferences(next);
         omoDecisionsClearTemporaryViewPreferences();
     } else {
         omoDecisionsWritePreferences(next);
     }
-    if (next.scope !== omoDecisionGetCurrentScope()) {
-        omoDecisionsRefreshScope(next.scope);
+    omoDecisionsApplyViewFilters(next);
+}
+
+function omoDecisionsApplyFilterMoreAction(action) {
+    if (!decisionFilterPanelOpen || !pendingViewFilters) {
         return;
     }
-    state.status = next.status;
-    state.type = restoreSelectValue(elements.type, next.type);
-    state.method = restoreSelectValue(elements.method, next.method);
-    state.sort = next.sort;
-    state.density = next.density;
-    renderList();
+
+    const next = omoDecisionsNormalizeViewPreferences(pendingViewFilters);
+    omoDecisionsCloseFilterPanel(false, false);
+
+    if (action === 'set-default') {
+        omoDecisionsClearStoredViewPreferences();
+        omoDecisionsClearTemporaryViewPreferences();
+        omoDecisionsStoreDefaultViewPreferences(next);
+        omoDecisionsApplyViewFilters(next);
+        return;
+    }
+
+    if (action === 'apply-everywhere') {
+        const store = omoDecisionsGetSavedViewsStore();
+        store.defaultView = omoDecisionsNormalizeViewPreferences(next);
+        store.contexts = {};
+        omoDecisionsSaveViewsStore(store);
+        omoDecisionsClearAllTemporaryViewPreferences();
+        omoDecisionsApplyViewFilters(next);
+        return;
+    }
+
+    if (action === 'restore-default') {
+        omoDecisionsClearStoredViewPreferences();
+        omoDecisionsClearTemporaryViewPreferences();
+        omoDecisionsApplyViewFilters(omoDecisionsGetDefaultViewPreferences() || {
+            scope: 'contextual',
+            status: 'active',
+            type: 'all',
+            method: 'all',
+            sort: 'time',
+            density: 'detail'
+        });
+    }
 }
 
 function omoDecisionsHandleFilterOutsidePointerDown(event) {
@@ -2341,6 +2497,7 @@ function omoDecisionsOpenFilterPanel() {
         return;
     }
     pendingViewFilters = omoDecisionsGetCurrentViewFilters();
+    omoDecisionsCloseFilterMoreMenu();
     omoDecisionsSyncFilterChoices();
     elements.viewFilterPanel.hidden = false;
     decisionFilterPanelOpen = true;
@@ -4358,6 +4515,30 @@ root.querySelectorAll('[data-omo-decisions-filter-toggle]').forEach(function (bu
 
 if (elements.viewFilterPanel) {
     elements.viewFilterPanel.addEventListener('click', function (event) {
+        const moreToggle = event.target.closest('[data-omo-decisions-filter-more-toggle]');
+        if (moreToggle) {
+            event.preventDefault();
+            event.stopPropagation();
+            const moreMenu = moreToggle.closest('[data-omo-decisions-filter-more-menu]');
+            const morePanel = moreMenu ? moreMenu.querySelector('[data-omo-decisions-filter-more-panel]') : null;
+            const isMoreMenuOpen = !!morePanel && !morePanel.hidden;
+            omoDecisionsCloseFilterMoreMenu();
+            if (!isMoreMenuOpen && morePanel) {
+                morePanel.hidden = false;
+                moreMenu.classList.add('is-open');
+                moreToggle.setAttribute('aria-expanded', 'true');
+            }
+            return;
+        }
+        const moreAction = event.target.closest('[data-omo-decisions-filter-more-action]');
+        if (moreAction) {
+            event.preventDefault();
+            event.stopPropagation();
+            omoDecisionsApplyFilterMoreAction(
+                moreAction.getAttribute('data-omo-decisions-filter-more-action') || ''
+            );
+            return;
+        }
         if (event.target.closest('[data-omo-decisions-filter-apply]')) {
             event.preventDefault();
             omoDecisionsCloseFilterPanel(true, false);

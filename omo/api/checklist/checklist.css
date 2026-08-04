@@ -164,6 +164,38 @@
     resize: vertical;
 }
 
+.omo-checklist-html-editor-container,
+.omo-checklist-html-editor,
+.omo-checklist-html-editor .omo-simple-html-field {
+    min-width: 0;
+}
+
+.omo-checklist-html-editor-container {
+    font-weight: 400;
+}
+
+.omo-checklist-html-editor .note-editor {
+    width: 100%;
+}
+
+.omo-checklist-detail__description,
+.omo-checklist-flow__description {
+    overflow-wrap: anywhere;
+}
+
+.omo-checklist-detail__description img,
+.omo-checklist-flow__description img {
+    max-width: 100%;
+    height: auto;
+}
+
+.omo-checklist-detail__description hr,
+.omo-checklist-flow__description hr {
+    margin: 1em 0;
+    border: 0;
+    border-top: 1px solid var(--color-border, #d1d5db);
+}
+
 .omo-checklist-item-editors {
     display: flex;
     flex-direction: column;
@@ -410,6 +442,17 @@
     min-height: 30px;
     padding: 5px 9px;
     font-size: .72rem;
+}
+
+.omo-checklist-flow__title-actions [data-checklist-item-menu] {
+    position: relative;
+}
+
+.omo-checklist-flow__title-actions [data-checklist-item-menu-panel] {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 20;
 }
 
 .omo-checklist-flow__role {

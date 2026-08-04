@@ -194,7 +194,7 @@ function commonRenderLegalPage(array $config): void
     }
 
     .common-legal-page-content--embed {
-        padding: 0;
+        padding: 24px;
         color: var(--legal-text);
     }
 

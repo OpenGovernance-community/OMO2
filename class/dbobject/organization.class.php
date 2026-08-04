@@ -3976,8 +3976,9 @@
 			self::omo1ImportSave($membership, 'Le lien membre n a pas pu etre cree');
 		}
 
-		protected static function omo1ImportMembers(\dbObject\Organization $organization, array $records, $actorUserId, array &$userIdMap, array &$pendingUserIds, array &$pendingInvitations, array &$stats, array &$warnings)
+		protected static function omo1ImportMembers(\dbObject\Organization $organization, array $records, $actorUserId, array &$userIdMap, array &$pendingUserIds, array &$pendingInvitations, array &$stats, array &$warnings, $createMemberInvitations = true)
 		{
+			$createMemberInvitations = (bool)$createMemberInvitations;
 			foreach ($records as $record) {
 				if (!is_array($record)) {
 					continue;
@@ -4023,14 +4024,16 @@
 				self::omo1ImportUserMembership($organization, $targetUserId, $isAdmin, $record, $isActor);
 				if (!$isActor) {
 					$pendingUserIds[$targetUserId] = true;
-					$invitationIssue = \dbObject\Invitation::issue(
-						(int)$organization->getId(),
-						$targetUserId,
-						(int)$actorUserId,
-						trim((string)$user->get('email'))
-					);
-					if (!empty($invitationIssue['created']) && isset($invitationIssue['invitation'])) {
-						$pendingInvitations[(int)$invitationIssue['invitation']->getId()] = $invitationIssue['invitation'];
+					if ($createMemberInvitations) {
+						$invitationIssue = \dbObject\Invitation::issue(
+							(int)$organization->getId(),
+							$targetUserId,
+							(int)$actorUserId,
+							trim((string)$user->get('email'))
+						);
+						if (!empty($invitationIssue['created']) && isset($invitationIssue['invitation'])) {
+							$pendingInvitations[(int)$invitationIssue['invitation']->getId()] = $invitationIssue['invitation'];
+						}
 					}
 				}
 				$stats['members'] += 1;
@@ -4750,6 +4753,11 @@
 				}
 				$document->set('active', true);
 				self::omo1ImportSave($document, 'Un document n a pas pu etre cree');
+				self::omo1ImportSaveDocumentVisibility(
+					$document,
+					$record['legacyVisibility'] ?? null,
+					$warnings
+				);
 				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId);
 				$documentIdMap[$sourceId] = (int)$document->getId();
 				$documentProjectSourceMap[$sourceId] = $sourceProjectId;
@@ -5178,6 +5186,51 @@
 			return $content;
 		}
 
+		protected static function omo1ImportLegacyDocumentVisibilityType($legacyVisibility): ?string
+		{
+			$legacyVisibility = is_numeric($legacyVisibility) ? (int)$legacyVisibility : 0;
+			$visibilityMap = array(
+				1 => \dbObject\ObjectVisibility::TYPE_EVERYONE,
+				2 => \dbObject\ObjectVisibility::TYPE_ORGANIZATION,
+				3 => \dbObject\ObjectVisibility::TYPE_CIRCLE,
+				4 => \dbObject\ObjectVisibility::TYPE_ROLE,
+				5 => \dbObject\ObjectVisibility::TYPE_SELF,
+			);
+
+			return isset($visibilityMap[$legacyVisibility]) ? $visibilityMap[$legacyVisibility] : null;
+		}
+
+		protected static function omo1ImportSaveDocumentVisibility(\dbObject\Document $document, $legacyVisibility, array &$warnings): void
+		{
+			$visibilityType = self::omo1ImportLegacyDocumentVisibilityType($legacyVisibility);
+			$documentTitle = trim((string)$document->get('title'));
+			$documentLabel = $documentTitle !== '' ? ' "' . $documentTitle . '"' : '';
+
+			if ($visibilityType === null) {
+				$visibilityType = \dbObject\ObjectVisibility::TYPE_SELF;
+				$warnings[] = 'La visibilite OMO 1 du document' . $documentLabel . ' est inconnue : le document est restreint a son proprietaire.';
+			}
+
+			$visibilitySaveResult = $document->saveVisibilityRule($visibilityType);
+			if (is_array($visibilitySaveResult) && !empty($visibilitySaveResult['status'])) {
+				return;
+			}
+
+			if ($visibilityType !== \dbObject\ObjectVisibility::TYPE_SELF) {
+				$fallbackSaveResult = $document->saveVisibilityRule(\dbObject\ObjectVisibility::TYPE_SELF);
+				if (is_array($fallbackSaveResult) && !empty($fallbackSaveResult['status'])) {
+					$warnings[] = 'La visibilite OMO 1 du document' . $documentLabel . ' n a pas pu etre rattachee a son holon : le document est restreint a son proprietaire.';
+					return;
+				}
+			}
+
+			$message = is_array($visibilitySaveResult)
+				? trim((string)($visibilitySaveResult['text'] ?? ''))
+				: '';
+			throw new \RuntimeException('La visibilite du document n a pas pu etre creee'
+				. ($message !== '' ? ': ' . $message : '.'));
+		}
+
 		protected static function omo1ImportSaveDocumentEditVisibility(\dbObject\Document $document, \dbObject\Organization $organization, ?int $targetHolonId): void
 		{
 			$editVisibilityType = \dbObject\Document::resolveCompatibleScopeTypeForHolonId(
@@ -5391,9 +5444,11 @@
 			}
 		}
 
-		public static function importOmo1ExportAsNewOrganization(array $payload, array $requestedModules, $actorUserId, $organizationName = '', array $templateCalibration = array())
+		public static function importOmo1ExportAsNewOrganization(array $payload, array $requestedModules, $actorUserId, $organizationName = '', array $templateCalibration = array(), array $importOptions = array())
 		{
 			$actorUserId = (int)$actorUserId;
+			$sendMemberInvitationEmails = !array_key_exists('sendMemberInvitationEmails', $importOptions)
+				|| !empty($importOptions['sendMemberInvitationEmails']);
 			if ($actorUserId <= 0) {
 				return array('status' => false, 'message' => 'Connexion requise.');
 			}
@@ -5487,7 +5542,7 @@
 
 				if ($selectedModules['members']) {
 					$memberRecords = self::omo1ImportModuleRecords($payload, 'members');
-					self::omo1ImportMembers($organization, $memberRecords, $actorUserId, $userIdMap, $pendingUserIds, $pendingInvitations, $stats, $warnings);
+					self::omo1ImportMembers($organization, $memberRecords, $actorUserId, $userIdMap, $pendingUserIds, $pendingInvitations, $stats, $warnings, $sendMemberInvitationEmails);
 					self::omo1ImportRoleAssignments($memberRecords, $userIdMap, $holonIdMap, $pendingUserIds, $stats);
 				}
 				if ($selectedModules['rules']) {
@@ -5544,12 +5599,14 @@
 					self::omo1ImportPvs($organization, self::omo1ImportModuleRecords($payload, 'pv'), $actorUserId, $userIdMap, $holonIdMap, $eventIdMap, $stats);
 				}
 				$pdo->commit();
-				foreach ($pendingInvitations as $pendingInvitation) {
-					try {
-						$pendingInvitation->sendEmail();
-						$stats['invitations'] += 1;
-					} catch (\Throwable $exception) {
-						$warnings[] = 'L invitation pour ' . trim((string)$pendingInvitation->get('email')) . ' n a pas pu etre envoyee.';
+				if ($sendMemberInvitationEmails) {
+					foreach ($pendingInvitations as $pendingInvitation) {
+						try {
+							$pendingInvitation->sendEmail();
+							$stats['invitations'] += 1;
+						} catch (\Throwable $exception) {
+							$warnings[] = 'L invitation pour ' . trim((string)$pendingInvitation->get('email')) . ' n a pas pu etre envoyee.';
+						}
 					}
 				}
 

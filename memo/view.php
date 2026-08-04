@@ -46,7 +46,7 @@ if ($hasAccess) {
     <script src="/shared_functions.js"></script>
     <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="/omo/assets/css/styles.css">
-    <link rel="stylesheet" href="/omo/api/stats/stats.css">
+    <link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260801-cumulative">
     <script>sharedApplyDocumentTheme();</script>
     <style>
         html.memo-view-page-html,

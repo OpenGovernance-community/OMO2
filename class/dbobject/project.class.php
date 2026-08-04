@@ -73,7 +73,7 @@ class Project extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'description' => 'Description HTML simple avec paragraphes, listes et mise en forme.',
+            'description' => 'Description HTML simple avec paragraphes, listes et mise en forme, y compris pour les modeles de checklist.',
             'status' => 'Etat du projet pour une future vue kanban.',
             'planned_start_date' => 'Date a laquelle le projet devrait commencer.',
             'planned_end_date' => 'Date a laquelle le projet devrait etre termine.',

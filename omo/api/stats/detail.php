@@ -28,6 +28,7 @@ $contextLabel = omoStatsContextLabel($indicator);
 $measurementFrequency = StatIndicator::normalizeMeasurementFrequency($indicator->get('measurement_frequency'));
 $measurementSchedule = omoStatsMeasurementScheduleLabel($measurementFrequency, $indicator->get('measurement_schedule'));
 $chartMinValue = is_numeric($indicator->get('chart_min_value')) ? (float)$indicator->get('chart_min_value') : null;
+$showCumulative = (int)$indicator->get('show_cumulative') > 0;
 $overdueInfo = omoStatsGetIndicatorOverdueInfo($indicator);
 $overdueSeverity = (string)$overdueInfo['severity'];
 $chartData = omoStatsBuildIndicatorChartData($indicator, $values, $referencePoints, $overdueSeverity);
@@ -100,8 +101,11 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
                     <?= omoStatsRenderChart($indicator, $values, $referencePoints, 'large', $overdueSeverity, true) ?>
                     <?= omoStatsRenderInteractiveChartRange($chartData) ?>
                 </div>
-                <div class="omo-stats-detail__legend">
+                <div class="omo-stats-detail__legend<?= $showCumulative ? ' omo-stats-detail__legend--cumulative' : '' ?>">
                     <span class="omo-stats-detail__legend-item omo-stats-detail__legend-item--measure"><?= omoApiEscape(omoStatsT('stats.detail.tab.values')) ?></span>
+                    <?php if ($showCumulative): ?>
+                        <span class="omo-stats-detail__legend-item omo-stats-detail__legend-item--cumulative"><?= omoApiEscape(omoStatsT('stats.detail.cumulative')) ?></span>
+                    <?php endif; ?>
                     <?php if (StatIndicator::normalizeReferenceType($indicator->get('reference_type')) !== StatIndicator::REFERENCE_NONE): ?>
                         <span class="omo-stats-detail__legend-item omo-stats-detail__legend-item--reference"><?= omoApiEscape(omoStatsT('stats.detail.reference')) ?></span>
                     <?php endif; ?>
@@ -161,4 +165,4 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         </form>
     <?php endif; ?>
 </article>
-<script src="/omo/api/stats/chart.js?v=20260724-scale-bounds"></script>
+<script src="/omo/api/stats/chart.js?v=20260801-cumulative-history"></script>

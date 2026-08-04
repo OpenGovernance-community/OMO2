@@ -164,6 +164,7 @@ if ($normalizedTitle === '' || isset($existingTitles[$normalizedTitle])) {
 
 $participant = $context['participant'] ?? null;
 $participantId = $participant ? (int)$participant->getId() : 0;
+$authorUserId = omoDecisionGetContextAccountUserId($context);
 $createdCount = 0;
 $decisionGroup = $decision->ensurePrimaryGroup();
 if (!$decisionGroup || (int)$decisionGroup->getId() <= 0) {
@@ -174,6 +175,7 @@ $maxPosition++;
 $proposal = new DecisionProposal();
 $proposal->set('IDdecision_process', (int)$decision->getId());
 $proposal->set('IDdecision_group', (int)$decisionGroup->getId());
+$proposal->set('IDuser_author', $authorUserId > 0 ? $authorUserId : null);
 $proposal->set('title', $proposalTitle);
 $proposal->set('description', $proposalDescription !== '' ? $proposalDescription : null);
 $proposal->set('info_url', $proposalInfoUrl);

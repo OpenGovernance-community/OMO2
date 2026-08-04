@@ -5,6 +5,7 @@ require_once dirname(__DIR__, 3) . '/common/team/translations.php';
 use dbObject\Holon;
 use dbObject\Invitation;
 use dbObject\Organization;
+use dbObject\User;
 
 header('Content-Type: application/json; charset=UTF-8');
 $sourceLang = omoTeamSourceLang();
@@ -138,6 +139,73 @@ switch ($action) {
                 'message' => trim((string)$exception->getMessage()) !== ''
                     ? (string)$exception->getMessage()
                     : omoTeamT('team.api.invitation_resend_failed', [], $lang, $sourceLang),
+            );
+        }
+        break;
+
+    case 'send_invitation':
+        if (!$holon->isAllowed('CAN_ADD_MEMBER', false)) {
+            http_response_code(403);
+            echo json_encode(array(
+                'status' => false,
+                'message' => omoTeamT('team.api.no_right_add_member', [], $lang, $sourceLang),
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $user = new User();
+        if (!$user->load($userId)) {
+            $result = array(
+                'status' => false,
+                'message' => omoTeamT('team.api.member_not_ready_for_invitation', [], $lang, $sourceLang),
+            );
+            break;
+        }
+
+        $membership = $user->getOrganizationMembership($organizationId);
+        if (!$membership || (bool)$membership->get('active')) {
+            $result = array(
+                'status' => false,
+                'message' => omoTeamT('team.api.member_not_ready_for_invitation', [], $lang, $sourceLang),
+            );
+            break;
+        }
+
+        $pendingInvitation = Invitation::findPendingForOrganizationUser($organizationId, $userId);
+        if ($pendingInvitation instanceof Invitation && !$pendingInvitation->isAdminInitiatedInvitation()) {
+            $result = array(
+                'status' => false,
+                'message' => omoTeamT('team.api.member_not_ready_for_invitation', [], $lang, $sourceLang),
+            );
+            break;
+        }
+
+        try {
+            if (!($pendingInvitation instanceof Invitation)) {
+                $invitationIssue = Invitation::issue(
+                    $organizationId,
+                    $userId,
+                    (int)commonGetCurrentUserId(),
+                    trim((string)$user->getScopedEmail($organizationId))
+                );
+                $pendingInvitation = $invitationIssue['invitation'] ?? null;
+            }
+
+            if (!($pendingInvitation instanceof Invitation) || !$pendingInvitation->isAdminInitiatedInvitation()) {
+                throw new \RuntimeException(omoTeamT('team.api.member_not_ready_for_invitation', [], $lang, $sourceLang));
+            }
+
+            $pendingInvitation->sendEmail();
+            $result = array(
+                'status' => true,
+                'message' => omoTeamT('team.api.invitation_sent', [], $lang, $sourceLang),
+            );
+        } catch (\Throwable $exception) {
+            $result = array(
+                'status' => false,
+                'message' => trim((string)$exception->getMessage()) !== ''
+                    ? (string)$exception->getMessage()
+                    : omoTeamT('team.api.invitation_send_failed', [], $lang, $sourceLang),
             );
         }
         break;
