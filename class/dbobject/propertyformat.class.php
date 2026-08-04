@@ -826,7 +826,7 @@
 			return preg_match('/^(https?:|mailto:|tel:)/i', $url) ? $url : '';
 		}
 
-		protected static function sanitizeBackgroundColorStyle($style)
+		public static function sanitizeBackgroundColorStyle($style)
 		{
 			$safeDeclarations = array();
 			foreach (explode(';', (string)$style) as $declaration) {

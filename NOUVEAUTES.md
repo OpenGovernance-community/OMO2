@@ -2,8 +2,24 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-04
+
+- La popup FAQ ouverte depuis le menu Aide de la topbar garde une marge interne generique dans son contenu defilant, tandis que sa barre de defilement reste au bord de la fenetre.
+- Les cartes de reponses de la FAQ utilisent maintenant la primitive generique `generic-soft-panel`, sans ombre, avec un format plus compact pour afficher davantage de questions.
+- La FAQ compacte davantage ses questions et aligne son bouton Ajouter, sa recherche et son selecteur de contexte sur les composants generiques et le selecteur OMO des documents.
+- Le champ de recherche de la FAQ reprend l icone commune de la topbar, ancree a gauche avec un retrait interieur generique du texte.
+- Les questions de la FAQ utilisent maintenant un chevron pour indiquer clairement l ouverture et la fermeture de leur reponse.
+- Les styles de la FAQ ont ete simplifies en reutilisant les sections, piles, panneaux, titres, descriptions, formulaires et actions generiques; les regles specifiques restantes couvrent uniquement son mecanisme d ouverture, ses medias et son vote.
+- Le retour au listing de la FAQ utilise maintenant le bouton secondaire generique et reste aligne a droite dans le detail.
+- L entete du detail FAQ rapproche la capsule de contexte et le titre du haut de la fenetre, sans eloigner les actions standard.
+
 ## 2026-08-03
 
+- Apres la modification d un document URL configure pour s ouvrir dans une nouvelle fenetre, le drawer se ferme maintenant au lieu de rouvrir le detail qui declencherait cette nouvelle fenetre.
+- Les couleurs de fond HTML autorisees a la sauvegarde sont maintenant conservees lors de l affichage des documents et de leurs contenus integres.
+- Les textes de documents integres indiquent maintenant aussi leur holon source dans le title et font apparaitre une surface gris tres legere au survol, adaptee au theme clair ou sombre; dans les imbrications, seul le niveau survole est mis en evidence.
+- Les documents integres mais inaccessibles affichent maintenant leur titre sans lien inutile vers le document protege.
+- Les documents integres dans le detail d un document affichent maintenant directement leur contenu, sans cadre, titre ni liens de navigation; leur source reste disponible au survol.
 - Le resume de l espace OMO devient un Tableau de pilotage avec les perimetres Local, Enfants directs et Descendants, des vues memorisables par holon, et les projets ainsi que les indicateurs en retard en tete.
 - Les actions de vue du Tableau de pilotage et son empilement avec les drawers sont fiabilises.
 - Les alertes de projets et d indicateurs en retard ne sont affichees que lorsqu elles sont utiles, avec une presentation en deux colonnes sur grand ecran.
@@ -11,6 +27,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les propositions ajoutees par des personnes invitees uniquement par e-mail affichent maintenant le nom local de leur adresse, sans exposer le domaine; le lien vers le participant deja memorise est reutilise.
 - L import d une organisation permet maintenant d importer les membres sans creer ni envoyer leurs invitations. L envoi reste active par defaut et peut etre reporte depuis une case de la fenetre d import.
 - Les membres importes sans invitation restent visibles comme comptes a inviter, y compris dans leurs roles. L invitation est creee au premier envoi, et une enveloppe distingue les invitations deja envoyees dans la structure.
+- L import OMO 1 des documents reprend maintenant leur visibilite publique, organisation, cercle, role ou proprietaire. Une portee impossible a reconstruire est restreinte au proprietaire, jamais elargie a l organisation.
 - Dans la mini structure, le nom du cercle survole reste maintenant lisible au-dessus des noms de roles.
 - Les descriptions des checklists utilisent maintenant un editeur HTML Summernote et conservent leur mise en page dans les vues de liste et de detail.
 - Les descriptions des propositions de scrutin utilisent maintenant un editeur HTML Summernote avec un bouton de surlignage, et sont affichees avec un HTML filtre dans les cartes, la page publique et les popups d edition.
