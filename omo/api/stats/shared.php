@@ -14,7 +14,7 @@ if (!function_exists('omoStatsSourceLang')) {
     {
         return [
             'stats.title' => ['text' => 'Indicateurs', 'context' => 'Main title of the contextual steering indicators application.'],
-            'stats.scope.contextual' => ['text' => 'Contextuel', 'context' => 'Scope label for indicators defined in the current holon.'],
+            'stats.scope.contextual' => ['text' => 'Local', 'context' => 'Scope label for indicators defined in the current holon.'],
             'stats.scope.children' => ['text' => 'Enfants directs', 'context' => 'Scope label for indicators defined in the current holon and its direct children.'],
             'stats.scope.descendants' => ['text' => 'Descendants', 'context' => 'Scope label for indicators in the current holon and descendants.'],
             'stats.view.cards' => ['text' => 'Cartes', 'context' => 'Button switching the indicator list to cards.'],

@@ -234,7 +234,7 @@ $sourceLang = [
         'context' => 'Error message when the user cannot access the requested holon context.',
     ],
     'decisions.index.scope.contextual' => [
-        'text' => 'Contextuel',
+        'text' => 'Local',
         'context' => 'Label used to show only decisions from the current holon context.',
     ],
     'decisions.index.scope.children' => [

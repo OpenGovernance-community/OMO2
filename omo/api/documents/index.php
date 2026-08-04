@@ -12,7 +12,7 @@ $sourceLang = [
         'context' => 'Accessible label for the document scope toggle.',
     ],
     'documents.scope.contextual' => [
-        'text' => 'Contextuel',
+        'text' => 'Local',
         'context' => 'Label used to show only documents from the current holon.',
     ],
     'documents.scope.children' => [
