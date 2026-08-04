@@ -4,6 +4,11 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-04
 
+- Dans les editeurs Summernote de documents et de PV, les ressources integrees sont maintenant placees dans leur propre paragraphe. Le curseur se place directement dans une ligne normale apres l insertion, un clic ne place plus le focus dans l embed, Entree depuis un embed cree toujours une ligne de texte normale, et sa suppression retire aussi ce paragraphe.
+- Les pickers de cercles et roles ouverts depuis Summernote filtrent maintenant Local par defaut; les portees Enfants directs et Descendants restent disponibles a la demande.
+- Le bouton Checklist de Summernote utilise maintenant l icone officielle deja configuree pour cette application.
+- Le bouton de suppression d un point de PV garde maintenant un espace avec le bord droit de la barre Summernote.
+- Les liens de projets affiches dans les proprietes de la structure conservent maintenant le contexte d organisation des installations beta utilisant le routage par chemin.
 - Le routeur OMO et le cache du service worker utilisent de nouvelles versions afin que les navigateurs beta recuperent les correctifs de navigation, notamment l ouverture des projets depuis la liste de structure.
 - Sur telephone, les actions de proposition affichent maintenant les libelles courts Discuter et Modifier, avec des boutons et un menu d actions plus compacts.
 - Les personnes invitees par e-mail a un scrutin peuvent maintenant modifier ou retirer leurs propres propositions et participer aux discussions associees, sans devoir creer de compte. Les discussions et les metadonnees associees disparaissent a la fin de la consultation; les propositions ne sont alors plus modifiables, ni des le debut du vote.
