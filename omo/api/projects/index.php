@@ -1021,6 +1021,22 @@ $projectTexts = [
             <div class="omo-overlay-drawer__body" data-omo-projects-drawer-body></div>
         </div>
     </div>
+    <div class="omo-overlay-drawer omo-projects__document-drawer" data-omo-projects-document-drawer hidden>
+        <div class="omo-overlay-drawer__backdrop" data-omo-projects-document-drawer-close></div>
+        <div class="omo-overlay-drawer__panel">
+            <div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky">
+                <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
+                    <h3 class="omo-overlay-drawer__title" data-omo-subdrawer-title><?= omoApiEscape(omoProjectsT('projects.detail.documents.drawer_title')) ?></h3>
+                    <p class="omo-overlay-drawer__description" data-omo-subdrawer-description><?= omoApiEscape(omoProjectsT('projects.detail.documents.drawer_description')) ?></p>
+                </div>
+                <div class="generic-drawer-header__actions">
+                    <div data-omo-subdrawer-actions></div>
+                    <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-projects-document-drawer-close><?= omoApiEscape(omoProjectsT('projects.action.close')) ?></button>
+                </div>
+            </div>
+            <div class="omo-overlay-drawer__body" data-omo-projects-document-drawer-body></div>
+        </div>
+    </div>
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
 <script src="/omo/api/projects/projects.js?v=20260801-default-view-applies"></script>

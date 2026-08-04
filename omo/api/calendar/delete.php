@@ -18,7 +18,7 @@ function omoCalendarDeleteResponse(array $payload, $statusCode = 200)
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     omoCalendarDeleteResponse([
         'status' => false,
-        'message' => 'Methode non autorisee.',
+        'message' => 'Méthode non autorisée.',
     ], 405);
 }
 
@@ -32,7 +32,7 @@ $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurre
 if ($organizationId <= 0 || $eventId <= 0 || $currentUserId <= 0) {
     omoCalendarDeleteResponse([
         'status' => false,
-        'message' => 'Acces refuse.',
+        'message' => 'Accès refusé.',
     ], 403);
 }
 
@@ -52,7 +52,7 @@ if (
 ) {
     omoCalendarDeleteResponse([
         'status' => false,
-        'message' => 'Evenement invalide.',
+        'message' => 'Événement invalide.',
     ], 403);
 }
 
@@ -68,7 +68,7 @@ if ($eventHolonId > 0) {
     ) {
         omoCalendarDeleteResponse([
             'status' => false,
-            'message' => 'Evenement invalide.',
+            'message' => 'Événement invalide.',
         ], 403);
     }
 
@@ -81,7 +81,7 @@ $canDelete = $permissionHolon instanceof Holon
 if (!$canDelete) {
     omoCalendarDeleteResponse([
         'status' => false,
-        'message' => 'Vous n avez pas le droit de supprimer cet evenement.',
+        'message' => "Vous n'avez pas le droit de supprimer cet événement.",
     ], 403);
 }
 
@@ -95,7 +95,7 @@ if ($deleteDocuments) {
         ) {
             omoCalendarDeleteResponse([
                 'status' => false,
-                'message' => 'Vous ne pouvez pas supprimer un des documents associes.',
+                'message' => 'Vous ne pouvez pas supprimer un des documents associés.',
             ], 403);
         }
     }
@@ -132,11 +132,11 @@ try {
 
     omoCalendarDeleteResponse([
         'status' => false,
-        'message' => 'Impossible de supprimer cet evenement.',
+        'message' => 'Impossible de supprimer cet événement.',
     ], 422);
 }
 
 omoCalendarDeleteResponse([
     'status' => true,
-    'message' => 'Evenement supprime.',
+    'message' => 'Événement supprimé.',
 ]);
