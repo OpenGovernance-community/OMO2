@@ -60,10 +60,10 @@ $createDocumentButton = '<button type="button" class="generic-action-button gene
     . '</button>';
 if (count($documents) === 0) {
     echo '<div class="omo-project-detail__documents-empty">'
-        . '<h3 class="generic-card-title generic-card-title--medium">' . omoApiEscape(omoProjectsT('projects.detail.documents.empty')) . '</h3>'
-        . '<p class="generic-description generic-description--small">' . omoApiEscape(omoProjectsT('projects.detail.documents.empty_hint')) . '</p>';
+        . '<h3 class="generic-card-title generic-card-title--medium">' . omoApiEscape(omoProjectsT('projects.detail.documents.empty')) . '</h3>';
     if ($canCreateDocument) {
-        echo $createDocumentButton;
+        echo '<p class="generic-description generic-description--small">' . omoApiEscape(omoProjectsT('projects.detail.documents.empty_hint')) . '</p>'
+            . $createDocumentButton;
     }
     echo '</div>';
     exit;

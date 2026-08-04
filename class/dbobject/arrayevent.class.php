@@ -166,6 +166,33 @@ class ArrayEvent extends ArrayDbObject
         }
     }
 
+    public function loadForProject($projectId, $includeInactive = false)
+    {
+        $projectId = (int)$projectId;
+        $this->exchangeArray([]);
+
+        if ($projectId <= 0) {
+            return;
+        }
+
+        $params = [
+            'where' => [
+                ['field' => 'IDproject', 'value' => $projectId],
+            ],
+            'orderBy' => [
+                ['field' => 'start_at', 'dir' => 'ASC'],
+                ['field' => 'id', 'dir' => 'ASC'],
+            ],
+        ];
+
+        if (!$includeInactive) {
+            $params['where'][] = ['field' => 'active', 'value' => 1];
+            $params['where'][] = ['field' => 'status', 'op' => '<>', 'value' => \dbObject\Event::STATUS_CANCELLED];
+        }
+
+        $this->load($params);
+    }
+
     public function loadForCalendarMonth($organizationId, $rangeStart, $rangeEnd, $holonId = 0, $includeInactive = false)
     {
         $organizationId = (int)$organizationId;

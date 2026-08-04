@@ -7,6 +7,7 @@ use dbObject\Document;
 use dbObject\Event;
 use dbObject\Holon;
 use dbObject\Organization;
+use dbObject\Project;
 
 $sourceLang = array_merge([
     'calendar.create.title' => [
@@ -181,6 +182,10 @@ $sourceLang = array_merge([
         'text' => 'Le contexte choisi est invalide.',
         'context' => 'Validation error returned when the selected holon is not allowed.',
     ],
+    'calendar.create.error.project' => [
+        'text' => 'Le projet associé est invalide ou inaccessible.',
+        'context' => 'Validation error returned when an event is created for an invalid project.',
+    ],
     'calendar.create.error.document_type' => [
         'text' => 'Le type de document associé est invalide.',
         'context' => 'Validation error returned when the selected linked document type is invalid.',
@@ -284,6 +289,8 @@ $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_REQUEST['oid'] ??
 $currentHolonId = isset($_REQUEST['cid']) && is_numeric($_REQUEST['cid']) ? (int)$_REQUEST['cid'] : 0;
 $currentUserId = (int)commonGetCurrentUserId();
 $eventId = isset($_REQUEST['id']) && is_numeric($_REQUEST['id']) ? (int)$_REQUEST['id'] : 0;
+$requestedProjectId = isset($_REQUEST['project_id']) && is_numeric($_REQUEST['project_id']) ? (int)$_REQUEST['project_id'] : 0;
+$editorHost = trim((string)($_REQUEST['editor_host'] ?? '')) === 'project' ? 'project' : 'calendar';
 
 if ($organizationId <= 0 || $currentUserId <= 0) {
     http_response_code(403);
@@ -317,6 +324,41 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
 $hasStructureApplication = $organization->isStructureApplicationEnabled($currentUserId);
 $rootHolon = $hasStructureApplication ? $organization->getEnabledStructuralRootHolon($currentUserId) : null;
 $nextcloudDocumentsAvailable = $organization->hasNextcloudDocumentStorage();
+$project = null;
+
+if ($requestedProjectId > 0) {
+    $candidateProject = new Project();
+    $candidateProjectHolon = null;
+    $projectIsValid = $candidateProject->load($requestedProjectId)
+        && (int)$candidateProject->get('IDorganization') === $organizationId
+        && (int)$candidateProject->get('active') === 1;
+
+    if ($projectIsValid) {
+        $candidateProjectHolon = $candidateProject->getHolon();
+        if ($candidateProjectHolon instanceof Holon) {
+            $projectIsValid = $rootHolon instanceof Holon
+                && $candidateProjectHolon->isDescendantOf((int)$rootHolon->getId(), true)
+                && $candidateProjectHolon->canViewDetail();
+        }
+    }
+
+    if (!$projectIsValid) {
+        http_response_code(403);
+        if (commonIsAjaxJsonRequest()) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode([
+                'status' => false,
+                'message' => omoCalendarCreateT('calendar.create.error.project'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } else {
+            echo '<div class="omo-empty-state">' . omoApiEscape(omoCalendarCreateT('calendar.create.error.project')) . '</div>';
+        }
+        exit;
+    }
+
+    $project = $candidateProject;
+    $currentHolonId = $candidateProjectHolon instanceof Holon ? (int)$candidateProjectHolon->getId() : 0;
+}
 
 $event = new Event();
 $isEditMode = false;
@@ -439,6 +481,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = trim((string)($_POST['title'] ?? ''));
     $description = trim((string)($_POST['description'] ?? ''));
     $selectedHolonId = $hasStructureApplication && isset($_POST['IDholon']) ? (int)$_POST['IDholon'] : 0;
+    if ($project instanceof Project) {
+        $projectHolon = $project->getHolon();
+        $selectedHolonId = $projectHolon instanceof Holon ? (int)$projectHolon->getId() : 0;
+    }
     $startAt = omoCalendarParseLocalDateTime($_POST['start_at'] ?? '');
     $endAt = omoCalendarParseLocalDateTime($_POST['end_at'] ?? '');
     $isAllDay = !empty($_POST['is_all_day']);
@@ -569,6 +615,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $event->set('IDorganization', $organizationId);
     $event->set('IDholon', $selectedHolonId > 0 ? $selectedHolonId : null);
+    if ($project instanceof Project) {
+        $event->set('IDproject', (int)$project->getId());
+    }
     $event->set('title', $title);
     $event->set('description', $description !== '' ? $description : null);
     $event->set('status', Event::STATUS_CONFIRMED);
@@ -711,6 +760,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'status' => true,
         'message' => omoCalendarCreateT($isEditMode ? 'calendar.edit.success' : 'calendar.create.success'),
         'eventId' => (int)$event->getId(),
+        'projectId' => $project instanceof Project ? (int)$project->getId() : (int)$event->get('IDproject'),
         'documentId' => $linkedDocument instanceof Document ? (int)$linkedDocument->getId() : 0,
         'detailUrl' => '/omo/api/calendar/detail.php?oid=' . rawurlencode((string)$organizationId)
             . ($selectedHolonId > 0 ? '&cid=' . rawurlencode((string)$selectedHolonId) : '')
@@ -781,12 +831,15 @@ if ($isEditMode) {
         . '&id=' . rawurlencode((string)(int)$event->getId());
 }
 ?>
-<div class="omo-calendar-create generic-drawer-content">
+<div class="omo-calendar-create" data-omo-calendar-editor-host="<?= omoApiEscape($editorHost) ?>">
     <div
         hidden
         data-omo-calendar-drawer-header
         data-omo-calendar-drawer-title="<?= omoApiEscape($drawerTitle) ?>"
         data-omo-calendar-drawer-description="<?= omoApiEscape($drawerDescription) ?>"
+        data-omo-subdrawer-header
+        data-omo-subdrawer-title="<?= omoApiEscape($drawerTitle) ?>"
+        data-omo-subdrawer-description="<?= omoApiEscape($drawerDescription) ?>"
     >
         <?php if ($cancelDetailUrl !== ''): ?>
             <button
@@ -801,6 +854,7 @@ if ($isEditMode) {
             form="<?= omoApiEscape($calendarFormId) ?>"
             class="generic-action-button generic-action-button--main"
             data-omo-calendar-drawer-action
+            data-omo-subdrawer-action
             data-omo-calendar-create-submit
         ><?= omoApiEscape($drawerSubmitLabel) ?></button>
     </div>
@@ -810,11 +864,16 @@ if ($isEditMode) {
             id="<?= omoApiEscape($calendarFormId) ?>"
             class="omo-calendar-create__form generic-form-stack"
             method="post"
-            action="/omo/api/calendar/create.php?oid=<?= (int)$organizationId ?><?= $currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '' ?><?= $isEditMode ? '&id=' . (int)$event->getId() : '' ?>"
+            action="/omo/api/calendar/create.php?oid=<?= (int)$organizationId ?><?= $currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '' ?><?= $isEditMode ? '&id=' . (int)$event->getId() : '' ?><?= $project instanceof Project ? '&project_id=' . (int)$project->getId() . '&editor_host=project' : '' ?>"
             data-omo-calendar-create-form
+            data-omo-calendar-editor-host="<?= omoApiEscape($editorHost) ?>"
         >
             <?php if ($isEditMode): ?>
                 <input type="hidden" name="id" value="<?= (int)$event->getId() ?>">
+            <?php endif; ?>
+            <?php if ($project instanceof Project): ?>
+                <input type="hidden" name="project_id" value="<?= (int)$project->getId() ?>">
+                <input type="hidden" name="editor_host" value="project">
             <?php endif; ?>
 
             <div class="generic-tabs omo-calendar-create__tabs" data-generic-tabs>
@@ -822,7 +881,7 @@ if ($isEditMode) {
                     <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omoCalendarCreateTabEvent"><?= omoApiEscape(omoCalendarCreateT('calendar.create.tab.event')) ?></button>
                     <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoCalendarCreateTabInvites"><?= omoApiEscape(omoCalendarCreateT('calendar.create.tab.invites')) ?></button>
                 </div>
-                <div class="generic-tabs__panels">
+                <div class="generic-tabs__panels" style="padding:0px;">
                     <div id="omoCalendarCreateTabEvent" class="generic-tabs__panel omo-calendar-create__tab-panel" data-generic-tab-panel>
                         <div class="omo-calendar-create__grid generic-form-grid">
                             <label class="omo-calendar-create__field generic-form-field">
@@ -840,7 +899,7 @@ if ($isEditMode) {
                             <?php if ($hasStructureApplication): ?>
                             <label class="omo-calendar-create__field generic-form-field">
                                 <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.holon')) ?></span>
-                                <select name="IDholon" class="generic-form-control" data-omo-calendar-context-holon>
+                                <select<?= $project instanceof Project ? '' : ' name="IDholon"' ?> class="generic-form-control" data-omo-calendar-context-holon<?= $project instanceof Project ? ' disabled' : '' ?>>
                                     <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.none')) ?></option>
                                     <?php foreach (['circle', 'role'] as $typeKey): ?>
                                         <?php foreach (($holonOptions[$typeKey] ?? []) as $option): ?>
@@ -850,6 +909,9 @@ if ($isEditMode) {
                                         <?php endforeach; ?>
                                     <?php endforeach; ?>
                                 </select>
+                                <?php if ($project instanceof Project): ?>
+                                    <input type="hidden" name="IDholon" value="<?= (int)$defaultHolonId ?>">
+                                <?php endif; ?>
                             </label>
                             <?php endif; ?>
 
@@ -1019,13 +1081,44 @@ if ($isEditMode) {
     display: none !important;
 }
 
-.omo-calendar-create__grid {
-    --generic-form-grid-min: 260px;
+.omo-calendar-create {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
 }
 
-.omo-calendar-create__tabs {
-    --generic-tabs-panel-padding-block: 14px;
-    --generic-tabs-panel-padding-inline: 14px;
+.omo-calendar-create__shell,
+.omo-calendar-create__form,
+.omo-calendar-create__tabs,
+.omo-calendar-create__tabs .generic-tabs__panels {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.omo-calendar-create__shell,
+.omo-calendar-create__form {
+    gap: 0;
+}
+
+.omo-calendar-create__tabs .generic-tabs__list {
+    flex: 0 0 auto;
+    padding-top: var(--generic-space-4);
+}
+
+.omo-calendar-create__tabs .generic-tabs__panels {
+    overflow: hidden;
+    padding: var(--generic-space-4);
+}
+
+.omo-calendar-create__tab-panel {
+    align-content: start;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--generic-space-4) var(--generic-container-padding-inline);
 }
 
 .omo-calendar-create__tab-panel {
@@ -1071,13 +1164,16 @@ if ($isEditMode) {
 
 .omo-calendar-create__footer {
     display: flex;
+    flex: 0 0 auto;
     justify-content: space-between;
     gap: 12px;
     align-items: center;
+    padding: 0;
 }
 
 .omo-calendar-create__feedback {
-    min-height: 20px;
+    min-height: 0;
+    margin: 0;
     color: var(--color-text-light, #64748b);
 }
 
@@ -1092,11 +1188,6 @@ if ($isEditMode) {
 
 .omo-calendar-invitations-editor [hidden] {
     display: none !important;
-}
-
-.omo-calendar-invitations-editor__tabs {
-    --generic-tabs-panel-padding-block: 14px;
-    --generic-tabs-panel-padding-inline: 14px;
 }
 
 .omo-calendar-invitations-editor__tab-panel,

@@ -20,7 +20,7 @@ class Event extends DbObject
         return [
             [['IDuser', 'title', 'status', 'start_at', 'end_at'], 'required'],
             [['id'], 'integer'],
-            [['IDorganization', 'IDholon', 'IDuser'], 'fk'],
+            [['IDorganization', 'IDholon', 'IDproject', 'IDuser'], 'fk'],
             [['title', 'status', 'timezone', 'locationmode', 'locationaddress', 'videomeetingurl'], 'string'],
             [['description'], 'text'],
             [['parameters'], 'parameters'],
@@ -36,6 +36,7 @@ class Event extends DbObject
             'id' => 'ID',
             'IDorganization' => 'Organisation',
             'IDholon' => 'Cercle ou rôle',
+            'IDproject' => 'Projet',
             'IDuser' => 'Créateur',
             'title' => 'Titre',
             'description' => 'Description',
@@ -58,6 +59,7 @@ class Event extends DbObject
     {
         return [
             'IDholon' => "Holon optionnel pour rattacher l'événement à un cercle ou à un rôle.",
+            'IDproject' => "Projet optionnel auquel l'événement est associé.",
             'IDuser' => "Utilisateur qui a créé l'événement.",
             'status' => "Cycle de vie simple avant l'ajout des invitations et réponses.",
             'timezone' => "Fuseau horaire de référence pour l'export agenda.",
@@ -250,6 +252,17 @@ class Event extends DbObject
         return array_values(array_filter($documents->getArrayCopy(), static function ($document) {
             return $document instanceof \dbObject\Document && (int)$document->getId() > 0;
         }));
+    }
+
+    public function getProject()
+    {
+        $projectId = (int)$this->get('IDproject');
+        if ($projectId <= 0) {
+            return null;
+        }
+
+        $project = new \dbObject\Project();
+        return $project->load($projectId) ? $project : null;
     }
 
     public function getInvitations($activeOnly = false)

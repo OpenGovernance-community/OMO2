@@ -579,6 +579,13 @@ class Project extends DbObject
         return $documents;
     }
 
+    public function getEvents()
+    {
+        $events = new ArrayEvent();
+        $events->loadForProject((int)$this->getId());
+        return $events;
+    }
+
     public function getJournalDocument()
     {
         $documentId = (int)$this->get('IDdocument_journal');

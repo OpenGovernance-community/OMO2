@@ -949,13 +949,51 @@ if (!function_exists('omoDecisionLoadProposalForContext')) {
     }
 }
 
+if (!function_exists('omoDecisionGetContextParticipant')) {
+    function omoDecisionGetContextParticipant(array $context)
+    {
+        $participant = $context['participant'] ?? null;
+        if (
+            !($participant instanceof DecisionParticipant)
+            || (int)$participant->getId() <= 0
+            || (int)$participant->get('active') !== 1
+        ) {
+            return null;
+        }
+
+        $status = DecisionParticipant::normalizeStatus($participant->get('status'));
+        if (in_array($status, [
+            DecisionParticipant::STATUS_DECLINED,
+            DecisionParticipant::STATUS_REVOKED,
+        ], true)) {
+            return null;
+        }
+
+        return $participant;
+    }
+}
+
+if (!function_exists('omoDecisionGetContextParticipantId')) {
+    function omoDecisionGetContextParticipantId(array $context)
+    {
+        $participant = omoDecisionGetContextParticipant($context);
+        return $participant instanceof DecisionParticipant ? (int)$participant->getId() : 0;
+    }
+}
+
 if (!function_exists('omoDecisionCanAccessProposalDiscussion')) {
     function omoDecisionCanAccessProposalDiscussion(DecisionProposal $proposal, array $context)
     {
-        return omoDecisionGetContextAccountUserId($context) > 0
+        $decision = $context['decision'] ?? null;
+        return (
+                omoDecisionGetContextAccountUserId($context) > 0
+                || omoDecisionGetContextParticipantId($context) > 0
+            )
             && !empty($context['canView'])
             && $proposal->areDiscussionsEnabled()
-            && (int)$proposal->get('active') === 1;
+            && (int)$proposal->get('active') === 1
+            && $decision instanceof DecisionProcess
+            && !$decision->hasConsultationEnded();
     }
 }
 
@@ -1028,11 +1066,13 @@ if (!function_exists('omoDecisionGetProposalDiscussionSummary')) {
         }
 
         $viewerUserId = omoDecisionGetContextAccountUserId($context);
+        $viewerParticipantId = omoDecisionGetContextParticipantId($context);
         $cacheKey = implode(':', [
             (int)$decision->get('IDorganization'),
             (int)$decision->getId(),
             (int)$decisionGroup->getId(),
             (int)$viewerUserId,
+            (int)$viewerParticipantId,
         ]);
         if (!array_key_exists($cacheKey, $summaryCache)) {
             $proposalIds = [];
@@ -1045,7 +1085,8 @@ if (!function_exists('omoDecisionGetProposalDiscussionSummary')) {
                 (int)$decision->get('IDorganization'),
                 ChatThread::SUBJECT_DECISION_PROPOSAL,
                 $proposalIds,
-                $viewerUserId
+                $viewerUserId,
+                $viewerParticipantId
             );
         }
 
@@ -1103,7 +1144,7 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
         $authorLine .= '</span>';
         $items = [$authorLine];
 
-        if ($proposal->areDiscussionsEnabled()) {
+        if ($proposal->areDiscussionsEnabled() && !$decision->hasConsultationEnded()) {
             $summary = omoDecisionGetProposalDiscussionSummary($proposal, $context);
             $totalMessages = (int)($summary['total_messages'] ?? 0);
             $lastViewerMessageId = (int)($summary['last_viewer_message_id'] ?? 0);
@@ -1115,12 +1156,21 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
                         : $escape((string)$newMessages) . ' nouveau' . ($newMessages > 1 ? 'x' : '') . ' message' . ($newMessages > 1 ? 's' : '') . ' depuis votre dernière intervention')
                     . '</span>';
             } elseif ($totalMessages > 0) {
-                $lastAuthor = omoDecisionResolveProposalParticipantName(
-                    $decision,
-                    (int)($summary['last_message_user_id'] ?? 0),
-                    trim((string)($summary['last_message_author_name'] ?? '')),
-                    $isAnonymous
-                );
+                $lastMessageType = (string)($summary['last_message_type'] ?? '');
+                $lastMessageUserId = (int)($summary['last_message_user_id'] ?? 0);
+                $lastMessageParticipantId = (int)($summary['last_message_participant_id'] ?? 0);
+                if ($lastMessageType === 'system') {
+                    $lastAuthor = 'Systeme';
+                } elseif ($isAnonymous && $lastMessageUserId <= 0 && $lastMessageParticipantId > 0) {
+                    $lastAuthor = $decision->getAnonymousPseudonymForParticipant($lastMessageParticipantId);
+                } else {
+                    $lastAuthor = omoDecisionResolveProposalParticipantName(
+                        $decision,
+                        $lastMessageUserId,
+                        trim((string)($summary['last_message_author_name'] ?? '')),
+                        $isAnonymous
+                    );
+                }
                 if ($lastAuthor === '') {
                     $lastAuthor = (string)($summary['last_message_type'] ?? '') === 'system' ? 'Système' : 'Participant';
                 }
@@ -1144,9 +1194,11 @@ if (!function_exists('omoDecisionCanEditProposalFromPublicInterface')) {
     {
         $decision = $context['decision'] ?? null;
         $userId = omoDecisionGetContextAccountUserId($context);
+        $participantId = omoDecisionGetContextParticipantId($context);
         return $decision instanceof DecisionProcess
+            && !$decision->hasConsultationEnded()
             && !$decision->hasEvaluationStarted()
-            && $proposal->canBeEditedByUser($userId);
+            && $proposal->canBeEditedByActor($userId, $participantId);
     }
 }
 
@@ -1211,7 +1263,8 @@ if (!function_exists('omoDecisionRenderProposalDiscussionActions')) {
                     . ' data-omo-proposal-discussion-open'
                     . ' data-proposal-id="' . (int)$proposal->getId() . '"'
                     . ' data-proposal-context="' . $escape($contextPayload) . '">'
-                    . 'Discuter la proposition'
+                    . '<span class="omo-proposal-action-label omo-proposal-action-label--full">Discuter la proposition</span>'
+                    . '<span class="omo-proposal-action-label omo-proposal-action-label--short">Discuter</span>'
                 . '</button>';
         }
         if ($canEdit) {
@@ -1219,7 +1272,8 @@ if (!function_exists('omoDecisionRenderProposalDiscussionActions')) {
                     . ' data-omo-proposal-edit-open'
                     . ' data-proposal-id="' . (int)$proposal->getId() . '"'
                     . ' data-proposal-context="' . $escape($contextPayload) . '">'
-                    . 'Modifier la proposition'
+                    . '<span class="omo-proposal-action-label omo-proposal-action-label--full">Modifier la proposition</span>'
+                    . '<span class="omo-proposal-action-label omo-proposal-action-label--short">Modifier</span>'
                 . '</button>';
             $html .= '<div class="omo-proposal-action-menu generic-menu" data-omo-proposal-action-menu>'
                     . '<button type="button" class="omo-proposal-action-menu__toggle generic-menu-toggle" data-omo-proposal-action-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Autres actions">...</button>'

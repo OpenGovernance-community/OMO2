@@ -693,6 +693,7 @@ CREATE TABLE `decision_proposal` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `IDdecision_process` int(11) NOT NULL,
   `IDdecision_group` int(11) NOT NULL,
+  `IDuser_author` int(11) DEFAULT NULL,
   `title` varchar(190) NOT NULL,
   `description` mediumtext DEFAULT NULL,
   `info_url` varchar(500) DEFAULT NULL,
@@ -706,8 +707,10 @@ CREATE TABLE `decision_proposal` (
   KEY `idx_decision_proposal_group` (`IDdecision_group`),
   KEY `idx_decision_proposal_position` (`IDdecision_process`,`position`),
   KEY `idx_decision_proposal_group_position` (`IDdecision_group`,`position`),
+  KEY `idx_decision_proposal_author` (`IDuser_author`),
   KEY `idx_decision_proposal_active` (`active`),
   CONSTRAINT `fk_decision_proposal_group` FOREIGN KEY (`IDdecision_group`) REFERENCES `decision_group` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_decision_proposal_author` FOREIGN KEY (`IDuser_author`) REFERENCES `user` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_decision_proposal_process` FOREIGN KEY (`IDdecision_process`) REFERENCES `decision_process` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -720,6 +723,65 @@ LOCK TABLES `decision_proposal` WRITE;
 /*!40000 ALTER TABLE `decision_proposal` DISABLE KEYS */;
 /*!40000 ALTER TABLE `decision_proposal` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `chat_thread`
+--
+
+DROP TABLE IF EXISTS `chat_thread`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `chat_thread` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) NOT NULL,
+  `IDuser_created` int(11) DEFAULT NULL,
+  `subject_type` varchar(60) NOT NULL,
+  `subject_id` int(11) NOT NULL,
+  `title` varchar(190) DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_chat_thread_subject` (`IDorganization`,`subject_type`,`subject_id`),
+  KEY `idx_chat_thread_creator` (`IDuser_created`),
+  KEY `idx_chat_thread_active` (`IDorganization`,`active`),
+  CONSTRAINT `fk_chat_thread_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_chat_thread_creator` FOREIGN KEY (`IDuser_created`) REFERENCES `user` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `chat_message`
+--
+
+DROP TABLE IF EXISTS `chat_message`;
+/*!40101 SET @saved_cs_client     = @@CHARACTER_SET_CLIENT */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `chat_message` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDchat_thread` int(11) NOT NULL,
+  `IDorganization` int(11) NOT NULL,
+  `IDuser` int(11) DEFAULT NULL,
+  `IDdecision_participant` int(11) DEFAULT NULL,
+  `message_type` varchar(20) NOT NULL DEFAULT 'user',
+  `content` mediumtext NOT NULL,
+  `author_name` varchar(190) DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_chat_message_thread` (`IDchat_thread`,`id`),
+  KEY `idx_chat_message_organization` (`IDorganization`),
+  KEY `idx_chat_message_user` (`IDuser`),
+  KEY `idx_chat_message_decision_participant` (`IDdecision_participant`),
+  KEY `idx_chat_message_type` (`message_type`),
+  CONSTRAINT `fk_chat_message_thread` FOREIGN KEY (`IDchat_thread`) REFERENCES `chat_thread` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_chat_message_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_chat_message_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_chat_message_decision_participant` FOREIGN KEY (`IDdecision_participant`) REFERENCES `decision_participant` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Table structure for table `decision_response`
