@@ -33,11 +33,12 @@ if (empty($context['status'])) {
 }
 
 $viewerUserId = omoDecisionGetContextAccountUserId($context);
-if ($viewerUserId <= 0) {
+$viewerParticipantId = omoDecisionGetContextParticipantId($context);
+if ($viewerUserId <= 0 && $viewerParticipantId <= 0) {
     omoDecisionProposalDiscussionRespond(403, [
         'status' => false,
-        'reason' => 'account_required',
-        'message' => 'Un compte est nécessaire pour accéder à cette discussion.',
+        'reason' => 'participant_required',
+        'message' => 'Un participant valide est nécessaire pour accéder à cette discussion.',
     ]);
 }
 
@@ -106,7 +107,8 @@ if ($requestMethod === 'POST') {
         $viewerUserId,
         $content,
         $discussionIsAnonymous || $anonymousByAuthor,
-        $anonymousByAuthor
+        $anonymousByAuthor,
+        $viewerParticipantId
     );
     if (!$message instanceof ChatMessage) {
         omoDecisionProposalDiscussionRespond(500, [
@@ -121,15 +123,19 @@ $discussionMessageCount = 0;
 if ($thread) {
     foreach ($thread->getMessages(300, $afterMessageId) as $message) {
         if ($message instanceof ChatMessage) {
-            $messageData = $message->toClientArray($viewerUserId);
+            $messageData = $message->toClientArray($viewerUserId, $viewerParticipantId);
             $messageAuthorUserId = (int)($messageData['authorUserId'] ?? 0);
+            $messageAuthorParticipantId = (int)($messageData['authorParticipantId'] ?? 0);
             $messageIsAnonymous = (string)($messageData['type'] ?? '') === ChatMessage::TYPE_USER
                 && $message->isAnonymous();
             $hideMessageAuthor = $messageIsAnonymous
                 && ($messageAuthorUserId !== $decisionAdministratorUserId || $message->isAnonymousByAuthor());
-            if ($hideMessageAuthor && $decision instanceof \dbObject\DecisionProcess && $messageAuthorUserId > 0) {
-                $anonymousName = $decision->getAnonymousPseudonymForUser($messageAuthorUserId);
+            if ($hideMessageAuthor && $decision instanceof \dbObject\DecisionProcess) {
+                $anonymousName = $messageAuthorUserId > 0
+                    ? $decision->getAnonymousPseudonymForUser($messageAuthorUserId)
+                    : $decision->getAnonymousPseudonymForParticipant($messageAuthorParticipantId);
                 $messageData['authorUserId'] = 0;
+                $messageData['authorParticipantId'] = 0;
                 $messageData['authorName'] = $anonymousName;
                 $messageData['photoUrl'] = '';
                 $messageData['initials'] = User::buildInitials($anonymousName);
@@ -141,7 +147,13 @@ if ($thread) {
                     'label' => 'Administrateur du scrutin',
                 ];
             }
-            if ($messageAuthorUserId > 0 && $messageAuthorUserId === $proposalAuthorUserId) {
+            if (
+                !$hideMessageAuthor
+                && (
+                    ($messageAuthorUserId > 0 && $messageAuthorUserId === $proposalAuthorUserId)
+                    || ($messageAuthorParticipantId > 0 && $messageAuthorParticipantId === $proposal->getAuthorParticipantId())
+                )
+            ) {
                 $messageData['authorRoles'][] = [
                     'key' => 'proposal-author',
                     'label' => 'Auteur de la proposition',
@@ -154,7 +166,8 @@ if ($thread) {
         (int)$thread->get('IDorganization'),
         ChatThread::SUBJECT_DECISION_PROPOSAL,
         [(int)$proposal->getId()],
-        $viewerUserId
+        $viewerUserId,
+        $viewerParticipantId
     );
     $discussionMessageCount = (int)($discussionSummary[(int)$proposal->getId()]['total_messages'] ?? 0);
 }
@@ -169,6 +182,7 @@ omoDecisionProposalDiscussionRespond(200, [
     ],
     'discussionIsAnonymous' => $discussionIsAnonymous,
     'viewerUserId' => $viewerUserId,
+    'viewerParticipantId' => $viewerParticipantId,
     'anonymousPreferenceExpiresAt' => $anonymousPreferenceExpiresAt,
     'discussionMessageCount' => $discussionMessageCount,
     'messages' => $messages,
