@@ -202,7 +202,7 @@ if ($hasStructureContext) {
     $contextAdminUserIds = array_fill_keys($currentHolon->getDirectContextAdminUserIds($organizationId), true);
 } else {
     $memberships = new ArrayUserOrganization();
-    $memberships->loadVisibleForOrganization($organizationId);
+    $memberships->loadVisibleForOrganization($organizationId, true);
 
     foreach ($memberships as $membership) {
         if (!$membership instanceof UserOrganization) {
@@ -293,6 +293,7 @@ foreach ($rawMemberCards as $rawCard) {
     $canViewUserDetail = $hasUser ? $user->canViewDetail() : false;
 
     $isPending = !empty($rawCard['isPending']) || ($hasMembership && !(bool)$membership->get('active'));
+    $hasPendingInvitation = !empty($rawCard['hasPendingInvitation']);
     $isOrganizationAdmin = $hasMembership ? $membership->isOrganizationAdmin() : false;
     $isContextAdmin = $hasStructureContext
         ? isset($contextAdminUserIds[$userId])
@@ -366,7 +367,9 @@ foreach ($rawMemberCards as $rawCard) {
         $email,
         $username,
         $secondary,
-        $isPending ? omoTeamT('team.member.pending', [], $lang, $sourceLang) : '',
+        $hasPendingInvitation
+            ? omoTeamT('team.member.invitation_pending', [], $lang, $sourceLang)
+            : ($isPending ? omoTeamT('team.member.to_invite', [], $lang, $sourceLang) : ''),
         $isContextAdmin ? omoTeamT('team.member.admin_context', ['adminLabel' => $adminLabel], $lang, $sourceLang) : '',
         $isOrganizationAdmin ? omoTeamT('team.member.admin_organization', ['adminLabel' => $adminLabel], $lang, $sourceLang) : '',
     ), static fn ($value): bool => trim((string)$value) !== '')));
@@ -386,6 +389,7 @@ foreach ($rawMemberCards as $rawCard) {
         'isContextAdmin' => $isContextAdmin,
         'isDirectContextMember' => isset($directContextMemberUserIds[$userId]),
         'isPending' => $isPending,
+        'hasPendingInvitation' => $hasPendingInvitation,
         'joinedAtLabel' => $effectiveJoinedAt instanceof DateTimeInterface ? $formatDate($effectiveJoinedAt) : '',
         'lastSeenLabel' => $formatLastSeenLabel($organizationLastSeen, $globalLastSeen),
         'organizationLastSeenLabel' => $organizationLastSeen instanceof DateTimeInterface ? $formatDate($organizationLastSeen) : '',
@@ -449,6 +453,7 @@ $mapMemberPayload = array_map(static function (array $card): array {
         'isContextAdmin' => !empty($card['isContextAdmin']),
         'isOrganizationAdmin' => !empty($card['isOrganizationAdmin']),
         'isPending' => !empty($card['isPending']),
+        'hasPendingInvitation' => !empty($card['hasPendingInvitation']),
         'canViewDetail' => !empty($card['canViewDetail']),
         'searchText' => (string)($card['searchText'] ?? ''),
         'lat' => (float)$card['latlong']['lat'],
@@ -463,7 +468,7 @@ if ($leafletMapsEnabled) {
 }
 ?>
 <?= $leafletAssetsHtml ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
 <div
     class="omo-team omo-panel-view"
     id="omo-team-root"
@@ -533,8 +538,16 @@ if ($leafletMapsEnabled) {
                         </div>
                     </div>
                     <div class="omo-team__filter-actions omo-view-filter__actions">
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-team-filter-apply><?= omoApiEscape(omoTeamT('team.filters.apply', [], $lang, $sourceLang)) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--main" data-team-filter-save><?= omoApiEscape(omoTeamT('team.filters.save_view', [], $lang, $sourceLang)) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--main" data-team-filter-apply><?= omoApiEscape(omoTeamT('team.filters.apply', [], $lang, $sourceLang)) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-team-filter-save><?= omoApiEscape(omoTeamT('team.filters.save_view', [], $lang, $sourceLang)) ?></button>
+                        <div class="generic-menu omo-view-filter__actions-more" data-team-filter-more-menu>
+                            <button type="button" class="generic-menu-toggle" data-team-filter-more-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoTeamT('team.filters.more_actions', [], $lang, $sourceLang)) ?>">&#8942;</button>
+                            <div class="generic-menu-panel" data-team-filter-more-panel role="menu" hidden>
+                                <button type="button" class="generic-menu-item" data-team-filter-more-action="apply-everywhere" role="menuitem"><?= omoApiEscape(omoTeamT('team.filters.apply_everywhere', [], $lang, $sourceLang)) ?></button>
+                                <button type="button" class="generic-menu-item" data-team-filter-more-action="set-default" role="menuitem"><?= omoApiEscape(omoTeamT('team.filters.set_default', [], $lang, $sourceLang)) ?></button>
+                                <button type="button" class="generic-menu-item" data-team-filter-more-action="restore-default" role="menuitem"><?= omoApiEscape(omoTeamT('team.filters.restore_default', [], $lang, $sourceLang)) ?></button>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -578,7 +591,7 @@ if ($leafletMapsEnabled) {
                                         aria-label="<?= omoApiEscape(omoTeamT('team.member.actions_for', ['name' => (string)$card['displayName']], $lang, $sourceLang)) ?>"
                                     >...</button>
                                     <div class="omo-team-card__menu-panel" data-team-member-menu-panel="1" hidden>
-                                        <?php if ($canRemoveCurrentHolonMembers && $card['isPending']): ?>
+                                        <?php if ($canRemoveCurrentHolonMembers && $card['hasPendingInvitation']): ?>
                                             <button
                                                 type="button"
                                                 class="omo-team-card__menu-item omo-team-card__menu-item--danger"
@@ -586,7 +599,7 @@ if ($leafletMapsEnabled) {
                                                 data-user-id="<?= (int)$card['userId'] ?>"
                                             ><?= omoApiEscape(omoTeamT('team.action.cancel_invitation', [], $lang, $sourceLang)) ?></button>
                                         <?php endif; ?>
-                                        <?php if ($canRemoveCurrentHolonMembers && !$card['isPending']): ?>
+                                        <?php if ($canRemoveCurrentHolonMembers && !$card['hasPendingInvitation']): ?>
                                             <button
                                                 type="button"
                                                 class="omo-team-card__menu-item omo-team-card__menu-item--danger"
@@ -631,8 +644,10 @@ if ($leafletMapsEnabled) {
                                     <?php endif; ?>
                                 </div>
 
-                                <?php if ($card['isPending']): ?>
-                                    <span class="omo-team-card__badge omo-team-card__badge--pending"><?= omoApiEscape(omoTeamT('team.member.pending', [], $lang, $sourceLang)) ?></span>
+                                <?php if ($card['hasPendingInvitation']): ?>
+                                    <span class="omo-team-card__badge omo-team-card__badge--pending"><?= omoApiEscape(omoTeamT('team.member.invitation_pending', [], $lang, $sourceLang)) ?></span>
+                                <?php elseif ($card['isPending']): ?>
+                                    <span class="omo-team-card__badge omo-team-card__badge--pending"><?= omoApiEscape(omoTeamT('team.member.to_invite', [], $lang, $sourceLang)) ?></span>
                                 <?php elseif ($card['isContextAdmin']): ?>
                                     <span class="omo-team-card__badge"><?= omoApiEscape(omoTeamT('team.member.admin_short', ['adminLabel' => $adminLabel], $lang, $sourceLang)) ?></span>
                                 <?php endif; ?>
@@ -721,9 +736,14 @@ if ($leafletMapsEnabled) {
                             $compactFirstNameLabel = '';
                         }
 
-                        if ($card['isPending']) {
+                        if ($card['hasPendingInvitation']) {
                             $compactPrivilegeLabels[] = array(
-                                    'label' => omoTeamT('team.member.pending', [], $lang, $sourceLang),
+                                    'label' => omoTeamT('team.member.invitation_pending', [], $lang, $sourceLang),
+                                'className' => 'omo-team__compact-badge omo-team__compact-badge--pending',
+                            );
+                        } elseif ($card['isPending']) {
+                            $compactPrivilegeLabels[] = array(
+                                'label' => omoTeamT('team.member.to_invite', [], $lang, $sourceLang),
                                 'className' => 'omo-team__compact-badge omo-team__compact-badge--pending',
                             );
                         } else {
@@ -1461,7 +1481,8 @@ $teamJsTranslations = [
 ];
 ?>
 <script>
-var omoTeamSavedViewsStorageKey = 'omo.team.saved-views.v1';
+var omoTeamSavedViewsStorageKey = 'omo.team.saved-views.v2';
+var omoTeamLegacySavedViewsStorageKey = 'omo.team.saved-views.v1';
 var omoTeamSessionViewsStorageKey = 'omo.team.session-views.v1';
 var omoTeamMapEnabled = <?= $leafletMapsEnabled ? 'true' : 'false' ?>;
 var omoTeamMapMembers = <?= json_encode($mapMemberPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -1520,6 +1541,76 @@ function omoTeamGetContextKey() {
         + ':' + String(root ? (root.getAttribute('data-team-cid') || '0') : '0');
 }
 
+function omoTeamCreateViewPreferences(filters) {
+    return {
+        scope: omoTeamNormalizeScope(filters && filters.scope),
+        view: omoTeamNormalizeView(filters && filters.view)
+    };
+}
+
+function omoTeamGetSavedViewsStore() {
+    try {
+        const storedValue = window.localStorage.getItem(omoTeamSavedViewsStorageKey);
+        const savedViews = storedValue ? JSON.parse(storedValue) : null;
+        if (savedViews && typeof savedViews === 'object' && savedViews.contexts && typeof savedViews.contexts === 'object') {
+            return {
+                defaultView: savedViews.defaultView && typeof savedViews.defaultView === 'object'
+                    ? savedViews.defaultView
+                    : null,
+                contexts: savedViews.contexts
+            };
+        }
+
+        const legacyValue = window.localStorage.getItem(omoTeamLegacySavedViewsStorageKey);
+        const legacyViews = legacyValue ? JSON.parse(legacyValue) : null;
+        return {
+            defaultView: null,
+            contexts: legacyViews && typeof legacyViews === 'object' ? legacyViews : {}
+        };
+    } catch (error) {
+        return {defaultView: null, contexts: {}};
+    }
+}
+
+function omoTeamSaveViewsStore(store) {
+    try {
+        window.localStorage.setItem(omoTeamSavedViewsStorageKey, JSON.stringify({
+            defaultView: store.defaultView && typeof store.defaultView === 'object'
+                ? store.defaultView
+                : null,
+            contexts: store.contexts && typeof store.contexts === 'object' ? store.contexts : {}
+        }));
+    } catch (error) {
+    }
+}
+
+function omoTeamGetStoredViewPreferences() {
+    const preferences = omoTeamGetSavedViewsStore().contexts[omoTeamGetContextKey()];
+    return preferences && typeof preferences === 'object' ? preferences : null;
+}
+
+function omoTeamGetDefaultViewPreferences() {
+    return omoTeamGetSavedViewsStore().defaultView;
+}
+
+function omoTeamStoreViewPreferences(filters) {
+    const store = omoTeamGetSavedViewsStore();
+    store.contexts[omoTeamGetContextKey()] = omoTeamCreateViewPreferences(filters);
+    omoTeamSaveViewsStore(store);
+}
+
+function omoTeamStoreDefaultViewPreferences(filters) {
+    const store = omoTeamGetSavedViewsStore();
+    store.defaultView = omoTeamCreateViewPreferences(filters);
+    omoTeamSaveViewsStore(store);
+}
+
+function omoTeamClearStoredViewPreferences() {
+    const store = omoTeamGetSavedViewsStore();
+    delete store.contexts[omoTeamGetContextKey()];
+    omoTeamSaveViewsStore(store);
+}
+
 function omoTeamReadViewPreferences(storage, storageKey) {
     try {
         const storedValue = storage.getItem(storageKey);
@@ -1541,10 +1632,7 @@ function omoTeamWriteViewPreferences(storage, storageKey, filters) {
         if (!views || typeof views !== 'object') {
             views = {};
         }
-        views[omoTeamGetContextKey()] = {
-            scope: omoTeamNormalizeScope(filters.scope),
-            view: omoTeamNormalizeView(filters.view)
-        };
+        views[omoTeamGetContextKey()] = omoTeamCreateViewPreferences(filters);
         storage.setItem(storageKey, JSON.stringify(views));
     } catch (error) {
     }
@@ -1559,6 +1647,13 @@ function omoTeamClearSessionViewPreferences() {
         }
         delete views[omoTeamGetContextKey()];
         window.sessionStorage.setItem(omoTeamSessionViewsStorageKey, JSON.stringify(views));
+    } catch (error) {
+    }
+}
+
+function omoTeamClearAllSessionViewPreferences() {
+    try {
+        window.sessionStorage.removeItem(omoTeamSessionViewsStorageKey);
     } catch (error) {
     }
 }
@@ -1823,6 +1918,34 @@ function omoTeamHandleFilterOutsidePointerDown(event) {
     omoTeamCloseFilterPanel(true, false);
 }
 
+function omoTeamApplyFilters(filters, active) {
+    const next = omoTeamNormalizeFilters(filters);
+    const previous = active || omoTeamGetActiveFilters();
+    if (next.scope !== previous.scope) {
+        omoTeamChangeScope(next.scope);
+        return;
+    }
+    omoTeamApplyView(next.view);
+}
+
+function omoTeamCloseFilterMoreMenu() {
+    const root = document.getElementById('omo-team-root');
+    if (!root) {
+        return;
+    }
+    root.querySelectorAll('[data-team-filter-more-menu]').forEach(function (menu) {
+        const panel = menu.querySelector('[data-team-filter-more-panel]');
+        const toggle = menu.querySelector('[data-team-filter-more-toggle]');
+        if (panel) {
+            panel.hidden = true;
+        }
+        menu.classList.remove('is-open');
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+    });
+}
+
 function omoTeamOpenFilterPanel() {
     const root = document.getElementById('omo-team-root');
     const panel = root ? root.querySelector('[data-team-filter-panel]') : null;
@@ -1830,6 +1953,7 @@ function omoTeamOpenFilterPanel() {
         return;
     }
     omoTeamPendingFilters = omoTeamGetActiveFilters();
+    omoTeamCloseFilterMoreMenu();
     omoTeamSyncFilterChoices();
     panel.hidden = false;
     omoTeamFilterPanelOpen = true;
@@ -1853,6 +1977,7 @@ function omoTeamCloseFilterPanel(applyChanges, saveView) {
         button.setAttribute('aria-expanded', 'false');
     });
     document.removeEventListener('pointerdown', omoTeamHandleFilterOutsidePointerDown, true);
+    omoTeamCloseFilterMoreMenu();
 
     if (!applyChanges || !omoTeamPendingFilters) {
         omoTeamPendingFilters = null;
@@ -1863,17 +1988,50 @@ function omoTeamCloseFilterPanel(applyChanges, saveView) {
     const next = omoTeamNormalizeFilters(omoTeamPendingFilters);
     omoTeamPendingFilters = null;
     if (saveView) {
-        omoTeamWriteViewPreferences(window.localStorage, omoTeamSavedViewsStorageKey, next);
+        omoTeamStoreViewPreferences(next);
         omoTeamClearSessionViewPreferences();
     } else {
         omoTeamWriteViewPreferences(window.sessionStorage, omoTeamSessionViewsStorageKey, next);
     }
 
-    if (next.scope !== active.scope) {
-        omoTeamChangeScope(next.scope);
+    omoTeamApplyFilters(next, active);
+}
+
+function omoTeamApplyFilterMoreAction(action) {
+    if (!omoTeamFilterPanelOpen || !omoTeamPendingFilters) {
         return;
     }
-    omoTeamApplyView(next.view);
+
+    const active = omoTeamGetActiveFilters();
+    const next = omoTeamNormalizeFilters(omoTeamPendingFilters);
+    omoTeamCloseFilterPanel(false, false);
+
+    if (action === 'set-default') {
+        omoTeamClearStoredViewPreferences();
+        omoTeamClearSessionViewPreferences();
+        omoTeamStoreDefaultViewPreferences(next);
+        omoTeamApplyFilters(next, active);
+        return;
+    }
+
+    if (action === 'apply-everywhere') {
+        const store = omoTeamGetSavedViewsStore();
+        store.defaultView = omoTeamCreateViewPreferences(next);
+        store.contexts = {};
+        omoTeamSaveViewsStore(store);
+        omoTeamClearAllSessionViewPreferences();
+        omoTeamApplyFilters(next, active);
+        return;
+    }
+
+    if (action === 'restore-default') {
+        omoTeamClearStoredViewPreferences();
+        omoTeamClearSessionViewPreferences();
+        omoTeamApplyFilters(omoTeamGetDefaultViewPreferences() || {
+            scope: 'contextual',
+            view: 'cards'
+        }, active);
+    }
 }
 
 function omoTeamRevealRoot() {
@@ -1891,8 +2049,9 @@ function omoTeamInitializeFilters() {
         return;
     }
     const temporary = omoTeamReadViewPreferences(window.sessionStorage, omoTeamSessionViewsStorageKey);
-    const saved = omoTeamReadViewPreferences(window.localStorage, omoTeamSavedViewsStorageKey);
-    const preferences = omoTeamNormalizeFilters(temporary || saved || {
+    const saved = omoTeamGetStoredViewPreferences();
+    const defaultView = omoTeamGetDefaultViewPreferences();
+    const preferences = omoTeamNormalizeFilters(temporary || saved || defaultView || {
         scope: root.getAttribute('data-team-scope') || omoTeamInitialScope,
         view: 'cards'
     });
@@ -2055,6 +2214,30 @@ $(function () {
     const panel = root.querySelector('[data-team-filter-panel]');
     if (panel) {
         panel.addEventListener('click', function (event) {
+            const moreToggle = event.target.closest('[data-team-filter-more-toggle]');
+            if (moreToggle) {
+                event.preventDefault();
+                event.stopPropagation();
+                const moreMenu = moreToggle.closest('[data-team-filter-more-menu]');
+                const morePanel = moreMenu ? moreMenu.querySelector('[data-team-filter-more-panel]') : null;
+                const isMoreMenuOpen = !!morePanel && !morePanel.hidden;
+                omoTeamCloseFilterMoreMenu();
+                if (!isMoreMenuOpen && morePanel) {
+                    morePanel.hidden = false;
+                    moreMenu.classList.add('is-open');
+                    moreToggle.setAttribute('aria-expanded', 'true');
+                }
+                return;
+            }
+            const moreAction = event.target.closest('[data-team-filter-more-action]');
+            if (moreAction) {
+                event.preventDefault();
+                event.stopPropagation();
+                omoTeamApplyFilterMoreAction(
+                    moreAction.getAttribute('data-team-filter-more-action') || ''
+                );
+                return;
+            }
             const applyButton = event.target.closest('[data-team-filter-apply]');
             if (applyButton) {
                 event.preventDefault();

@@ -188,7 +188,25 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
     $hasPendingInvitation = !empty($context['hasPendingInvitation']);
     $canManageInvitation = !empty($context['canManageInvitation']);
     $canResendInvitation = !empty($context['canResendInvitation']);
-    $displayTitle = $displayName !== '' ? $displayName : 'Invitation en attente';
+    $stateTitle = trim((string)($context['stateTitle'] ?? ''));
+    $stateBadge = trim((string)($context['stateBadge'] ?? ''));
+    $invitationSectionTitle = trim((string)($context['invitationSectionTitle'] ?? ''));
+    $missingInvitationCopy = trim((string)($context['missingInvitationCopy'] ?? ''));
+    $invitationAction = trim((string)($context['invitationAction'] ?? 'resend_invitation'));
+    $invitationActionLabel = trim((string)($context['invitationActionLabel'] ?? ''));
+    if (!in_array($invitationAction, array('resend_invitation', 'send_invitation'), true)) {
+        $invitationAction = 'resend_invitation';
+    }
+    $displayTitle = $displayName !== '' ? $displayName : ($stateTitle !== '' ? $stateTitle : 'Invitation en attente');
+    if ($stateTitle === '') {
+        $stateTitle = 'Invitation en attente';
+    }
+    if ($stateBadge === '') {
+        $stateBadge = 'En attente';
+    }
+    if ($invitationSectionTitle === '') {
+        $invitationSectionTitle = 'Invitation en cours';
+    }
     $contextSummary = $contextLabel !== '' ? $contextLabel : 'contexte';
     if ($contextName !== '') {
         $contextSummary .= ' - ' . $contextName;
@@ -205,6 +223,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
         data-oid="<?= (int)$organizationId ?>"
         data-hid="<?= (int)$currentHolonId ?>"
         data-user-id="<?= (int)$userId ?>"
+        data-invitation-action="<?= omoApiEscape($invitationAction) ?>"
     >
         <style>
         .omo-user-pending-invitation {
@@ -330,7 +349,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
         </style>
 
         <div class="omo-user-pending-invitation__hero generic-hero-panel">
-            <div class="generic-card-title generic-card-title--eyebrow">Invitation en attente</div>
+            <div class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape($stateTitle) ?></div>
             <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape($displayTitle) ?></h2>
             <?php if ($secondaryLabel !== ''): ?>
                 <div class="omo-user-pending-invitation__secondary"><?= omoApiEscape($secondaryLabel) ?></div>
@@ -342,7 +361,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
                 <p class="omo-user-pending-invitation__copy"><?= omoApiEscape($statusCopy) ?></p>
             <?php endif; ?>
             <div class="omo-user-pending-invitation__badge-row">
-                <span class="omo-user-pending-invitation__badge">En attente</span>
+                <span class="omo-user-pending-invitation__badge"><?= omoApiEscape($stateBadge) ?></span>
             </div>
         </div>
 
@@ -352,7 +371,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
         </section>
 
         <section class="omo-user-pending-invitation__section generic-section generic-section--stack">
-            <h3 class="generic-card-title generic-card-title--medium">Invitation en cours</h3>
+            <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape($invitationSectionTitle) ?></h3>
             <div class="omo-user-pending-invitation__meta">
                 <?php if ($secondaryLabel !== ''): ?>
                     <div class="omo-user-pending-invitation__meta-row">
@@ -386,7 +405,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
             <?php elseif ($hasPendingInvitation): ?>
                 <div class="omo-user-pending-invitation__empty">Cette invitation attend encore une reponse, mais aucun holon detaille n a pu etre liste.</div>
             <?php else: ?>
-                <div class="omo-user-pending-invitation__empty">Aucune invitation active n a ete retrouvee pour ce membre. La vue affichera le profil normal des que la situation sera regularisee.</div>
+                <div class="omo-user-pending-invitation__empty"><?= omoApiEscape($missingInvitationCopy !== '' ? $missingInvitationCopy : 'Aucune invitation active n a ete retrouvee pour ce membre. La vue affichera le profil normal des que la situation sera regularisee.') ?></div>
             <?php endif; ?>
         </section>
 
@@ -394,7 +413,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
             <h3 class="generic-card-title generic-card-title--medium">Actions</h3>
             <?php if (!$canManageInvitation): ?>
                 <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($manageRestrictedCopy !== '' ? $manageRestrictedCopy : 'Vous pouvez voir que cette invitation est en attente, mais seuls les responsables du contexte peuvent la gerer.') ?></p>
-            <?php elseif (!$hasPendingInvitation): ?>
+            <?php elseif (!$hasPendingInvitation && !$canResendInvitation): ?>
                 <p class="omo-user-pending-invitation__detail">Il n y a plus d invitation active a ouvrir ou a renvoyer pour ce membre.</p>
             <?php else: ?>
                 <p class="omo-user-pending-invitation__detail"><?= omoApiEscape($manageCopy !== '' ? $manageCopy : 'Vous pouvez renvoyer le message d invitation a cette adresse e-mail.') ?></p>
@@ -404,7 +423,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
                             type="button"
                             class="omo-user-pending-invitation__action generic-action-button generic-action-button--main"
                             data-pending-invitation-resend="1"
-                        >Renvoyer l e-mail</button>
+                        ><?= omoApiEscape($invitationActionLabel !== '' ? $invitationActionLabel : 'Renvoyer l e-mail') ?></button>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
@@ -418,6 +437,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
         var root = document.getElementById('omoUserPendingInvitation');
         var feedback = document.getElementById('omoUserPendingInvitationFeedback');
         var resendButton = root ? root.querySelector('[data-pending-invitation-resend="1"]') : null;
+        var invitationAction = root ? String(root.getAttribute('data-invitation-action') || 'resend_invitation') : 'resend_invitation';
 
         if (!root || !feedback || !resendButton) {
             return;
@@ -445,7 +465,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
             formData.append('hid', String(currentHolonId));
             formData.append('oid', String(organizationId));
             formData.append('user_id', String(userId));
-            formData.append('action', 'resend_invitation');
+            formData.append('action', invitationAction);
 
             fetch('/omo/api/team/member_action.php', {
                 method: 'POST',
@@ -545,6 +565,45 @@ if ($hasStructureContext && $currentHolonId > 0 && (int)$rootHolon->getId() !== 
 $pendingInvitation = Invitation::findPendingForOrganizationUser($organizationId, $userId);
 $user = new User();
 $userLoaded = $user->load($userId);
+$pendingOrganizationMembership = $userLoaded ? $user->getOrganizationMembership($organizationId) : null;
+$hasUninvitedPendingMembership = $pendingOrganizationMembership
+    && !(bool)$pendingOrganizationMembership->get('active')
+    && !($pendingInvitation instanceof Invitation);
+
+if ($hasUninvitedPendingMembership) {
+    $pendingMemberEmail = trim((string)$user->getScopedEmail($organizationId));
+    $pendingMemberDisplayName = trim((string)$user->getScopedDisplayName($organizationId));
+    if ($pendingMemberDisplayName === '') {
+        $pendingMemberDisplayName = $pendingMemberEmail !== '' ? $pendingMemberEmail : ('Utilisateur ' . $userId);
+    }
+
+    $canSendPendingMemberInvitation = $currentHolon->isAllowed('CAN_ADD_MEMBER');
+    echo omoUserContextRenderPendingInvitationFragment([
+        'organizationId' => $organizationId,
+        'userId' => $userId,
+        'currentHolonId' => (int)$currentHolon->getId(),
+        'organizationName' => trim((string)$organization->get('name')),
+        'displayName' => $pendingMemberDisplayName,
+        'secondaryLabel' => $pendingMemberEmail,
+        'contextLabel' => trim((string)$currentHolon->getTemplateLabel(true)),
+        'contextName' => trim((string)$currentHolon->getDisplayName()),
+        'stateTitle' => 'A inviter',
+        'stateBadge' => 'A inviter',
+        'invitationSectionTitle' => 'Invitation non envoyee',
+        'statusCopy' => 'Cette personne a ete importee sans recevoir d e-mail. Son profil reste masque tant qu une invitation n est pas envoyee et acceptee.',
+        'detailCopy' => 'Le compte est prepare dans cette organisation, sans que la personne ait encore ete informee de son existence.',
+        'manageCopy' => 'Vous pouvez creer puis envoyer une invitation a cette adresse e-mail.',
+        'manageRestrictedCopy' => 'Le compte reste en attente. Seules les personnes ayant le droit CAN_ADD_MEMBER sur ce holon peuvent envoyer une invitation.',
+        'missingInvitationCopy' => 'Aucune invitation n a encore ete creee pour cette personne.',
+        'pendingHolons' => array(),
+        'hasPendingInvitation' => false,
+        'canManageInvitation' => $canSendPendingMemberInvitation,
+        'canResendInvitation' => $canSendPendingMemberInvitation,
+        'invitationAction' => 'send_invitation',
+        'invitationActionLabel' => 'Envoyer l e-mail d invitation',
+    ]);
+    exit;
+}
 
 if ($pendingInvitation instanceof Invitation && $pendingInvitation->isAdminInitiatedInvitation()) {
     $pendingInvitationEmail = trim((string)$pendingInvitation->get('email'));

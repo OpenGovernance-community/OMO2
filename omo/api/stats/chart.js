@@ -38,14 +38,17 @@
         return parts.join(',');
     }
 
-    function buildPointTooltipText(data, point) {
+    function buildPointTooltipText(data, point, valueLabel) {
         var labels = data.tooltip || {value: 'Valeur', date: 'Date'};
-        return String(labels.value || 'Valeur') + ' : ' + formatNumber(point.value)
+        var label = valueLabel === 'cumulative'
+            ? String(labels.cumulative || 'Cumul')
+            : String(labels.value || 'Valeur');
+        return label + ' : ' + formatNumber(point.value)
             + '\n' + String(labels.date || 'Date') + ' : ' + formatTimestamp(point.timestamp);
     }
 
-    function buildPointTooltipAttributes(data, point) {
-        var text = buildPointTooltipText(data, point);
+    function buildPointTooltipAttributes(data, point, valueLabel) {
+        var text = buildPointTooltipText(data, point, valueLabel);
         return ' data-omo-stats-chart-tooltip="' + escapeXml(text) + '" tabindex="0" aria-label="' + escapeXml(text) + '"';
     }
 
@@ -163,6 +166,49 @@
         });
     }
 
+    function filterPoints(points, startTimestamp, endTimestamp) {
+        return (points || []).filter(function (point) {
+            return Number.isFinite(Number(point.timestamp))
+                && Number.isFinite(Number(point.value))
+                && Number(point.timestamp) >= startTimestamp
+                && Number(point.timestamp) <= endTimestamp;
+        }).map(function (point) {
+            return {timestamp: Number(point.timestamp), value: Number(point.value)};
+        }).sort(function (left, right) {
+            return left.timestamp - right.timestamp;
+        });
+    }
+
+    function buildCumulativePoints(points, startTimestamp) {
+        var sum = 0;
+        return (points || []).filter(function (point) {
+            return Number.isFinite(Number(point.timestamp))
+                && Number.isFinite(Number(point.value))
+                && Number(point.timestamp) >= startTimestamp;
+        }).map(function (point) {
+            return {timestamp: Number(point.timestamp), value: Number(point.value)};
+        }).sort(function (left, right) {
+            return left.timestamp - right.timestamp;
+        }).map(function (point) {
+            sum += point.value;
+            return {timestamp: point.timestamp, value: sum};
+        });
+    }
+
+    function resolveBarWidth(coordinates, plotWidth) {
+        var xValues = coordinates.map(function (point) { return Number(point[0]); }).filter(Number.isFinite).sort(function (left, right) {
+            return left - right;
+        });
+        var minimumGap = plotWidth / Math.max(2, xValues.length);
+        for (var index = 1; index < xValues.length; index += 1) {
+            var gap = xValues[index] - xValues[index - 1];
+            if (gap > 0) {
+                minimumGap = Math.min(minimumGap, gap);
+            }
+        }
+        return Math.round(Math.max(8, Math.min(44, minimumGap * 0.62)) * 100) / 100;
+    }
+
     function coordinateString(points) {
         return points.map(function (point) {
             return point[0] + ',' + point[1];
@@ -181,20 +227,55 @@
         return output.join('');
     }
 
+    function buildRightAxis(scale, paddingTop, plotHeight, width, paddingRight) {
+        var output = [];
+        for (var index = 0; index <= scale.intervals; index += 1) {
+            var ratio = index / scale.intervals;
+            var labelY = Math.round((paddingTop + plotHeight * ratio) * 100) / 100;
+            var labelValue = scale.max - scale.step * index;
+            output.push('<text class="omo-stats-chart__axis-label omo-stats-chart__axis-label--cumulative" x="' + (width - paddingRight + 10) + '" y="' + (labelY + 4) + '">' + escapeXml(formatNumber(labelValue)) + '</text>');
+        }
+        return output.join('');
+    }
+
     function renderIndicator(data, startDay, endDay) {
         var width = 900;
         var height = 340;
         var paddingLeft = 64;
-        var paddingRight = 24;
+        var showCumulative = Boolean(data.showCumulative);
+        var paddingRight = showCumulative ? 64 : 24;
         var paddingTop = 24;
         var paddingBottom = 42;
         var plotWidth = width - paddingLeft - paddingRight;
         var plotHeight = height - paddingTop - paddingBottom;
         var startTimestamp = startDay * 86400;
         var endTimestamp = ((endDay + 1) * 86400) - 1;
-        var measure = clipPoints(data.measure, startTimestamp, endTimestamp);
+        var measure = showCumulative
+            ? filterPoints(data.measure, startTimestamp, endTimestamp)
+            : clipPoints(data.measure, startTimestamp, endTimestamp);
         var reference = clipPoints(data.reference, startTimestamp, endTimestamp);
-        var allPoints = measure.concat(reference);
+        var cumulative = [];
+        if (showCumulative) {
+            var cumulativeStart = null;
+            if (data.referenceType === 'objective' && Array.isArray(data.reference) && data.reference.length) {
+                var referenceTimestamps = data.reference.map(function (point) {
+                    return Number(point.timestamp);
+                }).filter(Number.isFinite);
+                cumulativeStart = referenceTimestamps.length ? Math.min.apply(Math, referenceTimestamps) : null;
+            }
+            if (cumulativeStart === null && Array.isArray(data.measure) && data.measure.length) {
+                var measureTimestamps = data.measure.map(function (point) {
+                    return Number(point.timestamp);
+                }).filter(Number.isFinite);
+                cumulativeStart = measureTimestamps.length ? Math.min.apply(Math, measureTimestamps) : null;
+            }
+            cumulative = clipPoints(
+                buildCumulativePoints(data.measure, cumulativeStart === null ? startTimestamp : cumulativeStart),
+                startTimestamp,
+                endTimestamp
+            );
+        }
+        var allPoints = measure.concat(reference, cumulative);
         if (!allPoints.length) {
             return '<div class="omo-stats-chart-empty">Pas encore de donnees a representer.</div>';
         }
@@ -206,26 +287,60 @@
             ? null
             : Number(data.minimumValue);
         minimumValue = Number.isFinite(minimumValue) ? minimumValue : null;
-        var scale = resolveScale(allPoints, [ceilingValue, minimumValue]);
+        var scale = resolveScale(showCumulative ? measure : measure.concat(reference), showCumulative ? [minimumValue] : [ceilingValue, minimumValue]);
+        if (!scale) {
+            scale = resolveScale([{value: 0}], []);
+        }
+        var cumulativeScale = showCumulative ? resolveScale(cumulative.concat(reference), [ceilingValue]) : null;
+        if (showCumulative && !cumulativeScale) {
+            cumulativeScale = resolveScale([{value: 0}], []);
+        }
         var mapPoint = function (point) {
             var x = paddingLeft + ((Number(point.timestamp) - startTimestamp) / (endTimestamp - startTimestamp)) * plotWidth;
             var y = paddingTop + (1 - ((Number(point.value) - scale.min) / (scale.max - scale.min))) * plotHeight;
             return [Math.round(x * 100) / 100, Math.round(y * 100) / 100];
         };
+        var mapCumulativePoint = showCumulative ? function (point) {
+            var x = paddingLeft + ((Number(point.timestamp) - startTimestamp) / (endTimestamp - startTimestamp)) * plotWidth;
+            var y = paddingTop + (1 - ((Number(point.value) - cumulativeScale.min) / (cumulativeScale.max - cumulativeScale.min))) * plotHeight;
+            return [Math.round(x * 100) / 100, Math.round(y * 100) / 100];
+        } : mapPoint;
         var measureCoordinates = measure.map(mapPoint);
-        var referenceCoordinates = reference.map(mapPoint);
+        var cumulativeCoordinates = cumulative.map(mapCumulativePoint);
+        var referenceCoordinates = reference.map(mapCumulativePoint);
         var minimumLineValue = getVisibleMinimumLineValue(minimumValue, measure);
         var chartId = 'omo-stats-interactive-' + (++chartSequence);
         var overdueClass = data.overdueSeverity === 'warning'
             ? ' omo-stats-chart--warning'
             : (data.overdue ? ' omo-stats-chart--overdue' : '');
-        var classes = 'omo-stats-chart omo-stats-chart--large' + overdueClass;
+        var classes = 'omo-stats-chart omo-stats-chart--large' + (showCumulative ? ' omo-stats-chart--cumulative' : '') + overdueClass;
         var svg = '<svg class="' + classes + '" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + escapeXml(data.label) + '">';
         svg += '<defs><linearGradient id="' + chartId + '-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity="0.24"/><stop offset="1" stop-color="currentColor" stop-opacity="0.02"/></linearGradient></defs>';
         svg += buildAxis(scale, paddingTop, plotHeight, paddingLeft, width, paddingRight);
+        if (cumulativeScale) {
+            svg += buildRightAxis(cumulativeScale, paddingTop, plotHeight, width, paddingRight);
+        }
         svg += '<text class="omo-stats-chart__axis-label" x="' + paddingLeft + '" y="' + (height - 12) + '">' + formatDay(startDay) + '</text>';
         svg += '<text class="omo-stats-chart__axis-label" x="' + (width - paddingRight) + '" y="' + (height - 12) + '" text-anchor="end">' + formatDay(endDay) + '</text>';
-        if (measureCoordinates.length) {
+        if (showCumulative) {
+            if (measureCoordinates.length) {
+                var barWidth = resolveBarWidth(measureCoordinates, plotWidth);
+                var barBaselineValue = Math.max(scale.min, Math.min(scale.max, 0));
+                var barBaselineY = mapPoint({timestamp: startTimestamp, value: barBaselineValue})[1];
+                measureCoordinates.forEach(function (point, pointIndex) {
+                    var barX = Math.max(paddingLeft, Math.min(width - paddingRight - barWidth, point[0] - barWidth / 2));
+                    var barY = Math.min(point[1], barBaselineY);
+                    var barHeight = Math.max(1, Math.abs(barBaselineY - point[1]));
+                    svg += '<rect class="omo-stats-chart__bar" x="' + Math.round(barX * 100) / 100 + '" y="' + Math.round(barY * 100) / 100 + '" width="' + barWidth + '" height="' + Math.round(barHeight * 100) / 100 + '" rx="3"' + buildPointTooltipAttributes(data, measure[pointIndex]) + '/>';
+                });
+            }
+            if (cumulativeCoordinates.length > 1) {
+                svg += '<polyline class="omo-stats-chart__line omo-stats-chart__line--cumulative" points="' + coordinateString(cumulativeCoordinates) + '"/>';
+            }
+            cumulativeCoordinates.forEach(function (point, pointIndex) {
+                svg += '<circle class="omo-stats-chart__point omo-stats-chart__point--cumulative" cx="' + point[0] + '" cy="' + point[1] + '" r="4"' + buildPointTooltipAttributes(data, cumulative[pointIndex], 'cumulative') + '/>';
+            });
+        } else if (measureCoordinates.length) {
             var areaPoints = coordinateString(measureCoordinates)
                 + ' ' + measureCoordinates[measureCoordinates.length - 1][0] + ',' + (paddingTop + plotHeight)
                 + ' ' + measureCoordinates[0][0] + ',' + (paddingTop + plotHeight);
@@ -242,7 +357,7 @@
             svg += '<polyline class="omo-stats-chart__reference" points="' + coordinateString(referenceCoordinates) + '"/>';
         }
         if (ceilingValue !== null) {
-            var ceilingY = mapPoint({timestamp: startTimestamp, value: ceilingValue})[1];
+            var ceilingY = mapCumulativePoint({timestamp: startTimestamp, value: ceilingValue})[1];
             svg += '<line class="omo-stats-chart__reference omo-stats-chart__reference--ceiling" x1="' + paddingLeft + '" y1="' + ceilingY + '" x2="' + (width - paddingRight) + '" y2="' + ceilingY + '"/>';
         }
         if (minimumLineValue !== null) {
@@ -395,7 +510,7 @@
     }
 
     function bindPointTooltips(container) {
-        Array.prototype.forEach.call(container.querySelectorAll('.omo-stats-chart__point[data-omo-stats-chart-tooltip]'), function (point) {
+        Array.prototype.forEach.call(container.querySelectorAll('.omo-stats-chart__point[data-omo-stats-chart-tooltip], .omo-stats-chart__bar[data-omo-stats-chart-tooltip]'), function (point) {
             if (point.__omoStatsTooltipReady) {
                 return;
             }

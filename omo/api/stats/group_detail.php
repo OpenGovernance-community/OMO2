@@ -122,4 +122,4 @@ foreach ($series as $seriesIndex => $seriesItem) {
         </div>
     </section>
 </article>
-<script src="/omo/api/stats/chart.js?v=20260724-scale-bounds"></script>
+<script src="/omo/api/stats/chart.js?v=20260801-cumulative-history"></script>

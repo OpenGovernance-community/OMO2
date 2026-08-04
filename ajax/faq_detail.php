@@ -82,30 +82,34 @@ if (\dbObject\FAQ::hasViewcountColumn()) {
 }
 ?>
 <div class="faq-popup__item is-open">
-	<div style="padding: 18px;">
-		<div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; margin-bottom: 16px;">
-			<button type="button" class="faq-popup__back" data-faq-back>Retour a la FAQ</button>
-			<?php if ($canEditFaq): ?>
-				<button
-					type="button"
-					class="faq-popup__edit"
-					data-faq-edit
-					data-faq-id="<?= (int)$faq->getId() ?>"
-				>Editer</button>
-			<?php endif; ?>
+	<div class="faq-popup__detail-content generic-drawer-content">
+		<div class="generic-form-section__heading">
+			<div class="generic-form-section__copy">
+				<div class="faq-popup__meta">
+					<span class="faq-popup__meta-badge<?= ($scopeInfo['type'] ?? '') === 'generic' ? ' faq-popup__meta-badge--generic' : (($scopeInfo['type'] ?? '') === 'organization' ? ' faq-popup__meta-badge--organization' : '') ?>">
+						<?= htmlspecialchars((string)($scopeInfo['label'] ?? 'FAQ'), ENT_QUOTES, 'UTF-8') ?>
+					</span>
+					<?php if (!(int)$faq->get('isactive')): ?>
+						<span class="faq-popup__meta-badge faq-popup__meta-badge--generic">Inactive</span>
+					<?php endif; ?>
+					<?php if ($faq->canBeDetachedInContext($faqContext ?: array())): ?>
+						<span class="faq-popup__meta-badge">Detach possible</span>
+					<?php endif; ?>
+				</div>
+				<h4 class="generic-title generic-title--section"><?= htmlspecialchars((string)$faq->get("question")) ?></h4>
+			</div>
+			<div class="generic-action-row">
+				<?php if ($canEditFaq): ?>
+					<button
+						type="button"
+						class="faq-popup__edit generic-action-button generic-action-button--secondary"
+						data-faq-edit
+						data-faq-id="<?= (int)$faq->getId() ?>"
+					>Editer</button>
+				<?php endif; ?>
+				<button type="button" class="faq-popup__back generic-action-button generic-action-button--secondary" data-faq-back>Retour a la FAQ</button>
+			</div>
 		</div>
-		<div class="faq-popup__meta" style="padding: 0 0 12px;">
-			<span class="faq-popup__meta-badge<?= ($scopeInfo['type'] ?? '') === 'generic' ? ' faq-popup__meta-badge--generic' : (($scopeInfo['type'] ?? '') === 'organization' ? ' faq-popup__meta-badge--organization' : '') ?>">
-				<?= htmlspecialchars((string)($scopeInfo['label'] ?? 'FAQ'), ENT_QUOTES, 'UTF-8') ?>
-			</span>
-			<?php if (!(int)$faq->get('isactive')): ?>
-				<span class="faq-popup__meta-badge faq-popup__meta-badge--generic">Inactive</span>
-			<?php endif; ?>
-			<?php if ($faq->canBeDetachedInContext($faqContext ?: array())): ?>
-				<span class="faq-popup__meta-badge">Detach possible</span>
-			<?php endif; ?>
-		</div>
-		<h4 style="margin: 0 0 12px; font-size: 20px; color: #0f172a;"><?= htmlspecialchars((string)$faq->get("question")) ?></h4>
 		<div style="color: #334155; line-height: 1.7; margin-bottom: 18px;">
 			<?= nl2br(htmlspecialchars((string)$faq->get("answer"))) ?>
 		</div>

@@ -89,10 +89,17 @@ if ($isEdit) {
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.title')) ?></span>
                     <input class="generic-form-control" type="text" name="title" value="<?= omoApiEscape((string)$templateRoot->get('title')) ?>" maxlength="255" required autofocus>
                 </label>
-                <label class="omo-checklist-field omo-checklist-field--wide">
+                <div class="omo-checklist-field omo-checklist-field--wide">
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.description')) ?></span>
-                    <textarea class="generic-form-control" name="description" rows="5"><?= omoApiEscape((string)$templateRoot->get('description')) ?></textarea>
-                </label>
+                    <div class="omo-checklist-html-editor-container" data-checklist-html-editor-container>
+                        <div
+                            class="omo-checklist-html-editor"
+                            data-checklist-html-editor
+                            data-checklist-html-editor-placeholder="<?= omoApiEscape(omoChecklistT('checklist.form.description_placeholder')) ?>"
+                        ></div>
+                        <textarea name="description" hidden aria-hidden="true" data-checklist-html-value><?= omoApiEscape((string)$templateRoot->get('description')) ?></textarea>
+                    </div>
+                </div>
                 <label class="omo-checklist-field">
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.status')) ?></span>
                     <select class="generic-form-control" name="status">

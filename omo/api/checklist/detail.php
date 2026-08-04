@@ -5,6 +5,7 @@ require_once __DIR__ . '/shared.php';
 use dbObject\Checklist;
 use dbObject\ChecklistItem;
 use dbObject\ChecklistItemDependency;
+use dbObject\ArrayChecklist;
 use dbObject\ArrayChecklistItemOccurrence;
 use dbObject\ChecklistTrigger;
 use dbObject\Holon;
@@ -41,6 +42,47 @@ foreach ($checklist->getItems(true) as $item) {
 $trigger = omoChecklistGetPrimaryTrigger($checklist);
 $isContainerChecklist = $trigger instanceof ChecklistTrigger
     && ChecklistTrigger::normalizeTriggerType($trigger->get('trigger_type')) === ChecklistTrigger::TYPE_CONTAINER;
+$canEdit = omoChecklistCanManage($checklist);
+$moveTargets = [];
+if ($canEdit) {
+    $availableChecklists = new ArrayChecklist();
+    $availableChecklists->loadForOrganization($organizationId, true);
+    foreach ($availableChecklists as $candidateChecklist) {
+        if (!($candidateChecklist instanceof Checklist)
+            || (int)$candidateChecklist->getId() === $checklistId
+            || !omoChecklistCanManage($candidateChecklist)) {
+            continue;
+        }
+        $candidateRoot = $candidateChecklist->getTemplateRoot();
+        if (!($candidateRoot instanceof Project)) {
+            continue;
+        }
+        $candidateHolon = $candidateRoot->getHolon();
+        $moveTargets[] = [
+            'id' => (int)$candidateChecklist->getId(),
+            'title' => trim((string)$candidateRoot->get('title')),
+            'holonId' => $candidateHolon instanceof Holon ? (int)$candidateHolon->getId() : 0,
+            'context' => $candidateHolon instanceof Holon ? trim((string)$candidateHolon->getDisplayName()) : '',
+        ];
+    }
+    usort($moveTargets, static function (array $left, array $right) {
+        return strcasecmp((string)$left['title'], (string)$right['title']);
+    });
+}
+$moveUi = [
+    'title' => omoChecklistT('checklist.action.move_item_title'),
+    'help' => omoChecklistT('checklist.action.move_item_help'),
+    'search' => omoChecklistT('checklist.search.placeholder'),
+    'select' => omoChecklistT('checklist.action.select_checklist'),
+    'empty' => omoChecklistT('checklist.action.no_target_checklist'),
+    'cancel' => omoChecklistT('checklist.action.cancel'),
+    'submit' => omoChecklistT('checklist.action.move_item_submit'),
+    'local' => omoChecklistT('checklist.scope.local'),
+    'children' => omoChecklistT('checklist.scope.direct_children'),
+    'descendants' => omoChecklistT('checklist.scope.all_descendants'),
+    'deleteConfirm' => omoChecklistT('checklist.confirm.delete_item'),
+    'extractConfirm' => omoChecklistT('checklist.confirm.extract_item'),
+];
 $openRuns = [];
 foreach ($checklist->getOpenRuns() as $run) {
     if ($run instanceof \dbObject\ChecklistRun) {
@@ -115,7 +157,6 @@ unset($itemInstances);
 $rootHolon = $templateRoot->getHolon();
 $rootHolonLabel = $rootHolon instanceof Holon ? trim((string)$rootHolon->getDisplayName()) : '';
 $updatedAt = $checklist->get('updated_at');
-$canEdit = omoChecklistCanManage($checklist);
 $canActivate = omoChecklistCanActivate($checklist, $trigger);
 $editUrl = '/omo/api/checklist/edit.php?oid=' . rawurlencode((string)$organizationId) . '&id=' . rawurlencode((string)$checklistId);
 $itemCreateUrl = '/omo/api/checklist/item_edit.php?oid=' . rawurlencode((string)$organizationId) . '&checklist_id=' . rawurlencode((string)$checklistId);
@@ -135,7 +176,11 @@ $formatDelay = static function ($value, $unit) {
     return $value . ' ' . omoChecklistT('checklist.delay.' . $unit);
 };
 ?>
-<div class="omo-checklist-detail">
+<div
+    class="omo-checklist-detail"
+    data-checklist-item-move-targets="<?= omoApiEscape(json_encode($moveTargets, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+    data-checklist-item-move-ui="<?= omoApiEscape(json_encode($moveUi, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+>
     <div
         hidden
         data-omo-subdrawer-header
@@ -281,7 +326,19 @@ $formatDelay = static function ($value, $unit) {
                             <h4 class="generic-title generic-title--item"><?= omoApiEscape((string)$project->get('title')) ?></h4>
                             <div class="omo-checklist-flow__title-actions">
                                 <span class="omo-checklist-flow__role"><?= omoApiEscape($itemHolonLabel) ?></span>
-                                <?php if ($canEdit): ?><button type="button" class="generic-action-button generic-action-button--secondary" data-checklist-open-item-form data-url="<?= omoApiEscape($itemEditUrl) ?>"><?= omoApiEscape(omoChecklistT('checklist.action.edit_item')) ?></button><?php endif; ?>
+                                <?php if ($canEdit): ?>
+                                    <button type="button" class="generic-action-button generic-action-button--secondary" data-checklist-open-item-form data-url="<?= omoApiEscape($itemEditUrl) ?>"><?= omoApiEscape(omoChecklistT('checklist.action.edit_item')) ?></button>
+                                    <div class="generic-menu" data-checklist-item-menu>
+                                        <button type="button" class="generic-menu-toggle" data-checklist-item-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoChecklistT('checklist.action.item_more')) ?>">&#8942;</button>
+                                        <div class="generic-menu-panel generic-menu-panel--wide" data-checklist-item-menu-panel role="menu" hidden>
+                                            <button type="button" class="generic-menu-item" data-checklist-item-move data-checklist-id="<?= (int)$checklistId ?>" data-checklist-item-id="<?= (int)$item->getId() ?>" role="menuitem"><?= omoApiEscape(omoChecklistT('checklist.action.move_item')) ?></button>
+                                            <?php if ($isContainerChecklist && $recurrence instanceof \dbObject\ChecklistItemRecurrence && (int)$recurrence->get('enabled') === 1): ?>
+                                                <button type="button" class="generic-menu-item" data-checklist-item-extract data-checklist-id="<?= (int)$checklistId ?>" data-checklist-item-id="<?= (int)$item->getId() ?>" role="menuitem"><?= omoApiEscape(omoChecklistT('checklist.action.extract_item')) ?></button>
+                                            <?php endif; ?>
+                                            <button type="button" class="generic-menu-item generic-menu-item--danger" data-checklist-item-delete data-checklist-id="<?= (int)$checklistId ?>" data-checklist-item-id="<?= (int)$item->getId() ?>" role="menuitem"><?= omoApiEscape(omoChecklistT('checklist.action.delete_item')) ?></button>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                         <?php if ($parentProject instanceof Project): ?><div class="omo-checklist-flow__parent generic-description generic-description--small"><?= omoApiEscape(omoChecklistT('checklist.form.parent')) ?> : <?= omoApiEscape((string)$parentProject->get('title')) ?></div><?php endif; ?>

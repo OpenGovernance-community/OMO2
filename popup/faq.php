@@ -19,7 +19,6 @@ $contextHolonId = $contextHolon ? (int)$contextHolon->getId() : 0;
 $contextOrganizationId = (int)($faqContext['organizationId'] ?? 0);
 $faqAvailableScopes = \dbObject\FAQ::getAvailablePopupScopes($faqContext ?: array());
 $faqScope = \dbObject\FAQ::normalizePopupScope($_GET['faq_scope'] ?? null, $faqContext ?: array());
-$faqScopeActiveIndex = omoApiResolveContextScopeIndex($faqScope, $faqAvailableScopes);
 $faqScopeLabels = array(
 	'contextual' => 'Contextuel',
 	'children' => 'Enfants directs',
@@ -137,71 +136,19 @@ if ($canManageAllFaqs) {
 		--faq-generic-text: color-mix(in srgb, var(--faq-text-muted) 90%, var(--faq-bg));
 		--faq-organization-bg: color-mix(in srgb, #14b8a6 14%, var(--faq-bg));
 		--faq-organization-text: color-mix(in srgb, #0f766e 78%, var(--faq-text));
-		--faq-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-		--faq-shadow-strong: 0 18px 40px rgba(15, 23, 42, 0.16);
 		position: relative;
 		height: clamp(360px, calc(100dvh - 220px), 760px);
 		overflow: hidden;
 		background: var(--faq-bg);
 		color: var(--faq-text);
-		color-scheme: light;
-	}
-
-	html[data-theme="dark"] .faq-popup {
-		--faq-bg: var(--topbar-panel-bg, var(--color-surface, #16202b));
-		--faq-surface: var(--color-surface-alt, #101923);
-		--faq-surface-strong: color-mix(in srgb, var(--faq-surface) 82%, var(--faq-bg));
-		--faq-border: var(--topbar-panel-border, var(--color-border, #283548));
-		--faq-border-soft: color-mix(in srgb, var(--faq-border) 78%, transparent);
-		--faq-text: var(--color-text, #e5edf7);
-		--faq-text-muted: var(--topbar-panel-muted, #9fb0c3);
-		--faq-heading: var(--faq-text);
-		--faq-accent: var(--color-primary, #7c9cff);
-		--faq-accent-soft: color-mix(in srgb, var(--faq-accent) 18%, var(--faq-bg));
-		--faq-accent-strong: color-mix(in srgb, var(--faq-accent) 92%, #9db4ff);
-		--faq-badge-bg: color-mix(in srgb, var(--faq-accent) 18%, var(--faq-bg));
-		--faq-badge-text: color-mix(in srgb, var(--faq-accent) 82%, var(--faq-text));
-		--faq-generic-bg: color-mix(in srgb, var(--faq-text-muted) 16%, var(--faq-bg));
-		--faq-generic-text: color-mix(in srgb, var(--faq-text-muted) 96%, var(--faq-bg));
-		--faq-organization-bg: color-mix(in srgb, #14b8a6 18%, var(--faq-bg));
-		--faq-organization-text: color-mix(in srgb, #67e8f9 74%, var(--faq-text));
-		--faq-shadow: 0 12px 26px rgba(0, 0, 0, 0.24);
-		--faq-shadow-strong: 0 18px 40px rgba(0, 0, 0, 0.34);
-		color-scheme: dark;
-	}
-
-	@media (prefers-color-scheme: dark) {
-		html[data-theme-preference="system"] .faq-popup {
-			--faq-bg: var(--topbar-panel-bg, var(--color-surface, #16202b));
-			--faq-surface: var(--color-surface-alt, #101923);
-			--faq-surface-strong: color-mix(in srgb, var(--faq-surface) 82%, var(--faq-bg));
-			--faq-border: var(--topbar-panel-border, var(--color-border, #283548));
-			--faq-border-soft: color-mix(in srgb, var(--faq-border) 78%, transparent);
-			--faq-text: var(--color-text, #e5edf7);
-			--faq-text-muted: var(--topbar-panel-muted, #9fb0c3);
-			--faq-heading: var(--faq-text);
-			--faq-accent: var(--color-primary, #7c9cff);
-			--faq-accent-soft: color-mix(in srgb, var(--faq-accent) 18%, var(--faq-bg));
-			--faq-accent-strong: color-mix(in srgb, var(--faq-accent) 92%, #9db4ff);
-			--faq-badge-bg: color-mix(in srgb, var(--faq-accent) 18%, var(--faq-bg));
-			--faq-badge-text: color-mix(in srgb, var(--faq-accent) 82%, var(--faq-text));
-			--faq-generic-bg: color-mix(in srgb, var(--faq-text-muted) 16%, var(--faq-bg));
-			--faq-generic-text: color-mix(in srgb, var(--faq-text-muted) 96%, var(--faq-bg));
-			--faq-organization-bg: color-mix(in srgb, #14b8a6 18%, var(--faq-bg));
-			--faq-organization-text: color-mix(in srgb, #67e8f9 74%, var(--faq-text));
-			--faq-shadow: 0 12px 26px rgba(0, 0, 0, 0.24);
-			--faq-shadow-strong: 0 18px 40px rgba(0, 0, 0, 0.34);
-			color-scheme: dark;
-		}
 	}
 
 	.faq-popup__search {
-		display: grid;
-		gap: 18px;
 		height: 100%;
 		overflow: auto;
 		align-content: start;
-		padding-right: 6px;
+		box-sizing: border-box;
+		padding: var(--generic-container-margin);
 	}
 
 	.faq-popup--detail-open .faq-popup__search {
@@ -209,83 +156,7 @@ if ($canManageAllFaqs) {
 	}
 
 	.faq-popup__hero {
-		display: grid;
-		gap: 18px;
 		padding: 4px 4px 2px;
-	}
-
-	.faq-popup__hero-head {
-		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: 16px;
-		flex-wrap: wrap;
-	}
-
-	.faq-popup__hero-main {
-		display: flex;
-		align-items: flex-start;
-		gap: 16px;
-		flex: 1 1 460px;
-		min-width: 0;
-	}
-
-	.faq-popup__hero-icon {
-		width: 48px;
-		height: 48px;
-		border-radius: 16px;
-		background: var(--faq-accent-soft);
-		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--faq-accent) 18%, transparent);
-		color: var(--faq-accent-strong);
-		display: grid;
-		place-items: center;
-		font-size: 20px;
-		font-weight: 700;
-		flex: 0 0 auto;
-	}
-
-	.faq-popup__hero-copy {
-		display: grid;
-		gap: 6px;
-		min-width: 0;
-	}
-
-	.faq-popup__hero-title {
-		margin: 0;
-		font-size: clamp(30px, 3vw, 40px);
-		line-height: 1;
-		letter-spacing: -0.03em;
-		color: var(--faq-heading);
-	}
-
-	.faq-popup__hero-subtitle {
-		font-size: 16px;
-		line-height: 1.45;
-		color: var(--faq-text-muted);
-	}
-
-	.faq-popup__hero-tags {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 10px;
-	}
-
-	.faq-popup__hero-tag {
-		display: inline-flex;
-		align-items: center;
-		gap: 8px;
-		padding: 8px 12px;
-		border-radius: 999px;
-		background: var(--faq-surface);
-		box-shadow: inset 0 0 0 1px var(--faq-border-soft);
-		color: var(--faq-text-muted);
-		font-size: 13px;
-		line-height: 1.2;
-	}
-
-	.faq-popup__hero-tag strong {
-		color: var(--faq-heading);
-		font-weight: 600;
 	}
 
 	.faq-popup__search-row {
@@ -295,76 +166,56 @@ if ($canManageAllFaqs) {
 	}
 
 	.faq-popup__search-shell {
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 14px;
+		gap: 0;
 		flex: 1 1 auto;
-		padding: 0 18px;
-		border: 1px solid color-mix(in srgb, var(--faq-accent) 34%, var(--faq-border));
-		border-radius: 18px;
-		background: var(--faq-bg);
-		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--faq-accent) 10%, transparent);
+		--generic-form-control-min-height: 40px;
+		--generic-form-control-padding-block: 8px;
+		--generic-form-control-padding-inline: var(--generic-space-3, 12px);
+		--generic-form-control-border: var(--faq-border);
+		--generic-form-control-border-focus: var(--faq-accent);
+		--generic-form-control-background: var(--faq-bg);
+		--generic-form-control-background-focus: var(--faq-bg);
+		--generic-form-control-color: var(--faq-text);
 	}
 
 	.faq-popup__search-shell:focus-within {
-		border-color: var(--faq-accent);
-		box-shadow:
-			inset 0 0 0 1px color-mix(in srgb, var(--faq-accent) 26%, transparent),
-			0 0 0 4px color-mix(in srgb, var(--faq-accent) 10%, transparent);
+		border-color: var(--generic-form-control-border-focus);
+		box-shadow: var(--generic-form-control-focus-shadow);
+		background: var(--generic-form-control-background-focus);
 	}
 
 	.faq-popup__search-icon {
-		position: relative;
+		position: absolute;
+		left: var(--generic-form-control-padding-inline);
+		top: 50%;
 		width: 18px;
 		height: 18px;
 		flex: 0 0 auto;
-		opacity: 0.86;
-	}
-
-	.faq-popup__search-icon::before {
-		content: "";
-		position: absolute;
-		left: 1px;
-		top: 1px;
-		width: 11px;
-		height: 11px;
-		border: 2px solid var(--faq-text-muted);
-		border-radius: 50%;
-	}
-
-	.faq-popup__search-icon::after {
-		content: "";
-		position: absolute;
-		right: 0;
-		bottom: 1px;
-		width: 7px;
-		height: 2px;
-		border-radius: 999px;
-		background: var(--faq-text-muted);
-		transform: rotate(45deg);
-		transform-origin: center;
+		display: block;
+		object-fit: contain;
+		opacity: 0.72;
+		pointer-events: none;
+		transform: translateY(-50%);
 	}
 
 	.faq-popup__search-input {
 		width: 100%;
-		padding: 16px 0;
+		min-width: 0;
+		box-sizing: border-box;
+		flex: 1 1 auto;
+		padding: 0 0 0 calc(18px + var(--generic-space-3, 12px));
 		border: 0;
 		background: transparent;
-		color: var(--faq-text);
+		color: var(--generic-form-control-color, var(--faq-text));
+		font: inherit;
 		font-size: 15px;
 	}
 
 	.faq-popup__search-input:focus {
 		outline: none;
-	}
-
-	.faq-popup__helper,
-	.faq-popup__no-result,
-	.faq-popup__empty {
-		padding: 16px 18px;
-		border-radius: 14px;
-		background: var(--faq-surface);
-		color: var(--faq-text-muted);
 	}
 
 	.faq-popup__helper strong {
@@ -379,80 +230,20 @@ if ($canManageAllFaqs) {
 	}
 
 	.faq-popup__toolbar-main {
-		display: grid;
-		gap: 12px;
 		min-width: 0;
 	}
 
 	.faq-popup__toolbar-actions {
-		display: flex;
-		align-items: center;
-		gap: 10px;
 		flex: 0 0 auto;
-	}
-
-	.faq-popup__toolbar-note {
-		min-width: 0;
-		padding: 12px 14px;
-		border-radius: 14px;
-		background: var(--faq-surface);
-		box-shadow: inset 0 0 0 1px var(--faq-border-soft);
-		font-size: 13px;
-		line-height: 1.45;
-		color: var(--faq-text-muted);
-	}
-
-	.faq-popup__toolbar-note strong {
-		color: var(--faq-heading);
 	}
 
 	.faq-popup__scope-toggle {
-		--faq-scope-option-count: 2;
-		--faq-scope-active-index: 0;
-		--faq-scope-toggle-inset: 4px;
-		position: relative;
-		display: inline-grid;
-		grid-template-columns: repeat(var(--faq-scope-option-count), minmax(0, 1fr));
-		align-items: center;
-		gap: 0;
-		padding: 4px;
-		border-radius: 999px;
-		background: var(--faq-surface-strong);
-		width: fit-content;
-		flex: 0 0 auto;
-		isolation: isolate;
 		transition: opacity 180ms ease;
 	}
 
-	.faq-popup__scope-toggle::before {
-		content: "";
-		position: absolute;
-		left: var(--faq-scope-toggle-inset);
-		top: var(--faq-scope-toggle-inset);
-		bottom: var(--faq-scope-toggle-inset);
-		width: calc((100% - (var(--faq-scope-toggle-inset) * 2)) / var(--faq-scope-option-count));
-		border-radius: 999px;
-		background: var(--faq-bg);
-		box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
-		transform: translateX(calc(var(--faq-scope-active-index) * 100%));
-		transition: transform 220ms ease, box-shadow 220ms ease;
-		z-index: 0;
-	}
-
 	.faq-popup__scope-toggle-button {
-		position: relative;
-		z-index: 1;
-		border: 0;
-		background: transparent;
-		color: var(--faq-text-muted);
-		padding: 9px 14px;
-		border-radius: 999px;
-		cursor: pointer;
-		font-size: 13px;
-		font-weight: 600;
-		min-width: 0;
+		gap: var(--generic-space-2, 8px);
 		white-space: nowrap;
-		transition: color 180ms ease;
 	}
 
 	.faq-popup__scope-toggle-button::before {
@@ -478,10 +269,6 @@ if ($canManageAllFaqs) {
 		background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cg fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 4.5v4M4.5 13.5v-2.5H13.5v2.5M9 8.5v2.5'/%3E%3C/g%3E%3Ccircle cx='9' cy='3' r='2' fill='%23000'/%3E%3Ccircle cx='4.5' cy='15' r='2' fill='%23000'/%3E%3Ccircle cx='13.5' cy='15' r='2' fill='%23000'/%3E%3C/svg%3E");
 	}
 
-	.faq-popup__scope-toggle-button.is-active {
-		color: var(--faq-heading);
-	}
-
 	.faq-popup__scope-toggle-button.is-active::before {
 		opacity: 1;
 	}
@@ -496,11 +283,6 @@ if ($canManageAllFaqs) {
 
 	.faq-popup.is-loading .faq-popup__scope-toggle-button {
 		cursor: wait;
-	}
-
-	.faq-popup__list {
-		display: grid;
-		gap: 18px;
 	}
 
 	.faq-popup__footer {
@@ -521,44 +303,49 @@ if ($canManageAllFaqs) {
 	}
 
 	.faq-popup__item {
-		border: 1px solid var(--faq-border-soft);
-		border-radius: 22px;
-		background: color-mix(in srgb, var(--faq-bg) 90%, var(--faq-surface));
-		box-shadow: var(--faq-shadow);
+		--faq-item-icon-size: 40px;
+		--faq-item-toggle-size: 32px;
+		--faq-item-gap: var(--generic-space-2, 8px);
+		--faq-item-padding-block: var(--generic-space-2, 8px);
+		--faq-item-padding-inline: var(--generic-space-3, 12px);
+		--generic-soft-panel-padding-block: 0px;
+		--generic-soft-panel-padding-inline: 0px;
+		--generic-soft-panel-radius: var(--radius-lg, 10px);
+		--generic-soft-panel-border: var(--faq-border-soft);
+		--generic-soft-panel-background: var(--faq-surface);
 		overflow: hidden;
-		transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+		transition: border-color 180ms ease, background-color 180ms ease;
 	}
 
 	.faq-popup__item:hover {
-		border-color: color-mix(in srgb, var(--faq-accent) 18%, var(--faq-border-soft));
-		box-shadow: var(--faq-shadow-strong);
+		--generic-soft-panel-border: color-mix(in srgb, var(--faq-accent) 18%, var(--faq-border-soft));
 	}
 
 	.faq-popup__item.is-open {
-		border-color: color-mix(in srgb, var(--faq-accent) 24%, var(--faq-border-soft));
+		--generic-soft-panel-border: color-mix(in srgb, var(--faq-accent) 24%, var(--faq-border-soft));
 	}
 
 	.faq-popup__item-header {
 		width: 100%;
 		display: grid;
-		grid-template-columns: 56px minmax(0, 1fr) 44px;
+		grid-template-columns: var(--faq-item-icon-size) minmax(0, 1fr) var(--faq-item-toggle-size);
 		align-items: start;
-		gap: 18px;
-		padding: 24px;
+		gap: var(--faq-item-gap);
+		padding: var(--faq-item-padding-block) var(--faq-item-padding-inline);
 		border: 0;
 		background: transparent;
 		cursor: pointer;
 	}
 
 	.faq-popup__item-icon {
-		width: 56px;
-		height: 56px;
-		border-radius: 18px;
+		width: var(--faq-item-icon-size);
+		height: var(--faq-item-icon-size);
+		border-radius: var(--radius-md, 6px);
 		background: var(--faq-accent-soft);
 		color: var(--faq-accent-strong);
 		display: grid;
 		place-items: center;
-		font-size: 20px;
+		font-size: 17px;
 		font-weight: 700;
 		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--faq-accent) 18%, transparent);
 	}
@@ -576,24 +363,14 @@ if ($canManageAllFaqs) {
 	}
 
 	.faq-popup__item-heading {
-		display: grid;
-		gap: 10px;
 		min-width: 0;
 		text-align: left;
 	}
 
-	.faq-popup__question {
-		display: block;
-		font-size: clamp(18px, 1.35vw, 30px);
-		line-height: 1.28;
-		font-weight: 700;
-		color: var(--faq-heading);
-	}
-
 	.faq-popup__item-toggle {
 		position: relative;
-		width: 44px;
-		height: 44px;
+		width: var(--faq-item-toggle-size);
+		height: var(--faq-item-toggle-size);
 		border-radius: 50%;
 		background: var(--faq-surface);
 		box-shadow: inset 0 0 0 1px var(--faq-border-soft);
@@ -601,23 +378,28 @@ if ($canManageAllFaqs) {
 	}
 
 	.faq-popup__item-toggle::before {
-		content: "+";
+		content: "";
 		position: absolute;
-		inset: 0;
+		left: 50%;
+		top: 50%;
+		width: 8px;
+		height: 8px;
+		border-right: 2px solid currentColor;
+		border-bottom: 2px solid currentColor;
 		display: grid;
 		place-items: center;
-		font-size: 24px;
-		line-height: 1;
 		color: var(--faq-accent);
+		transform: translate(-50%, -65%) rotate(45deg);
+		transition: transform 180ms ease;
 	}
 
 	.faq-popup__item.is-open .faq-popup__item-toggle::before {
-		content: "-";
+		transform: translate(-50%, -35%) rotate(225deg);
 	}
 
 	.faq-popup__meta {
 		display: flex;
-		gap: 8px;
+		gap: var(--generic-space-2, 8px);
 		flex-wrap: wrap;
 	}
 
@@ -645,7 +427,7 @@ if ($canManageAllFaqs) {
 
 	.faq-popup__answer {
 		display: none;
-		padding: 0 24px 24px 98px;
+		padding: 0 var(--faq-item-padding-inline) var(--faq-item-padding-inline) calc(var(--faq-item-icon-size) + var(--faq-item-gap) + var(--faq-item-padding-inline));
 		color: var(--faq-text-muted);
 		line-height: 1.6;
 	}
@@ -654,39 +436,18 @@ if ($canManageAllFaqs) {
 		display: block;
 	}
 
-	.faq-popup__answer-body {
-		display: grid;
-		gap: 14px;
-	}
-
-	.faq-popup__answer-caption {
-		font-size: 13px;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: var(--faq-text-muted);
-	}
-
-	.faq-popup__answer-text {
-		font-size: 16px;
-		line-height: 1.8;
-		color: var(--faq-heading);
-	}
 
 	.faq-popup__answer-footer {
-		margin-top: 18px;
-		padding-top: 18px;
+		margin-top: var(--generic-space-2, 8px);
+		padding-top: var(--generic-space-2, 8px);
 		border-top: 1px solid var(--faq-border-soft);
 		display: flex;
 		align-items: center;
-		gap: 16px;
+		gap: var(--generic-space-2, 8px);
 		flex-wrap: wrap;
 	}
 
 	.faq-popup__actions {
-		display: flex;
-		gap: 10px;
-		flex-wrap: wrap;
 		margin-top: 0;
 		flex: 0 0 auto;
 	}
@@ -858,10 +619,7 @@ if ($canManageAllFaqs) {
 		line-height: 1.45;
 	}
 
-	.faq-popup__detail-link,
-	.faq-popup__back,
-	.faq-popup__add,
-	.faq-popup__edit {
+	.faq-popup__detail-link {
 		border: 0;
 		background: var(--faq-surface-strong);
 		color: var(--faq-heading);
@@ -871,20 +629,8 @@ if ($canManageAllFaqs) {
 		font-size: 14px;
 	}
 
-	.faq-popup__detail-link:hover,
-	.faq-popup__back:hover,
-	.faq-popup__add:hover,
-	.faq-popup__edit:hover {
+	.faq-popup__detail-link:hover {
 		background: color-mix(in srgb, var(--faq-surface-strong) 72%, var(--faq-accent-soft));
-	}
-
-	.faq-popup__add {
-		background: var(--faq-heading);
-		color: var(--faq-bg);
-	}
-
-	.faq-popup__add:hover {
-		background: color-mix(in srgb, var(--faq-heading) 86%, var(--faq-accent-strong));
 	}
 
 	.faq-popup__answer-footer .faq-popup__detail-link {
@@ -900,26 +646,6 @@ if ($canManageAllFaqs) {
 		color: var(--faq-accent);
 	}
 
-	.faq-popup__editor-shell {
-		padding: 18px;
-		display: grid;
-		gap: 16px;
-	}
-
-	.faq-popup__editor-actions {
-		display: flex;
-		justify-content: flex-end;
-		gap: 12px;
-		flex-wrap: wrap;
-	}
-
-	.faq-popup__editor-status {
-		padding: 12px 14px;
-		border-radius: 12px;
-		background: var(--faq-surface);
-		color: var(--faq-text-muted);
-	}
-
 	.faq-popup__detail {
 		position: absolute;
 		inset: 0;
@@ -928,7 +654,6 @@ if ($canManageAllFaqs) {
 		border-radius: 18px;
 		background: var(--faq-bg);
 		overflow: auto;
-		box-shadow: var(--faq-shadow-strong);
 	}
 
 	.faq-popup__detail[hidden] {
@@ -942,60 +667,17 @@ if ($canManageAllFaqs) {
 		padding: 0 2px;
 	}
 
-	.faq-popup__scope-grid {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 14px;
-	}
-
-	.faq-popup__scope-field {
-		display: grid;
-		gap: 6px;
-	}
-
-	.faq-popup__scope-field--full {
-		grid-column: 1 / -1;
-	}
-
 	.faq-popup__scope-field[hidden] {
 		display: none !important;
 	}
 
-	.faq-popup__scope-label {
-		font-size: 13px;
-		font-weight: 600;
-		color: var(--faq-heading);
-	}
-
-	.faq-popup__scope-control,
-	.faq-popup__scope-fixed {
-		width: 100%;
-		padding: 12px 14px;
-		border: 1px solid var(--faq-border);
-		border-radius: 12px;
-		background: var(--faq-bg);
-		color: var(--faq-text);
-		font-size: 14px;
-	}
-
-	.faq-popup__scope-control:disabled {
-		background: var(--faq-surface);
-		color: color-mix(in srgb, var(--faq-text-muted) 72%, transparent);
-		cursor: not-allowed;
-	}
-
 	@media (max-width: 720px) {
-		.faq-popup__hero-head {
-			align-items: stretch;
-		}
-
 		.faq-popup__toolbar {
 			grid-template-columns: 1fr;
 		}
 
 		.faq-popup__toolbar-main,
-		.faq-popup__toolbar-actions,
-		.faq-popup__toolbar-note {
+		.faq-popup__toolbar-actions {
 			width: 100%;
 		}
 
@@ -1008,40 +690,20 @@ if ($canManageAllFaqs) {
 			font-size: 12px;
 		}
 
-		.faq-popup__search-shell {
-			padding: 0 14px;
-			border-radius: 16px;
-		}
-
-		.faq-popup__item-header {
-			grid-template-columns: 48px minmax(0, 1fr) 38px;
-			gap: 14px;
-			padding: 18px;
+		.faq-popup__item {
+			--faq-item-icon-size: 36px;
+			--faq-item-toggle-size: 30px;
+			--faq-item-gap: var(--generic-space-2, 8px);
+			--faq-item-padding-block: var(--generic-space-2, 8px);
+			--faq-item-padding-inline: 10px;
 		}
 
 		.faq-popup__item-icon {
-			width: 48px;
-			height: 48px;
-			border-radius: 16px;
-			font-size: 18px;
-		}
-
-		.faq-popup__item-toggle {
-			width: 38px;
-			height: 38px;
-		}
-
-		.faq-popup__question {
-			font-size: 18px;
+			font-size: 16px;
 		}
 
 		.faq-popup__answer {
-			padding: 0 18px 18px;
-		}
-
-		.faq-popup__answer-text {
-			font-size: 15px;
-			line-height: 1.7;
+			padding: 0 var(--faq-item-padding-inline) var(--faq-item-padding-inline) var(--faq-item-padding-inline);
 		}
 
 		.faq-popup__answer-footer {
@@ -1089,25 +751,21 @@ if ($canManageAllFaqs) {
 			border: 0;
 		}
 
-		.faq-popup__scope-grid {
-			grid-template-columns: 1fr;
-		}
 	}
 	</style>
 
-	<div class="faq-popup__search" data-faq-search-view>
-		<div class="faq-popup__hero">
+	<div class="faq-popup__search generic-stack generic-stack--roomy" data-faq-search-view>
+		<div class="faq-popup__hero generic-stack generic-stack--roomy">
 
 			<?php if ($contextOrganizationId > 0 || count($allFAQ) > 0 || $canAddFaq): ?>
 				<div class="faq-popup__toolbar">
-					<div class="faq-popup__toolbar-main">
+					<div class="faq-popup__toolbar-main generic-stack generic-stack--compact">
 						<?php if ($contextOrganizationId > 0): ?>
 							<div
-								class="faq-popup__scope-toggle"
+								class="faq-popup__scope-toggle omo-segmented"
 								role="tablist"
 								aria-label="Portee de la FAQ"
 								data-faq-scope-switch="<?= htmlspecialchars($faqScope, ENT_QUOTES, 'UTF-8') ?>"
-								style="--faq-scope-option-count: <?= (int)count($faqAvailableScopes) ?>; --faq-scope-active-index: <?= (int)$faqScopeActiveIndex ?>;"
 							>
 								<?php foreach ($faqAvailableScopes as $scopeOption): ?>
 									<button
@@ -1115,27 +773,27 @@ if ($canManageAllFaqs) {
 											title="<?= htmlspecialchars($contextHolonLabel, ENT_QUOTES, 'UTF-8') ?>"
 										<?php endif; ?>
 										type="button"
-										class="faq-popup__scope-toggle-button<?= $faqScope === $scopeOption ? ' is-active' : '' ?>"
+										class="faq-popup__scope-toggle-button omo-segmented__button<?= $faqScope === $scopeOption ? ' is-active' : '' ?>"
 										data-faq-scope-toggle="<?= htmlspecialchars($scopeOption, ENT_QUOTES, 'UTF-8') ?>"
 										data-omo-scope-option="<?= htmlspecialchars($scopeOption, ENT_QUOTES, 'UTF-8') ?>"
 										aria-pressed="<?= $faqScope === $scopeOption ? 'true' : 'false' ?>"
-									><span><?= htmlspecialchars((string)($faqScopeLabels[$scopeOption] ?? $scopeOption), ENT_QUOTES, 'UTF-8') ?></span></button>
+									><span class="omo-segmented__text"><?= htmlspecialchars((string)($faqScopeLabels[$scopeOption] ?? $scopeOption), ENT_QUOTES, 'UTF-8') ?></span></button>
 								<?php endforeach; ?>
 							</div>
 						<?php endif; ?>
 						
 					</div>
-					<div class="faq-popup__toolbar-actions">
+					<div class="faq-popup__toolbar-actions generic-action-row">
 						<?php if ($canAddFaq): ?>
-							<button type="button" class="faq-popup__add" data-faq-add>Ajouter une question</button>
+							<button type="button" class="faq-popup__add generic-action-button generic-action-button--main" data-faq-add>Ajouter une question</button>
 						<?php endif; ?>
 					</div>
 				</div>
 			<?php endif; ?>
 			<?php if (count($allFAQ) > 0): ?>
 				<div class="faq-popup__search-row">
-					<label class="faq-popup__search-shell">
-						<span class="faq-popup__search-icon" aria-hidden="true"></span>
+					<label class="faq-popup__search-shell generic-form-control">
+						<img src="/common/assets/icon-topbar-search.png" alt="" class="faq-popup__search-icon black-icon" aria-hidden="true">
 						<input
 							type="search"
 							class="faq-popup__search-input"
@@ -1148,15 +806,15 @@ if ($canManageAllFaqs) {
 			<?php endif; ?>
 		</div>
 		<?php if (!$faqStorageAvailable): ?>
-			<div class="faq-popup__helper"><strong>Module FAQ indisponible.</strong> La table `faq` n existe pas encore dans cette base. Lancez les migrations SQL pour activer cette fonctionnalite.</div>
+			<div class="faq-popup__helper generic-soft-panel generic-help-text generic-help-text--regular"><strong>Module FAQ indisponible.</strong> La table `faq` n existe pas encore dans cette base. Lancez les migrations SQL pour activer cette fonctionnalite.</div>
 		<?php endif; ?>
-		<div class="faq-popup__no-result" data-faq-no-result hidden>
+		<div class="faq-popup__no-result generic-soft-panel generic-help-text generic-help-text--regular" data-faq-no-result hidden>
 			Aucune FAQ ne correspond a cette recherche.
 		</div>
 		<?php if (count($allFAQ) === 0): ?>
-			<div class="faq-popup__empty">Aucune FAQ n'est disponible pour le moment.</div>
+			<div class="faq-popup__empty generic-soft-panel generic-help-text generic-help-text--regular">Aucune FAQ n'est disponible pour le moment.</div>
 		<?php endif; ?>
-		<div class="faq-popup__list" data-faq-list<?= count($allFAQ) === 0 ? ' hidden' : '' ?>>
+		<div class="faq-popup__list generic-stack generic-stack--compact" data-faq-list<?= count($allFAQ) === 0 ? ' hidden' : '' ?>>
 			<?php $faqIndex = 0; ?>
 			<?php foreach ($allFAQ as $faq): ?>
 				<?php
@@ -1172,7 +830,7 @@ if ($canManageAllFaqs) {
 				}
 				?>
 				<div
-					class="faq-popup__item<?= $faqIndex === 0 ? ' is-open' : '' ?>"
+					class="faq-popup__item generic-soft-panel<?= $faqIndex === 0 ? ' is-open' : '' ?>"
 					data-faq-item
 					data-faq-id="<?= (int)$faq->get("id") ?>"
 					data-faq-default-order="<?= $faqIndex ?>"
@@ -1180,8 +838,8 @@ if ($canManageAllFaqs) {
 				>
 					<button type="button" class="faq-popup__item-header" data-faq-toggle>
 						<span class="<?= $scopeIconClass ?>" aria-hidden="true">?</span>
-						<span class="faq-popup__item-heading">
-							<span class="faq-popup__question"><?= htmlspecialchars((string)$faq->get("question")) ?></span>
+						<span class="faq-popup__item-heading generic-stack generic-stack--compact">
+							<span class="faq-popup__question generic-title generic-title--card"><?= htmlspecialchars((string)$faq->get("question")) ?></span>
 							<span class="faq-popup__meta">
 								<span class="<?= $scopeTypeClass ?>"><?= htmlspecialchars((string)($scopeInfo['label'] ?? 'FAQ'), ENT_QUOTES, 'UTF-8') ?></span>
 								<?php if (!(int)$faq->get('isactive')): ?>
@@ -1195,12 +853,12 @@ if ($canManageAllFaqs) {
 						<span class="faq-popup__item-toggle" aria-hidden="true"></span>
 					</button>
 					<div class="faq-popup__answer" data-faq-answer>
-						<div class="faq-popup__answer-body">
-							<div class="faq-popup__answer-caption">Reponse resumee</div>
-							<div class="faq-popup__answer-text" data-faq-answer-text><?= nl2br(htmlspecialchars($faq->getShortAnswer(220))) ?></div>
+						<div class="faq-popup__answer-body generic-stack generic-stack--compact">
+							<div class="faq-popup__answer-caption generic-meta-label">Reponse resumee</div>
+							<div class="faq-popup__answer-text generic-description generic-description--card generic-description--primary" data-faq-answer-text><?= nl2br(htmlspecialchars($faq->getShortAnswer(220))) ?></div>
 						</div>
 						<div class="faq-popup__answer-footer">
-							<div class="faq-popup__actions">
+							<div class="faq-popup__actions generic-action-row">
 								<button
 									type="button"
 									class="faq-popup__detail-link"
@@ -1224,12 +882,12 @@ if ($canManageAllFaqs) {
 	<div class="faq-popup__detail" data-faq-detail-view hidden></div>
 	<?php if ($canAddFaq): ?>
 		<div class="faq-popup__detail" data-faq-editor-view hidden>
-			<div class="faq-popup__editor-shell" data-faq-form-shell>
-				<div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
-					<h4 style="margin:0; font-size:20px; color:#0f172a;"><?= htmlspecialchars($editorTitle, ENT_QUOTES, 'UTF-8') ?></h4>
-					<button type="button" class="faq-popup__back" data-faq-back>Retour</button>
+			<div class="faq-popup__editor-shell generic-drawer-content" data-faq-form-shell>
+				<div class="generic-form-section__heading">
+					<h4 class="generic-title generic-title--section"><?= htmlspecialchars($editorTitle, ENT_QUOTES, 'UTF-8') ?></h4>
+					<button type="button" class="faq-popup__back generic-action-button generic-action-button--secondary" data-faq-back>Retour</button>
 				</div>
-				<div class="faq-popup__editor-status">
+				<div class="faq-popup__editor-status generic-soft-panel generic-help-text generic-help-text--regular">
 					<?= htmlspecialchars($editorStatus, ENT_QUOTES, 'UTF-8') ?>
 				</div>
 				<?php
@@ -1249,9 +907,9 @@ if ($canManageAllFaqs) {
 				);
 				$newFaq->display('adminEdit.php', $params);
 				?>
-				<div class="faq-popup__editor-actions">
-					<button type="button" class="faq-popup__back" data-faq-back>Annuler</button>
-					<button type="button" class="faq-popup__add" data-faq-save>Enregistrer</button>
+				<div class="faq-popup__editor-actions generic-action-row">
+					<button type="button" class="faq-popup__back generic-action-button generic-action-button--secondary" data-faq-back>Annuler</button>
+					<button type="button" class="faq-popup__add generic-action-button generic-action-button--main" data-faq-save>Enregistrer</button>
 				</div>
 			</div>
 		</div>
@@ -1318,22 +976,6 @@ if ($canManageAllFaqs) {
 		}
 
 		return 'contextual';
-	}
-
-	function resolveFaqScopeIndex(scopeSwitch, scope) {
-		if (!scopeSwitch) {
-			return 0;
-		}
-
-		const normalizedScope = normalizeFaqScope(scope);
-		const scopeButtons = Array.from(scopeSwitch.querySelectorAll('[data-faq-scope-toggle]'));
-		for (let index = 0; index < scopeButtons.length; index += 1) {
-			if (normalizeFaqScope(scopeButtons[index].getAttribute('data-faq-scope-toggle')) === normalizedScope) {
-				return index;
-			}
-		}
-
-		return 0;
 	}
 
 	function buildAccentInsensitivePattern(word) {
@@ -1475,7 +1117,6 @@ if ($canManageAllFaqs) {
 				'data-faq-scope-switch',
 				normalizedScope
 			);
-			scopeSwitch.style.setProperty('--faq-scope-active-index', String(resolveFaqScopeIndex(scopeSwitch, normalizedScope)));
 		}
 
 		activeRoot.querySelectorAll('[data-faq-scope-toggle]').forEach(function (button) {

@@ -6,6 +6,7 @@ use dbObject\Checklist;
 use dbObject\ChecklistItem;
 use dbObject\ChecklistItemDependency;
 use dbObject\ChecklistItemRecurrence;
+use dbObject\ArrayChecklistItemDependency;
 use dbObject\ChecklistRun;
 use dbObject\ChecklistRunItem;
 use dbObject\ChecklistTrigger;
@@ -79,6 +80,34 @@ function omoChecklistActionCloneProject(Project $template, $parentProjectId, Dat
         throw new RuntimeException(omoChecklistT('checklist.error.save'));
     }
     return $project;
+}
+
+function omoChecklistActionRemoveItemDependencies(ChecklistItem $item)
+{
+    $dependencies = new ArrayChecklistItemDependency();
+    $dependencies->loadForItem((int)$item->getId());
+    foreach ($dependencies as $dependency) {
+        if ($dependency instanceof ChecklistItemDependency && !$dependency->delete()) {
+            throw new RuntimeException(omoChecklistT('checklist.error.save'));
+        }
+    }
+    $dependencies->loadForRequiredItem((int)$item->getId());
+    foreach ($dependencies as $dependency) {
+        if ($dependency instanceof ChecklistItemDependency && !$dependency->delete()) {
+            throw new RuntimeException(omoChecklistT('checklist.error.save'));
+        }
+    }
+}
+
+function omoChecklistActionNextItemPosition(Checklist $checklist)
+{
+    $position = 0;
+    foreach ($checklist->getItems(true) as $item) {
+        if ($item instanceof ChecklistItem) {
+            $position = max($position, (int)$item->get('position') + 1);
+        }
+    }
+    return $position;
 }
 
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
@@ -382,6 +411,160 @@ if ($action === 'activate_checklist') {
         'id' => $checklistId,
         'runId' => (int)$run->getId(),
         'detailUrl' => omoChecklistActionDetailUrl($organizationId, $checklistId, $currentHolonId),
+    ]);
+}
+
+if (in_array($action, ['delete_item', 'move_item', 'extract_item'], true)) {
+    $checklistId = isset($_POST['checklist_id']) && is_numeric($_POST['checklist_id']) ? (int)$_POST['checklist_id'] : 0;
+    $itemId = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : 0;
+    $checklist = omoChecklistLoad($checklistId, $organizationId);
+    $item = new ChecklistItem();
+    if (!($checklist instanceof Checklist)) {
+        omoChecklistActionRespond(false, omoChecklistT('checklist.error.not_found'), [], 404);
+    }
+    if (!omoChecklistCanManage($checklist)) {
+        omoChecklistActionRespond(false, omoChecklistT('checklist.error.forbidden'), [], 403);
+    }
+    if ($itemId <= 0 || !$item->load($itemId) || (int)$item->get('IDchecklist') !== $checklistId || (int)$item->get('active') !== 1) {
+        omoChecklistActionRespond(false, omoChecklistT('checklist.error.item_not_found'), [], 404);
+    }
+
+    $project = $item->getProjectTemplate();
+    if (!($project instanceof Project)) {
+        omoChecklistActionRespond(false, omoChecklistT('checklist.error.item_not_found'), [], 404);
+    }
+
+    $pdo = DbObject::getPdo();
+    $startedTransaction = false;
+    try {
+        if ($pdo && !$pdo->inTransaction()) {
+            $pdo->beginTransaction();
+            $startedTransaction = true;
+        }
+
+        if ($action === 'delete_item') {
+            omoChecklistActionRemoveItemDependencies($item);
+            $recurrence = $item->getRecurrence();
+            if ($recurrence instanceof ChecklistItemRecurrence && !$recurrence->delete()) {
+                throw new RuntimeException(omoChecklistT('checklist.error.save'));
+            }
+            $item->set('active', 0);
+            omoChecklistActionSaveObject($item);
+            $project->set('active', 0);
+            omoChecklistActionSaveObject($project);
+            omoChecklistActionSaveObject($checklist);
+        }
+
+        if ($action === 'move_item') {
+            $targetChecklistId = isset($_POST['target_checklist_id']) && is_numeric($_POST['target_checklist_id'])
+                ? (int)$_POST['target_checklist_id']
+                : 0;
+            $targetChecklist = omoChecklistLoad($targetChecklistId, $organizationId);
+            if (!($targetChecklist instanceof Checklist)
+                || $targetChecklistId === $checklistId
+                || !omoChecklistCanManage($targetChecklist)) {
+                throw new InvalidArgumentException(omoChecklistT('checklist.error.item_target'));
+            }
+            $targetRoot = $targetChecklist->getTemplateRoot();
+            if (!($targetRoot instanceof Project)) {
+                throw new InvalidArgumentException(omoChecklistT('checklist.error.item_target'));
+            }
+            $targetTrigger = omoChecklistGetPrimaryTrigger($targetChecklist);
+            $targetIsContainer = $targetTrigger instanceof ChecklistTrigger
+                && ChecklistTrigger::normalizeTriggerType($targetTrigger->get('trigger_type')) === ChecklistTrigger::TYPE_CONTAINER;
+
+            omoChecklistActionRemoveItemDependencies($item);
+            $recurrence = $item->getRecurrence();
+            if (!$targetIsContainer && $recurrence instanceof ChecklistItemRecurrence && !$recurrence->delete()) {
+                throw new RuntimeException(omoChecklistT('checklist.error.save'));
+            }
+            $project->set('IDproject_parent', (int)$targetRoot->getId());
+            omoChecklistActionSaveObject($project);
+            $item->set('IDchecklist', $targetChecklistId);
+            $item->set('position', omoChecklistActionNextItemPosition($targetChecklist));
+            if ($targetIsContainer) {
+                $item->set('activation_type', ChecklistItem::ACTIVATION_IMMEDIATE);
+                $item->set('delay_value', 0);
+                $item->set('delay_unit', null);
+            }
+            omoChecklistActionSaveObject($item);
+            omoChecklistActionSaveObject($checklist);
+            omoChecklistActionSaveObject($targetChecklist);
+        }
+
+        if ($action === 'extract_item') {
+            $sourceTrigger = omoChecklistGetPrimaryTrigger($checklist);
+            $isContainerChecklist = $sourceTrigger instanceof ChecklistTrigger
+                && ChecklistTrigger::normalizeTriggerType($sourceTrigger->get('trigger_type')) === ChecklistTrigger::TYPE_CONTAINER;
+            $recurrence = $item->getRecurrence();
+            $frequency = $recurrence instanceof ChecklistItemRecurrence
+                ? RecurrenceSchedule::normalizeFrequency($recurrence->get('frequency'))
+                : null;
+            $schedule = $recurrence instanceof ChecklistItemRecurrence
+                ? RecurrenceSchedule::normalizeSchedule($frequency, $recurrence->get('schedule'))
+                : null;
+            if (!$isContainerChecklist || $frequency === null || $schedule === null || (int)$recurrence->get('enabled') !== 1) {
+                throw new InvalidArgumentException(omoChecklistT('checklist.error.item_extract_recurrence'));
+            }
+
+            $project->set('IDproject_parent', null);
+            $project->set('project_kind', Project::KIND_CHECKLIST_TEMPLATE);
+            omoChecklistActionSaveObject($project);
+
+            $extractedChecklist = new Checklist();
+            $extractedChecklist->set('IDorganization', $organizationId);
+            $extractedChecklist->set('IDchecklist_previous', null);
+            $extractedChecklist->set('IDproject_template_root', (int)$project->getId());
+            $extractedChecklist->set('IDdocument', null);
+            $extractedChecklist->set('status', Checklist::normalizeStatus($checklist->get('status')));
+            $extractedChecklist->set('revision_note', null);
+            $extractedChecklist->set('active', 1);
+            omoChecklistActionSaveObject($extractedChecklist);
+
+            $trigger = new ChecklistTrigger();
+            $trigger->set('IDchecklist', (int)$extractedChecklist->getId());
+            $trigger->set('stable_key', 'primary');
+            $trigger->set('trigger_type', ChecklistTrigger::TYPE_SCHEDULED);
+            $trigger->set('frequency', $frequency);
+            $trigger->set('schedule', $schedule);
+            $trigger->set('overlap_policy', ChecklistTrigger::OVERLAP_REUSE_OPEN);
+            $trigger->set('enabled', 1);
+            $trigger->set('next_trigger_at', RecurrenceSchedule::getNextOccurrence($frequency, $schedule, new DateTimeImmutable()));
+            omoChecklistActionSaveObject($trigger);
+
+            omoChecklistActionRemoveItemDependencies($item);
+            if (!$recurrence->delete()) {
+                throw new RuntimeException(omoChecklistT('checklist.error.save'));
+            }
+            $item->set('active', 0);
+            omoChecklistActionSaveObject($item);
+            omoChecklistActionSaveObject($checklist);
+        }
+
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+            $pdo->commit();
+        }
+    } catch (InvalidArgumentException $exception) {
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        omoChecklistActionRespond(false, $exception->getMessage(), [], 422);
+    } catch (Throwable $exception) {
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        omoChecklistActionRespond(false, omoChecklistT('checklist.error.save'), [], 500);
+    }
+
+    $responseChecklistId = $action === 'extract_item' ? (int)$extractedChecklist->getId() : $checklistId;
+    $messages = [
+        'delete_item' => omoChecklistT('checklist.success.item_deleted'),
+        'move_item' => omoChecklistT('checklist.success.item_moved'),
+        'extract_item' => omoChecklistT('checklist.success.item_extracted'),
+    ];
+    omoChecklistActionRespond(true, $messages[$action], [
+        'id' => $responseChecklistId,
+        'detailUrl' => omoChecklistActionDetailUrl($organizationId, $responseChecklistId, $currentHolonId),
     ]);
 }
 

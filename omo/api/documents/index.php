@@ -111,8 +111,24 @@ $sourceLang = [
         'context' => 'Button applying temporary document filter choices.',
     ],
     'documents.filters.save_view' => [
-        'text' => 'Enregistrer cette vue',
+        'text' => 'Enregistrer la vue',
         'context' => 'Button saving document filter choices for the current context.',
+    ],
+    'documents.filters.more_actions' => [
+        'text' => 'Autres options de vue',
+        'context' => 'Accessible label for additional document view preference actions.',
+    ],
+    'documents.filters.apply_everywhere' => [
+        'text' => 'Appliquer partout',
+        'context' => 'Action setting the current document view as the default and clearing specific views.',
+    ],
+    'documents.filters.set_default' => [
+        'text' => 'Définir comme vue par défaut',
+        'context' => 'Action saving the current document view as the default view.',
+    ],
+    'documents.filters.restore_default' => [
+        'text' => 'Restaurer la vue par défaut',
+        'context' => 'Action removing the current holon specific document view.',
     ],
     'documents.search.aria' => [
         'text' => 'Filtrer les documents affichés',
@@ -667,7 +683,7 @@ if (!is_string($documentsPayload)) {
     $documentsPayload = '{"documents":[],"openDocumentId":0,"openDocumentMode":"detail","requestedDocument":null,"groups":[]}';
 }
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
 <div
     class="omo-documents omo-panel-view"
     id="omo-documents-root"
@@ -750,8 +766,16 @@ if (!is_string($documentsPayload)) {
                         </div>
                     </div>
                     <div class="omo-view-filter__actions">
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-documents-filter-apply><?= $escape(omoDocumentsScopeT('documents.filters.apply')) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-documents-filter-save><?= $escape(omoDocumentsScopeT('documents.filters.save_view')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-documents-filter-apply><?= $escape(omoDocumentsScopeT('documents.filters.apply')) ?></button>
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-documents-filter-save><?= $escape(omoDocumentsScopeT('documents.filters.save_view')) ?></button>
+                        <div class="generic-menu omo-view-filter__actions-more" data-omo-documents-filter-more-menu>
+                            <button type="button" class="generic-menu-toggle" data-omo-documents-filter-more-toggle aria-expanded="false" aria-label="<?= $escape(omoDocumentsScopeT('documents.filters.more_actions')) ?>">&#8942;</button>
+                            <div class="generic-menu-panel" data-omo-documents-filter-more-panel role="menu" hidden>
+                                <button type="button" class="generic-menu-item" data-omo-documents-filter-more-action="apply-everywhere" role="menuitem"><?= $escape(omoDocumentsScopeT('documents.filters.apply_everywhere')) ?></button>
+                                <button type="button" class="generic-menu-item" data-omo-documents-filter-more-action="set-default" role="menuitem"><?= $escape(omoDocumentsScopeT('documents.filters.set_default')) ?></button>
+                                <button type="button" class="generic-menu-item" data-omo-documents-filter-more-action="restore-default" role="menuitem"><?= $escape(omoDocumentsScopeT('documents.filters.restore_default')) ?></button>
+                            </div>
+                        </div>
                     </div>
                 </section>
             </div>
@@ -923,7 +947,8 @@ if (!is_string($documentsPayload)) {
             <script src="/common/drawer/subdrawer.js"></script>
             <script>
             (function () {
-                const omoDocumentsSavedViewsStorageKey = 'omo.documents.saved-views.v1';
+                const omoDocumentsSavedViewsStorageKey = 'omo.documents.saved-views.v2';
+                const omoDocumentsLegacySavedViewsStorageKey = 'omo.documents.saved-views.v1';
                 const omoDocumentsSessionViewsStorageKey = 'omo.documents.session-views.v1';
                 const omoDocumentsSearchStorageKey = 'omo.documents.quick-search.v1';
                 const omoDocumentsFileIconUrl = '/omo/assets/images/documents/file.png';
@@ -1061,6 +1086,79 @@ if (!is_string($documentsPayload)) {
                         + ':' + String(panel && panel.getAttribute('data-omo-document-cid') || '0');
                 };
 
+                const omoDocumentsCreatePreferences = function (preferences) {
+                    return {
+                        scope: omoDocumentsNormalizeScope(preferences && preferences.scope),
+                        sort: omoDocumentsNormalizeSortPreference(preferences && preferences.sort),
+                        density: omoDocumentsNormalizeDensityPreference(preferences && preferences.density)
+                    };
+                };
+
+                const omoDocumentsGetSavedViewsStore = function () {
+                    try {
+                        const rawValue = window.localStorage.getItem(omoDocumentsSavedViewsStorageKey);
+                        const savedViews = rawValue ? JSON.parse(rawValue) : null;
+                        if (savedViews && typeof savedViews === 'object' && savedViews.contexts && typeof savedViews.contexts === 'object') {
+                            return {
+                                defaultView: savedViews.defaultView && typeof savedViews.defaultView === 'object'
+                                    ? savedViews.defaultView
+                                    : null,
+                                contexts: savedViews.contexts
+                            };
+                        }
+
+                        const legacyValue = window.localStorage.getItem(omoDocumentsLegacySavedViewsStorageKey);
+                        const legacyViews = legacyValue ? JSON.parse(legacyValue) : null;
+                        return {
+                            defaultView: null,
+                            contexts: legacyViews && typeof legacyViews === 'object' ? legacyViews : {}
+                        };
+                    } catch (error) {
+                        return {defaultView: null, contexts: {}};
+                    }
+                };
+
+                const omoDocumentsSaveViewsStore = function (store) {
+                    try {
+                        window.localStorage.setItem(omoDocumentsSavedViewsStorageKey, JSON.stringify({
+                            defaultView: store.defaultView && typeof store.defaultView === 'object'
+                                ? store.defaultView
+                                : null,
+                            contexts: store.contexts && typeof store.contexts === 'object' ? store.contexts : {}
+                        }));
+                    } catch (error) {
+                    }
+                };
+
+                const omoDocumentsGetStoredPreferences = function (panel) {
+                    const preferences = omoDocumentsGetSavedViewsStore().contexts[
+                        omoDocumentsGetPreferencesContextKey(panel)
+                    ];
+                    return preferences && typeof preferences === 'object' ? preferences : null;
+                };
+
+                const omoDocumentsGetDefaultPreferences = function () {
+                    return omoDocumentsGetSavedViewsStore().defaultView;
+                };
+
+                const omoDocumentsStorePreferences = function (panel, preferences) {
+                    const store = omoDocumentsGetSavedViewsStore();
+                    store.contexts[omoDocumentsGetPreferencesContextKey(panel)] = omoDocumentsCreatePreferences(preferences);
+                    omoDocumentsSaveViewsStore(store);
+                };
+
+                const omoDocumentsStoreDefaultPreferences = function (preferences) {
+                    const store = omoDocumentsGetSavedViewsStore();
+                    store.defaultView = omoDocumentsCreatePreferences(preferences);
+                    omoDocumentsSaveViewsStore(store);
+                };
+
+                const omoDocumentsClearStoredPreferences = function (panel) {
+                    const store = omoDocumentsGetSavedViewsStore();
+                    delete store.contexts[omoDocumentsGetPreferencesContextKey(panel)];
+                    omoDocumentsSaveViewsStore(store);
+                };
+
                 const omoDocumentsReadStoredValue = function (storage, storageKey, panel) {
                     try {
                         const rawValue = storage.getItem(storageKey);
@@ -1079,12 +1177,9 @@ if (!is_string($documentsPayload)) {
                         omoDocumentsSessionViewsStorageKey,
                         panel
                     );
-                    const saved = omoDocumentsReadStoredValue(
-                        window.localStorage,
-                        omoDocumentsSavedViewsStorageKey,
-                        panel
-                    );
-                    const preferences = temporary || saved || {};
+                    const saved = omoDocumentsGetStoredPreferences(panel);
+                    const defaultView = omoDocumentsGetDefaultPreferences();
+                    const preferences = temporary || saved || defaultView || {};
 
                     return {
                         scope: omoDocumentsNormalizeScope(
@@ -1096,40 +1191,43 @@ if (!is_string($documentsPayload)) {
                 };
 
                 const omoDocumentsWritePreferences = function (panel, preferences, saveView) {
-                    const normalizedPreferences = {
-                        scope: omoDocumentsNormalizeScope(preferences && preferences.scope),
-                        sort: omoDocumentsNormalizeSortPreference(preferences && preferences.sort),
-                        density: omoDocumentsNormalizeDensityPreference(preferences && preferences.density)
-                    };
-                    const storage = saveView ? window.localStorage : window.sessionStorage;
-                    const storageKey = saveView
-                        ? omoDocumentsSavedViewsStorageKey
-                        : omoDocumentsSessionViewsStorageKey;
+                    const normalizedPreferences = omoDocumentsCreatePreferences(preferences);
+
+                    if (saveView) {
+                        omoDocumentsStorePreferences(panel, normalizedPreferences);
+                        omoDocumentsClearTemporaryPreferences(panel);
+                        return;
+                    }
 
                     try {
-                        const rawValue = storage.getItem(storageKey);
+                        const rawValue = window.sessionStorage.getItem(omoDocumentsSessionViewsStorageKey);
                         let values = rawValue ? JSON.parse(rawValue) : {};
                         if (!values || typeof values !== 'object') {
                             values = {};
                         }
                         values[omoDocumentsGetPreferencesContextKey(panel)] = normalizedPreferences;
-                        storage.setItem(storageKey, JSON.stringify(values));
+                        window.sessionStorage.setItem(omoDocumentsSessionViewsStorageKey, JSON.stringify(values));
                     } catch (error) {
                     }
+                };
 
-                    if (saveView) {
-                        try {
-                            const rawTemporary = window.sessionStorage.getItem(omoDocumentsSessionViewsStorageKey);
-                            const temporaryValues = rawTemporary ? JSON.parse(rawTemporary) : {};
-                            if (temporaryValues && typeof temporaryValues === 'object') {
-                                delete temporaryValues[omoDocumentsGetPreferencesContextKey(panel)];
-                                window.sessionStorage.setItem(
-                                    omoDocumentsSessionViewsStorageKey,
-                                    JSON.stringify(temporaryValues)
-                                );
-                            }
-                        } catch (error) {
+                const omoDocumentsClearTemporaryPreferences = function (panel) {
+                    try {
+                        const rawValue = window.sessionStorage.getItem(omoDocumentsSessionViewsStorageKey);
+                        const values = rawValue ? JSON.parse(rawValue) : {};
+                        if (!values || typeof values !== 'object') {
+                            return;
                         }
+                        delete values[omoDocumentsGetPreferencesContextKey(panel)];
+                        window.sessionStorage.setItem(omoDocumentsSessionViewsStorageKey, JSON.stringify(values));
+                    } catch (error) {
+                    }
+                };
+
+                const omoDocumentsClearAllTemporaryPreferences = function () {
+                    try {
+                        window.sessionStorage.removeItem(omoDocumentsSessionViewsStorageKey);
+                    } catch (error) {
                     }
                 };
 
@@ -2491,6 +2589,33 @@ if (!is_string($documentsPayload)) {
                                 });
                             };
 
+                            const applyDisplayFilters = function (filters, active) {
+                                const next = normalizeDisplayFilters(filters);
+                                const previous = active || getActiveDisplayFilters();
+                                state.sort = next.sort;
+                                state.density = next.density;
+
+                                if (next.scope !== previous.scope && typeof window.omoSetDocumentsScope === 'function') {
+                                    window.omoSetDocumentsScope(next.scope, {panel: panel});
+                                    return;
+                                }
+                                render();
+                            };
+
+                            const closeFilterMoreMenu = function () {
+                                panel.querySelectorAll('[data-omo-documents-filter-more-menu]').forEach(function (menu) {
+                                    const morePanel = menu.querySelector('[data-omo-documents-filter-more-panel]');
+                                    const moreToggle = menu.querySelector('[data-omo-documents-filter-more-toggle]');
+                                    if (morePanel) {
+                                        morePanel.hidden = true;
+                                    }
+                                    menu.classList.remove('is-open');
+                                    if (moreToggle) {
+                                        moreToggle.setAttribute('aria-expanded', 'false');
+                                    }
+                                });
+                            };
+
                             const handleFilterOutsidePointerDown = function (event) {
                                 const control = panel.querySelector('[data-omo-documents-filter-control]');
                                 if (control && control.contains(event.target)) {
@@ -2505,6 +2630,7 @@ if (!is_string($documentsPayload)) {
                                     return;
                                 }
                                 pendingDisplayFilters = getActiveDisplayFilters();
+                                closeFilterMoreMenu();
                                 syncFilterChoices();
                                 filterPanel.hidden = false;
                                 filterPanelOpen = true;
@@ -2527,6 +2653,7 @@ if (!is_string($documentsPayload)) {
                                     button.setAttribute('aria-expanded', 'false');
                                 });
                                 document.removeEventListener('pointerdown', handleFilterOutsidePointerDown, true);
+                                closeFilterMoreMenu();
 
                                 if (!applyChanges || !pendingDisplayFilters) {
                                     pendingDisplayFilters = null;
@@ -2537,14 +2664,45 @@ if (!is_string($documentsPayload)) {
                                 const next = normalizeDisplayFilters(pendingDisplayFilters);
                                 pendingDisplayFilters = null;
                                 omoDocumentsWritePreferences(panel, next, saveView);
-                                state.sort = next.sort;
-                                state.density = next.density;
+                                applyDisplayFilters(next, active);
+                            };
 
-                                if (next.scope !== active.scope && typeof window.omoSetDocumentsScope === 'function') {
-                                    window.omoSetDocumentsScope(next.scope, {panel: panel});
+                            const applyFilterMoreAction = function (action) {
+                                if (!filterPanelOpen || !pendingDisplayFilters) {
                                     return;
                                 }
-                                render();
+
+                                const active = getActiveDisplayFilters();
+                                const next = normalizeDisplayFilters(pendingDisplayFilters);
+                                closeFilterPanel(false, false);
+
+                                if (action === 'set-default') {
+                                    omoDocumentsClearStoredPreferences(panel);
+                                    omoDocumentsClearTemporaryPreferences(panel);
+                                    omoDocumentsStoreDefaultPreferences(next);
+                                    applyDisplayFilters(next, active);
+                                    return;
+                                }
+
+                                if (action === 'apply-everywhere') {
+                                    const store = omoDocumentsGetSavedViewsStore();
+                                    store.defaultView = omoDocumentsCreatePreferences(next);
+                                    store.contexts = {};
+                                    omoDocumentsSaveViewsStore(store);
+                                    omoDocumentsClearAllTemporaryPreferences();
+                                    applyDisplayFilters(next, active);
+                                    return;
+                                }
+
+                                if (action === 'restore-default') {
+                                    omoDocumentsClearStoredPreferences(panel);
+                                    omoDocumentsClearTemporaryPreferences(panel);
+                                    applyDisplayFilters(omoDocumentsGetDefaultPreferences() || {
+                                        scope: 'contextual',
+                                        sort: 'updated',
+                                        density: 'detail'
+                                    }, active);
+                                }
                             };
 
                             panel.querySelectorAll('[data-omo-documents-filter-toggle]').forEach(function (button) {
@@ -2560,6 +2718,28 @@ if (!is_string($documentsPayload)) {
                             const filterPanel = panel.querySelector('[data-omo-documents-filter-panel]');
                             if (filterPanel) {
                                 filterPanel.addEventListener('click', function (event) {
+                                    const moreToggle = event.target.closest('[data-omo-documents-filter-more-toggle]');
+                                    if (moreToggle) {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        const moreMenu = moreToggle.closest('[data-omo-documents-filter-more-menu]');
+                                        const morePanel = moreMenu ? moreMenu.querySelector('[data-omo-documents-filter-more-panel]') : null;
+                                        const isMoreMenuOpen = !!morePanel && !morePanel.hidden;
+                                        closeFilterMoreMenu();
+                                        if (!isMoreMenuOpen && morePanel) {
+                                            morePanel.hidden = false;
+                                            moreMenu.classList.add('is-open');
+                                            moreToggle.setAttribute('aria-expanded', 'true');
+                                        }
+                                        return;
+                                    }
+                                    const moreAction = event.target.closest('[data-omo-documents-filter-more-action]');
+                                    if (moreAction) {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        applyFilterMoreAction(moreAction.getAttribute('data-omo-documents-filter-more-action') || '');
+                                        return;
+                                    }
                                     const applyButton = event.target.closest('[data-omo-documents-filter-apply]');
                                     if (applyButton) {
                                         event.preventDefault();
@@ -4156,6 +4336,8 @@ if (!is_string($documentsPayload)) {
     display: block;
     width: 100%;
     min-width: 0;
+    position: relative;
+    z-index: 30;
     justify-content: stretch;
     align-items: initial;
 }

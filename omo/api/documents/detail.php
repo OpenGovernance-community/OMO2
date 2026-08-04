@@ -540,6 +540,20 @@ if ($associatedEvent instanceof \dbObject\Event) {
     background: color-mix(in srgb, var(--color-surface) 90%, #eff6ff 10%);
 }
 
+.omo-document-detail__content .omo-document-embed--resolved {
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    transition: background-color 140ms ease;
+}
+
+.omo-document-detail__content .omo-document-embed--resolved:hover:not(:has(.omo-document-embed--resolved:hover)) {
+    background: color-mix(in srgb, var(--color-surface) 94%, var(--color-text) 6%);
+}
+
 .omo-document-detail__content .omo-document-embed:last-child {
     margin-bottom: 0;
 }

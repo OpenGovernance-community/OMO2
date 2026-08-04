@@ -1186,7 +1186,7 @@ CREATE TABLE `faq` (
   KEY `idx_faq_application` (`IDapplication`),
   KEY `idx_faq_reliability` (`reliability`),
   KEY `idx_faq_reliability_updated_at` (`reliability_updated_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=3221 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3223 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1217,7 +1217,9 @@ INSERT INTO `faq` VALUES
 (3217,NULL,NULL,NULL,NULL,NULL,'Pourquoi je ne vois pas toujours le bouton Ajouter ?','Le bouton apparait seulement si vous avez la permission de creation dans le contexte ouvert.',NULL,NULL,'<p>Ce principe vaut notamment pour les documents, les prises de decision, les dates et la creation de FAQ.</p><p>Si vous pensez que ce bouton devrait etre disponible, verifiez le contexte courant ou demandez une verification des permissions sur le holon concerne.</p>',170,1,0,0,0,0,0,'2026-07-25 12:27:29','2026-07-25 12:27:29','2026-06-22 10:20:00','2026-06-22 10:20:00'),
 (3218,NULL,NULL,NULL,NULL,NULL,'Comment ajouter une question dans la FAQ ?','Ouvrez la FAQ du contexte voulu puis utilisez le bouton Ajouter une question si cette action est disponible.',NULL,NULL,'<p>Selon votre ecran, la nouvelle question peut etre creee au niveau du contexte courant, du niveau organisation ou dans un scope plus global.</p><p>Si aucun bouton de creation ne saffiche, cela signifie que la permission de creation de FAQ nest pas accordee dans ce contexte.</p>',180,1,0,0,0,0,0,'2026-07-25 12:27:29','2026-07-25 12:27:29','2026-06-22 10:25:00','2026-06-22 10:25:00'),
 (3219,NULL,NULL,NULL,NULL,NULL,'A quoi servent les votes sur les reponses de la FAQ ?','Les boutons de vote permettent de signaler si une reponse est utile afin de mieux mettre en avant les bonnes explications.',NULL,NULL,'<p>Quand une reponse vous aide vraiment, un vote positif aide a la faire remonter dans la FAQ.</p><p>Ces retours servent a rendre les questions les plus utiles plus visibles pour les autres membres de l organisation.</p>',190,1,0,0,0,0,0,'2026-07-25 12:27:29','2026-07-25 12:27:29','2026-06-22 10:30:00','2026-06-22 10:30:00'),
-(3220,NULL,NULL,NULL,NULL,NULL,'Comment faire apparaitre mon organisation sur la carte publique ?','Renseignez un emplacement dans les parametres de l organisation et verifiez que les informations utiles sont lisibles sans connexion.',NULL,NULL,'<p>La carte publique utilise un emplacement facultatif, generalement saisi en latitude et longitude dans les parametres de l organisation.</p><p>Seules les informations explicitement exposees comme publiques sont reprises sur cette carte, ce qui permet de garder le controle sur ce qui est visible sans connexion.</p>',200,1,0,0,0,0,0,'2026-07-25 12:27:29','2026-07-25 12:27:29','2026-06-22 10:35:00','2026-06-22 10:35:00');
+(3220,NULL,NULL,NULL,NULL,NULL,'Comment faire apparaitre mon organisation sur la carte publique ?','Renseignez un emplacement dans les parametres de l organisation et verifiez que les informations utiles sont lisibles sans connexion.',NULL,NULL,'<p>La carte publique utilise un emplacement facultatif, generalement saisi en latitude et longitude dans les parametres de l organisation.</p><p>Seules les informations explicitement exposees comme publiques sont reprises sur cette carte, ce qui permet de garder le controle sur ce qui est visible sans connexion.</p>',200,1,0,0,0,0,0,'2026-07-25 12:27:29','2026-07-25 12:27:29','2026-06-22 10:35:00','2026-06-22 10:35:00'),
+(3221,NULL,NULL,NULL,NULL,NULL,'Est-ce que je peux ajouter les contacts de OMO a mon telephone ou mon ordinateur ?','Oui. Ajoutez un compte CardDAV avec votre identifiant OMO pour synchroniser les contacts auxquels vous avez acces.',NULL,NULL,'<p>OMO propose un annuaire CardDAV utilisable par la plupart des telephones et applications de contacts.</p><ol><li>Dans OMO, ouvrez votre profil et definissez un mot de passe si ce n est pas deja fait.</li><li>Dans les reglages de votre appareil ou de votre application de contacts, ajoutez un compte <strong>CardDAV</strong>.</li><li>Comme adresse du serveur, saisissez <code><em>url_serveur</em>/omo/api/carddav/</code>.</li><li>Utilisez votre adresse e-mail OMO, ou votre identifiant de connexion, ainsi que votre mot de passe OMO.</li></ol><p>Seuls les contacts des membres que vous etes autorise a voir sont proposes. La synchronisation est actuellement en lecture seule : les modifications faites sur votre appareil ne sont pas renvoyees dans OMO.</p>',210,1,0,0,0,0,0,'2026-08-01 00:00:00','2026-08-01 00:00:00','2026-08-01 00:00:00','2026-08-01 00:00:00'),
+(3222,NULL,NULL,NULL,NULL,NULL,'Est-ce que je peux ajouter les rendez-vous et reunions de OMO a mon telephone ou mon ordinateur ?','Oui. Ajoutez un compte CalDAV pour consulter dans votre calendrier les reunions OMO auxquelles vous avez acces.',NULL,NULL,'<p>OMO propose un calendrier CalDAV utilisable par la plupart des telephones et applications de calendrier.</p><ol><li>Dans OMO, ouvrez votre profil et definissez un mot de passe si ce n est pas deja fait.</li><li>Dans les reglages de votre appareil ou de votre application de calendrier, ajoutez un compte <strong>CalDAV</strong>.</li><li>Comme adresse du serveur, saisissez <code><em>url_serveur</em>/omo/api/caldav/</code>.</li><li>Utilisez votre adresse e-mail OMO, ou votre identifiant de connexion, ainsi que votre mot de passe OMO.</li></ol><p>Les calendriers des organisations dont vous etes membre et dont le calendrier est actif sont proposes automatiquement. La synchronisation est actuellement en lecture seule : creez ou modifiez les reunions directement dans OMO.</p>',220,1,0,0,0,0,0,'2026-08-01 00:00:00','2026-08-01 00:00:00','2026-08-01 00:00:00','2026-08-01 00:00:00');
 /*!40000 ALTER TABLE `faq` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2983,6 +2985,7 @@ CREATE TABLE `stat_indicator` (
   `measurement_frequency` varchar(20) DEFAULT NULL,
   `measurement_schedule` varchar(20) DEFAULT NULL,
   `chart_min_value` decimal(20,6) DEFAULT NULL,
+  `show_cumulative` tinyint(1) NOT NULL DEFAULT 0,
   `active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -3005,9 +3008,9 @@ CREATE TABLE `stat_indicator` (
 LOCK TABLES `stat_indicator` WRITE;
 /*!40000 ALTER TABLE `stat_indicator` DISABLE KEYS */;
 INSERT INTO `stat_indicator` VALUES
-(1,1,693,1,'Solde du compte bancaire','Cash disponible sur le compte bancaire','https://bas.ch','none','monthly','1',60000.000000,1,'2026-07-23 16:11:14','2026-07-24 08:45:24'),
-(2,1,693,1,'Solde en caisse','Montant disponible en liquide dans la caisse',NULL,'none','monthly','1',0.000000,1,'2026-07-23 16:15:03','2026-07-24 08:44:54'),
-(3,1,693,1,'Chiffre d\'affaire',NULL,NULL,'objective','monthly','1',NULL,1,'2026-07-25 08:55:58','2026-07-25 08:56:12');
+(1,1,693,1,'Solde du compte bancaire','Cash disponible sur le compte bancaire','https://bas.ch','none','monthly','1',60000.000000,0,1,'2026-07-23 16:11:14','2026-07-24 08:45:24'),
+(2,1,693,1,'Solde en caisse','Montant disponible en liquide dans la caisse',NULL,'none','monthly','1',0.000000,0,1,'2026-07-23 16:15:03','2026-07-24 08:44:54'),
+(3,1,693,1,'Chiffre d\'affaire',NULL,NULL,'objective','monthly','1',NULL,0,1,'2026-07-25 08:55:58','2026-07-25 08:56:12');
 /*!40000 ALTER TABLE `stat_indicator` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -3859,6 +3862,47 @@ INSERT INTO `user_remember` VALUES
 (1,1,'9e7e62a214f4927ce26226cf9d8576c9d7467861a03a217507ad5f8c1cf7dd7c','2026-05-23 13:59:14','172.19.0.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36','Chrome','Windows','2026-04-23 11:59:14'),
 (2,1,'aaa1f5df7bd344491268df922a68381ec463e7be9153450dc3a6f421b09cc2d3','2026-05-23 14:09:43','172.19.0.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36','Chrome','Windows','2026-04-23 12:09:43');
 /*!40000 ALTER TABLE `user_remember` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `telegram_chat_destination`
+--
+
+DROP TABLE IF EXISTS `telegram_chat_destination`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `telegram_chat_destination` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `telegram_chat_id` varchar(32) NOT NULL,
+  `telegram_thread_id` varchar(32) NOT NULL DEFAULT '__main__',
+  `IDorganization` int(11) NOT NULL,
+  `destination_type` varchar(20) NOT NULL,
+  `IDholon` int(11) DEFAULT NULL,
+  `IDproject` int(11) DEFAULT NULL,
+  `IDuser_configured` int(11) DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_telegram_chat_destination` (`telegram_chat_id`,`telegram_thread_id`),
+  KEY `idx_telegram_destination_organization` (`IDorganization`),
+  KEY `idx_telegram_destination_holon` (`IDholon`),
+  KEY `idx_telegram_destination_project` (`IDproject`),
+  KEY `idx_telegram_destination_user` (`IDuser_configured`),
+  CONSTRAINT `fk_telegram_destination_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_telegram_destination_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_telegram_destination_project` FOREIGN KEY (`IDproject`) REFERENCES `project` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_telegram_destination_user` FOREIGN KEY (`IDuser_configured`) REFERENCES `user` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `telegram_chat_destination`
+--
+
+LOCK TABLES `telegram_chat_destination` WRITE;
+/*!40000 ALTER TABLE `telegram_chat_destination` DISABLE KEYS */;
+/*!40000 ALTER TABLE `telegram_chat_destination` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 

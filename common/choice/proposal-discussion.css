@@ -1,0 +1,523 @@
+.omo-proposal-discussion-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+.omo-proposal-discussion-button {
+    position: relative;
+    z-index: 2;
+}
+
+.omo-proposal-discussion-actions > .generic-action-button {
+    min-height: 34px;
+    height: 34px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+}
+
+.omo-proposal-discussion-count {
+    display: inline-flex;
+    flex: 0 0 34px;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+    background-image: url('/omo/images/tools/bulle-de-texte.png');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 34px 34px;
+    color: var(--color-text-light, #64748b);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    padding-bottom:6px;
+}
+
+.omo-proposal-discussion-count-value {
+    display: block;
+    min-width: 1em;
+    text-align: center;
+}
+
+.omo-proposal-action-menu {
+    position: relative;
+    display: inline-flex;
+}
+
+.omo-proposal-action-menu__toggle {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    color: var(--color-text-light, #64748b);
+    font-size: 1.15rem;
+    font-weight: 900;
+}
+
+.omo-proposal-action-menu__panel {
+    position: absolute;
+    z-index: 5;
+    top: calc(100% + 6px);
+    right: 0;
+    display: grid;
+    min-width: 190px;
+}
+
+.omo-proposal-action-menu__panel[hidden] {
+    display: none !important;
+}
+
+.omo-proposal-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 12px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid color-mix(in srgb, var(--color-border, #dbe3ec) 75%, transparent);
+    color: var(--color-text-light, #64748b);
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.omo-proposal-meta strong {
+    color: inherit;
+    font-weight: 750;
+}
+
+.omo-proposal-meta__discussion {
+    flex-basis: 100%;
+}
+
+.omo-proposal-live-description,
+.omo-proposal-html-render {
+    margin: 8px 0 0;
+    color: var(--color-text-light, #475569);
+    line-height: 1.55;
+}
+
+.omo-proposal-live-description p,
+.omo-proposal-live-description h1,
+.omo-proposal-live-description h2,
+.omo-proposal-live-description h3,
+.omo-proposal-live-description ul,
+.omo-proposal-live-description ol,
+.omo-proposal-live-description blockquote,
+.omo-proposal-live-description table,
+.omo-proposal-html-render p,
+.omo-proposal-html-render h1,
+.omo-proposal-html-render h2,
+.omo-proposal-html-render h3,
+.omo-proposal-html-render ul,
+.omo-proposal-html-render ol,
+.omo-proposal-html-render blockquote,
+.omo-proposal-html-render table {
+    margin-top: 0;
+}
+
+.omo-proposal-live-description p:last-child,
+.omo-proposal-live-description ul:last-child,
+.omo-proposal-live-description ol:last-child,
+.omo-proposal-live-description blockquote:last-child,
+.omo-proposal-live-description table:last-child,
+.omo-proposal-html-render p:last-child,
+.omo-proposal-html-render ul:last-child,
+.omo-proposal-html-render ol:last-child,
+.omo-proposal-html-render blockquote:last-child,
+.omo-proposal-html-render table:last-child {
+    margin-bottom: 0;
+}
+
+.omo-proposal-live-description ul,
+.omo-proposal-live-description ol,
+.omo-proposal-html-render ul,
+.omo-proposal-html-render ol {
+    padding-left: 22px;
+}
+
+.omo-proposal-live-link {
+    display: inline-flex;
+    margin-top: 8px;
+    color: var(--color-primary, #2563eb);
+    font-weight: 700;
+}
+
+.omo-decision-settings-popup {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 20px;
+}
+
+.omo-decision-settings-popup .omo-decision-settings-popup__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.omo-decision-settings-popup .omo-decision-settings-popup__actions > .generic-action-button {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    min-height: 34px;
+    padding: 7px 12px;
+    font-size: 13px;
+}
+
+.omo-proposal-popup-content {
+    box-sizing: border-box;
+    margin-inline: auto;
+    padding: 18px;
+}
+
+.omo-proposal-chat {
+    display: grid;
+    grid-template-rows: auto minmax(260px, 1fr) auto;
+    width: 100%;
+    min-height: min(620px, 72vh);
+    max-height: 76vh;
+    overflow: hidden;
+}
+
+.omo-proposal-chat__toolbar {
+    padding: 0 0 12px;
+}
+
+.omo-proposal-chat__proposal-title {
+    margin: 0;
+    color: var(--color-text, #0f172a);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.omo-proposal-editor {
+    display: grid;
+    gap: 12px;
+    width: 100%;
+}
+
+.omo-proposal-editor__field {
+    display: grid;
+    gap: 6px;
+}
+
+.omo-proposal-chat__messages {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+    padding: 18px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--color-border, #dbe3ec);
+    border-radius: var(--radius-card, 14px);
+    background:
+        linear-gradient(rgba(255, 255, 255, .72), rgba(255, 255, 255, .72)),
+        repeating-linear-gradient(45deg, #e8ede7 0, #e8ede7 12px, #eef2ec 12px, #eef2ec 24px);
+}
+
+.omo-proposal-chat__loading,
+.omo-proposal-chat__empty {
+    margin: auto;
+    padding: 22px;
+    color: var(--color-text-light, #64748b);
+    text-align: center;
+    line-height: 1.55;
+}
+
+.omo-proposal-chat__message-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    width: 100%;
+}
+
+.omo-proposal-chat__message-row--own {
+    justify-content: flex-end;
+}
+
+.omo-proposal-chat__message-row--system {
+    justify-content: center;
+    margin: 2px 0;
+}
+
+.omo-proposal-chat__avatar {
+    display: inline-flex;
+    flex: 0 0 34px;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    overflow: hidden;
+    border: 1px solid rgba(15, 23, 42, .1);
+    border-radius: 50%;
+    background: var(--color-primary, #2563eb);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .02em;
+}
+
+.omo-proposal-chat__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.omo-proposal-chat__bubble {
+    max-width: min(78%, 520px);
+    padding: 9px 12px 7px;
+    border: 1px solid rgba(15, 23, 42, .08);
+    border-radius: 14px 14px 14px 4px;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, .08);
+}
+
+.omo-proposal-chat__message-row--own .omo-proposal-chat__bubble {
+    border-radius: 14px 14px 4px 14px;
+    background: #d9fdd3;
+}
+
+.omo-proposal-chat__author-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    margin-bottom: 4px;
+}
+
+.omo-proposal-chat__message-row--own .omo-proposal-chat__author-meta {
+    justify-content: flex-end;
+}
+
+.omo-proposal-chat__author {
+    color: var(--color-primary, #2563eb);
+    font-size: 12px;
+    font-weight: 750;
+}
+
+.omo-proposal-chat__author-role {
+    display: inline-flex;
+    align-items: center;
+    min-height: 18px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #4338ca;
+    font-size: 9px;
+    font-weight: 750;
+    line-height: 1.2;
+}
+
+.omo-proposal-chat__author-role--proposal-author {
+    background: #fff7db;
+    color: #8a5a00;
+}
+
+.omo-proposal-chat__content {
+    margin: 0;
+    color: #17202a;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.omo-proposal-chat__time {
+    display: block;
+    margin-top: 4px;
+    color: #667781;
+    font-size: 10px;
+    text-align: right;
+}
+
+.omo-proposal-chat__system-message {
+    max-width: 86%;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .88);
+    color: #52606d;
+    font-size: 11px;
+    line-height: 1.4;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+}
+
+.omo-proposal-chat__system-wrapper {
+    display: grid;
+    justify-items: center;
+    gap: 5px;
+    width: min(92%, 600px);
+}
+
+.omo-proposal-chat__change-details {
+    width: 100%;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .94);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, .08);
+}
+
+.omo-proposal-chat__change-details summary {
+    width: fit-content;
+    margin: 0 auto;
+    padding: 5px 10px;
+    color: var(--color-primary, #2563eb);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 750;
+    list-style-position: inside;
+}
+
+.omo-proposal-chat__diff-list {
+    display: grid;
+    gap: 9px;
+    padding: 0 10px 10px;
+}
+
+.omo-proposal-chat__diff-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 7px;
+    padding: 9px;
+    border: 1px solid rgba(37, 99, 235, .2);
+    border-radius: 10px;
+    background: rgba(37, 99, 235, .04);
+}
+
+.omo-proposal-chat__diff-card--added {
+    border-color: rgba(22, 163, 74, .25);
+    background: rgba(22, 163, 74, .05);
+}
+
+.omo-proposal-chat__diff-card--removed {
+    border-color: rgba(220, 38, 38, .22);
+    background: rgba(220, 38, 38, .05);
+}
+
+.omo-proposal-chat__diff-title {
+    grid-column: 1 / -1;
+    color: var(--color-text, #1f2937);
+    font-size: 12px;
+}
+
+.omo-proposal-chat__diff-value {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    padding: 7px 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .8);
+}
+
+.omo-proposal-chat__diff-value-label {
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 750;
+    text-transform: uppercase;
+}
+
+.omo-proposal-chat__diff-value-content {
+    color: #334155;
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.omo-proposal-chat__diff-value-content.is-empty {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.omo-proposal-chat__diff-added,
+.omo-proposal-chat__diff-value-content.is-added {
+    border-radius: 4px;
+    background: rgba(22, 163, 74, .14);
+    color: #166534;
+}
+
+.omo-proposal-chat__diff-removed,
+.omo-proposal-chat__diff-value-content.is-removed {
+    border-radius: 4px;
+    background: rgba(220, 38, 38, .12);
+    color: #991b1b;
+    text-decoration: line-through;
+}
+
+.omo-proposal-chat__composer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 10px;
+    padding-top: 12px;
+}
+
+.omo-proposal-chat__composer-actions {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    align-self: stretch;
+    min-height: 46px;
+}
+
+.omo-proposal-chat__anonymous-option {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    color: var(--color-text-light, #64748b);
+    font-size: 11px;
+    line-height: 1.15;
+}
+
+.omo-proposal-chat__composer textarea {
+    min-height: 46px;
+    max-height: 140px;
+    resize: vertical;
+}
+
+@media (max-width: 700px) {
+    .omo-decision-settings-popup {
+        padding: 14px;
+    }
+
+    .omo-proposal-popup-content {
+        padding: 14px;
+    }
+
+    .omo-proposal-chat {
+        width: 100%;
+        min-height: 68vh;
+        max-height: 78vh;
+    }
+
+    .omo-proposal-editor {
+        width: 100%;
+    }
+
+    .omo-proposal-chat__messages {
+        padding: 12px;
+    }
+
+    .omo-proposal-chat__bubble {
+        max-width: 86%;
+    }
+
+    .omo-proposal-chat__diff-card {
+        grid-template-columns: 1fr;
+    }
+
+    .omo-proposal-chat__diff-title {
+        grid-column: auto;
+    }
+
+    .omo-proposal-chat__composer {
+        grid-template-columns: 1fr;
+    }
+
+    .omo-proposal-chat__composer button {
+        justify-self: end;
+    }
+}

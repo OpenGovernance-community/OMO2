@@ -164,6 +164,18 @@ $documentDescription = trim((string)($livePayload['description'] ?? ''));
         border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 85%, #2563eb 15%);
         background: color-mix(in srgb, var(--color-surface, #fff) 90%, #eff6ff 10%);
     }
+    .omo-document-share__content .omo-document-embed--resolved {
+        display: block;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: transparent;
+        transition: background-color 140ms ease;
+    }
+    .omo-document-share__content .omo-document-embed--resolved:hover:not(:has(.omo-document-embed--resolved:hover)) {
+        background: color-mix(in srgb, var(--color-surface, #fff) 94%, var(--color-text, #1f2937) 6%);
+    }
     .omo-document-share__content .omo-document-embed:last-child {
         margin-bottom: 0;
     }

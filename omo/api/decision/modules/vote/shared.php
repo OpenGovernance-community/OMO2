@@ -43,7 +43,9 @@ if (!function_exists('omoDecisionVoteBuildConfig')) {
                 array_key_exists('choice_mode', $decisionOrParameters)
                 || array_key_exists('max_choices', $decisionOrParameters)
                 || array_key_exists('is_anonymous', $decisionOrParameters)
+                || array_key_exists('allow_anonymous_votes', $decisionOrParameters)
                 || array_key_exists('allow_consultation_proposals', $decisionOrParameters)
+                || array_key_exists('allow_proposal_discussions', $decisionOrParameters)
                 || array_key_exists('vote_weight_enabled', $decisionOrParameters)
                 || array_key_exists('vote_weight_options', $decisionOrParameters)
                 || array_key_exists('vote_weighting', $decisionOrParameters)
@@ -65,7 +67,9 @@ if (!function_exists('omoDecisionVoteBuildConfig')) {
             'choice_mode' => $choiceMode,
             'max_choices' => omoDecisionVoteNormalizeMaxChoices($simpleVote['max_choices'] ?? 1, $choiceMode),
             'is_anonymous' => !empty($simpleVote['is_anonymous']),
+            'allow_anonymous_votes' => !empty($simpleVote['allow_anonymous_votes']),
             'allow_consultation_proposals' => !empty($simpleVote['allow_consultation_proposals']),
+            'allow_proposal_discussions' => !array_key_exists('allow_proposal_discussions', $simpleVote) || !empty($simpleVote['allow_proposal_discussions']),
             'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
             'vote_weight_question' => (string)$voteWeightConfig['question'],
             'vote_weight_options' => (array)$voteWeightConfig['options'],
@@ -86,7 +90,9 @@ if (!function_exists('omoDecisionVoteMergeConfigIntoParameters')) {
         $simpleVote['choice_mode'] = $choiceMode;
         $simpleVote['max_choices'] = $maxChoices;
         $simpleVote['is_anonymous'] = !empty($config['is_anonymous']) ? 1 : 0;
+        $simpleVote['allow_anonymous_votes'] = !empty($config['allow_anonymous_votes']) ? 1 : 0;
         $simpleVote['allow_consultation_proposals'] = !empty($config['allow_consultation_proposals']) ? 1 : 0;
+        $simpleVote['allow_proposal_discussions'] = !empty($config['allow_proposal_discussions']) ? 1 : 0;
         $simpleVote = omoDecisionBlockSettingsMergeVoteWeightConfig($simpleVote, [
             'vote_weight_enabled' => !empty($config['vote_weight_enabled']),
             'vote_weight_question' => $config['vote_weight_question'] ?? '',
@@ -147,7 +153,7 @@ if (!function_exists('omoDecisionVoteExtractVoteWeightSelection')) {
 }
 
 if (!function_exists('omoDecisionVoteBuildResponseParameters')) {
-    function omoDecisionVoteBuildResponseParameters($choiceMode, array $proposalIds, array $positions, array $titles, $selectedWeight = null, $configOrParameters = null)
+    function omoDecisionVoteBuildResponseParameters($choiceMode, array $proposalIds, array $positions, array $titles, $selectedWeight = null, $configOrParameters = null, $isAnonymous = false)
     {
         $choiceMode = omoDecisionVoteNormalizeChoiceMode($choiceMode);
         $proposalIds = array_values(array_map('intval', $proposalIds));
@@ -166,6 +172,7 @@ if (!function_exists('omoDecisionVoteBuildResponseParameters')) {
                 'selected_titles' => $titles,
                 'vote_weight' => (string)$weightPayload['vote_weight'],
                 'vote_weight_label' => (string)$weightPayload['vote_weight_label'],
+                'is_anonymous' => !empty($isAnonymous) ? 1 : 0,
             ],
         ];
     }

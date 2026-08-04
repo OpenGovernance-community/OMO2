@@ -1,0 +1,247 @@
+<?php
+namespace dbObject;
+
+class TelegramChatDestination extends DbObject
+{
+    public const TYPE_ROLE = 'role';
+    public const TYPE_PROJECT = 'project';
+    public const MAIN_THREAD_ID = '__main__';
+
+    public static function tableName()
+    {
+        return 'telegram_chat_destination';
+    }
+
+    public static function rules()
+    {
+        return [
+            [['telegram_chat_id', 'telegram_thread_id', 'destination_type'], 'required'],
+            [['id'], 'integer'],
+            [['IDorganization', 'IDholon', 'IDproject', 'IDuser_configured'], 'fk'],
+            [['telegram_chat_id', 'telegram_thread_id', 'destination_type'], 'string'],
+            [['created_at', 'updated_at'], 'datetime'],
+            [['active'], 'boolean'],
+            [['id'], 'safe'],
+        ];
+    }
+
+    public static function attributeLabels()
+    {
+        return [
+            'id' => 'ID',
+            'telegram_chat_id' => 'Discussion Telegram',
+            'telegram_thread_id' => 'Sujet Telegram',
+            'IDorganization' => 'Organisation',
+            'destination_type' => 'Type de destination',
+            'IDholon' => 'Role',
+            'IDproject' => 'Projet',
+            'IDuser_configured' => 'Configure par',
+            'active' => 'Actif',
+            'created_at' => 'Date de creation',
+            'updated_at' => 'Date de modification',
+        ];
+    }
+
+    public static function getOrder()
+    {
+        return 'updated_at DESC, id DESC';
+    }
+
+    public static function isStorageAvailable()
+    {
+        return self::tableExists(self::tableName());
+    }
+
+    public static function normalizeDestinationType($value)
+    {
+        $value = trim(strtolower((string)$value));
+        return in_array($value, [self::TYPE_ROLE, self::TYPE_PROJECT], true) ? $value : '';
+    }
+
+    public static function normalizeThreadId($value)
+    {
+        $threadId = trim((string)$value);
+        return $threadId === '' ? self::MAIN_THREAD_ID : $threadId;
+    }
+
+    public static function findByTelegramChat($chatId, $threadId = null)
+    {
+        $chatId = trim((string)$chatId);
+        $threadId = self::normalizeThreadId($threadId);
+        if ($chatId === '') {
+            return null;
+        }
+
+        if (!self::isStorageAvailable()) {
+            return null;
+        }
+
+        $destination = new self();
+        return $destination->load([
+            ['telegram_chat_id', $chatId],
+            ['telegram_thread_id', $threadId],
+            ['active', 1],
+        ]) ? $destination : null;
+    }
+
+    public static function saveForTelegramChat($chatId, $threadId, $organizationId, $destinationType, $destinationId, $configuredUserId, $sourceRoleId = 0)
+    {
+        $chatId = trim((string)$chatId);
+        $threadId = self::normalizeThreadId($threadId);
+        $organizationId = (int)$organizationId;
+        $destinationType = self::normalizeDestinationType($destinationType);
+        $destinationId = (int)$destinationId;
+        $configuredUserId = (int)$configuredUserId;
+        $sourceRoleId = (int)$sourceRoleId;
+
+        if ($chatId === '' || $organizationId <= 0 || $destinationType === '' || $destinationId <= 0 || $configuredUserId <= 0) {
+            return [
+                'status' => false,
+                'message' => 'Invalid Telegram destination data.',
+                'destination' => null,
+            ];
+        }
+
+        if (!self::isStorageAvailable()) {
+            return [
+                'status' => false,
+                'message' => 'Telegram destination storage is unavailable.',
+                'destination' => null,
+            ];
+        }
+
+        $destination = new self();
+        $destination->load([
+            ['telegram_chat_id', $chatId],
+            ['telegram_thread_id', $threadId],
+        ]);
+        $destination->set('telegram_chat_id', $chatId);
+        $destination->set('telegram_thread_id', $threadId);
+        $destination->set('IDorganization', $organizationId);
+        $destination->set('destination_type', $destinationType);
+        $destination->set('IDholon', $destinationType === self::TYPE_ROLE ? $destinationId : ($sourceRoleId > 0 ? $sourceRoleId : null));
+        $destination->set('IDproject', $destinationType === self::TYPE_PROJECT ? $destinationId : null);
+        $destination->set('IDuser_configured', $configuredUserId);
+        $destination->set('active', true);
+        $now = new \DateTime();
+        if ((int)$destination->getId() <= 0) {
+            $destination->set('created_at', $now);
+        }
+        $destination->set('updated_at', $now);
+
+        $result = $destination->save();
+        if (is_array($result) && !empty($result['status'])) {
+            return [
+                'status' => true,
+                'message' => '',
+                'destination' => $destination,
+            ];
+        }
+
+        return [
+            'status' => false,
+            'message' => trim((string)($result['text'] ?? 'Telegram destination save failed.')),
+            'dbError' => \dbObject\DbObject::getLastDbError(),
+            'destination' => null,
+        ];
+    }
+
+    public function deactivate()
+    {
+        if ((int)$this->getId() <= 0) {
+            return false;
+        }
+
+        $this->set('active', false);
+        $this->set('updated_at', new \DateTime());
+        $result = $this->save();
+        return is_array($result) && !empty($result['status']);
+    }
+
+    public function getRole()
+    {
+        if (!in_array(self::normalizeDestinationType($this->get('destination_type')), [self::TYPE_ROLE, self::TYPE_PROJECT], true)) {
+            return null;
+        }
+
+        $role = new Holon();
+        if (!$role->load((int)$this->get('IDholon')) || (int)$role->get('IDtypeholon') !== 1) {
+            return null;
+        }
+
+        return $role;
+    }
+
+    public function getProject()
+    {
+        if (self::normalizeDestinationType($this->get('destination_type')) !== self::TYPE_PROJECT) {
+            return null;
+        }
+
+        $project = new Project();
+        return $project->load((int)$this->get('IDproject')) ? $project : null;
+    }
+
+    public function getDocumentContext()
+    {
+        $organizationId = (int)$this->get('IDorganization');
+        if ($organizationId <= 0 || !(bool)$this->get('active')) {
+            return null;
+        }
+
+        $type = self::normalizeDestinationType($this->get('destination_type'));
+        if ($type === self::TYPE_ROLE) {
+            $role = $this->getRole();
+            if (!$role || !(bool)$role->get('active') || !(bool)$role->get('visible')) {
+                return null;
+            }
+
+            $organization = new Organization();
+            if (!$organization->load($organizationId) || !$organization->containsHolon($role)) {
+                return null;
+            }
+
+            return [
+                'type' => self::TYPE_ROLE,
+                'organizationId' => $organizationId,
+                'holonId' => (int)$role->getId(),
+                'role' => $role,
+                'project' => null,
+            ];
+        }
+
+        if ($type === self::TYPE_PROJECT) {
+            $project = $this->getProject();
+            if (!$project || (int)$project->get('IDorganization') !== $organizationId || !(bool)$project->get('active')) {
+                return null;
+            }
+
+            $role = $this->getRole();
+            if ($role instanceof Holon) {
+                $organization = new Organization();
+                $projectHolon = $project->getHolon();
+                if (
+                    !(bool)$role->get('active')
+                    || !(bool)$role->get('visible')
+                    || !$organization->load($organizationId)
+                    || !$organization->containsHolon($role)
+                    || !($projectHolon instanceof Holon)
+                    || !$projectHolon->isDescendantOf($role, true)
+                ) {
+                    return null;
+                }
+            }
+
+            return [
+                'type' => self::TYPE_PROJECT,
+                'organizationId' => $organizationId,
+                'holonId' => $role instanceof Holon ? (int)$role->getId() : (int)$project->get('IDholon'),
+                'role' => $role,
+                'project' => $project,
+            ];
+        }
+
+        return null;
+    }
+}
+?>

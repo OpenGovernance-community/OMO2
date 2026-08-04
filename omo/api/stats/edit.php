@@ -218,7 +218,7 @@ ob_start();
 <?php
 $afterTableHtml = ob_get_clean();
 $params = [
-    'fields' => ['name', 'description', 'source_url', 'chart_min_value', 'reference_type'],
+    'fields' => ['name', 'description', 'source_url', 'chart_min_value', 'show_cumulative', 'reference_type'],
     'buttons' => false,
     'action' => '/omo/api/stats/action.php',
     'success' => 'omoStatsAfterIndicatorSave()',

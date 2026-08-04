@@ -24,6 +24,8 @@ $sourceLang = array(
     'organization_import.property_mapping.none' => array('text' => 'Aucune propriete a faire correspondre pour les templates selectionnes.', 'context' => 'Empty property mapping state.'),
     'organization_import.property_mapping.title' => array('text' => 'Correspondance des proprietes', 'context' => 'Title of property mapping section.'),
     'organization_import.field.sections' => array('text' => 'Contenu a importer', 'context' => 'Section picker legend in the organization import popup.'),
+    'organization_import.field.send_invitations' => array('text' => "Envoyer les e-mails d'invitation aux membres", 'context' => 'Checkbox controlling whether imported members immediately receive invitation emails.'),
+    'organization_import.field.send_invitations_hint' => array('text' => "Décochez cette option pour importer les membres sans créer leurs invitations. Elles pourront être envoyées plus tard depuis la fiche de chaque membre.", 'context' => 'Help text for importing members without creating invitations.'),
     'organization_import.help' => array('text' => 'Cette action cree une nouvelle organisation. La structure est toujours importee. Les taches OMO 1 deviennent des projets enfants et les checklistes recurrentes deviennent des conteneurs.', 'context' => 'Help text in the organization import popup.'),
     'organization_import.module.checklists' => array('text' => 'Checklists', 'context' => 'Checklists module label in the organization import popup.'),
     'organization_import.loading' => array('text' => 'Import en cours...', 'context' => 'Loading label shown during organization import.'),
@@ -127,6 +129,12 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             <?php endforeach; ?>
         </fieldset>
 
+        <label class="omo-create-import__invitation-option generic-soft-panel" data-omo-create-import-invitation-option="1">
+            <input type="checkbox" name="send_member_invitations" value="1" checked data-omo-create-import-send-invitations="1">
+            <span><?= htmlspecialchars(t('organization_import.field.send_invitations', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+            <small><?= htmlspecialchars(t('organization_import.field.send_invitations_hint', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></small>
+        </label>
+
         <div class="omo-create-import__actions">
             <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-create-import-cancel="1"><?= htmlspecialchars(t('organization_import.action.cancel', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
             <button type="submit" class="generic-action-button generic-action-button--main" data-omo-create-import-submit="1"><?= htmlspecialchars(t('organization_import.action.submit', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
@@ -158,6 +166,10 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
 .omo-create-import__module { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; padding: 7px; border-radius: 8px; }
 .omo-create-import__module input { grid-row: 1 / span 2; }
 .omo-create-import__module.is-unavailable { opacity: 0.5; }
+.omo-create-import__invitation-option { display: grid; grid-template-columns: auto 1fr; column-gap: 9px; align-items: center; font-weight: 600; }
+.omo-create-import__invitation-option input { grid-row: 1 / span 2; }
+.omo-create-import__invitation-option small { color: var(--color-text-light, #64748b); font-size: 12px; font-weight: 400; }
+.omo-create-import__invitation-option.is-unavailable { opacity: 0.5; }
 .omo-create-import__actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .omo-create-import__feedback { line-height: 1.45; }
 .omo-create-import__feedback.is-error { color: #b91c1c; border-color: rgba(220, 38, 38, 0.25); background: rgba(220, 38, 38, 0.06); }
@@ -195,6 +207,8 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     var propertyMappingsPanel = root.querySelector('[data-omo-create-import-property-mappings="1"]');
     var propertyMappingsList = root.querySelector('[data-omo-create-import-property-mapping-list="1"]');
     var propertyMappingsValue = form ? form.querySelector('[data-omo-create-import-property-mapping-value="1"]') : null;
+    var invitationOption = root.querySelector('[data-omo-create-import-invitation-option="1"]');
+    var sendInvitationsInput = form ? form.querySelector('[data-omo-create-import-send-invitations="1"]') : null;
     var submitButton = root.querySelector('[data-omo-create-import-submit="1"]');
     var feedback = root.querySelector('[data-omo-create-import-feedback="1"]');
     var cancelButton = root.querySelector('[data-omo-create-import-cancel="1"]');
@@ -279,6 +293,14 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         if (nameInput && !nameInput.value && payload && payload.organization && payload.organization.name) {
             nameInput.value = String(payload.organization.name);
         }
+        syncInvitationOptionAvailability();
+    }
+
+    function syncInvitationOptionAvailability() {
+        var membersInput = root.querySelector('[data-omo-create-import-module-input="members"]');
+        var available = !!membersInput && !membersInput.disabled && membersInput.checked;
+        if (sendInvitationsInput) { sendInvitationsInput.disabled = !available; }
+        if (invitationOption) { invitationOption.classList.toggle('is-unavailable', !available); }
     }
 
     function flattenHolons(nodes, output) {
@@ -658,6 +680,9 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             return;
         }
         var module = event.target.getAttribute('data-omo-create-import-module-input');
+        if (module === 'members') {
+            syncInvitationOptionAvailability();
+        }
         if (module === 'tasks' && event.target.checked) {
             var projects = root.querySelector('[data-omo-create-import-module-input="projects"]');
             if (projects && !projects.disabled) { projects.checked = true; }

@@ -365,7 +365,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
     {
         $organizationId = (int)$organization->getId();
         $memberships = new \dbObject\ArrayUserOrganization();
-        $memberships->loadVisibleForOrganization($organizationId);
+        $memberships->loadVisibleForOrganization($organizationId, true);
 
         $memberCards = [];
         foreach ($memberships as $membership) {
