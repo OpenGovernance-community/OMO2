@@ -218,10 +218,22 @@ class DecisionProposal extends DbObject
         return (int)$userId > 0 && $this->getAuthorUserId() === (int)$userId;
     }
 
-    public function archiveByAuthor($userId)
+    public function canBeEditedByParticipant($participantId)
+    {
+        return (int)$participantId > 0 && $this->getAuthorParticipantId() === (int)$participantId;
+    }
+
+    public function canBeEditedByActor($userId, $participantId = 0)
+    {
+        return $this->canBeEditedByUser($userId)
+            || $this->canBeEditedByParticipant($participantId);
+    }
+
+    public function archiveByAuthor($userId, $participantId = 0)
     {
         $userId = (int)$userId;
-        if (!$this->canBeEditedByUser($userId)) {
+        $participantId = (int)$participantId;
+        if (!$this->canBeEditedByActor($userId, $participantId)) {
             return [
                 'status' => false,
                 'reason' => 'forbidden',
@@ -254,13 +266,14 @@ class DecisionProposal extends DbObject
         ];
     }
 
-    public function updateContentByAuthor($userId, $title, $description, $infoUrl)
+    public function updateContentByAuthor($userId, $title, $description, $infoUrl, $participantId = 0)
     {
         $userId = (int)$userId;
+        $participantId = (int)$participantId;
         $title = trim((string)$title);
         $description = \dbObject\PropertyFormat::sanitizeHtml((string)$description);
         $infoUrl = trim((string)$infoUrl);
-        if (!$this->canBeEditedByUser($userId)) {
+        if (!$this->canBeEditedByActor($userId, $participantId)) {
             return [
                 'status' => false,
                 'reason' => 'forbidden',
@@ -312,7 +325,21 @@ class DecisionProposal extends DbObject
             ? (int)$decision->get('IDorganization')
             : 0;
         $user = new \dbObject\User();
-        if ($organizationId <= 0 || !$user->load($userId)) {
+        $participant = null;
+        if ($participantId > 0) {
+            $participant = new \dbObject\DecisionParticipant();
+            if (
+                !$participant->load($participantId)
+                || (int)$participant->get('IDdecision_process') !== (int)$this->get('IDdecision_process')
+            ) {
+                $participant = null;
+            }
+        }
+        if (
+            $organizationId <= 0
+            || ($userId > 0 && !$user->load($userId))
+            || ($userId <= 0 && !($participant instanceof \dbObject\DecisionParticipant))
+        ) {
             return [
                 'status' => false,
                 'reason' => 'invalid_context',
@@ -334,7 +361,9 @@ class DecisionProposal extends DbObject
             $this->set('title', $title);
             $this->set('description', $description !== '' ? $description : null);
             $this->set('info_url', $infoUrl !== '' ? $infoUrl : null);
-            $this->set('IDuser_author', $userId);
+            if ($userId > 0) {
+                $this->set('IDuser_author', $userId);
+            }
             $this->set('updated_at', new \DateTimeImmutable('now'));
             $saveResult = $this->save();
             if (!is_array($saveResult) || empty($saveResult['status'])) {
@@ -355,7 +384,9 @@ class DecisionProposal extends DbObject
                     }
                 }
 
-                $displayName = trim((string)$user->getScopedDisplayName($organizationId));
+                $displayName = $userId > 0
+                    ? trim((string)$user->getScopedDisplayName($organizationId))
+                    : trim((string)$participant->getIdentityLabel($organizationId));
                 $systemContent = !$this->isAnonymous() && $displayName !== ''
                     ? $displayName . ' a modifié la proposition.'
                     : 'La proposition a été modifiée.';
@@ -368,7 +399,8 @@ class DecisionProposal extends DbObject
                         'proposal_id' => (int)$this->getId(),
                         'old' => $oldValues,
                         'new' => $newValues,
-                    ]
+                    ],
+                    $participantId
                 );
                 if (!$message instanceof \dbObject\ChatMessage) {
                     throw new \RuntimeException('chat_message_save_failed');
@@ -380,6 +412,7 @@ class DecisionProposal extends DbObject
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
+            error_log('decision_proposal_update_by_author_failed: ' . $exception->getMessage());
             return [
                 'status' => false,
                 'reason' => 'save_failed',

@@ -16,7 +16,7 @@ class ChatMessage extends DbObject
         return [
             [['IDchat_thread', 'IDorganization', 'message_type', 'content'], 'required'],
             [['id'], 'integer'],
-            [['IDchat_thread', 'IDorganization', 'IDuser'], 'fk'],
+            [['IDchat_thread', 'IDorganization', 'IDuser', 'IDdecision_participant'], 'fk'],
             [['message_type', 'author_name'], 'string'],
             [['content'], 'text'],
             [['parameters'], 'parameters'],
@@ -32,6 +32,7 @@ class ChatMessage extends DbObject
             'IDchat_thread' => 'Discussion',
             'IDorganization' => 'Organisation',
             'IDuser' => 'Auteur',
+            'IDdecision_participant' => 'Participant au scrutin',
             'message_type' => 'Type',
             'content' => 'Message',
             'author_name' => 'Nom de l auteur',
@@ -117,12 +118,13 @@ class ChatMessage extends DbObject
         return $messages;
     }
 
-    public static function createUserMessage(ChatThread $thread, $userId, $content, $isAnonymous = false, $anonymousByAuthor = false)
+    public static function createUserMessage(ChatThread $thread, $userId, $content, $isAnonymous = false, $anonymousByAuthor = false, $participantId = 0)
     {
         $message = new self();
         $message->set('IDchat_thread', (int)$thread->getId());
         $message->set('IDorganization', (int)$thread->get('IDorganization'));
-        $message->set('IDuser', (int)$userId);
+        $message->set('IDuser', (int)$userId > 0 ? (int)$userId : null);
+        $message->set('IDdecision_participant', (int)$participantId > 0 ? (int)$participantId : null);
         $message->set('message_type', self::TYPE_USER);
         $message->set('content', trim((string)$content));
         $message->set('parameters', [
@@ -132,12 +134,13 @@ class ChatMessage extends DbObject
         return $message->saveAndReload() ? $message : null;
     }
 
-    public static function createSystemMessage(ChatThread $thread, $content, $userId = 0, array $parameters = [])
+    public static function createSystemMessage(ChatThread $thread, $content, $userId = 0, array $parameters = [], $participantId = 0)
     {
         $message = new self();
         $message->set('IDchat_thread', (int)$thread->getId());
         $message->set('IDorganization', (int)$thread->get('IDorganization'));
         $message->set('IDuser', (int)$userId > 0 ? (int)$userId : null);
+        $message->set('IDdecision_participant', (int)$participantId > 0 ? (int)$participantId : null);
         $message->set('message_type', self::TYPE_SYSTEM);
         $message->set('content', trim((string)$content));
         $message->set('parameters', $parameters);
@@ -161,6 +164,7 @@ class ChatMessage extends DbObject
         $messageType = self::normalizeMessageType($this->get('message_type'));
         $content = trim((string)$this->get('content'));
         $userId = (int)$this->get('IDuser');
+        $participantId = (int)$this->get('IDdecision_participant');
 
         $thread = new ChatThread();
         if ($threadId <= 0 || !$thread->load($threadId) || (int)$thread->get('IDorganization') !== $organizationId) {
@@ -175,10 +179,10 @@ class ChatMessage extends DbObject
                 'text' => 'A chat message must contain between 1 and 4000 characters.',
             ];
         }
-        if ($messageType === self::TYPE_USER && $userId <= 0) {
+        if ($messageType === self::TYPE_USER && $userId <= 0 && $participantId <= 0) {
             return [
                 'status' => false,
-                'text' => 'A user chat message needs an account.',
+                'text' => 'A user chat message needs an account or a decision participant.',
             ];
         }
 
@@ -197,6 +201,33 @@ class ChatMessage extends DbObject
             }
         } else {
             $this->set('IDuser', null);
+        }
+        if ($participantId > 0) {
+            $participant = new DecisionParticipant();
+            $participantDecision = null;
+            if (
+                !$participant->load($participantId)
+                || !(($participantDecision = $participant->getDecisionProcess()) instanceof DecisionProcess)
+                || (int)$participantDecision->get('IDorganization') !== $organizationId
+            ) {
+                return [
+                    'status' => false,
+                    'text' => 'The chat message participant does not match its organization.',
+                ];
+            }
+            if (trim((string)$this->get('author_name')) === '') {
+                $authorName = trim((string)$participant->get('display_name'));
+                if ($authorName === '') {
+                    $authorName = trim((string)$participant->get('email'));
+                    $atPosition = strrpos($authorName, '@');
+                    if ($atPosition !== false) {
+                        $authorName = substr($authorName, 0, $atPosition);
+                    }
+                }
+                $this->set('author_name', $authorName);
+            }
+        } else {
+            $this->set('IDdecision_participant', null);
         }
 
         return parent::save();
@@ -261,10 +292,11 @@ class ChatMessage extends DbObject
         return $changes;
     }
 
-    public function toClientArray($viewerUserId)
+    public function toClientArray($viewerUserId, $viewerParticipantId = 0)
     {
         $organizationId = (int)$this->get('IDorganization');
         $authorUserId = (int)$this->get('IDuser');
+        $authorParticipantId = (int)$this->get('IDdecision_participant');
         $authorName = trim((string)$this->get('author_name'));
         $photoUrl = '';
         $initials = '';
@@ -302,10 +334,12 @@ class ChatMessage extends DbObject
             'type' => self::normalizeMessageType($this->get('message_type')),
             'content' => (string)$this->get('content'),
             'authorUserId' => $authorUserId,
+            'authorParticipantId' => $authorParticipantId,
             'authorName' => $authorName,
             'photoUrl' => $photoUrl,
             'initials' => $initials,
-            'isOwn' => $authorUserId > 0 && $authorUserId === (int)$viewerUserId,
+            'isOwn' => ($authorUserId > 0 && $authorUserId === (int)$viewerUserId)
+                || ($authorParticipantId > 0 && $authorParticipantId === (int)$viewerParticipantId),
             'createdAt' => $createdAt,
             'createdAtLabel' => $createdAtLabel,
             'changes' => $this->getProposalUpdateChanges(),
