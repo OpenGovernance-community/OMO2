@@ -1922,7 +1922,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             return;
         }
 
-        const htmlFieldVersion = '20260804-embed-remove-paragraph';
+        const htmlFieldVersion = '20260804-indicator-group-route';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
