@@ -1263,7 +1263,7 @@ if (!function_exists('omoDecisionRenderProposalDiscussionActions')) {
                     . ' data-omo-proposal-discussion-open'
                     . ' data-proposal-id="' . (int)$proposal->getId() . '"'
                     . ' data-proposal-context="' . $escape($contextPayload) . '">'
-                    . 'Discuter la proposition'
+                    . 'Discuter<span class="omo-proposal-action-label-detail"> la proposition</span>'
                 . '</button>';
         }
         if ($canEdit) {
@@ -1271,7 +1271,7 @@ if (!function_exists('omoDecisionRenderProposalDiscussionActions')) {
                     . ' data-omo-proposal-edit-open'
                     . ' data-proposal-id="' . (int)$proposal->getId() . '"'
                     . ' data-proposal-context="' . $escape($contextPayload) . '">'
-                    . 'Modifier la proposition'
+                    . 'Modifier<span class="omo-proposal-action-label-detail"> la proposition</span>'
                 . '</button>';
             $html .= '<div class="omo-proposal-action-menu generic-menu" data-omo-proposal-action-menu>'
                     . '<button type="button" class="omo-proposal-action-menu__toggle generic-menu-toggle" data-omo-proposal-action-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Autres actions">...</button>'
