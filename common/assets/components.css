@@ -218,6 +218,11 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
     --generic-soft-panel-radius: var(--generic-container-radius);
 }
 
+.generic-soft-panel[hidden],
+.generic-soft-panel-square[hidden] {
+    display: none !important;
+}
+
 .generic-soft-panel--stack {
     display: grid;
     gap: var(--generic-soft-panel-gap, var(--generic-space-2));

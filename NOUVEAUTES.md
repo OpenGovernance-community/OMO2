@@ -12,6 +12,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les styles de la FAQ ont ete simplifies en reutilisant les sections, piles, panneaux, titres, descriptions, formulaires et actions generiques; les regles specifiques restantes couvrent uniquement son mecanisme d ouverture, ses medias et son vote.
 - Le retour au listing de la FAQ utilise maintenant le bouton secondaire generique et reste aligne a droite dans le detail.
 - L entete du detail FAQ rapproche la capsule de contexte et le titre du haut de la fenetre, sans eloigner les actions standard.
+- Les panneaux generiques respectent maintenant l attribut `hidden`, ce qui masque correctement le message de recherche FAQ hors des recherches sans resultat.
+- Les portees des apps OMO et de la FAQ utilisent desormais les libelles coherents Local, Enfants directs et Descendants; les identifiants techniques existants restent inchanges.
 
 ## 2026-08-03
 
