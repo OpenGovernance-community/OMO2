@@ -8,7 +8,7 @@ use dbObject\Organization;
 
 $sourceLang = array_merge([
     'calendar.detail.badge' => [
-        'text' => 'Evenement',
+        'text' => 'Événement',
         'context' => 'Small eyebrow label shown above the event detail title.',
     ],
     'calendar.detail.action.edit' => [
@@ -20,11 +20,11 @@ $sourceLang = array_merge([
         'context' => 'Accessible label of the icon button used to delete an event from its detail view.',
     ],
     'calendar.detail.confirm_delete' => [
-        'text' => 'Supprimer cet evenement ?',
+        'text' => 'Supprimer cet événement ?',
         'context' => 'Confirmation message shown before deleting an event.',
     ],
     'calendar.detail.delete_error' => [
-        'text' => 'Impossible de supprimer cet evenement.',
+        'text' => 'Impossible de supprimer cet événement.',
         'context' => 'Fallback error shown when deleting an event fails.',
     ],
     'calendar.detail.delete_documents_title' => [
@@ -48,7 +48,7 @@ $sourceLang = array_merge([
         'context' => 'Button used to open the linked document from the event detail view.',
     ],
     'calendar.detail.header.subtitle' => [
-        'text' => 'Consultez les details puis modifiez si besoin.',
+        'text' => 'Consultez les détails, puis modifiez-les si besoin.',
         'context' => 'Short explanatory subtitle below the event detail heading.',
     ],
     'calendar.detail.section.schedule' => [
@@ -68,11 +68,11 @@ $sourceLang = array_merge([
         'context' => 'Label of the location card inside the event detail view.',
     ],
     'calendar.detail.section.document' => [
-        'text' => 'Document associe',
+        'text' => 'Document associé',
         'context' => 'Label of the linked document card inside the event detail view.',
     ],
     'calendar.detail.section.invites' => [
-        'text' => 'Invites',
+        'text' => 'Invités',
         'context' => 'Label of the invitation summary card inside the event detail view.',
     ],
     'calendar.detail.section.description' => [
@@ -80,23 +80,23 @@ $sourceLang = array_merge([
         'context' => 'Label of the description section inside the event detail view.',
     ],
     'calendar.detail.section.quick_info' => [
-        'text' => 'Infos rapides',
+        'text' => 'Informations rapides',
         'context' => 'Label of the quick event information card.',
     ],
     'calendar.detail.quick_info.created_at' => [
-        'text' => 'Cree le',
+        'text' => 'Créé le',
         'context' => 'Label shown before the event creation date in the quick information card.',
     ],
     'calendar.detail.empty.description' => [
-        'text' => 'Aucune description pour cet evenement.',
+        'text' => 'Aucune description pour cet événement.',
         'context' => 'Fallback text shown when the event has no description.',
     ],
     'calendar.detail.empty.location' => [
-        'text' => 'Aucun lieu precise.',
+        'text' => 'Aucun lieu précisé.',
         'context' => 'Fallback text shown when the event has no location yet.',
     ],
     'calendar.detail.empty.document' => [
-        'text' => 'Aucun document lie a cet evenement.',
+        'text' => 'Aucun document lié à cet événement.',
         'context' => 'Fallback text shown when the event has no linked document.',
     ],
     'calendar.detail.location.address' => [
@@ -108,7 +108,7 @@ $sourceLang = array_merge([
         'context' => 'Label shown before the virtual meeting URL.',
     ],
     'calendar.detail.schedule.same_day' => [
-        'text' => '{date} de {start} a {end}',
+        'text' => '{date}, de {start} à {end}',
         'context' => 'Schedule string used for an event starting and ending the same day.',
     ],
     'calendar.detail.schedule.range' => [
@@ -116,15 +116,15 @@ $sourceLang = array_merge([
         'context' => 'Schedule string used for an event spanning multiple days.',
     ],
     'calendar.detail.schedule.all_day_single' => [
-        'text' => 'Toute la journee du {date}',
+        'text' => 'Toute la journée du {date}',
         'context' => 'Schedule string used for a one-day all-day event.',
     ],
     'calendar.detail.schedule.all_day_range' => [
-        'text' => 'Journees completes du {start} au {end}',
+        'text' => 'Journées complètes du {start} au {end}',
         'context' => 'Schedule string used for a multi-day all-day event.',
     ],
     'calendar.detail.not_found' => [
-        'text' => 'Evenement introuvable.',
+        'text' => 'Événement introuvable.',
         'context' => 'Error shown when the requested event cannot be found.',
     ],
     'calendar.detail.organization_invalid' => [
@@ -267,7 +267,7 @@ $statusCatalog = Event::getStatusCatalog();
 $normalizedStatus = Event::normalizeStatus($event->get('status'));
 $statusLabel = trim((string)($statusCatalog[$normalizedStatus]['label'] ?? $normalizedStatus));
 $title = trim((string)$event->get('title'));
-$eventTitle = $title !== '' ? $title : ('Evenement #' . (int)$event->getId());
+$eventTitle = $title !== '' ? $title : ('Événement #' . (int)$event->getId());
 $description = trim((string)$event->get('description'));
 $scheduleLabel = omoCalendarDetailFormatSchedule($event);
 $locationData = $event->getLocationDisplayData();

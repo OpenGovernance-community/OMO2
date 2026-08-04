@@ -10,19 +10,19 @@ use dbObject\Organization;
 
 $sourceLang = array_merge([
     'calendar.create.title' => [
-        'text' => 'Nouvel evenement',
+        'text' => 'Nouvel événement',
         'context' => 'Title shown at the top of the event creation form.',
     ],
     'calendar.edit.title' => [
-        'text' => "Modifier l evenement",
+        'text' => "Modifier l'événement",
         'context' => 'Title shown at the top of the event edition form.',
     ],
     'calendar.create.description' => [
-        'text' => 'Planifiez une date, un horaire, un lieu et un document associe si besoin.',
+        'text' => 'Planifiez une date, un horaire, un lieu et un document associé, si besoin.',
         'context' => 'Intro text shown in the event creation form.',
     ],
     'calendar.edit.description' => [
-        'text' => "Mettez a jour la date, l horaire, le lieu et le document associe.",
+        'text' => "Mettez à jour la date, l'horaire, le lieu et le document associé.",
         'context' => 'Intro text shown in the event edition form.',
     ],
     'calendar.create.field.title' => [
@@ -34,7 +34,7 @@ $sourceLang = array_merge([
         'context' => 'Label of the event description field.',
     ],
     'calendar.create.field.start' => [
-        'text' => 'Debut',
+        'text' => 'Début',
         'context' => 'Label of the event start date time field.',
     ],
     'calendar.create.field.end' => [
@@ -42,11 +42,11 @@ $sourceLang = array_merge([
         'context' => 'Label of the event end date time field.',
     ],
     'calendar.create.field.holon' => [
-        'text' => 'Cercle ou role',
+        'text' => 'Cercle ou rôle',
         'context' => 'Label of the optional holon association field.',
     ],
     'calendar.create.field.all_day' => [
-        'text' => 'Journee entiere',
+        'text' => 'Journée entière',
         'context' => 'Label of the all day checkbox in the event creation form.',
     ],
     'calendar.create.field.none' => [
@@ -58,7 +58,7 @@ $sourceLang = array_merge([
         'context' => 'Label of the event location mode field.',
     ],
     'calendar.create.field.location_mode_pending' => [
-        'text' => 'A definir',
+        'text' => 'À définir',
         'context' => 'Fallback option when the event location is not specified yet.',
     ],
     'calendar.create.field.location_address' => [
@@ -66,7 +66,7 @@ $sourceLang = array_merge([
         'context' => 'Label of the physical address field.',
     ],
     'calendar.create.field.location_address_placeholder' => [
-        'text' => 'Rue, numero, NPA, localite',
+        'text' => 'Rue, numéro, NPA, localité',
         'context' => 'Placeholder shown in the physical address field.',
     ],
     'calendar.create.field.video_url' => [
@@ -78,19 +78,19 @@ $sourceLang = array_merge([
         'context' => 'Placeholder shown in the virtual meeting URL field.',
     ],
     'calendar.create.field.document_type' => [
-        'text' => 'Document associe',
+        'text' => 'Document associé',
         'context' => 'Label of the linked document type field.',
     ],
     'calendar.create.tab.event' => [
-        'text' => 'Evenement',
+        'text' => 'Événement',
         'context' => 'First tab label in the event creation form.',
     ],
     'calendar.create.tab.invites' => [
-        'text' => 'Invites',
+        'text' => 'Invités',
         'context' => 'Second tab label in the event creation form for invitation settings.',
     ],
     'calendar.create.tabs_aria' => [
-        'text' => 'Configuration de l evenement',
+        'text' => "Configuration de l'événement",
         'context' => 'Accessible label of the tabs used in the event creation form.',
     ],
     'calendar.create.field.document_title' => [
@@ -98,7 +98,7 @@ $sourceLang = array_merge([
         'context' => 'Optional label of the linked document title field.',
     ],
     'calendar.create.field.pv_template' => [
-        'text' => 'Modele de PV',
+        'text' => 'Modèle de PV',
         'context' => 'Label of the optional PV template selector in event creation.',
     ],
     'calendar.create.field.pv_template_none' => [
@@ -106,15 +106,15 @@ $sourceLang = array_merge([
         'context' => 'Empty option of the PV template selector in event creation.',
     ],
     'calendar.create.field.pv_template_hint' => [
-        'text' => 'Les groupes, points et contenus du modele seront copies sans leurs auteurs ni leurs invites.',
+        'text' => 'Les groupes, points et contenus du modèle seront copiés sans leurs auteurs ni leurs invités.',
         'context' => 'Help text below the PV template selector in event creation.',
     ],
     'calendar.create.document.help_create' => [
-        'text' => 'Si vous choisissez un type, un document vide sera cree automatiquement avec le titre de l evenement, sa description et des tags par defaut. Vous pourrez ensuite le modifier depuis le module Documents.',
+        'text' => "Si vous choisissez un type, un document vide sera créé automatiquement avec le titre de l'événement, sa description et des tags par défaut. Vous pourrez ensuite le modifier depuis le module Documents.",
         'context' => 'Help text shown when the user chooses a linked document type from the event form.',
     ],
     'calendar.create.document.help_existing' => [
-        'text' => 'Le document lie reste modifiable depuis le module Documents.',
+        'text' => 'Le document lié reste modifiable depuis le module Documents.',
         'context' => 'Help text shown when an event already has a linked document.',
     ],
     'calendar.create.document.open' => [
@@ -126,7 +126,7 @@ $sourceLang = array_merge([
         'context' => 'Fallback title shown when a linked document has no title yet.',
     ],
     'calendar.create.document.created_notice' => [
-        'text' => 'Le document sera cree vide avec ses metadonnees par defaut.',
+        'text' => 'Le document sera créé vide avec ses métadonnées par défaut.',
         'context' => 'Notice shown below the document type selector before creating the linked document.',
     ],
     'calendar.create.document.current' => [
@@ -146,7 +146,7 @@ $sourceLang = array_merge([
         'context' => 'Option shown when no linked document should be created.',
     ],
     'calendar.create.submit' => [
-        'text' => 'Creer l evenement',
+        'text' => "Créer l'événement",
         'context' => 'Submit button label of the event creation form.',
     ],
     'calendar.edit.submit' => [
@@ -158,11 +158,11 @@ $sourceLang = array_merge([
         'context' => 'Button returning from the event edition form to the event detail without saving.',
     ],
     'calendar.create.success' => [
-        'text' => 'Evenement cree.',
+        'text' => 'Événement créé.',
         'context' => 'Success message returned after an event is created.',
     ],
     'calendar.edit.success' => [
-        'text' => 'Evenement mis a jour.',
+        'text' => 'Événement mis à jour.',
         'context' => 'Success message returned after an event is updated.',
     ],
     'calendar.create.error.title' => [
@@ -170,7 +170,7 @@ $sourceLang = array_merge([
         'context' => 'Validation error returned when the title is missing.',
     ],
     'calendar.create.error.start' => [
-        'text' => 'La date de debut est invalide.',
+        'text' => 'La date de début est invalide.',
         'context' => 'Validation error returned when the start date is invalid.',
     ],
     'calendar.create.error.end' => [
@@ -182,15 +182,15 @@ $sourceLang = array_merge([
         'context' => 'Validation error returned when the selected holon is not allowed.',
     ],
     'calendar.create.error.document_type' => [
-        'text' => 'Le type de document associe est invalide.',
+        'text' => 'Le type de document associé est invalide.',
         'context' => 'Validation error returned when the selected linked document type is invalid.',
     ],
     'calendar.create.error.document_permission' => [
-        'text' => 'Vous ne pouvez pas creer de document dans ce contexte.',
+        'text' => 'Vous ne pouvez pas créer de document dans ce contexte.',
         'context' => 'Validation error returned when the linked document cannot be created in the selected context.',
     ],
     'calendar.create.error.save' => [
-        'text' => 'Impossible d enregistrer cet evenement.',
+        'text' => "Impossible d'enregistrer cet événement.",
         'context' => 'Generic error returned when the event could not be saved.',
     ],
 ], omoCalendarInvitationSourceLang());
@@ -250,22 +250,22 @@ function omoCalendarBuildDefaultLinkedDocumentValues(string $eventTitle, string 
         if ($documentType === Document::TYPE_PV) {
             $normalizedTitle = omoCalendarCreateT('calendar.create.document.default_pv_title', [
                 'pvLabel' => omoCalendarCreateT('calendar.create.document.keyword_pv'),
-                'eventTitle' => $normalizedEventTitle !== '' ? $normalizedEventTitle : 'Evenement',
+                'eventTitle' => $normalizedEventTitle !== '' ? $normalizedEventTitle : 'Événement',
                 'eventDate' => $startAt->format('d.m.Y H:i'),
             ]);
         } elseif ($normalizedEventTitle !== '') {
             $normalizedTitle = $normalizedEventTitle;
         } else {
-            $normalizedTitle = 'Evenement du ' . $startAt->format('d.m.Y H:i');
+            $normalizedTitle = 'Événement du ' . $startAt->format('d.m.Y H:i');
         }
     }
 
     $description = trim($eventDescription);
     if ($description === '') {
         if ($normalizedEventTitle !== '') {
-            $description = 'Document associe a l evenement "' . $normalizedEventTitle . '".';
+            $description = "Document associé à l'événement \"" . $normalizedEventTitle . '\".';
         } else {
-            $description = 'Document associe a l evenement du ' . $startAt->format('d.m.Y H:i') . '.';
+            $description = "Document associé à l'événement du " . $startAt->format('d.m.Y H:i') . '.';
         }
     }
 
@@ -291,10 +291,10 @@ if ($organizationId <= 0 || $currentUserId <= 0) {
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode([
             'status' => false,
-            'message' => 'Acces refuse.',
+            'message' => 'Accès refusé.',
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     } else {
-        echo '<div class="omo-empty-state">Acces refuse.</div>';
+        echo '<div class="omo-empty-state">Accès refusé.</div>';
     }
     exit;
 }
@@ -332,10 +332,10 @@ if ($eventId > 0) {
             header('Content-Type: application/json; charset=UTF-8');
             echo json_encode([
                 'status' => false,
-                'message' => 'Evenement invalide.',
+                'message' => 'Événement invalide.',
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } else {
-            echo '<div class="omo-empty-state">Evenement invalide.</div>';
+            echo '<div class="omo-empty-state">Événement invalide.</div>';
         }
         exit;
     }
@@ -401,10 +401,10 @@ if (!$isEditMode && !$canCreateEvent) {
         header('Content-Type: application/json; charset=UTF-8');
         echo json_encode([
             'status' => false,
-            'message' => 'Acces refuse.',
+            'message' => 'Accès refusé.',
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     } else {
-        echo '<div class="omo-empty-state">Acces refuse.</div>';
+        echo '<div class="omo-empty-state">Accès refusé.</div>';
     }
     exit;
 }
@@ -513,7 +513,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             http_response_code(403);
             echo json_encode([
                 'status' => false,
-                'message' => 'Acces refuse.',
+                'message' => 'Accès refusé.',
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
@@ -743,7 +743,7 @@ $isAllDayDefault = $isEditMode ? (bool)$event->get('is_all_day') : false;
 $locationDisplayData = $isEditMode ? $event->getLocationDisplayData() : ['mode' => '', 'address' => '', 'videoUrl' => ''];
 $locationModeDefault = $locationDisplayData['mode'] !== ''
     ? (string)$locationDisplayData['mode']
-    : ($isEditMode ? '' : Event::LOCATION_MODE_IN_PERSON);
+    : '';
 $locationAddressDefault = trim((string)($locationDisplayData['address'] ?? ''));
 $videoMeetingUrlDefault = trim((string)($locationDisplayData['videoUrl'] ?? ''));
 
