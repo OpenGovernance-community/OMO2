@@ -717,6 +717,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     const externalSection = form.querySelector('[data-omo-document-external-section]');
     const uploadSection = form.querySelector('[data-omo-document-upload-section]');
     const externalUrlField = form.querySelector('[data-omo-document-external-url]');
+    const externalOpenInNewWindowField = form.querySelector('input[name="open_in_new_window"]');
     const uploadInput = form.querySelector('[data-omo-document-upload-input]');
     const uploadHasExistingFile = <?= $documentType === Document::TYPE_UPLOADED_FILE && $documentHasStoredFile ? 'true' : 'false' ?>;
     const aiToolsEnabled = <?= $canUseAiTools ? 'true' : 'false' ?>;
@@ -2359,6 +2360,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 ? String(htmlField.getValue() || '')
                 : htmlValueCache));
 
+        const shouldCloseDocumentDrawerAfterSave = editingDocumentId > 0
+            && getSelectedDocumentType() === 'external_link'
+            && !!(externalOpenInNewWindowField && externalOpenInNewWindowField.checked);
+
         setSavingState(true);
 
         fetch(form.action, {
@@ -2395,6 +2400,13 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     cleanupSummarize({ keepStatus: true });
 
                     if (savedDocumentId > 0) {
+                        if (shouldCloseDocumentDrawerAfterSave) {
+                            if (typeof window.omoCloseDocumentEditorDrawer === 'function') {
+                                window.omoCloseDocumentEditorDrawer();
+                            }
+                            return;
+                        }
+
                         if (typeof window.omoCloseDocumentEditorDrawer === 'function') {
                             window.omoCloseDocumentEditorDrawer({
                                 returnToDetail: true,

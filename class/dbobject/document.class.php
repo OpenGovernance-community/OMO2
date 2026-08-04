@@ -1922,17 +1922,35 @@
 				$variantClass = 'reference';
 			}
 
+			if ($variantClass === 'resolved') {
+				$sourceTitle = trim($title) !== '' ? trim($title) : ('Document #' . (int)$documentId);
+				$sourceLabel = 'Texte importe depuis : ' . $sourceTitle;
+				return '<div class="omo-document-embed omo-document-embed--resolved"'
+					. ' data-omo-embed-type="document"'
+					. ' data-omo-document-id="' . (int)$documentId . '"'
+					. ' title="' . htmlspecialchars($sourceLabel, ENT_QUOTES, 'UTF-8') . '">'
+					. $bodyHtml
+					. '</div>';
+			}
+
 			$html = '<div class="omo-document-embed omo-document-embed--' . htmlspecialchars($variantClass, ENT_QUOTES, 'UTF-8') . '"'
 				. ' data-omo-embed-type="document"'
 				. ' data-omo-document-id="' . (int)$documentId . '">';
 
 			if (trim($title) !== '') {
-				$documentUrl = '#documents-d' . (int)$documentId;
-				$html .= '<div class="omo-document-embed__title-wrap">'
-					. '<a class="omo-document-embed__title" href="' . htmlspecialchars($documentUrl, ENT_QUOTES, 'UTF-8') . '">'
-					. htmlspecialchars(trim($title), ENT_QUOTES, 'UTF-8') . '</a>'
-					. '<a class="omo-document-embed__external" href="' . htmlspecialchars($documentUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener noreferrer" title="Ouvrir dans une nouvelle fenetre" aria-label="Ouvrir dans une nouvelle fenetre">&#8599;</a>'
-					. '</div>';
+				$titleHtml = htmlspecialchars(trim($title), ENT_QUOTES, 'UTF-8');
+				if ($variantClass === 'forbidden') {
+					$html .= '<div class="omo-document-embed__title-wrap">'
+						. '<span class="omo-document-embed__title">' . $titleHtml . '</span>'
+						. '</div>';
+				} else {
+					$documentUrl = '#documents-d' . (int)$documentId;
+					$html .= '<div class="omo-document-embed__title-wrap">'
+						. '<a class="omo-document-embed__title" href="' . htmlspecialchars($documentUrl, ENT_QUOTES, 'UTF-8') . '">'
+						. $titleHtml . '</a>'
+						. '<a class="omo-document-embed__external" href="' . htmlspecialchars($documentUrl, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener noreferrer" title="Ouvrir dans une nouvelle fenetre" aria-label="Ouvrir dans une nouvelle fenetre">&#8599;</a>'
+						. '</div>';
+				}
 			}
 
 			if (trim($description) !== '') {
@@ -2464,6 +2482,11 @@
 				}
 			}
 
+			$backgroundColorStyle = \dbObject\PropertyFormat::sanitizeBackgroundColorStyle($node->getAttribute('style'));
+			if ($backgroundColorStyle !== '') {
+				$attributes .= ' style="' . htmlspecialchars($backgroundColorStyle, ENT_QUOTES, 'UTF-8') . '"';
+			}
+
 			$childrenHtml = '';
 			foreach ($node->childNodes as $childNode) {
 				$childrenHtml .= $this->renderResolvedHtmlNode($childNode, $organizationId, $options);
@@ -2533,6 +2556,20 @@
 				);
 			}
 
+			$sourceTitle = $targetTitle !== ''
+				? $targetTitle
+				: ($fallbackTitle !== '' ? $fallbackTitle : ('Document #' . $targetDocumentId));
+			$sourceHolonLabel = '';
+			if ($targetHolonId > 0) {
+				$sourceHolon = new \dbObject\Holon();
+				if ($sourceHolon->load($targetHolonId)) {
+					$sourceHolonLabel = trim((string)$sourceHolon->getDisplayName());
+				}
+			}
+			if ($sourceHolonLabel !== '') {
+				$sourceTitle .= ' (' . $sourceHolonLabel . ')';
+			}
+
 			if ($isCompactEmbed) {
 				return self::buildDocumentEmbedDisplayHtml(
 					$targetDocumentId,
@@ -2558,7 +2595,7 @@
 
 			return self::buildDocumentEmbedDisplayHtml(
 				$targetDocumentId,
-				$targetTitle !== '' ? $targetTitle : $fallbackTitle,
+				$sourceTitle,
 				$targetDescription !== '' ? $targetDescription : $fallbackDescription,
 				$bodyHtml,
 				'resolved'
