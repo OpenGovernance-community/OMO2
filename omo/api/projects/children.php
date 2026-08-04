@@ -123,7 +123,7 @@ foreach ($children as $child) {
     $html .= '<div class="section-project-reference__child-head">';
     $html .= '<span class="section-project-reference__status-dot section-project-reference__status-dot--' . omoApiEscape($status) . '"'
         . ' role="img" aria-label="' . omoApiEscape($statusLabel) . '" title="' . omoApiEscape($statusLabel) . '"></span>';
-    $html .= '<a class="section-project-reference__child-title" href="#projects-d' . $childId . '">' . omoApiEscape($title) . '</a>';
+    $html .= '<a class="section-project-reference__child-title" data-omo-project-reference-title href="#projects-d' . $childId . '">' . omoApiEscape($title) . '</a>';
     if ($priority !== null) {
         $html .= '<span class="generic-project-priority generic-project-priority--p' . (int)$priority . '">P' . (int)$priority . '</span>';
     }
