@@ -777,7 +777,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <title><?= htmlspecialchars(t('app.directory.page_title')) ?></title>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260731-mobile-header-menu">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260804-checklist-toolbar-icon">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page auth-state-page--scrollable auth-state-page--themed auth-state-page--with-topbar">
@@ -1472,7 +1472,7 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     <title><?= htmlspecialchars(t('app.main.page_title')) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260731-mobile-header-menu">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260804-checklist-toolbar-icon">
     <style>
         html[data-omo-organization-accent] {
             --omo-organization-accent: <?= $omoOrganizationAccentColorCss ?>;
@@ -1644,7 +1644,7 @@ window.omoConfig = <?=
 <?php if ($isSiteAdmin) { ?>
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
-<script src="assets/js/simple-html-field.js?v=20260724-pv-embed-status"></script>
+<script src="assets/js/simple-html-field.js?v=20260804-embed-remove-paragraph"></script>
 <script src="assets/js/app.js?v=20260804-project-route"></script>
 <script src="assets/js/structure-mini-map.js"></script>
 

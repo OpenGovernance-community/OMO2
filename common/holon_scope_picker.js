@@ -448,8 +448,10 @@
         var organizationId = normalizeId(settings.organizationId);
         var selectedHolonId = normalizeId(settings.initialHolonId);
         var showModes = settings.showModes !== false;
-        var scope = 'descendants';
-        var scopeIndex = 2;
+        var scope = ['local', 'children', 'descendants'].indexOf(settings.initialScope) !== -1
+            ? settings.initialScope
+            : 'descendants';
+        var scopeIndex = scope === 'local' ? 0 : (scope === 'children' ? 1 : 2);
         var nodes = [];
         var descendants = Object.create(null);
         var directChildren = Object.create(null);
@@ -461,9 +463,9 @@
         }
 
         host.innerHTML = (showModes ? '<div class="omo-holon-scope-picker__modes omo-scope-toggle" role="tablist" data-omo-scope-switch="' + scope + '" style="--omo-scope-option-count: 3; --omo-scope-active-index: ' + String(scopeIndex) + ';">'
-            + '<button type="button" class="omo-scope-toggle__button" data-omo-holon-scope="local" data-omo-scope-option="contextual" data-omo-scope-index="0" aria-pressed="false"><span class="omo-scope-toggle__text">' + escapeHtml(labels.local) + '</span></button>'
-            + '<button type="button" class="omo-scope-toggle__button" data-omo-holon-scope="children" data-omo-scope-option="children" data-omo-scope-index="1" aria-pressed="false"><span class="omo-scope-toggle__text">' + escapeHtml(labels.children) + '</span></button>'
-            + '<button type="button" class="omo-scope-toggle__button is-active" data-omo-holon-scope="descendants" data-omo-scope-option="descendants" data-omo-scope-index="2" aria-pressed="true"><span class="omo-scope-toggle__text">' + escapeHtml(labels.descendants) + '</span></button></div>' : '')
+            + '<button type="button" class="omo-scope-toggle__button' + (scope === 'local' ? ' is-active' : '') + '" data-omo-holon-scope="local" data-omo-scope-option="contextual" data-omo-scope-index="0" aria-pressed="' + (scope === 'local' ? 'true' : 'false') + '"><span class="omo-scope-toggle__text">' + escapeHtml(labels.local) + '</span></button>'
+            + '<button type="button" class="omo-scope-toggle__button' + (scope === 'children' ? ' is-active' : '') + '" data-omo-holon-scope="children" data-omo-scope-option="children" data-omo-scope-index="1" aria-pressed="' + (scope === 'children' ? 'true' : 'false') + '"><span class="omo-scope-toggle__text">' + escapeHtml(labels.children) + '</span></button>'
+            + '<button type="button" class="omo-scope-toggle__button' + (scope === 'descendants' ? ' is-active' : '') + '" data-omo-holon-scope="descendants" data-omo-scope-option="descendants" data-omo-scope-index="2" aria-pressed="' + (scope === 'descendants' ? 'true' : 'false') + '"><span class="omo-scope-toggle__text">' + escapeHtml(labels.descendants) + '</span></button></div>' : '')
             + '<div class="omo-holon-scope-picker__map" data-omo-holon-scope-map></div>';
         var map = host.querySelector('[data-omo-holon-scope-map]');
 

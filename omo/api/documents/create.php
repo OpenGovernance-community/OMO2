@@ -1922,7 +1922,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             return;
         }
 
-        const htmlFieldVersion = '20260720-pv-project-embed-metadata';
+        const htmlFieldVersion = '20260804-embed-remove-paragraph';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'

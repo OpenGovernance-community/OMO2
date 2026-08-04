@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260724-pv-embed-status';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260804-embed-remove-paragraph';
 
     if (
         window.omoSimpleHtmlField
@@ -1166,6 +1166,7 @@
 
             if (initialized && $editor) {
                 $editor.summernote('code', state.value);
+                normalizeResourceEmbedBlocks(getEditableElement());
                 refreshIndicatorValueControls(getEditableElement(), state.indicatorValueUi);
                 saveRange();
                 scheduleResizeEditableToContent();
@@ -1283,11 +1284,204 @@
             }
         }
 
+        function isResourceEmbedElement(element) {
+            if (!(element instanceof Element)) {
+                return false;
+            }
+
+            return /^(?:document|decision|project|checklist|event|indicator)$/i.test(
+                String(element.getAttribute('data-omo-embed-type') || '')
+            );
+        }
+
+        function getSingleResourceEmbedFromHtml(safeHtml) {
+            const temp = document.createElement('div');
+            temp.innerHTML = safeHtml;
+            const meaningfulNodes = Array.from(temp.childNodes || []).filter(function (node) {
+                return node.nodeType !== Node.TEXT_NODE || String(node.textContent || '').trim() !== '';
+            });
+
+            if (meaningfulNodes.length !== 1 || !isResourceEmbedElement(meaningfulNodes[0])) {
+                return null;
+            }
+
+            return meaningfulNodes[0];
+        }
+
+        function createNormalParagraph() {
+            const paragraph = document.createElement('p');
+            paragraph.appendChild(document.createElement('br'));
+            return paragraph;
+        }
+
+        function isParagraphEmpty(paragraph) {
+            if (!(paragraph instanceof HTMLParagraphElement)) {
+                return false;
+            }
+
+            return Array.from(paragraph.childNodes || []).every(function (node) {
+                return node.nodeType === Node.TEXT_NODE
+                    ? String(node.textContent || '').trim() === ''
+                    : (node instanceof HTMLBRElement);
+            });
+        }
+
+        function isResourceEmbedOnlyParagraph(paragraph) {
+            if (!(paragraph instanceof HTMLParagraphElement)) {
+                return false;
+            }
+
+            let containsEmbed = false;
+            const isValid = Array.from(paragraph.childNodes || []).every(function (node) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    return String(node.textContent || '').trim() === '';
+                }
+
+                if (node instanceof HTMLBRElement) {
+                    return true;
+                }
+
+                if (isResourceEmbedElement(node)) {
+                    containsEmbed = true;
+                    return true;
+                }
+
+                return false;
+            });
+
+            return isValid && containsEmbed;
+        }
+
+        function setCursorInParagraph(paragraph) {
+            if (!(paragraph instanceof HTMLParagraphElement) || !window.getSelection) {
+                return;
+            }
+
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(paragraph);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+
+        function insertResourceEmbedAtMarker(markerNode, embedNode) {
+            const editable = getEditableElement();
+            if (!editable || !markerNode || !editable.contains(markerNode) || !embedNode) {
+                return false;
+            }
+
+            const markerParagraph = markerNode.parentElement
+                ? markerNode.parentElement.closest('p')
+                : null;
+            const embedParagraph = document.createElement('p');
+            embedParagraph.appendChild(embedNode);
+            const normalParagraph = createNormalParagraph();
+
+            if (markerParagraph instanceof HTMLParagraphElement && editable.contains(markerParagraph)) {
+                const trailingParagraph = markerParagraph.cloneNode(false);
+                const splitRange = document.createRange();
+                splitRange.setStartAfter(markerNode);
+                splitRange.setEnd(markerParagraph, markerParagraph.childNodes.length);
+                trailingParagraph.appendChild(splitRange.extractContents());
+                markerNode.remove();
+
+                if (isParagraphEmpty(markerParagraph)) {
+                    markerParagraph.replaceWith(embedParagraph);
+                } else {
+                    markerParagraph.after(embedParagraph);
+                }
+
+                if (isParagraphEmpty(trailingParagraph)) {
+                    embedParagraph.after(normalParagraph);
+                    setCursorInParagraph(normalParagraph);
+                } else {
+                    embedParagraph.after(trailingParagraph);
+                    setCursorInParagraph(trailingParagraph);
+                }
+
+                return true;
+            }
+
+            markerNode.replaceWith(embedParagraph, normalParagraph);
+            setCursorInParagraph(normalParagraph);
+            return true;
+        }
+
+        function normalizeResourceEmbedBlocks(editable) {
+            if (!editable) {
+                return;
+            }
+
+            Array.from(editable.children || []).forEach(function (child) {
+                if (!isResourceEmbedElement(child)) {
+                    return;
+                }
+
+                const paragraph = document.createElement('p');
+                child.replaceWith(paragraph);
+                paragraph.appendChild(child);
+            });
+
+            const blocks = Array.from(editable.children || []).filter(function (child) {
+                return isResourceEmbedOnlyParagraph(child);
+            });
+            const lastBlock = blocks.length > 0 ? blocks[blocks.length - 1] : null;
+
+            if (lastBlock && !lastBlock.nextElementSibling) {
+                lastBlock.after(createNormalParagraph());
+            }
+        }
+
+        function handleResourceEmbedParagraphEnter(event) {
+            if (!event || event.key !== 'Enter' || event.isComposing) {
+                return;
+            }
+
+            const editable = getEditableElement();
+            const range = getSelectionRange();
+            if (!editable || !range || !range.collapsed) {
+                return;
+            }
+
+            const startElement = range.startContainer instanceof Element
+                ? range.startContainer
+                : range.startContainer.parentElement;
+            const paragraph = startElement ? startElement.closest('p') : null;
+            if (!isResourceEmbedOnlyParagraph(paragraph) || !editable.contains(paragraph)) {
+                return;
+            }
+
+            event.preventDefault();
+            const normalParagraph = createNormalParagraph();
+            paragraph.after(normalParagraph);
+            setCursorInParagraph(normalParagraph);
+            saveRange();
+        }
+
+        function preventResourceEmbedPointerFocus(event) {
+            const editable = getEditableElement();
+            const target = event && event.target instanceof Element ? event.target : null;
+            const embedNode = target ? target.closest('[data-omo-embed-type]') : null;
+            if (!editable || !embedNode || !editable.contains(embedNode)) {
+                return;
+            }
+
+            const interactiveControl = target.closest('input, select, textarea, button');
+            if (interactiveControl && embedNode.contains(interactiveControl)) {
+                return;
+            }
+
+            event.preventDefault();
+        }
+
         function insertHtmlAtCursor(nextHtml) {
             const safeHtml = sanitizeEditorHtml(nextHtml);
             if (!safeHtml) {
                 return '';
             }
+
+            const resourceEmbed = getSingleResourceEmbedFromHtml(safeHtml);
 
             if (initialized && $editor) {
                 try {
@@ -1295,6 +1489,18 @@
                     restoreRange();
 
                     const selectionRange = getSelectionRange();
+                    if (resourceEmbed && selectionRange) {
+                        const markerNode = buildCursorMarkerNode();
+                        selectionRange.deleteContents();
+                        selectionRange.insertNode(markerNode);
+                        if (insertResourceEmbedAtMarker(markerNode, resourceEmbed)) {
+                            saveRange();
+                            setRawValue($editor.summernote('code'));
+                            refreshIndicatorValueControls(getEditableElement(), state.indicatorValueUi);
+                            return safeHtml;
+                        }
+                    }
+
                     if (selectionRange) {
                         const temp = document.createElement('div');
                         const selection = window.getSelection ? window.getSelection() : null;
@@ -1449,6 +1655,20 @@
                 return insertHtmlAtCursor(safeHtml);
             }
 
+            const resourceEmbed = getSingleResourceEmbedFromHtml(safeHtml);
+            if (resourceEmbed && insertResourceEmbedAtMarker(markerNode, resourceEmbed)) {
+                saveRange();
+
+                if (initialized && $editor) {
+                    setRawValue($editor.summernote('code'));
+                } else {
+                    setRawValue(editable.innerHTML);
+                }
+
+                emitChange();
+                return safeHtml;
+            }
+
             const temp = document.createElement('div');
             temp.innerHTML = safeHtml;
             const nodes = Array.from(temp.childNodes || []);
@@ -1514,9 +1734,15 @@
                 return false;
             }
 
-            const nextSibling = targetNode.nextSibling;
-            const previousSibling = targetNode.previousSibling;
-            targetNode.remove();
+            const containingParagraph = isResourceEmbedElement(targetNode) && targetNode.parentElement
+                ? targetNode.parentElement.closest('p')
+                : null;
+            const removalNode = isResourceEmbedOnlyParagraph(containingParagraph) && editable.contains(containingParagraph)
+                ? containingParagraph
+                : targetNode;
+            const nextSibling = removalNode.nextSibling;
+            const previousSibling = removalNode.previousSibling;
+            removalNode.remove();
 
             if (window.getSelection) {
                 const selection = window.getSelection();
@@ -1718,6 +1944,8 @@
                 const editable = getEditableElement();
                 if (editable) {
                     editable.addEventListener('input', scheduleResizeEditableToContent);
+                    editable.addEventListener('mousedown', preventResourceEmbedPointerFocus, true);
+                    editable.addEventListener('keydown', handleResourceEmbedParagraphEnter);
                     editable.addEventListener('click', function (event) {
                         const context = emitIndicatorValueAdd(event.target || null, event);
                         if (context && typeof state.onIndicatorValueAdd === 'function') {
