@@ -478,13 +478,21 @@
     resize: vertical;
 }
 
-@media (max-width: 700px) {
+.omo-proposal-action-label--short {
+    display: none;
+}
+
+@media (max-width: 900px) {
     .omo-proposal-discussion-actions {
         gap: 3px;
     }
 
-    .omo-proposal-action-label-detail {
+    .omo-proposal-action-label--full {
         display: none;
+    }
+
+    .omo-proposal-action-label--short {
+        display: inline;
     }
 
     .omo-proposal-discussion-actions > .generic-action-button,
@@ -514,7 +522,9 @@
         width: 30px;
         font-size: 1rem;
     }
+}
 
+@media (max-width: 700px) {
     .omo-decision-settings-popup {
         padding: 14px;
     }
