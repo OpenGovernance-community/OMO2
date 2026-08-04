@@ -4,6 +4,12 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-04
 
+- Les projets qui passent En cours recoivent la date du jour lorsqu aucun debut n est planifie; ceux qui passent Termines recoivent de meme une date de fin. Le statut Un jour peut-etre efface les deux dates planifiees.
+- Un sous-projet rattache a un projet dont la fin est planifiee herite de cette date si la sienne est vide et ne peut pas la depasser; il ne peut pas etre place dans le statut Un jour peut-etre.
+- Le detail d'un projet garde ses onglets visibles, sans espace residuel en bas, avec un contenu defilant et un espacement generique propre a chaque onglet; un onglet Evenements associes est pret pour une future liste.
+- L onglet Documents associes des projets affiche un etat vide leger, conserve une action de creation compacte meme avec des fichiers, et ouvre un sous-drawer; le fichier cree est associe au projet sans etre rattache a un holon, puis la liste se recharge.
+- Les primitives CSS distinguent maintenant le socle partage `generic-*` de leurs parametres configurables `--param-*`, afin d eviter les surcharges locales fragiles.
+- Dans le calendrier, les filtres de portee et de vue restent au-dessus des entetes fixes de la vue liste; le sous-drawer passe aussi devant ces entetes tout en restant sous la topbar. Le lieu des nouveaux evenements est desormais A definir par defaut. Les libelles et messages des evenements sont maintenant corriges en francais, avec leurs accents et leur ponctuation. Apres ajout ou modification, la vue courante se recharge puis rouvre le detail. La position temporaire du calendrier (mois, semaine ou jour) est aussi restauree apres un rafraichissement de page.
 - La popup FAQ ouverte depuis le menu Aide de la topbar garde une marge interne generique dans son contenu defilant, tandis que sa barre de defilement reste au bord de la fenetre.
 - Les cartes de reponses de la FAQ utilisent maintenant la primitive generique `generic-soft-panel`, sans ombre, avec un format plus compact pour afficher davantage de questions.
 - La FAQ compacte davantage ses questions et aligne son bouton Ajouter, sa recherche et son selecteur de contexte sur les composants generiques et le selecteur OMO des documents.

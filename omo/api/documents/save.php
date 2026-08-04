@@ -29,6 +29,35 @@ $editVisibilityType = trim((string)($_POST['edit_visibility_type'] ?? 'self'));
 $isFolder = !empty($_POST['is_folder']) || trim(mb_strtolower($documentType, 'UTF-8')) === \dbObject\Document::TYPE_FOLDER;
 $parentDocumentId = isset($_POST['parent_document_id']) ? (int)$_POST['parent_document_id'] : 0;
 $pvTemplateId = isset($_POST['pv_template_id']) ? max(0, (int)$_POST['pv_template_id']) : 0;
+$projectId = isset($_POST['project_id']) ? max(0, (int)$_POST['project_id']) : 0;
+
+if ($projectId > 0) {
+    $project = new \dbObject\Project();
+    $projectHolon = null;
+    if (
+        !$project->load($projectId)
+        || (int)$project->get('IDorganization') !== $organizationId
+        || (int)$project->get('active') !== 1
+        || !(($projectHolon = $project->getHolon()) instanceof \dbObject\Holon)
+        || !$projectHolon->canEdit()
+    ) {
+        http_response_code(403);
+        echo json_encode(array(
+            'status' => false,
+            'message' => 'Acces refuse.',
+        ));
+        exit;
+    }
+
+    if ($holonId > 0 && $holonId !== (int)$projectHolon->getId()) {
+        http_response_code(403);
+        echo json_encode(array(
+            'status' => false,
+            'message' => 'Contexte de projet invalide.',
+        ));
+        exit;
+    }
+}
 
 if (
     $documentId <= 0
@@ -137,6 +166,23 @@ if (!is_array($result) || ($result['status'] ?? false) !== true) {
         'message' => trim((string)($result['text'] ?? 'Impossible de créer ce document.')),
     ));
     exit;
+}
+
+if ($projectId > 0) {
+    $projectDocument = new \dbObject\ProjectDocument();
+    if (!$projectDocument->load([['IDproject', $projectId], ['IDdocument', (int)$document->getId()]])) {
+        $projectDocument->set('IDproject', $projectId);
+        $projectDocument->set('IDdocument', (int)$document->getId());
+        $projectDocumentResult = $projectDocument->save();
+        if (!is_array($projectDocumentResult) || ($projectDocumentResult['status'] ?? false) !== true) {
+            http_response_code(422);
+            echo json_encode(array(
+                'status' => false,
+                'message' => 'Impossible d associer le document au projet.',
+            ));
+            exit;
+        }
+    }
 }
 
 echo json_encode(array(

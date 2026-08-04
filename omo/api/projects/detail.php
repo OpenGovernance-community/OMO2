@@ -210,12 +210,14 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
     <?php endif; ?>
 
     <div class="generic-tabs omo-project-detail__tabs" data-generic-tabs>
-        <div class="generic-tabs__list" aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.tabs.information')) ?>">
+        <div class="generic-tabs__list" aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.tabs.label')) ?>">
             <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omo-project-detail-information-<?= (int)$project->getId() ?>"><?= omoApiEscape(omoProjectsT('projects.detail.tabs.information')) ?></button>
             <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-project-detail-documents-<?= (int)$project->getId() ?>" data-omo-project-detail-documents-tab><?= omoApiEscape(omoProjectsT('projects.detail.tabs.documents')) ?></button>
+            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-project-detail-events-<?= (int)$project->getId() ?>"><?= omoApiEscape(omoProjectsT('projects.detail.tabs.events')) ?></button>
         </div>
         <div class="generic-tabs__panels">
             <div id="omo-project-detail-information-<?= (int)$project->getId() ?>" class="generic-tabs__panel omo-project-detail__tab-panel" data-generic-tab-panel>
+                <div class="omo-project-detail__tab-content generic-drawer-content">
     <section class="generic-section omo-project-detail__section">
         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoProjectsT('projects.detail.description')) ?></h3>
         <?php if ($description !== ''): ?>
@@ -340,8 +342,15 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
             <p class="omo-project-detail__created generic-meta"><?= omoApiEscape(omoProjectsT('projects.detail.created')) ?> <?= omoApiEscape(omoProjectsFormatDate($createdAt)) ?></p>
         </section>
     </div>
+                </div>
             </div>
             <div id="omo-project-detail-documents-<?= (int)$project->getId() ?>" class="generic-tabs__panel omo-project-detail__tab-panel" data-generic-tab-panel data-omo-project-detail-documents-panel data-omo-project-detail-documents-url="<?= omoApiEscape($documentsUrl) ?>" data-omo-project-detail-documents-loaded="0" hidden>
+                <div class="omo-project-detail__tab-content omo-project-detail__documents-content generic-drawer-content" data-omo-project-detail-documents-content></div>
+            </div>
+            <div id="omo-project-detail-events-<?= (int)$project->getId() ?>" class="generic-tabs__panel omo-project-detail__tab-panel" data-generic-tab-panel hidden>
+                <div class="omo-project-detail__tab-content generic-drawer-content">
+                    <p class="omo-project-detail__muted generic-description generic-description--small"><?= omoApiEscape(omoProjectsT('projects.detail.events.coming_soon')) ?></p>
+                </div>
             </div>
         </div>
     </div>

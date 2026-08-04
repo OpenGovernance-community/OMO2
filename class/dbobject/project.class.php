@@ -13,6 +13,9 @@ class Project extends DbObject
     public const STATUS_REVIEW = 'review';
     public const STATUS_DONE = 'done';
 
+    public const SAVE_ERROR_PARENT_SOMEDAY = 'parent_someday';
+    public const SAVE_ERROR_PARENT_END_DATE = 'parent_end_date';
+
     public const CAPTURE_MULTIPLE_DOCUMENTS = 'multiple_documents';
     public const CAPTURE_SINGLE_JOURNAL = 'single_journal';
 
@@ -406,11 +409,37 @@ class Project extends DbObject
         $this->set('importance', self::normalizeLevel($this->get('importance')));
 
         $parentId = (int)$this->get('IDproject_parent');
+        $parent = null;
         if ($parentId > 0) {
             $parent = new self();
             if (!$parent->load($parentId) || !$this->canUseAsParent($parent)) {
                 return ['status' => false, 'text' => 'Invalid project parent.'];
             }
+        }
+
+        $status = self::normalizeStatus($this->get('status'));
+        $parentEndDate = $parent instanceof self ? $parent->get('planned_end_date') : null;
+        if ($parentEndDate instanceof \DateTimeInterface) {
+            if ($status === self::STATUS_SOMEDAY) {
+                return ['status' => false, 'errorCode' => self::SAVE_ERROR_PARENT_SOMEDAY];
+            }
+
+            $plannedEndDate = $this->get('planned_end_date');
+            if (!$plannedEndDate) {
+                $this->set('planned_end_date', $parentEndDate->format('Y-m-d'));
+            } elseif ($plannedEndDate instanceof \DateTimeInterface && $plannedEndDate > $parentEndDate) {
+                return ['status' => false, 'errorCode' => self::SAVE_ERROR_PARENT_END_DATE];
+            }
+        }
+
+        $today = (new \DateTimeImmutable('today'))->format('Y-m-d');
+        if ($status === self::STATUS_SOMEDAY) {
+            $this->set('planned_start_date', null);
+            $this->set('planned_end_date', null);
+        } elseif ($status === self::STATUS_IN_PROGRESS && !$this->get('planned_start_date')) {
+            $this->set('planned_start_date', $today);
+        } elseif ($status === self::STATUS_DONE && !$this->get('planned_end_date')) {
+            $this->set('planned_end_date', $today);
         }
 
         $now = new \DateTime();

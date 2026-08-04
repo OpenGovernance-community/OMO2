@@ -21,6 +21,19 @@ function omoProjectsActionRespond($success, $message = '', array $extra = [], $s
     exit;
 }
 
+function omoProjectsSaveFailureMessage($saveResult)
+{
+    $errorCode = is_array($saveResult) ? (string)($saveResult['errorCode'] ?? '') : '';
+    if ($errorCode === Project::SAVE_ERROR_PARENT_SOMEDAY) {
+        return omoProjectsT('projects.error.parent_someday');
+    }
+    if ($errorCode === Project::SAVE_ERROR_PARENT_END_DATE) {
+        return omoProjectsT('projects.error.parent_end_date');
+    }
+
+    return omoProjectsT('projects.error.save');
+}
+
 function omoProjectsGetProjectTree(Project $project, $organizationId, $includeInactive = false)
 {
     $projects = new ArrayProject();
@@ -136,7 +149,7 @@ if ($action === 'update_kanban_position') {
     $existingProject->set('status', $status);
     $saveResult = $existingProject->save();
     if (!is_array($saveResult) || empty($saveResult['status'])) {
-        omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
+        omoProjectsActionRespond(false, omoProjectsSaveFailureMessage($saveResult), [], 422);
     }
 
     omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), [
@@ -162,7 +175,7 @@ if ($action === 'update_status') {
     $project->set('status', $status);
     $saveResult = $project->save();
     if (!is_array($saveResult) || empty($saveResult['status'])) {
-        omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
+        omoProjectsActionRespond(false, omoProjectsSaveFailureMessage($saveResult), [], 422);
     }
 
     omoProjectsActionRespond(true, omoProjectsT('projects.success.status'), [
@@ -197,7 +210,7 @@ if ($action === 'attach_subproject') {
     $childProject->set('IDproject_parent', (int)$existingProject->getId());
     $saveResult = $childProject->save();
     if (!is_array($saveResult) || empty($saveResult['status'])) {
-        omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
+        omoProjectsActionRespond(false, omoProjectsSaveFailureMessage($saveResult), [], 422);
     }
 
     omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), [
@@ -385,7 +398,7 @@ $project->set('active', 1);
 
 $saveResult = $project->save();
 if (!is_array($saveResult) || empty($saveResult['status']) || (int)$project->getId() <= 0) {
-    omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
+    omoProjectsActionRespond(false, omoProjectsSaveFailureMessage($saveResult), [], 422);
 }
 
 omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), [

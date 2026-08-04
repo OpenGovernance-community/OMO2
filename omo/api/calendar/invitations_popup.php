@@ -16,7 +16,7 @@ $sourceLang = array_merge([
         'context' => 'Fallback error message shown by the event invitation popup JavaScript.',
     ],
     'calendar.invitations.js_request_error' => [
-        'text' => 'Impossible d enregistrer ces invites pour le moment.',
+        'text' => "Impossible d'enregistrer ces invités pour le moment.",
         'context' => 'Network error shown by the event invitation popup JavaScript.',
     ],
 ], omoCalendarInvitationSourceLang());
