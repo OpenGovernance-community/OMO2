@@ -1244,7 +1244,17 @@
 .omo-project-detail__events-list {
     align-self: start;
     display: grid;
+    gap: 18px;
+}
+
+.omo-project-detail__events-group,
+.omo-project-detail__events-group-items {
+    display: grid;
     gap: 8px;
+}
+
+.omo-project-detail__events-group-title {
+    margin: 0;
 }
 
 .omo-project-detail__event-item {
