@@ -16,7 +16,7 @@ $sourceLang = [
         'context' => 'Introductory text shown in the calendar application.',
     ],
     'calendar.scope.contextual' => [
-        'text' => 'Contextuel',
+        'text' => 'Local',
         'context' => 'Label used to show only events from the current context.',
     ],
     'calendar.scope.children' => [

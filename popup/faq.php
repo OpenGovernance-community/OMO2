@@ -20,7 +20,7 @@ $contextOrganizationId = (int)($faqContext['organizationId'] ?? 0);
 $faqAvailableScopes = \dbObject\FAQ::getAvailablePopupScopes($faqContext ?: array());
 $faqScope = \dbObject\FAQ::normalizePopupScope($_GET['faq_scope'] ?? null, $faqContext ?: array());
 $faqScopeLabels = array(
-	'contextual' => 'Contextuel',
+	'contextual' => 'Local',
 	'children' => 'Enfants directs',
 	'descendants' => 'Descendants',
 );
@@ -78,7 +78,7 @@ if (count($popupReloadQuery) > 0) {
 	$popupReloadUrl .= '?' . implode('&', $popupReloadQuery);
 }
 
-$editorTitle = 'Nouvelle FAQ contextuelle';
+$editorTitle = 'Nouvelle FAQ locale';
 $editorStatus = $contextHolon
 	? 'Cette FAQ sera rattachee au holon courant.'
 	: 'Cette FAQ sera creee dans le contexte courant.';

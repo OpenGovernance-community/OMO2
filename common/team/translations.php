@@ -19,7 +19,7 @@ if (!function_exists('omoTeamSourceLang')) {
         $sourceLang = [
             'team.title' => ['text' => 'Team', 'context' => 'Title of the team app drawer in OMO.'],
             'team.scope.members_aria' => ['text' => 'Portée des membres', 'context' => 'Accessible label of the team scope switcher.'],
-            'team.scope.contextual' => ['text' => 'Contextuel', 'context' => 'Label of the contextual scope in the team module.'],
+            'team.scope.contextual' => ['text' => 'Local', 'context' => 'Label of the contextual scope in the team module.'],
             'team.scope.children' => ['text' => 'Enfants directs', 'context' => 'Label of the current holon and direct child scope in the team module.'],
             'team.scope.descendants' => ['text' => 'Descendants', 'context' => 'Label of the descendants scope in the team module.'],
             'team.view.choice_aria' => ['text' => 'Choix de la vue', 'context' => 'Accessible label of the team view switcher.'],
