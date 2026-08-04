@@ -2810,7 +2810,7 @@ foreach ($points as $point) {
 
     function openPvEmbeddedResourceByHash(resourceHash) {
         const normalizedHash = String(resourceHash || '').replace(/^#/, '');
-        if (!/^(?:(?:documents|decision|projects)-d\d+|checklist-c\d+|calendar-e\d+|stats(?:-i\d+)?)$/.test(normalizedHash)) {
+        if (!/^(?:(?:documents|decision|projects)-d\d+|checklist-c\d+|calendar-e\d+|stats(?:-(?:i|g)\d+)?)$/.test(normalizedHash)) {
             return;
         }
 
@@ -2889,7 +2889,7 @@ foreach ($points as $point) {
             }
 
             const resourceHash = String(resourceLink.getAttribute('href') || '');
-            if (!/^#(?:(?:documents|decision|projects)-d\d+|checklist-c\d+|calendar-e\d+|stats(?:-i\d+)?)$/.test(resourceHash)) {
+            if (!/^#(?:(?:documents|decision|projects)-d\d+|checklist-c\d+|calendar-e\d+|stats(?:-(?:i|g)\d+)?)$/.test(resourceHash)) {
                 return;
             }
 
@@ -3373,7 +3373,7 @@ foreach ($points as $point) {
         const title = String(indicatorItem.title || '').trim() || ('Indicateur #' + String(indicatorId));
         const description = String(indicatorItem.description || '').trim();
         const indicatorKind = String(indicatorItem && indicatorItem.kind || '').trim() === 'group' ? 'group' : 'indicator';
-        const routeHash = indicatorKind === 'group' ? 'stats' : ('stats-i' + String(indicatorId));
+        const routeHash = indicatorKind === 'group' ? ('stats-g' + String(indicatorId)) : ('stats-i' + String(indicatorId));
         const valueLabel = String(indicatorItem.valueLabel || '').trim();
         const dateLabel = String(indicatorItem.dateLabel || '').trim();
         const statusLabel = String(indicatorItem.statusLabel || '').trim();
@@ -4090,7 +4090,7 @@ foreach ($points as $point) {
     })();
 
     function ensureHtmlFieldLibrary(callback) {
-        const htmlFieldVersion = '20260804-embed-remove-paragraph';
+        const htmlFieldVersion = '20260804-indicator-group-route';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'

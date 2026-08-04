@@ -1198,6 +1198,72 @@
 			);
 		}
 
+		protected function deleteOrganizationChecklists()
+		{
+			$organizationId = (int)$this->getId();
+			if ($organizationId <= 0 || !self::tableExists('checklist')) {
+				return true;
+			}
+
+			$params = array('organization_id' => $organizationId);
+
+			if (self::tableExists('checklist_run_item') && self::tableExists('checklist_run')) {
+				if (!self::execute(
+					"DELETE run_item
+					FROM checklist_run_item run_item
+					INNER JOIN checklist_run run ON run.id = run_item.IDchecklistrun
+					LEFT JOIN checklist checklist ON checklist.id = run.IDchecklist
+					WHERE run.IDorganization = :organization_id
+					   OR checklist.IDorganization = :organization_id",
+					$params
+				)) {
+					return false;
+				}
+			}
+
+			if (self::tableExists('checklist_item_occurrence') && self::tableExists('checklist_item')) {
+				if (!self::execute(
+					"DELETE occurrence
+					FROM checklist_item_occurrence occurrence
+					INNER JOIN checklist_item item ON item.id = occurrence.IDchecklistitem
+					INNER JOIN checklist checklist ON checklist.id = item.IDchecklist
+					WHERE checklist.IDorganization = :organization_id",
+					$params
+				)) {
+					return false;
+				}
+			}
+
+			if (self::tableExists('checklist_run')) {
+				if (!self::execute(
+					"DELETE run
+					FROM checklist_run run
+					LEFT JOIN checklist checklist ON checklist.id = run.IDchecklist
+					WHERE run.IDorganization = :organization_id
+					   OR checklist.IDorganization = :organization_id",
+					$params
+				)) {
+					return false;
+				}
+			}
+
+			if (!self::execute(
+				"UPDATE checklist current_checklist
+				INNER JOIN checklist previous_checklist ON previous_checklist.id = current_checklist.IDchecklist_previous
+				SET current_checklist.IDchecklist_previous = NULL
+				WHERE previous_checklist.IDorganization = :organization_id",
+				$params
+			)) {
+				return false;
+			}
+
+			return self::execute(
+				"DELETE FROM checklist
+				WHERE IDorganization = :organization_id",
+				$params
+			);
+		}
+
 		public function removeMember($userId, array $options = array())
 		{
 			$organizationId = (int)$this->getId();
@@ -1508,6 +1574,10 @@
 
 				if (!$this->deleteOrganizationDocuments($holonIds)) {
 					throw new \RuntimeException("Les documents de l'organisation n'ont pas pu etre supprimes.");
+				}
+
+				if (!$this->deleteOrganizationChecklists()) {
+					throw new \RuntimeException("Les checklists de l'organisation n'ont pas pu etre supprimees.");
 				}
 
 				if (!self::execute(
