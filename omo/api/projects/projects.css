@@ -962,8 +962,17 @@
 .omo-project-gantt-row--someday { --omo-project-status-color: var(--omo-project-status-someday); }
 
 .omo-project-detail {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 14px;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.omo-projects__document-drawer {
+    z-index: calc(var(--omo-overlay-drawer-z-index) + 1);
 }
 
 .omo-project-detail__breadcrumb {
@@ -1068,15 +1077,51 @@
 }
 
 .omo-project-detail__tabs {
-    --generic-tabs-panel-padding-block: 14px;
-    --generic-tabs-panel-padding-inline: 0;
-    --generic-tabs-panel-border: transparent;
-    --generic-tabs-panel-background: transparent;
+
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 0;
+    padding-top: 10px
+}
+
+.omo-project-detail__tabs .generic-tabs__panels {
+    display: grid;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .omo-project-detail__tab-panel {
-    display: grid;
-    gap: 12px;
+    min-height: 0;
+    overflow: auto;
+}
+
+.omo-project-detail__tab-content {
+    min-height: 100%;
+}
+
+.omo-project-detail__documents-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: var(--generic-space-2);
+}
+
+.omo-project-detail__documents-content {
+    align-content: start;
+}
+
+.omo-project-detail__documents-empty h3,
+.omo-project-detail__documents-empty p {
+    margin: 0;
+}
+
+.omo-project-detail__documents-actions {
+    align-items: flex-start;
+    align-self: start;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .omo-project-detail__archives-link {
@@ -1131,6 +1176,7 @@
 }
 
 .omo-project-detail__documents-list {
+    align-self: start;
     display: grid;
     gap: 8px;
 }

@@ -3,6 +3,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 
 use dbObject\Holon;
+use dbObject\Document;
 use dbObject\Project;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
@@ -42,15 +43,37 @@ if (
 }
 
 $documents = omoProjectsGetVisibleDocuments($project, $organizationId, $projectHolon);
+$canCreateDocument = Document::canCreateInOrganizationContext(
+    $organizationId,
+    null,
+    (int)commonGetCurrentUserId(),
+    0,
+    true
+);
+$createDocumentUrl = '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)
+    . '&project_id=' . rawurlencode((string)$projectId)
+    . '&editor_host=project';
+$createDocumentButton = '<button type="button" class="generic-action-button generic-action-button--main"'
+    . ' data-omo-project-detail-add-document'
+    . ' data-omo-project-detail-add-document-url="' . omoApiEscape($createDocumentUrl) . '">'
+    . omoApiEscape(omoProjectsT('projects.detail.documents.new'))
+    . '</button>';
 if (count($documents) === 0) {
-    echo '<div class="generic-soft-panel omo-project-detail__documents-empty">'
-        . '<p class="omo-project-detail__muted generic-description generic-description--small">' . omoApiEscape(omoProjectsT('projects.detail.documents.empty')) . '</p>'
-        . '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-detail-add-document>'
-        . omoApiEscape(omoProjectsT('projects.detail.documents.add'))
-        . '</button></div>';
+    echo '<div class="omo-project-detail__documents-empty">'
+        . '<h3 class="generic-card-title generic-card-title--medium">' . omoApiEscape(omoProjectsT('projects.detail.documents.empty')) . '</h3>'
+        . '<p class="generic-description generic-description--small">' . omoApiEscape(omoProjectsT('projects.detail.documents.empty_hint')) . '</p>';
+    if ($canCreateDocument) {
+        echo $createDocumentButton;
+    }
+    echo '</div>';
     exit;
 }
 ?>
+<?php if ($canCreateDocument): ?>
+    <div class="omo-project-detail__documents-actions">
+        <?= $createDocumentButton ?>
+    </div>
+<?php endif; ?>
 <div class="omo-project-detail__documents-list">
     <?php foreach ($documents as $documentItem): ?>
         <a

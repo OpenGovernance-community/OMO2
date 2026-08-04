@@ -72,6 +72,8 @@ $organizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['cur
 $holonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $documentId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $parentDocumentId = isset($_GET['pid']) ? (int)$_GET['pid'] : 0;
+$projectId = isset($_GET['project_id']) ? max(0, (int)$_GET['project_id']) : 0;
+$editorHost = trim((string)($_GET['editor_host'] ?? '')) === 'project' && $projectId > 0 ? 'project' : 'documents';
 $currentUserId = (int)commonGetCurrentUserId();
 $escape = 'omoApiEscape';
 $document = new Document();
@@ -330,10 +332,11 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 data-omo-document-editor-submit
             ><?= $escape($isEditing ? omoDocumentsCreateT('documents.create.action.save') : omoDocumentsCreateT('documents.create.action.create')) ?></button>
         </div>
-        <form id="<?= $escape($documentFormId) ?>" class="omo-document-editor__form generic-form-stack" action="/omo/api/documents/save.php" method="post" enctype="multipart/form-data" data-omo-document-create-form>
+        <form id="<?= $escape($documentFormId) ?>" class="omo-document-editor__form generic-form-stack" action="/omo/api/documents/save.php" method="post" enctype="multipart/form-data" data-omo-document-create-form data-omo-document-editor-host="<?= $escape($editorHost) ?>">
             <input type="hidden" name="oid" value="<?= $escape($organizationId) ?>">
             <input type="hidden" name="cid" value="<?= $escape($contextHolonId) ?>">
             <input type="hidden" name="parent_document_id" value="<?= (int)$parentDocumentId ?>">
+            <input type="hidden" name="project_id" value="<?= (int)$projectId ?>">
             <?php if ($isEditing): ?>
                 <input type="hidden" name="id" value="<?= (int)$document->getId() ?>">
             <?php endif; ?>
@@ -702,6 +705,8 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
     form.dataset.omoDocumentCreateReady = '1';
 
+    const editorHost = String(form.getAttribute('data-omo-document-editor-host') || 'documents');
+
     const htmlHost = form.querySelector('[data-omo-document-editor-html]');
     const statusNode = form.querySelector('[data-omo-document-editor-status]');
     const dictationStatusNode = form.querySelector('[data-omo-document-dictation-status]');
@@ -753,6 +758,16 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     let editLockLost = false;
     let editLockHeartbeatTimer = null;
     let draftSyncTimer = null;
+
+    function closeDocumentEditor(options) {
+        if (editorHost === 'project' && typeof window.omoCloseProjectDocumentEditorDrawer === 'function') {
+            window.omoCloseProjectDocumentEditorDrawer(options);
+            return;
+        }
+        if (typeof window.omoCloseDocumentEditorDrawer === 'function') {
+            window.omoCloseDocumentEditorDrawer(options);
+        }
+    }
 
     function getSelectedDocumentType() {
         if (!typeSelect) {
@@ -2263,9 +2278,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             cleanupRewrite({ keepStatus: true });
             cleanupSummarize({ keepStatus: true });
             releaseEditLock({ keepalive: true });
-            if (typeof window.omoCloseDocumentEditorDrawer === 'function') {
-                window.omoCloseDocumentEditorDrawer({ returnToDetail: true });
-            }
+            closeDocumentEditor({ returnToDetail: true });
         });
     }
 
@@ -2387,9 +2400,9 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     throw new Error(payload && payload.message ? payload.message : 'save_failed');
                 }
 
-                const savedDocumentId = editingDocumentId;
+                const savedDocumentId = Number(payload.id || editingDocumentId || 0);
 
-                const refreshPromise = typeof window.omoRefreshDocumentsPanel === 'function'
+                const refreshPromise = editorHost !== 'project' && typeof window.omoRefreshDocumentsPanel === 'function'
                     ? window.omoRefreshDocumentsPanel()
                     : Promise.resolve(null);
 
@@ -2399,26 +2412,30 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     cleanupRewrite({ keepStatus: true });
                     cleanupSummarize({ keepStatus: true });
 
-                    if (savedDocumentId > 0) {
-                        if (shouldCloseDocumentDrawerAfterSave) {
-                            if (typeof window.omoCloseDocumentEditorDrawer === 'function') {
-                                window.omoCloseDocumentEditorDrawer();
+                    if (editorHost === 'project') {
+                        window.dispatchEvent(new CustomEvent('omo-project-document-saved', {
+                            detail: {
+                                projectId: Number(form.querySelector('input[name="project_id"]') && form.querySelector('input[name="project_id"]').value || 0),
+                                documentId: savedDocumentId
                             }
+                        }));
+                        closeDocumentEditor();
+                    } else if (savedDocumentId > 0) {
+                        if (shouldCloseDocumentDrawerAfterSave) {
+                            closeDocumentEditor();
                             return;
                         }
 
-                        if (typeof window.omoCloseDocumentEditorDrawer === 'function') {
-                            window.omoCloseDocumentEditorDrawer({
-                                returnToDetail: true,
-                                force: true
-                            });
-                        }
+                        closeDocumentEditor({
+                            returnToDetail: true,
+                            force: true
+                        });
 
                         if (typeof window.omoOpenDrawerHashState === 'function') {
                             window.omoOpenDrawerHashState('documents-d' + String(savedDocumentId));
                         }
-                    } else if (typeof window.omoCloseDocumentEditorDrawer === 'function') {
-                        window.omoCloseDocumentEditorDrawer({ returnToDetail: true });
+                    } else {
+                        closeDocumentEditor({ returnToDetail: true });
                     }
                 });
             })

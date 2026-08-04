@@ -35,8 +35,8 @@ class Event extends DbObject
         return [
             'id' => 'ID',
             'IDorganization' => 'Organisation',
-            'IDholon' => 'Cercle ou role',
-            'IDuser' => 'Createur',
+            'IDholon' => 'Cercle ou rôle',
+            'IDuser' => 'Créateur',
             'title' => 'Titre',
             'description' => 'Description',
             'status' => 'Statut',
@@ -44,28 +44,28 @@ class Event extends DbObject
             'locationmode' => 'Format du lieu',
             'locationaddress' => 'Adresse',
             'videomeetingurl' => 'Lien de visio',
-            'start_at' => 'Debut',
+            'start_at' => 'Début',
             'end_at' => 'Fin',
-            'is_all_day' => 'Journee entiere',
-            'parameters' => 'Parametres',
+            'is_all_day' => 'Journée entière',
+            'parameters' => 'Paramètres',
             'active' => 'Actif',
-            'created_at' => 'Creation',
-            'updated_at' => 'Mise a jour',
+            'created_at' => 'Création',
+            'updated_at' => 'Mise à jour',
         ];
     }
 
     public static function attributeDescriptions()
     {
         return [
-            'IDholon' => 'Holon optionnel pour rattacher l evenement a un cercle ou a un role.',
-            'IDuser' => 'Utilisateur qui a cree l evenement.',
-            'status' => 'Cycle de vie simple avant l ajout des invitations et reponses.',
-            'timezone' => 'Fuseau horaire de reference pour l export agenda.',
-            'locationmode' => 'Permet de preciser si la rencontre est en presentiel, en visio ou mixte.',
-            'locationaddress' => 'Adresse libre pour les rencontres en presentiel ou mixtes.',
-            'videomeetingurl' => 'URL http ou https de la salle de reunion virtuelle.',
-            'is_all_day' => 'Indique si l evenement doit etre interprete comme une journee complete.',
-            'parameters' => 'Reserve pour les invitations, metadonnees et options futures.',
+            'IDholon' => "Holon optionnel pour rattacher l'événement à un cercle ou à un rôle.",
+            'IDuser' => "Utilisateur qui a créé l'événement.",
+            'status' => "Cycle de vie simple avant l'ajout des invitations et réponses.",
+            'timezone' => "Fuseau horaire de référence pour l'export agenda.",
+            'locationmode' => 'Permet de préciser si la rencontre est en présentiel, en visio ou mixte.',
+            'locationaddress' => 'Adresse libre pour les rencontres en présentiel ou mixtes.',
+            'videomeetingurl' => 'URL http ou https de la salle de réunion virtuelle.',
+            'is_all_day' => "Indique si l'événement doit être interprété comme une journée complète.",
+            'parameters' => 'Réservé pour les invitations, métadonnées et options futures.',
         ];
     }
 
@@ -96,15 +96,15 @@ class Event extends DbObject
         return [
             self::STATUS_DRAFT => [
                 'label' => 'Brouillon',
-                'description' => 'L evenement est encore en preparation.',
+                'description' => "L'événement est encore en préparation.",
             ],
             self::STATUS_CONFIRMED => [
-                'label' => 'Confirme',
-                'description' => 'L evenement est planifie et pret a etre diffuse.',
+                'label' => 'Confirmé',
+                'description' => "L'événement est planifié et prêt à être diffusé.",
             ],
             self::STATUS_CANCELLED => [
-                'label' => 'Annule',
-                'description' => 'L evenement est conserve mais ne doit plus etre active.',
+                'label' => 'Annulé',
+                'description' => "L'événement est conservé mais ne doit plus être actif.",
             ],
         ];
     }
@@ -113,7 +113,7 @@ class Event extends DbObject
     {
         return [
             self::LOCATION_MODE_IN_PERSON => [
-                'label' => 'Presentiel',
+                'label' => 'Présentiel',
                 'description' => 'La rencontre se passe sur place avec une adresse.',
             ],
             self::LOCATION_MODE_VIRTUAL => [
@@ -704,7 +704,7 @@ class Event extends DbObject
         if ((int)$this->getId() <= 0 || $organizationId <= 0 || $checkedByUserId <= 0 || $identityKey === '') {
             return [
                 'status' => false,
-                'text' => 'Contexte de presence invalide.',
+                'text' => 'Contexte de présence invalide.',
             ];
         }
 
@@ -720,7 +720,7 @@ class Event extends DbObject
         if (!is_array($entry)) {
             return [
                 'status' => false,
-                'text' => 'Participant introuvable pour cette reunion.',
+                'text' => 'Participant introuvable pour cette réunion.',
             ];
         }
 
@@ -907,7 +907,7 @@ class Event extends DbObject
         if (!($endAt instanceof \DateTimeInterface)) {
             return [
                 'status' => false,
-                'text' => 'La date de fin de l evenement est invalide.',
+                'text' => "La date de fin de l'événement est invalide.",
             ];
         }
 
@@ -927,7 +927,7 @@ class Event extends DbObject
             if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
                 return [
                     'status' => false,
-                    'text' => trim((string)($saveResult['text'] ?? 'Impossible de synchroniser la date du document associe.')),
+                    'text' => trim((string)($saveResult['text'] ?? 'Impossible de synchroniser la date du document associé.')),
                 ];
             }
         }
@@ -1019,14 +1019,14 @@ class Event extends DbObject
         if ($locationMode === self::LOCATION_MODE_IN_PERSON && $locationAddress === '') {
             return [
                 'status' => false,
-                'text' => 'Une adresse est obligatoire pour un evenement en presentiel.',
+                'text' => 'Une adresse est obligatoire pour un événement en présentiel.',
             ];
         }
 
         if ($locationMode === self::LOCATION_MODE_VIRTUAL && $videoMeetingUrl === '') {
             return [
                 'status' => false,
-                'text' => 'Un lien de visio est obligatoire pour un evenement virtuel.',
+                'text' => 'Un lien de visio est obligatoire pour un événement virtuel.',
             ];
         }
 
@@ -1036,7 +1036,7 @@ class Event extends DbObject
         ) {
             return [
                 'status' => false,
-                'text' => 'Une adresse et un lien de visio sont obligatoires pour un evenement mixte.',
+                'text' => 'Une adresse et un lien de visio sont obligatoires pour un événement mixte.',
             ];
         }
 

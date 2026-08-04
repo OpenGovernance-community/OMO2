@@ -13,19 +13,19 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
     {
         return [
             'calendar.invitations.title' => [
-                'text' => 'Invites',
+                'text' => 'Invités',
                 'context' => 'Shared title used for event invitation settings.',
             ],
             'calendar.invitations.popup_title' => [
-                'text' => 'Invites',
+                'text' => 'Invités',
                 'context' => 'Modal title used when editing event invitations from the event detail drawer.',
             ],
             'calendar.invitations.configure' => [
-                'text' => 'Edit',
+                'text' => 'Modifier',
                 'context' => 'Button label used to edit event invitations from the summary block.',
             ],
             'calendar.invitations.tabs_aria' => [
-                'text' => 'Categories d invitations',
+                'text' => "Catégories d'invitations",
                 'context' => 'Accessible label used by the event invitation tabs.',
             ],
             'calendar.invitations.tab.holons' => [
@@ -37,7 +37,7 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'context' => 'Tab label for member invitations in calendar.',
             ],
             'calendar.invitations.tab.guests' => [
-                'text' => 'Invites externes',
+                'text' => 'Invités externes',
                 'context' => 'Tab label for email invitations in calendar.',
             ],
             'calendar.invitations.current' => [
@@ -45,15 +45,15 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'context' => 'Suffix shown next to the current holon inside the event invitation tree.',
             ],
             'calendar.invitations.no_structure' => [
-                'text' => 'Cette organisation n a pas encore de structure. Vous pouvez inviter directement des membres de l organisation ou des adresses e-mail externes.',
+                'text' => "Cette organisation n'a pas encore de structure. Vous pouvez inviter directement des membres de l'organisation ou des adresses e-mail externes.",
                 'context' => 'Hint shown when no holon structure is available for the event invitation editor.',
             ],
             'calendar.invitations.holons_title' => [
-                'text' => 'Holons invites',
+                'text' => 'Holons invités',
                 'context' => 'Section title for invited holons in the event invitation editor.',
             ],
             'calendar.invitations.holons_hint' => [
-                'text' => 'Le holon de contexte est coche par defaut pour eviter une exclusion involontaire. Des qu une selection explicite existe, seule cette liste fait foi.',
+                'text' => "Le holon de contexte est coché par défaut pour éviter une exclusion involontaire. Dès qu'une sélection explicite existe, seule cette liste fait foi.",
                 'context' => 'Hint shown below the invited holons list in the event invitation editor.',
             ],
             'calendar.invitations.holons_filter_placeholder' => [
@@ -61,7 +61,7 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'context' => 'Placeholder shown in the quick filter for the invited holons tree.',
             ],
             'calendar.invitations.members_title' => [
-                'text' => 'Membres invites individuellement',
+                'text' => 'Membres invités individuellement',
                 'context' => 'Section title for individually invited members in the event invitation editor.',
             ],
             'calendar.invitations.members_filter_placeholder' => [
@@ -69,15 +69,15 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'context' => 'Placeholder shown in the quick filter for individually invited members.',
             ],
             'calendar.invitations.members_hint_structure' => [
-                'text' => 'Cochez ici les membres a ajouter en plus des holons selectionnes.',
+                'text' => 'Cochez ici les membres à ajouter en plus des holons sélectionnés.',
                 'context' => 'Hint shown below invited members when a holon structure exists.',
             ],
             'calendar.invitations.members_hint_flat' => [
-                'text' => 'Cochez ici les membres a inviter individuellement.',
+                'text' => 'Cochez ici les membres à inviter individuellement.',
                 'context' => 'Hint shown below invited members when no holon structure exists.',
             ],
             'calendar.invitations.filter_empty' => [
-                'text' => 'Aucun resultat pour ce filtre.',
+                'text' => 'Aucun résultat pour ce filtre.',
                 'context' => 'Message shown when a quick invitation filter has no visible result.',
             ],
             'calendar.invitations.guests_title' => [
@@ -89,20 +89,20 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'context' => 'Placeholder shown in the guest email textarea for event invitations.',
             ],
             'calendar.invitations.guests_hint' => [
-                'text' => 'Une adresse par ligne. L envoi d e-mails pourra etre branche ensuite sur cette liste.',
+                'text' => "Une adresse par ligne. L'envoi d'e-mails pourra être branché ensuite sur cette liste.",
                 'context' => 'Hint shown below the guest email textarea in the event invitation editor.',
             ],
             'calendar.invitations.default_scope' => [
-                'text' => 'Par defaut, tous les membres du contexte rattache a cet evenement sont invites.',
+                'text' => 'Par défaut, tous les membres du contexte rattaché à cet événement sont invités.',
                 'context' => 'Summary shown when an event has no explicit invitations and falls back to its context.',
             ],
             'calendar.invitations.default_scope_organization' => [
-                'text' => 'Par defaut, tous les membres de l organisation sont invites.',
+                'text' => "Par défaut, tous les membres de l'organisation sont invités.",
                 'context' => 'Summary shown when an event has no explicit invitations and no holon context.',
             ],
             'calendar.invitations.additional_people' => [
-                'one' => '{count} personne supplementaire',
-                'other' => '{count} personnes supplementaires',
+                'one' => '{count} personne supplémentaire',
+                'other' => '{count} personnes supplémentaires',
                 'context' => 'Summary fragment counting explicit additional invitees outside holons.',
             ],
             'calendar.invitations.additional_emails' => [
@@ -115,39 +115,39 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'context' => 'Summary fragment shown when the current holon remains explicitly invited.',
             ],
             'calendar.invitations.current_scope_excluded' => [
-                'text' => 'Le contexte courant n est pas inclus.',
+                'text' => "Le contexte courant n'est pas inclus.",
                 'context' => 'Summary fragment shown when the current holon is not explicitly invited.',
             ],
             'calendar.invitations.updated' => [
-                'text' => 'Invites mis a jour.',
+                'text' => 'Invités mis à jour.',
                 'context' => 'Success message returned after saving event invitations.',
             ],
             'calendar.invitations.save_error' => [
-                'text' => 'Impossible d enregistrer ces invites pour le moment.',
+                'text' => "Impossible d'enregistrer ces invités pour le moment.",
                 'context' => 'Generic error message returned when event invitations could not be saved.',
             ],
             'calendar.invitations.db_error' => [
-                'text' => 'Connexion a la base impossible.',
+                'text' => 'Connexion à la base impossible.',
                 'context' => 'Error returned when the invitation popup cannot access the database.',
             ],
             'calendar.invitations.invalid_holon' => [
-                'text' => 'Un holon selectionne est invalide.',
+                'text' => 'Un holon sélectionné est invalide.',
                 'context' => 'Validation error returned when a selected holon is invalid for the event invitation editor.',
             ],
             'calendar.invitations.invalid_member' => [
-                'text' => 'Un membre selectionne est invalide.',
+                'text' => 'Un membre sélectionné est invalide.',
                 'context' => 'Validation error returned when a selected member is invalid for the event invitation editor.',
             ],
             'calendar.invitations.empty_denied' => [
-                'text' => 'Vous ne pouvez pas gerer les invites de cet evenement.',
+                'text' => 'Vous ne pouvez pas gérer les invités de cet événement.',
                 'context' => 'Empty-state message shown when the invitation popup is opened without permission.',
             ],
             'calendar.invitations.submit' => [
-                'text' => 'Enregistrer les invites',
+                'text' => 'Enregistrer les invités',
                 'context' => 'Submit button label used in the event invitation popup.',
             ],
             'calendar.invitations.summary_intro' => [
-                'text' => 'Cette liste servira ensuite pour le contact et la presence.',
+                'text' => 'Cette liste servira ensuite pour le contact et la présence.',
                 'context' => 'Secondary note shown under the inline invitation editor in the event form.',
             ],
         ];
@@ -394,7 +394,7 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
         if ((int)$event->getId() <= 0 || $organizationId <= 0) {
             return [
                 'status' => false,
-                'message' => 'Contexte d invitations invalide.',
+                'message' => "Contexte d'invitations invalide.",
             ];
         }
 
@@ -416,7 +416,7 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
             if (!$holon->load($holonId) || !$organization->containsHolon($holon) || !$holon->canViewDetail()) {
                 return [
                     'status' => false,
-                    'message' => 'Un holon selectionne est invalide.',
+                    'message' => 'Un holon sélectionné est invalide.',
                 ];
             }
 
@@ -435,7 +435,7 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
             ) {
                 return [
                     'status' => false,
-                    'message' => 'Un membre selectionne est invalide.',
+                    'message' => 'Un membre sélectionné est invalide.',
                 ];
             }
 
@@ -494,7 +494,7 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
             if (!is_array($saveResult) || empty($saveResult['status'])) {
                 return [
                     'status' => false,
-                    'message' => 'Impossible d enregistrer une invitation d evenement.',
+                    'message' => "Impossible d'enregistrer une invitation d'événement.",
                 ];
             }
         }
@@ -510,7 +510,7 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
             if (!is_array($saveResult) || empty($saveResult['status'])) {
                 return [
                     'status' => false,
-                    'message' => 'Impossible de retirer une ancienne invitation d evenement.',
+                    'message' => "Impossible de retirer une ancienne invitation d'événement.",
                 ];
             }
         }

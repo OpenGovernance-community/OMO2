@@ -48,19 +48,19 @@ $sourceLang = [
         'context' => 'Accessible label for the compact event action menu.',
     ],
     'calendar.confirm.delete' => [
-        'text' => 'Supprimer cet evenement ?',
+        'text' => 'Supprimer cet événement ?',
         'context' => 'Confirmation shown before deleting an event from the compact menu.',
     ],
     'calendar.error.delete' => [
-        'text' => 'Impossible de supprimer cet evenement.',
+        'text' => 'Impossible de supprimer cet événement.',
         'context' => 'Fallback error shown when deleting an event from the compact menu fails.',
     ],
     'calendar.delete.documents.title' => [
-        'text' => 'Documents associes',
+        'text' => 'Documents associés',
         'context' => 'Title of the choice dialog shown before deleting documents linked to an event.',
     ],
     'calendar.delete.documents.question' => [
-        'text' => 'Voulez-vous supprimer les documents associes ?',
+        'text' => 'Voulez-vous supprimer les documents associés ?',
         'context' => 'Question shown before deleting documents linked to an event.',
     ],
     'calendar.delete.documents.yes' => [
@@ -164,20 +164,29 @@ $sourceLang = [
         'context' => 'Empty state shown when no upcoming event is available.',
     ],
     'calendar.summary.month' => [
-        'text' => '{count} événement(s) ce mois',
+        'one' => '{count} événement ce mois',
+        'other' => '{count} événements ce mois',
         'context' => 'Summary badge for the monthly calendar view.',
     ],
     'calendar.summary.week' => [
-        'text' => '{count} événement(s) cette semaine',
+        'one' => '{count} événement cette semaine',
+        'other' => '{count} événements cette semaine',
         'context' => 'Summary badge for the weekly calendar view.',
     ],
     'calendar.summary.day' => [
-        'text' => '{count} événement(s) ce jour',
+        'one' => '{count} événement ce jour',
+        'other' => '{count} événements ce jour',
         'context' => 'Summary badge for the daily calendar view.',
     ],
     'calendar.summary.list' => [
-        'text' => '{count} événement(s) à venir',
+        'one' => '{count} événement à venir',
+        'other' => '{count} événements à venir',
         'context' => 'Summary badge for the upcoming list view.',
+    ],
+    'calendar.summary.day_column' => [
+        'one' => '{count} événement',
+        'other' => '{count} événements',
+        'context' => 'Summary shown below a day title in the timeline view.',
     ],
     'calendar.list.column.event' => [
         'text' => 'Événement',
@@ -415,7 +424,7 @@ function omoCalendarFormatTimeLabel(Event $event, \DateTimeInterface $day)
     }
 
     if ((bool)$event->get('is_all_day')) {
-        return 'Journee';
+        return 'Journée';
     }
 
     $dayKey = $day->format('Y-m-d');
@@ -447,7 +456,7 @@ function omoCalendarFormatUpcomingRangeLabel(Event $event)
 
     if ((bool)$event->get('is_all_day')) {
         if ($startAt->format('Y-m-d') === $endAt->format('Y-m-d')) {
-            return 'Journee';
+            return 'Journée';
         }
 
         return omoCalendarFormatDayMonthLabel($startAt) . ' -> ' . omoCalendarFormatDayMonthLabel($endAt);
@@ -655,7 +664,7 @@ if (!$organization->load($organizationId)) {
 if (!$organization->canViewDetail()) {
     http_response_code(403);
     ?>
-    <div class="omo-calendar omo-empty-state">Acces refuse a cette organisation.</div>
+    <div class="omo-calendar omo-empty-state">Accès refusé à cette organisation.</div>
     <?php
     exit;
 }
@@ -896,7 +905,7 @@ foreach ($events as $event) {
     }
 
     $eventId = (int)$event->getId();
-    $eventTitle = trim((string)$event->get('title')) !== '' ? trim((string)$event->get('title')) : ('Evenement #' . $eventId);
+    $eventTitle = trim((string)$event->get('title')) !== '' ? trim((string)$event->get('title')) : ('Événement #' . $eventId);
     $eventDescription = trim((string)$event->get('description'));
     $eventStatus = Event::normalizeStatus($event->get('status'));
     $eventStatusLabel = trim((string)($eventStatusCatalog[$eventStatus]['label'] ?? ''));
@@ -1539,7 +1548,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                         data-omo-calendar-day="<?= omoApiEscape($timelineDay['date']->format('Y-m-d')) ?>"
                                     >
                                         <strong><?= omoApiEscape((string)$timelineDay['label']) ?></strong>
-                                        <span><?= omoApiEscape((string)(count($timelineDay['allDay']) + count($timelineDay['timed']))) ?> evenement(s)</span>
+                                        <span><?= omoApiEscape(omoCalendarT('calendar.summary.day_column', ['count' => (string)(count($timelineDay['allDay']) + count($timelineDay['timed']))])) ?></span>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -1752,6 +1761,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         var calendarSavedViewsStorageKey = 'omo.calendar.saved-views.v2';
         var legacyCalendarSavedViewsStorageKey = 'omo.calendar.saved-views.v1';
         var calendarSessionViewsStorageKey = 'omo.calendar.session-views.v1';
+        var calendarSessionPositionStorageKey = 'omo.calendar.session-position.v1';
         var calendarSearchStorageKey = 'omo.calendar.quick-search.v1';
         var currentSearch = '';
         var pendingDisplayFilters = null;
@@ -2042,6 +2052,48 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         function clearAllCalendarTemporaryPreferences() {
             try {
                 window.sessionStorage.removeItem(calendarSessionViewsStorageKey);
+            } catch (error) {
+            }
+        }
+
+        function readCalendarTemporaryPositionUrl() {
+            var position = readCalendarStoredValue(window.sessionStorage, calendarSessionPositionStorageKey);
+            var storedUrl = position && typeof position.url === 'string' ? position.url : '';
+            if (!storedUrl) {
+                return '';
+            }
+
+            try {
+                var storedLocation = new URL(resolveUrl(storedUrl), window.location.origin);
+                var currentLocation = new URL(resolveUrl(currentUrl), window.location.origin);
+                if (
+                    storedLocation.origin !== currentLocation.origin
+                    || storedLocation.pathname !== currentLocation.pathname
+                    || storedLocation.searchParams.get('oid') !== currentLocation.searchParams.get('oid')
+                    || storedLocation.searchParams.get('cid') !== currentLocation.searchParams.get('cid')
+                ) {
+                    return '';
+                }
+            } catch (error) {
+                return '';
+            }
+
+            return storedUrl;
+        }
+
+        function rememberCalendarTemporaryPosition(url) {
+            if (!url) {
+                return;
+            }
+
+            try {
+                var rawValue = window.sessionStorage.getItem(calendarSessionPositionStorageKey);
+                var values = rawValue ? JSON.parse(rawValue) : {};
+                if (!values || typeof values !== 'object') {
+                    values = {};
+                }
+                values[getCalendarPreferencesContextKey()] = {url: String(url)};
+                window.sessionStorage.setItem(calendarSessionPositionStorageKey, JSON.stringify(values));
             } catch (error) {
             }
         }
@@ -2689,15 +2741,17 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         function refreshCalendar(url) {
             var targetUrl = url || currentUrl;
             if (!targetUrl) {
-                return;
+                return null;
             }
+
+            rememberCalendarTemporaryPosition(targetUrl);
 
             if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
                 window.location.href = resolveUrl(targetUrl);
-                return;
+                return null;
             }
 
-            window.omoReplaceFetchedPanelRoot({
+            return window.omoReplaceFetchedPanelRoot({
                 rootSelector: '#omo-calendar-root',
                 currentRoot: root,
                 url: resolveUrl(targetUrl)
@@ -2788,7 +2842,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
             var deleteUrl = deleteButton.getAttribute('data-omo-calendar-delete-url') || '';
             var confirmationMessage = deleteButton.getAttribute('data-omo-calendar-delete-confirm') || '';
-            var fallbackError = deleteButton.getAttribute('data-omo-calendar-delete-error') || 'Impossible de supprimer cet evenement.';
+            var fallbackError = deleteButton.getAttribute('data-omo-calendar-delete-error') || 'Impossible de supprimer cet événement.';
             if (!deleteUrl || (confirmationMessage !== '' && !window.confirm(confirmationMessage))) {
                 return;
             }
@@ -3096,6 +3150,11 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             if (quickSearch) {
                 quickSearch.value = currentSearch;
             }
+            var temporaryPositionUrl = initialOpenEventId > 0 ? '' : readCalendarTemporaryPositionUrl();
+            if (temporaryPositionUrl && resolveUrl(temporaryPositionUrl) !== resolveUrl(currentUrl)) {
+                refreshCalendar(temporaryPositionUrl);
+                return;
+            }
             var temporary = readCalendarStoredValue(window.sessionStorage, calendarSessionViewsStorageKey);
             var saved = getCalendarStoredPreferences();
             var defaultView = getCalendarDefaultPreferences();
@@ -3214,6 +3273,8 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             if (nextUrl) {
                 currentUrl = nextUrl;
             }
+
+            rememberCalendarTemporaryPosition(currentUrl);
 
             root.setAttribute('data-omo-calendar-view', nextView);
             root.setAttribute('data-omo-calendar-scope', currentScope);
@@ -3424,7 +3485,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         }
 
                         var invitationUrl = invitationButton.getAttribute('data-omo-calendar-open-invitations-url') || '';
-                        var invitationTitle = invitationButton.getAttribute('data-omo-calendar-open-invitations-title') || 'Invites';
+                var invitationTitle = invitationButton.getAttribute('data-omo-calendar-open-invitations-title') || 'Invités';
                         if (!invitationUrl) {
                             return;
                         }
@@ -3547,12 +3608,21 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         window.omoInvalidateMainRightPanel();
                     }
 
+                    var refreshPromise = refreshCalendar(currentUrl);
                     if (payload.detailUrl) {
-                        openDrawerWithUrl(payload.detailUrl);
-                    } else {
-                        closeDrawer();
-                        refreshCalendar(currentUrl);
+                        if (refreshPromise && typeof refreshPromise.then === 'function') {
+                            refreshPromise.then(function () {
+                                if (typeof window.omoCalendarOpenEventDrawer === 'function') {
+                                    window.omoCalendarOpenEventDrawer(payload.detailUrl);
+                                }
+                            }).catch(function () {
+                                openDrawerWithUrl(payload.detailUrl);
+                            });
+                        }
+                        return;
                     }
+
+                    closeDrawer();
                 }).catch(function (error) {
                     if (!feedback) {
                         return;
@@ -3560,7 +3630,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
                     var message = error && typeof error.message === 'string' && error.message !== ''
                         ? error.message
-                        : 'Impossible d enregistrer cet evenement.';
+                        : "Impossible d'enregistrer cet événement.";
                     feedback.textContent = message;
                     feedback.className = 'omo-calendar-create__feedback is-error';
                 }).finally(function () {
@@ -3644,7 +3714,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     min-width: 0;
     justify-content: stretch;
     align-items: initial;
-    z-index: 30;
+    z-index: 100;
     overflow: visible;
 }
 
@@ -4372,6 +4442,10 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
 .omo-calendar__editor-drawer .omo-overlay-drawer__body {
     padding: 0;
+}
+
+.omo-calendar__editor-drawer {
+    z-index: 120;
 }
 
 .omo-calendar__drawer-custom-actions {

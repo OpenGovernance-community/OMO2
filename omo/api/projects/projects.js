@@ -12,6 +12,11 @@
     var drawerController = drawer && typeof window.omoCreateSubdrawerController === 'function'
         ? window.omoCreateSubdrawerController({ drawer: drawer })
         : null;
+    var documentDrawer = root.querySelector('[data-omo-projects-document-drawer]');
+    var documentDrawerBody = root.querySelector('[data-omo-projects-document-drawer-body]');
+    var documentDrawerController = documentDrawer && typeof window.omoCreateSubdrawerController === 'function'
+        ? window.omoCreateSubdrawerController({ drawer: documentDrawer })
+        : null;
     var currentUrl = root.getAttribute('data-omo-projects-current-url') || '';
     var createUrl = root.getAttribute('data-omo-projects-create-url') || '';
     var detailUrl = root.getAttribute('data-omo-projects-detail-url') || '';
@@ -51,6 +56,7 @@
     var mobileColumnIndex = 0;
     var requestToken = 0;
     var currentDrawerUrl = '';
+    var documentDrawerRequestToken = 0;
     var rootNeedsRefresh = false;
     var initialOpenProjectId = Number(root.getAttribute('data-omo-projects-open-project-id') || 0);
     var initialOpenProjectMode = root.getAttribute('data-omo-projects-open-project-mode') || '';
@@ -95,7 +101,8 @@
         }
         var targetId = tab.getAttribute('data-generic-tab-target') || '';
         var panel = targetId ? document.getElementById(targetId) : null;
-        if (!panel || panel.getAttribute('data-omo-project-detail-documents-loaded') === '1' || panel.getAttribute('data-omo-project-detail-documents-loading') === '1') {
+        var content = panel ? panel.querySelector('[data-omo-project-detail-documents-content]') : null;
+        if (!panel || !content || panel.getAttribute('data-omo-project-detail-documents-loaded') === '1' || panel.getAttribute('data-omo-project-detail-documents-loading') === '1') {
             return;
         }
 
@@ -104,7 +111,7 @@
             return;
         }
         panel.setAttribute('data-omo-project-detail-documents-loading', '1');
-        panel.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts.documentsLoading || 'Chargement...') + '</p>';
+        content.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts.documentsLoading || 'Chargement...') + '</p>';
         fetch(resolveUrl(url), {credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}})
             .then(function (response) {
                 if (!response.ok) {
@@ -113,12 +120,12 @@
                 return response.text();
             })
             .then(function (html) {
-                panel.innerHTML = html;
+                content.innerHTML = html;
                 panel.setAttribute('data-omo-project-detail-documents-loaded', '1');
                 panel.removeAttribute('data-omo-project-detail-documents-loading');
             })
             .catch(function () {
-                panel.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts.documentsError || 'Impossible de charger les documents.') + '</p>';
+                content.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts.documentsError || 'Impossible de charger les documents.') + '</p>';
                 panel.removeAttribute('data-omo-project-detail-documents-loading');
             });
     }
@@ -416,6 +423,82 @@
             }
             return false;
         });
+    }
+
+    function setDocumentDrawerMessage(message, isError) {
+        if (!documentDrawerBody) {
+            return;
+        }
+        if (documentDrawerController) {
+            documentDrawerController.resetHeader();
+        }
+        documentDrawerBody.innerHTML = '<div class="generic-section omo-projects-feedback' + (isError ? ' is-error' : '') + '"></div>';
+        documentDrawerBody.firstElementChild.textContent = String(message || '');
+    }
+
+    function openProjectDocumentDrawer(url) {
+        if (!documentDrawer || !documentDrawerBody || !url) {
+            return Promise.resolve(false);
+        }
+
+        setDocumentDrawerMessage(texts.loading, false);
+        documentDrawer.hidden = false;
+        window.requestAnimationFrame(function () {
+            documentDrawer.classList.add('is-open');
+        });
+
+        var localToken = ++documentDrawerRequestToken;
+        return fetch(resolveUrl(url), {
+            credentials: 'same-origin',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            cache: 'no-store'
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error('load_failed');
+            }
+            return response.text();
+        }).then(function (html) {
+            if (localToken !== documentDrawerRequestToken) {
+                return false;
+            }
+            documentDrawerBody.innerHTML = html;
+            if (documentDrawerController) {
+                documentDrawerController.applyContentHeader(documentDrawerBody);
+            }
+            if (typeof window.initGenericComponents === 'function') {
+                window.initGenericComponents(documentDrawerBody);
+            }
+            return executeFetchedScripts(documentDrawerBody).then(function () {
+                if (typeof window.initGenericComponents === 'function') {
+                    window.initGenericComponents(documentDrawerBody);
+                }
+                return true;
+            });
+        }).catch(function () {
+            if (localToken === documentDrawerRequestToken) {
+                setDocumentDrawerMessage(texts.loadingError, true);
+            }
+            return false;
+        });
+    }
+
+    function closeProjectDocumentDrawer() {
+        if (!documentDrawer) {
+            return;
+        }
+        window.dispatchEvent(new CustomEvent('omo-document-editor-drawer-close'));
+        documentDrawer.classList.remove('is-open');
+        window.setTimeout(function () {
+            if (!documentDrawer.classList.contains('is-open')) {
+                documentDrawer.hidden = true;
+                if (documentDrawerBody) {
+                    documentDrawerBody.innerHTML = '';
+                }
+                if (documentDrawerController) {
+                    documentDrawerController.resetHeader();
+                }
+            }
+        }, 180);
     }
 
     function closeDrawer() {
@@ -1528,9 +1611,7 @@
         if (addDocumentButton) {
             event.preventDefault();
             event.stopPropagation();
-            if (typeof window.omoOpenDrawerHashState === 'function') {
-                window.omoOpenDrawerHashState('documents');
-            }
+            openProjectDocumentDrawer(addDocumentButton.getAttribute('data-omo-project-detail-add-document-url') || '');
             return;
         }
 
@@ -1602,6 +1683,13 @@
                 return;
             }
             closeDrawer();
+            return;
+        }
+
+        var documentCloseButton = event.target.closest('[data-omo-projects-document-drawer-close]');
+        if (documentCloseButton) {
+            event.preventDefault();
+            closeProjectDocumentDrawer();
             return;
         }
 
@@ -1877,6 +1965,30 @@
         });
     };
 
+    window.omoCloseProjectDocumentEditorDrawer = function () {
+        closeProjectDocumentDrawer();
+    };
+
+    function refreshProjectDocumentsAfterSave(event) {
+        var details = event && event.detail ? event.detail : {};
+        var projectId = Number(details.projectId || 0);
+        if (!Number.isInteger(projectId) || projectId <= 0) {
+            return;
+        }
+        var panel = root.querySelector('#omo-project-detail-documents-' + String(projectId));
+        var tab = root.querySelector('[data-omo-project-detail-documents-tab][data-generic-tab-target="omo-project-detail-documents-' + String(projectId) + '"]');
+        var content = panel ? panel.querySelector('[data-omo-project-detail-documents-content]') : null;
+        if (!panel || !content) {
+            return;
+        }
+        panel.removeAttribute('data-omo-project-detail-documents-loaded');
+        panel.removeAttribute('data-omo-project-detail-documents-loading');
+        content.innerHTML = '';
+        if (!panel.hidden && tab) {
+            loadProjectDocuments(tab);
+        }
+    }
+
     function maybeOpenInitialProject() {
         var projectId = initialOpenProjectId;
         var mode = initialOpenProjectMode;
@@ -1978,6 +2090,7 @@
 
     window.addEventListener('omo-projects-route-change', handleProjectRouteChange);
     window.addEventListener('omo-runtime-maintenance', handleRuntimeMaintenance);
+    window.addEventListener('omo-project-document-saved', refreshProjectDocumentsAfterSave);
     window.addEventListener('resize', syncGroupedKanbanHeaderOffset);
 
     applyQuickSearch();

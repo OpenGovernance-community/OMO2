@@ -910,26 +910,24 @@ textarea.generic-form-control {
 }
 
 .generic-tabs {
-    --generic-tabs-list-padding-inline: 12px;
-    --generic-tabs-list-border: var(--color-border, #d1d5db);
-    --generic-tabs-panel-padding-block: 16px;
-    --generic-tabs-panel-padding-inline: 18px;
-    --generic-tabs-panel-radius: var(--radius-md);
-    --generic-tabs-panel-border: var(--color-border, #d1d5db);
-    --generic-tabs-panel-background: var(--color-surface, #ffffff);
-    --generic-tabs-panel-shadow: none;
-    --generic-tabs-tab-gap: 4px;
-    --generic-tabs-tab-padding-block: 11px;
-    --generic-tabs-tab-padding-inline: 16px;
-    --generic-tabs-tab-radius: var(--radius-md);
-    --generic-tabs-tab-color: var(--color-text-light, #6b7280);
-    --generic-tabs-tab-background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 86%, transparent);
-    --generic-tabs-tab-border: transparent;
-    --generic-tabs-tab-background-hover: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 72%, var(--color-primary, #2563eb) 6%);
-    --generic-tabs-tab-border-hover: color-mix(in srgb, var(--color-primary, #2563eb) 22%, var(--color-border, #d1d5db));
-    --generic-tabs-tab-background-active: var(--generic-tabs-panel-background);
-    --generic-tabs-tab-border-active: color-mix(in srgb, var(--color-primary, #2563eb) 20%, var(--generic-tabs-panel-border));
-    --generic-tabs-tab-color-active: var(--color-text, #1f2937);
+    --param-tabs-list-padding-inline: 12px;
+    --param-tabs-list-border: var(--color-border, #d1d5db);
+    --param-tabs-panel-radius: var(--radius-md);
+    --param-tabs-panel-border: var(--color-border, #d1d5db);
+    --param-tabs-panel-background: var(--color-surface, #ffffff);
+    --param-tabs-panel-shadow: none;
+    --param-tabs-tab-gap: 4px;
+    --param-tabs-tab-padding-block: 11px;
+    --param-tabs-tab-padding-inline: 16px;
+    --param-tabs-tab-radius: var(--radius-md);
+    --param-tabs-tab-color: var(--color-text-light, #6b7280);
+    --param-tabs-tab-background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 86%, transparent);
+    --param-tabs-tab-border: transparent;
+    --param-tabs-tab-background-hover: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 72%, var(--color-primary, #2563eb) 6%);
+    --param-tabs-tab-border-hover: color-mix(in srgb, var(--color-primary, #2563eb) 22%, var(--color-border, #d1d5db));
+    --param-tabs-tab-background-active: var(--param-tabs-panel-background);
+    --param-tabs-tab-border-active: color-mix(in srgb, var(--color-primary, #2563eb) 20%, var(--param-tabs-panel-border));
+    --param-tabs-tab-color-active: var(--color-text, #1f2937);
     display: grid;
     gap: 0;
 }
@@ -938,9 +936,9 @@ textarea.generic-form-control {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
-    gap: var(--generic-tabs-tab-gap);
-    padding: 0 var(--generic-tabs-list-padding-inline);
-    border-bottom: 1px solid var(--generic-tabs-list-border);
+    gap: var(--param-tabs-tab-gap);
+    padding: 0 var(--param-tabs-list-padding-inline);
+    border-bottom: 1px solid var(--param-tabs-list-border);
 }
 
 .generic-tabs__tab {
@@ -949,12 +947,12 @@ textarea.generic-form-control {
     align-items: center;
     justify-content: center;
     min-height: 42px;
-    padding: var(--generic-tabs-tab-padding-block) var(--generic-tabs-tab-padding-inline);
-    border: 1px solid var(--generic-tabs-tab-border);
+    padding: var(--param-tabs-tab-padding-block) var(--param-tabs-tab-padding-inline);
+    border: 1px solid var(--param-tabs-tab-border);
     border-bottom-width: 0;
-    border-radius: var(--generic-tabs-tab-radius) var(--generic-tabs-tab-radius) 0 0;
-    background: var(--generic-tabs-tab-background);
-    color: var(--generic-tabs-tab-color);
+    border-radius: var(--param-tabs-tab-radius) var(--param-tabs-tab-radius) 0 0;
+    background: var(--param-tabs-tab-background);
+    color: var(--param-tabs-tab-color);
     font: inherit;
     font-weight: 700;
     line-height: 1.35;
@@ -969,23 +967,23 @@ textarea.generic-form-control {
 }
 
 .generic-tabs__tab:hover {
-    background: var(--generic-tabs-tab-background-hover);
-    border-color: var(--generic-tabs-tab-border-hover);
-    color: var(--generic-tabs-tab-color-active);
+    background: var(--param-tabs-tab-background-hover);
+    border-color: var(--param-tabs-tab-border-hover);
+    color: var(--param-tabs-tab-color-active);
 }
 
 .generic-tabs__tab:focus-visible {
     outline: none;
-    border-color: var(--generic-tabs-tab-border-active);
+    border-color: var(--param-tabs-tab-border-active);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
     z-index: 3;
 }
 
 .generic-tabs__tab.is-active {
-    background: var(--generic-tabs-tab-background-active);
-    border-color: var(--generic-tabs-tab-border-active);
-    border-bottom-color: var(--generic-tabs-tab-background-active);
-    color: var(--generic-tabs-tab-color-active);
+    background: var(--param-tabs-tab-background-active);
+    border-color: var(--param-tabs-tab-border-active);
+    border-bottom-color: var(--param-tabs-tab-background-active);
+    color: var(--param-tabs-tab-color-active);
     z-index: 2;
 }
 
@@ -994,16 +992,15 @@ textarea.generic-form-control {
 }
 
 .generic-tabs__panels {
-    border: 1px solid var(--generic-tabs-panel-border);
+    border: 1px solid var(--param-tabs-panel-border);
     border-top: 0;
-    border-radius: 0 0 var(--generic-tabs-panel-radius) var(--generic-tabs-panel-radius);
-    background: var(--generic-tabs-panel-background);
-    box-shadow: var(--generic-tabs-panel-shadow);
+    border-radius: 0 0 var(--param-tabs-panel-radius) var(--param-tabs-panel-radius);
+    background: var(--param-tabs-panel-background);
+    box-shadow: var(--param-tabs-panel-shadow);
 }
 
 .generic-tabs__panel {
     min-width: 0;
-    padding: var(--generic-tabs-panel-padding-block) var(--generic-tabs-panel-padding-inline);
 }
 
 .generic-tabs__panel[hidden] {
@@ -1020,11 +1017,6 @@ textarea.generic-form-control {
     margin: 0;
     color: var(--color-text-light, #64748b);
     line-height: 1.5;
-}
-
-.omo-decision-invitations-editor__tabs {
-    --generic-tabs-panel-padding-block: 14px;
-    --generic-tabs-panel-padding-inline: 14px;
 }
 
 .omo-decision-invitations-editor__tab-panel {
