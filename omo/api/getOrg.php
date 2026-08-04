@@ -2483,6 +2483,16 @@ $(document).off('click.omoOrgProjectReference', '#panel-left [data-omo-project-r
 $(document)
   .off('click.omoOrgProjectReferenceTitle', '#panel-left [data-omo-project-reference-title]')
   .on('click.omoOrgProjectReferenceTitle', '#panel-left [data-omo-project-reference-title]', function (event) {
+    const href = String($(this).attr('href') || '');
+    const routeMatch = href.match(/^#(projects-d\d+)$/i);
+
+    if (routeMatch && typeof window.omoOpenDrawerHashState === 'function') {
+        event.preventDefault();
+        event.stopPropagation();
+        window.omoOpenDrawerHashState(routeMatch[1]);
+        return;
+    }
+
     event.stopPropagation();
   });
 

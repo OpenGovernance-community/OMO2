@@ -3451,6 +3451,7 @@ body.view-right .panel-right {
 .omo-pv-editor .note-btn.omo-pv-editor__decision-embed-button,
 .omo-pv-editor .note-btn.omo-pv-editor__event-embed-button,
 .omo-pv-editor .note-btn.omo-pv-editor__project-embed-button,
+.omo-pv-editor .note-btn.omo-pv-editor__checklist-embed-button,
 .omo-pv-editor .note-btn.omo-pv-editor__indicator-embed-button {
     width: 34px;
     height: 34px;
@@ -3506,6 +3507,18 @@ body.view-right .panel-right {
     background: #2563eb;
     -webkit-mask: url('/omo/images/tools/product.png') center / contain no-repeat;
     mask: url('/omo/images/tools/product.png') center / contain no-repeat;
+    pointer-events: none;
+}
+
+.omo-pv-editor .note-btn.omo-pv-editor__checklist-embed-button::before {
+    content: '';
+    display: block;
+    width: 17px;
+    height: 17px;
+    margin: auto;
+    background: #0f766e;
+    -webkit-mask: url('/omo/images/tools/checklist.png') center / contain no-repeat;
+    mask: url('/omo/images/tools/checklist.png') center / contain no-repeat;
     pointer-events: none;
 }
 

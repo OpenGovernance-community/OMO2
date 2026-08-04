@@ -250,5 +250,5 @@ $texts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
-<script src="/omo/assets/js/simple-html-field.js?v=20260724-pv-embed-status"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20260804-embed-remove-paragraph"></script>
 <script src="/omo/api/checklist/checklist.js?v=20260803-item-actions-3"></script>

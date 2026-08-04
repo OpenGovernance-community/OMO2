@@ -221,7 +221,7 @@ if ($organizationId <= 0) {
 
 <?php if ($editorData !== null && $errorMessage === ''): ?>
 <script src="/omo/assets/js/sized-image-field.js"></script>
-<script src="/omo/assets/js/simple-html-field.js?v=20260721-composite-property-fields-v5"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20260804-embed-remove-paragraph"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
 <script>
 (() => {
