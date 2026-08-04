@@ -915,7 +915,16 @@ foreach ($events as $event) {
     $isInCurrentContext = !$canToggleScope || $eventHolonId === 0 || $eventHolonId === $currentHolonId;
     $isInDirectChildContext = $isInCurrentContext || ($eventHolonId > 0 && isset($directChildHolonIdMap[$eventHolonId]));
     $isInDescendantContext = $isInCurrentContext || ($eventHolonId > 0 && isset($descendantHolonIdMap[$eventHolonId]));
-    $isPersonallyRelevant = $eventPersonallyRelevantForViewer($event);
+    $isProjectEvent = (int)$event->get('IDproject') > 0;
+    $isPersonallyRelevant = $isProjectEvent
+        ? (
+            $currentUserId <= 0
+            || (
+                ($event->hasExplicitInvitations() || $eventHolonId > 0)
+                && $event->isVisibleToInvitationViewer($currentUserId, $organizationId)
+            )
+        )
+        : $eventPersonallyRelevantForViewer($event);
     $canEditEvent = $currentUserId > 0 && (int)$event->get('IDuser') === $currentUserId;
     $deletePermissionHolon = $rootHolon;
     if ($eventHolonId > 0) {
@@ -4441,6 +4450,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 }
 
 .omo-calendar__editor-drawer .omo-overlay-drawer__body {
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
     padding: 0;
 }
 
