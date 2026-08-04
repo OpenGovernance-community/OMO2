@@ -85,10 +85,12 @@
         var organizationId = Number(context.oid || 0);
         var decisionId = Number(context.id || 0);
         var userId = Number(payload && payload.viewerUserId ? payload.viewerUserId : 0);
-        if (organizationId <= 0 || decisionId <= 0 || userId <= 0) {
+        var participantId = Number(payload && payload.viewerParticipantId ? payload.viewerParticipantId : 0);
+        var actorId = userId > 0 ? 'user:' + userId : (participantId > 0 ? 'participant:' + participantId : '');
+        if (organizationId <= 0 || decisionId <= 0 || actorId === '') {
             return '';
         }
-        return 'omo:proposal-discussion:anonymous:' + organizationId + ':' + decisionId + ':' + userId;
+        return 'omo:proposal-discussion:anonymous:' + organizationId + ':' + decisionId + ':' + actorId;
     }
 
     function getAnonymousPreference(root) {

@@ -130,6 +130,41 @@
             });
     }
 
+    function loadProjectEvents(tab) {
+        if (!tab) {
+            return;
+        }
+        var targetId = tab.getAttribute('data-generic-tab-target') || '';
+        var panel = targetId ? document.getElementById(targetId) : null;
+        var content = panel ? panel.querySelector('[data-omo-project-detail-events-content]') : null;
+        if (!panel || !content || panel.getAttribute('data-omo-project-detail-events-loaded') === '1' || panel.getAttribute('data-omo-project-detail-events-loading') === '1') {
+            return;
+        }
+
+        var url = panel.getAttribute('data-omo-project-detail-events-url') || '';
+        if (!url) {
+            return;
+        }
+        panel.setAttribute('data-omo-project-detail-events-loading', '1');
+        content.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts.eventsLoading || 'Chargement...') + '</p>';
+        fetch(resolveUrl(url), {credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}})
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('events');
+                }
+                return response.text();
+            })
+            .then(function (html) {
+                content.innerHTML = html;
+                panel.setAttribute('data-omo-project-detail-events-loaded', '1');
+                panel.removeAttribute('data-omo-project-detail-events-loading');
+            })
+            .catch(function () {
+                content.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts.eventsError || 'Impossible de charger les événements.') + '</p>';
+                panel.removeAttribute('data-omo-project-detail-events-loading');
+            });
+    }
+
     function revealRoot() {
         root.removeAttribute('data-omo-projects-preferences-pending');
         root.removeAttribute('aria-busy');
@@ -442,6 +477,7 @@
         }
 
         setDocumentDrawerMessage(texts.loading, false);
+        documentDrawer.classList.remove('is-calendar-event-editor');
         documentDrawer.hidden = false;
         window.requestAnimationFrame(function () {
             documentDrawer.classList.add('is-open');
@@ -462,6 +498,7 @@
                 return false;
             }
             documentDrawerBody.innerHTML = html;
+            documentDrawer.classList.toggle('is-calendar-event-editor', Boolean(documentDrawerBody.querySelector('.omo-calendar-create')));
             if (documentDrawerController) {
                 documentDrawerController.applyContentHeader(documentDrawerBody);
             }
@@ -471,6 +508,19 @@
             return executeFetchedScripts(documentDrawerBody).then(function () {
                 if (typeof window.initGenericComponents === 'function') {
                     window.initGenericComponents(documentDrawerBody);
+                }
+                if (typeof window.omoInitCalendarEventEditor === 'function') {
+                    window.omoInitCalendarEventEditor(documentDrawerBody, {
+                        onSave: function (result) {
+                            window.dispatchEvent(new CustomEvent('omo-project-event-saved', {
+                                detail: {
+                                    projectId: Number(result && result.projectId || 0),
+                                    eventId: Number(result && result.eventId || 0)
+                                }
+                            }));
+                            closeProjectDocumentDrawer();
+                        }
+                    });
                 }
                 return true;
             });
@@ -487,7 +537,9 @@
             return;
         }
         window.dispatchEvent(new CustomEvent('omo-document-editor-drawer-close'));
+        window.dispatchEvent(new CustomEvent('omo-calendar-event-editor-drawer-close'));
         documentDrawer.classList.remove('is-open');
+        documentDrawer.classList.remove('is-calendar-event-editor');
         window.setTimeout(function () {
             if (!documentDrawer.classList.contains('is-open')) {
                 documentDrawer.hidden = true;
@@ -1607,11 +1659,25 @@
             return;
         }
 
+        var eventsTab = event.target.closest('[data-omo-project-detail-events-tab]');
+        if (eventsTab) {
+            loadProjectEvents(eventsTab);
+            return;
+        }
+
         var addDocumentButton = event.target.closest('[data-omo-project-detail-add-document]');
         if (addDocumentButton) {
             event.preventDefault();
             event.stopPropagation();
             openProjectDocumentDrawer(addDocumentButton.getAttribute('data-omo-project-detail-add-document-url') || '');
+            return;
+        }
+
+        var addEventButton = event.target.closest('[data-omo-project-detail-add-event]');
+        if (addEventButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            openProjectDocumentDrawer(addEventButton.getAttribute('data-omo-project-detail-add-event-url') || '');
             return;
         }
 
@@ -1638,6 +1704,19 @@
                 window.omoOpenDrawerHashState('documents-d' + documentId);
             } else if (documentId > 0) {
                 window.location.hash = 'documents-d' + documentId;
+            }
+            return;
+        }
+
+        var eventLink = event.target.closest('[data-omo-project-detail-event-link]');
+        if (eventLink) {
+            event.preventDefault();
+            event.stopPropagation();
+            var calendarEventId = Number(eventLink.getAttribute('data-event-id') || 0);
+            if (calendarEventId > 0 && typeof window.omoOpenDrawerHashState === 'function') {
+                window.omoOpenDrawerHashState('calendar-e' + String(calendarEventId));
+            } else if (calendarEventId > 0) {
+                window.location.hash = 'calendar-e' + String(calendarEventId);
             }
             return;
         }
@@ -1969,6 +2048,10 @@
         closeProjectDocumentDrawer();
     };
 
+    window.omoCloseProjectEventEditorDrawer = function () {
+        closeProjectDocumentDrawer();
+    };
+
     function refreshProjectDocumentsAfterSave(event) {
         var details = event && event.detail ? event.detail : {};
         var projectId = Number(details.projectId || 0);
@@ -1986,6 +2069,26 @@
         content.innerHTML = '';
         if (!panel.hidden && tab) {
             loadProjectDocuments(tab);
+        }
+    }
+
+    function refreshProjectEventsAfterSave(event) {
+        var details = event && event.detail ? event.detail : {};
+        var projectId = Number(details.projectId || 0);
+        if (!Number.isInteger(projectId) || projectId <= 0) {
+            return;
+        }
+        var panel = root.querySelector('#omo-project-detail-events-' + String(projectId));
+        var tab = root.querySelector('[data-omo-project-detail-events-tab][data-generic-tab-target="omo-project-detail-events-' + String(projectId) + '"]');
+        var content = panel ? panel.querySelector('[data-omo-project-detail-events-content]') : null;
+        if (!panel || !content) {
+            return;
+        }
+        panel.removeAttribute('data-omo-project-detail-events-loaded');
+        panel.removeAttribute('data-omo-project-detail-events-loading');
+        content.innerHTML = '';
+        if (!panel.hidden && tab) {
+            loadProjectEvents(tab);
         }
     }
 
@@ -2091,6 +2194,7 @@
     window.addEventListener('omo-projects-route-change', handleProjectRouteChange);
     window.addEventListener('omo-runtime-maintenance', handleRuntimeMaintenance);
     window.addEventListener('omo-project-document-saved', refreshProjectDocumentsAfterSave);
+    window.addEventListener('omo-project-event-saved', refreshProjectEventsAfterSave);
     window.addEventListener('resize', syncGroupedKanbanHeaderOffset);
 
     applyQuickSearch();

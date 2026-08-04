@@ -23,11 +23,12 @@ if (empty($context['status'])) {
 }
 
 $userId = omoDecisionGetContextAccountUserId($context);
-if ($userId <= 0) {
+$participantId = omoDecisionGetContextParticipantId($context);
+if ($userId <= 0 && $participantId <= 0) {
     omoDecisionModuleJsonResponse(403, [
         'status' => false,
-        'reason' => 'account_required',
-        'message' => 'Un compte est nécessaire pour supprimer une proposition.',
+        'reason' => 'participant_required',
+        'message' => 'Un participant valide est nécessaire pour supprimer une proposition.',
     ]);
 }
 
@@ -46,7 +47,7 @@ if (!omoDecisionCanEditProposalFromPublicInterface($proposal, $context)) {
     ]);
 }
 
-$result = $proposal->archiveByAuthor($userId);
+$result = $proposal->archiveByAuthor($userId, $participantId);
 if (empty($result['status'])) {
     $statusCode = ($result['reason'] ?? '') === 'forbidden' ? 403 : 422;
     if (($result['reason'] ?? '') === 'not_found') {

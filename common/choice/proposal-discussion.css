@@ -478,6 +478,52 @@
     resize: vertical;
 }
 
+.omo-proposal-action-label--short {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    .omo-proposal-discussion-actions {
+        gap: 3px;
+    }
+
+    .omo-proposal-action-label--full {
+        display: none;
+    }
+
+    .omo-proposal-action-label--short {
+        display: inline;
+    }
+
+    .omo-proposal-discussion-actions > .generic-action-button,
+    .omo-proposal-discussion-count,
+    .omo-proposal-action-menu__toggle {
+        min-height: 30px;
+        height: 30px;
+    }
+
+    .omo-proposal-discussion-actions > .generic-action-button {
+        padding-top: 5px;
+        padding-bottom: 5px;
+        padding-left: 8px;
+        padding-right: 8px;
+        font-size: 12px;
+    }
+
+    .omo-proposal-discussion-count {
+        flex-basis: 30px;
+        width: 30px;
+        background-size: 30px 30px;
+        font-size: 14px;
+        padding-bottom: 5px;
+    }
+
+    .omo-proposal-action-menu__toggle {
+        width: 30px;
+        font-size: 1rem;
+    }
+}
+
 @media (max-width: 700px) {
     .omo-decision-settings-popup {
         padding: 14px;

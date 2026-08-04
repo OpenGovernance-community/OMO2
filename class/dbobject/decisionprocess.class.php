@@ -42,6 +42,31 @@ class DecisionProcess extends DbObject
         return $animals[$animalIndex] . ' ' . $traits[$traitIndex] . ' · ' . $suffix;
     }
 
+    public function getAnonymousPseudonymForParticipant($participantId)
+    {
+        $participantId = (int)$participantId;
+        if ($participantId <= 0) {
+            return 'Participant anonyme';
+        }
+
+        $animals = [
+            'Renard', 'Lynx', 'Hibou', 'Faucon', 'Castor', 'Panda', 'Koala', 'Jaguar',
+            'Bison', 'Dauphin', 'Gecko', 'Lama', 'Manchot', 'Pelican', 'Blaireau', 'Chamois',
+            'Corbeau', 'Ecureuil', 'Heron', 'Leopard', 'Morse', 'Orque', 'Puma', 'Toucan',
+        ];
+        $traits = [
+            'serein', 'curieux', 'vaillant', 'patient', 'inventif', 'attentif', 'jovial', 'paisible',
+            'audacieux', 'discret', 'solidaire', 'vif', 'reflechi', 'creatif', 'tenace', 'chaleureux',
+            'prudent', 'malicieux', 'loyal', 'agile', 'calme', 'brillant', 'franc', 'reveur',
+        ];
+        $hash = hash('sha256', (int)$this->getId() . ':participant:' . $participantId);
+        $animalIndex = (int)(hexdec(substr($hash, 0, 6)) % count($animals));
+        $traitIndex = (int)(hexdec(substr($hash, 6, 6)) % count($traits));
+        $suffix = strtoupper(substr($hash, 12, 3));
+
+        return $animals[$animalIndex] . ' ' . $traits[$traitIndex] . ' - ' . $suffix;
+    }
+
     public static function tableName()
     {
         return 'decision_process';
@@ -2317,6 +2342,30 @@ class DecisionProcess extends DbObject
         }
 
         return $consultationStart <= $referenceDateTime;
+    }
+
+    public function hasConsultationEnded($referenceDateTime = null)
+    {
+        $status = self::normalizeStatus($this->get('status'));
+        if (in_array($status, [
+            self::STATUS_EVALUATION,
+            self::STATUS_RESULTS,
+            self::STATUS_ARCHIVED,
+        ], true)) {
+            return true;
+        }
+
+        $consultationEnd = self::normalizeDateTimeValue($this->get('consultation_end_at'));
+        if (!$consultationEnd instanceof \DateTimeInterface) {
+            return false;
+        }
+
+        $referenceDateTime = self::normalizeDateTimeValue($referenceDateTime);
+        if (!$referenceDateTime instanceof \DateTimeInterface) {
+            $referenceDateTime = new \DateTimeImmutable('now');
+        }
+
+        return $consultationEnd <= $referenceDateTime;
     }
 
     public function isParticipationOpen($referenceDateTime = null)
