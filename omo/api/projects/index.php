@@ -639,6 +639,8 @@ $projectTexts = [
     'cancel' => omoProjectsT('projects.action.cancel'),
     'documentsLoading' => omoProjectsT('projects.detail.documents.loading'),
     'documentsError' => omoProjectsT('projects.detail.documents.error'),
+    'eventsLoading' => omoProjectsT('projects.detail.events.loading'),
+    'eventsError' => omoProjectsT('projects.detail.events.error'),
     'documentsAdd' => omoProjectsT('projects.detail.documents.add'),
     'taskDeleteConfirm' => omoProjectsT('projects.detail.task.delete_confirm'),
     'archivesTitle' => omoProjectsT('projects.detail.archives.title'),
@@ -1039,4 +1041,5 @@ $projectTexts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
-<script src="/omo/api/projects/projects.js?v=20260801-default-view-applies"></script>
+<script src="/common/calendar/event-editor.js?v=20260804-project-events"></script>
+<script src="/omo/api/projects/projects.js?v=20260804-project-events"></script>
