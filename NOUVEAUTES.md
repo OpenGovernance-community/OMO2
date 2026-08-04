@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-04
 
+- Sur telephone, les actions de proposition affichent maintenant les libelles courts Discuter et Modifier, avec des boutons et un menu d actions plus compacts.
 - Les personnes invitees par e-mail a un scrutin peuvent maintenant modifier ou retirer leurs propres propositions et participer aux discussions associees, sans devoir creer de compte. Les discussions et les metadonnees associees disparaissent a la fin de la consultation; les propositions ne sont alors plus modifiables, ni des le debut du vote.
 - Les evenements peuvent maintenant etre associes directement a un projet. L onglet Evenements associes affiche leur liste, permet d ouvrir chaque detail dans le calendrier et conserve un bouton compact pour ouvrir l editeur complet dans un sous-drawer; apres enregistrement, la liste se recharge. Dans le calendrier, ces evenements restent visibles et sont grises pour les personnes qui ne figurent pas parmi les participants, y compris leur createur. Les indications de creation des etats vides Documents et Evenements ne sont affichees que lorsque la creation est autorisee.
 - Les formulaires de creation et d edition des evenements gardent maintenant leurs onglets visibles en haut du drawer; seul le contenu de l onglet actif defile sur toute la hauteur disponible, sans reserve vide sous les onglets.
