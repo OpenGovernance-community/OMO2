@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260804-embed-remove-paragraph';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260804-indicator-group-route';
 
     if (
         window.omoSimpleHtmlField
@@ -780,7 +780,7 @@
             const titleNode = ownerDocument.createElement('strong');
             const linkNode = ownerDocument.createElement('a');
             linkNode.setAttribute('class', 'omo-indicator-embed__title');
-            linkNode.setAttribute('href', indicatorKind === 'group' ? '#stats' : ('#stats-i' + String(getIndicatorEmbedElementId(sourceNode))));
+            linkNode.setAttribute('href', indicatorKind === 'group' ? ('#stats-g' + String(getIndicatorEmbedElementId(sourceNode))) : ('#stats-i' + String(getIndicatorEmbedElementId(sourceNode))));
             const statusDotNode = ownerDocument.createElement('span');
             statusDotNode.setAttribute('class', 'omo-indicator-embed__status-dot'
                 + (isOverdue ? (overdueSeverity === 'warning' ? ' omo-indicator-embed__status-dot--warning' : ' omo-indicator-embed__status-dot--overdue') : (hasStatus ? ' omo-indicator-embed__status-dot--current' : ' omo-indicator-embed__status-dot--unknown')));

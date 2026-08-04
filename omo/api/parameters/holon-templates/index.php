@@ -571,7 +571,7 @@ $omoHolonTemplateTexts = [
 
 <?php if ($editorData !== null): ?>
 <script src="/omo/assets/js/sized-image-field.js"></script>
-<script src="/omo/assets/js/simple-html-field.js?v=20260804-embed-remove-paragraph"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20260804-indicator-group-route"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
 <script>
 (() => {

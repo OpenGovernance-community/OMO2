@@ -8,6 +8,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les pickers de cercles et roles ouverts depuis Summernote filtrent maintenant Local par defaut; les portees Enfants directs et Descendants restent disponibles a la demande.
 - Le bouton Checklist de Summernote utilise maintenant l icone officielle deja configuree pour cette application.
 - Le bouton de suppression d un point de PV garde maintenant un espace avec le bord droit de la barre Summernote.
+- Les groupes d indicateurs inseres dans Summernote utilisent maintenant une route numerotee et ouvrent leur detail, comme les indicateurs simples.
+- La suppression d une organisation retire maintenant ses checklists, leurs executions et leurs occurrences avant les projets et la structure auxquels elles sont liees.
 - Les liens de projets affiches dans les proprietes de la structure conservent maintenant le contexte d organisation des installations beta utilisant le routage par chemin.
 - Le routeur OMO et le cache du service worker utilisent de nouvelles versions afin que les navigateurs beta recuperent les correctifs de navigation, notamment l ouverture des projets depuis la liste de structure.
 - Sur telephone, les actions de proposition affichent maintenant les libelles courts Discuter et Modifier, avec des boutons et un menu d actions plus compacts.
