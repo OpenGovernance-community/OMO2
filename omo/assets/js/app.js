@@ -1832,18 +1832,25 @@ function omoParseStatsIndicatorRouteToken(routeToken = null) {
     }
 
     const indicatorMatch = normalizedRouteToken.match(/^(?:stats-i|stats-indicator-)(\d+)$/i);
-    if (!indicatorMatch) {
+    if (indicatorMatch) {
+        const indicatorId = Number(indicatorMatch[1]);
+        if (Number.isInteger(indicatorId) && indicatorId > 0) {
+            return {
+                kind: 'indicator',
+                indicatorId: indicatorId
+            };
+        }
+    }
+
+    const groupMatch = normalizedRouteToken.match(/^(?:stats-g|stats-group-)(\d+)$/i);
+    if (!groupMatch) {
         return null;
     }
 
-    const indicatorId = Number(indicatorMatch[1]);
-    if (!Number.isInteger(indicatorId) || indicatorId <= 0) {
-        return null;
-    }
-
-    return {
-        indicatorId: indicatorId
-    };
+    const groupId = Number(groupMatch[1]);
+    return Number.isInteger(groupId) && groupId > 0
+        ? {kind: 'group', groupId: groupId}
+        : null;
 }
 
 function omoParseChecklistRouteToken(routeToken = null) {
@@ -1984,6 +1991,15 @@ function omoBuildStatsIndicatorRouteToken(indicatorId) {
     }
 
     return `stats-i${resolvedIndicatorId}`;
+}
+
+function omoBuildStatsGroupRouteToken(groupId) {
+    const resolvedGroupId = Number(groupId);
+    if (!Number.isInteger(resolvedGroupId) || resolvedGroupId <= 0) {
+        return null;
+    }
+
+    return `stats-g${resolvedGroupId}`;
 }
 
 function omoBuildChecklistRouteToken(checklistId) {
@@ -2206,9 +2222,12 @@ function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null, option
     const statsIndicatorRoute = omoParseStatsIndicatorRouteToken(normalizedRouteToken);
     if (statsIndicatorRoute) {
         const statsScope = omoNormalizeDrawerForcedScope(options.forcedScope) || 'descendants';
+        const statsRouteParameter = statsIndicatorRoute.kind === 'group'
+            ? 'open_group_id=' + encodeURIComponent(statsIndicatorRoute.groupId)
+            : 'open_indicator_id=' + encodeURIComponent(statsIndicatorRoute.indicatorId);
         return {
             drawer: 'drawer_stats',
-            url: 'api/stats/index.php?open_indicator_id=' + encodeURIComponent(statsIndicatorRoute.indicatorId) + '&stats_scope=' + encodeURIComponent(statsScope),
+            url: 'api/stats/index.php?' + statsRouteParameter + '&stats_scope=' + encodeURIComponent(statsScope),
             navigationMode: 'drawer'
         };
     }
@@ -4421,8 +4440,10 @@ function handleRoute() {
     if (isInSpecialDrawerOnlyRouteChange && activeMenuHash === 'stats') {
         window.dispatchEvent(new CustomEvent('omo-stats-route-change', {
             detail: {
-                indicatorId: statsIndicatorRoute ? Number(statsIndicatorRoute.indicatorId) : 0,
-                previousIndicatorId: previousStatsIndicatorRoute ? Number(previousStatsIndicatorRoute.indicatorId) : 0,
+                indicatorId: statsIndicatorRoute && statsIndicatorRoute.kind === 'indicator' ? Number(statsIndicatorRoute.indicatorId) : 0,
+                previousIndicatorId: previousStatsIndicatorRoute && previousStatsIndicatorRoute.kind === 'indicator' ? Number(previousStatsIndicatorRoute.indicatorId) : 0,
+                groupId: statsIndicatorRoute && statsIndicatorRoute.kind === 'group' ? Number(statsIndicatorRoute.groupId) : 0,
+                previousGroupId: previousStatsIndicatorRoute && previousStatsIndicatorRoute.kind === 'group' ? Number(previousStatsIndicatorRoute.groupId) : 0,
                 routeToken: routeToken,
                 previousRouteToken: previousState.routeToken || null
             }
@@ -5346,6 +5367,7 @@ window.omoNormalizeRouteCid = omoNormalizeRouteCid;
 window.omoBuildDecisionRouteToken = omoBuildDecisionRouteToken;
 window.omoBuildCalendarEventRouteToken = omoBuildCalendarEventRouteToken;
 window.omoBuildStatsIndicatorRouteToken = omoBuildStatsIndicatorRouteToken;
+window.omoBuildStatsGroupRouteToken = omoBuildStatsGroupRouteToken;
 window.omoBuildChecklistRouteToken = omoBuildChecklistRouteToken;
 window.omoBuildProjectRouteToken = omoBuildProjectRouteToken;
 window.omoOpenSearchCalendarEventResult = omoOpenSearchCalendarEventResult;

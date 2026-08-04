@@ -14,6 +14,7 @@ use dbObject\StatIndicatorValue;
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $openIndicatorId = isset($_GET['open_indicator_id']) && is_numeric($_GET['open_indicator_id']) ? (int)$_GET['open_indicator_id'] : 0;
+$openGroupId = isset($_GET['open_group_id']) && is_numeric($_GET['open_group_id']) ? (int)$_GET['open_group_id'] : 0;
 $context = omoStatsResolveContext($organizationId, $currentHolonId);
 
 if (empty($context['status'])) {
@@ -272,6 +273,7 @@ $displayItemCount = count($statsEntries);
     data-omo-stats-detail-url="<?= omoApiEscape($detailBaseUrl) ?>"
     data-omo-stats-group-detail-url="<?= omoApiEscape($groupDetailBaseUrl) ?>"
     data-omo-stats-open-indicator-id="<?= (int)$openIndicatorId ?>"
+    data-omo-stats-open-group-id="<?= (int)$openGroupId ?>"
     data-omo-stats-picker="<?= omoApiEscape(json_encode($pickerData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
 >
     <header class="omo-stats__header omo-panel-view__header omo-panel-view__header--stacked">
@@ -693,6 +695,7 @@ $displayItemCount = count($statsEntries);
     var currentScope = root.getAttribute('data-omo-stats-current-scope') || 'contextual';
     var routeCid = Number(root.getAttribute('data-omo-stats-route-cid') || 0);
     var initialIndicatorId = Number(root.getAttribute('data-omo-stats-open-indicator-id') || 0);
+    var initialGroupId = Number(root.getAttribute('data-omo-stats-open-group-id') || 0);
     var requestToken = 0;
     var listNeedsRefresh = false;
     var savedViewsStorageKey = 'omo.stats.saved-views.v2';
@@ -1288,7 +1291,7 @@ $displayItemCount = count($statsEntries);
         var saved = getStoredFilters();
         var defaultFilters = getDefaultStoredFilters();
         var preferences = normalizeFilters(temporary || saved || defaultFilters || getActiveFilters());
-        if (Number.isInteger(initialIndicatorId) && initialIndicatorId > 0) {
+        if ((Number.isInteger(initialIndicatorId) && initialIndicatorId > 0) || (Number.isInteger(initialGroupId) && initialGroupId > 0)) {
             preferences.scope = currentScope;
             preferences.sort = currentSort;
         }
@@ -1418,7 +1421,7 @@ $displayItemCount = count($statsEntries);
         var settings = options && typeof options === 'object' ? options : {};
         if (
             settings.force !== true
-            && /^stats-(?:i|indicator-)(\d+)$/i.test(getCurrentRouteToken())
+            && /^stats-(?:i|g|indicator-|group-)(\d+)$/i.test(getCurrentRouteToken())
             && typeof window.omoOpenDrawerHashState === 'function'
         ) {
             window.omoOpenDrawerHashState('stats');
@@ -1460,6 +1463,13 @@ $displayItemCount = count($statsEntries);
     function openGroup(groupId) {
         var resolvedId = Number(groupId || 0);
         if (!Number.isInteger(resolvedId) || resolvedId <= 0) {
+            return;
+        }
+        var routeToken = typeof window.omoBuildStatsGroupRouteToken === 'function'
+            ? window.omoBuildStatsGroupRouteToken(resolvedId)
+            : 'stats-g' + String(resolvedId);
+        if (typeof window.omoOpenDrawerHashState === 'function' && routeToken !== getCurrentRouteToken()) {
+            window.omoOpenDrawerHashState(routeToken);
             return;
         }
         openDrawerWithUrl(buildGroupDetailUrl(resolvedId));
@@ -2226,7 +2236,10 @@ $displayItemCount = count($statsEntries);
             }
             var detail = routeEvent && routeEvent.detail ? routeEvent.detail : {};
             var indicatorId = Number(detail.indicatorId || 0);
-            if (indicatorId > 0) {
+            var groupId = Number(detail.groupId || 0);
+            if (groupId > 0) {
+                openDrawerWithUrl(buildGroupDetailUrl(groupId));
+            } else if (indicatorId > 0) {
                 openDrawerWithUrl(buildDetailUrl(indicatorId));
             } else {
                 closeDrawer({force: true});
@@ -2237,7 +2250,11 @@ $displayItemCount = count($statsEntries);
 
     initializeViewFilter();
 
-    if (Number.isInteger(initialIndicatorId) && initialIndicatorId > 0) {
+    if (Number.isInteger(initialGroupId) && initialGroupId > 0) {
+        window.setTimeout(function () {
+            openDrawerWithUrl(buildGroupDetailUrl(initialGroupId));
+        }, 40);
+    } else if (Number.isInteger(initialIndicatorId) && initialIndicatorId > 0) {
         window.setTimeout(function () {
             openDrawerWithUrl(buildDetailUrl(initialIndicatorId));
         }, 40);
