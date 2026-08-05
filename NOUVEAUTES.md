@@ -5,6 +5,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 ## 2026-08-05
 
 - Dans la vue liste de Structure, les listes d autorites affichent desormais leurs libelles au lieu de leurs identifiants techniques.
+- Les autorites heritees par un holon dans la vue liste de Structure resolvent aussi leur libelle depuis leur modele.
 - Le deplacement de documents propose maintenant une selection visuelle du holon, avec la carte des cercles et roles utilisee dans les selecteurs des PV, puis les dossiers compatibles du holon choisi.
 - La popup de deplacement de document affiche son chemin final, un arbre de dossiers et un titre simplifie; son indication de destination est alignee avec ses actions.
 - Les lignes de l arbre de dossiers du deplacement de document ont une hauteur fixe et la liste defile lorsqu elle est longue.
