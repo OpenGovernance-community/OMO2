@@ -5,6 +5,7 @@ header('Content-Type: application/json; charset=UTF-8');
 
 use dbObject\ArrayOrganization;
 use dbObject\ArrayProject;
+use dbObject\Authority;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 if ($organizationId <= 0) {
@@ -105,6 +106,16 @@ foreach ($projects as $project) {
     }
 }
 $representation['projectTitles'] = $projectTitles;
+
+$authorityLabels = array();
+foreach (Authority::getEditorCatalogForOrganization($organizationId) as $authority) {
+    $authorityId = (int)($authority['id'] ?? 0);
+    $authorityLabel = trim((string)($authority['label'] ?? ''));
+    if ($authorityId > 0 && $authorityLabel !== '') {
+        $authorityLabels[$authorityId] = $authorityLabel;
+    }
+}
+$representation['authorityLabels'] = $authorityLabels;
 
 if ((int)$navigationRoot->getId() !== (int)$root->getId() && (int)$navigationRoot->get('IDtypeholon') !== 4) {
     $representation['type'] = '4';

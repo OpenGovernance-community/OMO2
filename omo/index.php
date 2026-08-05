@@ -1645,7 +1645,7 @@ window.omoConfig = <?=
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
 <script src="assets/js/simple-html-field.js?v=20260804-indicator-group-route"></script>
-<script src="assets/js/app.js?v=20260804-stats-group-route"></script>
+<script src="assets/js/app.js?v=20260805-document-move-title"></script>
 <script src="assets/js/structure-mini-map.js"></script>
 
 <script>

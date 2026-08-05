@@ -3577,7 +3577,7 @@ function omoFormatPopupTitle(popupKey) {
     }
 
     if (popupKey === 'document-move') {
-        return 'Deplacer';
+        return 'Deplacer le document';
     }
 
     if (popupKey === 'holon-move') {

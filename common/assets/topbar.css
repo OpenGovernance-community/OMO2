@@ -879,6 +879,8 @@ html[data-theme="dark"] .common-topbar-profile-preference__icon--theme-dark {
 .common-topbar-modal__body {
     padding: 0px;
     overflow: auto;
+    min-width: 0;
+    scrollbar-gutter: stable;
 }
 
 .common-topbar-remote-state {
