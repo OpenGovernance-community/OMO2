@@ -15,6 +15,8 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.title' => ['text' => 'Checklists', 'context' => 'Main title of the checklist application.'],
             'checklist.action.new' => ['text' => 'Ajouter', 'context' => 'Button opening checklist creation.'],
             'checklist.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening checklist edition.'],
+            'checklist.action.delete' => ['text' => 'Supprimer', 'context' => 'Button deleting a checklist.'],
+            'checklist.action.more' => ['text' => 'Autres options pour cette checklist', 'context' => 'Accessible label for the extra checklist actions menu.'],
             'checklist.action.close' => ['text' => 'Fermer', 'context' => 'Button closing the checklist drawer.'],
             'checklist.action.cancel' => ['text' => 'Annuler', 'context' => 'Button cancelling checklist edition.'],
             'checklist.action.save' => ['text' => 'Enregistrer', 'context' => 'Button saving a checklist.'],
@@ -76,12 +78,14 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.error.open_instance' => ['text' => 'Une instance est déjà en cours pour cette checklist.', 'context' => 'Checklist overlap prevents another run.'],
             'checklist.error.save' => ['text' => 'Impossible d enregistrer la checklist.', 'context' => 'Generic checklist persistence error.'],
             'checklist.success.save' => ['text' => 'Checklist enregistrée.', 'context' => 'Checklist save success.'],
+            'checklist.success.deleted' => ['text' => 'Checklist supprimée.', 'context' => 'Checklist deletion success.'],
             'checklist.success.activated' => ['text' => 'La nouvelle instance est active.', 'context' => 'Checklist run creation success.'],
             'checklist.success.reused' => ['text' => 'L instance déjà ouverte a été conservée.', 'context' => 'Existing checklist run reused.'],
             'checklist.success.item_deleted' => ['text' => 'Élément supprimé.', 'context' => 'Checklist item was deleted.'],
             'checklist.success.item_moved' => ['text' => 'Élément déplacé.', 'context' => 'Checklist item was moved.'],
             'checklist.success.item_extracted' => ['text' => 'Élément extrait dans une checklist récurrente.', 'context' => 'Checklist item was extracted into a new recurring checklist.'],
             'checklist.confirm.delete_item' => ['text' => 'Supprimer cet élément de la checklist ?', 'context' => 'Confirmation before deleting a checklist item.'],
+            'checklist.confirm.delete_checklist' => ['text' => 'Supprimer cette checklist et ses éléments ?', 'context' => 'Confirmation before deleting a checklist.'],
             'checklist.confirm.extract_item' => ['text' => 'Extraire cet élément dans une nouvelle checklist récurrente ?', 'context' => 'Confirmation before extracting a recurring item.'],
             'checklist.form.create_title' => ['text' => 'Nouvelle checklist', 'context' => 'Checklist creation drawer title.'],
             'checklist.form.edit_title' => ['text' => 'Modifier la checklist', 'context' => 'Checklist edition drawer title.'],
@@ -274,13 +278,21 @@ if (!function_exists('omoChecklistResolveContext')) {
 if (!function_exists('omoChecklistCanCreateContext')) {
     function omoChecklistCanCreateContext(array $context)
     {
-        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
         $currentHolon = $context['currentHolon'] ?? null;
-        if ($currentUserId <= 0 || !($currentHolon instanceof Holon)) {
+        return $currentHolon instanceof Holon
+            && omoChecklistCanUsePermission($currentHolon, 'CAN_CREATE_CHECKLIST');
+    }
+}
+
+if (!function_exists('omoChecklistCanUsePermission')) {
+    function omoChecklistCanUsePermission(Holon $holon, $permissionKey)
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
             return false;
         }
         $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
-        return $currentHolon->isAllowed('CAN_CREATE_PROJECT', $useSessionCache, $currentUserId);
+        return $holon->isAllowed((string)$permissionKey, $useSessionCache, $currentUserId);
     }
 }
 
@@ -298,7 +310,17 @@ if (!function_exists('omoChecklistCanManage')) {
     {
         $templateRoot = $checklist->getTemplateRoot();
         $holon = $templateRoot instanceof Project ? $templateRoot->getHolon() : null;
-        return $holon instanceof Holon && $holon->canEdit();
+        return $holon instanceof Holon
+            && omoChecklistCanUsePermission($holon, 'CAN_EDIT_CHECKLIST');
+    }
+}
+
+if (!function_exists('omoChecklistCanDelete')) {
+    function omoChecklistCanDelete(Checklist $checklist)
+    {
+        $holon = $checklist->getHolon();
+        return $holon instanceof Holon
+            && omoChecklistCanUsePermission($holon, 'CAN_DELETE_CHECKLIST');
     }
 }
 

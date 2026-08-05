@@ -296,6 +296,7 @@ function omoHolonTemplateSourceLang()
 		'parameters.holon_templates.field.lock_admin_min' => ['text' => 'Verrouiller le minimum', 'context' => 'Checkbox that prevents an instance from redefining the minimum number of administrators.'],
 		'parameters.holon_templates.field.lock_admin_max' => ['text' => 'Verrouiller le maximum', 'context' => 'Checkbox that prevents an instance from redefining the maximum number of administrators.'],
         'parameters.holon_templates.field.inherits_from' => ['text' => 'Hérite de', 'context' => 'Label of the parent template select in the holon template editor.'],
+        'parameters.holon_templates.field.associated_holon' => ['text' => 'Associé au holon', 'context' => 'Label of the structural holon a template is associated with in the holon template editor.'],
         'parameters.holon_templates.field.name' => ['text' => 'Nom', 'context' => 'Generic name label used in organization definition mode for the holon template editor.'],
         'parameters.holon_templates.field.model_name' => ['text' => 'Nom du modèle', 'context' => 'Name label used in template mode for the holon template editor.'],
         'parameters.holon_templates.flag.visible' => ['text' => 'Visible', 'context' => 'Visibility checkbox label in the holon template editor.'],

@@ -125,6 +125,24 @@ class Permission extends DbObject
                 'iscontextual' => true,
                 'group' => 'content',
             ],
+            'CAN_CREATE_CHECKLIST' => [
+                'title' => 'Creer des checklists',
+                'description' => 'Autorise la creation de checklists dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'checklists',
+            ],
+            'CAN_EDIT_CHECKLIST' => [
+                'title' => 'Modifier des checklists',
+                'description' => 'Autorise l ajout, la modification et la suppression des elements de checklists dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'checklists',
+            ],
+            'CAN_DELETE_CHECKLIST' => [
+                'title' => 'Supprimer des checklists',
+                'description' => 'Autorise la suppression de checklists dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'checklists',
+            ],
             'CAN_CREATE_PROJECT' => [
                 'title' => 'Creer des projets',
                 'description' => 'Autorise la creation de projets dans le contexte cible.',
@@ -199,6 +217,7 @@ class Permission extends DbObject
         return [
             'members' => ['title' => 'Membres et roles', 'order' => 10],
             'content' => ['title' => 'Contenus et reunions', 'order' => 20],
+            'checklists' => ['title' => 'Checklists', 'order' => 25],
             'steering' => ['title' => 'Pilotage', 'order' => 30],
             'properties' => ['title' => 'Proprietes', 'order' => 40],
             'organization' => ['title' => 'Organisation', 'order' => 50],

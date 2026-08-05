@@ -229,17 +229,17 @@ $omoHolonTemplateTexts = [
                                     <select name="parentId" id="omo-template-parent"></select>
                                 </label>
 
+                                <label class="omo-field<?= $isHolonDefinitionMode ? ' omo-template-field--hidden' : '' ?>">
+                                    <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.associated_holon'), ENT_QUOTES, 'UTF-8') ?></span>
+                                    <select name="definitionHolonId" id="omo-template-definition-holon"></select>
+                                </label>
+
                                 <label class="omo-field omo-field--full">
                                     <span><?= htmlspecialchars($isHolonDefinitionMode ? omoHolonTemplateT('parameters.holon_templates.field.name') : omoHolonTemplateT('parameters.holon_templates.field.model_name'), ENT_QUOTES, 'UTF-8') ?></span>
                                     <input type="text" name="name" id="omo-template-name" maxlength="255" required>
                                 </label>
 
                                 <div class="omo-template-flags omo-field--full<?= $isHolonDefinitionMode ? ' omo-template-field--hidden' : '' ?>">
-                                    <label class="omo-template-flags__option generic-soft-panel generic-stack generic-stack--compact">
-                                        <input type="checkbox" id="omo-template-visible">
-                                        <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.flag.visible'), ENT_QUOTES, 'UTF-8') ?></span>
-                                        <small><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.flag.visible_help'), ENT_QUOTES, 'UTF-8') ?></small>
-                                    </label>
                                     <label class="omo-template-flags__option generic-soft-panel generic-stack generic-stack--compact">
                                         <input type="checkbox" id="omo-template-mandatory">
                                         <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.flag.mandatory'), ENT_QUOTES, 'UTF-8') ?></span>
@@ -601,6 +601,7 @@ const omoHolonTemplateElements = {
     form: omoHolonTemplateRoot.querySelector('#omo-template-form'),
     type: omoHolonTemplateRoot.querySelector('#omo-template-type'),
     parent: omoHolonTemplateRoot.querySelector('#omo-template-parent'),
+    definitionHolon: omoHolonTemplateRoot.querySelector('#omo-template-definition-holon'),
     name: omoHolonTemplateRoot.querySelector('#omo-template-name'),
     colorEnabled: omoHolonTemplateRoot.querySelector('#omo-template-color-enabled'),
     colorBody: omoHolonTemplateRoot.querySelector('#omo-template-color-body'),
@@ -612,7 +613,6 @@ const omoHolonTemplateElements = {
     publicName: omoHolonTemplateRoot.querySelector('#omo-template-public-name'),
     publicIconField: omoHolonTemplateRoot.querySelector('#omo-template-public-icon-field'),
     publicBannerField: omoHolonTemplateRoot.querySelector('#omo-template-public-banner-field'),
-    visible: omoHolonTemplateRoot.querySelector('#omo-template-visible'),
     mandatory: omoHolonTemplateRoot.querySelector('#omo-template-mandatory'),
     lockedName: omoHolonTemplateRoot.querySelector('#omo-template-locked-name'),
     lockedIcon: omoHolonTemplateRoot.querySelector('#omo-template-locked-icon'),
@@ -1273,7 +1273,6 @@ function omoHolonTemplateReadCurrentFormState() {
         banner: omoHolonTemplateMediaFields.banner ? omoHolonTemplateMediaFields.banner.getValue() : '',
         typeId: effectiveTypeId,
         typeLabel: omoHolonTemplateGetTypeLabel(effectiveTypeId),
-        visible: Boolean(omoHolonTemplateElements.visible && omoHolonTemplateElements.visible.checked),
         mandatory: Boolean(omoHolonTemplateElements.mandatory && omoHolonTemplateElements.mandatory.checked),
         lockedName: Boolean(omoHolonTemplateElements.lockedName && omoHolonTemplateElements.lockedName.checked),
         lockedIcon: omoHolonTemplateElements.lockedIcon
@@ -1294,7 +1293,7 @@ function omoHolonTemplateReadCurrentFormState() {
 		lockedAdminMin: omoHolonTemplateReadAdminLock(omoHolonTemplateElements.lockedAdminMin),
 		lockedAdminMax: omoHolonTemplateReadAdminLock(omoHolonTemplateElements.lockedAdminMax),
         inheritsFromId: effectiveInheritanceId,
-        definitionHolonId: Number(omoHolonTemplateElements.form.dataset.definitionHolonId || omoHolonTemplateState.data.rootHolonId || 0),
+        definitionHolonId: Number((omoHolonTemplateElements.definitionHolon || {}).value || omoHolonTemplateElements.form.dataset.definitionHolonId || omoHolonTemplateState.data.rootHolonId || 0),
         permissionAssignments: omoHolonTemplateReadPermissions(),
         removedPropertyIds: omoHolonTemplateState.removedPropertyIds.slice(),
         properties: omoHolonTemplateReadProperties()
@@ -1847,6 +1846,100 @@ function omoHolonTemplateBuildParentOptions(selectedParentId, currentTemplateId)
     omoHolonTemplateElements.parent.value = hasMatchingParentOption
         ? parentTargetValue
         : '0';
+}
+
+function omoHolonTemplateSetDefinitionHolonOptionLabels(showTree) {
+    if (!omoHolonTemplateElements.definitionHolon) {
+        return;
+    }
+
+    Array.from(omoHolonTemplateElements.definitionHolon.options).forEach(function (option) {
+        option.textContent = showTree
+            ? String(option.dataset.treeLabel || option.dataset.plainLabel || '')
+            : String(option.dataset.plainLabel || option.dataset.treeLabel || '');
+    });
+}
+
+function omoHolonTemplateBuildDefinitionHolonOptions(selectedHolonId, allowedHolonIds) {
+    if (!omoHolonTemplateElements.definitionHolon) {
+        return;
+    }
+
+    const options = Array.isArray(omoHolonTemplateState.data.definitionHolonCatalog)
+        ? omoHolonTemplateState.data.definitionHolonCatalog
+        : [];
+    const selectedId = Number(selectedHolonId || omoHolonTemplateState.data.rootHolonId || 0);
+    const allowedIds = Array.isArray(allowedHolonIds)
+        ? allowedHolonIds.map(function (id) { return Number(id || 0); })
+        : null;
+
+    const visibleHolons = options.filter(function (holon) {
+        return allowedIds === null || allowedIds.indexOf(Number(holon.id || 0)) !== -1;
+    });
+    const holonsById = {};
+    const roots = [];
+
+    visibleHolons.forEach(function (holon) {
+        holonsById[Number(holon.id || 0)] = {
+            holon: holon,
+            children: []
+        };
+    });
+    visibleHolons.forEach(function (holon) {
+        const holonId = Number(holon.id || 0);
+        const parentId = Number(holon.parentId || 0);
+        const entry = holonsById[holonId];
+        if (parentId > 0 && holonsById[parentId]) {
+            holonsById[parentId].children.push(entry);
+        } else {
+            roots.push(entry);
+        }
+    });
+
+    const sortEntries = function (entries) {
+        entries.sort(function (left, right) {
+            return String(left.holon.name || left.holon.pathLabel || '').localeCompare(
+                String(right.holon.name || right.holon.pathLabel || ''),
+                undefined,
+                { sensitivity: 'base' }
+            );
+        });
+        entries.forEach(function (entry) {
+            sortEntries(entry.children);
+        });
+    };
+    sortEntries(roots);
+
+    omoHolonTemplateElements.definitionHolon.innerHTML = '';
+    const appendEntries = function (entries, prefix, hasParent) {
+        entries.forEach(function (entry, index) {
+            const isLast = index === entries.length - 1;
+            const branch = hasParent ? prefix + (isLast ? '└─ ' : '├─ ') : '';
+            const plainLabel = String(entry.holon.name || entry.holon.pathLabel || '');
+            const option = document.createElement('option');
+            option.value = Number(entry.holon.id || 0);
+            option.dataset.plainLabel = plainLabel;
+            option.dataset.treeLabel = branch + plainLabel;
+            option.textContent = option.dataset.plainLabel;
+            option.selected = Number(entry.holon.id || 0) === selectedId;
+            omoHolonTemplateElements.definitionHolon.appendChild(option);
+
+            appendEntries(
+                entry.children,
+                hasParent ? prefix + (isLast ? '   ' : '│  ') : '',
+                true
+            );
+        });
+    };
+    appendEntries(roots, '', false);
+
+    const hasSelectedOption = Array.from(omoHolonTemplateElements.definitionHolon.options).some(function (option) {
+        return Number(option.value || 0) === selectedId;
+    });
+    if (hasSelectedOption) {
+        omoHolonTemplateElements.definitionHolon.value = String(selectedId);
+    }
+    omoHolonTemplateSetDefinitionHolonOptionLabels(false);
 }
 
 function omoHolonTemplateGetValueHelpText(formatId) {
@@ -3122,6 +3215,10 @@ function omoHolonTemplateFillForm(template, options) {
     omoHolonTemplateToggleTypeField(effectiveInheritanceId > 0);
     omoHolonTemplateFillTypeOptions(effectiveTypeId);
     omoHolonTemplateBuildParentOptions(resolvedParentId, current.id);
+    omoHolonTemplateBuildDefinitionHolonOptions(
+        Number(current.definedInId || omoHolonTemplateState.data.rootHolonId || 0),
+        current.definitionHolonIds
+    );
     omoHolonTemplateElements.name.value = current.name || '';
     if (omoHolonTemplateElements.colorEnabled) {
         omoHolonTemplateElements.colorEnabled.checked = String(current.color || '').trim() !== '';
@@ -3130,9 +3227,6 @@ function omoHolonTemplateFillForm(template, options) {
         omoHolonTemplateElements.color.value = current.color || '#f59e0b';
     }
     omoHolonTemplateSyncColorField();
-    if (omoHolonTemplateElements.visible) {
-        omoHolonTemplateElements.visible.checked = Boolean(current.visible);
-    }
     if (omoHolonTemplateElements.mandatory) {
         omoHolonTemplateElements.mandatory.checked = Boolean(current.mandatory);
     }
@@ -3313,7 +3407,6 @@ function omoHolonTemplateSave(event) {
                     : '',
                 icon: omoHolonTemplateMediaFields.icon ? omoHolonTemplateMediaFields.icon.getValue() : '',
                 banner: omoHolonTemplateMediaFields.banner ? omoHolonTemplateMediaFields.banner.getValue() : '',
-                visible: Boolean(omoHolonTemplateElements.visible && omoHolonTemplateElements.visible.checked),
                 mandatory: Boolean(omoHolonTemplateElements.mandatory && omoHolonTemplateElements.mandatory.checked),
                 lockedName: Boolean(omoHolonTemplateElements.lockedName && omoHolonTemplateElements.lockedName.checked),
                 lockedIcon: omoHolonTemplateElements.lockedIcon
@@ -3334,7 +3427,7 @@ function omoHolonTemplateSave(event) {
 				lockedAdminMin: omoHolonTemplateReadAdminLock(omoHolonTemplateElements.lockedAdminMin),
 				lockedAdminMax: omoHolonTemplateReadAdminLock(omoHolonTemplateElements.lockedAdminMax),
                 inheritsFromId: omoHolonTemplateGetEffectiveInheritanceIdFromParent(omoHolonTemplateElements.parent.value || 0),
-                definitionHolonId: Number(omoHolonTemplateElements.form.dataset.definitionHolonId || omoHolonTemplateState.data.rootHolonId || 0),
+                definitionHolonId: Number((omoHolonTemplateElements.definitionHolon || {}).value || omoHolonTemplateElements.form.dataset.definitionHolonId || omoHolonTemplateState.data.rootHolonId || 0),
                 permissions: omoHolonTemplateReadPermissions(),
                 removedPropertyIds: omoHolonTemplateState.removedPropertyIds.slice(),
                 properties: omoHolonTemplateReadProperties()
@@ -3490,6 +3583,19 @@ if (omoHolonTemplateElements.deleteButton) {
 if (omoHolonTemplateElements.sharePublic) {
     omoHolonTemplateElements.sharePublic.addEventListener('change', function () {
         omoHolonTemplateSyncPublicShareFields();
+    });
+}
+
+if (omoHolonTemplateElements.definitionHolon) {
+    ['focus', 'pointerdown', 'keydown'].forEach(function (eventName) {
+        omoHolonTemplateElements.definitionHolon.addEventListener(eventName, function () {
+            omoHolonTemplateSetDefinitionHolonOptionLabels(true);
+        });
+    });
+    ['blur', 'change'].forEach(function (eventName) {
+        omoHolonTemplateElements.definitionHolon.addEventListener(eventName, function () {
+            omoHolonTemplateSetDefinitionHolonOptionLabels(false);
+        });
     });
 }
 

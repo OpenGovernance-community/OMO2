@@ -4,6 +4,12 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-05
 
+- L option de visibilite a ete retiree de l editeur des holon templates. Les nouveaux modeles restent invisibles par defaut, sans modifier le statut des modeles existants.
+- Les droits des checklists sont maintenant regroupes dans leur propre section, avec les actions creer, modifier puis supprimer, appliquees a leur editeur.
+- Une checklist peut maintenant etre supprimee depuis son menu d actions, uniquement avec le droit de suppression correspondant.
+- Le resume des participants d un scrutin affiche maintenant le total en evidence, la repartition des holons, membres et invites, ainsi que la liste des personnes au survol.
+- Le resume des parametres de scrutin utilise maintenant les surfaces du theme, pour garder ses libelles lisibles en mode sombre.
+- L onglet du navigateur de l espace OMO affiche maintenant le nom de l organisation ouverte.
 - L ouverture d un tutoriel depuis un pack de parcours OMO fonctionne a nouveau.
 - Dans la vue liste de Structure, les listes d autorites affichent desormais leurs libelles au lieu de leurs identifiants techniques.
 - Les autorites heritees par plusieurs niveaux de modeles dans la vue liste de Structure resolvent aussi leur libelle, au lieu d afficher les blocs JSON concatenes.
@@ -1436,6 +1442,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Les taches sans holon propre heritent maintenant des droits de gestion de leur projet parent pour le statut, l archivage et la suppression.
 - Les invitations peuvent a nouveau verifier les contraintes d administration d une organisation sans appeler une methode protegee du holon.
 - Les bornes minimum et maximum d administrateurs indiquent maintenant clairement leur valeur heritee dans l editeur de modeles de holons.
+- L editeur de modeles de holons permet maintenant de changer le holon auquel un modele est associe, sans pouvoir le deplacer au-dela de ses instances existantes, avec une liste de destinations compactement indentee a l ouverture et un libelle simple une fois choisie. Seuls les cercles et la racine de l organisation sont proposes.
 - L editeur de modeles de holons ouvre maintenant sur un ecran d accueil, au lieu d afficher directement un formulaire de nouveau modele.
 - L ecran d accueil de l editeur de modeles disparait correctement des l ouverture du formulaire de creation.
 - Les cartes de parametres sont maintenant visibles pour les admins sans activer leur mode admin; seul l editeur de modeles de holons demande encore cette activation explicite.
