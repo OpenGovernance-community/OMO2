@@ -18,9 +18,26 @@ function omoStructureCollectAuthorityIdsFromValue($rawValue, $formatId, array &$
         $items = \dbObject\PropertyFormat::getHtmlListParts($rawValue)['items'];
     } else {
         $decoded = json_decode($rawValue, true);
-        $items = is_array($decoded)
-            ? array_values($decoded)
-            : preg_split('/\r\n|\r|\n|\|/', $rawValue);
+        if (is_array($decoded)) {
+            $items = array_values($decoded);
+        } else {
+            $items = array();
+            foreach (preg_split('/\r\n|\r|\n|\|/', $rawValue) as $segment) {
+                $segment = trim((string)$segment);
+                if ($segment === '') {
+                    continue;
+                }
+
+                $decodedSegment = json_decode($segment, true);
+                if (is_array($decodedSegment)) {
+                    foreach ($decodedSegment as $item) {
+                        $items[] = $item;
+                    }
+                } else {
+                    $items[] = $segment;
+                }
+            }
+        }
     }
 
     foreach ($items as $item) {

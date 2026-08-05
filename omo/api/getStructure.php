@@ -1329,7 +1329,23 @@ function parseListItems(rawValue) {
   } catch (error) {
   }
 
-  return splitListItems(source);
+  const items = [];
+  splitListItems(source).forEach(function (segment) {
+    try {
+      const decodedSegment = JSON.parse(segment);
+      if (Array.isArray(decodedSegment)) {
+        decodedSegment.forEach(function (item) {
+          items.push(item);
+        });
+        return;
+      }
+    } catch (error) {
+    }
+
+    items.push(segment);
+  });
+
+  return items;
 }
 
 function normalizeDetailedListItem(item) {

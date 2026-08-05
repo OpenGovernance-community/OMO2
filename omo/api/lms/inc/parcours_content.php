@@ -194,6 +194,21 @@ function initPackProgressCircles() {
     });
 }
 
+function buildLmsUrlWithParams(baseUrl, params) {
+    const targetUrl = new URL(String(baseUrl || ''), window.location.origin);
+
+    Object.keys(params || {}).forEach(function (key) {
+        const value = params[key];
+        if (value === null || value === undefined || value === '') {
+            return;
+        }
+
+        targetUrl.searchParams.set(key, String(value));
+    });
+
+    return targetUrl.pathname + targetUrl.search + targetUrl.hash;
+}
+
 function goToPackChildParcours(parcoursId) {
     const targetUrl = buildLmsUrlWithParams(
         <?php echo json_encode(lmsBuildLocalPath('/parcours.php'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>,
@@ -229,21 +244,6 @@ const lmsViewer = {
 };
 
 let branchState = {};
-
-function buildLmsUrlWithParams(baseUrl, params) {
-    const targetUrl = new URL(String(baseUrl || ''), window.location.origin);
-
-    Object.keys(params || {}).forEach(function (key) {
-        const value = params[key];
-        if (value === null || value === undefined || value === '') {
-            return;
-        }
-
-        targetUrl.searchParams.set(key, String(value));
-    });
-
-    return targetUrl.pathname + targetUrl.search + targetUrl.hash;
-}
 
 function getAnonymousProgressKey() {
     return `lms_progress_${lmsViewer.organizationId}_${parcoursId}`;

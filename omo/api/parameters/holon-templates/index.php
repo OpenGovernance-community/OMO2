@@ -1929,9 +1929,27 @@ function omoHolonTemplateParseStoredListValue(value) {
         const decoded = JSON.parse(rawValue);
         return Array.isArray(decoded) ? decoded : [];
     } catch (error) {
-        return rawValue.split(/\r\n|\r|\n/).map(function (item) {
-            return item.trim();
-        }).filter(Boolean);
+        const items = [];
+        rawValue.split(/\r\n|\r|\n|\|/).forEach(function (segment) {
+            const normalizedSegment = String(segment || '').trim();
+            if (!normalizedSegment) {
+                return;
+            }
+
+            try {
+                const decodedSegment = JSON.parse(normalizedSegment);
+                if (Array.isArray(decodedSegment)) {
+                    decodedSegment.forEach(function (item) {
+                        items.push(item);
+                    });
+                    return;
+                }
+            } catch (segmentError) {
+            }
+
+            items.push(normalizedSegment);
+        });
+        return items;
     }
 }
 
@@ -2856,6 +2874,20 @@ function omoHolonTemplateFormatInheritedItem(item, property) {
             return Number(entry.id) === projectId;
         });
         return project ? project.title : rawValue;
+    }
+
+    if (listItemType === 'authority') {
+        const authorityId = omoHolonTemplateGetAuthorityId(item);
+        const authority = omoHolonTemplateGetAuthorityCatalog().find(function (entry) {
+            return Number(entry.id || 0) === authorityId;
+        });
+        if (authority) {
+            return String(authority.label || authority.pathLabel || rawValue);
+        }
+        if (item && typeof item === 'object' && !Array.isArray(item)) {
+            return String(item.label || item.value || authorityId || '');
+        }
+        return rawValue;
     }
 
     if (listItemType === 'detail') {
