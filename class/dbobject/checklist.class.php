@@ -159,6 +159,66 @@ class Checklist extends DbObject
         return $items;
     }
 
+    public function deleteWithRelatedData()
+    {
+        if ((int)$this->getId() <= 0) {
+            return false;
+        }
+
+        $nextChecklists = new ArrayChecklist();
+        $nextChecklists->load([
+            'where' => [['field' => 'IDchecklist_previous', 'value' => (int)$this->getId()]],
+        ]);
+        foreach ($nextChecklists as $nextChecklist) {
+            if (!($nextChecklist instanceof self)) {
+                continue;
+            }
+            $nextChecklist->set('IDchecklist_previous', null);
+            $result = $nextChecklist->save();
+            if (!is_array($result) || empty($result['status'])) {
+                return false;
+            }
+        }
+
+        foreach ($this->getRuns() as $run) {
+            if ($run instanceof ChecklistRun && !$run->delete()) {
+                return false;
+            }
+        }
+
+        foreach ($this->getItems(false) as $item) {
+            if (!($item instanceof ChecklistItem)) {
+                continue;
+            }
+            $occurrences = new ArrayChecklistItemOccurrence();
+            $occurrences->loadForItem((int)$item->getId());
+            foreach ($occurrences as $occurrence) {
+                if ($occurrence instanceof ChecklistItemOccurrence && !$occurrence->delete()) {
+                    return false;
+                }
+            }
+            $templateProject = $item->getProjectTemplate();
+            if ($templateProject instanceof Project && (int)$templateProject->get('active') !== 0) {
+                $templateProject->set('active', 0);
+                $result = $templateProject->save();
+                if (!is_array($result) || empty($result['status'])) {
+                    return false;
+                }
+            }
+        }
+
+        $templateRoot = $this->getTemplateRoot();
+        if ($templateRoot instanceof Project && (int)$templateRoot->get('active') !== 0) {
+            $templateRoot->set('active', 0);
+            $result = $templateRoot->save();
+            if (!is_array($result) || empty($result['status'])) {
+                return false;
+            }
+        }
+
+        return $this->delete();
+    }
+
     public function getPvReviewSummary()
     {
         $templateRoot = $this->getTemplateRoot();

@@ -122,6 +122,39 @@ if (empty($context['status'])) {
 }
 $action = trim((string)($_POST['checklist_action'] ?? $_POST['action'] ?? ''));
 
+if ($action === 'delete_checklist') {
+    $checklistId = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : 0;
+    $checklist = omoChecklistLoad($checklistId, $organizationId);
+    if (!($checklist instanceof Checklist)) {
+        omoChecklistActionRespond(false, omoChecklistT('checklist.error.not_found'), [], 404);
+    }
+    if (!omoChecklistCanDelete($checklist)) {
+        omoChecklistActionRespond(false, omoChecklistT('checklist.error.forbidden'), [], 403);
+    }
+
+    $pdo = DbObject::getPdo();
+    $startedTransaction = false;
+    try {
+        if ($pdo && !$pdo->inTransaction()) {
+            $pdo->beginTransaction();
+            $startedTransaction = true;
+        }
+        if (!$checklist->deleteWithRelatedData()) {
+            throw new RuntimeException(omoChecklistT('checklist.error.save'));
+        }
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+            $pdo->commit();
+        }
+    } catch (Throwable $exception) {
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        omoChecklistActionRespond(false, omoChecklistT('checklist.error.save'), [], 500);
+    }
+
+    omoChecklistActionRespond(true, omoChecklistT('checklist.success.deleted'));
+}
+
 if ($action === 'save_checklist') {
     $checklistId = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : 0;
     $checklist = $checklistId > 0 ? omoChecklistLoad($checklistId, $organizationId) : new Checklist();
@@ -422,7 +455,14 @@ if (in_array($action, ['delete_item', 'move_item', 'extract_item'], true)) {
     if (!($checklist instanceof Checklist)) {
         omoChecklistActionRespond(false, omoChecklistT('checklist.error.not_found'), [], 404);
     }
-    if (!omoChecklistCanManage($checklist)) {
+    $canManage = omoChecklistCanManage($checklist);
+    $checklistHolon = $checklist->getHolon();
+    $canCreate = $checklistHolon instanceof Holon
+        && omoChecklistCanUsePermission($checklistHolon, 'CAN_CREATE_CHECKLIST');
+    if (
+        !$canManage
+        || ($action === 'extract_item' && !$canCreate)
+    ) {
         omoChecklistActionRespond(false, omoChecklistT('checklist.error.forbidden'), [], 403);
     }
     if ($itemId <= 0 || !$item->load($itemId) || (int)$item->get('IDchecklist') !== $checklistId || (int)$item->get('active') !== 1) {

@@ -43,6 +43,10 @@ $trigger = omoChecklistGetPrimaryTrigger($checklist);
 $isContainerChecklist = $trigger instanceof ChecklistTrigger
     && ChecklistTrigger::normalizeTriggerType($trigger->get('trigger_type')) === ChecklistTrigger::TYPE_CONTAINER;
 $canEdit = omoChecklistCanManage($checklist);
+$canDelete = omoChecklistCanDelete($checklist);
+$checklistHolon = $checklist->getHolon();
+$canCreate = $checklistHolon instanceof Holon
+    && omoChecklistCanUsePermission($checklistHolon, 'CAN_CREATE_CHECKLIST');
 $moveTargets = [];
 if ($canEdit) {
     $availableChecklists = new ArrayChecklist();
@@ -193,6 +197,20 @@ $formatDelay = static function ($value, $unit) {
         <?php if ($canEdit): ?>
             <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-checklist-open-edit data-url="<?= omoApiEscape($editUrl) ?>"><?= omoApiEscape(omoChecklistT('checklist.action.edit')) ?></button>
         <?php endif; ?>
+        <?php if ($canDelete): ?>
+            <button
+                type="button"
+                class="generic-action-button generic-action-button--danger generic-action-button--icon-only"
+                data-omo-subdrawer-action
+                data-checklist-delete
+                data-checklist-id="<?= (int)$checklistId ?>"
+                data-checklist-delete-confirm="<?= omoApiEscape(omoChecklistT('checklist.confirm.delete_checklist')) ?>"
+                title="<?= omoApiEscape(omoChecklistT('checklist.action.delete')) ?>"
+                aria-label="<?= omoApiEscape(omoChecklistT('checklist.action.delete')) ?>"
+            >
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2m-9 0 1 13h10l1-13"></path></svg>
+            </button>
+        <?php endif; ?>
     </div>
 
     <section class="generic-hero-panel omo-checklist-detail__hero">
@@ -332,7 +350,7 @@ $formatDelay = static function ($value, $unit) {
                                         <button type="button" class="generic-menu-toggle" data-checklist-item-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoChecklistT('checklist.action.item_more')) ?>">&#8942;</button>
                                         <div class="generic-menu-panel generic-menu-panel--wide" data-checklist-item-menu-panel role="menu" hidden>
                                             <button type="button" class="generic-menu-item" data-checklist-item-move data-checklist-id="<?= (int)$checklistId ?>" data-checklist-item-id="<?= (int)$item->getId() ?>" role="menuitem"><?= omoApiEscape(omoChecklistT('checklist.action.move_item')) ?></button>
-                                            <?php if ($isContainerChecklist && $recurrence instanceof \dbObject\ChecklistItemRecurrence && (int)$recurrence->get('enabled') === 1): ?>
+                                            <?php if ($canCreate && $isContainerChecklist && $recurrence instanceof \dbObject\ChecklistItemRecurrence && (int)$recurrence->get('enabled') === 1): ?>
                                                 <button type="button" class="generic-menu-item" data-checklist-item-extract data-checklist-id="<?= (int)$checklistId ?>" data-checklist-item-id="<?= (int)$item->getId() ?>" role="menuitem"><?= omoApiEscape(omoChecklistT('checklist.action.extract_item')) ?></button>
                                             <?php endif; ?>
                                             <button type="button" class="generic-menu-item generic-menu-item--danger" data-checklist-item-delete data-checklist-id="<?= (int)$checklistId ?>" data-checklist-item-id="<?= (int)$item->getId() ?>" role="menuitem"><?= omoApiEscape(omoChecklistT('checklist.action.delete_item')) ?></button>

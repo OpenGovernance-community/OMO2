@@ -6471,6 +6471,123 @@
 			return in_array((int)$template->get('IDholon_parent'), $pathIds, true);
 		}
 
+		protected function holonUsesTemplateDefinition(\dbObject\Holon $holon, $templateId)
+		{
+			$templateId = (int)$templateId;
+			$currentTemplateId = (int)$holon->get('IDholon_template');
+			$visitedTemplateIds = array();
+			$guard = 0;
+
+			while ($currentTemplateId > 0 && !isset($visitedTemplateIds[$currentTemplateId]) && $guard < 100) {
+				if ($currentTemplateId === $templateId) {
+					return true;
+				}
+
+				$visitedTemplateIds[$currentTemplateId] = true;
+				$currentTemplate = new \dbObject\Holon();
+				if (!$currentTemplate->load($currentTemplateId)) {
+					break;
+				}
+
+				$currentTemplateId = (int)$currentTemplate->get('IDholon_template');
+				$guard += 1;
+			}
+
+			return false;
+		}
+
+		protected function getTemplateDefinitionInstanceHolons(\dbObject\Holon $template)
+		{
+			$rootHolon = $this->getStructuralRootHolon();
+			$templateId = (int)$template->getId();
+			$instances = array();
+			if (!$rootHolon || $templateId <= 0) {
+				return $instances;
+			}
+
+			$holons = new \dbObject\ArrayHolon();
+			$holons->load(array(
+				'where' => array(
+					array('field' => 'active', 'value' => 1),
+					array('field' => 'IDholon_org', 'value' => (int)$rootHolon->getId()),
+				),
+			));
+
+			foreach ($holons as $holon) {
+				if (
+					$holon->isTemplateNode((int)$rootHolon->getId())
+					|| !$this->holonUsesTemplateDefinition($holon, $templateId)
+				) {
+					continue;
+				}
+
+				$instances[] = $holon;
+			}
+
+			return $instances;
+		}
+
+		public function getTemplateDefinitionDestinationCatalog(?\dbObject\Holon $template = null)
+		{
+			$rootHolon = $this->getStructuralRootHolon();
+			if (!$rootHolon) {
+				return array();
+			}
+
+			$allowedDestinationIds = null;
+			if ($template instanceof \dbObject\Holon && (int)$template->getId() > 0) {
+				foreach ($this->getTemplateDefinitionInstanceHolons($template) as $instance) {
+					$instancePathIds = array();
+					foreach ($instance->getPathHolons(true) as $pathHolon) {
+						if (!$pathHolon->isTemplateNode((int)$rootHolon->getId())) {
+							$instancePathIds[(int)$pathHolon->getId()] = true;
+						}
+					}
+
+					if ($allowedDestinationIds === null) {
+						$allowedDestinationIds = $instancePathIds;
+					} else {
+						$allowedDestinationIds = array_intersect_key($allowedDestinationIds, $instancePathIds);
+					}
+				}
+			}
+
+			$destinations = array();
+			$collectDestinations = function (\dbObject\Holon $holon, array $pathLabels) use (&$collectDestinations, &$destinations, $allowedDestinationIds, $rootHolon) {
+				if ($holon->isTemplateNode((int)$rootHolon->getId())) {
+					return;
+				}
+
+				$holonId = (int)$holon->getId();
+				$isTemplateDestination = in_array((int)$holon->get('IDtypeholon'), array(2, 4), true);
+				$holonName = trim((string)$holon->getDisplayName());
+				if ($holonName !== '') {
+					$pathLabels[] = $holonName;
+				}
+
+				if ($isTemplateDestination && ($allowedDestinationIds === null || isset($allowedDestinationIds[$holonId])) && $holon->canEdit()) {
+					$destinations[] = array(
+						'id' => $holonId,
+						'parentId' => (int)$holon->get('IDholon_parent'),
+						'name' => $holonName,
+						'label' => $holon->getTemplateLabel(),
+						'pathLabel' => implode(' > ', $pathLabels),
+					);
+				}
+
+				foreach ($holon->getChildren() as $childHolon) {
+					$collectDestinations($childHolon, $pathLabels);
+				}
+			};
+			$collectDestinations($rootHolon, array());
+
+			usort($destinations, static function (array $left, array $right) {
+				return strcasecmp((string)$left['pathLabel'], (string)$right['pathLabel']);
+			});
+
+			return $destinations;
+		}
+
 		protected function buildEditorPropertyFormats($formats)
 		{
 			$formatMap = array();
@@ -6536,6 +6653,7 @@
 					'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
 					'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 					'templateCatalog' => array(),
+					'definitionHolonCatalog' => array(),
 					'projectCatalog' => array(),
 					'authorityCatalog' => array(),
 					'authorityParentCatalog' => array(),
@@ -6572,6 +6690,7 @@
 				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
 				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 				'templateCatalog' => array(),
+				'definitionHolonCatalog' => $this->getTemplateDefinitionDestinationCatalog(),
 				'projectCatalog' => $this->getProjectListEditorCatalog(),
 				'authorityCatalog' => $this->getAuthorityListEditorCatalog(),
 				'authorityParentCatalog' => array(),
@@ -6663,6 +6782,9 @@
 			foreach ($templateCatalogSource as $template) {
 				$definitionHolonMeta = $resolveDefinitionHolonMeta((int)$template->get('IDholon_parent'));
 				$templateAdminBounds = $template->getEffectiveTemplateAdminBounds();
+				$definitionHolonIds = array_map(function (array $destination) {
+					return (int)$destination['id'];
+				}, $this->getTemplateDefinitionDestinationCatalog($template));
 
 				$data['templateCatalog'][] = array_merge(array(
 					'id' => (int)$template->getId(),
@@ -6684,6 +6806,7 @@
 					'definedInId' => (int)$definitionHolonMeta['id'],
 					'definedInName' => (string)$definitionHolonMeta['name'],
 					'definedInLabel' => (string)$definitionHolonMeta['label'],
+					'definitionHolonIds' => $definitionHolonIds,
 					'properties' => $template->getTemplatePropertyDefinitions(),
 				), $this->getHolonIllustrationData($template));
 			}
@@ -6691,6 +6814,9 @@
 			foreach ($templateTreeSource as $template) {
 				$templateNode = $template->toTemplateEditorNodeArray((int)$rootHolon->getId());
 				$templateNode['canAddProperties'] = $template->isAllowed('CAN_ADD_TEMPLATE_PROPERTIES');
+				$templateNode['definitionHolonIds'] = array_map(function (array $destination) use ($template) {
+					return (int)$destination['id'];
+				}, $this->getTemplateDefinitionDestinationCatalog($template));
 				$definitionHolonMeta = $resolveDefinitionHolonMeta((int)$template->get('IDholon_parent'));
 				$templateNode['definedInId'] = (int)$definitionHolonMeta['id'];
 				$templateNode['definedInName'] = (string)$definitionHolonMeta['name'];
@@ -10603,19 +10729,47 @@
 						'message' => "Le contexte de definition du modele est invalide.",
 					);
 				}
-				$contextHolon = $templateContextHolon;
-			} else {
-				$definitionHolonId = (int)($payload['definitionHolonId'] ?? 0);
-				if ($definitionHolonId > 0 && $definitionHolonId !== (int)$rootHolon->getId()) {
-					$definitionHolon = new \dbObject\Holon();
-					if (!$definitionHolon->load($definitionHolonId) || !$this->containsHolon($definitionHolon)) {
-						return array(
-							'status' => false,
-							'message' => 'Le contexte de definition du modele est invalide.',
-						);
-					}
-					$contextHolon = $definitionHolon;
+
+				$definitionHolonId = (int)($payload['definitionHolonId'] ?? $templateContextHolon->getId());
+				$availableDestinationIds = array_fill_keys(array_map(function (array $destination) {
+					return (int)$destination['id'];
+				}, $this->getTemplateDefinitionDestinationCatalog($template)), true);
+				if ($definitionHolonId <= 0 || !isset($availableDestinationIds[$definitionHolonId])) {
+					return array(
+						'status' => false,
+						'message' => "Le holon choisi ne peut pas accueillir ce modele sans depasser une instance existante.",
+					);
 				}
+
+				$definitionHolon = new \dbObject\Holon();
+				if (!$definitionHolon->load($definitionHolonId) || !$this->containsHolon($definitionHolon) || !$definitionHolon->canEdit()) {
+					return array(
+						'status' => false,
+						'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
+					);
+				}
+
+				$contextHolon = $definitionHolon;
+			} else {
+				$definitionHolonId = (int)($payload['definitionHolonId'] ?? (int)$rootHolon->getId());
+				$availableDestinationIds = array_fill_keys(array_map(function (array $destination) {
+					return (int)$destination['id'];
+				}, $this->getTemplateDefinitionDestinationCatalog()), true);
+				if ($definitionHolonId <= 0 || !isset($availableDestinationIds[$definitionHolonId])) {
+					return array(
+						'status' => false,
+						'message' => 'Le contexte de definition du modele est invalide.',
+					);
+				}
+
+				$definitionHolon = new \dbObject\Holon();
+				if (!$definitionHolon->load($definitionHolonId) || !$this->containsHolon($definitionHolon) || !$definitionHolon->canEdit()) {
+					return array(
+						'status' => false,
+						'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
+					);
+				}
+				$contextHolon = $definitionHolon;
 			}
 
 			if (!$contextHolon->canEdit()) {
@@ -10752,7 +10906,11 @@
 			$template->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)$template->get('IDuser'));
 			$template->set('active', true);
 			$template->set('color', trim((string)($payload['color'] ?? '')) !== '' ? trim((string)$payload['color']) : null);
-			$template->set('visible', !empty($payload['visible']));
+			// The editor no longer exposes visibility. New templates remain hidden by default,
+			// while the optional payload field preserves the mechanism for future use.
+			if ((int)$template->getId() <= 0 || array_key_exists('visible', $payload)) {
+				$template->set('visible', !empty($payload['visible']));
+			}
 			$template->set('mandatory', !empty($payload['mandatory']));
 			$template->set('lockedname', !empty($payload['lockedName']));
 			$template->set('lockedicon', !empty($payload['lockedIcon']));
