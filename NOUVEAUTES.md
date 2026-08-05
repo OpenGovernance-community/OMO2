@@ -2,6 +2,23 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-05
+
+- Dans la vue liste de Structure, les listes d autorites affichent desormais leurs libelles au lieu de leurs identifiants techniques.
+- Le deplacement de documents propose maintenant une selection visuelle du holon, avec la carte des cercles et roles utilisee dans les selecteurs des PV, puis les dossiers compatibles du holon choisi.
+- La popup de deplacement de document affiche son chemin final, un arbre de dossiers et un titre simplifie; son indication de destination est alignee avec ses actions.
+- Les lignes de l arbre de dossiers du deplacement de document ont une hauteur fixe et la liste defile lorsqu elle est longue.
+- Le champ de recherche du deplacement de document affiche une loupe et le choix des dossiers utilise un libelle plus explicite.
+- La carte des holons du deplacement de document utilise une zone carree lorsque la hauteur disponible le permet.
+- La carte des holons du deplacement de document distingue les destinations autorisees en couleur des destinations sans droit de depot en gris, tout en laissant tous les holons navigables.
+- Dans cette carte de deplacement, les roles sans personne attribuee conservent leur couleur; le gris indique uniquement une destination non autorisee.
+- La carte des holons affiche le nom du role selectionne uniquement dans sa capsule de contexte pour rester lisible.
+- Les libelles de la carte des holons s adaptent maintenant au type selectionne : roles et sous-cercles immediats d un cercle, role et voisins, et libelle au survol.
+- Les libelles des cercles au survol sont dessines au-dessus des libelles de roles dans la carte des holons.
+- Les cartes des cercles et roles restent stables dans les fenetres de selection de ressources : le canvas est retire du flux de mise en page, les popups reservent la largeur de leur scrollbar et la popup de deplacement masque tout depassement horizontal residuel.
+- Les evenements existants sans document associe proposent maintenant les modeles de PV disponibles lors de l ajout ulterieur d un PV.
+- Les organisations creees par import OMO 1 recoivent maintenant elles aussi les tutoriels de base, comme les organisations creees directement.
+
 ## 2026-08-04
 
 - Dans les editeurs Summernote de documents et de PV, les ressources integrees sont maintenant placees dans leur propre paragraphe. Le curseur se place directement dans une ligne normale apres l insertion, un clic ne place plus le focus dans l embed, Entree depuis un embed cree toujours une ligne de texte normale, et sa suppression retire aussi ce paragraphe.

@@ -380,10 +380,10 @@ function commonRenderTopbar(array $options = [])
 
     if (!$assetsLoaded) {
         commonRenderTopbarJqueryAssets();
-        echo '<link rel="stylesheet" href="/common/assets/components.css">' . PHP_EOL;
+        echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260805-canvas-layout">' . PHP_EOL;
         echo '<script src="/common/assets/components.js" defer></script>' . PHP_EOL;
-        echo '<script src="/common/holon_scope_picker.js?v=20260804-summernote-local-scope" defer></script>' . PHP_EOL;
-        echo '<link rel="stylesheet" href="/common/assets/topbar.css?v=20260731-drawer-load-error">' . PHP_EOL;
+        echo '<script src="/common/holon_scope_picker.js?v=20260805-hover-label-priority" defer></script>' . PHP_EOL;
+        echo '<link rel="stylesheet" href="/common/assets/topbar.css?v=20260805-modal-scrollbar-gutter">' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/notifications/notifications.css">' . PHP_EOL;
         echo '<script src="/common/notifications/notifications.js" defer></script>' . PHP_EOL;
         echo '<script src="/common/assets/topbar.js?v=20260731-drawer-load-error" defer></script>' . PHP_EOL;

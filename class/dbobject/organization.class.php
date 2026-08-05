@@ -5677,6 +5677,11 @@
 					self::omo1ImportPvs($organization, self::omo1ImportModuleRecords($payload, 'pv'), $actorUserId, $userIdMap, $holonIdMap, $eventIdMap, $stats);
 				}
 				$pdo->commit();
+				$basicParcoursResult = $organization->instantiateBasicParcours();
+				if (is_array($basicParcoursResult) && empty($basicParcoursResult['status'])) {
+					$warnings[] = 'Les tutoriels de base n ont pas pu etre rattaches a l organisation importee.';
+					error_log('organization basic parcours init failed for OMO 1 import org ' . (int)$organization->getId());
+				}
 				if ($sendMemberInvitationEmails) {
 					foreach ($pendingInvitations as $pendingInvitation) {
 						try {
@@ -7414,6 +7419,7 @@
 					'key' => 'folder-' . $folderId,
 					'holonId' => (int)$folderDocument->get('IDholon'),
 					'parentDocumentId' => $folderId,
+					'folderParentDocumentId' => (int)$folderDocument->get('IDdocument_parent'),
 					'name' => $folderName !== '' ? $folderName : ('Dossier #' . $folderId),
 					'typeId' => -1,
 					'typeLabel' => 'Dossier',

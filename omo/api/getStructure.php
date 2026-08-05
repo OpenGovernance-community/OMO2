@@ -1369,6 +1369,13 @@ function formatListItemValue(item, entry) {
       : String(item || "").trim();
   }
 
+  if (String(entry && entry.listItemType || "") === "authority") {
+    const authorityId = Number(item && typeof item === "object" ? item.id : item);
+    return authorityId > 0 && structureAuthorityLabels[authorityId]
+      ? String(structureAuthorityLabels[authorityId])
+      : String(item || "").trim();
+  }
+
   if (item && typeof item === "object" && !Array.isArray(item)) {
     return String(item.label || item.value || item.title || "").trim();
   }
@@ -1935,6 +1942,7 @@ $(document)
     const canExportStructure = <?= $canExportStructure ? 'true' : 'false' ?>;
     let root = null;
     let structureProjectTitles = {};
+    let structureAuthorityLabels = {};
 
     let canvas, hiddenCanvas, context, hiddenContext;
     let pack, nodes, nodeCount, focus, currentnode, hoverNode = null;
@@ -2455,6 +2463,9 @@ $(document)
 
             structureProjectTitles = response && response.projectTitles && typeof response.projectTitles === "object"
               ? response.projectTitles
+              : {};
+            structureAuthorityLabels = response && response.authorityLabels && typeof response.authorityLabels === "object"
+              ? response.authorityLabels
               : {};
             const normalizedRoot = normalizeStructureNode(response, 0);
 
