@@ -146,13 +146,24 @@ $configuration = [
         });
     }
 
+    function waitForActiveServiceWorker() {
+        return Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise(function (resolve, reject) {
+                window.setTimeout(function () {
+                    reject(new Error(configuration.texts.serviceWorker));
+                }, 10000);
+            })
+        ]);
+    }
+
     async function getRegistration() {
         var registration = await navigator.serviceWorker.getRegistration('/omo/');
         if (!registration) {
             registration = await navigator.serviceWorker.register('/omo/sw.js', {scope: '/omo/', updateViaCache: 'none'});
         }
         if (!registration.active) {
-            await navigator.serviceWorker.ready;
+            await waitForActiveServiceWorker();
             registration = await navigator.serviceWorker.getRegistration('/omo/') || registration;
         }
         if (!registration.active) {
@@ -194,7 +205,7 @@ $configuration = [
             showFeedback(subscription ? configuration.texts.enabled : configuration.texts.disabled, subscription ? 'success' : '');
         } catch (error) {
             toggle.disabled = false;
-            showFeedback(configuration.texts.error, 'error');
+            showFeedback(await getSubscriptionErrorMessage(error), 'error');
         }
     }
 

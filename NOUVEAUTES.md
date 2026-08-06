@@ -13,6 +13,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Une souscription de notification deja presente dans le navigateur est maintenant synchronisee automatiquement avec le serveur a l ouverture des reglages.
 - En cas d echec du service Push dans Brave, les reglages indiquent le parametre Brave necessaire pour autoriser les messages Push.
 - Sur telephone, le menu Parametres reste visible au-dessus de la barre de navigation mobile.
+- Les reglages de notifications expliquent maintenant un echec de demarrage du service worker au lieu de laisser la case grisee indefiniment.
 
 ## 2026-08-05
 
