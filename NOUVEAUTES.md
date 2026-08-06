@@ -19,6 +19,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Une notification non lue regroupe maintenant les evenements repetes de la meme discussion ou proposition, afin d eviter les alertes en double et les rafales de messages.
 - Les notifications de discussion indiquent maintenant le scrutin et l auteur du commentaire.
 - L auteur d une proposition ou d un commentaire ne recoit plus de notification pour sa propre action.
+- Les liens de notification utilisent maintenant un identifiant court et demandent une connexion avant de marquer la notification comme lue puis d ouvrir sa page cible.
+- L envoi Push est compatible avec PHP 8.5 sans afficher de message de depreciation OpenSSL dans les reponses de discussion.
 
 ## 2026-08-05
 

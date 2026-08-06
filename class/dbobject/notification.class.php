@@ -99,12 +99,32 @@ class Notification extends DbObject
 
     public function getOpenUrl()
     {
-        $token = trim((string)$this->get('open_token'));
-        if ($token === '') {
+        $notificationId = (int)$this->getId();
+        if ($notificationId <= 0) {
             return trim((string)$this->get('url'));
         }
 
-        return '/omo/notifications/open.php?token=' . rawurlencode($token);
+        return '/omo/notifications/open.php?id=' . $notificationId;
+    }
+
+    public static function findForUser($notificationId, $userId)
+    {
+        $notificationId = (int)$notificationId;
+        $userId = (int)$userId;
+        if ($notificationId <= 0 || $userId <= 0) {
+            return null;
+        }
+        $row = self::fetchRow(
+            'SELECT * FROM `notification` WHERE `id` = :notification_id AND `IDuser` = :user_id LIMIT 1',
+            ['notification_id' => $notificationId, 'user_id' => $userId]
+        );
+        if (!is_array($row)) {
+            return null;
+        }
+        $item = new self();
+        $item->loadFromArray($row);
+        $item->setId((int)($row['id'] ?? 0));
+        return $item;
     }
 
     public static function findByOpenToken($token)

@@ -236,7 +236,7 @@ if (!function_exists('webPushEncryptPayload')) {
         }
 
         $serverPublicKey = webPushGetEcPublicBytes($serverKey);
-        $sharedSecret = $serverPublicKey !== false ? openssl_pkey_derive($clientKey, $serverKey, 32) : false;
+        $sharedSecret = $serverPublicKey !== false ? openssl_pkey_derive($clientKey, $serverKey) : false;
         if ($serverPublicKey === false || $sharedSecret === false || strlen($sharedSecret) !== 32) {
             return null;
         }
