@@ -2,8 +2,21 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-06
+
+- OMO peut maintenant etre autorise a envoyer des notifications push depuis une carte personnelle dans les parametres. La souscription est liee a chaque navigateur ou appareil et peut etre retiree a tout moment.
+- Le service worker OMO peut afficher les notifications systeme et ouvrir la prise de decision concernee. Pour le premier test, chaque nouveau message dans une discussion de proposition notifie uniquement l auteur de cette proposition, y compris lorsqu il publie lui-meme le message.
+- L activation des notifications attend maintenant que le service worker soit pret avant de creer la souscription du navigateur.
+- Le cache statique ne peut plus empecher l installation du service worker utilise pour les notifications.
+- Docker peut utiliser un certificat de developpement local signe par `mkcert`, afin de permettre les service workers et les notifications sur `localtest.me` et ses sous-domaines.
+- Les champs de dates des scrutins se rechargent correctement apres enregistrement dans l editeur de consentement.
+- Une souscription de notification deja presente dans le navigateur est maintenant synchronisee automatiquement avec le serveur a l ouverture des reglages.
+- En cas d echec du service Push dans Brave, les reglages indiquent le parametre Brave necessaire pour autoriser les messages Push.
+- Sur telephone, le menu Parametres reste visible au-dessus de la barre de navigation mobile.
+
 ## 2026-08-05
 
+- Ajout de la maquette publique `index3.php` pour OMO : une page d accueil independante, centree sur le cap, le cadre et le pilotage des collectifs, avec les valeurs de maturite organisationnelle et les fondations techniques du projet.
 - L option de visibilite a ete retiree de l editeur des holon templates. Les nouveaux modeles restent invisibles par defaut, sans modifier le statut des modeles existants.
 - Les droits des checklists sont maintenant regroupes dans leur propre section, avec les actions creer, modifier puis supprimer, appliquees a leur editeur.
 - Une checklist peut maintenant etre supprimee depuis son menu d actions, uniquement avec le droit de suppression correspondant.
@@ -1494,3 +1507,6 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Le menu Aide affiche maintenant sous ses blocs l adresse e-mail de l administrateur du serveur avec le libelle Webmaster.
 - La page publique des scrutins affiche elle aussi l adresse e-mail du webmaster sous les blocs du menu Aide.
 - Le lien Webmaster des pages publiques utilise aussi l adresse MAIL_USER comme repli lorsque l adresse d administrateur dediee n est pas definie.
+# 2026-08-06
+
+- Les reglages de notifications attendent maintenant que le service worker soit actif avant de creer une souscription navigateur.
