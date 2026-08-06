@@ -902,7 +902,7 @@ class DecisionProcess extends DbObject
         return \dbObject\DecisionResult::findByDecisionProcessId((int)$this->getId());
     }
 
-    protected static function normalizeDateTimeValue($value)
+    public static function normalizeDateTimeValue($value)
     {
         if ($value instanceof \DateTimeInterface) {
             return $value;

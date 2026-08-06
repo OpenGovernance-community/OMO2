@@ -83,6 +83,28 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                 </span>
             </button>
 
+            <button
+                type="button"
+                class="omo-settings__card omo-card omo-card--interactive"
+                data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.notifications.title'), ENT_QUOTES, 'UTF-8') ?>"
+                data-omo-settings-drawer-url="/omo/api/parameters/notifications/index.php"
+                data-omo-settings-drawer-mode="fetch"
+            >
+                <span class="omo-settings__card-head">
+                    <span class="omo-settings__card-icon-shell omo-settings__card-icon-shell--fallback">
+                        <span class="omo-settings__card-fallback-icon">PUSH</span>
+                    </span>
+                    <span class="omo-settings__card-title-wrap">
+                        <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.notifications.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.notifications.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    </span>
+                </span>
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.notifications.description'), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-footer" aria-hidden="true">
+                    <span class="omo-settings__card-cta generic-action-button generic-action-button--main"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.notifications.cta'), ENT_QUOTES, 'UTF-8') ?></span>
+                </span>
+            </button>
+
             <?php if ($isOrganizationAdmin): ?>
             <button
                 type="button"

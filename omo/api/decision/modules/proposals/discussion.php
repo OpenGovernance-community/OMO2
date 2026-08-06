@@ -2,6 +2,7 @@
 require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
 require_once dirname(__DIR__) . '/common.php';
+require_once dirname(__DIR__, 5) . '/common/web_push.php';
 
 use dbObject\ChatMessage;
 use dbObject\ChatThread;
@@ -116,6 +117,8 @@ if ($requestMethod === 'POST') {
             'message' => 'Le message ne peut pas être envoyé pour le moment.',
         ]);
     }
+
+    notificationPushDispatchDecisionMessage((int)$message->getId());
 }
 
 $messages = [];
