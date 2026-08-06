@@ -4155,6 +4155,8 @@ function navigate(oid, cid = null, hash = null) {
     const url = buildOmoUrl(oid, cid, hash);
     history.pushState({}, '', url);
 
+    window.dispatchEvent(new CustomEvent('omo-route-change'));
+
     handleRoute();
 }
 

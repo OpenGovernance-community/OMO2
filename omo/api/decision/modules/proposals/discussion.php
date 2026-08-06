@@ -2,7 +2,7 @@
 require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
 require_once dirname(__DIR__) . '/common.php';
-require_once dirname(__DIR__, 5) . '/common/web_push.php';
+require_once dirname(__DIR__, 5) . '/common/notification_center.php';
 
 use dbObject\ChatMessage;
 use dbObject\ChatThread;
@@ -118,7 +118,11 @@ if ($requestMethod === 'POST') {
         ]);
     }
 
-    notificationPushDispatchDecisionMessage((int)$message->getId());
+    try {
+        notificationCenterDispatchDecisionChatMessage($message);
+    } catch (\Throwable $exception) {
+        error_log('decision_chat_notification_failed: ' . $exception->getMessage());
+    }
 }
 
 $messages = [];

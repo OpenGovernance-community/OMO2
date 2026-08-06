@@ -2,6 +2,7 @@
 require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__, 5) . '/common/notification_center.php';
 
 use dbObject\DbObject;
 use dbObject\DecisionGroup;
@@ -149,6 +150,7 @@ if (!$pdo) {
     ]);
 }
 
+$newProposalIds = [];
 try {
     $pdo->beginTransaction();
 
@@ -278,6 +280,9 @@ try {
             if (empty($saveProposal['status'])) {
                 throw new RuntimeException('proposal_save_failed');
             }
+            if ($proposalId <= 0) {
+                $newProposalIds[] = (int)$proposal->getId();
+            }
             $savedProposalIds[(int)$proposal->getId()] = true;
         }
 
@@ -326,6 +331,17 @@ try {
         'status' => false,
         'message' => 'Impossible d enregistrer ce scrutin pour le moment.',
     ]);
+}
+
+foreach ($newProposalIds as $newProposalId) {
+    $newProposal = new DecisionProposal();
+    if ($newProposal->load($newProposalId)) {
+        try {
+            notificationCenterDispatchDecisionProposal($newProposal);
+        } catch (Throwable $exception) {
+            error_log('decision_proposal_notification_failed: ' . $exception->getMessage());
+        }
+    }
 }
 
 omoDecisionModuleJsonResponse(200, [
