@@ -157,7 +157,7 @@ $brandHref = $shareLink->buildShareUrl($initialCid);
     <script src="/shared_functions.js"></script>
     <script>sharedApplyDocumentTheme();</script>
     <link rel="stylesheet" href="/common/assets/omo_public_pages.css">
-    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260804-checklist-toolbar-icon">
+    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260806-notification-preferences">
     <base href="/omo/">
     <style>
     :root {

@@ -118,6 +118,26 @@ class ChatMessage extends DbObject
         return $messages;
     }
 
+    public static function getParticipantUserIdsForThread($threadId)
+    {
+        $rows = self::fetchAll(
+            'SELECT DISTINCT `IDuser` FROM `chat_message`
+             WHERE `IDchat_thread` = :thread_id
+               AND `message_type` = :message_type
+               AND `IDuser` IS NOT NULL
+               AND `IDuser` > 0',
+            [
+                'thread_id' => (int)$threadId,
+                'message_type' => self::TYPE_USER,
+            ]
+        );
+        return array_values(array_unique(array_filter(array_map(static function ($row) {
+            return is_array($row) ? (int)($row['IDuser'] ?? 0) : 0;
+        }, is_array($rows) ? $rows : []), static function ($userId) {
+            return $userId > 0;
+        })));
+    }
+
     public static function createUserMessage(ChatThread $thread, $userId, $content, $isAnonymous = false, $anonymousByAuthor = false, $participantId = 0)
     {
         $message = new self();

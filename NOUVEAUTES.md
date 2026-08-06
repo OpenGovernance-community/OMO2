@@ -14,6 +14,11 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - En cas d echec du service Push dans Brave, les reglages indiquent le parametre Brave necessaire pour autoriser les messages Push.
 - Sur telephone, le menu Parametres reste visible au-dessus de la barre de navigation mobile.
 - Les reglages de notifications expliquent maintenant un echec de demarrage du service worker au lieu de laisser la case grisee indefiniment.
+- Les notifications sont maintenant organisees par organisation : chaque personne peut choisir, pour les propositions et les discussions de scrutins, les canaux navigateur, Telegram et e-mail. Chaque evenement est aussi conserve dans une cloche OMO, qui marque les elements lus a l ouverture de leur lien.
+- Les reglages de notifications sont presentes par groupes d applications actives, avec un tableau compact des evenements et de leurs canaux.
+- Une notification non lue regroupe maintenant les evenements repetes de la meme discussion ou proposition, afin d eviter les alertes en double et les rafales de messages.
+- Les notifications de discussion indiquent maintenant le scrutin et l auteur du commentaire.
+- L auteur d une proposition ou d un commentaire ne recoit plus de notification pour sa propre action.
 
 ## 2026-08-05
 
@@ -1511,3 +1516,4 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 # 2026-08-06
 
 - Les reglages de notifications attendent maintenant que le service worker soit actif avant de creer une souscription navigateur.
+- Les notifications lues sont maintenant visuellement distinguees dans la cloche, et les liens Push, Telegram et e-mail passent par une redirection dediee qui marque la notification comme lue.
