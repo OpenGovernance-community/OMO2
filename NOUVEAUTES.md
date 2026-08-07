@@ -4,6 +4,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-07
 
+- Le passage d un plafond a une trajectoire dans le formulaire d indicateur cree maintenant automatiquement deux extremites datees, initialisees avec la valeur du plafond, afin que la nouvelle courbe puisse etre enregistree immediatement.
+- Dans le selecteur de periode des indicateurs, la borne de debut reste accessible lorsque les deux poignees se rejoignent. Les poignees proches sont legerement decalees verticalement pour pouvoir les saisir independamment.
 - Les listes de projets de l editeur de holon proposent les portees local, enfants directs, descendants et globale, avec une recherche rapide pour les longues listes et un affichage compact defilant.
 - Le formulaire d edition et de creation de holon reprend aussi le selecteur de portee des listes de projets.
 - Les portees de listes de projets utilisent desormais les capsules segmentees communes de l interface.
@@ -13,6 +15,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les listes de projets regroupent maintenant leur portee et leur recherche dans une barre compacte avec icone de loupe.
 - Les champs de recherche de projets restent visibles et utilisent maintenant le style compact sans fond ni hauteur imposee.
 - La barre de projets reutilise le composant de filtres des apps afin de garder une recherche transparente et compacte.
+- Les groupes de holons sont traverses transparents dans la portee des projets enfants directs.
 - Le chargement des portees de projets accepte correctement les collections de holons utilisees par l editeur.
 - L editeur de holon limite les choix d une liste de projets aux projets rattaches au holon courant.
 - Le droit CAN_EDIT_HOLON_PROPERTIES permet maintenant de renseigner les valeurs locales des proprietes heritees d un modele, sans autoriser la modification de leur definition ni des proprietes verrouillees.

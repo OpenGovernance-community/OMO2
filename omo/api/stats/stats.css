@@ -700,7 +700,7 @@
 
 .omo-stats-chart-range__track {
     position: relative;
-    height: 28px;
+    height: 32px;
     display: grid;
     align-items: center;
 }
@@ -711,7 +711,7 @@
     position: absolute;
     left: 7px;
     right: 7px;
-    top: 12px;
+    top: 14px;
     height: 4px;
     border-radius: 999px;
 }
@@ -730,13 +730,35 @@
 .omo-stats-chart-range__track input[type="range"] {
     position: absolute;
     z-index: 2;
-    inset: 4px 0 auto;
+    inset: 6px 0 auto;
     width: 100%;
     height: 20px;
     margin: 0;
     appearance: none;
     pointer-events: none;
     background: transparent;
+    transition: transform 0.12s ease;
+}
+
+.omo-stats-chart-range__track input[data-omo-stats-chart-range-start] {
+    z-index: 4;
+}
+
+.omo-stats-chart-range__track input[data-omo-stats-chart-range-end] {
+    z-index: 3;
+}
+
+.omo-stats-chart-range__track.is-handles-close input[data-omo-stats-chart-range-start] {
+    transform: translateY(-5px);
+}
+
+.omo-stats-chart-range__track.is-handles-close input[data-omo-stats-chart-range-end] {
+    transform: translateY(5px);
+}
+
+.omo-stats-chart-range__track.is-start-active input[data-omo-stats-chart-range-start],
+.omo-stats-chart-range__track.is-end-active input[data-omo-stats-chart-range-end] {
+    z-index: 5;
 }
 
 .omo-stats-chart-range__track input[type="range"]::-webkit-slider-runnable-track {

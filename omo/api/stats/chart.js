@@ -553,6 +553,7 @@
         var minLabel = range.querySelector('[data-omo-stats-chart-range-min]');
         var maxLabel = range.querySelector('[data-omo-stats-chart-range-max]');
         var selection = range.querySelector('[data-omo-stats-chart-range-selection]');
+        var track = range.querySelector('.omo-stats-chart-range__track');
         if (!startInput || !endInput) {
             return;
         }
@@ -567,6 +568,27 @@
             initialEndDay = Math.max(initialStartDay, Math.min(maxDay, initialEndDay));
             startInput.value = String(initialStartDay);
             endInput.value = String(initialEndDay);
+        }
+
+        function setActiveHandle(activeInput) {
+            if (!track) {
+                return;
+            }
+            track.classList.toggle('is-start-active', activeInput === startInput);
+            track.classList.toggle('is-end-active', activeInput === endInput);
+        }
+
+        function syncHandleSeparation() {
+            if (!track) {
+                return;
+            }
+            var total = Math.max(1, maxDay - minDay);
+            var distanceRatio = Math.abs(Number(endInput.value) - Number(startInput.value)) / total;
+            var usableWidth = Math.max(0, track.getBoundingClientRect().width - 16);
+            var handlesAreClose = usableWidth > 0
+                ? distanceRatio * usableWidth <= 24
+                : distanceRatio <= 0.03;
+            track.classList.toggle('is-handles-close', handlesAreClose);
         }
 
         function update(activeInput) {
@@ -595,11 +617,24 @@
                 selection.style.left = (((startDay - minDay) / total) * 100) + '%';
                 selection.style.right = (((maxDay - endDay) / total) * 100) + '%';
             }
+            syncHandleSeparation();
             render(container, data, startDay, endDay);
         }
 
-        startInput.addEventListener('input', function () { update(startInput); });
-        endInput.addEventListener('input', function () { update(endInput); });
+        startInput.addEventListener('pointerdown', function () { setActiveHandle(startInput); });
+        endInput.addEventListener('pointerdown', function () { setActiveHandle(endInput); });
+        startInput.addEventListener('focus', function () { setActiveHandle(startInput); });
+        endInput.addEventListener('focus', function () { setActiveHandle(endInput); });
+        startInput.addEventListener('blur', function () { setActiveHandle(null); });
+        endInput.addEventListener('blur', function () { setActiveHandle(null); });
+        startInput.addEventListener('input', function () {
+            setActiveHandle(startInput);
+            update(startInput);
+        });
+        endInput.addEventListener('input', function () {
+            setActiveHandle(endInput);
+            update(endInput);
+        });
         update(null);
     }
 
