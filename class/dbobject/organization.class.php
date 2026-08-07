@@ -4904,10 +4904,82 @@
 
 		}
 
-		protected static function omo1ImportTasks(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $projectIdMap, array &$taskIdMap, array &$stats)
+		protected static function omo1ImportPrepareTaskParent(\dbObject\Project $task, $parentProjectId, $sourceTaskId, array &$warnings)
 		{
+			$parentProjectId = (int)$parentProjectId;
+			if ($parentProjectId <= 0) {
+				$task->set('IDproject_parent', null);
+				return;
+			}
+
+			$parent = new \dbObject\Project();
+			if (!$parent->load($parentProjectId)) {
+				$task->set('IDproject_parent', null);
+				$warnings[] = 'La tache OMO 1 #' . (int)$sourceTaskId . ' a ete importee sans parent car son projet parent est introuvable.';
+				return;
+			}
+			if (!$parent->get('active')) {
+				$task->set('active', false);
+			}
+
+			$parentEndDate = $parent->get('planned_end_date');
+			$status = \dbObject\Project::normalizeStatus($task->get('status'));
+			if ($parentEndDate instanceof \DateTimeInterface) {
+				if ($status === \dbObject\Project::STATUS_SOMEDAY) {
+					$task->set('IDproject_parent', null);
+					$warnings[] = 'La tache OMO 1 #' . (int)$sourceTaskId . ' au statut someday a ete importee sans parent date.';
+					return;
+				}
+
+				$taskEndDate = $task->get('planned_end_date');
+				if ($taskEndDate instanceof \DateTimeInterface && $taskEndDate > $parentEndDate) {
+					$task->set('planned_end_date', $parentEndDate->format('Y-m-d'));
+					$warnings[] = 'La date de fin de la tache OMO 1 #' . (int)$sourceTaskId . ' a ete ramenee a celle de son projet parent.';
+				}
+			}
+
+			$task->set('IDproject_parent', $parentProjectId);
+		}
+
+		protected static function omo1ImportTasks(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $projectIdMap, array &$taskIdMap, array &$stats, array &$warnings)
+		{
+			$sourceTaskIds = array();
+			foreach ($records as $record) {
+				$sourceTaskId = is_array($record) ? (int)($record['sourceId'] ?? 0) : 0;
+				if ($sourceTaskId > 0) {
+					$sourceTaskIds[$sourceTaskId] = true;
+				}
+			}
+
+			$discardedTaskIds = array();
+			do {
+				$discardedCountBefore = count($discardedTaskIds);
+				foreach ($records as $record) {
+					if (!is_array($record)) {
+						continue;
+					}
+					$sourceTaskId = (int)($record['sourceId'] ?? 0);
+					$sourceParentId = (int)($record['sourceParentProjectId'] ?? ($record['sourceProjectId'] ?? 0));
+					if ($sourceTaskId <= 0 || $sourceParentId <= 0 || isset($discardedTaskIds[$sourceTaskId])) {
+						continue;
+					}
+					if (isset($projectIdMap[$sourceParentId])) {
+						continue;
+					}
+					if (isset($sourceTaskIds[$sourceParentId]) && !isset($discardedTaskIds[$sourceParentId])) {
+						continue;
+					}
+
+					$discardedTaskIds[$sourceTaskId] = true;
+				}
+			} while (count($discardedTaskIds) > $discardedCountBefore);
+
 			foreach ($records as $record) {
 				if (!is_array($record) || (int)($record['sourceId'] ?? 0) <= 0) {
+					continue;
+				}
+				if (isset($discardedTaskIds[(int)$record['sourceId']])) {
+					$warnings[] = 'La tache OMO 1 #' . (int)$record['sourceId'] . ' etait rattachee a un projet inaccessible et n a pas ete importee.';
 					continue;
 				}
 				$sourceUserId = (int)($record['sourceProposerUserId'] ?? 0);
@@ -4929,7 +5001,6 @@
 				$task->set('IDorganization', (int)$organization->getId());
 				$task->set('IDholon', $targetHolonId);
 				$task->set('IDuser', $targetUserId);
-				$task->set('IDproject_parent', isset($projectIdMap[$sourceProjectId]) ? (int)$projectIdMap[$sourceProjectId] : null);
 				$task->set('title', $title !== '' ? $title : 'Tache OMO 1 #' . (int)$record['sourceId']);
 				$task->set('description', $record['description'] ?? null);
 				$task->set('status', array_key_exists('status', $record)
@@ -4948,6 +5019,12 @@
 					$task->set('created_at', $createdAt);
 				}
 				$task->set('active', array_key_exists('active', $record) ? (bool)$record['active'] : true);
+				self::omo1ImportPrepareTaskParent(
+					$task,
+					isset($projectIdMap[$sourceProjectId]) ? (int)$projectIdMap[$sourceProjectId] : null,
+					(int)$record['sourceId'],
+					$warnings
+				);
 				self::omo1ImportSave($task, 'Une tache n a pas pu etre importee');
 				$taskIdMap[(int)$record['sourceId']] = (int)$task->getId();
 				$stats['tasks'] += 1;
@@ -4955,6 +5032,9 @@
 
 			foreach ($records as $record) {
 				$sourceId = (int)($record['sourceId'] ?? 0);
+				if (isset($discardedTaskIds[$sourceId])) {
+					continue;
+				}
 				$targetTaskId = isset($taskIdMap[$sourceId]) ? (int)$taskIdMap[$sourceId] : 0;
 				$sourceParentId = (int)($record['sourceParentProjectId'] ?? ($record['sourceProjectId'] ?? 0));
 				if ($targetTaskId <= 0 || $sourceParentId <= 0 || !isset($taskIdMap[$sourceParentId])) {
@@ -4964,7 +5044,7 @@
 				if (!$task->load($targetTaskId)) {
 					continue;
 				}
-				$task->set('IDproject_parent', (int)$taskIdMap[$sourceParentId]);
+				self::omo1ImportPrepareTaskParent($task, (int)$taskIdMap[$sourceParentId], $sourceId, $warnings);
 				self::omo1ImportSave($task, 'La hierarchie des sous-projets n a pas pu etre recreee');
 			}
 		}
@@ -5658,7 +5738,7 @@
 					self::omo1ImportProjects($organization, self::omo1ImportModuleRecords($payload, 'projects'), $actorUserId, $userIdMap, $holonIdMap, $documentIdMap, $documentProjectSourceMap, $projectIdMap, $stats);
 				}
 				if ($selectedModules['tasks']) {
-					self::omo1ImportTasks($organization, self::omo1ImportModuleRecords($payload, 'tasks'), $actorUserId, $userIdMap, $holonIdMap, $projectIdMap, $taskIdMap, $stats);
+					self::omo1ImportTasks($organization, self::omo1ImportModuleRecords($payload, 'tasks'), $actorUserId, $userIdMap, $holonIdMap, $projectIdMap, $taskIdMap, $stats, $warnings);
 				}
 				if ($selectedModules['documents'] && ($selectedModules['projects'] || $selectedModules['tasks'])) {
 					self::omo1ImportLinkDocumentsToProjects($documentIdMap, $documentProjectSourceMap, $projectIdMap, $taskIdMap);

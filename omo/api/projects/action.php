@@ -85,6 +85,66 @@ if (empty($context['status'])) {
     omoProjectsActionRespond(false, (string)$context['message'], [], 403);
 }
 $action = trim((string)($_POST['project_action'] ?? $_POST['action'] ?? ''));
+$bulkProjectIds = [];
+foreach ((array)($_POST['project_ids'] ?? []) as $bulkProjectId) {
+    if (is_numeric($bulkProjectId) && (int)$bulkProjectId > 0) {
+        $bulkProjectIds[(int)$bulkProjectId] = true;
+    }
+}
+$bulkProjectIds = array_keys($bulkProjectIds);
+
+if (in_array($action, ['bulk_archive_projects', 'bulk_delete_projects'], true)) {
+    if ($currentUserId <= 0 || count($bulkProjectIds) === 0) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.action'), [], 422);
+    }
+
+    $includeInactive = $action === 'bulk_delete_projects';
+    $projectsToProcess = [];
+    foreach ($bulkProjectIds as $bulkProjectId) {
+        $bulkProject = new Project();
+        if (
+            !$bulkProject->load($bulkProjectId)
+            || (int)$bulkProject->get('IDorganization') !== $organizationId
+            || (int)$bulkProject->get('active') !== 1
+        ) {
+            omoProjectsActionRespond(false, omoProjectsT('projects.error.not_found'), [], 404);
+        }
+
+        foreach (omoProjectsGetProjectTree($bulkProject, $organizationId, $includeInactive) as $treeProject) {
+            if (!($treeProject instanceof Project)) {
+                continue;
+            }
+            $treeProjectId = (int)$treeProject->getId();
+            if ($treeProjectId > 0) {
+                $projectsToProcess[$treeProjectId] = $treeProject;
+            }
+        }
+    }
+
+    foreach ($projectsToProcess as $treeProject) {
+        if (!omoProjectsCanManageProject($treeProject, $context)) {
+            omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
+        }
+    }
+
+    foreach ($projectsToProcess as $treeProject) {
+        if ($action === 'bulk_archive_projects') {
+            $treeProject->set('active', 0);
+            $saveResult = $treeProject->save();
+            if (!is_array($saveResult) || empty($saveResult['status'])) {
+                omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
+            }
+        } elseif (!$treeProject->delete()) {
+            omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
+        }
+    }
+
+    omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), [
+        'selectedCount' => count($bulkProjectIds),
+        'affectedCount' => count($projectsToProcess),
+    ]);
+}
+
 $projectId = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : 0;
 $existingProject = null;
 if ($projectId > 0) {
