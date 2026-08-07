@@ -161,6 +161,12 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
     --generic-section-background: var(--color-surface-alt, #f0f2f5);
 }
 
+.generic-section--warning {
+    --generic-section-border: color-mix(in srgb, var(--color-warning, #f59e0b) 48%, var(--generic-container-border));
+    --generic-section-background: color-mix(in srgb, var(--color-warning, #f59e0b) 9%, var(--generic-container-surface));
+    border-inline-start: 4px solid var(--color-warning, #f59e0b);
+}
+
 .generic-section--plain {
     border: 0;
     border-radius: 0;

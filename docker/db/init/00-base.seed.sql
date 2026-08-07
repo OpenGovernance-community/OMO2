@@ -2315,7 +2315,7 @@ CREATE TABLE `permission` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_permission_key` (`permission_key`),
   KEY `idx_permission_title` (`title`)
-) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2341,7 +2341,8 @@ INSERT INTO `permission` VALUES
 (14,'CAN_DELETE_TEMPLATE_PROPERTIES','Supprimer les proprietes de templates','Autorise le retrait des proprietes definies par les templates dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05'),
 (15,'CAN_EDIT_HOLON_PROPERTIES','Modifier les proprietes de holons','Autorise la modification des proprietes ajoutees directement a un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05'),
 (16,'CAN_ADD_HOLON_PROPERTIES','Ajouter des proprietes de holons','Autorise l ajout de proprietes directement sur un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05'),
-(17,'CAN_DELETE_HOLON_PROPERTIES','Supprimer les proprietes de holons','Autorise le retrait des proprietes ajoutees directement a un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05');
+(17,'CAN_DELETE_HOLON_PROPERTIES','Supprimer les proprietes de holons','Autorise le retrait des proprietes ajoutees directement a un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05'),
+(24,'CAN_DELETE_PROJECT','Supprimer des projets','Autorise la suppression de projets dans le contexte cible.',1,'2026-08-07 00:00:00','2026-08-07 00:00:00');
 /*!40000 ALTER TABLE `permission` ENABLE KEYS */;
 UNLOCK TABLES;
 

@@ -6735,6 +6735,7 @@
 					'templateCatalog' => array(),
 					'definitionHolonCatalog' => array(),
 					'projectCatalog' => array(),
+					'projectCatalogs' => array(),
 					'authorityCatalog' => array(),
 					'authorityParentCatalog' => array(),
 					'authorityCanCreateRoot' => true,
@@ -6771,7 +6772,8 @@
 				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 				'templateCatalog' => array(),
 				'definitionHolonCatalog' => $this->getTemplateDefinitionDestinationCatalog(),
-				'projectCatalog' => $this->getProjectListEditorCatalog(),
+				'projectCatalog' => $this->getProjectListEditorCatalog($contextHolon),
+				'projectCatalogs' => $this->getProjectListEditorCatalogs($contextHolon),
 				'authorityCatalog' => $this->getAuthorityListEditorCatalog(),
 				'authorityParentCatalog' => array(),
 				'authorityCanCreateRoot' => true,
@@ -7081,7 +7083,7 @@
 			return array('status' => true);
 		}
 
-		protected function canEditSubmittedTemplatePropertyValues(\dbObject\Holon $holon, \dbObject\Holon $template, array $submittedValuesByPropertyId, array $propertyDefinitions)
+		protected function canEditSubmittedTemplatePropertyValues(\dbObject\Holon $holon, \dbObject\Holon $permissionHolon, array $submittedValuesByPropertyId, array $propertyDefinitions)
 		{
 			$existingValuesByPropertyId = array();
 			if ((int)$holon->getId() > 0) {
@@ -7104,13 +7106,26 @@
 					$existingValue = trim((string)$existingValue);
 				}
 
-				if ($submittedValue === $existingValue || $template->isAllowed('CAN_EDIT_TEMPLATE_PROPERTIES')) {
+				if ($submittedValue === $existingValue) {
+					continue;
+				}
+
+				if (!empty($definition['effectiveLocked'])) {
+					return array(
+						'status' => false,
+						'message' => 'Cette propriete heritee est verrouillee.',
+					);
+				}
+
+				// La modification soumise est une valeur locale de l instance,
+				// et non une modification de la definition du modele.
+				if ($permissionHolon->isAllowed('CAN_EDIT_HOLON_PROPERTIES')) {
 					continue;
 				}
 
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas les droits pour modifier les proprietes de template.",
+					'message' => "Vous n'avez pas les droits pour modifier les proprietes du holon.",
 				);
 			}
 
@@ -7164,7 +7179,8 @@
 				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
 				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
 				'templateCatalog' => array(),
-				'projectCatalog' => $this->getProjectListEditorCatalog(),
+				'projectCatalog' => $this->getProjectListEditorCatalog($holon),
+				'projectCatalogs' => $this->getProjectListEditorCatalogs($holon),
 				'authorityCatalog' => $this->getAuthorityListEditorCatalog(),
 				'authorityParentCatalog' => array(),
 				'authorityCanCreateRoot' => true,
@@ -7211,10 +7227,19 @@
 			}
 		}
 
-		protected function getProjectListEditorCatalog()
+		protected function getProjectListEditorCatalog(?\dbObject\Holon $holon = null)
 		{
 			$projects = new \dbObject\ArrayProject();
-			$projects->loadForOrganization((int)$this->getId());
+			$projects->loadForContext(
+				(int)$this->getId(),
+				$holon instanceof \dbObject\Holon ? (int)$holon->getId() : 0,
+				'contextual'
+			);
+			return $this->formatProjectListEditorCatalog($projects);
+		}
+
+		protected function formatProjectListEditorCatalog(iterable $projects)
+		{
 			$catalog = array();
 
 			foreach ($projects as $project) {
@@ -7228,14 +7253,14 @@
 					'id' => $projectId,
 					'title' => trim((string)$project->get('title')),
 					'holonLabel' => $holon ? $holon->getFullDisplayName() : '',
-					'importance' => \dbObject\Project::normalizeLevel($project->get('importance')),
+					'calculatedImportance' => max(0.0, min(1.0, (float)$project->get('calculated_importance'))),
 					'priority' => \dbObject\Project::normalizeLevel($project->get('priority')),
 				);
 			}
 
 			usort($catalog, function ($left, $right) {
-				$leftImportance = $left['importance'] === null ? -1 : (int)$left['importance'];
-				$rightImportance = $right['importance'] === null ? -1 : (int)$right['importance'];
+				$leftImportance = (float)$left['calculatedImportance'];
+				$rightImportance = (float)$right['calculatedImportance'];
 				if ($leftImportance !== $rightImportance) {
 					return $rightImportance <=> $leftImportance;
 				}
@@ -7250,6 +7275,39 @@
 			});
 
 			return $catalog;
+		}
+
+		protected function getProjectListEditorCatalogs(?\dbObject\Holon $holon = null)
+		{
+			$catalogs = array(
+				'local' => $this->getProjectListEditorCatalog($holon),
+				'children' => array(),
+				'descendants' => array(),
+				'global' => array(),
+			);
+
+			$projects = new \dbObject\ArrayProject();
+			$holonId = $holon instanceof \dbObject\Holon ? (int)$holon->getId() : 0;
+			if ($holonId > 0) {
+				$directChildIds = array();
+				foreach ($holon->getChildren() as $childHolon) {
+					if ($childHolon instanceof \dbObject\Holon && (int)$childHolon->getId() > 0) {
+						$directChildIds[] = (int)$childHolon->getId();
+					}
+				}
+				$directChildIds = array_values(array_unique($directChildIds));
+				$descendantIds = $holon->getVisibleDescendantIds(false);
+
+				$projects->loadForContext((int)$this->getId(), $holonId, 'children', $directChildIds);
+				$catalogs['children'] = $this->formatProjectListEditorCatalog($projects);
+				$projects->loadForContext((int)$this->getId(), $holonId, 'descendants', $descendantIds);
+				$catalogs['descendants'] = $this->formatProjectListEditorCatalog($projects);
+			}
+
+			$projects->loadForOrganization((int)$this->getId());
+			$catalogs['global'] = $this->formatProjectListEditorCatalog($projects);
+
+			return $catalogs;
 		}
 
 		protected function getAuthorityListEditorCatalog()
@@ -7909,6 +7967,7 @@
 				'templateCatalog' => array(),
 				'holonCatalog' => array(),
 				'projectCatalog' => array(),
+				'projectCatalogs' => array(),
 				'authorityCatalog' => array(),
 				'authorityParentCatalog' => array(),
 				'authorityCanCreateRoot' => $editingHolon && (int)$editingHolon->get('IDtypeholon') === 4,
@@ -7921,6 +7980,8 @@
 
 			$data['canCreate'] = !$isTemplateEditing && $contextHolon->canEdit() && in_array((int)$contextHolon->get('IDtypeholon'), array(2, 3, 4), true);
 			$data['canEdit'] = $editingHolon && $editingHolon->canEdit() && in_array((int)$editingHolon->get('IDtypeholon'), array(1, 2, 3), true);
+			$canEditHolonPropertyValues = !$isTemplateEditing
+				&& $contextHolon->isAllowed('CAN_EDIT_HOLON_PROPERTIES');
 
 			$templateContextPathRank = array_flip(array_map(static function ($pathHolon) {
 				return (int)$pathHolon->getId();
@@ -7979,7 +8040,11 @@
 					'definedInLabel' => $definitionHolonLabel,
 					'properties' => $isTemplateEditing
 						? $template->getTemplatePropertyDefinitions()
-						: $template->getHolonCreationPropertyDefinitions(),
+						: array_map(static function (array $definition) use ($canEditHolonPropertyValues) {
+							$definition['canEditValue'] = empty($definition['effectiveLocked'])
+								&& $canEditHolonPropertyValues;
+							return $definition;
+						}, $template->getHolonCreationPropertyDefinitions()),
 				), $this->getHolonIllustrationData($template));
 
 				$typeLabelsById[$typeId] = $template->getTypeLabel();
@@ -8023,7 +8088,9 @@
 			$data['formats'] = $this->buildEditorPropertyFormats($formats);
 
 			$this->buildSelectableHolonCatalog($rootHolon, $data['holonCatalog'], (int)$rootHolon->getId());
-			$data['projectCatalog'] = $this->getProjectListEditorCatalog();
+			$projectCatalogHolon = $editingHolon ?: $contextHolon;
+			$data['projectCatalog'] = $this->getProjectListEditorCatalog($projectCatalogHolon);
+			$data['projectCatalogs'] = $this->getProjectListEditorCatalogs($projectCatalogHolon);
 			$data['authorityCatalog'] = $this->getAuthorityListEditorCatalog();
 			$data['authorityParentCatalog'] = $this->getAuthorityParentEditorCatalog($contextHolon);
 
@@ -10411,7 +10478,7 @@
 			if (!$isTemplateEditing && $template instanceof \dbObject\Holon) {
 				$templatePropertyPermissionResult = $this->canEditSubmittedTemplatePropertyValues(
 					$holon ?: new \dbObject\Holon(),
-					$template,
+					$holon ?: $contextHolon,
 					$submittedValuesByPropertyId,
 					$templateDefinitions
 				);

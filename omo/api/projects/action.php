@@ -122,7 +122,10 @@ if (in_array($action, ['bulk_archive_projects', 'bulk_delete_projects'], true)) 
     }
 
     foreach ($projectsToProcess as $treeProject) {
-        if (!omoProjectsCanManageProject($treeProject, $context)) {
+        if (
+            !omoProjectsCanManageProject($treeProject, $context)
+            || ($action === 'bulk_delete_projects' && !omoProjectsCanDeleteProject($treeProject, $context))
+        ) {
             omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
         }
     }
@@ -337,7 +340,10 @@ if ($action === 'delete_project') {
     }
     $projectTree = omoProjectsGetProjectTree($existingProject, $organizationId, true);
     foreach ($projectTree as $treeProject) {
-        if (!omoProjectsCanManageProject($treeProject, $context)) {
+        if (
+            !omoProjectsCanManageProject($treeProject, $context)
+            || !omoProjectsCanDeleteProject($treeProject, $context)
+        ) {
             omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
         }
     }

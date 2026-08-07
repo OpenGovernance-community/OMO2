@@ -27,6 +27,7 @@ class ArrayProject extends ArrayDbObject
         $this->load([
             'where' => $where,
             'orderBy' => [
+                ['field' => 'calculated_importance', 'dir' => 'DESC'],
                 ['field' => 'created_at', 'dir' => 'DESC'],
                 ['field' => 'id', 'dir' => 'DESC'],
             ],
@@ -52,8 +53,9 @@ class ArrayProject extends ArrayDbObject
         $this->load([
             'where' => $where,
             'orderBy' => [
-                ['field' => 'created_at', 'dir' => 'ASC'],
-                ['field' => 'id', 'dir' => 'ASC'],
+                ['field' => 'calculated_importance', 'dir' => 'DESC'],
+                ['field' => 'created_at', 'dir' => 'DESC'],
+                ['field' => 'id', 'dir' => 'DESC'],
             ],
         ]);
     }
@@ -91,7 +93,10 @@ class ArrayProject extends ArrayDbObject
 
             $where[] = ['field' => 'IDholon', 'op' => 'in', 'value' => $holonIds];
         } elseif ($scope === 'children') {
-            $holonIds = array_values(array_unique(array_filter(array_map('intval', $descendantHolonIds), static function ($candidateHolonId) {
+            $holonIds = array_values(array_unique(array_filter(array_merge(
+                [$holonId],
+                array_map('intval', $descendantHolonIds)
+            ), static function ($candidateHolonId) {
                 return (int)$candidateHolonId > 0;
             })));
 
@@ -109,6 +114,7 @@ class ArrayProject extends ArrayDbObject
         $this->load([
             'where' => $where,
             'orderBy' => [
+                ['field' => 'calculated_importance', 'dir' => 'DESC'],
                 ['field' => 'created_at', 'dir' => 'DESC'],
                 ['field' => 'id', 'dir' => 'DESC'],
             ],

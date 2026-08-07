@@ -3767,7 +3767,7 @@ body.view-right .panel-right {
 
 .omo-notification-preferences-grid__row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) repeat(3, 90px);
+    grid-template-columns: minmax(0, 1fr) repeat(var(--param-notification-channel-count, 3), 90px);
     align-items: center;
     min-height: 46px;
     border-top: 1px solid var(--color-border, #d1d5db);
@@ -3810,7 +3810,7 @@ body.view-right .panel-right {
 
 @media (max-width: 620px) {
     .omo-notification-preferences-grid__row {
-        grid-template-columns: minmax(0, 1fr) repeat(3, 52px);
+        grid-template-columns: minmax(0, 1fr) repeat(var(--param-notification-channel-count, 3), 52px);
     }
 
     .omo-notification-preferences-grid__row--header {

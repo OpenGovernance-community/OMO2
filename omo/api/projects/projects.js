@@ -26,9 +26,9 @@
     var currentView = declaredView === 'list' || declaredView === 'gantt' ? declaredView : 'kanban';
     var currentAssignment = root.getAttribute('data-omo-projects-assignment') === 'mine' ? 'mine' : 'all';
     var currentQuickSearch = root.getAttribute('data-omo-projects-query') || '';
-    var currentListSort = ['priority', 'importance', 'holon'].indexOf(root.getAttribute('data-omo-projects-list-sort')) !== -1
+    var currentListSort = ['planned', 'priority', 'importance', 'holon'].indexOf(root.getAttribute('data-omo-projects-list-sort')) !== -1
         ? root.getAttribute('data-omo-projects-list-sort')
-        : 'planned';
+        : 'importance';
     var displayPreferencesStorageKey = 'omo.projects.saved-views.v2';
     var legacyDisplayPreferencesStorageKey = 'omo.projects.saved-views.v1';
     var temporaryDisplayPreferencesStorageKey = 'omo.projects.session-views.v1';
@@ -579,7 +579,7 @@
         var query = ['oid=' + encodeURIComponent(String(organizationId))];
         var nextScope = scope === 'global' ? 'descendants' : (scope === 'descendants' || scope === 'children' ? scope : 'contextual');
         var nextView = view === 'list' || view === 'gantt' ? view : 'kanban';
-        var nextListSort = listSort === 'priority' || listSort === 'importance' || listSort === 'holon' ? listSort : 'planned';
+        var nextListSort = listSort === 'planned' || listSort === 'priority' || listSort === 'importance' || listSort === 'holon' ? listSort : 'importance';
         var nextAssignment = assignment === 'mine' ? 'mine' : 'all';
         var nextQuickSearch = String(quickSearch || '').trim();
         if (routeCid > 0) {
@@ -591,7 +591,7 @@
         if (nextView !== 'kanban') {
             query.push('project_view=' + encodeURIComponent(nextView));
         }
-        if (nextListSort !== 'planned') {
+        if (nextListSort !== 'importance') {
             query.push('project_sort=' + encodeURIComponent(nextListSort));
         }
         if (nextAssignment === 'mine') {
@@ -645,7 +645,7 @@
         return {
             scope: scope === 'global' ? 'descendants' : (scope === 'descendants' || scope === 'children' ? scope : 'contextual'),
             view: view === 'list' || view === 'gantt' ? view : 'kanban',
-            sort: listSort === 'priority' || listSort === 'importance' || listSort === 'holon' ? listSort : 'planned',
+            sort: listSort === 'planned' || listSort === 'priority' || listSort === 'importance' || listSort === 'holon' ? listSort : 'importance',
             assignment: assignment === 'mine' ? 'mine' : 'all'
         };
     }
@@ -936,9 +936,9 @@
         }
         var assignment = next.assignment === 'mine' ? 'mine' : 'all';
         var view = next.view === 'list' || next.view === 'gantt' ? next.view : 'kanban';
-        var sort = next.sort === 'priority' || next.sort === 'importance' || next.sort === 'holon' ? next.sort : 'planned';
+        var sort = next.sort === 'planned' || next.sort === 'priority' || next.sort === 'importance' || next.sort === 'holon' ? next.sort : 'importance';
         if (sort === 'holon' && (scope !== 'children' && scope !== 'descendants')) {
-            sort = 'planned';
+            sort = 'importance';
         }
         return {scope: scope, assignment: assignment, sort: sort, view: view};
     }
@@ -1065,7 +1065,7 @@
             var defaultView = getDefaultDisplayPreferences() || {
                 scope: 'contextual',
                 view: 'kanban',
-                sort: 'planned',
+                sort: 'importance',
                 assignment: 'all'
             };
             applyDisplayPreferences(normalizeDisplayFilters(defaultView), active);
@@ -1268,16 +1268,34 @@
         });
     }
 
+    function selectedProjectsCanBeDeleted(selectedIds) {
+        var deleteAllowedByProjectId = {};
+        root.querySelectorAll('[data-omo-project-select]').forEach(function (input) {
+            var projectId = Number(input.value || 0);
+            if (!Number.isInteger(projectId) || projectId <= 0) {
+                return;
+            }
+            deleteAllowedByProjectId[projectId] = input.getAttribute('data-project-can-delete') === '1';
+        });
+        return selectedIds.every(function (projectId) {
+            return deleteAllowedByProjectId[projectId] === true;
+        });
+    }
+
     function syncProjectSelection() {
         var selectedIds = getSelectedProjectIds();
         var selectedCount = selectedIds.length;
         var bulkActions = root.querySelector('[data-omo-projects-bulk-actions]');
         var bulkCount = root.querySelector('[data-omo-projects-bulk-count]');
+        var deleteButton = root.querySelector('[data-omo-projects-bulk-action="delete"]');
         if (bulkActions) {
             bulkActions.hidden = selectedCount === 0;
         }
         if (bulkCount) {
             bulkCount.textContent = formatText(texts.selectionCount || '{count} sélectionnés', {count: selectedCount});
+        }
+        if (deleteButton) {
+            deleteButton.hidden = selectedCount === 0 || !selectedProjectsCanBeDeleted(selectedIds);
         }
         root.querySelectorAll('[data-omo-project-select]').forEach(function (input) {
             var projectId = Number(input.value || 0);
@@ -1645,7 +1663,7 @@
             } else if (button.hasAttribute('data-omo-projects-assignment')) {
                 pendingDisplayFilters.assignment = button.getAttribute('data-omo-projects-assignment') === 'mine' ? 'mine' : 'all';
             } else if (button.hasAttribute('data-omo-projects-sort')) {
-                pendingDisplayFilters.sort = button.getAttribute('data-omo-projects-sort') || 'planned';
+                pendingDisplayFilters.sort = button.getAttribute('data-omo-projects-sort') || 'importance';
             } else if (button.hasAttribute('data-omo-projects-view')) {
                 var selectedView = button.getAttribute('data-omo-projects-view');
                 pendingDisplayFilters.view = selectedView === 'list' || selectedView === 'gantt' ? selectedView : 'kanban';
@@ -1934,6 +1952,9 @@
         }
         var action = bulkActionButton.getAttribute('data-omo-projects-bulk-action') || '';
         var isDelete = action === 'delete';
+        if (isDelete && !selectedProjectsCanBeDeleted(getSelectedProjectIds())) {
+            return;
+        }
         var confirmation = isDelete ? texts.deleteSelectedConfirm : texts.archiveSelectedConfirm;
         if (!window.confirm(formatText(confirmation || '', {count: selectedCount}))) {
             return;
