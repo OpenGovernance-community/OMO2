@@ -286,26 +286,26 @@ class DocumentPvPoint extends DbObject
             return [];
         }
 
-        $contextCircleId = self::resolveDocumentContextCircleId($document);
-        $contextHolon = new \dbObject\Holon();
         $assignments = [];
 
-        if ($contextCircleId > 0 && $contextHolon->load($contextCircleId)) {
-            $assignments = $contextHolon->getVisibleRoleAssignmentsForUser($userId, [
+        $rootHolon = null;
+        $organization = new \dbObject\Organization();
+        if ($organization->load($organizationId)) {
+            $rootHolon = $organization->getEnabledStructuralRootHolon();
+        }
+
+        if ($rootHolon instanceof \dbObject\Holon) {
+            $assignments = $rootHolon->getVisibleRoleAssignmentsForUser($userId, [
                 'organizationId' => $organizationId,
                 'includeDescendants' => true,
             ]);
         }
 
         if (count($assignments) === 0) {
-            $rootHolon = null;
-            $organization = new \dbObject\Organization();
-            if ($organization->load($organizationId)) {
-                $rootHolon = $organization->getEnabledStructuralRootHolon();
-            }
-
-            if ($rootHolon instanceof \dbObject\Holon) {
-                $assignments = $rootHolon->getVisibleRoleAssignmentsForUser($userId, [
+            $contextCircleId = self::resolveDocumentContextCircleId($document);
+            $contextHolon = new \dbObject\Holon();
+            if ($contextCircleId > 0 && $contextHolon->load($contextCircleId)) {
+                $assignments = $contextHolon->getVisibleRoleAssignmentsForUser($userId, [
                     'organizationId' => $organizationId,
                     'includeDescendants' => true,
                 ]);
@@ -633,6 +633,68 @@ class DocumentPvPoint extends DbObject
         return [
             'status' => true,
             'text' => 'Verrou d edition actif.',
+            'lock' => [
+                'userId' => $userId,
+                'userName' => $this->getEditingUserDisplayName($organizationId),
+                'date' => $now,
+                'isOwnedByCurrentUser' => true,
+                'isOwnedByCurrentSession' => true,
+                'timeoutSeconds' => self::getEditLockTimeoutSeconds(),
+            ],
+        ];
+    }
+
+    public function takeOverEditLockAsPvEditor(int $organizationId, int $userId, string $lockToken): array
+    {
+        $organizationId = (int)$organizationId;
+        $userId = (int)$userId;
+        $lockToken = trim($lockToken);
+
+        if ((int)$this->getId() <= 0 || $organizationId <= 0 || $userId <= 0 || $lockToken === '') {
+            return [
+                'status' => false,
+                'text' => 'Requete de reprise de verrou invalide.',
+            ];
+        }
+
+        $document = new \dbObject\Document();
+        if (
+            !$document->load((int)$this->get('IDdocument'))
+            || (int)$document->get('IDorganization') !== $organizationId
+            || !$document->isPvEditor($userId)
+            || !$document->canUserManagePvDocument($userId)
+            || !$document->canUserEditPvPoint($this, $userId)
+        ) {
+            return [
+                'status' => false,
+                'text' => 'Acces refuse.',
+            ];
+        }
+
+        $now = new \DateTimeImmutable();
+        $result = self::execute(
+            "UPDATE document_pv_point
+            SET IDuser_editing = :user_id,
+                edit_lock_token = :lock_token,
+                dateedition = :editing_date
+            WHERE id = :point_id",
+            [
+                'user_id' => $userId,
+                'lock_token' => $lockToken,
+                'editing_date' => $now->format('Y-m-d H:i:s'),
+                'point_id' => (int)$this->getId(),
+            ]
+        );
+        if (!$result || !$this->load((int)$this->getId())) {
+            return [
+                'status' => false,
+                'text' => 'Impossible de reprendre le verrou d edition.',
+            ];
+        }
+
+        return [
+            'status' => true,
+            'text' => 'Verrou d edition repris.',
             'lock' => [
                 'userId' => $userId,
                 'userName' => $this->getEditingUserDisplayName($organizationId),

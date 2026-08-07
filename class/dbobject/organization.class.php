@@ -7313,7 +7313,27 @@
 				};
 				$appendDirectScopeHolonIds($holon);
 				$directChildIds = array_values(array_unique($directChildIds));
-				$descendantIds = $holon->getVisibleDescendantIds(false);
+				$descendantIds = array();
+				$visitedDescendantIds = array();
+				$appendDescendantScopeHolonIds = function (\dbObject\Holon $parentHolon) use (&$appendDescendantScopeHolonIds, &$descendantIds, &$visitedDescendantIds): void {
+					foreach ($parentHolon->getChildren() as $childHolon) {
+						if (!($childHolon instanceof \dbObject\Holon) || (int)$childHolon->getId() <= 0) {
+							continue;
+						}
+
+						$childHolonId = (int)$childHolon->getId();
+						if (isset($visitedDescendantIds[$childHolonId])) {
+							continue;
+						}
+
+						$visitedDescendantIds[$childHolonId] = true;
+						if ((int)$childHolon->get('IDtypeholon') !== 3) {
+							$descendantIds[] = $childHolonId;
+						}
+						$appendDescendantScopeHolonIds($childHolon);
+					}
+				};
+				$appendDescendantScopeHolonIds($holon);
 
 				$projects->loadForContext((int)$this->getId(), $holonId, 'children', $directChildIds);
 				$catalogs['children'] = $this->formatProjectListEditorCatalog($projects);
