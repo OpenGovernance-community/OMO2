@@ -1567,3 +1567,6 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 ## 2026-08-07
 
 - Les rafraichissements de l application Projets conservent maintenant les positions de defilement horizontale et verticale des vues et des colonnes apres les actions sur les projets.
+- L export OMO 1 vers OMO 2 ecarte les projets refuses et les taches residuelles sans projet exporte, propage les etats termine et archive des projets parents aux taches, et preserve les elements desactives, archives ou proposes comme inactifs dans OMO 2.
+- Les indicateurs exportes depuis OMO 1 conservent les indicateurs des roles actifs, mais ecarte les residus attaches directement a un cercle sans contexte d affichage dans OMO 1.
+- L export OMO 1 ecarte maintenant les anciennes actions terminees sans projet parent, masquees par l interface OMO 1 et sans emplacement historique coherent dans OMO 2.
