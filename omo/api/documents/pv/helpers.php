@@ -11,6 +11,8 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.action.add_point' => ['text' => 'Ajouter un point', 'context' => 'Button used to add a new agenda point in the PV editor.'],
         'documents.pv_editor.action.add_group' => ['text' => 'Ajouter un groupe', 'context' => 'Button used to add a thematic group in the PV agenda.'],
         'documents.pv_editor.action.save' => ['text' => 'Enregistrer', 'context' => 'Button used to save a PV point.'],
+        'documents.pv_editor.action.take_over_lock' => ['text' => 'Reprendre l edition', 'context' => 'Button allowing the PV editor to take over a point editing lock.'],
+        'documents.pv_editor.field.auto_save' => ['text' => 'Sauver automatiquement', 'context' => 'Checkbox enabling automatic saving of PV points after inactivity.'],
         'documents.pv_editor.action.auto_summary' => ['text' => 'Résumé auto', 'context' => 'Button generating an automatic summary of the complete PV.'],
         'documents.pv_editor.action.auto_summary_loading' => ['text' => 'Résumé en cours...', 'context' => 'Temporary label while generating the automatic PV summary.'],
         'documents.pv_editor.state.auto_summary_ready' => ['text' => 'Résumé généré. Enregistrez le PV pour le conserver.', 'context' => 'Status shown after the automatic PV summary has been generated locally.'],
@@ -20,7 +22,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.warning.delete_item' => ['text' => 'Supprimer cet element ? Les points dun groupe seront conserves.', 'context' => 'Confirmation shown before deleting a PV agenda item or group.'],
         'documents.pv_editor.action.saving' => ['text' => 'Enregistrement...', 'context' => 'Temporary label while saving a PV point.'],
         'documents.pv_editor.action.reordering' => ['text' => 'Reorganisation...', 'context' => 'Temporary label while PV points are being reordered.'],
-        'documents.pv_editor.state.saved' => ['text' => 'Enregistre', 'context' => 'State label shown after a PV point has been saved.'],
+        'documents.pv_editor.state.saved' => ['text' => 'Sauvegardé', 'context' => 'Button label shown when a PV point is already saved.'],
         'documents.pv_editor.state.dirty' => ['text' => 'Modifications non enregistrees', 'context' => 'State label shown when a PV point has local unsaved changes.'],
         'documents.pv_editor.state.readonly' => ['text' => 'Lecture seule', 'context' => 'Badge shown on points created by other users.'],
         'documents.pv_editor.state.mine' => ['text' => 'Mon point', 'context' => 'Badge shown on points owned by the current user.'],
@@ -133,6 +135,21 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.event.modal_title' => ['text' => 'Inserer une date programmee', 'context' => 'Title of the calendar event picker opened from a PV point editor.'],
         'documents.pv_editor.event.visible' => ['text' => 'Dates programmees visibles', 'context' => 'Label for the visible calendar events list in the PV point picker.'],
         'documents.pv_editor.event.insert' => ['text' => 'Inserer la date', 'context' => 'Button confirming insertion of a calendar event in a PV point.'],
+        'documents.pv_editor.event.tab_existing' => ['text' => 'Dates existantes', 'context' => 'First tab label in the PV event picker.'],
+        'documents.pv_editor.event.tab_new' => ['text' => 'Nouvelle date', 'context' => 'Second tab label for creating an event in the PV event picker.'],
+        'documents.pv_editor.event.tabs_aria' => ['text' => 'Selection ou creation de date', 'context' => 'Accessible label for the tabs in the PV event picker.'],
+        'documents.pv_editor.event.title' => ['text' => 'Titre', 'context' => 'Label for the quick event creation title field in a PV point.'],
+        'documents.pv_editor.event.description' => ['text' => 'Description', 'context' => 'Label for the quick event creation description field in a PV point.'],
+        'documents.pv_editor.event.start_at' => ['text' => 'Debut', 'context' => 'Label for the quick event creation start field in a PV point.'],
+        'documents.pv_editor.event.end_at' => ['text' => 'Fin', 'context' => 'Label for the quick event creation end field in a PV point.'],
+        'documents.pv_editor.event.create_insert' => ['text' => 'Creer et inserer', 'context' => 'Button that creates and inserts an event into a PV point.'],
+        'documents.pv_editor.event.create_error' => ['text' => 'Impossible de creer la date.', 'context' => 'Error shown when quick event creation fails.'],
+        'documents.pv_editor.event.end_after_start' => ['text' => 'La fin ne peut pas etre avant le debut.', 'context' => 'Client-side validation shown when a quick PV event end is before its start.'],
+        'documents.pv_editor.event.error_title' => ['text' => 'Le titre est obligatoire.', 'context' => 'Validation error shown when a quick PV event has no title.'],
+        'documents.pv_editor.event.error_start' => ['text' => 'La date de debut est invalide.', 'context' => 'Validation error shown when a quick PV event start is invalid.'],
+        'documents.pv_editor.event.error_end' => ['text' => 'La date de fin est invalide.', 'context' => 'Validation error shown when a quick PV event end is invalid.'],
+        'documents.pv_editor.event.error_end_before_start' => ['text' => 'La date de fin doit etre apres la date de debut.', 'context' => 'Validation error shown when a quick PV event end is before its start.'],
+        'documents.pv_editor.event.error_holon' => ['text' => 'Le holon choisi est invalide.', 'context' => 'Validation error shown when a quick PV event holon is invalid.'],
         'documents.pv_editor.indicator.button_title' => ['text' => 'Inserer un indicateur', 'context' => 'Tooltip for the indicator insertion button in a PV point editor.'],
         'documents.pv_editor.indicator.modal_title' => ['text' => 'Inserer un indicateur', 'context' => 'Title of the indicator picker opened from a PV point editor.'],
         'documents.pv_editor.indicator.visible' => ['text' => 'Indicateurs visibles', 'context' => 'Label for the visible indicators list in the PV point picker.'],
@@ -244,6 +261,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null): array
 
     return [
         'save' => $resolve('documents.pv_editor.action.save', 'Enregistrer'),
+        'takeOverLock' => $resolve('documents.pv_editor.action.take_over_lock', 'Reprendre l edition'),
         'deletePoint' => $resolve('documents.pv_editor.action.delete_point', 'Supprimer le point'),
         'deleteItem' => $resolve('documents.pv_editor.action.delete_item', 'Supprimer l element'),
         'deleteItemMessage' => $resolve('documents.pv_editor.warning.delete_item', 'Supprimer cet element ? Les points dun groupe seront conserves.'),
@@ -417,6 +435,9 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
             ? $pointData['canEditGroup']
             : !empty($pointData['canEditNow']));
     $pointData['isPvEditor'] = $document->isPvEditor($currentUserId);
+    $pointData['canTakeOverLock'] = $pointData['isPvEditor']
+        && $document->canUserManagePvDocument($currentUserId)
+        && !empty($pointData['lock']['isLockedByOther']);
     $pointData['canToggleHandled'] = $document->canUserManagePvDocument($currentUserId);
     $pointData['canAssignAuthor'] = $document->canUserManagePvDocument($currentUserId);
     $pointData['hasStructureApplication'] = $hasStructureApplication;
@@ -778,7 +799,6 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
 
     if ($canEditNow) {
         $html .= '<div class="omo-pv-editor__editor-block">';
-        $html .= '  <div class="omo-pv-editor__field-label">' . omoDocumentsPvEditorEscape((string)$uiText['content']) . '</div>';
         $html .= '  <div class="omo-pv-editor__editor-host" data-omo-pv-point-editor-host="' . $pointId . '"></div>';
         $html .= '  <textarea hidden data-omo-pv-point-content-source="' . $pointId . '">' . omoDocumentsPvEditorEscape((string)($pointData['contentRaw'] ?? '')) . '</textarea>';
         $html .= '</div>';
@@ -791,8 +811,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         }
         $html .= '  <span class="omo-pv-editor__point-note">' . omoDocumentsPvEditorEscape(implode(' | ', $footerNoteParts)) . '</span>';
         $html .= '  <div class="omo-pv-editor__point-actions">';
-        $html .= '    <span class="omo-pv-editor__point-status" data-omo-pv-point-status="' . $pointId . '"></span>';
-        $html .= '    <button type="button" class="generic-action-button omo-pv-editor__save-button" data-omo-pv-point-save="' . $pointId . '" disabled aria-disabled="true">' . omoDocumentsPvEditorEscape((string)$uiText['save']) . '</button>';
+        $html .= '    <button type="button" class="generic-action-button omo-pv-editor__save-button" data-omo-pv-point-save="' . $pointId . '" disabled aria-disabled="true">' . omoDocumentsPvEditorEscape((string)$uiText['saved']) . '</button>';
         $html .= '    <button type="button" class="omo-pv-editor__delete-button" data-omo-pv-point-delete="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '"><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>';
         $html .= '  </div>';
         $html .= '</div>';
@@ -813,6 +832,9 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
             $readonlyNote .= ' | ' . $updateInfo;
         }
         $html .= '  <span class="omo-pv-editor__point-note">' . omoDocumentsPvEditorEscape($readonlyNote) . '</span>';
+        if (!empty($pointData['canTakeOverLock'])) {
+            $html .= '  <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__take-over-lock" data-omo-pv-point-take-over-lock="' . $pointId . '">' . omoDocumentsPvEditorEscape((string)($uiText['takeOverLock'] ?? 'Reprendre l edition')) . '</button>';
+        }
         $html .= '</div>';
         $html .= '<div class="omo-document-pv__point-content prose omo-simple-html-render">' . (string)($pointData['contentHtml'] ?? '') . '</div>';
     }
@@ -837,6 +859,7 @@ function omoDocumentsPvEditorBuildPointPayload(array $pointData, array $uiText):
         'parentId' => (int)($pointData['parentId'] ?? 0),
         'canReorder' => !empty($pointData['canReorder']),
         'canEditGroup' => !empty($pointData['canEditGroup']),
+        'canTakeOverLock' => !empty($pointData['canTakeOverLock']),
         'title' => (string)($pointData['title'] ?? ''),
         'authorValue' => (string)($pointData['authorValue'] ?? ''),
         'position' => (int)($pointData['position'] ?? 0),
@@ -850,6 +873,7 @@ function omoDocumentsPvEditorBuildPointPayload(array $pointData, array $uiText):
             !empty($pointData['canEditNow']) ? '1' : '0',
             !empty($pointData['canReorder']) ? '1' : '0',
             !empty($pointData['canEditGroup']) ? '1' : '0',
+            !empty($pointData['canTakeOverLock']) ? '1' : '0',
             !empty($pointData['canToggleHandled']) ? '1' : '0',
             !empty($pointData['canAssignAuthor']) ? '1' : '0',
             !empty($pointData['isPvEditor']) ? '1' : '0',
