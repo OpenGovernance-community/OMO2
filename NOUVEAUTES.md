@@ -4,6 +4,22 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-07
 
+- Le libelle Contenu est retire au-dessus des editeurs HTML des points du PV, afin d eviter une ligne repetitive avant chaque zone d edition.
+- La comparaison du titre et de la description du PV normalise maintenant les retours a la ligne, afin qu un texte long ne soit pas considere a tort comme modifie.
+- Les boutons d enregistrement des points et du titre-description indiquent maintenant directement Sauvegardé, Enregistrer ou Enregistrement, sans afficher le message de modification a cote; le bouton du titre-description reste toujours visible en format compact de 28 pixels.
+- Le champ de description du PV s agrandit sans barre de defilement jusqu a 150 pixels, puis devient defilant uniquement lorsque cette hauteur est depassee, y compris apres le redimensionnement automatique.
+- L entete du PV n affiche plus la ligne de description inutile lorsqu aucune reunion a venir n est associee.
+- Les etapes Preparation, Reunion, Relecture et Validees de l editeur de PV utilisent maintenant les memes pastilles a bascule que le selecteur de visibilite.
+- Lors d un rafraichissement de l editeur de PV, les cartes dont le contenu reste equivalent sont conservees dans le DOM afin d eviter un scintillement inutile.
+- L option Sauver automatiquement est placee sous les actions Passer la main et Inviter de l editeur de PV, et enregistre aussi le titre et le resume apres dix secondes sans nouvelle saisie.
+- Lors de l edition du titre ou du resume d un PV, la synchronisation memorise le champ actif et sa selection avant le rafraichissement, puis les restaure apres le rendu.
+- Le bouton Resume auto est masque, et non grise, lorsque les fonctions IA ne sont pas disponibles pour le compte ou la configuration du serveur.
+- Dans la creation rapide de dates d un PV, le choix du debut ou de la fin pre-remplit l autre borne a une heure d ecart et empeche une plage invalide.
+- Les blocs de ressources inseres ou remplaces dans Summernote sont maintenant toujours places dans leur propre paragraphe, avec le curseur place dans un paragraphe editable juste apres.
+- Le selecteur de dates de l editeur de PV propose maintenant les onglets Dates existantes et Nouvelle date : une date peut etre creee, rattachee au holon choisi dans le selecteur adjacent, puis inseree directement dans le point.
+- L editeur du PV peut reprendre explicitement le verrou d un point bloque chez un autre membre, afin de poursuivre l edition sans attendre l expiration du verrou; le navigateur du membre repasse alors en lecture seule si son point est deja sauve.
+- L editeur de PV propose un enregistrement automatique active par defaut: chaque point modifie est sauve apres dix secondes sans nouvelle saisie, sans requete pour les points inchanges.
+- Dans l editeur de PV, le choix du role d une personne affiche toutes ses affectations actives et visibles dans l organisation, y compris celles ou elle est simple membre.
 - Le passage d un plafond a une trajectoire dans le formulaire d indicateur cree maintenant automatiquement deux extremites datees, initialisees avec la valeur du plafond, afin que la nouvelle courbe puisse etre enregistree immediatement.
 - Dans le selecteur de periode des indicateurs, la borne de debut reste accessible lorsque les deux poignees se rejoignent. Les poignees proches sont legerement decalees verticalement pour pouvoir les saisir independamment.
 - Les listes de projets de l editeur de holon proposent les portees local, enfants directs, descendants et globale, avec une recherche rapide pour les longues listes et un affichage compact defilant.
@@ -16,6 +32,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les champs de recherche de projets restent visibles et utilisent maintenant le style compact sans fond ni hauteur imposee.
 - La barre de projets reutilise le composant de filtres des apps afin de garder une recherche transparente et compacte.
 - Les groupes de holons sont traverses transparents dans la portee des projets enfants directs.
+- Les portees enfants directs et descendants des documents, indicateurs, checklistes, decisions et autres objets utilisent maintenant la meme hierarchie transparente des groupes, holon courant inclus.
 - Le chargement des portees de projets accepte correctement les collections de holons utilisees par l editeur.
 - L editeur de holon limite les choix d une liste de projets aux projets rattaches au holon courant.
 - Le droit CAN_EDIT_HOLON_PROPERTIES permet maintenant de renseigner les valeurs locales des proprietes heritees d un modele, sans autoriser la modification de leur definition ni des proprietes verrouillees.

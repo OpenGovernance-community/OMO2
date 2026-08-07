@@ -82,13 +82,17 @@ if (!function_exists('omoApiGetDescendantHolonIds')) {
         }
 
         $holonIds = [];
-        $collectHolonIds = static function (Holon $holon) use (&$collectHolonIds, &$holonIds, $currentHolon) {
+        $visitedHolonIds = [];
+        $collectHolonIds = static function (Holon $holon) use (&$collectHolonIds, &$holonIds, &$visitedHolonIds, $currentHolon) {
             $holonId = (int)$holon->getId();
-            if ($holonId <= 0 || isset($holonIds[$holonId])) {
+            if ($holonId <= 0 || isset($visitedHolonIds[$holonId])) {
                 return;
             }
 
-            $holonIds[$holonId] = $holonId;
+            $visitedHolonIds[$holonId] = true;
+            if ((int)$holon->get('IDtypeholon') !== 3 || $holon === $currentHolon) {
+                $holonIds[$holonId] = $holonId;
+            }
             foreach ($holon->getChildren() as $childHolon) {
                 if ($childHolon instanceof Holon && omoApiIsStructuralScopeHolon($childHolon, $currentHolon)) {
                     $collectHolonIds($childHolon);

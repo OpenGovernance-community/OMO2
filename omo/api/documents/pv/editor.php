@@ -461,7 +461,7 @@ foreach ($points as $point) {
 
     .omo-pv-editor__page-title {
         display: grid;
-        grid-template-columns: 72px minmax(0, 1fr);
+        grid-template-columns:  minmax(0, 1fr);
         gap: 16px;
         align-items: center;
         min-width: 0;
@@ -534,7 +534,9 @@ foreach ($points as $point) {
 
     .omo-pv-editor__document-description-input {
         min-height: 24px;
+        max-height: 150px;
         resize: none;
+        overflow-y: hidden;
         color: var(--color-text-light, #64748b);
         font-size: 0.95rem;
         line-height: 1.4;
@@ -582,18 +584,11 @@ foreach ($points as $point) {
     }
 
     .omo-pv-editor__document-meta-save {
-        min-height: 32px;
-        padding-block: 6px;
-        animation: omoPvMetaSaveReveal 160ms ease-out both;
-    }
-
-    .omo-pv-editor__document-meta-save[hidden] {
-        display: none !important;
-    }
-
-    @keyframes omoPvMetaSaveReveal {
-        from { opacity: 0; transform: translateY(-3px); }
-        to { opacity: 1; transform: translateY(0); }
+        min-height: 28px;
+        height: 28px;
+        padding: 4px 9px;
+        font-size: 0.78rem;
+        line-height: 1;
     }
 
     .omo-pv-editor__document-meta-status {
@@ -866,6 +861,41 @@ foreach ($points as $point) {
         color: var(--color-text-light, #64748b);
         font-size: 0.8rem;
         text-align: right;
+    }
+
+    .omo-pv-editor__stage-choice {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .omo-pv-editor__stage-choice-button {
+        min-width: 0;
+        width: 100%;
+        min-height: 36px;
+        padding: 7px 9px;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .omo-pv-editor__stage-choice-button.is-active {
+        color: var(--color-text, #1f2937);
+        font-weight: 800;
+    }
+
+    .omo-pv-editor__stage-choice-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .omo-pv-editor__stage-choice .omo-visibility-choice__text {
+        position: static;
+        width: auto;
+        height: auto;
+        padding: 0;
+        margin: 0;
+        overflow: visible;
+        clip: auto;
+        white-space: nowrap;
     }
 
     .omo-pv-editor__attendance {
@@ -1356,8 +1386,38 @@ foreach ($points as $point) {
 
     .omo-pv-editor__toolbar {
         display: flex;
+        align-items: center;
         gap: 8px;
         justify-content: flex-end;
+    }
+
+    .omo-pv-editor__auto-save {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--color-text-light, #64748b);
+        font-size: 0.82rem;
+        font-weight: 700;
+        line-height: 1.2;
+        cursor: pointer;
+    }
+
+    .omo-pv-editor__auto-save input {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        accent-color: var(--color-primary, #2563eb);
+        cursor: inherit;
+    }
+
+    .omo-pv-editor__auto-save input:disabled {
+        cursor: not-allowed;
+    }
+
+    .omo-pv-editor__secretary-actions .omo-pv-editor__auto-save {
+        flex-basis: 100%;
+        justify-content: flex-end;
+        margin-top: 2px;
     }
 
     .omo-pv-editor__delete-dropzone {
@@ -2037,6 +2097,10 @@ foreach ($points as $point) {
             justify-content: flex-start;
         }
 
+        .omo-pv-editor__secretary-actions .omo-pv-editor__auto-save {
+            justify-content: flex-start;
+        }
+
         .omo-pv-editor__nav {
             max-height: none;
         }
@@ -2343,9 +2407,6 @@ foreach ($points as $point) {
         <section class="omo-pv-editor__page-head">
             <div class="omo-pv-editor__panel omo-pv-editor__header-card">
             <div class="omo-pv-editor__page-title">
-                <div class="omo-pv-editor__identity-icon" aria-hidden="true">
-                    <img src="/omo/assets/images/documents/pv.png" alt="">
-                </div>
                 <div class="omo-pv-editor__identity-copy">
                 <?php if ($canManagePvDocument): ?>
                     <div class="omo-pv-editor__document-meta-editor" data-omo-pv-document-meta-editor>
@@ -2364,11 +2425,10 @@ foreach ($points as $point) {
                             data-omo-pv-document-description
                         ><?= $escape($documentDescription) ?></textarea>
                         <div class="omo-pv-editor__document-meta-actions">
-                            <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__document-meta-save" data-omo-pv-document-meta-save disabled hidden><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.save')) ?></button>
+                            <button type="button" class="generic-action-button omo-pv-editor__document-meta-save" data-omo-pv-document-meta-save disabled><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.state.saved')) ?></button>
                             <?php if ($canUseAiTools): ?>
                                 <button type="button" class="generic-action-button generic-action-button--secondary omo-pv-editor__document-meta-summary" data-omo-pv-document-auto-summary<?= $document->getPvStage() !== \dbObject\Document::PV_STAGE_REVIEW ? ' hidden' : '' ?>><?= $escape((string)$uiText['autoSummary']) ?></button>
                             <?php endif; ?>
-                            <span class="omo-pv-editor__document-meta-status" data-omo-pv-document-meta-status></span>
                         </div>
                     </div>
                 <?php else: ?>
@@ -2390,16 +2450,22 @@ foreach ($points as $point) {
                     </div>
                 <?php endif; ?>
                 <div class="omo-pv-editor__stage-field">
-                    <div class="omo-pv-editor__stage-flow" role="group" aria-label="<?= $escape((string)$uiText['stage']) ?>">
+                    <div
+                        class="omo-visibility-choice omo-pv-editor__stage-choice"
+                        data-omo-pv-stage-choice
+                        role="group"
+                        aria-label="<?= $escape((string)$uiText['stage']) ?>"
+                        style="--omo-visibility-option-count: <?= max(1, count($pvStageOptions)) ?>; --omo-visibility-active-index: <?= max(0, array_search($pvStage, array_keys($pvStageOptions), true)) ?>;"
+                    >
                         <?php foreach ($pvStageOptions as $stageValue => $stageLabel): ?>
                             <button
                                 type="button"
-                                class="omo-pv-editor__stage-option omo-pv-editor__stage-option--<?= $escape($stageValue) ?><?= $pvStage === $stageValue ? ' is-active' : '' ?>"
+                                class="omo-visibility-choice__button omo-pv-editor__stage-choice-button<?= $pvStage === $stageValue ? ' is-active' : '' ?>"
                                 data-omo-pv-stage-option
                                 data-omo-pv-stage-value="<?= $escape($stageValue) ?>"
                                 aria-pressed="<?= $pvStage === $stageValue ? 'true' : 'false' ?>"
                                 <?= $canManagePvStage ? '' : ' disabled' ?>
-                            ><?= $escape($stageLabel) ?></button>
+                            ><span class="omo-visibility-choice__text"><?= $escape($stageLabel) ?></span></button>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -2472,6 +2538,10 @@ foreach ($points as $point) {
                             <?php endif; ?>
                         </div>
                     </details>
+                    <label class="omo-pv-editor__auto-save">
+                        <input type="checkbox" data-omo-pv-auto-save checked<?= $isPvValidated ? ' disabled' : '' ?>>
+                        <span><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.field.auto_save')) ?></span>
+                    </label>
                 </div>
             </div>
             </div>
@@ -2542,9 +2612,11 @@ foreach ($points as $point) {
     const mainPanel = root.querySelector('.omo-pv-editor__main');
     const addButton = root.querySelector('[data-omo-pv-editor-add-point]');
     const addGroupButton = root.querySelector('[data-omo-pv-editor-add-group]');
+    const autoSaveToggle = root.querySelector('[data-omo-pv-auto-save]');
     const deleteDropzone = root.querySelector('[data-omo-pv-delete-dropzone]');
     const resizer = root.querySelector('[data-omo-pv-editor-resizer]');
     const stageButtons = Array.from(root.querySelectorAll('[data-omo-pv-stage-option]'));
+    const stageChoice = root.querySelector('[data-omo-pv-stage-choice]');
     const attendanceRoot = root.querySelector('[data-omo-pv-attendance-root]');
     const attendanceList = root.querySelector('[data-omo-pv-attendance-list]');
     const attendanceCount = root.querySelector('[data-omo-pv-attendance-count]');
@@ -2593,6 +2665,7 @@ foreach ($points as $point) {
     const savedLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.state.saved'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const autoSummaryLoadingLabel = <?= json_encode((string)$uiText['autoSummaryLoading'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const autoSummaryReadyLabel = <?= json_encode((string)$uiText['autoSummaryReady'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const autoSummaryAvailable = <?= $canUseAiTools ? 'true' : 'false' ?>;
     let autoSummaryPending = false;
     const dirtyLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.state.dirty'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const unsavedCloseMessage = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.warning.unsaved_close'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -2605,6 +2678,12 @@ foreach ($points as $point) {
     const overrunLegendLabel = <?= json_encode((string)$uiText['overrunLegend'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const groupPointsLabel = <?= json_encode((string)$uiText['groupPoints'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const groupMinutesLabel = <?= json_encode((string)$uiText['groupMinutes'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const autoSaveDelayMs = 10000;
+    const autoSaveTimers = new Map();
+    const pointChangeVersions = new Map();
+    let documentMetadataAutoSaveTimer = null;
+    let documentMetadataChangeVersion = 0;
+    let documentMetadataSaving = false;
     const canEmbedDocuments = <?= $hasDocumentsApplication ? 'true' : 'false' ?>;
     const resourcePickerOrganizationId = <?= (int)$organizationId ?>;
     const resourcePickerInitialHolonId = <?= (int)$resourcePickerInitialHolonId ?>;
@@ -2721,6 +2800,20 @@ foreach ($points as $point) {
         'insert' => omoDocumentsPvEditorT('documents.pv_editor.event.insert'),
         'cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'),
         'remove' => omoDocumentsPvEditorT('documents.pv_editor.action.remove_embed'),
+        'tabExisting' => omoDocumentsPvEditorT('documents.pv_editor.event.tab_existing'),
+        'tabNew' => omoDocumentsPvEditorT('documents.pv_editor.event.tab_new'),
+        'tabsAria' => omoDocumentsPvEditorT('documents.pv_editor.event.tabs_aria'),
+        'titleLabel' => omoDocumentsPvEditorT('documents.pv_editor.event.title'),
+        'descriptionLabel' => omoDocumentsPvEditorT('documents.pv_editor.event.description'),
+        'startAtLabel' => omoDocumentsPvEditorT('documents.pv_editor.event.start_at'),
+        'endAtLabel' => omoDocumentsPvEditorT('documents.pv_editor.event.end_at'),
+        'createInsert' => omoDocumentsPvEditorT('documents.pv_editor.event.create_insert'),
+        'createError' => omoDocumentsPvEditorT('documents.pv_editor.event.create_error'),
+        'endAfterStart' => omoDocumentsPvEditorT('documents.pv_editor.event.end_after_start'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const eventEmbedCreateContext = <?= json_encode([
+        'organizationId' => $organizationId,
+        'holonId' => $projectEmbedCreateHolonId,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const canEmbedIndicators = <?= $hasStatsApplication ? 'true' : 'false' ?>;
     const embeddableIndicators = <?= json_encode($embeddableIndicatorsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -3307,7 +3400,15 @@ foreach ($points as $point) {
             : 0;
         let marker = targetNode ? null : field.createTemporaryCursorMarker();
         let resolved = false;
-        const modalHtml = '<div class="omo-document-embed-picker omo-resource-picker">'
+        const tabPrefix = 'omo-pv-event-picker-' + Math.random().toString(36).slice(2, 10);
+        const existingTabId = tabPrefix + '-existing';
+        const newTabId = tabPrefix + '-new';
+        const modalHtml = '<div class="generic-tabs omo-document-embed-picker" data-generic-tabs>'
+            + '<div class="generic-tabs__list" aria-label="' + escapeDocumentEmbedHtml(eventEmbedUi.tabsAria || '') + '">'
+            + '<button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="' + existingTabId + '">' + escapeDocumentEmbedHtml(eventEmbedUi.tabExisting || '') + '</button>'
+            + '<button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="' + newTabId + '">' + escapeDocumentEmbedHtml(eventEmbedUi.tabNew || '') + '</button></div>'
+            + '<div class="generic-tabs__panels">'
+            + '<section id="' + existingTabId + '" class="generic-tabs__panel" data-generic-tab-panel><div class="omo-resource-picker">'
             + '<aside class="omo-resource-picker__navigation" data-omo-pv-event-embed-scope></aside>'
             + '<div class="omo-resource-picker__content">'
             + '<label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-omo-pv-event-embed-search aria-label="' + escapeDocumentEmbedHtml(eventEmbedUi.search || '') + '" placeholder="' + escapeDocumentEmbedHtml(eventEmbedUi.quickSearchPlaceholder || '') + '"></label>'
@@ -3315,7 +3416,13 @@ foreach ($points as $point) {
             + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-omo-pv-event-embed-title></div><div class="omo-document-embed-picker__preview-context" data-omo-pv-event-embed-schedule hidden></div><div class="omo-document-embed-picker__preview-description" data-omo-pv-event-embed-description hidden></div></div>'
             + '<div class="omo-document-embed-picker__actions">'
             + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-embed-remove>' + escapeDocumentEmbedHtml(eventEmbedUi.remove || '') + '</button>' : '')
-            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-event-embed-cancel>' + escapeDocumentEmbedHtml(eventEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-event-embed-insert disabled>' + escapeDocumentEmbedHtml(eventEmbedUi.insert || '') + '</button></div></div></div>';
+            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-event-embed-cancel>' + escapeDocumentEmbedHtml(eventEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-event-embed-insert disabled>' + escapeDocumentEmbedHtml(eventEmbedUi.insert || '') + '</button></div></div></div></section>'
+            + '<section id="' + newTabId + '" class="generic-tabs__panel" data-generic-tab-panel hidden><form data-omo-pv-event-create-form class="omo-document-embed-picker__quick-form">'
+            + '<label>' + escapeDocumentEmbedHtml(eventEmbedUi.titleLabel || '') + '<input required name="title" class="generic-form-control" type="text"></label>'
+            + '<label>' + escapeDocumentEmbedHtml(eventEmbedUi.descriptionLabel || '') + '<textarea name="description" class="generic-form-control" rows="3"></textarea></label>'
+            + '<div class="omo-document-embed-picker__quick-form-grid"><label>' + escapeDocumentEmbedHtml(eventEmbedUi.startAtLabel || '') + '<input required name="start_at" class="generic-form-control" type="datetime-local"></label><label>' + escapeDocumentEmbedHtml(eventEmbedUi.endAtLabel || '') + '<input required name="end_at" class="generic-form-control" type="datetime-local"></label></div>'
+            + '<div class="omo-document-embed-picker__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-event-embed-cancel>' + escapeDocumentEmbedHtml(eventEmbedUi.cancel || '') + '</button><button type="submit" class="generic-action-button generic-action-button--main" data-omo-pv-event-create-submit>' + escapeDocumentEmbedHtml(eventEmbedUi.createInsert || '') + '</button></div></form></section>'
+            + '</div></div>';
 
         window.commonTopbarOpenModal(eventEmbedUi.modalTitle || '', modalHtml, 'html');
         const modalBody = document.getElementById('commonTopbarModalBody');
@@ -3324,17 +3431,46 @@ foreach ($points as $point) {
             return;
         }
 
+        const eventPickerTabs = modalBody.querySelector('.generic-tabs.omo-document-embed-picker');
+        const eventScopeHost = modalBody.querySelector('[data-omo-pv-event-embed-scope]');
+        const eventScopeNavigation = eventScopeHost ? eventScopeHost.closest('.omo-resource-picker__navigation') : null;
+        if (eventPickerTabs instanceof Element && eventScopeNavigation instanceof Element) {
+            const resourcePicker = eventScopeNavigation.closest('.omo-resource-picker');
+            if (resourcePicker instanceof Element) resourcePicker.classList.remove('omo-resource-picker');
+            eventPickerTabs.classList.add('omo-event-embed-picker');
+            eventPickerTabs.appendChild(eventScopeNavigation);
+        }
+        if (typeof window.initGenericComponents === 'function') window.initGenericComponents(modalBody);
+
         const searchNode = modalBody.querySelector('[data-omo-pv-event-embed-search]');
         const selectNode = modalBody.querySelector('[data-omo-pv-event-embed-select]');
         const titleNode = modalBody.querySelector('[data-omo-pv-event-embed-title]');
         const scheduleNode = modalBody.querySelector('[data-omo-pv-event-embed-schedule]');
         const descriptionNode = modalBody.querySelector('[data-omo-pv-event-embed-description]');
-        const cancelButton = modalBody.querySelector('[data-omo-pv-event-embed-cancel]');
+        const cancelButtons = Array.from(modalBody.querySelectorAll('[data-omo-pv-event-embed-cancel]'));
         const insertButton = modalBody.querySelector('[data-omo-pv-event-embed-insert]');
         const removeButton = modalBody.querySelector('[data-omo-pv-embed-remove]');
+        const createForm = modalBody.querySelector('[data-omo-pv-event-create-form]');
+        const createSubmit = modalBody.querySelector('[data-omo-pv-event-create-submit]');
         let selectedItem = null;
         let scopePicker = null;
         const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
+        const insertEvent = function (eventItem) {
+            const embedHtml = buildPvEventEmbedHtml(eventItem);
+            if (embedHtml === '') return false;
+            if (targetNode && typeof field.replaceNodeWithHtml === 'function') {
+                resolved = true;
+                field.replaceNodeWithHtml(targetNode, embedHtml);
+            } else if (marker) {
+                resolved = true;
+                field.replaceMarkerWithHtml(marker, embedHtml);
+                marker = null;
+            } else {
+                return false;
+            }
+            window.commonTopbarCloseModal();
+            return true;
+        };
         const updatePreview = function () {
             if (selectNode && selectNode.value !== '') selectedItem = embeddableEvents.find(function (item) { return String(item.id) === String(selectNode.value); }) || null;
             if (titleNode) titleNode.textContent = selectedItem ? (String(selectedItem.title || '').trim() || ('Evenement #' + String(selectedItem.id))) : String(eventEmbedUi.none || '');
@@ -3354,13 +3490,130 @@ foreach ($points as $point) {
             if (selectNode && selectedItem) selectNode.value = String(selectedItem.id);
             updatePreview();
         };
-        scopePicker = mountPvResourceScopePicker(modalBody, '[data-omo-pv-event-embed-scope]', render);
+        if (createForm instanceof HTMLFormElement) {
+            const startInput = createForm.elements.namedItem('start_at');
+            const endInput = createForm.elements.namedItem('end_at');
+            const shiftDateTimeLocalValue = function (value, hours) {
+                const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+                if (!match) return '';
+                const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]));
+                if (Number.isNaN(date.getTime())) return '';
+                date.setHours(date.getHours() + Number(hours || 0));
+                const pad = function (number) { return String(number).padStart(2, '0'); };
+                return String(date.getFullYear()) + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + 'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+            };
+            const validateEventEnd = function () {
+                if (!(startInput instanceof HTMLInputElement) || !(endInput instanceof HTMLInputElement)) return;
+                const isBeforeStart = startInput.value !== '' && endInput.value !== '' && endInput.value < startInput.value;
+                endInput.setCustomValidity(isBeforeStart ? String(eventEmbedUi.endAfterStart || '') : '');
+            };
+            const syncEventEndWithStart = function () {
+                if (!(startInput instanceof HTMLInputElement) || !(endInput instanceof HTMLInputElement)) return;
+                const startValue = String(startInput.value || '');
+                if (startValue === '') {
+                    endInput.removeAttribute('min');
+                    validateEventEnd();
+                    return;
+                }
+
+                endInput.min = startValue;
+                const shouldSetAutomaticEnd = endInput.value === ''
+                    || endInput.dataset.omoEventAutoEnd === '1'
+                    || endInput.value < startValue;
+                if (shouldSetAutomaticEnd) {
+                    const automaticEnd = shiftDateTimeLocalValue(startValue, 1);
+                    if (automaticEnd !== '') {
+                        endInput.value = automaticEnd;
+                        endInput.dataset.omoEventAutoEnd = '1';
+                    }
+                }
+                validateEventEnd();
+            };
+            const syncEventStartWithEnd = function () {
+                if (!(startInput instanceof HTMLInputElement) || !(endInput instanceof HTMLInputElement)) return;
+                const endValue = String(endInput.value || '');
+                if (endValue === '') {
+                    startInput.removeAttribute('max');
+                    validateEventEnd();
+                    return;
+                }
+
+                startInput.max = endValue;
+                const shouldSetAutomaticStart = startInput.value === ''
+                    || startInput.dataset.omoEventAutoStart === '1'
+                    || startInput.value > endValue;
+                if (shouldSetAutomaticStart) {
+                    const automaticStart = shiftDateTimeLocalValue(endValue, -1);
+                    if (automaticStart !== '') {
+                        startInput.value = automaticStart;
+                        startInput.dataset.omoEventAutoStart = '1';
+                    }
+                }
+                syncEventEndWithStart();
+            };
+            if (startInput instanceof HTMLInputElement) {
+                startInput.addEventListener('input', function () { startInput.dataset.omoEventAutoStart = '0'; });
+                startInput.addEventListener('change', syncEventEndWithStart);
+            }
+            if (endInput instanceof HTMLInputElement) {
+                endInput.addEventListener('input', function () {
+                    endInput.dataset.omoEventAutoEnd = '0';
+                    syncEventStartWithEnd();
+                });
+                endInput.addEventListener('change', syncEventStartWithEnd);
+            }
+            syncEventEndWithStart();
+        }
+        if (eventScopeHost instanceof Element && typeof window.omoMountHolonScopePicker === 'function') {
+            scopePicker = window.omoMountHolonScopePicker({
+                host: eventScopeHost,
+                organizationId: resourcePickerOrganizationId,
+                initialHolonId: Number(eventEmbedCreateContext.holonId || resourcePickerInitialHolonId || 0),
+                initialScope: 'local',
+                labels: resourcePickerScopeUi,
+                onChange: function (holonId) {
+                    eventEmbedCreateContext.holonId = Number(holonId || 0);
+                    render();
+                }
+            });
+        } else {
+            scopePicker = mountPvResourceScopePicker(modalBody, '[data-omo-pv-event-embed-scope]', render);
+        }
         window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); }, {once: true});
         if (searchNode) { searchNode.addEventListener('input', render); searchNode.focus(); }
         if (selectNode) selectNode.addEventListener('change', updatePreview);
-        if (cancelButton) cancelButton.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); });
+        cancelButtons.forEach(function (button) { button.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); }); });
         if (removeButton) removeButton.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
-        if (insertButton) insertButton.addEventListener('click', function () { const embedHtml = buildPvEventEmbedHtml(selectedItem); if (embedHtml !== '' && targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embedHtml); } else if (embedHtml !== '' && marker) { resolved = true; field.replaceMarkerWithHtml(marker, embedHtml); marker = null; } window.commonTopbarCloseModal(); });
+        if (insertButton) insertButton.addEventListener('click', function () { if (selectedItem) insertEvent(selectedItem); });
+        if (createForm instanceof HTMLFormElement) createForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const titleInput = createForm.elements.namedItem('title');
+            const title = titleInput ? String(titleInput.value || '').trim() : '';
+            if (title === '') {
+                if (titleInput && typeof titleInput.focus === 'function') titleInput.focus();
+                return;
+            }
+            if (createSubmit) createSubmit.disabled = true;
+            const formData = new FormData(createForm);
+            formData.set('action', 'create_event');
+            formData.set('document_id', String(documentId));
+            formData.set('oid', String(eventEmbedCreateContext.organizationId || 0));
+            formData.set('editor_token', editorToken);
+            formData.set('IDholon', String(eventEmbedCreateContext.holonId || 0));
+            fetch(actionUrl, {method: 'POST', body: formData, credentials: 'same-origin'})
+                .then(function (response) { return response.json(); })
+                .then(function (payload) {
+                    const newEvent = payload && payload.event && typeof payload.event === 'object' ? payload.event : null;
+                    if (!payload || !payload.status || !newEvent || Number(newEvent.id || 0) <= 0) {
+                        throw new Error(payload && payload.message ? payload.message : eventEmbedUi.createError || '');
+                    }
+                    embeddableEvents.push(newEvent);
+                    embeddableEvents.sort(function (left, right) { return String(left.startAt || '').localeCompare(String(right.startAt || '')); });
+                    insertEvent(newEvent);
+                })
+                .catch(function (error) { window.alert(String(error && error.message || eventEmbedUi.createError || '')); })
+                .finally(function () { if (createSubmit) createSubmit.disabled = false; });
+        });
         render();
     }
 
@@ -3992,7 +4245,15 @@ foreach ($points as $point) {
         }
 
         documentDescriptionInput.style.height = 'auto';
-        documentDescriptionInput.style.height = Math.max(24, documentDescriptionInput.scrollHeight) + 'px';
+        const maxHeight = 150;
+        const contentHeight = Math.max(24, documentDescriptionInput.scrollHeight);
+        const nextHeight = Math.min(maxHeight, contentHeight);
+        documentDescriptionInput.style.height = nextHeight + 'px';
+        documentDescriptionInput.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
+    }
+
+    function normalizeDocumentMetadataText(value) {
+        return String(value || '').replace(/\r\n?/g, '\n').trim();
     }
 
     function documentMetadataIsDirty() {
@@ -4004,24 +4265,25 @@ foreach ($points as $point) {
             return false;
         }
 
-        return documentTitleInput.value.trim() !== String(currentDocumentPayload.title || '').trim()
-            || documentDescriptionInput.value.trim() !== String(currentDocumentPayload.description || '').trim()
+        return normalizeDocumentMetadataText(documentTitleInput.value) !== normalizeDocumentMetadataText(currentDocumentPayload.title)
+            || normalizeDocumentMetadataText(documentDescriptionInput.value) !== normalizeDocumentMetadataText(currentDocumentPayload.description)
             || getDocumentVisibilityValue() !== String(currentDocumentPayload.visibilityType || '');
     }
 
     function syncDocumentMetadataUi() {
         const isDirty = documentMetadataIsDirty();
-        const canGenerateAutoSummary = currentDocumentPayload.pvStage === 'review';
+        const canGenerateAutoSummary = autoSummaryAvailable && currentDocumentPayload.pvStage === 'review';
         if (documentAutoSummaryButton instanceof HTMLButtonElement) {
             documentAutoSummaryButton.hidden = !canGenerateAutoSummary;
-            documentAutoSummaryButton.disabled = autoSummaryPending || !canGenerateAutoSummary;
+            documentAutoSummaryButton.disabled = autoSummaryPending;
         }
         if (documentMetaSaveButton instanceof HTMLButtonElement) {
-            documentMetaSaveButton.disabled = !isDirty;
-            documentMetaSaveButton.hidden = !isDirty;
-        }
-        if (documentMetaStatus instanceof Element) {
-            documentMetaStatus.textContent = isDirty ? <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.state.metadata_dirty'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?> : '';
+            documentMetaSaveButton.disabled = !isDirty || documentMetadataSaving;
+            documentMetaSaveButton.classList.toggle('generic-action-button--main', isDirty);
+            documentMetaSaveButton.classList.toggle('is-saving', documentMetadataSaving);
+            documentMetaSaveButton.textContent = documentMetadataSaving
+                ? savingLabel
+                : (isDirty ? saveLabel : savedLabel);
         }
     }
 
@@ -4181,22 +4443,13 @@ foreach ($points as $point) {
             return;
         }
 
-        const status = root.querySelector('[data-omo-pv-point-status="' + pointId + '"]');
-        if (status) {
-            if (isDirty) {
-                status.textContent = dirtyLabel;
-            } else if (String(status.textContent || '') === dirtyLabel) {
-                status.textContent = '';
-            }
-        }
-
         const saveButton = root.querySelector('[data-omo-pv-point-save="' + pointId + '"]');
         if (saveButton) {
             saveButton.disabled = !isDirty || isSaving;
             saveButton.setAttribute('aria-disabled', (!isDirty || isSaving) ? 'true' : 'false');
             saveButton.classList.toggle('generic-action-button--main', isDirty);
             saveButton.classList.toggle('is-saving', isSaving);
-            saveButton.textContent = isSaving ? savingLabel : saveLabel;
+            saveButton.textContent = isSaving ? savingLabel : (isDirty ? saveLabel : savedLabel);
         }
     }
 
@@ -4237,7 +4490,79 @@ foreach ($points as $point) {
         });
     }
 
-    function markPointDirty(pointId, isDirty) {
+    function isAutoSaveEnabled() {
+        return autoSaveToggle instanceof HTMLInputElement
+            && autoSaveToggle.checked
+            && !autoSaveToggle.disabled;
+    }
+
+    function clearDocumentMetadataAutoSave() {
+        if (documentMetadataAutoSaveTimer !== null) {
+            window.clearTimeout(documentMetadataAutoSaveTimer);
+            documentMetadataAutoSaveTimer = null;
+        }
+    }
+
+    function scheduleDocumentMetadataAutoSave() {
+        clearDocumentMetadataAutoSave();
+        if (!isAutoSaveEnabled() || !root.isConnected || documentMetadataSaving || !documentMetadataIsDirty()) {
+            return;
+        }
+
+        documentMetadataAutoSaveTimer = window.setTimeout(function () {
+            documentMetadataAutoSaveTimer = null;
+            if (!isAutoSaveEnabled() || documentMetadataSaving || !documentMetadataIsDirty()) {
+                return;
+            }
+
+            saveDocumentMetadata();
+        }, autoSaveDelayMs);
+    }
+
+    function markDocumentMetadataDirty(scheduleAutoSave = true) {
+        documentMetadataChangeVersion += 1;
+        syncDocumentMetadataUi();
+        if (scheduleAutoSave) {
+            scheduleDocumentMetadataAutoSave();
+        }
+    }
+
+    function clearPointAutoSave(pointId) {
+        const timerId = autoSaveTimers.get(pointId);
+        if (timerId !== undefined) {
+            window.clearTimeout(timerId);
+            autoSaveTimers.delete(pointId);
+        }
+    }
+
+    function schedulePointAutoSave(pointId) {
+        clearPointAutoSave(pointId);
+        if (!isAutoSaveEnabled() || !root.isConnected) {
+            return;
+        }
+
+        const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+        if (!card || card.getAttribute('data-omo-pv-point-dirty') !== '1') {
+            return;
+        }
+
+        autoSaveTimers.set(pointId, window.setTimeout(function () {
+            autoSaveTimers.delete(pointId);
+            const currentCard = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+            if (!isAutoSaveEnabled() || !currentCard || currentCard.getAttribute('data-omo-pv-point-dirty') !== '1') {
+                return;
+            }
+
+            if (currentCard.getAttribute('data-omo-pv-point-saving') === '1') {
+                schedulePointAutoSave(pointId);
+                return;
+            }
+
+            savePoint(pointId);
+        }, autoSaveDelayMs));
+    }
+
+    function markPointDirty(pointId, isDirty, scheduleAutoSave = true) {
         if (isDirty && isPointDirtySuppressed(pointId)) {
             return;
         }
@@ -4247,6 +4572,10 @@ foreach ($points as $point) {
             card.setAttribute('data-omo-pv-point-dirty', isDirty ? '1' : '0');
             if (!isDirty) {
                 card.removeAttribute('data-omo-pv-point-saving');
+                clearPointAutoSave(pointId);
+            } else if (scheduleAutoSave) {
+                pointChangeVersions.set(pointId, (pointChangeVersions.get(pointId) || 0) + 1);
+                schedulePointAutoSave(pointId);
             }
         }
 
@@ -4342,12 +4671,20 @@ foreach ($points as $point) {
 
         const nextStage = String(documentPayload.pvStage || '').trim();
         const canManageStage = documentPayload.canManagePvStage === true;
+        let activeIndex = 0;
         stageButtons.forEach(function (button) {
             const isActive = String(button.getAttribute('data-omo-pv-stage-value') || '') === nextStage;
             button.classList.toggle('is-active', isActive);
             button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
             button.disabled = !canManageStage;
+            if (isActive) {
+                activeIndex = stageButtons.indexOf(button);
+            }
         });
+        if (stageChoice instanceof Element) {
+            stageChoice.style.setProperty('--omo-visibility-option-count', String(Math.max(1, stageButtons.length)));
+            stageChoice.style.setProperty('--omo-visibility-active-index', String(activeIndex));
+        }
     }
 
     function syncPvEditorUi(documentPayload) {
@@ -4504,7 +4841,7 @@ foreach ($points as $point) {
         }
 
         const scrollAnchor = captureMainScrollAnchor();
-        const focusedEditor = captureFocusedPointEditor();
+        const focusedEditor = captureFocusedEditor();
         currentAttendancePayload = nextAttendancePayload;
         currentAttendanceSignature = nextAttendanceSignature;
 
@@ -4525,7 +4862,7 @@ foreach ($points as $point) {
         if (entries.length === 0) {
             attendanceEmpty.hidden = false;
             restoreMainScrollAnchor(scrollAnchor);
-            restoreFocusedPointEditor(focusedEditor);
+            restoreFocusedEditor(focusedEditor);
             return;
         }
 
@@ -4563,7 +4900,7 @@ foreach ($points as $point) {
         });
 
         restoreMainScrollAnchor(scrollAnchor);
-        restoreFocusedPointEditor(focusedEditor);
+        restoreFocusedEditor(focusedEditor);
     }
 
     function formatMinutesLabel(minutes) {
@@ -5045,7 +5382,8 @@ foreach ($points as $point) {
             return false;
         }
 
-        return root.querySelector('[data-omo-pv-point-save]:not(:disabled), [data-omo-pv-document-meta-save]:not(:disabled)') !== null;
+        return documentMetadataSaving
+            || root.querySelector('[data-omo-pv-point-save]:not(:disabled), [data-omo-pv-document-meta-save]:not(:disabled)') !== null;
     }
 
     function releaseActiveLocksWithBeacon() {
@@ -5319,6 +5657,25 @@ foreach ($points as $point) {
         }
 
         const currentCard = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+        const currentPayload = currentPointPayloads[String(pointId)] || null;
+        const cardContentIsEquivalent = currentCard instanceof Element
+            && currentCard.className === nextCard.className
+            && currentCard.innerHTML === nextCard.innerHTML;
+        const navContentMayHaveChanged = !currentPayload
+            || String(currentPayload.navHtml || '') !== String(pointPayload.navHtml || '')
+            || Number(currentPayload.parentId || 0) !== Number(pointPayload.parentId || 0)
+            || Number(currentPayload.position || 0) !== Number(pointPayload.position || 0);
+
+        if (cardContentIsEquivalent) {
+            mergeKnownPointSignature(pointPayload);
+            mergeCurrentPointPayload(pointPayload);
+            if (navContentMayHaveChanged) {
+                replacePointNavHtml(pointPayload);
+            }
+            renderTimingSummary();
+            return currentCard;
+        }
+
         if (currentCard && currentCard.parentNode) {
             currentCard.parentNode.replaceChild(nextCard, currentCard);
         } else {
@@ -5534,14 +5891,26 @@ foreach ($points as $point) {
         });
     }
 
-    function isPointCardProtectedFromRemoteRefresh(card) {
+    function isPointLockTakenOverRemotely(card, pointPayload) {
+        if (!(card instanceof Element) || !pointPayload || !pointPayload.lock) {
+            return false;
+        }
+
+        const pointId = Number(card.getAttribute('data-omo-pv-point-card') || 0);
+        return Number.isInteger(pointId)
+            && pointId > 0
+            && activeLockPointIds.has(pointId)
+            && pointPayload.lock.isLockedByOther === true;
+    }
+
+    function isPointCardProtectedFromRemoteRefresh(card, pointPayload) {
         if (!(card instanceof Element)) {
             return false;
         }
 
         return card.getAttribute('data-omo-pv-point-dirty') === '1'
             || card.getAttribute('data-omo-pv-point-saving') === '1'
-            || card.contains(document.activeElement);
+            || (card.contains(document.activeElement) && !isPointLockTakenOverRemotely(card, pointPayload));
     }
 
     function pointHasRemoteChange(pointPayload) {
@@ -5595,14 +5964,20 @@ foreach ($points as $point) {
         };
     }
 
-    function captureFocusedPointEditor() {
+    function captureFocusedEditor() {
         const activeElement = document.activeElement;
-        if (!(activeElement instanceof Element) || !pointsContainer.contains(activeElement)) {
+        const isDocumentMetadataEditor = activeElement === documentTitleInput || activeElement === documentDescriptionInput;
+        if (
+            !(activeElement instanceof Element)
+            || (!isDocumentMetadataEditor && !pointsContainer.contains(activeElement))
+        ) {
             return null;
         }
 
-        const pointCard = activeElement.closest('[data-omo-pv-point-card]');
-        if (!(pointCard instanceof Element)) {
+        const pointCard = isDocumentMetadataEditor
+            ? null
+            : activeElement.closest('[data-omo-pv-point-card]');
+        if (!isDocumentMetadataEditor && !(pointCard instanceof Element)) {
             return null;
         }
 
@@ -5620,7 +5995,7 @@ foreach ($points as $point) {
         return state;
     }
 
-    function restoreFocusedPointEditor(state) {
+    function restoreFocusedEditor(state) {
         if (!state || !(state.element instanceof Element) || !state.element.isConnected) {
             return;
         }
@@ -5853,7 +6228,7 @@ foreach ($points as $point) {
         forceRefresh = forceRefresh === true;
 
         const scrollAnchor = captureMainScrollAnchor();
-        const focusedEditor = captureFocusedPointEditor();
+        const focusedEditor = captureFocusedEditor();
         const nextPointIds = [];
         pointPayloads.forEach(function (pointPayload) {
             const pointId = Number(pointPayload && pointPayload.id ? pointPayload.id : 0);
@@ -5872,12 +6247,17 @@ foreach ($points as $point) {
                 return;
             }
 
-            if (isPointCardProtectedFromRemoteRefresh(currentCard)) {
+            if (isPointCardProtectedFromRemoteRefresh(currentCard, pointPayload)) {
                 // Keep the local draft DOM, but still accept its server-side position.
                 // Otherwise a reordered point in edit mode is rebuilt from its old
                 // position until the point itself is saved.
                 mergeKnownPointSignature(pointPayload);
                 return;
+            }
+
+            if (isPointLockTakenOverRemotely(currentCard, pointPayload)) {
+                activeLockPointIds.delete(pointId);
+                pendingLockPointIds.delete(pointId);
             }
 
             replacePointHtml(pointPayload);
@@ -5909,7 +6289,7 @@ foreach ($points as $point) {
         syncEmptyNavState();
         renderTimingSummary();
         restoreMainScrollAnchor(scrollAnchor);
-        restoreFocusedPointEditor(focusedEditor);
+        restoreFocusedEditor(focusedEditor);
     }
 
     function ensurePointLock(pointId) {
@@ -5958,11 +6338,58 @@ foreach ($points as $point) {
             });
     }
 
-    function savePoint(pointId, triggerButton) {
-        const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
-        if (!card) {
+    function takeOverPointLock(pointId, triggerButton) {
+        if (!Number.isInteger(pointId) || pointId <= 0) {
             return;
         }
+
+        if (triggerButton instanceof HTMLButtonElement) {
+            triggerButton.disabled = true;
+        }
+
+        postPointAction('take_over_point_lock', pointId)
+            .then(function (payload) {
+                if (!payload || !payload.point) {
+                    throw new Error('take_over_lock_failed');
+                }
+
+                activeLockPointIds.add(pointId);
+                const nextCard = replacePointHtml(payload.point);
+                const titleField = nextCard
+                    ? nextCard.querySelector('[data-omo-pv-point-title="' + pointId + '"]')
+                    : null;
+                if (titleField instanceof HTMLInputElement) {
+                    setFocusedPoint(pointId);
+                    titleField.focus();
+                }
+            })
+            .catch(function (error) {
+                if (error && error.point) {
+                    replacePointHtml(error.point);
+                }
+                const message = String(error && (error.message || error.text) || 'Impossible de reprendre le verrou.');
+                window.alert(message);
+            })
+            .finally(function () {
+                const currentButton = root.querySelector('[data-omo-pv-point-take-over-lock="' + pointId + '"]');
+                if (currentButton instanceof HTMLButtonElement) {
+                    currentButton.disabled = false;
+                }
+            });
+    }
+
+    function savePoint(pointId) {
+        const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+        if (
+            !card
+            || card.getAttribute('data-omo-pv-point-dirty') !== '1'
+            || card.getAttribute('data-omo-pv-point-saving') === '1'
+        ) {
+            return;
+        }
+
+        clearPointAutoSave(pointId);
+        const savedChangeVersion = pointChangeVersions.get(pointId) || 0;
 
         const titleField = card.querySelector('[data-omo-pv-point-title="' + pointId + '"]');
         const typeField = card.querySelector('[data-omo-pv-point-type="' + pointId + '"]');
@@ -5986,10 +6413,8 @@ foreach ($points as $point) {
         formData.append('concerned_holon_id', concernedHolonField ? String(concernedHolonField.value || '0') : '0');
         formData.append('content', htmlField && typeof htmlField.getValue === 'function' ? String(htmlField.getValue() || '') : '');
 
-        if (triggerButton) {
-            card.setAttribute('data-omo-pv-point-saving', '1');
-            syncPointDirtyUi(pointId);
-        }
+        card.setAttribute('data-omo-pv-point-saving', '1');
+        syncPointDirtyUi(pointId);
         if (statusNode) {
             statusNode.textContent = savingLabel;
         }
@@ -6009,10 +6434,15 @@ foreach ($points as $point) {
                 });
             })
             .then(function (payload) {
-
+                const hasChangesAfterSaveStarted = (pointChangeVersions.get(pointId) || 0) !== savedChangeVersion;
+                const drafts = hasChangesAfterSaveStarted ? captureDraftState() : null;
                 const nextCard = replacePointHtml(payload.point);
                 activeLockPointIds.delete(pointId);
-                markPointDirty(pointId, false);
+                if (hasChangesAfterSaveStarted && drafts && drafts[pointId]) {
+                    restoreDraftState({ [pointId]: drafts[pointId] });
+                } else {
+                    markPointDirty(pointId, false);
+                }
                 const nextStatus = nextCard ? nextCard.querySelector('[data-omo-pv-point-status="' + pointId + '"]') : null;
                 if (nextStatus) {
                     nextStatus.textContent = payload.message || savedLabel;
@@ -6022,7 +6452,7 @@ foreach ($points as $point) {
                 if (error && error.point) {
                     replacePointHtml(error.point);
                 }
-                markPointDirty(pointId, true);
+                markPointDirty(pointId, true, false);
                 if (statusNode) {
                     statusNode.textContent = error && error.message ? String(error.message) : (error && error.text ? String(error.text) : 'Erreur');
                 }
@@ -6253,13 +6683,17 @@ foreach ($points as $point) {
             !(documentTitleInput instanceof HTMLInputElement)
             || !(documentDescriptionInput instanceof HTMLTextAreaElement)
             || !(documentVisibilitySelect instanceof Element)
-            || !(documentMetaSaveButton instanceof HTMLButtonElement)
-            || documentMetaSaveButton.disabled
+            || documentMetadataSaving
+            || !documentMetadataIsDirty()
         ) {
             return;
         }
 
-        documentMetaSaveButton.disabled = true;
+        clearDocumentMetadataAutoSave();
+        const savedChangeVersion = documentMetadataChangeVersion;
+        let hasChangesAfterSaveStarted = false;
+        documentMetadataSaving = true;
+        syncDocumentMetadataUi();
         if (documentMetaStatus instanceof Element) {
             documentMetaStatus.textContent = savingLabel;
         }
@@ -6268,8 +6702,9 @@ foreach ($points as $point) {
             title: documentTitleInput.value.trim(),
             description: documentDescriptionInput.value.trim(),
             visibility_type: getDocumentVisibilityValue()
-        })
+            })
             .then(function (payload) {
+                hasChangesAfterSaveStarted = documentMetadataChangeVersion !== savedChangeVersion;
                 mergeCurrentDocumentPayload(payload && payload.document ? payload.document : {});
                 if (documentMetaStatus instanceof Element) {
                     documentMetaStatus.textContent = savedLabel;
@@ -6281,7 +6716,11 @@ foreach ($points as $point) {
                 }
             })
             .finally(function () {
+                documentMetadataSaving = false;
                 syncDocumentMetadataUi();
+                if (hasChangesAfterSaveStarted) {
+                    scheduleDocumentMetadataAutoSave();
+                }
         });
     }
 
@@ -6325,7 +6764,7 @@ foreach ($points as $point) {
                 }
                 documentDescriptionInput.value = summary;
                 resizeDocumentDescriptionInput();
-                syncDocumentMetadataUi();
+                markDocumentMetadataDirty();
                 if (documentMetaStatus instanceof Element) {
                     documentMetaStatus.textContent = autoSummaryReadyLabel;
                 }
@@ -6475,11 +6914,21 @@ foreach ($points as $point) {
             return;
         }
 
+        const takeOverLockButton = event.target.closest('[data-omo-pv-point-take-over-lock]');
+        if (takeOverLockButton && root.contains(takeOverLockButton)) {
+            event.preventDefault();
+            const pointId = Number(takeOverLockButton.getAttribute('data-omo-pv-point-take-over-lock') || 0);
+            if (pointId > 0) {
+                takeOverPointLock(pointId, takeOverLockButton);
+            }
+            return;
+        }
+
         const saveButton = event.target.closest('[data-omo-pv-point-save]');
         if (saveButton && root.contains(saveButton)) {
             const pointId = Number(saveButton.getAttribute('data-omo-pv-point-save') || 0);
             if (pointId > 0) {
-                savePoint(pointId, saveButton);
+                savePoint(pointId);
             }
             return;
         }
@@ -6891,17 +7340,35 @@ foreach ($points as $point) {
     }
 
     mountEditableCards(root);
+    if (autoSaveToggle instanceof HTMLInputElement) {
+        autoSaveToggle.addEventListener('change', function () {
+            getDirtyPointIds().forEach(function (pointId) {
+                if (autoSaveToggle.checked) {
+                    schedulePointAutoSave(pointId);
+                } else {
+                    clearPointAutoSave(pointId);
+                }
+            });
+            if (autoSaveToggle.checked) {
+                scheduleDocumentMetadataAutoSave();
+            } else {
+                clearDocumentMetadataAutoSave();
+            }
+        });
+    }
     [documentTitleInput, documentDescriptionInput].forEach(function (input) {
         if (!(input instanceof Element)) {
             return;
         }
         input.addEventListener('input', function () {
             resizeDocumentDescriptionInput();
-            syncDocumentMetadataUi();
+            markDocumentMetadataDirty();
         });
     });
     if (documentVisibilitySelect instanceof Element) {
-        documentVisibilitySelect.addEventListener('change', syncDocumentMetadataUi);
+        documentVisibilitySelect.addEventListener('change', function () {
+            markDocumentMetadataDirty();
+        });
     }
     if (invitationsButton instanceof HTMLButtonElement) {
         invitationsButton.addEventListener('click', function () {

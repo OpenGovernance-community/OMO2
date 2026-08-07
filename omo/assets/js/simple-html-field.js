@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260804-indicator-group-route';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260807-resource-embed-blocks';
 
     if (
         window.omoSimpleHtmlField
@@ -1497,6 +1497,7 @@
                             saveRange();
                             setRawValue($editor.summernote('code'));
                             refreshIndicatorValueControls(getEditableElement(), state.indicatorValueUi);
+                            emitChange();
                             return safeHtml;
                         }
                     }
@@ -1557,6 +1558,40 @@
 
             if (!safeHtml || !editable || !targetNode || !editable.contains(targetNode)) {
                 return insertHtmlAtCursor(safeHtml);
+            }
+
+            const resourceEmbed = getSingleResourceEmbedFromHtml(safeHtml);
+            if (resourceEmbed) {
+                const markerNode = buildCursorMarkerNode();
+                const targetParent = targetNode.parentNode;
+                const targetNextSibling = targetNode.nextSibling;
+
+                try {
+                    targetNode.replaceWith(markerNode);
+                    if (insertResourceEmbedAtMarker(markerNode, resourceEmbed)) {
+                        saveRange();
+
+                        if (initialized && $editor) {
+                            setRawValue($editor.summernote('code'));
+                        } else {
+                            setRawValue(editable.innerHTML);
+                        }
+                        refreshIndicatorValueControls(editable, state.indicatorValueUi);
+
+                        if (emitChangeAfterReplace) {
+                            emitChange();
+                        }
+                        return safeHtml;
+                    }
+                } catch (error) {
+                    // Restore the original embed below when the block insertion cannot complete.
+                }
+
+                if (markerNode.parentNode) {
+                    markerNode.replaceWith(targetNode);
+                } else if (targetParent) {
+                    targetParent.insertBefore(targetNode, targetNextSibling);
+                }
             }
 
             const temp = document.createElement('div');
