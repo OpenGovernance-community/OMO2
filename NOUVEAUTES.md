@@ -4,6 +4,10 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-06
 
+- L application Projets permet maintenant de selectionner plusieurs projets dans les vues Kanban, liste et Gantt, puis de les archiver ou les supprimer en une seule operation depuis l entete.
+- L import OMO 1 ignore maintenant les taches rattachees a un projet inaccessible, ainsi que leurs sous-taches, au lieu de les afficher comme projets racines dans OMO 2.
+- Lors de l import OMO 1, les taches rattachees a un projet archive sont maintenant archivees elles aussi, y compris dans les hierarchies de sous-taches.
+- L import OMO 1 vers OMO 2 ne bloque plus lorsqu une tache someday depend d un projet date ou lorsqu elle depasse sa date de fin : elle est importee avec un avertissement et sa date ou son rattachement est adapte.
 - OMO peut maintenant etre autorise a envoyer des notifications push depuis une carte personnelle dans les parametres. La souscription est liee a chaque navigateur ou appareil et peut etre retiree a tout moment.
 - Le service worker OMO peut afficher les notifications systeme et ouvrir la prise de decision concernee. Pour le premier test, chaque nouveau message dans une discussion de proposition notifie uniquement l auteur de cette proposition, y compris lorsqu il publie lui-meme le message.
 - L activation des notifications attend maintenant que le service worker soit pret avant de creer la souscription du navigateur.
@@ -21,6 +25,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - L auteur d une proposition ou d un commentaire ne recoit plus de notification pour sa propre action.
 - Les liens de notification utilisent maintenant un identifiant court et demandent une connexion avant de marquer la notification comme lue puis d ouvrir sa page cible.
 - L envoi Push est compatible avec PHP 8.5 sans afficher de message de depreciation OpenSSL dans les reponses de discussion.
+- Les details avant et apres des modifications de proposition affichent a nouveau correctement les retours a la ligne encodes.
 
 ## 2026-08-05
 

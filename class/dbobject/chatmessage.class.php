@@ -274,6 +274,13 @@ class ChatMessage extends DbObject
         return !empty($this->getParametersArray()['anonymous_by_author']);
     }
 
+    public static function normalizeProposalUpdateValue($value)
+    {
+        $value = preg_replace('/&#(?:0*13|x0*d);/i', "\r", (string)$value);
+        $value = html_entity_decode((string)$value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return str_replace(["\r\n", "\r"], "\n", $value);
+    }
+
     public function getProposalUpdateChanges()
     {
         if (self::normalizeMessageType($this->get('message_type')) !== self::TYPE_SYSTEM) {
@@ -294,8 +301,8 @@ class ChatMessage extends DbObject
         ];
         $changes = [];
         foreach ($fieldLabels as $field => $label) {
-            $before = trim((string)($beforeValues[$field] ?? ''));
-            $after = trim((string)($afterValues[$field] ?? ''));
+            $before = trim(self::normalizeProposalUpdateValue($beforeValues[$field] ?? ''));
+            $after = trim(self::normalizeProposalUpdateValue($afterValues[$field] ?? ''));
             if ($before === $after) {
                 continue;
             }
