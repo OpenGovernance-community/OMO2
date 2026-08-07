@@ -1563,3 +1563,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 
 - Les reglages de notifications attendent maintenant que le service worker soit actif avant de creer une souscription navigateur.
 - Les notifications lues sont maintenant visuellement distinguees dans la cloche, et les liens Push, Telegram et e-mail passent par une redirection dediee qui marque la notification comme lue.
+
+## 2026-08-07
+
+- Les rafraichissements de l application Projets conservent maintenant les positions de defilement horizontale et verticale des vues et des colonnes apres les actions sur les projets.
