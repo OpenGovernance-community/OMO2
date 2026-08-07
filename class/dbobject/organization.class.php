@@ -7290,11 +7290,28 @@
 			$holonId = $holon instanceof \dbObject\Holon ? (int)$holon->getId() : 0;
 			if ($holonId > 0) {
 				$directChildIds = array();
-				foreach ($holon->getChildren() as $childHolon) {
-					if ($childHolon instanceof \dbObject\Holon && (int)$childHolon->getId() > 0) {
-						$directChildIds[] = (int)$childHolon->getId();
+				$visitedGroupIds = array();
+				$appendDirectScopeHolonIds = function (\dbObject\Holon $parentHolon) use (&$appendDirectScopeHolonIds, &$directChildIds, &$visitedGroupIds): void {
+					foreach ($parentHolon->getChildren() as $childHolon) {
+						if (!($childHolon instanceof \dbObject\Holon) || (int)$childHolon->getId() <= 0) {
+							continue;
+						}
+
+						$childHolonId = (int)$childHolon->getId();
+						if ((int)$childHolon->get('IDtypeholon') === 3) {
+							if (isset($visitedGroupIds[$childHolonId])) {
+								continue;
+							}
+
+							$visitedGroupIds[$childHolonId] = true;
+							$appendDirectScopeHolonIds($childHolon);
+							continue;
+						}
+
+						$directChildIds[] = $childHolonId;
 					}
-				}
+				};
+				$appendDirectScopeHolonIds($holon);
 				$directChildIds = array_values(array_unique($directChildIds));
 				$descendantIds = $holon->getVisibleDescendantIds(false);
 

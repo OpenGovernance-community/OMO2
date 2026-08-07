@@ -255,7 +255,7 @@ foreach ($pickerItems as $indicator) {
 $displayItemCount = count($statsEntries);
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
-<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260801-cumulative">
+<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260807-range-handles">
 <div
     class="omo-stats omo-panel-view"
     id="omo-stats-root"
