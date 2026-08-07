@@ -171,19 +171,72 @@
         root.removeAttribute('aria-busy');
     }
 
+    function captureScrollPosition(element) {
+        return element ? {left: element.scrollLeft, top: element.scrollTop} : null;
+    }
+
+    function restoreScrollPosition(element, position) {
+        if (!element || !position) {
+            return;
+        }
+        element.scrollLeft = position.left || 0;
+        element.scrollTop = position.top || 0;
+    }
+
+    function captureKanbanColumnScrollPositions() {
+        var columns = {};
+        root.querySelectorAll('[data-omo-projects-cards]').forEach(function (container) {
+            var key = container.getAttribute('data-omo-projects-cards') || '';
+            if (
+                key === ''
+                || (container.scrollHeight <= container.clientHeight && container.scrollWidth <= container.clientWidth)
+            ) {
+                return;
+            }
+            columns[key] = captureScrollPosition(container);
+        });
+        return columns;
+    }
+
+    function restoreKanbanColumnScrollPositions(nextRoot, positions) {
+        if (!nextRoot || !positions) {
+            return;
+        }
+        nextRoot.querySelectorAll('[data-omo-projects-cards]').forEach(function (container) {
+            var key = container.getAttribute('data-omo-projects-cards') || '';
+            if (key !== '' && positions[key]) {
+                restoreScrollPosition(container, positions[key]);
+            }
+        });
+    }
+
     function captureContentScrollPosition() {
+        var body = root.querySelector('.omo-panel-view__body');
         if (currentView === 'list') {
             var list = root.querySelector('[data-omo-projects-list]');
-            return list ? {view: 'list', top: list.scrollTop} : null;
+            return {
+                view: 'list',
+                body: captureScrollPosition(body),
+                content: captureScrollPosition(list)
+            };
         }
 
         if (currentView === 'gantt') {
             var gantt = root.querySelector('[data-omo-projects-gantt-scroll]');
-            return gantt ? {view: 'gantt', left: gantt.scrollLeft, top: gantt.scrollTop} : null;
+            return {
+                view: 'gantt',
+                body: captureScrollPosition(body),
+                content: captureScrollPosition(gantt)
+            };
         }
 
         var board = root.querySelector('[data-omo-projects-board]');
-        return board ? {view: 'kanban', left: board.scrollLeft, top: board.scrollTop} : null;
+        return {
+            view: 'kanban',
+            body: captureScrollPosition(body),
+            content: captureScrollPosition(board),
+            columns: captureKanbanColumnScrollPositions()
+        };
     }
 
     function restoreContentScrollPosition(nextRoot, position, afterRestore) {
@@ -199,11 +252,11 @@
         }
 
         window.requestAnimationFrame(function () {
+            restoreScrollPosition(nextRoot.querySelector('.omo-panel-view__body'), position.body);
+
             if (position.view === 'list') {
                 var list = nextRoot.querySelector('[data-omo-projects-list]');
-                if (list) {
-                    list.scrollTop = position.top;
-                }
+                restoreScrollPosition(list, position.content);
                 if (typeof afterRestore === 'function') {
                     afterRestore();
                 }
@@ -212,10 +265,7 @@
 
             if (position.view === 'gantt') {
                 var gantt = nextRoot.querySelector('[data-omo-projects-gantt-scroll]');
-                if (gantt) {
-                    gantt.scrollLeft = position.left;
-                    gantt.scrollTop = position.top;
-                }
+                restoreScrollPosition(gantt, position.content);
                 if (typeof afterRestore === 'function') {
                     afterRestore();
                 }
@@ -223,10 +273,8 @@
             }
 
             var board = nextRoot.querySelector('[data-omo-projects-board]');
-            if (board) {
-                board.scrollLeft = position.left;
-                board.scrollTop = position.top || 0;
-            }
+            restoreScrollPosition(board, position.content);
+            restoreKanbanColumnScrollPositions(nextRoot, position.columns);
             if (typeof afterRestore === 'function') {
                 afterRestore();
             }
@@ -338,7 +386,7 @@
 
     function refreshRoot(url, options) {
         var targetUrl = url || currentUrl;
-        var preserveScroll = Boolean(options && options.preserveScroll);
+        var preserveScroll = !(options && options.preserveScroll === false);
         var revealProjectId = Number(options && options.revealProjectId || 0);
         var scrollPosition = preserveScroll ? captureContentScrollPosition() : null;
         if (!targetUrl) {

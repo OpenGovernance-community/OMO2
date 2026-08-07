@@ -1072,4 +1072,4 @@ $projectTexts = [
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
 <script src="/common/calendar/event-editor.js?v=20260804-project-events"></script>
-<script src="/omo/api/projects/projects.js?v=20260807-project-bulk-actions-permissions"></script>
+<script src="/omo/api/projects/projects.js?v=20260807-project-scroll-preservation"></script>
