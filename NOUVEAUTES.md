@@ -2,6 +2,24 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-07
+
+- Les listes de projets de l editeur de holon proposent les portees local, enfants directs, descendants et globale, avec une recherche rapide pour les longues listes et un affichage compact defilant.
+- Le formulaire d edition et de creation de holon reprend aussi le selecteur de portee des listes de projets.
+- Les portees de listes de projets utilisent desormais les capsules segmentees communes de l interface.
+- Les portees de projets enfants directs et descendants incluent desormais aussi le holon courant.
+- Les projets sont maintenant classes par defaut selon leur importance strategique calculee.
+- La recherche rapide dans les listes de projets masque correctement les projets qui ne correspondent pas.
+- Les listes de projets regroupent maintenant leur portee et leur recherche dans une barre compacte avec icone de loupe.
+- Les champs de recherche de projets restent visibles et utilisent maintenant le style compact sans fond ni hauteur imposee.
+- La barre de projets reutilise le composant de filtres des apps afin de garder une recherche transparente et compacte.
+- Le chargement des portees de projets accepte correctement les collections de holons utilisees par l editeur.
+- L editeur de holon limite les choix d une liste de projets aux projets rattaches au holon courant.
+- Le droit CAN_EDIT_HOLON_PROPERTIES permet maintenant de renseigner les valeurs locales des proprietes heritees d un modele, sans autoriser la modification de leur definition ni des proprietes verrouillees.
+- La suppression de projets, seule ou en selection, exige maintenant le droit contextuel CAN_DELETE_PROJECT ; la creation reste soumise a CAN_CREATE_PROJECT.
+- Les actions de selection de projets sont correctement masquees lorsqu aucun projet n est coche.
+- Les actions d archivage et de suppression de projets selectionnes utilisent maintenant des icones avec une infobulle accessible.
+
 ## 2026-08-06
 
 - L application Projets permet maintenant de selectionner plusieurs projets dans les vues Kanban, liste et Gantt, puis de les archiver ou les supprimer en une seule operation depuis l entete.
@@ -26,6 +44,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les liens de notification utilisent maintenant un identifiant court et demandent une connexion avant de marquer la notification comme lue puis d ouvrir sa page cible.
 - L envoi Push est compatible avec PHP 8.5 sans afficher de message de depreciation OpenSSL dans les reponses de discussion.
 - Les details avant et apres des modifications de proposition affichent a nouveau correctement les retours a la ligne encodes.
+- Les canaux indisponibles ne sont plus affiches dans les reglages de notifications, tandis que les administrateurs d organisation voient un avertissement de configuration adapte.
 
 ## 2026-08-05
 

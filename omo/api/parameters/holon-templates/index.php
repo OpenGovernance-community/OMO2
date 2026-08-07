@@ -108,6 +108,13 @@ $omoHolonTemplateTexts = [
     'propertyPlaceholderEmpty' => omoHolonTemplateT('parameters.holon_templates.property.placeholder.empty'),
     'propertyListItemType' => omoHolonTemplateT('parameters.holon_templates.property.list_item_type'),
     'propertyAllowedHolonTypes' => omoHolonTemplateT('parameters.holon_templates.property.allowed_holon_types'),
+    'propertyProjectScope' => omoHolonTemplateT('parameters.holon_templates.property.project_scope'),
+    'propertyProjectScopeLocal' => omoHolonTemplateT('parameters.holon_templates.property.project_scope.local'),
+    'propertyProjectScopeChildren' => omoHolonTemplateT('parameters.holon_templates.property.project_scope.children'),
+    'propertyProjectScopeDescendants' => omoHolonTemplateT('parameters.holon_templates.property.project_scope.descendants'),
+    'propertyProjectScopeGlobal' => omoHolonTemplateT('parameters.holon_templates.property.project_scope.global'),
+    'propertyProjectSearch' => omoHolonTemplateT('parameters.holon_templates.property.project_search'),
+    'propertyProjectEmpty' => omoHolonTemplateT('parameters.holon_templates.property.project_empty'),
     'propertyNoTemplateForTypes' => omoHolonTemplateT('parameters.holon_templates.property.no_template_for_types'),
     'propertyEmpty' => omoHolonTemplateT('parameters.holon_templates.property.empty'),
     'propertyDetailFallback' => omoHolonTemplateT('parameters.holon_templates.property.detail_fallback'),
@@ -145,6 +152,7 @@ $omoHolonTemplateTexts = [
     'deletedModel' => omoHolonTemplateT('parameters.holon_templates.status.deleted_model'),
 ];
 ?>
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260807-project-picker-search">
 <div
     class="omo-template-editor omo-panel-view"
     id="omo-holon-template-page"
@@ -2390,6 +2398,7 @@ function omoHolonTemplateNormalizeProperty(property) {
         value: '',
         inheritedValue: '',
         listItemType: 'text',
+        projectScope: 'local',
         listHolonTypeIds: [],
         mandatory: false,
         locked: false,
@@ -2405,6 +2414,9 @@ function omoHolonTemplateNormalizeProperty(property) {
 
     normalized.formatId = Number(normalized.formatId || 1);
     normalized.listItemType = String(normalized.listItemType || 'text');
+    normalized.projectScope = ['local', 'children', 'descendants', 'global'].indexOf(String(normalized.projectScope || '')) >= 0
+        ? String(normalized.projectScope)
+        : 'local';
     if ((omoHolonTemplateState.data.listItemTypes || []).every(function (itemType) {
         return String(itemType.id || '') !== normalized.listItemType;
     })) {
@@ -2518,6 +2530,86 @@ function omoHolonTemplateRenderListConfigHtml(property) {
         + '</div>';
 }
 
+function omoHolonTemplateGetProjectCatalog(scope) {
+    const catalogs = omoHolonTemplateState.data.projectCatalogs || {};
+    const normalizedScope = ['local', 'children', 'descendants', 'global'].indexOf(String(scope || '')) >= 0
+        ? String(scope)
+        : 'local';
+
+    if (Array.isArray(catalogs[normalizedScope])) {
+        return catalogs[normalizedScope];
+    }
+
+    return normalizedScope === 'local' ? (omoHolonTemplateState.data.projectCatalog || []) : [];
+}
+
+function omoHolonTemplateFindProject(projectId) {
+    const targetId = Number(projectId || 0);
+    const scopes = ['local', 'children', 'descendants', 'global'];
+    for (let index = 0; index < scopes.length; index += 1) {
+        const project = omoHolonTemplateGetProjectCatalog(scopes[index]).find(function (candidate) {
+            return Number(candidate.id || 0) === targetId;
+        });
+        if (project) {
+            return project;
+        }
+    }
+
+    return null;
+}
+
+function omoHolonTemplateReadProjectPickerSelectedIds(picker) {
+    if (!picker) {
+        return [];
+    }
+
+    return String(picker.dataset.selectedIds || '').split(',').map(function (value) {
+        return Number(value || 0);
+    }).filter(Boolean);
+}
+
+function omoHolonTemplateRenderProjectPickerHtml(property, listValues, valueDisabled) {
+    const scope = String(property.projectScope || 'local');
+    const projectOptions = omoHolonTemplateGetProjectCatalog(scope);
+    const selectedIds = Array.from(new Set(listValues.map(Number).filter(Boolean)));
+    const selectedIdMap = new Set(selectedIds);
+    const scopeButtons = [
+        ['local', omoHolonTemplateTexts.propertyProjectScopeLocal || ''],
+        ['children', omoHolonTemplateTexts.propertyProjectScopeChildren || ''],
+        ['descendants', omoHolonTemplateTexts.propertyProjectScopeDescendants || ''],
+        ['global', omoHolonTemplateTexts.propertyProjectScopeGlobal || '']
+    ].map(function (option) {
+        const isActive = scope === option[0];
+        return '<button type="button" class="omo-segmented__button omo-template-project-picker__scope-button'
+            + (isActive ? ' is-active' : '') + '" data-project-scope="' + option[0]
+            + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">'
+            + omoHolonTemplateEscapeHtml(option[1]) + '</button>';
+    }).join('');
+    const searchHtml = '<label class="omo-view-filter__search omo-template-project-picker__search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" placeholder="'
+        + omoHolonTemplateEscapeHtml(omoHolonTemplateTexts.propertyProjectSearch || '') + '" aria-label="'
+        + omoHolonTemplateEscapeHtml(omoHolonTemplateTexts.propertyProjectSearch || '') + '"'
+        + valueDisabled + '></label>';
+    const optionsHtml = projectOptions.length === 0
+        ? '<div class="omo-template-property__empty-note">' + omoHolonTemplateEscapeHtml(omoHolonTemplateTexts.propertyProjectEmpty || '') + '</div>'
+        : projectOptions.map(function (project) {
+            const checked = selectedIdMap.has(Number(project.id)) ? ' checked' : '';
+            return ''
+                + '<label class="omo-template-project-picker__option">'
+                + '  <input type="checkbox" class="omo-template-property__value omo-template-property__value--project" value="' + Number(project.id) + '"' + checked + valueDisabled + '>'
+                + '  <span>' + omoHolonTemplateEscapeHtml(project.title) + (project.holonLabel ? ' <small>' + omoHolonTemplateEscapeHtml(project.holonLabel) + '</small>' : '') + '</span>'
+                + '</label>';
+        }).join('');
+
+    return ''
+        + '<div class="omo-template-project-picker" data-project-picker data-selected-ids="' + selectedIds.join(',') + '">'
+        + '  <div class="omo-view-filter__input omo-template-project-picker__toolbar">'
+        + '  <div class="omo-segmented omo-template-project-picker__scopes" role="group" aria-label="' + omoHolonTemplateEscapeHtml(omoHolonTemplateTexts.propertyProjectScope || '') + '">' + scopeButtons + '</div>'
+        + searchHtml
+        + '  </div>'
+        + '  <div class="omo-template-project-picker__list">' + optionsHtml + '</div>'
+        + '</div>';
+}
+
 function omoHolonTemplateRenderValueInputHtml(property) {
     const normalizedProperty = omoHolonTemplateNormalizeProperty(property);
     const formatId = Number(normalizedProperty.formatId || 0);
@@ -2554,22 +2646,7 @@ function omoHolonTemplateRenderValueInputHtml(property) {
         }
 
         if (String(normalizedProperty.listItemType) === 'project') {
-            const projectOptions = omoHolonTemplateState.data.projectCatalog || [];
-
-            if (!projectOptions.length) {
-                return '<div class="omo-template-property__empty-note">Aucun projet disponible.</div>';
-            }
-
-            return '<div class="omo-template-property__check-grid">'
-                + projectOptions.map(function (project) {
-                    const checked = listValues.map(Number).indexOf(Number(project.id)) >= 0 ? ' checked' : '';
-                    return ''
-                        + '<label class="omo-template-property__check-option">'
-                        + '  <input type="checkbox" class="omo-template-property__value omo-template-property__value--project" value="' + Number(project.id) + '"' + checked + valueDisabled + '>'
-                        + '  <span>' + omoHolonTemplateEscapeHtml(project.title) + (project.holonLabel ? ' <small>' + omoHolonTemplateEscapeHtml(project.holonLabel) + '</small>' : '') + '</span>'
-                        + '</label>';
-                }).join('')
-                + '</div>';
+            return omoHolonTemplateRenderProjectPickerHtml(normalizedProperty, listValues, valueDisabled);
         }
 
         return omoHolonTemplateRenderSimpleListInput(normalizedProperty.listItemType, listValues, !normalizedProperty.canEditValue);
@@ -2718,6 +2795,11 @@ function omoHolonTemplateSerializePropertyValue(row, formatId, listItemType) {
         }
 
         if (String(listItemType || 'text') === 'project') {
+            const projectPicker = row.querySelector('[data-project-picker]');
+            if (projectPicker) {
+                const selectedIds = omoHolonTemplateReadProjectPickerSelectedIds(projectPicker);
+                return selectedIds.length ? JSON.stringify(selectedIds) : '';
+            }
             const selectedIds = Array.from(row.querySelectorAll('.omo-template-property__value--project:checked')).map(function (input) {
                 return Number(input.value || 0);
             }).filter(Boolean);
@@ -2757,8 +2839,15 @@ function omoHolonTemplateSerializePropertyValue(row, formatId, listItemType) {
         if (String(listItemType || 'text') === 'authority') {
             items = Array.from(row.querySelectorAll('[data-authority-entry]')).map(omoHolonTemplateGetAuthorityEntryPayload).filter(Boolean);
         } else if (String(listItemType || 'text') === 'holon' || String(listItemType || 'text') === 'project') {
-            const modifier = String(listItemType || 'text') === 'holon' ? 'holon' : 'project';
-            items = Array.from(row.querySelectorAll('.omo-template-property__value--' + modifier + ':checked')).map(function (input) { return Number(input.value || 0); }).filter(Boolean);
+            const projectPicker = String(listItemType || 'text') === 'project'
+                ? row.querySelector('[data-project-picker]')
+                : null;
+            if (projectPicker) {
+                items = omoHolonTemplateReadProjectPickerSelectedIds(projectPicker);
+            } else {
+                const modifier = String(listItemType || 'text') === 'holon' ? 'holon' : 'project';
+                items = Array.from(row.querySelectorAll('.omo-template-property__value--' + modifier + ':checked')).map(function (input) { return Number(input.value || 0); }).filter(Boolean);
+            }
         } else if (String(listItemType || 'text') === 'detail') {
             items = Array.from(row.querySelectorAll('.omo-template-list-input__row--detail')).map(function (detailRow) {
                 return { title: String((detailRow.querySelector('.omo-template-property__value-item--detail-title') || {}).value || '').trim(), description: String((detailRow.querySelector('.omo-template-property__value-item--detail-description') || {}).value || '').trim() };
@@ -2793,6 +2882,7 @@ function omoHolonTemplateReadPropertyState(row) {
         name: (row.querySelector('.omo-template-property__name') || {}).value || '',
         formatId: formatId,
         listItemType: listItemType,
+        projectScope: String((row.querySelector('.omo-template-project-picker__scope-button[aria-pressed="true"]') || { dataset: {} }).dataset.projectScope || 'local'),
         listHolonTypeIds: listHolonTypeIds,
         value: omoHolonTemplateSerializePropertyValue(row, formatId, listItemType)
     };
@@ -2933,6 +3023,7 @@ function omoHolonTemplateReadPropertyState(row) {
         name: (row.querySelector('.omo-template-property__name') || {}).value || '',
         formatId: formatId,
         listItemType: listItemType,
+        projectScope: String((row.querySelector('.omo-template-project-picker__scope-button[aria-pressed="true"]') || { dataset: {} }).dataset.projectScope || 'local'),
         listHolonTypeIds: listHolonTypeIds,
         mandatory: localMandatory,
         locked: localLocked,
@@ -2963,9 +3054,7 @@ function omoHolonTemplateFormatInheritedItem(item, property) {
 
     if (listItemType === 'project') {
         const projectId = Number(item || 0);
-        const project = (omoHolonTemplateState.data.projectCatalog || []).find(function (entry) {
-            return Number(entry.id) === projectId;
-        });
+        const project = omoHolonTemplateFindProject(projectId);
         return project ? project.title : rawValue;
     }
 
@@ -3630,6 +3719,28 @@ if (omoHolonTemplateElements.root) {
             return;
         }
 
+        if (event.target.matches('.omo-template-property__value--project')) {
+            const projectPicker = event.target.closest('[data-project-picker]');
+            if (!projectPicker) {
+                return;
+            }
+
+            const selectedIds = new Set(omoHolonTemplateReadProjectPickerSelectedIds(projectPicker));
+            Array.from(projectPicker.querySelectorAll('.omo-template-property__value--project')).forEach(function (projectInput) {
+                const projectId = Number(projectInput.value || 0);
+                if (projectId <= 0) {
+                    return;
+                }
+                if (projectInput.checked) {
+                    selectedIds.add(projectId);
+                } else {
+                    selectedIds.delete(projectId);
+                }
+            });
+            projectPicker.dataset.selectedIds = Array.from(selectedIds).join(',');
+            return;
+        }
+
         if (event.target.matches('[data-authority-deletion-choice]')) {
             const authorityRow = event.target.closest('[data-authority-entry]');
             if (authorityRow) {
@@ -3686,7 +3797,38 @@ if (omoHolonTemplateElements.root) {
         row.replaceWith(replacement);
     });
 
+    omoHolonTemplateElements.root.addEventListener('input', function (event) {
+        if (!event.target.matches('.omo-template-project-picker__search')) {
+            return;
+        }
+
+        const searchValue = String(event.target.value || '').trim().toLocaleLowerCase();
+        const projectPicker = event.target.closest('[data-project-picker]');
+        if (!projectPicker) {
+            return;
+        }
+
+        Array.from(projectPicker.querySelectorAll('.omo-template-project-picker__option')).forEach(function (option) {
+            option.hidden = searchValue !== ''
+                && !String(option.textContent || '').toLocaleLowerCase().includes(searchValue);
+        });
+    });
+
     omoHolonTemplateElements.root.addEventListener('click', function (event) {
+        const projectScopeButton = event.target.closest('.omo-template-project-picker__scope-button');
+        if (projectScopeButton) {
+            const projectPicker = projectScopeButton.closest('[data-project-picker]');
+            const propertyRow = projectScopeButton.closest('.omo-template-property');
+            if (!projectPicker || !propertyRow || projectScopeButton.getAttribute('aria-pressed') === 'true') {
+                return;
+            }
+
+            const propertyState = omoHolonTemplateReadPropertyState(propertyRow);
+            propertyState.projectScope = String(projectScopeButton.getAttribute('data-project-scope') || 'local');
+            propertyRow.replaceWith(omoHolonTemplateCreatePropertyRow(propertyState));
+            return;
+        }
+
         const selectButton = event.target.closest('[data-template-select]');
         if (selectButton) {
             const targetTemplateId = Number(selectButton.getAttribute('data-template-select') || 0);
@@ -4580,6 +4722,78 @@ Promise.all([
     display: block;
     color: var(--color-text-light);
     line-height: 1.3;
+}
+
+.omo-template-project-picker {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-template-project-picker__toolbar {
+    min-width: 0;
+}
+
+.omo-template-project-picker__search {
+    position: relative;
+    background: transparent;
+}
+
+.omo-template-project-picker__search img {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    left: 10px;
+    width: 15px;
+    height: 15px;
+    opacity: 0.6;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.omo-template-project-picker__search .generic-form-control {
+    min-width: 0;
+    min-height: 32px !important;
+    height: 32px !important;
+    padding: 3px 12px 3px 42px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.omo-template-project-picker__list {
+    display: grid;
+    align-content: start;
+    max-height: 50vh;
+    overflow-y: auto;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.omo-template-project-picker__option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 7px 4px;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+    cursor: pointer;
+}
+
+.omo-template-project-picker__option[hidden] {
+    display: none;
+}
+
+.omo-template-project-picker__option:last-child {
+    border-bottom: 0;
+}
+
+.omo-template-project-picker__option > span {
+    min-width: 0;
+}
+
+.omo-template-project-picker__option small {
+    color: var(--color-text-light);
 }
 
 .omo-template-property__value-control {

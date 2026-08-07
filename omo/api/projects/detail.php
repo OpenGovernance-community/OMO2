@@ -259,6 +259,7 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                         : omoProjectsT('projects.detail.none');
                     $subprojectResponsible = omoProjectsGetUserLabel($subproject->getResponsible());
                     $subprojectCanEdit = omoProjectsCanManageProject($subproject, $context);
+                    $subprojectCanDelete = omoProjectsCanDeleteProject($subproject, $context);
                     ?>
                     <article
                         class="omo-project-detail__subproject-item omo-project-detail__subproject-item--<?= omoApiEscape($subprojectStatus) ?><?= $subprojectIsProject ? '' : ' omo-project-detail__subproject-item--task' ?>"
@@ -292,7 +293,7 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                                 <?php endforeach; ?>
                                 <option disabled>──────────</option>
                                 <option value="__archive__"><?= omoApiEscape(omoProjectsT('projects.detail.task.archive')) ?></option>
-                                <option value="__delete__"><?= omoApiEscape(omoProjectsT('projects.detail.task.delete')) ?></option>
+                                <?php if ($subprojectCanDelete): ?><option value="__delete__"><?= omoApiEscape(omoProjectsT('projects.detail.task.delete')) ?></option><?php endif; ?>
                             </select>
                         <?php endif; ?>
                     </article>

@@ -3194,13 +3194,12 @@
 			$definitionsByPropertyId = array();
 			$templatePropertyIds = array();
 			$templateAuthorityIdMap = $this->getTemplateAuthorityInstanceIdMap();
-			$templateCanEditProperties = false;
+			$canEditHolonProperties = $this->isAllowed('CAN_EDIT_HOLON_PROPERTIES');
 
 			$templateId = (int)$this->get('IDholon_template');
 			if ($templateId > 0) {
 				$template = new self();
 				if ($template->load($templateId)) {
-					$templateCanEditProperties = $template->isAllowed('CAN_EDIT_TEMPLATE_PROPERTIES');
 					foreach ($template->getHolonCreationPropertyDefinitions() as $definition) {
 						$propertyId = (int)($definition['id'] ?? 0);
 						if ($propertyId > 0) {
@@ -3257,10 +3256,11 @@
 				}
 				$definition['effectiveMandatory'] = (bool)$property->get('mandatory');
 				$definition['effectiveLocked'] = (bool)$property->get('locked');
+				// Les valeurs ajoutees ici restent locales au holon. Le droit HOLON
+				// autorise donc leur edition, y compris pour une propriete definie
+				// par le modele, sans rendre sa definition heritee modifiable.
 				$definition['canEditValue'] = !((bool)$property->get('locked'))
-					&& (isset($templatePropertyIds[$propertyId])
-						? $templateCanEditProperties
-						: $this->isAllowed('CAN_EDIT_HOLON_PROPERTIES'));
+					&& $canEditHolonProperties;
 				$definition['isTemplateProperty'] = isset($templatePropertyIds[$propertyId]);
 				$definition['isDirectProperty'] = !isset($templatePropertyIds[$propertyId]);
 				$definition['canEditDefinition'] = !isset($templatePropertyIds[$propertyId])
