@@ -1993,7 +1993,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             gap: 4px 8px;
             padding: 10px 12px;
             border-radius: var(--radius-md);
-            background: color-mix(in srgb, var(--color-text-light, #64748b) 8%, white);
+            background: color-mix(in srgb, var(--color-text-light, #64748b) 8%, var(--color-surface-alt, #f8fafc));
         }
 
         .omo-decision-majority-judgment__proposal-list,

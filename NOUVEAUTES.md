@@ -2,6 +2,58 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-06
+
+- L application Projets permet maintenant de selectionner plusieurs projets dans les vues Kanban, liste et Gantt, puis de les archiver ou les supprimer en une seule operation depuis l entete.
+- L import OMO 1 ignore maintenant les taches rattachees a un projet inaccessible, ainsi que leurs sous-taches, au lieu de les afficher comme projets racines dans OMO 2.
+- Lors de l import OMO 1, les taches rattachees a un projet archive sont maintenant archivees elles aussi, y compris dans les hierarchies de sous-taches.
+- L import OMO 1 vers OMO 2 ne bloque plus lorsqu une tache someday depend d un projet date ou lorsqu elle depasse sa date de fin : elle est importee avec un avertissement et sa date ou son rattachement est adapte.
+- OMO peut maintenant etre autorise a envoyer des notifications push depuis une carte personnelle dans les parametres. La souscription est liee a chaque navigateur ou appareil et peut etre retiree a tout moment.
+- Le service worker OMO peut afficher les notifications systeme et ouvrir la prise de decision concernee. Pour le premier test, chaque nouveau message dans une discussion de proposition notifie uniquement l auteur de cette proposition, y compris lorsqu il publie lui-meme le message.
+- L activation des notifications attend maintenant que le service worker soit pret avant de creer la souscription du navigateur.
+- Le cache statique ne peut plus empecher l installation du service worker utilise pour les notifications.
+- Docker peut utiliser un certificat de developpement local signe par `mkcert`, afin de permettre les service workers et les notifications sur `localtest.me` et ses sous-domaines.
+- Les champs de dates des scrutins se rechargent correctement apres enregistrement dans l editeur de consentement.
+- Une souscription de notification deja presente dans le navigateur est maintenant synchronisee automatiquement avec le serveur a l ouverture des reglages.
+- En cas d echec du service Push dans Brave, les reglages indiquent le parametre Brave necessaire pour autoriser les messages Push.
+- Sur telephone, le menu Parametres reste visible au-dessus de la barre de navigation mobile.
+- Les reglages de notifications expliquent maintenant un echec de demarrage du service worker au lieu de laisser la case grisee indefiniment.
+- Les notifications sont maintenant organisees par organisation : chaque personne peut choisir, pour les propositions et les discussions de scrutins, les canaux navigateur, Telegram et e-mail. Chaque evenement est aussi conserve dans une cloche OMO, qui marque les elements lus a l ouverture de leur lien.
+- Les reglages de notifications sont presentes par groupes d applications actives, avec un tableau compact des evenements et de leurs canaux.
+- Une notification non lue regroupe maintenant les evenements repetes de la meme discussion ou proposition, afin d eviter les alertes en double et les rafales de messages.
+- Les notifications de discussion indiquent maintenant le scrutin et l auteur du commentaire.
+- L auteur d une proposition ou d un commentaire ne recoit plus de notification pour sa propre action.
+- Les liens de notification utilisent maintenant un identifiant court et demandent une connexion avant de marquer la notification comme lue puis d ouvrir sa page cible.
+- L envoi Push est compatible avec PHP 8.5 sans afficher de message de depreciation OpenSSL dans les reponses de discussion.
+- Les details avant et apres des modifications de proposition affichent a nouveau correctement les retours a la ligne encodes.
+
+## 2026-08-05
+
+- Ajout de la maquette publique `index3.php` pour OMO : une page d accueil independante, centree sur le cap, le cadre et le pilotage des collectifs, avec les valeurs de maturite organisationnelle et les fondations techniques du projet.
+- L option de visibilite a ete retiree de l editeur des holon templates. Les nouveaux modeles restent invisibles par defaut, sans modifier le statut des modeles existants.
+- Les droits des checklists sont maintenant regroupes dans leur propre section, avec les actions creer, modifier puis supprimer, appliquees a leur editeur.
+- Une checklist peut maintenant etre supprimee depuis son menu d actions, uniquement avec le droit de suppression correspondant.
+- Le resume des participants d un scrutin affiche maintenant le total en evidence, la repartition des holons, membres et invites, ainsi que la liste des personnes au survol.
+- Le resume des parametres de scrutin utilise maintenant les surfaces du theme, pour garder ses libelles lisibles en mode sombre.
+- L onglet du navigateur de l espace OMO affiche maintenant le nom de l organisation ouverte.
+- L ouverture d un tutoriel depuis un pack de parcours OMO fonctionne a nouveau.
+- Dans la vue liste de Structure, les listes d autorites affichent desormais leurs libelles au lieu de leurs identifiants techniques.
+- Les autorites heritees par plusieurs niveaux de modeles dans la vue liste de Structure resolvent aussi leur libelle, au lieu d afficher les blocs JSON concatenes.
+- L editeur de holon templates affiche maintenant le libelle des autorites heritees, y compris lorsque plusieurs niveaux de templates contribuent a la liste.
+- Le deplacement de documents propose maintenant une selection visuelle du holon, avec la carte des cercles et roles utilisee dans les selecteurs des PV, puis les dossiers compatibles du holon choisi.
+- La popup de deplacement de document affiche son chemin final, un arbre de dossiers et un titre simplifie; son indication de destination est alignee avec ses actions.
+- Les lignes de l arbre de dossiers du deplacement de document ont une hauteur fixe et la liste defile lorsqu elle est longue.
+- Le champ de recherche du deplacement de document affiche une loupe et le choix des dossiers utilise un libelle plus explicite.
+- La carte des holons du deplacement de document utilise une zone carree lorsque la hauteur disponible le permet.
+- La carte des holons du deplacement de document distingue les destinations autorisees en couleur des destinations sans droit de depot en gris, tout en laissant tous les holons navigables.
+- Dans cette carte de deplacement, les roles sans personne attribuee conservent leur couleur; le gris indique uniquement une destination non autorisee.
+- La carte des holons affiche le nom du role selectionne uniquement dans sa capsule de contexte pour rester lisible.
+- Les libelles de la carte des holons s adaptent maintenant au type selectionne : roles et sous-cercles immediats d un cercle, role et voisins, et libelle au survol.
+- Les libelles des cercles au survol sont dessines au-dessus des libelles de roles dans la carte des holons.
+- Les cartes des cercles et roles restent stables dans les fenetres de selection de ressources : le canvas est retire du flux de mise en page, les popups reservent la largeur de leur scrollbar et la popup de deplacement masque tout depassement horizontal residuel.
+- Les evenements existants sans document associe proposent maintenant les modeles de PV disponibles lors de l ajout ulterieur d un PV.
+- Les organisations creees par import OMO 1 recoivent maintenant elles aussi les tutoriels de base, comme les organisations creees directement.
+
 ## 2026-08-04
 
 - Dans les editeurs Summernote de documents et de PV, les ressources integrees sont maintenant placees dans leur propre paragraphe. Le curseur se place directement dans une ligne normale apres l insertion, un clic ne place plus le focus dans l embed, Entree depuis un embed cree toujours une ligne de texte normale, et sa suppression retire aussi ce paragraphe.
@@ -1416,6 +1468,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Les taches sans holon propre heritent maintenant des droits de gestion de leur projet parent pour le statut, l archivage et la suppression.
 - Les invitations peuvent a nouveau verifier les contraintes d administration d une organisation sans appeler une methode protegee du holon.
 - Les bornes minimum et maximum d administrateurs indiquent maintenant clairement leur valeur heritee dans l editeur de modeles de holons.
+- L editeur de modeles de holons permet maintenant de changer le holon auquel un modele est associe, sans pouvoir le deplacer au-dela de ses instances existantes, avec une liste de destinations compactement indentee a l ouverture et un libelle simple une fois choisie. Seuls les cercles et la racine de l organisation sont proposes.
 - L editeur de modeles de holons ouvre maintenant sur un ecran d accueil, au lieu d afficher directement un formulaire de nouveau modele.
 - L ecran d accueil de l editeur de modeles disparait correctement des l ouverture du formulaire de creation.
 - Les cartes de parametres sont maintenant visibles pour les admins sans activer leur mode admin; seul l editeur de modeles de holons demande encore cette activation explicite.
@@ -1467,3 +1520,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Le menu Aide affiche maintenant sous ses blocs l adresse e-mail de l administrateur du serveur avec le libelle Webmaster.
 - La page publique des scrutins affiche elle aussi l adresse e-mail du webmaster sous les blocs du menu Aide.
 - Le lien Webmaster des pages publiques utilise aussi l adresse MAIL_USER comme repli lorsque l adresse d administrateur dediee n est pas definie.
+# 2026-08-06
+
+- Les reglages de notifications attendent maintenant que le service worker soit actif avant de creer une souscription navigateur.
+- Les notifications lues sont maintenant visuellement distinguees dans la cloche, et les liens Push, Telegram et e-mail passent par une redirection dediee qui marque la notification comme lue.

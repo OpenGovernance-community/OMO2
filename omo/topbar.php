@@ -262,6 +262,10 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Se deconnecter',
             'context' => 'Logout button label in the OMO topbar profile panel.',
         ],
+        'topbar.notifications.button' => [
+            'text' => 'Notifications',
+            'context' => 'Button label for the OMO notification inbox bell.',
+        ],
     ];
 }
 
@@ -381,6 +385,9 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
     $currentUserId = function_exists('commonGetCurrentUserId')
         ? (int)commonGetCurrentUserId()
         : (int)($_SESSION['currentUser'] ?? 0);
+    if ($currentUserId > 0 && empty($_SESSION['omo_notification_inbox_csrf'])) {
+        $_SESSION['omo_notification_inbox_csrf'] = bin2hex(random_bytes(32));
+    }
     $hasOrganizationContext = !empty($organizationContext['isValid']) && !empty($organizationContext['id']);
     $helpUsesOrganizationContext = $variant === 'app';
     $helpOrganizationId = $currentUserId > 0 && $helpUsesOrganizationContext
@@ -493,6 +500,13 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'mode' => 'fetch',
             'iconUrl' => '/common/assets/icon-topbar-tension.png',
             'appendCurrentRouteContext' => true,
+        ],
+        'notifications' => [
+            'enabled' => !$isDemoGuest && $variant === 'app' && $currentUserId > 0 && $hasOrganizationContext,
+            'buttonLabel' => omoTopbarTranslate('topbar.notifications.button'),
+            'inboxUrl' => '/omo/api/notifications/inbox.php',
+            'markReadUrl' => '/omo/api/notifications/mark_read.php',
+            'csrfToken' => (string)($_SESSION['omo_notification_inbox_csrf'] ?? ''),
         ],
         'logoutLabel' => omoTopbarTranslate('topbar.logout'),
         'modal' => [

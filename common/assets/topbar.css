@@ -142,6 +142,11 @@
     color: var(--topbar-action-text, #111827);
 }
 
+.common-topbar__action--icon-only {
+    min-width: var(--topbar-height, 56px);
+    padding: 0 13px;
+}
+
 .common-topbar__action-label {
     white-space: nowrap;
 }
@@ -154,6 +159,25 @@
     height: 22px;
     line-height: 1;
     flex: 0 0 22px;
+}
+
+.common-topbar__notification-button {
+    position: relative;
+}
+
+.common-topbar__notification-badge {
+    position: absolute;
+    top: 5px;
+    right: 7px;
+    min-width: 17px;
+    padding: 1px 4px;
+    border-radius: 999px;
+    background: var(--color-danger, #dc2626);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 15px;
+    text-align: center;
 }
 
 .common-topbar__action img,
@@ -245,6 +269,13 @@
     overflow-y: auto;
 }
 
+.common-topbar__menu[data-topbar-menu="notifications"] {
+    left: auto;
+    right: 0;
+    width: min(420px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+}
+
 .common-topbar__menu.is-open {
     display: flex;
 }
@@ -258,6 +289,60 @@
 
 .common-topbar__menu--help {
     gap: 12px;
+}
+
+.omo-notification-inbox {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-notification-inbox__item {
+    position: relative;
+    display: grid;
+    gap: 4px;
+    padding: 11px 12px;
+    border-radius: var(--radius-md, 6px);
+    color: var(--topbar-menu-text, #f9fafb);
+    text-decoration: none;
+    opacity: 0.7;
+}
+
+.omo-notification-inbox__item:hover,
+.omo-notification-inbox__item:focus-visible {
+    background: var(--topbar-menu-item-bg, rgba(255,255,255,0.06));
+    opacity: 1;
+}
+
+.omo-notification-inbox__item.is-unread {
+    background: var(--topbar-menu-item-bg, rgba(255,255,255,0.06));
+    opacity: 1;
+}
+
+.omo-notification-inbox__item.is-unread::before {
+    position: absolute;
+    top: 15px;
+    left: 4px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--color-primary, #2563eb);
+    content: '';
+}
+
+.omo-notification-inbox__item strong {
+    font-size: 14px;
+}
+
+.omo-notification-inbox__item:not(.is-unread) strong {
+    font-weight: 400;
+}
+
+.omo-notification-inbox__item span,
+.omo-notification-inbox__empty {
+    margin: 0;
+    color: var(--topbar-menu-text-muted, rgba(255,255,255,0.78));
+    font-size: 12px;
+    line-height: 1.4;
 }
 
 .common-topbar__help-item {
@@ -879,6 +964,8 @@ html[data-theme="dark"] .common-topbar-profile-preference__icon--theme-dark {
 .common-topbar-modal__body {
     padding: 0px;
     overflow: auto;
+    min-width: 0;
+    scrollbar-gutter: stable;
 }
 
 .common-topbar-remote-state {

@@ -112,7 +112,9 @@
 
     function getNodeDisplayColor(node, fallbackColor) {
         var color = String(node && node.mycolor || fallbackColor || '').trim();
-        return roleHasAttachedUsers(node) ? color : colorToDesaturatedGray(color, fallbackColor);
+        return node && node.ignoreAssignmentColor
+            ? color
+            : (roleHasAttachedUsers(node) ? color : colorToDesaturatedGray(color, fallbackColor));
     }
 
     function getNodeVisualOpacity(node, currentNode, rootNode) {
@@ -123,6 +125,9 @@
 
     function getNodeFill(node, opacity, chartColors) {
         var type = String(node && node.type || '');
+        if (node && node.isSelectable === false) {
+            return colorToTransparentFill('#94a3b8', type === '2' || type === '3' ? 0.08 + (0.12 * opacity) : 0.3 + (0.3 * opacity), '#94a3b8');
+        }
         var color = getNodeDisplayColor(node, type === '4' ? chartColors.rootFill : chartColors.roleFill);
         if (type === '2' || type === '3') {
             return colorToTransparentFill(node && node.mycolor, 0.06 + (0.16 * opacity), chartColors.groupFill);
@@ -135,6 +140,9 @@
 
     function getNodeStroke(node, opacity, chartColors) {
         var type = String(node && node.type || '');
+        if (node && node.isSelectable === false) {
+            return colorToTransparentFill('#94a3b8', 0.18 + (0.32 * opacity), chartColors.strokeSoft);
+        }
         if (type === '3') {
             return colorToTransparentFill(node && node.mycolor, 0.2 + (0.45 * opacity), chartColors.strokeSoft);
         }
@@ -248,7 +256,24 @@
         });
     }
 
-    function createStructureCanvas(map, data, getSelectedId, onSelect) {
+    function getCircleAncestor(node) {
+        var current = node;
+        var guard = 0;
+        while (current && guard < 100) {
+            if (String(current.type || '') === '2') {
+                return current;
+            }
+            current = current.parent || null;
+            guard += 1;
+        }
+        return null;
+    }
+
+    function getParentCircle(node) {
+        return getCircleAncestor(node && node.parent ? node.parent : null);
+    }
+
+    function createStructureCanvas(map, data, getSelectedId, onSelect, isSelectable, ignoreAssignmentColor) {
         map.innerHTML = '<canvas class="omo-holon-scope-picker__canvas"></canvas><div class="omo-holon-scope-picker__tooltip" hidden></div>';
         var canvas = map.querySelector('.omo-holon-scope-picker__canvas');
         var tooltip = map.querySelector('.omo-holon-scope-picker__tooltip');
@@ -297,8 +322,6 @@
             if (width !== renderedWidth || height !== renderedHeight || dpr !== renderedDpr) {
                 canvas.width = Math.floor(width * dpr);
                 canvas.height = Math.floor(height * dpr);
-                canvas.style.width = width + 'px';
-                canvas.style.height = height + 'px';
                 renderedWidth = width;
                 renderedHeight = height;
                 renderedDpr = dpr;
@@ -327,12 +350,34 @@
                 projectedNode.x = ((node.x - focusedNode.x) * zoomScale) + (width / 2);
                 projectedNode.y = ((node.y - focusedNode.y) * zoomScale) + (height / 2);
                 projectedNode.r = Math.max(1, node.r * zoomScale * getNodeRadiusFactor(node));
+                projectedNode.isSelectable = typeof isSelectable === 'function' ? isSelectable(node.ID) : true;
+                projectedNode.ignoreAssignmentColor = ignoreAssignmentColor === true;
                 return projectedNode;
             });
             var currentNode = drawnNodes.find(function (node) { return String(node.ID) === selectedId; }) || drawnNodes[0] || null;
             var rootNode = drawnNodes[0] || null;
             var chartColors = getChartColors();
             var labels = [];
+
+            function addLabel(node) {
+                if (!node) {
+                    return;
+                }
+                var existing = labels.find(function (entry) {
+                    return String(entry.node && entry.node.ID || '') === String(node.ID || '');
+                });
+                if (existing) {
+                    return;
+                }
+                labels.push({
+                    node: node,
+                    textColor: String(node.type) === '1' ? chartColors.labelDark : chartColors.labelLight,
+                    strokeColor: String(node.type) === '1' ? null : chartColors.labelDark,
+                    depth: Number(node.depth || 0),
+                    isRole: String(node.type) === '1',
+                    isHovered: String(node.ID || '') === hoveredNodeId
+                });
+            }
 
             context.setTransform(dpr, 0, 0, dpr, 0, 0);
             context.clearRect(0, 0, width, height);
@@ -371,13 +416,32 @@
                     context.strokeStyle = isActive ? 'rgba(255, 255, 255, 0.92)' : 'rgba(255, 255, 255, 0.72)';
                     context.stroke();
                 }
-                if (node.r >= 22 && (isActive || isHovered || (node.parent && currentNode && String(node.parent.ID) === String(currentNode.ID)))) {
-                    labels.push({
-                        node: node,
-                        textColor: String(node.type) === '1' ? chartColors.labelDark : chartColors.labelLight,
-                        strokeColor: String(node.type) === '1' ? null : chartColors.labelDark
-                    });
+                var selectedType = String(currentNode && currentNode.type || '');
+                var selectedCircle = selectedType === '2' ? currentNode : getCircleAncestor(currentNode);
+                var nodeCircle = getCircleAncestor(node);
+                var nodeParentCircle = getParentCircle(node);
+                var isRoleNeighbor = selectedType === '1'
+                    && String(node.type || '') === '1'
+                    && selectedCircle
+                    && nodeCircle
+                    && String(nodeCircle.ID) === String(selectedCircle.ID);
+                var isCircleContent = selectedType === '2'
+                    && nodeId !== selectedId
+                    && (String(node.type || '') === '1' || String(node.type || '') === '2')
+                    && nodeParentCircle
+                    && String(nodeParentCircle.ID) === String(currentNode.ID);
+
+                if (node.r >= 22 && (isHovered || isRoleNeighbor || isCircleContent)) {
+                    addLabel(node);
                 }
+            });
+            labels.sort(function (left, right) {
+                var leftPriority = left.isHovered ? 2 : (left.isRole ? 0 : 1);
+                var rightPriority = right.isHovered ? 2 : (right.isRole ? 0 : 1);
+                if (leftPriority !== rightPriority) {
+                    return leftPriority - rightPriority;
+                }
+                return left.depth - right.depth;
             });
             labels.forEach(function (entry) { drawMapNodeLabel(context, entry.node, entry.textColor, entry.strokeColor); });
             updateTooltip();
@@ -447,6 +511,11 @@
         var host = settings.host instanceof Element ? settings.host : null;
         var organizationId = normalizeId(settings.organizationId);
         var selectedHolonId = normalizeId(settings.initialHolonId);
+        var allowEmptySelection = settings.allowEmptySelection === true;
+        var ignoreHolonAssignments = settings.ignoreHolonAssignments === true;
+        var selectableHolonIds = Array.isArray(settings.selectableHolonIds)
+            ? settings.selectableHolonIds.map(normalizeId).filter(function (id) { return id > 0; })
+            : null;
         var showModes = settings.showModes !== false;
         var scope = ['local', 'children', 'descendants'].indexOf(settings.initialScope) !== -1
             ? settings.initialScope
@@ -457,6 +526,10 @@
         var directChildren = Object.create(null);
         var labels = settings.labels || {};
         var redrawMap = function () {};
+
+        function isSelectableHolon(holonId) {
+            return selectableHolonIds === null || selectableHolonIds.indexOf(normalizeId(holonId)) !== -1;
+        }
 
         if (!host || organizationId <= 0) {
             return { matches: function () { return true; } };
@@ -512,7 +585,7 @@
         fetch('/omo/api/getStructureData.php?oid=' + encodeURIComponent(String(organizationId)), { credentials: 'same-origin' })
             .then(function (response) { return response.ok ? response.json() : null; })
             .then(function (data) {
-                if (selectedHolonId <= 0) {
+                if (selectedHolonId <= 0 && !allowEmptySelection) {
                     selectedHolonId = normalizeId(data && data.ID);
                 }
                 flatten(data, 0, nodes, descendants, directChildren);
@@ -524,7 +597,7 @@
                     redrawMap = createStructureCanvas(map, data, function () { return selectedHolonId; }, function (nodeId) {
                         selectedHolonId = normalizeId(nodeId);
                         notify();
-                    });
+                    }, isSelectableHolon, ignoreHolonAssignments);
                     notify();
                 });
             })
@@ -533,6 +606,10 @@
         return {
             matches: matches,
             getSelectedHolonId: function () { return selectedHolonId; },
+            setSelectedHolonId: function (holonId) {
+                selectedHolonId = normalizeId(holonId);
+                notify();
+            },
             getSelectedHolonLabel: function () {
                 var selectedNode = nodes.find(function (node) { return Number(node.id) === selectedHolonId; });
                 return selectedNode ? String(selectedNode.label || '') : '';

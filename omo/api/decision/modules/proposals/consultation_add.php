@@ -2,6 +2,7 @@
 require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
 require_once dirname(__DIR__) . '/common.php';
+require_once dirname(__DIR__, 5) . '/common/notification_center.php';
 
 use dbObject\DecisionProcess;
 use dbObject\DecisionProposal;
@@ -197,5 +198,10 @@ if (empty($saveResult['status'])) {
 }
 
 $createdCount++;
+try {
+    notificationCenterDispatchDecisionProposal($proposal);
+} catch (\Throwable $exception) {
+    error_log('decision_proposal_notification_failed: ' . $exception->getMessage());
+}
 
 omoDecisionConsultationProposalRedirect($context, 'success', $createdCount);

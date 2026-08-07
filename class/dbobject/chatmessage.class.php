@@ -118,6 +118,26 @@ class ChatMessage extends DbObject
         return $messages;
     }
 
+    public static function getParticipantUserIdsForThread($threadId)
+    {
+        $rows = self::fetchAll(
+            'SELECT DISTINCT `IDuser` FROM `chat_message`
+             WHERE `IDchat_thread` = :thread_id
+               AND `message_type` = :message_type
+               AND `IDuser` IS NOT NULL
+               AND `IDuser` > 0',
+            [
+                'thread_id' => (int)$threadId,
+                'message_type' => self::TYPE_USER,
+            ]
+        );
+        return array_values(array_unique(array_filter(array_map(static function ($row) {
+            return is_array($row) ? (int)($row['IDuser'] ?? 0) : 0;
+        }, is_array($rows) ? $rows : []), static function ($userId) {
+            return $userId > 0;
+        })));
+    }
+
     public static function createUserMessage(ChatThread $thread, $userId, $content, $isAnonymous = false, $anonymousByAuthor = false, $participantId = 0)
     {
         $message = new self();
@@ -254,6 +274,13 @@ class ChatMessage extends DbObject
         return !empty($this->getParametersArray()['anonymous_by_author']);
     }
 
+    public static function normalizeProposalUpdateValue($value)
+    {
+        $value = preg_replace('/&#(?:0*13|x0*d);/i', "\r", (string)$value);
+        $value = html_entity_decode((string)$value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return str_replace(["\r\n", "\r"], "\n", $value);
+    }
+
     public function getProposalUpdateChanges()
     {
         if (self::normalizeMessageType($this->get('message_type')) !== self::TYPE_SYSTEM) {
@@ -274,8 +301,8 @@ class ChatMessage extends DbObject
         ];
         $changes = [];
         foreach ($fieldLabels as $field => $label) {
-            $before = trim((string)($beforeValues[$field] ?? ''));
-            $after = trim((string)($afterValues[$field] ?? ''));
+            $before = trim(self::normalizeProposalUpdateValue($beforeValues[$field] ?? ''));
+            $after = trim(self::normalizeProposalUpdateValue($afterValues[$field] ?? ''));
             if ($before === $after) {
                 continue;
             }

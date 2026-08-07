@@ -1329,7 +1329,23 @@ function parseListItems(rawValue) {
   } catch (error) {
   }
 
-  return splitListItems(source);
+  const items = [];
+  splitListItems(source).forEach(function (segment) {
+    try {
+      const decodedSegment = JSON.parse(segment);
+      if (Array.isArray(decodedSegment)) {
+        decodedSegment.forEach(function (item) {
+          items.push(item);
+        });
+        return;
+      }
+    } catch (error) {
+    }
+
+    items.push(segment);
+  });
+
+  return items;
 }
 
 function normalizeDetailedListItem(item) {
@@ -1366,6 +1382,13 @@ function formatListItemValue(item, entry) {
     const projectId = Number(item && typeof item === "object" ? item.id : item);
     return projectId > 0 && structureProjectTitles[projectId]
       ? String(structureProjectTitles[projectId])
+      : String(item || "").trim();
+  }
+
+  if (String(entry && entry.listItemType || "") === "authority") {
+    const authorityId = Number(item && typeof item === "object" ? item.id : item);
+    return authorityId > 0 && structureAuthorityLabels[authorityId]
+      ? String(structureAuthorityLabels[authorityId])
       : String(item || "").trim();
   }
 
@@ -1935,6 +1958,7 @@ $(document)
     const canExportStructure = <?= $canExportStructure ? 'true' : 'false' ?>;
     let root = null;
     let structureProjectTitles = {};
+    let structureAuthorityLabels = {};
 
     let canvas, hiddenCanvas, context, hiddenContext;
     let pack, nodes, nodeCount, focus, currentnode, hoverNode = null;
@@ -2455,6 +2479,9 @@ $(document)
 
             structureProjectTitles = response && response.projectTitles && typeof response.projectTitles === "object"
               ? response.projectTitles
+              : {};
+            structureAuthorityLabels = response && response.authorityLabels && typeof response.authorityLabels === "object"
+              ? response.authorityLabels
               : {};
             const normalizedRoot = normalizeStructureNode(response, 0);
 

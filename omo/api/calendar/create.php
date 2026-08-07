@@ -387,7 +387,7 @@ if ($eventId > 0) {
 
 $associatedDocument = $isEditMode ? $event->getAssociatedDocument() : null;
 $pvTemplatesPayload = [];
-if (!$isEditMode) {
+if (!$isEditMode || !($associatedDocument instanceof Document)) {
     $pvTemplates = new \dbObject\ArrayDocument();
     $pvTemplates->loadVisiblePvTemplatesForOrganization($organizationId);
     foreach ($pvTemplates as $pvTemplate) {

@@ -69,6 +69,7 @@
     var quickSearchEmpty = root.querySelector('[data-omo-projects-search-empty]');
     var pendingDisplayFilters = null;
     var filterPanelIsOpen = false;
+    var selectedProjectIds = {};
 
     try {
         columns = JSON.parse(root.getAttribute('data-omo-projects-columns') || '[]');
@@ -1259,6 +1260,65 @@
         return postProjectAction(projectId, 'update_status', {status: status});
     }
 
+    function getSelectedProjectIds() {
+        return Object.keys(selectedProjectIds).map(function (projectId) {
+            return Number(projectId);
+        }).filter(function (projectId) {
+            return Number.isInteger(projectId) && projectId > 0;
+        });
+    }
+
+    function syncProjectSelection() {
+        var selectedIds = getSelectedProjectIds();
+        var selectedCount = selectedIds.length;
+        var bulkActions = root.querySelector('[data-omo-projects-bulk-actions]');
+        var bulkCount = root.querySelector('[data-omo-projects-bulk-count]');
+        if (bulkActions) {
+            bulkActions.hidden = selectedCount === 0;
+        }
+        if (bulkCount) {
+            bulkCount.textContent = formatText(texts.selectionCount || '{count} sélectionnés', {count: selectedCount});
+        }
+        root.querySelectorAll('[data-omo-project-select]').forEach(function (input) {
+            var projectId = Number(input.value || 0);
+            input.checked = Number.isInteger(projectId) && !!selectedProjectIds[projectId];
+        });
+        root.querySelectorAll('[data-omo-project-card], [data-omo-project-list-item], [data-omo-project-gantt-item]').forEach(function (projectNode) {
+            var projectId = Number(projectNode.getAttribute('data-project-id') || 0);
+            projectNode.classList.toggle('is-selected', Number.isInteger(projectId) && !!selectedProjectIds[projectId]);
+        });
+    }
+
+    function postBulkProjectAction(action) {
+        var projectIds = getSelectedProjectIds();
+        var payload = new FormData();
+        payload.append('project_action', action);
+        payload.append('oid', root.getAttribute('data-omo-projects-oid') || '0');
+        payload.append('cid', String(routeCid));
+        projectIds.forEach(function (projectId) {
+            payload.append('project_ids[]', String(projectId));
+        });
+        return fetch(resolveUrl(actionUrl), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            body: payload
+        }).then(function (response) {
+            return response.text().then(function (text) {
+                var data;
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    data = null;
+                }
+                if (!response.ok || !data || !data.success) {
+                    throw new Error(data && data.message ? data.message : texts.actionError);
+                }
+                return data;
+            });
+        });
+    }
+
     function formatText(template, values) {
         return String(template || '').replace(/\{([a-z_]+)\}/gi, function (match, key) {
             return values && values[key] !== undefined ? String(values[key]) : match;
@@ -1842,7 +1902,7 @@
         }
 
         var listItem = event.target.closest('[data-omo-project-list-item], [data-omo-project-gantt-item]');
-        if (listItem && !event.target.closest('select, option, button, a')) {
+        if (listItem && !event.target.closest('select, option, button, input, a')) {
             event.preventDefault();
             var listProjectId = Number(listItem.getAttribute('data-project-id') || 0);
             if (listProjectId > 0) {
@@ -1852,13 +1912,59 @@
         }
 
         var card = event.target.closest('[data-omo-project-card]');
-        if (!card || event.target.closest('select, option, button, a')) {
+        if (!card || event.target.closest('select, option, button, input, a')) {
             return;
         }
         var projectId = Number(card.getAttribute('data-project-id') || 0);
         if (projectId > 0) {
             navigateProject(projectId, 'detail', buildDetailUrl(projectId));
         }
+    });
+
+    root.addEventListener('click', function (event) {
+        var bulkActionButton = event.target.closest('[data-omo-projects-bulk-action]');
+        if (!bulkActionButton) {
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        var selectedCount = getSelectedProjectIds().length;
+        if (selectedCount <= 0) {
+            return;
+        }
+        var action = bulkActionButton.getAttribute('data-omo-projects-bulk-action') || '';
+        var isDelete = action === 'delete';
+        var confirmation = isDelete ? texts.deleteSelectedConfirm : texts.archiveSelectedConfirm;
+        if (!window.confirm(formatText(confirmation || '', {count: selectedCount}))) {
+            return;
+        }
+        bulkActionButton.disabled = true;
+        postBulkProjectAction(isDelete ? 'bulk_delete_projects' : 'bulk_archive_projects').then(function () {
+            selectedProjectIds = {};
+            return refreshRoot(currentUrl, {preserveScroll: true});
+        }).catch(function (error) {
+            window.omoNotify(error.message || texts.actionError, 'error');
+        }).finally(function () {
+            bulkActionButton.disabled = false;
+        });
+    });
+
+    root.addEventListener('change', function (event) {
+        var selectionInput = event.target.closest('[data-omo-project-select]');
+        if (!selectionInput) {
+            return;
+        }
+        event.stopPropagation();
+        var projectId = Number(selectionInput.value || 0);
+        if (!Number.isInteger(projectId) || projectId <= 0) {
+            return;
+        }
+        if (selectionInput.checked) {
+            selectedProjectIds[projectId] = true;
+        } else {
+            delete selectedProjectIds[projectId];
+        }
+        syncProjectSelection();
     });
 
     root.addEventListener('pointerover', function (event) {
