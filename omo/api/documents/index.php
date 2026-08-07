@@ -3710,9 +3710,7 @@ if (!is_string($documentsPayload)) {
                         ? (fullDate !== ''
                             ? 'Preparation ouverte avant la reunion du ' + fullDate + '.'
                             : 'Preparation du PV avant la reunion.')
-                        : (fullDate !== ''
-                            ? 'Edition du PV cree le ' + fullDate + '.'
-                            : 'Edition du PV.'),
+                        : '',
                     variant: 'top-sheet',
                     persistKey: 'omo-pv-preparation-' + String(documentId),
                     keepMountedOnClose: true

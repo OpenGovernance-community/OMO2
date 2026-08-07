@@ -646,6 +646,10 @@ html[data-theme="dark"] .black-icon,
         transform 0.15s ease;
 }
 
+.generic-action-button[hidden] {
+    display: none !important;
+}
+
 .generic-action-button--main {
     background: var(--color-primary, #2563eb);
     color: var(--color-text-inverse, #ffffff);

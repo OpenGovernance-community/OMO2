@@ -193,6 +193,51 @@ function omoDocumentsPvEditorBuildAttendancePayload(\dbObject\Document $document
     return omoDocumentsPvEditorBuildAttendancePayloadFromDocument($document, $organizationId);
 }
 
+function omoDocumentsPvEditorParseLocalDateTime($rawValue): ?\DateTimeImmutable
+{
+    $rawValue = trim((string)$rawValue);
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $rawValue)) {
+        return null;
+    }
+
+    try {
+        $timezone = new \DateTimeZone(date_default_timezone_get());
+    } catch (\Throwable $exception) {
+        $timezone = new \DateTimeZone('UTC');
+    }
+
+    $dateTime = \DateTimeImmutable::createFromFormat('!Y-m-d\\TH:i', $rawValue, $timezone);
+    return $dateTime instanceof \DateTimeImmutable && $dateTime->format('Y-m-d\\TH:i') === $rawValue
+        ? $dateTime
+        : null;
+}
+
+function omoDocumentsPvEditorBuildEventEmbedPayload(\dbObject\Event $event): array
+{
+    $startAt = $event->get('start_at');
+    $endAt = $event->get('end_at');
+    $formatDateTime = static function ($value): string {
+        return $value instanceof \DateTimeInterface ? $value->format('d.m.Y H:i') : '';
+    };
+    $scheduleLabel = trim(
+        $formatDateTime($startAt)
+        . ($endAt instanceof \DateTimeInterface ? ' - ' . $formatDateTime($endAt) : '')
+    );
+    $locationData = $event->getLocationDisplayData();
+
+    return [
+        'id' => (int)$event->getId(),
+        'contextHolonId' => (int)$event->get('IDholon'),
+        'title' => trim((string)$event->get('title')),
+        'scheduleLabel' => $scheduleLabel,
+        'locationLabel' => trim(implode(' | ', array_filter([
+            trim((string)($locationData['address'] ?? '')),
+            trim((string)($locationData['videoUrl'] ?? '')),
+        ]))),
+        'startAt' => $startAt instanceof \DateTimeInterface ? $startAt->format(DATE_ATOM) : '',
+    ];
+}
+
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     omoDocumentsPvEditorJsonResponse([
         'status' => false,
@@ -209,6 +254,7 @@ $editorToken = trim((string)($_POST['editor_token'] ?? ''));
 $document = omoDocumentsPvEditorLoadDocumentOrFail($documentId, $organizationId, $currentUserId);
 $hasTeamApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'team');
 $hasStructureApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'structure');
+$hasCalendarApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'calendar');
 
 if ($action === 'set_pv_template') {
     $templateResult = $document->updatePvTemplateState(
@@ -598,6 +644,39 @@ if ($action === 'unlock_point') {
     ]);
 }
 
+if ($action === 'take_over_point_lock') {
+    $pointId = isset($_POST['point_id']) ? (int)$_POST['point_id'] : 0;
+    $point = new \dbObject\DocumentPvPoint();
+    if (
+        $pointId <= 0
+        || !$point->load($pointId)
+        || (int)$point->get('IDdocument') !== (int)$document->getId()
+        || !$document->isPvEditor($currentUserId)
+        || !$document->canUserManagePvDocument($currentUserId)
+        || !$document->canUserEditPvPoint($point, $currentUserId)
+        || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $lockResult = $point->takeOverEditLockAsPvEditor($organizationId, $currentUserId, $editorToken);
+    if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => trim((string)($lockResult['text'] ?? 'Impossible de reprendre le verrou.')),
+            'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
+        ], 400);
+    }
+
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
+    ]);
+}
+
 if ($action === 'save_point') {
     $pointId = isset($_POST['point_id']) ? (int)$_POST['point_id'] : 0;
     $point = new \dbObject\DocumentPvPoint();
@@ -849,6 +928,96 @@ if ($action === 'toggle_attendance') {
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
         'attendance' => omoDocumentsPvEditorBuildAttendancePayload($document, $organizationId),
+    ]);
+}
+
+if ($action === 'create_event') {
+    if (
+        !$hasCalendarApplication
+        || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $title = trim((string)($_POST['title'] ?? ''));
+    $description = trim((string)($_POST['description'] ?? ''));
+    $startAt = omoDocumentsPvEditorParseLocalDateTime($_POST['start_at'] ?? '');
+    $endAt = omoDocumentsPvEditorParseLocalDateTime($_POST['end_at'] ?? '');
+    $holonId = isset($_POST['IDholon']) ? (int)$_POST['IDholon'] : 0;
+
+    if ($title === '') {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.event.error_title'),
+        ], 400);
+    }
+    if (!($startAt instanceof \DateTimeImmutable)) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.event.error_start'),
+        ], 400);
+    }
+    if (!($endAt instanceof \DateTimeImmutable)) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.event.error_end'),
+        ], 400);
+    }
+    if ($endAt < $startAt) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.event.error_end_before_start'),
+        ], 400);
+    }
+
+    $organization = new \dbObject\Organization();
+    $holon = new \dbObject\Holon();
+    if (
+        $holonId <= 0
+        || !$organization->load($organizationId)
+        || !$holon->load($holonId)
+        || !$organization->containsHolon($holon)
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.event.error_holon'),
+        ], 400);
+    }
+    if (!$holon->isAllowed('CAN_CREATE_EVENT', false, $currentUserId)) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $event = new \dbObject\Event();
+    $event->set('IDorganization', $organizationId);
+    $event->set('IDholon', $holonId);
+    $event->set('IDuser', $currentUserId);
+    $event->set('active', 1);
+    $event->set('title', $title);
+    $event->set('description', $description !== '' ? $description : null);
+    $event->set('status', \dbObject\Event::STATUS_CONFIRMED);
+    $event->set('timezone', date_default_timezone_get());
+    $event->set('start_at', $startAt);
+    $event->set('end_at', $endAt);
+    $event->set('is_all_day', 0);
+    $saveResult = $event->save();
+    if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => trim((string)($saveResult['text'] ?? '')) !== ''
+                ? trim((string)$saveResult['text'])
+                : omoDocumentsPvEditorActionT('documents.pv_editor.event.create_error'),
+        ], 400);
+    }
+
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'event' => omoDocumentsPvEditorBuildEventEmbedPayload($event),
     ]);
 }
 
