@@ -86,14 +86,20 @@ foreach (StatIndicator::getMeasurementFrequencyCatalog() as $frequency) {
     $measurementScheduleOptions[$frequency] = omoStatsMeasurementScheduleOptions($frequency);
 }
 
-if (count($referencePoints) === 0 && $referenceType !== StatIndicator::REFERENCE_CEILING) {
+if (count($referencePoints) === 0 || $referenceType === StatIndicator::REFERENCE_CEILING) {
+    $startValue = $referenceType === StatIndicator::REFERENCE_CEILING && is_numeric($ceilingValue)
+        ? (float)$ceilingValue
+        : 0;
+    $endValue = $referenceType === StatIndicator::REFERENCE_CEILING && is_numeric($ceilingValue)
+        ? (float)$ceilingValue
+        : 100;
     $startPoint = new StatIndicatorReferencePoint();
     $startPoint->set('position_percent', 0);
-    $startPoint->set('value', 0);
+    $startPoint->set('value', $startValue);
     $startPoint->set('point_at', new DateTime());
     $endPoint = new StatIndicatorReferencePoint();
     $endPoint->set('position_percent', 100);
-    $endPoint->set('value', 100);
+    $endPoint->set('value', $endValue);
     $endPoint->set('point_at', new DateTime('+1 month'));
     $referencePoints = [$startPoint, $endPoint];
 }

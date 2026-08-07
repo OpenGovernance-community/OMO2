@@ -165,4 +165,4 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         </form>
     <?php endif; ?>
 </article>
-<script src="/omo/api/stats/chart.js?v=20260801-cumulative-history"></script>
+<script src="/omo/api/stats/chart.js?v=20260807-range-handles"></script>
