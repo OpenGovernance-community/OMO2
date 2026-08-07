@@ -36,6 +36,7 @@ if ($organizationId <= 0) {
     }
 }
 ?>
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260807-project-picker-search">
 <div class="omo-holon-create omo-panel-view">
     <div class="omo-panel-view__header">
         <div class="omo-panel-view__header-copy">
@@ -798,8 +799,34 @@ function getHolonCatalog() {
     return Array.isArray(state.data.holonCatalog) ? state.data.holonCatalog : [];
 }
 
-function getProjectCatalog() {
-    return Array.isArray(state.data.projectCatalog) ? state.data.projectCatalog : [];
+function getProjectCatalog(scope) {
+    const normalizedScope = ['local', 'children', 'descendants', 'global'].indexOf(String(scope || '')) >= 0
+        ? String(scope)
+        : 'local';
+    const catalogs = state.data.projectCatalogs || {};
+
+    if (Array.isArray(catalogs[normalizedScope])) {
+        return catalogs[normalizedScope];
+    }
+
+    return normalizedScope === 'local' && Array.isArray(state.data.projectCatalog)
+        ? state.data.projectCatalog
+        : [];
+}
+
+function findProject(projectId) {
+    const targetId = Number(projectId || 0);
+    const scopes = ['local', 'children', 'descendants', 'global'];
+    for (let index = 0; index < scopes.length; index += 1) {
+        const project = getProjectCatalog(scopes[index]).find(function (candidate) {
+            return Number(candidate.id || 0) === targetId;
+        });
+        if (project) {
+            return project;
+        }
+    }
+
+    return null;
 }
 
 function getAuthorityCatalog() {
@@ -1348,6 +1375,53 @@ if (window.genericMultilineListPaste && typeof window.genericMultilineListPaste.
     });
 }
 
+function readProjectPickerSelectedIds(projectPicker) {
+    return projectPicker
+        ? String(projectPicker.dataset.selectedIds || '').split(',').map(function (value) {
+            return Number(value || 0);
+        }).filter(Boolean)
+        : [];
+}
+
+function renderProjectPicker(property, selectedIds, scope) {
+    const selectedIdMap = new Set(selectedIds);
+    const projectScope = ['local', 'children', 'descendants', 'global'].indexOf(String(scope || '')) >= 0
+        ? String(scope)
+        : 'local';
+    const projects = getProjectCatalog(projectScope);
+    const scopeButtons = [
+        ['local', 'Local'],
+        ['children', 'Enfants directs'],
+        ['descendants', 'Descendants'],
+        ['global', 'Global']
+    ].map(function (option) {
+        const isActive = projectScope === option[0];
+        return '<button type="button" class="omo-segmented__button omo-holon-create__project-scope-button'
+            + (isActive ? ' is-active' : '') + '" data-project-scope="' + option[0]
+            + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">' + option[1] + '</button>';
+    }).join('');
+    const searchHtml = '<label class="omo-view-filter__search omo-holon-create__project-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" placeholder="Rechercher un projet..." aria-label="Rechercher un projet"></label>';
+    const listHtml = projects.length === 0
+        ? '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Aucun projet disponible.</div>'
+        : projects.map(function (project) {
+            const checked = selectedIdMap.has(Number(project.id || 0)) ? ' checked' : '';
+            return ''
+                + '<label class="omo-holon-create__project-option">'
+                + '  <input type="checkbox" class="omo-holon-create__property-value omo-holon-create__property-value--project" value="' + Number(project.id || 0) + '"' + checked + '>'
+                + '  <span>' + escapeHtml(project.title || '') + (project.holonLabel ? '<small>' + escapeHtml(project.holonLabel) + '</small>' : '') + '</span>'
+                + '</label>';
+        }).join('');
+
+    return ''
+        + '<div class="omo-holon-create__project-picker" data-project-picker data-selected-ids="' + selectedIds.join(',') + '">'
+        + '  <div class="omo-view-filter__input omo-holon-create__project-toolbar">'
+        + '  <div class="omo-segmented omo-holon-create__project-scopes" role="group" aria-label="Portée des projets">' + scopeButtons + '</div>'
+        + searchHtml
+        + '  </div>'
+        + '  <div class="omo-holon-create__project-list">' + listHtml + '</div>'
+        + '</div>';
+}
+
 function renderPropertyInput(property) {
     const formatId = Number(property.formatId || 0);
     const localValue = property.value !== undefined && property.value !== null
@@ -1388,23 +1462,8 @@ function renderPropertyInput(property) {
         }
 
         if (String(property.listItemType || 'text') === 'project') {
-            const projectOptions = getProjectCatalog();
             const selectedIds = parseStoredListValue(localValue).map(Number);
-
-            if (!projectOptions.length) {
-                return '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Aucun projet disponible.</div>';
-            }
-
-            return '<div class="omo-holon-create__check-grid">'
-                + projectOptions.map(function (project) {
-                    const checked = selectedIds.indexOf(Number(project.id)) >= 0 ? ' checked' : '';
-                    return ''
-                        + '<label class="omo-holon-create__check-option">'
-                        + '  <input type="checkbox" class="omo-holon-create__property-value omo-holon-create__property-value--project" value="' + Number(project.id) + '"' + checked + '>'
-                        + '  <span>' + escapeHtml(project.title) + (project.holonLabel ? '<small>' + escapeHtml(project.holonLabel) + '</small>' : '') + '</span>'
-                        + '</label>';
-                }).join('')
-                + '</div>';
+            return renderProjectPicker(property, selectedIds, property.projectScope || 'local');
         }
 
         return renderSimpleListInput(property.listItemType || 'text', parseStoredListValue(localValue));
@@ -1453,9 +1512,7 @@ function formatInheritedHolonItem(item) {
 
 function formatInheritedProjectItem(item) {
     const projectId = Number(item || 0);
-    const project = getProjectCatalog().find(function (entry) {
-        return Number(entry.id || 0) === projectId;
-    });
+    const project = findProject(projectId);
 
     return project ? project.title : String(item || '');
 }
@@ -1984,6 +2041,11 @@ function serializePropertyValue(row) {
         }
 
         if (listItemType === 'project') {
+            const projectPicker = row.querySelector('[data-project-picker]');
+            if (projectPicker) {
+                const selectedIds = readProjectPickerSelectedIds(projectPicker);
+                return selectedIds.length ? JSON.stringify(selectedIds) : '';
+            }
             const selectedIds = Array.from(row.querySelectorAll('.omo-holon-create__property-value--project:checked')).map(function (input) {
                 return Number(input.value || 0);
             }).filter(Boolean);
@@ -2020,9 +2082,10 @@ function serializePropertyValue(row) {
     }
 
     if (formatId === 7) {
+        const projectPicker = listItemType === 'project' ? row.querySelector('[data-project-picker]') : null;
         const items = listItemType === 'authority'
             ? Array.from(row.querySelectorAll('[data-authority-entry]')).map(getAuthorityEntryPayload).filter(Boolean)
-            : listItemType === 'project' ? Array.from(row.querySelectorAll('.omo-holon-create__property-value--project:checked')).map(function (input) { return Number(input.value || 0); }).filter(Boolean) : listItemType === 'holon' ? Array.from(row.querySelectorAll('.omo-holon-create__property-value--holon:checked')).map(function (input) { return Number(input.value || 0); }).filter(Boolean) : Array.from(row.querySelectorAll('.omo-holon-create__property-value-item')).map(function (input) { return String(input.value || '').trim(); }).filter(Boolean);
+            : listItemType === 'project' ? (projectPicker ? readProjectPickerSelectedIds(projectPicker) : Array.from(row.querySelectorAll('.omo-holon-create__property-value--project:checked')).map(function (input) { return Number(input.value || 0); }).filter(Boolean)) : listItemType === 'holon' ? Array.from(row.querySelectorAll('.omo-holon-create__property-value--holon:checked')).map(function (input) { return Number(input.value || 0); }).filter(Boolean) : Array.from(row.querySelectorAll('.omo-holon-create__property-value-item')).map(function (input) { return String(input.value || '').trim(); }).filter(Boolean);
         const beforeHost = row.querySelector('[data-omo-composite-html="before"]');
         const afterHost = row.querySelector('[data-omo-composite-html="after"]');
         return JSON.stringify({
@@ -2536,6 +2599,28 @@ elements.cancel.addEventListener('click', function () {
 });
 
 root.addEventListener('change', function (event) {
+    if (event.target.matches('.omo-holon-create__property-value--project')) {
+        const projectPicker = event.target.closest('[data-project-picker]');
+        if (!projectPicker) {
+            return;
+        }
+
+        const selectedIds = new Set(readProjectPickerSelectedIds(projectPicker));
+        Array.from(projectPicker.querySelectorAll('.omo-holon-create__property-value--project')).forEach(function (projectInput) {
+            const projectId = Number(projectInput.value || 0);
+            if (projectId <= 0) {
+                return;
+            }
+            if (projectInput.checked) {
+                selectedIds.add(projectId);
+            } else {
+                selectedIds.delete(projectId);
+            }
+        });
+        projectPicker.dataset.selectedIds = Array.from(selectedIds).join(',');
+        return;
+    }
+
     if (event.target.matches('.omo-holon-create__direct-property-format, .omo-holon-create__direct-property-list-type')) {
         const propertyRow = event.target.closest('.omo-holon-create__property');
         if (!propertyRow) {
@@ -2571,6 +2656,18 @@ root.addEventListener('change', function (event) {
 });
 
 root.addEventListener('input', function (event) {
+    if (event.target.matches('.omo-holon-create__project-search')) {
+        const projectPicker = event.target.closest('[data-project-picker]');
+        if (projectPicker) {
+            const searchValue = String(event.target.value || '').trim().toLocaleLowerCase();
+            Array.from(projectPicker.querySelectorAll('.omo-holon-create__project-option')).forEach(function (option) {
+                option.hidden = searchValue !== ''
+                    && !String(option.textContent || '').toLocaleLowerCase().includes(searchValue);
+            });
+        }
+        return;
+    }
+
     if (!event.target.matches('.omo-holon-create__direct-property-name')) {
         return;
     }
@@ -2582,6 +2679,22 @@ root.addEventListener('input', function (event) {
 });
 
 root.addEventListener('click', function (event) {
+    const projectScopeButton = event.target.closest('.omo-holon-create__project-scope-button');
+    if (projectScopeButton) {
+        const projectPicker = projectScopeButton.closest('[data-project-picker]');
+        if (!projectPicker || projectScopeButton.getAttribute('aria-pressed') === 'true') {
+            return;
+        }
+
+        const selectedIds = readProjectPickerSelectedIds(projectPicker);
+        projectPicker.outerHTML = renderProjectPicker(
+            { listItemType: 'project' },
+            selectedIds,
+            String(projectScopeButton.getAttribute('data-project-scope') || 'local')
+        );
+        return;
+    }
+
     const directPropertyRemoveButton = event.target.closest('[data-direct-property-remove]');
     if (directPropertyRemoveButton) {
         if (directPropertyRemoveButton.disabled) {
@@ -3212,6 +3325,78 @@ textarea.omo-holon-create__property-value:focus {
     display: block;
     color: var(--color-text-light);
     line-height: 1.35;
+}
+
+.omo-holon-create__project-picker {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-holon-create__project-toolbar {
+    min-width: 0;
+}
+
+.omo-holon-create__project-search {
+    position: relative;
+    background: transparent;
+}
+
+.omo-holon-create__project-search img {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    left: 10px;
+    width: 15px;
+    height: 15px;
+    opacity: 0.6;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.omo-holon-create__project-search .generic-form-control {
+    min-width: 0;
+    min-height: 32px !important;
+    height: 32px !important;
+    padding: 3px 12px 3px 42px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.omo-holon-create__project-list {
+    display: grid;
+    align-content: start;
+    max-height: 50vh;
+    overflow-y: auto;
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.omo-holon-create__project-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 7px 4px;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+    cursor: pointer;
+}
+
+.omo-holon-create__project-option[hidden] {
+    display: none;
+}
+
+.omo-holon-create__project-option:last-child {
+    border-bottom: 0;
+}
+
+.omo-holon-create__project-option > span {
+    min-width: 0;
+}
+
+.omo-holon-create__project-option small {
+    color: var(--color-text-light);
 }
 
 .omo-holon-create__list,

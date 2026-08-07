@@ -149,6 +149,12 @@ class Permission extends DbObject
                 'iscontextual' => true,
                 'group' => 'steering',
             ],
+            'CAN_DELETE_PROJECT' => [
+                'title' => 'Supprimer des projets',
+                'description' => 'Autorise la suppression de projets dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'steering',
+            ],
             'CAN_CREATE_INDICATOR' => [
                 'title' => 'Creer des indicateurs',
                 'description' => 'Autorise la creation d indicateurs dans le contexte cible.',

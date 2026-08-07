@@ -32,6 +32,10 @@ $sourceLang = [
     'notifications.preferences.saved' => ['text' => 'Reglages de notifications enregistres.', 'context' => 'Success feedback after saving notification preferences.'],
     'notifications.preferences.save_error' => ['text' => 'Impossible d enregistrer les reglages de notifications.', 'context' => 'Failure feedback after saving notification preferences.'],
     'notifications.preferences.telegram_unavailable' => ['text' => 'Telegram n est pas connecte a ce compte.', 'context' => 'Help shown when Telegram is unavailable.'],
+    'notifications.warning.push.title' => ['text' => 'Notifications navigateur non configurees', 'context' => 'Warning title shown to organization administrators when browser push is unavailable on the server.'],
+    'notifications.warning.push.description' => ['text' => 'Les cles VAPID ne sont pas configurees sur ce serveur. Les membres ne peuvent pas activer les notifications navigateur.', 'context' => 'Warning body shown to organization administrators when browser push is unavailable on the server.'],
+    'notifications.warning.telegram.title' => ['text' => 'Telegram non configure', 'context' => 'Warning title shown to organization administrators when Telegram is unavailable on the server.'],
+    'notifications.warning.telegram.description' => ['text' => 'Le jeton du bot Telegram n est pas configure sur ce serveur. Les membres ne peuvent pas recevoir de messages Telegram.', 'context' => 'Warning body shown to organization administrators when Telegram is unavailable on the server.'],
 ];
 $lang = omoLoadTranslationBundle('omo_notification_settings', $sourceLang);
 $translate = static function ($key) use (&$lang, &$sourceLang) {
@@ -49,7 +53,10 @@ if (empty($_SESSION['omo_notification_push_csrf'])) {
 }
 $vapidConfiguration = webPushGetVapidConfiguration();
 $vapidPublicKey = is_array($vapidConfiguration) ? (string)$vapidConfiguration['publicKeyBase64Url'] : '';
+$pushConfigured = $vapidPublicKey !== '';
+$telegramConfigured = defined('TOKEN') && trim((string)TOKEN) !== '';
 $organizationId = (int)($_SESSION['currentOrganization'] ?? 0);
+$isOrganizationAdmin = commonCurrentUserCanUseAdminMode($organizationId);
 $eventGroups = notificationCenterGetActiveEventGroups($organizationId, $userId);
 $eventKeys = [];
 foreach ($eventGroups as $eventGroup) {
@@ -57,10 +64,17 @@ foreach ($eventGroups as $eventGroup) {
 }
 $preferenceSettings = \dbObject\NotificationPreference::getAllForUserOrganization($userId, $organizationId, $eventKeys);
 $currentUser = new \dbObject\User();
-$telegramAvailable = $currentUser->load($userId)
-    && trim((string)$currentUser->get('telegramID')) !== ''
-    && defined('TOKEN')
-    && trim((string)TOKEN) !== '';
+$telegramAvailable = $telegramConfigured
+    && $currentUser->load($userId)
+    && trim((string)$currentUser->get('telegramID')) !== '';
+$preferenceChannels = [];
+if ($pushConfigured) {
+    $preferenceChannels[] = 'push';
+}
+if ($telegramConfigured) {
+    $preferenceChannels[] = 'telegram';
+}
+$preferenceChannels[] = 'email';
 $configuration = [
     'csrfToken' => (string)$_SESSION['omo_notification_push_csrf'],
     'vapidPublicKey' => $vapidPublicKey,
@@ -85,6 +99,19 @@ $configuration = [
         <h2 class="generic-card-title generic-card-title--large"><?= htmlspecialchars($translate('notifications.title'), ENT_QUOTES, 'UTF-8') ?></h2>
         <p class="generic-description"><?= htmlspecialchars($translate('notifications.description'), ENT_QUOTES, 'UTF-8') ?></p>
     </div>
+    <?php if ($isOrganizationAdmin && !$pushConfigured): ?>
+    <section class="generic-section generic-section--stack generic-section--roomy generic-section--warning">
+        <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars($translate('notifications.warning.push.title'), ENT_QUOTES, 'UTF-8') ?></h3>
+        <p class="generic-description"><?= htmlspecialchars($translate('notifications.warning.push.description'), ENT_QUOTES, 'UTF-8') ?></p>
+    </section>
+    <?php endif; ?>
+    <?php if ($isOrganizationAdmin && !$telegramConfigured): ?>
+    <section class="generic-section generic-section--stack generic-section--roomy generic-section--warning">
+        <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars($translate('notifications.warning.telegram.title'), ENT_QUOTES, 'UTF-8') ?></h3>
+        <p class="generic-description"><?= htmlspecialchars($translate('notifications.warning.telegram.description'), ENT_QUOTES, 'UTF-8') ?></p>
+    </section>
+    <?php endif; ?>
+    <?php if ($pushConfigured): ?>
     <section class="generic-section generic-section--stack generic-section--roomy">
         <label class="generic-form-field">
             <span class="generic-card-title generic-card-title--medium"><?= htmlspecialchars($translate('notifications.permission.label'), ENT_QUOTES, 'UTF-8') ?></span>
@@ -95,12 +122,13 @@ $configuration = [
         </label>
         <p class="generic-feedback" data-omo-notification-feedback aria-live="polite"></p>
     </section>
+    <?php endif; ?>
     <?php if ($eventGroups !== []): ?>
     <form class="generic-section generic-section--stack generic-section--roomy" data-omo-notification-preferences>
         <div class="generic-stack generic-stack--compact">
             <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars($translate('notifications.preferences.title'), ENT_QUOTES, 'UTF-8') ?></h3>
             <p class="generic-description"><?= htmlspecialchars($translate('notifications.preferences.description'), ENT_QUOTES, 'UTF-8') ?></p>
-            <?php if (!$telegramAvailable): ?>
+            <?php if ($telegramConfigured && !$telegramAvailable): ?>
             <p class="generic-help-text"><?= htmlspecialchars($translate('notifications.preferences.telegram_unavailable'), ENT_QUOTES, 'UTF-8') ?></p>
             <?php endif; ?>
         </div>
@@ -108,12 +136,12 @@ $configuration = [
         <?php foreach ($eventGroups as $groupKey => $eventGroup): ?>
         <section class="omo-notification-preferences-group generic-stack generic-stack--compact" aria-labelledby="omo-notification-group-<?= htmlspecialchars($groupKey, ENT_QUOTES, 'UTF-8') ?>">
             <h4 id="omo-notification-group-<?= htmlspecialchars($groupKey, ENT_QUOTES, 'UTF-8') ?>" class="generic-card-title generic-card-title--medium"><?= htmlspecialchars($translate('notifications.preferences.group.' . $groupKey), ENT_QUOTES, 'UTF-8') ?></h4>
-            <div class="omo-notification-preferences-grid" role="table" aria-label="<?= htmlspecialchars($translate('notifications.preferences.group.' . $groupKey), ENT_QUOTES, 'UTF-8') ?>">
+            <div class="omo-notification-preferences-grid" role="table" aria-label="<?= htmlspecialchars($translate('notifications.preferences.group.' . $groupKey), ENT_QUOTES, 'UTF-8') ?>" style="--param-notification-channel-count: <?= count($preferenceChannels) ?>;">
                 <div class="omo-notification-preferences-grid__row omo-notification-preferences-grid__row--header" role="row">
                     <span role="columnheader"><?= htmlspecialchars($translate('notifications.preferences.header.event'), ENT_QUOTES, 'UTF-8') ?></span>
-                    <span role="columnheader"><?= htmlspecialchars($translate('notifications.preferences.channel.push'), ENT_QUOTES, 'UTF-8') ?></span>
-                    <span role="columnheader"><?= htmlspecialchars($translate('notifications.preferences.channel.telegram'), ENT_QUOTES, 'UTF-8') ?></span>
-                    <span role="columnheader"><?= htmlspecialchars($translate('notifications.preferences.channel.email'), ENT_QUOTES, 'UTF-8') ?></span>
+                    <?php foreach ($preferenceChannels as $channelKey): ?>
+                    <span role="columnheader"><?= htmlspecialchars($translate('notifications.preferences.channel.' . $channelKey), ENT_QUOTES, 'UTF-8') ?></span>
+                    <?php endforeach; ?>
                 </div>
                 <?php foreach ($eventGroup['eventKeys'] as $eventKey): ?>
                 <?php
@@ -122,9 +150,9 @@ $configuration = [
                 ?>
                 <div class="omo-notification-preferences-grid__row" role="row">
                     <span class="omo-notification-preferences-grid__event" role="rowheader"><?= htmlspecialchars($eventLabel, ENT_QUOTES, 'UTF-8') ?></span>
-                    <label class="omo-notification-preferences-grid__channel"><input type="checkbox" name="preferences[<?= htmlspecialchars($eventKey, ENT_QUOTES, 'UTF-8') ?>][push]" value="1"<?= !empty($channels['push']) ? ' checked' : '' ?> aria-label="<?= htmlspecialchars($translate('notifications.preferences.channel.push') . ' - ' . $eventLabel, ENT_QUOTES, 'UTF-8') ?>"></label>
-                    <label class="omo-notification-preferences-grid__channel"><input type="checkbox" name="preferences[<?= htmlspecialchars($eventKey, ENT_QUOTES, 'UTF-8') ?>][telegram]" value="1"<?= !empty($channels['telegram']) ? ' checked' : '' ?><?= !$telegramAvailable ? ' disabled' : '' ?> aria-label="<?= htmlspecialchars($translate('notifications.preferences.channel.telegram') . ' - ' . $eventLabel, ENT_QUOTES, 'UTF-8') ?>"></label>
-                    <label class="omo-notification-preferences-grid__channel"><input type="checkbox" name="preferences[<?= htmlspecialchars($eventKey, ENT_QUOTES, 'UTF-8') ?>][email]" value="1"<?= !empty($channels['email']) ? ' checked' : '' ?> aria-label="<?= htmlspecialchars($translate('notifications.preferences.channel.email') . ' - ' . $eventLabel, ENT_QUOTES, 'UTF-8') ?>"></label>
+                    <?php foreach ($preferenceChannels as $channelKey): ?>
+                    <label class="omo-notification-preferences-grid__channel"><input type="checkbox" name="preferences[<?= htmlspecialchars($eventKey, ENT_QUOTES, 'UTF-8') ?>][<?= htmlspecialchars($channelKey, ENT_QUOTES, 'UTF-8') ?>]" value="1"<?= !empty($channels[$channelKey]) ? ' checked' : '' ?><?= $channelKey === 'telegram' && !$telegramAvailable ? ' disabled' : '' ?> aria-label="<?= htmlspecialchars($translate('notifications.preferences.channel.' . $channelKey) . ' - ' . $eventLabel, ENT_QUOTES, 'UTF-8') ?>"></label>
+                    <?php endforeach; ?>
                 </div>
                 <?php endforeach; ?>
             </div>

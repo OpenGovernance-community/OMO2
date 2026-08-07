@@ -387,7 +387,7 @@ function commonRenderTopbar(array $options = [])
 
     if (!$assetsLoaded) {
         commonRenderTopbarJqueryAssets();
-        echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260805-canvas-layout">' . PHP_EOL;
+        echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260807-warning-section">' . PHP_EOL;
         echo '<script src="/common/assets/components.js" defer></script>' . PHP_EOL;
         echo '<script src="/common/holon_scope_picker.js?v=20260805-hover-label-priority" defer></script>' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/assets/topbar.css?v=20260806-notification-read-title">' . PHP_EOL;
