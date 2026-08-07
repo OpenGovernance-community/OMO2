@@ -258,6 +258,13 @@ function commonRenderTopbar(array $options = [])
             'iconUrl' => (string)($options['tension']['iconUrl'] ?? '/common/assets/icon-topbar-tension.png'),
             'appendCurrentRouteContext' => !empty($options['tension']['appendCurrentRouteContext']),
         ],
+        'notifications' => [
+            'enabled' => !empty($options['notifications']['enabled']),
+            'buttonLabel' => (string)($options['notifications']['buttonLabel'] ?? 'Notifications'),
+            'inboxUrl' => (string)($options['notifications']['inboxUrl'] ?? ''),
+            'markReadUrl' => (string)($options['notifications']['markReadUrl'] ?? ''),
+            'csrfToken' => (string)($options['notifications']['csrfToken'] ?? ''),
+        ],
         'lexicon' => is_array($options['lexicon'] ?? null) ? $options['lexicon'] : [],
         'profile' => [
             'enabled' => array_key_exists('enabled', $options['profile'] ?? []) ? !empty($options['profile']['enabled']) : true,
@@ -380,12 +387,13 @@ function commonRenderTopbar(array $options = [])
 
     if (!$assetsLoaded) {
         commonRenderTopbarJqueryAssets();
-        echo '<link rel="stylesheet" href="/common/assets/components.css">' . PHP_EOL;
+        echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260805-canvas-layout">' . PHP_EOL;
         echo '<script src="/common/assets/components.js" defer></script>' . PHP_EOL;
-        echo '<script src="/common/holon_scope_picker.js?v=20260804-summernote-local-scope" defer></script>' . PHP_EOL;
-        echo '<link rel="stylesheet" href="/common/assets/topbar.css?v=20260731-drawer-load-error">' . PHP_EOL;
+        echo '<script src="/common/holon_scope_picker.js?v=20260805-hover-label-priority" defer></script>' . PHP_EOL;
+        echo '<link rel="stylesheet" href="/common/assets/topbar.css?v=20260806-notification-read-title">' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/notifications/notifications.css">' . PHP_EOL;
         echo '<script src="/common/notifications/notifications.js" defer></script>' . PHP_EOL;
+        echo '<script src="/common/notifications/inbox.js?v=20260806-explicit-read" defer></script>' . PHP_EOL;
         echo '<script src="/common/assets/topbar.js?v=20260731-drawer-load-error" defer></script>' . PHP_EOL;
         $assetsLoaded = true;
     }
@@ -526,6 +534,23 @@ function commonRenderTopbar(array $options = [])
                 <?php endif; ?>
             </div>
         </div>
+
+        <?php if (!empty($config['notifications']['enabled'])): ?>
+        <div class="common-topbar__menu-wrap common-topbar__menu-wrap--panel">
+            <button type="button" class="common-topbar__action common-topbar__action--square common-topbar__action--icon-only common-topbar__notification-button" data-topbar-menu-trigger="notifications" aria-label="<?= htmlspecialchars($config['notifications']['buttonLabel']) ?>" title="<?= htmlspecialchars($config['notifications']['buttonLabel']) ?>">
+                <span class="common-topbar__action-icon" aria-hidden="true">
+                    <img src="/common/assets/icon-topbar-notifications.png" alt="" class="common-topbar__icon-image black-icon">
+                </span>
+                <span class="common-topbar__notification-badge" data-omo-notification-badge hidden>0</span>
+                <span class="common-topbar__visually-hidden"><?= htmlspecialchars($config['notifications']['buttonLabel']) ?></span>
+            </button>
+            <div class="common-topbar__menu common-topbar__menu--panel common-topbar__menu--right" data-topbar-menu="notifications">
+                <div class="omo-notification-inbox" data-omo-notification-inbox>
+                    <p class="omo-notification-inbox__empty">Chargement...</p>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <?php if (!empty($config['profile']['enabled'])): ?>
         <div class="common-topbar__menu-wrap">

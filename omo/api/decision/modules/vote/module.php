@@ -2488,7 +2488,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             align-items: baseline;
             padding: 10px 12px;
             border-radius: var(--radius-md);
-            background: color-mix(in srgb, var(--color-text-light, #64748b) 8%, white);
+            background: color-mix(in srgb, var(--color-text-light, #64748b) 8%, var(--color-surface-alt, #f8fafc));
         }
 
         .omo-decision-vote__readonly-stat strong {

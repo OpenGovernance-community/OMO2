@@ -1392,7 +1392,7 @@ if ($leafletMapsEnabled) {
 
 .omo-team-card__date {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.7fr);
     align-items: baseline;
     gap: 8px;
     min-width: 0;

@@ -10,8 +10,10 @@ $sourceLang = [
     'documents.move.error.organization_not_found' => ['text' => 'Organisation introuvable.', 'context' => 'Error shown when the document organization cannot be loaded.'],
     'documents.move.error.forbidden' => ['text' => 'Vous n’avez pas le droit de déplacer ce document.', 'context' => 'Error shown when the user cannot move the document.'],
     'documents.move.error.no_destination' => ['text' => 'Aucune destination compatible n’a été trouvée pour ce document.', 'context' => 'Error shown when no destination is available.'],
-    'documents.move.field.destination' => ['text' => 'Destination', 'context' => 'Label shown above the destination picker.'],
+    'documents.move.field.destination' => ['text' => 'Dossier de destination', 'context' => 'Label shown above the destination picker.'],
     'documents.move.field.search_placeholder' => ['text' => 'Rechercher une destination', 'context' => 'Search placeholder used in the move dialog.'],
+    'documents.move.field.holon' => ['text' => 'Holon de destination', 'context' => 'Label shown above the visual holon picker in the move dialog.'],
+    'documents.move.destination.holon_root' => ['text' => 'A la racine du holon', 'context' => 'Destination choice placing a document at the root of the selected holon.'],
     'documents.move.action.cancel' => ['text' => 'Annuler', 'context' => 'Button used to cancel document moving.'],
     'documents.move.action.submit' => ['text' => 'Déplacer', 'context' => 'Button used to submit document moving.'],
     'documents.move.status.invalid_destination' => ['text' => 'Choisissez une destination valide.', 'context' => 'Hint or error shown when no valid destination is selected.'],
@@ -72,31 +74,38 @@ if ($documentId <= 0) {
     <div class="omo-document-move__empty generic-description"><?= omoApiEscape($errorMessage) ?></div>
 <?php else: ?>
     <form id="omo-document-move-form" class="omo-document-move generic-stack generic-stack--flush">
-        <div class="omo-document-move__header generic-drawer-header generic-drawer-header--sticky">
-            <div class="generic-drawer-header__copy omo-document-move__header-copy">
-                <div class="generic-card-title generic-card-title--eyebrow">Document</div>
-                <h3 class="generic-card-title generic-card-title--medium">Déplacer un document</h3>
-            </div>
-        </div>
         <div class="omo-document-move__shell generic-drawer-content">
         <div class="omo-document-move__intro generic-description">
             <strong><?= omoApiEscape((string)($moveData['document']['title'] ?? '')) ?></strong>
             <span>&rarr;</span>
+            <span data-omo-document-move-path></span>
         </div>
 
-        <label class="omo-document-move__field generic-stack generic-stack--compact">
-            <span><?= omoApiEscape(omoDocumentsMoveT('documents.move.field.destination')) ?></span>
-            <input type="search" id="omo-document-move-search" class="generic-form-control" placeholder="<?= omoApiEscape(omoDocumentsMoveT('documents.move.field.search_placeholder')) ?>">
-        </label>
+        <div class="omo-document-move__picker omo-resource-picker">
+            <aside class="omo-resource-picker__navigation omo-document-move__navigation">
+                <span class="generic-form-label"><?= omoApiEscape(omoDocumentsMoveT('documents.move.field.holon')) ?></span>
+                <div class="omo-document-move__holon-picker" data-omo-document-move-holon-picker></div>
+            </aside>
 
-        <label class="omo-document-move__field generic-stack generic-stack--compact">
-            <select id="omo-document-move-destination" class="omo-document-move__select generic-form-control" size="10" required></select>
-        </label>
+            <div class="omo-resource-picker__content omo-document-move__content">
+                <label class="omo-document-move__field generic-stack generic-stack--compact">
+                    <span class="generic-form-label"><?= omoApiEscape(omoDocumentsMoveT('documents.move.field.destination')) ?></span>
+                    <span class="omo-resource-picker__quick-search">
+                        <img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true">
+                        <input type="search" id="omo-document-move-search" class="generic-form-control" placeholder="<?= omoApiEscape(omoDocumentsMoveT('documents.move.field.search_placeholder')) ?>">
+                    </span>
+                </label>
 
-        <div id="omo-document-move-hint" class="omo-document-move__hint generic-help-text"></div>
+                <div class="omo-document-move__field generic-stack generic-stack--compact">
+                    <div id="omo-document-move-destination" class="omo-document-move__destinations" aria-label="<?= omoApiEscape(omoDocumentsMoveT('documents.move.field.destination')) ?>"></div>
+                </div>
+            </div>
+        </div>
+
         <div id="omo-document-move-status" class="omo-document-move__status generic-feedback" hidden></div>
 
         <div class="omo-document-move__actions generic-action-row">
+            <div id="omo-document-move-hint" class="omo-document-move__hint generic-help-text"></div>
             <button type="button" class="omo-document-move__button generic-action-button generic-action-button--secondary" id="omo-document-move-cancel"><?= omoApiEscape(omoDocumentsMoveT('documents.move.action.cancel')) ?></button>
             <button type="submit" class="omo-document-move__button generic-action-button generic-action-button--main" id="omo-document-move-submit"><?= omoApiEscape(omoDocumentsMoveT('documents.move.action.submit')) ?></button>
         </div>
@@ -114,8 +123,12 @@ const state = {
         'selectOther' => omoDocumentsMoveT('documents.move.status.select_other'),
         'noMatch' => omoDocumentsMoveT('documents.move.status.no_match'),
         'submitOther' => omoDocumentsMoveT('documents.move.status.submit_other'),
+        'holonRoot' => omoDocumentsMoveT('documents.move.destination.holon_root'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
-    statusTimer: null
+    statusTimer: null,
+    selectedHolonId: 0,
+    selectedDestinationKey: '',
+    holonPicker: null
 };
 
 const form = document.getElementById('omo-document-move-form');
@@ -128,6 +141,8 @@ const elements = {
     status: document.getElementById('omo-document-move-status'),
     search: document.getElementById('omo-document-move-search'),
     destination: document.getElementById('omo-document-move-destination'),
+    holonPicker: document.querySelector('[data-omo-document-move-holon-picker]'),
+    path: document.querySelector('[data-omo-document-move-path]'),
     hint: document.getElementById('omo-document-move-hint'),
     cancel: document.getElementById('omo-document-move-cancel'),
     submit: document.getElementById('omo-document-move-submit')
@@ -176,7 +191,7 @@ function getCurrentDestinationKey() {
 }
 
 function getSelectedDestinationKey() {
-    return String(elements.destination.value || '');
+    return String(state.selectedDestinationKey || '');
 }
 
 function findDestinationByKey(key) {
@@ -207,6 +222,67 @@ function getFilteredDestinations() {
     });
 }
 
+function getDestinationsForSelectedHolon() {
+    return getFilteredDestinations().filter(function (destination) {
+        return Number(destination && destination.holonId || 0) === Number(state.selectedHolonId || 0);
+    });
+}
+
+function getSelectableHolonIds() {
+    return getDestinations()
+        .filter(function (destination) {
+            return String(destination && destination.key || '').indexOf('holon-') === 0;
+        })
+        .map(function (destination) {
+            return Number(destination && destination.holonId || 0);
+        })
+        .filter(function (holonId) {
+            return Number.isInteger(holonId) && holonId > 0;
+        });
+}
+
+function getDestinationLabel(destination) {
+    if (String(destination && destination.key || '').indexOf('holon-') === 0) {
+        return state.text.holonRoot || '';
+    }
+
+    return String(destination && destination.name || '');
+}
+
+function buildDestinationTree(destinations) {
+    const rootDestination = destinations.find(function (destination) {
+        return String(destination && destination.key || '').indexOf('holon-') === 0;
+    }) || null;
+    const folderNodes = new Map();
+    const rootNode = rootDestination ? { destination: rootDestination, children: [] } : null;
+    const roots = rootNode ? [rootNode] : [];
+
+    destinations.forEach(function (destination) {
+        if (String(destination && destination.key || '').indexOf('folder-') !== 0) {
+            return;
+        }
+        folderNodes.set(Number(destination.parentDocumentId || 0), {
+            destination: destination,
+            children: []
+        });
+    });
+
+    folderNodes.forEach(function (node) {
+        const parentNode = folderNodes.get(Number(node.destination.folderParentDocumentId || 0));
+        if (parentNode) {
+            parentNode.children.push(node);
+            return;
+        }
+        if (rootNode) {
+            rootNode.children.push(node);
+            return;
+        }
+        roots.push(node);
+    });
+
+    return roots;
+}
+
 function updateSubmitState() {
     const selectedKey = getSelectedDestinationKey();
     const currentKey = getCurrentDestinationKey();
@@ -226,43 +302,104 @@ function updateSubmitState() {
             elements.hint.textContent = '';
         }
     }
+
+    if (elements.path) {
+        elements.path.textContent = selectedDestination
+            ? String(selectedDestination.pathLabel || selectedDestination.name || '')
+            : (state.holonPicker && typeof state.holonPicker.getSelectedHolonLabel === 'function'
+                ? state.holonPicker.getSelectedHolonLabel()
+                : '');
+    }
 }
 
 function renderDestinations() {
-    const destinations = getFilteredDestinations();
+    const destinations = getDestinationsForSelectedHolon();
     const previousSelection = getSelectedDestinationKey() || getCurrentDestinationKey();
 
     elements.destination.innerHTML = '';
+    elements.destination.setAttribute('aria-busy', 'false');
 
     if (!destinations.length) {
-        const option = document.createElement('option');
-        option.value = '';
-        option.textContent = state.text.noMatch || '';
-        option.disabled = true;
-        option.selected = true;
-        elements.destination.appendChild(option);
+        const empty = document.createElement('div');
+        empty.className = 'omo-document-move__empty-destination generic-help-text';
+        empty.textContent = state.text.noMatch || '';
+        elements.destination.appendChild(empty);
+        state.selectedDestinationKey = '';
         updateSubmitState();
         return;
     }
 
-    destinations.forEach(function (destination, index) {
-        const option = document.createElement('option');
-        const destinationKey = String(destination && destination.key ? destination.key : '');
+    let renderedOptionCount = 0;
+    function renderTreeNode(node, depth) {
+        const destination = node.destination || {};
+        const destinationKey = String(destination.key || '');
+        const option = document.createElement('button');
+        const label = document.createElement('span');
+        const meta = document.createElement('span');
 
-        option.value = destinationKey;
-        option.textContent = String(destination.pathLabel || destination.name || destinationKey || ('#' + String(index + 1)));
+        option.type = 'button';
+        option.className = 'omo-document-move__destination';
+        option.classList.toggle('is-nested', depth > 0);
+        option.dataset.destinationKey = destinationKey;
         option.dataset.currentDestination = destination.isCurrentDestination ? '1' : '0';
+        option.style.setProperty('--omo-document-move-tree-indent', String(depth * 22) + 'px');
+        option.style.setProperty('--omo-document-move-tree-branch-indent', String(Math.max(0, depth - 1) * 22) + 'px');
+        label.className = 'omo-document-move__destination-label';
+        label.textContent = getDestinationLabel(destination) || ('#' + String(renderedOptionCount + 1));
+        meta.className = 'omo-document-move__destination-meta';
+        meta.textContent = String(destination.typeLabel || '');
+        option.appendChild(label);
+        if (meta.textContent !== '') {
+            option.appendChild(meta);
+        }
 
         if (destinationKey === previousSelection) {
-            option.selected = true;
-        } else if (!previousSelection && index === 0) {
-            option.selected = true;
+            state.selectedDestinationKey = destinationKey;
+        } else if (!previousSelection && renderedOptionCount === 0) {
+            state.selectedDestinationKey = destinationKey;
         }
 
         elements.destination.appendChild(option);
+        renderedOptionCount += 1;
+        (Array.isArray(node.children) ? node.children : []).forEach(function (child) {
+            renderTreeNode(child, depth + 1);
+        });
+    }
+
+    buildDestinationTree(destinations).forEach(function (node) {
+        renderTreeNode(node, 0);
     });
 
+    elements.destination.querySelectorAll('[data-destination-key]').forEach(function (option) {
+        const isSelected = option.dataset.destinationKey === state.selectedDestinationKey;
+        option.classList.toggle('is-selected', isSelected);
+        option.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+    });
     updateSubmitState();
+}
+
+function setSelectedHolonId(holonId) {
+    state.selectedHolonId = Number(holonId || 0);
+    state.selectedDestinationKey = '';
+    renderDestinations();
+}
+
+function mountHolonPicker() {
+    if (!(elements.holonPicker instanceof Element) || typeof window.omoMountHolonScopePicker !== 'function') {
+        return;
+    }
+
+    state.holonPicker = window.omoMountHolonScopePicker({
+        host: elements.holonPicker,
+        organizationId: Number(state.data.organizationId || 0),
+        initialHolonId: Number((state.data.currentDestination && state.data.currentDestination.holonId) || 0),
+        selectableHolonIds: getSelectableHolonIds(),
+        ignoreHolonAssignments: true,
+        showModes: false,
+        onChange: function (holonId) {
+            setSelectedHolonId(holonId);
+        }
+    });
 }
 
 function submitMove(event) {
@@ -328,10 +465,19 @@ function submitMove(event) {
         });
 }
 
+state.selectedHolonId = Number((state.data.currentDestination && state.data.currentDestination.holonId) || 0) || -1;
 renderDestinations();
+mountHolonPicker();
 
 elements.search.addEventListener('input', renderDestinations);
-elements.destination.addEventListener('change', updateSubmitState);
+elements.destination.addEventListener('click', function (event) {
+    const option = event.target.closest('[data-destination-key]');
+    if (!option) {
+        return;
+    }
+    state.selectedDestinationKey = String(option.dataset.destinationKey || '');
+    renderDestinations();
+});
 elements.form.addEventListener('submit', submitMove);
 elements.cancel.addEventListener('click', closeMovePopup);
 })();
@@ -349,18 +495,117 @@ elements.cancel.addEventListener('click', closeMovePopup);
     padding: 18px;
 }
 
+.omo-document-move {
+    max-width: 100%;
+    min-width: 0;
+}
+
+#commonTopbarModalBody:has(.omo-document-move) {
+    overflow-x: hidden;
+}
+
 .omo-document-move__intro {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.omo-document-move__select {
+.omo-document-move__picker {
+    align-items: start;
+}
+
+.omo-document-move__navigation,
+.omo-document-move__content {
+    display: grid;
+    gap: 12px;
+}
+
+.omo-document-move__holon-picker .omo-holon-scope-picker__map {
+    width: min(100%, min(520px, calc(100dvh - 360px)));
+    height: auto;
+    margin-top: 0;
+    aspect-ratio: 1;
+}
+
+.omo-document-move__destinations {
+    display: grid;
+    align-content: start;
+    gap: 8px;
     min-height: 240px;
+    max-height: 390px;
+    overflow: auto;
+    padding: 2px;
+}
+
+.omo-document-move__destination {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 10px;
+    width: 100%;
+    padding: 11px 12px 11px calc(12px + var(--omo-document-move-tree-indent, 0px));
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    font: inherit;
+    text-align: left;
+    background: var(--color-surface);
+    cursor: pointer;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.omo-document-move__destination.is-nested::before {
+    content: '\21B3';
+    position: absolute;
+    left: calc(10px + var(--omo-document-move-tree-branch-indent, 0px));
+    top: 50%;
+    color: var(--color-text-light);
+    transform: translateY(-50%);
+}
+
+.omo-document-move__destination:hover,
+.omo-document-move__destination:focus-visible,
+.omo-document-move__destination.is-selected {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+}
+
+.omo-document-move__destination-label {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.omo-document-move__destination-meta {
+    color: var(--color-text-light);
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.omo-document-move__empty-destination {
+    padding: 12px;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
 }
 
 .omo-document-move__status[hidden] {
     display: none !important;
+}
+
+.omo-document-move__hint {
+    margin-right: auto;
+}
+
+@media (max-width: 768px) {
+    .omo-document-move__navigation {
+        display: grid;
+        padding: 0;
+        border: 0;
+    }
 }
 
 </style>

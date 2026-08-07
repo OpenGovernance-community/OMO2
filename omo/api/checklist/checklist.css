@@ -41,7 +41,7 @@
 
 .omo-checklist-list {
     --generic-file-list-columns: minmax(280px, 2fr) minmax(150px, .9fr) minmax(180px, 1.15fr) minmax(105px, .6fr);
-    --generic-file-list-menu-space: 0px;
+    --generic-file-list-menu-space: 44px;
     display: grid;
     gap: 0;
     margin-block: 10px;

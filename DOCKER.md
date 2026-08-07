@@ -110,8 +110,20 @@ Adresses de demonstration utiles :
 
 Les codes de connexion sont envoyes dans Mailpit.
 
-Le HTTPS local utilise un certificat autosigne genere dans l'image Docker, valable pour `localhost`, `*.localhost`, `localtest.me`, `*.localtest.me`, ainsi que `omo.test` et `*.omo.test` pour compatibilite legacy.
-Le navigateur affichera probablement un avertissement de securite la premiere fois : c'est normal en local.
+Le HTTPS local utilise par defaut un certificat autosigne genere dans l'image Docker, valable pour `localhost`, `*.localhost`, `localtest.me`, `*.localtest.me`, ainsi que `omo.test` et `*.omo.test` pour compatibilite legacy.
+Le navigateur affichera probablement un avertissement de securite la premiere fois : c'est normal en local, mais un certificat autosigne ne permet pas les service workers ni les notifications push.
+
+Pour tester les notifications avec `localtest.me` ou ses sous-domaines, creer un certificat local de confiance avec `mkcert` :
+
+```powershell
+mkcert -install
+New-Item -ItemType Directory -Force docker/apache/certs
+mkcert -cert-file docker/apache/certs/dev-localtest.crt -key-file docker/apache/certs/dev-localtest.key localhost '*.localhost' localtest.me '*.localtest.me' omo.test '*.omo.test'
+Copy-Item docker/compose.local-certificates.yaml.example compose.override.yaml
+docker compose up -d --force-recreate app
+```
+
+Les certificats et le fichier `compose.override.yaml` sont ignores par Git. Le certificat signe par `mkcert` reste donc strictement local a la machine de developpement.
 
 ## 4. Reinitialiser la base
 

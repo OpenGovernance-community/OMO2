@@ -92,6 +92,7 @@ foreach ($checklists as $checklist) {
         'recurringActiveCount' => $recurringActiveCount,
         'triggerLabel' => omoChecklistTriggerLabel(omoChecklistGetPrimaryTrigger($checklist)),
         'updated' => $updatedAt instanceof DateTimeInterface ? $updatedAt->format('d.m.Y') : '',
+        'canDelete' => omoChecklistCanDelete($checklist),
     ];
 }
 usort($checklistRows, static function (array $left, array $right) {
@@ -120,7 +121,7 @@ $texts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
-<link rel="stylesheet" href="/omo/api/checklist/checklist.css?v=20260803-item-actions">
+<link rel="stylesheet" href="/omo/api/checklist/checklist.css?v=20260805-checklist-list-menu">
 <div
     class="omo-checklist omo-panel-view"
     id="omo-checklist-root"
@@ -222,6 +223,21 @@ $texts = [
                                     <div class="generic-file-list__cell" data-label="<?= omoApiEscape(omoChecklistT('checklist.detail.context')) ?>"><?= omoApiEscape((string)$row['holon']) ?></div>
                                     <div class="generic-file-list__cell" data-label="<?= omoApiEscape(omoChecklistT('checklist.detail.trigger')) ?>"><?= omoApiEscape((string)$row['triggerLabel']) ?></div>
                                     <div class="generic-file-list__cell generic-file-list__cell--date" data-label="<?= omoApiEscape(omoChecklistT('checklist.detail.updated')) ?>"><?= omoApiEscape((string)$row['updated']) ?></div>
+                                    <?php if (!empty($row['canDelete'])): ?>
+                                        <div class="generic-file-list__menu generic-menu" data-checklist-list-menu>
+                                            <button
+                                                type="button"
+                                                class="generic-file-list__menu-toggle generic-menu-toggle"
+                                                data-checklist-list-menu-toggle
+                                                data-checklist-id="<?= (int)$checklist->getId() ?>"
+                                                data-checklist-delete-confirm="<?= omoApiEscape(omoChecklistT('checklist.confirm.delete_checklist')) ?>"
+                                                data-checklist-delete-label="<?= omoApiEscape(omoChecklistT('checklist.action.delete')) ?>"
+                                                aria-haspopup="menu"
+                                                aria-expanded="false"
+                                                aria-label="<?= omoApiEscape(omoChecklistT('checklist.action.more')) ?>"
+                                            >...</button>
+                                        </div>
+                                    <?php endif; ?>
                                 </article>
                             </div>
                         <?php endforeach; ?>
@@ -251,4 +267,4 @@ $texts = [
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260804-indicator-group-route"></script>
-<script src="/omo/api/checklist/checklist.js?v=20260803-item-actions-3"></script>
+<script src="/omo/api/checklist/checklist.js?v=20260805-checklist-list-menu"></script>

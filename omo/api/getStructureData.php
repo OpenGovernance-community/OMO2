@@ -5,6 +5,72 @@ header('Content-Type: application/json; charset=UTF-8');
 
 use dbObject\ArrayOrganization;
 use dbObject\ArrayProject;
+use dbObject\Authority;
+
+function omoStructureCollectAuthorityIdsFromValue($rawValue, $formatId, array &$authorityIds)
+{
+    $rawValue = trim((string)$rawValue);
+    if ($rawValue === '') {
+        return;
+    }
+
+    if ((int)$formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+        $items = \dbObject\PropertyFormat::getHtmlListParts($rawValue)['items'];
+    } else {
+        $decoded = json_decode($rawValue, true);
+        if (is_array($decoded)) {
+            $items = array_values($decoded);
+        } else {
+            $items = array();
+            foreach (preg_split('/\r\n|\r|\n|\|/', $rawValue) as $segment) {
+                $segment = trim((string)$segment);
+                if ($segment === '') {
+                    continue;
+                }
+
+                $decodedSegment = json_decode($segment, true);
+                if (is_array($decodedSegment)) {
+                    foreach ($decodedSegment as $item) {
+                        $items[] = $item;
+                    }
+                } else {
+                    $items[] = $segment;
+                }
+            }
+        }
+    }
+
+    foreach ($items as $item) {
+        $authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+        if ($authorityId > 0) {
+            $authorityIds[$authorityId] = true;
+        }
+    }
+}
+
+function omoStructureCollectAuthorityIds(array $node, array &$authorityIds)
+{
+    $data = is_array($node['data'] ?? null) ? $node['data'] : array();
+    foreach ($data as $entry) {
+        if (
+            !is_array($entry)
+            || (string)($entry['listItemType'] ?? '') !== \dbObject\Property::LIST_ITEM_AUTHORITY
+        ) {
+            continue;
+        }
+
+        $formatId = (int)($entry['formatId'] ?? 0);
+        foreach (array('value', 'ancestor', 'effectiveValue') as $field) {
+            omoStructureCollectAuthorityIdsFromValue($entry[$field] ?? '', $formatId, $authorityIds);
+        }
+    }
+
+    foreach ((array)($node['children'] ?? array()) as $child) {
+        if (is_array($child)) {
+            omoStructureCollectAuthorityIds($child, $authorityIds);
+        }
+    }
+}
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 if ($organizationId <= 0) {
@@ -105,6 +171,10 @@ foreach ($projects as $project) {
     }
 }
 $representation['projectTitles'] = $projectTitles;
+
+$authorityIds = array();
+omoStructureCollectAuthorityIds($representation, $authorityIds);
+$representation['authorityLabels'] = Authority::getLabelsByIds(array_keys($authorityIds));
 
 if ((int)$navigationRoot->getId() !== (int)$root->getId() && (int)$navigationRoot->get('IDtypeholon') !== 4) {
     $representation['type'] = '4';

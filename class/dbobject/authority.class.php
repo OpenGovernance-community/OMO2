@@ -135,6 +135,43 @@ class Authority extends DbObject
         return array_values($catalogById);
     }
 
+    public static function getLabelsByIds(array $authorityIds)
+    {
+        $authorityIds = array_values(array_unique(array_filter(array_map('intval', $authorityIds))));
+        if (count($authorityIds) === 0) {
+            return array();
+        }
+
+        $params = array();
+        $placeholders = array();
+        foreach ($authorityIds as $index => $authorityId) {
+            $key = 'authority_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $authorityId;
+        }
+
+        $rows = self::fetchAll(
+            'SELECT id, label
+             FROM authority
+             WHERE id IN (' . implode(', ', $placeholders) . ')',
+            $params
+        );
+        if (!is_array($rows)) {
+            return array();
+        }
+
+        $labels = array();
+        foreach ($rows as $row) {
+            $authorityId = (int)($row['id'] ?? 0);
+            $label = trim((string)($row['label'] ?? ''));
+            if ($authorityId > 0 && $label !== '') {
+                $labels[$authorityId] = $label;
+            }
+        }
+
+        return $labels;
+    }
+
     public function save()
     {
         $holonId = (int)$this->get('IDholon');

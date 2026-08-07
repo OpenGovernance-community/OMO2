@@ -1823,18 +1823,29 @@ if (!function_exists('omoDecisionInvitationGetSourceLang')) {
                 'text' => 'Par défaut, seuls les membres du contexte courant participent.',
                 'context' => 'Summary shown when no explicit invitations exist.',
             ],
-            'decisions.invitations.current_scope_included' => [
-                'text' => 'Contexte courant inclus',
-                'context' => 'Summary fragment when the current holon is explicitly invited.',
+            'decisions.invitations.additional_members' => [
+                'one' => '{count} autre membre',
+                'other' => '{count} autres membres',
+                'context' => 'Summary fragment for organization members invited outside selected holons.',
             ],
-            'decisions.invitations.current_scope_excluded' => [
-                'text' => 'Contexte courant non inclus',
-                'context' => 'Summary fragment when the current holon is not explicitly invited.',
+            'decisions.invitations.members' => [
+                'one' => '{count} membre',
+                'other' => '{count} membres',
+                'context' => 'Summary fragment for individually invited organization members without selected holons.',
             ],
-            'decisions.invitations.additional_people' => [
-                'one' => '+1 personne supplémentaire',
-                'other' => '+{count} personnes supplémentaires',
-                'context' => 'Summary fragment for additional invited users and emails.',
+            'decisions.invitations.guests' => [
+                'one' => '{count} invité',
+                'other' => '{count} invités',
+                'context' => 'Summary fragment for external email guests.',
+            ],
+            'decisions.invitations.summary_connector' => [
+                'text' => 'et',
+                'context' => 'Connector placed before the last item of an invitation summary.',
+            ],
+            'decisions.invitations.summary_total_people' => [
+                'one' => '{count} personne',
+                'other' => '{count} personnes',
+                'context' => 'Bold total shown before the explicit invitation summary details.',
             ],
             'decisions.invitations.total_people' => [
                 'one' => '1 personne au total',
@@ -2905,7 +2916,6 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
     function omoDecisionBuildInvitationSummaryData($decision, array $context, $lang = null, array $sourceLang = [])
     {
         $currentHolon = $context['effectiveHolon'] ?? null;
-        $currentHolonId = $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0;
         $method = $decision instanceof DecisionProcess
             ? DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'))
             : trim((string)($context['method'] ?? ''));
@@ -2920,6 +2930,9 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             'recipientCount' => 0,
             'hasExplicitInvitations' => false,
             'publicOptInEntries' => [],
+            'summaryDetails' => '',
+            'totalLabel' => '',
+            'recipientTooltip' => '',
             'summary' => '',
         ];
 
@@ -2981,23 +2994,46 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
             return $data;
         }
 
+        $organizationId = (int)($context['organizationId'] ?? 0);
         $holonLabels = [];
-        $additionalPeopleCount = 0;
-        $includesCurrentHolon = false;
+        $holonUserIds = [];
+        $additionalUserIds = [];
+        $guestEmails = [];
+        $membersByUserId = [];
+
+        $organizationMembers = new \dbObject\ArrayUserOrganization();
+        if ($organizationId > 0) {
+            $organizationMembers->loadActiveForOrganization($organizationId);
+        }
+        foreach ($organizationMembers as $membership) {
+            $userId = (int)$membership->get('IDuser');
+            if ($userId > 0) {
+                $membersByUserId[$userId] = $membership;
+            }
+        }
 
         foreach ($invitations as $invitation) {
             $type = DecisionInvitation::normalizeType($invitation->get('invitation_type'));
             if ($type === DecisionInvitation::TYPE_HOLON) {
                 $holonId = (int)$invitation->get('IDholon');
-                if ($holonId === $currentHolonId && $currentHolonId > 0) {
-                    $includesCurrentHolon = true;
-                }
-
                 $holonLabel = trim((string)$invitation->get('display_name'));
-                if ($holonLabel === '' && $holonId > 0) {
+                if ($holonId > 0) {
                     $holon = new Holon();
                     if ($holon->load($holonId)) {
-                        $holonLabel = trim((string)$holon->getDisplayName());
+                        $holonLabel = trim(
+                            trim((string)$holon->getTemplateLabel(true))
+                            . ' '
+                            . trim((string)$holon->getDisplayName())
+                        );
+                        foreach ($holon->getAssociatedMemberUserIds([
+                            'organizationId' => $organizationId,
+                            'skipPermissionFilter' => true,
+                        ]) as $userId) {
+                            $userId = (int)$userId;
+                            if ($userId > 0) {
+                                $holonUserIds[$userId] = $userId;
+                            }
+                        }
                     }
                 }
                 if ($holonLabel !== '') {
@@ -3006,33 +3042,99 @@ if (!function_exists('omoDecisionBuildInvitationSummaryData')) {
                 continue;
             }
 
-            $additionalPeopleCount++;
+            if ($type === DecisionInvitation::TYPE_USER) {
+                $userId = (int)$invitation->get('IDuser');
+                if ($userId > 0) {
+                    $additionalUserIds[$userId] = $userId;
+                }
+                continue;
+            }
+
+            $email = trim(mb_strtolower((string)$invitation->get('email'), 'UTF-8'));
+            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $guestEmails[$email] = $email;
+            }
         }
 
-        $summaryParts = [];
-        if (count($holonLabels) > 0) {
-            $summaryParts[] = implode(', ', array_slice(array_values(array_unique($holonLabels)), 0, 3));
-        }
-        if ($additionalPeopleCount > 0) {
-            $summaryParts[] = t('decisions.invitations.additional_people', ['count' => (string)$additionalPeopleCount], $lang, $sourceLang);
+        foreach ($holonUserIds as $userId) {
+            unset($additionalUserIds[$userId]);
         }
 
-        $summaryParts[] = $includesCurrentHolon
-            ? t('decisions.invitations.current_scope_included', [], $lang, $sourceLang)
-            : t('decisions.invitations.current_scope_excluded', [], $lang, $sourceLang);
+        $recipientUserIds = $holonUserIds + $additionalUserIds;
+        $recipientEmails = [];
+        foreach ($guestEmails as $email) {
+            $matchesRecipient = false;
+            foreach ($recipientUserIds as $userId) {
+                $membership = $membersByUserId[(int)$userId] ?? null;
+                if (
+                    $membership instanceof \dbObject\UserOrganization
+                    && trim(mb_strtolower((string)$membership->getScopedEmail(), 'UTF-8')) === $email
+                ) {
+                    $matchesRecipient = true;
+                    break;
+                }
+            }
+            if (!$matchesRecipient) {
+                $recipientEmails[$email] = $email;
+            }
+        }
+
+        $recipientLabels = [];
+        foreach ($recipientUserIds as $userId) {
+            $membership = $membersByUserId[(int)$userId] ?? null;
+            if (!($membership instanceof \dbObject\UserOrganization)) {
+                continue;
+            }
+            $displayName = trim((string)$membership->getUserDisplayName());
+            $username = trim((string)$membership->getScopedUsername());
+            $email = trim((string)$membership->getScopedEmail());
+            $secondary = $username !== '' ? '@' . $username : $email;
+            $recipientLabels[] = $secondary !== '' && $secondary !== $displayName
+                ? $displayName . ' - ' . $secondary
+                : ($displayName !== '' ? $displayName : $secondary);
+        }
+        foreach ($recipientEmails as $email) {
+            $recipientLabels[] = $email;
+        }
+
+        $summaryParts = array_values(array_unique($holonLabels));
+        if (count($additionalUserIds) > 0) {
+            $summaryParts[] = omoDecisionInvitationT(
+                count($holonLabels) > 0
+                    ? 'decisions.invitations.additional_members'
+                    : 'decisions.invitations.members',
+                ['count' => (string)count($additionalUserIds)]
+            );
+        }
+        if (count($recipientEmails) > 0) {
+            $summaryParts[] = omoDecisionInvitationT('decisions.invitations.guests', ['count' => (string)count($recipientEmails)]);
+        }
         if ($hasPublicSelfRegistration) {
             $summaryParts[] = 'Participation publique ouverte';
         }
         if ($publicOptInState['count'] > 0) {
             $summaryParts[] = t('decisions.invitations.public_opt_in_count', ['count' => (string)$publicOptInState['count']], $lang, $sourceLang);
         }
-        if ($data['recipientCount'] > 0) {
-            $summaryParts[] = t('decisions.invitations.total_people', ['count' => (string)$data['recipientCount']], $lang, $sourceLang);
-        }
 
-        $data['summary'] = implode(' - ', array_filter($summaryParts, static function ($value) {
+        $data['recipientCount'] = count($recipientUserIds) + count($recipientEmails);
+        $summaryParts = array_values(array_filter($summaryParts, static function ($value) {
             return trim((string)$value) !== '';
         }));
+        if (count($summaryParts) > 1) {
+            $lastSummaryPart = array_pop($summaryParts);
+            $data['summaryDetails'] = implode(', ', $summaryParts)
+                . ' '
+                . omoDecisionInvitationT('decisions.invitations.summary_connector')
+                . ' '
+                . $lastSummaryPart;
+        } else {
+            $data['summaryDetails'] = implode('', $summaryParts);
+        }
+        $data['totalLabel'] = omoDecisionInvitationT('decisions.invitations.summary_total_people', ['count' => (string)$data['recipientCount']]);
+        $data['recipientTooltip'] = implode("\n", array_filter(array_values(array_unique($recipientLabels)), static function ($value) {
+            return trim((string)$value) !== '';
+        }));
+        $data['summary'] = trim($data['totalLabel'] . ($data['summaryDetails'] !== '' ? ' (' . $data['summaryDetails'] . ')' : ''));
 
         return $data;
     }
@@ -3092,7 +3194,10 @@ if (!function_exists('omoDecisionRenderInvitationSection')) {
                 . '</div>'
             . '</div>'
             . '<p style="margin:0;color:var(--color-text-light,#475569);line-height:1.6;" data-omo-decision-invitations-summary>'
-                . $escape((string)$summaryData['summary'])
+                . '<strong'
+                    . (trim((string)($summaryData['recipientTooltip'] ?? '')) !== '' ? ' title="' . $escape((string)$summaryData['recipientTooltip']) . '" tabindex="0"' : '')
+                . '>' . $escape((string)($summaryData['totalLabel'] ?? $summaryData['summary'])) . '</strong>'
+                . (trim((string)($summaryData['summaryDetails'] ?? '')) !== '' ? ' (' . $escape((string)$summaryData['summaryDetails']) . ')' : '')
             . '</p>'
             . (
                 count((array)($summaryData['publicOptInEntries'] ?? [])) > 0

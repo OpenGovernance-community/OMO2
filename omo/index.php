@@ -229,8 +229,8 @@ $sourceLang = [
         'context' => 'Browser title shown on the login page.',
     ],
     'app.main.page_title' => [
-        'text' => 'Gouvernance UI',
-        'context' => 'Browser title shown on the main OMO application page.',
+        'text' => '{organizationName}',
+        'context' => 'Browser title shown on the main OMO application page, using the current organization name.',
     ],
     'app.mobile.context' => [
         'text' => 'Contexte',
@@ -777,7 +777,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <title><?= htmlspecialchars(t('app.directory.page_title')) ?></title>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260804-checklist-toolbar-icon">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260806-notification-preferences">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page auth-state-page--scrollable auth-state-page--themed auth-state-page--with-topbar">
@@ -1469,10 +1469,10 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
 <html lang="fr" data-omo-organization-accent>
 <head>
     <meta charset="UTF-8">
-    <title><?= htmlspecialchars(t('app.main.page_title')) ?></title>
+    <title><?= htmlspecialchars(t('app.main.page_title', ['organizationName' => (($organizationContext['name'] ?? '') ?: 'OMO')])) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260804-checklist-toolbar-icon">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260806-notification-preferences">
     <style>
         html[data-omo-organization-accent] {
             --omo-organization-accent: <?= $omoOrganizationAccentColorCss ?>;
@@ -1645,7 +1645,7 @@ window.omoConfig = <?=
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
 <script src="assets/js/simple-html-field.js?v=20260804-indicator-group-route"></script>
-<script src="assets/js/app.js?v=20260804-stats-group-route"></script>
+<script src="assets/js/app.js?v=20260805-document-move-title"></script>
 <script src="assets/js/structure-mini-map.js"></script>
 
 <script>

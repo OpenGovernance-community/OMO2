@@ -3577,7 +3577,7 @@ function omoFormatPopupTitle(popupKey) {
     }
 
     if (popupKey === 'document-move') {
-        return 'Deplacer';
+        return 'Deplacer le document';
     }
 
     if (popupKey === 'holon-move') {
@@ -4154,6 +4154,8 @@ function navigate(oid, cid = null, hash = null) {
 
     const url = buildOmoUrl(oid, cid, hash);
     history.pushState({}, '', url);
+
+    window.dispatchEvent(new CustomEvent('omo-route-change'));
 
     handleRoute();
 }

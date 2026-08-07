@@ -31,6 +31,37 @@
     gap: 10px;
 }
 
+.omo-projects__bulk-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.omo-projects__bulk-count {
+    color: var(--color-text-light, #64748b);
+    font-size: .8rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.omo-project-selection-control {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    cursor: pointer;
+}
+
+.omo-project-selection-control input {
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    accent-color: var(--color-primary, #2563eb);
+    cursor: pointer;
+}
+
 .omo-projects__search-empty {
     margin: 16px 0;
 }
@@ -332,6 +363,14 @@
 .omo-project-list-item.is-showing-children {
     border-color: color-mix(in srgb, var(--omo-project-status-color, var(--color-primary, #2563eb)) 70%, var(--color-border, #e5e7eb));
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--omo-project-status-color, var(--color-primary, #2563eb)) 18%, transparent);
+}
+
+.omo-project-card.is-selected,
+.omo-project-list-item.is-selected,
+.omo-project-gantt-row.is-selected,
+.omo-project-gantt-row.is-selected .omo-project-gantt-row__project {
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 72%, var(--color-border, #e5e7eb));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 18%, transparent);
 }
 
 .omo-project-card.is-related-child,
@@ -700,7 +739,7 @@
 
 .omo-project-list-item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 16px;
     padding: 12px 14px;
@@ -853,7 +892,9 @@
 
 .omo-project-gantt-row__project {
     display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     align-content: center;
+    column-gap: 8px;
     gap: 3px;
     padding: 8px 12px 8px calc(14px + var(--omo-project-gantt-depth) * 18px);
     border-left: 4px solid var(--omo-project-status-color);
@@ -863,9 +904,14 @@
 
 .omo-project-gantt-row__project strong,
 .omo-project-gantt-row__project span {
+    grid-column: 2;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.omo-project-gantt-row__project .omo-project-selection-control {
+    grid-row: 1 / span 2;
 }
 
 .omo-project-gantt-row__project strong {
