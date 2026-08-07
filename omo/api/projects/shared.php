@@ -355,6 +355,39 @@ if (!function_exists('omoProjectsCanManageProject')) {
     }
 }
 
+if (!function_exists('omoProjectsCanDeleteProject')) {
+    function omoProjectsCanDeleteProject(Project $project, array $context)
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+        $projectHolon = $project->getHolon();
+        if ($projectHolon instanceof Holon) {
+            return $projectHolon->isAllowed('CAN_DELETE_PROJECT', $useSessionCache, $currentUserId);
+        }
+
+        $parent = $project->getParent();
+        if (
+            $parent instanceof Project
+            && (int)$parent->getId() !== (int)$project->getId()
+            && (int)$parent->get('IDorganization') === (int)$project->get('IDorganization')
+        ) {
+            return omoProjectsCanDeleteProject($parent, $context);
+        }
+
+        $rootHolon = $context['rootHolon'] ?? null;
+        if ($rootHolon instanceof Holon) {
+            return $rootHolon->isAllowed('CAN_DELETE_PROJECT', $useSessionCache, $currentUserId);
+        }
+
+        $organization = $context['organization'] ?? null;
+        return $organization instanceof Organization && $organization->canEdit();
+    }
+}
+
 if (!function_exists('omoProjectsIsKanbanVisible')) {
     function omoProjectsIsKanbanVisible(Project $project, array $projectsById, array $projectsByParent, array $visibleProjectIds = [])
     {

@@ -24,17 +24,23 @@ if (!hash_equals((string)($_SESSION['omo_notification_push_csrf'] ?? ''), (strin
 }
 
 $preferences = isset($_POST['preferences']) && is_array($_POST['preferences']) ? $_POST['preferences'] : [];
+$pushConfigured = is_array(webPushGetVapidConfiguration());
+$telegramConfigured = defined('TOKEN') && trim((string)TOKEN) !== '';
 $eventKeys = [];
 foreach (notificationCenterGetActiveEventGroups($organizationId, $userId) as $eventGroup) {
     $eventKeys = array_merge($eventKeys, $eventGroup['eventKeys'] ?? []);
 }
 foreach (array_values(array_unique($eventKeys)) as $eventKey) {
     $values = isset($preferences[$eventKey]) && is_array($preferences[$eventKey]) ? $preferences[$eventKey] : [];
-    if (!\dbObject\NotificationPreference::saveChannels($userId, $organizationId, $eventKey, [
-        'push' => !empty($values['push']),
-        'telegram' => !empty($values['telegram']),
-        'email' => !empty($values['email']),
-    ])) {
+    $channels = \dbObject\NotificationPreference::getChannelsFor($userId, $organizationId, $eventKey);
+    if ($pushConfigured) {
+        $channels['push'] = !empty($values['push']);
+    }
+    if ($telegramConfigured) {
+        $channels['telegram'] = !empty($values['telegram']);
+    }
+    $channels['email'] = !empty($values['email']);
+    if (!\dbObject\NotificationPreference::saveChannels($userId, $organizationId, $eventKey, $channels)) {
         omoNotificationPreferencesRespond(500, ['status' => false, 'message' => 'Impossible d enregistrer les reglages de notifications.']);
     }
 }

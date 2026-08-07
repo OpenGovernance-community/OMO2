@@ -32,10 +32,10 @@ $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurre
 $projectQuickSearch = trim((string)($_GET['project_query'] ?? ''));
 $projectView = strtolower(trim((string)($_GET['project_view'] ?? 'kanban')));
 $projectView = in_array($projectView, ['list', 'gantt'], true) ? $projectView : 'kanban';
-$projectListSort = strtolower(trim((string)($_GET['project_sort'] ?? 'planned')));
-$projectListSort = in_array($projectListSort, ['priority', 'importance', 'holon'], true) ? $projectListSort : 'planned';
+$projectListSort = strtolower(trim((string)($_GET['project_sort'] ?? 'importance')));
+$projectListSort = in_array($projectListSort, ['planned', 'priority', 'importance', 'holon'], true) ? $projectListSort : 'importance';
 if ($projectListSort === 'holon' && !in_array($projectScope, ['children', 'descendants'], true)) {
-    $projectListSort = 'planned';
+    $projectListSort = 'importance';
 }
 $canUseHolonSort = in_array($projectScope, ['children', 'descendants'], true);
 $openProjectTargetId = isset($_GET['open_project_id']) && is_numeric($_GET['open_project_id']) ? (int)$_GET['open_project_id'] : 0;
@@ -389,6 +389,7 @@ $renderKanbanCard = static function (array $item, string $status) use ($context,
     $subprojectSummary = $item['subprojectSummary'];
     $projectSize = $item['projectSize'];
     $canManageProject = omoProjectsCanManageProject($project, $context);
+    $canDeleteProject = omoProjectsCanDeleteProject($project, $context);
     $subprojectCount = omoProjectsCountDescendants((int)$project->getId(), $projectsByParent);
     ob_start();
     ?>
@@ -410,7 +411,7 @@ $renderKanbanCard = static function (array $item, string $status) use ($context,
         <div class="omo-project-card__topline">
             <?php if ($canManageProject): ?>
                 <label class="omo-project-selection-control">
-                    <input type="checkbox" data-omo-project-select value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>">
+                    <input type="checkbox" data-omo-project-select data-project-can-delete="<?= $canDeleteProject ? '1' : '0' ?>" value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>">
                 </label>
             <?php endif; ?>
             <span class="omo-project-card__context generic-meta generic-meta--compact"><?= omoApiEscape($item['contextLabel']) ?></span>
@@ -424,7 +425,7 @@ $renderKanbanCard = static function (array $item, string $status) use ($context,
                             <button type="button" class="generic-menu-item" data-omo-project-action="edit" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.edit')) ?></button>
                             <button type="button" class="generic-menu-item" data-omo-project-action="move" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.move')) ?></button>
                             <button type="button" class="generic-menu-item" data-omo-project-action="archive" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.archive')) ?></button>
-                            <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-project-action="delete" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.delete')) ?></button>
+                            <?php if ($canDeleteProject): ?><button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-project-action="delete" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.delete')) ?></button><?php endif; ?>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -600,7 +601,7 @@ if ($projectScope !== 'contextual') {
 if ($projectView !== 'kanban') {
     $currentUrl .= '&project_view=' . rawurlencode($projectView);
 }
-if ($projectListSort !== 'planned') {
+if ($projectListSort !== 'importance') {
     $currentUrl .= '&project_sort=' . rawurlencode($projectListSort);
 }
 if ($projectAssignment === 'mine') {
@@ -655,7 +656,7 @@ $projectTexts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260807-project-bulk-actions">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260807-project-bulk-actions-icons">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
@@ -694,8 +695,12 @@ $projectTexts = [
             <div class="omo-projects__header-actions" data-omo-header-actions>
                 <div class="omo-projects__bulk-actions" data-omo-projects-bulk-actions hidden>
                     <span class="omo-projects__bulk-count" data-omo-projects-bulk-count></span>
-                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-bulk-action="archive"><?= omoApiEscape(omoProjectsT('projects.action.archive_selected')) ?></button>
-                    <button type="button" class="generic-action-button generic-action-button--danger" data-omo-projects-bulk-action="delete"><?= omoApiEscape(omoProjectsT('projects.action.delete_selected')) ?></button>
+                    <button type="button" class="generic-action-button generic-action-button--secondary omo-projects__bulk-action-button" data-omo-projects-bulk-action="archive" title="<?= omoApiEscape(omoProjectsT('projects.action.archive_selected')) ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.action.archive_selected')) ?>">
+                        <span class="omo-projects__bulk-action-icon omo-projects__bulk-action-icon--archive" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="generic-action-button generic-action-button--danger omo-projects__bulk-action-button" data-omo-projects-bulk-action="delete" title="<?= omoApiEscape(omoProjectsT('projects.action.delete_selected')) ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.action.delete_selected')) ?>">
+                        <span class="omo-projects__bulk-action-icon omo-projects__bulk-action-icon--delete" aria-hidden="true"></span>
+                    </button>
                 </div>
                 <?php if ($canCreate): ?><button type="button" class="generic-action-button generic-action-button--main omo-mobile-corner-action" data-omo-projects-open-create><?= omoApiEscape(omoProjectsT('projects.action.new')) ?></button><?php endif; ?>
             </div>
@@ -858,6 +863,7 @@ $projectTexts = [
                                 $subprojectSummary = $item['subprojectSummary'];
                                 $projectSize = $item['projectSize'];
                                 $canManageProject = omoProjectsCanManageProject($project, $context);
+                                $canDeleteProject = omoProjectsCanDeleteProject($project, $context);
                                 $subprojectCount = omoProjectsCountDescendants((int)$project->getId(), $projectsByParent);
                                 ?>
                                 <article
@@ -878,7 +884,7 @@ $projectTexts = [
                                     <div class="omo-project-card__topline">
                                         <?php if ($canManageProject): ?>
                                             <label class="omo-project-selection-control">
-                                                <input type="checkbox" data-omo-project-select value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>">
+                                                <input type="checkbox" data-omo-project-select data-project-can-delete="<?= $canDeleteProject ? '1' : '0' ?>" value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>">
                                             </label>
                                         <?php endif; ?>
                                         <span class="omo-project-card__context generic-meta generic-meta--compact"><?= omoApiEscape($item['contextLabel']) ?></span>
@@ -892,7 +898,7 @@ $projectTexts = [
                                                         <button type="button" class="generic-menu-item" data-omo-project-action="edit" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.edit')) ?></button>
                                                         <button type="button" class="generic-menu-item" data-omo-project-action="move" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.move')) ?></button>
                                                         <button type="button" class="generic-menu-item" data-omo-project-action="archive" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.archive')) ?></button>
-                                                        <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-project-action="delete" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.delete')) ?></button>
+                                                        <?php if ($canDeleteProject): ?><button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-project-action="delete" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.delete')) ?></button><?php endif; ?>
                                                     </div>
                                                 </div>
                                             <?php endif; ?>
@@ -941,9 +947,13 @@ $projectTexts = [
                                 <h3 class="generic-card-title generic-card-title--small generic-file-list__group-title"><?= omoApiEscape($group['label']) ?></h3>
                                 <div class="omo-projects__list-group-items">
                                     <?php foreach ($group['items'] as $item): ?>
-                                        <?php $project = $item['project']; ?>
+                                        <?php
+                                        $project = $item['project'];
+                                        $canManageProject = omoProjectsCanManageProject($project, $context);
+                                        $canDeleteProject = omoProjectsCanDeleteProject($project, $context);
+                                        ?>
                                         <article class="omo-project-list-item omo-project-list-item--<?= omoApiEscape($item['status']) ?>" data-omo-project-list-item data-project-id="<?= (int)$project->getId() ?>" data-project-parent-id="<?= (int)$project->get('IDproject_parent') ?>" data-project-search="<?= omoApiEscape(trim((string)$project->get('title') . ' ' . $item['holonLabel'] . ' ' . $item['responsibleLabel'] . ' ' . omoProjectsStatusLabel($item['status']))) ?>" tabindex="0" role="button" aria-label="<?= omoApiEscape((string)$project->get('title')) ?>">
-                                            <?php if (omoProjectsCanManageProject($project, $context)): ?><label class="omo-project-selection-control"><input type="checkbox" data-omo-project-select value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>"></label><?php endif; ?>
+                                            <?php if ($canManageProject): ?><label class="omo-project-selection-control"><input type="checkbox" data-omo-project-select data-project-can-delete="<?= $canDeleteProject ? '1' : '0' ?>" value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>"></label><?php endif; ?>
                                             <div class="omo-project-list-item__main">
                                                 <strong><?= omoApiEscape((string)$project->get('title')) ?></strong>
                                                 <div class="omo-project-list-item__meta">
@@ -985,6 +995,8 @@ $projectTexts = [
                                     <?php
                                     $project = $item['project'];
                                     $projectTitle = trim((string)$project->get('title'));
+                                    $canManageProject = omoProjectsCanManageProject($project, $context);
+                                    $canDeleteProject = omoProjectsCanDeleteProject($project, $context);
                                     $hasDates = $item['effectiveStart'] instanceof \DateTimeImmutable && $item['effectiveEnd'] instanceof \DateTimeImmutable;
                                     $dateLabel = '';
                                     if ($hasDates) {
@@ -1002,7 +1014,7 @@ $projectTexts = [
                                     ?>
                                     <article class="omo-project-gantt-row omo-project-gantt-row--<?= omoApiEscape($item['status']) ?><?= $isOverdue ? ' omo-project-gantt-row--overdue' : '' ?>" data-omo-project-gantt-item data-project-id="<?= (int)$project->getId() ?>" data-project-parent-id="<?= (int)$project->get('IDproject_parent') ?>" data-project-search="<?= omoApiEscape(trim($projectTitle . ' ' . $item['holonLabel'] . ' ' . $item['responsibleLabel'] . ' ' . omoProjectsStatusLabel($item['status']) . ($isOverdue ? ' ' . omoProjectsT('projects.gantt.overdue') : ''))) ?>" style="--omo-project-gantt-depth: <?= (int)$item['depth'] ?>;" tabindex="0" role="button" aria-label="<?= omoApiEscape($projectAriaLabel) ?>">
                                     <div class="omo-project-gantt-row__project" data-omo-project-gantt-project<?= $isOverdue ? ' title="' . omoApiEscape(omoProjectsT('projects.gantt.overdue')) . '"' : '' ?>>
-                                        <?php if (omoProjectsCanManageProject($project, $context)): ?><label class="omo-project-selection-control"><input type="checkbox" data-omo-project-select value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>"></label><?php endif; ?>
+                                        <?php if ($canManageProject): ?><label class="omo-project-selection-control"><input type="checkbox" data-omo-project-select data-project-can-delete="<?= $canDeleteProject ? '1' : '0' ?>" value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>"></label><?php endif; ?>
                                             <strong><?= omoApiEscape($projectTitle) ?></strong>
                                             <span><?= omoApiEscape($item['holonLabel']) ?> · <?= omoApiEscape($item['responsibleLabel']) ?></span>
                                         </div>
@@ -1060,4 +1072,4 @@ $projectTexts = [
 </div>
 <script src="/common/drawer/subdrawer.js"></script>
 <script src="/common/calendar/event-editor.js?v=20260804-project-events"></script>
-<script src="/omo/api/projects/projects.js?v=20260807-project-bulk-actions"></script>
+<script src="/omo/api/projects/projects.js?v=20260807-project-bulk-actions-permissions"></script>

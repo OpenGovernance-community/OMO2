@@ -45,6 +45,36 @@
     white-space: nowrap;
 }
 
+.omo-projects__bulk-action-button {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    padding: 8px;
+}
+
+.omo-projects__bulk-action-icon {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: currentColor;
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-size: contain;
+    -webkit-mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+}
+
+.omo-projects__bulk-action-icon--archive {
+    mask-image: url('/omo/assets/images/projects/archive.svg');
+    -webkit-mask-image: url('/omo/assets/images/projects/archive.svg');
+}
+
+.omo-projects__bulk-action-icon--delete {
+    mask-image: url('/omo/assets/images/documents/poubelle.png');
+    -webkit-mask-image: url('/omo/assets/images/documents/poubelle.png');
+}
+
 .omo-project-selection-control {
     display: inline-flex;
     flex: 0 0 auto;
@@ -74,6 +104,7 @@
 .omo-projects__board[hidden],
 .omo-projects__list[hidden],
 .omo-projects__gantt[hidden],
+.omo-projects__bulk-actions[hidden],
 .omo-projects__search-empty[hidden] {
     display: none !important;
 }
