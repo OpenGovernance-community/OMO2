@@ -4010,7 +4010,7 @@
 
 		protected static function omo1ImportProjectIsArchived($legacyStatusId)
 		{
-			return (int)$legacyStatusId === 64;
+			return (((int)$legacyStatusId) & 15) === 0;
 		}
 
 		protected static function omo1ImportUserMembership(\dbObject\Organization $organization, $userId, $isAdmin, array $record = array(), $isActive = true)
@@ -4829,7 +4829,7 @@
 				if ($updatedAt) {
 					$document->set('datemodification', $updatedAt);
 				}
-				$document->set('active', true);
+				$document->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
 				self::omo1ImportSave($document, 'Un document n a pas pu etre cree');
 				self::omo1ImportSaveDocumentVisibility(
 					$document,
@@ -4850,7 +4850,7 @@
 					continue;
 				}
 				$sourceId = (int)($record['sourceId'] ?? 0);
-				if ($sourceId <= 0) {
+				if ($sourceId <= 0 || (int)($record['legacyStatusId'] ?? 0) === 32) {
 					continue;
 				}
 				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
@@ -4918,8 +4918,12 @@
 				$warnings[] = 'La tache OMO 1 #' . (int)$sourceTaskId . ' a ete importee sans parent car son projet parent est introuvable.';
 				return;
 			}
+			$parentStatus = \dbObject\Project::normalizeStatus($parent->get('status'));
 			if (!$parent->get('active')) {
 				$task->set('active', false);
+			}
+			if ($parentStatus === \dbObject\Project::STATUS_DONE) {
+				$task->set('status', \dbObject\Project::STATUS_DONE);
 			}
 
 			$parentEndDate = $parent->get('planned_end_date');
@@ -5261,7 +5265,7 @@
 				if ($createdAt) {
 					$indicator->set('created_at', $createdAt);
 				}
-				$indicator->set('active', true);
+				$indicator->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
 				self::omo1ImportSave($indicator, 'Un indicateur n a pas pu etre cree');
 				$stats['indicators'] += 1;
 
@@ -5595,7 +5599,7 @@
 				$event->set('start_at', $startAt);
 				$event->set('end_at', $endAt);
 				$event->set('is_all_day', false);
-				$event->set('active', true);
+				$event->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
 				self::omo1ImportSave($event, 'Une reunion du calendrier n a pas pu etre creee');
 				$eventIdMap[(int)$record['sourceId']] = (int)$event->getId();
 				$stats['calendar'] += 1;
