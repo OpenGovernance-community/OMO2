@@ -140,6 +140,33 @@ function serverEnvAdminGetEditableSections()
                 ],
             ],
         ],
+        'ethercalc' => [
+            'title' => serverEnvAdminT('parameters.server_env.section.ethercalc.title', 'EtherCalc'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.ethercalc.intro', 'Connexion globale au serveur EtherCalc utilise par les tableurs collaboratifs.'),
+            'fields' => [
+                [
+                    'key' => 'ETHERCALC_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_URL.label', 'URL publique EtherCalc'),
+                    'type' => 'url',
+                    'placeholder' => 'https://calc.opengov.tools',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_URL.help', 'Adresse de base du serveur EtherCalc, sans le nom de la feuille.'),
+                ],
+                [
+                    'key' => 'ETHERCALC_INTERNAL_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_INTERNAL_URL.label', 'URL interne EtherCalc'),
+                    'type' => 'url',
+                    'placeholder' => 'http://ethercalc:8000',
+                    'help' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_INTERNAL_URL.help', 'Optionnel. Utilisee uniquement par le serveur OMO pour joindre EtherCalc dans le meme reseau. Laissez vide dans les autres cas.'),
+                ],
+                [
+                    'key' => 'ETHERCALC_KEY',
+                    'label' => serverEnvAdminT('parameters.server_env.field.ETHERCALC_KEY.label', 'Cle EtherCalc'),
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
+                ],
+            ],
+        ],
         'mail' => [
             'title' => serverEnvAdminT('parameters.server_env.section.mail.title', 'E-mail'),
             'intro' => serverEnvAdminT('parameters.server_env.section.mail.intro', 'Configuration SMTP generale du serveur.'),
@@ -493,27 +520,42 @@ function serverEnvAdminValidateValues(array $values)
         $errors[] = 'Le port SMTP doit etre numerique.';
     }
 
-    foreach (array('ETHERPAD_URL') as $etherpadUrlKey) {
-        $etherpadUrl = trim((string)($values[$etherpadUrlKey] ?? ''));
-        if ($etherpadUrl === '') {
+    $serverUrlFields = array(
+        'ETHERPAD_URL' => array(
+            'translationKey' => 'parameters.server_env.error.invalid_etherpad_url',
+            'fallback' => 'L URL Etherpad doit etre une adresse http ou https valide.',
+        ),
+        'ETHERCALC_URL' => array(
+            'translationKey' => 'parameters.server_env.error.invalid_ethercalc_url',
+            'fallback' => 'L URL EtherCalc doit etre une adresse http ou https valide.',
+        ),
+        'ETHERCALC_INTERNAL_URL' => array(
+            'translationKey' => 'parameters.server_env.error.invalid_ethercalc_url',
+            'fallback' => 'L URL EtherCalc doit etre une adresse http ou https valide.',
+        ),
+    );
+
+    foreach ($serverUrlFields as $serverUrlKey => $serverUrlError) {
+        $serverUrl = trim((string)($values[$serverUrlKey] ?? ''));
+        if ($serverUrl === '') {
             continue;
         }
 
-        $parsedEtherpadUrl = parse_url($etherpadUrl);
-        $etherpadScheme = is_array($parsedEtherpadUrl) ? strtolower((string)($parsedEtherpadUrl['scheme'] ?? '')) : '';
-        $etherpadHost = is_array($parsedEtherpadUrl) ? trim((string)($parsedEtherpadUrl['host'] ?? '')) : '';
+        $parsedServerUrl = parse_url($serverUrl);
+        $serverScheme = is_array($parsedServerUrl) ? strtolower((string)($parsedServerUrl['scheme'] ?? '')) : '';
+        $serverHost = is_array($parsedServerUrl) ? trim((string)($parsedServerUrl['host'] ?? '')) : '';
         if (
-            !is_array($parsedEtherpadUrl)
-            || !in_array($etherpadScheme, ['http', 'https'], true)
-            || $etherpadHost === ''
-            || isset($parsedEtherpadUrl['user'])
-            || isset($parsedEtherpadUrl['pass'])
-            || isset($parsedEtherpadUrl['query'])
-            || isset($parsedEtherpadUrl['fragment'])
+            !is_array($parsedServerUrl)
+            || !in_array($serverScheme, ['http', 'https'], true)
+            || $serverHost === ''
+            || isset($parsedServerUrl['user'])
+            || isset($parsedServerUrl['pass'])
+            || isset($parsedServerUrl['query'])
+            || isset($parsedServerUrl['fragment'])
         ) {
             $errors[] = serverEnvAdminT(
-                'parameters.server_env.error.invalid_etherpad_url',
-                'L URL Etherpad doit etre une adresse http ou https valide.'
+                $serverUrlError['translationKey'],
+                $serverUrlError['fallback']
             );
         }
     }
