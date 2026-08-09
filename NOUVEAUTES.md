@@ -2,6 +2,15 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+- 2026-08-09 : Les documents peuvent maintenant etre des tableurs collaboratifs EtherCalc. OMO cree puis supprime automatiquement la feuille, transmet le nom OMO de la personne et applique separement les droits de lecture et d edition du contenu. Docker fournit un EtherCalc local via `https://calc.localtest.me`.
+- 2026-08-09 : Le proxy EtherCalc local remappe les icones de barre d outils SocialCalc, y compris les chemins relatifs au nom du tableur, afin qu elles soient correctement chargees dans les feuilles affichees par OMO.
+- 2026-08-09 : Les documents collaboratifs et les tableurs collaboratifs disposent maintenant d un bouton plein ecran. Les tags sont compacts et les informations du fichier sont regroupees en bas de la fiche document.
+- 2026-08-09 : Le passage en plein ecran d un tableur collaboratif demande maintenant a EtherCalc de recalculer sa mise en page, afin que la grille occupe toute la surface disponible.
+- 2026-08-09 : La barre d outils EtherCalc ne revient plus a la ligne dans les iframes OMO et peut defiler horizontalement uniquement en cas de vrai depassement ; la marge negative de `SocialCalc-edittools` est neutralisee pour eviter un faux depassement, le defilement ne recouvre alors pas les icones, et le champ de formule utilise automatiquement la largeur restante.
+- 2026-08-09 : Les iframes des tableurs collaboratifs ne creent plus de barre de defilement externe pour quelques pixels de depassement.
+- 2026-08-09 : Le conteneur HTML inutile autour des iframes de tableur collaboratif a ete retire, sans modifier le cadre de l iframe.
+- 2026-08-09 : Le contenu principal des fiches document n est plus place dans un panneau `omo-card`, ce qui evite une marge inutile autour des contenus embarques.
+- 2026-08-09 : EtherCalc dispose aussi d un lanceur autonome pour hebergement Node.js sans Docker, base sur le runtime `workerd` precompile et un repertoire de donnees persistant separe.
 - 2026-08-02 : Le panneau super-admin Admin du serveur permet maintenant de renseigner la connexion Etherpad globale directement dans le fichier .env protege : URL, cle API masquee, version d API et domaine de partage des cookies.
 - 2026-08-02 : Docker lance maintenant aussi un Etherpad local accessible par `https://doc.localtest.me`, avec un domaine de cookies commun a OMO pour tester les documents collaboratifs sans serveur externe.
 - 2026-08-02 : Les appels API Etherpad utilisent maintenant la methode GET documentee, compatible avec Etherpad 2.6.1 et les serveurs qui refusent les appels POST.

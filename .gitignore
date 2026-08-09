@@ -2,6 +2,7 @@
 /docker/app/.env
 /docker/app/.env.private
 /docker/etherpad/.env.private
+/docker/ethercalc/.env.private
 /docker/db/init/*.local.sql
 /docker/db/init/*.private.sql
 /docker/db/init/*.disabled

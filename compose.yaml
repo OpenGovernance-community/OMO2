@@ -16,6 +16,7 @@ services:
     volumes:
       - ./:/var/www/html
       - ./docker/app/.env:/var/www/html/.env
+      - ./docker/apache/vhost.conf:/etc/apache2/sites-available/000-default.conf:ro
 
   etherpad:
     build:
@@ -53,6 +54,32 @@ services:
     volumes:
       - etherpad_data:/opt/etherpad-lite/var
       - ./docker/etherpad/APIKEY.txt:/opt/etherpad-lite/APIKEY.txt:ro
+
+  ethercalc:
+    build:
+      context: ./docker/ethercalc
+      dockerfile: Dockerfile
+    image: omo-ethercalc:local
+    env_file:
+      - ./docker/ethercalc/.env.private
+    environment:
+      ETHERCALC_PORT: "8000"
+      ETHERCALC_HOST: 0.0.0.0
+      ETHERCALC_AUTH: "0"
+      ETHERCALC_DISABLE_ROOM_INDEX: "1"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    volumes:
+      - ethercalc_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/_health >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
 
   db:
     image: mariadb:11.4
@@ -97,3 +124,4 @@ services:
 volumes:
   db_data:
   etherpad_data:
+  ethercalc_data:
