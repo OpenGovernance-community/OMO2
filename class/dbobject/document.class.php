@@ -9,6 +9,7 @@
 		public const TYPE_FOLDER = 'folder';
 		public const TYPE_PV = 'pv';
 		public const TYPE_ETHERPAD = 'etherpad';
+		public const TYPE_ETHERCALC = 'ethercalc';
 		public const PV_STAGE_PREPARATION = 'preparation';
 		public const PV_STAGE_MEETING = 'meeting';
 		public const PV_STAGE_REVIEW = 'review';
@@ -27,7 +28,7 @@
 			return [
 				[['title'], 'required'],						// Champs obligatoires
 				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'storedfilesize'], 'integer'],				// Nombres entiers
-				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'etherpadpadid'], 'string'],	// Chaines de caractere
+				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'etherpadpadid', 'ethercalcroomid'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
 				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDuser_pv_editor', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
@@ -74,6 +75,7 @@
 				'storedfilemime' => 'Type MIME du fichier',
 				'storedfilesize' => 'Taille du fichier',
 				'etherpadpadid' => 'Identifiant du pad Etherpad',
+				'ethercalcroomid' => 'Identifiant du tableur EtherCalc',
 			];
 		}
 
@@ -96,7 +98,7 @@
 				'IDdocument_parent' => 'Dossier qui contient ce document',
 				'dateedition' => 'Date du dernier signal de presence pendant l edition',
 				'datecontentedition' => 'Date de mise a jour du brouillon temporaire',
-				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes, les telechargements, les pads Etherpad, les PV et les dossiers',
+				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes, les telechargements, les documents collaboratifs, les tableurs collaboratifs, les PV et les dossiers',
 				'pvstage' => 'Etape actuelle du flux d un document PV: preparation, reunion, relecture ou valide',
 				'is_template' => 'Permet d utiliser la structure et le contenu de ce PV lors d une nouvelle creation',
 				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la reunion et peut modifier tous les points.',
@@ -108,6 +110,7 @@
 				'storedfilemime' => 'Type MIME detecte pour le fichier distant',
 				'storedfilesize' => 'Taille du fichier distant en octets',
 				'etherpadpadid' => 'Identifiant technique du pad associe a ce document',
+				'ethercalcroomid' => 'Identifiant technique du tableur associe a ce document',
 			];
 		}
 
@@ -122,6 +125,7 @@
 				'storedfilename' => 255,
 				'storedfilemime' => 255,
 				'etherpadpadid' => 255,
+				'ethercalcroomid' => 255,
 			];
 		}
 
@@ -258,6 +262,14 @@
 					$etherpadDeleteResult = omoEtherpadDeleteDocumentPad($organization, $this->getEtherpadPadId());
 					if (!is_array($etherpadDeleteResult) || empty($etherpadDeleteResult['status'])) {
 						throw new \RuntimeException('etherpad_delete_failed');
+					}
+				}
+
+				if ($this->isEthercalcDocument() && $this->getEthercalcRoomId() !== '') {
+					require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
+					$ethercalcDeleteResult = omoEthercalcDeleteDocumentSheet($this->getEthercalcRoomId());
+					if (!is_array($ethercalcDeleteResult) || empty($ethercalcDeleteResult['status'])) {
+						throw new \RuntimeException('ethercalc_delete_failed');
 					}
 				}
 
@@ -1530,6 +1542,10 @@
 				return self::TYPE_ETHERPAD;
 			}
 
+			if ($documentType === self::TYPE_ETHERCALC) {
+				return self::TYPE_ETHERCALC;
+			}
+
 			return self::TYPE_HTML;
 		}
 
@@ -1635,6 +1651,7 @@
 				self::TYPE_FOLDER => 'Dossier',
 				self::TYPE_PV => 'PV',
 				self::TYPE_ETHERPAD => 'Document collaboratif',
+				self::TYPE_ETHERCALC => 'Tableur collaboratif',
 			);
 		}
 
@@ -1680,6 +1697,16 @@
 			return $this->isEtherpadDocument() ? trim((string)$this->get('etherpadpadid')) : '';
 		}
 
+		public function isEthercalcDocument(): bool
+		{
+			return $this->getDocumentType() === self::TYPE_ETHERCALC;
+		}
+
+		public function getEthercalcRoomId(): string
+		{
+			return $this->isEthercalcDocument() ? trim((string)$this->get('ethercalcroomid')) : '';
+		}
+
 		public static function organizationHasEtherpadDocuments(int $organizationId): bool
 		{
 			$organizationId = (int)$organizationId;
@@ -1704,6 +1731,16 @@
 			}
 
 			return '/omo/api/documents/etherpad/open.php?id='
+				. rawurlencode((string)(int)$this->getId());
+		}
+
+		public function buildEthercalcOpenUrl(): string
+		{
+			if (!$this->isEthercalcDocument() || (int)$this->getId() <= 0) {
+				return '';
+			}
+
+			return '/omo/api/documents/ethercalc/open.php?id='
 				. rawurlencode((string)(int)$this->getId());
 		}
 
@@ -2483,7 +2520,7 @@
 			return '<div class="omo-document-etherpad">'
 				. '<iframe class="omo-document-etherpad__frame" src="'
 				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
-				. '"' . $themeOriginAttribute . ' loading="lazy" allow="clipboard-read; clipboard-write" referrerpolicy="same-origin"></iframe>'
+				. '"' . $themeOriginAttribute . ' loading="lazy" allow="clipboard-read; clipboard-write; fullscreen" allowfullscreen referrerpolicy="same-origin"></iframe>'
 				. '</div>';
 		}
 
@@ -2510,6 +2547,23 @@
 			return '<div class="omo-document-etherpad-snapshot">'
 				. \dbObject\PropertyFormat::sanitizeHtml($html)
 				. '</div>';
+		}
+
+		protected function renderEthercalcForViewer(): string
+		{
+			$openUrl = $this->buildEthercalcOpenUrl();
+			if ($openUrl === '' || $this->getEthercalcRoomId() === '') {
+				return '<div class="omo-document-ethercalc omo-document-ethercalc--empty">Aucun tableur collaboratif n est associe a ce document.</div>';
+			}
+
+			return '<iframe class="omo-document-ethercalc__frame" src="'
+				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+				. '" loading="lazy" scrolling="no" allow="clipboard-read; clipboard-write; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe>';
+		}
+
+		protected function renderEthercalcSnapshotForViewer(): string
+		{
+			return '<div class="omo-document-ethercalc-snapshot">Tableur collaboratif a consulter dans OMO.</div>';
 		}
 
 		protected function renderUploadedFileForViewer(): string
@@ -2764,6 +2818,10 @@
 				return $this->renderEtherpadForViewer();
 			}
 
+			if ($this->isEthercalcDocument()) {
+				return $this->renderEthercalcForViewer();
+			}
+
 			return $this->renderResolvedHtmlForViewer(
 				(string)$this->get('content'),
 				(int)$this->get('IDorganization')
@@ -2816,6 +2874,9 @@
 				));
 			} elseif ($this->isEtherpadDocument()) {
 				$renderedContent = $this->renderEtherpadSnapshotForViewer();
+				$contentHashSource = $renderedContent;
+			} elseif ($this->isEthercalcDocument()) {
+				$renderedContent = $this->renderEthercalcSnapshotForViewer();
 				$contentHashSource = $renderedContent;
 			} else {
 				$renderedContent = $this->renderResolvedHtmlForViewer($content, (int)$this->get('IDorganization'));
@@ -3958,8 +4019,12 @@
 			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
 			$organization = new \dbObject\Organization();
 			$createdEtherpadPadId = '';
+			$createdEthercalcRoomId = '';
 			if ($documentType === self::TYPE_ETHERPAD) {
 				require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+			}
+			if ($documentType === self::TYPE_ETHERCALC) {
+				require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
 			}
 
 			try {
@@ -4014,6 +4079,17 @@
 					return array(
 						'status' => false,
 						'text' => 'Le serveur Etherpad ou son domaine de session n est pas configure pour cette organisation.',
+					);
+				}
+
+				if ($documentType === self::TYPE_ETHERCALC && !omoEthercalcHasConfig()) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Le serveur EtherCalc n est pas configure.',
 					);
 				}
 
@@ -4161,12 +4237,44 @@
 					}
 				}
 
+				if ($documentType === self::TYPE_ETHERCALC) {
+					$ethercalcResult = omoEthercalcCreateDocumentSheet($organizationId);
+					if (!is_array($ethercalcResult) || empty($ethercalcResult['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($ethercalcResult)
+							? $ethercalcResult
+							: array('status' => false, 'text' => 'Impossible de creer le tableur EtherCalc.');
+					}
+
+					$createdEthercalcRoomId = trim((string)($ethercalcResult['roomId'] ?? ''));
+					$this->set('ethercalcroomid', $createdEthercalcRoomId !== '' ? $createdEthercalcRoomId : null);
+					$ethercalcSaveResult = $this->save();
+					if (!is_array($ethercalcSaveResult) || ($ethercalcSaveResult['status'] ?? false) !== true) {
+						if ($createdEthercalcRoomId !== '') {
+							omoEthercalcDeleteDocumentSheet($createdEthercalcRoomId);
+						}
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($ethercalcSaveResult)
+							? $ethercalcSaveResult
+							: array('status' => false, 'text' => 'Impossible d enregistrer le tableur EtherCalc.');
+					}
+				}
+
 				if ($startedTransaction && $pdo->inTransaction()) {
 					$pdo->commit();
 				}
 
 				if ($createdEtherpadPadId !== '') {
 					$contextSaveResult['etherpadPadId'] = $createdEtherpadPadId;
+				}
+				if ($createdEthercalcRoomId !== '') {
+					$contextSaveResult['ethercalcRoomId'] = $createdEthercalcRoomId;
 				}
 
 				if ($resolvedParentDocument instanceof \dbObject\Document) {
@@ -4177,6 +4285,9 @@
 			} catch (\Throwable $exception) {
 				if ($createdEtherpadPadId !== '' && $organization instanceof \dbObject\Organization && (int)$organization->getId() > 0) {
 					omoEtherpadDeleteDocumentPad($organization, $createdEtherpadPadId);
+				}
+				if ($createdEthercalcRoomId !== '') {
+					omoEthercalcDeleteDocumentSheet($createdEthercalcRoomId);
 				}
 				if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
 					$pdo->rollBack();

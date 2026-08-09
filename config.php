@@ -33,6 +33,11 @@ $GLOBALS['etherpadApiKey'] = envValue('ETHERPAD_API_KEY', '');
 $GLOBALS['etherpadApiVersion'] = envValue('ETHERPAD_API_VERSION', '1');
 $GLOBALS['etherpadCookieDomain'] = envValue('ETHERPAD_COOKIE_DOMAIN', '');
 
+// Configuration EtherCalc globale. OMO utilise l URL interne pour creer et supprimer les feuilles.
+$GLOBALS['ethercalcBaseUrl'] = envValue('ETHERCALC_URL', '');
+$GLOBALS['ethercalcInternalBaseUrl'] = envValue('ETHERCALC_INTERNAL_URL', '');
+$GLOBALS['ethercalcKey'] = envValue('ETHERCALC_KEY', '');
+
 // Config du mail
 $GLOBALS['mailHost'] = envValue('MAIL_HOST', 'mail.infomaniak.com');
 $GLOBALS['mailPort'] = envInt('MAIL_PORT', 587);

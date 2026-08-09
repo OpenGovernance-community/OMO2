@@ -70,6 +70,8 @@ foreach ($documents as $document) {
         $typeLabel = 'Fichier';
     } elseif ($documentType === \dbObject\Document::TYPE_ETHERPAD) {
         $typeLabel = 'Document collaboratif';
+    } elseif ($documentType === \dbObject\Document::TYPE_ETHERCALC) {
+        $typeLabel = 'Tableur collaboratif';
     }
 
     $documentEntries[] = array(
@@ -93,7 +95,7 @@ foreach ($documents as $document) {
         'sortTitle' => memoApiSortKey($document->get('title')),
         'detailUrl' => '/memo/api/documents/detail.php?id=' . (int)$document->getId(),
 		'canEdit' => $document->canManageInOrganizationContext($organizationId)
-			|| (!$document->isEtherpadDocument() && $document->canEditInOrganizationContext($organizationId)),
+			|| (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && $document->canEditInOrganizationContext($organizationId)),
         'editUrl' => '/omo/api/documents/create.php'
             . '?id=' . (int)$document->getId()
             . ($organizationId > 0 ? '&oid=' . $organizationId : '')
