@@ -91,6 +91,9 @@ if (!function_exists('omoEthercalcBuildSheetUrl')) {
         if ($canEdit && $parameters['auth'] === '') {
             return '';
         }
+        if (!$canEdit) {
+            $parameters['view'] = '1';
+        }
 
         $displayName = trim($displayName);
         if ($displayName !== '') {
