@@ -548,7 +548,10 @@ foreach ($documents as $document) {
         'canDelete' => $canManageLifecycle && $document->canDeleteDocument(),
         'canEdit' => $document->isPvDocument()
             ? $canOpenPvEditor
-            : $document->canEditInOrganizationContext($documentOrganizationId),
+            : (
+                $document->canManageInOrganizationContext($documentOrganizationId)
+                || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && $document->canEditInOrganizationContext($documentOrganizationId))
+            ),
         'editUrl' => $document->isPvDocument()
             ? $pvPreparationUrl
             : ('/omo/api/documents/create.php?id=' . $documentId
@@ -629,7 +632,15 @@ if ($initialOpenDocumentId > 0) {
             'hasUpcomingPvEvent' => $requestedCanOpenDirectly ? $requestedOpenDocument->hasUpcomingAssociatedEvent() : false,
             'canEdit' => $requestedOpenDocument->isPvDocument()
                 ? $requestedCanOpenPvEditor
-                : ($requestedCanView && $requestedOpenDocument->canEditInOrganizationContext($currentOrganizationId)),
+                : (
+                    $requestedCanView
+                    && (
+                        $requestedOpenDocument->canManageInOrganizationContext($currentOrganizationId)
+                        || (!$requestedOpenDocument->isEtherpadDocument()
+                            && !$requestedOpenDocument->isEthercalcDocument()
+                            && $requestedOpenDocument->canEditInOrganizationContext($currentOrganizationId))
+                    )
+                ),
             'editUrl' => $requestedOpenDocument->isPvDocument()
                 ? ($requestedCanOpenPvEditor ? $requestedOpenDocument->buildPvEditorUrl($currentOrganizationId) : '')
                 : ($requestedCanView
@@ -853,6 +864,7 @@ if (!is_string($documentsPayload)) {
                                                         <img
                                                             src="<?= $escape($entry['visibilityIconUrl']) ?>"
                                                             alt=""
+                                                            class="black-icon"
                                                             loading="lazy"
                                                         >
                                                     </span>
@@ -861,6 +873,7 @@ if (!is_string($documentsPayload)) {
                                                         <img
                                                             src="<?= $escape($entry['editVisibilityIconUrl']) ?>"
                                                             alt=""
+                                                            class="black-icon"
                                                             loading="lazy"
                                                         >
                                                     </span>
@@ -1509,6 +1522,7 @@ if (!is_string($documentsPayload)) {
                                     icon.setAttribute('aria-hidden', 'true');
 
                                     const image = document.createElement('img');
+                                    image.className = 'black-icon';
                                     image.src = iconUrl;
                                     image.alt = '';
                                     image.loading = 'lazy';
@@ -2110,7 +2124,66 @@ if (!is_string($documentsPayload)) {
                             };
 
                             if (detailDrawer) {
+                                const notifyEthercalcFrameResize = function () {
+                                    const frame = detailDrawer.querySelector('.omo-document-ethercalc__frame');
+                                    if (!(frame instanceof HTMLIFrameElement) || !frame.contentWindow) {
+                                        return;
+                                    }
+
+                                    [0, 80, 260, 700].forEach(function (delay) {
+                                        window.setTimeout(function () {
+                                            const bounds = frame.getBoundingClientRect();
+                                            frame.contentWindow.postMessage({
+                                                type: 'omo-ethercalc-resize',
+                                                viewport: {
+                                                    width: Math.round(bounds.width),
+                                                    height: Math.round(bounds.height),
+                                                },
+                                            }, '*');
+                                        }, delay);
+                                    });
+                                };
+
+                                const syncDocumentFullscreenButton = function () {
+                                    const fullscreenButton = detailDrawer.querySelector('[data-omo-document-fullscreen]');
+                                    const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame');
+                                    if (!(fullscreenButton instanceof HTMLButtonElement) || !(frame instanceof HTMLElement)) {
+                                        return;
+                                    }
+
+                                    const isFullscreen = document.fullscreenElement === frame;
+                                    fullscreenButton.setAttribute('aria-pressed', isFullscreen ? 'true' : 'false');
+                                    fullscreenButton.textContent = isFullscreen
+                                        ? (fullscreenButton.dataset.omoDocumentExitFullscreenLabel || '')
+                                        : (fullscreenButton.dataset.omoDocumentFullscreenLabel || '');
+
+                                    if (frame.classList.contains('omo-document-ethercalc__frame')) {
+                                        notifyEthercalcFrameResize();
+                                    }
+                                };
+
+                                document.addEventListener('fullscreenchange', syncDocumentFullscreenButton);
                                 detailDrawer.addEventListener('click', function (event) {
+                                    const fullscreenButton = event.target.closest('[data-omo-document-fullscreen]');
+                                    if (fullscreenButton) {
+                                        event.preventDefault();
+                                        const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame');
+                                        if (!(frame instanceof HTMLElement)) {
+                                            return;
+                                        }
+
+                                        if (document.fullscreenElement === frame) {
+                                            document.exitFullscreen().catch(function () {});
+                                        } else if (typeof frame.requestFullscreen === 'function') {
+                                            frame.requestFullscreen().then(function () {
+                                                if (frame.classList.contains('omo-document-ethercalc__frame')) {
+                                                    notifyEthercalcFrameResize();
+                                                }
+                                            }).catch(function () {});
+                                        }
+                                        return;
+                                    }
+
                                     const editButton = event.target.closest('[data-omo-document-open-editor-url]');
                                     if (!editButton) {
                                         return;

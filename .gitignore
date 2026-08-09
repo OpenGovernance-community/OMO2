@@ -5,6 +5,7 @@
 /docker/apache/certs/*.key
 /compose.override.yaml
 /docker/etherpad/.env.private
+/docker/ethercalc/.env.private
 /docker/db/init/*.local.sql
 /docker/db/init/*.private.sql
 /docker/db/init/*.disabled

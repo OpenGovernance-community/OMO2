@@ -149,9 +149,33 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Le panneau du menu d actions des propositions respecte maintenant correctement son etat masque au chargement.
 - Le menu d actions des propositions reprend maintenant les composants generiques utilises par les menus des indicateurs.
 - Les boutons d actions des propositions utilisent maintenant la meme hauteur compacte que le bouton de menu `...`.
+## 2026-08-09
+
+- 2026-08-09 : Les documents peuvent maintenant etre des tableurs collaboratifs EtherCalc. OMO cree puis supprime automatiquement la feuille, transmet le nom OMO de la personne et applique separement les droits de lecture et d edition du contenu. Docker fournit un EtherCalc local via `https://calc.localtest.me`.
+- 2026-08-09 : Le proxy EtherCalc local remappe les icones de barre d outils SocialCalc, y compris les chemins relatifs au nom du tableur, afin qu elles soient correctement chargees dans les feuilles affichees par OMO.
+- 2026-08-09 : Les documents collaboratifs et les tableurs collaboratifs disposent maintenant d un bouton plein ecran. Les tags sont compacts et les informations du fichier sont regroupees en bas de la fiche document.
+- 2026-08-09 : Le passage en plein ecran d un tableur collaboratif demande maintenant a EtherCalc de recalculer sa mise en page, afin que la grille occupe toute la surface disponible.
+- 2026-08-09 : La barre d outils EtherCalc ne revient plus a la ligne dans les iframes OMO et peut defiler horizontalement uniquement en cas de vrai depassement ; la marge negative de `SocialCalc-edittools` est neutralisee pour eviter un faux depassement, le defilement ne recouvre alors pas les icones, et le champ de formule utilise automatiquement la largeur restante.
+- 2026-08-09 : Les iframes des tableurs collaboratifs ne creent plus de barre de defilement externe pour quelques pixels de depassement.
+- 2026-08-09 : Le conteneur HTML inutile autour des iframes de tableur collaboratif a ete retire, sans modifier le cadre de l iframe.
+- 2026-08-09 : Le contenu principal des fiches document n est plus place dans un panneau `omo-card`, ce qui evite une marge inutile autour des contenus embarques.
+- 2026-08-09 : EtherCalc dispose aussi d un lanceur autonome pour hebergement Node.js sans Docker, base sur le runtime `workerd` precompile et un repertoire de donnees persistant separe.
+- 2026-08-02 : Le panneau super-admin Admin du serveur permet maintenant de renseigner la connexion Etherpad globale directement dans le fichier .env protege : URL, cle API masquee, version d API et domaine de partage des cookies.
+- 2026-08-02 : Docker lance maintenant aussi un Etherpad local accessible par `https://doc.localtest.me`, avec un domaine de cookies commun a OMO pour tester les documents collaboratifs sans serveur externe.
+- 2026-08-02 : Les appels API Etherpad utilisent maintenant la methode GET documentee, compatible avec Etherpad 2.6.1 et les serveurs qui refusent les appels POST.
+- 2026-08-02 : Etherpad local est maintenant publie en HTTPS par le proxy Apache de developpement, avec WebSocket, afin que les documents collaboratifs restent utilisables lorsque le navigateur force HTTPS.
+- 2026-08-02 : La connexion Etherpad ne demande a nouveau qu une seule URL publique; Docker reconnait automatiquement son certificat local pour les appels API HTTPS d OMO.
+- 2026-08-02 : Les sessions Etherpad sont transmises avec le format requis par son client Web, ce qui retablit l ouverture des pads prives dans l iframe OMO.
+- 2026-08-02 : Etherpad local suit maintenant le choix de theme clair, sombre ou systeme defini dans OMO, y compris lorsque ce choix differe de celui du navigateur.
+- 2026-08-02 : Etherpad local utilise maintenant une base MariaDB dediee sur le serveur de base de donnees OMO, au lieu du fichier DirtyDB local.
+- 2026-08-02 : Les droits des documents distinguent maintenant la gestion du document et l edition de son contenu : CAN_CREATE_DOCUMENT protege les metadonnees et les actions structurelles, tandis que la portee d edition propre au document autorise le contenu HTML, les liens, les fichiers et les pads Etherpad.
+- 2026-08-02 : Les icones de visibilite et d edition de la liste des documents restent maintenant lisibles en mode sombre.
+- 2026-08-02 : Le formulaire des documents distingue visuellement les metadonnees non modifiables, avec des controles grises et un curseur d interdiction.
+- 2026-08-02 : Le type de document Etherpad est presente comme un document collaboratif dans les interfaces destinees aux utilisateurs.
 
 ## 2026-08-01
 
+- Les documents peuvent maintenant etre de type Etherpad. OMO cree le pad sur le serveur configure, transmet l identite OMO, respecte les droits de lecture et d edition, conserve les sessions de plusieurs pads et supprime le pad lors de la suppression definitive du document. Chaque organisation peut definir son propre serveur et sa propre cle API dans les parametres de l application Documents, avec repli securise sur les secrets serveur.
 - Le bot Telegram peut maintenant etre connecte depuis un groupe a un role ou a un projet. Une personne doit d abord avoir relie son compte Telegram en prive; elle navigue ensuite parmi ses organisations, cercles, roles et projets autorises. Les vocaux du groupe sont alors ajoutes au contexte choisi et lies au projet lorsque celui-ci est selectionne.
 - La navigation Telegram des destinations de groupe inclut les groupes et les cercles. L ouverture d un role propose maintenant explicitement sa selection ou les projets rattaches a ce role, et les erreurs d enregistrement conservent leur detail SQL dans les journaux.
 - Les groupes Telegram sans sujet utilisent maintenant une destination principale explicite, ce qui evite une erreur SQL lors de leur connexion.

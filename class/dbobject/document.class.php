@@ -8,6 +8,8 @@
 		public const TYPE_UPLOADED_FILE = 'uploaded_file';
 		public const TYPE_FOLDER = 'folder';
 		public const TYPE_PV = 'pv';
+		public const TYPE_ETHERPAD = 'etherpad';
+		public const TYPE_ETHERCALC = 'ethercalc';
 		public const PV_STAGE_PREPARATION = 'preparation';
 		public const PV_STAGE_MEETING = 'meeting';
 		public const PV_STAGE_REVIEW = 'review';
@@ -25,8 +27,8 @@
 		{
 			return [
 				[['title'], 'required'],						// Champs obligatoires
-			[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'storedfilesize'], 'integer'],				// Nombres entiers
-				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime'], 'string'],	// Chaines de caractere
+				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'storedfilesize'], 'integer'],				// Nombres entiers
+				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'etherpadpadid', 'ethercalcroomid'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
 				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDuser_pv_editor', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
@@ -72,6 +74,8 @@
 				'storedfilename' => 'Nom original du fichier',
 				'storedfilemime' => 'Type MIME du fichier',
 				'storedfilesize' => 'Taille du fichier',
+				'etherpadpadid' => 'Identifiant du pad Etherpad',
+				'ethercalcroomid' => 'Identifiant du tableur EtherCalc',
 			];
 		}
 
@@ -94,7 +98,7 @@
 				'IDdocument_parent' => 'Dossier qui contient ce document',
 				'dateedition' => 'Date du dernier signal de presence pendant l edition',
 				'datecontentedition' => 'Date de mise a jour du brouillon temporaire',
-				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes et les dossiers',
+				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes, les telechargements, les documents collaboratifs, les tableurs collaboratifs, les PV et les dossiers',
 				'pvstage' => 'Etape actuelle du flux d un document PV: preparation, reunion, relecture ou valide',
 				'is_template' => 'Permet d utiliser la structure et le contenu de ce PV lors d une nouvelle creation',
 				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la reunion et peut modifier tous les points.',
@@ -105,6 +109,8 @@
 				'storedfilename' => 'Nom du fichier televerse par l utilisateur',
 				'storedfilemime' => 'Type MIME detecte pour le fichier distant',
 				'storedfilesize' => 'Taille du fichier distant en octets',
+				'etherpadpadid' => 'Identifiant technique du pad associe a ce document',
+				'ethercalcroomid' => 'Identifiant technique du tableur associe a ce document',
 			];
 		}
 
@@ -118,6 +124,8 @@
 				'storedfilepath' => 1000,
 				'storedfilename' => 255,
 				'storedfilemime' => 255,
+				'etherpadpadid' => 255,
+				'ethercalcroomid' => 255,
 			];
 		}
 
@@ -182,7 +190,7 @@
 				return $this->isPvCreatorOrEditor($userId);
 			}
 
-			return $this->canEditInOrganizationContext($organizationId, $userId, false);
+			return $this->canManageInOrganizationContext($organizationId, $userId, false);
 		}
 
 		public function canDeleteDocument(bool $allowEventDocument = false): bool
@@ -236,10 +244,33 @@
 		{
 			$pdo = self::getPdo();
 			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+			$organization = null;
 
 			try {
 				if ($startedTransaction) {
 					$pdo->beginTransaction();
+				}
+
+				if ($this->isEtherpadDocument() && $this->getEtherpadPadId() !== '') {
+					require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+					$organization = new \dbObject\Organization();
+					$organizationId = (int)$this->get('IDorganization');
+					if ($organizationId <= 0 || !$organization->load($organizationId)) {
+						throw new \RuntimeException('etherpad_organization_missing');
+					}
+
+					$etherpadDeleteResult = omoEtherpadDeleteDocumentPad($organization, $this->getEtherpadPadId());
+					if (!is_array($etherpadDeleteResult) || empty($etherpadDeleteResult['status'])) {
+						throw new \RuntimeException('etherpad_delete_failed');
+					}
+				}
+
+				if ($this->isEthercalcDocument() && $this->getEthercalcRoomId() !== '') {
+					require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
+					$ethercalcDeleteResult = omoEthercalcDeleteDocumentSheet($this->getEthercalcRoomId());
+					if (!is_array($ethercalcDeleteResult) || empty($ethercalcDeleteResult['status'])) {
+						throw new \RuntimeException('ethercalc_delete_failed');
+					}
 				}
 
 				if (!$this->deleteResourceRows() || !parent::delete()) {
@@ -726,6 +757,44 @@
 			return $this->currentViewerCanAccessEditVisibility($documentOrganizationId);
 		}
 
+		public function canManageInOrganizationContext(int $organizationId, ?int $userId = null, bool $useSessionCache = true): bool
+		{
+			$documentOrganizationId = (int)$this->get('IDorganization');
+			$organizationId = (int)$organizationId;
+			$userId = $userId !== null
+				? (int)$userId
+				: (
+					function_exists('commonGetCurrentUserId')
+						? (int)\commonGetCurrentUserId()
+						: (int)($_SESSION['currentUser'] ?? 0)
+				);
+
+			if ($userId <= 0) {
+				return false;
+			}
+
+			if ($documentOrganizationId <= 0) {
+				return $organizationId <= 0 && $userId === (int)$this->get('IDuser');
+			}
+
+			if (
+				$organizationId !== $documentOrganizationId
+				|| (function_exists('commonUserHasOrganizationAccess')
+					&& !\commonUserHasOrganizationAccess($userId, $documentOrganizationId))
+				|| !$this->currentViewerCanAccessVisibility($documentOrganizationId)
+			) {
+				return false;
+			}
+
+			return self::canCreateInOrganizationContext(
+				$documentOrganizationId,
+				(int)$this->get('IDholon') > 0 ? (int)$this->get('IDholon') : null,
+				$userId,
+				(int)$this->get('IDdocument_parent'),
+				$useSessionCache
+			);
+		}
+
 		public function canMoveInOrganizationContext(int $organizationId, int $userId): bool
 		{
 			$organizationId = (int)$organizationId;
@@ -736,7 +805,7 @@
 			}
 
 			return ($this->isPvDocument() && $this->canUserManagePvDocument($userId))
-				|| $this->canEditInOrganizationContext($organizationId, $userId, false);
+				|| $this->canManageInOrganizationContext($organizationId, $userId, false);
 		}
 
 		protected function normalizeScopeTypeForCurrentContext(string $visibilityType, string $fallbackType): string
@@ -1469,6 +1538,14 @@
 				return self::TYPE_PV;
 			}
 
+			if ($documentType === self::TYPE_ETHERPAD) {
+				return self::TYPE_ETHERPAD;
+			}
+
+			if ($documentType === self::TYPE_ETHERCALC) {
+				return self::TYPE_ETHERCALC;
+			}
+
 			return self::TYPE_HTML;
 		}
 
@@ -1573,6 +1650,8 @@
 				self::TYPE_UPLOADED_FILE => 'Telechargement',
 				self::TYPE_FOLDER => 'Dossier',
 				self::TYPE_PV => 'PV',
+				self::TYPE_ETHERPAD => 'Document collaboratif',
+				self::TYPE_ETHERCALC => 'Tableur collaboratif',
 			);
 		}
 
@@ -1606,6 +1685,63 @@
 		public function isPvDocument(): bool
 		{
 			return $this->getDocumentType() === self::TYPE_PV;
+		}
+
+		public function isEtherpadDocument(): bool
+		{
+			return $this->getDocumentType() === self::TYPE_ETHERPAD;
+		}
+
+		public function getEtherpadPadId(): string
+		{
+			return $this->isEtherpadDocument() ? trim((string)$this->get('etherpadpadid')) : '';
+		}
+
+		public function isEthercalcDocument(): bool
+		{
+			return $this->getDocumentType() === self::TYPE_ETHERCALC;
+		}
+
+		public function getEthercalcRoomId(): string
+		{
+			return $this->isEthercalcDocument() ? trim((string)$this->get('ethercalcroomid')) : '';
+		}
+
+		public static function organizationHasEtherpadDocuments(int $organizationId): bool
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return false;
+			}
+
+			return self::fetchRow(
+				'select `id` from `document` where `IDorganization` = :organization_id and `documenttype` = :document_type and `etherpadpadid` is not null and `etherpadpadid` <> :empty_pad_id limit 1',
+				array(
+					'organization_id' => $organizationId,
+					'document_type' => self::TYPE_ETHERPAD,
+					'empty_pad_id' => '',
+				)
+			) !== false;
+		}
+
+		public function buildEtherpadOpenUrl(): string
+		{
+			if (!$this->isEtherpadDocument() || (int)$this->getId() <= 0) {
+				return '';
+			}
+
+			return '/omo/api/documents/etherpad/open.php?id='
+				. rawurlencode((string)(int)$this->getId());
+		}
+
+		public function buildEthercalcOpenUrl(): string
+		{
+			if (!$this->isEthercalcDocument() || (int)$this->getId() <= 0) {
+				return '';
+			}
+
+			return '/omo/api/documents/ethercalc/open.php?id='
+				. rawurlencode((string)(int)$this->getId());
 		}
 
 		public function canBeEmbedded(): bool
@@ -2383,6 +2519,71 @@
 				. '</div>';
 		}
 
+		protected function renderEtherpadForViewer(): string
+		{
+			$openUrl = $this->buildEtherpadOpenUrl();
+			if ($openUrl === '' || $this->getEtherpadPadId() === '') {
+				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Aucun pad Etherpad n est associe a ce document.</div>';
+			}
+
+			require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+			$organization = new \dbObject\Organization();
+			$etherpadOrigin = $organization->load((int)$this->get('IDorganization'))
+				? omoEtherpadGetOrigin($organization)
+				: '';
+			$themeOriginAttribute = $etherpadOrigin !== ''
+				? ' data-omo-theme-message-origin="' . htmlspecialchars($etherpadOrigin, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"'
+				: '';
+
+			return '<div class="omo-document-etherpad">'
+				. '<iframe class="omo-document-etherpad__frame" src="'
+				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+				. '"' . $themeOriginAttribute . ' loading="lazy" allow="clipboard-read; clipboard-write; fullscreen" allowfullscreen referrerpolicy="same-origin"></iframe>'
+				. '</div>';
+		}
+
+		protected function renderEtherpadSnapshotForViewer(): string
+		{
+			$padId = $this->getEtherpadPadId();
+			$organizationId = (int)$this->get('IDorganization');
+			if ($padId === '' || $organizationId <= 0) {
+				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Aucun pad Etherpad n est associe a ce document.</div>';
+			}
+
+			require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+			$organization = new \dbObject\Organization();
+			if (!$organization->load($organizationId) || !omoEtherpadHasConfig($organization)) {
+				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Le serveur Etherpad n est pas disponible.</div>';
+			}
+
+			$htmlResult = omoEtherpadApiRequest($organization, 'getHTML', array('padID' => $padId));
+			$html = (string)($htmlResult['data']['html'] ?? '');
+			if (!($htmlResult['status'] ?? false)) {
+				return '<div class="omo-document-etherpad omo-document-etherpad--empty">Impossible de charger le contenu Etherpad.</div>';
+			}
+
+			return '<div class="omo-document-etherpad-snapshot">'
+				. \dbObject\PropertyFormat::sanitizeHtml($html)
+				. '</div>';
+		}
+
+		protected function renderEthercalcForViewer(): string
+		{
+			$openUrl = $this->buildEthercalcOpenUrl();
+			if ($openUrl === '' || $this->getEthercalcRoomId() === '') {
+				return '<div class="omo-document-ethercalc omo-document-ethercalc--empty">Aucun tableur collaboratif n est associe a ce document.</div>';
+			}
+
+			return '<iframe class="omo-document-ethercalc__frame" src="'
+				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+				. '" loading="lazy" scrolling="no" allow="clipboard-read; clipboard-write; fullscreen" allowfullscreen referrerpolicy="no-referrer"></iframe>';
+		}
+
+		protected function renderEthercalcSnapshotForViewer(): string
+		{
+			return '<div class="omo-document-ethercalc-snapshot">Tableur collaboratif a consulter dans OMO.</div>';
+		}
+
 		protected function renderUploadedFileForViewer(): string
 		{
 			if (!$this->hasStoredFile()) {
@@ -2650,6 +2851,14 @@
 				return $this->renderUploadedFileForViewer();
 			}
 
+			if ($this->isEtherpadDocument()) {
+				return $this->renderEtherpadForViewer();
+			}
+
+			if ($this->isEthercalcDocument()) {
+				return $this->renderEthercalcForViewer();
+			}
+
 			return $this->renderResolvedHtmlForViewer(
 				(string)$this->get('content'),
 				(int)$this->get('IDorganization')
@@ -2700,6 +2909,12 @@
 					$this->getStoredFileMimeType(),
 					(string)$this->getStoredFileSize(),
 				));
+			} elseif ($this->isEtherpadDocument()) {
+				$renderedContent = $this->renderEtherpadSnapshotForViewer();
+				$contentHashSource = $renderedContent;
+			} elseif ($this->isEthercalcDocument()) {
+				$renderedContent = $this->renderEthercalcSnapshotForViewer();
+				$contentHashSource = $renderedContent;
 			} else {
 				$renderedContent = $this->renderResolvedHtmlForViewer($content, (int)$this->get('IDorganization'));
 				$contentHashSource = $content;
@@ -3840,6 +4055,14 @@
 			$pdo = self::getPdo();
 			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
 			$organization = new \dbObject\Organization();
+			$createdEtherpadPadId = '';
+			$createdEthercalcRoomId = '';
+			if ($documentType === self::TYPE_ETHERPAD) {
+				require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+			}
+			if ($documentType === self::TYPE_ETHERCALC) {
+				require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
+			}
 
 			try {
 				if ($startedTransaction) {
@@ -3882,6 +4105,28 @@
 					return array(
 						'status' => false,
 						'text' => 'Le stockage Nextcloud n est pas configure pour cette organisation.',
+					);
+				}
+
+				if ($documentType === self::TYPE_ETHERPAD && !omoEtherpadCanUseEditingSessions($organization)) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Le serveur Etherpad ou son domaine de session n est pas configure pour cette organisation.',
+					);
+				}
+
+				if ($documentType === self::TYPE_ETHERCALC && !omoEthercalcHasConfig()) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Le serveur EtherCalc n est pas configure.',
 					);
 				}
 
@@ -3994,8 +4239,79 @@
 					}
 				}
 
+				if ($documentType === self::TYPE_ETHERPAD) {
+					$etherpadResult = omoEtherpadCreateDocumentPad(
+						$organization,
+						$organizationId,
+						$userId,
+						$this->getCreatedByDisplayName(),
+						''
+					);
+					if (!is_array($etherpadResult) || empty($etherpadResult['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($etherpadResult)
+							? $etherpadResult
+							: array('status' => false, 'text' => 'Impossible de creer le pad Etherpad.');
+					}
+
+					$createdEtherpadPadId = trim((string)($etherpadResult['padId'] ?? ''));
+					$this->set('etherpadpadid', $createdEtherpadPadId !== '' ? $createdEtherpadPadId : null);
+					$etherpadSaveResult = $this->save();
+					if (!is_array($etherpadSaveResult) || ($etherpadSaveResult['status'] ?? false) !== true) {
+						if ($createdEtherpadPadId !== '') {
+							omoEtherpadDeleteDocumentPad($organization, $createdEtherpadPadId);
+						}
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($etherpadSaveResult)
+							? $etherpadSaveResult
+							: array('status' => false, 'text' => 'Impossible d enregistrer le pad Etherpad.');
+					}
+				}
+
+				if ($documentType === self::TYPE_ETHERCALC) {
+					$ethercalcResult = omoEthercalcCreateDocumentSheet($organizationId);
+					if (!is_array($ethercalcResult) || empty($ethercalcResult['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($ethercalcResult)
+							? $ethercalcResult
+							: array('status' => false, 'text' => 'Impossible de creer le tableur EtherCalc.');
+					}
+
+					$createdEthercalcRoomId = trim((string)($ethercalcResult['roomId'] ?? ''));
+					$this->set('ethercalcroomid', $createdEthercalcRoomId !== '' ? $createdEthercalcRoomId : null);
+					$ethercalcSaveResult = $this->save();
+					if (!is_array($ethercalcSaveResult) || ($ethercalcSaveResult['status'] ?? false) !== true) {
+						if ($createdEthercalcRoomId !== '') {
+							omoEthercalcDeleteDocumentSheet($createdEthercalcRoomId);
+						}
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($ethercalcSaveResult)
+							? $ethercalcSaveResult
+							: array('status' => false, 'text' => 'Impossible d enregistrer le tableur EtherCalc.');
+					}
+				}
+
 				if ($startedTransaction && $pdo->inTransaction()) {
 					$pdo->commit();
+				}
+
+				if ($createdEtherpadPadId !== '') {
+					$contextSaveResult['etherpadPadId'] = $createdEtherpadPadId;
+				}
+				if ($createdEthercalcRoomId !== '') {
+					$contextSaveResult['ethercalcRoomId'] = $createdEthercalcRoomId;
 				}
 
 				if ($resolvedParentDocument instanceof \dbObject\Document) {
@@ -4004,6 +4320,12 @@
 
 				return $contextSaveResult;
 			} catch (\Throwable $exception) {
+				if ($createdEtherpadPadId !== '' && $organization instanceof \dbObject\Organization && (int)$organization->getId() > 0) {
+					omoEtherpadDeleteDocumentPad($organization, $createdEtherpadPadId);
+				}
+				if ($createdEthercalcRoomId !== '') {
+					omoEthercalcDeleteDocumentSheet($createdEthercalcRoomId);
+				}
 				if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
 					$pdo->rollBack();
 				}
@@ -4029,26 +4351,32 @@
 			}
 
 			$canManagePvDocument = $this->isPvDocument() && $this->canUserManagePvDocument($userId);
-			if ($userId <= 0 || (!$canManagePvDocument && !$this->canEditInOrganizationContext($organizationId, $userId, false))) {
+			$canManageDocument = !$this->isPvDocument()
+				&& $this->canManageInOrganizationContext($organizationId, $userId, false);
+			$canEditContent = !$this->isPvDocument()
+				&& $this->canEditInOrganizationContext($organizationId, $userId, false);
+			if (
+				$userId <= 0
+				|| ($this->isPvDocument() && !$canManagePvDocument)
+				|| (!$this->isPvDocument() && !$canManageDocument && !$canEditContent)
+			) {
 				return array(
 					'status' => false,
 					'text' => 'Acces refuse.',
 				);
 			}
 
-			if ($this->isPvDocument() && !$canManagePvDocument) {
-				return array(
-					'status' => false,
-					'text' => 'Acces refuse.',
-				);
+			$usesEditLock = $canEditContent && $this->supportsHtmlContent();
+			if ($usesEditLock) {
+				$lockResult = $this->touchEditLock($organizationId, $userId);
+				if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
+					return $lockResult;
+				}
 			}
 
-			$lockResult = $this->touchEditLock($organizationId, $userId);
-			if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
-				return $lockResult;
-			}
-
-			$title = trim((string)($values['title'] ?? ''));
+			$title = $canManageDocument || $canManagePvDocument
+				? trim((string)($values['title'] ?? ''))
+				: trim((string)$this->get('title'));
 			if ($title === '') {
 				return array(
 					'status' => false,
@@ -4056,19 +4384,26 @@
 				);
 			}
 
-			$description = trim((string)($values['description'] ?? ''));
+			$description = $canManageDocument || $canManagePvDocument
+				? trim((string)($values['description'] ?? ''))
+				: trim((string)$this->get('description'));
 			$documentType = $this->getDocumentType();
-			$uploadedFile = $documentType === self::TYPE_UPLOADED_FILE
+			$uploadedFile = $canEditContent && $documentType === self::TYPE_UPLOADED_FILE
 				? self::extractValidUploadedFile($values['uploaded_file'] ?? null)
 				: null;
-			$removeUploadedFile = $documentType === self::TYPE_UPLOADED_FILE && !empty($values['remove_uploaded_file']);
+			$removeUploadedFile = $canEditContent && $documentType === self::TYPE_UPLOADED_FILE && !empty($values['remove_uploaded_file']);
 			$content = $documentType === self::TYPE_HTML
-				? \dbObject\PropertyFormat::sanitizeHtml((string)($values['content'] ?? ''))
+				? ($canEditContent
+					? \dbObject\PropertyFormat::sanitizeHtml((string)($values['content'] ?? ''))
+					: (string)$this->get('content'))
 				: '';
 			$externalUrl = $documentType === self::TYPE_EXTERNAL_LINK
-				? self::sanitizeExternalUrl($values['external_url'] ?? '')
+				? ($canEditContent
+					? self::sanitizeExternalUrl($values['external_url'] ?? '')
+					: $this->getExternalUrl())
 				: '';
-			$openInNewWindow = $documentType === self::TYPE_EXTERNAL_LINK && !empty($values['open_in_new_window']);
+			$openInNewWindow = $documentType === self::TYPE_EXTERNAL_LINK
+				&& ($canEditContent ? !empty($values['open_in_new_window']) : $this->shouldOpenExternalLinkInNewWindow());
 			if ($documentType === self::TYPE_EXTERNAL_LINK && $externalUrl === '') {
 				return array(
 					'status' => false,
@@ -4081,19 +4416,25 @@
 					'text' => 'Aucun fichier n est actuellement associe a ce document.',
 				);
 			}
-			$keywords = trim((string)($values['keywords'] ?? ''));
-			$visibilityType = $this->resolveScopeTypeInput(
-				$values,
-				'visibility_type',
-				self::getDefaultVisibilityTypeForOrganization($organizationId),
-				false
-			);
-			$editVisibilityType = $this->resolveScopeTypeInput(
-				$values,
-				'edit_visibility_type',
-				self::getDefaultEditVisibilityTypeForOrganization($organizationId),
-				false
-			);
+			$keywords = $canManageDocument || $canManagePvDocument
+				? trim((string)($values['keywords'] ?? ''))
+				: trim((string)$this->get('keywords'));
+			$visibilityType = $canManageDocument || $canManagePvDocument
+				? $this->resolveScopeTypeInput(
+					$values,
+					'visibility_type',
+					self::getDefaultVisibilityTypeForOrganization($organizationId),
+					false
+				)
+				: '';
+			$editVisibilityType = $canManageDocument || $canManagePvDocument
+				? $this->resolveScopeTypeInput(
+					$values,
+					'edit_visibility_type',
+					self::getDefaultEditVisibilityTypeForOrganization($organizationId),
+					false
+				)
+				: '';
 			$now = new \DateTimeImmutable();
 
 			$this->set('title', $title);
@@ -4152,6 +4493,7 @@
 				if (
 					!$isWithoutContext
 					&& $documentType === self::TYPE_UPLOADED_FILE
+					&& ($uploadedFile !== null || $removeUploadedFile)
 					&& !$organization->hasNextcloudDocumentStorage()
 				) {
 					if ($startedTransaction && $pdo->inTransaction()) {
@@ -4214,7 +4556,7 @@
 					}
 				}
 
-				if (!$isWithoutContext) {
+				if (!$isWithoutContext && ($canManageDocument || $canManagePvDocument)) {
 					$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);
 					if (!is_array($visibilitySaveResult) || ($visibilitySaveResult['status'] ?? false) !== true) {
 						if ($startedTransaction && $pdo->inTransaction()) {
@@ -4242,7 +4584,9 @@
 					$this->refreshAncestorFolderActivity();
 				}
 
-				$this->releaseEditLock($userId, true);
+				if ($usesEditLock) {
+					$this->releaseEditLock($userId, true);
+				}
 
 				return $saveResult;
 			} catch (\Throwable $exception) {
