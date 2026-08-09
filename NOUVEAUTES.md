@@ -151,6 +151,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les boutons d actions des propositions utilisent maintenant la meme hauteur compacte que le bouton de menu `...`.
 ## 2026-08-09
 
+- Le lanceur EtherCalc autonome reconnait aussi les icones SocialCalc demandees avec un nom de feuille dans leur chemin, afin qu elles se chargent correctement sur les hebergements Node.js publics.
 - Le panneau super-admin de configuration du serveur permet maintenant de renseigner la connexion EtherCalc globale : URL publique, URL interne optionnelle et cle secrete masquee.
 - 2026-08-09 : Les documents peuvent maintenant etre des tableurs collaboratifs EtherCalc. OMO cree puis supprime automatiquement la feuille, transmet le nom OMO de la personne et applique separement les droits de lecture et d edition du contenu. Docker fournit un EtherCalc local via `https://calc.localtest.me`.
 - 2026-08-09 : Le proxy EtherCalc local remappe les icones de barre d outils SocialCalc, y compris les chemins relatifs au nom du tableur, afin qu elles soient correctement chargees dans les feuilles affichees par OMO.

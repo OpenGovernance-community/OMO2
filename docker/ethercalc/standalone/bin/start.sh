@@ -19,6 +19,7 @@ assets_dir="${ETHERCALC_ASSETS_DIR:-$app_root/assets}"
 
 mkdir -p "$data_dir/do"
 export ETHERCALC_DISABLE_ROOM_INDEX="${ETHERCALC_DISABLE_ROOM_INDEX:-1}"
+node "$app_root/bin/patch-room-assets.js"
 
 exec "$app_root/bin/workerd" serve \
     "$app_root/workerd/config.capnp" \
