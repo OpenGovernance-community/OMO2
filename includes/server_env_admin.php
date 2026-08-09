@@ -491,6 +491,21 @@ function serverEnvAdminMergeSubmittedValues(array $submittedValues, array $curre
     return $mergedValues;
 }
 
+function serverEnvAdminIsHttpUrl($value)
+{
+    $parsedServerUrl = parse_url(trim((string)$value));
+    $serverScheme = is_array($parsedServerUrl) ? strtolower((string)($parsedServerUrl['scheme'] ?? '')) : '';
+    $serverHost = is_array($parsedServerUrl) ? trim((string)($parsedServerUrl['host'] ?? '')) : '';
+
+    return is_array($parsedServerUrl)
+        && in_array($serverScheme, ['http', 'https'], true)
+        && $serverHost !== ''
+        && !isset($parsedServerUrl['user'])
+        && !isset($parsedServerUrl['pass'])
+        && !isset($parsedServerUrl['query'])
+        && !isset($parsedServerUrl['fragment']);
+}
+
 function serverEnvAdminValidateValues(array $values)
 {
     $errors = [];
@@ -541,18 +556,7 @@ function serverEnvAdminValidateValues(array $values)
             continue;
         }
 
-        $parsedServerUrl = parse_url($serverUrl);
-        $serverScheme = is_array($parsedServerUrl) ? strtolower((string)($parsedServerUrl['scheme'] ?? '')) : '';
-        $serverHost = is_array($parsedServerUrl) ? trim((string)($parsedServerUrl['host'] ?? '')) : '';
-        if (
-            !is_array($parsedServerUrl)
-            || !in_array($serverScheme, ['http', 'https'], true)
-            || $serverHost === ''
-            || isset($parsedServerUrl['user'])
-            || isset($parsedServerUrl['pass'])
-            || isset($parsedServerUrl['query'])
-            || isset($parsedServerUrl['fragment'])
-        ) {
+        if (!serverEnvAdminIsHttpUrl($serverUrl)) {
             $errors[] = serverEnvAdminT(
                 $serverUrlError['translationKey'],
                 $serverUrlError['fallback']
@@ -581,6 +585,216 @@ function serverEnvAdminValidateValues(array $values)
     }
 
     return $errors;
+}
+
+function serverEnvAdminConnectionTestError($service, $reason)
+{
+    $serviceLabel = $service === 'etherpad' ? 'Etherpad' : 'EtherCalc';
+    $reason = trim((string)$reason);
+
+    return serverEnvAdminT(
+        'parameters.server_env.error.connection_test_failed',
+        'La connexion avec {service} a echoue{reason}.',
+        [
+            'service' => $serviceLabel,
+            'reason' => $reason === '' ? '' : ' : ' . $reason,
+        ]
+    );
+}
+
+function serverEnvAdminRequest($method, $url)
+{
+    if (!function_exists('curl_init')) {
+        return [
+            'status' => false,
+            'text' => serverEnvAdminT(
+                'parameters.server_env.error.curl_required',
+                'cURL est requis pour tester cette connexion.'
+            ),
+        ];
+    }
+
+    $curl = curl_init((string)$url);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($curl, CURLOPT_FOLLOWLOCATION, false);
+    curl_setopt($curl, CURLOPT_CUSTOMREQUEST, strtoupper(trim((string)$method)));
+    curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($curl, CURLOPT_TIMEOUT, 15);
+    curl_setopt($curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+    curl_setopt($curl, CURLOPT_HTTPHEADER, ['Accept: application/json']);
+
+    $host = strtolower(trim((string)parse_url((string)$url, PHP_URL_HOST)));
+    $localDevelopmentCertificate = '/etc/apache2/ssl/dev-localhost.crt';
+    if (
+        $host !== ''
+        && (hash_equals($host, 'localtest.me') || str_ends_with($host, '.localtest.me'))
+        && is_file($localDevelopmentCertificate)
+    ) {
+        curl_setopt($curl, CURLOPT_CAINFO, $localDevelopmentCertificate);
+    }
+
+    $response = curl_exec($curl);
+    $curlError = trim((string)curl_error($curl));
+    $httpCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+    if ($response === false) {
+        return [
+            'status' => false,
+            'httpCode' => $httpCode,
+            'text' => $curlError !== '' ? $curlError : serverEnvAdminT(
+                'parameters.server_env.error.connection_request_failed',
+                'La requete a echoue.'
+            ),
+        ];
+    }
+
+    return [
+        'status' => $httpCode >= 200 && $httpCode < 300,
+        'httpCode' => $httpCode,
+        'body' => (string)$response,
+    ];
+}
+
+function serverEnvAdminTestEtherpadConnection(array $values)
+{
+    $baseUrl = rtrim(trim((string)($values['ETHERPAD_URL'] ?? '')), '/');
+    $apiKey = trim((string)($values['ETHERPAD_API_KEY'] ?? ''));
+    $apiVersion = trim((string)($values['ETHERPAD_API_VERSION'] ?? ''));
+
+    if (!serverEnvAdminIsHttpUrl($baseUrl)) {
+        return [
+            'status' => false,
+            'message' => serverEnvAdminT('parameters.server_env.error.invalid_etherpad_url', 'L URL Etherpad doit etre une adresse http ou https valide.'),
+        ];
+    }
+    if ($apiKey === '' || $apiVersion === '') {
+        return [
+            'status' => false,
+            'message' => serverEnvAdminT(
+                'parameters.server_env.error.etherpad_connection_incomplete',
+                'Renseignez l URL, la cle API et la version de l API Etherpad avant le test.'
+            ),
+        ];
+    }
+    if (preg_match('/^[0-9]+(?:\.[0-9]+)*$/', $apiVersion) !== 1) {
+        return [
+            'status' => false,
+            'message' => serverEnvAdminT('parameters.server_env.error.invalid_etherpad_api_version', 'La version de l API Etherpad doit etre numerique, par exemple 1.3.1.'),
+        ];
+    }
+
+    $url = $baseUrl . '/api/' . rawurlencode($apiVersion) . '/listAllPads?'
+        . http_build_query(['apikey' => $apiKey], '', '&', PHP_QUERY_RFC3986);
+    $result = serverEnvAdminRequest('GET', $url);
+    if (!($result['status'] ?? false)) {
+        $reason = isset($result['httpCode']) && (int)$result['httpCode'] > 0
+            ? 'HTTP ' . (int)$result['httpCode']
+            : (string)($result['text'] ?? '');
+        return [
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('etherpad', $reason),
+        ];
+    }
+
+    $payload = json_decode((string)($result['body'] ?? ''), true);
+    if (!is_array($payload) || (int)($payload['code'] ?? -1) !== 0) {
+        $reason = is_array($payload) ? trim((string)($payload['message'] ?? '')) : '';
+        return [
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('etherpad', $reason),
+        ];
+    }
+
+    return [
+        'status' => true,
+        'message' => serverEnvAdminT(
+            'parameters.server_env.status.etherpad_connection_ok',
+            'Connexion Etherpad verifiee : URL, version de l API et cle sont valides.'
+        ),
+    ];
+}
+
+function serverEnvAdminTestEthercalcConnection(array $values)
+{
+    $publicBaseUrl = rtrim(trim((string)($values['ETHERCALC_URL'] ?? '')), '/');
+    $internalBaseUrl = rtrim(trim((string)($values['ETHERCALC_INTERNAL_URL'] ?? '')), '/');
+    $apiBaseUrl = $internalBaseUrl !== '' ? $internalBaseUrl : $publicBaseUrl;
+    $key = trim((string)($values['ETHERCALC_KEY'] ?? ''));
+
+    if (!serverEnvAdminIsHttpUrl($publicBaseUrl) || ($internalBaseUrl !== '' && !serverEnvAdminIsHttpUrl($internalBaseUrl))) {
+        return [
+            'status' => false,
+            'message' => serverEnvAdminT('parameters.server_env.error.invalid_ethercalc_url', 'L URL EtherCalc doit etre une adresse http ou https valide.'),
+        ];
+    }
+    if ($key === '') {
+        return [
+            'status' => false,
+            'message' => serverEnvAdminT(
+                'parameters.server_env.error.ethercalc_connection_incomplete',
+                'Renseignez l URL publique et la cle EtherCalc avant le test.'
+            ),
+        ];
+    }
+
+    $healthResult = serverEnvAdminRequest('GET', $publicBaseUrl . '/_health');
+    if (!($healthResult['status'] ?? false)) {
+        $reason = isset($healthResult['httpCode']) && (int)$healthResult['httpCode'] > 0
+            ? 'HTTP ' . (int)$healthResult['httpCode']
+            : (string)($healthResult['text'] ?? '');
+        return [
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('ethercalc', $reason),
+        ];
+    }
+
+    try {
+        $testRoom = 'omo-connection-test-' . bin2hex(random_bytes(12));
+    } catch (Throwable $exception) {
+        return [
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('ethercalc', ''),
+        ];
+    }
+
+    $token = hash_hmac('sha256', $testRoom, $key);
+    $requestUrl = $apiBaseUrl . '/_/' . rawurlencode($testRoom) . '?'
+        . http_build_query(['auth' => $token], '', '&', PHP_QUERY_RFC3986);
+    $authResult = serverEnvAdminRequest('DELETE', $requestUrl);
+    if (!($authResult['status'] ?? false)) {
+        $reason = isset($authResult['httpCode']) && (int)$authResult['httpCode'] > 0
+            ? 'HTTP ' . (int)$authResult['httpCode']
+            : (string)($authResult['text'] ?? '');
+        return [
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('ethercalc', $reason),
+        ];
+    }
+
+    return [
+        'status' => true,
+        'message' => serverEnvAdminT(
+            'parameters.server_env.status.ethercalc_connection_ok',
+            'Connexion EtherCalc verifiee : URL publique, URL interne et cle sont valides.'
+        ),
+    ];
+}
+
+function serverEnvAdminTestConnection($service, array $values)
+{
+    if ($service === 'etherpad') {
+        return serverEnvAdminTestEtherpadConnection($values);
+    }
+    if ($service === 'ethercalc') {
+        return serverEnvAdminTestEthercalcConnection($values);
+    }
+
+    return [
+        'status' => false,
+        'message' => serverEnvAdminT(
+            'parameters.server_env.error.invalid_connection_service',
+            'Service de connexion invalide.'
+        ),
+    ];
 }
 
 function serverEnvAdminEncodeEnvValue($value)
