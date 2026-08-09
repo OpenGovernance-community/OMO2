@@ -166,6 +166,14 @@ $sourceLang = [
         'text' => 'Fichier absent',
         'context' => 'Warning badge shown on an uploaded document without a stored file.',
     ],
+    'documents.icon.etherpad' => [
+        'text' => 'Document collaboratif',
+        'context' => 'Alternative text for the Etherpad document type icon.',
+    ],
+    'documents.icon.ethercalc' => [
+        'text' => 'Tableur collaboratif',
+        'context' => 'Alternative text for the EtherCalc document type icon.',
+    ],
     'documents.action.loading' => [
         'text' => 'Chargement...',
         'context' => 'Loading state shown while a document drawer is loading.',
@@ -969,8 +977,14 @@ if (!is_string($documentsPayload)) {
                 const omoDocumentsFolderIconUrl = '/omo/assets/images/documents/folder.png';
                 const omoDocumentsLinkIconUrl = '/omo/assets/images/documents/link.png';
                 const omoDocumentsPvIconUrl = '/omo/assets/images/documents/pv.png';
+                const omoDocumentsEtherpadIconUrl = '/omo/assets/images/documents/collaborative.png';
+                const omoDocumentsEthercalcIconUrl = '/omo/assets/images/documents/spreadsheet.png';
                 const omoDocumentsPvType = 'pv';
+                const omoDocumentsEtherpadType = 'etherpad';
+                const omoDocumentsEthercalcType = 'ethercalc';
                 const omoDocumentsMissingUploadedFileLabel = <?= json_encode(omoDocumentsScopeT('documents.upload_missing.badge'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                const omoDocumentsEtherpadIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.etherpad'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                const omoDocumentsEthercalcIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.ethercalc'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
                 const omoDocumentsGetIconUrl = function (documentItem) {
                     if (documentItem && documentItem.isFolder) {
@@ -987,6 +1001,14 @@ if (!is_string($documentsPayload)) {
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
                         return omoDocumentsPvIconUrl;
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEtherpadType) {
+                        return omoDocumentsEtherpadIconUrl;
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEthercalcType) {
+                        return omoDocumentsEthercalcIconUrl;
                     }
 
                     return omoDocumentsFileIconUrl;
@@ -1007,6 +1029,14 @@ if (!is_string($documentsPayload)) {
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
                         return 'Proces verbal';
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEtherpadType) {
+                        return omoDocumentsEtherpadIconLabel;
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEthercalcType) {
+                        return omoDocumentsEthercalcIconLabel;
                     }
 
                     return 'Fichier';
