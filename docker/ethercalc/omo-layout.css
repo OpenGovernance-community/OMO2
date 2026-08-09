@@ -1,0 +1,32 @@
+#tableeditor > div:nth-child(1) > div:nth-child(1) > div:nth-child(2) {
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: thin;
+}
+
+#SocialCalc-edittools {
+    margin: 0 0 4px !important;
+}
+
+#tableeditor > div:nth-child(1) > div:nth-child(1) > div:nth-child(2).omo-ethercalc-toolbar--overflowing {
+    padding-bottom: 10px !important;
+}
+
+#tableeditor > div:nth-child(1) > div:nth-child(2) {
+    display: flex;
+    align-items: center;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: thin;
+}
+
+#tableeditor > div:nth-child(1) > div:nth-child(2) > input:first-child {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-width: 160px;
+    width: auto !important;
+}

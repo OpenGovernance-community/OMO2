@@ -54,27 +54,50 @@ if (!omoDocumentsParamsCanManage($organizationId, $currentUserId)) {
     exit;
 }
 
-$result = omoDocumentsParamsStoreNextcloudConfig($organization, $_POST, true);
-if (!is_array($result) || empty($result['status'])) {
-    http_response_code(422);
-    echo json_encode(array(
-        'status' => false,
-        'message' => trim((string)($result['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed'))),
-    ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
+$pdo = \dbObject\DbObject::getPdo();
+$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+$failureMessage = '';
 
-$defaultsResult = omoDocumentsParamsStoreVisibilityDefaults($organization, $_POST);
-if (!is_array($defaultsResult) || empty($defaultsResult['status'])) {
+try {
+    if ($startedTransaction) {
+        $pdo->beginTransaction();
+    }
+
+    $result = omoDocumentsParamsStoreNextcloudConfig($organization, $_POST, true);
+    if (!is_array($result) || empty($result['status'])) {
+        $failureMessage = trim((string)($result['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
+        throw new \RuntimeException('documents_settings_save_failed');
+    }
+
+    $etherpadResult = omoDocumentsParamsStoreEtherpadConfig($organization, $_POST, true);
+    if (!is_array($etherpadResult) || empty($etherpadResult['status'])) {
+        $failureMessage = trim((string)($etherpadResult['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
+        throw new \RuntimeException('documents_settings_save_failed');
+    }
+
+    $defaultsResult = omoDocumentsParamsStoreVisibilityDefaults($organization, $_POST);
+    if (!is_array($defaultsResult) || empty($defaultsResult['status'])) {
+        $failureMessage = trim((string)($defaultsResult['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
+        throw new \RuntimeException('documents_settings_save_failed');
+    }
+
+    if ($startedTransaction && $pdo->inTransaction()) {
+        $pdo->commit();
+    }
+} catch (\Throwable $exception) {
+    if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
     http_response_code(422);
     echo json_encode(array(
         'status' => false,
-        'message' => trim((string)($defaultsResult['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed'))),
+        'message' => $failureMessage !== '' ? $failureMessage : omoDocumentsParamsT('documents.params.error.save_failed'),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 echo json_encode(array(
     'status' => true,
-    'message' => trim((string)($defaultsResult['text'] ?? $result['text'] ?? omoDocumentsParamsT('documents.params.feedback.saved'))),
+    'message' => trim((string)($defaultsResult['text'] ?? $etherpadResult['text'] ?? $result['text'] ?? omoDocumentsParamsT('documents.params.feedback.saved'))),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
