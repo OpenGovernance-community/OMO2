@@ -151,6 +151,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les boutons d actions des propositions utilisent maintenant la meme hauteur compacte que le bouton de menu `...`.
 ## 2026-08-09
 
+- Les reglages super-admin du fichier .env permettent maintenant de tester sans enregistrement la connexion Etherpad et EtherCalc, y compris avec les valeurs encore saisies dans le formulaire.
 - L action Importer un indicateur propose maintenant un prototype a onglets : indicateurs existants ou Framacalc. Le second onglet liste les tableurs collaboratifs visibles et permet de preparer une lecture de cellule planifiee ou l import d une plage datee a plusieurs valeurs.
 - Les panneaux masques du prototype Framacalc restent correctement invisibles, y compris lorsqu ils utilisent une mise en page en grille.
 - Le serveur EtherCalc autonome bloque maintenant ses pages publiques de creation ; les tableurs sont accessibles uniquement depuis OMO.
