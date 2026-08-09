@@ -79,6 +79,12 @@
     padding: 8px;
 }
 
+.omo-stats-picker[hidden],
+.omo-stats-picker__field[hidden],
+.omo-stats-picker__tabs [hidden] {
+    display: none !important;
+}
+
 .omo-stats-picker__field {
     display: grid;
     gap: 6px;
