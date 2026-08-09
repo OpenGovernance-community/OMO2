@@ -1,8 +1,10 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__, 3) . '/common/stats_ethercalc_sync.php';
 
 use dbObject\StatIndicator;
+use dbObject\Document;
 use dbObject\StatIndicatorGroup;
 use dbObject\StatIndicatorGroupItem;
 use dbObject\StatIndicatorImport;
@@ -181,6 +183,87 @@ function omoStatsActionParseChartMinimumValue($rawValue)
     return $value;
 }
 
+function omoStatsActionEnsureAutoEthercalcGroup($organizationId, $holonId, $userId, $name, array $indicators)
+{
+    $indicators = array_values(array_filter($indicators, static function ($indicator) {
+        return $indicator instanceof StatIndicator && (int)$indicator->getId() > 0;
+    }));
+    if (count($indicators) < 2) {
+        return null;
+    }
+
+    $organizationId = (int)$organizationId;
+    $holonId = (int)$holonId;
+    $group = null;
+    $memberships = new \dbObject\ArrayStatIndicatorGroupItem();
+    $memberships->load([
+        'where' => [['field' => 'IDstatindicator', 'value' => (int)$indicators[0]->getId()]],
+        'orderBy' => [['field' => 'id', 'dir' => 'ASC']],
+    ]);
+    foreach ($memberships as $membership) {
+        $candidate = new StatIndicatorGroup();
+        if (
+            !$candidate->load((int)$membership->get('IDstatindicatorgroup'))
+            || (int)$candidate->get('IDorganization') !== $organizationId
+            || (int)$candidate->get('IDholon') !== $holonId
+            || (int)$candidate->get('active') !== 1
+        ) {
+            continue;
+        }
+        $group = $candidate;
+        break;
+    }
+
+    if (!($group instanceof StatIndicatorGroup)) {
+        $group = new StatIndicatorGroup();
+        $group->set('IDorganization', $organizationId);
+        $group->set('IDholon', $holonId > 0 ? $holonId : null);
+        $group->set('IDuser', (int)$userId > 0 ? (int)$userId : null);
+        $group->set('name', mb_substr(trim((string)$name), 0, 190, 'UTF-8'));
+        $group->set('display_mode', StatIndicatorGroup::DISPLAY_OVERLAY);
+        $group->set('reference_type', StatIndicator::REFERENCE_NONE);
+        $group->set('hide_same_holon_sources', 1);
+        $group->set('active', 1);
+        $groupResult = $group->save();
+        if (!is_array($groupResult) || empty($groupResult['status']) || (int)$group->getId() <= 0) {
+            throw new \RuntimeException(omoStatsT('stats.error.save'));
+        }
+    } elseif ((int)$group->get('hide_same_holon_sources') !== 1) {
+        $group->set('hide_same_holon_sources', 1);
+        $groupResult = $group->save();
+        if (!is_array($groupResult) || empty($groupResult['status'])) {
+            throw new \RuntimeException(omoStatsT('stats.error.save'));
+        }
+    }
+
+    $existingIndicatorIds = [];
+    $nextPosition = 1;
+    foreach ($group->getItems() as $existingItem) {
+        if (!($existingItem instanceof StatIndicatorGroupItem)) {
+            continue;
+        }
+        $existingIndicatorIds[(int)$existingItem->get('IDstatindicator')] = true;
+        $nextPosition = max($nextPosition, (int)$existingItem->get('position') + 1);
+    }
+    foreach ($indicators as $indicator) {
+        $indicatorId = (int)$indicator->getId();
+        if (!isset($existingIndicatorIds[$indicatorId])) {
+            $item = new StatIndicatorGroupItem();
+            $item->set('IDstatindicatorgroup', (int)$group->getId());
+            $item->set('IDstatindicator', $indicatorId);
+            $item->set('position', $nextPosition);
+            $itemResult = $item->save();
+            if (!is_array($itemResult) || empty($itemResult['status'])) {
+                throw new \RuntimeException(omoStatsT('stats.error.save'));
+            }
+            $nextPosition += 1;
+        }
+
+    }
+
+    return $group;
+}
+
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
     omoStatsActionRespond(false, omoStatsT('stats.error.method'), [], 405);
 }
@@ -215,10 +298,75 @@ if ($action === 'save_indicator') {
     }
     $name = mb_substr($name, 0, 190, 'UTF-8');
 
-    $rawSourceUrl = trim((string)($_POST['source_url'] ?? ''));
-    $sourceUrl = StatIndicator::sanitizeSourceUrl($rawSourceUrl);
-    if ($rawSourceUrl !== '' && $sourceUrl === '') {
-        omoStatsActionRespond(false, omoStatsT('stats.error.url'), [], 422);
+    $ethercalcSourceUpdate = null;
+    $ethercalcAdditionalValueColumns = [];
+    $ethercalcAdditionalIndicators = [];
+    $ethercalcAdditionalGroupIndicators = [];
+    $sourceUrl = null;
+    if ($indicatorId > 0 && $indicator->isEthercalcSource()) {
+        $documentId = isset($_POST['ethercalc_document_id']) && is_numeric($_POST['ethercalc_document_id'])
+            ? (int)$_POST['ethercalc_document_id']
+            : 0;
+        $document = omoStatsLoadVisibleEthercalcDocument($documentId, $organizationId);
+        if (!($document instanceof Document)) {
+            omoStatsActionRespond(false, 'Le document EtherCalc choisi est introuvable ou non accessible.', [], 422);
+        }
+
+        if ($indicator->isEthercalcCellSource()) {
+            $cell = StatIndicator::normalizeEthercalcCell($_POST['ethercalc_cell'] ?? '');
+            if ($cell === '') {
+                omoStatsActionRespond(false, 'La cellule EtherCalc doit etre ecrite sous la forme A1.', [], 422);
+            }
+            $ethercalcSourceUpdate = [
+                'IDdocument' => (int)$document->getId(),
+                'ethercalc_cell' => $cell,
+                'ethercalc_frequency' => StatIndicator::normalizeEthercalcFrequency($_POST['ethercalc_frequency'] ?? ''),
+            ];
+        } else {
+            $range = StatIndicator::normalizeEthercalcRange($_POST['ethercalc_range'] ?? '');
+            $dateColumn = StatIndicator::normalizeEthercalcColumn($_POST['ethercalc_date_column'] ?? '');
+            $rawValueColumns = (string)($_POST['ethercalc_value_columns'] ?? $_POST['ethercalc_value_column'] ?? '');
+            $valueColumns = [];
+            foreach (preg_split('/[\s,;]+/', strtoupper(trim($rawValueColumns))) ?: [] as $rawValueColumn) {
+                $valueColumn = StatIndicator::normalizeEthercalcColumn($rawValueColumn);
+                if ($valueColumn !== '' && $valueColumn !== $dateColumn) {
+                    $valueColumns[$valueColumn] = $valueColumn;
+                }
+            }
+            if ($range === '' || $dateColumn === '' || count($valueColumns) === 0) {
+                omoStatsActionRespond(false, 'La plage, la colonne de date et au moins une colonne de valeur sont requises.', [], 422);
+            }
+            preg_match('/^([A-Z]+)[0-9]+:([A-Z]+)[0-9]+$/', $range, $rangeMatches);
+            $rangeStartColumn = StatIndicator::ethercalcColumnToIndex($rangeMatches[1] ?? '');
+            $rangeEndColumn = StatIndicator::ethercalcColumnToIndex($rangeMatches[2] ?? '');
+            foreach (array_merge([$dateColumn], array_values($valueColumns)) as $selectedColumn) {
+                $selectedColumnIndex = StatIndicator::ethercalcColumnToIndex($selectedColumn);
+                if ($selectedColumnIndex < $rangeStartColumn || $selectedColumnIndex > $rangeEndColumn) {
+                    omoStatsActionRespond(false, 'Les colonnes de date et de valeurs doivent etre incluses dans la plage.', [], 422);
+                }
+            }
+            $currentValueColumn = StatIndicator::normalizeEthercalcColumn($indicator->get('ethercalc_value_column'));
+            $primaryValueColumn = isset($valueColumns[$currentValueColumn])
+                ? $currentValueColumn
+                : reset($valueColumns);
+            unset($valueColumns[$primaryValueColumn]);
+            $ethercalcAdditionalValueColumns = array_values($valueColumns);
+            if (count($ethercalcAdditionalValueColumns) > 0 && !omoStatsCanCreateContext($context)) {
+                omoStatsActionRespond(false, 'Le droit de creer des indicateurs est requis pour ajouter des courbes.', [], 403);
+            }
+            $ethercalcSourceUpdate = [
+                'IDdocument' => (int)$document->getId(),
+                'ethercalc_range' => $range,
+                'ethercalc_date_column' => $dateColumn,
+                'ethercalc_value_column' => $primaryValueColumn,
+            ];
+        }
+    } else {
+        $rawSourceUrl = trim((string)($_POST['source_url'] ?? ''));
+        $sourceUrl = StatIndicator::sanitizeSourceUrl($rawSourceUrl);
+        if ($rawSourceUrl !== '' && $sourceUrl === '') {
+            omoStatsActionRespond(false, omoStatsT('stats.error.url'), [], 422);
+        }
     }
 
     $referenceType = StatIndicator::normalizeReferenceType($_POST['reference_type'] ?? StatIndicator::REFERENCE_NONE);
@@ -253,7 +401,12 @@ if ($action === 'save_indicator') {
     }
     $indicator->set('name', $name);
     $indicator->set('description', trim((string)($_POST['description'] ?? '')));
-    $indicator->set('source_url', $sourceUrl !== '' ? $sourceUrl : null);
+    $indicator->set('source_url', $sourceUrl !== null && $sourceUrl !== '' ? $sourceUrl : null);
+    if (is_array($ethercalcSourceUpdate)) {
+        foreach ($ethercalcSourceUpdate as $field => $value) {
+            $indicator->set($field, $value);
+        }
+    }
     $indicator->set('reference_type', $referenceType);
     $indicator->set('measurement_frequency', $measurementFrequency);
     $indicator->set('measurement_schedule', $measurementSchedule);
@@ -291,6 +444,54 @@ if ($action === 'save_indicator') {
             }
         }
 
+        foreach ($ethercalcAdditionalValueColumns as $valueColumn) {
+            $existingSource = StatIndicator::findActiveEthercalcTableSource(
+                $organizationId,
+                (int)$indicator->get('IDholon'),
+                (int)$ethercalcSourceUpdate['IDdocument'],
+                (string)$ethercalcSourceUpdate['ethercalc_range'],
+                (string)$ethercalcSourceUpdate['ethercalc_date_column'],
+                $valueColumn
+            );
+            if ($existingSource instanceof StatIndicator && (int)$existingSource->getId() !== (int)$indicator->getId()) {
+                $ethercalcAdditionalGroupIndicators[] = $existingSource;
+                continue;
+            }
+            $additionalIndicator = new StatIndicator();
+            $additionalIndicator->set('IDorganization', $organizationId);
+            $additionalIndicator->set('IDholon', $indicator->get('IDholon'));
+            $additionalIndicator->set('IDuser', $currentUserId > 0 ? $currentUserId : null);
+            $additionalIndicator->set('IDdocument', $ethercalcSourceUpdate['IDdocument']);
+            $additionalIndicator->set('name', mb_substr($name . ' - ' . $valueColumn, 0, 190, 'UTF-8'));
+            $additionalIndicator->set('description', trim((string)($_POST['description'] ?? '')));
+            $additionalIndicator->set('source_url', null);
+            $additionalIndicator->set('source_type', StatIndicator::SOURCE_ETHERCALC_TABLE);
+            $additionalIndicator->set('ethercalc_range', $ethercalcSourceUpdate['ethercalc_range']);
+            $additionalIndicator->set('ethercalc_date_column', $ethercalcSourceUpdate['ethercalc_date_column']);
+            $additionalIndicator->set('ethercalc_value_column', $valueColumn);
+            $additionalIndicator->set('reference_type', $referenceType);
+            $additionalIndicator->set('measurement_frequency', $measurementFrequency);
+            $additionalIndicator->set('measurement_schedule', $measurementSchedule);
+            $additionalIndicator->set('chart_min_value', $chartMinValue);
+            $additionalIndicator->set('show_cumulative', !empty($_POST['show_cumulative']) ? 1 : 0);
+            $additionalIndicator->set('active', 1);
+            $additionalSaveResult = $additionalIndicator->save();
+            if (!is_array($additionalSaveResult) || empty($additionalSaveResult['status']) || (int)$additionalIndicator->getId() <= 0) {
+                throw new \RuntimeException(omoStatsT('stats.error.save'));
+            }
+            $ethercalcAdditionalIndicators[] = $additionalIndicator;
+            $ethercalcAdditionalGroupIndicators[] = $additionalIndicator;
+        }
+        if (count($ethercalcAdditionalGroupIndicators) > 0) {
+            omoStatsActionEnsureAutoEthercalcGroup(
+                $organizationId,
+                (int)$indicator->get('IDholon'),
+                $currentUserId,
+                $name,
+                array_merge([$indicator], $ethercalcAdditionalGroupIndicators)
+            );
+        }
+
         if ($startedTransaction && $pdo && $pdo->inTransaction()) {
             $pdo->commit();
         }
@@ -299,6 +500,19 @@ if ($action === 'save_indicator') {
             $pdo->rollBack();
         }
         omoStatsActionRespond(false, $exception->getMessage() !== '' ? $exception->getMessage() : omoStatsT('stats.error.save'), [], 500);
+    }
+
+    if (is_array($ethercalcSourceUpdate)) {
+        $syncResult = omoStatsSynchronizeEthercalcIndicator($indicator);
+        if (empty($syncResult['status'])) {
+            error_log('Updated EtherCalc indicator was not synchronized: ' . (string)($syncResult['text'] ?? 'unknown error'));
+        }
+    }
+    foreach ($ethercalcAdditionalIndicators ?? [] as $additionalIndicator) {
+        $syncResult = omoStatsSynchronizeEthercalcIndicator($additionalIndicator);
+        if (empty($syncResult['status'])) {
+            error_log('Additional EtherCalc indicator was not synchronized: ' . (string)($syncResult['text'] ?? 'unknown error'));
+        }
     }
 
     omoStatsActionRespond(true, '', [
@@ -315,6 +529,9 @@ if ($action === 'add_value') {
     }
     if (!$indicator->canEdit()) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
+    }
+    if ($indicator->isEthercalcSource()) {
+        omoStatsActionRespond(false, 'Les valeurs de cet indicateur sont synchronisees depuis EtherCalc.', [], 403);
     }
 
     $valueNumber = omoStatsActionParseDecimal($_POST['value'] ?? null);
@@ -358,6 +575,9 @@ if ($action === 'delete_value') {
     if (!$indicator->canEdit()) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
+    if ($indicator->isEthercalcSource()) {
+        omoStatsActionRespond(false, 'Les valeurs de cet indicateur sont synchronisees depuis EtherCalc.', [], 403);
+    }
 
     if (!$value->delete()) {
         omoStatsActionRespond(false, omoStatsT('stats.error.value_save'), [], 500);
@@ -381,6 +601,158 @@ if ($action === 'delete_indicator') {
         omoStatsActionRespond(false, omoStatsT('stats.error.save'), [], 500);
     }
     omoStatsActionRespond(true, '', ['id' => $indicatorId]);
+}
+
+if ($action === 'create_ethercalc_indicator') {
+    if (!omoStatsCanCreateContext($context)) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
+    }
+    if (!omoEthercalcHasConfig()) {
+        omoStatsActionRespond(false, 'EtherCalc n est pas configure.', [], 422);
+    }
+
+    $documentId = isset($_POST['ethercalc_document_id']) && is_numeric($_POST['ethercalc_document_id'])
+        ? (int)$_POST['ethercalc_document_id']
+        : 0;
+    $document = omoStatsLoadVisibleEthercalcDocument($documentId, $organizationId);
+    if (!($document instanceof Document)) {
+        omoStatsActionRespond(false, 'Le document EtherCalc choisi est introuvable ou non accessible.', [], 422);
+    }
+
+    $mode = trim((string)($_POST['ethercalc_mode'] ?? ''));
+    if (!in_array($mode, ['cell', 'table'], true)) {
+        omoStatsActionRespond(false, 'Mode de lecture EtherCalc invalide.', [], 422);
+    }
+
+    $baseName = trim((string)($_POST['ethercalc_name'] ?? ''));
+    if ($baseName === '') {
+        $baseName = trim((string)$document->get('title'));
+    }
+    $baseName = mb_substr($baseName, 0, 160, 'UTF-8');
+    if ($baseName === '') {
+        omoStatsActionRespond(false, omoStatsT('stats.error.name'), [], 422);
+    }
+
+    $sourceDefinitions = [];
+    if ($mode === 'cell') {
+        $cell = StatIndicator::normalizeEthercalcCell($_POST['ethercalc_cell'] ?? '');
+        if ($cell === '') {
+            omoStatsActionRespond(false, 'La cellule EtherCalc doit etre ecrite sous la forme A1.', [], 422);
+        }
+        $sourceDefinitions[] = [
+            'name' => $baseName,
+            'source_type' => StatIndicator::SOURCE_ETHERCALC_CELL,
+            'ethercalc_cell' => $cell,
+            'ethercalc_frequency' => StatIndicator::normalizeEthercalcFrequency($_POST['ethercalc_frequency'] ?? ''),
+        ];
+    } else {
+        $range = StatIndicator::normalizeEthercalcRange($_POST['ethercalc_range'] ?? '');
+        $dateColumn = StatIndicator::normalizeEthercalcColumn($_POST['ethercalc_date_column'] ?? '');
+        $rawColumns = preg_split('/[\s,;]+/', strtoupper(trim((string)($_POST['ethercalc_value_columns'] ?? ''))));
+        $valueColumns = [];
+        foreach (is_array($rawColumns) ? $rawColumns : [] as $rawColumn) {
+            $column = StatIndicator::normalizeEthercalcColumn($rawColumn);
+            if ($column !== '' && $column !== $dateColumn) {
+                $valueColumns[$column] = $column;
+            }
+        }
+        if ($range === '' || $dateColumn === '' || count($valueColumns) === 0) {
+            omoStatsActionRespond(false, 'La plage, la colonne de date et une colonne de valeur sont requises.', [], 422);
+        }
+        preg_match('/^([A-Z]+)[0-9]+:([A-Z]+)[0-9]+$/', $range, $rangeMatches);
+        $rangeStartColumn = StatIndicator::ethercalcColumnToIndex($rangeMatches[1] ?? '');
+        $rangeEndColumn = StatIndicator::ethercalcColumnToIndex($rangeMatches[2] ?? '');
+        $selectedColumns = array_merge([$dateColumn], array_values($valueColumns));
+        foreach ($selectedColumns as $selectedColumn) {
+            $selectedColumnIndex = StatIndicator::ethercalcColumnToIndex($selectedColumn);
+            if ($selectedColumnIndex < $rangeStartColumn || $selectedColumnIndex > $rangeEndColumn) {
+                omoStatsActionRespond(false, 'Les colonnes de date et de valeurs doivent etre incluses dans la plage.', [], 422);
+            }
+        }
+        foreach ($valueColumns as $column) {
+            $sourceDefinitions[] = [
+                'name' => mb_substr($baseName . ' - ' . $column, 0, 190, 'UTF-8'),
+                'source_type' => StatIndicator::SOURCE_ETHERCALC_TABLE,
+                'ethercalc_range' => $range,
+                'ethercalc_date_column' => $dateColumn,
+                'ethercalc_value_column' => $column,
+            ];
+        }
+    }
+
+    $pdo = \dbObject\DbObject::getPdo();
+    $startedTransaction = false;
+    $createdIndicators = [];
+    $createdGroup = null;
+    try {
+        if ($pdo && !$pdo->inTransaction()) {
+            $pdo->beginTransaction();
+            $startedTransaction = true;
+        }
+        foreach ($sourceDefinitions as $definition) {
+            $indicator = new StatIndicator();
+            $indicator->set('IDorganization', $organizationId);
+            $indicator->set('IDholon', ($context['currentHolon'] ?? null) instanceof \dbObject\Holon
+                ? (int)$context['currentHolon']->getId()
+                : null);
+            $indicator->set('IDuser', $currentUserId > 0 ? $currentUserId : null);
+            $indicator->set('IDdocument', (int)$document->getId());
+            $indicator->set('name', $definition['name']);
+            $indicator->set('description', 'Synchronise depuis le tableur collaboratif ' . trim((string)$document->get('title')) . '.');
+            $indicator->set('source_url', null);
+            $indicator->set('source_type', $definition['source_type']);
+            $indicator->set('ethercalc_cell', $definition['ethercalc_cell'] ?? null);
+            $indicator->set('ethercalc_frequency', $definition['ethercalc_frequency'] ?? null);
+            $indicator->set('ethercalc_range', $definition['ethercalc_range'] ?? null);
+            $indicator->set('ethercalc_date_column', $definition['ethercalc_date_column'] ?? null);
+            $indicator->set('ethercalc_value_column', $definition['ethercalc_value_column'] ?? null);
+            $indicator->set('reference_type', StatIndicator::REFERENCE_NONE);
+            $indicator->set('measurement_frequency', null);
+            $indicator->set('measurement_schedule', null);
+            $indicator->set('show_cumulative', 0);
+            $indicator->set('active', 1);
+            $saveResult = $indicator->save();
+            if (!is_array($saveResult) || empty($saveResult['status']) || (int)$indicator->getId() <= 0) {
+                throw new \RuntimeException(omoStatsT('stats.error.save'));
+            }
+            $createdIndicators[] = $indicator;
+        }
+        if ($mode === 'table' && count($createdIndicators) > 1) {
+            $createdGroup = omoStatsActionEnsureAutoEthercalcGroup(
+                $organizationId,
+                ($context['currentHolon'] ?? null) instanceof \dbObject\Holon
+                    ? (int)$context['currentHolon']->getId()
+                    : 0,
+                $currentUserId,
+                $baseName,
+                $createdIndicators
+            );
+        }
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+            $pdo->commit();
+        }
+    } catch (\Throwable $exception) {
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        omoStatsActionRespond(false, $exception->getMessage() !== '' ? $exception->getMessage() : omoStatsT('stats.error.save'), [], 500);
+    }
+
+    $synchronized = 0;
+    foreach ($createdIndicators as $indicator) {
+        $syncResult = omoStatsSynchronizeEthercalcIndicator($indicator);
+        if (!empty($syncResult['status'])) {
+            $synchronized += 1;
+        } else {
+            error_log('Initial EtherCalc indicator synchronization failed: ' . (string)($syncResult['text'] ?? 'unknown error'));
+        }
+    }
+
+    omoStatsActionRespond(true, '', [
+        'ids' => array_map(static fn (StatIndicator $indicator) => (int)$indicator->getId(), $createdIndicators),
+        'groupId' => $createdGroup instanceof StatIndicatorGroup ? (int)$createdGroup->getId() : 0,
+        'synchronized' => $synchronized,
+    ]);
 }
 
 if ($action === 'import_indicator') {
@@ -508,6 +880,7 @@ if ($action === 'update_group') {
         $group->set('display_mode', StatIndicatorGroup::normalizeDisplayMode($_POST['display_mode'] ?? null));
         $group->set('reference_type', $referenceType);
         $group->set('chart_min_value', $chartMinValue);
+        $group->set('hide_same_holon_sources', !empty($_POST['hide_same_holon_sources']) ? 1 : 0);
         $groupResult = $group->save();
         if (!is_array($groupResult) || empty($groupResult['status'])) {
             throw new \RuntimeException(omoStatsT('stats.error.save'));
@@ -622,6 +995,7 @@ if ($action === 'create_group') {
         $group->set('display_mode', StatIndicatorGroup::normalizeDisplayMode($_POST['display_mode'] ?? null));
         $group->set('reference_type', $referenceType);
         $group->set('chart_min_value', $chartMinValue);
+        $group->set('hide_same_holon_sources', !empty($_POST['hide_same_holon_sources']) ? 1 : 0);
         $group->set('active', 1);
         $groupResult = $group->save();
         if (!is_array($groupResult) || empty($groupResult['status']) || (int)$group->getId() <= 0) {

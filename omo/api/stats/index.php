@@ -76,7 +76,7 @@ $importedIndicatorIds = [];
 $importedIndicatorEditable = [];
 foreach ($imports as $import) {
     $sourceIndicator = $import->getIndicator();
-    if (!($sourceIndicator instanceof StatIndicator) || !$sourceIndicator->canView()) {
+    if (!($sourceIndicator instanceof StatIndicator) || $sourceIndicator->isHiddenFromCatalog() || !$sourceIndicator->canView()) {
         continue;
     }
     $sourceId = (int)$sourceIndicator->getId();
@@ -177,6 +177,7 @@ foreach ($groupItems as $group) {
             ? omoStatsGetCeilingValue($groupReferencePoints)
             : null,
         'chartMinValue' => is_numeric($group->get('chart_min_value')) ? (float)$group->get('chart_min_value') : null,
+        'hideSameHolonSources' => (int)$group->get('hide_same_holon_sources') === 1,
         'canEdit' => omoStatsCanEditContextResource($group, $context),
         'overdueSeverity' => omoStatsGetGroupOverdueInfo($group)['severity'],
     ];
@@ -439,7 +440,7 @@ $displayItemCount = count($statsEntries);
                                             <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
                                             <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
                                                 <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($groupDetailBaseUrl . '&id=' . rawurlencode((string)$group->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
-                                                <button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>" data-omo-stats-group-ceiling-value="<?= omoApiEscape((string)($groupItem['ceilingValue'] ?? '')) ?>" data-omo-stats-group-chart-min-value="<?= omoApiEscape((string)($groupItem['chartMinValue'] ?? '')) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
+                                                <button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-hide-same-holon-sources="<?= $groupItem['hideSameHolonSources'] ? '1' : '0' ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>" data-omo-stats-group-ceiling-value="<?= omoApiEscape((string)($groupItem['ceilingValue'] ?? '')) ?>" data-omo-stats-group-chart-min-value="<?= omoApiEscape((string)($groupItem['chartMinValue'] ?? '')) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
                                                 <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-group="<?= (int)$group->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_group')) ?></button>
                                             </div>
                                         </div>
@@ -582,7 +583,7 @@ $displayItemCount = count($statsEntries);
                                             <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
                                             <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
                                                 <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($groupDetailBaseUrl . '&id=' . rawurlencode((string)$group->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
-                                                <button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>" data-omo-stats-group-ceiling-value="<?= omoApiEscape((string)($groupItem['ceilingValue'] ?? '')) ?>" data-omo-stats-group-chart-min-value="<?= omoApiEscape((string)($groupItem['chartMinValue'] ?? '')) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
+                                                <button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-hide-same-holon-sources="<?= $groupItem['hideSameHolonSources'] ? '1' : '0' ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>" data-omo-stats-group-ceiling-value="<?= omoApiEscape((string)($groupItem['ceilingValue'] ?? '')) ?>" data-omo-stats-group-chart-min-value="<?= omoApiEscape((string)($groupItem['chartMinValue'] ?? '')) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
                                                 <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-group="<?= (int)$group->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_group')) ?></button>
                                             </div>
                                         </div>
@@ -760,6 +761,7 @@ $displayItemCount = count($statsEntries);
         'ethercalcMode' => omoStatsT('stats.import.ethercalc.mode'),
         'ethercalcModeCell' => omoStatsT('stats.import.ethercalc.mode_cell'),
         'ethercalcModeTable' => omoStatsT('stats.import.ethercalc.mode_table'),
+        'ethercalcName' => omoStatsT('stats.import.ethercalc.name'),
         'ethercalcCell' => omoStatsT('stats.import.ethercalc.cell'),
         'ethercalcFrequency' => omoStatsT('stats.import.ethercalc.frequency'),
         'ethercalcFrequencyHourly' => omoStatsT('stats.import.ethercalc.frequency_hourly'),
@@ -769,10 +771,10 @@ $displayItemCount = count($statsEntries);
         'ethercalcDateColumn' => omoStatsT('stats.import.ethercalc.date_column'),
         'ethercalcValueColumns' => omoStatsT('stats.import.ethercalc.value_columns'),
         'ethercalcTableHelp' => omoStatsT('stats.import.ethercalc.table_help'),
-        'ethercalcPrototypeAction' => omoStatsT('stats.import.ethercalc.prototype_action'),
-        'ethercalcPrototypeNotice' => omoStatsT('stats.import.ethercalc.prototype_notice'),
+        'ethercalcCreateAction' => omoStatsT('stats.import.ethercalc.create_action'),
         'groupName' => omoStatsT('stats.group.name'),
         'groupMode' => omoStatsT('stats.group.mode'),
+        'groupHideSameHolonSources' => omoStatsT('stats.group.hide_same_holon_sources'),
         'overlay' => omoStatsT('stats.group.mode.overlay'),
         'sum' => omoStatsT('stats.group.mode.sum'),
         'cancel' => omoStatsT('stats.action.cancel'),
@@ -1083,8 +1085,37 @@ $displayItemCount = count($statsEntries);
         });
     }
 
-    function refreshRoot(url) {
+    function getRootScrollPosition() {
+        var scrollBody = root.querySelector('.omo-panel-view__body');
+        if (!scrollBody) {
+            return null;
+        }
+        return {
+            left: scrollBody.scrollLeft,
+            top: scrollBody.scrollTop
+        };
+    }
+
+    function restoreRootScrollPosition(nextRoot, position) {
+        if (!nextRoot || !position) {
+            return;
+        }
+        var scrollBody = nextRoot.querySelector('.omo-panel-view__body');
+        if (!scrollBody) {
+            return;
+        }
+        scrollBody.scrollLeft = position.left || 0;
+        scrollBody.scrollTop = position.top || 0;
+        window.requestAnimationFrame(function () {
+            scrollBody.scrollLeft = position.left || 0;
+            scrollBody.scrollTop = position.top || 0;
+        });
+    }
+
+    function refreshRoot(url, options) {
+        var settings = options && typeof options === 'object' ? options : {};
         var targetUrl = url || currentUrl;
+        var scrollPosition = settings.preserveScroll === false ? null : getRootScrollPosition();
         if (!targetUrl) {
             return Promise.resolve(null);
         }
@@ -1097,6 +1128,9 @@ $displayItemCount = count($statsEntries);
             currentRoot: root,
             url: resolveUrl(targetUrl),
             setLoadingState: setLoading
+        }).then(function (nextRoot) {
+            restoreRootScrollPosition(nextRoot, scrollPosition);
+            return nextRoot;
         });
     }
 
@@ -1201,7 +1235,7 @@ $displayItemCount = count($statsEntries);
         if (next.scope !== previous.scope || next.sort !== previous.sort) {
             currentScope = next.scope;
             currentSort = next.sort;
-            refreshRoot(buildScopeUrl(next.scope, next.sort));
+            refreshRoot(buildScopeUrl(next.scope, next.sort), { preserveScroll: false });
             return;
         }
         applyView(next.view);
@@ -1348,7 +1382,7 @@ $displayItemCount = count($statsEntries);
         if (preferences.scope !== currentScope || preferences.sort !== currentSort) {
             currentScope = preferences.scope;
             currentSort = preferences.sort;
-            refreshRoot(buildScopeUrl(preferences.scope, preferences.sort)).catch(function () {
+            refreshRoot(buildScopeUrl(preferences.scope, preferences.sort), { preserveScroll: false }).catch(function () {
                 root.removeAttribute('data-omo-view-filter-pending');
                 root.removeAttribute('aria-busy');
             });
@@ -1586,6 +1620,7 @@ $displayItemCount = count($statsEntries);
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.search) + '</span><input type="search" class="generic-form-control" data-omo-stats-group-editor-search placeholder="' + escapeHtml(texts.searchPlaceholder) + '"></label>'
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.visible) + '</span><select class="generic-form-control omo-stats-picker__select" data-omo-stats-group-editor-select size="10" multiple></select></label>'
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.groupMode) + '</span><select class="generic-form-control" data-omo-stats-group-editor-mode><option value="overlay">' + escapeHtml(texts.overlay) + '</option><option value="sum">' + escapeHtml(texts.sum) + '</option></select></label>'
+            + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.groupHideSameHolonSources) + '</span><input type="checkbox" data-omo-stats-group-editor-hide-sources></label>'
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.chartMinValue) + '</span><input type="number" class="generic-form-control" data-omo-stats-group-editor-chart-min-value step="any"></label>'
             + '<div class="omo-stats-group-reference-editor" data-omo-stats-reference-editor>'
             + '<label class="omo-stats-field"><span>' + escapeHtml(texts.referenceTitle) + '</span><select class="generic-form-control" name="reference_type" data-omo-stats-reference-type><option value="none">' + escapeHtml(texts.referenceNone) + '</option><option value="ceiling">' + escapeHtml(texts.referenceCeiling) + '</option><option value="objective">' + escapeHtml(texts.referenceObjective) + '</option></select></label>'
@@ -1610,6 +1645,7 @@ $displayItemCount = count($statsEntries);
         var searchInput = drawerBody.querySelector('[data-omo-stats-group-editor-search]');
         var select = drawerBody.querySelector('[data-omo-stats-group-editor-select]');
         var modeInput = drawerBody.querySelector('[data-omo-stats-group-editor-mode]');
+        var hideSourcesInput = drawerBody.querySelector('[data-omo-stats-group-editor-hide-sources]');
         var chartMinValueInput = drawerBody.querySelector('[data-omo-stats-group-editor-chart-min-value]');
         var referenceTypeInput = drawerBody.querySelector('[data-omo-stats-reference-type]');
         var ceilingValueInput = drawerBody.querySelector('[data-omo-stats-ceiling-value]');
@@ -1624,6 +1660,9 @@ $displayItemCount = count($statsEntries);
 
         nameInput.value = isEditing ? String(editData.name || '') : '';
         modeInput.value = isEditing ? String(editData.displayMode || 'overlay') : 'overlay';
+        if (hideSourcesInput) {
+            hideSourcesInput.checked = isEditing ? editData.hideSameHolonSources === true : false;
+        }
         if (chartMinValueInput) {
             chartMinValueInput.value = isEditing && editData.chartMinValue !== null && editData.chartMinValue !== undefined
                 ? String(editData.chartMinValue)
@@ -1726,6 +1765,7 @@ $displayItemCount = count($statsEntries);
             }
             formData.append('name', nameInput.value || '');
             formData.append('display_mode', modeInput.value || 'overlay');
+            formData.append('hide_same_holon_sources', hideSourcesInput && hideSourcesInput.checked ? '1' : '0');
             formData.append('chart_min_value', chartMinValueInput ? chartMinValueInput.value || '' : '');
             formData.append('reference_type', referenceTypeInput ? referenceTypeInput.value : 'none');
             if (ceilingValueInput && !ceilingValueInput.disabled) {
@@ -1785,7 +1825,7 @@ $displayItemCount = count($statsEntries);
             ? editData.indicatorIds.map(function (id) { return String(id); })
             : [];
         var firstRender = true;
-        var ethercalcAvailable = !isGroup && root.getAttribute('data-omo-stats-ethercalc-available') === '1';
+        var ethercalcAvailable = !isGroup && !isEditing && root.getAttribute('data-omo-stats-ethercalc-available') === '1';
         var pickerFieldsHtml = (isGroup ? '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.groupName) + '</span><input type="text" class="generic-form-control" data-omo-stats-picker-name></label>' : '')
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.search) + '</span><input type="search" class="generic-form-control" data-omo-stats-picker-search placeholder="' + escapeHtml(texts.searchPlaceholder) + '"></label>'
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.visible) + '</span><select class="generic-form-control omo-stats-picker__select" data-omo-stats-picker-select size="10"' + multiple + '></select></label>'
@@ -1802,6 +1842,7 @@ $displayItemCount = count($statsEntries);
                 + '<section id="omo-stats-import-ethercalc" class="generic-tabs__panel omo-stats-picker" data-generic-tab-panel hidden>'
                 + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcDocument) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-document></select></label>'
                 + '<div class="generic-soft-panel" data-omo-stats-ethercalc-empty hidden>' + escapeHtml(texts.ethercalcNoDocuments) + '</div>'
+                + '<label class="omo-stats-picker__field"><span data-omo-stats-ethercalc-name-label>' + escapeHtml(texts.ethercalcName) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-name></label>'
                 + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcMode) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-mode><option value="cell">' + escapeHtml(texts.ethercalcModeCell) + '</option><option value="table">' + escapeHtml(texts.ethercalcModeTable) + '</option></select></label>'
                 + '<section class="generic-soft-panel generic-soft-panel--stack" data-omo-stats-ethercalc-cell-fields>'
                 + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcCell) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-cell value="A1" placeholder="A1"></label>'
@@ -1835,6 +1876,7 @@ $displayItemCount = count($statsEntries);
         var ethercalcTab = modalBody.querySelector('[data-generic-tab-target="omo-stats-import-ethercalc"]');
         var ethercalcDocumentSelect = modalBody.querySelector('[data-omo-stats-ethercalc-document]');
         var ethercalcEmpty = modalBody.querySelector('[data-omo-stats-ethercalc-empty]');
+        var ethercalcNameInput = modalBody.querySelector('[data-omo-stats-ethercalc-name]');
         var ethercalcModeSelect = modalBody.querySelector('[data-omo-stats-ethercalc-mode]');
         var ethercalcCellFields = modalBody.querySelector('[data-omo-stats-ethercalc-cell-fields]');
         var ethercalcTableFields = modalBody.querySelector('[data-omo-stats-ethercalc-table-fields]');
@@ -1863,6 +1905,9 @@ $displayItemCount = count($statsEntries);
             if (ethercalcEmpty) {
                 ethercalcEmpty.hidden = documents.length > 0;
             }
+            if (ethercalcNameInput && !ethercalcNameInput.value && documents.length > 0) {
+                ethercalcNameInput.value = String(documents[0].name || '');
+            }
         }
         function syncEthercalcMode() {
             var isTableMode = ethercalcModeSelect && ethercalcModeSelect.value === 'table';
@@ -1881,7 +1926,7 @@ $displayItemCount = count($statsEntries);
                 return;
             }
             applyButton.textContent = isEthercalcTabActive()
-                ? texts.ethercalcPrototypeAction
+                ? texts.ethercalcCreateAction
                 : (isEditing ? texts.update : texts.add);
         }
         renderEthercalcDocuments();
@@ -1939,7 +1984,28 @@ $displayItemCount = count($statsEntries);
                         window.omoNotify(texts.ethercalcNoDocuments, 'error');
                         return;
                     }
-                    window.omoNotify(texts.ethercalcPrototypeNotice, 'info');
+                    var ethercalcFormData = new FormData();
+                    ethercalcFormData.append('stats_action', 'create_ethercalc_indicator');
+                    ethercalcFormData.append('oid', root.getAttribute('data-omo-stats-oid') || '');
+                    ethercalcFormData.append('cid', root.getAttribute('data-omo-stats-cid') || '');
+                    ethercalcFormData.append('ethercalc_document_id', ethercalcDocumentSelect.value);
+                    ethercalcFormData.append('ethercalc_name', ethercalcNameInput ? ethercalcNameInput.value : '');
+                    ethercalcFormData.append('ethercalc_mode', ethercalcModeSelect ? ethercalcModeSelect.value : 'cell');
+                    ethercalcFormData.append('ethercalc_cell', (modalBody.querySelector('[data-omo-stats-ethercalc-cell]') || {}).value || '');
+                    ethercalcFormData.append('ethercalc_frequency', (modalBody.querySelector('[data-omo-stats-ethercalc-frequency]') || {}).value || '');
+                    ethercalcFormData.append('ethercalc_range', (modalBody.querySelector('[data-omo-stats-ethercalc-range]') || {}).value || '');
+                    ethercalcFormData.append('ethercalc_date_column', (modalBody.querySelector('[data-omo-stats-ethercalc-date-column]') || {}).value || '');
+                    ethercalcFormData.append('ethercalc_value_columns', (modalBody.querySelector('[data-omo-stats-ethercalc-value-columns]') || {}).value || '');
+                    applyButton.disabled = true;
+                    postFormData(ethercalcFormData).then(function () {
+                        if (typeof window.commonTopbarCloseModal === 'function') {
+                            window.commonTopbarCloseModal();
+                        }
+                        return refreshRoot(currentUrl);
+                    }).catch(function (error) {
+                        window.omoNotify(error.message || texts.loadError, 'error');
+                        applyButton.disabled = false;
+                    });
                     return;
                 }
                 var selectedIds = Array.prototype.map.call(select ? select.selectedOptions : [], function (option) {
@@ -2096,6 +2162,14 @@ $displayItemCount = count($statsEntries);
     });
 
     root.addEventListener('click', function (event) {
+        var indicatorLink = event.target.closest('[data-omo-stats-open-indicator]');
+        if (indicatorLink) {
+            event.preventDefault();
+            event.stopPropagation();
+            openIndicator(indicatorLink.getAttribute('data-omo-stats-open-indicator'));
+            return;
+        }
+
         var toggle = event.target.closest('[data-omo-stats-item-menu-toggle]');
         if (toggle) {
             event.preventDefault();
@@ -2137,6 +2211,7 @@ $displayItemCount = count($statsEntries);
                 id: editGroupButton.getAttribute('data-omo-stats-edit-group') || '',
                 name: editGroupButton.getAttribute('data-omo-stats-group-name') || '',
                 displayMode: editGroupButton.getAttribute('data-omo-stats-group-mode') || 'overlay',
+                hideSameHolonSources: editGroupButton.getAttribute('data-omo-stats-group-hide-same-holon-sources') === '1',
                 referenceType: editGroupButton.getAttribute('data-omo-stats-group-reference-type') || 'none',
                 ceilingValue: editGroupButton.getAttribute('data-omo-stats-group-ceiling-value') || '',
                 chartMinValue: editGroupButton.getAttribute('data-omo-stats-group-chart-min-value') || '',
