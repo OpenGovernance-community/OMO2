@@ -1231,7 +1231,7 @@ if (!function_exists('omoStatsSmallIndicatorTimestampRange')) {
             StatIndicator::FREQUENCY_YEARLY => 144,
         ];
 
-        if (isset($months[$frequency])) {
+        if ($frequency !== null && isset($months[$frequency])) {
             $startDate = $latestDate->modify('-' . $months[$frequency] . ' months');
         } elseif ($frequency === StatIndicator::FREQUENCY_WEEKLY) {
             $startDate = $latestDate->modify('-12 weeks');

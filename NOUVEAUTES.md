@@ -1599,6 +1599,8 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Deplacer ou modifier un groupe recalcule immediatement la visibilite de ses sources selon son holon courant.
 - Les legendes des groupes ouvrent maintenant leurs indicateurs via le hash de navigation, afin que le bouton Retour retrouve le groupe.
 - Le rechargement des indicateurs conserve maintenant la position de defilement de leur liste.
+- Les indicateurs sans frequence de mesure ne declenchent plus d avertissement de compatibilite PHP lors du calcul de leur plage d affichage.
+- Les tableurs EtherCalc ouverts sans droit d edition sont maintenant affiches en mode lecture seule, sans saisie possible dans les cellules.
 
 ## 2026-08-07
 
