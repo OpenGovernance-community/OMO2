@@ -1592,6 +1592,13 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 
 - Les reglages de notifications attendent maintenant que le service worker soit actif avant de creer une souscription navigateur.
 - Les notifications lues sont maintenant visuellement distinguees dans la cloche, et les liens Push, Telegram et e-mail passent par une redirection dediee qui marque la notification comme lue.
+- Les indicateurs peuvent maintenant conserver une source EtherCalc, soit une cellule lue periodiquement, soit une colonne issue d un tableau synchronise.
+- L edition d un indicateur EtherCalc remplace maintenant le champ URL par son document source et ses reglages de cellule ou de plage.
+- L edition d une source tableau EtherCalc accepte maintenant plusieurs colonnes de valeurs et cree les courbes manquantes sans dupliquer celles deja configurees.
+- Les groupes peuvent maintenant masquer leurs indicateurs sources appartenant au meme holon, sans retirer les sources des autres holons de leur catalogue.
+- Deplacer ou modifier un groupe recalcule immediatement la visibilite de ses sources selon son holon courant.
+- Les legendes des groupes ouvrent maintenant leurs indicateurs via le hash de navigation, afin que le bouton Retour retrouve le groupe.
+- Le rechargement des indicateurs conserve maintenant la position de defilement de leur liste.
 
 ## 2026-08-07
 

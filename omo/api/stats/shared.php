@@ -2,6 +2,8 @@
 
 use dbObject\Holon;
 use dbObject\Organization;
+use dbObject\ArrayDocument;
+use dbObject\Document;
 use dbObject\StatIndicator;
 use dbObject\StatIndicatorGroup;
 use dbObject\StatIndicatorGroupItem;
@@ -210,10 +212,15 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.import.ethercalc.table_help' => ['text' => 'La plage doit inclure une colonne de dates et une ou plusieurs colonnes de valeurs.', 'context' => 'Help text for the EtherCalc table import prototype.'],
             'stats.import.ethercalc.prototype_action' => ['text' => 'Tester la configuration', 'context' => 'Action label for the EtherCalc import prototype.'],
             'stats.import.ethercalc.prototype_notice' => ['text' => 'La configuration Framacalc est prête pour test visuel. Son enregistrement et la synchronisation seront ajoutés dans la prochaine étape.', 'context' => 'Notice shown when submitting the EtherCalc import prototype.'],
+            'stats.import.ethercalc.name' => ['text' => 'Nom de l indicateur', 'context' => 'Label for the EtherCalc indicator name or table name prefix.'],
+            'stats.import.ethercalc.create_action' => ['text' => 'Creer les indicateurs', 'context' => 'Action label creating EtherCalc-backed indicators.'],
+            'stats.import.ethercalc.source_title' => ['text' => 'Source Framacalc', 'context' => 'Heading for the EtherCalc source editor inside an indicator form.'],
+            'stats.import.ethercalc.value_column' => ['text' => 'Colonne de valeur', 'context' => 'Label for one EtherCalc table value column.'],
             'stats.group.title' => ['text' => 'Grouper des indicateurs', 'context' => 'Title of the indicator group picker modal.'],
             'stats.group.edit_title' => ['text' => 'Modifier le groupe', 'context' => 'Title of the indicator group edit picker modal.'],
             'stats.group.name' => ['text' => 'Nom du groupe', 'context' => 'Label for the indicator group name.'],
             'stats.group.mode' => ['text' => 'Affichage', 'context' => 'Label for the group chart display mode.'],
+            'stats.group.hide_same_holon_sources' => ['text' => 'Masquer les indicateurs dans le meme holon', 'context' => 'Checkbox hiding a group sources only when they belong to the group holon.'],
             'stats.group.mode.overlay' => ['text' => 'Courbes superposées', 'context' => 'Group chart mode drawing one curve per indicator.'],
             'stats.group.mode.sum' => ['text' => 'Somme des valeurs', 'context' => 'Group chart mode aggregating indicator values.'],
             'stats.group.detail.sources' => ['text' => 'Indicateurs sources', 'context' => 'Heading above the source indicator legend in a group detail.'],
@@ -565,6 +572,33 @@ if (!function_exists('omoStatsLoadIndicator')) {
         }
 
         return $indicator;
+    }
+}
+
+if (!function_exists('omoStatsLoadVisibleEthercalcDocument')) {
+    function omoStatsLoadVisibleEthercalcDocument($documentId, $organizationId)
+    {
+        $documentId = (int)$documentId;
+        $organizationId = (int)$organizationId;
+        if ($documentId <= 0 || $organizationId <= 0) {
+            return null;
+        }
+
+        $documents = new ArrayDocument();
+        $documents->load([
+            'where' => [
+                ['field' => 'id', 'value' => $documentId],
+                ['field' => 'IDorganization', 'value' => $organizationId],
+                ['field' => 'active', 'value' => 1],
+            ],
+        ]);
+        $documents->filterVisibleForCurrentViewer($organizationId);
+        foreach ($documents as $document) {
+            if ($document instanceof Document && $document->isEthercalcDocument() && $document->getEthercalcRoomId() !== '') {
+                return $document;
+            }
+        }
+        return null;
     }
 }
 

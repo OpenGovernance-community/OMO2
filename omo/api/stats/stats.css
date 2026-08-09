@@ -582,6 +582,21 @@
     background: var(--color-surface-alt, #f8fafc);
 }
 
+button.omo-stats-group-detail__legend-item {
+    width: 100%;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+button.omo-stats-group-detail__legend-item:hover,
+button.omo-stats-group-detail__legend-item:focus-visible {
+    border-color: var(--omo-stats-accent, #2563eb);
+    background: var(--color-surface, #fff);
+    outline: none;
+}
+
 .omo-stats-group-detail__legend-dot {
     width: 28px;
     height: 4px;

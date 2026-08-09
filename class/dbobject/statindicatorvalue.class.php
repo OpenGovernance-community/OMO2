@@ -50,6 +50,18 @@ class StatIndicatorValue extends DbObject
         return self::execute("UPDATE stat_indicator_value v INNER JOIN stat_indicator i ON i.id = v.IDstatindicator SET v.IDuser = :ghost_user_id WHERE i.IDorganization = :organization_id AND v.IDuser = :user_id", array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId));
     }
 
+    public static function deleteForIndicator($indicatorId)
+    {
+        $indicatorId = (int)$indicatorId;
+        if ($indicatorId <= 0) {
+            return false;
+        }
+
+        return self::execute('DELETE FROM stat_indicator_value WHERE IDstatindicator = :indicator_id', [
+            'indicator_id' => $indicatorId,
+        ]);
+    }
+
     public function save()
     {
         $now = new \DateTime();
