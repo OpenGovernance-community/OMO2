@@ -1,17 +1,12 @@
 <?php
 require_once __DIR__ . '/context.php';
+require_once dirname(__DIR__) . '/params/shared.php';
 
 use dbObject\DecisionProcess;
 
 if (!function_exists('omoDecisionGetModuleRegistry')) {
-    function omoDecisionGetModuleRegistry()
+    function omoDecisionGetModuleRegistry($organizationId = 0)
     {
-        static $registry = null;
-
-        if ($registry !== null) {
-            return $registry;
-        }
-
         $registry = [
             DecisionProcess::METHOD_SIMPLE_VOTE => [
                 'key' => DecisionProcess::METHOD_SIMPLE_VOTE,
@@ -57,14 +52,20 @@ if (!function_exists('omoDecisionGetModuleRegistry')) {
             ],
         ];
 
+        $settings = omoDecisionParamsGetConfigForOrganizationId((int)$organizationId);
+        foreach ($registry as $method => &$definition) {
+            $definition['available'] = !empty($settings['methods'][$method]);
+        }
+        unset($definition);
+
         return $registry;
     }
 }
 
 if (!function_exists('omoDecisionGetModuleDefinition')) {
-    function omoDecisionGetModuleDefinition($method)
+    function omoDecisionGetModuleDefinition($method, $organizationId = 0)
     {
-        $registry = omoDecisionGetModuleRegistry();
+        $registry = omoDecisionGetModuleRegistry($organizationId);
         $method = DecisionProcess::normalizeEvaluationMethod($method);
         return $registry[$method] ?? null;
     }

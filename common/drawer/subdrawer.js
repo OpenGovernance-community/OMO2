@@ -104,6 +104,9 @@
             setSubtitle: function (nextSubtitle) {
                 setHeader({ subtitle: nextSubtitle });
             },
+            setActions: function (nextActions) {
+                setHeader({ actions: Array.isArray(nextActions) ? nextActions : [] });
+            },
             addButton: function (button) {
                 if (!actions) {
                     return;

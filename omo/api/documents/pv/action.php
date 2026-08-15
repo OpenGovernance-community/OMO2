@@ -76,8 +76,7 @@ function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint
     if (!$document->load((int)$point->get('IDdocument'))) {
         return [];
     }
-    $allPoints = new \dbObject\ArrayDocumentPvPoint();
-    $allPoints->loadForDocument((int)$document->getId(), true);
+    $allPoints = $document->getVisiblePvPointsForUser($currentUserId, true);
     $groupSummaryMap = omoDocumentsPvEditorBuildGroupSummaryMap($allPoints);
     $authorOptions = $document->getPvPointAuthorOptions($organizationId);
     $authorHolonOptions = omoDocumentsPvEditorBuildAuthorHolonOptions(
@@ -85,7 +84,7 @@ function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint
         $authorOptions,
         $hasStructureApplication
     );
-    $positionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabelsForDocument((int)$point->get('IDdocument'));
+    $positionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($allPoints);
 
     return omoDocumentsPvEditorBuildContextualPointPayload(
         $point,
@@ -105,10 +104,11 @@ function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint
 function omoDocumentsPvEditorBuildPointsPayloadForDocument(int $documentId, int $organizationId, int $currentUserId, string $lockToken = ''): array
 {
     $uiText = omoDocumentsPvEditorBuildUiText('omoDocumentsPvEditorActionT');
-    $points = new \dbObject\ArrayDocumentPvPoint();
-    $points->loadForDocument($documentId, true);
     $document = new \dbObject\Document();
     $hasDocument = $document->load($documentId);
+    $points = $hasDocument
+        ? $document->getVisiblePvPointsForUser($currentUserId, true)
+        : new \dbObject\ArrayDocumentPvPoint();
     $hasStructureApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'structure');
     $authorOptions = $hasDocument ? $document->getPvPointAuthorOptions($organizationId) : [];
     $authorHolonOptions = $hasDocument
@@ -255,6 +255,21 @@ $document = omoDocumentsPvEditorLoadDocumentOrFail($documentId, $organizationId,
 $hasTeamApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'team');
 $hasStructureApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'structure');
 $hasCalendarApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'calendar');
+
+$requestedPointId = isset($_POST['point_id']) ? (int)$_POST['point_id'] : 0;
+if ($requestedPointId > 0) {
+    $requestedPoint = new \dbObject\DocumentPvPoint();
+    if (
+        !$requestedPoint->load($requestedPointId)
+        || (int)$requestedPoint->get('IDdocument') !== (int)$document->getId()
+        || (!$requestedPoint->isGroup() && !$document->canUserViewPvPoint($requestedPoint, $currentUserId))
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+}
 
 if ($action === 'set_pv_template') {
     $templateResult = $document->updatePvTemplateState(
@@ -767,6 +782,7 @@ if ($action === 'save_point') {
     $point->set('author_email', $requestedAuthorEmail !== '' ? $requestedAuthorEmail : null);
     $point->set('IDholon_concerned', $requestedConcernedHolonId > 0 ? $requestedConcernedHolonId : null);
     $point->set('content', (string)($_POST['content'] ?? ''));
+    $point->set('is_confidential', !empty($_POST['is_confidential']));
     $point->set('IDuser_modification', $currentUserId);
 
     $saveResult = $point->save();
@@ -779,6 +795,15 @@ if ($action === 'save_point') {
 
     $point->releaseEditLock($currentUserId, $editorToken);
     $point->load($pointId);
+
+    if (!$document->canUserViewPvPoint($point, $currentUserId)) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => true,
+            'hiddenPointId' => $pointId,
+            'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken),
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.state.saved'),
+        ]);
+    }
 
     omoDocumentsPvEditorJsonResponse([
         'status' => true,

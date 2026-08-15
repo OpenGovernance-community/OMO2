@@ -2981,7 +2981,7 @@
 			}
 		}
 
-		protected function importCompactAuthorityRecords(array $payload, array $targetHolonsBySourceId)
+		protected function importCompactAuthorityRecords(array $payload, array $targetHolonsBySourceId, array $ignoredSourceHolonIds = array())
 		{
 			$records = isset($payload['authorities']) && is_array($payload['authorities'])
 				? $payload['authorities']
@@ -2999,7 +2999,7 @@
 				$sourceHolonId = (int)($record['holonId'] ?? $record['sourceHolonId'] ?? 0);
 				$targetHolon = $targetHolonsBySourceId[$sourceHolonId] ?? null;
 				if ($sourceAuthorityId <= 0 || !($targetHolon instanceof \dbObject\Holon)) {
-					if ($sourceAuthorityId > 0) {
+					if ($sourceAuthorityId > 0 && empty($ignoredSourceHolonIds[$sourceHolonId])) {
 						$warnings[] = 'Une autorite exportee n a pas pu etre rattachee a son holon importe.';
 					}
 					continue;
@@ -3276,7 +3276,7 @@
 					),
 				));
 				foreach ($children as $childHolon) {
-					if ($childHolon->isTemplateNode($templateRootHolonId)) {
+					if ($childHolon->isTemplateNode()) {
 						$nodes[(int)$childHolon->getId()] = $childHolon;
 					}
 					$collectNodes($childHolon);
@@ -3304,7 +3304,7 @@
 					break;
 				}
 
-				$label = $currentHolon->isTemplateNode($templateRootHolonId)
+				$label = $currentHolon->isTemplateNode()
 					? $this->getStructuralInitializationTemplateName($currentHolon)
 					: $currentHolon->getDisplayName();
 				if (trim((string)$label) !== '') {
@@ -3351,6 +3351,7 @@
 							'formatId' => (int)($definition['formatId'] ?? 0),
 							'formatName' => (string)($definition['formatName'] ?? ''),
 							'listItemType' => (string)($definition['listItemType'] ?? ''),
+							'position' => (int)($definition['position'] ?? 0),
 						);
 					}
 					$nodes[] = array(
@@ -3463,11 +3464,25 @@
 		{
 			$templateRootHolonId = (int)($calibration['templateRootHolonId'] ?? 0);
 			$mappings = isset($calibration['mappings']) && is_array($calibration['mappings']) ? $calibration['mappings'] : array();
+			$excludedTemplateIds = isset($calibration['excludedTemplateIds']) && is_array($calibration['excludedTemplateIds'])
+				? $calibration['excludedTemplateIds']
+				: array();
 			$propertyMappings = isset($calibration['propertyMappings']) && is_array($calibration['propertyMappings'])
 				? $calibration['propertyMappings']
 				: array();
-			if ($templateRootHolonId <= 0 || count($mappings) === 0) {
-				return array('mappedSourceTemplateIds' => array(), 'warnings' => array(), 'authorityTemplateApplied' => false);
+			$templatePropertyMappings = isset($calibration['templatePropertyMappings']) && is_array($calibration['templatePropertyMappings'])
+				? $calibration['templatePropertyMappings']
+				: array();
+			if ($templateRootHolonId <= 0 || (count($mappings) === 0 && count($excludedTemplateIds) === 0)) {
+				return array(
+					'mappedSourceTemplateIds' => array(),
+					'excludedSourceTemplateIds' => array(),
+					'excludedSourceHolonIds' => array(),
+					'templatePropertyIdMaps' => array(),
+					'warnings' => array(),
+					'authorityTemplateApplied' => false,
+					'targetTemplateNodes' => array(),
+				);
 			}
 
 			$templateRootHolon = new \dbObject\Holon();
@@ -3479,20 +3494,69 @@
 			) {
 				throw new \RuntimeException("Le modele d'organisation selectionne est introuvable.");
 			}
-			$authorityTemplateApplied = $this->templateTreeUsesAuthorityProperties($templateRootHolon);
+			$authorityTemplateApplied = count($mappings) > 0
+				? $this->templateTreeUsesAuthorityProperties($templateRootHolon)
+				: false;
 
-			$clonedTemplates = $this->cloneImportTemplateNodes($templateRootHolon, $targetRootHolon, $userId);
+			$clonedTemplates = count($mappings) > 0
+				? $this->cloneImportTemplateNodes($templateRootHolon, $targetRootHolon, $userId)
+				: array('targetNodesBySourceId' => array(), 'propertyIdMap' => array());
 			$targetTemplateNodes = $clonedTemplates['targetNodesBySourceId'];
 			$clonedPropertyIdMap = isset($clonedTemplates['propertyIdMap']) && is_array($clonedTemplates['propertyIdMap'])
 				? $clonedTemplates['propertyIdMap']
 				: array();
 			$mappedSourceTemplateIds = array();
+			$excludedSourceTemplateIds = array();
+			$excludedSourceHolonIds = array();
+			$templatePropertyIdMaps = array();
 			$mappedTargetTemplateIds = array();
 			$warnings = array();
 			$propertyDefinitionsById = array();
 			foreach ($propertyDefinitions as $definition) {
 				$propertyDefinitionsById[(int)($definition['id'] ?? 0)] = $definition;
 			}
+			foreach ($excludedTemplateIds as $sourceTemplateId => $isExcluded) {
+				$sourceTemplateId = (int)$sourceTemplateId;
+				if ($sourceTemplateId <= 0) {
+					$sourceTemplateId = (int)$isExcluded;
+				}
+				$sourceRecord = $recordsBySourceId[$sourceTemplateId] ?? null;
+				if ($sourceTemplateId <= 0 || !is_array($sourceRecord) || !self::isImportedTemplateRecord($sourceRecord)) {
+					throw new \RuntimeException('Un template a exclure est invalide.');
+				}
+				if (isset($mappings[$sourceTemplateId])) {
+					throw new \RuntimeException('Un template importe ne peut pas etre a la fois remplace et exclu.');
+				}
+				$excludedSourceTemplateIds[$sourceTemplateId] = true;
+			}
+			$excludedSourceHolonIds = $excludedSourceTemplateIds;
+			do {
+				$exclusionAdded = false;
+				foreach ($recordsBySourceId as $sourceHolonId => $sourceRecord) {
+					$sourceHolonId = (int)$sourceHolonId;
+					if ($sourceHolonId <= 0 || isset($excludedSourceHolonIds[$sourceHolonId])) {
+						continue;
+					}
+
+					$parentSourceId = (int)($sourceRecord['parentId'] ?? 0);
+					if ($parentSourceId > 0 && isset($excludedSourceHolonIds[$parentSourceId])) {
+						$excludedSourceHolonIds[$sourceHolonId] = true;
+						$exclusionAdded = true;
+						continue;
+					}
+
+					$templateSourceId = (int)($sourceRecord['templateId'] ?? 0);
+					if ($templateSourceId <= 0 || !isset($excludedSourceHolonIds[$templateSourceId])) {
+						continue;
+					}
+					if (self::isImportedTemplateRecord($sourceRecord) && isset($mappings[$sourceHolonId])) {
+						continue;
+					}
+
+					$excludedSourceHolonIds[$sourceHolonId] = true;
+					$exclusionAdded = true;
+				}
+			} while ($exclusionAdded);
 
 			foreach ($mappings as $sourceTemplateId => $targetTemplateSourceId) {
 				$sourceTemplateId = (int)$sourceTemplateId;
@@ -3516,6 +3580,7 @@
 
 				$targetPropertiesByKey = array();
 				$targetPropertyIds = array();
+				$mappedTargetPropertyIds = array();
 				foreach ($targetTemplate->getTemplatePropertyDefinitions() as $targetDefinition) {
 					$targetPropertyId = (int)($targetDefinition['id'] ?? 0);
 					if ($targetPropertyId <= 0) {
@@ -3523,7 +3588,9 @@
 					}
 					$targetPropertyIds[$targetPropertyId] = true;
 					foreach (self::getImportPropertyMatchKeys($targetDefinition['shortname'] ?? '', $targetDefinition['name'] ?? '') as $targetPropertyKey) {
-						$targetPropertiesByKey[$targetPropertyKey] = $targetPropertyId;
+						$targetPropertiesByKey[$targetPropertyKey] = isset($targetPropertiesByKey[$targetPropertyKey])
+							? 0
+							: $targetPropertyId;
 					}
 				}
 
@@ -3552,9 +3619,25 @@
 						continue;
 					}
 
+					$currentTemplatePropertyMappings = isset($templatePropertyMappings[$sourceTemplateId])
+						&& is_array($templatePropertyMappings[$sourceTemplateId])
+						? $templatePropertyMappings[$sourceTemplateId]
+						: array();
+					$hasExplicitMapping = array_key_exists($sourcePropertyId, $currentTemplatePropertyMappings)
+						|| array_key_exists((string)$sourcePropertyId, $currentTemplatePropertyMappings);
+					$explicitTargetSourcePropertyId = $hasExplicitMapping
+						? (int)($currentTemplatePropertyMappings[$sourcePropertyId] ?? $currentTemplatePropertyMappings[(string)$sourcePropertyId])
+						: 0;
+					if (!$hasExplicitMapping && array_key_exists($sourcePropertyId, $propertyMappings)) {
+						$hasExplicitMapping = true;
+						$explicitTargetSourcePropertyId = (int)$propertyMappings[$sourcePropertyId];
+					}
+
 					$targetPropertyId = 0;
-					$explicitTargetSourcePropertyId = (int)($propertyMappings[$sourcePropertyId] ?? 0);
-					if ($explicitTargetSourcePropertyId > 0) {
+					if ($hasExplicitMapping && $explicitTargetSourcePropertyId <= 0) {
+						continue;
+					}
+					if ($hasExplicitMapping) {
 						$explicitTargetPropertyId = isset($clonedPropertyIdMap[$explicitTargetSourcePropertyId])
 							? (int)$clonedPropertyIdMap[$explicitTargetSourcePropertyId]
 							: $explicitTargetSourcePropertyId;
@@ -3562,16 +3645,30 @@
 							$targetPropertyId = $explicitTargetPropertyId;
 						}
 					} else {
-						foreach (self::getImportPropertyMatchKeys($sourceDefinition['shortname'] ?? '', $sourceDefinition['name'] ?? '') as $sourcePropertyKey) {
-							if (isset($targetPropertiesByKey[$sourcePropertyKey])) {
-								$targetPropertyId = (int)$targetPropertiesByKey[$sourcePropertyKey];
-								break;
+						$sameIdentifierPropertyId = isset($clonedPropertyIdMap[$sourcePropertyId])
+							? (int)$clonedPropertyIdMap[$sourcePropertyId]
+							: $sourcePropertyId;
+						if (isset($targetPropertyIds[$sameIdentifierPropertyId])) {
+							$targetPropertyId = $sameIdentifierPropertyId;
+						} else {
+							foreach (self::getImportPropertyMatchKeys($sourceDefinition['shortname'] ?? '', $sourceDefinition['name'] ?? '') as $sourcePropertyKey) {
+								if (!empty($targetPropertiesByKey[$sourcePropertyKey])) {
+									$targetPropertyId = (int)$targetPropertiesByKey[$sourcePropertyKey];
+									break;
+								}
 							}
 						}
 					}
 					if ($targetPropertyId <= 0) {
+						if ($hasExplicitMapping) {
+							throw new \RuntimeException('Une correspondance de propriete est invalide pour le template selectionne.');
+						}
 						continue;
 					}
+					if (isset($mappedTargetPropertyIds[$targetPropertyId])) {
+						throw new \RuntimeException('Une propriete du modele ne peut remplacer qu une seule propriete importee dans un meme template.');
+					}
+					$mappedTargetPropertyIds[$targetPropertyId] = true;
 
 					$targetProperty = new \dbObject\Property();
 					if (!$targetProperty->load($targetPropertyId)) {
@@ -3596,12 +3693,15 @@
 						$warnings[] = 'La propriete ' . trim((string)$targetProperty->get('name')) . ' conserve le format du modele applique.';
 					}
 
-					$propertyIdMap[$sourcePropertyId] = $targetPropertyId;
+					$templatePropertyIdMaps[$sourceTemplateId][$sourcePropertyId] = $targetPropertyId;
 				}
 			}
 
 			return array(
 				'mappedSourceTemplateIds' => $mappedSourceTemplateIds,
+				'excludedSourceTemplateIds' => $excludedSourceTemplateIds,
+				'excludedSourceHolonIds' => $excludedSourceHolonIds,
+				'templatePropertyIdMaps' => $templatePropertyIdMaps,
 				'warnings' => array_values(array_unique($warnings)),
 				'authorityTemplateApplied' => $authorityTemplateApplied,
 				'targetTemplateNodes' => $targetTemplateNodes,
@@ -3610,7 +3710,10 @@
 
 		protected function templateTreeUsesAuthorityProperties(\dbObject\Holon $templateRootHolon)
 		{
-			$templatesToVisit = array($templateRootHolon);
+			$templatesToVisit = array_merge(
+				array($templateRootHolon),
+				array_values($this->getImportTemplateNodes($templateRootHolon))
+			);
 			$visited = array();
 			while (count($templatesToVisit) > 0) {
 				$template = array_pop($templatesToVisit);
@@ -3626,12 +3729,6 @@
 						&& \dbObject\Property::normalizeListItemType($definition['listItemType'] ?? null) === \dbObject\Property::LIST_ITEM_AUTHORITY
 					) {
 						return true;
-					}
-				}
-
-				foreach ($template->getTemplateChildren() as $child) {
-					if ($child instanceof \dbObject\Holon) {
-						$templatesToVisit[] = $child;
 					}
 				}
 			}
@@ -3715,6 +3812,9 @@
 					$userId
 				);
 				$mappedSourceTemplateIds = $calibrationResult['mappedSourceTemplateIds'] ?? array();
+				$excludedSourceTemplateIds = $calibrationResult['excludedSourceTemplateIds'] ?? array();
+				$excludedSourceHolonIds = $calibrationResult['excludedSourceHolonIds'] ?? $excludedSourceTemplateIds;
+				$templatePropertyIdMaps = $calibrationResult['templatePropertyIdMaps'] ?? array();
 				$calibrationWarnings = $calibrationResult['warnings'] ?? array();
 
 				$pending = $recordsBySourceId;
@@ -3722,6 +3822,11 @@
 				foreach ($mappedSourceTemplateIds as $mappedSourceTemplateId => $isMapped) {
 					if ($isMapped) {
 						unset($pending[(int)$mappedSourceTemplateId]);
+					}
+				}
+				foreach ($excludedSourceHolonIds as $excludedSourceHolonId => $isExcluded) {
+					if ($isExcluded) {
+						unset($pending[(int)$excludedSourceHolonId]);
 					}
 				}
 
@@ -3761,6 +3866,9 @@
 					if (!empty($mappedSourceTemplateIds[(int)$sourceId])) {
 						continue;
 					}
+					if (!empty($excludedSourceHolonIds[(int)$sourceId])) {
+						continue;
+					}
 
 					$templateSourceId = (int)($record['templateId'] ?? 0);
 					$targetHolon = $targetHolonsBySourceId[$sourceId];
@@ -3798,7 +3906,11 @@
 					$targetHolon->save();
 				}
 
-				$authorityImportResult = $this->importCompactAuthorityRecords($payload, $targetHolonsBySourceId);
+				$authorityImportResult = $this->importCompactAuthorityRecords(
+					$payload,
+					$targetHolonsBySourceId,
+					$excludedSourceHolonIds
+				);
 				$authorityIdMap = $authorityImportResult['authorityIdMap'] ?? array();
 				$calibrationWarnings = array_merge(
 					$calibrationWarnings,
@@ -3820,6 +3932,9 @@
 					if (!empty($mappedSourceTemplateIds[(int)$sourceId])) {
 						continue;
 					}
+					if (!empty($excludedSourceHolonIds[(int)$sourceId])) {
+						continue;
+					}
 
 					$propertyRecord = $record;
 					$templateSourceId = (int)($record['templateId'] ?? 0);
@@ -3831,10 +3946,14 @@
 							$sourceEffectivePropertyValueCache
 						);
 					}
+					$effectivePropertyIdMap = $propertyIdMap;
+					if (!empty($mappedSourceTemplateIds[$templateSourceId]) && isset($templatePropertyIdMaps[$templateSourceId])) {
+						$effectivePropertyIdMap = array_replace($effectivePropertyIdMap, $templatePropertyIdMaps[$templateSourceId]);
+					}
 					$this->importCompactHolonPropertyRows(
 						$propertyRecord,
 						$targetHolonsBySourceId[$sourceId],
-						$propertyIdMap,
+						$effectivePropertyIdMap,
 						$holonIdMap,
 						$authorityIdMap
 					);
@@ -3877,6 +3996,9 @@
 					'holonIdMap' => $holonIdMap,
 					'propertyIdMap' => $propertyIdMap,
 					'mappedSourceTemplateIds' => $mappedSourceTemplateIds,
+					'excludedSourceTemplateIds' => $excludedSourceTemplateIds,
+					'excludedSourceHolonIds' => $excludedSourceHolonIds,
+					'templatePropertyIdMaps' => $templatePropertyIdMaps,
 					'authorityTemplateApplied' => !empty($calibrationResult['authorityTemplateApplied']),
 					'warnings' => $calibrationWarnings,
 				);
@@ -3999,18 +4121,13 @@
 				1 => \dbObject\Project::STATUS_IN_PROGRESS,
 				2 => \dbObject\Project::STATUS_BLOCKED,
 				4 => \dbObject\Project::STATUS_DONE,
-				8 => \dbObject\Project::STATUS_BLOCKED,
-				16 => \dbObject\Project::STATUS_READY,
+				8 => \dbObject\Project::STATUS_SOMEDAY,
+				16 => \dbObject\Project::STATUS_SOMEDAY,
 				32 => \dbObject\Project::STATUS_SOMEDAY,
 				64 => \dbObject\Project::STATUS_DONE,
 			);
 
-			return isset($statusMap[$legacyStatusId]) ? $statusMap[$legacyStatusId] : \dbObject\Project::STATUS_READY;
-		}
-
-		protected static function omo1ImportProjectIsArchived($legacyStatusId)
-		{
-			return (((int)$legacyStatusId) & 15) === 0;
+			return isset($statusMap[$legacyStatusId]) ? $statusMap[$legacyStatusId] : \dbObject\Project::STATUS_SOMEDAY;
 		}
 
 		protected static function omo1ImportUserMembership(\dbObject\Organization $organization, $userId, $isAdmin, array $record = array(), $isActive = true)
@@ -4120,9 +4237,9 @@
 			self::omo1ImportUserMembership($organization, (int)$actorUserId, true);
 		}
 
-		protected function omo1ImportConvertAuthorityPropertyValues(array $payload, array $domainRecords, array $authorityIdMap, array $authorityIdsByHolonId, array $holonIdMap, array $propertyIdMap, array $mappedSourceTemplateIds, array &$warnings, $allowSchemaConversion = true)
+		protected function omo1ImportConvertAuthorityPropertyValues(array $payload, array $domainRecords, array $authorityIdMap, array $authorityIdsByHolonId, array $holonIdMap, array $propertyIdMap, array $templatePropertyIdMaps, array $mappedSourceTemplateIds, array &$warnings, $allowSchemaConversion = true)
 		{
-			if (count($authorityIdMap) === 0 || count($propertyIdMap) === 0) {
+			if (count($authorityIdMap) === 0 || (count($propertyIdMap) === 0 && count($templatePropertyIdMaps) === 0)) {
 				return;
 			}
 
@@ -4135,27 +4252,17 @@
 					break;
 				}
 			}
-			$targetDomainPropertyId = $sourceDomainPropertyId > 0 && isset($propertyIdMap[$sourceDomainPropertyId])
-				? (int)$propertyIdMap[$sourceDomainPropertyId]
-				: 0;
-			if ($targetDomainPropertyId <= 0) {
+			if ($sourceDomainPropertyId <= 0) {
 				return;
 			}
-			$targetDomainProperty = new \dbObject\Property();
-			if (!$targetDomainProperty->load($targetDomainPropertyId)) {
-				return;
+			$recordsBySourceId = array();
+			foreach ($this->getImportedHolonRecords($payload) as $record) {
+				$sourceHolonId = (int)($record['id'] ?? 0);
+				if ($sourceHolonId > 0) {
+					$recordsBySourceId[$sourceHolonId] = $record;
+				}
 			}
-			$isAuthorityList = \dbObject\PropertyFormat::isListFormat((int)$targetDomainProperty->get('IDpropertyformat'))
-				&& \dbObject\Property::normalizeListItemType($targetDomainProperty->get('listitemtype')) === \dbObject\Property::LIST_ITEM_AUTHORITY;
-			if (!$isAuthorityList && !$allowSchemaConversion) {
-				return;
-			}
-			if (!$isAuthorityList) {
-				$targetDomainProperty->set('IDpropertyformat', \dbObject\PropertyFormat::FORMAT_LIST);
-				$targetDomainProperty->set('listitemtype', \dbObject\Property::LIST_ITEM_AUTHORITY);
-				$targetDomainProperty->set('listholontypeids', null);
-				self::omo1ImportSave($targetDomainProperty, 'La propriete des domaines n a pas pu etre convertie en liste d autorites');
-			}
+			$targetDomainPropertiesById = array();
 
 			$normalizeValueKey = static function ($value) {
 				$value = html_entity_decode(strip_tags((string)$value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -4212,6 +4319,45 @@
 				}
 				$targetHolon = new \dbObject\Holon();
 				if (!$targetHolon->load((int)$targetHolonId)) {
+					continue;
+				}
+				$templateSourceId = (int)($recordsBySourceId[(int)$sourceHolonId]['templateId'] ?? 0);
+				$targetDomainPropertyId = isset($propertyIdMap[$sourceDomainPropertyId])
+					? (int)$propertyIdMap[$sourceDomainPropertyId]
+					: 0;
+				if (
+					$templateSourceId > 0
+					&& isset($templatePropertyIdMaps[$templateSourceId])
+					&& is_array($templatePropertyIdMaps[$templateSourceId])
+					&& isset($templatePropertyIdMaps[$templateSourceId][$sourceDomainPropertyId])
+				) {
+					$targetDomainPropertyId = (int)$templatePropertyIdMaps[$templateSourceId][$sourceDomainPropertyId];
+				}
+				if ($targetDomainPropertyId <= 0) {
+					continue;
+				}
+				if (!array_key_exists($targetDomainPropertyId, $targetDomainPropertiesById)) {
+					$targetDomainProperty = new \dbObject\Property();
+					if (!$targetDomainProperty->load($targetDomainPropertyId)) {
+						$targetDomainPropertiesById[$targetDomainPropertyId] = null;
+					} else {
+						$isAuthorityList = \dbObject\PropertyFormat::isListFormat((int)$targetDomainProperty->get('IDpropertyformat'))
+							&& \dbObject\Property::normalizeListItemType($targetDomainProperty->get('listitemtype')) === \dbObject\Property::LIST_ITEM_AUTHORITY;
+						if (!$isAuthorityList && !$allowSchemaConversion) {
+							$targetDomainPropertiesById[$targetDomainPropertyId] = null;
+						} else {
+							if (!$isAuthorityList) {
+								$targetDomainProperty->set('IDpropertyformat', \dbObject\PropertyFormat::FORMAT_LIST);
+								$targetDomainProperty->set('listitemtype', \dbObject\Property::LIST_ITEM_AUTHORITY);
+								$targetDomainProperty->set('listholontypeids', null);
+								self::omo1ImportSave($targetDomainProperty, 'La propriete des domaines n a pas pu etre convertie en liste d autorites');
+							}
+							$targetDomainPropertiesById[$targetDomainPropertyId] = $targetDomainProperty;
+						}
+					}
+				}
+				$targetDomainProperty = $targetDomainPropertiesById[$targetDomainPropertyId];
+				if (!($targetDomainProperty instanceof \dbObject\Property)) {
 					continue;
 				}
 
@@ -4741,6 +4887,7 @@
 
 		protected static function omo1ImportRoleAssignments(array $records, array $userIdMap, array $holonIdMap, array $pendingUserIds, array &$stats)
 		{
+			$focusMaximumLength = (int)(\dbObject\UserHolon::attributeLength()['focus'] ?? 250);
 			foreach ($records as $record) {
 				if (!is_array($record)) {
 					continue;
@@ -4762,6 +4909,16 @@
 					if (!$link->load(array(array('IDuser', $targetUserId), array('IDholon', $targetHolonId)))) {
 						$link->set('IDuser', $targetUserId);
 						$link->set('IDholon', $targetHolonId);
+					}
+					$importedFocus = self::omo1ImportLimitText($assignment['focus'] ?? '', $focusMaximumLength);
+					$currentFocus = trim((string)$link->get('focus'));
+					if ($importedFocus !== '' && $currentFocus === '') {
+						$link->set('focus', $importedFocus);
+					} elseif ($importedFocus !== '' && $currentFocus !== $importedFocus) {
+						$link->set(
+							'focus',
+							self::omo1ImportLimitText($currentFocus . ' ; ' . $importedFocus, $focusMaximumLength)
+						);
 					}
 					$link->set('active', !isset($pendingUserIds[$targetUserId]));
 					self::omo1ImportSave($link, 'Une attribution de role n a pas pu etre creee');
@@ -4850,7 +5007,7 @@
 					continue;
 				}
 				$sourceId = (int)($record['sourceId'] ?? 0);
-				if ($sourceId <= 0 || (int)($record['legacyStatusId'] ?? 0) === 32) {
+				if ($sourceId <= 0) {
 					continue;
 				}
 				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
@@ -4864,9 +5021,9 @@
 				$project->set('IDuser', $targetUserId);
 				$project->set('title', $title !== '' ? $title : 'Projet OMO 1 #' . $sourceId);
 				$project->set('description', $record['description'] ?? null);
-				$project->set('status', array_key_exists('status', $record)
-					? \dbObject\Project::normalizeStatus($record['status'])
-					: self::omo1ImportProjectStatus($record['legacyStatusId'] ?? 0));
+				$project->set('status', array_key_exists('legacyStatusId', $record)
+					? self::omo1ImportProjectStatus($record['legacyStatusId'])
+					: \dbObject\Project::normalizeStatus($record['status'] ?? \dbObject\Project::STATUS_SOMEDAY));
 				$project->set('planned_start_date', self::omo1ImportDate($record['plannedStartAt'] ?? null));
 				$project->set('planned_end_date', self::omo1ImportDate($record['plannedEndAt'] ?? null));
 				$project->set('priority', \dbObject\Project::normalizeLevel($record['priority'] ?? null));
@@ -4881,7 +5038,7 @@
 				}
 				$project->set('active', array_key_exists('active', $record)
 					? (bool)$record['active']
-					: !self::omo1ImportProjectIsArchived($record['legacyStatusId'] ?? 0));
+					: true);
 				self::omo1ImportSave($project, 'Un projet n a pas pu etre cree');
 				$projectIdMap[$sourceId] = (int)$project->getId();
 				$stats['projects'] += 1;
@@ -5729,6 +5886,7 @@
 						$authorityIdsByHolonId,
 						$holonIdMap,
 						isset($structureResult['propertyIdMap']) && is_array($structureResult['propertyIdMap']) ? $structureResult['propertyIdMap'] : array(),
+						isset($structureResult['templatePropertyIdMaps']) && is_array($structureResult['templatePropertyIdMaps']) ? $structureResult['templatePropertyIdMaps'] : array(),
 						isset($structureResult['mappedSourceTemplateIds']) && is_array($structureResult['mappedSourceTemplateIds']) ? $structureResult['mappedSourceTemplateIds'] : array(),
 						$warnings,
 						!$hasAppliedOrganizationModel
@@ -13088,7 +13246,7 @@
 				? 'AND d.documenttype = :document_type_pv'
 				: 'AND COALESCE(d.documenttype, \'\') <> :document_type_pv';
 			$pvJoinSql = $isPvSearch
-				? "LEFT JOIN (\n\t\t\t\t\tSELECT IDdocument, GROUP_CONCAT(COALESCE(title, '') SEPARATOR ' ') AS point_titles, GROUP_CONCAT(COALESCE(content, '') SEPARATOR ' ') AS point_contents\n\t\t\t\t\tFROM document_pv_point\n\t\t\t\t\tWHERE item_type = 'point'\n\t\t\t\t\tGROUP BY IDdocument\n\t\t\t\t) pv_search ON pv_search.IDdocument = d.id"
+				? "LEFT JOIN (\n\t\t\t\t\tSELECT IDdocument, GROUP_CONCAT(COALESCE(title, '') SEPARATOR ' ') AS point_titles, GROUP_CONCAT(COALESCE(content, '') SEPARATOR ' ') AS point_contents\n\t\t\t\t\tFROM document_pv_point\n\t\t\t\t\tWHERE item_type = 'point' AND COALESCE(is_confidential, 0) = 0\n\t\t\t\t\tGROUP BY IDdocument\n\t\t\t\t) pv_search ON pv_search.IDdocument = d.id"
 				: '';
 			$pvSelectSql = $isPvSearch
 				? 'pv_search.point_titles, pv_search.point_contents'

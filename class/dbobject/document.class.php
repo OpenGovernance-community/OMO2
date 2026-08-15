@@ -2942,6 +2942,77 @@
 			return $points;
 		}
 
+		public function isUserPresentAtPvMeeting(int $userId, int $organizationId = 0): bool
+		{
+			$userId = (int)$userId;
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if (!$this->isPvDocument() || $userId <= 0 || $organizationId <= 0) {
+				return false;
+			}
+
+			$event = $this->getAssociatedEvent();
+			$attendanceEntries = $event instanceof \dbObject\Event
+				? $event->getAttendanceEntries($organizationId)
+				: $this->getInvitationAttendanceEntries($organizationId);
+			foreach ($attendanceEntries as $attendanceEntry) {
+				if (
+					is_array($attendanceEntry)
+					&& (int)($attendanceEntry['userId'] ?? 0) === $userId
+					&& !empty($attendanceEntry['isPresent'])
+				) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		public function canUserViewPvPoint(\dbObject\DocumentPvPoint $point, int $userId): bool
+		{
+			return (int)$point->get('IDdocument') === (int)$this->getId()
+				&& (!$point->isConfidential() || $this->isUserPresentAtPvMeeting($userId));
+		}
+
+		public function getVisiblePvPointsForUser(int $userId, bool $activeOnly = true)
+		{
+			$points = $this->getPvPoints($activeOnly);
+			if (!$this->isPvDocument()) {
+				return $points;
+			}
+
+			$itemsById = array();
+			$visibleIds = array();
+			$isUserPresent = $this->isUserPresentAtPvMeeting($userId);
+			foreach ($points as $point) {
+				if (!($point instanceof \dbObject\DocumentPvPoint) || (int)$point->getId() <= 0) {
+					continue;
+				}
+				$itemsById[(int)$point->getId()] = $point;
+				if (!$point->isGroup() && (!$point->isConfidential() || $isUserPresent)) {
+					$visibleIds[(int)$point->getId()] = true;
+				}
+			}
+
+			foreach (array_keys($visibleIds) as $pointId) {
+				$parentId = (int)($itemsById[$pointId]->get('IDparent') ?? 0);
+				$visitedParentIds = array();
+				while ($parentId > 0 && isset($itemsById[$parentId]) && !isset($visitedParentIds[$parentId])) {
+					$visitedParentIds[$parentId] = true;
+					$parent = $itemsById[$parentId];
+					if (!$parent->isGroup()) {
+						break;
+					}
+					$visibleIds[$parentId] = true;
+					$parentId = (int)$parent->get('IDparent');
+				}
+			}
+
+			$points->exchangeArray(array_values(array_filter($points->getArrayCopy(), static function ($point) use ($visibleIds): bool {
+				return $point instanceof \dbObject\DocumentPvPoint && isset($visibleIds[(int)$point->getId()]);
+			})));
+			return $points;
+		}
+
 		public function copyPvAgendaFromTemplate(\dbObject\Document $template, int $organizationId, int $userId): array
 		{
 			if (
@@ -3000,6 +3071,7 @@
 					$targetItem->set('edit_lock_token', null);
 					$targetItem->set('dateedition', null);
 					$targetItem->set('is_handled', 0);
+					$targetItem->set('is_confidential', $sourceItem->isGroup() ? 0 : $sourceItem->isConfidential());
 					$targetItem->set('active', 1);
 
 					$saveResult = $targetItem->save();
@@ -3124,7 +3196,10 @@
 			}
 
 			$organizationId = (int)$this->get('IDorganization');
-			$points = $this->getPvPoints(true);
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
+			$points = $this->getVisiblePvPointsForUser($currentUserId, true);
 			$positionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points);
 			$itemsByParent = array();
 			foreach ($points as $item) {

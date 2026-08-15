@@ -211,6 +211,7 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildConfig')) {
                 || array_key_exists('allow_anonymous_votes', $decisionOrParameters)
                 || array_key_exists('allow_consultation_proposals', $decisionOrParameters)
                 || array_key_exists('allow_proposal_discussions', $decisionOrParameters)
+                || array_key_exists('show_live_results', $decisionOrParameters)
             );
 
         if ($isConfigLikeArray) {
@@ -265,6 +266,7 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildConfig')) {
             'allow_anonymous_votes' => !empty($methodParameters['allow_anonymous_votes']),
             'allow_consultation_proposals' => !empty($methodParameters['allow_consultation_proposals']),
             'allow_proposal_discussions' => !array_key_exists('allow_proposal_discussions', $methodParameters) || !empty($methodParameters['allow_proposal_discussions']),
+            'show_live_results' => !empty($methodParameters['show_live_results']),
             'scale_size' => count($activeScores),
             'mentions' => $mentions,
             'all_mentions' => $allMentions,
@@ -410,6 +412,8 @@ if (!function_exists('omoDecisionMajorityJudgmentMergeConfigIntoParameters')) {
         $methodParameters['allow_anonymous_votes'] = !empty($normalizedConfig['allow_anonymous_votes']) ? 1 : 0;
         $methodParameters['allow_consultation_proposals'] = !empty($normalizedConfig['allow_consultation_proposals']) ? 1 : 0;
         $methodParameters['allow_proposal_discussions'] = !empty($normalizedConfig['allow_proposal_discussions']) ? 1 : 0;
+        $methodParameters['show_live_results'] = !empty($normalizedConfig['show_live_results']) ? 1 : 0;
+        unset($methodParameters['live_results_anonymous']);
         $methodParameters['mention_customization_enabled'] = !empty($normalizedConfig['mention_customization_enabled']) ? 1 : 0;
         $methodParameters['scale_size'] = (int)count((array)($normalizedConfig['active_scores'] ?? []));
         $methodParameters['mention_options'] = [];

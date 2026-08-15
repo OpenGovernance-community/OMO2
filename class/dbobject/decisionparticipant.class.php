@@ -186,6 +186,30 @@ class DecisionParticipant extends DbObject
         })));
     }
 
+    public static function getInvitedUserIdsForDecision($decisionProcessId)
+    {
+        $rows = self::fetchAll(
+            'SELECT DISTINCT `IDuser` FROM `decision_participant`
+             WHERE `IDdecision_process` = :decision_process_id
+               AND `IDuser` IS NOT NULL
+               AND `IDuser` > 0
+               AND `active` = 1
+               AND `role` != :owner_role
+               AND `status` NOT IN (:declined_status, :revoked_status)',
+            [
+                'decision_process_id' => (int)$decisionProcessId,
+                'owner_role' => self::ROLE_OWNER,
+                'declined_status' => self::STATUS_DECLINED,
+                'revoked_status' => self::STATUS_REVOKED,
+            ]
+        );
+        return array_values(array_unique(array_filter(array_map(static function ($row) {
+            return is_array($row) ? (int)($row['IDuser'] ?? 0) : 0;
+        }, is_array($rows) ? $rows : []), static function ($userId) {
+            return $userId > 0;
+        })));
+    }
+
     public static function findByAccessToken($token)
     {
         $row = self::fetchRow(

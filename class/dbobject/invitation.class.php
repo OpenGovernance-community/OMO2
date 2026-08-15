@@ -594,6 +594,9 @@
 				if (!$holon->load((int)$link->get('IDholon'))) {
 					continue;
 				}
+				if ((int)$holon->getId() === $rootHolonId) {
+					continue;
+				}
 				if (!(bool)$holon->get('active') || !(bool)$holon->get('visible')) {
 					continue;
 				}

@@ -116,7 +116,7 @@ $documentDescription = trim((string)($livePayload['description'] ?? ''));
     <script src="/shared_functions.js"></script>
     <script>sharedApplyDocumentTheme();</script>
     <link rel="stylesheet" href="/common/assets/components.css">
-    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260807-notification-channels">
+    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260812-decision-reminders">
     <style>
     body {
         margin: 0;

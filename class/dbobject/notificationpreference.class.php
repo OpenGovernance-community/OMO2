@@ -16,6 +16,7 @@ class NotificationPreference extends DbObject
             [['IDuser', 'IDorganization'], 'fk'],
             [['event_key'], 'string'],
             [['channel_push', 'channel_telegram', 'channel_email'], 'boolean'],
+            [['parameters'], 'parameters'],
             [['created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],
         ];
@@ -40,7 +41,7 @@ class NotificationPreference extends DbObject
 
     public static function getChannelsFor($userId, $organizationId, $eventKey)
     {
-        $defaults = ['push' => false, 'telegram' => false, 'email' => false];
+        $defaults = ['push' => false, 'telegram' => false, 'email' => false, 'days' => []];
         if (!self::isStorageAvailable()) {
             return $defaults;
         }
@@ -54,10 +55,20 @@ class NotificationPreference extends DbObject
             return $defaults;
         }
 
+        $parameters = $item->get('parameters');
+        if (!is_array($parameters)) {
+            $parameters = json_decode((string)$parameters, true);
+        }
+        $days = is_array($parameters['days'] ?? null) ? $parameters['days'] : [];
+        $days = array_values(array_unique(array_filter(array_map('intval', $days), static function ($day) {
+            return in_array($day, [1, 2, 3, 5], true);
+        })));
+
         return [
             'push' => !empty($item->get('channel_push')),
             'telegram' => !empty($item->get('channel_telegram')),
             'email' => !empty($item->get('channel_email')),
+            'days' => $days,
         ];
     }
 
@@ -91,6 +102,12 @@ class NotificationPreference extends DbObject
         $item->set('channel_push', !empty($channels['push']) ? 1 : 0);
         $item->set('channel_telegram', !empty($channels['telegram']) ? 1 : 0);
         $item->set('channel_email', !empty($channels['email']) ? 1 : 0);
+        $days = is_array($channels['days'] ?? null) ? $channels['days'] : [];
+        $item->set('parameters', [
+            'days' => array_values(array_unique(array_filter(array_map('intval', $days), static function ($day) {
+                return in_array($day, [1, 2, 3, 5], true);
+            }))),
+        ]);
         if (!(int)$item->getId()) {
             $item->set('created_at', new \DateTimeImmutable('now'));
         }

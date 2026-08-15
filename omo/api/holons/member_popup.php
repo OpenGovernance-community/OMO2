@@ -44,6 +44,22 @@ $adminConstraintState = $holon->getAdminMemberConstraintState($organizationId);
 $adminMinimum = (int)($adminConstraintState['min'] ?? 0);
 $adminMaximum = $adminConstraintState['max'] ?? null;
 $adminCount = (int)($adminConstraintState['adminCount'] ?? 0);
+$focusMaximumLength = (int)(\dbObject\UserHolon::attributeLength()['focus'] ?? 250);
+$adminCheckboxChecked = false;
+$adminCheckboxDisabled = false;
+$adminCheckboxHint = '';
+
+if ($adminMinimum > $adminCount) {
+    $adminCheckboxChecked = true;
+    $adminCheckboxDisabled = true;
+    $adminCheckboxHint = 'Le statut ' . $adminLabelLower . ' est requis tant que le minimum de ' . $adminMinimum . ' n est pas atteint.';
+} elseif ($adminMaximum !== null && $adminCount >= (int)$adminMaximum) {
+    $adminCheckboxDisabled = true;
+    $adminCheckboxHint = 'Le maximum de ' . (int)$adminMaximum . ' ' . $adminLabelLower . ' est deja atteint.';
+} elseif (!$canAddAdmin) {
+    $adminCheckboxDisabled = true;
+    $adminCheckboxHint = 'Vous n avez pas le droit de definir ce statut dans ce contexte.';
+}
 
 if (!$canAddMember) {
     http_response_code(403);
@@ -67,6 +83,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $selectedUserId = (int)($_POST['user_id'] ?? 0);
     $email = trim((string)($_POST['email'] ?? ''));
 	$isAdmin = !empty($_POST['is_admin']);
+	$focus = trim((string)($_POST['focus'] ?? ''));
+	if (mb_strlen($focus, 'UTF-8') > $focusMaximumLength) {
+		http_response_code(422);
+		echo json_encode(array(
+			'status' => false,
+			'message' => 'Le focus ne peut pas depasser ' . $focusMaximumLength . ' caracteres.',
+		), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		exit;
+	}
 
 	if ($isAdmin && !$canAddAdmin) {
 		http_response_code(403);
@@ -79,6 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 	$result = $holon->addMember($selectedUserId, $email, array(
 		'isAdmin' => $isAdmin,
+		'focus' => $focus,
 	));
     if (!($result['status'] ?? false)) {
         http_response_code(422);
@@ -112,27 +138,34 @@ foreach ($directMembers as $member) {
         font-weight: 700;
     }
 
-    .omo-holon-member-popup__checkbox input {
+    .omo-holon-member-popup__checkbox input[type="checkbox"] {
         width: 18px;
         height: 18px;
     }
 
-    .omo-holon-member-popup__separator {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        color: var(--topbar-panel-muted, #64748b);
-        font-size: 0.86rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
+    .omo-holon-member-popup__member-sources {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
     }
 
-    .omo-holon-member-popup__separator::before,
-    .omo-holon-member-popup__separator::after {
-        content: "";
-        flex: 1 1 auto;
-        height: 1px;
-        background: var(--topbar-panel-border, #e2e8f0);
+    .omo-holon-member-popup__admin-focus {
+        display: grid;
+        grid-template-columns: auto minmax(180px, 1fr);
+        align-items: end;
+        gap: 12px;
+    }
+
+    .omo-holon-member-popup__focus-field {
+        display: grid;
+        gap: 5px;
+    }
+
+    @media (max-width: 620px) {
+        .omo-holon-member-popup__member-sources,
+        .omo-holon-member-popup__admin-focus {
+            grid-template-columns: 1fr;
+        }
     }
 
     .omo-holon-member-popup__empty {
@@ -158,6 +191,7 @@ foreach ($directMembers as $member) {
         soit en choisissant un membre déjà présent dans l'organisation, soit en saisissant une nouvelle adresse e-mail.
     </p>
 
+    <div class="omo-holon-member-popup__member-sources">
     <div class="omo-holon-member-popup__group generic-stack generic-stack--compact">
         <label class="omo-holon-member-popup__label generic-form-label" for="omoHolonMemberExistingUser">Membre existant</label>
         <select id="omoHolonMemberExistingUser" name="user_id" class="omo-holon-member-popup__select generic-form-control">
@@ -182,8 +216,6 @@ foreach ($directMembers as $member) {
         </div>
     </div>
 
-    <div class="omo-holon-member-popup__separator">ou</div>
-
     <div class="omo-holon-member-popup__group generic-stack generic-stack--compact">
         <label class="omo-holon-member-popup__label generic-form-label" for="omoHolonMemberEmail">Nouvelle adresse e-mail</label>
         <input
@@ -199,16 +231,34 @@ foreach ($directMembers as $member) {
             Si l'adresse existe déjà, le profil existant sera réutilisé. Sinon, un nouveau profil minimal sera créé puis rattaché.
         </div>
     </div>
+    </div>
 
     <div class="omo-holon-member-popup__group generic-stack generic-stack--compact">
-        <label class="omo-holon-member-popup__checkbox" for="omoHolonMemberAdmin">
-            <input type="checkbox" id="omoHolonMemberAdmin" name="is_admin" value="1"<?= $canAddAdmin ? '' : ' disabled' ?>>
-            <?= omoApiEscape($adminLabel) ?>
-        </label>
+        <div class="omo-holon-member-popup__admin-focus">
+            <label class="omo-holon-member-popup__checkbox" for="omoHolonMemberAdmin">
+                <?php if ($adminCheckboxChecked && $adminCheckboxDisabled): ?>
+                    <input type="hidden" name="is_admin" value="1">
+                <?php endif; ?>
+                <input type="checkbox" id="omoHolonMemberAdmin" name="is_admin" value="1"<?= $adminCheckboxChecked ? ' checked' : '' ?><?= $adminCheckboxDisabled ? ' disabled' : '' ?>>
+                <?= omoApiEscape($adminLabel) ?>
+            </label>
+            <div class="omo-holon-member-popup__focus-field">
+                <label class="omo-holon-member-popup__label generic-form-label" for="omoHolonMemberFocus">Focus</label>
+                <input
+                    type="text"
+                    id="omoHolonMemberFocus"
+                    name="focus"
+                    class="omo-holon-member-popup__focus generic-form-control"
+                    maxlength="<?= (int)$focusMaximumLength ?>"
+                >
+            </div>
+        </div>
         <div class="omo-holon-member-popup__hint generic-help-text generic-help-text--regular">
-            <?= $canAddAdmin
+            <?= $adminCheckboxHint !== ''
+                ? omoApiEscape($adminCheckboxHint)
+                : ($canAddAdmin
                 ? 'La personne recevra le statut ' . $adminLabelLower . ' de ce contexte, maintenant ou apres validation de l invitation.'
-                : 'Vous n avez pas le droit de definir ce statut dans ce contexte.' ?>
+                : 'Vous n avez pas le droit de definir ce statut dans ce contexte.') ?>
             <?php if ($adminMinimum > 0 || $adminMaximum !== null): ?>
                 <br><?= omoApiEscape($adminLabel) ?> : <?= (int)$adminCount ?><?= $adminMinimum > 0 ? ' (minimum : ' . (int)$adminMinimum . ')' : '' ?><?= $adminMaximum !== null ? ' (maximum : ' . (int)$adminMaximum . ')' : '' ?>.
             <?php endif; ?>
