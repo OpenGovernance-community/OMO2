@@ -2452,7 +2452,7 @@
 			return $membership;
 		}
 
-		protected function ensureHolonMembership(\dbObject\User $user, $isActive = true)
+		protected function ensureHolonMembership(\dbObject\User $user, $isActive = true, $focus = '')
 		{
 			if ((int)$user->getId() <= 0 || (int)$this->getId() <= 0) {
 				throw new \RuntimeException('Le lien vers ce holon est invalide.');
@@ -2467,6 +2467,7 @@
 				$link->set('IDholon', (int)$this->getId());
 			}
 
+			$link->set('focus', trim((string)$focus));
 			$link->set('active', (bool)$isActive);
 			$saveResult = $link->save();
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
@@ -2754,6 +2755,7 @@
 		public function addMember($userId = 0, $email = '', array $options = array())
 		{
 			$isAdmin = !empty($options['isAdmin']);
+			$focus = trim((string)($options['focus'] ?? ''));
 			$currentUserId = function_exists('commonGetCurrentUserId')
 				? (int)\commonGetCurrentUserId()
 				: (int)($_SESSION['currentUser'] ?? 0);
@@ -2830,19 +2832,13 @@
 					}
 
 					$this->ensureOrganizationMembership($user, $organizationId, true);
-					if (!$this->isOrganizationHolon()) {
-						$this->ensureHolonMembership($user, true);
-					}
+					$this->ensureHolonMembership($user, true, $focus);
 				} elseif ($keepsPendingInvitation) {
 					$this->ensureOrganizationMembership($user, $organizationId, false);
-					if (!$this->isOrganizationHolon()) {
-						$this->ensureHolonMembership($user, false);
-					}
+					$this->ensureHolonMembership($user, false, $focus);
 				} elseif ($requiresInvitation) {
 					$organizationMembership = $this->ensureOrganizationMembership($user, $organizationId, false);
-					if (!$this->isOrganizationHolon()) {
-						$holonMembership = $this->ensureHolonMembership($user, false);
-					}
+					$holonMembership = $this->ensureHolonMembership($user, false, $focus);
 
 					$invitationIssue = \dbObject\Invitation::issue(
 						$organizationId,
@@ -2859,9 +2855,7 @@
 					}
 				} else {
 					$organizationMembership = $this->ensureOrganizationMembership($user, $organizationId, true);
-					if (!$this->isOrganizationHolon()) {
-						$holonMembership = $this->ensureHolonMembership($user, true);
-					}
+					$holonMembership = $this->ensureHolonMembership($user, true, $focus);
 
 					if ($isAdmin) {
 						$saveResult = $this->isOrganizationHolon()

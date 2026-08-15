@@ -34,6 +34,8 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.field.duration' => ['text' => 'Duree estimee', 'context' => 'Label showing the desired duration of a PV point.'],
         'documents.pv_editor.field.duration_short' => ['text' => '{minutes} min', 'context' => 'Short duration label used in compact PV point rows.'],
         'documents.pv_editor.field.duration_empty' => ['text' => '-- min', 'context' => 'Fallback duration label used when no desired duration is set.'],
+        'documents.pv_editor.field.confidential' => ['text' => 'Confidentiel', 'context' => 'Checkbox label used to limit a PV point to people marked present at the meeting.'],
+        'documents.pv_editor.field.confidential_hint' => ['text' => 'Visible uniquement par les personnes presentes a la reunion.', 'context' => 'Help text for the confidential PV point checkbox.'],
         'documents.pv_editor.field.stage' => ['text' => 'Etape', 'context' => 'Label of the PV workflow stage selector.'],
         'documents.pv_editor.field.document_title' => ['text' => 'Titre du PV', 'context' => 'Label for the editable PV document title.'],
         'documents.pv_editor.field.document_description' => ['text' => 'Description', 'context' => 'Label for the editable PV document description.'],
@@ -279,6 +281,8 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null): array
         'duration' => $resolve('documents.pv_editor.field.duration', 'Duree estimee'),
         'durationShort' => $resolve('documents.pv_editor.field.duration_short', '{minutes} min'),
         'durationEmpty' => $resolve('documents.pv_editor.field.duration_empty', '-- min'),
+        'confidential' => $resolve('documents.pv_editor.field.confidential', 'Confidentiel'),
+        'confidentialHint' => $resolve('documents.pv_editor.field.confidential_hint', 'Visible uniquement par les personnes presentes a la reunion.'),
         'stage' => $resolve('documents.pv_editor.field.stage', 'Etape'),
         'stagePreparation' => $resolve('documents.pv_editor.field.stage.preparation', 'Preparation'),
         'stageMeeting' => $resolve('documents.pv_editor.field.stage.meeting', 'Reunion'),
@@ -790,6 +794,12 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     } elseif (!empty($pointData['hasStructureApplication']) && trim((string)($pointData['concernedHolonLabel'] ?? '')) !== '') {
         $html .= '      <span class="omo-pv-editor__point-concerned-readonly">' . omoDocumentsPvEditorEscape(trim((string)$pointData['concernedHolonLabel'])) . '</span>';
     }
+    if ($canEditNow) {
+        $html .= '      <label class="omo-pv-editor__point-confidential" title="' . omoDocumentsPvEditorEscape((string)$uiText['confidentialHint']) . '">';
+        $html .= '          <input type="checkbox" data-omo-pv-point-confidential="' . $pointId . '"' . (!empty($pointData['isConfidential']) ? ' checked' : '') . '>';
+        $html .= '          <span>' . omoDocumentsPvEditorEscape((string)$uiText['confidential']) . '</span>';
+        $html .= '      </label>';
+    }
     $html .= '    </div>';
     if ($chips !== '') {
         $html .= '<div class="omo-document-pv__point-chips">' . $chips . '</div>';
@@ -866,6 +876,7 @@ function omoDocumentsPvEditorBuildPointPayload(array $pointData, array $uiText):
         'concernedHolonId' => (int)($pointData['concernedHolonId'] ?? 0),
         'desiredDurationMinutes' => isset($pointData['desiredDurationMinutes']) ? (int)$pointData['desiredDurationMinutes'] : 0,
         'isHandled' => !empty($pointData['isHandled']),
+        'isConfidential' => !empty($pointData['isConfidential']),
         'syncVersion' => hash('sha256', implode('|', [
             (string)($pointData['syncVersion'] ?? ''),
             implode('|', $authorOptionValues),

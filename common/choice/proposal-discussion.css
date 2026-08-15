@@ -427,6 +427,36 @@
     white-space: pre-wrap;
 }
 
+.omo-proposal-chat__diff-value-content--rich {
+    padding: 5px 7px;
+    border-left: 3px solid transparent;
+    border-radius: 5px;
+    white-space: normal;
+}
+
+.omo-proposal-chat__diff-value-content--rich.is-rich-before {
+    border-left-color: rgba(220, 38, 38, .55);
+    background: rgba(220, 38, 38, .05);
+}
+
+.omo-proposal-chat__diff-value-content--rich.is-rich-after {
+    border-left-color: rgba(22, 163, 74, .55);
+    background: rgba(22, 163, 74, .05);
+}
+
+.omo-proposal-chat__diff-value-content--rich > :first-child {
+    margin-top: 0;
+}
+
+.omo-proposal-chat__diff-value-content--rich > :last-child {
+    margin-bottom: 0;
+}
+
+.omo-proposal-chat__diff-value-content--rich ul,
+.omo-proposal-chat__diff-value-content--rich ol {
+    padding-left: 20px;
+}
+
 .omo-proposal-chat__diff-value-content.is-empty {
     color: #94a3b8;
     font-style: italic;

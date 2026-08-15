@@ -3797,9 +3797,24 @@ body.view-right .panel-right {
 }
 
 .omo-notification-preferences-grid__event {
+    display: grid;
+    gap: 6px;
     color: var(--color-text, #1f2937);
     font-size: 14px;
     line-height: 1.35;
+}
+
+.omo-notification-preferences-grid__reminder-days {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    color: var(--color-text-light, #6b7280);
+    font-size: 12px;
+}
+
+.omo-notification-preferences-grid__reminder-days label {
+    white-space: nowrap;
 }
 
 .omo-notification-preferences-grid__channel {

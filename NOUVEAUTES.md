@@ -2,6 +2,53 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-14
+
+- Le bouton Nouvelle prise de decision de l application Decisions est maintenant libelle Nouveau scrutin.
+- Dans les trois modes de scrutin, le titre Parametres du scrutin est maintenant place au-dessus du recapitulatif a lisere vert, comme les autres titres de section.
+- Les aides contextuelles ouvertes avec un bouton ? se repositionnent maintenant automatiquement pour rester dans la fenetre, y compris pres des bords et en bas de page. Ce comportement est disponible comme composant generique.
+- Les aides contextuelles tiennent aussi compte des panneaux defilants qui les contiennent, afin de ne plus etre coupees par le bord d un tiroir.
+- Le bouton Enregistrer le scrutin est maintenant fourni au sous-tiroir par la meme API partagee que Documents, puis place dans l en-tete a cote de Fermer avec son etat d enregistrement.
+- La creation d un scrutin reprend maintenant les deux blocs visuels Parametres generaux du scrutin et Questions, et place l action Creer le scrutin dans l en-tete du sous-tiroir.
+- A la creation d un scrutin, les invitations sont maintenant presentees sous forme de resume compact indiquant le holon courant et se configurent dans une popup; le holon courant est selectionne par defaut.
+- La popup de selection des invites d un scrutin conserve maintenant une largeur et une hauteur stables, y compris au survol de ses onglets et de ses actions.
+
+## 2026-08-13
+
+- Les messages de discussion signalant une modification de proposition affichent maintenant les descriptions HTML avec leur mise en page et mettent en evidence les mots ajoutes ou retires tout en preservant les listes et les textes en gras.
+- Dans les scrutins par consentement, le coeur represente maintenant Pour et le petit vu Pas d objection.
+- La carte Parametres Decisions permet maintenant d activer les decisions hors reorg, de definir leurs delais, leur question et l affichage des votes, ainsi que de masquer les autres modes de scrutin non souhaites.
+- Les modes de scrutin decoches dans Parametres Decisions restent maintenant effectivement masques apres enregistrement.
+- Les parametres Decisions permettent de choisir si les nouvelles decisions hors reorg se valident par vote simple ou par consentement.
+- Chaque scrutin peut maintenant afficher un recapitulatif intermediaire anonyme ou nominatif pendant le vote, selon le niveau d influence souhaite.
+- L application Decisions adopte une presentation plus legere : choix de methode compact, reglages de scrutin sans cadres imbriques, actions uniformisees et explications secondaires accessibles par des boutons d aide. Les elements hidden restent masques quel que soit leur mode de mise en page.
+- Sur la page de gestion d un scrutin, les parametres sont maintenant reunis dans un seul recapitulatif compact a deux colonnes, separe entre deroulement et confidentialite-resultats, sans encadrer chaque valeur.
+- Les formulaires de gestion des scrutins alignent maintenant visibilite et statut sur une premiere ligne, puis regroupent les quatre dates de consultation et de vote sur la ligne suivante.
+- La navigation entre les groupes d un scrutin devient une barre compacte Question 1, Question 2, etc., avec la question courante soulignee et l ajout d une question accessible au bout de la meme ligne.
+- Le bloc des invites est maintenant place avant la navigation entre les questions, afin de montrer clairement qu il s applique a l ensemble du scrutin.
+- Le formulaire de chaque question ne repete plus les titres Question de ce groupe et Question : un seul libelle Question est affiche.
+- Chaque question rappelle maintenant son mode de decision dans un selecteur verrouille place a cote de son type. Les bandeaux superieurs propres a un mode ont ete retires, puisqu un meme scrutin peut reunir plusieurs methodes.
+- Dans chaque question, le rappel du mode de decision est maintenant affiche avant le type consultatif ou decisionnaire.
+- Les parametres communs du scrutin et les questions sont maintenant separes. Toutes les questions sont chargees ensemble : changer d onglet ne recharge ni n enregistre rien, une nouvelle question reste locale jusqu au clic sur Enregistrer, et la sauvegarde globale applique toutes les questions dans une seule transaction.
+- Les trois modes de scrutin utilisent maintenant la meme presentation pour les listes de propositions, leurs poignees de reorganisation et le bouton de configuration des parametres.
+
+## 2026-08-12
+
+- Les points de PV peuvent maintenant etre marques confidentiels: ils ne sont affiches qu aux personnes declarees presentes a la reunion.
+- Le module Decisions propose maintenant un parcours hors reorg fonde sur le consentement. Une proposition peut regrouper plusieurs creations, modifications et suppressions atomiques de regles, rester discutable et modifiable par son auteur pendant la consultation, puis etre appliquee automatiquement sans ecraser une regle modifiee entre-temps.
+- Les primitives de formulaire en grille respectent maintenant leur attribut hidden, y compris lorsqu elles definissent elles-memes un affichage grid.
+- Le bouton Tension est temporairement masque dans la topbar OMO, sans retirer son implementation pour pouvoir le reactiver plus tard.
+
+## 2026-08-11
+
+- Les focus des attributions de roles OMO 1 sont maintenant repris dans les liens membre-holon lors de l import. Une attribution proprietaire sans focus ne peut plus effacer le focus exporte pour la meme personne et le meme role.
+- La carte geographique de l application Team reste maintenant sous le panneau de portee et de type d affichage, qui peut donc toujours etre ouvert pour changer de vue.
+- La fenetre d ajout de membre a un holon place les choix de personne et d e-mail cote a cote, aligne aussi admin et focus, permet de renseigner un focus sur le lien, et applique directement les limites minimale et maximale du statut admin.
+- Le calage des imports OMO 1 propose maintenant tous les templates du modele d organisation, y compris ceux places dans des cercles. Chaque template importe peut etre conserve, remplace ou exclu avec ses instances et leurs descendants, avec une correspondance de proprietes propre au template choisi.
+- Le terme personnalise du lexique est maintenant reserve aux administrateurs de contexte des holons. Les libelles d administrateur d organisation et de super administrateur conservent le terme Admin.
+- Les projets OMO 1 utilisent maintenant directement les quatre statuts OMO 2 : En cours, Bloque, Termine et Un jour peut-etre. Le statut historique 8 est exporte en someday, et les anciens exports ou il etait transforme en Bloque restent corriges a l import.
+- La liste des documents permet maintenant de cocher plusieurs elements, y compris dans les dossiers et en affichage compact, puis de les archiver ou de les supprimer ensemble selon les droits disponibles.
+
 ## 2026-08-07
 
 - Le libelle Contenu est retire au-dessus des editeurs HTML des points du PV, afin d eviter une ligne repetitive avant chaque zone d edition.
@@ -65,6 +112,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - L envoi Push est compatible avec PHP 8.5 sans afficher de message de depreciation OpenSSL dans les reponses de discussion.
 - Les details avant et apres des modifications de proposition affichent a nouveau correctement les retours a la ligne encodes.
 - Les canaux indisponibles ne sont plus affiches dans les reglages de notifications, tandis que les administrateurs d organisation voient un avertissement de configuration adapte.
+- Les scrutins invites peuvent maintenant notifier leur passage en consultation ou en vote, ainsi que leurs fins imminentes selon les delais choisis (1, 2, 3 ou 5 jours).
+- La maintenance OMO peut maintenant etre appelee toutes les quinze minutes par une URL securisee, tout en conservant le faux cron lors des visites.
 
 ## 2026-08-05
 

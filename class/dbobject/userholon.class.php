@@ -17,6 +17,7 @@
 				[['IDuser', 'IDholon'], 'required'],
 				[['id'], 'integer'],
 				[['IDuser', 'IDholon'], 'fk'],
+				[['focus'], 'string'],
 				[['parameters'], 'parameters'],
 				[['datecreation', 'dateconnexion'], 'datetime'],
 				[['active'], 'boolean'],
@@ -30,10 +31,25 @@
 				'id' => 'ID',
 				'IDuser' => 'Personne',
 				'IDholon' => 'Holon',
+				'focus' => 'Focus',
 				'parameters' => 'Paramètres',
 				'datecreation' => 'Création',
 				'dateconnexion' => 'Dernière connexion',
 				'active' => 'Actif',
+			];
+		}
+
+		public static function attributeDescriptions()
+		{
+			return [
+				'focus' => 'Specificite de la participation de cette personne dans ce holon.',
+			];
+		}
+
+		public static function attributeLength()
+		{
+			return [
+				'focus' => 250,
 			];
 		}
 

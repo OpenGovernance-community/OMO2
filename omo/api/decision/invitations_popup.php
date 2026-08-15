@@ -272,7 +272,15 @@ $context = omoDecisionResolveEditorContext($input);
 $sourceLang = omoDecisionInvitationsPopupSourceLang();
 $lang = omoLoadTranslationBundle('omo_decision_invitations_popup', $sourceLang);
 
-if (empty($context['status']) || empty($context['decision']) || !($context['decision'] instanceof DecisionProcess) || empty($context['canManage'])) {
+$isDraft = !empty($input['draft'])
+    && empty($context['decision'])
+    && !empty($context['status'])
+    && !empty($context['canManage']);
+if (
+    empty($context['status'])
+    || empty($context['canManage'])
+    || (!$isDraft && (empty($context['decision']) || !($context['decision'] instanceof DecisionProcess)))
+) {
     $statusCode = (int)($context['code'] ?? 403);
     http_response_code($statusCode);
     ?>
@@ -281,14 +289,19 @@ if (empty($context['status']) || empty($context['decision']) || !($context['deci
     exit;
 }
 
-$decision = $context['decision'];
+$decision = ($context['decision'] ?? null) instanceof DecisionProcess ? $context['decision'] : null;
 $organization = $context['organization'];
 $effectiveHolon = $context['effectiveHolon'];
 $organizationId = (int)$context['organizationId'];
 $targetHolonId = (int)$context['targetHolonId'];
-$method = DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'));
+$method = $decision instanceof DecisionProcess
+    ? DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'))
+    : DecisionProcess::normalizeEvaluationMethod($input['method'] ?? '');
+$draftFormId = preg_match('/^[A-Za-z][A-Za-z0-9_-]*$/', (string)($input['draft_form_id'] ?? ''))
+    ? (string)$input['draft_form_id']
+    : '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isDraft) {
     header('Content-Type: application/json; charset=UTF-8');
 
     $selectedHolonIds = array_values(array_unique(array_filter(array_map('intval', $_POST['holon_ids'] ?? []), static function ($holonId) {
@@ -362,10 +375,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ]);
 }
 
-$selectedHolonIds = [];
+$selectedHolonIds = $isDraft && $targetHolonId > 0 ? [$targetHolonId] : [];
 $selectedUserIds = [];
 $selectedEmails = [];
-foreach ($decision->getInvitations(true) as $invitation) {
+foreach ($decision instanceof DecisionProcess ? $decision->getInvitations(true) : [] as $invitation) {
     if (!$invitation instanceof DecisionInvitation || DecisionInvitation::normalizeStatus($invitation->get('status')) === DecisionInvitation::STATUS_REVOKED) {
         continue;
     }
@@ -386,7 +399,7 @@ foreach ($decision->getInvitations(true) as $invitation) {
 $selectedHolonIds = array_values(array_unique(array_filter($selectedHolonIds)));
 $selectedUserIds = array_values(array_unique(array_filter($selectedUserIds)));
 $selectedEmails = array_values(array_unique(array_filter($selectedEmails)));
-$allowPublicSelfRegistration = $decision->isPublicSelfRegistrationEnabled();
+$allowPublicSelfRegistration = $decision instanceof DecisionProcess && $decision->isPublicSelfRegistrationEnabled();
 $publicOptInState = function_exists('omoDecisionExtractPublicOptInSelections')
     ? omoDecisionExtractPublicOptInSelections($decision)
     : ['entries' => [], 'user_ids' => [], 'emails' => [], 'count' => 0];
@@ -406,6 +419,15 @@ $memberships = new ArrayUserOrganization();
 $memberships->loadActiveForOrganization($organizationId);
 ?>
 <style>
+.omo-decision-invitations-popup {
+    width: 100%;
+    min-width: 0;
+}
+
+.omo-decision-invitations-popup__shell {
+    min-width: 0;
+}
+
 .omo-decision-invitations-popup__group {
     display: grid;
     gap: 10px;
@@ -414,6 +436,7 @@ $memberships->loadActiveForOrganization($organizationId);
 .omo-decision-invitations-popup__tabs {
     --generic-tabs-panel-padding-block: 14px;
     --generic-tabs-panel-padding-inline: 14px;
+    min-width: 0;
 }
 
 .omo-decision-invitations-popup__tab-panel {
@@ -528,19 +551,14 @@ $memberships->loadActiveForOrganization($organizationId);
 <form
     id="omoDecisionInvitationsPopupForm"
     class="omo-decision-invitations-popup generic-stack generic-stack--flush"
-    action="/omo/api/decision/invitations_popup.php?oid=<?= (int)$organizationId ?>&cid=<?= (int)$targetHolonId ?>&id=<?= (int)$decision->getId() ?>&method=<?= urlencode($method) ?>"
+    data-topbar-modal-max-width="760px"
+    action="/omo/api/decision/invitations_popup.php?oid=<?= (int)$organizationId ?>&cid=<?= (int)$targetHolonId ?>&id=<?= $decision instanceof DecisionProcess ? (int)$decision->getId() : 0 ?>&method=<?= urlencode($method) ?><?= $isDraft ? '&draft=1' : '' ?>"
     method="post"
+    <?= $isDraft ? 'data-omo-decision-invitations-draft="1"' : '' ?>
+    <?= $isDraft ? 'data-omo-decision-invitations-draft-form-id="' . omoApiEscape($draftFormId) . '"' : '' ?>
 >
-    <div class="omo-decision-invitations-popup__header generic-drawer-header generic-drawer-header--sticky">
-        <div class="generic-drawer-header__copy omo-decision-invitations-popup__header-copy">
-            <div class="generic-card-title generic-card-title--eyebrow">Prises de decision</div>
-            <h3 class="generic-card-title generic-card-title--medium">Invitations</h3>
-        </div>
-    </div>
+
     <div class="omo-decision-invitations-popup__shell generic-drawer-content">
-    <p class="omo-decision-invitations-popup__intro generic-description">
-        <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.intro', ['context_label' => $currentContextLabel])) ?>
-    </p>
 
     <?php if (!$hasHolonStructure): ?>
     <p class="omo-decision-invitations-popup__hint generic-description">
@@ -548,7 +566,7 @@ $memberships->loadActiveForOrganization($organizationId);
     </p>
     <?php endif; ?>
 
-    <div class="generic-tabs omo-decision-invitations-popup__tabs" data-generic-tabs>
+    <div class="generic-tabs generic-tabs--no-lift omo-decision-invitations-popup__tabs" data-generic-tabs>
         <div class="generic-tabs__list" aria-label="<?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.tabs_aria')) ?>">
             <?php if ($hasHolonStructure): ?>
             <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omoDecisionInvitationsTabHolons"><?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.tab.holons')) ?></button>
@@ -673,7 +691,7 @@ $memberships->loadActiveForOrganization($organizationId);
     <div id="omoDecisionInvitationsPopupFeedback" class="omo-decision-invitations-popup__feedback generic-feedback"></div>
 
     <div class="omo-decision-invitations-popup__actions generic-action-row">
-        <button type="submit" id="omoDecisionInvitationsPopupSubmit" class="generic-action-button generic-action-button--main">
+        <button type="submit" id="omoDecisionInvitationsPopupSubmit" class="generic-action-button generic-action-button--main generic-action-button--no-lift">
             <?= omoApiEscape(omoDecisionInvitationsPopupT('decisions.invitations_popup.submit')) ?>
         </button>
     </div>
@@ -685,6 +703,11 @@ $memberships->loadActiveForOrganization($organizationId);
     var form = document.getElementById('omoDecisionInvitationsPopupForm');
     var feedback = document.getElementById('omoDecisionInvitationsPopupFeedback');
     var submitButton = document.getElementById('omoDecisionInvitationsPopupSubmit');
+    var isDraft = form ? form.getAttribute('data-omo-decision-invitations-draft') === '1' : false;
+    var draftFormId = form ? String(form.getAttribute('data-omo-decision-invitations-draft-form-id') || '') : '';
+    var draftTargetForm = isDraft && window.omoDecisionInvitationDraftTargetForm instanceof HTMLFormElement
+        ? window.omoDecisionInvitationDraftTargetForm
+        : (draftFormId !== '' ? document.getElementById(draftFormId) : null);
 
     if (!form || !feedback || !submitButton) {
         return;
@@ -693,6 +716,119 @@ $memberships->loadActiveForOrganization($organizationId);
     if (typeof window.initGenericComponents === 'function') {
         window.initGenericComponents(form);
     }
+
+    function getDraftValues(name) {
+        if (!draftTargetForm) {
+            return [];
+        }
+
+        return Array.prototype.map.call(draftTargetForm.querySelectorAll('[name="' + name + '"]'), function (input) {
+            return String(input.value || '');
+        }).filter(function (value) {
+            return value !== '';
+        });
+    }
+
+    function synchronizeDraftSelection() {
+        var holonIds;
+        var userIds;
+        var emailInput;
+        var publicInput;
+
+        if (!draftTargetForm || !draftTargetForm.querySelector('[name="invitation_inline_enabled"]')) {
+            return;
+        }
+
+        holonIds = getDraftValues('invitation_holon_ids[]');
+        userIds = getDraftValues('invitation_user_ids[]');
+        Array.prototype.forEach.call(form.querySelectorAll('[name="holon_ids[]"]'), function (input) {
+            input.checked = holonIds.indexOf(String(input.value || '')) !== -1;
+        });
+        Array.prototype.forEach.call(form.querySelectorAll('[name="user_ids[]"]'), function (input) {
+            input.checked = userIds.indexOf(String(input.value || '')) !== -1;
+        });
+
+        emailInput = form.querySelector('[name="emails"]');
+        if (emailInput) {
+            emailInput.value = getDraftValues('invitation_emails').join('\n');
+        }
+
+        publicInput = form.querySelector('[name="allow_public_self_registration"]');
+        if (publicInput) {
+            publicInput.checked = !!draftTargetForm.querySelector('[name="allow_public_self_registration"][value="1"]');
+        }
+    }
+
+    function appendDraftField(container, name, value) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        container.appendChild(input);
+    }
+
+    function getSelectedLabels(name) {
+        return Array.prototype.map.call(form.querySelectorAll('[name="' + name + '"]:checked'), function (input) {
+            var label = input.closest('label');
+            var title = label ? label.querySelector('strong') : null;
+            return title ? String(title.textContent || '').trim() : '';
+        }).filter(function (value) {
+            return value !== '';
+        });
+    }
+
+    function applyDraftSelection() {
+        var fields = draftTargetForm ? draftTargetForm.querySelector('[data-omo-decision-invitations-draft-fields]') : null;
+        var formData = new FormData(form);
+        var emails = String(formData.get('emails') || '').split(/[\r\n,;]+/).map(function (email) {
+            return email.trim();
+        }).filter(function (email, index, values) {
+            return email !== '' && values.indexOf(email) === index;
+        });
+        var summary;
+        var summaryStrong;
+        var summaryParts = getSelectedLabels('holon_ids[]');
+        var userCount = formData.getAll('user_ids[]').length;
+
+        if (!fields) {
+            return false;
+        }
+
+        fields.replaceChildren();
+        appendDraftField(fields, 'invitation_inline_enabled', '1');
+        formData.getAll('holon_ids[]').forEach(function (value) {
+            appendDraftField(fields, 'invitation_holon_ids[]', String(value));
+        });
+        formData.getAll('user_ids[]').forEach(function (value) {
+            appendDraftField(fields, 'invitation_user_ids[]', String(value));
+        });
+        appendDraftField(fields, 'invitation_emails', emails.join('\n'));
+        if (formData.has('allow_public_self_registration')) {
+            appendDraftField(fields, 'allow_public_self_registration', '1');
+        }
+
+        if (userCount > 0) {
+            summaryParts.push(userCount + (userCount > 1 ? ' membres' : ' membre'));
+        }
+        if (emails.length > 0) {
+            summaryParts.push(emails.length + (emails.length > 1 ? ' invités' : ' invité'));
+        }
+        if (formData.has('allow_public_self_registration')) {
+            summaryParts.push('Participation publique ouverte');
+        }
+
+        summary = draftTargetForm.querySelector('[data-omo-decision-invitations-summary]');
+        summaryStrong = summary ? summary.querySelector('strong') : null;
+        if (summaryStrong) {
+            summaryStrong.textContent = summaryParts.length > 0
+                ? summaryParts.join(', ')
+                : 'Aucune invitation explicite';
+        }
+
+        return true;
+    }
+
+    synchronizeDraftSelection();
 
     Array.prototype.forEach.call(form.querySelectorAll('[data-omo-decision-holon-toggle]'), function (toggle) {
         toggle.addEventListener('click', function (event) {
@@ -719,6 +855,19 @@ $memberships->loadActiveForOrganization($organizationId);
         event.preventDefault();
         feedback.textContent = '';
         feedback.classList.remove('is-success');
+
+        if (isDraft) {
+            if (!draftTargetForm || !applyDraftSelection()) {
+                feedback.textContent = 'Impossible de retrouver le formulaire de création.';
+                return;
+            }
+            window.omoDecisionInvitationDraftTargetForm = null;
+            if (typeof window.commonTopbarCloseModal === 'function') {
+                window.commonTopbarCloseModal();
+            }
+            return;
+        }
+
         submitButton.disabled = true;
 
         fetch(form.getAttribute('action'), {

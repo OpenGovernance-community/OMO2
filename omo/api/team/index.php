@@ -82,10 +82,11 @@ if (!$organization->canViewDetail()) {
 }
 
 $organizationLexicon = $organization->getLexicon();
-$adminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
-$adminLabelLower = function_exists('mb_strtolower')
-	? mb_strtolower($adminLabel, 'UTF-8')
-	: strtolower($adminLabel);
+$contextAdminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
+$contextAdminLabelLower = function_exists('mb_strtolower')
+	? mb_strtolower($contextAdminLabel, 'UTF-8')
+	: strtolower($contextAdminLabel);
+$organizationAdminLabel = 'Admin';
 
 if (
     function_exists('commonGetCurrentShareToken')
@@ -370,8 +371,8 @@ foreach ($rawMemberCards as $rawCard) {
         $hasPendingInvitation
             ? omoTeamT('team.member.invitation_pending', [], $lang, $sourceLang)
             : ($isPending ? omoTeamT('team.member.to_invite', [], $lang, $sourceLang) : ''),
-        $isContextAdmin ? omoTeamT('team.member.admin_context', ['adminLabel' => $adminLabel], $lang, $sourceLang) : '',
-        $isOrganizationAdmin ? omoTeamT('team.member.admin_organization', ['adminLabel' => $adminLabel], $lang, $sourceLang) : '',
+        $isContextAdmin ? omoTeamT('team.member.admin_context', ['adminLabel' => $contextAdminLabel], $lang, $sourceLang) : '',
+        $isOrganizationAdmin ? omoTeamT('team.member.admin_organization', ['adminLabel' => $organizationAdminLabel], $lang, $sourceLang) : '',
     ), static fn ($value): bool => trim((string)$value) !== '')));
 
     $memberCards[] = array(
@@ -614,8 +615,8 @@ if ($leafletMapsEnabled) {
                                                 data-member-action="<?= $card['isContextAdmin'] ? 'revoke_admin' : 'grant_admin' ?>"
                                                 data-user-id="<?= (int)$card['userId'] ?>"
                                             ><?= omoApiEscape($card['isContextAdmin']
-                                                ? omoTeamT('team.action.revoke_context_admin', ['context' => (string)$currentHolonTemplateLabel, 'adminLabel' => $adminLabelLower], $lang, $sourceLang)
-                                                : omoTeamT('team.action.grant_context_admin', ['context' => (string)$currentHolonTemplateLabel, 'adminLabel' => $adminLabelLower], $lang, $sourceLang)) ?></button>
+                                                ? omoTeamT('team.action.revoke_context_admin', ['context' => (string)$currentHolonTemplateLabel, 'adminLabel' => $contextAdminLabelLower], $lang, $sourceLang)
+                                                : omoTeamT('team.action.grant_context_admin', ['context' => (string)$currentHolonTemplateLabel, 'adminLabel' => $contextAdminLabelLower], $lang, $sourceLang)) ?></button>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -649,7 +650,7 @@ if ($leafletMapsEnabled) {
                                 <?php elseif ($card['isPending']): ?>
                                     <span class="omo-team-card__badge omo-team-card__badge--pending"><?= omoApiEscape(omoTeamT('team.member.to_invite', [], $lang, $sourceLang)) ?></span>
                                 <?php elseif ($card['isContextAdmin']): ?>
-                                    <span class="omo-team-card__badge"><?= omoApiEscape(omoTeamT('team.member.admin_short', ['adminLabel' => $adminLabel], $lang, $sourceLang)) ?></span>
+                                    <span class="omo-team-card__badge"><?= omoApiEscape(omoTeamT('team.member.admin_short', ['adminLabel' => $contextAdminLabel], $lang, $sourceLang)) ?></span>
                                 <?php endif; ?>
                             </div>
 
@@ -749,14 +750,14 @@ if ($leafletMapsEnabled) {
                         } else {
                             if ($card['isContextAdmin']) {
                                 $compactPrivilegeLabels[] = array(
-                                    'label' => omoTeamT('team.member.admin_context', ['adminLabel' => $adminLabel], $lang, $sourceLang),
+                                    'label' => omoTeamT('team.member.admin_context', ['adminLabel' => $contextAdminLabel], $lang, $sourceLang),
                                     'className' => 'omo-team__compact-badge',
                                 );
                             }
 
                             if ($card['isOrganizationAdmin']) {
                                 $compactPrivilegeLabels[] = array(
-                                    'label' => omoTeamT('team.member.admin_organization', ['adminLabel' => $adminLabel], $lang, $sourceLang),
+                                    'label' => omoTeamT('team.member.admin_organization', ['adminLabel' => $organizationAdminLabel], $lang, $sourceLang),
                                     'className' => 'omo-team__compact-badge omo-team__compact-badge--organization',
                                 );
                             }
@@ -1021,6 +1022,8 @@ if ($leafletMapsEnabled) {
 }
 
 .omo-team__map {
+    position: relative;
+    z-index: 0;
     width: 100%;
     min-height: 460px;
     border-radius: var(--radius-md);
@@ -1460,8 +1463,8 @@ if ($leafletMapsEnabled) {
 $teamJsTranslations = [
     'userFallback' => omoTeamT('team.member.user_fallback', ['userId' => '{userId}'], $lang, $sourceLang),
     'pending' => omoTeamT('team.member.pending', [], $lang, $sourceLang),
-    'adminContext' => omoTeamT('team.member.admin_context', ['adminLabel' => $adminLabel], $lang, $sourceLang),
-    'adminOrganization' => omoTeamT('team.member.admin_organization', ['adminLabel' => $adminLabel], $lang, $sourceLang),
+    'adminContext' => omoTeamT('team.member.admin_context', ['adminLabel' => $contextAdminLabel], $lang, $sourceLang),
+    'adminOrganization' => omoTeamT('team.member.admin_organization', ['adminLabel' => $organizationAdminLabel], $lang, $sourceLang),
     'email' => omoTeamT('team.member.email', [], $lang, $sourceLang),
     'notProvided' => omoTeamT('team.member.not_provided', [], $lang, $sourceLang),
     'added' => omoTeamT('team.member.added', [], $lang, $sourceLang),
@@ -1472,8 +1475,8 @@ $teamJsTranslations = [
     'thisMember' => omoTeamT('team.member.this_member', [], $lang, $sourceLang),
     'confirmCancelInvitation' => omoTeamT('team.confirm.cancel_invitation', ['name' => '{name}'], $lang, $sourceLang),
     'confirmRemove' => omoTeamT('team.confirm.remove', ['name' => '{name}', 'context' => '{context}'], $lang, $sourceLang),
-    'confirmGrantAdmin' => omoTeamT('team.confirm.grant_context_admin', ['name' => '{name}', 'context' => '{context}', 'adminLabel' => $adminLabelLower], $lang, $sourceLang),
-    'confirmRevokeAdmin' => omoTeamT('team.confirm.revoke_context_admin', ['name' => '{name}', 'context' => '{context}', 'adminLabel' => $adminLabelLower], $lang, $sourceLang),
+    'confirmGrantAdmin' => omoTeamT('team.confirm.grant_context_admin', ['name' => '{name}', 'context' => '{context}', 'adminLabel' => $contextAdminLabelLower], $lang, $sourceLang),
+    'confirmRevokeAdmin' => omoTeamT('team.confirm.revoke_context_admin', ['name' => '{name}', 'context' => '{context}', 'adminLabel' => $contextAdminLabelLower], $lang, $sourceLang),
     'updateFailed' => omoTeamT('team.message.update_failed', [], $lang, $sourceLang),
     'updateFailedLater' => omoTeamT('team.message.update_failed_later', [], $lang, $sourceLang),
     'mapSummaryOne' => omoTeamT('team.map.summary_one', [], $lang, $sourceLang),

@@ -25,6 +25,12 @@ $sourceLang = [
     'notifications.preferences.event.decision_proposal_participant' => ['text' => 'Ajout de proposition aux scrutins auxquels je participe', 'context' => 'Preference label for proposals added to decisions where the user participates.'],
     'notifications.preferences.event.decision_chat_proposal_owner' => ['text' => 'Commentaire sur le chat de mes propositions', 'context' => 'Preference label for comments on proposals authored by the user.'],
     'notifications.preferences.event.decision_chat_participant' => ['text' => 'Commentaire dans un chat auquel je participe', 'context' => 'Preference label for comments in chats where the user has posted.'],
+    'notifications.preferences.event.decision_consultation_started' => ['text' => 'Passage de mes scrutins invites en consultation', 'context' => 'Preference label for invited decisions entering consultation.'],
+    'notifications.preferences.event.decision_evaluation_started' => ['text' => 'Passage de mes scrutins invites en vote', 'context' => 'Preference label for invited decisions entering voting.'],
+    'notifications.preferences.event.decision_consultation_ending' => ['text' => 'Fin prochaine de la consultation', 'context' => 'Preference label for consultation deadline reminders.'],
+    'notifications.preferences.event.decision_evaluation_ending' => ['text' => 'Fin prochaine du vote', 'context' => 'Preference label for voting deadline reminders.'],
+    'notifications.preferences.reminder_days' => ['text' => 'Me rappeler', 'context' => 'Label for the day choices of a notification deadline reminder.'],
+    'notifications.preferences.reminder_day' => ['one' => '{count} jour avant', 'other' => '{count} jours avant', 'context' => 'Label for one selected reminder delay.'],
     'notifications.preferences.channel.push' => ['text' => 'Notification', 'context' => 'Preference channel label for browser push.'],
     'notifications.preferences.channel.telegram' => ['text' => 'Telegram', 'context' => 'Preference channel label for Telegram.'],
     'notifications.preferences.channel.email' => ['text' => 'E-mail', 'context' => 'Preference channel label for email.'],
@@ -63,6 +69,7 @@ foreach ($eventGroups as $eventGroup) {
     $eventKeys = array_merge($eventKeys, $eventGroup['eventKeys'] ?? []);
 }
 $preferenceSettings = \dbObject\NotificationPreference::getAllForUserOrganization($userId, $organizationId, $eventKeys);
+$reminderEventKeys = ['decision_consultation_ending', 'decision_evaluation_ending'];
 $currentUser = new \dbObject\User();
 $telegramAvailable = $telegramConfigured
     && $currentUser->load($userId)
@@ -149,7 +156,17 @@ $configuration = [
                     $eventLabel = $translate('notifications.preferences.event.' . $eventKey);
                 ?>
                 <div class="omo-notification-preferences-grid__row" role="row">
-                    <span class="omo-notification-preferences-grid__event" role="rowheader"><?= htmlspecialchars($eventLabel, ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="omo-notification-preferences-grid__event" role="rowheader">
+                        <span><?= htmlspecialchars($eventLabel, ENT_QUOTES, 'UTF-8') ?></span>
+                        <?php if (in_array($eventKey, $reminderEventKeys, true)): ?>
+                        <span class="omo-notification-preferences-grid__reminder-days">
+                            <span><?= htmlspecialchars($translate('notifications.preferences.reminder_days'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <?php foreach ([1, 2, 3, 5] as $day): ?>
+                            <label><input type="checkbox" name="preferences[<?= htmlspecialchars($eventKey, ENT_QUOTES, 'UTF-8') ?>][days][]" value="<?= $day ?>"<?= in_array($day, $channels['days'] ?? [], true) ? ' checked' : '' ?>> <?= htmlspecialchars(t('notifications.preferences.reminder_day', ['count' => $day], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></label>
+                            <?php endforeach; ?>
+                        </span>
+                        <?php endif; ?>
+                    </span>
                     <?php foreach ($preferenceChannels as $channelKey): ?>
                     <label class="omo-notification-preferences-grid__channel"><input type="checkbox" name="preferences[<?= htmlspecialchars($eventKey, ENT_QUOTES, 'UTF-8') ?>][<?= htmlspecialchars($channelKey, ENT_QUOTES, 'UTF-8') ?>]" value="1"<?= !empty($channels[$channelKey]) ? ' checked' : '' ?><?= $channelKey === 'telegram' && !$telegramAvailable ? ' disabled' : '' ?> aria-label="<?= htmlspecialchars($translate('notifications.preferences.channel.' . $channelKey) . ' - ' . $eventLabel, ENT_QUOTES, 'UTF-8') ?>"></label>
                     <?php endforeach; ?>

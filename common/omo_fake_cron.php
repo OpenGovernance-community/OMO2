@@ -1,9 +1,10 @@
 <?php
 require_once __DIR__ . '/faq_fake_cron.php';
 require_once __DIR__ . '/stats_ethercalc_sync.php';
+require_once __DIR__ . '/notification_center.php';
 
 if (!function_exists('omo_run_fake_cron_maintenance')) {
-    function omo_run_fake_cron_maintenance($checklistLimit = 50)
+    function omo_run_fake_cron_maintenance($checklistLimit = 50, $force = false)
     {
         $result = [
             'faqProcessed' => 0,
@@ -11,6 +12,7 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             'checklistRecurringProjectsCreated' => 0,
             'checklistRunsCompleted' => 0,
             'ethercalcIndicatorsSynced' => 0,
+            'decisionNotificationsProcessed' => 0,
         ];
 
         try {
@@ -39,6 +41,11 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             $result['ethercalcIndicatorsSynced'] = (int)omoStatsMaybeSynchronizeEthercalcIndicators(20);
         } catch (\Throwable $exception) {
             error_log('OMO fake cron EtherCalc indicator synchronization failed: ' . $exception->getMessage());
+        }
+        try {
+            $result['decisionNotificationsProcessed'] = (int)notificationCenterMaybeProcessDecisionLifecycle(200, $force);
+        } catch (\Throwable $exception) {
+            error_log('OMO fake cron decision notification maintenance failed: ' . $exception->getMessage());
         }
 
         return $result;
