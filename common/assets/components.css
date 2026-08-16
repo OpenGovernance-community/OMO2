@@ -312,6 +312,7 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
         );
     --generic-drawer-header-shadow: 0 16px 28px -24px rgba(15, 23, 42, 0.48);
     position: relative;
+    z-index: var(--generic-drawer-header-z, 6);
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -322,6 +323,7 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
     box-shadow: var(--generic-drawer-header-shadow);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    overflow: visible;
 }
 
 .generic-drawer-header--sticky {

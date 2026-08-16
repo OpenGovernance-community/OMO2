@@ -118,6 +118,8 @@
     margin-top: 0;
 }
 
+.omo-governance-proposal-changes{gap:10px}.omo-governance-proposal-changes__item{display:grid;gap:6px;padding:9px 10px;border-left:3px solid color-mix(in srgb,var(--color-primary,#2563eb) 48%,var(--color-border,#d1d5db));background:color-mix(in srgb,var(--color-primary,#2563eb) 4%,var(--color-surface,#fff))}.omo-governance-proposal-changes__summary{color:var(--color-text-light,#475569);font-size:.86rem;line-height:1.45}.omo-governance-proposal-changes__summary p{margin:0 0 5px}.omo-governance-proposal-changes__summary ul{margin:0;padding-left:20px}.omo-governance-proposal-changes__summary li+li{margin-top:3px}
+
 .omo-proposal-live-description p:last-child,
 .omo-proposal-live-description ul:last-child,
 .omo-proposal-live-description ol:last-child,

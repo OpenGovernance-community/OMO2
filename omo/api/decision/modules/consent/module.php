@@ -610,7 +610,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                                 <div class="omo-decision-consent__choice-head">
                                     <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
                                     <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-consent__text', 'omo-decision-consent__link') ?>
-                                    <?= omoDecisionRenderGovernanceActionStatuses($proposal, $escape) ?>
+                                    <?= omoDecisionRenderGovernanceChanges($proposal, $escape) ?>
                                     <?= omoDecisionRenderProposalDiscussionActions($proposal, $context, $escape) ?>
                                 </div>
                                 <div class="omo-decision-consent__choice-scale">
@@ -723,7 +723,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                             <div class="omo-decision-consent__result-head">
                                 <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
                                 <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-consent__text', 'omo-decision-consent__link') ?>
-                                <?= omoDecisionRenderGovernanceActionStatuses($proposal, $escape) ?>
+                                <?= omoDecisionRenderGovernanceChanges($proposal, $escape) ?>
                                 <?= omoDecisionRenderProposalDiscussionActions($proposal, $context, $escape) ?>
                                 <?php if ($resultsMode): ?>
                                 <span class="omo-decision-consent__summary-badge omo-decision-consent__summary-badge--<?= $escape($summaryChoiceTheme) ?>">

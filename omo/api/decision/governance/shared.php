@@ -16,9 +16,9 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.field.intention' => ['text' => 'Intention et contexte', 'context' => 'Governance process description field.'],
             'governance.field.consultation_end' => ['text' => 'Fin de la consultation', 'context' => 'Governance consultation end field.'],
             'governance.field.vote_end' => ['text' => 'Fin du vote', 'context' => 'Governance evaluation end field.'],
-            'governance.question.label' => ['text' => 'Question de consentement', 'context' => 'Governance consent question label.'],
+            'governance.question.label' => ['text' => 'Question soumise au consentement', 'context' => 'Governance consent question label.'],
             'governance.question.help' => ['text' => 'Cette question est definie pour cette prise de decision.', 'context' => 'Governance custom consent question help.'],
-            'governance.question.vote_label' => ['text' => 'Question du scrutin', 'context' => 'Governance simple vote question label.'],
+            'governance.question.vote_label' => ['text' => 'Question soumise au vote', 'context' => 'Governance simple vote question label.'],
             'governance.question.vote_help' => ['text' => 'Cette question est definie pour cette prise de decision.', 'context' => 'Governance custom simple vote question help.'],
             'governance.question.default' => ['text' => 'Voyez-vous une raison pour laquelle appliquer les modifications suivantes nous causerait du tort ou nous éloignerait de notre raison d’être ?', 'context' => 'Default governance consent question.'],
             'governance.proposals.title' => ['text' => 'Propositions', 'context' => 'Governance proposals section title.'],
@@ -26,6 +26,7 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.proposal.add' => ['text' => 'Ajouter une proposition', 'context' => 'Add governance proposal button.'],
             'governance.proposal.default' => ['text' => 'Proposition {index}', 'context' => 'Default governance proposal title.'],
             'governance.proposal.title' => ['text' => 'Titre de la proposition', 'context' => 'Governance proposal title field.'],
+            'governance.proposal.description' => ['text' => 'Description de la proposition', 'context' => 'Governance proposal description field.'],
             'governance.proposal.remove' => ['text' => 'Retirer la proposition', 'context' => 'Remove governance proposal button.'],
             'governance.action.add' => ['text' => 'Ajouter une modification', 'context' => 'Add governance action button.'],
             'governance.action.edit' => ['text' => 'Modifier', 'context' => 'Edit governance action button.'],
@@ -33,6 +34,9 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.action.rule_update' => ['text' => 'Modifier une règle', 'context' => 'Rule update governance action label.'],
             'governance.action.rule_create' => ['text' => 'Créer une règle', 'context' => 'Rule creation governance action label.'],
             'governance.action.rule_delete' => ['text' => 'Supprimer une règle', 'context' => 'Rule deletion governance action label.'],
+            'governance.action.role_update' => ['text' => 'Modifier un role', 'context' => 'Role update governance action label.'],
+            'governance.action.role_create' => ['text' => 'Creer un role', 'context' => 'Role creation governance action label.'],
+            'governance.action.role_delete' => ['text' => 'Supprimer un role', 'context' => 'Role deletion governance action label.'],
             'governance.action.choose' => ['text' => 'Choisissez une modification', 'context' => 'Governance action chooser title.'],
             'governance.action.rule' => ['text' => 'Règle', 'context' => 'Rule selection field.'],
             'governance.action.authority' => ['text' => 'Domaine d’autorité', 'context' => 'Rule authority field.'],
@@ -97,6 +101,81 @@ if (!function_exists('omoDecisionGovernanceBuildRuleClientData')) {
     }
 }
 
+if (!function_exists('omoDecisionGovernanceDecorateRoleProperties')) {
+    function omoDecisionGovernanceDecorateRoleProperties(array $properties)
+    {
+        foreach ($properties as &$property) {
+            if (!is_array($property) || (string)($property['listItemType'] ?? '') !== 'authority') continue;
+            $decodedValue = json_decode((string)($property['value'] ?? ''), true);
+            $items = is_array($decodedValue['items'] ?? null)
+                ? array_values($decodedValue['items'])
+                : (is_array($decodedValue) ? array_values($decodedValue) : []);
+            $authorityIds = [];
+            foreach ($items as $item) {
+                if (is_array($item) && !empty($item['delete'])) continue;
+                $authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+                if ($authorityId > 0) $authorityIds[] = $authorityId;
+            }
+            $labelsById = \dbObject\Authority::getLabelsByIds($authorityIds);
+            $displayItems = [];
+            foreach ($items as $item) {
+                if (is_array($item) && !empty($item['delete'])) continue;
+                $authorityId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+                $label = is_array($item) ? trim((string)($item['label'] ?? '')) : '';
+                if ($label === '' && $authorityId > 0) $label = trim((string)($labelsById[$authorityId] ?? ''));
+                if ($label !== '') $displayItems[] = $label;
+            }
+            $property['displayValue'] = implode('; ', $displayItems);
+        }
+        unset($property);
+        return array_values($properties);
+    }
+}
+
+if (!function_exists('omoDecisionGovernanceBuildRoleClientData')) {
+    function omoDecisionGovernanceBuildRoleClientData(\dbObject\Holon $role, ?\dbObject\Organization $organization = null, $contextHolonId = 0)
+    {
+        $state = DecisionGovernanceAction::captureRoleState($role);
+        $labelParts = [trim((string)$role->getDisplayName())];
+        $parent = $role->getParentHolon();
+        $guard = 0;
+        while ($parent instanceof \dbObject\Holon && (int)$parent->getId() !== (int)$contextHolonId && $guard < 100) {
+            if ((int)$parent->get('IDtypeholon') !== 3) break;
+            array_unshift($labelParts, trim((string)$parent->getDisplayName()));
+            $parent = $parent->getParentHolon();
+            $guard++;
+        }
+        if ($organization instanceof \dbObject\Organization) {
+            $editorData = $organization->getHolonCreationEditorData((int)$contextHolonId, (int)$role->getId(), true);
+            $holon = is_array($editorData['holon'] ?? null) ? $editorData['holon'] : [];
+            if (count($holon) > 0) {
+                $properties = omoDecisionGovernanceDecorateRoleProperties(
+                    is_array($holon['properties'] ?? null) ? array_values($holon['properties']) : []
+                );
+                $state['editor_payload'] = [
+                    'templateId' => (int)($holon['templateId'] ?? 0),
+                    'name' => (string)($holon['name'] ?? ''),
+                    'fullName' => (string)($holon['fullName'] ?? ''),
+                    'color' => (string)($holon['color'] ?? ''),
+                    'icon' => (string)($holon['icon'] ?? ''),
+                    'banner' => (string)($holon['banner'] ?? ''),
+                    'adminMin' => $holon['adminMin'] ?? 0,
+                    'adminMax' => $holon['adminMax'] ?? null,
+                    'adminMinOverride' => !empty($holon['adminMinOverride']),
+                    'adminMaxOverride' => !empty($holon['adminMaxOverride']),
+                    'permissions' => is_array($holon['permissionAssignments'] ?? null) ? $holon['permissionAssignments'] : [],
+                    'properties' => $properties,
+                ];
+            }
+        }
+        return [
+            'id' => (int)$role->getId(),
+            'label' => implode(' > ', array_filter($labelParts, static function ($label) { return $label !== ''; })),
+            'state' => $state,
+        ];
+    }
+}
+
 if (!function_exists('omoDecisionGovernanceBuildBlueprint')) {
     function omoDecisionGovernanceBuildBlueprint(?DecisionProcess $decision)
     {
@@ -113,12 +192,22 @@ if (!function_exists('omoDecisionGovernanceBuildBlueprint')) {
                 if (!$action instanceof DecisionGovernanceAction || (string)$action->get('status') === DecisionGovernanceAction::STATUS_REMOVED) {
                     continue;
                 }
+                $beforeState = DecisionGovernanceAction::normalizeState($action->get('before_state'));
+                $afterState = DecisionGovernanceAction::normalizeState($action->get('after_state'));
+                if ((string)$action->get('target_type') === DecisionGovernanceAction::TARGET_HOLON) {
+                    if (is_array($beforeState['editor_payload']['properties'] ?? null)) {
+                        $beforeState['editor_payload']['properties'] = omoDecisionGovernanceDecorateRoleProperties($beforeState['editor_payload']['properties']);
+                    }
+                    if (is_array($afterState['editor_payload']['properties'] ?? null)) {
+                        $afterState['editor_payload']['properties'] = omoDecisionGovernanceDecorateRoleProperties($afterState['editor_payload']['properties']);
+                    }
+                }
                 $actions[] = [
                     'id' => (int)$action->getId(),
                     'type' => (string)$action->get('action_type'),
                     'targetId' => (int)$action->get('target_id'),
-                    'before' => DecisionGovernanceAction::normalizeState($action->get('before_state')),
-                    'after' => DecisionGovernanceAction::normalizeState($action->get('after_state')),
+                    'before' => $beforeState,
+                    'after' => $afterState,
                     'status' => (string)$action->get('status'),
                     'statusMessage' => trim((string)$action->get('status_message')),
                 ];
@@ -126,6 +215,7 @@ if (!function_exists('omoDecisionGovernanceBuildBlueprint')) {
             $blueprint[] = [
                 'id' => (int)$proposal->getId(),
                 'title' => trim((string)$proposal->get('title')),
+                'description' => trim((string)$proposal->get('description')),
                 'actions' => $actions,
             ];
         }

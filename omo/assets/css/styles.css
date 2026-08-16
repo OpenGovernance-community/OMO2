@@ -3817,6 +3817,22 @@ body.view-right .panel-right {
     white-space: nowrap;
 }
 
+.omo-notification-preferences-grid__reminder-select {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    color: var(--color-text-light, #6b7280);
+    font-size: 12px;
+}
+
+.omo-notification-preferences-grid__reminder-select select {
+    width: auto;
+    min-width: min(100%, 180px);
+    padding: 5px 8px;
+    font-size: 12px;
+}
+
 .omo-notification-preferences-grid__channel {
     display: flex;
     align-items: center;

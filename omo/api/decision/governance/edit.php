@@ -56,7 +56,8 @@ $existingQuestion = $isEditing && $decision instanceof DecisionProcess
     : '';
 $configuredQuestion = trim((string)($governanceSettings['question'] ?? ''));
 $question = $existingQuestion !== '' ? $existingQuestion : $configuredQuestion;
-$questionIsEditable = !$isEditing && $configuredQuestion === '';
+$questionValue = $question !== '' ? $question : omoDecisionGovernanceT('governance.question.default');
+$questionIsEditable = $canEdit;
 $defaultRuleState = [
     'IDauthority' => null,
     'IDholon' => $targetHolonId,
@@ -69,6 +70,24 @@ $defaultRuleState = [
 ];
 $rules = Rule::findDefinedInHolon($targetHolonId);
 $ruleData = array_map('omoDecisionGovernanceBuildRuleClientData', $rules);
+$organization = $context['organization'] ?? null;
+$roleData = [];
+foreach (\dbObject\DecisionGovernanceAction::findRolesInGovernanceContext($targetHolon) as $role) {
+    $roleData[] = omoDecisionGovernanceBuildRoleClientData(
+        $role,
+        $organization instanceof \dbObject\Organization ? $organization : null,
+        $targetHolonId
+    );
+}
+$roleTemplates = [];
+if ($organization instanceof \dbObject\Organization) {
+    $editorData = $organization->getHolonCreationEditorData($targetHolonId, 0, true);
+    foreach ((array)($editorData['templateCatalog'] ?? []) as $template) {
+        if ((int)($template['typeId'] ?? 0) === 1) {
+            $roleTemplates[] = ['id' => (int)$template['id'], 'label' => trim((string)$template['name'])];
+        }
+    }
+}
 $authorities = [];
 $authorityItems = new ArrayAuthority();
 $authorityItems->loadForHolon($targetHolonId);
@@ -82,7 +101,10 @@ foreach ($authorityItems as $authority) {
 }
 $payload = [
     'blueprint' => omoDecisionGovernanceBuildBlueprint($decision),
+    'contextHolonId' => $targetHolonId,
     'rules' => array_values($ruleData),
+    'roles' => array_values($roleData),
+    'roleTemplates' => $roleTemplates,
     'authorities' => array_values($authorities),
     'defaultRuleState' => $defaultRuleState,
     'editable' => $canEdit,
@@ -90,12 +112,16 @@ $payload = [
         'proposalDefault' => omoDecisionGovernanceT('governance.proposal.default', ['index' => '__INDEX__']),
         'proposalRemove' => omoDecisionGovernanceT('governance.proposal.remove'),
         'proposalTitle' => omoDecisionGovernanceT('governance.proposal.title'),
+        'proposalDescription' => omoDecisionGovernanceT('governance.proposal.description'),
         'actionAdd' => omoDecisionGovernanceT('governance.action.add'),
         'actionEdit' => omoDecisionGovernanceT('governance.action.edit'),
         'actionRemove' => omoDecisionGovernanceT('governance.action.remove'),
         'ruleUpdate' => omoDecisionGovernanceT('governance.action.rule_update'),
         'ruleCreate' => omoDecisionGovernanceT('governance.action.rule_create'),
         'ruleDelete' => omoDecisionGovernanceT('governance.action.rule_delete'),
+        'roleUpdate' => omoDecisionGovernanceT('governance.action.role_update'),
+        'roleCreate' => omoDecisionGovernanceT('governance.action.role_create'),
+        'roleDelete' => omoDecisionGovernanceT('governance.action.role_delete'),
         'pending' => omoDecisionGovernanceT('governance.status.pending'),
         'applied' => omoDecisionGovernanceT('governance.status.applied'),
         'rejected' => omoDecisionGovernanceT('governance.status.rejected'),
@@ -110,16 +136,14 @@ $payload = [
 ];
 ?>
 <link rel="stylesheet" href="/common/choice/governance-actions.css?v=20260813-ergonomics">
+<link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">
 <section class="omo-decision-governance generic-section generic-section--stack" data-governance-editor>
-    <div class="generic-hero-panel accent">
-        <div class="generic-heading-with-help">
-            <h3 class="generic-card-title"><?= omoApiEscape(omoDecisionGovernanceT($isEditing ? 'governance.title.edit' : 'governance.title.create')) ?></h3>
-            <details class="generic-context-help">
-                <summary aria-label="<?= omoApiEscape(omoDecisionGovernanceT('governance.intro')) ?>">?</summary>
-                <div class="generic-context-help__content"><?= omoApiEscape(omoDecisionGovernanceT('governance.intro')) ?></div>
-            </details>
-        </div>
-    </div>
+    <div
+        hidden
+        data-omo-subdrawer-header
+        data-omo-subdrawer-title="<?= omoApiEscape(omoDecisionGovernanceT($isEditing ? 'governance.title.edit' : 'governance.title.create')) ?>"
+        data-omo-subdrawer-help="<?= omoApiEscape(omoDecisionGovernanceT('governance.intro')) ?>"
+    ></div>
 
     <?php if ($isLocked): ?>
         <div class="generic-soft-panel"><?= omoApiEscape(omoDecisionGovernanceT('governance.error.locked')) ?></div>
@@ -162,13 +186,13 @@ $payload = [
                         <div class="generic-context-help__content"><?= omoApiEscape(omoDecisionGovernanceT($questionHelpKey)) ?></div>
                     </details>
                 </div>
-                <textarea class="generic-form-control" id="omo-governance-question" name="consent_question" rows="3" maxlength="1000" required<?= $canEdit ? '' : ' readonly' ?>></textarea>
+                <textarea class="generic-form-control" id="omo-governance-question" name="consent_question" rows="3" maxlength="1000" required><?= omoApiEscape($questionValue) ?></textarea>
             </div>
             <?php else: ?>
             <div class="omo-decision-governance__question">
                 <strong><?= omoApiEscape(omoDecisionGovernanceT($questionLabelKey)) ?></strong>
-                <span><?= omoApiEscape($question !== '' ? $question : omoDecisionGovernanceT('governance.question.default')) ?></span>
-                <input type="hidden" name="consent_question" value="<?= omoApiEscape($question !== '' ? $question : omoDecisionGovernanceT('governance.question.default')) ?>">
+                <span><?= omoApiEscape($questionValue) ?></span>
+                <input type="hidden" name="consent_question" value="<?= omoApiEscape($questionValue) ?>">
             </div>
             <?php endif; ?>
         </section>
@@ -193,43 +217,9 @@ $payload = [
         <?php endif; ?>
     </form>
 
-    <div class="omo-governance-modal" data-governance-modal hidden>
-        <button type="button" class="omo-governance-modal__backdrop" data-governance-modal-close aria-label="<?= omoApiEscape(omoDecisionGovernanceT('governance.action.cancel')) ?>"></button>
-        <div class="omo-governance-modal__panel generic-section generic-section--stack" role="dialog" aria-modal="true">
-            <div class="generic-drawer-header">
-                <div class="generic-drawer-header__copy"><h4 class="generic-card-title" data-governance-modal-title><?= omoApiEscape(omoDecisionGovernanceT('governance.action.choose')) ?></h4></div>
-                <div class="generic-drawer-header__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-governance-modal-close><?= omoApiEscape(omoDecisionGovernanceT('governance.action.cancel')) ?></button></div>
-            </div>
-            <div data-governance-action-chooser>
-                <div class="generic-action-row">
-                    <button type="button" class="generic-action-button generic-action-button--main" data-governance-choose-rule-create><?= omoApiEscape(omoDecisionGovernanceT('governance.action.rule_create')) ?></button>
-                    <button type="button" class="generic-action-button generic-action-button--secondary" data-governance-choose-rule-update<?= count($rules) > 0 ? '' : ' disabled' ?>><?= omoApiEscape(omoDecisionGovernanceT('governance.action.rule_update')) ?></button>
-                    <button type="button" class="generic-action-button generic-action-button--danger" data-governance-choose-rule-delete<?= count($rules) > 0 ? '' : ' disabled' ?>><?= omoApiEscape(omoDecisionGovernanceT('governance.action.rule_delete')) ?></button>
-                </div>
-            </div>
-            <div class="generic-form-stack" data-governance-rule-editor hidden>
-                <label class="generic-form-field" data-governance-rule-select-field><span class="generic-form-label"><?= omoApiEscape(omoDecisionGovernanceT('governance.action.rule')) ?></span><select class="generic-form-control" data-governance-rule-select></select></label>
-                <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoDecisionGovernanceT('governance.action.authority')) ?></span><select class="generic-form-control" data-governance-authority-select><option value="0"><?= omoApiEscape(omoDecisionGovernanceT('governance.action.local_rule')) ?></option><?php foreach ($authorities as $authority): ?><option value="<?= (int)$authority['id'] ?>"><?= omoApiEscape($authority['label']) ?></option><?php endforeach; ?></select></label>
-                <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoDecisionGovernanceT('governance.field.title')) ?></span><input class="generic-form-control" maxlength="255" data-governance-rule-title required></label>
-                <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoDecisionGovernanceT('governance.action.intention')) ?></span><div data-governance-html-field="intention"></div></label>
-                <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoDecisionGovernanceT('governance.action.content')) ?></span><div data-governance-html-field="description"></div></label>
-                <div class="generic-form-grid">
-                    <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoDecisionGovernanceT('governance.action.review_date')) ?></span><input class="generic-form-control" type="date" data-governance-rule-review required></label>
-                    <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoDecisionGovernanceT('governance.action.expiration_date')) ?></span><input class="generic-form-control" type="date" data-governance-rule-expiration required></label>
-                </div>
-                <div class="generic-form-actions"><button type="button" class="generic-action-button generic-action-button--main" data-governance-action-apply><?= omoApiEscape(omoDecisionGovernanceT('governance.action.apply')) ?></button></div>
-            </div>
-            <div class="generic-form-stack" data-governance-rule-delete-editor hidden>
-                <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape(omoDecisionGovernanceT('governance.action.rule')) ?></span><select class="generic-form-control" data-governance-delete-rule-select></select></label>
-                <div class="generic-soft-panel generic-soft-panel--stack">
-                    <p><?= omoApiEscape(omoDecisionGovernanceT('governance.action.delete_help')) ?></p>
-                    <div data-governance-delete-preview></div>
-                </div>
-                <div class="generic-form-actions"><button type="button" class="generic-action-button generic-action-button--danger" data-governance-delete-apply><?= omoApiEscape(omoDecisionGovernanceT('governance.action.confirm_delete')) ?></button></div>
-            </div>
-        </div>
-    </div>
     <script type="application/json" data-governance-data><?= omoDecisionGovernanceEncodeJson($payload, '{}') ?></script>
 </section>
-<script src="/common/choice/governance-actions.js?v=20260813"></script>
+<script src="/common/choice/word-diff.js?v=20260815"></script>
+<script src="/common/choice/change-details.js?v=20260816-governance-details"></script>
+<script src="/common/choice/governance-actions.js?v=20260816-property-match"></script>
 <script>if(window.omoGovernanceEditorInit){window.omoGovernanceEditorInit(document);}</script>

@@ -927,8 +927,8 @@ if (!function_exists('omoDecisionRenderProposalSupplementHtml')) {
     }
 }
 
-if (!function_exists('omoDecisionRenderGovernanceActionStatuses')) {
-    function omoDecisionRenderGovernanceActionStatuses(DecisionProposal $proposal, $escape)
+if (!function_exists('omoDecisionRenderGovernanceChanges')) {
+    function omoDecisionRenderGovernanceChanges(DecisionProposal $proposal, $escape)
     {
         if (!$proposal->hasGovernanceActions()) {
             return '';
@@ -937,11 +937,12 @@ if (!function_exists('omoDecisionRenderGovernanceActionStatuses')) {
             $escape = 'omoApiEscape';
         }
         $labels = [
-            \dbObject\DecisionGovernanceAction::STATUS_PENDING => 'En attente',
-            \dbObject\DecisionGovernanceAction::STATUS_APPLIED => 'Appliquee',
-            \dbObject\DecisionGovernanceAction::STATUS_REJECTED => 'Non acceptee',
-            \dbObject\DecisionGovernanceAction::STATUS_CONFLICT => 'Conflit',
-            \dbObject\DecisionGovernanceAction::STATUS_FAILED => 'Echec',
+            \dbObject\DecisionGovernanceAction::TYPE_RULE_CREATE => 'Créer la règle',
+            \dbObject\DecisionGovernanceAction::TYPE_RULE_UPDATE => 'Modifier la règle',
+            \dbObject\DecisionGovernanceAction::TYPE_RULE_DELETE => 'Supprimer la règle',
+            \dbObject\DecisionGovernanceAction::TYPE_HOLON_CREATE => 'Créer le rôle',
+            \dbObject\DecisionGovernanceAction::TYPE_HOLON_UPDATE => 'Modifier le rôle',
+            \dbObject\DecisionGovernanceAction::TYPE_HOLON_DELETE => 'Supprimer le rôle',
         ];
         $items = [];
         foreach ($proposal->getGovernanceActions() as $action) {
@@ -949,13 +950,52 @@ if (!function_exists('omoDecisionRenderGovernanceActionStatuses')) {
                 || (string)$action->get('status') === \dbObject\DecisionGovernanceAction::STATUS_REMOVED) {
                 continue;
             }
-            $status = trim((string)$action->get('status')) ?: \dbObject\DecisionGovernanceAction::STATUS_PENDING;
-            $message = trim((string)$action->get('status_message'));
-            $items[] = '<li><strong>' . $escape($labels[$status] ?? $status) . '</strong>'
-                . ($message !== '' ? ' - ' . $escape($message) : '') . '</li>';
+            $actionType = trim((string)$action->get('action_type'));
+            $before = \dbObject\DecisionGovernanceAction::normalizeState($action->get('before_state'));
+            $after = \dbObject\DecisionGovernanceAction::normalizeState($action->get('after_state'));
+            $isRule = str_starts_with($actionType, 'rule.');
+            $isDelete = str_ends_with($actionType, '.delete');
+            $state = $isDelete ? $before : $after;
+            $target = trim((string)($isRule ? ($state['title'] ?? '') : ($state['name'] ?? '')));
+            if (str_ends_with($actionType, '.create')) {
+                $summary = 'Cette proposition crée ' . ($isRule ? 'la règle' : 'le rôle') . '.';
+            } elseif ($isDelete) {
+                $summary = 'Cette proposition supprime ' . ($isRule ? 'la règle' : 'le rôle') . '.';
+            } else {
+                $summary = 'Cette proposition modifie ' . ($isRule ? 'la règle' : 'le rôle') . '.';
+            }
+
+            $heading = trim((string)($labels[$actionType] ?? 'Modification'));
+            if ($target !== '') {
+                $heading .= ' : ' . $target;
+            }
+            $authorities = [];
+            if ($isRule) {
+                $authorityIds = array_values(array_filter([
+                    (int)($before['IDauthority'] ?? 0),
+                    (int)($after['IDauthority'] ?? 0),
+                ]));
+                foreach (\dbObject\Authority::getLabelsByIds($authorityIds) as $authorityId => $authorityLabel) {
+                    $authorities[] = ['id' => (int)$authorityId, 'label' => (string)$authorityLabel];
+                }
+            }
+            $payload = base64_encode((string)json_encode([
+                'governanceAction' => [
+                    'type' => $actionType,
+                    'before' => $before,
+                    'after' => $after,
+                ],
+                'authorities' => $authorities,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $items[] = '<section class="omo-governance-proposal-changes__item">'
+                . '<strong>' . $escape($heading) . '</strong>'
+                . '<p class="omo-governance-proposal-changes__summary">' . $escape($summary) . '</p>'
+                . '<details class="omo-change-details" data-omo-change-details-payload="' . $escape($payload) . '">'
+                . '<summary>Détail</summary><div data-omo-change-details-container></div></details>'
+                . '</section>';
         }
         return count($items) > 0
-            ? '<div class="generic-soft-panel generic-soft-panel--stack"><strong>Application des modifications</strong><ul>' . implode('', $items) . '</ul></div>'
+            ? '<div class="omo-governance-proposal-changes generic-soft-panel generic-soft-panel--stack"><strong>Modifications proposées</strong>' . implode('', $items) . '</div>'
             : '';
     }
 }
@@ -1297,11 +1337,14 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
         }
 
         $alreadyRendered = true;
-        return '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260813-2">'
+        return '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260816-governance-changes">'
+            . '<link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">'
+            . '<script src="/common/choice/word-diff.js?v=20260815" defer></script>'
+            . '<script src="/common/choice/change-details.js?v=20260816-governance-details" defer></script>'
             . '<script src="/common/choice/highlight-palette.js" defer></script>'
             . '<script src="/omo/assets/js/simple-html-field.js" defer></script>'
             . '<script src="/common/choice/proposal-html.js" defer></script>'
-            . '<script src="/common/choice/proposal-discussion.js?v=20260813-2" defer></script>';
+            . '<script src="/common/choice/proposal-discussion.js?v=20260815-word-diff" defer></script>';
     }
 }
 

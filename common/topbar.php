@@ -387,7 +387,7 @@ function commonRenderTopbar(array $options = [])
 
     if (!$assetsLoaded) {
         commonRenderTopbarJqueryAssets();
-        echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260814-context-help-bounds">' . PHP_EOL;
+        echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260816-drawer-help-overlay">' . PHP_EOL;
         echo '<script src="/common/assets/components.js?v=20260814-context-help-bounds" defer></script>' . PHP_EOL;
         echo '<script src="/common/holon_scope_picker.js?v=20260805-hover-label-priority" defer></script>' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/assets/topbar.css?v=20260806-notification-read-title">' . PHP_EOL;
@@ -756,7 +756,7 @@ function commonRenderTopbar(array $options = [])
 
 <div class="common-notifications" id="commonNotifications" aria-live="polite" aria-atomic="false"></div>
 
-<script src="/common/drawer/subdrawer.js"></script>
+<script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
 <script>
 window.commonTopbarConfig = <?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>

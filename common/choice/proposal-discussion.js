@@ -243,6 +243,9 @@
     }
 
     function buildWordDiffOperations(beforeText, afterText) {
+        if (window.omoChoiceWordDiff && typeof window.omoChoiceWordDiff.buildOperations === 'function') {
+            return window.omoChoiceWordDiff.buildOperations(beforeText, afterText);
+        }
         return buildTokenDiffOperations(tokenizeForWordDiff(beforeText), tokenizeForWordDiff(afterText));
     }
 
@@ -426,6 +429,13 @@
     }
 
     function createChangesDetails(changes) {
+        if (window.omoChoiceChangeDetails && typeof window.omoChoiceChangeDetails.create === 'function') {
+            return window.omoChoiceChangeDetails.create(changes.map(function (change) {
+                var normalized = Object.assign({}, change);
+                normalized.rich = String(change.field || '') === 'description';
+                return normalized;
+            }), {label: 'Détail'});
+        }
         var details = document.createElement('details');
         var summary = document.createElement('summary');
         var list = document.createElement('div');
