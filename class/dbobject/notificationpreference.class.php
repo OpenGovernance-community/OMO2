@@ -41,7 +41,7 @@ class NotificationPreference extends DbObject
 
     public static function getChannelsFor($userId, $organizationId, $eventKey)
     {
-        $defaults = ['push' => false, 'telegram' => false, 'email' => false, 'days' => []];
+        $defaults = ['push' => false, 'telegram' => false, 'email' => false, 'days' => [], 'lead_time' => ''];
         if (!self::isStorageAvailable()) {
             return $defaults;
         }
@@ -63,12 +63,17 @@ class NotificationPreference extends DbObject
         $days = array_values(array_unique(array_filter(array_map('intval', $days), static function ($day) {
             return in_array($day, [1, 2, 3, 5], true);
         })));
+        $leadTime = trim((string)($parameters['lead_time'] ?? ''));
+        if (!in_array($leadTime, self::getReminderLeadTimes(), true)) {
+            $leadTime = '';
+        }
 
         return [
             'push' => !empty($item->get('channel_push')),
             'telegram' => !empty($item->get('channel_telegram')),
             'email' => !empty($item->get('channel_email')),
             'days' => $days,
+            'lead_time' => $leadTime,
         ];
     }
 
@@ -102,17 +107,28 @@ class NotificationPreference extends DbObject
         $item->set('channel_push', !empty($channels['push']) ? 1 : 0);
         $item->set('channel_telegram', !empty($channels['telegram']) ? 1 : 0);
         $item->set('channel_email', !empty($channels['email']) ? 1 : 0);
+        $parameters = $item->get('parameters');
+        if (!is_array($parameters)) {
+            $parameters = json_decode((string)$parameters, true);
+        }
+        $parameters = is_array($parameters) ? $parameters : [];
         $days = is_array($channels['days'] ?? null) ? $channels['days'] : [];
-        $item->set('parameters', [
-            'days' => array_values(array_unique(array_filter(array_map('intval', $days), static function ($day) {
-                return in_array($day, [1, 2, 3, 5], true);
-            }))),
-        ]);
+        $parameters['days'] = array_values(array_unique(array_filter(array_map('intval', $days), static function ($day) {
+            return in_array($day, [1, 2, 3, 5], true);
+        })));
+        $leadTime = trim((string)($channels['lead_time'] ?? ''));
+        $parameters['lead_time'] = in_array($leadTime, self::getReminderLeadTimes(), true) ? $leadTime : '';
+        $item->set('parameters', $parameters);
         if (!(int)$item->getId()) {
             $item->set('created_at', new \DateTimeImmutable('now'));
         }
         $item->set('updated_at', new \DateTimeImmutable('now'));
         $result = $item->save();
         return is_array($result) && !empty($result['status']);
+    }
+
+    public static function getReminderLeadTimes()
+    {
+        return ['1h', '2h', '3h', '5h', '8h', '12h', '1d', '2d', '3d', '5d'];
     }
 }

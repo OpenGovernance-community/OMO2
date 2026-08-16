@@ -998,7 +998,7 @@ if (!is_string($documentsPayload)) {
             </div>
 
             <script type="application/json" data-omo-documents-data><?= $documentsPayload ?></script>
-            <script src="/common/drawer/subdrawer.js"></script>
+            <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
             <script>
             (function () {
                 const omoDocumentsSavedViewsStorageKey = 'omo.documents.saved-views.v2';

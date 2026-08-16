@@ -88,9 +88,9 @@ class DecisionGovernanceAction extends DbObject
             self::TYPE_RULE_CREATE => ['target_type' => self::TARGET_RULE, 'implemented' => true],
             self::TYPE_RULE_UPDATE => ['target_type' => self::TARGET_RULE, 'implemented' => true],
             self::TYPE_RULE_DELETE => ['target_type' => self::TARGET_RULE, 'implemented' => true],
-            self::TYPE_HOLON_CREATE => ['target_type' => self::TARGET_HOLON, 'implemented' => false],
-            self::TYPE_HOLON_UPDATE => ['target_type' => self::TARGET_HOLON, 'implemented' => false],
-            self::TYPE_HOLON_DELETE => ['target_type' => self::TARGET_HOLON, 'implemented' => false],
+            self::TYPE_HOLON_CREATE => ['target_type' => self::TARGET_HOLON, 'implemented' => true],
+            self::TYPE_HOLON_UPDATE => ['target_type' => self::TARGET_HOLON, 'implemented' => true],
+            self::TYPE_HOLON_DELETE => ['target_type' => self::TARGET_HOLON, 'implemented' => true],
         ];
     }
 
@@ -245,6 +245,168 @@ class DecisionGovernanceAction extends DbObject
             return ['status' => false, 'message' => 'La regle doit etre definie dans le contexte de la decision.'];
         }
         return ['status' => true, 'state' => self::captureRuleState($rule)];
+    }
+
+    public static function captureRoleState(Holon $role)
+    {
+        return [
+            'name' => trim((string)$role->get('name')),
+            'full_name' => trim((string)$role->get('nomcomplet')),
+            'color' => trim((string)$role->get('color')),
+            'template_id' => (int)$role->get('IDholon_template'),
+        ];
+    }
+
+    public static function findRolesInGovernanceContext(Holon $contextHolon)
+    {
+        $roles = [];
+        $visit = static function (Holon $parent) use (&$visit, &$roles) {
+            foreach ($parent->getChildren() as $child) {
+                if (!$child instanceof Holon) continue;
+                $typeId = (int)$child->get('IDtypeholon');
+                if ($typeId === 1) {
+                    $roles[(int)$child->getId()] = $child;
+                } elseif ($typeId === 3) {
+                    $visit($child);
+                }
+            }
+        };
+        $visit($contextHolon);
+        return array_values($roles);
+    }
+
+    public static function roleBelongsToGovernanceContext(Holon $role, Holon $contextHolon)
+    {
+        if ((int)$role->get('IDtypeholon') !== 1) return false;
+        $parentId = (int)$role->get('IDholon_parent');
+        $guard = 0;
+        while ($parentId > 0 && $guard < 100) {
+            if ($parentId === (int)$contextHolon->getId()) return true;
+            $parent = new Holon();
+            if (!$parent->load($parentId) || (int)$parent->get('IDtypeholon') !== 3) return false;
+            $parentId = (int)$parent->get('IDholon_parent');
+            $guard++;
+        }
+        return false;
+    }
+
+    public static function normalizeRoleState(array $state, ?Holon $baseRole = null)
+    {
+        $editorPayload = is_array($state['editor_payload'] ?? null) ? $state['editor_payload'] : null;
+        if ($editorPayload !== null) {
+            $state = array_merge($state, [
+                'name' => $editorPayload['name'] ?? '',
+                'full_name' => $editorPayload['fullName'] ?? '',
+                'color' => $editorPayload['color'] ?? '',
+                'template_id' => $editorPayload['templateId'] ?? 0,
+            ]);
+        }
+        $base = $baseRole instanceof Holon ? self::captureRoleState($baseRole) : [];
+        $state = array_merge($base, $state);
+        $normalized = [
+            'name' => trim((string)($state['name'] ?? '')),
+            'full_name' => trim((string)($state['full_name'] ?? '')),
+            'color' => trim((string)($state['color'] ?? '')),
+            'template_id' => max(0, (int)($state['template_id'] ?? 0)),
+        ];
+        if ($editorPayload !== null) {
+            $normalized['editor_payload'] = $editorPayload;
+        }
+        return $normalized;
+    }
+
+    public static function validateRoleState(array $state, Holon $contextHolon, ?Holon $role = null)
+    {
+        $state = self::normalizeRoleState($state, $role);
+        if ($state['name'] === '') {
+            return ['status' => false, 'message' => 'Le nom du role est obligatoire.'];
+        }
+        if (mb_strlen($state['name'], 'UTF-8') > 255 || mb_strlen($state['full_name'], 'UTF-8') > 255) {
+            return ['status' => false, 'message' => 'Le nom du role est trop long.'];
+        }
+        if ($role === null && $state['template_id'] <= 0) {
+            return ['status' => false, 'message' => 'Le modele du role est obligatoire.'];
+        }
+        if ($state['template_id'] > 0) {
+            $template = new Holon();
+            if (!$template->load($state['template_id']) || (int)$template->get('IDtypeholon') !== 1) {
+                return ['status' => false, 'message' => 'Le modele de role choisi est invalide.'];
+            }
+        }
+        return ['status' => true, 'state' => $state];
+    }
+
+    public static function buildRoleStateDescription(array $state)
+    {
+        $items = [];
+        foreach (['name' => 'Nom', 'full_name' => 'Nom complet', 'color' => 'Couleur'] as $field => $label) {
+            $value = trim((string)($state[$field] ?? ''));
+            if ($value !== '') {
+                $items[] = '<li><strong>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</strong> : ' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '</li>';
+            }
+        }
+        if (is_array($state['editor_payload']['properties'] ?? null)) {
+            $items[] = '<li><strong>Proprietes</strong> : ' . count($state['editor_payload']['properties']) . ' propriete(s) configuree(s)</li>';
+        }
+        return count($items) ? '<ul>' . implode('', $items) . '</ul>' : '';
+    }
+
+    public static function buildRoleUpdateDescription(array $beforeState, array $afterState)
+    {
+        $changes = [];
+        foreach (['name' => 'Nom', 'full_name' => 'Nom complet', 'color' => 'Couleur'] as $field => $label) {
+            $before = trim((string)($beforeState[$field] ?? ''));
+            $after = trim((string)($afterState[$field] ?? ''));
+            if ($before !== $after) {
+                $changes[] = '<li><strong>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</strong> : ' . htmlspecialchars($before, ENT_QUOTES, 'UTF-8') . ' &rarr; ' . htmlspecialchars($after, ENT_QUOTES, 'UTF-8') . '</li>';
+            }
+        }
+        $beforeProperties = self::indexRoleProperties($beforeState['editor_payload']['properties'] ?? []);
+        $afterProperties = self::indexRoleProperties($afterState['editor_payload']['properties'] ?? []);
+        foreach ($afterProperties as $key => $property) {
+            $beforeValue = self::formatRolePropertyValue(
+                (string)($beforeProperties[$key]['listItemType'] ?? '') === 'authority'
+                    ? ($beforeProperties[$key]['displayValue'] ?? $beforeProperties[$key]['value'] ?? '')
+                    : ($beforeProperties[$key]['value'] ?? '')
+            );
+            $afterValue = self::formatRolePropertyValue(
+                (string)($property['listItemType'] ?? '') === 'authority'
+                    ? ($property['displayValue'] ?? $property['value'] ?? '')
+                    : ($property['value'] ?? '')
+            );
+            if ($beforeValue === $afterValue) continue;
+            $label = trim((string)($property['name'] ?? $property['shortname'] ?? 'Propriete')) ?: 'Propriete';
+            $changes[] = '<li><strong>' . htmlspecialchars('Propriete - ' . $label, ENT_QUOTES, 'UTF-8') . '</strong> : '
+                . htmlspecialchars($beforeValue, ENT_QUOTES, 'UTF-8') . ' &rarr; '
+                . htmlspecialchars($afterValue, ENT_QUOTES, 'UTF-8') . '</li>';
+        }
+        foreach ($beforeProperties as $key => $property) {
+            if (isset($afterProperties[$key])) continue;
+            $label = trim((string)($property['name'] ?? $property['shortname'] ?? 'Propriete')) ?: 'Propriete';
+            $changes[] = '<li><strong>' . htmlspecialchars('Propriete - ' . $label, ENT_QUOTES, 'UTF-8') . '</strong> : supprimee</li>';
+        }
+        return count($changes) ? '<p>Modifications proposees :</p><ul>' . implode('', $changes) . '</ul>' : '<p>Aucune difference de contenu.</p>';
+    }
+
+    protected static function indexRoleProperties($properties)
+    {
+        $indexed = [];
+        foreach (is_array($properties) ? array_values($properties) : [] as $index => $property) {
+            if (!is_array($property)) continue;
+            $id = (int)($property['id'] ?? 0);
+            $key = $id > 0 ? 'id:' . $id : 'name:' . mb_strtolower(trim((string)($property['name'] ?? $property['shortname'] ?? $index)), 'UTF-8');
+            $indexed[$key] = $property;
+        }
+        return $indexed;
+    }
+
+    protected static function formatRolePropertyValue($value)
+    {
+        if (is_array($value) || is_object($value)) {
+            $value = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+        $value = trim(strip_tags((string)$value));
+        return mb_strlen($value, 'UTF-8') > 240 ? mb_substr($value, 0, 237, 'UTF-8') . '...' : $value;
     }
 
     public static function buildRuleUpdateDescription(array $beforeState, array $afterState)
@@ -459,6 +621,9 @@ class DecisionGovernanceAction extends DbObject
     protected function applyOne(DecisionProcess $decision)
     {
         $actionType = trim((string)$this->get('action_type'));
+        if (in_array($actionType, [self::TYPE_HOLON_CREATE, self::TYPE_HOLON_UPDATE, self::TYPE_HOLON_DELETE], true)) {
+            return $this->applyRoleAction($decision, $actionType);
+        }
         if (!in_array($actionType, [self::TYPE_RULE_CREATE, self::TYPE_RULE_UPDATE, self::TYPE_RULE_DELETE], true)) {
             return ['status' => false, 'message' => 'Ce type d action n est pas encore executable.'];
         }
@@ -523,6 +688,84 @@ class DecisionGovernanceAction extends DbObject
             return $validation;
         }
         return $rule->applyGovernanceState((array)$validation['state'], 0);
+    }
+
+    protected function applyRoleAction(DecisionProcess $decision, $actionType)
+    {
+        $context = new Holon();
+        if (!$context->load((int)$decision->get('IDholon'))) {
+            return ['status' => false, 'conflict' => true, 'message' => 'Le cercle de la decision n existe plus.'];
+        }
+        if ($actionType === self::TYPE_HOLON_CREATE) {
+            $validation = self::validateRoleState(self::normalizeState($this->get('after_state')), $context);
+            if (empty($validation['status'])) return $validation;
+            $existingTargetId = (int)$this->get('target_id');
+            if ($existingTargetId > 0) {
+                $existingRole = new Holon();
+                if ($existingRole->load($existingTargetId)
+                    && (int)$existingRole->get('IDtypeholon') === 1
+                    && (int)$existingRole->get('IDholon_parent') === (int)$context->getId()
+                    && self::captureRoleState($existingRole) === array_diff_key((array)$validation['state'], ['editor_payload' => true])) {
+                    return ['status' => true, 'already_applied' => true];
+                }
+                return ['status' => false, 'conflict' => true, 'message' => 'La creation du role est dans un etat incoherent.'];
+            }
+            $role = new Holon();
+            $state = $validation['state'];
+            if (is_array($state['editor_payload'] ?? null)) {
+                $organization = new Organization();
+                if (!$organization->load((int)$decision->get('IDorganization'))) {
+                    return ['status' => false, 'message' => 'L organisation de la decision est introuvable.'];
+                }
+                $result = $organization->saveHolonEditorDefinition($state['editor_payload'], 0, (int)$context->getId(), 0, true);
+                if (empty($result['status'])) return $result;
+                $createdId = (int)($result['holon']['id'] ?? 0);
+                if ($createdId <= 0) return ['status' => false, 'message' => 'Le role ne peut pas etre cree.'];
+                $this->set('target_id', $createdId);
+                return ['status' => true, 'created_id' => $createdId];
+            }
+            $role->set('name', $state['name']);
+            $role->set('nomcomplet', $state['full_name'] !== '' ? $state['full_name'] : null);
+            $role->set('color', $state['color'] !== '' ? $state['color'] : null);
+            $role->set('IDtypeholon', 1);
+            $role->set('IDholon_parent', (int)$context->getId());
+            $role->set('IDholon_template', $state['template_id']);
+            $role->set('IDholon_org', (int)$context->get('IDholon_org'));
+            $role->set('IDuser', (int)$context->get('IDuser'));
+            $role->set('active', true);
+            $role->set('visible', true);
+            $role->save();
+            if ((int)$role->getId() <= 0) return ['status' => false, 'message' => 'Le role ne peut pas etre cree.'];
+            $this->set('target_id', (int)$role->getId());
+            return ['status' => true, 'created_id' => (int)$role->getId()];
+        }
+        $role = new Holon();
+        if (!$role->load((int)$this->get('target_id')) || !self::roleBelongsToGovernanceContext($role, $context)) {
+            return ['status' => false, 'conflict' => true, 'message' => 'Le role cible n appartient plus a ce cercle.'];
+        }
+        $before = self::normalizeRoleState(self::normalizeState($this->get('before_state')));
+        $current = self::captureRoleState($role);
+        $beforeComparable = array_diff_key($before, ['editor_payload' => true]);
+        if ($actionType === self::TYPE_HOLON_DELETE) {
+            if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'Le role a ete modifie depuis la proposition.'];
+            return $role->delete() ? ['status' => true, 'deleted_id' => (int)$role->getId()] : ['status' => false, 'message' => 'Le role ne peut pas etre supprime.'];
+        }
+        $after = self::normalizeRoleState(self::normalizeState($this->get('after_state')), $role);
+        if ($current === $after) return ['status' => true, 'already_applied' => true];
+        if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'Le role a ete modifie depuis la proposition.'];
+        $validation = self::validateRoleState($after, $context, $role);
+        if (empty($validation['status'])) return $validation;
+        if (is_array($validation['state']['editor_payload'] ?? null)) {
+            $organization = new Organization();
+            if (!$organization->load((int)$decision->get('IDorganization'))) {
+                return ['status' => false, 'message' => 'L organisation de la decision est introuvable.'];
+            }
+            return $organization->saveHolonEditorDefinition($validation['state']['editor_payload'], 0, (int)$context->getId(), (int)$role->getId(), true);
+        }
+        $role->set('name', $validation['state']['name']);
+        $role->set('nomcomplet', $validation['state']['full_name'] !== '' ? $validation['state']['full_name'] : null);
+        $role->set('color', $validation['state']['color'] !== '' ? $validation['state']['color'] : null);
+        return $role->save();
     }
 
     protected static function normalizeDateValue($value)

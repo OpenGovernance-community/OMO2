@@ -1,351 +1,213 @@
 (function (window, document) {
     'use strict';
-
-    function escapeHtml(value) {
-        var node = document.createElement('div');
-        node.textContent = String(value == null ? '' : value);
-        return node.innerHTML;
-    }
-
-    function clone(value) {
-        return JSON.parse(JSON.stringify(value == null ? null : value));
-    }
+    function escapeHtml(value) { var node = document.createElement('div'); node.textContent = String(value == null ? '' : value); return node.innerHTML; }
+    function clone(value) { return JSON.parse(JSON.stringify(value == null ? null : value)); }
+    function strip(value) { return String(value || '').replace(/<[^>]*>/g, '').trim(); }
 
     function init(scope) {
-        var roots = (scope || document).querySelectorAll ? (scope || document).querySelectorAll('[data-governance-editor]') : [];
-        Array.prototype.forEach.call(roots, function (root) {
-            if (root.getAttribute('data-governance-bound') === '1') return;
-            root.setAttribute('data-governance-bound', '1');
-
-            var dataNode = root.querySelector('[data-governance-data]');
+        Array.prototype.forEach.call((scope || document).querySelectorAll('[data-governance-editor]'), function (root) {
+            if (root.dataset.governanceBound) return;
+            root.dataset.governanceBound = '1';
             var payload = {};
-            try { payload = JSON.parse(dataNode ? dataNode.textContent : '{}'); } catch (error) { payload = {}; }
-            var texts = payload.texts || {};
-            var rules = Array.isArray(payload.rules) ? payload.rules : [];
-            var rulesById = {};
-            rules.forEach(function (rule) { rulesById[String(rule.id)] = rule; });
-            var defaultRuleState = payload.defaultRuleState ? clone(payload.defaultRuleState) : {};
-            var blueprint = Array.isArray(payload.blueprint) ? clone(payload.blueprint) : [];
-            var editable = payload.editable !== false;
-            var list = root.querySelector('[data-governance-proposals]');
-            var addProposalButton = root.querySelector('[data-governance-proposal-add]');
-            var form = root.querySelector('[data-governance-form]');
-            var blueprintInput = root.querySelector('[data-governance-blueprint]');
-            var feedback = root.querySelector('[data-governance-feedback]');
-            var submit = root.querySelector('[data-governance-submit]');
-            var modal = root.querySelector('[data-governance-modal]');
-            var chooser = root.querySelector('[data-governance-action-chooser]');
-            var ruleEditor = root.querySelector('[data-governance-rule-editor]');
-            var ruleSelectField = root.querySelector('[data-governance-rule-select-field]');
-            var ruleSelect = root.querySelector('[data-governance-rule-select]');
-            var authoritySelect = root.querySelector('[data-governance-authority-select]');
-            var titleInput = root.querySelector('[data-governance-rule-title]');
-            var reviewInput = root.querySelector('[data-governance-rule-review]');
-            var expirationInput = root.querySelector('[data-governance-rule-expiration]');
-            var actionApply = root.querySelector('[data-governance-action-apply]');
-            var deleteEditor = root.querySelector('[data-governance-rule-delete-editor]');
-            var deleteRuleSelect = root.querySelector('[data-governance-delete-rule-select]');
-            var deletePreview = root.querySelector('[data-governance-delete-preview]');
-            var deleteApply = root.querySelector('[data-governance-delete-apply]');
-            var intentionEditor = null;
-            var descriptionEditor = null;
-            var activeProposalIndex = -1;
-            var activeActionIndex = -1;
-            var activeActionType = '';
-
-            function showFeedback(message, isError) {
-                if (!feedback) return;
-                feedback.hidden = false;
-                feedback.textContent = String(message || '');
-                feedback.classList.toggle('is-error', !!isError);
-            }
-
-            function statusLabel(status) {
-                return texts[String(status || 'pending')] || String(status || 'pending');
-            }
-
-            function actionTypeLabel(action) {
-                if (action && action.type === 'rule.create') return texts.ruleCreate || 'Creer une regle';
-                if (action && action.type === 'rule.delete') return texts.ruleDelete || 'Supprimer une regle';
-                return texts.ruleUpdate || 'Modifier une regle';
-            }
-
-            function actionRuleLabel(action) {
-                var rule = rulesById[String(action && action.targetId ? action.targetId : '')] || null;
-                var state = action && action.type === 'rule.delete' ? action.before : (action ? action.after : null);
-                return state && state.title ? String(state.title) : (rule ? String(rule.label || '') : 'Regle');
-            }
-
-            function stateSummary(state) {
-                var labels = {title: 'Titre', intention: 'Intention', description: 'Regle', review_date: 'Requestionnement', expiration_date: 'Echeance'};
-                var items = [];
-                Object.keys(labels).forEach(function (field) {
-                    var value = String(state && state[field] ? state[field] : '').replace(/<[^>]*>/g, '').trim();
-                    if (value) items.push('<p><strong>' + escapeHtml(labels[field]) + '</strong> : ' + escapeHtml(value) + '</p>');
+            try { payload = JSON.parse(root.querySelector('[data-governance-data]').textContent || '{}'); } catch (error) {}
+            var texts = payload.texts || {}, blueprint = clone(payload.blueprint || []), rules = payload.rules || [], roles = payload.roles || [], templates = payload.roleTemplates || [], editable = payload.editable !== false;
+            var ruleById = {}, roleById = {}, form = root.querySelector('[data-governance-form]'), list = root.querySelector('[data-governance-proposals]'), input = root.querySelector('[data-governance-blueprint]'), feedback = root.querySelector('[data-governance-feedback]');
+            rules.forEach(function (item) { ruleById[String(item.id)] = item; }); roles.forEach(function (item) { roleById[String(item.id)] = item; });
+            function label(action) { var labels = {'rule.create': texts.ruleCreate, 'rule.update': texts.ruleUpdate, 'rule.delete': texts.ruleDelete, 'holon.create': texts.roleCreate, 'holon.update': texts.roleUpdate, 'holon.delete': texts.roleDelete}; return labels[action.type] || action.type; }
+            function target(action) { var item = action.type.indexOf('rule.') === 0 ? ruleById[String(action.targetId)] : roleById[String(action.targetId)]; var state = action.type.endsWith('.delete') ? action.before : action.after; return (state && (state.title || state.name)) || (item && item.label) || 'Nouvel element'; }
+            function propertiesByKey(properties) {
+                var result = {};
+                (Array.isArray(properties) ? properties : []).forEach(function (property, index) {
+                    var propertyName = String(property.name || property.shortname || '').trim().toLowerCase();
+                    var key = propertyName !== '' ? 'name:' + propertyName : (Number(property.id || 0) > 0 ? 'id:' + Number(property.id) : 'index:' + index);
+                    result[key] = property;
                 });
-                return items.join('');
+                return result;
             }
-
-            function actionSummary(action) {
-                var before = action && action.before ? action.before : {};
-                var after = action && action.after ? action.after : {};
-                if (action && action.type === 'rule.create') return stateSummary(after);
-                if (action && action.type === 'rule.delete') return stateSummary(before);
-                var labels = {title: 'Titre', intention: 'Intention', description: 'Regle', review_date: 'Requestionnement', expiration_date: 'Echeance'};
-                var changes = [];
-                Object.keys(labels).forEach(function (field) {
-                    var beforeValue = String(before[field] || '').replace(/<[^>]*>/g, '').trim();
-                    var afterValue = String(after[field] || '').replace(/<[^>]*>/g, '').trim();
+            function propertyValue(property, preserveHtml) {
+                if (!property) return '';
+                var value = String(property.listItemType || '') === 'authority' && property.displayValue != null
+                    ? property.displayValue
+                    : property.value;
+                if (value == null) return '';
+                if (typeof value === 'object') value = JSON.stringify(value);
+                return preserveHtml ? String(value) : strip(String(value));
+            }
+            function pushActionChange(changes, label, before, after, options) {
+                var config = options || {}, beforeEmpty = Array.isArray(before) ? before.length === 0 : String(before || '') === '', afterEmpty = Array.isArray(after) ? after.length === 0 : String(after || '') === '';
+                var status = config.status || (beforeEmpty ? 'added' : (afterEmpty ? 'removed' : 'changed'));
+                changes.push({label:label, before:before, after:after, status:status, rich:!!config.rich, list:!!config.list});
+            }
+            function propertyListItems(property, expectedFormatId) {
+                var formatId = Number(expectedFormatId || (property && property.formatId) || 0);
+                if (!property) return null;
+                var sourceValue = property.value, rawValue = typeof sourceValue === 'string' ? sourceValue.trim() : '', decoded = null;
+                if (Array.isArray(sourceValue) || (sourceValue && typeof sourceValue === 'object')) decoded = sourceValue;
+                else { try { decoded = rawValue === '' ? [] : JSON.parse(rawValue); } catch (error) { decoded = rawValue === '' ? [] : [rawValue]; } }
+                var hasListStructure = Array.isArray(decoded) || (decoded && typeof decoded === 'object' && Array.isArray(decoded.items));
+                if ([2, 7].indexOf(formatId) === -1 && !hasListStructure) return null;
+                var items = decoded && !Array.isArray(decoded) && typeof decoded === 'object' && Array.isArray(decoded.items) ? decoded.items : decoded;
+                if (!Array.isArray(items)) items = items == null || String(items).trim() === '' ? [] : [items];
+                var displayItems = String(property.displayValue || '').split(';').map(function (item) { return item.trim(); }).filter(Boolean), displayIndex = 0;
+                return items.filter(function (item) { return !(item && typeof item === 'object' && item.delete === true); }).map(function (item) {
+                    var fallback = displayItems[displayIndex++] || '';
+                    if (item && typeof item === 'object') {
+                        var title = String(item.label || item.title || item.value || fallback || '').trim(), description = String(item.description || item.text || '').trim();
+                        return title && description ? title + ' - ' + description : (title || description || JSON.stringify(item));
+                    }
+                    return fallback || String(item == null ? '' : item).trim();
+                }).filter(Boolean);
+            }
+            function propertyStructuredValue(property) {
+                if (!property || [6, 7].indexOf(Number(property.formatId || 0)) === -1) return {};
+                try { var decoded = JSON.parse(String(property.value || '')); return decoded && !Array.isArray(decoded) && typeof decoded === 'object' ? decoded : {}; } catch (error) { return {}; }
+            }
+            function appendListChanges(changes, label, beforeItems, afterItems) {
+                if (window.omoChoiceChangeDetails && typeof window.omoChoiceChangeDetails.diffList === 'function') {
+                    Array.prototype.push.apply(changes, window.omoChoiceChangeDetails.diffList(label, beforeItems, afterItems));
+                    return;
+                }
+                if (JSON.stringify(beforeItems) !== JSON.stringify(afterItems)) pushActionChange(changes, label, beforeItems, afterItems, {status:'changed', list:true});
+            }
+            function actionChanges(action) {
+                if (window.omoChoiceChangeDetails && typeof window.omoChoiceChangeDetails.governanceChanges === 'function') return window.omoChoiceChangeDetails.governanceChanges(action, payload.authorities || []);
+                var before = action.before || {}, after = action.after || {}, changes = [], isRule = action.type.indexOf('rule.') === 0;
+                var fields = isRule ? {title:'Titre', intention:'Intention', description:'Regle', review_date:'Requestionnement', expiration_date:'Echeance'} : {name:'Nom', full_name:'Nom complet', color:'Couleur'};
+                if (isRule) {
+                    var authorityLabel = function (state) {
+                        var authorityId = Number(state.IDauthority || 0), authority = (payload.authorities || []).find(function (item) { return Number(item.id || 0) === authorityId; });
+                        return authorityId > 0 ? ((authority && authority.label) || ('Autorite ' + authorityId)) : 'Holon courant';
+                    };
+                    var beforeScope = Object.keys(before).length ? authorityLabel(before) : '', afterScope = Object.keys(after).length ? authorityLabel(after) : '';
+                    if (beforeScope !== afterScope) pushActionChange(changes, 'Portee', beforeScope, afterScope);
+                }
+                Object.keys(fields).forEach(function (key) {
+                    var beforeValue = String(before[key] || ''), afterValue = String(after[key] || '');
                     if (beforeValue === afterValue) return;
-                    changes.push('<p><strong>' + escapeHtml(labels[field]) + '</strong> : ' + escapeHtml(beforeValue) + ' &rarr; ' + escapeHtml(afterValue) + '</p>');
+                    pushActionChange(changes, fields[key], beforeValue, afterValue, {rich:isRule && (key === 'intention' || key === 'description')});
                 });
-                return changes.join('');
-            }
-
-            function syncInput() {
-                if (blueprintInput) blueprintInput.value = JSON.stringify(blueprint);
-            }
-
-            function render() {
-                if (!list) return;
-                list.innerHTML = '';
-                blueprint.forEach(function (proposal, proposalIndex) {
-                    var card = document.createElement('article');
-                    card.className = 'omo-governance-proposal generic-section generic-section--stack';
-                    var proposalTitle = String(proposal.title || '').trim() || String(texts.proposalDefault || 'Proposition __INDEX__').replace('__INDEX__', String(proposalIndex + 1));
-                    card.innerHTML = ''
-                        + '<div class="omo-governance-proposal__head">'
-                        + ' <div class="omo-governance-proposal__copy"><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.proposalTitle || 'Titre de la proposition') + '</span><input class="generic-form-control" data-governance-proposal-title maxlength="190" value="' + escapeHtml(proposalTitle) + '"' + (editable ? '' : ' readonly') + '></label></div>'
-                        + (editable ? '<button type="button" class="generic-action-button generic-action-button--danger" data-governance-proposal-remove>' + escapeHtml(texts.proposalRemove || 'Retirer') + '</button>' : '')
-                        + '</div><div class="omo-governance-actions" data-governance-actions></div>'
-                        + (editable ? '<button type="button" class="generic-action-button generic-action-button--secondary" data-governance-action-add>' + escapeHtml(texts.actionAdd || 'Ajouter une modification') + '</button>' : '');
-                    var actionsNode = card.querySelector('[data-governance-actions]');
-                    (Array.isArray(proposal.actions) ? proposal.actions : []).forEach(function (action, actionIndex) {
-                        var actionCard = document.createElement('div');
-                        var status = String(action.status || 'pending');
-                        actionCard.className = 'omo-governance-action generic-soft-panel generic-soft-panel--stack';
-                        actionCard.innerHTML = ''
-                            + '<div class="omo-governance-action__head"><div><strong>' + escapeHtml(actionTypeLabel(action)) + ' : ' + escapeHtml(actionRuleLabel(action)) + '</strong></div><span class="omo-governance-action__status omo-governance-action__status--' + escapeHtml(status) + '">' + escapeHtml(statusLabel(status)) + '</span></div>'
-                            + '<div class="omo-governance-action__summary">' + actionSummary(action) + (action.statusMessage ? '<p>' + escapeHtml(action.statusMessage) + '</p>' : '') + '</div>'
-                            + (editable && status === 'pending' ? '<div class="omo-governance-action__buttons"><button type="button" class="generic-action-button generic-action-button--secondary" data-governance-action-edit>' + escapeHtml(texts.actionEdit || 'Modifier') + '</button><button type="button" class="generic-action-button generic-action-button--danger" data-governance-action-remove>' + escapeHtml(texts.actionRemove || 'Retirer') + '</button></div>' : '');
-                        var editButton = actionCard.querySelector('[data-governance-action-edit]');
-                        if (editButton) editButton.addEventListener('click', function () {
-                            if (action.type === 'rule.delete') openDeleteEditor(proposalIndex, actionIndex);
-                            else openRuleEditor(proposalIndex, actionIndex, action.type);
-                        });
-                        var removeButton = actionCard.querySelector('[data-governance-action-remove]');
-                        if (removeButton) removeButton.addEventListener('click', function () { proposal.actions.splice(actionIndex, 1); render(); });
-                        actionsNode.appendChild(actionCard);
+                if (!isRule) {
+                    var beforeProperties = propertiesByKey(before.editor_payload && before.editor_payload.properties), afterProperties = propertiesByKey(after.editor_payload && after.editor_payload.properties);
+                    Object.keys(beforeProperties).concat(Object.keys(afterProperties)).filter(function (key,index,all) { return all.indexOf(key) === index; }).forEach(function (key) {
+                        var beforeProperty = beforeProperties[key] || null, afterProperty = afterProperties[key] || null, property = afterProperty || beforeProperty || {}, propertyLabel = property.name || property.shortname || 'Propriete', formatId = Number(property.formatId || 0), beforeItems = propertyListItems(beforeProperty, formatId), afterItems = propertyListItems(afterProperty, formatId);
+                        if (beforeItems !== null || afterItems !== null) appendListChanges(changes, propertyLabel, beforeItems || [], afterItems || []);
+                        if (formatId === 7) {
+                            var beforeComposite = propertyStructuredValue(beforeProperty), afterComposite = propertyStructuredValue(afterProperty);
+                            if (String(beforeComposite.before || '') !== String(afterComposite.before || '')) pushActionChange(changes, propertyLabel + ' - introduction', String(beforeComposite.before || ''), String(afterComposite.before || ''), {rich:true});
+                            if (String(beforeComposite.after || '') !== String(afterComposite.after || '')) pushActionChange(changes, propertyLabel + ' - conclusion', String(beforeComposite.after || ''), String(afterComposite.after || ''), {rich:true});
+                            return;
+                        }
+                        if (formatId === 6) {
+                            var beforeTextDetail = propertyStructuredValue(beforeProperty), afterTextDetail = propertyStructuredValue(afterProperty);
+                            if (String(beforeTextDetail.text || '') !== String(afterTextDetail.text || '')) pushActionChange(changes, propertyLabel + ' - titre', String(beforeTextDetail.text || ''), String(afterTextDetail.text || ''));
+                            if (String(beforeTextDetail.detail || '') !== String(afterTextDetail.detail || '')) pushActionChange(changes, propertyLabel + ' - detail', String(beforeTextDetail.detail || ''), String(afterTextDetail.detail || ''), {rich:true});
+                            return;
+                        }
+                        if (beforeItems !== null || afterItems !== null) return;
+                        var rich = Number(property.formatId || 0) === 5, beforeValue = propertyValue(beforeProperty, rich), afterValue = propertyValue(afterProperty, rich);
+                        if (beforeValue === afterValue) return;
+                        pushActionChange(changes, propertyLabel, beforeValue, afterValue, {rich:rich});
                     });
-                    var titleField = card.querySelector('[data-governance-proposal-title]');
-                    if (titleField) titleField.addEventListener('input', function () { proposal.title = titleField.value; syncInput(); });
-                    var removeProposal = card.querySelector('[data-governance-proposal-remove]');
-                    if (removeProposal) removeProposal.addEventListener('click', function () { blueprint.splice(proposalIndex, 1); render(); });
-                    var addAction = card.querySelector('[data-governance-action-add]');
-                    if (addAction) addAction.addEventListener('click', function () { openChooser(proposalIndex); });
+                }
+                return changes;
+            }
+            function actionSummaryText(action, changes) {
+                var count = changes.length, objectLabel = action.type.indexOf('rule.') === 0 ? 'la regle' : 'le role';
+                if (action.type.endsWith('.create')) return 'Cette proposition cree ' + objectLabel + ' « ' + target(action) + ' »' + (count ? ' avec ' + count + ' element(s) configure(s).' : '.');
+                if (action.type.endsWith('.delete')) return 'Cette proposition supprime ' + objectLabel + ' « ' + target(action) + ' ».';
+                var counts = {changed:0, added:0, removed:0}; changes.forEach(function (change) { if (Object.prototype.hasOwnProperty.call(counts, change.status)) counts[change.status]++; });
+                var parts = [];
+                if (counts.changed) parts.push(counts.changed + ' modification' + (counts.changed > 1 ? 's' : ''));
+                if (counts.added) parts.push(counts.added + ' ajout' + (counts.added > 1 ? 's' : ''));
+                if (counts.removed) parts.push(counts.removed + ' suppression' + (counts.removed > 1 ? 's' : ''));
+                return 'Cette proposition comporte ' + (parts.length ? parts.join(', ').replace(/, ([^,]*)$/, ' et $1') : 'aucun changement') + ' pour ' + objectLabel + ' « ' + target(action) + ' ».';
+            }
+            function sync() { input.value = JSON.stringify(blueprint); }
+            function render() {
+                list.innerHTML = '';
+                blueprint.forEach(function (proposal, pi) {
+                    var card = document.createElement('article'); card.className = 'omo-governance-proposal generic-section generic-section--stack';
+                    card.innerHTML = '<div class="omo-governance-proposal__head"><div class="omo-governance-proposal__copy"><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.proposalTitle || 'Titre de la proposition') + '</span><input class="generic-form-control" data-title maxlength="190" value="' + escapeHtml(proposal.title || '') + '"' + (editable ? '' : ' readonly') + '></label><label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.proposalDescription || 'Description de la proposition') + '</span><textarea class="generic-form-control" data-description rows="3" maxlength="10000"' + (editable ? '' : ' readonly') + '>' + escapeHtml(proposal.description || '') + '</textarea></label></div>' + (editable ? '<button type="button" class="generic-action-button generic-action-button--danger" data-remove-proposal>' + escapeHtml(texts.proposalRemove || 'Retirer') + '</button>' : '') + '</div><div class="omo-governance-actions" data-actions></div>' + (editable ? '<button type="button" class="generic-action-button generic-action-button--secondary" data-add-action>' + escapeHtml(texts.actionAdd || 'Ajouter une modification') + '</button>' : '');
+                    if (editable) card.querySelector('[data-title]').addEventListener('input', function (e) { proposal.title = e.target.value; sync(); });
+                    if (editable) card.querySelector('[data-description]').addEventListener('input', function (e) { proposal.description = e.target.value; sync(); });
+                    if (editable) card.querySelector('[data-remove-proposal]').addEventListener('click', function () { blueprint.splice(pi, 1); render(); });
+                    if (editable) card.querySelector('[data-add-action]').addEventListener('click', function () { openChooser(pi); });
+                    proposal.actions.forEach(function (action, ai) { var item = document.createElement('div'), changes = actionChanges(action); item.className = 'omo-governance-action generic-soft-panel generic-soft-panel--stack'; item.innerHTML = '<div class="omo-governance-action__head"><strong>' + escapeHtml(label(action)) + ' : ' + escapeHtml(target(action)) + '</strong></div><p class="omo-governance-action__summary">' + escapeHtml(actionSummaryText(action, changes)) + '</p><div data-change-details></div>' + (editable && action.status === 'pending' ? '<div class="omo-governance-action__buttons"><button type="button" class="generic-action-button generic-action-button--secondary" data-edit>Modifier</button><button type="button" class="generic-action-button generic-action-button--danger" data-remove>Retirer</button></div>' : ''); if (changes.length && window.omoChoiceChangeDetails) item.querySelector('[data-change-details]').appendChild(window.omoChoiceChangeDetails.create(changes, {label:'Détail'})); if (editable && action.status === 'pending') { item.querySelector('[data-edit]').addEventListener('click', function () { openEditor(pi, ai, action.type); }); item.querySelector('[data-remove]').addEventListener('click', function () { proposal.actions.splice(ai, 1); render(); }); } card.querySelector('[data-actions]').appendChild(item); });
                     list.appendChild(card);
-                });
-                syncInput();
+                }); sync();
             }
-
-            function mountHtmlEditors(after) {
-                if (!window.omoSimpleHtmlField || typeof window.omoSimpleHtmlField.mount !== 'function') {
-                    window.setTimeout(function () { mountHtmlEditors(after); }, 50);
+            function modal(title, content) { if (typeof window.commonTopbarOpenModal !== 'function') return; window.commonTopbarOpenModal(title, content, 'html'); }
+            function modalBody() { return document.getElementById('commonTopbarModalBody'); }
+            function options(items, selected) { return items.map(function (item) { return '<option value="' + escapeHtml(item.id) + '"' + (String(item.id) === String(selected) ? ' selected' : '') + '>' + escapeHtml(item.label) + '</option>'; }).join(''); }
+            function openChooser(pi) {
+                modal(texts.actionAdd || 'Ajouter une modification', '<div class="generic-section generic-section--stack"><div class="generic-action-row"><button class="generic-action-button generic-action-button--main" data-kind="rule.create">' + escapeHtml(texts.ruleCreate || 'Creer une regle') + '</button><button class="generic-action-button generic-action-button--secondary" data-kind="rule.update"' + (!rules.length ? ' disabled' : '') + '>' + escapeHtml(texts.ruleUpdate || 'Modifier une regle') + '</button><button class="generic-action-button generic-action-button--danger" data-kind="rule.delete"' + (!rules.length ? ' disabled' : '') + '>' + escapeHtml(texts.ruleDelete || 'Supprimer une regle') + '</button></div><div class="generic-action-row"><button class="generic-action-button generic-action-button--main" data-kind="holon.create"' + (!templates.length ? ' disabled' : '') + '>' + escapeHtml(texts.roleCreate || 'Creer un role') + '</button><button class="generic-action-button generic-action-button--secondary" data-kind="holon.update"' + (!roles.length ? ' disabled' : '') + '>' + escapeHtml(texts.roleUpdate || 'Modifier un role') + '</button><button class="generic-action-button generic-action-button--danger" data-kind="holon.delete"' + (!roles.length ? ' disabled' : '') + '>' + escapeHtml(texts.roleDelete || 'Supprimer un role') + '</button></div></div>');
+                modalBody().querySelectorAll('[data-kind]').forEach(function (button) { button.addEventListener('click', function () { openEditor(pi, -1, button.dataset.kind); }); });
+            }
+            function openEditor(pi, ai, type) {
+                if (type.indexOf('holon.') === 0 && !type.endsWith('.delete')) {
+                    openRoleDefinitionEditor(pi, ai, type);
                     return;
                 }
-                var intentionHost = root.querySelector('[data-governance-html-field="intention"]');
-                var descriptionHost = root.querySelector('[data-governance-html-field="description"]');
-                if (!intentionEditor) intentionEditor = window.omoSimpleHtmlField.mount(intentionHost, {value: String(after.intention || ''), simpleOnly: true});
-                else intentionEditor.setValue(String(after.intention || ''));
-                if (!descriptionEditor) descriptionEditor = window.omoSimpleHtmlField.mount(descriptionHost, {value: String(after.description || ''), simpleOnly: true});
-                else descriptionEditor.setValue(String(after.description || ''));
-            }
-
-            function populateRuleSelect(select, selectedId) {
-                if (!select) return;
-                select.innerHTML = '';
-                if (!rules.length) {
-                    var empty = document.createElement('option');
-                    empty.value = '';
-                    empty.textContent = texts.emptyRules || 'Aucune regle';
-                    select.appendChild(empty);
-                    return;
-                }
-                rules.forEach(function (rule) {
-                    var option = document.createElement('option');
-                    option.value = String(rule.id);
-                    option.textContent = String(rule.label || '');
-                    option.selected = String(rule.id) === String(selectedId || '');
-                    select.appendChild(option);
+                var previous = ai >= 0 ? blueprint[pi].actions[ai] : null, isRule = type.indexOf('rule.') === 0, isCreate = type.endsWith('.create'), isDelete = type.endsWith('.delete'), items = isRule ? rules : roles, index = isRule ? ruleById : roleById, selected = previous ? previous.targetId : (items[0] || {}).id, entity = isCreate ? null : index[String(selected)], state = previous ? (isDelete ? previous.before : previous.after) : (entity ? clone(entity.state) : (isRule ? clone(payload.defaultRuleState || {}) : {name:'', full_name:'', color:'', template_id:(templates[0] || {}).id || 0}));
+                var fields = '<label class="generic-form-field"' + (isCreate ? ' hidden' : '') + '><span class="generic-form-label">' + (isRule ? 'Regle' : 'Role') + '</span><select class="generic-form-control" data-target>' + options(items, selected) + '</select></label>';
+                if (!isRule && isCreate) fields += '<label class="generic-form-field"><span class="generic-form-label">Modele de role</span><select class="generic-form-control" data-template>' + options(templates, state.template_id) + '</select></label>';
+                if (isDelete) fields += '<div class="generic-soft-panel">Cette suppression sera appliquee uniquement si la proposition est acceptee et si le contenu n a pas change.</div>';
+                else if (isRule) fields += '<label class="generic-form-field"><span class="generic-form-label">Domaine d autorite</span><select class="generic-form-control" data-authority><option value="0">Regle locale au holon</option>' + options(payload.authorities || [], state.IDauthority || 0) + '</select></label><label class="generic-form-field"><span class="generic-form-label">Titre</span><input class="generic-form-control" data-title value="' + escapeHtml(state.title || '') + '"></label><label class="generic-form-field"><span class="generic-form-label">Intention</span><textarea class="generic-form-control" data-intention rows="3">' + escapeHtml(state.intention || '') + '</textarea></label><label class="generic-form-field"><span class="generic-form-label">Regle</span><textarea class="generic-form-control" data-description rows="5">' + escapeHtml(state.description || '') + '</textarea></label><div class="generic-form-grid"><label class="generic-form-field"><span class="generic-form-label">Date de requestionnement</span><input class="generic-form-control" type="date" data-review value="' + escapeHtml(state.review_date || '') + '"></label><label class="generic-form-field"><span class="generic-form-label">Date d echeance</span><input class="generic-form-control" type="date" data-expiration value="' + escapeHtml(state.expiration_date || '') + '"></label></div>';
+                else fields += '<label class="generic-form-field"><span class="generic-form-label">Nom</span><input class="generic-form-control" data-name value="' + escapeHtml(state.name || '') + '"></label><label class="generic-form-field"><span class="generic-form-label">Nom complet</span><input class="generic-form-control" data-full-name value="' + escapeHtml(state.full_name || '') + '"></label><label class="generic-form-field"><span class="generic-form-label">Couleur</span><input class="generic-form-control" data-color value="' + escapeHtml(state.color || '') + '"></label>';
+                modal(label({type:type}), '<div class="generic-section generic-section--stack"><div class="generic-form-stack">' + fields + '<div class="generic-form-actions"><button type="button" class="generic-action-button ' + (isDelete ? 'generic-action-button--danger' : 'generic-action-button--main') + '" data-save>' + escapeHtml(texts.actionApply || 'Ajouter a la proposition') + '</button></div></div></div>');
+                var body = modalBody(), targetSelect = body.querySelector('[data-target]');
+                if (targetSelect && !previous) targetSelect.addEventListener('change', function () { openEditor(pi, ai, type); body.querySelector('[data-target]').value = targetSelect.value; });
+                body.querySelector('[data-save]').addEventListener('click', function () {
+                    var targetId = isCreate ? 0 : parseInt(body.querySelector('[data-target]').value || '0', 10), base = isCreate ? null : index[String(targetId)]; if (!isCreate && !base) return;
+                    var after = {};
+                    if (!isDelete && isRule) { var authorityId = parseInt(body.querySelector('[data-authority]').value || '0', 10); after = {IDauthority:authorityId || null, IDholon:authorityId ? null : ((payload.defaultRuleState || {}).IDholon || null), title:body.querySelector('[data-title]').value.trim(), intention:body.querySelector('[data-intention]').value, description:body.querySelector('[data-description]').value, scope:authorityId ? (state.scope || 'local') : 'local', review_date:body.querySelector('[data-review]').value, expiration_date:body.querySelector('[data-expiration]').value}; }
+                    if (!isDelete && !isRule) after = {name:body.querySelector('[data-name]').value.trim(), full_name:body.querySelector('[data-full-name]').value.trim(), color:body.querySelector('[data-color]').value.trim(), template_id:isCreate ? parseInt(body.querySelector('[data-template]').value || '0',10) : base.state.template_id};
+                    if (!isDelete && (!isRule ? !after.name : (!after.title || !strip(after.description) || !after.review_date || !after.expiration_date))) return;
+                    var action = {id:previous ? previous.id : 0, type:type, targetId:targetId, before:isCreate ? {} : (previous ? previous.before : clone(base.state)), after:isDelete ? {} : after, status:previous ? previous.status : 'pending', statusMessage:previous ? previous.statusMessage : ''};
+                    if (ai >= 0) blueprint[pi].actions[ai] = action; else blueprint[pi].actions.push(action); window.commonTopbarCloseModal(); render();
                 });
             }
-
-            function fillRuleEditor(action, actionType) {
-                var isCreate = actionType === 'rule.create';
-                var rule = isCreate ? null : (rulesById[String(action && action.targetId ? action.targetId : (ruleSelect ? ruleSelect.value : ''))] || rules[0] || null);
-                var after = action && action.after ? clone(action.after) : (isCreate ? clone(defaultRuleState) : (rule ? clone(rule.state) : {}));
-                if (!isCreate && ruleSelect && rule) ruleSelect.value = String(rule.id);
-                if (authoritySelect) authoritySelect.value = String(after.IDauthority || 0);
-                if (titleInput) titleInput.value = String(after.title || '');
-                if (reviewInput) reviewInput.value = String(after.review_date || '');
-                if (expirationInput) expirationInput.value = String(after.expiration_date || '');
-                mountHtmlEditors(after);
-            }
-
-            function fillDeletePreview(action) {
-                var targetId = action && action.targetId ? action.targetId : (deleteRuleSelect ? deleteRuleSelect.value : '');
-                var rule = rulesById[String(targetId)] || rules[0] || null;
-                var state = action && action.before ? action.before : (rule ? rule.state : {});
-                if (deleteRuleSelect && rule) deleteRuleSelect.value = String(rule.id);
-                if (deletePreview) deletePreview.innerHTML = stateSummary(state);
-            }
-
-            function openModal() {
-                if (!modal) return;
-                modal.hidden = false;
-                document.documentElement.style.overflow = 'hidden';
-            }
-
-            function closeModal() {
-                if (!modal) return;
-                modal.hidden = true;
-                document.documentElement.style.overflow = '';
-                activeProposalIndex = -1;
-                activeActionIndex = -1;
-                activeActionType = '';
-            }
-
-            function openChooser(proposalIndex) {
-                activeProposalIndex = proposalIndex;
-                activeActionIndex = -1;
-                if (chooser) chooser.hidden = false;
-                if (ruleEditor) ruleEditor.hidden = true;
-                if (deleteEditor) deleteEditor.hidden = true;
-                openModal();
-            }
-
-            function openRuleEditor(proposalIndex, actionIndex, actionType) {
-                activeProposalIndex = proposalIndex;
-                activeActionIndex = typeof actionIndex === 'number' ? actionIndex : -1;
-                var action = activeActionIndex >= 0 ? blueprint[proposalIndex].actions[activeActionIndex] : null;
-                activeActionType = action && action.type ? action.type : (actionType || 'rule.update');
-                populateRuleSelect(ruleSelect, action ? action.targetId : '');
-                if (ruleSelect) ruleSelect.disabled = !!action;
-                if (chooser) chooser.hidden = true;
-                if (ruleEditor) ruleEditor.hidden = false;
-                if (deleteEditor) deleteEditor.hidden = true;
-                if (ruleSelectField) ruleSelectField.hidden = activeActionType === 'rule.create';
-                if (actionApply) actionApply.textContent = action ? (texts.updateAction || 'Mettre a jour') : (texts.addAction || 'Ajouter');
-                fillRuleEditor(action, activeActionType);
-                openModal();
-            }
-
-            function openDeleteEditor(proposalIndex, actionIndex) {
-                activeProposalIndex = proposalIndex;
-                activeActionIndex = typeof actionIndex === 'number' ? actionIndex : -1;
-                activeActionType = 'rule.delete';
-                var action = activeActionIndex >= 0 ? blueprint[proposalIndex].actions[activeActionIndex] : null;
-                populateRuleSelect(deleteRuleSelect, action ? action.targetId : '');
-                if (deleteRuleSelect) deleteRuleSelect.disabled = !!action;
-                if (chooser) chooser.hidden = true;
-                if (ruleEditor) ruleEditor.hidden = true;
-                if (deleteEditor) deleteEditor.hidden = false;
-                if (deleteApply) deleteApply.textContent = action ? (texts.updateAction || 'Mettre a jour') : (texts.addAction || 'Ajouter');
-                fillDeletePreview(action);
-                openModal();
-            }
-
-            if (ruleSelect) ruleSelect.addEventListener('change', function () { fillRuleEditor(null, 'rule.update'); });
-            if (deleteRuleSelect) deleteRuleSelect.addEventListener('change', function () { fillDeletePreview(null); });
-            var chooseCreate = root.querySelector('[data-governance-choose-rule-create]');
-            var chooseUpdate = root.querySelector('[data-governance-choose-rule-update]');
-            var chooseDelete = root.querySelector('[data-governance-choose-rule-delete]');
-            if (chooseCreate) chooseCreate.addEventListener('click', function () { openRuleEditor(activeProposalIndex, -1, 'rule.create'); });
-            if (chooseUpdate) chooseUpdate.addEventListener('click', function () { openRuleEditor(activeProposalIndex, -1, 'rule.update'); });
-            if (chooseDelete) chooseDelete.addEventListener('click', function () { openDeleteEditor(activeProposalIndex, -1); });
-            root.querySelectorAll('[data-governance-modal-close]').forEach(function (button) { button.addEventListener('click', closeModal); });
-            if (actionApply) actionApply.addEventListener('click', function () {
-                var isCreate = activeActionType === 'rule.create';
-                var rule = isCreate ? null : (rulesById[String(ruleSelect ? ruleSelect.value : '')] || null);
-                if ((!isCreate && !rule) || activeProposalIndex < 0) return;
-                var proposal = blueprint[activeProposalIndex];
-                var previous = activeActionIndex >= 0 ? proposal.actions[activeActionIndex] : null;
-                var authorityId = authoritySelect && parseInt(authoritySelect.value || '0', 10) > 0 ? parseInt(authoritySelect.value, 10) : null;
-                var after = {
-                    IDauthority: authorityId,
-                    IDholon: authorityId ? null : (isCreate ? (defaultRuleState.IDholon || null) : (rule.state.IDholon || null)),
-                    title: String(titleInput ? titleInput.value : '').trim(),
-                    intention: intentionEditor ? intentionEditor.getValue() : '',
-                    description: descriptionEditor ? descriptionEditor.getValue() : '',
-                    scope: authorityId ? String((isCreate ? defaultRuleState.scope : rule.state.scope) || 'local') : 'local',
-                    review_date: String(reviewInput ? reviewInput.value : ''),
-                    expiration_date: String(expirationInput ? expirationInput.value : '')
-                };
-                if (!after.title || !String(after.description).replace(/<[^>]*>/g, '').trim() || !after.review_date || !after.expiration_date) {
-                    showFeedback(texts.genericError || 'Champs obligatoires manquants.', true);
+            var activeRoleCapture = null;
+            function openRoleDefinitionEditor(pi, ai, type) {
+                var previous = ai >= 0 ? blueprint[pi].actions[ai] : null;
+                if (type.endsWith('.update') && !previous) {
+                    modal(texts.roleUpdate || 'Modifier un role', '<div class="generic-section generic-section--stack"><label class="generic-form-field"><span class="generic-form-label">Role</span><select class="generic-form-control" data-role-target>' + options(roles, (roles[0] || {}).id) + '</select></label><div class="generic-form-actions"><button type="button" class="generic-action-button generic-action-button--main" data-role-continue>Continuer</button></div></div>');
+                    var selectionBody = modalBody();
+                    selectionBody.querySelector('[data-role-continue]').addEventListener('click', function () {
+                        var chosenId = Number(selectionBody.querySelector('[data-role-target]').value || 0);
+                        var role = roleById[String(chosenId)];
+                        if (!role) return;
+                        activeRoleCapture = {proposalIndex:pi, actionIndex:ai, type:type, targetId:chosenId, previous:null};
+                        window.omoHolonGovernanceInitialPayload = null;
+                        window.commonTopbarOpenModal(texts.roleUpdate || 'Modifier un role', '/omo/api/holons/create.php?cid=' + Number(payload.contextHolonId || 0) + '&hid=' + chosenId + '&governance_capture=1&v=20260815-authority-labels', 'fetch');
+                    });
                     return;
                 }
-                var action = {
-                    id: previous ? previous.id : 0,
-                    type: isCreate ? 'rule.create' : 'rule.update',
-                    targetId: isCreate ? (previous ? previous.targetId : 0) : rule.id,
-                    before: isCreate ? {} : (previous ? previous.before : clone(rule.state)),
-                    after: after,
-                    status: previous ? previous.status : 'pending',
-                    statusMessage: previous ? previous.statusMessage : ''
-                };
-                if (activeActionIndex >= 0) proposal.actions[activeActionIndex] = action; else proposal.actions.push(action);
-                closeModal();
+                var roleId = previous ? previous.targetId : (type.endsWith('.update') ? Number((roles[0] || {}).id || 0) : 0);
+                if (type.endsWith('.update') && roleId <= 0) return;
+                activeRoleCapture = {proposalIndex:pi, actionIndex:ai, type:type, targetId:roleId, previous:previous};
+                window.omoHolonGovernanceInitialPayload = previous && previous.after && previous.after.editor_payload ? clone(previous.after.editor_payload) : null;
+                var url = '/omo/api/holons/create.php?cid=' + Number(payload.contextHolonId || 0) + '&governance_capture=1&v=20260815-authority-labels';
+                if (roleId > 0) url += '&hid=' + roleId;
+                if (typeof window.commonTopbarOpenModal === 'function') window.commonTopbarOpenModal(type.endsWith('.create') ? (texts.roleCreate || 'Creer un role') : (texts.roleUpdate || 'Modifier un role'), url, 'fetch');
+            }
+            window.addEventListener('omo-holon-governance-capture', function (event) {
+                if (!activeRoleCapture || !event.detail || !event.detail.payload) return;
+                var capture = activeRoleCapture, editorPayload = event.detail.payload, previous = capture.previous;
+                var after = {editor_payload:editorPayload, name:String(editorPayload.name || '').trim(), full_name:String(editorPayload.fullName || '').trim(), color:String(editorPayload.color || '').trim(), template_id:Number(editorPayload.templateId || 0)};
+                var base = roleById[String(capture.targetId)];
+                var action = {id:previous ? previous.id : 0, type:capture.type, targetId:capture.type.endsWith('.create') ? 0 : capture.targetId, before:capture.type.endsWith('.create') ? {} : (previous ? previous.before : clone(base.state)), after:after, status:previous ? previous.status : 'pending', statusMessage:previous ? previous.statusMessage : ''};
+                if (capture.actionIndex >= 0) blueprint[capture.proposalIndex].actions[capture.actionIndex] = action; else blueprint[capture.proposalIndex].actions.push(action);
+                activeRoleCapture = null;
+                window.omoHolonGovernanceInitialPayload = null;
+                if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
                 render();
             });
-            if (deleteApply) deleteApply.addEventListener('click', function () {
-                var rule = rulesById[String(deleteRuleSelect ? deleteRuleSelect.value : '')] || null;
-                if (!rule || activeProposalIndex < 0) return;
-                var proposal = blueprint[activeProposalIndex];
-                var previous = activeActionIndex >= 0 ? proposal.actions[activeActionIndex] : null;
-                var action = {
-                    id: previous ? previous.id : 0,
-                    type: 'rule.delete',
-                    targetId: rule.id,
-                    before: previous ? previous.before : clone(rule.state),
-                    after: {},
-                    status: previous ? previous.status : 'pending',
-                    statusMessage: previous ? previous.statusMessage : ''
-                };
-                if (activeActionIndex >= 0) proposal.actions[activeActionIndex] = action; else proposal.actions.push(action);
-                closeModal();
-                render();
-            });
-            if (addProposalButton) addProposalButton.addEventListener('click', function () {
-                blueprint.push({id: 0, title: String(texts.proposalDefault || 'Proposition __INDEX__').replace('__INDEX__', String(blueprint.length + 1)), actions: []});
-                render();
-            });
-            if (form) form.addEventListener('submit', function (event) {
-                event.preventDefault();
-                if (!form.reportValidity()) return;
-                syncInput();
-                if (!blueprint.length || blueprint.some(function (proposal) { return !Array.isArray(proposal.actions) || !proposal.actions.length; })) {
-                    showFeedback(texts.genericError || 'Ajoutez une proposition et une modification.', true);
-                    return;
-                }
-                if (submit) { submit.disabled = true; submit.dataset.label = submit.textContent; submit.textContent = texts.saving || 'Enregistrement...'; }
-                fetch(form.action, {method: 'POST', credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: new FormData(form)}).then(function (response) {
-                    return response.json().then(function (result) { return {ok: response.ok, result: result}; });
-                }).then(function (response) {
-                    if (!response.ok || !response.result.status) throw new Error(response.result.message || texts.genericError);
-                    if (response.result.redirectUrl && typeof window.omoDecisionOpenNestedDrawer === 'function') window.omoDecisionOpenNestedDrawer(response.result.drawerTitle || 'Prises de decision', response.result.redirectUrl, '');
-                    else if (response.result.redirectUrl && typeof window.commonTopbarOpenDrawer === 'function') window.commonTopbarOpenDrawer(response.result.drawerTitle || 'Prises de decision', response.result.redirectUrl, 'fetch');
-                    else if (response.result.redirectUrl) window.location.href = response.result.redirectUrl;
-                }).catch(function (error) {
-                    showFeedback(error && error.message ? error.message : texts.genericError, true);
-                    if (submit) { submit.disabled = false; submit.textContent = submit.dataset.label || submit.textContent; }
-                });
-            });
-
-            if (!blueprint.length && editable) blueprint.push({id: 0, title: String(texts.proposalDefault || 'Proposition __INDEX__').replace('__INDEX__', '1'), actions: []});
-            render();
+            var addProposalButton = root.querySelector('[data-governance-proposal-add]');
+            if (addProposalButton) addProposalButton.addEventListener('click', function () { blueprint.push({id:0,title:(texts.proposalDefault || 'Proposition __INDEX__').replace('__INDEX__', blueprint.length + 1),description:'',actions:[]}); render(); });
+            form.addEventListener('submit', function (event) { event.preventDefault(); if (!form.reportValidity()) return; sync(); if (!blueprint.length || blueprint.some(function (p) { return !p.actions.length; })) { feedback.hidden = false; feedback.textContent = texts.genericError || 'Ajoutez une proposition et une modification.'; return; } fetch(form.action, {method:'POST', credentials:'same-origin', headers:{'X-Requested-With':'XMLHttpRequest'}, body:new FormData(form)}).then(function (r) { return r.json().then(function (j) { return {ok:r.ok, json:j}; }); }).then(function (r) { if (!r.ok || !r.json.status) throw new Error(r.json.message); if (typeof window.omoDecisionOpenNestedDrawer === 'function') window.omoDecisionOpenNestedDrawer(r.json.drawerTitle || 'Prises de decision', r.json.redirectUrl, ''); else window.location.href = r.json.redirectUrl; }).catch(function (error) { feedback.hidden=false; feedback.textContent=error.message || texts.genericError; }); });
+            if (!blueprint.length && editable) blueprint.push({id:0,title:(texts.proposalDefault || 'Proposition __INDEX__').replace('__INDEX__', '1'),description:'',actions:[]}); render();
         });
     }
-
     window.omoGovernanceEditorInit = init;
 })(window, document);

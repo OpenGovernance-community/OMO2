@@ -702,7 +702,7 @@ $displayItemCount = count($statsEntries);
         </div>
     </div>
 </div>
-<script src="/common/drawer/subdrawer.js"></script>
+<script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
 <script src="/omo/api/stats/reference-editor.js?v=20260724-ceiling"></script>
 <script>
 (function () {

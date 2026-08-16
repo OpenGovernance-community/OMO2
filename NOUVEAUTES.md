@@ -2,8 +2,25 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-16
+
+- Les propositions hors reorg affichent maintenant leur champ Description, conserve la saisie du proposeur et le restitue lors de la reouverture du scrutin.
+- La question Hors reorg est maintenant toujours editable pendant la consultation et pre-remplie avec sa valeur configuree ou la question par defaut. Son libelle indique clairement si elle est soumise au consentement ou au vote simple.
+- Les sous-drawers disposent maintenant d une aide contextuelle generique dans leur en-tete. Une vue peut fournir un texte d aide via son API et afficher automatiquement le bouton ?, comme l editeur Hors reorg dont le titre quitte le contenu pour rejoindre l en-tete.
+- Les bulles d aide des en-tetes de sous-drawers passent maintenant au-dessus du contenu du tiroir et ne sont plus coupees par sa zone de defilement.
+- Les propositions Hors reorg affichent maintenant directement les modifications proposees. Le bloc technique Application des modifications et ses statuts internes a ete retire de la consultation et du vote. Le detail reprend les blocs Avant et Apres, champ par champ, avec les differences mises en evidence et les listes comparees element par element.
+- Les notifications du Calendrier peuvent etre activees par organisation pour les nouveaux evenements et invitations, les changements de lieu ou d horaire, ainsi que pour un rappel avant le debut. Le rappel se choisit dans une liste allant de 1 heure a 5 jours et est traite aussi bien par le faux cron que par le cron serveur.
+- Les modifications utilisent maintenant une presentation commune dans l historique, le chat des propositions et les propositions hors reorg : un resume court reste visible, tandis qu un bouton Detail ouvre deux blocs Avant/Apres avec les mots retires en rouge et les mots ajoutes en vert. Le detail preserve aussi les listes et la mise en forme simple des contenus HTML.
+- Les details distinguent maintenant explicitement les modifications, ajouts et suppressions. Les proprietes sous forme de listes sont comparees element par element et affichees avec de vrais elements LI : les valeurs inchangees sont ignorees et les nouveaux elements sont presentes comme de vrais ajouts, sans afficher le tableau JSON.
+- Lorsqu une ancienne valeur importee est encore stockee comme un texte simple dans une propriete devenue une liste, elle est maintenant comparee comme un premier element de cette liste. Les virgules presentes dans la phrase ne la decoupent pas artificiellement.
+- La comparaison des proprietes de roles rapproche aussi les champs par leur nom stable, meme si leur identifiant technique a change lors d un import ou d une evolution de modele.
+
 ## 2026-08-14
 
+- Les decisions hors reorg peuvent maintenant proposer la creation, la modification ou la suppression d un role du cercle courant. L edition reutilise la fiche complete des roles (modele, proprietes, droits, limites d admins, apparence et medias) et les changements restent en attente jusqu a la validation collective. Le choix et l edition des regles comme des roles utilisent desormais la popup standard de la topbar.
+- La selection des roles d une decision hors reorg inclut aussi les roles ranges dans les groupes du cercle courant, avec le chemin du groupe dans leur libelle, sans inclure les roles des sous-cercles.
+- Les resumes des modifications hors reorg mettent maintenant en evidence, mot par mot, les contenus retires en rouge et les contenus ajoutes en vert en reutilisant le diff des discussions de propositions.
+- Les proprietes de type autorite sont memorisees et comparees avec leurs libelles lisibles dans les resumes hors reorg, sans exposer leurs identifiants techniques.
 - Le bouton Nouvelle prise de decision de l application Decisions est maintenant libelle Nouveau scrutin.
 - Dans les trois modes de scrutin, le titre Parametres du scrutin est maintenant place au-dessus du recapitulatif a lisere vert, comme les autres titres de section.
 - Les aides contextuelles ouvertes avec un bouton ? se repositionnent maintenant automatiquement pour rester dans la fenetre, y compris pres des bords et en bas de page. Ce comportement est disponible comme composant generique.

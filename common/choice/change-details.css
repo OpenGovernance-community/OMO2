@@ -1,0 +1,22 @@
+.omo-change-details{font-size:.84rem;color:var(--color-text-light,#64748b)}
+.omo-change-details>summary{width:fit-content;margin:0 auto;padding:5px 10px;color:var(--color-primary,#2563eb);cursor:pointer;font-size:11px;font-weight:750;list-style-position:inside}
+.omo-change-details__list{display:grid;gap:9px;padding:8px 0 0}
+.omo-change-details__card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px;padding:9px;border:1px solid rgba(37,99,235,.2);border-radius:10px;background:rgba(37,99,235,.04)}
+.omo-change-details__card--added{border-color:rgba(22,163,74,.25);background:rgba(22,163,74,.05)}
+.omo-change-details__card--removed{border-color:rgba(220,38,38,.22);background:rgba(220,38,38,.05)}
+.omo-change-details__title{grid-column:1/-1;color:var(--color-text,#1f2937);font-size:12px}
+.omo-change-details__value{display:grid;gap:4px;min-width:0;padding:7px 8px;border-radius:8px;background:rgba(255,255,255,.8)}
+.omo-change-details__value.is-before{background:rgba(220,38,38,.07)}
+.omo-change-details__value.is-after{background:rgba(22,163,74,.07)}
+.omo-change-details__value-label{color:#64748b;font-size:10px;font-weight:750;text-transform:uppercase}
+.omo-change-details__value-content{color:#334155;font-size:12px;line-height:1.45;overflow-wrap:anywhere;white-space:pre-wrap}
+.omo-change-details__value-content--rich{padding:5px 7px;border-left:3px solid transparent;border-radius:5px;white-space:normal}
+.omo-change-details__value-content--rich.is-before{border-left-color:rgba(220,38,38,.55);background:rgba(220,38,38,.05)}
+.omo-change-details__value-content--rich.is-after{border-left-color:rgba(22,163,74,.55);background:rgba(22,163,74,.05)}
+.omo-change-details__value-content--rich>:first-child{margin-top:0}.omo-change-details__value-content--rich>:last-child{margin-bottom:0}
+.omo-change-details__value-content--rich ul,.omo-change-details__value-content--rich ol{padding-left:20px}
+.omo-change-details__items{display:grid;gap:3px;margin:0;padding-left:18px;list-style:disc outside}
+.omo-change-details__value-content.is-empty{color:#94a3b8;font-style:italic}
+.omo-change-details__added,.omo-change-details__value-content.is-added{border-radius:4px;background:rgba(22,163,74,.14);color:#166534}
+.omo-change-details__removed,.omo-change-details__value-content.is-removed{border-radius:4px;background:rgba(220,38,38,.12);color:#991b1b;text-decoration:line-through}
+@media(max-width:620px){.omo-change-details__card{grid-template-columns:1fr}}

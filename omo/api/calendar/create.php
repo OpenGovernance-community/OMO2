@@ -3,6 +3,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/invitations_shared.php';
 require_once dirname(__DIR__, 3) . '/common/etherpad.php';
 require_once dirname(__DIR__, 3) . '/common/ethercalc.php';
+require_once dirname(__DIR__, 3) . '/common/notification_center.php';
 
 use dbObject\ArrayHolon;
 use dbObject\Document;
@@ -493,6 +494,17 @@ $invitationEditorState = omoCalendarBuildInvitationEditorState(
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=UTF-8');
 
+    $previousLocation = $isEditMode ? [
+        'mode' => trim((string)$event->get('locationmode')),
+        'address' => trim((string)$event->get('locationaddress')),
+        'video' => trim((string)$event->get('videomeetingurl')),
+    ] : null;
+    $previousSchedule = $isEditMode ? [
+        'start' => $event->get('start_at') instanceof \DateTimeInterface ? $event->get('start_at')->format('Y-m-d H:i:s') : '',
+        'end' => $event->get('end_at') instanceof \DateTimeInterface ? $event->get('end_at')->format('Y-m-d H:i:s') : '',
+        'allDay' => !empty($event->get('is_all_day')) ? 1 : 0,
+    ] : null;
+
     $title = trim((string)($_POST['title'] ?? ''));
     $description = trim((string)($_POST['description'] ?? ''));
     $selectedHolonId = $hasStructureApplication && isset($_POST['IDholon']) ? (int)$_POST['IDholon'] : 0;
@@ -785,6 +797,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'message' => omoCalendarCreateT('calendar.create.error.save'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
+    }
+
+    try {
+        $notificationEvent = new Event();
+        if ($notificationEvent->load((int)$event->getId())) {
+            if (!$isEditMode) {
+                notificationCenterDispatchEventInvitation($notificationEvent, $currentUserId);
+            } else {
+                $currentLocation = [
+                    'mode' => trim((string)$notificationEvent->get('locationmode')),
+                    'address' => trim((string)$notificationEvent->get('locationaddress')),
+                    'video' => trim((string)$notificationEvent->get('videomeetingurl')),
+                ];
+                $currentSchedule = [
+                    'start' => $notificationEvent->get('start_at') instanceof \DateTimeInterface ? $notificationEvent->get('start_at')->format('Y-m-d H:i:s') : '',
+                    'end' => $notificationEvent->get('end_at') instanceof \DateTimeInterface ? $notificationEvent->get('end_at')->format('Y-m-d H:i:s') : '',
+                    'allDay' => !empty($notificationEvent->get('is_all_day')) ? 1 : 0,
+                ];
+                if ($previousLocation !== $currentLocation) {
+                    notificationCenterDispatchEventChange($notificationEvent, 'location', $currentUserId);
+                }
+                if ($previousSchedule !== $currentSchedule) {
+                    notificationCenterDispatchEventChange($notificationEvent, 'schedule', $currentUserId);
+                }
+            }
+        }
+    } catch (\Throwable $exception) {
+        error_log('OMO calendar notification dispatch failed: ' . $exception->getMessage());
     }
 
     echo json_encode([

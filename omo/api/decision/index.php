@@ -1455,7 +1455,7 @@ if (!is_string($payloadJson)) {
 </div>
 </div>
 
-<script src="/common/drawer/subdrawer.js"></script>
+<script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
 <link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260813-decision-uniformity">
 <script src="/common/choice/decision_cards.js"></script>
 
@@ -2892,6 +2892,7 @@ openDecisionEditor = function (url, title, description) {
         decisionDrawerController.setHeader({
             title: resolvedTitle,
             description: description || '',
+            help: '',
             actions: []
         });
     }

@@ -96,8 +96,10 @@ assertDecisionGovernanceAction(
     'Creation and deletion descriptions must expose the complete rule snapshot.'
 );
 assertDecisionGovernanceAction(
-    !DecisionGovernanceAction::isImplementedType(DecisionGovernanceAction::TYPE_HOLON_UPDATE),
-    'Future holon actions must stay registered without being executable yet.'
+    DecisionGovernanceAction::isImplementedType(DecisionGovernanceAction::TYPE_HOLON_CREATE)
+        && DecisionGovernanceAction::isImplementedType(DecisionGovernanceAction::TYPE_HOLON_UPDATE)
+        && DecisionGovernanceAction::isImplementedType(DecisionGovernanceAction::TYPE_HOLON_DELETE),
+    'Role governance actions must be registered as implemented.'
 );
 
 echo "Decision governance action tests passed.\n";

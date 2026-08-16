@@ -60,8 +60,8 @@ function omoRenderHolonHistoryItems(array $historyItems)
 			</div>
 			<p class="omo-holon-history-popup__content"><?= $contentHtml !== '' ? nl2br($contentHtml) : nl2br(omoApiEscape((string)($item['contentDisplay'] ?? ''))) ?></p>
 			<?php if ($hasDiffData && $payloadBase64 !== ''): ?>
-				<details class="omo-holon-history-popup__details" data-history-diff="1" data-history-payload="<?= omoApiEscape($payloadBase64) ?>">
-					<summary>Voir les changements</summary>
+				<details class="omo-holon-history-popup__details omo-change-details" data-history-diff="1" data-history-payload="<?= omoApiEscape($payloadBase64) ?>">
+					<summary>Détail</summary>
 					<div class="omo-holon-history-popup__diff" data-history-diff-container="1"></div>
 				</details>
 			<?php endif; ?>
@@ -122,6 +122,7 @@ if ($requestFragment === 'items') {
 	exit;
 }
 ?>
+<link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">
 <style>
 	.omo-holon-history-popup {
 		color: var(--color-text, #1f2937);
@@ -412,6 +413,9 @@ if ($requestFragment === 'items') {
 	</div>
 </div>
 
+<script src="/omo/assets/js/simple-html-field.js?v=20260804-indicator-group-route"></script>
+<script src="/common/choice/word-diff.js?v=20260816"></script>
+<script src="/common/choice/change-details.js?v=20260816-governance-details"></script>
 <script>
 	(function () {
 		function safeObject(value) {
@@ -1322,6 +1326,129 @@ if ($requestFragment === 'items') {
 			}
 		}
 
+		function uniqueKeys(beforeItems, afterItems) {
+			var keys = Object.keys(safeObject(beforeItems)).concat(Object.keys(safeObject(afterItems)));
+			return keys.filter(function (key, index) {
+				return keys.indexOf(key) === index;
+			});
+		}
+
+		function historyListValue(items) {
+			return safeArray(items).map(buildItemLabel).filter(function (label) {
+				return label !== '';
+			}).join('\n');
+		}
+
+		function appendGenericListChanges(changes, label, beforeItems, afterItems) {
+			var beforeLabels = safeArray(beforeItems).map(buildItemLabel).filter(Boolean);
+			var afterLabels = safeArray(afterItems).map(buildItemLabel).filter(Boolean);
+			if (window.omoChoiceChangeDetails && typeof window.omoChoiceChangeDetails.diffList === 'function') {
+				Array.prototype.push.apply(changes, window.omoChoiceChangeDetails.diffList(label, beforeLabels, afterLabels));
+				return;
+			}
+			appendGenericChange(changes, label, beforeLabels.join('\n'), afterLabels.join('\n'));
+		}
+
+		function historyPropertyValue(property) {
+			var snapshot = safeObject(property);
+			var items = safeArray(snapshot.visibleItems);
+			if (items.length) {
+				return historyListValue(items);
+			}
+
+			return Number(snapshot.formatId || 0) === 5
+				? normalizeText(snapshot.visibleValue || '')
+				: decodeHtmlToText(snapshot.visibleValue || '');
+		}
+
+		function appendGenericChange(changes, label, beforeValue, afterValue, options) {
+			var config = safeObject(options);
+			var before = normalizeText(beforeValue);
+			var after = normalizeText(afterValue);
+			if (before === after) {
+				return;
+			}
+
+			changes.push({
+				label: label,
+				before: before,
+				after: after,
+				status: before === '' ? 'added' : (after === '' ? 'removed' : 'changed'),
+				rich: !!config.rich
+			});
+		}
+
+		function buildGenericHistoryChanges(payload) {
+			var changes = [];
+			var beforeRoot = safeObject(payload.before);
+			var afterRoot = safeObject(payload.after);
+			var beforeHolon = safeObject(beforeRoot.holon);
+			var afterHolon = safeObject(afterRoot.holon);
+			var hasHolonSnapshot = Object.keys(beforeHolon).length > 0 || Object.keys(afterHolon).length > 0;
+			var fieldLabels = {
+				name: 'Nom', fullName: 'Nom complet', color: 'Couleur', icon: 'Icone', banner: 'Banniere',
+				visible: 'Visible', mandatory: 'Obligatoire', lockedName: 'Nom verrouille',
+				lockedIcon: 'Icone verrouillee', lockedBanner: 'Banniere verrouillee',
+				lockedAdminMin: 'Minimum d admins verrouille', lockedAdminMax: 'Maximum d admins verrouille',
+				adminMinOverride: 'Minimum d admins redefini', adminMaxOverride: 'Maximum d admins redefini',
+				unique: 'Unique', link: 'Lien', adminParent: 'Admin parent',
+				adminMin: 'Nombre minimum d admins', adminMax: 'Nombre maximum d admins',
+				inheritsFromName: 'Modele parent'
+			};
+			var booleanFields = {visible:true, mandatory:true, lockedName:true, lockedIcon:true, lockedBanner:true, lockedAdminMin:true, lockedAdminMax:true, adminMinOverride:true, adminMaxOverride:true, unique:true, link:true, adminParent:true};
+
+			if (hasHolonSnapshot) {
+				Object.keys(fieldLabels).forEach(function (field) {
+					var beforeValue = booleanFields[field] && Object.prototype.hasOwnProperty.call(beforeHolon, field) ? (beforeHolon[field] ? 'Oui' : 'Non') : decodeHtmlToText(beforeHolon[field] || '');
+					var afterValue = booleanFields[field] && Object.prototype.hasOwnProperty.call(afterHolon, field) ? (afterHolon[field] ? 'Oui' : 'Non') : decodeHtmlToText(afterHolon[field] || '');
+					appendGenericChange(changes, fieldLabels[field], beforeValue, afterValue);
+				});
+
+				var beforePermissions = safeObject(beforeRoot.permissions);
+				var afterPermissions = safeObject(afterRoot.permissions);
+				uniqueKeys(beforePermissions, afterPermissions).forEach(function (key) {
+					var beforePermission = safeObject(beforePermissions[key]);
+					var afterPermission = safeObject(afterPermissions[key]);
+					appendGenericListChanges(changes, buildPermissionLabel(afterPermission, key) || buildPermissionLabel(beforePermission, key), beforePermission.visibleItems, afterPermission.visibleItems);
+				});
+
+				var beforeProperties = safeObject(beforeRoot.properties);
+				var afterProperties = safeObject(afterRoot.properties);
+				uniqueKeys(beforeProperties, afterProperties).forEach(function (key) {
+					var beforeProperty = safeObject(beforeProperties[key]);
+					var afterProperty = safeObject(afterProperties[key]);
+					var property = Object.keys(afterProperty).length ? afterProperty : beforeProperty;
+					var beforeVisibleItems = safeArray(beforeProperty.visibleItems);
+					var afterVisibleItems = safeArray(afterProperty.visibleItems);
+					if (beforeVisibleItems.length || afterVisibleItems.length || Number(property.formatId || 0) === 2) {
+						if (!beforeVisibleItems.length && decodeHtmlToText(beforeProperty.visibleValue || '') !== '') beforeVisibleItems = [decodeHtmlToText(beforeProperty.visibleValue || '')];
+						if (!afterVisibleItems.length && decodeHtmlToText(afterProperty.visibleValue || '') !== '') afterVisibleItems = [decodeHtmlToText(afterProperty.visibleValue || '')];
+						appendGenericListChanges(changes, buildPropertyLabel(property, key), beforeVisibleItems, afterVisibleItems);
+						return;
+					}
+					appendGenericChange(changes, buildPropertyLabel(property, key), historyPropertyValue(beforeProperty), historyPropertyValue(afterProperty), {rich:Number(property.formatId || 0) === 5 && !safeArray(property.visibleItems).length});
+				});
+			} else {
+				[
+					{key:'label', label:'Libelle'},
+					{key:'description', label:'Description'},
+					{key:'parentLabel', label:'Autorite parente'}
+				].forEach(function (field) {
+					appendGenericChange(changes, field.label, beforeRoot[field.key] || '', afterRoot[field.key] || '');
+				});
+				var deletionPlan = safeObject(payload.deletionPlan);
+				if (Object.keys(deletionPlan).length) {
+					appendGenericChange(changes, 'Traitement choisi', '', [
+						'Autorite : ' + (deletionPlan.authority === 'reassign' ? 'remontee au holon parent' : 'supprimee'),
+						'Sous-autorites : ' + (deletionPlan.children === 'reassign' ? 'remontees au holon parent' : 'supprimees'),
+						'Regles concernees : ' + (deletionPlan.rules === 'reassign' ? 'remontees et a revoir sous 2 mois' : 'supprimees')
+					].join('\n'));
+				}
+			}
+
+			return changes;
+		}
+
 		function renderDiff(details) {
 			var container = details.querySelector('[data-history-diff-container="1"]');
 			var payloadBase64 = normalizeText(details.getAttribute('data-history-payload'));
@@ -1342,6 +1469,17 @@ if ($requestFragment === 'items') {
 
 			if (!payload || typeof payload !== 'object') {
 				appendEmptyState(container, 'Aucun detail supplementaire disponible.');
+				return;
+			}
+
+			if (window.omoChoiceChangeDetails && typeof window.omoChoiceChangeDetails.createList === 'function') {
+				var genericChanges = buildGenericHistoryChanges(payload);
+				if (genericChanges.length) {
+					container.appendChild(window.omoChoiceChangeDetails.createList(genericChanges));
+				} else {
+					appendEmptyState(container, 'Aucun diff visuel supplementaire disponible pour cette entree.');
+				}
+				details.setAttribute('data-history-rendered', '1');
 				return;
 			}
 

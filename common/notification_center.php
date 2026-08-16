@@ -14,6 +14,10 @@ if (!function_exists('notificationCenterEventCatalog')) {
             'decision_evaluation_started' => 'Passage de mes scrutins invites en vote',
             'decision_consultation_ending' => 'Fin prochaine de la consultation',
             'decision_evaluation_ending' => 'Fin prochaine du vote',
+            'calendar_event_invited' => 'Invitation a un nouvel evenement',
+            'calendar_event_location_changed' => 'Modification du lieu d un evenement',
+            'calendar_event_schedule_changed' => 'Modification de l horaire d un evenement',
+            'calendar_event_starting' => 'Debut prochain d un evenement',
         ];
     }
 }
@@ -33,6 +37,15 @@ if (!function_exists('notificationCenterEventGroupCatalog')) {
                     'decision_evaluation_started',
                     'decision_consultation_ending',
                     'decision_evaluation_ending',
+                ],
+            ],
+            'calendar' => [
+                'applicationHash' => 'calendar',
+                'eventKeys' => [
+                    'calendar_event_invited',
+                    'calendar_event_location_changed',
+                    'calendar_event_schedule_changed',
+                    'calendar_event_starting',
                 ],
             ],
         ];
@@ -74,6 +87,23 @@ if (!function_exists('notificationCenterBuildDecisionUrl')) {
     function notificationCenterBuildDecisionUrl($organizationId, $decisionId)
     {
         return '/omo/o/' . (int)$organizationId . '#decision-d' . (int)$decisionId;
+    }
+}
+
+if (!function_exists('notificationCenterBuildEventUrl')) {
+    function notificationCenterBuildEventUrl($organizationId, $eventId)
+    {
+        return '/omo/o/' . (int)$organizationId . '#calendar-e' . (int)$eventId;
+    }
+}
+
+if (!function_exists('notificationCenterFormatEventDateTime')) {
+    function notificationCenterFormatEventDateTime($value)
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('d.m.Y H:i');
+        }
+        return '';
     }
 }
 
@@ -173,6 +203,181 @@ if (!function_exists('notificationCenterCreateForUsers')) {
             if (!empty($channels['email'])) {
                 notificationCenterSendEmail($user, $organization, $title, $body, $deliveryUrl);
             }
+        }
+    }
+}
+
+if (!function_exists('notificationCenterDispatchEventInvitation')) {
+    function notificationCenterDispatchEventInvitation(\dbObject\Event $event, $actorUserId = 0)
+    {
+        $organizationId = (int)$event->get('IDorganization');
+        $eventId = (int)$event->getId();
+        if ($organizationId <= 0 || $eventId <= 0) {
+            return 0;
+        }
+        $eventTitle = mb_substr(trim((string)$event->get('title')), 0, 140, 'UTF-8');
+        $startAt = notificationCenterFormatEventDateTime($event->get('start_at'));
+        $body = 'Vous etes invite a l evenement "' . $eventTitle . '".';
+        if ($startAt !== '') {
+            $body .= ' Il est prevu le ' . $startAt . '.';
+        }
+        notificationCenterCreateForUsers(
+            $organizationId,
+            'calendar_event_invited',
+            $event->getNotificationRecipientUserIds(),
+            'calendar-event-invited-' . $eventId,
+            'Nouvel evenement - ' . $eventTitle,
+            $body,
+            notificationCenterBuildEventUrl($organizationId, $eventId),
+            '',
+            (int)$actorUserId
+        );
+        return 1;
+    }
+}
+
+if (!function_exists('notificationCenterDispatchEventChange')) {
+    function notificationCenterDispatchEventChange(\dbObject\Event $event, $changeType, $actorUserId = 0)
+    {
+        $changeType = $changeType === 'schedule' ? 'schedule' : 'location';
+        $organizationId = (int)$event->get('IDorganization');
+        $eventId = (int)$event->getId();
+        if ($organizationId <= 0 || $eventId <= 0) {
+            return 0;
+        }
+        $eventKey = $changeType === 'schedule' ? 'calendar_event_schedule_changed' : 'calendar_event_location_changed';
+        $eventTitle = mb_substr(trim((string)$event->get('title')), 0, 140, 'UTF-8');
+        $updatedAt = notificationCenterFormatEventDateTime($event->get('updated_at'));
+        $sourceSuffix = $event->get('updated_at') instanceof \DateTimeInterface
+            ? $event->get('updated_at')->format('YmdHis')
+            : sha1($eventTitle . '|' . $changeType . '|' . microtime(true));
+        $changeLabel = $changeType === 'schedule' ? 'horaire' : 'lieu';
+        $body = 'Le ' . $changeLabel . ' de l evenement "' . $eventTitle . '" a ete modifie.';
+        if ($changeType === 'schedule') {
+            $startAt = notificationCenterFormatEventDateTime($event->get('start_at'));
+            if ($startAt !== '') {
+                $body .= ' Nouveau debut : ' . $startAt . '.';
+            }
+        }
+        if ($updatedAt !== '') {
+            $body .= ' Mise a jour le ' . $updatedAt . '.';
+        }
+        notificationCenterCreateForUsers(
+            $organizationId,
+            $eventKey,
+            $event->getNotificationRecipientUserIds(),
+            'calendar-event-' . $changeType . '-' . $eventId . '-' . $sourceSuffix,
+            'Modification de ' . $changeLabel . ' - ' . $eventTitle,
+            $body,
+            notificationCenterBuildEventUrl($organizationId, $eventId),
+            '',
+            (int)$actorUserId
+        );
+        return 1;
+    }
+}
+
+if (!function_exists('notificationCenterLeadTimeSeconds')) {
+    function notificationCenterLeadTimeSeconds($leadTime)
+    {
+        $leadTime = trim((string)$leadTime);
+        if (!preg_match('/^([1-9][0-9]*)([hd])$/', $leadTime, $matches)) {
+            return 0;
+        }
+        $quantity = (int)$matches[1];
+        if ($matches[2] === 'h') {
+            return $quantity * 60 * 60;
+        }
+        return $quantity * 24 * 60 * 60;
+    }
+}
+
+if (!function_exists('notificationCenterLeadTimeLabel')) {
+    function notificationCenterLeadTimeLabel($leadTime)
+    {
+        $seconds = notificationCenterLeadTimeSeconds($leadTime);
+        if ($seconds <= 0) {
+            return '';
+        }
+        $quantity = $seconds % (24 * 60 * 60) === 0 ? (int)($seconds / (24 * 60 * 60)) : (int)($seconds / (60 * 60));
+        $unit = $seconds % (24 * 60 * 60) === 0 ? 'jour' : 'heure';
+        return $quantity . ' ' . $unit . ($quantity > 1 ? 's' : '');
+    }
+}
+
+if (!function_exists('notificationCenterProcessEventLifecycle')) {
+    function notificationCenterProcessEventLifecycle($limit = 200, $referenceDateTime = null)
+    {
+        $referenceDateTime = $referenceDateTime instanceof \DateTimeInterface
+            ? \DateTimeImmutable::createFromInterface($referenceDateTime)
+            : new \DateTimeImmutable('now');
+        $processed = 0;
+        foreach (\dbObject\Event::getNotificationLifecycleCandidates($limit, $referenceDateTime) as $event) {
+            $startAt = $event->get('start_at');
+            if (!($startAt instanceof \DateTimeInterface)) {
+                continue;
+            }
+            $remainingSeconds = $startAt->getTimestamp() - $referenceDateTime->getTimestamp();
+            if ($remainingSeconds <= 0) {
+                continue;
+            }
+            foreach ($event->getNotificationRecipientUserIds() as $userId) {
+                $settings = \dbObject\NotificationPreference::getChannelsFor(
+                    $userId,
+                    (int)$event->get('IDorganization'),
+                    'calendar_event_starting'
+                );
+                $leadTime = trim((string)($settings['lead_time'] ?? ''));
+                $leadSeconds = notificationCenterLeadTimeSeconds($leadTime);
+                if ($leadSeconds <= 0 || $remainingSeconds > $leadSeconds) {
+                    continue;
+                }
+                $eventTitle = mb_substr(trim((string)$event->get('title')), 0, 140, 'UTF-8');
+                $leadLabel = notificationCenterLeadTimeLabel($leadTime);
+                notificationCenterCreateForUsers(
+                    (int)$event->get('IDorganization'),
+                    'calendar_event_starting',
+                    [$userId],
+                    'calendar-event-starting-' . (int)$event->getId() . '-' . $startAt->format('YmdHi') . '-' . $leadTime,
+                    'Debut dans ' . $leadLabel . ' - ' . $eventTitle,
+                    'L evenement "' . $eventTitle . '" commence le ' . notificationCenterFormatEventDateTime($startAt) . '.',
+                    notificationCenterBuildEventUrl((int)$event->get('IDorganization'), (int)$event->getId())
+                );
+            }
+            $processed++;
+        }
+        return $processed;
+    }
+}
+
+if (!function_exists('notificationCenterMaybeProcessEventLifecycle')) {
+    function notificationCenterMaybeProcessEventLifecycle($limit = 200, $force = false)
+    {
+        $directory = dirname(__DIR__) . '/tmp';
+        $path = $directory . '/notification-event-lifecycle-last-run.txt';
+        if (!is_dir($directory) && !@mkdir($directory, 0777, true)) {
+            return 0;
+        }
+        $handle = @fopen($path, 'c+');
+        if ($handle === false || !@flock($handle, LOCK_EX | LOCK_NB)) {
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+            return 0;
+        }
+        try {
+            $lastRun = (int)trim((string)stream_get_contents($handle));
+            if (!$force && $lastRun > 0 && (time() - $lastRun) < 15 * 60) {
+                return 0;
+            }
+            $processed = notificationCenterProcessEventLifecycle($limit);
+            rewind($handle);
+            ftruncate($handle, 0);
+            fwrite($handle, (string)time());
+            return $processed;
+        } finally {
+            @flock($handle, LOCK_UN);
+            fclose($handle);
         }
     }
 }

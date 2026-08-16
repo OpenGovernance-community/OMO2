@@ -8121,7 +8121,7 @@
 			}
 		}
 
-		public function getHolonCreationEditorData($contextHolonId = 0, $holonId = 0)
+		public function getHolonCreationEditorData($contextHolonId = 0, $holonId = 0, $collectiveGovernance = false)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
@@ -8177,10 +8177,10 @@
 				return $data;
 			}
 
-			$data['canCreate'] = !$isTemplateEditing && $contextHolon->canEdit() && in_array((int)$contextHolon->get('IDtypeholon'), array(2, 3, 4), true);
-			$data['canEdit'] = $editingHolon && $editingHolon->canEdit() && in_array((int)$editingHolon->get('IDtypeholon'), array(1, 2, 3), true);
+			$data['canCreate'] = !$isTemplateEditing && ($collectiveGovernance || $contextHolon->canEdit()) && in_array((int)$contextHolon->get('IDtypeholon'), array(2, 3, 4), true);
+			$data['canEdit'] = $editingHolon && ($collectiveGovernance || $editingHolon->canEdit()) && in_array((int)$editingHolon->get('IDtypeholon'), array(1, 2, 3), true);
 			$canEditHolonPropertyValues = !$isTemplateEditing
-				&& $contextHolon->isAllowed('CAN_EDIT_HOLON_PROPERTIES');
+				&& ($collectiveGovernance || $contextHolon->isAllowed('CAN_EDIT_HOLON_PROPERTIES'));
 
 			$templateContextPathRank = array_flip(array_map(static function ($pathHolon) {
 				return (int)$pathHolon->getId();
@@ -10371,7 +10371,7 @@
 			return array('status' => true);
 		}
 
-		public function saveHolonEditorDefinition(array $payload, $userId = 0, $contextHolonId = 0, $holonId = 0)
+		public function saveHolonEditorDefinition(array $payload, $userId = 0, $contextHolonId = 0, $holonId = 0, $collectiveGovernance = false)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
@@ -10396,7 +10396,7 @@
 
 				$isTemplateEditing = $holon->isTemplateNode($rootHolon ? (int)$rootHolon->getId() : 0);
 
-				if (!$holon->canEdit()) {
+				if (!$collectiveGovernance && !$holon->canEdit()) {
 					return array(
 						'status' => false,
 						'message' => "Vous n'avez pas les droits pour modifier ce holon.",
@@ -10429,7 +10429,7 @@
 				);
 			}
 
-			if (!$contextHolon || !$contextHolon->canEdit()) {
+			if (!$contextHolon || (!$collectiveGovernance && !$contextHolon->canEdit())) {
 				return array(
 					'status' => false,
 					'message' => $isEditing
@@ -10657,7 +10657,7 @@
 					}))
 					: array();
 				$propertyPermissionHolon = $holon ?: $contextHolon;
-				$propertyPermissionResult = $this->canApplyPropertyDefinitionChanges(
+				$propertyPermissionResult = $collectiveGovernance ? array('status' => true) : $this->canApplyPropertyDefinitionChanges(
 					$propertyPermissionHolon,
 					$this->getPropertyDefinitionPermissionOperations($existingDirectDefinitions, $submittedDirectDefinitions),
 					'HOLON'
@@ -10675,7 +10675,7 @@
 			}
 
 			if (!$isTemplateEditing && $template instanceof \dbObject\Holon) {
-				$templatePropertyPermissionResult = $this->canEditSubmittedTemplatePropertyValues(
+				$templatePropertyPermissionResult = $collectiveGovernance ? array('status' => true) : $this->canEditSubmittedTemplatePropertyValues(
 					$holon ?: new \dbObject\Holon(),
 					$holon ?: $contextHolon,
 					$submittedValuesByPropertyId,

@@ -508,6 +508,38 @@ class Event extends DbObject
         return $targets;
     }
 
+    public function getNotificationRecipientUserIds(): array
+    {
+        $targets = $this->getEffectiveInvitationTargets((int)$this->get('IDorganization'));
+        return array_values(array_unique(array_filter(array_map('intval', $targets['userIds'] ?? []), static function ($userId) {
+            return $userId > 0;
+        })));
+    }
+
+    public static function getNotificationLifecycleCandidates($limit = 200, $referenceDateTime = null): array
+    {
+        $referenceDateTime = $referenceDateTime instanceof \DateTimeInterface
+            ? \DateTimeImmutable::createFromInterface($referenceDateTime)
+            : new \DateTimeImmutable('now');
+        $events = new \dbObject\ArrayEvent();
+        $events->load([
+            'where' => [
+                ['field' => 'active', 'value' => 1],
+                ['field' => 'status', 'op' => '<>', 'value' => self::STATUS_CANCELLED],
+                ['field' => 'start_at', 'op' => '>=', 'value' => $referenceDateTime->format('Y-m-d H:i:s')],
+            ],
+            'orderBy' => [
+                ['field' => 'start_at', 'dir' => 'ASC'],
+                ['field' => 'id', 'dir' => 'ASC'],
+            ],
+            'limit' => max(1, (int)$limit),
+        ]);
+
+        return array_values(array_filter($events->getArrayCopy(), static function ($event) {
+            return $event instanceof self;
+        }));
+    }
+
     protected function getAttendanceDisplayNameMap($organizationId): array
     {
         $organizationId = (int)$organizationId;

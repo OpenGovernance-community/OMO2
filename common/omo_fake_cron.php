@@ -13,6 +13,7 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             'checklistRunsCompleted' => 0,
             'ethercalcIndicatorsSynced' => 0,
             'decisionNotificationsProcessed' => 0,
+            'eventNotificationsProcessed' => 0,
         ];
 
         try {
@@ -46,6 +47,11 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             $result['decisionNotificationsProcessed'] = (int)notificationCenterMaybeProcessDecisionLifecycle(200, $force);
         } catch (\Throwable $exception) {
             error_log('OMO fake cron decision notification maintenance failed: ' . $exception->getMessage());
+        }
+        try {
+            $result['eventNotificationsProcessed'] = (int)notificationCenterMaybeProcessEventLifecycle(200, $force);
+        } catch (\Throwable $exception) {
+            error_log('OMO fake cron event notification maintenance failed: ' . $exception->getMessage());
         }
 
         return $result;

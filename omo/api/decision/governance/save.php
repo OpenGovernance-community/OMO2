@@ -135,6 +135,13 @@ foreach (Rule::findDefinedInHolon($targetHolonId) as $rule) {
         $rulesById[(int)$rule->getId()] = $rule;
     }
 }
+$rolesById = [];
+$roleStatesById = [];
+$contextOrganization = ($context['organization'] ?? null) instanceof \dbObject\Organization ? $context['organization'] : null;
+foreach (DecisionGovernanceAction::findRolesInGovernanceContext($targetHolon) as $role) {
+    $rolesById[(int)$role->getId()] = $role;
+    $roleStatesById[(int)$role->getId()] = omoDecisionGovernanceBuildRoleClientData($role, $contextOrganization, $targetHolonId)['state'];
+}
 
 $existingProposals = [];
 $existingActionsByProposal = [];
@@ -178,6 +185,55 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
     $suggestedTitles = [];
     foreach ($actionInputs as $actionIndex => $actionInput) {
         $actionType = is_array($actionInput) ? trim((string)($actionInput['type'] ?? '')) : '';
+        $isRoleAction = in_array($actionType, [
+            DecisionGovernanceAction::TYPE_HOLON_CREATE,
+            DecisionGovernanceAction::TYPE_HOLON_UPDATE,
+            DecisionGovernanceAction::TYPE_HOLON_DELETE,
+        ], true);
+        if ($isRoleAction) {
+            $targetId = (int)($actionInput['targetId'] ?? 0);
+            $isCreate = $actionType === DecisionGovernanceAction::TYPE_HOLON_CREATE;
+            if (($isCreate && $targetId !== 0) || (!$isCreate && !isset($rolesById[$targetId]))) {
+                $respond(422, ['status' => false, 'message' => 'Le role choisi n appartient pas a ce cercle.']);
+            }
+            if (!$isCreate && isset($usedTargetIds['role:' . $targetId])) {
+                $respond(422, ['status' => false, 'message' => 'Un meme role ne peut pas etre modifie plusieurs fois dans ce scrutin.']);
+            }
+            if (!$isCreate) $usedTargetIds['role:' . $targetId] = true;
+            $actionId = (int)($actionInput['id'] ?? 0);
+            $existingAction = $actionId > 0 ? ($existingActionsByProposal[$proposalId][$actionId] ?? null) : null;
+            if ($actionId > 0 && (!$existingAction instanceof DecisionGovernanceAction || (string)$existingAction->get('action_type') !== $actionType || (int)$existingAction->get('target_id') !== $targetId || (string)$existingAction->get('status') !== DecisionGovernanceAction::STATUS_PENDING)) {
+                $respond(422, ['status' => false, 'message' => 'Une modification existante ne peut plus etre remplacee.']);
+            }
+            $beforeState = [];
+            $afterState = [];
+            $roleName = '';
+            if ($isCreate) {
+                $validation = DecisionGovernanceAction::validateRoleState((array)($actionInput['after'] ?? []), $targetHolon);
+                if (empty($validation['status'])) $respond(422, ['status' => false, 'message' => (string)$validation['message']]);
+                $afterState = (array)$validation['state'];
+                $roleName = $afterState['name'];
+                $suggestedTitles[] = 'Creer le role ' . $roleName;
+                $actionDescriptions[] = '<h4>Creer le role ' . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleStateDescription($afterState);
+            } else {
+                $role = $rolesById[$targetId];
+                $beforeState = $existingAction instanceof DecisionGovernanceAction ? DecisionGovernanceAction::normalizeState($existingAction->get('before_state')) : ($roleStatesById[$targetId] ?? DecisionGovernanceAction::captureRoleState($role));
+                $roleName = (string)$beforeState['name'];
+                if ($actionType === DecisionGovernanceAction::TYPE_HOLON_DELETE) {
+                    $suggestedTitles[] = 'Supprimer le role ' . $roleName;
+                    $actionDescriptions[] = '<h4>Supprimer le role ' . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleStateDescription($beforeState);
+                } else {
+                    $validation = DecisionGovernanceAction::validateRoleState((array)($actionInput['after'] ?? []), $targetHolon, $role);
+                    if (empty($validation['status'])) $respond(422, ['status' => false, 'message' => (string)$validation['message']]);
+                    $afterState = (array)$validation['state'];
+                    if ($beforeState === $afterState) $respond(422, ['status' => false, 'message' => 'La modification du role ne contient aucun changement.']);
+                    $suggestedTitles[] = 'Modifier le role ' . $roleName;
+                    $actionDescriptions[] = '<h4>Modifier le role ' . htmlspecialchars($roleName, ENT_QUOTES, 'UTF-8') . '</h4>' . DecisionGovernanceAction::buildRoleUpdateDescription($beforeState, $afterState);
+                }
+            }
+            $normalizedActions[] = ['id' => $actionId, 'existing' => $existingAction, 'action_type' => $actionType, 'target_id' => $targetId, 'target_type' => DecisionGovernanceAction::TARGET_HOLON, 'before' => $beforeState, 'after' => $afterState, 'position' => $actionIndex + 1];
+            continue;
+        }
         if (!DecisionGovernanceAction::isImplementedType($actionType)
             || !in_array($actionType, [
                 DecisionGovernanceAction::TYPE_RULE_CREATE,
@@ -274,6 +330,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             'existing' => $existingAction,
             'action_type' => $actionType,
             'target_id' => $targetId,
+            'target_type' => DecisionGovernanceAction::TARGET_RULE,
             'before' => $beforeState,
             'after' => $afterState,
             'position' => $actionIndex + 1,
@@ -289,10 +346,17 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
     if (mb_strlen($proposalTitle, 'UTF-8') > 190) {
         $respond(422, ['status' => false, 'message' => 'Le titre d une proposition est trop long.']);
     }
+    $proposalDescription = \dbObject\PropertyFormat::sanitizeHtml((string)($proposalInput['description'] ?? ''));
+    if (mb_strlen($proposalDescription, 'UTF-8') > 10000) {
+        $respond(422, ['status' => false, 'message' => 'La description d une proposition est trop longue.']);
+    }
+    if (trim($proposalDescription) === '') {
+        $proposalDescription = implode('', $actionDescriptions);
+    }
     $normalizedProposals[] = [
         'id' => $proposalId,
         'title' => $proposalTitle,
-        'description' => implode('', $actionDescriptions),
+        'description' => $proposalDescription,
         'actions' => $normalizedActions,
         'position' => $proposalIndex + 1,
     ];
@@ -413,7 +477,7 @@ try {
                 : new DecisionGovernanceAction();
             $action->set('IDdecision_proposal', $proposalId);
             $action->set('action_type', (string)$normalizedAction['action_type']);
-            $action->set('target_type', DecisionGovernanceAction::TARGET_RULE);
+            $action->set('target_type', (string)$normalizedAction['target_type']);
             $action->set('target_id', (int)$normalizedAction['target_id']);
             $action->set('before_state', $normalizedAction['before']);
             $action->set('after_state', $normalizedAction['after']);
