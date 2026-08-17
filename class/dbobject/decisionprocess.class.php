@@ -3,6 +3,8 @@ namespace dbObject;
 
 class DecisionProcess extends DbObject
 {
+    const WORKFLOW_GOVERNANCE = 'out_of_gouv';
+
     const TYPE_DECISION = 'decision';
     const TYPE_CONSULTATION = 'consultation';
 
@@ -284,6 +286,20 @@ class DecisionProcess extends DbObject
         return self::isValidEvaluationMethod($method) ? $method : self::METHOD_SIMPLE_VOTE;
     }
 
+    public function getWorkflowType()
+    {
+        $parameters = $this->get('parameters');
+        if (!is_array($parameters)) {
+            $parameters = json_decode(trim((string)$parameters), true);
+        }
+        return is_array($parameters) ? trim((string)($parameters['workflow_type'] ?? '')) : '';
+    }
+
+    public function isGovernanceWorkflow()
+    {
+        return $this->getWorkflowType() === self::WORKFLOW_GOVERNANCE;
+    }
+
     public function save()
     {
         $this->set('decision_type', self::normalizeDecisionType($this->get('decision_type')));
@@ -363,6 +379,9 @@ class DecisionProcess extends DbObject
         $nextStatus = $this->resolveAutomaticStatus($referenceDateTime);
         $currentStatus = self::normalizeStatus($this->get('status'));
         if ($nextStatus === $currentStatus) {
+            if ($currentStatus === self::STATUS_RESULTS) {
+                $this->applyAcceptedGovernanceActions();
+            }
             return false;
         }
 
@@ -377,7 +396,30 @@ class DecisionProcess extends DbObject
         }
 
         $saveResult = $this->save();
-        return !empty($saveResult['status']);
+        $wasUpdated = !empty($saveResult['status']);
+        if ($wasUpdated && $nextStatus === self::STATUS_RESULTS) {
+            $this->applyAcceptedGovernanceActions();
+        }
+        if ($wasUpdated && function_exists('notificationCenterDispatchDecisionPhase')) {
+            try {
+                notificationCenterDispatchDecisionPhase($this, $nextStatus);
+            } catch (\Throwable $exception) {
+                error_log('decision_lifecycle_notification_failed: ' . $exception->getMessage());
+            }
+        }
+        return $wasUpdated;
+    }
+
+    protected function applyAcceptedGovernanceActions()
+    {
+        if (!$this->isGovernanceWorkflow()) {
+            return;
+        }
+        try {
+            \dbObject\DecisionGovernanceAction::applyAcceptedForDecision($this);
+        } catch (\Throwable $exception) {
+            error_log('decision_governance_application_failed: ' . $exception->getMessage());
+        }
     }
 
     public static function syncLifecycleStatusesForOrganization($organizationId, $referenceDateTime = null)
@@ -421,6 +463,33 @@ class DecisionProcess extends DbObject
         }
 
         return $updatedCount;
+    }
+
+    public static function getLifecycleNotificationCandidates($limit = 200)
+    {
+        $limit = max(1, min(1000, (int)$limit));
+        $rows = self::fetchAll(
+            'SELECT * FROM `decision_process`
+             WHERE `status` IN (:scheduled_status, :consultation_status, :evaluation_status)
+             ORDER BY `id` ASC
+             LIMIT ' . $limit,
+            [
+                'scheduled_status' => self::STATUS_SCHEDULED,
+                'consultation_status' => self::STATUS_CONSULTATION,
+                'evaluation_status' => self::STATUS_EVALUATION,
+            ]
+        );
+        $items = [];
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            if (!is_array($row) || !isset($row['id'])) {
+                continue;
+            }
+            $item = new self();
+            $item->loadFromArray($row);
+            $item->setId((int)$row['id']);
+            $items[] = $item;
+        }
+        return $items;
     }
 
     public function getMethodDefinition()

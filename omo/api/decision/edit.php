@@ -5,38 +5,6 @@ require_once __DIR__ . '/modules/registry.php';
 
 $omoDecisionInput = $_GET;
 $context = omoDecisionResolveEditorContext($omoDecisionInput);
-$groupAction = trim((string)($omoDecisionInput['group_action'] ?? ''));
-
-if (
-    !empty($context['status'])
-    && ($context['intent'] ?? '') === 'manage'
-    && $groupAction === 'create'
-    && !empty($context['decision'])
-    && $context['decision'] instanceof \dbObject\DecisionProcess
-) {
-    $requestedMethod = trim((string)($omoDecisionInput['method'] ?? ''));
-    $moduleDefinition = $requestedMethod !== '' ? omoDecisionGetModuleDefinition($requestedMethod) : null;
-    if ($moduleDefinition && !empty($moduleDefinition['available'])) {
-        $decision = $context['decision'];
-        $group = $decision->addDecisionGroup(
-            $requestedMethod,
-            \dbObject\DecisionProcess::normalizeDecisionType($decision->get('decision_type'))
-        );
-        if ($group instanceof \dbObject\DecisionGroup) {
-            $redirectUrl = omoDecisionBuildEditorUrl(
-                (int)($context['organizationId'] ?? 0),
-                (int)($context['targetHolonId'] ?? 0),
-                (int)$decision->getId(),
-                trim((string)$group->get('evaluation_method')),
-                'manage',
-                (int)$group->getId()
-            );
-            header('Location: ' . $redirectUrl);
-            exit;
-        }
-    }
-}
-
 if (
     !empty($context['status'])
     && ($context['intent'] ?? '') === 'participate'

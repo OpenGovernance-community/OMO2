@@ -23,6 +23,7 @@ $valuesDescending = array_reverse($values);
 $latestValue = count($values) > 0 ? $values[count($values) - 1] : null;
 $latestReferencePercentage = omoStatsGetIndicatorReferencePercentage($indicator, $latestValue, $referencePoints);
 $canEdit = $indicator->canEdit();
+$canEditValues = $canEdit && !$indicator->isEthercalcSource();
 $sourceUrl = StatIndicator::sanitizeSourceUrl($indicator->get('source_url'));
 $contextLabel = omoStatsContextLabel($indicator);
 $measurementFrequency = StatIndicator::normalizeMeasurementFrequency($indicator->get('measurement_frequency'));
@@ -125,7 +126,7 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
                             <div class="omo-stats-value-list__row" data-omo-stats-value-row="<?= (int)$value->getId() ?>">
                                 <time datetime="<?= $value->get('measured_at') instanceof DateTimeInterface ? omoApiEscape($value->get('measured_at')->format(DateTimeInterface::ATOM)) : '' ?>"><?= omoApiEscape(omoStatsFormatDateTime($value->get('measured_at'))) ?></time>
                                 <strong><?= omoApiEscape(omoStatsFormatNumber($value->get('value'))) ?></strong>
-                                <?php if ($canEdit): ?>
+                                <?php if ($canEditValues): ?>
                                     <button
                                         type="button"
                                         class="generic-action-button generic-action-button--danger omo-stats-value-list__delete"
@@ -141,7 +142,7 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         </div>
     </div>
 
-    <?php if ($canEdit): ?>
+    <?php if ($canEditValues): ?>
         <form class="generic-section generic-section--stack omo-stats-quick-value" data-omo-stats-add-value-form>
             <div>
                 <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.detail.add_title')) ?></h3>

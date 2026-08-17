@@ -49,6 +49,19 @@ if (!omoDecisionCanEditProposalFromPublicInterface($proposal, $context)) {
 }
 
 if ($requestMethod === 'GET') {
+    if ($proposal->hasGovernanceActions()) {
+        $decision = $proposal->getDecisionProcess();
+        omoDecisionModuleJsonResponse(200, [
+            'status' => true,
+            'governanceEditorUrl' => $decision instanceof \dbObject\DecisionProcess
+                ? omoDecisionBuildGovernanceEditorUrl(
+                    (int)$decision->get('IDorganization'),
+                    (int)$decision->get('IDholon'),
+                    (int)$decision->getId()
+                )
+                : '',
+        ]);
+    }
     omoDecisionModuleJsonResponse(200, [
         'status' => true,
         'proposal' => [

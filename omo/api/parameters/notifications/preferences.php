@@ -40,6 +40,8 @@ foreach (array_values(array_unique($eventKeys)) as $eventKey) {
         $channels['telegram'] = !empty($values['telegram']);
     }
     $channels['email'] = !empty($values['email']);
+    $channels['days'] = isset($values['days']) && is_array($values['days']) ? $values['days'] : [];
+    $channels['lead_time'] = trim((string)($values['lead_time'] ?? ''));
     if (!\dbObject\NotificationPreference::saveChannels($userId, $organizationId, $eventKey, $channels)) {
         omoNotificationPreferencesRespond(500, ['status' => false, 'message' => 'Impossible d enregistrer les reglages de notifications.']);
     }

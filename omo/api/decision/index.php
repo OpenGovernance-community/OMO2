@@ -210,7 +210,7 @@ $sourceLang = [
         'context' => 'Short description shown under the decisions module title.',
     ],
     'decisions.index.new' => [
-        'text' => 'Nouvelle prise de décision',
+        'text' => 'Nouveau scrutin',
         'context' => 'Primary call to action opening the decision creation screen.',
     ],
     'decisions.index.context.organization_invalid' => [
@@ -1455,8 +1455,8 @@ if (!is_string($payloadJson)) {
 </div>
 </div>
 
-<script src="/common/drawer/subdrawer.js"></script>
-<link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260729-style-1">
+<script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
+<link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260813-decision-uniformity">
 <script src="/common/choice/decision_cards.js"></script>
 
 <style>
@@ -2892,6 +2892,7 @@ openDecisionEditor = function (url, title, description) {
         decisionDrawerController.setHeader({
             title: resolvedTitle,
             description: description || '',
+            help: '',
             actions: []
         });
     }
@@ -2928,6 +2929,24 @@ openDecisionEditor = function (url, title, description) {
 
             if (decisionDrawerController) {
                 decisionDrawerController.applyContentHeader(elements.editorBody);
+
+                const editorHeaderForm = elements.editorBody.querySelector('[data-omo-decision-editor-header-form]');
+                if (editorHeaderForm && editorHeaderForm.id) {
+                    const submitLabel = String(editorHeaderForm.getAttribute('data-omo-decision-editor-header-submit-label') || '').trim();
+                    decisionDrawerController.setHeader({
+                        title: String(editorHeaderForm.getAttribute('data-omo-decision-editor-header-title') || resolvedTitle),
+                        description: '',
+                        actions: submitLabel === '' ? [] : [{
+                            label: submitLabel,
+                            type: 'submit',
+                            className: 'generic-action-button generic-action-button--main',
+                            attributes: {
+                                form: editorHeaderForm.id,
+                                'data-omo-decision-editor-submit': ''
+                            }
+                        }]
+                    });
+                }
             }
 
             if (typeof window.omoDecisionVoteInit === 'function') {

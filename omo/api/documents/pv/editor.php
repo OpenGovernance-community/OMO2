@@ -180,7 +180,7 @@ $pvInvitationPopupUrl = '/omo/api/calendar/invitations_popup.php?oid=' . rawurle
     . '&pv_editor=1';
 
 $points = new \dbObject\ArrayDocumentPvPoint();
-$points->loadForDocument((int)$document->getId(), true);
+$points = $document->getVisiblePvPointsForUser($currentUserId, true);
 $groupSummaryMap = omoDocumentsPvEditorBuildGroupSummaryMap($points);
 $pointPositionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points);
 $authorOptions = $document->getPvPointAuthorOptions($organizationId);
@@ -1715,6 +1715,23 @@ foreach ($points as $point) {
         align-items: center;
         gap: 6px;
         min-width: 0;
+    }
+
+    .omo-pv-editor__point-confidential {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--color-text-light, #64748b);
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .omo-pv-editor__point-confidential input {
+        width: 15px;
+        height: 15px;
+        margin: 0;
     }
 
     .omo-pv-editor__point-author-select-shell {
@@ -5138,6 +5155,7 @@ foreach ($points as $point) {
         const durationField = card.querySelector('[data-omo-pv-point-duration="' + pointId + '"]');
         const authorField = card.querySelector('[data-omo-pv-point-author="' + pointId + '"]');
         const concernedHolonField = card.querySelector('[data-omo-pv-point-concerned-holon="' + pointId + '"]');
+        const confidentialField = card.querySelector('[data-omo-pv-point-confidential="' + pointId + '"]');
         const editorHost = card.querySelector('[data-omo-pv-point-editor-host="' + pointId + '"]');
         const sourceField = card.querySelector('[data-omo-pv-point-content-source="' + pointId + '"]');
 
@@ -5357,6 +5375,13 @@ foreach ($points as $point) {
                 });
             }
 
+            if (confidentialField) {
+                confidentialField.addEventListener('change', function () {
+                    ensurePointLock(pointId);
+                    markPointDirty(pointId, true);
+                });
+            }
+
             editorHost.addEventListener('focusin', function () {
                 setFocusedPoint(pointId);
                 ensurePointLock(pointId);
@@ -5486,6 +5511,7 @@ foreach ($points as $point) {
             const durationField = card.querySelector('[data-omo-pv-point-duration="' + pointId + '"]');
             const authorField = card.querySelector('[data-omo-pv-point-author="' + pointId + '"]');
             const concernedHolonField = card.querySelector('[data-omo-pv-point-concerned-holon="' + pointId + '"]');
+            const confidentialField = card.querySelector('[data-omo-pv-point-confidential="' + pointId + '"]');
             const editorHost = card.querySelector('[data-omo-pv-point-editor-host="' + pointId + '"]');
             const sourceField = card.querySelector('[data-omo-pv-point-content-source="' + pointId + '"]');
             const statusNode = card.querySelector('[data-omo-pv-point-status="' + pointId + '"]');
@@ -5499,6 +5525,7 @@ foreach ($points as $point) {
                 desiredDurationMinutes: durationField ? String(durationField.value || '') : '',
                 authorValue: authorField ? String(authorField.value || '') : '',
                 concernedHolonId: concernedHolonField ? String(concernedHolonField.value || '0') : '0',
+                isConfidential: confidentialField ? !!confidentialField.checked : false,
                 content: htmlField && typeof htmlField.getValue === 'function'
                     ? String(htmlField.getValue() || '')
                     : (sourceField ? String(sourceField.value || '') : ''),
@@ -5596,6 +5623,7 @@ foreach ($points as $point) {
             const durationField = card.querySelector('[data-omo-pv-point-duration="' + pointId + '"]');
             const authorField = card.querySelector('[data-omo-pv-point-author="' + pointId + '"]');
             const concernedHolonField = card.querySelector('[data-omo-pv-point-concerned-holon="' + pointId + '"]');
+            const confidentialField = card.querySelector('[data-omo-pv-point-confidential="' + pointId + '"]');
             const editorHost = card.querySelector('[data-omo-pv-point-editor-host="' + pointId + '"]');
             const sourceField = card.querySelector('[data-omo-pv-point-content-source="' + pointId + '"]');
             const statusNode = card.querySelector('[data-omo-pv-point-status="' + pointId + '"]');
@@ -5620,6 +5648,10 @@ foreach ($points as $point) {
 
             if (concernedHolonField) {
                 concernedHolonField.value = String(draft.concernedHolonId || '0');
+            }
+
+            if (confidentialField) {
+                confidentialField.checked = draft.isConfidential === true;
             }
 
             applyEditorDraft(pointId, draft.content || '', 0);
@@ -6396,6 +6428,7 @@ foreach ($points as $point) {
         const durationField = card.querySelector('[data-omo-pv-point-duration="' + pointId + '"]');
         const authorField = card.querySelector('[data-omo-pv-point-author="' + pointId + '"]');
         const concernedHolonField = card.querySelector('[data-omo-pv-point-concerned-holon="' + pointId + '"]');
+        const confidentialField = card.querySelector('[data-omo-pv-point-confidential="' + pointId + '"]');
         const editorHost = card.querySelector('[data-omo-pv-point-editor-host="' + pointId + '"]');
         const statusNode = card.querySelector('[data-omo-pv-point-status="' + pointId + '"]');
         const htmlField = editorHost && editorHost.__omoPvPointField ? editorHost.__omoPvPointField : null;
@@ -6411,6 +6444,7 @@ foreach ($points as $point) {
         formData.append('desired_duration_minutes', durationField ? String(durationField.value || '') : '');
         formData.append('author', authorField ? String(authorField.value || '') : '');
         formData.append('concerned_holon_id', concernedHolonField ? String(concernedHolonField.value || '0') : '0');
+        formData.append('is_confidential', confidentialField && confidentialField.checked ? '1' : '0');
         formData.append('content', htmlField && typeof htmlField.getValue === 'function' ? String(htmlField.getValue() || '') : '');
 
         card.setAttribute('data-omo-pv-point-saving', '1');
@@ -6426,7 +6460,7 @@ foreach ($points as $point) {
         })
             .then(function (response) {
                 return response.json().then(function (payload) {
-                    if (!response.ok || !payload || payload.status !== true || !payload.point) {
+                    if (!response.ok || !payload || payload.status !== true || (!payload.point && !payload.hiddenPointId)) {
                         throw payload || new Error('save_failed');
                     }
 
@@ -6436,6 +6470,11 @@ foreach ($points as $point) {
             .then(function (payload) {
                 const hasChangesAfterSaveStarted = (pointChangeVersions.get(pointId) || 0) !== savedChangeVersion;
                 const drafts = hasChangesAfterSaveStarted ? captureDraftState() : null;
+                if (payload.hiddenPointId) {
+                    activeLockPointIds.delete(pointId);
+                    renderPointCollection(Array.isArray(payload.points) ? payload.points : [], true);
+                    return;
+                }
                 const nextCard = replacePointHtml(payload.point);
                 activeLockPointIds.delete(pointId);
                 if (hasChangesAfterSaveStarted && drafts && drafts[pointId]) {

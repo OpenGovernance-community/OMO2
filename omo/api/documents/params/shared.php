@@ -1,5 +1,7 @@
 <?php
 
+require_once dirname(__DIR__, 4) . '/common/etherpad.php';
+
 if (!function_exists('omoDocumentsParamsSourceLang')) {
     function omoDocumentsParamsSourceLang()
     {
@@ -25,6 +27,23 @@ if (!function_exists('omoDocumentsParamsSourceLang')) {
             'documents.params.field.folder' => ['text' => 'Dossier distant', 'context' => 'Label of the remote Nextcloud folder field.'],
             'documents.params.field.folder_hint' => ['text' => 'Optionnel. Si vide, OMO utilisera directement un dossier omo-documents à la racine du compte.', 'context' => 'Hint shown below the remote Nextcloud folder field.'],
             'documents.params.field.default_visibility' => ['text' => 'Visibilite par defaut', 'context' => 'Label of the default document visibility selector in Documents settings.'],
+            'documents.params.section.nextcloud' => ['text' => 'Stockage Nextcloud', 'context' => 'Heading of the Nextcloud settings section.'],
+            'documents.params.section.etherpad' => ['text' => 'Documents Etherpad', 'context' => 'Heading of the Etherpad settings section.'],
+            'documents.params.status.etherpad_ready' => ['text' => 'Connexion Etherpad configuree pour les documents collaboratifs.', 'context' => 'Status text shown when Etherpad is configured.'],
+            'documents.params.status.etherpad_empty' => ['text' => 'Aucune connexion Etherpad configuree. Le type de document Etherpad ne sera pas propose.', 'context' => 'Status text shown when Etherpad is not configured.'],
+            'documents.params.status.etherpad_cookie_missing' => ['text' => 'Etherpad est configure, mais le domaine de cookie ne permet pas encore de transmettre les sessions OMO.', 'context' => 'Status text shown when Etherpad API works but browser sessions cannot be shared.'],
+            'documents.params.field.etherpad_base_url' => ['text' => 'URL du serveur Etherpad', 'context' => 'Label of the organization Etherpad URL field.'],
+            'documents.params.field.etherpad_base_url_hint' => ['text' => 'Laissez vide pour utiliser le serveur Etherpad defini dans les secrets du serveur.', 'context' => 'Hint below the organization Etherpad URL field.'],
+            'documents.params.field.etherpad_api_key' => ['text' => 'Cle API Etherpad', 'context' => 'Label of the organization Etherpad API key field.'],
+            'documents.params.field.etherpad_api_key_hint' => ['text' => 'Laissez vide pour utiliser la cle API globale avec le serveur global. Un autre serveur exige sa propre cle.', 'context' => 'Hint below the organization Etherpad API key field.'],
+            'documents.params.field.etherpad_api_key_placeholder_new' => ['text' => 'Cle API Etherpad de cette organisation', 'context' => 'Placeholder for a fresh Etherpad API key.'],
+            'documents.params.field.etherpad_api_key_placeholder_keep' => ['text' => 'Laisser vide pour conserver la cle actuelle', 'context' => 'Placeholder when an Etherpad API key override exists.'],
+            'documents.params.field.etherpad_clear' => ['text' => 'Supprimer la configuration Etherpad propre a cette organisation', 'context' => 'Checkbox label used to clear the Etherpad configuration.'],
+            'documents.params.feedback.etherpad_cleared' => ['text' => 'Configuration Etherpad de l organisation supprimee; les secrets globaux s appliquent a nouveau.', 'context' => 'Success message returned after clearing Etherpad configuration.'],
+            'documents.params.feedback.etherpad_invalid' => ['text' => 'L URL du serveur Etherpad doit etre une adresse http ou https valide.', 'context' => 'Error returned when the Etherpad URL is invalid.'],
+            'documents.params.feedback.etherpad_incomplete' => ['text' => 'Une cle API propre est requise lorsque l organisation utilise un autre serveur Etherpad.', 'context' => 'Error returned when a custom Etherpad server has no organization API key.'],
+            'documents.params.feedback.etherpad_server_in_use' => ['text' => 'Le serveur Etherpad ne peut pas etre change tant que cette organisation possede des documents Etherpad.', 'context' => 'Error returned when changing an Etherpad server that still owns organization pads.'],
+            'documents.params.feedback.etherpad_config_in_use' => ['text' => 'Cette configuration Etherpad ne peut pas etre supprimee tant que l organisation possede des documents Etherpad.', 'context' => 'Error returned when clearing credentials still needed by organization pads.'],
             'documents.params.field.default_edit_visibility' => ['text' => 'Edition par defaut', 'context' => 'Label of the default document edit visibility selector in Documents settings.'],
             'documents.params.field.default_visibility_hint' => ['text' => 'Valeur initiale proposee lors de la creation d un document.', 'context' => 'Hint shown below the default visibility selector in Documents settings.'],
             'documents.params.field.default_edit_visibility_hint' => ['text' => 'Definit qui peut modifier un nouveau document par defaut.', 'context' => 'Hint shown below the default edit visibility selector in Documents settings.'],
@@ -153,6 +172,129 @@ if (!function_exists('omoDocumentsParamsNormalizeNextcloudBaseUrl')) {
         }
 
         return rtrim($normalizedBaseUrl, '/');
+    }
+}
+
+if (!function_exists('omoDocumentsParamsNormalizeEtherpadConfig')) {
+    function omoDocumentsParamsNormalizeEtherpadConfig(array $config): array
+    {
+        return array(
+            'baseUrl' => omoEtherpadNormalizeBaseUrl((string)($config['baseUrl'] ?? '')),
+            'apiKey' => trim((string)($config['apiKey'] ?? '')),
+        );
+    }
+}
+
+if (!function_exists('omoDocumentsParamsExtractEtherpadPayload')) {
+    function omoDocumentsParamsExtractEtherpadPayload(array $parameters): array
+    {
+        return isset($parameters['etherpad']) && is_array($parameters['etherpad'])
+            ? $parameters['etherpad']
+            : array();
+    }
+}
+
+if (!function_exists('omoDocumentsParamsGetEtherpadConfig')) {
+    function omoDocumentsParamsGetEtherpadConfig(\dbObject\Organization $organization, ?\dbObject\OrganizationApplication $organizationApplication = null): array
+    {
+        $appParameters = $organizationApplication
+            ? $organizationApplication->getParametersArray()
+            : $organization->getApplicationParametersByDirectory('documents');
+        $storedConfig = omoDocumentsParamsNormalizeEtherpadConfig(omoDocumentsParamsExtractEtherpadPayload($appParameters));
+        return omoEtherpadResolveConfig($storedConfig);
+    }
+}
+
+if (!function_exists('omoDocumentsParamsHasEtherpadConfig')) {
+    function omoDocumentsParamsHasEtherpadConfig(array $config): bool
+    {
+        $config = omoDocumentsParamsNormalizeEtherpadConfig($config);
+        return $config['baseUrl'] !== '' && $config['apiKey'] !== '';
+    }
+}
+
+if (!function_exists('omoDocumentsParamsStoreEtherpadConfig')) {
+    function omoDocumentsParamsStoreEtherpadConfig(\dbObject\Organization $organization, array $values, bool $preserveExistingApiKey = true): array
+    {
+        $organizationId = (int)$organization->getId();
+        $organizationApplication = $organizationId > 0
+            ? omoDocumentsParamsGetApplicationLink($organizationId, true)
+            : null;
+        if (!$organizationApplication) {
+            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.unavailable'));
+        }
+
+        $parameters = $organizationApplication->getParametersArray();
+        $storedConfig = omoDocumentsParamsNormalizeEtherpadConfig(omoDocumentsParamsExtractEtherpadPayload($parameters));
+        if (!empty($values['etherpad_clear_config'])) {
+            $currentConfig = omoEtherpadResolveConfig($storedConfig);
+            $globalConfig = omoEtherpadResolveConfig();
+            if (
+                \dbObject\Document::organizationHasEtherpadDocuments($organizationId)
+                && (
+                    !hash_equals($currentConfig['baseUrl'], $globalConfig['baseUrl'])
+                    || $globalConfig['apiKey'] === ''
+                )
+            ) {
+                return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.etherpad_config_in_use'));
+            }
+
+            unset($parameters['etherpad']);
+            $organizationApplication->setParametersArray($parameters);
+            $saveResult = $organizationApplication->save();
+            return is_array($saveResult) && !empty($saveResult['status'])
+                ? array('status' => true, 'text' => omoDocumentsParamsT('documents.params.feedback.etherpad_cleared'))
+                : array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.save_failed'));
+        }
+
+        $baseUrlInput = trim((string)($values['etherpad_base_url'] ?? ''));
+        $baseUrl = omoEtherpadNormalizeBaseUrl($baseUrlInput);
+        $apiKey = trim((string)($values['etherpad_api_key'] ?? ''));
+        if ($baseUrlInput !== '' && $baseUrl === '') {
+            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.etherpad_invalid'));
+        }
+
+        $globalConfig = omoEtherpadResolveConfig();
+        $currentBaseUrl = $storedConfig['baseUrl'] !== '' ? $storedConfig['baseUrl'] : $globalConfig['baseUrl'];
+        $nextBaseUrl = $baseUrl !== '' ? $baseUrl : $globalConfig['baseUrl'];
+        if (
+            !hash_equals($currentBaseUrl, $nextBaseUrl)
+            && \dbObject\Document::organizationHasEtherpadDocuments($organizationId)
+        ) {
+            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.etherpad_server_in_use'));
+        }
+        if (
+            $preserveExistingApiKey
+            && $apiKey === ''
+            && $storedConfig['apiKey'] !== ''
+            && $currentBaseUrl !== ''
+            && $nextBaseUrl !== ''
+            && hash_equals($currentBaseUrl, $nextBaseUrl)
+        ) {
+            $apiKey = $storedConfig['apiKey'];
+        }
+
+        $normalizedConfig = omoDocumentsParamsNormalizeEtherpadConfig(array(
+            'baseUrl' => $baseUrl,
+            'apiKey' => $apiKey,
+        ));
+        if ($normalizedConfig['baseUrl'] === '' && $normalizedConfig['apiKey'] === '') {
+            unset($parameters['etherpad']);
+        } else {
+            $resolvedConfig = omoEtherpadResolveConfig($normalizedConfig);
+            if ($resolvedConfig['baseUrl'] === '' || $resolvedConfig['apiKey'] === '') {
+                return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.etherpad_incomplete'));
+            }
+            $parameters['etherpad'] = $normalizedConfig;
+        }
+
+        $organizationApplication->setParametersArray($parameters);
+        $saveResult = $organizationApplication->save();
+        if (!is_array($saveResult) || empty($saveResult['status'])) {
+            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.save_failed'));
+        }
+
+        return array('status' => true, 'text' => omoDocumentsParamsT('documents.params.feedback.saved'), 'config' => $normalizedConfig);
     }
 }
 

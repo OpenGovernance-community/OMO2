@@ -4,6 +4,8 @@ require_once __DIR__ . '/shared.php';
 
 use dbObject\StatIndicator;
 use dbObject\StatIndicatorReferencePoint;
+use dbObject\ArrayDocument;
+use dbObject\Document;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
@@ -86,6 +88,28 @@ foreach (StatIndicator::getMeasurementFrequencyCatalog() as $frequency) {
     $measurementScheduleOptions[$frequency] = omoStatsMeasurementScheduleOptions($frequency);
 }
 
+$isEthercalcSource = $indicatorId > 0 && $indicator->isEthercalcSource();
+$ethercalcDocuments = [];
+if ($isEthercalcSource) {
+    $documents = new ArrayDocument();
+    $documents->load([
+        'where' => [
+            ['field' => 'IDorganization', 'value' => $organizationId],
+            ['field' => 'active', 'value' => 1],
+        ],
+        'orderBy' => [
+            ['field' => 'title', 'dir' => 'ASC'],
+            ['field' => 'id', 'dir' => 'ASC'],
+        ],
+    ]);
+    $documents->filterVisibleForCurrentViewer($organizationId);
+    foreach ($documents as $document) {
+        if ($document instanceof Document && $document->isEthercalcDocument() && $document->getEthercalcRoomId() !== '') {
+            $ethercalcDocuments[] = $document;
+        }
+    }
+}
+
 if (count($referencePoints) === 0 || $referenceType === StatIndicator::REFERENCE_CEILING) {
     $startValue = $referenceType === StatIndicator::REFERENCE_CEILING && is_numeric($ceilingValue)
         ? (float)$ceilingValue
@@ -110,6 +134,52 @@ usort($referencePoints, static function (StatIndicatorReferencePoint $left, Stat
 
 ob_start();
 ?>
+<?php if ($isEthercalcSource): ?>
+    <section class="generic-section generic-section--stack generic-form-section">
+        <div class="generic-form-section__heading">
+            <div class="generic-form-section__copy">
+                <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.source_title')) ?></h3>
+            </div>
+        </div>
+        <div class="generic-form-grid">
+            <label class="omo-stats-field generic-form-field">
+                <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.document')) ?></span>
+                <select class="generic-form-control" name="ethercalc_document_id" required>
+                    <?php foreach ($ethercalcDocuments as $document): ?>
+                        <option value="<?= (int)$document->getId() ?>"<?= (int)$document->getId() === (int)$indicator->get('IDdocument') ? ' selected' : '' ?>><?= omoApiEscape((string)$document->get('title')) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <?php if ($indicator->isEthercalcCellSource()): ?>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.cell')) ?></span>
+                    <input type="text" class="generic-form-control" name="ethercalc_cell" value="<?= omoApiEscape((string)$indicator->get('ethercalc_cell')) ?>" placeholder="A1" required>
+                </label>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.frequency')) ?></span>
+                    <select class="generic-form-control" name="ethercalc_frequency">
+                        <?php foreach (StatIndicator::getEthercalcFrequencyCatalog() as $frequency => $label): ?>
+                            <option value="<?= omoApiEscape($frequency) ?>"<?= $frequency === StatIndicator::normalizeEthercalcFrequency($indicator->get('ethercalc_frequency')) ? ' selected' : '' ?>><?= omoApiEscape(omoStatsT('stats.import.ethercalc.frequency_' . $frequency)) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+            <?php else: ?>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.range')) ?></span>
+                    <input type="text" class="generic-form-control" name="ethercalc_range" value="<?= omoApiEscape((string)$indicator->get('ethercalc_range')) ?>" placeholder="A1:C100" required>
+                </label>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.date_column')) ?></span>
+                    <input type="text" class="generic-form-control" name="ethercalc_date_column" value="<?= omoApiEscape((string)$indicator->get('ethercalc_date_column')) ?>" placeholder="A" required>
+                </label>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.value_columns')) ?></span>
+                    <input type="text" class="generic-form-control" name="ethercalc_value_columns" value="<?= omoApiEscape((string)$indicator->get('ethercalc_value_column')) ?>" placeholder="B,C" required>
+                </label>
+            <?php endif; ?>
+        </div>
+    </section>
+<?php endif; ?>
 <section class="generic-section generic-section--stack generic-form-section omo-stats-schedule" data-omo-stats-schedule>
     <div class="omo-stats-schedule__heading generic-form-section__heading">
         <div class="generic-form-section__copy">
@@ -224,7 +294,7 @@ ob_start();
 <?php
 $afterTableHtml = ob_get_clean();
 $params = [
-    'fields' => ['name', 'description', 'source_url', 'chart_min_value', 'show_cumulative', 'reference_type'],
+    'fields' => array_values(array_filter(['name', 'description', $isEthercalcSource ? null : 'source_url', 'chart_min_value', 'show_cumulative', 'reference_type'])),
     'buttons' => false,
     'action' => '/omo/api/stats/action.php',
     'success' => 'omoStatsAfterIndicatorSave()',

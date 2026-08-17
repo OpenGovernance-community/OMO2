@@ -725,6 +725,45 @@ LOCK TABLES `decision_proposal` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `decision_governance_action`
+--
+
+DROP TABLE IF EXISTS `decision_governance_action`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `decision_governance_action` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDdecision_proposal` int(11) NOT NULL,
+  `action_type` varchar(60) NOT NULL,
+  `target_type` varchar(40) NOT NULL,
+  `target_id` int(11) DEFAULT NULL,
+  `before_state` mediumtext DEFAULT NULL,
+  `after_state` mediumtext DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL,
+  `position` int(11) NOT NULL DEFAULT 0,
+  `status` varchar(30) NOT NULL DEFAULT 'pending',
+  `status_message` text DEFAULT NULL,
+  `applied_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_decision_governance_action_proposal` (`IDdecision_proposal`,`position`),
+  KEY `idx_decision_governance_action_target` (`target_type`,`target_id`),
+  KEY `idx_decision_governance_action_status` (`status`),
+  CONSTRAINT `fk_decision_governance_action_proposal` FOREIGN KEY (`IDdecision_proposal`) REFERENCES `decision_proposal` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `decision_governance_action`
+--
+
+LOCK TABLES `decision_governance_action` WRITE;
+/*!40000 ALTER TABLE `decision_governance_action` DISABLE KEYS */;
+/*!40000 ALTER TABLE `decision_governance_action` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `chat_thread`
 --
 
@@ -889,6 +928,8 @@ CREATE TABLE `document` (
   `storedfilename` varchar(255) DEFAULT NULL,
   `storedfilemime` varchar(255) DEFAULT NULL,
   `storedfilesize` int(11) DEFAULT NULL,
+  `etherpadpadid` varchar(255) DEFAULT NULL,
+  `ethercalcroomid` varchar(255) DEFAULT NULL,
   `IDdocument_parent` int(11) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `datemodification` datetime DEFAULT NULL,
@@ -978,6 +1019,7 @@ CREATE TABLE `document_pv_point` (
   `actual_duration_minutes` int(11) DEFAULT NULL,
   `pointtype` varchar(20) NOT NULL DEFAULT 'information',
   `is_handled` tinyint(1) NOT NULL DEFAULT 0,
+  `is_confidential` tinyint(1) NOT NULL DEFAULT 0,
   `active` tinyint(1) NOT NULL DEFAULT 1,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `datemodification` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -1010,7 +1052,7 @@ CREATE TABLE `document_pv_point` (
 
 LOCK TABLES `document_pv_point` WRITE;
 /*!40000 ALTER TABLE `document_pv_point` DISABLE KEYS */;
-INSERT INTO `document_pv_point` VALUES
+INSERT INTO `document_pv_point` (`id`, `IDdocument`, `item_type`, `IDparent`, `title`, `IDuser_author`, `IDuser_modification`, `IDuser_editing`, `edit_lock_token`, `author_email`, `IDholon_concerned`, `content`, `position`, `desired_duration_minutes`, `actual_duration_minutes`, `pointtype`, `is_handled`, `active`, `datecreation`, `datemodification`, `dateedition`) VALUES
 (2315,2305,'point',NULL,'Revue des indicateurs',1,1,NULL,NULL,NULL,NULL,'<h3>Indicateurs financiers</h3><p><span class=\"omo-indicator-embed omo-indicator-embed--current\" contenteditable=\"false\" data-omo-embed-type=\"indicator\" data-omo-indicator-id=\"1\" data-omo-indicator-kind=\"group\" data-omo-indicator-title=\"Liquidités\" data-omo-indicator-value=\"2 indicateurs\" data-omo-indicator-context=\"Groupe cumule\" data-omo-indicator-status=\"A jour\"><span class=\"omo-indicator-embed__main\"><span class=\"omo-indicator-embed__chart\"><span class=\"omo-indicator-embed__chart-plot\"><span class=\"omo-indicator-embed__chart-svg\"><svg class=\"omo-stats-chart omo-stats-chart--compact omo-stats-chart--group\" viewBox=\"0 0 180 54\" aria-hidden=\"true\"><polyline class=\"omo-stats-chart__line omo-stats-chart__line--sum\" points=\"3,11.07 91.43,10.76 94.28,10.78 177,11.22\" style=\"stroke:#2563eb\"></polyline><line class=\"omo-stats-chart__scale-line\" x1=\"21\" y1=\"3\" x2=\"177\" y2=\"3\"></line><line class=\"omo-stats-chart__scale-line\" x1=\"21\" y1=\"51\" x2=\"177\" y2=\"51\"></line><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"7\">100 000</text><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"51\">0</text></svg></span></span></span><span class=\"omo-indicator-embed__copy\"><strong><a class=\"omo-indicator-embed__title\" href=\"#stats\"><span class=\"omo-indicator-embed__status-dot omo-indicator-embed__status-dot--current\" aria-hidden=\"true\"></span><span>Liquidités</span></a></strong></span><span class=\"omo-indicator-embed__values\"><b>2 indicateurs</b><em>A jour</em></span></span></span><span class=\"omo-indicator-embed omo-indicator-embed--current\" contenteditable=\"false\" data-omo-embed-type=\"indicator\" data-omo-indicator-id=\"1\" data-omo-indicator-kind=\"indicator\" data-omo-indicator-title=\"Solde du compte bancaire\" data-omo-indicator-description=\"Cash disponible sur le compte bancaire\" data-omo-indicator-value=\"82 345\" data-omo-indicator-date=\"01.07.2026\" data-omo-indicator-context=\"Comptabilite et budget\" data-omo-indicator-chart-min=\"82 200\" data-omo-indicator-chart-max=\"83 600\" data-omo-indicator-status=\"A jour\"><span class=\"omo-indicator-embed__main\"><span class=\"omo-indicator-embed__chart\"><span class=\"omo-indicator-embed__chart-plot\"><span class=\"omo-indicator-embed__chart-svg\"><svg class=\"omo-stats-chart omo-stats-chart--compact\" viewBox=\"0 0 180 54\" aria-hidden=\"true\"><polyline class=\"omo-stats-chart__line\" points=\"2,6.62 91.44,5 178,7.31\"></polyline><circle class=\"omo-stats-chart__point\" cx=\"178\" cy=\"7.31\" r=\"2.5\"></circle><line class=\"omo-stats-chart__scale-line\" x1=\"20\" y1=\"2\" x2=\"178\" y2=\"2\"></line><line class=\"omo-stats-chart__scale-line\" x1=\"20\" y1=\"52\" x2=\"178\" y2=\"52\"></line><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"6\">85 000</text><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"52\">60 000</text></svg></span></span></span><span class=\"omo-indicator-embed__copy\"><strong><a class=\"omo-indicator-embed__title\" href=\"#stats-i1\"><span class=\"omo-indicator-embed__status-dot omo-indicator-embed__status-dot--current\" aria-hidden=\"true\"></span><span>Solde du compte bancaire</span></a></strong><span class=\"omo-indicator-embed__description\">Cash disponible sur le compte bancaire</span></span><span class=\"omo-indicator-embed__values\"><b>82 345</b><time>01.07.2026</time><em>A jour</em></span></span></span><span class=\"omo-indicator-embed omo-indicator-embed--current\" contenteditable=\"false\" data-omo-embed-type=\"indicator\" data-omo-indicator-id=\"2\" data-omo-indicator-kind=\"indicator\" data-omo-indicator-title=\"Solde en caisse\" data-omo-indicator-description=\"Montant disponible en liquide dans la caisse\" data-omo-indicator-value=\"536\" data-omo-indicator-date=\"01.07.2026\" data-omo-indicator-context=\"Comptabilite et budget\" data-omo-indicator-chart-min=\"300\" data-omo-indicator-chart-max=\"550\" data-omo-indicator-status=\"A jour\"><span class=\"omo-indicator-embed__main\"><span class=\"omo-indicator-embed__chart\"><span class=\"omo-indicator-embed__chart-plot\"><span class=\"omo-indicator-embed__chart-svg\"><svg class=\"omo-stats-chart omo-stats-chart--compact\" viewBox=\"0 0 180 54\" aria-hidden=\"true\"><polyline class=\"omo-stats-chart__line\" points=\"2,11.33 94.33,24.58 178,7.33\"></polyline><circle class=\"omo-stats-chart__point\" cx=\"178\" cy=\"7.33\" r=\"2.5\"></circle><line class=\"omo-stats-chart__scale-line\" x1=\"20\" y1=\"2\" x2=\"178\" y2=\"2\"></line><line class=\"omo-stats-chart__scale-line\" x1=\"20\" y1=\"52\" x2=\"178\" y2=\"52\"></line><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"6\">600</text><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"52\">0</text></svg></span></span></span><span class=\"omo-indicator-embed__copy\"><strong><a class=\"omo-indicator-embed__title\" href=\"#stats-i2\"><span class=\"omo-indicator-embed__status-dot omo-indicator-embed__status-dot--current\" aria-hidden=\"true\"></span><span>Solde en caisse</span></a></strong><span class=\"omo-indicator-embed__description\">Montant disponible en liquide dans la caisse</span></span><span class=\"omo-indicator-embed__values\"><b>536</b><time>01.07.2026</time><em>A jour</em></span></span></span><br></p>',1,NULL,NULL,'information',0,1,'2026-07-24 08:37:33','2026-07-24 09:54:44',NULL),
 (2316,2305,'point',NULL,'Revue des checklists',1,1,NULL,NULL,NULL,682,'<p><span class=\"omo-checklist-embed\" contenteditable=\"false\" data-omo-embed-type=\"checklist\" data-omo-checklist-id=\"2\" data-omo-checklist-title=\"Factures récurrentes\"><strong><a href=\"#checklist-c2\">Factures récurrentes</a></strong><em>Gestion administrative</em></span><span class=\"omo-checklist-embed\" contenteditable=\"false\" data-omo-embed-type=\"checklist\" data-omo-checklist-id=\"1\" data-omo-checklist-title=\"Processus d\'accueil des nouveaux et nouvelles\"><strong><a href=\"#checklist-c1\">Processus d\'accueil des nouveaux et nouvelles</a></strong><em>Inclusion</em></span><br></p>',2,NULL,NULL,'information',0,1,'2026-07-24 08:57:32','2026-07-24 07:37:32',NULL),
 (2317,2305,'point',NULL,'Revue des projets',1,1,NULL,NULL,NULL,NULL,'<h3>Projets stratégiques:</h3><p><span class=\"omo-project-embed\" contenteditable=\"false\" data-omo-embed-type=\"project\" data-omo-project-id=\"9\" data-omo-project-title=\"Consolider nos pratiques administratives\"><strong><a href=\"#projects-d9\">Consolider nos pratiques administratives</a><a href=\"/omo/c/678#projects-d9\" target=\"_blank\" rel=\"noopener noreferrer\">↗</a><em>En cours</em><em>En cours</em><em>En cours</em><em>P2</em><em>M</em></strong><em>Ancrage · Admin · Planifie 01.01.2026 · Fin 31.12.2026</em></span><span class=\"omo-project-embed\" contenteditable=\"false\" data-omo-embed-type=\"project\" data-omo-project-id=\"8\" data-omo-project-title=\"Elargir notre réseau professionnel\"><strong><a href=\"#projects-d8\">Elargir notre réseau professionnel</a><a href=\"/omo/c/678#projects-d8\" target=\"_blank\" rel=\"noopener noreferrer\">↗</a><em>En cours</em><em>En cours</em><em>En cours</em><em>P2</em><em>M</em></strong><em>Ancrage · Admin · Planifie 01.01.2026 · Fin 31.12.2026</em></span><span class=\"omo-project-embed\" contenteditable=\"false\" data-omo-embed-type=\"project\" data-omo-project-id=\"7\" data-omo-project-title=\"Refondre notre communication et notre marketing\"><strong><a href=\"#projects-d7\">Refondre notre communication et notre marketing</a><a href=\"/omo/c/678#projects-d7\" target=\"_blank\" rel=\"noopener noreferrer\">↗</a><em>En cours</em><em>En cours</em><em>En cours</em><em>P3</em><em>M</em></strong><em>Ancrage · Admin · Planifie 01.01.2026 · Fin 31.12.2026</em></span><br></p>',3,NULL,NULL,'information',0,1,'2026-07-24 09:00:17','2026-07-24 09:54:44',NULL);
@@ -3601,6 +3643,7 @@ CREATE TABLE `notification_preference` (
   `channel_push` tinyint(1) NOT NULL DEFAULT 0,
   `channel_telegram` tinyint(1) NOT NULL DEFAULT 0,
   `channel_email` tinyint(1) NOT NULL DEFAULT 0,
+  `parameters` text DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
@@ -3737,6 +3780,7 @@ CREATE TABLE `user_holon` (
   `IDuser` int(11) NOT NULL,
   `IDholon` int(11) NOT NULL,
   `parameters` mediumtext DEFAULT NULL,
+  `focus` varchar(250) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateconnexion` datetime DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT 0,
@@ -3753,13 +3797,13 @@ CREATE TABLE `user_holon` (
 LOCK TABLES `user_holon` WRITE;
 /*!40000 ALTER TABLE `user_holon` DISABLE KEYS */;
 INSERT INTO `user_holon` VALUES
-(1,1,1,NULL,'2024-03-05 16:43:15',NULL,1),
-(2,1,683,'[]','2026-07-23 13:38:59',NULL,0),
-(3,1,693,NULL,'2026-07-23 13:48:17',NULL,1),
-(4,1,692,NULL,'2026-07-23 13:49:46',NULL,1),
-(5,1,682,NULL,'2026-07-23 13:50:25',NULL,1),
-(6,1,708,NULL,'2026-07-23 13:51:33',NULL,1),
-(7,1,833,'{\"isAdmin\":true}','2026-07-28 09:08:57',NULL,1);
+(1,1,1,NULL,NULL,'2024-03-05 16:43:15',NULL,1),
+(2,1,683,'[]',NULL,'2026-07-23 13:38:59',NULL,0),
+(3,1,693,NULL,NULL,'2026-07-23 13:48:17',NULL,1),
+(4,1,692,NULL,NULL,'2026-07-23 13:49:46',NULL,1),
+(5,1,682,NULL,NULL,'2026-07-23 13:50:25',NULL,1),
+(6,1,708,NULL,NULL,'2026-07-23 13:51:33',NULL,1),
+(7,1,833,'{\"isAdmin\":true}',NULL,'2026-07-28 09:08:57',NULL,1);
 /*!40000 ALTER TABLE `user_holon` ENABLE KEYS */;
 UNLOCK TABLES;
 

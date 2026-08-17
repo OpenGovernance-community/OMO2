@@ -1,0 +1,11 @@
+{
+  "name": "ep_omo_theme",
+  "version": "1.0.0",
+  "description": "Synchronize Etherpad colors with the OMO theme preference.",
+  "keywords": [
+    "etherpad",
+    "omo",
+    "theme"
+  ],
+  "license": "AGPL-3.0-or-later"
+}

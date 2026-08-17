@@ -265,6 +265,6 @@ $texts = [
         </div>
     </div>
 </div>
-<script src="/common/drawer/subdrawer.js"></script>
+<script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260804-indicator-group-route"></script>
 <script src="/omo/api/checklist/checklist.js?v=20260805-checklist-list-menu"></script>

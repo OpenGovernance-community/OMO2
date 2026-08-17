@@ -19,7 +19,7 @@ class StatIndicatorGroup extends DbObject
             [['IDorganization', 'IDholon', 'IDuser'], 'fk'],
             [['name', 'display_mode', 'reference_type'], 'string'],
             [['chart_min_value'], 'float'],
-            [['active'], 'boolean'],
+            [['hide_same_holon_sources', 'active'], 'boolean'],
             [['created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],
         ];
@@ -36,6 +36,7 @@ class StatIndicatorGroup extends DbObject
             'display_mode' => 'Affichage',
             'reference_type' => 'Type de reference',
             'chart_min_value' => 'Valeur basse du graphique',
+            'hide_same_holon_sources' => 'Masquer les indicateurs du meme holon',
             'active' => 'Actif',
             'created_at' => 'Creation',
             'updated_at' => 'Mise a jour',
@@ -54,6 +55,7 @@ class StatIndicatorGroup extends DbObject
     {
         $this->set('display_mode', self::normalizeDisplayMode($this->get('display_mode')));
         $this->set('reference_type', StatIndicator::normalizeReferenceType($this->get('reference_type')));
+        $this->set('hide_same_holon_sources', (int)$this->get('hide_same_holon_sources') > 0 ? 1 : 0);
         return parent::save();
     }
 

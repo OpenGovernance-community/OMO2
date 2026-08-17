@@ -45,12 +45,12 @@ if (!function_exists('omoDecisionConsentGetChoiceUiMap')) {
             ],
             'no_objection' => [
                 'label' => 'Pas d objection',
-                'icon_url' => '/common/choice/assets/consent-no-objection.png',
+                'icon_url' => '/common/choice/assets/consent-favor.png',
                 'theme' => 'no_objection',
             ],
             'favor' => [
                 'label' => 'Pour',
-                'icon_url' => '/common/choice/assets/consent-favor.png',
+                'icon_url' => '/common/choice/assets/consent-no-objection.png',
                 'theme' => 'favor',
             ],
         ];
@@ -76,6 +76,7 @@ if (!function_exists('omoDecisionConsentBuildConfig')) {
                 || array_key_exists('allow_anonymous_votes', $decisionOrParameters)
                 || array_key_exists('allow_consultation_proposals', $decisionOrParameters)
                 || array_key_exists('allow_proposal_discussions', $decisionOrParameters)
+                || array_key_exists('show_live_results', $decisionOrParameters)
                 || array_key_exists('vote_weight_enabled', $decisionOrParameters)
             );
         if ($isConfigLikeArray) {
@@ -93,6 +94,7 @@ if (!function_exists('omoDecisionConsentBuildConfig')) {
             'allow_anonymous_votes' => !empty($methodParameters['allow_anonymous_votes']),
             'allow_consultation_proposals' => !empty($methodParameters['allow_consultation_proposals']),
             'allow_proposal_discussions' => !array_key_exists('allow_proposal_discussions', $methodParameters) || !empty($methodParameters['allow_proposal_discussions']),
+            'show_live_results' => !empty($methodParameters['show_live_results']),
             'choices' => omoDecisionConsentGetChoices(),
             'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
             'vote_weight_question' => (string)$voteWeightConfig['question'],
@@ -112,6 +114,8 @@ if (!function_exists('omoDecisionConsentMergeConfigIntoParameters')) {
         $methodParameters['allow_anonymous_votes'] = !empty($config['allow_anonymous_votes']) ? 1 : 0;
         $methodParameters['allow_consultation_proposals'] = !empty($config['allow_consultation_proposals']) ? 1 : 0;
         $methodParameters['allow_proposal_discussions'] = !empty($config['allow_proposal_discussions']) ? 1 : 0;
+        $methodParameters['show_live_results'] = !empty($config['show_live_results']) ? 1 : 0;
+        unset($methodParameters['live_results_anonymous']);
         $methodParameters = omoDecisionBlockSettingsMergeVoteWeightConfig($methodParameters, [
             'vote_weight_enabled' => !empty($config['vote_weight_enabled']),
             'vote_weight_question' => $config['vote_weight_question'] ?? '',

@@ -15,6 +15,8 @@ $sourceLang = [
     'documents.detail.action.more' => ['text' => 'Plus d actions', 'context' => 'Accessible label for the read-only document action menu.'],
     'documents.detail.action.export_pdf' => ['text' => 'Exporter en PDF', 'context' => 'Action used to download a PV document as a PDF file.'],
     'documents.detail.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening the document editor from the document detail drawer.'],
+    'documents.detail.action.fullscreen' => ['text' => 'Plein écran', 'context' => 'Button used to show a collaborative document iframe in fullscreen.'],
+    'documents.detail.action.exit_fullscreen' => ['text' => 'Quitter le plein écran', 'context' => 'Button used to leave the collaborative document fullscreen mode.'],
     'documents.detail.alt_texts.title' => ['text' => 'Versions texte', 'context' => 'Section title listing alternate text versions.'],
     'documents.detail.alt_texts.fallback' => ['text' => 'Version texte', 'context' => 'Fallback title for an alternate text variant.'],
     'documents.detail.media.title' => ['text' => 'Médias associés', 'context' => 'Section title listing associated media.'],
@@ -104,6 +106,7 @@ $author = $document->getCreatedByDisplayName();
 $updatedBy = $document->getUpdatedByDisplayName();
 $visibility = $document->getVisibilityDisplayData($organizationId);
 $renderedContent = $document->getRenderedContentForCurrentViewer();
+$hasCollaborativeFrame = $document->isEtherpadDocument() || $document->isEthercalcDocument();
 $drawerTitle = trim((string)$document->get('title'));
 $drawerDescription = $createdAt instanceof DateTimeInterface ? $formatDateTime($createdAt) : '';
 $associatedEvent = $document->getAssociatedEvent();
@@ -114,8 +117,12 @@ $pdfExportUrl = $document->isPvDocument()
     ? '/omo/api/documents/pv/export_pdf.php?id=' . rawurlencode((string)(int)$document->getId())
         . '&oid=' . rawurlencode((string)$organizationId)
     : '';
+$canManageDocument = !$document->isPvDocument()
+    && $document->canManageInOrganizationContext($organizationId, $currentUserId, false);
+$canEditDocumentContent = !$document->isPvDocument()
+    && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
 $canEditDocument = !$document->isPvDocument()
-    && $document->canEditInOrganizationContext($organizationId, $currentUserId);
+    && ($canManageDocument || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && $canEditDocumentContent));
 $editUrl = $canEditDocument
     ? '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)
         . ($holonId > 0 ? '&cid=' . rawurlencode((string)$holonId) : '')
@@ -188,41 +195,33 @@ if ($associatedEvent instanceof \dbObject\Event) {
                     </details>
                 </div>
             <?php endif; ?>
-            <div class="omo-document-detail__meta">
-                <?php if ($createdAt instanceof DateTimeInterface): ?>
-                    <span class="omo-pill"><?= $escape($formatDateTime($createdAt)) ?></span>
-                <?php endif; ?>
-
-                <?php if ($updatedAt instanceof DateTimeInterface && (!$createdAt instanceof DateTimeInterface || $updatedAt != $createdAt)): ?>
-                    <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.updated', ['date' => $formatDateTime($updatedAt)])) ?></span>
-                <?php endif; ?>
-
-                <?php if ($author !== ''): ?>
-                    <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.author', ['name' => $author])) ?></span>
-                <?php endif; ?>
-
-                <?php if ($updatedBy !== '' && $updatedBy !== $author): ?>
-                    <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.updated_by', ['name' => $updatedBy])) ?></span>
-                <?php endif; ?>
-
-                <?php if (trim((string)($visibility['badgeText'] ?? '')) !== ''): ?>
-                    <span class="omo-pill"><?= $escape((string)$visibility['badgeText']) ?></span>
-                <?php endif; ?>
-            </div>
-
             <?php if ($description !== ''): ?>
                 <div class="omo-document-detail__summary omo-card">
                     <?= nl2br($escape($description)) ?>
                 </div>
             <?php endif; ?>
 
-            <?php if ($keywords !== ''): ?>
-                <div class="omo-document-detail__keywords">
+            <?php if ($keywords !== '' || $hasCollaborativeFrame): ?>
+                <div class="omo-document-detail__keyword-actions">
+                    <div class="omo-document-detail__keywords">
+                        <?php if ($keywords !== ''): ?>
                     <?php foreach (preg_split('/\s*,\s*/', $keywords) as $keyword): ?>
                         <?php if (trim((string)$keyword) !== ''): ?>
                             <span class="omo-pill"><?= $escape(trim((string)$keyword)) ?></span>
                         <?php endif; ?>
                     <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ($hasCollaborativeFrame): ?>
+                        <button
+                            type="button"
+                            class="generic-action-button generic-action-button--secondary omo-document-detail__fullscreen-button"
+                            data-omo-document-fullscreen
+                            data-omo-document-fullscreen-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.fullscreen')) ?>"
+                            data-omo-document-exit-fullscreen-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.exit_fullscreen')) ?>"
+                            aria-pressed="false"
+                        ><?= $escape(omoDocumentsDetailT('documents.detail.action.fullscreen')) ?></button>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
 
@@ -256,7 +255,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
             <?php endif; ?>
         </header>
 
-        <section class="omo-document-detail__section omo-card">
+        <section class="omo-document-detail__section">
             <div class="omo-document-detail__content prose">
                 <?= $renderedContent ?>
             </div>
@@ -322,6 +321,28 @@ if ($associatedEvent instanceof \dbObject\Event) {
                 </div>
             </section>
         <?php endif; ?>
+
+        <footer class="omo-document-detail__meta">
+            <?php if ($createdAt instanceof DateTimeInterface): ?>
+                <span class="omo-pill"><?= $escape($formatDateTime($createdAt)) ?></span>
+            <?php endif; ?>
+
+            <?php if ($updatedAt instanceof DateTimeInterface && (!$createdAt instanceof DateTimeInterface || $updatedAt != $createdAt)): ?>
+                <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.updated', ['date' => $formatDateTime($updatedAt)])) ?></span>
+            <?php endif; ?>
+
+            <?php if ($author !== ''): ?>
+                <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.author', ['name' => $author])) ?></span>
+            <?php endif; ?>
+
+            <?php if ($updatedBy !== '' && $updatedBy !== $author): ?>
+                <span class="omo-pill"><?= $escape(omoDocumentsDetailT('documents.detail.meta.updated_by', ['name' => $updatedBy])) ?></span>
+            <?php endif; ?>
+
+            <?php if (trim((string)($visibility['badgeText'] ?? '')) !== ''): ?>
+                <span class="omo-pill"><?= $escape((string)$visibility['badgeText']) ?></span>
+            <?php endif; ?>
+        </footer>
     </article>
 </div>
 
@@ -407,6 +428,46 @@ if ($associatedEvent instanceof \dbObject\Event) {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+}
+
+.omo-document-detail__keyword-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.omo-document-detail__keywords {
+    gap: 4px 6px;
+    min-width: 0;
+}
+
+.omo-document-detail__keywords .omo-pill {
+    min-height: 18px;
+    padding: 2px 7px;
+    font-size: 0.68rem;
+    line-height: 1.15;
+}
+
+.omo-document-detail__fullscreen-button {
+    flex: 0 0 auto;
+    min-height: 30px;
+    padding: 5px 10px;
+    font-size: 0.76rem;
+}
+
+.omo-document-detail__meta {
+    margin-top: 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-light);
+    font-size: 0.76rem;
+}
+
+.omo-document-detail__meta .omo-pill {
+    min-height: 20px;
+    padding: 3px 8px;
+    font-size: inherit;
 }
 
 .omo-document-detail__summary {
@@ -528,6 +589,32 @@ if ($associatedEvent instanceof \dbObject\Event) {
 
 .omo-document-detail__content .omo-document-file__download {
     justify-self: flex-start;
+}
+
+.omo-document-detail__content .omo-document-etherpad,
+.omo-document-detail__content .omo-document-ethercalc {
+    width: 100%;
+    min-height: 70vh;
+}
+
+.omo-document-detail__content .omo-document-etherpad__frame,
+.omo-document-detail__content .omo-document-ethercalc__frame {
+    display: block;
+    width: 100%;
+    min-height: 70vh;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.omo-document-detail__content .omo-document-etherpad__frame:fullscreen,
+.omo-document-detail__content .omo-document-ethercalc__frame:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    min-height: 100vh;
+    border: 0;
+    border-radius: 0;
 }
 
 .omo-document-detail__content .omo-document-embed {
@@ -656,6 +743,10 @@ if ($associatedEvent instanceof \dbObject\Event) {
 
     .omo-document-detail__event-grid {
         grid-template-columns: 1fr;
+    }
+
+    .omo-document-detail__keyword-actions {
+        align-items: flex-start;
     }
 }
 </style>

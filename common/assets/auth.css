@@ -625,7 +625,7 @@ body.auth-state-page--scrollable {
 
 .auth-org-card__header {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 10px;
     position: relative;
     z-index: 1;

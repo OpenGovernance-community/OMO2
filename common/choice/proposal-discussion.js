@@ -165,7 +165,7 @@
             + '  <label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Titre</span><input class="generic-form-control" type="text" name="title" maxlength="190" required></label>'
             + '  <label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Description</span><div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-proposal-editor-description></div><textarea hidden aria-hidden="true" name="description" data-omo-proposal-html-value></textarea></div></label>'
             + '  <label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Lien d information</span><input class="generic-form-control" type="url" name="info_url" maxlength="500" placeholder="https://..."></label>'
-            + '  <div style="display:flex;justify-content:flex-end;gap:8px;"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-proposal-editor-cancel>Annuler</button><button type="submit" class="generic-action-button generic-action-button--main">Enregistrer</button></div>'
+            + '  <div class="generic-form-actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-proposal-editor-cancel>Annuler</button><button type="submit" class="generic-action-button generic-action-button--main">Enregistrer</button></div>'
             + '</form>';
     }
 
@@ -200,15 +200,13 @@
         return Array.isArray(tokens) ? tokens : [];
     }
 
-    function buildWordDiffOperations(beforeText, afterText) {
-        var beforeTokens = tokenizeForWordDiff(beforeText);
-        var afterTokens = tokenizeForWordDiff(afterText);
+    function buildTokenDiffOperations(beforeTokens, afterTokens) {
         var matrix = [];
         var operations = [];
         var i;
         var j;
 
-        if ((beforeTokens.length + 1) * (afterTokens.length + 1) > 40000) {
+        if ((beforeTokens.length + 1) * (afterTokens.length + 1) > 250000) {
             return null;
         }
         for (i = 0; i <= beforeTokens.length; i += 1) {
@@ -229,14 +227,14 @@
         j = afterTokens.length;
         while (i > 0 || j > 0) {
             if (i > 0 && j > 0 && beforeTokens[i - 1] === afterTokens[j - 1]) {
-                operations.push({type: 'equal', value: beforeTokens[i - 1]});
+                operations.push({type: 'equal', value: beforeTokens[i - 1], beforeIndex: i - 1, afterIndex: j - 1});
                 i -= 1;
                 j -= 1;
             } else if (j > 0 && (i === 0 || matrix[i][j - 1] > matrix[i - 1][j])) {
-                operations.push({type: 'added', value: afterTokens[j - 1]});
+                operations.push({type: 'added', value: afterTokens[j - 1], afterIndex: j - 1});
                 j -= 1;
             } else {
-                operations.push({type: 'removed', value: beforeTokens[i - 1]});
+                operations.push({type: 'removed', value: beforeTokens[i - 1], beforeIndex: i - 1});
                 i -= 1;
             }
         }
@@ -244,7 +242,130 @@
         return operations;
     }
 
-    function createDiffValue(label, value, operations, side, status) {
+    function buildWordDiffOperations(beforeText, afterText) {
+        if (window.omoChoiceWordDiff && typeof window.omoChoiceWordDiff.buildOperations === 'function') {
+            return window.omoChoiceWordDiff.buildOperations(beforeText, afterText);
+        }
+        return buildTokenDiffOperations(tokenizeForWordDiff(beforeText), tokenizeForWordDiff(afterText));
+    }
+
+    function createRichDiffRoot(value) {
+        var root = document.createElement('div');
+        root.innerHTML = sanitizeProposalHtml(value);
+        return root;
+    }
+
+    function collectRichDiffTokens(root) {
+        var tokens = [];
+        var blockTags = {P: true, LI: true, UL: true, OL: true, BLOCKQUOTE: true, H1: true, H2: true, H3: true};
+
+        function addBoundary() {
+            if (tokens.length > 0 && tokens[tokens.length - 1].compareValue !== '\n') {
+                tokens.push({value: '\n', compareValue: '\n', node: null, start: 0, end: 0});
+            }
+        }
+
+        function visit(node) {
+            if (node.nodeType === 3) {
+                var value = String(node.nodeValue || '');
+                var matcher = /(\s+|[^\s]+)/g;
+                var match;
+                while ((match = matcher.exec(value)) !== null) {
+                    tokens.push({
+                        value: match[0],
+                        compareValue: /^\s+$/.test(match[0]) ? ' ' : match[0],
+                        node: node,
+                        start: match.index,
+                        end: match.index + match[0].length
+                    });
+                }
+                return;
+            }
+            if (node.nodeType !== 1) return;
+            var isBlock = blockTags[String(node.tagName || '').toUpperCase()] === true;
+            if (isBlock) addBoundary();
+            Array.prototype.forEach.call(node.childNodes || [], visit);
+            if (isBlock) addBoundary();
+        }
+
+        Array.prototype.forEach.call(root.childNodes || [], visit);
+        while (tokens.length > 0 && tokens[tokens.length - 1].node === null) tokens.pop();
+        return tokens;
+    }
+
+    function highlightRichDiffTokens(tokens, changedIndexes, className) {
+        var byNode = [];
+        tokens.forEach(function (token, tokenIndex) {
+            if (!token.node) return;
+            var entry = null;
+            for (var index = 0; index < byNode.length; index += 1) {
+                if (byNode[index].node === token.node) {
+                    entry = byNode[index];
+                    break;
+                }
+            }
+            if (!entry) {
+                entry = {node: token.node, tokens: []};
+                byNode.push(entry);
+            }
+            entry.tokens.push({token: token, changed: changedIndexes[String(tokenIndex)] === true});
+        });
+
+        byNode.forEach(function (entry) {
+            var source = String(entry.node.nodeValue || '');
+            var fragment = document.createDocumentFragment();
+            var cursor = 0;
+            var activeHighlight = null;
+
+            function appendText(value, highlighted) {
+                if (!value) return;
+                if (highlighted) {
+                    if (!activeHighlight) {
+                        activeHighlight = document.createElement('span');
+                        activeHighlight.className = className;
+                        fragment.appendChild(activeHighlight);
+                    }
+                    activeHighlight.appendChild(document.createTextNode(value));
+                    return;
+                }
+                activeHighlight = null;
+                fragment.appendChild(document.createTextNode(value));
+            }
+
+            entry.tokens.forEach(function (item) {
+                appendText(source.slice(cursor, item.token.start), false);
+                appendText(source.slice(item.token.start, item.token.end), item.changed);
+                cursor = item.token.end;
+            });
+            appendText(source.slice(cursor), false);
+            entry.node.parentNode.replaceChild(fragment, entry.node);
+        });
+    }
+
+    function buildRichHtmlDiff(before, after) {
+        var beforeRoot = createRichDiffRoot(before);
+        var afterRoot = createRichDiffRoot(after);
+        var beforeTokens = collectRichDiffTokens(beforeRoot);
+        var afterTokens = collectRichDiffTokens(afterRoot);
+        var operations = buildTokenDiffOperations(
+            beforeTokens.map(function (token) { return token.compareValue; }),
+            afterTokens.map(function (token) { return token.compareValue; })
+        );
+        var removedIndexes = {};
+        var addedIndexes = {};
+
+        if (Array.isArray(operations)) {
+            operations.forEach(function (operation) {
+                if (operation.type === 'removed') removedIndexes[String(operation.beforeIndex)] = true;
+                if (operation.type === 'added') addedIndexes[String(operation.afterIndex)] = true;
+            });
+            highlightRichDiffTokens(beforeTokens, removedIndexes, 'omo-proposal-chat__diff-removed');
+            highlightRichDiffTokens(afterTokens, addedIndexes, 'omo-proposal-chat__diff-added');
+        }
+        return {before: beforeRoot, after: afterRoot};
+    }
+
+    function createDiffValue(label, value, operations, side, status, richRoot) {
         var block = document.createElement('div');
         var heading = document.createElement('span');
         var content = document.createElement('div');
@@ -254,6 +375,23 @@
         content.className = 'omo-proposal-chat__diff-value-content';
         block.appendChild(heading);
         block.appendChild(content);
+
+        if (richRoot) {
+            content.classList.add('omo-proposal-chat__diff-value-content--rich');
+            if (!value) {
+                content.textContent = '(vide)';
+                content.classList.add('is-empty');
+                return block;
+            }
+            while (richRoot.firstChild) content.appendChild(richRoot.firstChild);
+            if (!String(content.textContent || '').trim()) {
+                content.textContent = '(vide)';
+                content.classList.add('is-empty');
+                return block;
+            }
+            content.classList.add(side === 'before' ? 'is-rich-before' : 'is-rich-after');
+            return block;
+        }
 
         if (!Array.isArray(operations) || operations.length === 0) {
             content.textContent = String(value || '(vide)');
@@ -291,6 +429,13 @@
     }
 
     function createChangesDetails(changes) {
+        if (window.omoChoiceChangeDetails && typeof window.omoChoiceChangeDetails.create === 'function') {
+            return window.omoChoiceChangeDetails.create(changes.map(function (change) {
+                var normalized = Object.assign({}, change);
+                normalized.rich = String(change.field || '') === 'description';
+                return normalized;
+            }), {label: 'Détail'});
+        }
         var details = document.createElement('details');
         var summary = document.createElement('summary');
         var list = document.createElement('div');
@@ -303,15 +448,17 @@
         changes.forEach(function (change) {
             var before = String(change.before || '');
             var after = String(change.after || '');
-            var operations = before && after ? buildWordDiffOperations(before, after) : null;
+            var renderHtml = String(change.field || '') === 'description';
+            var operations = !renderHtml && before && after ? buildWordDiffOperations(before, after) : null;
+            var richDiff = renderHtml ? buildRichHtmlDiff(before, after) : null;
             var card = document.createElement('section');
             var title = document.createElement('strong');
             card.className = 'omo-proposal-chat__diff-card omo-proposal-chat__diff-card--' + String(change.status || 'changed');
             title.className = 'omo-proposal-chat__diff-title';
             title.textContent = String(change.label || 'Modification');
             card.appendChild(title);
-            card.appendChild(createDiffValue('Avant', before, operations, 'before', String(change.status || 'changed')));
-            card.appendChild(createDiffValue('Après', after, operations, 'after', String(change.status || 'changed')));
+            card.appendChild(createDiffValue('Avant', before, operations, 'before', String(change.status || 'changed'), richDiff ? richDiff.before : null));
+            card.appendChild(createDiffValue('Après', after, operations, 'after', String(change.status || 'changed'), richDiff ? richDiff.after : null));
             list.appendChild(card);
         });
         return details;
@@ -670,6 +817,19 @@
         });
         requestJson(editUrl + '?' + query.toString())
             .then(function (payload) {
+                if (payload.governanceEditorUrl) {
+                    if (typeof window.commonTopbarCloseModal === 'function') {
+                        window.commonTopbarCloseModal();
+                    }
+                    if (typeof window.omoDecisionOpenNestedDrawer === 'function') {
+                        window.omoDecisionOpenNestedDrawer('Modifier la decision hors reorg', payload.governanceEditorUrl, '');
+                    } else if (typeof window.commonTopbarOpenDrawer === 'function') {
+                        window.commonTopbarOpenDrawer('Modifier la decision hors reorg', payload.governanceEditorUrl, 'fetch');
+                    } else {
+                        window.location.href = payload.governanceEditorUrl;
+                    }
+                    return;
+                }
                 var proposal = payload.proposal || {};
                 form.elements.title.value = String(proposal.title || '');
                 if (descriptionEditor && window.omoProposalHtml && typeof window.omoProposalHtml.setValue === 'function') {

@@ -4,6 +4,7 @@ namespace dbObject;
 class Rule extends DbObject
 {
 	protected $preserveImportedAuditMetadata = false;
+	protected $auditUserIdOverride = null;
 
     public const SCOPE_GLOBAL = 'global';
     public const SCOPE_DESCENDANTS = 'descendants';
@@ -148,7 +149,9 @@ class Rule extends DbObject
         $this->set('expiration_date', $expirationDate->format('Y-m-d'));
 
         $now = new \DateTime();
-        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0);
+        $currentUserId = $this->auditUserIdOverride !== null
+            ? (int)$this->auditUserIdOverride
+            : (function_exists('commonGetCurrentUserId') ? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0));
         if ((int)$this->getId() <= 0) {
             if (!$this->preserveImportedAuditMetadata && !($this->get('created_at') instanceof \DateTimeInterface)) {
                 $this->set('created_at', $now);
@@ -165,6 +168,76 @@ class Rule extends DbObject
         }
 
         return parent::save();
+    }
+
+    public function applyGovernanceState(array $state, $auditUserId = 0)
+    {
+        $this->auditUserIdOverride = max(0, (int)$auditUserId);
+        foreach ([
+            'IDauthority',
+            'IDholon',
+            'title',
+            'intention',
+            'description',
+            'scope',
+            'review_date',
+            'expiration_date',
+        ] as $field) {
+            if (array_key_exists($field, $state)) {
+                $this->set($field, $state[$field]);
+            }
+        }
+        try {
+            return $this->save();
+        } finally {
+            $this->auditUserIdOverride = null;
+        }
+    }
+
+    public static function findDefinedInHolon($holonId)
+    {
+        $holonId = (int)$holonId;
+        if ($holonId <= 0) {
+            return [];
+        }
+        $rows = self::fetchAll(
+            'SELECT rule_item.*
+             FROM `rule` rule_item
+             LEFT JOIN `authority` authority_item ON authority_item.`id` = rule_item.`IDauthority`
+             WHERE rule_item.`IDholon` = :local_holon_id
+                OR authority_item.`IDholon` = :authority_holon_id
+             ORDER BY rule_item.`title` ASC, rule_item.`id` ASC',
+            [
+                'local_holon_id' => $holonId,
+                'authority_holon_id' => $holonId,
+            ]
+        );
+        $items = [];
+        foreach (is_array($rows) ? $rows : [] as $row) {
+            if (!is_array($row) || !isset($row['id'])) {
+                continue;
+            }
+            $item = new self();
+            $item->loadFromArray($row);
+            $item->setId((int)$row['id']);
+            $items[] = $item;
+        }
+        return $items;
+    }
+
+    public static function loadForGovernanceApplication($ruleId)
+    {
+        $row = self::fetchRow(
+            'SELECT * FROM `rule` WHERE `id` = :rule_id FOR UPDATE',
+            ['rule_id' => (int)$ruleId]
+        );
+        if (!is_array($row) || !isset($row['id'])) {
+            return null;
+        }
+        $rule = new self();
+        $rule->loadFromArray($row);
+        $rule->setId((int)$row['id']);
+        return $rule;
     }
 
     public function preserveImportedAuditMetadata($preserve = true)

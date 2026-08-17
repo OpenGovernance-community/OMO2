@@ -122,6 +122,21 @@ class DecisionProposal extends DbObject
         return $decision->load((int)$this->get('IDdecision_process')) ? $decision : null;
     }
 
+    public function getGovernanceActions()
+    {
+        return \dbObject\DecisionGovernanceAction::getForProposal((int)$this->getId());
+    }
+
+    public function hasGovernanceActions()
+    {
+        foreach ($this->getGovernanceActions() as $action) {
+            if ($action instanceof \dbObject\DecisionGovernanceAction) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     protected function getDecisionMethodParameters()
     {
         if (is_array($this->decisionMethodParametersCache)) {
@@ -260,6 +275,15 @@ class DecisionProposal extends DbObject
             ];
         }
 
+        if ($this->hasGovernanceActions()) {
+            \dbObject\DecisionGovernanceAction::setProposalActionStatus(
+                $this,
+                \dbObject\DecisionGovernanceAction::STATUS_REMOVED,
+                'Proposition retiree pendant la consultation.',
+                \dbObject\DecisionGovernanceAction::STATUS_PENDING
+            );
+        }
+
         return [
             'status' => true,
             'message' => 'Proposition supprimée.',
@@ -273,6 +297,13 @@ class DecisionProposal extends DbObject
         $title = trim((string)$title);
         $description = \dbObject\PropertyFormat::sanitizeHtml((string)$description);
         $infoUrl = trim((string)$infoUrl);
+        if ($this->hasGovernanceActions()) {
+            return [
+                'status' => false,
+                'reason' => 'governance_editor_required',
+                'message' => 'Cette proposition doit etre modifiee depuis son editeur de gouvernance.',
+            ];
+        }
         if (!$this->canBeEditedByActor($userId, $participantId)) {
             return [
                 'status' => false,

@@ -119,7 +119,7 @@ if (is_array($attendanceEntries) && $attendanceEntries !== []) {
 }
 
 $pointLines = [];
-foreach ($document->getPvPoints(true) as $point) {
+foreach ($document->getVisiblePvPointsForUser($currentUserId, true) as $point) {
     if (!($point instanceof \dbObject\DocumentPvPoint)) {
         continue;
     }

@@ -1,5 +1,6 @@
 (function () {
     var tabContainerCount = 0;
+    var contextHelpPositionFrame = 0;
 
     function toArray(items) {
         return Array.prototype.slice.call(items || []);
@@ -191,6 +192,152 @@
             }
 
             accordion.classList.toggle('is-collapsed');
+        });
+    }
+
+    function getContextHelpViewport() {
+        var visualViewport = window.visualViewport || null;
+
+        return {
+            top: visualViewport ? visualViewport.offsetTop : 0,
+            right: visualViewport ? visualViewport.offsetLeft + visualViewport.width : window.innerWidth,
+            bottom: visualViewport ? visualViewport.offsetTop + visualViewport.height : window.innerHeight,
+            left: visualViewport ? visualViewport.offsetLeft : 0
+        };
+    }
+
+    function getContextHelpBounds(details) {
+        var bounds = getContextHelpViewport();
+        var node = details ? details.parentElement : null;
+        var style;
+        var overflowX;
+        var overflowY;
+        var nodeBounds;
+
+        while (node && node !== document.body) {
+            style = window.getComputedStyle(node);
+            overflowX = style.overflowX;
+            overflowY = style.overflowY;
+
+            if (overflowX !== 'visible' || overflowY !== 'visible') {
+                nodeBounds = node.getBoundingClientRect();
+                if (overflowX !== 'visible') {
+                    bounds.left = Math.max(bounds.left, nodeBounds.left);
+                    bounds.right = Math.min(bounds.right, nodeBounds.right);
+                }
+                if (overflowY !== 'visible') {
+                    bounds.top = Math.max(bounds.top, nodeBounds.top);
+                    bounds.bottom = Math.min(bounds.bottom, nodeBounds.bottom);
+                }
+            }
+
+            node = node.parentElement;
+        }
+
+        return bounds;
+    }
+
+    function positionContextHelp(details) {
+        var content;
+        var viewport;
+        var triggerBounds;
+        var contentBounds;
+        var availableAbove;
+        var availableBelow;
+        var availableHeight;
+        var horizontalShift = 0;
+        var margin = 12;
+
+        if (!details || !details.open || !details.classList.contains('generic-context-help')) {
+            return;
+        }
+
+        content = details.querySelector('.generic-context-help__content');
+        if (!content) {
+            return;
+        }
+
+        viewport = getContextHelpBounds(details);
+        triggerBounds = details.getBoundingClientRect();
+        content.style.setProperty('--generic-context-help-shift-x', '0px');
+        content.style.removeProperty('--generic-context-help-max-height');
+        content.style.removeProperty('--generic-context-help-max-width');
+        details.classList.remove('is-positioned-above');
+        content.style.setProperty('--generic-context-help-max-width', String(Math.max(0, Math.floor(viewport.right - viewport.left - (margin * 2)))) + 'px');
+        contentBounds = content.getBoundingClientRect();
+        availableAbove = triggerBounds.top - viewport.top - margin;
+        availableBelow = viewport.bottom - triggerBounds.bottom - margin;
+
+        if (contentBounds.height > availableBelow && availableAbove > availableBelow) {
+            details.classList.add('is-positioned-above');
+            availableHeight = availableAbove;
+        } else {
+            availableHeight = availableBelow;
+        }
+
+        content.style.setProperty('--generic-context-help-max-height', String(Math.max(0, Math.floor(availableHeight))) + 'px');
+        contentBounds = content.getBoundingClientRect();
+
+        if (contentBounds.left < viewport.left + margin) {
+            horizontalShift += viewport.left + margin - contentBounds.left;
+        }
+
+        if (contentBounds.right + horizontalShift > viewport.right - margin) {
+            horizontalShift -= contentBounds.right + horizontalShift - (viewport.right - margin);
+        }
+
+        content.style.setProperty('--generic-context-help-shift-x', String(Math.round(horizontalShift)) + 'px');
+    }
+
+    function positionOpenContextHelps(root) {
+        var scope = root || document;
+        var contextHelps = toArray(scope.querySelectorAll('.generic-context-help[open]'));
+
+        if (scope.nodeType === 1 && scope.matches('.generic-context-help[open]')) {
+            contextHelps.unshift(scope);
+        }
+
+        contextHelps.forEach(positionContextHelp);
+    }
+
+    function scheduleOpenContextHelpPositioning() {
+        if (contextHelpPositionFrame) {
+            return;
+        }
+
+        contextHelpPositionFrame = window.requestAnimationFrame(function () {
+            contextHelpPositionFrame = 0;
+            positionOpenContextHelps(document);
+        });
+    }
+
+    function handleContextHelpToggle(event) {
+        var details = event.target;
+
+        if (!details || !details.classList || !details.classList.contains('generic-context-help')) {
+            return;
+        }
+
+        if (!details.open) {
+            details.classList.remove('is-positioned-above');
+            return;
+        }
+
+        window.requestAnimationFrame(function () {
+            positionContextHelp(details);
+        });
+    }
+
+    function handleContextHelpClick(event) {
+        var summary = event.target.closest('.generic-context-help > summary');
+        var details = summary ? summary.parentElement : null;
+
+        if (!details) {
+            return;
+        }
+
+        window.requestAnimationFrame(function () {
+            positionContextHelp(details);
         });
     }
 
@@ -645,6 +792,7 @@
 
         initFileLists(scope);
         initEditableSelects(scope);
+        positionOpenContextHelps(scope);
         toArray(scope.querySelectorAll('[data-generic-tabs]')).forEach(initTabs);
         toArray(scope.querySelectorAll('[data-generic-accordion]')).forEach(initAccordion);
     }
@@ -971,6 +1119,15 @@
     document.addEventListener('keydown', handleEditableSelectKeydown);
     document.addEventListener('click', handleGenericTabClick);
     document.addEventListener('keydown', handleGenericTabKeydown);
+    document.addEventListener('toggle', handleContextHelpToggle, true);
+    document.addEventListener('click', handleContextHelpClick);
+    window.addEventListener('resize', scheduleOpenContextHelpPositioning);
+    window.addEventListener('scroll', scheduleOpenContextHelpPositioning, true);
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', scheduleOpenContextHelpPositioning);
+        window.visualViewport.addEventListener('scroll', scheduleOpenContextHelpPositioning);
+    }
 
     window.initGenericTabs = initTabs;
     window.initGenericComponents = initGenericComponents;
@@ -979,6 +1136,8 @@
     window.syncGenericFileLists = function (root) {
         collectFileLists(root).forEach(syncFileList);
     };
+    window.initGenericContextHelps = positionOpenContextHelps;
+    window.positionGenericContextHelp = positionContextHelp;
     window.commonCreateVerticalSortableList = createVerticalSortableList;
     window.omoBeginPendingAction = beginPendingAction;
     window.omoEndPendingAction = endPendingAction;

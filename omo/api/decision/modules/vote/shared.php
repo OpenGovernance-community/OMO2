@@ -46,6 +46,7 @@ if (!function_exists('omoDecisionVoteBuildConfig')) {
                 || array_key_exists('allow_anonymous_votes', $decisionOrParameters)
                 || array_key_exists('allow_consultation_proposals', $decisionOrParameters)
                 || array_key_exists('allow_proposal_discussions', $decisionOrParameters)
+                || array_key_exists('show_live_results', $decisionOrParameters)
                 || array_key_exists('vote_weight_enabled', $decisionOrParameters)
                 || array_key_exists('vote_weight_options', $decisionOrParameters)
                 || array_key_exists('vote_weighting', $decisionOrParameters)
@@ -70,6 +71,7 @@ if (!function_exists('omoDecisionVoteBuildConfig')) {
             'allow_anonymous_votes' => !empty($simpleVote['allow_anonymous_votes']),
             'allow_consultation_proposals' => !empty($simpleVote['allow_consultation_proposals']),
             'allow_proposal_discussions' => !array_key_exists('allow_proposal_discussions', $simpleVote) || !empty($simpleVote['allow_proposal_discussions']),
+            'show_live_results' => !empty($simpleVote['show_live_results']),
             'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
             'vote_weight_question' => (string)$voteWeightConfig['question'],
             'vote_weight_options' => (array)$voteWeightConfig['options'],
@@ -93,6 +95,8 @@ if (!function_exists('omoDecisionVoteMergeConfigIntoParameters')) {
         $simpleVote['allow_anonymous_votes'] = !empty($config['allow_anonymous_votes']) ? 1 : 0;
         $simpleVote['allow_consultation_proposals'] = !empty($config['allow_consultation_proposals']) ? 1 : 0;
         $simpleVote['allow_proposal_discussions'] = !empty($config['allow_proposal_discussions']) ? 1 : 0;
+        $simpleVote['show_live_results'] = !empty($config['show_live_results']) ? 1 : 0;
+        unset($simpleVote['live_results_anonymous']);
         $simpleVote = omoDecisionBlockSettingsMergeVoteWeightConfig($simpleVote, [
             'vote_weight_enabled' => !empty($config['vote_weight_enabled']),
             'vote_weight_question' => $config['vote_weight_question'] ?? '',

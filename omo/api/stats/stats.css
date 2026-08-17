@@ -79,6 +79,12 @@
     padding: 8px;
 }
 
+.omo-stats-picker[hidden],
+.omo-stats-picker__field[hidden],
+.omo-stats-picker__tabs [hidden] {
+    display: none !important;
+}
+
 .omo-stats-picker__field {
     display: grid;
     gap: 6px;
@@ -574,6 +580,21 @@
     border: 1px solid var(--color-border, #d1d5db);
     border-radius: var(--radius-md);
     background: var(--color-surface-alt, #f8fafc);
+}
+
+button.omo-stats-group-detail__legend-item {
+    width: 100%;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+button.omo-stats-group-detail__legend-item:hover,
+button.omo-stats-group-detail__legend-item:focus-visible {
+    border-color: var(--omo-stats-accent, #2563eb);
+    background: var(--color-surface, #fff);
+    outline: none;
 }
 
 .omo-stats-group-detail__legend-dot {

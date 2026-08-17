@@ -12,6 +12,12 @@ class StatIndicator extends DbObject
     const FREQUENCY_QUARTERLY = RecurrenceSchedule::FREQUENCY_QUARTERLY;
     const FREQUENCY_SEMIANNUAL = RecurrenceSchedule::FREQUENCY_SEMIANNUAL;
     const FREQUENCY_YEARLY = RecurrenceSchedule::FREQUENCY_YEARLY;
+    const SOURCE_MANUAL = 'manual';
+    const SOURCE_ETHERCALC_CELL = 'ethercalc_cell';
+    const SOURCE_ETHERCALC_TABLE = 'ethercalc_table';
+    const ETHERCALC_FREQUENCY_HOURLY = 'hourly';
+    const ETHERCALC_FREQUENCY_DAILY = 'daily';
+    const ETHERCALC_FREQUENCY_WEEKLY = 'weekly';
 
     public static function tableName()
     {
@@ -23,12 +29,12 @@ class StatIndicator extends DbObject
         return [
             [['IDorganization', 'name', 'reference_type'], 'required'],
             [['id'], 'integer'],
-            [['IDorganization', 'IDholon', 'IDuser'], 'fk'],
-            [['name', 'source_url', 'reference_type', 'measurement_frequency', 'measurement_schedule'], 'string'],
+            [['IDorganization', 'IDholon', 'IDuser', 'IDdocument'], 'fk'],
+            [['name', 'source_url', 'reference_type', 'measurement_frequency', 'measurement_schedule', 'source_type', 'ethercalc_cell', 'ethercalc_frequency', 'ethercalc_range', 'ethercalc_date_column', 'ethercalc_value_column'], 'string'],
             [['description'], 'text'],
             [['chart_min_value'], 'float'],
             [['show_cumulative', 'active'], 'boolean'],
-            [['created_at', 'updated_at'], 'datetime'],
+            [['created_at', 'updated_at', 'ethercalc_last_sync_at'], 'datetime'],
             [['id'], 'safe'],
         ];
     }
@@ -46,6 +52,14 @@ class StatIndicator extends DbObject
             'reference_type' => 'Type de référence',
             'measurement_frequency' => 'Fréquence de mesure',
             'measurement_schedule' => 'Moment attendu',
+            'source_type' => 'Type de source',
+            'IDdocument' => 'Document tableur',
+            'ethercalc_cell' => 'Cellule EtherCalc',
+            'ethercalc_frequency' => 'Frequence de synchronisation EtherCalc',
+            'ethercalc_range' => 'Plage EtherCalc',
+            'ethercalc_date_column' => 'Colonne de date EtherCalc',
+            'ethercalc_value_column' => 'Colonne de valeur EtherCalc',
+            'ethercalc_last_sync_at' => 'Derniere synchronisation EtherCalc',
             'chart_min_value' => 'Valeur basse du graphique',
             'show_cumulative' => 'Afficher le cumul',
             'active' => 'Actif',
@@ -75,6 +89,12 @@ class StatIndicator extends DbObject
             'reference_type' => 20,
             'measurement_frequency' => 20,
             'measurement_schedule' => 20,
+            'source_type' => 30,
+            'ethercalc_cell' => 20,
+            'ethercalc_frequency' => 20,
+            'ethercalc_range' => 40,
+            'ethercalc_date_column' => 10,
+            'ethercalc_value_column' => 10,
         ];
     }
 
@@ -120,6 +140,79 @@ class StatIndicator extends DbObject
         return RecurrenceSchedule::normalizeSchedule($frequency, $value);
     }
 
+    public static function getSourceTypeCatalog()
+    {
+        return [
+            self::SOURCE_MANUAL => 'Manuelle',
+            self::SOURCE_ETHERCALC_CELL => 'Cellule EtherCalc',
+            self::SOURCE_ETHERCALC_TABLE => 'Tableau EtherCalc',
+        ];
+    }
+
+    public static function normalizeSourceType($value)
+    {
+        $value = trim(mb_strtolower((string)$value, 'UTF-8'));
+        return array_key_exists($value, self::getSourceTypeCatalog()) ? $value : self::SOURCE_MANUAL;
+    }
+
+    public static function getEthercalcFrequencyCatalog()
+    {
+        return [
+            self::ETHERCALC_FREQUENCY_HOURLY => 'Toutes les heures',
+            self::ETHERCALC_FREQUENCY_DAILY => 'Chaque jour',
+            self::ETHERCALC_FREQUENCY_WEEKLY => 'Chaque semaine',
+        ];
+    }
+
+    public static function normalizeEthercalcFrequency($value)
+    {
+        $value = trim(mb_strtolower((string)$value, 'UTF-8'));
+        return array_key_exists($value, self::getEthercalcFrequencyCatalog())
+            ? $value
+            : self::ETHERCALC_FREQUENCY_DAILY;
+    }
+
+    public static function normalizeEthercalcCell($value)
+    {
+        $value = strtoupper(trim((string)$value));
+        return preg_match('/^[A-Z]{1,3}[1-9][0-9]*$/', $value) === 1 ? $value : '';
+    }
+
+    public static function normalizeEthercalcColumn($value)
+    {
+        $value = strtoupper(trim((string)$value));
+        return preg_match('/^[A-Z]{1,3}$/', $value) === 1 ? $value : '';
+    }
+
+    public static function ethercalcColumnToIndex($column)
+    {
+        $column = self::normalizeEthercalcColumn($column);
+        if ($column === '') {
+            return -1;
+        }
+
+        $index = 0;
+        $length = strlen($column);
+        for ($position = 0; $position < $length; $position += 1) {
+            $index = ($index * 26) + (ord($column[$position]) - 64);
+        }
+        return $index - 1;
+    }
+
+    public static function normalizeEthercalcRange($value)
+    {
+        $value = strtoupper(trim((string)$value));
+        if (preg_match('/^([A-Z]{1,3}[1-9][0-9]*):([A-Z]{1,3}[1-9][0-9]*)$/', $value, $matches) !== 1) {
+            return '';
+        }
+
+        $startColumn = self::ethercalcColumnToIndex(preg_replace('/[0-9]+$/', '', $matches[1]));
+        $endColumn = self::ethercalcColumnToIndex(preg_replace('/[0-9]+$/', '', $matches[2]));
+        $startRow = (int)preg_replace('/^[A-Z]+/', '', $matches[1]);
+        $endRow = (int)preg_replace('/^[A-Z]+/', '', $matches[2]);
+        return $startColumn <= $endColumn && $startRow <= $endRow ? $value : '';
+    }
+
     public static function sanitizeSourceUrl($value)
     {
         $value = trim((string)$value);
@@ -144,6 +237,30 @@ class StatIndicator extends DbObject
         $this->set('measurement_frequency', $measurementFrequency);
         $this->set('measurement_schedule', self::normalizeMeasurementSchedule($measurementFrequency, $this->get('measurement_schedule')));
 
+        $sourceType = self::normalizeSourceType($this->get('source_type'));
+        $this->set('source_type', $sourceType);
+        if ($sourceType === self::SOURCE_ETHERCALC_CELL) {
+            $this->set('ethercalc_cell', self::normalizeEthercalcCell($this->get('ethercalc_cell')));
+            $this->set('ethercalc_frequency', self::normalizeEthercalcFrequency($this->get('ethercalc_frequency')));
+            $this->set('ethercalc_range', null);
+            $this->set('ethercalc_date_column', null);
+            $this->set('ethercalc_value_column', null);
+        } elseif ($sourceType === self::SOURCE_ETHERCALC_TABLE) {
+            $this->set('ethercalc_cell', null);
+            $this->set('ethercalc_frequency', null);
+            $this->set('ethercalc_range', self::normalizeEthercalcRange($this->get('ethercalc_range')));
+            $this->set('ethercalc_date_column', self::normalizeEthercalcColumn($this->get('ethercalc_date_column')));
+            $this->set('ethercalc_value_column', self::normalizeEthercalcColumn($this->get('ethercalc_value_column')));
+        } else {
+            $this->set('IDdocument', null);
+            $this->set('ethercalc_cell', null);
+            $this->set('ethercalc_frequency', null);
+            $this->set('ethercalc_range', null);
+            $this->set('ethercalc_date_column', null);
+            $this->set('ethercalc_value_column', null);
+            $this->set('ethercalc_last_sync_at', null);
+        }
+
         $sourceUrl = trim((string)$this->get('source_url'));
         if ($sourceUrl !== '') {
             $this->set('source_url', self::sanitizeSourceUrl($sourceUrl));
@@ -156,6 +273,197 @@ class StatIndicator extends DbObject
         $this->set('updated_at', $now);
 
         return parent::save();
+    }
+
+    public function getEthercalcDocument()
+    {
+        $documentId = (int)$this->get('IDdocument');
+        if ($documentId <= 0) {
+            return null;
+        }
+
+        $document = new \dbObject\Document();
+        return $document->load($documentId) ? $document : null;
+    }
+
+    public function isEthercalcSource()
+    {
+        return in_array(self::normalizeSourceType($this->get('source_type')), [self::SOURCE_ETHERCALC_CELL, self::SOURCE_ETHERCALC_TABLE], true);
+    }
+
+    public function isHiddenFromCatalog()
+    {
+        $indicatorId = (int)$this->getId();
+        if ($indicatorId <= 0) {
+            return false;
+        }
+
+        $memberships = new \dbObject\ArrayStatIndicatorGroupItem();
+        $memberships->load([
+            'where' => [['field' => 'IDstatindicator', 'value' => $indicatorId]],
+        ]);
+        foreach ($memberships as $membership) {
+            $group = new \dbObject\StatIndicatorGroup();
+            if (
+                !$group->load((int)$membership->get('IDstatindicatorgroup'))
+                || (int)$group->get('active') !== 1
+                || (int)$group->get('hide_same_holon_sources') !== 1
+            ) {
+                continue;
+            }
+            if ((int)$group->get('IDorganization') === (int)$this->get('IDorganization') && (int)$group->get('IDholon') === (int)$this->get('IDholon')) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function isEthercalcCellSource()
+    {
+        return self::normalizeSourceType($this->get('source_type')) === self::SOURCE_ETHERCALC_CELL;
+    }
+
+    public function isEthercalcTableSource()
+    {
+        return self::normalizeSourceType($this->get('source_type')) === self::SOURCE_ETHERCALC_TABLE;
+    }
+
+    public function isEthercalcSyncDue(?\DateTimeInterface $referenceDate = null)
+    {
+        if (!$this->isEthercalcSource() || (int)$this->get('active') !== 1) {
+            return false;
+        }
+
+        if ($this->isEthercalcTableSource()) {
+            return true;
+        }
+
+        $referenceDate = $referenceDate instanceof \DateTimeInterface ? $referenceDate : new \DateTimeImmutable();
+        $lastSyncAt = $this->get('ethercalc_last_sync_at');
+        if (!($lastSyncAt instanceof \DateTimeInterface)) {
+            return true;
+        }
+
+        $intervals = [
+            self::ETHERCALC_FREQUENCY_HOURLY => 3600,
+            self::ETHERCALC_FREQUENCY_DAILY => 86400,
+            self::ETHERCALC_FREQUENCY_WEEKLY => 604800,
+        ];
+        $frequency = self::normalizeEthercalcFrequency($this->get('ethercalc_frequency'));
+        return $referenceDate->getTimestamp() >= $lastSyncAt->getTimestamp() + ($intervals[$frequency] ?? 86400);
+    }
+
+    public function markEthercalcSynced(\DateTimeInterface $syncedAt)
+    {
+        $this->set('ethercalc_last_sync_at', \DateTime::createFromInterface($syncedAt));
+        return $this->save();
+    }
+
+    public function replaceMeasurementsFromEthercalc(array $measurements)
+    {
+        $indicatorId = (int)$this->getId();
+        if ($indicatorId <= 0) {
+            return false;
+        }
+
+        $pdo = self::getPdo();
+        $startedTransaction = false;
+        try {
+            if ($pdo && !$pdo->inTransaction()) {
+                $pdo->beginTransaction();
+                $startedTransaction = true;
+            }
+            if (!StatIndicatorValue::deleteForIndicator($indicatorId)) {
+                throw new \RuntimeException('Unable to delete previous EtherCalc values.');
+            }
+            foreach ($measurements as $measurement) {
+                $measuredAt = is_array($measurement) ? ($measurement['measured_at'] ?? null) : null;
+                if (!is_array($measurement) || !is_numeric($measurement['value'] ?? null) || !($measuredAt instanceof \DateTimeInterface)) {
+                    continue;
+                }
+                $value = new StatIndicatorValue();
+                $value->set('IDstatindicator', $indicatorId);
+                $value->set('IDuser', null);
+                $value->set('value', (float)$measurement['value']);
+                $value->set('measured_at', $measuredAt);
+                $result = $value->save();
+                if (!is_array($result) || empty($result['status'])) {
+                    throw new \RuntimeException('Unable to save an EtherCalc value.');
+                }
+            }
+            if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+            return true;
+        } catch (\Throwable $exception) {
+            if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('EtherCalc indicator synchronization failed: ' . $exception->getMessage());
+            return false;
+        }
+    }
+
+    public static function loadDueEthercalcSources($limit = 20, ?\DateTimeInterface $referenceDate = null)
+    {
+        $sources = new \dbObject\ArrayStatIndicator();
+        $sources->load([
+            'where' => [
+                ['field' => 'active', 'value' => 1],
+                ['field' => 'source_type', 'op' => 'in', 'value' => [self::SOURCE_ETHERCALC_CELL, self::SOURCE_ETHERCALC_TABLE]],
+            ],
+            'orderBy' => [
+                ['field' => 'ethercalc_last_sync_at', 'dir' => 'ASC'],
+                ['field' => 'id', 'dir' => 'ASC'],
+            ],
+        ]);
+
+        $dueSources = [];
+        foreach ($sources as $source) {
+            if ($source instanceof self && $source->isEthercalcSyncDue($referenceDate)) {
+                $dueSources[] = $source;
+                if (count($dueSources) >= max(1, (int)$limit)) {
+                    break;
+                }
+            }
+        }
+        return $dueSources;
+    }
+
+    public static function findActiveEthercalcTableSource($organizationId, $holonId, $documentId, $range, $dateColumn, $valueColumn)
+    {
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holonId;
+        $documentId = (int)$documentId;
+        if ($organizationId <= 0 || $documentId <= 0) {
+            return null;
+        }
+
+        $sources = new \dbObject\ArrayStatIndicator();
+        $sources->load([
+            'where' => [
+                ['field' => 'IDorganization', 'value' => $organizationId],
+                $holonId > 0
+                    ? ['field' => 'IDholon', 'value' => $holonId]
+                    : ['field' => 'IDholon', 'op' => 'is null'],
+                ['field' => 'IDdocument', 'value' => $documentId],
+                ['field' => 'active', 'value' => 1],
+                ['field' => 'source_type', 'value' => self::SOURCE_ETHERCALC_TABLE],
+                ['field' => 'ethercalc_range', 'value' => self::normalizeEthercalcRange($range)],
+                ['field' => 'ethercalc_date_column', 'value' => self::normalizeEthercalcColumn($dateColumn)],
+                ['field' => 'ethercalc_value_column', 'value' => self::normalizeEthercalcColumn($valueColumn)],
+            ],
+            'orderBy' => [
+                ['field' => 'id', 'dir' => 'ASC'],
+            ],
+        ]);
+
+        foreach ($sources as $source) {
+            if ($source instanceof self) {
+                return $source;
+            }
+        }
+        return null;
     }
 
     public function getOrganization()

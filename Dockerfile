@@ -30,7 +30,7 @@ RUN apt-get update \
         -addext "basicConstraints=critical,CA:FALSE" \
         -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
         -addext "extendedKeyUsage=serverAuth" \
-    && a2enmod headers rewrite expires ssl socache_shmcb \
+    && a2enmod headers rewrite expires ssl socache_shmcb proxy proxy_http proxy_wstunnel \
     && rm -rf /var/lib/apt/lists/*
 
 COPY docker/apache/vhost.conf /etc/apache2/sites-available/000-default.conf

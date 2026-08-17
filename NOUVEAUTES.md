@@ -2,6 +2,74 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-17
+
+- Les comparaisons de modifications de gouvernance sont maintenant calculees par un seul composant partage, utilise aussi bien par l editeur Hors reorg que par sa consultation. Les actions de formulaires de la discussion reutilisent egalement les styles generiques.
+
+## 2026-08-16
+
+- Les propositions hors reorg affichent maintenant leur champ Description, conserve la saisie du proposeur et le restitue lors de la reouverture du scrutin.
+- La question Hors reorg est maintenant toujours editable pendant la consultation et pre-remplie avec sa valeur configuree ou la question par defaut. Son libelle indique clairement si elle est soumise au consentement ou au vote simple.
+- Les sous-drawers disposent maintenant d une aide contextuelle generique dans leur en-tete. Une vue peut fournir un texte d aide via son API et afficher automatiquement le bouton ?, comme l editeur Hors reorg dont le titre quitte le contenu pour rejoindre l en-tete.
+- Les bulles d aide des en-tetes de sous-drawers passent maintenant au-dessus du contenu du tiroir et ne sont plus coupees par sa zone de defilement.
+- Les propositions Hors reorg affichent maintenant directement les modifications proposees. Le bloc technique Application des modifications et ses statuts internes a ete retire de la consultation et du vote. Le detail reprend les blocs Avant et Apres, champ par champ, avec les differences mises en evidence et les listes comparees element par element.
+- Les notifications du Calendrier peuvent etre activees par organisation pour les nouveaux evenements et invitations, les changements de lieu ou d horaire, ainsi que pour un rappel avant le debut. Le rappel se choisit dans une liste allant de 1 heure a 5 jours et est traite aussi bien par le faux cron que par le cron serveur.
+- Les modifications utilisent maintenant une presentation commune dans l historique, le chat des propositions et les propositions hors reorg : un resume court reste visible, tandis qu un bouton Detail ouvre deux blocs Avant/Apres avec les mots retires en rouge et les mots ajoutes en vert. Le detail preserve aussi les listes et la mise en forme simple des contenus HTML.
+- Les details distinguent maintenant explicitement les modifications, ajouts et suppressions. Les proprietes sous forme de listes sont comparees element par element et affichees avec de vrais elements LI : les valeurs inchangees sont ignorees et les nouveaux elements sont presentes comme de vrais ajouts, sans afficher le tableau JSON.
+- Lorsqu une ancienne valeur importee est encore stockee comme un texte simple dans une propriete devenue une liste, elle est maintenant comparee comme un premier element de cette liste. Les virgules presentes dans la phrase ne la decoupent pas artificiellement.
+- La comparaison des proprietes de roles rapproche aussi les champs par leur nom stable, meme si leur identifiant technique a change lors d un import ou d une evolution de modele.
+
+## 2026-08-14
+
+- Les decisions hors reorg peuvent maintenant proposer la creation, la modification ou la suppression d un role du cercle courant. L edition reutilise la fiche complete des roles (modele, proprietes, droits, limites d admins, apparence et medias) et les changements restent en attente jusqu a la validation collective. Le choix et l edition des regles comme des roles utilisent desormais la popup standard de la topbar.
+- La selection des roles d une decision hors reorg inclut aussi les roles ranges dans les groupes du cercle courant, avec le chemin du groupe dans leur libelle, sans inclure les roles des sous-cercles.
+- Les resumes des modifications hors reorg mettent maintenant en evidence, mot par mot, les contenus retires en rouge et les contenus ajoutes en vert en reutilisant le diff des discussions de propositions.
+- Les proprietes de type autorite sont memorisees et comparees avec leurs libelles lisibles dans les resumes hors reorg, sans exposer leurs identifiants techniques.
+- Le bouton Nouvelle prise de decision de l application Decisions est maintenant libelle Nouveau scrutin.
+- Dans les trois modes de scrutin, le titre Parametres du scrutin est maintenant place au-dessus du recapitulatif a lisere vert, comme les autres titres de section.
+- Les aides contextuelles ouvertes avec un bouton ? se repositionnent maintenant automatiquement pour rester dans la fenetre, y compris pres des bords et en bas de page. Ce comportement est disponible comme composant generique.
+- Les aides contextuelles tiennent aussi compte des panneaux defilants qui les contiennent, afin de ne plus etre coupees par le bord d un tiroir.
+- Le bouton Enregistrer le scrutin est maintenant fourni au sous-tiroir par la meme API partagee que Documents, puis place dans l en-tete a cote de Fermer avec son etat d enregistrement.
+- La creation d un scrutin reprend maintenant les deux blocs visuels Parametres generaux du scrutin et Questions, et place l action Creer le scrutin dans l en-tete du sous-tiroir.
+- A la creation d un scrutin, les invitations sont maintenant presentees sous forme de resume compact indiquant le holon courant et se configurent dans une popup; le holon courant est selectionne par defaut.
+- La popup de selection des invites d un scrutin conserve maintenant une largeur et une hauteur stables, y compris au survol de ses onglets et de ses actions.
+
+## 2026-08-13
+
+- Les messages de discussion signalant une modification de proposition affichent maintenant les descriptions HTML avec leur mise en page et mettent en evidence les mots ajoutes ou retires tout en preservant les listes et les textes en gras.
+- Dans les scrutins par consentement, le coeur represente maintenant Pour et le petit vu Pas d objection.
+- La carte Parametres Decisions permet maintenant d activer les decisions hors reorg, de definir leurs delais, leur question et l affichage des votes, ainsi que de masquer les autres modes de scrutin non souhaites.
+- Les modes de scrutin decoches dans Parametres Decisions restent maintenant effectivement masques apres enregistrement.
+- Les parametres Decisions permettent de choisir si les nouvelles decisions hors reorg se valident par vote simple ou par consentement.
+- Chaque scrutin peut maintenant afficher un recapitulatif intermediaire anonyme ou nominatif pendant le vote, selon le niveau d influence souhaite.
+- L application Decisions adopte une presentation plus legere : choix de methode compact, reglages de scrutin sans cadres imbriques, actions uniformisees et explications secondaires accessibles par des boutons d aide. Les elements hidden restent masques quel que soit leur mode de mise en page.
+- Sur la page de gestion d un scrutin, les parametres sont maintenant reunis dans un seul recapitulatif compact a deux colonnes, separe entre deroulement et confidentialite-resultats, sans encadrer chaque valeur.
+- Les formulaires de gestion des scrutins alignent maintenant visibilite et statut sur une premiere ligne, puis regroupent les quatre dates de consultation et de vote sur la ligne suivante.
+- La navigation entre les groupes d un scrutin devient une barre compacte Question 1, Question 2, etc., avec la question courante soulignee et l ajout d une question accessible au bout de la meme ligne.
+- Le bloc des invites est maintenant place avant la navigation entre les questions, afin de montrer clairement qu il s applique a l ensemble du scrutin.
+- Le formulaire de chaque question ne repete plus les titres Question de ce groupe et Question : un seul libelle Question est affiche.
+- Chaque question rappelle maintenant son mode de decision dans un selecteur verrouille place a cote de son type. Les bandeaux superieurs propres a un mode ont ete retires, puisqu un meme scrutin peut reunir plusieurs methodes.
+- Dans chaque question, le rappel du mode de decision est maintenant affiche avant le type consultatif ou decisionnaire.
+- Les parametres communs du scrutin et les questions sont maintenant separes. Toutes les questions sont chargees ensemble : changer d onglet ne recharge ni n enregistre rien, une nouvelle question reste locale jusqu au clic sur Enregistrer, et la sauvegarde globale applique toutes les questions dans une seule transaction.
+- Les trois modes de scrutin utilisent maintenant la meme presentation pour les listes de propositions, leurs poignees de reorganisation et le bouton de configuration des parametres.
+
+## 2026-08-12
+
+- Les points de PV peuvent maintenant etre marques confidentiels: ils ne sont affiches qu aux personnes declarees presentes a la reunion.
+- Le module Decisions propose maintenant un parcours hors reorg fonde sur le consentement. Une proposition peut regrouper plusieurs creations, modifications et suppressions atomiques de regles, rester discutable et modifiable par son auteur pendant la consultation, puis etre appliquee automatiquement sans ecraser une regle modifiee entre-temps.
+- Les primitives de formulaire en grille respectent maintenant leur attribut hidden, y compris lorsqu elles definissent elles-memes un affichage grid.
+- Le bouton Tension est temporairement masque dans la topbar OMO, sans retirer son implementation pour pouvoir le reactiver plus tard.
+
+## 2026-08-11
+
+- Les focus des attributions de roles OMO 1 sont maintenant repris dans les liens membre-holon lors de l import. Une attribution proprietaire sans focus ne peut plus effacer le focus exporte pour la meme personne et le meme role.
+- La carte geographique de l application Team reste maintenant sous le panneau de portee et de type d affichage, qui peut donc toujours etre ouvert pour changer de vue.
+- La fenetre d ajout de membre a un holon place les choix de personne et d e-mail cote a cote, aligne aussi admin et focus, permet de renseigner un focus sur le lien, et applique directement les limites minimale et maximale du statut admin.
+- Le calage des imports OMO 1 propose maintenant tous les templates du modele d organisation, y compris ceux places dans des cercles. Chaque template importe peut etre conserve, remplace ou exclu avec ses instances et leurs descendants, avec une correspondance de proprietes propre au template choisi.
+- Le terme personnalise du lexique est maintenant reserve aux administrateurs de contexte des holons. Les libelles d administrateur d organisation et de super administrateur conservent le terme Admin.
+- Les projets OMO 1 utilisent maintenant directement les quatre statuts OMO 2 : En cours, Bloque, Termine et Un jour peut-etre. Le statut historique 8 est exporte en someday, et les anciens exports ou il etait transforme en Bloque restent corriges a l import.
+- La liste des documents permet maintenant de cocher plusieurs elements, y compris dans les dossiers et en affichage compact, puis de les archiver ou de les supprimer ensemble selon les droits disponibles.
+
 ## 2026-08-07
 
 - Le libelle Contenu est retire au-dessus des editeurs HTML des points du PV, afin d eviter une ligne repetitive avant chaque zone d edition.
@@ -65,6 +133,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - L envoi Push est compatible avec PHP 8.5 sans afficher de message de depreciation OpenSSL dans les reponses de discussion.
 - Les details avant et apres des modifications de proposition affichent a nouveau correctement les retours a la ligne encodes.
 - Les canaux indisponibles ne sont plus affiches dans les reglages de notifications, tandis que les administrateurs d organisation voient un avertissement de configuration adapte.
+- Les scrutins invites peuvent maintenant notifier leur passage en consultation ou en vote, ainsi que leurs fins imminentes selon les delais choisis (1, 2, 3 ou 5 jours).
+- La maintenance OMO peut maintenant etre appelee toutes les quinze minutes par une URL securisee, tout en conservant le faux cron lors des visites.
 
 ## 2026-08-05
 
@@ -149,9 +219,40 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Le panneau du menu d actions des propositions respecte maintenant correctement son etat masque au chargement.
 - Le menu d actions des propositions reprend maintenant les composants generiques utilises par les menus des indicateurs.
 - Les boutons d actions des propositions utilisent maintenant la meme hauteur compacte que le bouton de menu `...`.
+## 2026-08-09
+
+- La liste des documents utilise maintenant des icones dediees pour les documents collaboratifs Etherpad et les tableurs collaboratifs EtherCalc.
+- Les reglages super-admin du fichier .env permettent maintenant de tester sans enregistrement la connexion Etherpad et EtherCalc, y compris avec les valeurs encore saisies dans le formulaire.
+- L action Importer un indicateur propose maintenant un prototype a onglets : indicateurs existants ou Framacalc. Le second onglet liste les tableurs collaboratifs visibles et permet de preparer une lecture de cellule planifiee ou l import d une plage datee a plusieurs valeurs.
+- Les panneaux masques du prototype Framacalc restent correctement invisibles, y compris lorsqu ils utilisent une mise en page en grille.
+- Le serveur EtherCalc autonome bloque maintenant ses pages publiques de creation ; les tableurs sont accessibles uniquement depuis OMO.
+- Le lanceur EtherCalc autonome reconnait aussi les icones SocialCalc demandees avec un nom de feuille dans leur chemin, afin qu elles se chargent correctement sur les hebergements Node.js publics.
+- Le panneau super-admin de configuration du serveur permet maintenant de renseigner la connexion EtherCalc globale : URL publique, URL interne optionnelle et cle secrete masquee.
+- 2026-08-09 : Les documents peuvent maintenant etre des tableurs collaboratifs EtherCalc. OMO cree puis supprime automatiquement la feuille, transmet le nom OMO de la personne et applique separement les droits de lecture et d edition du contenu. Docker fournit un EtherCalc local via `https://calc.localtest.me`.
+- 2026-08-09 : Le proxy EtherCalc local remappe les icones de barre d outils SocialCalc, y compris les chemins relatifs au nom du tableur, afin qu elles soient correctement chargees dans les feuilles affichees par OMO.
+- 2026-08-09 : Les documents collaboratifs et les tableurs collaboratifs disposent maintenant d un bouton plein ecran. Les tags sont compacts et les informations du fichier sont regroupees en bas de la fiche document.
+- 2026-08-09 : Le passage en plein ecran d un tableur collaboratif demande maintenant a EtherCalc de recalculer sa mise en page, afin que la grille occupe toute la surface disponible.
+- 2026-08-09 : La barre d outils EtherCalc ne revient plus a la ligne dans les iframes OMO et peut defiler horizontalement uniquement en cas de vrai depassement ; la marge negative de `SocialCalc-edittools` est neutralisee pour eviter un faux depassement, le defilement ne recouvre alors pas les icones, et le champ de formule utilise automatiquement la largeur restante.
+- 2026-08-09 : Les iframes des tableurs collaboratifs ne creent plus de barre de defilement externe pour quelques pixels de depassement.
+- 2026-08-09 : Le conteneur HTML inutile autour des iframes de tableur collaboratif a ete retire, sans modifier le cadre de l iframe.
+- 2026-08-09 : Le contenu principal des fiches document n est plus place dans un panneau `omo-card`, ce qui evite une marge inutile autour des contenus embarques.
+- 2026-08-09 : EtherCalc dispose aussi d un lanceur autonome pour hebergement Node.js sans Docker, base sur le runtime `workerd` precompile et un repertoire de donnees persistant separe.
+- 2026-08-02 : Le panneau super-admin Admin du serveur permet maintenant de renseigner la connexion Etherpad globale directement dans le fichier .env protege : URL, cle API masquee, version d API et domaine de partage des cookies.
+- 2026-08-02 : Docker lance maintenant aussi un Etherpad local accessible par `https://doc.localtest.me`, avec un domaine de cookies commun a OMO pour tester les documents collaboratifs sans serveur externe.
+- 2026-08-02 : Les appels API Etherpad utilisent maintenant la methode GET documentee, compatible avec Etherpad 2.6.1 et les serveurs qui refusent les appels POST.
+- 2026-08-02 : Etherpad local est maintenant publie en HTTPS par le proxy Apache de developpement, avec WebSocket, afin que les documents collaboratifs restent utilisables lorsque le navigateur force HTTPS.
+- 2026-08-02 : La connexion Etherpad ne demande a nouveau qu une seule URL publique; Docker reconnait automatiquement son certificat local pour les appels API HTTPS d OMO.
+- 2026-08-02 : Les sessions Etherpad sont transmises avec le format requis par son client Web, ce qui retablit l ouverture des pads prives dans l iframe OMO.
+- 2026-08-02 : Etherpad local suit maintenant le choix de theme clair, sombre ou systeme defini dans OMO, y compris lorsque ce choix differe de celui du navigateur.
+- 2026-08-02 : Etherpad local utilise maintenant une base MariaDB dediee sur le serveur de base de donnees OMO, au lieu du fichier DirtyDB local.
+- 2026-08-02 : Les droits des documents distinguent maintenant la gestion du document et l edition de son contenu : CAN_CREATE_DOCUMENT protege les metadonnees et les actions structurelles, tandis que la portee d edition propre au document autorise le contenu HTML, les liens, les fichiers et les pads Etherpad.
+- 2026-08-02 : Les icones de visibilite et d edition de la liste des documents restent maintenant lisibles en mode sombre.
+- 2026-08-02 : Le formulaire des documents distingue visuellement les metadonnees non modifiables, avec des controles grises et un curseur d interdiction.
+- 2026-08-02 : Le type de document Etherpad est presente comme un document collaboratif dans les interfaces destinees aux utilisateurs.
 
 ## 2026-08-01
 
+- Les documents peuvent maintenant etre de type Etherpad. OMO cree le pad sur le serveur configure, transmet l identite OMO, respecte les droits de lecture et d edition, conserve les sessions de plusieurs pads et supprime le pad lors de la suppression definitive du document. Chaque organisation peut definir son propre serveur et sa propre cle API dans les parametres de l application Documents, avec repli securise sur les secrets serveur.
 - Le bot Telegram peut maintenant etre connecte depuis un groupe a un role ou a un projet. Une personne doit d abord avoir relie son compte Telegram en prive; elle navigue ensuite parmi ses organisations, cercles, roles et projets autorises. Les vocaux du groupe sont alors ajoutes au contexte choisi et lies au projet lorsque celui-ci est selectionne.
 - La navigation Telegram des destinations de groupe inclut les groupes et les cercles. L ouverture d un role propose maintenant explicitement sa selection ou les projets rattaches a ce role, et les erreurs d enregistrement conservent leur detail SQL dans les journaux.
 - Les groupes Telegram sans sujet utilisent maintenant une destination principale explicite, ce qui evite une erreur SQL lors de leur connexion.
@@ -1563,6 +1664,15 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 
 - Les reglages de notifications attendent maintenant que le service worker soit actif avant de creer une souscription navigateur.
 - Les notifications lues sont maintenant visuellement distinguees dans la cloche, et les liens Push, Telegram et e-mail passent par une redirection dediee qui marque la notification comme lue.
+- Les indicateurs peuvent maintenant conserver une source EtherCalc, soit une cellule lue periodiquement, soit une colonne issue d un tableau synchronise.
+- L edition d un indicateur EtherCalc remplace maintenant le champ URL par son document source et ses reglages de cellule ou de plage.
+- L edition d une source tableau EtherCalc accepte maintenant plusieurs colonnes de valeurs et cree les courbes manquantes sans dupliquer celles deja configurees.
+- Les groupes peuvent maintenant masquer leurs indicateurs sources appartenant au meme holon, sans retirer les sources des autres holons de leur catalogue.
+- Deplacer ou modifier un groupe recalcule immediatement la visibilite de ses sources selon son holon courant.
+- Les legendes des groupes ouvrent maintenant leurs indicateurs via le hash de navigation, afin que le bouton Retour retrouve le groupe.
+- Le rechargement des indicateurs conserve maintenant la position de defilement de leur liste.
+- Les indicateurs sans frequence de mesure ne declenchent plus d avertissement de compatibilite PHP lors du calcul de leur plage d affichage.
+- Les tableurs EtherCalc ouverts sans droit d edition sont maintenant affiches en mode lecture seule, sans saisie possible dans les cellules.
 
 ## 2026-08-07
 

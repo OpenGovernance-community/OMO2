@@ -46,6 +46,7 @@ $serverEnvClientTexts = [
     'unlockSuccess' => omoServerEnvT('parameters.server_env.feedback.unlock_success'),
     'operationDone' => omoServerEnvT('parameters.server_env.feedback.operation_done'),
     'saveFailed' => omoServerEnvT('parameters.server_env.feedback.save_failed', ['target' => $serverEnvTargetLabel]),
+    'testFailed' => omoServerEnvT('parameters.server_env.feedback.test_failed'),
     'secretConfigured' => omoServerEnvT('parameters.server_env.secret.configured'),
     'secretEmpty' => omoServerEnvT('parameters.server_env.secret.empty'),
 ];
@@ -56,6 +57,7 @@ $serverEnvClientTexts = [
     data-popup-url="/omo/api/parameters/server_env_popup.php"
     data-unlock-url="/omo/api/parameters/server_env_unlock.php"
     data-save-url="/omo/api/parameters/server_env_save.php"
+    data-test-url="/omo/api/parameters/server_env_test_connection.php"
 >
     <style>
     .omo-server-env-popup__panel,
@@ -113,6 +115,18 @@ $serverEnvClientTexts = [
         gap: 10px;
         align-items: center;
         justify-content: space-between;
+    }
+
+    .omo-server-env-popup__section-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: var(--generic-container-gap, 16px);
+    }
+
+    .omo-server-env-popup__section-header > .generic-action-button {
+        flex: 0 0 auto;
     }
 
     .omo-server-env-popup__secret-state {
@@ -204,11 +218,20 @@ $serverEnvClientTexts = [
             <p class="omo-server-env-popup__hint generic-help-text"><?= htmlspecialchars(omoServerEnvT('parameters.server_env.edit.secret_hint'), ENT_QUOTES, 'UTF-8') ?></p>
 
             <form id="omoServerEnvForm" class="omo-server-env-popup__form generic-form-stack">
-                <?php foreach ($serverEnvSections as $section): ?>
+                <?php foreach ($serverEnvSections as $sectionKey => $section): ?>
                 <section class="generic-soft-panel generic-soft-panel--stack">
-                    <div>
-                        <h4 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars((string)$section['title'], ENT_QUOTES, 'UTF-8') ?></h4>
-                        <p class="omo-server-env-popup__section-intro generic-description"><?= htmlspecialchars((string)$section['intro'], ENT_QUOTES, 'UTF-8') ?></p>
+                    <div class="omo-server-env-popup__section-header">
+                        <div>
+                            <h4 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars((string)$section['title'], ENT_QUOTES, 'UTF-8') ?></h4>
+                            <p class="omo-server-env-popup__section-intro generic-description"><?= htmlspecialchars((string)$section['intro'], ENT_QUOTES, 'UTF-8') ?></p>
+                        </div>
+                        <?php if (in_array($sectionKey, ['etherpad', 'ethercalc'], true)): ?>
+                        <button
+                            type="button"
+                            class="generic-action-button generic-action-button--secondary"
+                            data-server-env-test="<?= htmlspecialchars($sectionKey, ENT_QUOTES, 'UTF-8') ?>"
+                        ><?= htmlspecialchars(omoServerEnvT('parameters.server_env.action.test_connection'), ENT_QUOTES, 'UTF-8') ?></button>
+                        <?php endif; ?>
                     </div>
 
                     <div class="omo-server-env-popup__grid generic-form-grid">
@@ -260,6 +283,13 @@ $serverEnvClientTexts = [
                             </label>
                         <?php endforeach; ?>
                     </div>
+                    <?php if (in_array($sectionKey, ['etherpad', 'ethercalc'], true)): ?>
+                    <div
+                        class="omo-server-env-popup__feedback generic-soft-panel generic-feedback"
+                        data-server-env-test-feedback="<?= htmlspecialchars($sectionKey, ENT_QUOTES, 'UTF-8') ?>"
+                        aria-live="polite"
+                    ></div>
+                    <?php endif; ?>
                 </section>
                 <?php endforeach; ?>
 
@@ -287,6 +317,7 @@ $serverEnvClientTexts = [
     var popupUrl = root.getAttribute('data-popup-url') || '/omo/api/parameters/server_env_popup.php';
     var unlockUrl = root.getAttribute('data-unlock-url') || '/omo/api/parameters/server_env_unlock.php';
     var saveUrl = root.getAttribute('data-save-url') || '/omo/api/parameters/server_env_save.php';
+    var testUrl = root.getAttribute('data-test-url') || '/omo/api/parameters/server_env_test_connection.php';
 
     function closeModal() {
         if (typeof window.commonTopbarCloseModal === 'function') {
@@ -309,12 +340,12 @@ $serverEnvClientTexts = [
         });
     }
 
-    function setFeedback(node, message, type) {
+    function setFeedback(node, message, type, inline) {
         if (!node) {
             return;
         }
 
-        if (message && typeof window.commonNotify === 'function') {
+        if (message && !inline && typeof window.commonNotify === 'function') {
             window.commonNotify(message, type === 'success' ? 'success' : 'error');
             node.textContent = '';
             node.className = 'omo-server-env-popup__feedback generic-soft-panel generic-feedback';
@@ -413,6 +444,54 @@ $serverEnvClientTexts = [
     if (firstInput) {
         firstInput.focus();
     }
+
+    root.querySelectorAll('[data-server-env-test]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var service = button.getAttribute('data-server-env-test') || '';
+            var testFeedback = root.querySelector('[data-server-env-test-feedback="' + service + '"]');
+            button.disabled = true;
+            setFeedback(testFeedback, '', '', true);
+
+            var data = new FormData(form);
+            data.append('service', service);
+            fetch(testUrl, {
+                method: 'POST',
+                body: data,
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(function (response) {
+                return response.json().catch(function () {
+                    return {
+                        status: false,
+                        message: texts.invalidResponse || ''
+                    };
+                });
+            })
+            .then(function (payload) {
+                if (payload && payload.requiresUnlock) {
+                    refreshPopup();
+                    return;
+                }
+
+                setFeedback(
+                    testFeedback,
+                    payload && payload.message ? payload.message : (texts.testFailed || ''),
+                    payload && payload.status ? 'success' : 'error',
+                    true
+                );
+            })
+            .catch(function () {
+                setFeedback(testFeedback, texts.testFailed || '', 'error', true);
+            })
+            .finally(function () {
+                button.disabled = false;
+            });
+        });
+    });
 
     form.addEventListener('submit', function (event) {
         event.preventDefault();

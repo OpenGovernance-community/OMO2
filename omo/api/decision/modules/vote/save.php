@@ -29,12 +29,19 @@ if (empty($context['status'])) {
 
 $decision = $context['decision'];
 $selectedGroup = $context['decisionGroup'] ?? null;
+$createGroupRequested = $decision instanceof DecisionProcess && trim((string)($_POST['group_action'] ?? '')) === 'create';
+if ($createGroupRequested) {
+    $selectedGroup = null;
+}
 $currentUserId = (int)$context['currentUserId'];
 $organizationId = (int)$context['organizationId'];
 $targetHolonId = (int)$context['targetHolonId'];
 $decisionId = $decision instanceof DecisionProcess ? (int)$decision->getId() : 0;
 $coreLocked = $decision instanceof DecisionProcess ? $decision->hasEvaluationStarted() : false;
 $startDatesLocked = $coreLocked || ($decision instanceof DecisionProcess && $decision->hasSubmittedResponses());
+if ($createGroupRequested && $coreLocked) {
+    omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => 'Il n’est plus possible d’ajouter une question après le début du vote.']);
+}
 
 $processTitle = trim((string)($_POST['process_title'] ?? ''));
 $processDescription = trim((string)($_POST['process_description'] ?? ''));
@@ -53,6 +60,7 @@ $isAnonymous = !empty($_POST['is_anonymous']);
 $allowAnonymousVotes = !empty($_POST['allow_anonymous_votes']);
 $allowConsultationProposals = !empty($_POST['allow_consultation_proposals']);
 $allowProposalDiscussions = !empty($_POST['allow_proposal_discussions']);
+$showLiveResults = !empty($_POST['show_live_results']);
 $voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig([
     'enabled' => !empty($_POST['vote_weight_enabled']),
     'question' => $_POST['vote_weight_question'] ?? '',
@@ -83,7 +91,7 @@ if ($decision instanceof DecisionProcess) {
     $existingMethod = $selectedGroup instanceof DecisionGroup
         ? DecisionProcess::normalizeEvaluationMethod($selectedGroup->get('evaluation_method'))
         : DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'));
-    if ($existingMethod !== DecisionProcess::METHOD_SIMPLE_VOTE) {
+    if (!$createGroupRequested && $existingMethod !== DecisionProcess::METHOD_SIMPLE_VOTE) {
         omoDecisionModuleJsonResponse(400, [
             'status' => false,
             'message' => 'Cette prise de decision n utilise pas le module de vote simple.',
@@ -116,6 +124,7 @@ $currentVoteConfig = $decision instanceof DecisionProcess
         'allow_anonymous_votes' => $allowAnonymousVotes,
         'allow_consultation_proposals' => $allowConsultationProposals,
         'allow_proposal_discussions' => $allowProposalDiscussions,
+        'show_live_results' => $showLiveResults,
         'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
         'vote_weight_question' => (string)$voteWeightConfig['question'],
         'vote_weight_options' => (array)$voteWeightConfig['options'],
@@ -149,8 +158,11 @@ if (!$pdo) {
 }
 
 $newProposalIds = [];
+$ownsTransaction = !$pdo->inTransaction();
 try {
-    $pdo->beginTransaction();
+    if ($ownsTransaction) {
+        $pdo->beginTransaction();
+    }
 
     $decision->set('status', $status);
     $decision->set('evaluation_method', DecisionProcess::METHOD_SIMPLE_VOTE);
@@ -169,7 +181,8 @@ try {
 
     $decisionGroup = $selectedGroup instanceof DecisionGroup ? $selectedGroup : null;
     $primaryGroup = $decision instanceof DecisionProcess ? $decision->getPrimaryGroup(false) : null;
-    $isPrimaryGroup = !$decisionGroup || ($primaryGroup instanceof DecisionGroup && (int)$primaryGroup->getId() === (int)$decisionGroup->getId());
+    $createAdditionalGroup = $createGroupRequested && $primaryGroup instanceof DecisionGroup;
+    $isPrimaryGroup = (!$decisionGroup && !$createAdditionalGroup) || ($primaryGroup instanceof DecisionGroup && (int)$primaryGroup->getId() === (int)$decisionGroup->getId());
     $existingVoteParameters = omoDecisionModuleGetMethodParameters(
         $decisionGroup instanceof DecisionGroup ? $decisionGroup->get('parameters') : $decision->get('parameters'),
         omoDecisionVoteGetMethodKey()
@@ -190,6 +203,7 @@ try {
             'allow_anonymous_votes' => $allowAnonymousVotes,
             'allow_consultation_proposals' => $allowConsultationProposals,
             'allow_proposal_discussions' => $allowProposalDiscussions,
+            'show_live_results' => $showLiveResults,
             'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
             'vote_weight_question' => (string)$voteWeightConfig['question'],
             'vote_weight_options' => (array)$voteWeightConfig['options'],
@@ -210,8 +224,13 @@ try {
 
     $decisionId = (int)$decision->getId();
     if (!$decisionGroup instanceof DecisionGroup) {
-        $decisionGroup = $decision->ensurePrimaryGroup();
-        $isPrimaryGroup = true;
+        if ($createAdditionalGroup) {
+            $decisionGroup = $decision->addDecisionGroup(DecisionProcess::METHOD_SIMPLE_VOTE, $decisionType, $title, $description !== '' ? $description : null);
+            $isPrimaryGroup = false;
+        } else {
+            $decisionGroup = $decision->ensurePrimaryGroup();
+            $isPrimaryGroup = true;
+        }
     }
     if (!$decisionGroup instanceof DecisionGroup || (int)$decisionGroup->getId() <= 0) {
         throw new RuntimeException('decision_group_save_failed');
@@ -317,9 +336,11 @@ try {
         throw new RuntimeException('participant_sync_failed');
     }
 
-    $pdo->commit();
+    if ($ownsTransaction) {
+        $pdo->commit();
+    }
 } catch (InvalidArgumentException $exception) {
-    if ($pdo->inTransaction()) {
+    if ($ownsTransaction && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
@@ -330,7 +351,7 @@ try {
             : 'Impossible d enregistrer les invitations pour le moment.',
     ]);
 } catch (Throwable $exception) {
-    if ($pdo->inTransaction()) {
+    if ($ownsTransaction && $pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
@@ -340,13 +361,20 @@ try {
     ]);
 }
 
-foreach ($newProposalIds as $newProposalId) {
-    $newProposal = new DecisionProposal();
-    if ($newProposal->load($newProposalId)) {
-        try {
-            notificationCenterDispatchDecisionProposal($newProposal);
-        } catch (Throwable $exception) {
-            error_log('decision_proposal_notification_failed: ' . $exception->getMessage());
+if (!empty($GLOBALS['omoDecisionDeferProposalNotifications'])) {
+    $GLOBALS['omoDecisionDeferredProposalIds'] = array_values(array_unique(array_merge(
+        (array)($GLOBALS['omoDecisionDeferredProposalIds'] ?? []),
+        $newProposalIds
+    )));
+} else {
+    foreach ($newProposalIds as $newProposalId) {
+        $newProposal = new DecisionProposal();
+        if ($newProposal->load($newProposalId)) {
+            try {
+                notificationCenterDispatchDecisionProposal($newProposal);
+            } catch (Throwable $exception) {
+                error_log('decision_proposal_notification_failed: ' . $exception->getMessage());
+            }
         }
     }
 }

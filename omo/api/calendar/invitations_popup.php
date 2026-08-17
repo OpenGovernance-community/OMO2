@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/invitations_shared.php';
+require_once dirname(__DIR__, 3) . '/common/notification_center.php';
 
 use dbObject\DbObject;
 use dbObject\Document;
@@ -225,6 +226,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'message' => omoCalendarInvitationsPopupT('calendar.invitations.save_error'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
+    }
+
+    if ($eventId > 0 && $resource instanceof Event) {
+        try {
+            notificationCenterDispatchEventInvitation($resource, $currentUserId);
+        } catch (Throwable $exception) {
+            error_log('OMO calendar invitation notification dispatch failed: ' . $exception->getMessage());
+        }
     }
 
     $detailUrl = '';
