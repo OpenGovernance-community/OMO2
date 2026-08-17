@@ -2,6 +2,10 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-17
+
+- Les comparaisons de modifications de gouvernance sont maintenant calculees par un seul composant partage, utilise aussi bien par l editeur Hors reorg que par sa consultation. Les actions de formulaires de la discussion reutilisent egalement les styles generiques.
+
 ## 2026-08-16
 
 - Les propositions hors reorg affichent maintenant leur champ Description, conserve la saisie du proposeur et le restitue lors de la reouverture du scrutin.
