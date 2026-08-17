@@ -42,6 +42,8 @@ function omoParametersIndexSourceLang()
         'parameters.index.card.lexicon.title' => ['text' => 'Lexique', 'context' => 'Card title used to open the organization lexicon editor from the settings hub.'],
         'parameters.index.card.lexicon.eyebrow' => ['text' => 'Vocabulaire', 'context' => 'Small eyebrow label shown on the organization lexicon card.'],
         'parameters.index.card.lexicon.description' => ['text' => 'Adapter les termes utilises dans l interface de cette organisation.', 'context' => 'Card description used to open the organization lexicon editor.'],
+        'parameters.index.card.lexicon.admin_mode_required' => ['text' => 'Activez le mode {adminLabel} dans votre profil pour ouvrir ce parametre.', 'context' => 'Card description shown when an organization admin has not enabled admin mode for the organization lexicon editor.'],
+        'parameters.index.card.lexicon.admin_mode_cta' => ['text' => 'Mode {adminLabel} requis', 'context' => 'Card action shown when admin mode is required for the organization lexicon editor.'],
         'parameters.index.drawer.loading' => ['text' => 'Chargement...', 'context' => 'Loading placeholder shown while a nested settings drawer is fetching its content.'],
         'parameters.index.drawer.error' => ['text' => 'Impossible de charger ce module.', 'context' => 'Error shown inside the nested settings drawer when the requested content cannot be loaded.'],
         'parameters.index.action.close' => ['text' => 'Fermer', 'context' => 'Close button label used in the nested settings drawer header.'],
