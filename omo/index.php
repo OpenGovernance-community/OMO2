@@ -565,7 +565,7 @@ function omoRenderDirectoryActionCard(array $actionCardData)
 
 $omoPwaBodyEndHtml = '<script src="/omo/assets/js/install.js" defer></script>';
 $omoThemeBootstrapHtml = implode(PHP_EOL, [
-    '<script src="/shared_functions.js"></script>',
+    '<script src="/shared_functions.js?v=20260802-etherpad-theme-sync"></script>',
     '<link rel="stylesheet" href="/shared_css.css">',
     '<script>sharedApplyDocumentTheme();</script>',
 ]);
@@ -777,7 +777,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <title><?= htmlspecialchars(t('app.directory.page_title')) ?></title>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260807-notification-channels">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260816-calendar-notifications">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page auth-state-page--scrollable auth-state-page--themed auth-state-page--with-topbar">
@@ -1472,7 +1472,7 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     <title><?= htmlspecialchars(t('app.main.page_title', ['organizationName' => (($organizationContext['name'] ?? '') ?: 'OMO')])) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260807-notification-channels">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260816-calendar-notifications">
     <style>
         html[data-omo-organization-accent] {
             --omo-organization-accent: <?= $omoOrganizationAccentColorCss ?>;

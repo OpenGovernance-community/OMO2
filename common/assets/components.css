@@ -63,6 +63,13 @@
     --project-priority-p5: #778aa3;
 }
 
+/* The HTML hidden attribute must always win over layout utilities such as
+ * display:grid or display:flex. Keep this rule global so new components do
+ * not need a selector-specific exception. */
+[hidden] {
+    display: none !important;
+}
+
 /* Summernote appends its link dialog outside the editor. Keep that dialog
  * consistent with the application dark theme instead of inheriting light
  * modal surfaces with dark-theme text. */
@@ -238,6 +245,14 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
     display: grid;
 }
 
+.generic-soft-panel--summary {
+    padding: var(--generic-space-2) 0 var(--generic-space-2) var(--generic-space-3);
+    border-width: 0 0 0 3px;
+    border-radius: 0;
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 34%, var(--color-border, #d1d5db));
+    background: transparent;
+}
+
 .generic-hero-panel {
     --generic-hero-gap: var(--generic-space-2);
     --generic-hero-padding: var(--generic-container-padding-block);
@@ -297,6 +312,7 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
         );
     --generic-drawer-header-shadow: 0 16px 28px -24px rgba(15, 23, 42, 0.48);
     position: relative;
+    z-index: var(--generic-drawer-header-z, 6);
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -307,6 +323,7 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
     box-shadow: var(--generic-drawer-header-shadow);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    overflow: visible;
 }
 
 .generic-drawer-header--sticky {
@@ -367,6 +384,13 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
     gap: var(--generic-form-grid-gap, var(--generic-space-4));
 }
 
+.generic-form-stack[hidden],
+.generic-form-grid[hidden],
+.generic-form-field[hidden],
+.generic-checkbox[hidden] {
+    display: none !important;
+}
+
 .generic-form-field {
     display: grid;
     align-content: start;
@@ -375,6 +399,22 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
 
 .generic-form-field--full {
     grid-column: 1 / -1;
+}
+
+.generic-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--generic-space-2);
+    cursor: pointer;
+}
+
+.generic-checkbox > input {
+    flex: 0 0 auto;
+    margin-top: .2em;
+}
+
+.generic-checkbox > .generic-help-text {
+    display: block;
 }
 
 .generic-form-section {
@@ -559,6 +599,97 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
     font-size: var(--generic-type-size-body);
 }
 
+.generic-context-help {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.generic-context-help > summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: 999px;
+    background: var(--color-surface, #ffffff);
+    color: var(--color-text-light, #475569);
+    font-size: var(--generic-type-size-sm);
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+}
+
+.generic-context-help > summary::-webkit-details-marker {
+    display: none;
+}
+
+.generic-context-help > summary:hover,
+.generic-context-help > summary:focus-visible,
+.generic-context-help[open] > summary {
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 55%, var(--color-border, #d1d5db));
+    color: var(--color-primary, #2563eb);
+    outline: none;
+}
+
+.generic-context-help > summary:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 20%, transparent);
+}
+
+.generic-context-help__content {
+    --generic-context-help-max-height: calc(100vh - 24px);
+    --generic-context-help-max-width: calc(100vw - 40px);
+    --generic-context-help-shift-x: 0px;
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + var(--generic-space-2));
+    left: 0;
+    box-sizing: border-box;
+    width: min(320px, var(--generic-context-help-max-width));
+    max-height: var(--generic-context-help-max-height);
+    padding: var(--generic-space-3);
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-raised, var(--color-surface, #ffffff));
+    box-shadow: var(--shadow-lg, 0 18px 38px rgba(15, 23, 42, 0.18));
+    color: var(--color-text-light, #475569);
+    font-size: var(--generic-type-size-sm);
+    font-weight: 400;
+    line-height: 1.5;
+    overflow-y: auto;
+    transform: translateX(var(--generic-context-help-shift-x));
+}
+
+.generic-heading-with-help .generic-context-help__content {
+    right: 0;
+    left: auto;
+}
+
+.generic-context-help.is-positioned-above .generic-context-help__content {
+    top: auto;
+    bottom: calc(100% + var(--generic-space-2));
+}
+
+.generic-context-help__content > :first-child {
+    margin-top: 0;
+}
+
+.generic-context-help__content > :last-child {
+    margin-bottom: 0;
+}
+
+.generic-heading-with-help {
+    display: flex;
+    align-items: center;
+    gap: var(--generic-space-2);
+    min-width: 0;
+}
+
 .generic-meta {
     margin: 0;
     color: var(--color-text-light, #64748b);
@@ -687,6 +818,14 @@ html[data-theme="dark"] .black-icon,
 
 .generic-action-button:not(:disabled):hover {
     transform: translateY(-1px);
+}
+
+.generic-action-button--no-lift:not(:disabled):hover {
+    transform: none;
+}
+
+.generic-action-button--no-lift.generic-action-button--main:not(:disabled):hover {
+    box-shadow: var(--shadow-md, 0 12px 24px rgba(0, 0, 0, 0.12));
 }
 
 .generic-action-button--main:not(:disabled):hover {
@@ -1000,6 +1139,10 @@ textarea.generic-form-control {
 
 .generic-tabs__tab:not(.is-active):hover {
     transform: translateY(-1px);
+}
+
+.generic-tabs--no-lift .generic-tabs__tab:not(.is-active):hover {
+    transform: none;
 }
 
 .generic-tabs__panels {

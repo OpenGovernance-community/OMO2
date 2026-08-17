@@ -1,0 +1,14 @@
+{
+  "name": "omo-ethercalc-standalone",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "true",
+    "start": "node dist/main",
+    "start:prod": "node dist/main"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

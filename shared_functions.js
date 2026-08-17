@@ -126,10 +126,42 @@ function sharedBroadcastThemeToChildFrames(detail = {}) {
 		}
 
 		try {
-			frame.contentWindow.postMessage(payload, window.location.origin);
+			const configuredOrigin = String(frame.getAttribute('data-omo-theme-message-origin') || '').trim();
+			const targetOrigin = /^https?:\/\/[^/?#]+$/i.test(configuredOrigin)
+				? configuredOrigin
+				: window.location.origin;
+			frame.contentWindow.postMessage(payload, targetOrigin);
 		} catch (error) {
 		}
 	});
+}
+
+function sharedEnsureChildFrameThemeLoadListener() {
+	if (typeof document === 'undefined' || typeof window === 'undefined' || window.sharedChildFrameThemeLoadListenerBound) {
+		return;
+	}
+
+	window.sharedChildFrameThemeLoadListenerBound = true;
+	document.addEventListener('load', function (event) {
+		const frame = event && event.target;
+		if (!frame || frame.tagName !== 'IFRAME' || !frame.contentWindow) {
+			return;
+		}
+
+		const configuredOrigin = String(frame.getAttribute('data-omo-theme-message-origin') || '').trim();
+		if (!/^https?:\/\/[^/?#]+$/i.test(configuredOrigin)) {
+			return;
+		}
+
+		try {
+			frame.contentWindow.postMessage({
+				type: 'omo-theme-sync',
+				preference: sharedGetThemePreference(),
+				colorStyle: sharedGetColorStylePreference()
+			}, configuredOrigin);
+		} catch (error) {
+		}
+	}, true);
 }
 
 function sharedApplyDocumentTheme(options = {}) {
@@ -154,6 +186,7 @@ function sharedApplyDocumentTheme(options = {}) {
 		: sharedResolveTheme(preference, mediaQuery);
 
 	sharedEnsureThemeMessageListener();
+	sharedEnsureChildFrameThemeLoadListener();
 
 	root.dataset.themePreference = preference;
 	root.dataset.theme = resolvedTheme;

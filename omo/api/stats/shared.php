@@ -2,6 +2,8 @@
 
 use dbObject\Holon;
 use dbObject\Organization;
+use dbObject\ArrayDocument;
+use dbObject\Document;
 use dbObject\StatIndicator;
 use dbObject\StatIndicatorGroup;
 use dbObject\StatIndicatorGroupItem;
@@ -189,13 +191,36 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.chart.tooltip.date' => ['text' => 'Date', 'context' => 'Tooltip label for a chart point date.'],
             'stats.import.title' => ['text' => 'Importer un indicateur', 'context' => 'Title of the indicator import picker modal.'],
             'stats.import.edit_title' => ['text' => 'Modifier la source importée', 'context' => 'Title of the indicator import edit picker modal.'],
+            'stats.import.source_indicators' => ['text' => 'Indicateurs existants', 'context' => 'Tab label for importing an existing OMO indicator.'],
+            'stats.import.source_ethercalc' => ['text' => 'Framacalc', 'context' => 'Tab label for the EtherCalc spreadsheet source prototype.'],
             'stats.import.search' => ['text' => 'Rechercher', 'context' => 'Label for the indicator picker search field.'],
             'stats.import.search_placeholder' => ['text' => 'Nom ou contexte', 'context' => 'Placeholder for the indicator picker search field.'],
             'stats.import.visible' => ['text' => 'Indicateurs visibles', 'context' => 'Label for the indicator picker result list.'],
+            'stats.import.ethercalc.document' => ['text' => 'Document Framacalc', 'context' => 'Label for the EtherCalc document picker in the indicator import prototype.'],
+            'stats.import.ethercalc.no_documents' => ['text' => 'Aucun tableur collaboratif visible dans cette organisation.', 'context' => 'Empty state for the EtherCalc document picker in the indicator import prototype.'],
+            'stats.import.ethercalc.mode' => ['text' => 'Mode de lecture', 'context' => 'Label for the EtherCalc reading mode selector in the indicator import prototype.'],
+            'stats.import.ethercalc.mode_cell' => ['text' => 'Lire une cellule', 'context' => 'Option reading one EtherCalc cell in the indicator import prototype.'],
+            'stats.import.ethercalc.mode_table' => ['text' => 'Représenter un tableau', 'context' => 'Option importing an EtherCalc data table in the indicator import prototype.'],
+            'stats.import.ethercalc.cell' => ['text' => 'Cellule', 'context' => 'Label for the EtherCalc cell reference in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency' => ['text' => 'Fréquence', 'context' => 'Label for the EtherCalc read schedule in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_hourly' => ['text' => 'Toutes les heures', 'context' => 'Hourly EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_daily' => ['text' => 'Chaque jour', 'context' => 'Daily EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_weekly' => ['text' => 'Chaque semaine', 'context' => 'Weekly EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.range' => ['text' => 'Plage de données', 'context' => 'Label for the EtherCalc table range in the indicator import prototype.'],
+            'stats.import.ethercalc.date_column' => ['text' => 'Colonne de date', 'context' => 'Label for the EtherCalc date column in the indicator import prototype.'],
+            'stats.import.ethercalc.value_columns' => ['text' => 'Colonnes de valeurs', 'context' => 'Label for the EtherCalc value columns in the indicator import prototype.'],
+            'stats.import.ethercalc.table_help' => ['text' => 'La plage doit inclure une colonne de dates et une ou plusieurs colonnes de valeurs.', 'context' => 'Help text for the EtherCalc table import prototype.'],
+            'stats.import.ethercalc.prototype_action' => ['text' => 'Tester la configuration', 'context' => 'Action label for the EtherCalc import prototype.'],
+            'stats.import.ethercalc.prototype_notice' => ['text' => 'La configuration Framacalc est prête pour test visuel. Son enregistrement et la synchronisation seront ajoutés dans la prochaine étape.', 'context' => 'Notice shown when submitting the EtherCalc import prototype.'],
+            'stats.import.ethercalc.name' => ['text' => 'Nom de l indicateur', 'context' => 'Label for the EtherCalc indicator name or table name prefix.'],
+            'stats.import.ethercalc.create_action' => ['text' => 'Creer les indicateurs', 'context' => 'Action label creating EtherCalc-backed indicators.'],
+            'stats.import.ethercalc.source_title' => ['text' => 'Source Framacalc', 'context' => 'Heading for the EtherCalc source editor inside an indicator form.'],
+            'stats.import.ethercalc.value_column' => ['text' => 'Colonne de valeur', 'context' => 'Label for one EtherCalc table value column.'],
             'stats.group.title' => ['text' => 'Grouper des indicateurs', 'context' => 'Title of the indicator group picker modal.'],
             'stats.group.edit_title' => ['text' => 'Modifier le groupe', 'context' => 'Title of the indicator group edit picker modal.'],
             'stats.group.name' => ['text' => 'Nom du groupe', 'context' => 'Label for the indicator group name.'],
             'stats.group.mode' => ['text' => 'Affichage', 'context' => 'Label for the group chart display mode.'],
+            'stats.group.hide_same_holon_sources' => ['text' => 'Masquer les indicateurs dans le meme holon', 'context' => 'Checkbox hiding a group sources only when they belong to the group holon.'],
             'stats.group.mode.overlay' => ['text' => 'Courbes superposées', 'context' => 'Group chart mode drawing one curve per indicator.'],
             'stats.group.mode.sum' => ['text' => 'Somme des valeurs', 'context' => 'Group chart mode aggregating indicator values.'],
             'stats.group.detail.sources' => ['text' => 'Indicateurs sources', 'context' => 'Heading above the source indicator legend in a group detail.'],
@@ -547,6 +572,33 @@ if (!function_exists('omoStatsLoadIndicator')) {
         }
 
         return $indicator;
+    }
+}
+
+if (!function_exists('omoStatsLoadVisibleEthercalcDocument')) {
+    function omoStatsLoadVisibleEthercalcDocument($documentId, $organizationId)
+    {
+        $documentId = (int)$documentId;
+        $organizationId = (int)$organizationId;
+        if ($documentId <= 0 || $organizationId <= 0) {
+            return null;
+        }
+
+        $documents = new ArrayDocument();
+        $documents->load([
+            'where' => [
+                ['field' => 'id', 'value' => $documentId],
+                ['field' => 'IDorganization', 'value' => $organizationId],
+                ['field' => 'active', 'value' => 1],
+            ],
+        ]);
+        $documents->filterVisibleForCurrentViewer($organizationId);
+        foreach ($documents as $document) {
+            if ($document instanceof Document && $document->isEthercalcDocument() && $document->getEthercalcRoomId() !== '') {
+                return $document;
+            }
+        }
+        return null;
     }
 }
 
@@ -1179,7 +1231,7 @@ if (!function_exists('omoStatsSmallIndicatorTimestampRange')) {
             StatIndicator::FREQUENCY_YEARLY => 144,
         ];
 
-        if (isset($months[$frequency])) {
+        if ($frequency !== null && isset($months[$frequency])) {
             $startDate = $latestDate->modify('-' . $months[$frequency] . ' months');
         } elseif ($frequency === StatIndicator::FREQUENCY_WEEKLY) {
             $startDate = $latestDate->modify('-12 weeks');

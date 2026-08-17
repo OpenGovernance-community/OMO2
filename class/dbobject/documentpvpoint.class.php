@@ -23,7 +23,7 @@ class DocumentPvPoint extends DbObject
             [['IDdocument', 'IDparent', 'IDuser_author', 'IDholon_concerned', 'IDuser_modification', 'IDuser_editing'], 'fk'],
             [['title', 'item_type', 'author_email', 'pointtype', 'edit_lock_token'], 'string'],
             [['content'], 'html'],
-            [['active', 'is_handled'], 'boolean'],
+            [['active', 'is_handled', 'is_confidential'], 'boolean'],
             [['datecreation', 'datemodification', 'dateedition'], 'datetime'],
             [['id'], 'safe'],
         ];
@@ -49,6 +49,7 @@ class DocumentPvPoint extends DbObject
             'IDuser_editing' => 'Edition en cours',
             'edit_lock_token' => 'Jeton de verrou',
             'is_handled' => 'Traite',
+            'is_confidential' => 'Confidentiel',
             'active' => 'Actif',
             'dateedition' => 'Date edition',
             'datecreation' => 'Creation',
@@ -74,6 +75,7 @@ class DocumentPvPoint extends DbObject
             'IDuser_editing' => 'Personne qui detient actuellement le verrou d edition.',
             'edit_lock_token' => 'Jeton technique de verrouillage d une session d edition.',
             'is_handled' => 'Indique si le point a deja ete traite en reunion.',
+            'is_confidential' => 'Reserve ce point aux personnes declarees presentes a la reunion.',
         ];
     }
 
@@ -134,6 +136,11 @@ class DocumentPvPoint extends DbObject
     public function isGroup(): bool
     {
         return self::normalizeItemType($this->get('item_type')) === self::ITEM_TYPE_GROUP;
+    }
+
+    public function isConfidential(): bool
+    {
+        return !$this->isGroup() && !empty($this->get('is_confidential'));
     }
 
     public static function buildHierarchyPositionLabels(iterable $items): array
@@ -798,6 +805,7 @@ class DocumentPvPoint extends DbObject
             'actual_duration_minutes' => $this->getDurationMinutesValue('actual_duration_minutes'),
             'pointtype' => self::normalizePointType($this->get('pointtype')),
             'is_handled' => $this->isHandled(),
+            'is_confidential' => $this->isConfidential(),
             'active' => !empty($this->get('active')),
             'modification_user_id' => $this->getModificationUserId(),
         ], JSON_UNESCAPED_SLASHES));
@@ -821,6 +829,7 @@ class DocumentPvPoint extends DbObject
             'desiredDurationMinutes' => $this->getDurationMinutesValue('desired_duration_minutes'),
             'actualDurationMinutes' => $this->getDurationMinutesValue('actual_duration_minutes'),
             'isHandled' => $this->isHandled(),
+            'isConfidential' => $this->isConfidential(),
             'lastModifiedByUserId' => $this->getModificationUserId(),
             'lastModifiedByLabel' => $this->getModificationUserDisplayName($organizationId),
             'lastModifiedAtIso' => $modificationDate instanceof \DateTimeInterface ? $modificationDate->format(DATE_ATOM) : '',
@@ -878,6 +887,7 @@ class DocumentPvPoint extends DbObject
         $this->set('desired_duration_minutes', $desiredDuration);
         $this->set('actual_duration_minutes', $actualDuration);
         $this->set('is_handled', $this->isHandled());
+        $this->set('is_confidential', $this->isConfidential());
 
         if ($title === '') {
             return [
@@ -924,6 +934,7 @@ class DocumentPvPoint extends DbObject
             $this->set('actual_duration_minutes', null);
             $this->set('pointtype', self::TYPE_INFORMATION);
             $this->set('is_handled', false);
+            $this->set('is_confidential', false);
             $this->set('IDuser_editing', null);
             $this->set('edit_lock_token', null);
             $this->set('dateedition', null);

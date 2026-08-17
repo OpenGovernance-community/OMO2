@@ -20,11 +20,33 @@ $sourceLang = [
     'notifications.preferences.title' => ['text' => 'Evenements et canaux', 'context' => 'Title of the notification preference form.'],
     'notifications.preferences.description' => ['text' => 'Ces reglages s appliquent uniquement a cette organisation. La cloche conserve toujours les notifications recues.', 'context' => 'Description of the organization notification preference form.'],
     'notifications.preferences.group.decisions' => ['text' => 'Decisions', 'context' => 'Title of the decision notification preference group.'],
+    'notifications.preferences.group.calendar' => ['text' => 'Calendrier', 'context' => 'Title of the calendar notification preference group.'],
     'notifications.preferences.header.event' => ['text' => 'Evenement', 'context' => 'Header for the event column in notification preferences.'],
     'notifications.preferences.event.decision_proposal_owner' => ['text' => 'Ajout de proposition a mes scrutins', 'context' => 'Preference label for proposals added to decisions owned by the user.'],
     'notifications.preferences.event.decision_proposal_participant' => ['text' => 'Ajout de proposition aux scrutins auxquels je participe', 'context' => 'Preference label for proposals added to decisions where the user participates.'],
     'notifications.preferences.event.decision_chat_proposal_owner' => ['text' => 'Commentaire sur le chat de mes propositions', 'context' => 'Preference label for comments on proposals authored by the user.'],
     'notifications.preferences.event.decision_chat_participant' => ['text' => 'Commentaire dans un chat auquel je participe', 'context' => 'Preference label for comments in chats where the user has posted.'],
+    'notifications.preferences.event.decision_consultation_started' => ['text' => 'Passage de mes scrutins invites en consultation', 'context' => 'Preference label for invited decisions entering consultation.'],
+    'notifications.preferences.event.decision_evaluation_started' => ['text' => 'Passage de mes scrutins invites en vote', 'context' => 'Preference label for invited decisions entering voting.'],
+    'notifications.preferences.event.decision_consultation_ending' => ['text' => 'Fin prochaine de la consultation', 'context' => 'Preference label for consultation deadline reminders.'],
+    'notifications.preferences.event.decision_evaluation_ending' => ['text' => 'Fin prochaine du vote', 'context' => 'Preference label for voting deadline reminders.'],
+    'notifications.preferences.event.calendar_event_invited' => ['text' => 'Invitation a un nouvel evenement', 'context' => 'Preference label for event creation or first invitation.'],
+    'notifications.preferences.event.calendar_event_location_changed' => ['text' => 'Modification du lieu d un evenement auquel je suis invite', 'context' => 'Preference label for event location changes.'],
+    'notifications.preferences.event.calendar_event_schedule_changed' => ['text' => 'Modification de l horaire d un evenement auquel je suis invite', 'context' => 'Preference label for event schedule changes.'],
+    'notifications.preferences.event.calendar_event_starting' => ['text' => 'Debut prochain d un evenement auquel je suis invite', 'context' => 'Preference label for event start reminders.'],
+    'notifications.preferences.reminder_days' => ['text' => 'Me rappeler', 'context' => 'Label for the day choices of a notification deadline reminder.'],
+    'notifications.preferences.reminder_day' => ['one' => '{count} jour avant', 'other' => '{count} jours avant', 'context' => 'Label for one selected reminder delay.'],
+    'notifications.preferences.reminder_none' => ['text' => 'Ne pas envoyer de rappel', 'context' => 'Empty option for an event reminder lead time.'],
+    'notifications.preferences.reminder_option.1h' => ['text' => '1 heure avant', 'context' => 'Event notification reminder lead time.'],
+    'notifications.preferences.reminder_option.2h' => ['text' => '2 heures avant', 'context' => 'Event notification reminder lead time.'],
+    'notifications.preferences.reminder_option.3h' => ['text' => '3 heures avant', 'context' => 'Event notification reminder lead time.'],
+    'notifications.preferences.reminder_option.5h' => ['text' => '5 heures avant', 'context' => 'Event notification reminder lead time.'],
+    'notifications.preferences.reminder_option.8h' => ['text' => '8 heures avant', 'context' => 'Event notification reminder lead time.'],
+    'notifications.preferences.reminder_option.12h' => ['text' => '12 heures avant', 'context' => 'Event notification reminder lead time.'],
+    'notifications.preferences.reminder_option.1d' => ['text' => '1 jour avant', 'context' => 'Event notification reminder lead time.'],
+    'notifications.preferences.reminder_option.2d' => ['text' => '2 jours avant', 'context' => 'Event notification reminder lead time.'],
+    'notifications.preferences.reminder_option.3d' => ['text' => '3 jours avant', 'context' => 'Event notification reminder lead time.'],
+    'notifications.preferences.reminder_option.5d' => ['text' => '5 jours avant', 'context' => 'Event notification reminder lead time.'],
     'notifications.preferences.channel.push' => ['text' => 'Notification', 'context' => 'Preference channel label for browser push.'],
     'notifications.preferences.channel.telegram' => ['text' => 'Telegram', 'context' => 'Preference channel label for Telegram.'],
     'notifications.preferences.channel.email' => ['text' => 'E-mail', 'context' => 'Preference channel label for email.'],
@@ -63,6 +85,9 @@ foreach ($eventGroups as $eventGroup) {
     $eventKeys = array_merge($eventKeys, $eventGroup['eventKeys'] ?? []);
 }
 $preferenceSettings = \dbObject\NotificationPreference::getAllForUserOrganization($userId, $organizationId, $eventKeys);
+$reminderEventKeys = ['decision_consultation_ending', 'decision_evaluation_ending'];
+$eventStartReminderEventKeys = ['calendar_event_starting'];
+$eventReminderLeadTimes = \dbObject\NotificationPreference::getReminderLeadTimes();
 $currentUser = new \dbObject\User();
 $telegramAvailable = $telegramConfigured
     && $currentUser->load($userId)
@@ -149,7 +174,28 @@ $configuration = [
                     $eventLabel = $translate('notifications.preferences.event.' . $eventKey);
                 ?>
                 <div class="omo-notification-preferences-grid__row" role="row">
-                    <span class="omo-notification-preferences-grid__event" role="rowheader"><?= htmlspecialchars($eventLabel, ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="omo-notification-preferences-grid__event" role="rowheader">
+                        <span><?= htmlspecialchars($eventLabel, ENT_QUOTES, 'UTF-8') ?></span>
+                        <?php if (in_array($eventKey, $reminderEventKeys, true)): ?>
+                        <span class="omo-notification-preferences-grid__reminder-days">
+                            <span><?= htmlspecialchars($translate('notifications.preferences.reminder_days'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <?php foreach ([1, 2, 3, 5] as $day): ?>
+                            <label><input type="checkbox" name="preferences[<?= htmlspecialchars($eventKey, ENT_QUOTES, 'UTF-8') ?>][days][]" value="<?= $day ?>"<?= in_array($day, $channels['days'] ?? [], true) ? ' checked' : '' ?>> <?= htmlspecialchars(t('notifications.preferences.reminder_day', ['count' => $day], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></label>
+                            <?php endforeach; ?>
+                        </span>
+                        <?php endif; ?>
+                        <?php if (in_array($eventKey, $eventStartReminderEventKeys, true)): ?>
+                        <label class="omo-notification-preferences-grid__reminder-select">
+                            <span><?= htmlspecialchars($translate('notifications.preferences.reminder_days'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <select name="preferences[<?= htmlspecialchars($eventKey, ENT_QUOTES, 'UTF-8') ?>][lead_time]" class="generic-form-control">
+                                <option value=""><?= htmlspecialchars($translate('notifications.preferences.reminder_none'), ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php foreach ($eventReminderLeadTimes as $leadTime): ?>
+                                <option value="<?= htmlspecialchars($leadTime, ENT_QUOTES, 'UTF-8') ?>"<?= ($channels['lead_time'] ?? '') === $leadTime ? ' selected' : '' ?>><?= htmlspecialchars($translate('notifications.preferences.reminder_option.' . $leadTime), ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <?php endif; ?>
+                    </span>
                     <?php foreach ($preferenceChannels as $channelKey): ?>
                     <label class="omo-notification-preferences-grid__channel"><input type="checkbox" name="preferences[<?= htmlspecialchars($eventKey, ENT_QUOTES, 'UTF-8') ?>][<?= htmlspecialchars($channelKey, ENT_QUOTES, 'UTF-8') ?>]" value="1"<?= !empty($channels[$channelKey]) ? ' checked' : '' ?><?= $channelKey === 'telegram' && !$telegramAvailable ? ' disabled' : '' ?> aria-label="<?= htmlspecialchars($translate('notifications.preferences.channel.' . $channelKey) . ' - ' . $eventLabel, ENT_QUOTES, 'UTF-8') ?>"></label>
                     <?php endforeach; ?>

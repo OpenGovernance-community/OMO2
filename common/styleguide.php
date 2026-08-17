@@ -383,6 +383,31 @@ window.initGenericEditableSelects(container);</pre>
         </section>
 
         <section class="generic-section generic-section--stack">
+            <div class="generic-card-title generic-card-title--eyebrow">Aide contextuelle</div>
+            <div class="styleguide-grid">
+                <div class="generic-soft-panel generic-soft-panel--stack">
+                    <div class="generic-heading-with-help">
+                        <span class="generic-card-title generic-card-title--small">Titre du champ</span>
+                        <details class="generic-context-help">
+                            <summary aria-label="Afficher l aide">?</summary>
+                            <div class="generic-context-help__content">Cette aide reste automatiquement dans la fenetre et peut s ouvrir au-dessus si la place manque en dessous.</div>
+                        </details>
+                    </div>
+                </div>
+                <pre class="styleguide-code">&lt;div class="generic-heading-with-help"&gt;
+    &lt;span class="generic-card-title generic-card-title--small"&gt;Titre&lt;/span&gt;
+    &lt;details class="generic-context-help"&gt;
+        &lt;summary aria-label="Afficher l aide"&gt;?&lt;/summary&gt;
+        &lt;div class="generic-context-help__content"&gt;Texte d aide&lt;/div&gt;
+    &lt;/details&gt;
+&lt;/div&gt;
+
+Apres injection dynamique facultatif:
+window.initGenericContextHelps(container);</pre>
+            </div>
+        </section>
+
+        <section class="generic-section generic-section--stack">
             <div class="generic-card-title generic-card-title--eyebrow">Onglets</div>
             <div class="styleguide-grid">
                 <div class="styleguide-tab-example">

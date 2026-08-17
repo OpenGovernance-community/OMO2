@@ -53,7 +53,9 @@ $importOptions = array(
 $templateCalibration = array(
     'templateRootHolonId' => (int)($_POST['organization_template_id'] ?? 0),
     'mappings' => array(),
+    'excludedTemplateIds' => array(),
     'propertyMappings' => array(),
+    'templatePropertyMappings' => array(),
 );
 $rawTemplateMappings = trim((string)($_POST['template_mappings'] ?? ''));
 if ($rawTemplateMappings !== '') {
@@ -69,6 +71,8 @@ if ($rawTemplateMappings !== '') {
         $targetTemplateId = (int)$targetTemplateId;
         if ($sourceTemplateId > 0 && $targetTemplateId > 0) {
             $templateCalibration['mappings'][$sourceTemplateId] = $targetTemplateId;
+        } elseif ($sourceTemplateId > 0 && $targetTemplateId === -1) {
+            $templateCalibration['excludedTemplateIds'][$sourceTemplateId] = true;
         }
     }
 }
@@ -81,15 +85,33 @@ if ($rawPropertyMappings !== '') {
         exit;
     }
 
-    foreach ($postedPropertyMappings as $sourcePropertyId => $targetPropertyId) {
-        $sourcePropertyId = (int)$sourcePropertyId;
-        $targetPropertyId = (int)$targetPropertyId;
+    foreach ($postedPropertyMappings as $sourceId => $targetOrMappings) {
+        if (is_array($targetOrMappings)) {
+            $sourceTemplateId = (int)$sourceId;
+            if ($sourceTemplateId <= 0) {
+                continue;
+            }
+            foreach ($targetOrMappings as $sourcePropertyId => $targetPropertyId) {
+                $sourcePropertyId = (int)$sourcePropertyId;
+                $targetPropertyId = (int)$targetPropertyId;
+                if ($sourcePropertyId > 0 && $targetPropertyId >= 0) {
+                    $templateCalibration['templatePropertyMappings'][$sourceTemplateId][$sourcePropertyId] = $targetPropertyId;
+                }
+            }
+            continue;
+        }
+
+        $sourcePropertyId = (int)$sourceId;
+        $targetPropertyId = (int)$targetOrMappings;
         if ($sourcePropertyId > 0 && $targetPropertyId > 0) {
             $templateCalibration['propertyMappings'][$sourcePropertyId] = $targetPropertyId;
         }
     }
 }
-if (count($templateCalibration['mappings']) > 0 && $templateCalibration['templateRootHolonId'] <= 0) {
+if (
+    (count($templateCalibration['mappings']) > 0 || count($templateCalibration['excludedTemplateIds']) > 0)
+    && $templateCalibration['templateRootHolonId'] <= 0
+) {
     http_response_code(400);
     echo json_encode(array('status' => false, 'message' => 'Selectionnez le modele d organisation utilise pour les correspondances.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;

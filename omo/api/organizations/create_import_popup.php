@@ -14,7 +14,8 @@ $sourceLang = array(
     'organization_import.field.template_empty' => array('text' => 'Conserver les templates du fichier importe', 'context' => 'Empty option in the organization template selector.'),
     'organization_import.field.template_hint' => array('text' => 'Associez ensuite les roles structurels importes aux templates de ce modele.', 'context' => 'Hint below the organization template selector.'),
     'organization_import.mapping.empty' => array('text' => 'Conserver le template importe', 'context' => 'Empty option in a template mapping selector.'),
-    'organization_import.mapping.help' => array('text' => 'Choisissez les equivalences a appliquer. Les templates non associes conservent leur definition importee.', 'context' => 'Help text for template mappings.'),
+    'organization_import.mapping.exclude' => array('text' => 'Ne pas importer ce template, ses instances ni leurs descendants', 'context' => 'Option excluding an imported holon template, its instances and their descendants.'),
+    'organization_import.mapping.help' => array('text' => 'Pour chaque template OMO 1, conservez sa définition, remplacez-la par un template du modèle ou excluez-la. Les propriétés à faire correspondre apparaissent sous le template choisi.', 'context' => 'Help text for template mappings.'),
     'organization_import.mapping.duplicate' => array('text' => 'Un template du modele ne peut etre associe qu a un seul template importe.', 'context' => 'Validation error when a target template is mapped twice.'),
     'organization_import.mapping.none' => array('text' => 'Aucun template structurel a associer dans ce fichier.', 'context' => 'Empty template mapping state.'),
     'organization_import.mapping.title' => array('text' => 'Correspondance des templates structurels', 'context' => 'Title of template mapping section.'),
@@ -105,11 +106,6 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             <p><?= htmlspecialchars(t('organization_import.mapping.help', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
             <div class="omo-create-import__mapping-list" data-omo-create-import-mapping-list="1"></div>
             <input type="hidden" name="template_mappings" value="{}" data-omo-create-import-mapping-value="1">
-            <div class="omo-create-import__property-mappings" data-omo-create-import-property-mappings="1" hidden>
-                <div class="generic-card-title generic-card-title--small"><?= htmlspecialchars(t('organization_import.property_mapping.title', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></div>
-                <p><?= htmlspecialchars(t('organization_import.property_mapping.help', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
-                <div class="omo-create-import__mapping-list" data-omo-create-import-property-mapping-list="1"></div>
-            </div>
             <input type="hidden" name="property_mappings" value="{}" data-omo-create-import-property-mapping-value="1">
         </section>
 
@@ -176,11 +172,12 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
 .omo-create-import__mappings { display: flex; flex-direction: column; gap: 10px; }
 .omo-create-import__mappings p { margin: 0; color: var(--color-text-light, #64748b); line-height: 1.45; }
 .omo-create-import__mapping-list { display: grid; gap: 9px; }
+.omo-create-import__template-mapping { display: grid; gap: 10px; }
 .omo-create-import__mapping-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 10px; }
 .omo-create-import__mapping-source { font-weight: 600; }
 .omo-create-import__mapping-empty { margin: 0; color: var(--color-text-light, #64748b); }
-.omo-create-import__property-mappings { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--color-border, #d1d5db); }
-.omo-create-import__property-mappings[hidden] { display: none !important; }
+.omo-create-import__property-mappings { display: grid; gap: 9px; margin-left: 22px; padding: 12px; border-left: 3px solid color-mix(in srgb, var(--color-primary, #2563eb) 35%, transparent); background: color-mix(in srgb, var(--color-primary, #2563eb) 4%, transparent); border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+.omo-create-import__property-mappings > p { font-size: 13px; }
 .omo-create-import__waiting { min-height: 290px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; }
 .omo-create-import__waiting h3, .omo-create-import__waiting p { margin: 0; }
 .omo-create-import__waiting p { max-width: 440px; color: var(--color-text-light, #64748b); line-height: 1.5; }
@@ -190,7 +187,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
 .omo-create-import__waiting small { color: var(--color-text-light, #64748b); }
 @keyframes omo-create-import-spin { to { transform: rotate(360deg); } }
 @keyframes omo-create-import-progress { from { transform: translateX(-120%); } to { transform: translateX(365%); } }
-@media (max-width: 620px) { .omo-create-import__mapping-row { grid-template-columns: 1fr; } }
+@media (max-width: 620px) { .omo-create-import__mapping-row { grid-template-columns: 1fr; } .omo-create-import__property-mappings { margin-left: 0; } }
 </style>
 
 <script>
@@ -204,8 +201,6 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     var mappingsPanel = root.querySelector('[data-omo-create-import-mappings="1"]');
     var mappingsList = root.querySelector('[data-omo-create-import-mapping-list="1"]');
     var mappingsValue = form ? form.querySelector('[data-omo-create-import-mapping-value="1"]') : null;
-    var propertyMappingsPanel = root.querySelector('[data-omo-create-import-property-mappings="1"]');
-    var propertyMappingsList = root.querySelector('[data-omo-create-import-property-mapping-list="1"]');
     var propertyMappingsValue = form ? form.querySelector('[data-omo-create-import-property-mapping-value="1"]') : null;
     var invitationOption = root.querySelector('[data-omo-create-import-invitation-option="1"]');
     var sendInvitationsInput = form ? form.querySelector('[data-omo-create-import-send-invitations="1"]') : null;
@@ -226,10 +221,13 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         'loading' => t('organization_import.loading', array(), $lang, $sourceLang),
         'mappingDuplicate' => t('organization_import.mapping.duplicate', array(), $lang, $sourceLang),
         'mappingEmpty' => t('organization_import.mapping.empty', array(), $lang, $sourceLang),
+        'mappingExclude' => t('organization_import.mapping.exclude', array(), $lang, $sourceLang),
         'mappingNone' => t('organization_import.mapping.none', array(), $lang, $sourceLang),
         'propertyMappingDuplicate' => t('organization_import.property_mapping.duplicate', array(), $lang, $sourceLang),
         'propertyMappingEmpty' => t('organization_import.property_mapping.empty', array(), $lang, $sourceLang),
+        'propertyMappingHelp' => t('organization_import.property_mapping.help', array(), $lang, $sourceLang),
         'propertyMappingNone' => t('organization_import.property_mapping.none', array(), $lang, $sourceLang),
+        'propertyMappingTitle' => t('organization_import.property_mapping.title', array(), $lang, $sourceLang),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
     function setFeedback(message, isError) {
@@ -347,13 +345,16 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     }
 
     function hasDuplicatePropertyMappings() {
-        var usedTargetIds = {};
-        return Object.keys(propertyMappings).some(function (sourceId) {
-            var targetId = Number(propertyMappings[sourceId] || 0);
-            if (targetId <= 0) { return false; }
-            if (usedTargetIds[targetId]) { return true; }
-            usedTargetIds[targetId] = true;
-            return false;
+        return Object.keys(propertyMappings).some(function (sourceTemplateId) {
+            var usedTargetIds = {};
+            var mappings = propertyMappings[sourceTemplateId] || {};
+            return Object.keys(mappings).some(function (sourcePropertyId) {
+                var targetId = Number(mappings[sourcePropertyId] || 0);
+                if (targetId <= 0) { return false; }
+                if (usedTargetIds[targetId]) { return true; }
+                usedTargetIds[targetId] = true;
+                return false;
+            });
         });
     }
 
@@ -421,6 +422,15 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     }
 
     function findAutomaticPropertyMapping(sourceProperty, targetProperties) {
+        var sourcePropertyId = Number(sourceProperty && sourceProperty.id || 0);
+        if (sourcePropertyId > 0) {
+            var identifierMatches = targetProperties.filter(function (targetProperty) {
+                return Number(targetProperty && targetProperty.id || 0) === sourcePropertyId;
+            });
+            if (identifierMatches.length === 1) {
+                return sourcePropertyId;
+            }
+        }
         var sourceKeys = propertyMatchKeys(sourceProperty);
         var namedMatches = targetProperties.filter(function (targetProperty) {
             var targetKeys = propertyMatchKeys(targetProperty);
@@ -438,13 +448,8 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         return 0;
     }
 
-    function renderPropertyMappings() {
-        if (!propertyMappingsPanel || !propertyMappingsList) {
-            syncPropertyMappingsValue();
-            return;
-        }
-        propertyMappingsList.replaceChildren();
-        var model = selectedTemplateModel();
+    function renderPropertyMappingsForTemplate(propertyMappingsList, sourceNode, targetNode) {
+        var sourceTemplateId = Number(sourceNode && sourceNode.id || 0);
         var sourceDefinitions = Array.isArray(importPayload && importPayload.propertyDefinitions)
             ? importPayload.propertyDefinitions
             : [];
@@ -454,67 +459,48 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             if (propertyId > 0) { sourceDefinitionsById[propertyId] = definition; }
         });
         var nodesById = importedHolonsById();
-        var sourcePropertyIds = {};
+        var sourcePropertyIds = collectImportedTemplatePropertyIds(sourceTemplateId, nodesById);
+        var targetProperties = Array.isArray(targetNode && targetNode.properties)
+            ? targetNode.properties.slice()
+            : [];
         var targetPropertiesById = {};
-        var targetPropertyIdsBySourcePropertyId = {};
-
-        Object.keys(templateMappings).forEach(function (sourceTemplateId) {
-            var targetTemplateId = Number(templateMappings[sourceTemplateId] || 0);
-            if (targetTemplateId <= 0 || !model) { return; }
-            var sourceIds = collectImportedTemplatePropertyIds(Number(sourceTemplateId), nodesById);
-            Object.keys(sourceIds).forEach(function (propertyId) { sourcePropertyIds[propertyId] = true; });
-            var targetNode = (Array.isArray(model.nodes) ? model.nodes : []).find(function (node) {
-                return Number(node && node.id || 0) === targetTemplateId;
-            });
-            var currentTargetPropertyIds = {};
-            (Array.isArray(targetNode && targetNode.properties) ? targetNode.properties : []).forEach(function (property) {
-                var propertyId = Number(property && property.id || 0);
-                if (propertyId > 0) {
-                    targetPropertiesById[propertyId] = property;
-                    currentTargetPropertyIds[propertyId] = true;
-                }
-            });
-            Object.keys(sourceIds).forEach(function (sourcePropertyId) {
-                if (!targetPropertyIdsBySourcePropertyId[sourcePropertyId]) {
-                    targetPropertyIdsBySourcePropertyId[sourcePropertyId] = Object.assign({}, currentTargetPropertyIds);
-                    return;
-                }
-                Object.keys(targetPropertyIdsBySourcePropertyId[sourcePropertyId]).forEach(function (targetPropertyId) {
-                    if (!currentTargetPropertyIds[targetPropertyId]) {
-                        delete targetPropertyIdsBySourcePropertyId[sourcePropertyId][targetPropertyId];
-                    }
-                });
-            });
+        targetProperties.forEach(function (property) {
+            var propertyId = Number(property && property.id || 0);
+            if (propertyId > 0) { targetPropertiesById[propertyId] = property; }
         });
 
         var sourceProperties = Object.keys(sourcePropertyIds).map(function (propertyId) {
             return sourceDefinitionsById[Number(propertyId)] || null;
         }).filter(Boolean).sort(function (left, right) {
-            return String(left.name || left.shortname || '').localeCompare(String(right.name || right.shortname || ''));
+            var positionDifference = Number(left.position || 0) - Number(right.position || 0);
+            return positionDifference || String(left.name || left.shortname || '').localeCompare(String(right.name || right.shortname || ''));
         });
-        var targetProperties = Object.keys(targetPropertiesById).map(function (propertyId) {
-            return targetPropertiesById[propertyId];
-        }).sort(function (left, right) {
-            return String(left.name || left.shortname || '').localeCompare(String(right.name || right.shortname || ''));
+        targetProperties.sort(function (left, right) {
+            var positionDifference = Number(left.position || 0) - Number(right.position || 0);
+            return positionDifference || String(left.name || left.shortname || '').localeCompare(String(right.name || right.shortname || ''));
         });
 
-        Object.keys(propertyMappings).forEach(function (sourcePropertyId) {
-            var mappedTargetPropertyId = Number(propertyMappings[sourcePropertyId] || 0);
+        var currentMappings = propertyMappings[sourceTemplateId] && typeof propertyMappings[sourceTemplateId] === 'object'
+            ? propertyMappings[sourceTemplateId]
+            : {};
+        propertyMappings[sourceTemplateId] = currentMappings;
+        var currentTouchedMappings = touchedPropertyMappings[sourceTemplateId] && typeof touchedPropertyMappings[sourceTemplateId] === 'object'
+            ? touchedPropertyMappings[sourceTemplateId]
+            : {};
+        touchedPropertyMappings[sourceTemplateId] = currentTouchedMappings;
+
+        Object.keys(currentMappings).forEach(function (sourcePropertyId) {
+            var mappedTargetPropertyId = Number(currentMappings[sourcePropertyId] || 0);
             if (
                 !sourcePropertyIds[sourcePropertyId]
-                || !targetPropertyIdsBySourcePropertyId[sourcePropertyId]
-                || !targetPropertyIdsBySourcePropertyId[sourcePropertyId][mappedTargetPropertyId]
+                || (mappedTargetPropertyId > 0 && !targetPropertiesById[mappedTargetPropertyId])
             ) {
-                delete propertyMappings[sourcePropertyId];
+                delete currentMappings[sourcePropertyId];
+                delete currentTouchedMappings[sourcePropertyId];
             }
         });
-        propertyMappingsPanel.hidden = sourceProperties.length === 0 || targetProperties.length === 0;
-        if (propertyMappingsPanel.hidden) {
-            syncPropertyMappingsValue();
-            return;
-        }
 
-        if (sourceProperties.length === 0) {
+        if (sourceProperties.length === 0 || targetProperties.length === 0) {
             var empty = document.createElement('p');
             empty.className = 'omo-create-import__mapping-empty';
             empty.textContent = ui.propertyMappingNone;
@@ -525,15 +511,11 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
 
         sourceProperties.forEach(function (sourceProperty) {
             var sourcePropertyId = Number(sourceProperty.id || 0);
-            var compatibleTargetProperties = Object.keys(targetPropertyIdsBySourcePropertyId[sourcePropertyId] || {}).map(function (propertyId) {
-                return targetPropertiesById[propertyId] || null;
-            }).filter(Boolean).sort(function (left, right) {
-                return String(left.name || left.shortname || '').localeCompare(String(right.name || right.shortname || ''));
-            });
-            var selectedId = Number(propertyMappings[sourcePropertyId] || 0);
-            if (selectedId <= 0 && !touchedPropertyMappings[sourcePropertyId]) {
-                selectedId = findAutomaticPropertyMapping(sourceProperty, compatibleTargetProperties);
-                if (selectedId > 0) { propertyMappings[sourcePropertyId] = selectedId; }
+            var hasStoredMapping = Object.prototype.hasOwnProperty.call(currentMappings, sourcePropertyId);
+            var selectedId = hasStoredMapping ? Number(currentMappings[sourcePropertyId] || 0) : 0;
+            if (!hasStoredMapping && !currentTouchedMappings[sourcePropertyId]) {
+                selectedId = findAutomaticPropertyMapping(sourceProperty, targetProperties);
+                if (selectedId > 0) { currentMappings[sourcePropertyId] = selectedId; }
             }
 
             var row = document.createElement('label');
@@ -544,9 +526,10 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             source.textContent = String(sourceProperty.name || sourceProperty.shortname || 'Propriete') + (sourceFormat ? ' (' + sourceFormat + ')' : '');
             var select = document.createElement('select');
             select.className = 'generic-form-control';
+            select.setAttribute('data-omo-create-import-property-mapping-template', String(sourceTemplateId));
             select.setAttribute('data-omo-create-import-property-mapping-source', String(sourcePropertyId));
             appendOption(select, 0, ui.propertyMappingEmpty);
-            compatibleTargetProperties.forEach(function (targetProperty) {
+            targetProperties.forEach(function (targetProperty) {
                 var targetFormat = propertyFormatLabel(targetProperty);
                 appendOption(
                     select,
@@ -554,10 +537,11 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
                     String(targetProperty.name || targetProperty.shortname || 'Propriete') + (targetFormat ? ' (' + targetFormat + ')' : '')
                 );
             });
-            if (selectedId > 0 && targetPropertyIdsBySourcePropertyId[sourcePropertyId] && targetPropertyIdsBySourcePropertyId[sourcePropertyId][selectedId]) {
+            if (selectedId > 0 && targetPropertiesById[selectedId]) {
                 select.value = String(selectedId);
             } else {
-                delete propertyMappings[sourcePropertyId];
+                select.value = '0';
+                if (selectedId > 0) { delete currentMappings[sourcePropertyId]; }
             }
             row.appendChild(source);
             row.appendChild(select);
@@ -581,7 +565,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         mappingsList.replaceChildren();
         if (!model || !importPayload) {
             syncTemplateMappingsValue();
-            renderPropertyMappings();
+            syncPropertyMappingsValue();
             return;
         }
 
@@ -591,16 +575,20 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             empty.textContent = ui.mappingNone;
             mappingsList.appendChild(empty);
             syncTemplateMappingsValue();
-            renderPropertyMappings();
+            syncPropertyMappingsValue();
             return;
         }
 
+        var availableSourceIds = {};
         sourceNodes.forEach(function (sourceNode) {
             var sourceId = Number(sourceNode.id || 0);
+            availableSourceIds[sourceId] = true;
             var sourceLabel = String(sourceNode.templateName || sourceNode.name || 'Template');
             var candidates = (Array.isArray(model.nodes) ? model.nodes : []).filter(function (candidate) {
                 return Number(candidate.typeId || 0) === Number(sourceNode.typeId || 0);
             });
+            var item = document.createElement('div');
+            item.className = 'omo-create-import__template-mapping generic-soft-panel';
             var row = document.createElement('label');
             row.className = 'omo-create-import__mapping-row';
             var source = document.createElement('span');
@@ -610,22 +598,61 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             select.className = 'generic-form-control';
             select.setAttribute('data-omo-create-import-mapping-source', String(sourceId));
             appendOption(select, 0, ui.mappingEmpty);
+            appendOption(select, -1, ui.mappingExclude);
             candidates.forEach(function (candidate) {
                 appendOption(select, Number(candidate.id || 0), String(candidate.path || candidate.name || 'Template'));
             });
             var selectedId = Number(templateMappings[sourceId] || 0);
-            if (selectedId && candidates.some(function (candidate) { return Number(candidate.id || 0) === selectedId; })) {
+            if (selectedId === -1) {
+                select.value = '-1';
+                templateMappings[sourceId] = -1;
+            } else if (selectedId > 0 && candidates.some(function (candidate) { return Number(candidate.id || 0) === selectedId; })) {
                 select.value = String(selectedId);
                 templateMappings[sourceId] = selectedId;
             } else {
                 delete templateMappings[sourceId];
+                delete propertyMappings[sourceId];
+                delete touchedPropertyMappings[sourceId];
             }
             row.appendChild(source);
             row.appendChild(select);
-            mappingsList.appendChild(row);
+            item.appendChild(row);
+
+            if (selectedId > 0) {
+                var targetNode = candidates.find(function (candidate) {
+                    return Number(candidate.id || 0) === selectedId;
+                }) || null;
+                if (targetNode) {
+                    var propertyPanel = document.createElement('div');
+                    propertyPanel.className = 'omo-create-import__property-mappings';
+                    var propertyTitle = document.createElement('div');
+                    propertyTitle.className = 'generic-card-title generic-card-title--small';
+                    propertyTitle.textContent = ui.propertyMappingTitle;
+                    var propertyHelp = document.createElement('p');
+                    propertyHelp.textContent = ui.propertyMappingHelp;
+                    var propertyList = document.createElement('div');
+                    propertyList.className = 'omo-create-import__mapping-list';
+                    propertyPanel.appendChild(propertyTitle);
+                    propertyPanel.appendChild(propertyHelp);
+                    propertyPanel.appendChild(propertyList);
+                    item.appendChild(propertyPanel);
+                    renderPropertyMappingsForTemplate(propertyList, sourceNode, targetNode);
+                }
+            }
+            mappingsList.appendChild(item);
+        });
+
+        Object.keys(templateMappings).forEach(function (sourceId) {
+            if (!availableSourceIds[sourceId]) { delete templateMappings[sourceId]; }
+        });
+        Object.keys(propertyMappings).forEach(function (sourceId) {
+            if (!availableSourceIds[sourceId] || Number(templateMappings[sourceId] || 0) <= 0) {
+                delete propertyMappings[sourceId];
+                delete touchedPropertyMappings[sourceId];
+            }
         });
         syncTemplateMappingsValue();
-        renderPropertyMappings();
+        syncPropertyMappingsValue();
     }
 
     if (fileInput) {
@@ -651,23 +678,31 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         var mappingSourceId = Number(event.target.getAttribute('data-omo-create-import-mapping-source') || 0);
         if (mappingSourceId > 0) {
             var mappingTargetId = Number(event.target.value || 0);
-            if (mappingTargetId > 0) {
+            if (mappingTargetId > 0 || mappingTargetId === -1) {
                 templateMappings[mappingSourceId] = mappingTargetId;
             } else {
                 delete templateMappings[mappingSourceId];
             }
-            syncTemplateMappingsValue();
-            renderPropertyMappings();
+            delete propertyMappings[mappingSourceId];
+            delete touchedPropertyMappings[mappingSourceId];
+            renderTemplateMappings();
             return;
         }
+        var propertyMappingTemplateId = Number(event.target.getAttribute('data-omo-create-import-property-mapping-template') || 0);
         var propertyMappingSourceId = Number(event.target.getAttribute('data-omo-create-import-property-mapping-source') || 0);
-        if (propertyMappingSourceId > 0) {
+        if (propertyMappingTemplateId > 0 && propertyMappingSourceId > 0) {
             var propertyMappingTargetId = Number(event.target.value || 0);
-            touchedPropertyMappings[propertyMappingSourceId] = true;
+            if (!propertyMappings[propertyMappingTemplateId] || typeof propertyMappings[propertyMappingTemplateId] !== 'object') {
+                propertyMappings[propertyMappingTemplateId] = {};
+            }
+            if (!touchedPropertyMappings[propertyMappingTemplateId] || typeof touchedPropertyMappings[propertyMappingTemplateId] !== 'object') {
+                touchedPropertyMappings[propertyMappingTemplateId] = {};
+            }
+            touchedPropertyMappings[propertyMappingTemplateId][propertyMappingSourceId] = true;
             if (propertyMappingTargetId > 0) {
-                propertyMappings[propertyMappingSourceId] = propertyMappingTargetId;
+                propertyMappings[propertyMappingTemplateId][propertyMappingSourceId] = propertyMappingTargetId;
             } else {
-                delete propertyMappings[propertyMappingSourceId];
+                propertyMappings[propertyMappingTemplateId][propertyMappingSourceId] = 0;
             }
             syncPropertyMappingsValue();
             return;

@@ -6,6 +6,7 @@ use dbObject\Organization;
 $organizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $contextHolonId = (int)($_GET['cid'] ?? 0);
 $holonId = (int)($_GET['hid'] ?? 0);
+$governanceCapture = !empty($_GET['governance_capture']);
 $organization = new Organization();
 $editorData = null;
 $errorMessage = '';
@@ -22,7 +23,7 @@ if ($organizationId <= 0) {
 	$adminLabelLower = function_exists('mb_strtolower')
 		? mb_strtolower($adminLabel, 'UTF-8')
 		: strtolower($adminLabel);
-    $editorData = $organization->getHolonCreationEditorData($contextHolonId, $holonId);
+    $editorData = $organization->getHolonCreationEditorData($contextHolonId, $holonId, $governanceCapture);
     if ($holonId > 0 && (($editorData['mode'] ?? 'create') !== 'edit')) {
         $errorMessage = "Le holon demandé est introuvable.";
     } elseif (($editorData['mode'] ?? 'create') === 'edit' && !($editorData['canEdit'] ?? false)) {
@@ -231,6 +232,28 @@ const state = {
     statusTimer: null
 };
 const adminLexiconLabel = <?= json_encode($adminLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const governanceCapture = <?= $governanceCapture ? 'true' : 'false' ?>;
+const governanceInitialPayload = governanceCapture && window.omoHolonGovernanceInitialPayload && typeof window.omoHolonGovernanceInitialPayload === 'object'
+    ? window.omoHolonGovernanceInitialPayload
+    : null;
+
+if (governanceInitialPayload) {
+    const currentHolon = state.data.holon && typeof state.data.holon === 'object' ? state.data.holon : {};
+    state.data.holon = Object.assign({}, currentHolon, {
+        name: String(governanceInitialPayload.name || ''),
+        fullName: String(governanceInitialPayload.fullName || ''),
+        color: String(governanceInitialPayload.color || ''),
+        icon: String(governanceInitialPayload.icon || ''),
+        banner: String(governanceInitialPayload.banner || ''),
+        templateId: Number(governanceInitialPayload.templateId || 0),
+        adminMin: governanceInitialPayload.adminMin,
+        adminMax: governanceInitialPayload.adminMax,
+        adminMinOverride: Boolean(governanceInitialPayload.adminMinOverride),
+        adminMaxOverride: Boolean(governanceInitialPayload.adminMaxOverride),
+        permissionAssignments: governanceInitialPayload.permissions || {},
+        properties: Array.isArray(governanceInitialPayload.properties) ? governanceInitialPayload.properties : []
+    });
+}
 
 const root = document.getElementById('omo-holon-create-editor');
 if (!root) {
@@ -791,7 +814,10 @@ function groupPermissionCatalog(permissionCatalog) {
 }
 
 function getTemplates() {
-    return Array.isArray(state.data.templateCatalog) ? state.data.templateCatalog : [];
+    const templates = Array.isArray(state.data.templateCatalog) ? state.data.templateCatalog : [];
+    return governanceCapture ? templates.filter(function (template) {
+        return Number(template && template.typeId ? template.typeId : 0) === 1;
+    }) : templates;
 }
 
 // Liste les holons
@@ -2102,10 +2128,36 @@ function serializePropertyValue(row) {
 // Lit valeurs propriétés
 function readProperties() {
     return Array.from(elements.properties.querySelectorAll('.omo-holon-create__property')).map(function (row) {
+        const listItemType = String(row.dataset.listItemType || 'text');
+        const value = serializePropertyValue(row);
         const property = {
             id: Number(row.dataset.propertyId || 0),
-            value: serializePropertyValue(row)
+            name: String(row.dataset.propertyName || ''),
+            shortname: String(row.dataset.shortname || ''),
+            formatId: Number(row.dataset.formatId || 0),
+            listItemType: listItemType,
+            value: value
         };
+
+        if (listItemType === 'authority') {
+            let authorityItems = [];
+            try {
+                const decodedAuthorityValue = JSON.parse(String(value || ''));
+                authorityItems = Array.isArray(decodedAuthorityValue)
+                    ? decodedAuthorityValue
+                    : (decodedAuthorityValue && Array.isArray(decodedAuthorityValue.items) ? decodedAuthorityValue.items : []);
+            } catch (error) {
+                authorityItems = parseStoredListValue(value);
+            }
+            property.displayValue = authorityItems.filter(function (item) {
+                return !(item && typeof item === 'object' && item.delete === true);
+            }).map(function (item) {
+                if (item && typeof item === 'object' && String(item.label || '').trim() !== '') {
+                    return String(item.label).trim();
+                }
+                return formatInheritedAuthorityItem(item);
+            }).filter(Boolean).join('; ');
+        }
 
         const isDirectProperty = String(row.dataset.isDirectProperty || '0') === '1';
         if (isDirectProperty) {
@@ -2360,6 +2412,17 @@ function saveHolon(event) {
                 payload.link = Boolean(elements.link && elements.link.checked);
             }
 
+            if (governanceCapture) {
+                window.dispatchEvent(new CustomEvent('omo-holon-governance-capture', {
+                    detail: {
+                        payload: payload,
+                        holonId: Number(state.data.holonId || 0),
+                        contextHolonId: Number(state.data.contextHolonId || 0)
+                    }
+                }));
+                return { governanceCapture: true };
+            }
+
             let saveUrl = '/omo/api/holons/save.php?cid=' + Number(state.data.contextHolonId || 0);
             if (getMode() === 'edit' && Number(state.data.holonId || 0) > 0) {
                 saveUrl += '&hid=' + Number(state.data.holonId || 0);
@@ -2380,6 +2443,9 @@ function saveHolon(event) {
             });
         })
         .then(function (response) {
+            if (response && response.governanceCapture) {
+                return response;
+            }
             return response.json().then(function (data) {
                 return {
                     ok: response.ok,
@@ -2388,6 +2454,9 @@ function saveHolon(event) {
             });
         })
         .then(function (result) {
+            if (result && result.governanceCapture) {
+                return;
+            }
             if (!result.ok || !result.data || result.data.status !== 'ok') {
                 throw new Error(result.data && result.data.message ? result.data.message : (getMode() === 'edit' ? "Impossible d'enregistrer le holon." : "Impossible de créer le holon."));
             }

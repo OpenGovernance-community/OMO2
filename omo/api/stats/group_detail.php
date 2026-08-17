@@ -72,6 +72,7 @@ foreach ($series as $seriesIndex => $seriesItem) {
                 data-omo-stats-edit-group="<?= (int)$groupId ?>"
                 data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>"
                 data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>"
+                data-omo-stats-group-hide-same-holon-sources="<?= (int)$group->get('hide_same_holon_sources') === 1 ? '1' : '0' ?>"
                 data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($indicatorIds)) ?>"
                 data-omo-stats-group-reference-type="<?= omoApiEscape(StatIndicator::normalizeReferenceType($group->get('reference_type'))) ?>"
                 data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode(array_values($referencePointData))) ?>"
@@ -111,13 +112,19 @@ foreach ($series as $seriesIndex => $seriesItem) {
             <?php endif; ?>
             <?php foreach ($sourceIndicators as $sourceIndex => $indicator): ?>
                 <?php $legendColor = $seriesColors[(int)$indicator->getId()] ?? '#94a3b8'; ?>
-                <div class="omo-stats-group-detail__legend-item" style="--omo-stats-series-color: <?= omoApiEscape($legendColor) ?>;">
+                <button
+                    type="button"
+                    class="omo-stats-group-detail__legend-item"
+                    style="--omo-stats-series-color: <?= omoApiEscape($legendColor) ?>;"
+                    data-omo-stats-open-indicator="<?= (int)$indicator->getId() ?>"
+                    aria-label="<?= omoApiEscape(omoStatsT('stats.card.open', ['name' => (string)$indicator->get('name')])) ?>"
+                >
                     <span class="omo-stats-group-detail__legend-dot" aria-hidden="true"></span>
                     <div>
                         <strong><?= omoApiEscape((string)$indicator->get('name')) ?></strong>
                         <span><?= omoApiEscape(omoStatsContextLabel($indicator)) ?></span>
                     </div>
-                </div>
+                </button>
             <?php endforeach; ?>
         </div>
     </section>

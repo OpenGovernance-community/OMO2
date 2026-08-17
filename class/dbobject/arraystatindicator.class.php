@@ -45,7 +45,7 @@ class ArrayStatIndicator extends ArrayDbObject
         $loaded->load($params);
 
         foreach ($loaded as $indicator) {
-            if ($indicator instanceof \dbObject\StatIndicator && $indicator->canView()) {
+            if ($indicator instanceof \dbObject\StatIndicator && !$indicator->isHiddenFromCatalog() && $indicator->canView()) {
                 $this[] = $indicator;
             }
         }

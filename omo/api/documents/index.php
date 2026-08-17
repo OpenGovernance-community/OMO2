@@ -166,6 +166,14 @@ $sourceLang = [
         'text' => 'Fichier absent',
         'context' => 'Warning badge shown on an uploaded document without a stored file.',
     ],
+    'documents.icon.etherpad' => [
+        'text' => 'Document collaboratif',
+        'context' => 'Alternative text for the Etherpad document type icon.',
+    ],
+    'documents.icon.ethercalc' => [
+        'text' => 'Tableur collaboratif',
+        'context' => 'Alternative text for the EtherCalc document type icon.',
+    ],
     'documents.action.loading' => [
         'text' => 'Chargement...',
         'context' => 'Loading state shown while a document drawer is loading.',
@@ -193,6 +201,30 @@ $sourceLang = [
     'documents.menu.action_error' => [
         'text' => 'Action impossible.',
         'context' => 'Fallback error shown when a document lifecycle action fails.',
+    ],
+    'documents.selection.toggle' => [
+        'text' => 'Selectionner ce document',
+        'context' => 'Accessible label for the checkbox selecting a document for bulk actions.',
+    ],
+    'documents.selection.count' => [
+        'text' => '{count} selectionnes',
+        'context' => 'Number of documents selected for bulk actions.',
+    ],
+    'documents.selection.archive' => [
+        'text' => 'Archiver la selection',
+        'context' => 'Bulk action archiving the selected documents.',
+    ],
+    'documents.selection.delete' => [
+        'text' => 'Supprimer la selection',
+        'context' => 'Bulk action deleting the selected documents.',
+    ],
+    'documents.selection.confirm_archive' => [
+        'text' => 'Archiver les {count} documents selectionnes ? Ils ne seront plus visibles dans la liste.',
+        'context' => 'Confirmation shown before bulk archiving documents.',
+    ],
+    'documents.selection.confirm_delete' => [
+        'text' => 'Supprimer definitivement les {count} documents selectionnes ?',
+        'context' => 'Confirmation shown before bulk deleting documents.',
     ],
     'documents.error.load_document' => [
         'text' => 'Impossible de charger ce document.',
@@ -548,7 +580,10 @@ foreach ($documents as $document) {
         'canDelete' => $canManageLifecycle && $document->canDeleteDocument(),
         'canEdit' => $document->isPvDocument()
             ? $canOpenPvEditor
-            : $document->canEditInOrganizationContext($documentOrganizationId),
+            : (
+                $document->canManageInOrganizationContext($documentOrganizationId)
+                || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && $document->canEditInOrganizationContext($documentOrganizationId))
+            ),
         'editUrl' => $document->isPvDocument()
             ? $pvPreparationUrl
             : ('/omo/api/documents/create.php?id=' . $documentId
@@ -629,7 +664,15 @@ if ($initialOpenDocumentId > 0) {
             'hasUpcomingPvEvent' => $requestedCanOpenDirectly ? $requestedOpenDocument->hasUpcomingAssociatedEvent() : false,
             'canEdit' => $requestedOpenDocument->isPvDocument()
                 ? $requestedCanOpenPvEditor
-                : ($requestedCanView && $requestedOpenDocument->canEditInOrganizationContext($currentOrganizationId)),
+                : (
+                    $requestedCanView
+                    && (
+                        $requestedOpenDocument->canManageInOrganizationContext($currentOrganizationId)
+                        || (!$requestedOpenDocument->isEtherpadDocument()
+                            && !$requestedOpenDocument->isEthercalcDocument()
+                            && $requestedOpenDocument->canEditInOrganizationContext($currentOrganizationId))
+                    )
+                ),
             'editUrl' => $requestedOpenDocument->isPvDocument()
                 ? ($requestedCanOpenPvEditor ? $requestedOpenDocument->buildPvEditorUrl($currentOrganizationId) : '')
                 : ($requestedCanView
@@ -715,6 +758,15 @@ if (!is_string($documentsPayload)) {
                 </div>
             </div>
             <div class="omo-panel-view__aside omo-documents__header-main-actions" data-omo-header-actions>
+                <div class="omo-documents__bulk-actions" data-omo-documents-bulk-actions hidden>
+                    <span class="omo-documents__bulk-count" data-omo-documents-bulk-count></span>
+                    <button type="button" class="generic-action-button generic-action-button--secondary omo-documents__bulk-action-button" data-omo-documents-bulk-action="archive" title="<?= $escape(omoDocumentsScopeT('documents.selection.archive')) ?>" aria-label="<?= $escape(omoDocumentsScopeT('documents.selection.archive')) ?>">
+                        <span class="omo-documents__bulk-action-icon omo-documents__bulk-action-icon--archive" aria-hidden="true"></span>
+                    </button>
+                    <button type="button" class="generic-action-button generic-action-button--danger omo-documents__bulk-action-button" data-omo-documents-bulk-action="delete" title="<?= $escape(omoDocumentsScopeT('documents.selection.delete')) ?>" aria-label="<?= $escape(omoDocumentsScopeT('documents.selection.delete')) ?>">
+                        <span class="omo-documents__bulk-action-icon omo-documents__bulk-action-icon--delete" aria-hidden="true"></span>
+                    </button>
+                </div>
                 <?php if ($canCreateDocument): ?>
                     <button
                         type="button"
@@ -853,6 +905,7 @@ if (!is_string($documentsPayload)) {
                                                         <img
                                                             src="<?= $escape($entry['visibilityIconUrl']) ?>"
                                                             alt=""
+                                                            class="black-icon"
                                                             loading="lazy"
                                                         >
                                                     </span>
@@ -861,6 +914,7 @@ if (!is_string($documentsPayload)) {
                                                         <img
                                                             src="<?= $escape($entry['editVisibilityIconUrl']) ?>"
                                                             alt=""
+                                                            class="black-icon"
                                                             loading="lazy"
                                                         >
                                                     </span>
@@ -944,7 +998,7 @@ if (!is_string($documentsPayload)) {
             </div>
 
             <script type="application/json" data-omo-documents-data><?= $documentsPayload ?></script>
-            <script src="/common/drawer/subdrawer.js"></script>
+            <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
             <script>
             (function () {
                 const omoDocumentsSavedViewsStorageKey = 'omo.documents.saved-views.v2';
@@ -956,8 +1010,14 @@ if (!is_string($documentsPayload)) {
                 const omoDocumentsFolderIconUrl = '/omo/assets/images/documents/folder.png';
                 const omoDocumentsLinkIconUrl = '/omo/assets/images/documents/link.png';
                 const omoDocumentsPvIconUrl = '/omo/assets/images/documents/pv.png';
+                const omoDocumentsEtherpadIconUrl = '/omo/assets/images/documents/collaborative.png';
+                const omoDocumentsEthercalcIconUrl = '/omo/assets/images/documents/spreadsheet.png';
                 const omoDocumentsPvType = 'pv';
+                const omoDocumentsEtherpadType = 'etherpad';
+                const omoDocumentsEthercalcType = 'ethercalc';
                 const omoDocumentsMissingUploadedFileLabel = <?= json_encode(omoDocumentsScopeT('documents.upload_missing.badge'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                const omoDocumentsEtherpadIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.etherpad'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                const omoDocumentsEthercalcIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.ethercalc'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
                 const omoDocumentsGetIconUrl = function (documentItem) {
                     if (documentItem && documentItem.isFolder) {
@@ -974,6 +1034,14 @@ if (!is_string($documentsPayload)) {
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
                         return omoDocumentsPvIconUrl;
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEtherpadType) {
+                        return omoDocumentsEtherpadIconUrl;
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEthercalcType) {
+                        return omoDocumentsEthercalcIconUrl;
                     }
 
                     return omoDocumentsFileIconUrl;
@@ -994,6 +1062,14 @@ if (!is_string($documentsPayload)) {
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
                         return 'Proces verbal';
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEtherpadType) {
+                        return omoDocumentsEtherpadIconLabel;
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEthercalcType) {
+                        return omoDocumentsEthercalcIconLabel;
                     }
 
                     return 'Fichier';
@@ -1312,6 +1388,7 @@ if (!is_string($documentsPayload)) {
                                 openFolderIds: omoDocumentsParseFolderState(
                                     omoDocumentsReadSessionCookie(folderStateCookieName)
                                 ),
+                                selectedDocumentIds: new Set(),
                                 activeDocumentId: detailDrawer && detailDrawer.dataset.omoDocumentActiveId
                                     ? Number(detailDrawer.dataset.omoDocumentActiveId)
                                     : null
@@ -1509,6 +1586,7 @@ if (!is_string($documentsPayload)) {
                                     icon.setAttribute('aria-hidden', 'true');
 
                                     const image = document.createElement('img');
+                                    image.className = 'black-icon';
                                     image.src = iconUrl;
                                     image.alt = '';
                                     image.loading = 'lazy';
@@ -1565,6 +1643,99 @@ if (!is_string($documentsPayload)) {
                                 });
                             };
 
+                            const formatSelectionText = function (template, values) {
+                                return String(template || '').replace(/\{([a-z_]+)\}/gi, function (match, key) {
+                                    return values && values[key] !== undefined ? String(values[key]) : match;
+                                });
+                            };
+
+                            const getSelectedDocumentIds = function () {
+                                return Array.from(state.selectedDocumentIds).filter(function (documentId) {
+                                    return Number.isInteger(documentId) && documentId > 0;
+                                });
+                            };
+
+                            const selectedDocumentsCanBeDeleted = function (selectedDocumentIds) {
+                                return selectedDocumentIds.every(function (documentId) {
+                                    return documents.some(function (documentItem) {
+                                        return Number(documentItem && documentItem.id || 0) === documentId
+                                            && documentItem.canDelete === true;
+                                    });
+                                });
+                            };
+
+                            const syncDocumentSelection = function () {
+                                const selectedDocumentIds = getSelectedDocumentIds();
+                                const selectedCount = selectedDocumentIds.length;
+                                const bulkActions = panel.querySelector('[data-omo-documents-bulk-actions]');
+                                const bulkCount = panel.querySelector('[data-omo-documents-bulk-count]');
+                                const deleteButton = panel.querySelector('[data-omo-documents-bulk-action="delete"]');
+
+                                if (bulkActions) {
+                                    bulkActions.hidden = selectedCount === 0;
+                                }
+                                if (bulkCount) {
+                                    bulkCount.textContent = formatSelectionText(
+                                        <?= json_encode(omoDocumentsScopeT('documents.selection.count'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                                        {count: selectedCount}
+                                    );
+                                }
+                                if (deleteButton) {
+                                    deleteButton.hidden = selectedCount === 0 || !selectedDocumentsCanBeDeleted(selectedDocumentIds);
+                                }
+
+                                results.querySelectorAll('[data-omo-document-select]').forEach(function (input) {
+                                    const documentId = Number(input.value || 0);
+                                    input.checked = Number.isInteger(documentId) && state.selectedDocumentIds.has(documentId);
+                                    const documentNode = input.closest('.omo-documents__item');
+                                    if (documentNode) {
+                                        documentNode.classList.toggle(
+                                            'is-selected',
+                                            Number.isInteger(documentId) && state.selectedDocumentIds.has(documentId)
+                                        );
+                                    }
+                                });
+                            };
+
+                            const createDocumentSelectionControl = function (documentItem) {
+                                if (!documentItem || !documentItem.canArchive) {
+                                    return null;
+                                }
+
+                                const documentId = Number(documentItem.id || 0);
+                                if (!Number.isInteger(documentId) || documentId <= 0) {
+                                    return null;
+                                }
+
+                                const control = document.createElement('label');
+                                control.className = 'omo-documents__selection-control';
+                                const input = document.createElement('input');
+                                input.type = 'checkbox';
+                                input.value = String(documentId);
+                                input.checked = state.selectedDocumentIds.has(documentId);
+                                input.setAttribute('data-omo-document-select', '1');
+                                input.setAttribute('data-document-can-delete', documentItem.canDelete ? '1' : '0');
+                                input.setAttribute('aria-label', <?= json_encode(omoDocumentsScopeT('documents.selection.toggle'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);
+                                control.appendChild(input);
+                                return control;
+                            };
+
+                            const postBulkDocumentAction = function (action) {
+                                return fetch('/omo/api/documents/lifecycle_action.php', {
+                                    method: 'POST',
+                                    credentials: 'same-origin',
+                                    headers: {'Content-Type': 'application/json'},
+                                    body: JSON.stringify({ids: getSelectedDocumentIds(), action: action})
+                                }).then(function (response) {
+                                    return response.json().then(function (payload) {
+                                        if (!response.ok || !payload || payload.status !== true) {
+                                            throw new Error(String(payload && payload.message || <?= json_encode(omoDocumentsScopeT('documents.menu.action_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>));
+                                        }
+                                        return payload;
+                                    });
+                                });
+                            };
+
                             const appendDocumentCardContent = function (container, documentItem, options) {
                                 const settings = options && typeof options === 'object' ? options : {};
 
@@ -1600,6 +1771,10 @@ if (!is_string($documentsPayload)) {
 
                                 const frame = document.createElement('div');
                                 frame.className = 'omo-documents__item-frame';
+                                const selectionControl = createDocumentSelectionControl(documentItem);
+                                if (selectionControl) {
+                                    frame.classList.add('omo-documents__item-frame--with-selection');
+                                }
 
                                 const visual = document.createElement('div');
                                 visual.className = 'omo-documents__visual';
@@ -1719,6 +1894,9 @@ if (!is_string($documentsPayload)) {
                                         }
                                     }
 
+                                    if (selectionControl) {
+                                        compactNameMain.appendChild(selectionControl);
+                                    }
                                     compactNameMain.appendChild(visual);
                                     compactNameMain.appendChild(compactTitleBlock);
                                     compactNameCell.appendChild(compactNameMain);
@@ -1862,6 +2040,9 @@ if (!is_string($documentsPayload)) {
                                     content.appendChild(keywords);
                                 }
 
+                                if (selectionControl) {
+                                    frame.appendChild(selectionControl);
+                                }
                                 frame.appendChild(visual);
                                 frame.appendChild(content);
                                 container.appendChild(frame);
@@ -2110,7 +2291,66 @@ if (!is_string($documentsPayload)) {
                             };
 
                             if (detailDrawer) {
+                                const notifyEthercalcFrameResize = function () {
+                                    const frame = detailDrawer.querySelector('.omo-document-ethercalc__frame');
+                                    if (!(frame instanceof HTMLIFrameElement) || !frame.contentWindow) {
+                                        return;
+                                    }
+
+                                    [0, 80, 260, 700].forEach(function (delay) {
+                                        window.setTimeout(function () {
+                                            const bounds = frame.getBoundingClientRect();
+                                            frame.contentWindow.postMessage({
+                                                type: 'omo-ethercalc-resize',
+                                                viewport: {
+                                                    width: Math.round(bounds.width),
+                                                    height: Math.round(bounds.height),
+                                                },
+                                            }, '*');
+                                        }, delay);
+                                    });
+                                };
+
+                                const syncDocumentFullscreenButton = function () {
+                                    const fullscreenButton = detailDrawer.querySelector('[data-omo-document-fullscreen]');
+                                    const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame');
+                                    if (!(fullscreenButton instanceof HTMLButtonElement) || !(frame instanceof HTMLElement)) {
+                                        return;
+                                    }
+
+                                    const isFullscreen = document.fullscreenElement === frame;
+                                    fullscreenButton.setAttribute('aria-pressed', isFullscreen ? 'true' : 'false');
+                                    fullscreenButton.textContent = isFullscreen
+                                        ? (fullscreenButton.dataset.omoDocumentExitFullscreenLabel || '')
+                                        : (fullscreenButton.dataset.omoDocumentFullscreenLabel || '');
+
+                                    if (frame.classList.contains('omo-document-ethercalc__frame')) {
+                                        notifyEthercalcFrameResize();
+                                    }
+                                };
+
+                                document.addEventListener('fullscreenchange', syncDocumentFullscreenButton);
                                 detailDrawer.addEventListener('click', function (event) {
+                                    const fullscreenButton = event.target.closest('[data-omo-document-fullscreen]');
+                                    if (fullscreenButton) {
+                                        event.preventDefault();
+                                        const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame');
+                                        if (!(frame instanceof HTMLElement)) {
+                                            return;
+                                        }
+
+                                        if (document.fullscreenElement === frame) {
+                                            document.exitFullscreen().catch(function () {});
+                                        } else if (typeof frame.requestFullscreen === 'function') {
+                                            frame.requestFullscreen().then(function () {
+                                                if (frame.classList.contains('omo-document-ethercalc__frame')) {
+                                                    notifyEthercalcFrameResize();
+                                                }
+                                            }).catch(function () {});
+                                        }
+                                        return;
+                                    }
+
                                     const editButton = event.target.closest('[data-omo-document-open-editor-url]');
                                     if (!editButton) {
                                         return;
@@ -2295,6 +2535,7 @@ if (!is_string($documentsPayload)) {
                                     window.initGenericComponents(results);
                                 }
                                 syncFolderAccordionState(false);
+                                syncDocumentSelection();
                             };
 
                             const renderByAlpha = function (rootItems) {
@@ -2315,6 +2556,7 @@ if (!is_string($documentsPayload)) {
                                     window.initGenericComponents(results);
                                 }
                                 syncFolderAccordionState(false);
+                                syncDocumentSelection();
                             };
 
                             const syncButtons = function (selector, activeValue, attributeName) {
@@ -2361,6 +2603,7 @@ if (!is_string($documentsPayload)) {
 
                                 if (documents.length === 0) {
                                     renderEmptyState();
+                                    syncDocumentSelection();
                                     syncButtons('[data-omo-documents-sort]', state.sort, 'data-omo-documents-sort');
                                     syncButtons('[data-omo-documents-density]', state.density, 'data-omo-documents-density');
                                     syncFilterChips();
@@ -2796,7 +3039,72 @@ if (!is_string($documentsPayload)) {
                                 }
                             });
 
+                            panel.addEventListener('change', function (event) {
+                                const selectionInput = event.target.closest('[data-omo-document-select]');
+                                if (!selectionInput || !panel.contains(selectionInput)) {
+                                    return;
+                                }
+
+                                event.stopPropagation();
+                                const documentId = Number(selectionInput.value || 0);
+                                if (!Number.isInteger(documentId) || documentId <= 0) {
+                                    return;
+                                }
+
+                                if (selectionInput.checked) {
+                                    state.selectedDocumentIds.add(documentId);
+                                } else {
+                                    state.selectedDocumentIds.delete(documentId);
+                                }
+                                syncDocumentSelection();
+                            });
+
                             panel.addEventListener('click', function (event) {
+                                const bulkActionButton = event.target.closest('[data-omo-documents-bulk-action]');
+                                if (bulkActionButton && panel.contains(bulkActionButton)) {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    const selectedDocumentIds = getSelectedDocumentIds();
+                                    const selectedCount = selectedDocumentIds.length;
+                                    const action = String(bulkActionButton.getAttribute('data-omo-documents-bulk-action') || '').trim();
+                                    const isDelete = action === 'delete';
+
+                                    if (selectedCount <= 0 || (!isDelete && action !== 'archive')) {
+                                        return;
+                                    }
+                                    if (isDelete && !selectedDocumentsCanBeDeleted(selectedDocumentIds)) {
+                                        return;
+                                    }
+
+                                    const confirmation = isDelete
+                                        ? <?= json_encode(omoDocumentsScopeT('documents.selection.confirm_delete'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                                        : <?= json_encode(omoDocumentsScopeT('documents.selection.confirm_archive'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                                    if (!window.confirm(formatSelectionText(confirmation, {count: selectedCount}))) {
+                                        return;
+                                    }
+
+                                    bulkActionButton.disabled = true;
+                                    postBulkDocumentAction(isDelete ? 'delete' : 'archive').then(function () {
+                                        state.selectedDocumentIds.clear();
+                                        if (typeof window.omoRefreshDocumentsPanel === 'function') {
+                                            return window.omoRefreshDocumentsPanel();
+                                        }
+                                        window.location.reload();
+                                        return null;
+                                    }).catch(function (error) {
+                                        window.omoNotify(String(error && error.message || <?= json_encode(omoDocumentsScopeT('documents.menu.action_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>), 'error');
+                                    }).finally(function () {
+                                        bulkActionButton.disabled = false;
+                                    });
+                                    return;
+                                }
+
+                                const selectionInput = event.target.closest('[data-omo-document-select]');
+                                if (selectionInput && panel.contains(selectionInput)) {
+                                    event.stopPropagation();
+                                    return;
+                                }
+
                                 const contextJump = event.target.closest('[data-omo-document-context-jump]');
                                 if (contextJump) {
                                     event.preventDefault();
@@ -2896,6 +3204,7 @@ if (!is_string($documentsPayload)) {
                                     && panel.contains(card)
                                     && (event.key === 'Enter' || event.key === ' ')
                                     && !event.target.closest('[data-omo-document-context-jump]')
+                                    && !event.target.closest('input, button, a')
                                 ) {
                                     event.preventDefault();
                                     if (typeof window.omoOpenDocumentDetailFromTrigger === 'function') {
@@ -4335,7 +4644,7 @@ if (!is_string($documentsPayload)) {
     width: 100%;
     min-width: 0;
     position: relative;
-    z-index: 30;
+    z-index: 120;
     justify-content: stretch;
     align-items: initial;
 }
@@ -4353,7 +4662,60 @@ if (!is_string($documentsPayload)) {
 }
 
 .omo-documents__header-main-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
     justify-content: flex-end;
+}
+
+.omo-documents__bulk-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.omo-documents__bulk-actions[hidden],
+.omo-documents__bulk-action-button[hidden] {
+    display: none !important;
+}
+
+.omo-documents__bulk-count {
+    color: var(--color-text-light, #64748b);
+    font-size: .8rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.omo-documents__bulk-action-button {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    padding: 8px;
+}
+
+.omo-documents__bulk-action-icon {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: currentColor;
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-size: contain;
+    -webkit-mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+}
+
+.omo-documents__bulk-action-icon--archive {
+    mask-image: url('/omo/assets/images/projects/archive.svg');
+    -webkit-mask-image: url('/omo/assets/images/projects/archive.svg');
+}
+
+.omo-documents__bulk-action-icon--delete {
+    mask-image: url('/omo/assets/images/documents/poubelle.png');
+    -webkit-mask-image: url('/omo/assets/images/documents/poubelle.png');
 }
 
 .omo-documents__new-button {
@@ -4583,6 +4945,10 @@ if (!is_string($documentsPayload)) {
     padding: 18px 18px 18px 16px;
 }
 
+.omo-documents__item-frame--with-selection {
+    grid-template-columns: 24px 72px minmax(0, 1fr);
+}
+
 .omo-documents__visual {
     display: flex;
     justify-content: center;
@@ -4656,6 +5022,24 @@ if (!is_string($documentsPayload)) {
     align-items: center;
     gap: 8px;
     max-width: 100%;
+}
+
+.omo-documents__selection-control {
+    display: inline-flex;
+    align-self: center;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    cursor: pointer;
+}
+
+.omo-documents__selection-control input {
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    accent-color: var(--color-primary, #2563eb);
+    cursor: pointer;
 }
 
 .omo-documents__kind-detail {
@@ -4844,6 +5228,16 @@ if (!is_string($documentsPayload)) {
 .omo-documents__folder-toggle:focus-visible .omo-documents__item {
     transform: translateY(-1px);
     box-shadow: 0 20px 40px -30px rgba(15, 23, 42, 0.34);
+}
+
+.omo-documents__item.is-selected {
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 72%, var(--color-border, #e5e7eb));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 18%, transparent);
+}
+
+.omo-documents__item--compact.is-selected {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface, #fff));
+    box-shadow: inset 3px 0 0 color-mix(in srgb, var(--color-primary, #2563eb) 72%, transparent);
 }
 
 .omo-documents__folder:not(.is-collapsed) .omo-documents__folder-chevron {
@@ -5145,6 +5539,10 @@ if (!is_string($documentsPayload)) {
         grid-template-columns: 52px minmax(0, 1fr);
         gap: 12px;
         padding: 14px 14px 14px 12px;
+    }
+
+    .omo-documents__item-frame--with-selection {
+        grid-template-columns: 24px 52px minmax(0, 1fr);
     }
 
     .omo-documents__icon-box {

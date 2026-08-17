@@ -12,7 +12,7 @@ $hasStructureTemplates = false;
 $organizationName = '';
 $isSiteAdmin = commonCurrentUserIsSiteAdminModeEnabled();
 $applicationSettingsCards = [];
-$adminLabel = 'Admin';
+$organizationAdminLabel = 'Admin';
 if ($currentOrganizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($currentOrganizationId)) {
@@ -22,8 +22,6 @@ if ($currentOrganizationId > 0) {
             || commonCurrentUserIsSiteAdminModeEnabled();
         $hasStructureTemplates = $organization->getEnabledStructuralRootHolon() !== null;
         $organizationName = trim((string)$organization->get('name'));
-		$organizationLexicon = $organization->getLexicon();
-		$adminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
         $installedApplications = new \dbObject\ArrayApplication();
         $installedApplications->loadEnabledForOrganization($currentOrganizationId, (int)$currentUserId);
         foreach ($installedApplications as $installedApplication) {
@@ -226,12 +224,12 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                 <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(
                     $isOrganizationAdminModeEnabled
                         ? omoParametersIndexT('parameters.index.card.holon_templates.description')
-                        : omoParametersIndexT('parameters.index.card.holon_templates.admin_mode_required', ['adminLabel' => $adminLabel]),
+                        : omoParametersIndexT('parameters.index.card.holon_templates.admin_mode_required', ['adminLabel' => $organizationAdminLabel]),
                     ENT_QUOTES,
                     'UTF-8'
                 ) ?></span>
                 <span class="omo-settings__card-footer" aria-hidden="true">
-                    <span class="omo-settings__card-cta generic-action-button <?= $isOrganizationAdminModeEnabled ? 'generic-action-button--main' : 'generic-action-button--secondary' ?>"><?= htmlspecialchars($isOrganizationAdminModeEnabled ? 'editer' : omoParametersIndexT('parameters.index.card.holon_templates.admin_mode_cta', ['adminLabel' => $adminLabel]), ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="omo-settings__card-cta generic-action-button <?= $isOrganizationAdminModeEnabled ? 'generic-action-button--main' : 'generic-action-button--secondary' ?>"><?= htmlspecialchars($isOrganizationAdminModeEnabled ? 'editer' : omoParametersIndexT('parameters.index.card.holon_templates.admin_mode_cta', ['adminLabel' => $organizationAdminLabel]), ENT_QUOTES, 'UTF-8') ?></span>
                 </span>
             </button>
             <?php endif; ?>

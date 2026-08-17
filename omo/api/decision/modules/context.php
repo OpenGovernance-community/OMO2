@@ -47,6 +47,25 @@ if (!function_exists('omoDecisionBuildEditorUrl')) {
     }
 }
 
+if (!function_exists('omoDecisionBuildGovernanceEditorUrl')) {
+    function omoDecisionBuildGovernanceEditorUrl($organizationId, $holonId = 0, $decisionId = 0)
+    {
+        $query = [
+            'oid' => (int)$organizationId,
+            'method' => DecisionProcess::METHOD_CONSENT,
+            'intent' => 'manage',
+            'workflow' => DecisionProcess::WORKFLOW_GOVERNANCE,
+        ];
+        if ((int)$holonId > 0) {
+            $query['cid'] = (int)$holonId;
+        }
+        if ((int)$decisionId > 0) {
+            $query['id'] = (int)$decisionId;
+        }
+        return '/omo/api/decision/edit.php?' . http_build_query($query);
+    }
+}
+
 if (!function_exists('omoDecisionBuildActionUrl')) {
     function omoDecisionBuildActionUrl()
     {
