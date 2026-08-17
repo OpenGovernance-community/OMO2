@@ -1337,14 +1337,14 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
         }
 
         $alreadyRendered = true;
-        return '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260816-governance-changes">'
+        return '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260817-governance-summary">'
             . '<link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">'
             . '<script src="/common/choice/word-diff.js?v=20260815" defer></script>'
             . '<script src="/common/choice/change-details.js?v=20260816-governance-details" defer></script>'
             . '<script src="/common/choice/highlight-palette.js" defer></script>'
             . '<script src="/omo/assets/js/simple-html-field.js" defer></script>'
             . '<script src="/common/choice/proposal-html.js" defer></script>'
-            . '<script src="/common/choice/proposal-discussion.js?v=20260815-word-diff" defer></script>';
+            . '<script src="/common/choice/proposal-discussion.js?v=20260817-generic-actions" defer></script>';
     }
 }
 

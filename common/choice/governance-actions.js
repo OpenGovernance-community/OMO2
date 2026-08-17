@@ -2,7 +2,6 @@
     'use strict';
     function escapeHtml(value) { var node = document.createElement('div'); node.textContent = String(value == null ? '' : value); return node.innerHTML; }
     function clone(value) { return JSON.parse(JSON.stringify(value == null ? null : value)); }
-    function strip(value) { return String(value || '').replace(/<[^>]*>/g, '').trim(); }
 
     function init(scope) {
         Array.prototype.forEach.call((scope || document).querySelectorAll('[data-governance-editor]'), function (root) {
@@ -15,101 +14,10 @@
             rules.forEach(function (item) { ruleById[String(item.id)] = item; }); roles.forEach(function (item) { roleById[String(item.id)] = item; });
             function label(action) { var labels = {'rule.create': texts.ruleCreate, 'rule.update': texts.ruleUpdate, 'rule.delete': texts.ruleDelete, 'holon.create': texts.roleCreate, 'holon.update': texts.roleUpdate, 'holon.delete': texts.roleDelete}; return labels[action.type] || action.type; }
             function target(action) { var item = action.type.indexOf('rule.') === 0 ? ruleById[String(action.targetId)] : roleById[String(action.targetId)]; var state = action.type.endsWith('.delete') ? action.before : action.after; return (state && (state.title || state.name)) || (item && item.label) || 'Nouvel element'; }
-            function propertiesByKey(properties) {
-                var result = {};
-                (Array.isArray(properties) ? properties : []).forEach(function (property, index) {
-                    var propertyName = String(property.name || property.shortname || '').trim().toLowerCase();
-                    var key = propertyName !== '' ? 'name:' + propertyName : (Number(property.id || 0) > 0 ? 'id:' + Number(property.id) : 'index:' + index);
-                    result[key] = property;
-                });
-                return result;
-            }
-            function propertyValue(property, preserveHtml) {
-                if (!property) return '';
-                var value = String(property.listItemType || '') === 'authority' && property.displayValue != null
-                    ? property.displayValue
-                    : property.value;
-                if (value == null) return '';
-                if (typeof value === 'object') value = JSON.stringify(value);
-                return preserveHtml ? String(value) : strip(String(value));
-            }
-            function pushActionChange(changes, label, before, after, options) {
-                var config = options || {}, beforeEmpty = Array.isArray(before) ? before.length === 0 : String(before || '') === '', afterEmpty = Array.isArray(after) ? after.length === 0 : String(after || '') === '';
-                var status = config.status || (beforeEmpty ? 'added' : (afterEmpty ? 'removed' : 'changed'));
-                changes.push({label:label, before:before, after:after, status:status, rich:!!config.rich, list:!!config.list});
-            }
-            function propertyListItems(property, expectedFormatId) {
-                var formatId = Number(expectedFormatId || (property && property.formatId) || 0);
-                if (!property) return null;
-                var sourceValue = property.value, rawValue = typeof sourceValue === 'string' ? sourceValue.trim() : '', decoded = null;
-                if (Array.isArray(sourceValue) || (sourceValue && typeof sourceValue === 'object')) decoded = sourceValue;
-                else { try { decoded = rawValue === '' ? [] : JSON.parse(rawValue); } catch (error) { decoded = rawValue === '' ? [] : [rawValue]; } }
-                var hasListStructure = Array.isArray(decoded) || (decoded && typeof decoded === 'object' && Array.isArray(decoded.items));
-                if ([2, 7].indexOf(formatId) === -1 && !hasListStructure) return null;
-                var items = decoded && !Array.isArray(decoded) && typeof decoded === 'object' && Array.isArray(decoded.items) ? decoded.items : decoded;
-                if (!Array.isArray(items)) items = items == null || String(items).trim() === '' ? [] : [items];
-                var displayItems = String(property.displayValue || '').split(';').map(function (item) { return item.trim(); }).filter(Boolean), displayIndex = 0;
-                return items.filter(function (item) { return !(item && typeof item === 'object' && item.delete === true); }).map(function (item) {
-                    var fallback = displayItems[displayIndex++] || '';
-                    if (item && typeof item === 'object') {
-                        var title = String(item.label || item.title || item.value || fallback || '').trim(), description = String(item.description || item.text || '').trim();
-                        return title && description ? title + ' - ' + description : (title || description || JSON.stringify(item));
-                    }
-                    return fallback || String(item == null ? '' : item).trim();
-                }).filter(Boolean);
-            }
-            function propertyStructuredValue(property) {
-                if (!property || [6, 7].indexOf(Number(property.formatId || 0)) === -1) return {};
-                try { var decoded = JSON.parse(String(property.value || '')); return decoded && !Array.isArray(decoded) && typeof decoded === 'object' ? decoded : {}; } catch (error) { return {}; }
-            }
-            function appendListChanges(changes, label, beforeItems, afterItems) {
-                if (window.omoChoiceChangeDetails && typeof window.omoChoiceChangeDetails.diffList === 'function') {
-                    Array.prototype.push.apply(changes, window.omoChoiceChangeDetails.diffList(label, beforeItems, afterItems));
-                    return;
-                }
-                if (JSON.stringify(beforeItems) !== JSON.stringify(afterItems)) pushActionChange(changes, label, beforeItems, afterItems, {status:'changed', list:true});
-            }
             function actionChanges(action) {
-                if (window.omoChoiceChangeDetails && typeof window.omoChoiceChangeDetails.governanceChanges === 'function') return window.omoChoiceChangeDetails.governanceChanges(action, payload.authorities || []);
-                var before = action.before || {}, after = action.after || {}, changes = [], isRule = action.type.indexOf('rule.') === 0;
-                var fields = isRule ? {title:'Titre', intention:'Intention', description:'Regle', review_date:'Requestionnement', expiration_date:'Echeance'} : {name:'Nom', full_name:'Nom complet', color:'Couleur'};
-                if (isRule) {
-                    var authorityLabel = function (state) {
-                        var authorityId = Number(state.IDauthority || 0), authority = (payload.authorities || []).find(function (item) { return Number(item.id || 0) === authorityId; });
-                        return authorityId > 0 ? ((authority && authority.label) || ('Autorite ' + authorityId)) : 'Holon courant';
-                    };
-                    var beforeScope = Object.keys(before).length ? authorityLabel(before) : '', afterScope = Object.keys(after).length ? authorityLabel(after) : '';
-                    if (beforeScope !== afterScope) pushActionChange(changes, 'Portee', beforeScope, afterScope);
-                }
-                Object.keys(fields).forEach(function (key) {
-                    var beforeValue = String(before[key] || ''), afterValue = String(after[key] || '');
-                    if (beforeValue === afterValue) return;
-                    pushActionChange(changes, fields[key], beforeValue, afterValue, {rich:isRule && (key === 'intention' || key === 'description')});
-                });
-                if (!isRule) {
-                    var beforeProperties = propertiesByKey(before.editor_payload && before.editor_payload.properties), afterProperties = propertiesByKey(after.editor_payload && after.editor_payload.properties);
-                    Object.keys(beforeProperties).concat(Object.keys(afterProperties)).filter(function (key,index,all) { return all.indexOf(key) === index; }).forEach(function (key) {
-                        var beforeProperty = beforeProperties[key] || null, afterProperty = afterProperties[key] || null, property = afterProperty || beforeProperty || {}, propertyLabel = property.name || property.shortname || 'Propriete', formatId = Number(property.formatId || 0), beforeItems = propertyListItems(beforeProperty, formatId), afterItems = propertyListItems(afterProperty, formatId);
-                        if (beforeItems !== null || afterItems !== null) appendListChanges(changes, propertyLabel, beforeItems || [], afterItems || []);
-                        if (formatId === 7) {
-                            var beforeComposite = propertyStructuredValue(beforeProperty), afterComposite = propertyStructuredValue(afterProperty);
-                            if (String(beforeComposite.before || '') !== String(afterComposite.before || '')) pushActionChange(changes, propertyLabel + ' - introduction', String(beforeComposite.before || ''), String(afterComposite.before || ''), {rich:true});
-                            if (String(beforeComposite.after || '') !== String(afterComposite.after || '')) pushActionChange(changes, propertyLabel + ' - conclusion', String(beforeComposite.after || ''), String(afterComposite.after || ''), {rich:true});
-                            return;
-                        }
-                        if (formatId === 6) {
-                            var beforeTextDetail = propertyStructuredValue(beforeProperty), afterTextDetail = propertyStructuredValue(afterProperty);
-                            if (String(beforeTextDetail.text || '') !== String(afterTextDetail.text || '')) pushActionChange(changes, propertyLabel + ' - titre', String(beforeTextDetail.text || ''), String(afterTextDetail.text || ''));
-                            if (String(beforeTextDetail.detail || '') !== String(afterTextDetail.detail || '')) pushActionChange(changes, propertyLabel + ' - detail', String(beforeTextDetail.detail || ''), String(afterTextDetail.detail || ''), {rich:true});
-                            return;
-                        }
-                        if (beforeItems !== null || afterItems !== null) return;
-                        var rich = Number(property.formatId || 0) === 5, beforeValue = propertyValue(beforeProperty, rich), afterValue = propertyValue(afterProperty, rich);
-                        if (beforeValue === afterValue) return;
-                        pushActionChange(changes, propertyLabel, beforeValue, afterValue, {rich:rich});
-                    });
-                }
-                return changes;
+                return window.omoChoiceChangeDetails && typeof window.omoChoiceChangeDetails.governanceChanges === 'function'
+                    ? window.omoChoiceChangeDetails.governanceChanges(action, payload.authorities || [])
+                    : [];
             }
             function actionSummaryText(action, changes) {
                 var count = changes.length, objectLabel = action.type.indexOf('rule.') === 0 ? 'la regle' : 'le role';

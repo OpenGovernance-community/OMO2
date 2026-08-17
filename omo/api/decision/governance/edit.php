@@ -221,5 +221,5 @@ $payload = [
 </section>
 <script src="/common/choice/word-diff.js?v=20260815"></script>
 <script src="/common/choice/change-details.js?v=20260816-governance-details"></script>
-<script src="/common/choice/governance-actions.js?v=20260816-property-match"></script>
+<script src="/common/choice/governance-actions.js?v=20260817-shared-changes"></script>
 <script>if(window.omoGovernanceEditorInit){window.omoGovernanceEditorInit(document);}</script>

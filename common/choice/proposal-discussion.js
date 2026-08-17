@@ -165,7 +165,7 @@
             + '  <label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Titre</span><input class="generic-form-control" type="text" name="title" maxlength="190" required></label>'
             + '  <label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Description</span><div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-proposal-editor-description></div><textarea hidden aria-hidden="true" name="description" data-omo-proposal-html-value></textarea></div></label>'
             + '  <label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Lien d information</span><input class="generic-form-control" type="url" name="info_url" maxlength="500" placeholder="https://..."></label>'
-            + '  <div style="display:flex;justify-content:flex-end;gap:8px;"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-proposal-editor-cancel>Annuler</button><button type="submit" class="generic-action-button generic-action-button--main">Enregistrer</button></div>'
+            + '  <div class="generic-form-actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-proposal-editor-cancel>Annuler</button><button type="submit" class="generic-action-button generic-action-button--main">Enregistrer</button></div>'
             + '</form>';
     }
 
