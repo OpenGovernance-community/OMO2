@@ -10,6 +10,8 @@ if (!function_exists('omoProjectsSourceLang')) {
     {
         return [
             'projects.title' => ['text' => 'Projets', 'context' => 'Main title of the projects application.'],
+            'projects.action.more' => ['text' => 'Autres options', 'context' => 'Accessible label for the project application actions menu.'],
+            'projects.action.view_archives' => ['text' => 'Voir les archives', 'context' => 'Menu action opening the archived projects popup.'],
             'projects.action.new' => ['text' => 'Nouveau projet', 'context' => 'Primary action opening project creation.'],
             'projects.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening project edition from the detail header.'],
             'projects.action.close' => ['text' => 'Fermer', 'context' => 'Button closing the project subdrawer.'],
@@ -162,6 +164,20 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.archives.link' => ['text' => 'Voir les archives', 'context' => 'Text link opening archived subprojects.'],
             'projects.detail.archives.title' => ['text' => 'Projets archivés', 'context' => 'Title of the archived subprojects popup.'],
             'projects.detail.archives.empty' => ['text' => 'Aucun projet archivé.', 'context' => 'Empty state for archived subprojects.'],
+            'projects.archives.title' => ['text' => 'Archives des projets', 'context' => 'Title of the global archived projects popup.'],
+            'projects.archives.empty' => ['text' => 'Aucun projet archivé ne correspond à cette vue.', 'context' => 'Empty state for the global archived projects popup.'],
+            'projects.archives.group.today' => ['text' => "Aujourd'hui", 'context' => 'Relative archive date group for projects archived today.'],
+            'projects.archives.group.yesterday' => ['text' => 'Hier', 'context' => 'Relative archive date group for projects archived yesterday.'],
+            'projects.archives.group.this_week' => ['text' => 'Cette semaine', 'context' => 'Relative archive date group for projects archived earlier this week.'],
+            'projects.archives.group.last_week' => ['text' => 'La semaine passée', 'context' => 'Relative archive date group for projects archived last week.'],
+            'projects.archives.group.this_month' => ['text' => 'Ce mois', 'context' => 'Relative archive date group for projects archived earlier this month.'],
+            'projects.archives.group.last_month' => ['text' => 'Le mois passé', 'context' => 'Relative archive date group for projects archived last month.'],
+            'projects.archives.group.this_year' => ['text' => 'Cette année', 'context' => 'Relative archive date group for projects archived earlier this year.'],
+            'projects.archives.group.last_year' => ['text' => "L'année passée", 'context' => 'Relative archive date group for projects archived last year.'],
+            'projects.archives.group.earlier' => ['text' => 'Plus ancien', 'context' => 'Relative archive date group for older archived projects.'],
+            'projects.archives.group.too_far' => ['text' => 'Date inconnue', 'context' => 'Fallback archive date group for projects without a usable date.'],
+            'projects.archives.date.closed' => ['text' => 'Clôturé le {date}', 'context' => 'Date label for an archived project completed before archival.'],
+            'projects.archives.date.archived' => ['text' => 'Archivé le {date}', 'context' => 'Date label for a project archived without a closure date.'],
             'projects.detail.created' => ['text' => 'Créé le', 'context' => 'Project detail creation date label.'],
             'projects.detail.empty_description' => ['text' => 'Aucune description pour ce projet.', 'context' => 'Fallback when the project has no description.'],
             'projects.detail.none' => ['text' => 'Non renseigné', 'context' => 'Fallback for missing project metadata.'],
@@ -439,6 +455,61 @@ if (!function_exists('omoProjectsFormatDate')) {
     function omoProjectsFormatDate($value)
     {
         return $value instanceof \DateTimeInterface ? $value->format('d.m.Y') : '';
+    }
+}
+
+if (!function_exists('omoProjectsGetArchiveDate')) {
+    function omoProjectsGetArchiveDate(Project $project): array
+    {
+        $plannedEndDate = $project->get('planned_end_date');
+        if (Project::normalizeStatus($project->get('status')) === Project::STATUS_DONE) {
+            $closedAt = $project->get('closed_at');
+            if ($closedAt instanceof \DateTimeInterface) {
+                return [
+                    'date' => \DateTimeImmutable::createFromInterface($closedAt),
+                    'type' => 'closed',
+                ];
+            }
+            if ($plannedEndDate instanceof \DateTimeInterface) {
+                return [
+                    'date' => \DateTimeImmutable::createFromInterface($plannedEndDate),
+                    'type' => 'closed',
+                ];
+            }
+        }
+
+        $archivedAt = $project->get('archived_at');
+        if ($archivedAt instanceof \DateTimeInterface) {
+            return [
+                'date' => \DateTimeImmutable::createFromInterface($archivedAt),
+                'type' => 'archived',
+            ];
+        }
+
+        $updatedAt = $project->get('updated_at');
+        if ($updatedAt instanceof \DateTimeInterface) {
+            return [
+                'date' => \DateTimeImmutable::createFromInterface($updatedAt),
+                'type' => 'archived',
+            ];
+        }
+
+        return [
+            'date' => null,
+            'type' => 'archived',
+        ];
+    }
+}
+
+if (!function_exists('omoProjectsNormalizeSearchText')) {
+    function omoProjectsNormalizeSearchText($value): string
+    {
+        $normalized = (string)$value;
+        if (class_exists('Normalizer')) {
+            $normalized = \Normalizer::normalize($normalized, \Normalizer::FORM_D) ?: $normalized;
+        }
+        $normalized = preg_replace('/\\p{Mn}+/u', '', $normalized) ?: $normalized;
+        return mb_strtolower(trim($normalized), 'UTF-8');
     }
 }
 
