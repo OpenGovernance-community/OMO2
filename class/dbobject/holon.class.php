@@ -1352,7 +1352,7 @@
 
 			foreach ($this->getChildren() as $child) {
 				$childTypeId = (int)$child->get('IDtypeholon');
-				if ($childTypeId === 1) {
+				if ($childTypeId === 1 || $childTypeId === 3) {
 					$child->collectMemberScopeHolonIds(true, $bucket, $visited);
 					continue;
 				}
@@ -1505,9 +1505,12 @@
 				SELECT DISTINCT
 					uh.IDuser AS user_id,
 					uh.IDholon AS holon_id,
+					h.IDtypeholon AS holon_type_id,
 					uh.active AS holon_active,
 					uh.active AS holon_effective_active,
 					uh.parameters AS holon_parameters,
+					uh.datecreation AS holon_assigned_at,
+					uh.focus AS holon_focus,
 					COALESCE(uo.active, 0) AS organization_active,
 					CASE
 						WHEN inv.id IS NULL THEN 0
@@ -1520,6 +1523,7 @@
 					0 AS has_accepted_invitation
 				FROM user_holon uh
 				INNER JOIN `user` u ON u.id = uh.IDuser
+				INNER JOIN holon h ON h.id = uh.IDholon
 				LEFT JOIN user_organization uo
 					ON uo.IDuser = uh.IDuser
 					AND uo.IDorganization = :uo_organization_id
@@ -1552,15 +1556,19 @@
 					SELECT DISTINCT
 						uh.IDuser AS user_id,
 						uh.IDholon AS holon_id,
+						h.IDtypeholon AS holon_type_id,
 						uh.active AS holon_active,
 						uh.active AS holon_effective_active,
 						uh.parameters AS holon_parameters,
+						uh.datecreation AS holon_assigned_at,
+						uh.focus AS holon_focus,
 						1 AS organization_active,
 						0 AS has_pending_invitation,
 						0 AS has_pending_admin_invitation,
 						0 AS has_accepted_invitation
 					FROM user_holon uh
 					INNER JOIN `user` u ON u.id = uh.IDuser
+					INNER JOIN holon h ON h.id = uh.IDholon
 					WHERE uh.IDholon IN (" . implode(', ', $placeholders) . ")
 					  AND uh.active = 1
 					ORDER BY
@@ -1643,6 +1651,7 @@
 						'initials' => $link->getUserInitials((int)$options['organizationId']),
 						'avatarSeed' => $link->getAvatarSeedLabel((int)$options['organizationId']),
 						'holonIds' => array(),
+						'assignmentLinks' => array(),
 						'isPending' => false,
 						'hasPendingInvitation' => false,
 						'isAdmin' => false,
@@ -1653,6 +1662,14 @@
 				$linkedHolonId = (int)($row['holon_id'] ?? 0);
 				if ($linkedHolonId > 0 && !in_array($linkedHolonId, $cardsByUserId[$userId]['holonIds'], true)) {
 					$cardsByUserId[$userId]['holonIds'][] = $linkedHolonId;
+				}
+				if ($linkedHolonId > 0) {
+					$cardsByUserId[$userId]['assignmentLinks'][$linkedHolonId] = array(
+						'holonId' => $linkedHolonId,
+						'holonTypeId' => (int)($row['holon_type_id'] ?? 0),
+						'assignedAt' => $row['holon_assigned_at'] ?? null,
+						'focus' => trim((string)($row['holon_focus'] ?? '')),
+					);
 				}
 
 				if (
@@ -1673,6 +1690,10 @@
 			}
 
 			$cards = array_values($cardsByUserId);
+			foreach ($cards as &$card) {
+				$card['assignmentLinks'] = array_values($card['assignmentLinks']);
+			}
+			unset($card);
 			usort($cards, static function (array $left, array $right) {
 				if ((bool)($left['isAdmin'] ?? false) !== (bool)($right['isAdmin'] ?? false)) {
 					return !empty($left['isAdmin']) ? -1 : 1;
@@ -1765,6 +1786,77 @@
 			}
 
 			return array_values($userIds);
+		}
+
+		public function getMemberRemovalSummary($userId, array $options = array())
+		{
+			$userId = (int)$userId;
+			$options = array_merge(array(
+				'organizationId' => $this->resolveOrganizationId(),
+				'includeDescendants' => ((int)$this->get('IDtypeholon') !== 1),
+			), $options);
+			$organizationId = (int)$options['organizationId'];
+
+			if ($userId <= 0 || $organizationId <= 0) {
+				return array(
+					'holonCount' => 0,
+					'roleCount' => 0,
+				);
+			}
+
+			$scopeHolonIds = array();
+			$visitedHolonIds = array();
+			$this->collectMemberScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIds, $visitedHolonIds);
+			$scopeHolonIds = array_values(array_unique(array_filter(array_map('intval', $scopeHolonIds), function ($holonId) {
+				return $holonId > 0;
+			})));
+
+			if (count($scopeHolonIds) === 0) {
+				return array(
+					'holonCount' => 0,
+					'roleCount' => 0,
+				);
+			}
+
+			$placeholders = array();
+			$params = array('user_id' => $userId);
+			foreach ($scopeHolonIds as $index => $holonId) {
+				$placeholder = 'holon_' . $index;
+				$placeholders[] = ':' . $placeholder;
+				$params[$placeholder] = $holonId;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT DISTINCT uh.IDholon AS holon_id, h.IDtypeholon AS holon_type
+				 FROM user_holon uh
+     INNER JOIN holon h ON h.id = uh.IDholon
+				 WHERE uh.IDuser = :user_id
+				   AND uh.IDholon IN (" . implode(', ', $placeholders) . ")",
+				$params
+			);
+
+			if (!is_array($rows)) {
+				$rows = array();
+			}
+
+			$holonIds = array();
+			$roleIds = array();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['holon_id'] ?? 0);
+				if ($holonId <= 0) {
+					continue;
+				}
+
+				$holonIds[$holonId] = $holonId;
+				if ((int)($row['holon_type'] ?? 0) === 1) {
+					$roleIds[$holonId] = $holonId;
+				}
+			}
+
+			return array(
+				'holonCount' => count($holonIds),
+				'roleCount' => count($roleIds),
+			);
 		}
 
 		public function getVisibleRoleAssignmentsForUser($userId, array $options = array())
@@ -2326,6 +2418,12 @@
 					$memberUser->setId($userId);
 				}
 
+				$organizationMembership = new \dbObject\UserOrganization();
+				$hasPendingOrganizationMembership = $organizationMembership->load(array(
+					array('IDuser', $userId),
+					array('IDorganization', $organizationId),
+				)) && !(bool)$organizationMembership->get('active');
+
 				$updatedLinkCount = 0;
 				$removedHolonIds = array();
 				$scopeHolonIds = array();
@@ -2361,6 +2459,19 @@
 								continue;
 							}
 
+							if ($hasPendingOrganizationMembership) {
+								$removedHolonId = (int)$link->get('IDholon');
+								if (!$link->delete()) {
+									throw new \RuntimeException('Le membre ne peut pas etre retire de ce contexte.');
+								}
+
+								$updatedLinkCount += 1;
+								if ($removedHolonId > 0) {
+									$removedHolonIds[$removedHolonId] = $removedHolonId;
+								}
+								continue;
+							}
+
 							$link->set('active', false);
 							$saveResult = $link->setHolonAdmin(false);
 							if (!is_array($saveResult) || empty($saveResult['status'])) {
@@ -2377,7 +2488,50 @@
 				}
 
 				$membershipUpdated = false;
-				if ($this->isOrganizationHolon()) {
+				if ($hasPendingOrganizationMembership) {
+					$remainingLinkCount = self::fetchValue(
+						"SELECT COUNT(*)
+						 FROM user_holon uh
+         INNER JOIN holon h ON h.id = uh.IDholon
+						 WHERE uh.IDuser = :user_id
+						   AND h.IDorganization = :organization_id",
+						array(
+							'user_id' => $userId,
+							'organization_id' => $organizationId,
+						)
+					);
+					if ($remainingLinkCount === false) {
+						throw new \RuntimeException('Les liens du membre ne peuvent pas etre verifies.');
+					}
+					$remainingLinkCount = (int)$remainingLinkCount;
+
+					if ($remainingLinkCount === 0) {
+						if (!$organizationMembership->delete()) {
+							throw new \RuntimeException('Le membre ne peut pas etre retire de l organisation.');
+						}
+
+						$pendingInvitation = \dbObject\Invitation::findPendingForOrganizationUser($organizationId, $userId);
+						if ($pendingInvitation instanceof \dbObject\Invitation && $pendingInvitation->isAdminInitiatedInvitation()) {
+							$pendingInvitation->set('status', 'canceled');
+							$pendingInvitation->set('dateresponse', new \DateTime());
+							$pendingInvitation->set('active', false);
+							$invitationSaveResult = $pendingInvitation->save();
+							if (!is_array($invitationSaveResult) || empty($invitationSaveResult['status'])) {
+								throw new \RuntimeException('L invitation ne peut pas etre annulee.');
+							}
+						}
+
+						$membershipUpdated = true;
+					}
+				}
+
+				if ($this->isOrganizationHolon() && $hasPendingOrganizationMembership && !$membershipUpdated) {
+					if (!$organizationMembership->delete()) {
+						throw new \RuntimeException('Le membre ne peut pas etre retire de l organisation.');
+					}
+
+					$membershipUpdated = true;
+				} elseif ($this->isOrganizationHolon()) {
 					$membership = new \dbObject\UserOrganization();
 					if ($membership->load(array(
 						array('IDuser', $userId),

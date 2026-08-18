@@ -4,6 +4,11 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-18
 
+- La liste des membres dans le volet d organisation affiche maintenant tous les admins et adapte dynamiquement les membres standard a la largeur disponible, avec des vignettes naturellement chevauchees, un deploiement sur trois lignes au survol ou au toucher, ainsi qu une vignette d action `+` ou `...` integree a la pile selon les droits et la capacite visible. La pile reste deployee tant que tout tient sur une seule ligne.
+- L application Team conserve maintenant aussi les rattachements de personnes sans compte actif ou sans invitation envoyee. Ils restent visibles avec l etat `A inviter`, tandis que les invitations deja envoyees affichent `Invitation envoyee`.
+- Depuis Team, un membre rattache via un role ou un groupe peut maintenant etre retire du contexte, y compris lorsqu il s agit d un profil technique en attente d invitation. La confirmation indique le nombre de roles concernes et les groupes sont traverses comme des conteneurs transparents pour calculer puis appliquer le retrait.
+- Les fiches Team conservent les dates de connexion et de creation au niveau organisation ; dans un role, cercle ou groupe, elles affichent maintenant la date d affectation au contexte. Pour un cercle, une affectation indirecte indique aussi le nombre de roles concernes et reprend la plus ancienne date de ces roles.
+- Les fiches Team d un role affichent maintenant le focus importe sur le lien de chaque personne, sous son adresse e-mail.
 - Les exports OMO 1 recuperent maintenant aussi les projets de la table historique t_projectbackup. Les dates de changement de statut des projets archives et termines sont importees comme dates d archivage et de cloture, afin de conserver leur historique plutot que de les dater du jour de l import.
 
 ## 2026-08-17

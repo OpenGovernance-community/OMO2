@@ -1079,9 +1079,9 @@ if (function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken(
         );
     });
 }
-$memberPreviewLimit = 8;
-$visibleMemberCards = array_slice($memberCards, 0, $memberPreviewLimit);
-$hasHiddenMembers = count($memberCards) > count($visibleMemberCards);
+$regularMemberCount = count(array_filter($memberCards, static function (array $member): bool {
+    return empty($member['isAdmin']);
+}));
 $isOrganizationDefinitionHolon = (int)$currentHolon->get('IDtypeholon') === 4;
 $isCurrentTemplateHolon = !$isOrganizationDefinitionHolon && $root ? $currentHolon->isTemplateNode((int)$root->getId()) : false;
 $editTemplateContextId = $isCurrentTemplateHolon && $currentHolon->getParentHolon()
@@ -1230,12 +1230,12 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
             <button type="button" class="circle-badge circle-badge--link" data-copy-direct-link="1" data-cid="<?= (int)$currentHolon->getId() ?>">#<?= (int)$currentHolon->getId() ?></button>
         </div>
     </div>
-    <?php if (count($visibleMemberCards) > 0 || $canAddMembers): ?>
+    <?php if (count($memberCards) > 0 || $canAddMembers): ?>
         <div class="circle-members">
             <div class="circle-members__label generic-card-title generic-card-title--eyebrow"><?= omoApiEscape(t('leftbar.members.section_title')) ?></div>
             <div class="circle-members__row">
                 <div class="circle-members__list">
-                    <?php foreach ($visibleMemberCards as $member): ?>
+                    <?php foreach ($memberCards as $member): ?>
 						<?php $hasPendingInvitation = !empty($member['hasPendingInvitation']);
 						$memberTooltip = $hasPendingInvitation
 							? t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']])
@@ -1261,7 +1261,8 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                         $memberAvatarStyle = '--circle-member-avatar-bg: ' . $memberAvatarPalette['background'] . '; --circle-member-avatar-text: ' . $memberAvatarPalette['foreground'] . ';';
                         ?>
                         <span
-                            class="circle-member<?= !empty($member['isAdmin']) ? ' circle-member--admin' : '' ?><?= $hasPendingInvitation ? ' circle-member--pending' : '' ?>"
+                            class="circle-member<?= !empty($member['isAdmin']) ? ' circle-member--admin' : ' circle-member--regular' ?><?= $hasPendingInvitation ? ' circle-member--pending' : '' ?>"
+                            data-circle-member-item="1"
                             data-tooltip="<?= omoApiEscape($memberTooltip) ?>"
                             data-member-user-id="<?= (int)($member['userId'] ?? 0) ?>"
                             <?= $memberPhotoUrl === '' ? 'style="' . omoApiEscape($memberAvatarStyle) . '"' : '' ?>
@@ -1286,10 +1287,21 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                             <?php endif; ?>
                         </span>
                     <?php endforeach; ?>
+                    <button
+                        type="button"
+                        class="circle-member circle-member--more"
+                        data-circle-member-action="more"
+                        data-open-team-drawer="1"
+                        data-cid="<?= (int)$currentHolon->getId() ?>"
+                        aria-label="<?= omoApiEscape(t('leftbar.members.view_all')) ?>"
+                        title="<?= omoApiEscape(t('leftbar.members.view_all')) ?>"
+                        <?= $regularMemberCount <= 8 ? 'hidden' : '' ?>
+                    >...</button>
                     <?php if ($canAddMembers): ?>
                         <button
                             type="button"
                             class="circle-member circle-member--add"
+                            data-circle-member-action="add"
                             data-open-member-popup="1"
                             data-hid="<?= (int)$currentHolon->getId() ?>"
                             aria-label="<?= omoApiEscape(t('leftbar.members.add')) ?>"
@@ -1297,9 +1309,6 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                         >+</button>
                     <?php endif; ?>
                 </div>
-                <?php if ($hasHiddenMembers): ?>
-                    <button type="button" class="circle-badge circle-badge--action" data-open-team-drawer="1" data-cid="<?= (int)$currentHolon->getId() ?>"><?= omoApiEscape(t('leftbar.members.view_all')) ?></button>
-                <?php endif; ?>
             </div>
         </div>
     <?php endif; ?>
@@ -1493,6 +1502,96 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.circle-member-stack {
+    position: relative;
+    flex: 1 1 34px;
+    min-width: 34px;
+    min-height: 34px;
+    height: 34px;
+    transition: height 160ms ease;
+}
+
+.circle-member-stack:not(.is-expanded) .circle-member--regular {
+    position: absolute;
+    top: 0;
+    left: var(--circle-member-compact-left, 0px);
+    z-index: calc(1 + var(--circle-member-index, 0));
+    transition: left 160ms ease, transform 160ms ease;
+}
+
+.circle-member-stack:not(.is-expanded) > [data-circle-member-action] {
+    position: absolute;
+    top: 0;
+    left: var(--circle-member-action-left, 0px);
+    z-index: 1000;
+}
+
+.circle-member-stack.is-expanded,
+.circle-member-stack:focus-within {
+    display: grid;
+    grid-template-columns: repeat(var(--circle-member-columns, 1), 34px);
+    grid-auto-rows: 34px;
+    align-content: start;
+    column-gap: 8px;
+    row-gap: 8px;
+    height: auto;
+    max-height: 118px;
+}
+
+.circle-member-stack.is-expanded .circle-member--regular,
+.circle-member-stack:focus-within .circle-member--regular {
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: auto;
+}
+
+.circle-member-stack.is-expanded > [data-circle-member-action],
+.circle-member-stack:focus-within > [data-circle-member-action] {
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: auto;
+}
+
+.circle-member-stack.is-expanded .circle-member--regular.circle-member--out-of-preview,
+.circle-member-stack:focus-within .circle-member--regular.circle-member--out-of-preview {
+    display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .circle-member-stack:hover {
+        display: grid;
+        grid-template-columns: repeat(var(--circle-member-columns, 1), 34px);
+        grid-auto-rows: 34px;
+        align-content: start;
+        column-gap: 8px;
+        row-gap: 8px;
+        height: auto;
+        max-height: 118px;
+    }
+
+    .circle-member-stack:hover .circle-member--regular {
+        position: relative;
+        top: auto;
+        left: auto;
+        z-index: auto;
+    }
+
+    .circle-member-stack:hover > [data-circle-member-action] {
+        position: relative;
+        top: auto;
+        left: auto;
+        z-index: auto;
+    }
+
+    .circle-member-stack:hover .circle-member--regular.circle-member--out-of-preview {
+        display: none;
+    }
 }
 
 .circle-member {
@@ -1530,6 +1629,23 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
     font-weight: 500;
     color: var(--color-primary);
     background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+}
+
+.circle-member--more {
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+}
+
+.circle-member[hidden] {
+    display: none !important;
+}
+
+.circle-member--out-of-preview {
+    display: none !important;
 }
 
 .circle-member--add:hover {
@@ -2107,6 +2223,156 @@ function omoCloseHolonMenus() {
     });
 }
 
+function omoIsTouchMemberLayout() {
+    return window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches;
+}
+
+function omoSetMemberStackExpanded(stack, expanded) {
+    const $stack = $(stack);
+    if (!expanded && $stack.attr('data-member-compact') !== '1') {
+        expanded = true;
+    }
+
+    $stack.toggleClass('is-expanded', expanded);
+    $stack.attr('aria-expanded', expanded ? 'true' : 'false');
+}
+
+function omoUpdateMemberStack(stack) {
+    const $stack = $(stack);
+    const $members = $stack.children('.circle-member--regular');
+    const $addButton = $stack.children('[data-circle-member-action="add"]');
+    const $moreButton = $stack.find('[data-circle-member-action="more"]').first();
+
+    if (!$members.length) {
+        return;
+    }
+
+    const memberSize = parseFloat(window.getComputedStyle($members[0]).width) || 34;
+    const memberGap = parseFloat(window.getComputedStyle($stack[0]).columnGap) || 8;
+    const columnCount = Math.max(1, Math.floor(($stack.innerWidth() + memberGap) / (memberSize + memberGap)));
+    const oneRowCapacity = columnCount;
+    const previewCapacity = columnCount * 3;
+    const memberCount = $members.length;
+    const hasAddButton = $addButton.length > 0;
+    const requiresCompaction = memberCount + (hasAddButton ? 1 : 0) > oneRowCapacity;
+    const memberCapacity = hasAddButton
+        ? Math.max(0, previewCapacity - 1)
+        : previewCapacity;
+    const hasHiddenMembers = requiresCompaction && memberCount > memberCapacity;
+    const visibleMemberCount = hasHiddenMembers
+        ? Math.max(0, previewCapacity - 1)
+        : memberCount;
+    const compactItemCount = visibleMemberCount + (hasHiddenMembers || hasAddButton ? 1 : 0);
+    const compactMaxSpread = 14;
+    const compactSpread = compactItemCount > 1
+        ? Math.min(
+            compactMaxSpread,
+            Math.max(0, $stack.innerWidth() - memberSize) / (compactItemCount - 1)
+        )
+        : 0;
+
+    $stack.css('--circle-member-columns', columnCount);
+    $stack.attr('data-member-capacity', previewCapacity);
+    $stack.attr('data-member-compact', requiresCompaction ? '1' : '0');
+    $members.each(function (index) {
+        $(this)
+            .css('--circle-member-index', index)
+            .css('--circle-member-compact-left', (Math.max(0, Math.min(index, visibleMemberCount - 1)) * compactSpread) + 'px')
+            .toggleClass('circle-member--out-of-preview', index >= visibleMemberCount);
+    });
+
+    $addButton.prop('hidden', !hasAddButton || hasHiddenMembers);
+    $moreButton.prop('hidden', !hasHiddenMembers);
+    $addButton.css('--circle-member-action-left', (visibleMemberCount * compactSpread) + 'px');
+    $moreButton.css('--circle-member-action-left', (visibleMemberCount * compactSpread) + 'px');
+
+    if (!requiresCompaction) {
+        omoSetMemberStackExpanded(stack, true);
+    } else if (!omoIsTouchMemberLayout()) {
+        omoSetMemberStackExpanded(stack, false);
+    }
+}
+
+function omoPrepareMemberStacks() {
+    $('#panel-left .circle-members__list').each(function () {
+        const $list = $(this);
+        const $regularMembers = $list.children('.circle-member--regular');
+
+        if (!$regularMembers.length || $list.children('[data-circle-member-stack="1"]').length) {
+            return;
+        }
+
+        const stack = $('<div class="circle-member-stack" data-circle-member-stack="1" tabindex="0" role="group" aria-expanded="false"></div>')[0];
+        $regularMembers.first()[0].parentNode.insertBefore(stack, $regularMembers.first()[0]);
+        $regularMembers.each(function () {
+            stack.appendChild(this);
+        });
+
+        $list.children('[data-circle-member-action]').each(function () {
+            stack.appendChild(this);
+        });
+    });
+
+    $('#panel-left [data-circle-member-stack="1"]').each(function () {
+        const stack = this;
+        omoUpdateMemberStack(stack);
+
+        if (typeof ResizeObserver === 'function' && !stack._omoMemberResizeObserver) {
+            stack._omoMemberResizeObserver = new ResizeObserver(function () {
+                omoUpdateMemberStack(stack);
+            });
+            stack._omoMemberResizeObserver.observe(stack);
+        }
+    });
+}
+
+omoPrepareMemberStacks();
+window.requestAnimationFrame(omoPrepareMemberStacks);
+
+$(document)
+  .off('click.omoOrgMemberStack', '#panel-left [data-circle-member-stack="1"]')
+  .on('click.omoOrgMemberStack', '#panel-left [data-circle-member-stack="1"]', function (event) {
+    if (!omoIsTouchMemberLayout() || $(this).attr('data-member-compact') !== '1') {
+        return;
+    }
+
+    const $memberTarget = $(event.target).closest('.circle-member[data-circle-member-item="1"]');
+    if ($memberTarget.length) {
+        if (!$(this).hasClass('is-expanded')) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            omoSetMemberStackExpanded(this, true);
+        }
+        return;
+    }
+
+    event.preventDefault();
+    omoSetMemberStackExpanded(this, !$(this).hasClass('is-expanded'));
+  });
+
+$(document)
+  .off('keydown.omoOrgMemberStack', '#panel-left [data-circle-member-stack="1"]')
+  .on('keydown.omoOrgMemberStack', '#panel-left [data-circle-member-stack="1"]', function (event) {
+    if ($(this).attr('data-member-compact') !== '1' || (event.key !== 'Enter' && event.key !== ' ')) {
+        return;
+    }
+
+    event.preventDefault();
+    omoSetMemberStackExpanded(this, !$(this).hasClass('is-expanded'));
+  });
+
+$(document)
+  .off('click.omoOrgMemberStackOutside')
+  .on('click.omoOrgMemberStackOutside', function (event) {
+    if (!omoIsTouchMemberLayout() || $(event.target).closest('[data-circle-member-stack="1"]').length) {
+        return;
+    }
+
+    $('#panel-left [data-circle-member-stack="1"].is-expanded').each(function () {
+        omoSetMemberStackExpanded(this, false);
+    });
+  });
+
 window.dispatchEvent(new CustomEvent('omo-structure-member-highlight', {
     detail: {
         userId: null
@@ -2174,7 +2440,16 @@ $(document)
 
 $(document)
   .off('click.omoOrgMemberContext', '#panel-left .circle-member[data-open-user-context="1"]')
-  .on('click.omoOrgMemberContext', '#panel-left .circle-member[data-open-user-context="1"]', function () {
+  .on('click.omoOrgMemberContext', '#panel-left .circle-member[data-open-user-context="1"]', function (event) {
+    const $stack = $(this).closest('[data-circle-member-stack="1"]');
+
+    if (omoIsTouchMemberLayout() && $stack.length && !$stack.hasClass('is-expanded')) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        omoSetMemberStackExpanded($stack[0], true);
+        return;
+    }
+
     const userId = Number($(this).data('member-user-id'));
 
     if (typeof window.omoOpenUserContextPopup !== 'function') {
