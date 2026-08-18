@@ -44,6 +44,23 @@ $adminLabelLower = function_exists('mb_strtolower')
 	: strtolower($adminLabel);
 
 switch ($action) {
+    case 'remove_preview':
+        if (!$holon->canEdit()) {
+            http_response_code(403);
+            echo json_encode(array(
+                'status' => false,
+                'message' => omoTeamT('team.api.no_right_modify_context', [], $lang, $sourceLang),
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+        $result = array(
+            'status' => true,
+            'summary' => $holon->getMemberRemovalSummary($userId, array(
+                'organizationId' => $organizationId,
+            )),
+        );
+        break;
+
     case 'remove':
         if (!$holon->canEdit()) {
             http_response_code(403);
@@ -225,4 +242,5 @@ if (!($result['status'] ?? false)) {
 echo json_encode(array(
     'status' => (bool)($result['status'] ?? false),
     'message' => (string)($result['message'] ?? omoTeamT('team.api.action_completed', [], $lang, $sourceLang)),
+    'removalSummary' => is_array($result['summary'] ?? null) ? $result['summary'] : null,
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
