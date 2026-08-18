@@ -567,6 +567,7 @@
 		{
 			$holons = [];
 			$organization = $this->getOrganizationObject();
+			$rootHolonId = (int)$this->getOrganizationRootHolonId();
 			$hasActiveOrganizationMembership = (int)self::fetchValue(
 				"SELECT COUNT(*) FROM user_organization WHERE IDuser = :user_id AND IDorganization = :organization_id AND active = 1",
 				[
