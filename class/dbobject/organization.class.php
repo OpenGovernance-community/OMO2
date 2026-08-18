@@ -4023,7 +4023,7 @@
 
 		protected static function omo1ImportEarliestImportedDate(array $payload, array $selectedModules)
 		{
-			$dateFields = array_flip(array('createdAt', 'measuredAt', 'scheduledAt', 'openedAt', 'closedAt', 'checkedAt', 'scratchpadAt', 'completedAt', 'deletedAt'));
+			$dateFields = array_flip(array('createdAt', 'measuredAt', 'scheduledAt', 'openedAt', 'closedAt', 'archivedAt', 'checkedAt', 'scratchpadAt', 'completedAt', 'deletedAt'));
 			$earliestDate = null;
 			$scanValue = null;
 			$scanValue = function ($value) use (&$scanValue, &$earliestDate, $dateFields) {
@@ -5021,9 +5021,10 @@
 				$project->set('IDuser', $targetUserId);
 				$project->set('title', $title !== '' ? $title : 'Projet OMO 1 #' . $sourceId);
 				$project->set('description', $record['description'] ?? null);
-				$project->set('status', array_key_exists('legacyStatusId', $record)
+				$projectStatus = array_key_exists('legacyStatusId', $record)
 					? self::omo1ImportProjectStatus($record['legacyStatusId'])
-					: \dbObject\Project::normalizeStatus($record['status'] ?? \dbObject\Project::STATUS_SOMEDAY));
+					: \dbObject\Project::normalizeStatus($record['status'] ?? \dbObject\Project::STATUS_SOMEDAY);
+				$project->set('status', $projectStatus);
 				$project->set('planned_start_date', self::omo1ImportDate($record['plannedStartAt'] ?? null));
 				$project->set('planned_end_date', self::omo1ImportDate($record['plannedEndAt'] ?? null));
 				$project->set('priority', \dbObject\Project::normalizeLevel($record['priority'] ?? null));
@@ -5036,9 +5037,25 @@
 				if ($createdAt) {
 					$project->set('created_at', $createdAt);
 				}
-				$project->set('active', array_key_exists('active', $record)
+				$projectIsActive = array_key_exists('active', $record)
 					? (bool)$record['active']
-					: true);
+					: true;
+				$project->set('active', $projectIsActive);
+				$statusAt = self::omo1ImportDate($record['statusAt'] ?? null);
+				$closedAt = self::omo1ImportDate($record['closedAt'] ?? null);
+				if (!$closedAt && $projectStatus === \dbObject\Project::STATUS_DONE) {
+					$closedAt = $statusAt;
+				}
+				if ($closedAt) {
+					$project->set('closed_at', $closedAt);
+				}
+				$archivedAt = self::omo1ImportDate($record['archivedAt'] ?? null);
+				if (!$archivedAt && !$projectIsActive) {
+					$archivedAt = $statusAt;
+				}
+				if ($archivedAt) {
+					$project->set('archived_at', $archivedAt);
+				}
 				self::omo1ImportSave($project, 'Un projet n a pas pu etre cree');
 				$projectIdMap[$sourceId] = (int)$project->getId();
 				$stats['projects'] += 1;

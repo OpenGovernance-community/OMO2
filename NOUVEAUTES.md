@@ -2,6 +2,10 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-18
+
+- Les exports OMO 1 recuperent maintenant aussi les projets de la table historique t_projectbackup. Les dates de changement de statut des projets archives et termines sont importees comme dates d archivage et de cloture, afin de conserver leur historique plutot que de les dater du jour de l import.
+
 ## 2026-08-17
 
 - L application Projets propose maintenant un menu d actions dans son en-tete avec une popup generique affichant les projets archives qui correspondent au contexte, a l attribution et a la recherche courante. Les projets sont regroupes par date de cloture ou d archivage, avec des separateurs relatifs comme aujourd hui, hier et la semaine passee.
