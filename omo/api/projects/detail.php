@@ -28,12 +28,13 @@ $project = new Project();
 if (
     !$project->load($projectId)
     || (int)$project->get('IDorganization') !== $organizationId
-    || (int)$project->get('active') !== 1
 ) {
     http_response_code(404);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoProjectsT('projects.error.not_found')) . '</div>';
     exit;
 }
+
+$isArchivedProject = (int)$project->get('active') !== 1;
 
 $organization = $context['organization'];
 $projectHolon = $project->getHolon();
@@ -53,11 +54,11 @@ if (
 
 $responsible = $project->getResponsible();
 $parent = $project->getParent();
-$canEdit = omoProjectsCanManageProject($project, $context);
+$canEdit = !$isArchivedProject && omoProjectsCanManageProject($project, $context);
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
-$canCreateSubproject = $projectHolon instanceof Holon
+$canCreateSubproject = !$isArchivedProject && ($projectHolon instanceof Holon
     ? $projectHolon->isAllowed('CAN_CREATE_PROJECT', true, $currentUserId)
-    : omoProjectsCanCreateContext($context);
+    : omoProjectsCanCreateContext($context));
 $editUrl = '/omo/api/projects/create.php?oid=' . rawurlencode((string)$organizationId) . '&id=' . rawurlencode((string)$projectId);
 if ((int)($_GET['cid'] ?? 0) > 0) {
     $editUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
@@ -72,7 +73,7 @@ $startDate = omoProjectsFormatDate($project->get('planned_start_date'));
 $endDate = omoProjectsFormatDate($project->get('planned_end_date'));
 $createdAt = $project->get('created_at');
 $allProjects = new ArrayProject();
-$allProjects->loadForOrganization($organizationId);
+$allProjects->loadForOrganization($organizationId, !$isArchivedProject);
 $projectsByParent = [];
 $projectsById = [];
 $attachableProjects = [];
@@ -258,7 +259,9 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                         ? trim((string)$subprojectHolon->getDisplayName())
                         : omoProjectsT('projects.detail.none');
                     $subprojectResponsible = omoProjectsGetUserLabel($subproject->getResponsible());
-                    $subprojectCanEdit = omoProjectsCanManageProject($subproject, $context);
+                    $subprojectCanEdit = !$isArchivedProject
+                        && (int)$subproject->get('active') === 1
+                        && omoProjectsCanManageProject($subproject, $context);
                     $subprojectCanDelete = omoProjectsCanDeleteProject($subproject, $context);
                     ?>
                     <article

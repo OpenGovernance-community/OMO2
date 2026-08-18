@@ -34,6 +34,28 @@ class ArrayProject extends ArrayDbObject
         ]);
     }
 
+    public function loadArchivedForOrganization($organizationId, $projectKind = Project::KIND_STANDARD)
+    {
+        $this->exchangeArray([]);
+        $organizationId = (int)$organizationId;
+        if ($organizationId <= 0) {
+            return;
+        }
+
+        $this->load([
+            'where' => [
+                ['field' => 'IDorganization', 'value' => $organizationId],
+                ['field' => 'project_kind', 'value' => Project::normalizeKind($projectKind)],
+                ['field' => 'active', 'value' => 0],
+            ],
+            'orderBy' => [
+                ['field' => 'archived_at', 'dir' => 'DESC'],
+                ['field' => 'updated_at', 'dir' => 'DESC'],
+                ['field' => 'id', 'dir' => 'DESC'],
+            ],
+        ]);
+    }
+
     public function loadForParent($parentId, $activeOnly = true, $projectKind = Project::KIND_STANDARD)
     {
         $this->exchangeArray([]);

@@ -7,6 +7,30 @@
     }
     root.dataset.omoProjectsReady = '1';
 
+    if (!window.omoProjectArchiveLinksBound) {
+        document.addEventListener('click', function (event) {
+            var archiveLink = event.target && event.target.closest
+                ? event.target.closest('[data-omo-project-archive-link]')
+                : null;
+            var projectId;
+            if (!archiveLink) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            projectId = Number(archiveLink.getAttribute('data-project-id') || 0);
+            if (!Number.isInteger(projectId) || projectId <= 0) {
+                return;
+            }
+            if (typeof window.omoOpenDrawerHashState === 'function') {
+                window.omoOpenDrawerHashState('projects-d' + String(projectId));
+            } else {
+                window.location.hash = 'projects-d' + String(projectId);
+            }
+        });
+        window.omoProjectArchiveLinksBound = true;
+    }
+
     var drawer = root.querySelector('[data-omo-projects-drawer]');
     var drawerBody = root.querySelector('[data-omo-projects-drawer-body]');
     var drawerController = drawer && typeof window.omoCreateSubdrawerController === 'function'
@@ -649,6 +673,25 @@
             query.push('project_query=' + encodeURIComponent(nextQuickSearch));
         }
         return '/omo/api/projects/index.php?' + query.join('&');
+    }
+
+    function buildArchivesUrl() {
+        var organizationId = Number(root.getAttribute('data-omo-projects-oid') || 0);
+        var scope = root.getAttribute('data-omo-projects-scope') || 'contextual';
+        var query = ['oid=' + encodeURIComponent(String(organizationId))];
+        if (routeCid > 0) {
+            query.push('cid=' + encodeURIComponent(String(routeCid)));
+        }
+        if (scope !== 'contextual') {
+            query.push('project_scope=' + encodeURIComponent(scope));
+        }
+        if (currentAssignment === 'mine') {
+            query.push('project_assignment=mine');
+        }
+        if (String(currentQuickSearch || '').trim() !== '') {
+            query.push('project_query=' + encodeURIComponent(String(currentQuickSearch).trim()));
+        }
+        return '/omo/api/projects/archives.php?' + query.join('&');
     }
 
     function getDisplayPreferencesContextKey() {
@@ -1401,12 +1444,12 @@
     }
 
     function closeProjectMenus(exceptMenu) {
-        root.querySelectorAll('[data-omo-project-menu]').forEach(function (menu) {
+        root.querySelectorAll('[data-omo-project-menu], [data-omo-projects-header-menu]').forEach(function (menu) {
             if (menu === exceptMenu) {
                 return;
             }
-            var panel = menu.querySelector('[data-omo-project-menu-panel]');
-            var toggle = menu.querySelector('[data-omo-project-menu-toggle]');
+            var panel = menu.querySelector('[data-omo-project-menu-panel], [data-omo-projects-header-menu-panel]');
+            var toggle = menu.querySelector('[data-omo-project-menu-toggle], [data-omo-projects-header-menu-toggle]');
             if (panel) {
                 panel.hidden = true;
             }
@@ -1419,6 +1462,18 @@
                 toggle.setAttribute('aria-expanded', 'false');
             }
         });
+    }
+
+    function openArchivesModal() {
+        if (typeof window.commonTopbarOpenModal !== 'function') {
+            window.omoNotify(texts.actionError, 'error');
+            return;
+        }
+        window.commonTopbarOpenModal(
+            texts.archivesTitle || 'Archives des projets',
+            buildArchivesUrl(),
+            'fetch'
+        );
     }
 
     function openMoveDialog(card) {
@@ -1844,6 +1899,33 @@
             } else if (calendarEventId > 0) {
                 window.location.hash = 'calendar-e' + String(calendarEventId);
             }
+            return;
+        }
+
+        var headerMenuToggle = event.target.closest('[data-omo-projects-header-menu-toggle]');
+        if (headerMenuToggle) {
+            event.preventDefault();
+            event.stopPropagation();
+            var headerMenu = headerMenuToggle.closest('[data-omo-projects-header-menu]');
+            var headerMenuPanel = headerMenu ? headerMenu.querySelector('[data-omo-projects-header-menu-panel]') : null;
+            var isHeaderMenuOpen = !!headerMenuPanel && !headerMenuPanel.hidden;
+            closeProjectMenus(headerMenu);
+            if (headerMenuPanel) {
+                headerMenuPanel.hidden = isHeaderMenuOpen;
+            }
+            if (headerMenu) {
+                headerMenu.classList.toggle('is-open', !isHeaderMenuOpen);
+            }
+            headerMenuToggle.setAttribute('aria-expanded', isHeaderMenuOpen ? 'false' : 'true');
+            return;
+        }
+
+        var archivesAction = event.target.closest('[data-omo-projects-view-archives]');
+        if (archivesAction) {
+            event.preventDefault();
+            event.stopPropagation();
+            closeProjectMenus();
+            openArchivesModal();
             return;
         }
 

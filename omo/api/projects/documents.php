@@ -20,12 +20,13 @@ $project = new Project();
 if (
     !$project->load($projectId)
     || (int)$project->get('IDorganization') !== $organizationId
-    || (int)$project->get('active') !== 1
 ) {
     http_response_code(404);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoProjectsT('projects.error.not_found')) . '</div>';
     exit;
 }
+
+$isArchivedProject = (int)$project->get('active') !== 1;
 
 $projectHolon = $project->getHolon();
 $rootHolon = $context['rootHolon'];
@@ -43,7 +44,7 @@ if (
 }
 
 $documents = omoProjectsGetVisibleDocuments($project, $organizationId, $projectHolon);
-$canCreateDocument = Document::canCreateInOrganizationContext(
+$canCreateDocument = !$isArchivedProject && Document::canCreateInOrganizationContext(
     $organizationId,
     null,
     (int)commonGetCurrentUserId(),
