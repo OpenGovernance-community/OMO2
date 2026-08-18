@@ -40,7 +40,7 @@ class Project extends DbObject
             [['title', 'status', 'capture_mode', 'project_size', 'project_kind'], 'string'],
             [['description'], 'html'],
             [['planned_start_date', 'planned_end_date'], 'date'],
-            [['created_at', 'updated_at'], 'datetime'],
+            [['created_at', 'updated_at', 'closed_at', 'archived_at'], 'datetime'],
             [['active'], 'boolean'],
             [['id'], 'safe'],
         ];
@@ -70,6 +70,8 @@ class Project extends DbObject
             'active' => 'Actif',
             'created_at' => 'Date de creation',
             'updated_at' => 'Date de modification',
+            'closed_at' => 'Date de cloture',
+            'archived_at' => 'Date d archivage',
         ];
     }
 
@@ -80,6 +82,8 @@ class Project extends DbObject
             'status' => 'Etat du projet pour une future vue kanban.',
             'planned_start_date' => 'Date a laquelle le projet devrait commencer.',
             'planned_end_date' => 'Date a laquelle le projet devrait etre termine.',
+            'closed_at' => 'Date a laquelle le projet est passe a l etat termine.',
+            'archived_at' => 'Date a laquelle le projet a ete retire de la vue active.',
             'priority' => 'Niveau a considerer tant que les dates ne sont pas renseignees.',
             'importance' => 'Niveau strategique a considerer quand le temps disponible manque.',
             'calculated_importance' => 'Score calcule automatiquement a partir de l importance strategique declaree, de la chaine de projets et de la position holarchique.',
@@ -443,6 +447,12 @@ class Project extends DbObject
         }
 
         $now = new \DateTime();
+        if (self::normalizeStatus($this->get('status')) === self::STATUS_DONE && !($this->get('closed_at') instanceof \DateTimeInterface)) {
+            $this->set('closed_at', $now);
+        }
+        if ((int)$this->get('active') !== 1 && !($this->get('archived_at') instanceof \DateTimeInterface)) {
+            $this->set('archived_at', $now);
+        }
         if ((int)$this->getId() <= 0 && !($this->get('created_at') instanceof \DateTimeInterface)) {
             $this->set('created_at', $now);
         }
