@@ -94,7 +94,7 @@ if ($wasExistingDecision) {
     if ((int)$decision->get('IDuser') !== $currentUserId) {
         $respond(403, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.owner')]);
     }
-    if ($decision->hasEvaluationStarted()) {
+    if ($decision->hasConsultationEnded()) {
         $respond(409, ['status' => false, 'message' => omoDecisionGovernanceT('governance.error.locked')]);
     }
 } else {
