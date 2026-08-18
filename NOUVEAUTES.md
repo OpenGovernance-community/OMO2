@@ -4,7 +4,10 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-17
 
+- L application Projets propose maintenant un menu d actions dans son en-tete avec une popup generique affichant les projets archives qui correspondent au contexte, a l attribution et a la recherche courante. Les projets sont regroupes par date de cloture ou d archivage, avec des separateurs relatifs comme aujourd hui, hier et la semaine passee.
+- Les noms des projets archives sont maintenant des liens vers leur sous-drawer de detail via le hash projects-d{id}. Le detail reste consultable en lecture seule, avec ses documents et evenements visibles sans actions de creation.
 - Les comparaisons de modifications de gouvernance sont maintenant calculees par un seul composant partage, utilise aussi bien par l editeur Hors reorg que par sa consultation. Les actions de formulaires de la discussion reutilisent egalement les styles generiques.
+- La carte Lexique des parametres est maintenant reservee aux admins de l organisation : elle reste grisee tant que le mode Admin n est pas activee et ne devient interactive qu apres son activation.
 
 ## 2026-08-16
 

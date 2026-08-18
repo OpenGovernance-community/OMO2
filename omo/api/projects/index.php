@@ -652,7 +652,7 @@ $projectTexts = [
     'eventsError' => omoProjectsT('projects.detail.events.error'),
     'documentsAdd' => omoProjectsT('projects.detail.documents.add'),
     'taskDeleteConfirm' => omoProjectsT('projects.detail.task.delete_confirm'),
-    'archivesTitle' => omoProjectsT('projects.detail.archives.title'),
+    'archivesTitle' => omoProjectsT('projects.archives.title'),
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
@@ -693,6 +693,20 @@ $projectTexts = [
                 </div>
             </div>
             <div class="omo-projects__header-actions" data-omo-header-actions>
+                <div class="generic-menu omo-projects__header-menu" data-omo-projects-header-menu>
+                    <button
+                        type="button"
+                        class="generic-menu-toggle omo-projects__header-menu-toggle"
+                        data-omo-projects-header-menu-toggle
+                        aria-expanded="false"
+                        aria-haspopup="menu"
+                        aria-label="<?= omoApiEscape(omoProjectsT('projects.action.more')) ?>"
+                        title="<?= omoApiEscape(omoProjectsT('projects.action.more')) ?>"
+                    >&#8942;</button>
+                    <div class="generic-menu-panel generic-menu-panel--wide omo-projects__header-menu-panel" data-omo-projects-header-menu-panel role="menu" hidden>
+                        <button type="button" class="generic-menu-item" data-omo-projects-view-archives role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.view_archives')) ?></button>
+                    </div>
+                </div>
                 <div class="omo-projects__bulk-actions" data-omo-projects-bulk-actions hidden>
                     <span class="omo-projects__bulk-count" data-omo-projects-bulk-count></span>
                     <button type="button" class="generic-action-button generic-action-button--secondary omo-projects__bulk-action-button" data-omo-projects-bulk-action="archive" title="<?= omoApiEscape(omoProjectsT('projects.action.archive_selected')) ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.action.archive_selected')) ?>">
