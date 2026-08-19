@@ -135,10 +135,11 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
 
             <button
                 type="button"
-                class="omo-settings__card omo-card omo-card--interactive"
-                data-omo-settings-modal-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.organization.title'), ENT_QUOTES, 'UTF-8') ?>"
-                data-omo-settings-modal-url="/popup/organization_create.php?oid=<?= (int)$currentOrganizationId ?>"
-                data-omo-settings-modal-mode="fetch"
+                class="omo-settings__card omo-card omo-card--interactive omo-settings__card--admin-mode-required"
+                data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.organization.title'), ENT_QUOTES, 'UTF-8') ?>"
+                data-omo-settings-drawer-url="/popup/organization_create.php?oid=<?= (int)$currentOrganizationId ?>"
+                data-omo-settings-drawer-mode="fetch"
+                <?= $isOrganizationAdminModeEnabled ? '' : 'disabled aria-disabled="true"' ?>
             >
                 <span class="omo-settings__card-head">
                     <span class="omo-settings__card-icon-shell">
@@ -149,9 +150,15 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                         <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.organization.title'), ENT_QUOTES, 'UTF-8') ?></strong>
                     </span>
                 </span>
-                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.organization.description', ['organizationName' => $organizationName]), ENT_QUOTES, 'UTF-8') ?></span>
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(
+                    $isOrganizationAdminModeEnabled
+                        ? omoParametersIndexT('parameters.index.card.organization.description', ['organizationName' => $organizationName])
+                        : omoParametersIndexT('parameters.index.card.organization.admin_mode_required', ['adminLabel' => $organizationAdminLabel]),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?></span>
                 <span class="omo-settings__card-footer" aria-hidden="true">
-                    <span class="omo-settings__card-cta generic-action-button generic-action-button--main">editer</span>
+                    <span class="omo-settings__card-cta generic-action-button <?= $isOrganizationAdminModeEnabled ? 'generic-action-button--main' : 'generic-action-button--secondary' ?>"><?= htmlspecialchars($isOrganizationAdminModeEnabled ? 'editer' : omoParametersIndexT('parameters.index.card.organization.admin_mode_cta', ['adminLabel' => $organizationAdminLabel]), ENT_QUOTES, 'UTF-8') ?></span>
                 </span>
             </button>
 
@@ -495,6 +502,8 @@ document.querySelectorAll('.omo-settings').forEach(function (root) {
             }
         }, 200);
     }
+
+    root.addEventListener('omo-settings-close-nested-drawer', closeNestedDrawer);
 
     function openNestedDrawer(title, url, mode, description) {
         if (!url) {

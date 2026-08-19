@@ -9,6 +9,8 @@ $organizationLoaded = $organizationId > 0 && $organization->load($organizationId
 $application = $organizationLoaded ? omoDecisionParamsGetApplicationLink($organizationId, false) : null;
 $canManage = $organizationLoaded && omoDecisionParamsCanManage($organizationId, $currentUserId);
 $config = $organizationLoaded ? omoDecisionParamsGetConfig($organization) : omoDecisionParamsGetDefaultConfig();
+$canUseGovernance = $organizationLoaded && omoDecisionParamsCanUseGovernance($organization);
+$descriptionKey = $canUseGovernance ? 'decisions.params.description' : 'decisions.params.description.discovery';
 $methods = $config['methods'];
 $governance = $config['governance'];
 ?>
@@ -17,8 +19,8 @@ $governance = $config['governance'];
         <div class="generic-heading-with-help">
             <h2 class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.title'), ENT_QUOTES, 'UTF-8') ?></h2>
             <details class="generic-context-help">
-                <summary aria-label="<?= htmlspecialchars(omoDecisionParamsT('decisions.params.description'), ENT_QUOTES, 'UTF-8') ?>">?</summary>
-                <div class="generic-context-help__content"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.description'), ENT_QUOTES, 'UTF-8') ?></div>
+                <summary aria-label="<?= htmlspecialchars(omoDecisionParamsT($descriptionKey), ENT_QUOTES, 'UTF-8') ?>">?</summary>
+                <div class="generic-context-help__content"><?= htmlspecialchars(omoDecisionParamsT($descriptionKey), ENT_QUOTES, 'UTF-8') ?></div>
             </details>
         </div>
     </div>
@@ -44,6 +46,7 @@ $governance = $config['governance'];
             <label class="generic-checkbox"><input type="checkbox" name="methods[consent]" value="1"<?= !empty($methods['consent']) ? ' checked' : '' ?>><span><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.consent'), ENT_QUOTES, 'UTF-8') ?></span></label>
         </section>
 
+        <?php if ($canUseGovernance): ?>
         <section class="generic-section generic-section--stack generic-form-section">
             <div class="generic-form-section__heading">
                 <h3 class="generic-card-title generic-card-title--section"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.section.governance'), ENT_QUOTES, 'UTF-8') ?></h3>
@@ -81,6 +84,7 @@ $governance = $config['governance'];
                 </div>
             </div>
         </section>
+        <?php endif; ?>
 
         <div class="generic-form-actions"><button type="submit" class="generic-action-button generic-action-button--main" data-omo-decision-params-submit><?= htmlspecialchars(omoDecisionParamsT('decisions.params.action.save'), ENT_QUOTES, 'UTF-8') ?></button></div>
         <p class="generic-feedback" data-omo-decision-params-feedback hidden aria-live="polite"></p>
