@@ -14,6 +14,8 @@ if (!function_exists('notificationCenterEventCatalog')) {
             'decision_evaluation_started' => 'Passage de mes scrutins invites en vote',
             'decision_consultation_ending' => 'Fin prochaine de la consultation',
             'decision_evaluation_ending' => 'Fin prochaine du vote',
+            'decision_consultation_finished' => 'Fin de la consultation de mes scrutins',
+            'decision_evaluation_finished' => 'Fin du vote de mes scrutins',
             'calendar_event_invited' => 'Invitation a un nouvel evenement',
             'calendar_event_location_changed' => 'Modification du lieu d un evenement',
             'calendar_event_schedule_changed' => 'Modification de l horaire d un evenement',
@@ -37,6 +39,8 @@ if (!function_exists('notificationCenterEventGroupCatalog')) {
                     'decision_evaluation_started',
                     'decision_consultation_ending',
                     'decision_evaluation_ending',
+                    'decision_consultation_finished',
+                    'decision_evaluation_finished',
                 ],
             ],
             'calendar' => [
@@ -522,6 +526,63 @@ if (!function_exists('notificationCenterDispatchDecisionDeadlineReminder')) {
     }
 }
 
+if (!function_exists('notificationCenterDispatchDecisionCompletedPhase')) {
+    function notificationCenterDispatchDecisionCompletedPhase(\dbObject\DecisionProcess $decision, $phase, $referenceDateTime = null)
+    {
+        $phase = $phase === 'consultation' ? 'consultation' : 'vote';
+        $organizationId = (int)$decision->get('IDorganization');
+        $decisionId = (int)$decision->getId();
+        $ownerId = (int)$decision->get('IDuser');
+        if ($organizationId <= 0 || $decisionId <= 0 || $ownerId <= 0) {
+            return 0;
+        }
+        $deadlineField = $phase === 'consultation' ? 'consultation_end_at' : 'evaluation_end_at';
+        $deadline = \dbObject\DecisionProcess::normalizeDateTimeValue($decision->get($deadlineField));
+        $sourceDate = $deadline instanceof \DateTimeInterface
+            ? $deadline->format('YmdHi')
+            : ($referenceDateTime instanceof \DateTimeInterface ? $referenceDateTime->format('YmdHi') : 'completed');
+        $eventKey = $phase === 'consultation' ? 'decision_consultation_finished' : 'decision_evaluation_finished';
+        $phaseLabel = $phase === 'consultation' ? 'consultation' : 'vote';
+        $titlePrefix = $phase === 'consultation' ? 'Fin de la consultation' : 'Fin du vote';
+        $decisionTitle = mb_substr(trim((string)$decision->get('title')), 0, 140, 'UTF-8');
+        notificationCenterCreateForUsers(
+            $organizationId,
+            $eventKey,
+            [$ownerId],
+            'decision-' . $phase . '-finished-' . $decisionId . '-' . $sourceDate,
+            $titlePrefix . ' - ' . $decisionTitle,
+            'La periode de ' . $phaseLabel . ' du scrutin "' . $decisionTitle . '" est terminee. Vous pouvez maintenant effectuer les actions de suivi necessaires.',
+            notificationCenterBuildDecisionUrl($organizationId, $decisionId)
+        );
+        return 1;
+    }
+}
+
+if (!function_exists('notificationCenterDispatchDecisionPhaseFinished')) {
+    function notificationCenterDispatchDecisionPhaseFinished(\dbObject\DecisionProcess $decision, $previousStatus, $nextStatus, $referenceDateTime = null)
+    {
+        $previousStatus = \dbObject\DecisionProcess::normalizeStatus($previousStatus);
+        $nextStatus = \dbObject\DecisionProcess::normalizeStatus($nextStatus);
+        $phase = '';
+        if (
+            $previousStatus === \dbObject\DecisionProcess::STATUS_CONSULTATION
+            && \dbObject\DecisionProcess::getStatusRank($nextStatus) >= \dbObject\DecisionProcess::getStatusRank(\dbObject\DecisionProcess::STATUS_EVALUATION)
+        ) {
+            $phase = 'consultation';
+        } elseif (
+            $previousStatus === \dbObject\DecisionProcess::STATUS_EVALUATION
+            && \dbObject\DecisionProcess::getStatusRank($nextStatus) >= \dbObject\DecisionProcess::getStatusRank(\dbObject\DecisionProcess::STATUS_RESULTS)
+        ) {
+            $phase = 'vote';
+        }
+        if ($phase === '') {
+            return 0;
+        }
+
+        return notificationCenterDispatchDecisionCompletedPhase($decision, $phase, $referenceDateTime);
+    }
+}
+
 if (!function_exists('notificationCenterProcessDecisionLifecycle')) {
     function notificationCenterProcessDecisionLifecycle($limit = 200, $referenceDateTime = null)
     {
@@ -538,6 +599,21 @@ if (!function_exists('notificationCenterProcessDecisionLifecycle')) {
             $status = \dbObject\DecisionProcess::normalizeStatus($decision->get('status'));
             if ($statusChanged && ($status === \dbObject\DecisionProcess::STATUS_CONSULTATION || $status === \dbObject\DecisionProcess::STATUS_EVALUATION)) {
                 notificationCenterDispatchDecisionPhase($decision, $status);
+            }
+
+            foreach ([
+                ['phase' => 'consultation', 'start' => 'consultation_start_at', 'end' => 'consultation_end_at'],
+                ['phase' => 'vote', 'start' => 'evaluation_start_at', 'end' => 'evaluation_end_at'],
+            ] as $phaseSchedule) {
+                $phaseStart = \dbObject\DecisionProcess::normalizeDateTimeValue($decision->get($phaseSchedule['start']));
+                $phaseEnd = \dbObject\DecisionProcess::normalizeDateTimeValue($decision->get($phaseSchedule['end']));
+                if (
+                    $phaseEnd instanceof \DateTimeInterface
+                    && $phaseEnd <= $referenceDateTime
+                    && (!($phaseStart instanceof \DateTimeInterface) || $phaseStart <= $referenceDateTime)
+                ) {
+                    notificationCenterDispatchDecisionCompletedPhase($decision, $phaseSchedule['phase'], $referenceDateTime);
+                }
             }
 
             $deadlineField = $status === \dbObject\DecisionProcess::STATUS_CONSULTATION

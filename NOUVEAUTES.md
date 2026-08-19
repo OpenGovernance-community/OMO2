@@ -4,6 +4,9 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-18
 
+- Les responsables de scrutins peuvent maintenant choisir une notification lorsque la consultation ou le vote est effectivement termine, afin de ne pas oublier les actions de suivi comme le traitement des propositions ou la publication de la suite.
+- Les propositions Hors reorg sont maintenant verrouillees des la fin de la consultation, y compris pendant un eventuel intervalle avant le debut du vote.
+- Le profil d un membre invite peut maintenant lister ses rattachements en attente sans produire d avertissement lorsque l invitation provient d un import.
 - La liste des membres dans le volet d organisation affiche maintenant tous les admins et adapte dynamiquement les membres standard a la largeur disponible, avec des vignettes naturellement chevauchees, un deploiement sur trois lignes au survol ou au toucher, ainsi qu une vignette d action `+` ou `...` integree a la pile selon les droits et la capacite visible. La pile reste deployee tant que tout tient sur une seule ligne.
 - L application Team conserve maintenant aussi les rattachements de personnes sans compte actif ou sans invitation envoyee. Ils restent visibles avec l etat `A inviter`, tandis que les invitations deja envoyees affichent `Invitation envoyee`.
 - Depuis Team, un membre rattache via un role ou un groupe peut maintenant etre retire du contexte, y compris lorsqu il s agit d un profil technique en attente d invitation. La confirmation indique le nombre de roles concernes et les groupes sont traverses comme des conteneurs transparents pour calculer puis appliquer le retrait.
