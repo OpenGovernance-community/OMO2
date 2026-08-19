@@ -4904,6 +4904,7 @@ function omoGetTopbarSearchScopes() {
     const searchableRouteTokens = {
         team: true,
         calendar: true,
+        policy: 'rules',
         documents: true,
         decision: true,
         projects: true,
@@ -4925,7 +4926,7 @@ function omoGetTopbarSearchScopes() {
         }
 
         scopes.push({
-            id: routeToken,
+            id: searchableRouteTokens[routeToken] === true ? routeToken : searchableRouteTokens[routeToken],
             label: label,
             checked: currentRouteToken === routeToken
         });
@@ -5024,6 +5025,23 @@ function omoOpenSearchUserResult(userId) {
     omoClosePopupModalFromRoute();
 
     return omoOpenUserContextPopup(resolvedUserId);
+}
+
+function omoOpenSearchRulesResult(holonId) {
+    const resolvedHolonId = Number(holonId);
+    if (!Number.isInteger(resolvedHolonId) || resolvedHolonId <= 0) {
+        return false;
+    }
+
+    omoClosePopupModalFromRoute();
+
+    const route = parseUrl();
+    if (!Number.isInteger(Number(route.oid)) || Number(route.oid) <= 0) {
+        return false;
+    }
+
+    navigate(route.oid, resolvedHolonId, 'policy');
+    return true;
 }
 
 function omoOpenSearchDocumentResult(documentUrl, title) {
@@ -5383,6 +5401,7 @@ window.omoOpenSearchPopupHashState = omoOpenSearchPopupHashState;
 window.omoOpenTutorialsHelp = omoOpenTutorialsHelp;
 window.omoOpenSearchStructureResult = omoOpenSearchStructureResult;
 window.omoOpenSearchUserResult = omoOpenSearchUserResult;
+window.omoOpenSearchRulesResult = omoOpenSearchRulesResult;
 window.omoRegisterSearchPopupJobState = omoRegisterSearchPopupJobState;
 window.omoOpenUserContextPopup = omoOpenUserContextPopup;
 window.omoReplaceFetchedPanelRoot = omoReplaceFetchedPanelRoot;
