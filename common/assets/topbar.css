@@ -180,6 +180,17 @@
     text-align: center;
 }
 
+.common-topbar__organization-level {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    padding: 0 10px;
+}
+
+.common-topbar__organization-level .generic-filter-chip {
+    text-decoration: none;
+}
+
 .common-topbar__action img,
 .common-topbar-modal__close img,
 .common-topbar-drawer__close img {

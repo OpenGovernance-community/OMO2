@@ -7,6 +7,9 @@
 	class Organization extends DbObject
 	{
 		public const SYSTEM_ORGANIZATION_ID = 1;
+		public const INTERFACE_LEVEL_DISCOVERY = 1;
+		public const INTERFACE_LEVEL_AUTONOMOUS = 2;
+		public const INTERFACE_LEVEL_EXPERT = 3;
 		protected $lastDeleteError = '';
 		protected static $omo1ImportJournal = null;
 
@@ -23,6 +26,7 @@
 				[['id'], 'integer'],								// Nombres entiers
 				[['datecreation'], 'datetime'],
 				[['name','shortname','domain'], 'string'],	// Chaines de caractere
+				[['interface_level'], 'integer'],
 				[['latlong'], 'latlong'],
 				[['parameters'], 'parameters'],
 				[['shortname'], 'unique'],
@@ -40,6 +44,7 @@
 				'name' => 'Nom',
 				'shortname' => 'Nom court',
 				'domain' => 'Domaine',
+				'interface_level' => 'Niveau d utilisation',
 				'latlong' => 'Position geographique',
 				'logo' => 'Logo',
 				'banner' => 'Banniere',
@@ -53,6 +58,7 @@
 				'name' => 'Nom complet de l\'organisation',
 				'shortname' => 'Nom abrege utilise dans l\'interface et dans l\'URL de l\'organisation',
 				'domain' => 'Nom de domaine principal de l\'organisation',
+				'interface_level' => 'Niveau global de complexite de l interface, utilise pour afficher progressivement les options du logiciel.',
 				'latlong' => 'Position geographique facultative de l organisation pour l affichage sur une carte.',
 				'logo' => 'Logo de l\'organisation',
 				'banner' => 'Image de banniere de l\'organisation',
@@ -65,11 +71,55 @@
 				'name' => 100,
 				'shortname' => 50,
 				'domain' => 100,
+				'interface_level' => 1,
 				'latlong' => 100,
 				'logo' => [[500, 500],[180,180]],
 				'banner' => [[960, 540],[480, 270]],
 				'color' => 10,
 			];
+		}
+
+		public static function interfaceLevelCatalog(): array
+		{
+			return array(
+				self::INTERFACE_LEVEL_DISCOVERY => array(
+					'label' => 'Decouverte',
+					'description' => 'Les fonctions essentielles sont mises en avant.',
+				),
+				self::INTERFACE_LEVEL_AUTONOMOUS => array(
+					'label' => 'Autonome',
+					'description' => 'Les fonctions courantes et de configuration sont accessibles.',
+				),
+				self::INTERFACE_LEVEL_EXPERT => array(
+					'label' => 'Expert',
+					'description' => 'Toutes les fonctions et options disponibles sont proposees.',
+				),
+			);
+		}
+
+		public static function attributeValues()
+		{
+			$values = array();
+			foreach (self::interfaceLevelCatalog() as $level => $catalog) {
+				$values[] = array($level, $catalog['label']);
+			}
+
+			return array(
+				'interface_level' => $values,
+			);
+		}
+
+		public static function normalizeInterfaceLevel($value): int
+		{
+			$value = (int)$value;
+			return array_key_exists($value, self::interfaceLevelCatalog())
+				? $value
+				: self::INTERFACE_LEVEL_DISCOVERY;
+		}
+
+		public function getInterfaceLevel(): int
+		{
+			return self::normalizeInterfaceLevel($this->get('interface_level'));
 		}
 
 		public static function publicReadableFields()
@@ -646,6 +696,9 @@
 		{
 			if ($field === 'shortname') {
 				$value = $this->normalizeShortname($value);
+			}
+			if ($field === 'interface_level') {
+				$value = self::normalizeInterfaceLevel($value);
 			}
 
 			parent::set($field, $value);
@@ -3480,6 +3533,7 @@
 					'excludedSourceTemplateIds' => array(),
 					'excludedSourceHolonIds' => array(),
 					'templatePropertyIdMaps' => array(),
+					'templateExcludedPropertyIds' => array(),
 					'warnings' => array(),
 					'authorityTemplateApplied' => false,
 					'targetTemplateNodes' => array(),
@@ -3510,6 +3564,7 @@
 			$excludedSourceTemplateIds = array();
 			$excludedSourceHolonIds = array();
 			$templatePropertyIdMaps = array();
+			$templateExcludedPropertyIds = array();
 			$mappedTargetTemplateIds = array();
 			$warnings = array();
 			$propertyDefinitionsById = array();
@@ -3635,6 +3690,10 @@
 					}
 
 					$targetPropertyId = 0;
+					if ($hasExplicitMapping && $explicitTargetSourcePropertyId === -1) {
+						$templateExcludedPropertyIds[$sourceTemplateId][$sourcePropertyId] = true;
+						continue;
+					}
 					if ($hasExplicitMapping && $explicitTargetSourcePropertyId <= 0) {
 						continue;
 					}
@@ -3703,6 +3762,7 @@
 				'excludedSourceTemplateIds' => $excludedSourceTemplateIds,
 				'excludedSourceHolonIds' => $excludedSourceHolonIds,
 				'templatePropertyIdMaps' => $templatePropertyIdMaps,
+				'templateExcludedPropertyIds' => $templateExcludedPropertyIds,
 				'warnings' => array_values(array_unique($warnings)),
 				'authorityTemplateApplied' => $authorityTemplateApplied,
 				'targetTemplateNodes' => $targetTemplateNodes,
@@ -3816,6 +3876,7 @@
 				$excludedSourceTemplateIds = $calibrationResult['excludedSourceTemplateIds'] ?? array();
 				$excludedSourceHolonIds = $calibrationResult['excludedSourceHolonIds'] ?? $excludedSourceTemplateIds;
 				$templatePropertyIdMaps = $calibrationResult['templatePropertyIdMaps'] ?? array();
+				$templateExcludedPropertyIds = $calibrationResult['templateExcludedPropertyIds'] ?? array();
 				$calibrationWarnings = $calibrationResult['warnings'] ?? array();
 
 				$pending = $recordsBySourceId;
@@ -3960,6 +4021,15 @@
 							$propertyDefinitionsById,
 							$sourceEffectivePropertyValueCache
 						);
+						if (isset($templateExcludedPropertyIds[$templateSourceId]) && is_array($templateExcludedPropertyIds[$templateSourceId])) {
+							$excludedPropertyIds = $templateExcludedPropertyIds[$templateSourceId];
+							$propertyRecord['properties'] = array_values(array_filter(
+								$propertyRecord['properties'],
+								static function ($propertyRow) use ($excludedPropertyIds) {
+									return !is_array($propertyRow) || empty($excludedPropertyIds[(int)($propertyRow['propertyId'] ?? 0)]);
+								}
+							));
+						}
 					}
 					$effectivePropertyIdMap = $propertyIdMap;
 					if (!empty($mappedSourceTemplateIds[$templateSourceId]) && isset($templatePropertyIdMaps[$templateSourceId])) {
@@ -4014,6 +4084,7 @@
 					'excludedSourceTemplateIds' => $excludedSourceTemplateIds,
 					'excludedSourceHolonIds' => $excludedSourceHolonIds,
 					'templatePropertyIdMaps' => $templatePropertyIdMaps,
+					'templateExcludedPropertyIds' => $templateExcludedPropertyIds,
 					'authorityTemplateApplied' => !empty($calibrationResult['authorityTemplateApplied']),
 					'warnings' => $calibrationWarnings,
 				);
@@ -4252,9 +4323,9 @@
 			self::omo1ImportUserMembership($organization, (int)$actorUserId, true);
 		}
 
-		protected function omo1ImportConvertAuthorityPropertyValues(array $payload, array $domainRecords, array $authorityIdMap, array $authorityIdsByHolonId, array $holonIdMap, array $propertyIdMap, array $templatePropertyIdMaps, array $mappedSourceTemplateIds, array &$warnings, $allowSchemaConversion = true)
+		protected function omo1ImportConvertAuthorityPropertyValues(array $payload, array $domainRecords, array $authorityIdMap, array $authorityIdsByHolonId, array $holonIdMap, array $propertyIdMap, array $templatePropertyIdMaps, array $templateExcludedPropertyIds, array $mappedSourceTemplateIds, array &$warnings, $allowSchemaConversion = true)
 		{
-			if (count($authorityIdMap) === 0 || (count($propertyIdMap) === 0 && count($templatePropertyIdMaps) === 0)) {
+			if (count($domainRecords) === 0 || (count($propertyIdMap) === 0 && count($templatePropertyIdMaps) === 0)) {
 				return;
 			}
 
@@ -4287,19 +4358,22 @@
 			$authoritySourceIdByValue = array();
 			$authoritySourceIdsBySourceHolonId = array();
 			$sourceIdsByTargetAuthorityId = array();
+			$authorityLabelsBySourceId = array();
 			foreach ($domainRecords as $domain) {
 				if (!is_array($domain)) {
 					continue;
 				}
 				$sourceDomainId = (int)($domain['sourceId'] ?? 0);
-				if ($sourceDomainId <= 0 || !isset($authorityIdMap[$sourceDomainId])) {
+				if ($sourceDomainId <= 0) {
 					continue;
 				}
-				$targetAuthorityId = (int)$authorityIdMap[$sourceDomainId];
-				if (!isset($sourceIdsByTargetAuthorityId[$targetAuthorityId])) {
-					$sourceIdsByTargetAuthorityId[$targetAuthorityId] = array();
+				if (isset($authorityIdMap[$sourceDomainId])) {
+					$targetAuthorityId = (int)$authorityIdMap[$sourceDomainId];
+					if (!isset($sourceIdsByTargetAuthorityId[$targetAuthorityId])) {
+						$sourceIdsByTargetAuthorityId[$targetAuthorityId] = array();
+					}
+					$sourceIdsByTargetAuthorityId[$targetAuthorityId][$sourceDomainId] = $sourceDomainId;
 				}
-				$sourceIdsByTargetAuthorityId[$targetAuthorityId][$sourceDomainId] = $sourceDomainId;
 				$sourceHolonIds = array(
 					(int)($domain['sourceHolonId'] ?? 0),
 					(int)($domain['sourceRoleId'] ?? 0),
@@ -4315,6 +4389,9 @@
 				}
 				$label = trim((string)($domain['label'] ?? ($domain['sourceScopeLabel'] ?? '')));
 				$description = trim((string)($domain['description'] ?? ($domain['sourceScopeDescription'] ?? '')));
+				if ($label !== '') {
+					$authorityLabelsBySourceId[$sourceDomainId] = $label;
+				}
 				$candidates = array($label, $description);
 				if ($label !== '' && $description !== '') {
 					$candidates[] = $label . "\nPolitiques: " . $description;
@@ -4337,6 +4414,13 @@
 					continue;
 				}
 				$templateSourceId = (int)($recordsBySourceId[(int)$sourceHolonId]['templateId'] ?? 0);
+				if (
+					$templateSourceId > 0
+					&& isset($templateExcludedPropertyIds[$templateSourceId])
+					&& !empty($templateExcludedPropertyIds[$templateSourceId][$sourceDomainPropertyId])
+				) {
+					continue;
+				}
 				$targetDomainPropertyId = isset($propertyIdMap[$sourceDomainPropertyId])
 					? (int)$propertyIdMap[$sourceDomainPropertyId]
 					: 0;
@@ -4356,12 +4440,14 @@
 					if (!$targetDomainProperty->load($targetDomainPropertyId)) {
 						$targetDomainPropertiesById[$targetDomainPropertyId] = null;
 					} else {
-						$isAuthorityList = \dbObject\PropertyFormat::isListFormat((int)$targetDomainProperty->get('IDpropertyformat'))
-							&& \dbObject\Property::normalizeListItemType($targetDomainProperty->get('listitemtype')) === \dbObject\Property::LIST_ITEM_AUTHORITY;
-						if (!$isAuthorityList && !$allowSchemaConversion) {
+						$isListFormat = \dbObject\PropertyFormat::isListFormat((int)$targetDomainProperty->get('IDpropertyformat'));
+						$listItemType = \dbObject\Property::normalizeListItemType($targetDomainProperty->get('listitemtype'));
+						$isAuthorityList = $isListFormat && $listItemType === \dbObject\Property::LIST_ITEM_AUTHORITY;
+						$isTextList = $isListFormat && $listItemType === \dbObject\Property::LIST_ITEM_TEXT;
+						if (!$isAuthorityList && !$isTextList && !$allowSchemaConversion) {
 							$targetDomainPropertiesById[$targetDomainPropertyId] = null;
 						} else {
-							if (!$isAuthorityList) {
+							if (!$isAuthorityList && !$isTextList) {
 								$targetDomainProperty->set('IDpropertyformat', \dbObject\PropertyFormat::FORMAT_LIST);
 								$targetDomainProperty->set('listitemtype', \dbObject\Property::LIST_ITEM_AUTHORITY);
 								$targetDomainProperty->set('listholontypeids', null);
@@ -4388,8 +4474,9 @@
 						? (int)$authorityIdMap[$sourceDomainId]
 						: 0;
 				};
+				$sourceDomainIds = array_values($authoritySourceIdsBySourceHolonId[(int)$sourceHolonId] ?? array());
 				$sourceAuthorityIds = array();
-				foreach ($authoritySourceIdsBySourceHolonId[(int)$sourceHolonId] ?? array() as $sourceDomainId) {
+				foreach ($sourceDomainIds as $sourceDomainId) {
 					$resolvedAuthorityId = $resolveAuthorityId($sourceDomainId);
 					if ($resolvedAuthorityId > 0) {
 						$sourceAuthorityIds[$resolvedAuthorityId] = $resolvedAuthorityId;
@@ -4410,6 +4497,63 @@
 						: json_decode((string)$rawValue, true);
 					if (!is_array($items)) {
 						$items = array();
+					}
+					$isTextList = \dbObject\PropertyFormat::isListFormat($formatId)
+						&& \dbObject\Property::normalizeListItemType($targetDomainProperty->get('listitemtype')) === \dbObject\Property::LIST_ITEM_TEXT;
+					if ($isTextList) {
+						$convertedTextItems = array();
+						$convertedTextItemKeys = array();
+						$appendTextItem = function ($label) use (&$convertedTextItems, &$convertedTextItemKeys, $normalizeValueKey) {
+							$label = trim((string)$label);
+							$key = $normalizeValueKey($label);
+							if ($key === '' || isset($convertedTextItemKeys[$key])) {
+								return;
+							}
+							$convertedTextItemKeys[$key] = true;
+							$convertedTextItems[] = $label;
+						};
+
+						foreach ($items as $item) {
+							$itemId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+							$sourceDomainId = isset($authorityLabelsBySourceId[$itemId]) ? $itemId : 0;
+							if ($sourceDomainId <= 0 && isset($sourceIdsByTargetAuthorityId[$itemId])) {
+								foreach ($sourceIdsByTargetAuthorityId[$itemId] as $candidateSourceDomainId) {
+									if (isset($authorityLabelsBySourceId[(int)$candidateSourceDomainId])) {
+										$sourceDomainId = (int)$candidateSourceDomainId;
+										break;
+									}
+								}
+							}
+							if ($sourceDomainId > 0) {
+								$appendTextItem($authorityLabelsBySourceId[$sourceDomainId]);
+								continue;
+							}
+
+							$itemValue = is_array($item)
+								? ($item['label'] ?? ($item['title'] ?? ($item['value'] ?? ($item['text'] ?? ''))))
+								: $item;
+							if (!is_array($item) && is_numeric((string)$itemValue)) {
+								$unmatchedCount += 1;
+								continue;
+							}
+							$appendTextItem($itemValue);
+						}
+						foreach ($sourceDomainIds as $sourceDomainId) {
+							if (isset($authorityLabelsBySourceId[(int)$sourceDomainId])) {
+								$appendTextItem($authorityLabelsBySourceId[(int)$sourceDomainId]);
+							}
+						}
+
+						if ($formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+							$htmlList = \dbObject\PropertyFormat::getHtmlListParts($rawValue);
+							$htmlList['items'] = $convertedTextItems;
+							$holonProperty->set('value', \dbObject\PropertyFormat::normalizeValueForStorage($formatId, $htmlList));
+						} else {
+							$holonProperty->set('value', json_encode($convertedTextItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+						}
+						$holonProperty->set('active', true);
+						self::omo1ImportSave($holonProperty, 'Les domaines d un holon n ont pas pu etre convertis en textes');
+						continue;
 					}
 
 					$convertedItems = array();
@@ -4472,7 +4616,19 @@
 					$targetDomainHolonProperty = new \dbObject\HolonProperty();
 					$targetDomainHolonProperty->set('IDholon', (int)$targetHolon->getId());
 					$targetDomainHolonProperty->set('IDproperty', $targetDomainPropertyId);
-					$targetDomainHolonProperty->set('value', json_encode($sourceAuthorityIds, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+					$isTextList = \dbObject\PropertyFormat::isListFormat((int)$targetDomainProperty->get('IDpropertyformat'))
+						&& \dbObject\Property::normalizeListItemType($targetDomainProperty->get('listitemtype')) === \dbObject\Property::LIST_ITEM_TEXT;
+					if ($isTextList) {
+						$textItems = array();
+						foreach ($sourceDomainIds as $sourceDomainId) {
+							if (isset($authorityLabelsBySourceId[(int)$sourceDomainId])) {
+								$textItems[] = $authorityLabelsBySourceId[(int)$sourceDomainId];
+							}
+						}
+						$targetDomainHolonProperty->set('value', json_encode(array_values(array_unique($textItems)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+					} else {
+						$targetDomainHolonProperty->set('value', json_encode($sourceAuthorityIds, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+					}
 					$targetDomainHolonProperty->set('position', (int)$targetDomainProperty->get('position'));
 					$targetDomainHolonProperty->set('mandatory', false);
 					$targetDomainHolonProperty->set('locked', false);
@@ -6117,6 +6273,7 @@
 						$holonIdMap,
 						isset($structureResult['propertyIdMap']) && is_array($structureResult['propertyIdMap']) ? $structureResult['propertyIdMap'] : array(),
 						isset($structureResult['templatePropertyIdMaps']) && is_array($structureResult['templatePropertyIdMaps']) ? $structureResult['templatePropertyIdMaps'] : array(),
+						isset($structureResult['templateExcludedPropertyIds']) && is_array($structureResult['templateExcludedPropertyIds']) ? $structureResult['templateExcludedPropertyIds'] : array(),
 						isset($structureResult['mappedSourceTemplateIds']) && is_array($structureResult['mappedSourceTemplateIds']) ? $structureResult['mappedSourceTemplateIds'] : array(),
 						$warnings,
 						!$hasAppliedOrganizationModel

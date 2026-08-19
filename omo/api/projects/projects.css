@@ -1615,10 +1615,6 @@
         text-align: center;
     }
 
-    .omo-projects__filter-chips {
-        max-width: 66%;
-    }
-
     .omo-projects__filter-search {
         flex-basis: 110px;
         min-width: 100px;

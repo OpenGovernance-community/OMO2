@@ -2123,6 +2123,7 @@ CREATE TABLE `organization` (
   `color` varchar(10) DEFAULT NULL,
   `latlong` varchar(100) DEFAULT NULL,
   `parameters` mediumtext DEFAULT NULL,
+  `interface_level` tinyint(1) unsigned NOT NULL DEFAULT 1,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2134,7 +2135,7 @@ CREATE TABLE `organization` (
 
 LOCK TABLES `organization` WRITE;
 /*!40000 ALTER TABLE `organization` DISABLE KEYS */;
-INSERT INTO `organization` VALUES
+INSERT INTO `organization` (`id`,`name`,`shortname`,`domain`,`logo`,`banner`,`color`,`latlong`,`parameters`,`datecreation`) VALUES
 (1,'OpenMyOrganization','org1','org1.opengov.tools','/img/org1-logo.png','/img/org1-banner.png','#0f766e','46.204391;6.143158',NULL,'2026-04-01 00:00:00'),
 (2,'Exemple de modèle','org2','org2.opengov.tools','/img/org2-logo.png','/img/org2-banner.png','#984ea2','46.519653;6.632273',NULL,'2026-04-01 00:00:00');
 /*!40000 ALTER TABLE `organization` ENABLE KEYS */;
