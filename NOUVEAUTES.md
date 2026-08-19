@@ -7,6 +7,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Lors d un import cale sur un modele, les templates supplementaires du modele restent disponibles mais caches ; seuls les enfants obligatoires absents du fichier sont ajoutes aux cercles importes. Les correspondances de templates identiques par identifiant ou libelle sont proposees automatiquement.
 - Les personnes explicitement en charge d un role dans OMO1 sont maintenant importees comme admin de contexte du holon correspondant dans OMO2.
 - Chaque import OMO1 conserve maintenant un journal detaille en cas d echec, avec les etapes executees, les erreurs et une reference affichee dans la popup. Le journal est supprime automatiquement lorsque l import reussit.
+- Lorsqu un droit d edition de document OMO1 ne peut pas etre rattache a son holon importe, le document est conserve avec une edition reservee a son proprietaire et un avertissement unique.
 - La recherche de la topbar peut maintenant chercher dans les regles accessibles du contexte courant et ouvrir directement le reglement concerne.
 
 ## 2026-08-18
