@@ -9,6 +9,17 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Chaque import OMO1 conserve maintenant un journal detaille en cas d echec, avec les etapes executees, les erreurs et une reference affichee dans la popup. Le journal est supprime automatiquement lorsque l import reussit.
 - Lorsqu un droit d edition de document OMO1 ne peut pas etre rattache a son holon importe, le document est conserve avec une edition reservee a son proprietaire et un avertissement unique.
 - La recherche de la topbar peut maintenant chercher dans les regles accessibles du contexte courant et ouvrir directement le reglement concerne.
+- Le parametrage d une organisation permet maintenant de definir un niveau d utilisation progressif : Decouverte, Autonome ou Expert.
+- Le choix du niveau d utilisation de l organisation reprend les capsules de filtre OMO et propose directement Decouverte, Autonome et Expert.
+- La configuration d organisation utilise maintenant son propre formulaire, plus adapte a ses champs et a ses images, au lieu du tableau generique d administration.
+- Le formulaire d organisation conserve la carte de choix geographique ainsi que le recadrage, le zoom et le deplacement des illustrations avant leur enregistrement.
+- La banniere de l organisation se recadre maintenant dans un apercu compact, sans modifier sa resolution finale enregistree.
+- Le drawer de configuration d organisation se ferme desormais sans recharger l application lorsqu aucune modification n est a enregistrer ou lorsqu une modification ne change pas son affichage courant ; apres une modification visible, le rechargement est propose mais reste facultatif.
+- En mode Decouverte, l application Decisions masque les parametres et les prises de decision Hors Reorg, tout en conservant leur configuration pour un retour ulterieur en mode Autonome ou Expert.
+- La carte de configuration de l organisation est maintenant grisee et non cliquable tant que son admin n a pas active le Mode Admin.
+- La configuration de l organisation s ouvre maintenant dans le sous-drawer des Parametres, avec un formulaire allege des introductions redondantes.
+- Les admins d organisation disposent dans la topbar d une capsule indiquant le niveau Decouverte, Autonome ou Expert et ouvrant directement les Parametres.
+- Les capsules de filtres OMO sont maintenant definies comme primitives `generic-filter-*` dans les styles partages, les classes historiques restant compatibles.
 
 ## 2026-08-18
 
@@ -1703,3 +1714,8 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - L export OMO 1 vers OMO 2 ecarte les projets refuses et les taches residuelles sans projet exporte, propage les etats termine et archive des projets parents aux taches, et preserve les elements desactives, archives ou proposes comme inactifs dans OMO 2.
 - Les indicateurs exportes depuis OMO 1 conservent les indicateurs des roles actifs, mais ecarte les residus attaches directement a un cercle sans contexte d affichage dans OMO 1.
 - L export OMO 1 ecarte maintenant les anciennes actions terminees sans projet parent, masquees par l interface OMO 1 et sans emplacement historique coherent dans OMO 2.
+
+## 2026-08-19
+
+- Lorsqu un modele cible conserve les domaines d autorite sous forme de liste de textes, l import OMO 1 inscrit maintenant les libelles des domaines au lieu de leurs identifiants.
+- Le calage d un import OMO 1 sur un modele propose maintenant de ne pas importer une propriete source, sans recreer sa valeur sur les instances associees.

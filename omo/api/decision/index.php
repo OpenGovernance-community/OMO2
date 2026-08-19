@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/modules/context.php';
+require_once __DIR__ . '/params/shared.php';
 
 use dbObject\DecisionProcess;
 use dbObject\Holon;
@@ -845,6 +846,7 @@ $decisionGroups = sharedGetRelativeDateGroups($today, [
 ]);
 
 $organizationCanEdit = omoDecisionCanCreateAtOrganizationLevel($organization, $currentUserId);
+$canUseGovernance = omoDecisionParamsCanUseGovernance($organization);
 $canCreateDecision = $currentContextHolon
     ? $currentContextHolon->isAllowed('CAN_CREATE_DECISION')
     : $organizationCanEdit;
@@ -868,6 +870,10 @@ foreach ($decisionRows as $row) {
 
     $decisionId = (int)$decision->getId();
     if ($decisionId <= 0) {
+        continue;
+    }
+
+    if (!$canUseGovernance && $decision->isGovernanceWorkflow()) {
         continue;
     }
 

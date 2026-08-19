@@ -94,7 +94,7 @@ if ($rawPropertyMappings !== '') {
             foreach ($targetOrMappings as $sourcePropertyId => $targetPropertyId) {
                 $sourcePropertyId = (int)$sourcePropertyId;
                 $targetPropertyId = (int)$targetPropertyId;
-                if ($sourcePropertyId > 0 && $targetPropertyId >= 0) {
+                if ($sourcePropertyId > 0 && $targetPropertyId >= -1) {
                     $templateCalibration['templatePropertyMappings'][$sourceTemplateId][$sourcePropertyId] = $targetPropertyId;
                 }
             }

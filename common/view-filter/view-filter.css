@@ -30,51 +30,6 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
 }
 
-.omo-view-filter__chips,
-.omo-projects__filter-chips {
-    display: flex;
-    flex: 0 1 auto;
-    align-items: center;
-    gap: 5px;
-    min-width: 0;
-    max-width: 72%;
-    padding: 2px 2px;
-    overflow-x: auto;
-    background: color-mix(in srgb, var(--color-surface-alt, #f3f4f6) 48%, var(--color-surface, #ffffff));
-    scrollbar-width: thin;
-}
-
-.omo-view-filter__chip,
-.omo-projects__filter-chip {
-    display: flex;
-    flex: 0 0 auto;
-    align-items: center;
-    min-height: 28px;
-    padding: 3px 10px;
-    border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 72%, transparent);
-    border-radius: 999px;
-    background: var(--color-surface, #fff);
-    box-shadow: 0 2px 7px rgba(15, 23, 42, .12);
-    color: var(--color-text, #1f2937);
-    cursor: pointer;
-    font: inherit;
-    font-size: .78rem;
-    font-weight: 750;
-    line-height: 1;
-    text-align: left;
-    white-space: nowrap;
-}
-
-.omo-view-filter__chip:hover,
-.omo-view-filter__chip:focus-visible,
-.omo-projects__filter-chip:hover,
-.omo-projects__filter-chip:focus-visible {
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 54%, var(--color-border, #d1d5db));
-    background: var(--color-surface, #fff);
-    box-shadow: 0 3px 10px rgba(15, 23, 42, .16);
-    outline: none;
-}
-
 .omo-view-filter__search,
 .omo-projects__filter-search {
     display: flex;
@@ -171,10 +126,6 @@
 }
 
 @media (max-width: 760px) {
-    .omo-view-filter__chips {
-        max-width: 66%;
-    }
-
     .omo-view-filter__search {
         flex-basis: 110px;
         min-width: 100px;
