@@ -30,6 +30,8 @@ $sourceLang = [
     'notifications.preferences.event.decision_evaluation_started' => ['text' => 'Passage de mes scrutins invites en vote', 'context' => 'Preference label for invited decisions entering voting.'],
     'notifications.preferences.event.decision_consultation_ending' => ['text' => 'Fin prochaine de la consultation', 'context' => 'Preference label for consultation deadline reminders.'],
     'notifications.preferences.event.decision_evaluation_ending' => ['text' => 'Fin prochaine du vote', 'context' => 'Preference label for voting deadline reminders.'],
+    'notifications.preferences.event.decision_consultation_finished' => ['text' => 'Fin de la consultation de mes scrutins : me rappeler de traiter les propositions et la suite', 'context' => 'Preference label for consultation completion notifications sent to the decision owner.'],
+    'notifications.preferences.event.decision_evaluation_finished' => ['text' => 'Fin du vote de mes scrutins : me rappeler de traiter ou publier la suite du scrutin', 'context' => 'Preference label for voting completion notifications sent to the decision owner.'],
     'notifications.preferences.event.calendar_event_invited' => ['text' => 'Invitation a un nouvel evenement', 'context' => 'Preference label for event creation or first invitation.'],
     'notifications.preferences.event.calendar_event_location_changed' => ['text' => 'Modification du lieu d un evenement auquel je suis invite', 'context' => 'Preference label for event location changes.'],
     'notifications.preferences.event.calendar_event_schedule_changed' => ['text' => 'Modification de l horaire d un evenement auquel je suis invite', 'context' => 'Preference label for event schedule changes.'],

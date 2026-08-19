@@ -57,7 +57,7 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.error.holon' => ['text' => 'Une décision hors réorg doit être créée dans un cercle ou un rôle.', 'context' => 'Governance editor invalid holon error.'],
             'governance.error.disabled' => ['text' => 'Les decisions hors reorg ne sont pas activees dans les parametres de cette organisation.', 'context' => 'Governance workflow disabled error.'],
             'governance.error.owner' => ['text' => 'Seul le créateur peut modifier les propositions de cette prise de décision.', 'context' => 'Governance editor owner error.'],
-            'governance.error.locked' => ['text' => 'Les propositions sont verrouillées depuis le début du vote.', 'context' => 'Governance editor locked error.'],
+            'governance.error.locked' => ['text' => 'Les propositions sont verrouillées depuis la fin de la consultation.', 'context' => 'Governance editor locked error.'],
             'governance.empty.rules' => ['text' => 'Aucune règle n’est définie directement dans ce contexte.', 'context' => 'Governance editor no rules message.'],
             'governance.status.pending' => ['text' => 'En attente', 'context' => 'Governance action pending status.'],
             'governance.status.applied' => ['text' => 'Appliquée', 'context' => 'Governance action applied status.'],

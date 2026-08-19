@@ -14,7 +14,7 @@ $targetHolonId = (int)($context['targetHolonId'] ?? 0);
 $targetHolon = ($context['effectiveHolon'] ?? null) instanceof \dbObject\Holon ? $context['effectiveHolon'] : null;
 $isEditing = $decision instanceof DecisionProcess;
 $isOwner = !$isEditing || (int)$decision->get('IDuser') === $currentUserId;
-$isLocked = $isEditing && $decision->hasEvaluationStarted();
+$isLocked = $isEditing && $decision->hasConsultationEnded();
 $canEdit = $isOwner && !$isLocked;
 $decisionSettings = omoDecisionParamsGetConfig($context['organization'] ?? null);
 $governanceSettings = $decisionSettings['governance'];

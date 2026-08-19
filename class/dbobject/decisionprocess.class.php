@@ -407,6 +407,13 @@ class DecisionProcess extends DbObject
                 error_log('decision_lifecycle_notification_failed: ' . $exception->getMessage());
             }
         }
+        if ($wasUpdated && function_exists('notificationCenterDispatchDecisionPhaseFinished')) {
+            try {
+                notificationCenterDispatchDecisionPhaseFinished($this, $currentStatus, $nextStatus, $referenceDateTime);
+            } catch (\Throwable $exception) {
+                error_log('decision_lifecycle_completion_notification_failed: ' . $exception->getMessage());
+            }
+        }
         return $wasUpdated;
     }
 

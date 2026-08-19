@@ -1559,6 +1559,10 @@ if (!function_exists('omoDecisionProposalGetSourceLang')) {
                 'text' => 'La consultation n’a pas encore commencé.',
                 'context' => 'Error shown when the consultation has not started yet.',
             ],
+            'decisions.proposals.denied.consultation_ended' => [
+                'text' => 'La consultation est terminée : il n’est plus possible d’ajouter une proposition.',
+                'context' => 'Error shown when the consultation period has ended.',
+            ],
             'decisions.proposals.denied.evaluation_started' => [
                 'text' => 'La phase de vote a déjà commencé.',
                 'context' => 'Error shown when evaluation has already started.',
@@ -1630,6 +1634,13 @@ if (!function_exists('omoDecisionCanSubmitConsultationProposal')) {
             return [
                 'allowed' => false,
                 'reason' => 'consultation_not_started',
+            ];
+        }
+
+        if ($decision->hasConsultationEnded()) {
+            return [
+                'allowed' => false,
+                'reason' => 'consultation_ended',
             ];
         }
 
@@ -1733,6 +1744,8 @@ if (!function_exists('omoDecisionGetConsultationProposalDeniedMessage')) {
                 return omoDecisionProposalT('decisions.proposals.denied.option_disabled');
             case 'consultation_not_started':
                 return omoDecisionProposalT('decisions.proposals.denied.consultation_not_started');
+            case 'consultation_ended':
+                return omoDecisionProposalT('decisions.proposals.denied.consultation_ended');
             case 'evaluation_started':
                 return omoDecisionProposalT('decisions.proposals.denied.evaluation_started');
             case 'participant_not_found':
