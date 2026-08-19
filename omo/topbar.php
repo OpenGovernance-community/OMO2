@@ -42,6 +42,10 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Panneau lateral',
             'context' => 'Fallback drawer title for the OMO topbar when no specific title is provided.',
         ],
+        'topbar.organization_level.open_aria' => [
+            'text' => 'Ouvrir les parametres de l organisation (niveau {level}).',
+            'context' => 'Accessible label for the organization interface level shortcut in the OMO topbar.',
+        ],
         'topbar.help.button' => [
             'text' => 'Aide',
             'context' => 'Topbar help menu button label in OMO pages.',
@@ -410,6 +414,12 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
     $tensionLabelLower = function_exists('mb_strtolower')
         ? mb_strtolower($tensionLabel, 'UTF-8')
         : strtolower($tensionLabel);
+    $organizationInterfaceLevel = \dbObject\Organization::normalizeInterfaceLevel($organizationContext['interface_level'] ?? 0);
+    $organizationInterfaceLevels = \dbObject\Organization::interfaceLevelCatalog();
+    $organizationInterfaceLevelLabel = (string)($organizationInterfaceLevels[$organizationInterfaceLevel]['label'] ?? '');
+    $canOpenOrganizationParameters = $variant === 'app'
+        && $hasOrganizationContext
+        && commonCurrentUserCanUseAdminMode((int)$organizationContext['id']);
 
     $config = [
         'appKey' => 'omo',
@@ -508,6 +518,14 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
             'inboxUrl' => '/omo/api/notifications/inbox.php',
             'markReadUrl' => '/omo/api/notifications/mark_read.php',
             'csrfToken' => (string)($_SESSION['omo_notification_inbox_csrf'] ?? ''),
+        ],
+        'organizationLevel' => [
+            'enabled' => $canOpenOrganizationParameters && $organizationInterfaceLevelLabel !== '',
+            'label' => $organizationInterfaceLevelLabel,
+            'routeHash' => 'parameters',
+            'ariaLabel' => omoTopbarTranslate('topbar.organization_level.open_aria', [
+                'level' => $organizationInterfaceLevelLabel,
+            ]),
         ],
         'logoutLabel' => omoTopbarTranslate('topbar.logout'),
         'modal' => [

@@ -265,6 +265,12 @@ function commonRenderTopbar(array $options = [])
             'markReadUrl' => (string)($options['notifications']['markReadUrl'] ?? ''),
             'csrfToken' => (string)($options['notifications']['csrfToken'] ?? ''),
         ],
+        'organizationLevel' => [
+            'enabled' => !empty($options['organizationLevel']['enabled']),
+            'label' => (string)($options['organizationLevel']['label'] ?? ''),
+            'routeHash' => (string)($options['organizationLevel']['routeHash'] ?? ''),
+            'ariaLabel' => (string)($options['organizationLevel']['ariaLabel'] ?? ''),
+        ],
         'lexicon' => is_array($options['lexicon'] ?? null) ? $options['lexicon'] : [],
         'profile' => [
             'enabled' => array_key_exists('enabled', $options['profile'] ?? []) ? !empty($options['profile']['enabled']) : true,
@@ -387,10 +393,10 @@ function commonRenderTopbar(array $options = [])
 
     if (!$assetsLoaded) {
         commonRenderTopbarJqueryAssets();
-        echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260816-drawer-help-overlay">' . PHP_EOL;
+        echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260819-filter-chips-level">' . PHP_EOL;
         echo '<script src="/common/assets/components.js?v=20260814-context-help-bounds" defer></script>' . PHP_EOL;
         echo '<script src="/common/holon_scope_picker.js?v=20260805-hover-label-priority" defer></script>' . PHP_EOL;
-        echo '<link rel="stylesheet" href="/common/assets/topbar.css?v=20260806-notification-read-title">' . PHP_EOL;
+        echo '<link rel="stylesheet" href="/common/assets/topbar.css?v=20260819-organization-level">' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/notifications/notifications.css">' . PHP_EOL;
         echo '<script src="/common/notifications/notifications.js" defer></script>' . PHP_EOL;
         echo '<script src="/common/notifications/inbox.js?v=20260806-explicit-read" defer></script>' . PHP_EOL;
@@ -418,6 +424,18 @@ function commonRenderTopbar(array $options = [])
             >
                 <span class="common-topbar__brand-name"><?= htmlspecialchars($config['brandLabel']) ?></span>
             </a>
+        <?php endif; ?>
+        <?php if (!empty($config['organizationLevel']['enabled']) && $config['organizationLevel']['label'] !== '' && $config['organizationLevel']['routeHash'] !== ''): ?>
+        <div class="common-topbar__organization-level">
+            <button
+                type="button"
+                class="generic-filter-chip"
+                data-hash="<?= htmlspecialchars($config['organizationLevel']['routeHash']) ?>"
+                data-navigation-mode="drawer"
+                aria-label="<?= htmlspecialchars($config['organizationLevel']['ariaLabel']) ?>"
+                title="<?= htmlspecialchars($config['organizationLevel']['ariaLabel']) ?>"
+            ><?= htmlspecialchars($config['organizationLevel']['label']) ?></button>
+        </div>
         <?php endif; ?>
     </div>
 

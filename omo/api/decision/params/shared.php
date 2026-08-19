@@ -10,6 +10,7 @@ if (!function_exists('omoDecisionParamsSourceLang')) {
         return [
             'decisions.params.title' => ['text' => 'Parametres Decisions', 'context' => 'Decision application settings title.'],
             'decisions.params.description' => ['text' => 'Definissez les modes de scrutin disponibles et les valeurs initiales des decisions hors reorg.', 'context' => 'Decision application settings description.'],
+            'decisions.params.description.discovery' => ['text' => 'Definissez les modes de scrutin disponibles dans votre organisation.', 'context' => 'Decision application settings description in discovery mode.'],
             'decisions.params.section.methods' => ['text' => 'Modes de scrutin disponibles', 'context' => 'Available decision methods section title.'],
             'decisions.params.section.governance' => ['text' => 'Decisions hors reorg', 'context' => 'Governance workflow settings section title.'],
             'decisions.params.field.simple_vote' => ['text' => 'Vote simple', 'context' => 'Simple vote availability label.'],
@@ -124,8 +125,17 @@ if (!function_exists('omoDecisionParamsGetApplicationLink')) {
     }
 }
 
-if (!function_exists('omoDecisionParamsGetConfig')) {
-    function omoDecisionParamsGetConfig(?Organization $organization): array
+if (!function_exists('omoDecisionParamsCanUseGovernance')) {
+    function omoDecisionParamsCanUseGovernance(?Organization $organization): bool
+    {
+        return $organization instanceof Organization
+            && (int)$organization->getId() > 0
+            && $organization->getInterfaceLevel() >= Organization::INTERFACE_LEVEL_AUTONOMOUS;
+    }
+}
+
+if (!function_exists('omoDecisionParamsGetStoredConfig')) {
+    function omoDecisionParamsGetStoredConfig(?Organization $organization): array
     {
         if (!$organization instanceof Organization || (int)$organization->getId() <= 0) {
             return omoDecisionParamsGetDefaultConfig();
@@ -133,6 +143,17 @@ if (!function_exists('omoDecisionParamsGetConfig')) {
         $application = omoDecisionParamsGetApplicationLink((int)$organization->getId(), false);
         $parameters = $application instanceof OrganizationApplication ? $application->getParametersArray() : [];
         return omoDecisionParamsNormalizeConfig(is_array($parameters['decisionSettings'] ?? null) ? $parameters['decisionSettings'] : []);
+    }
+}
+
+if (!function_exists('omoDecisionParamsGetConfig')) {
+    function omoDecisionParamsGetConfig(?Organization $organization): array
+    {
+        $config = omoDecisionParamsGetStoredConfig($organization);
+        if (!omoDecisionParamsCanUseGovernance($organization)) {
+            $config['governance']['enabled'] = false;
+        }
+        return $config;
     }
 }
 
@@ -173,7 +194,11 @@ if (!function_exists('omoDecisionParamsStoreConfig')) {
             return ['status' => false, 'text' => omoDecisionParamsT('decisions.params.error.unavailable')];
         }
         $parameters = $application->getParametersArray();
-        $parameters['decisionSettings'] = omoDecisionParamsNormalizeConfig($config);
+        $normalizedConfig = omoDecisionParamsNormalizeConfig($config);
+        if (!omoDecisionParamsCanUseGovernance($organization)) {
+            $normalizedConfig['governance'] = omoDecisionParamsGetStoredConfig($organization)['governance'];
+        }
+        $parameters['decisionSettings'] = $normalizedConfig;
         $application->setParametersArray($parameters);
         $result = $application->save();
         return is_array($result) && !empty($result['status'])

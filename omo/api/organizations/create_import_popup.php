@@ -21,6 +21,7 @@ $sourceLang = array(
     'organization_import.mapping.title' => array('text' => 'Correspondance des templates structurels', 'context' => 'Title of template mapping section.'),
     'organization_import.property_mapping.duplicate' => array('text' => 'Une propriete du modele ne peut remplacer qu une seule propriete importee.', 'context' => 'Validation error when a target property is mapped twice.'),
     'organization_import.property_mapping.empty' => array('text' => 'Conserver la propriete importee', 'context' => 'Empty option in a property mapping selector.'),
+    'organization_import.property_mapping.exclude' => array('text' => 'Ne pas importer cette propriete', 'context' => 'Option excluding a source property from a mapped template and its instances.'),
     'organization_import.property_mapping.help' => array('text' => 'Confirmez les equivalences de proprietes lorsque leurs noms different. Les listes d autorites compatibles sont proposees automatiquement.', 'context' => 'Help text for property mappings during organization import.'),
     'organization_import.property_mapping.none' => array('text' => 'Aucune propriete a faire correspondre pour les templates selectionnes.', 'context' => 'Empty property mapping state.'),
     'organization_import.property_mapping.title' => array('text' => 'Correspondance des proprietes', 'context' => 'Title of property mapping section.'),
@@ -226,6 +227,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         'mappingNone' => t('organization_import.mapping.none', array(), $lang, $sourceLang),
         'propertyMappingDuplicate' => t('organization_import.property_mapping.duplicate', array(), $lang, $sourceLang),
         'propertyMappingEmpty' => t('organization_import.property_mapping.empty', array(), $lang, $sourceLang),
+        'propertyMappingExclude' => t('organization_import.property_mapping.exclude', array(), $lang, $sourceLang),
         'propertyMappingHelp' => t('organization_import.property_mapping.help', array(), $lang, $sourceLang),
         'propertyMappingNone' => t('organization_import.property_mapping.none', array(), $lang, $sourceLang),
         'propertyMappingTitle' => t('organization_import.property_mapping.title', array(), $lang, $sourceLang),
@@ -555,6 +557,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             select.setAttribute('data-omo-create-import-property-mapping-template', String(sourceTemplateId));
             select.setAttribute('data-omo-create-import-property-mapping-source', String(sourcePropertyId));
             appendOption(select, 0, ui.propertyMappingEmpty);
+            appendOption(select, -1, ui.propertyMappingExclude);
             targetProperties.forEach(function (targetProperty) {
                 var targetFormat = propertyFormatLabel(targetProperty);
                 appendOption(
@@ -563,7 +566,10 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
                     String(targetProperty.name || targetProperty.shortname || 'Propriete') + (targetFormat ? ' (' + targetFormat + ')' : '')
                 );
             });
-            if (selectedId > 0 && targetPropertiesById[selectedId]) {
+            if (selectedId === -1) {
+                select.value = '-1';
+                currentMappings[sourcePropertyId] = -1;
+            } else if (selectedId > 0 && targetPropertiesById[selectedId]) {
                 select.value = String(selectedId);
             } else {
                 select.value = '0';
@@ -750,7 +756,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
                 touchedPropertyMappings[propertyMappingTemplateId] = {};
             }
             touchedPropertyMappings[propertyMappingTemplateId][propertyMappingSourceId] = true;
-            if (propertyMappingTargetId > 0) {
+            if (propertyMappingTargetId > 0 || propertyMappingTargetId === -1) {
                 propertyMappings[propertyMappingTemplateId][propertyMappingSourceId] = propertyMappingTargetId;
             } else {
                 propertyMappings[propertyMappingTemplateId][propertyMappingSourceId] = 0;
