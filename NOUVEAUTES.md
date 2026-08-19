@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-19
 
+- Le bouton de creation ou d enregistrement d un scrutin place dans l entete du sous-drawer declenche maintenant explicitement le formulaire correspondant, pour tous les modes de prise de decision.
 - Lors d un import cale sur un modele, les templates supplementaires du modele restent disponibles mais caches ; seuls les enfants obligatoires absents du fichier sont ajoutes aux cercles importes. Les correspondances de templates identiques par identifiant ou libelle sont proposees automatiquement.
 - Les personnes explicitement en charge d un role dans OMO1 sont maintenant importees comme admin de contexte du holon correspondant dans OMO2.
 - Chaque import OMO1 conserve maintenant un journal detaille en cas d echec, avec les etapes executees, les erreurs et une reference affichee dans la popup. Le journal est supprime automatiquement lorsque l import reussit.

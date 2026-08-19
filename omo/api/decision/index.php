@@ -2944,11 +2944,28 @@ openDecisionEditor = function (url, title, description) {
                         description: '',
                         actions: submitLabel === '' ? [] : [{
                             label: submitLabel,
-                            type: 'submit',
+                            type: 'button',
                             className: 'generic-action-button generic-action-button--main',
                             attributes: {
                                 form: editorHeaderForm.id,
                                 'data-omo-decision-editor-submit': ''
+                            },
+                            onClick: function () {
+                                if (!editorHeaderForm.isConnected) {
+                                    return;
+                                }
+
+                                if (typeof editorHeaderForm.requestSubmit === 'function') {
+                                    editorHeaderForm.requestSubmit();
+                                    return;
+                                }
+
+                                const fallbackSubmit = document.createElement('button');
+                                fallbackSubmit.type = 'submit';
+                                fallbackSubmit.hidden = true;
+                                editorHeaderForm.appendChild(fallbackSubmit);
+                                fallbackSubmit.click();
+                                fallbackSubmit.remove();
                             }
                         }]
                     });
