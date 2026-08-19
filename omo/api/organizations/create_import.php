@@ -127,9 +127,15 @@ $result = \dbObject\Organization::importOmo1ExportAsNewOrganization(
 
 if (empty($result['status']) || !($result['organization'] ?? null) instanceof \dbObject\Organization) {
     http_response_code(422);
+    $journalReference = trim((string)($result['importJournalReference'] ?? ''));
+    $message = (string)($result['message'] ?? 'L import de la nouvelle organisation a echoue.');
+    if ($journalReference !== '') {
+        $message .= ' Reference du journal : ' . $journalReference . '.';
+    }
     echo json_encode(array(
         'status' => false,
-        'message' => (string)($result['message'] ?? 'L import de la nouvelle organisation a echoue.'),
+        'message' => $message,
+        'importJournalReference' => $journalReference,
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
