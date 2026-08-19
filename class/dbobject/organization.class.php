@@ -5019,7 +5019,7 @@
 					$record['legacyVisibility'] ?? null,
 					$warnings
 				);
-				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId);
+				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId, $warnings);
 				$documentIdMap[$sourceId] = (int)$document->getId();
 				$documentProjectSourceMap[$sourceId] = $sourceProjectId;
 				$stats['documents'] += 1;
@@ -5593,7 +5593,7 @@
 				. ($message !== '' ? ': ' . $message : '.'));
 		}
 
-		protected static function omo1ImportSaveDocumentEditVisibility(\dbObject\Document $document, \dbObject\Organization $organization, ?int $targetHolonId): void
+		protected static function omo1ImportSaveDocumentEditVisibility(\dbObject\Document $document, \dbObject\Organization $organization, ?int $targetHolonId, array &$warnings): void
 		{
 			$editVisibilityType = \dbObject\Document::resolveCompatibleScopeTypeForHolonId(
 				\dbObject\Document::getDefaultEditVisibilityTypeForOrganization((int)$organization->getId()),
@@ -5601,17 +5601,27 @@
 				$targetHolonId,
 				\dbObject\ObjectVisibility::TYPE_SELF
 			);
-			$editVisibilitySaveResult = $document->saveEditVisibilityRule($editVisibilityType);
-			if (!is_array($editVisibilitySaveResult) || empty($editVisibilitySaveResult['status'])) {
-				$message = is_array($editVisibilitySaveResult)
-					? trim((string)($editVisibilitySaveResult['text'] ?? ''))
-					: '';
-				throw new \RuntimeException('Le droit d edition du document n a pas pu etre cree'
-					. ($message !== '' ? ': ' . $message : '.'));
+			$editVisibilitySaveResult = $document->saveEditVisibilityRule($editVisibilityType, $targetHolonId);
+			if (is_array($editVisibilitySaveResult) && !empty($editVisibilitySaveResult['status'])) {
+				return;
 			}
+
+			if ($editVisibilityType !== \dbObject\ObjectVisibility::TYPE_SELF) {
+				$fallbackSaveResult = $document->saveEditVisibilityRule(\dbObject\ObjectVisibility::TYPE_SELF);
+				if (is_array($fallbackSaveResult) && !empty($fallbackSaveResult['status'])) {
+					$warnings['document_edit_visibility_fallback'] = 'Certains droits d edition de documents OMO 1 n ont pas pu etre rattaches a leur holon : l edition est restreinte a leur proprietaire.';
+					return;
+				}
+			}
+
+			$message = is_array($editVisibilitySaveResult)
+				? trim((string)($editVisibilitySaveResult['text'] ?? ''))
+				: '';
+			throw new \RuntimeException('Le droit d edition du document n a pas pu etre cree'
+				. ($message !== '' ? ': ' . $message : '.'));
 		}
 
-		protected static function omo1ImportPvs(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $eventIdMap, array &$stats)
+		protected static function omo1ImportPvs(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $eventIdMap, array &$stats, array &$warnings)
 		{
 			foreach ($records as $record) {
 				if (!is_array($record)) {
@@ -5649,7 +5659,7 @@
 				}
 				$document->set('active', true);
 				self::omo1ImportSave($document, 'Un proces-verbal n a pas pu etre cree');
-				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId);
+				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId, $warnings);
 				$stats['pv'] += 1;
 
 				$historyRecords = isset($record['history']) && is_array($record['history']) ? $record['history'] : array();
@@ -6158,7 +6168,7 @@
 				}
 				if ($selectedModules['pv']) {
 					self::omo1ImportJournalWrite('module_pv_started');
-					self::omo1ImportPvs($organization, self::omo1ImportModuleRecords($payload, 'pv'), $actorUserId, $userIdMap, $holonIdMap, $eventIdMap, $stats);
+					self::omo1ImportPvs($organization, self::omo1ImportModuleRecords($payload, 'pv'), $actorUserId, $userIdMap, $holonIdMap, $eventIdMap, $stats, $warnings);
 					self::omo1ImportJournalWrite('module_pv_completed', array(
 						'pv' => (int)$stats['pv'],
 						'pvPoints' => (int)$stats['pvPoints'],
