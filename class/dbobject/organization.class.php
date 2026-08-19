@@ -8,6 +8,7 @@
 	{
 		public const SYSTEM_ORGANIZATION_ID = 1;
 		protected $lastDeleteError = '';
+		protected static $omo1ImportJournal = null;
 
 	    public static function tableName()
 		{
@@ -3397,7 +3398,7 @@
 				$targetNode->set('IDorganization', null);
 				$targetNode->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)$sourceNode->get('IDuser'));
 				$targetNode->set('active', (bool)$sourceNode->get('active'));
-				$targetNode->set('visible', (bool)$sourceNode->get('visible'));
+				$targetNode->set('visible', false);
 				$targetNode->set('mandatory', (bool)$sourceNode->get('mandatory'));
 				$targetNode->set('lockedname', (bool)$sourceNode->get('lockedname'));
 				$targetNode->set('lockedicon', (bool)$sourceNode->get('lockedicon'));
@@ -3904,6 +3905,20 @@
 						}
 					}
 					$targetHolon->save();
+				}
+
+				if (count($mappedSourceTemplateIds) > 0) {
+					foreach ($targetHolonsBySourceId as $targetHolon) {
+						if (
+							!($targetHolon instanceof \dbObject\Holon)
+							|| (int)$targetHolon->get('IDtypeholon') !== 2
+							|| $targetHolon->isTemplateNode($targetRootHolonId)
+						) {
+							continue;
+						}
+
+						$this->createMandatoryChildrenForCircle($targetHolon, $targetRootHolonId, $userId);
+					}
 				}
 
 				$authorityImportResult = $this->importCompactAuthorityRecords(
@@ -4922,6 +4937,17 @@
 					}
 					$link->set('active', !isset($pendingUserIds[$targetUserId]));
 					self::omo1ImportSave($link, 'Une attribution de role n a pas pu etre creee');
+
+					$isContextAdmin = !empty($assignment['isContextAdmin'])
+						|| (isset($assignment['kind']) && $assignment['kind'] === 'role_owner');
+					if ($isContextAdmin && !$link->isHolonAdmin()) {
+						$adminSaveResult = $link->setHolonAdmin(true);
+						if (!is_array($adminSaveResult) || empty($adminSaveResult['status'])) {
+							$message = is_array($adminSaveResult) ? trim((string)($adminSaveResult['text'] ?? '')) : '';
+							throw new \RuntimeException('Le statut admin de contexte n a pas pu etre importe'
+								. ($message !== '' ? ': ' . $message : '.'));
+						}
+					}
 					$stats['roleAssignments'] += 1;
 				}
 			}
@@ -4993,7 +5019,7 @@
 					$record['legacyVisibility'] ?? null,
 					$warnings
 				);
-				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId);
+				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId, $warnings);
 				$documentIdMap[$sourceId] = (int)$document->getId();
 				$documentProjectSourceMap[$sourceId] = $sourceProjectId;
 				$stats['documents'] += 1;
@@ -5567,7 +5593,7 @@
 				. ($message !== '' ? ': ' . $message : '.'));
 		}
 
-		protected static function omo1ImportSaveDocumentEditVisibility(\dbObject\Document $document, \dbObject\Organization $organization, ?int $targetHolonId): void
+		protected static function omo1ImportSaveDocumentEditVisibility(\dbObject\Document $document, \dbObject\Organization $organization, ?int $targetHolonId, array &$warnings): void
 		{
 			$editVisibilityType = \dbObject\Document::resolveCompatibleScopeTypeForHolonId(
 				\dbObject\Document::getDefaultEditVisibilityTypeForOrganization((int)$organization->getId()),
@@ -5575,17 +5601,27 @@
 				$targetHolonId,
 				\dbObject\ObjectVisibility::TYPE_SELF
 			);
-			$editVisibilitySaveResult = $document->saveEditVisibilityRule($editVisibilityType);
-			if (!is_array($editVisibilitySaveResult) || empty($editVisibilitySaveResult['status'])) {
-				$message = is_array($editVisibilitySaveResult)
-					? trim((string)($editVisibilitySaveResult['text'] ?? ''))
-					: '';
-				throw new \RuntimeException('Le droit d edition du document n a pas pu etre cree'
-					. ($message !== '' ? ': ' . $message : '.'));
+			$editVisibilitySaveResult = $document->saveEditVisibilityRule($editVisibilityType, $targetHolonId);
+			if (is_array($editVisibilitySaveResult) && !empty($editVisibilitySaveResult['status'])) {
+				return;
 			}
+
+			if ($editVisibilityType !== \dbObject\ObjectVisibility::TYPE_SELF) {
+				$fallbackSaveResult = $document->saveEditVisibilityRule(\dbObject\ObjectVisibility::TYPE_SELF);
+				if (is_array($fallbackSaveResult) && !empty($fallbackSaveResult['status'])) {
+					$warnings['document_edit_visibility_fallback'] = 'Certains droits d edition de documents OMO 1 n ont pas pu etre rattaches a leur holon : l edition est restreinte a leur proprietaire.';
+					return;
+				}
+			}
+
+			$message = is_array($editVisibilitySaveResult)
+				? trim((string)($editVisibilitySaveResult['text'] ?? ''))
+				: '';
+			throw new \RuntimeException('Le droit d edition du document n a pas pu etre cree'
+				. ($message !== '' ? ': ' . $message : '.'));
 		}
 
-		protected static function omo1ImportPvs(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $eventIdMap, array &$stats)
+		protected static function omo1ImportPvs(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $eventIdMap, array &$stats, array &$warnings)
 		{
 			foreach ($records as $record) {
 				if (!is_array($record)) {
@@ -5623,7 +5659,7 @@
 				}
 				$document->set('active', true);
 				self::omo1ImportSave($document, 'Un proces-verbal n a pas pu etre cree');
-				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId);
+				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId, $warnings);
 				$stats['pv'] += 1;
 
 				$historyRecords = isset($record['history']) && is_array($record['history']) ? $record['history'] : array();
@@ -5780,6 +5816,145 @@
 			}
 		}
 
+		protected static function omo1ImportJournalTrim($value, $maximumLength = 12000)
+		{
+			$value = (string)$value;
+			$maximumLength = max(1, (int)$maximumLength);
+			if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+				return mb_strlen($value, 'UTF-8') > $maximumLength
+					? mb_substr($value, 0, $maximumLength, 'UTF-8') . '...'
+					: $value;
+			}
+
+			return strlen($value) > $maximumLength ? substr($value, 0, $maximumLength) . '...' : $value;
+		}
+
+		protected static function omo1ImportJournalWrite($event, array $details = array())
+		{
+			if (!is_array(self::$omo1ImportJournal) || empty(self::$omo1ImportJournal['path'])) {
+				return;
+			}
+
+			$startedAt = isset(self::$omo1ImportJournal['startedAt']) ? (float)self::$omo1ImportJournal['startedAt'] : microtime(true);
+			$entry = array_merge(array(
+				'time' => date('c'),
+				'reference' => (string)(self::$omo1ImportJournal['reference'] ?? ''),
+				'event' => trim((string)$event),
+				'elapsedMs' => (int)round((microtime(true) - $startedAt) * 1000),
+				'memoryMiB' => round(memory_get_usage(true) / 1024 / 1024, 1),
+			), $details);
+			$encodedDetails = json_encode($entry, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+			if (!is_string($encodedDetails)) {
+				$encodedDetails = '{"event":"journal_encoding_failed"}';
+			}
+
+			$line = '[' . date('c') . '] ' . trim((string)$event) . ' ' . $encodedDetails . PHP_EOL;
+			if (@file_put_contents((string)self::$omo1ImportJournal['path'], $line, FILE_APPEND | LOCK_EX) === false) {
+				error_log('OMO1 import journal write failed for ' . (string)(self::$omo1ImportJournal['reference'] ?? 'unknown'));
+			}
+		}
+
+		protected static function omo1ImportJournalStart(array $payload, array $selectedModules, array $templateCalibration, $actorUserId)
+		{
+			try {
+				$randomPart = bin2hex(random_bytes(8));
+			} catch (\Throwable $exception) {
+				$randomPart = str_replace('.', '', uniqid('', true));
+			}
+			$reference = 'omo1-' . date('Ymd-His') . '-' . $randomPart;
+			$directory = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . 'omo1-import-failures';
+			if (!is_dir($directory) && !@mkdir($directory, 0770, true)) {
+				error_log('OMO1 import journal directory could not be created for ' . $reference);
+				return '';
+			}
+
+			self::$omo1ImportJournal = array(
+				'reference' => $reference,
+				'path' => $directory . DIRECTORY_SEPARATOR . $reference . '.log',
+				'startedAt' => microtime(true),
+			);
+			$moduleSummary = array();
+			$sourceModules = isset($payload['modules']) && is_array($payload['modules']) ? $payload['modules'] : array();
+			foreach ($selectedModules as $module => $selected) {
+				$moduleData = isset($sourceModules[$module]) && is_array($sourceModules[$module]) ? $sourceModules[$module] : array();
+				$moduleSummary[$module] = array(
+					'selected' => (bool)$selected,
+					'recordCount' => isset($moduleData['records']) && is_array($moduleData['records']) ? count($moduleData['records']) : 0,
+				);
+			}
+			self::omo1ImportJournalWrite('import_started', array(
+				'actorUserId' => (int)$actorUserId,
+				'sourceOrganizationId' => (int)($payload['organization']['sourceId'] ?? 0),
+				'modules' => $moduleSummary,
+				'templateRootHolonId' => (int)($templateCalibration['templateRootHolonId'] ?? 0),
+				'templateMappingCount' => isset($templateCalibration['mappings']) && is_array($templateCalibration['mappings']) ? count($templateCalibration['mappings']) : 0,
+				'excludedTemplateCount' => isset($templateCalibration['excludedTemplateIds']) && is_array($templateCalibration['excludedTemplateIds']) ? count($templateCalibration['excludedTemplateIds']) : 0,
+			));
+			register_shutdown_function(function () use ($reference) {
+				self::omo1ImportJournalHandleShutdown($reference);
+			});
+
+			return $reference;
+		}
+
+		protected static function omo1ImportJournalLastDbError()
+		{
+			$lastDbError = self::getLastDbError();
+			if (!is_array($lastDbError)) {
+				return null;
+			}
+
+			$params = isset($lastDbError['params']) && is_array($lastDbError['params']) ? $lastDbError['params'] : array();
+			return array(
+				'query' => self::omo1ImportJournalTrim($lastDbError['query'] ?? '', 5000),
+				'parameterKeys' => array_values(array_map('strval', array_keys($params))),
+				'message' => self::omo1ImportJournalTrim($lastDbError['message'] ?? '', 3000),
+				'code' => (int)($lastDbError['code'] ?? 0),
+				'time' => (string)($lastDbError['time'] ?? ''),
+			);
+		}
+
+		protected static function omo1ImportJournalHandleShutdown($reference)
+		{
+			if (!is_array(self::$omo1ImportJournal) || (string)(self::$omo1ImportJournal['reference'] ?? '') !== (string)$reference) {
+				return;
+			}
+
+			$lastError = error_get_last();
+			$fatalErrorTypes = array(E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR, E_RECOVERABLE_ERROR);
+			if (is_array($lastError) && in_array((int)($lastError['type'] ?? 0), $fatalErrorTypes, true)) {
+				self::omo1ImportJournalWrite('fatal_error', array(
+					'errorType' => (int)($lastError['type'] ?? 0),
+					'message' => self::omo1ImportJournalTrim($lastError['message'] ?? '', 5000),
+					'file' => (string)($lastError['file'] ?? ''),
+					'line' => (int)($lastError['line'] ?? 0),
+				));
+			} else {
+				self::omo1ImportJournalWrite('request_interrupted_before_completion');
+			}
+		}
+
+		protected static function omo1ImportJournalFinish($success, array $details = array())
+		{
+			if (!is_array(self::$omo1ImportJournal)) {
+				return '';
+			}
+
+			$reference = (string)(self::$omo1ImportJournal['reference'] ?? '');
+			$path = (string)(self::$omo1ImportJournal['path'] ?? '');
+			self::omo1ImportJournalWrite($success ? 'import_completed' : 'import_failed', $details);
+			if ($success) {
+				if ($path !== '' && is_file($path) && !@unlink($path)) {
+					error_log('OMO1 import journal cleanup failed for ' . $reference);
+				}
+			} else {
+				error_log('OMO1 import failed. Journal reference: ' . $reference);
+			}
+
+			self::$omo1ImportJournal = null;
+			return $reference;
+		}
+
 		public static function importOmo1ExportAsNewOrganization(array $payload, array $requestedModules, $actorUserId, $organizationName = '', array $templateCalibration = array(), array $importOptions = array())
 		{
 			$actorUserId = (int)$actorUserId;
@@ -5822,6 +5997,8 @@
 				return array('status' => false, 'message' => 'Le nom de la nouvelle organisation est obligatoire.');
 			}
 
+			$importJournalReference = self::omo1ImportJournalStart($payload, $selectedModules, $templateCalibration, $actorUserId);
+			self::omo1ImportJournalWrite('organization_creation_started');
 			$organization = new self();
 			$organization->set('name', self::omo1ImportLimitText($name, 100));
 			$organization->set('color', trim((string)($sourceOrganization['color'] ?? '')) ?: null);
@@ -5833,26 +6010,50 @@
 			}
 			$organizationSave = $organization->save();
 			if (!is_array($organizationSave) || empty($organizationSave['status']) || (int)$organization->getId() <= 0) {
-				return array('status' => false, 'message' => 'La nouvelle organisation n a pas pu etre creee.');
+				$importJournalReference = self::omo1ImportJournalFinish(false, array(
+					'errorClass' => 'OrganizationSaveFailure',
+					'message' => 'La nouvelle organisation n a pas pu etre creee.',
+					'lastDbError' => self::omo1ImportJournalLastDbError(),
+				));
+				return array(
+					'status' => false,
+					'message' => 'La nouvelle organisation n a pas pu etre creee.',
+					'importJournalReference' => $importJournalReference,
+				);
 			}
+			self::omo1ImportJournalWrite('organization_created', array(
+				'organizationId' => (int)$organization->getId(),
+			));
 
 			try {
+				self::omo1ImportJournalWrite('organization_membership_started');
 				self::omo1ImportUserMembership($organization, $actorUserId, true);
+				self::omo1ImportJournalWrite('organization_membership_completed');
+				self::omo1ImportJournalWrite('structure_import_started');
 				$structureResult = $organization->importStructure($payload, $actorUserId, $templateCalibration);
 				if (empty($structureResult['status']) || !($structureResult['rootHolon'] ?? null) instanceof \dbObject\Holon) {
 					throw new \RuntimeException((string)($structureResult['message'] ?? 'La structure n a pas pu etre importee.'));
 				}
+				self::omo1ImportJournalWrite('structure_import_completed', array(
+					'holonCount' => isset($structureResult['holonIdMap']) && is_array($structureResult['holonIdMap']) ? count($structureResult['holonIdMap']) : 0,
+					'warningCount' => isset($structureResult['warnings']) && is_array($structureResult['warnings']) ? count($structureResult['warnings']) : 0,
+				));
 
+				self::omo1ImportJournalWrite('application_configuration_started');
 				$organization->ensureDefaultApplicationLinks();
 				$pdo = \dbObject\DbObject::getPdo();
 				if (!$pdo) {
 					throw new \RuntimeException('La connexion a la base de donnees est indisponible.');
 				}
 				$pdo->beginTransaction();
+				self::omo1ImportJournalWrite('content_transaction_started');
 				$applicationSync = $organization->synchronizeOmo1ImportedApplicationLinks($selectedModules, $sourceModules);
 				if (empty($applicationSync['status'])) {
 					throw new \RuntimeException((string)($applicationSync['message'] ?? 'Les applications de l organisation n ont pas pu etre configurees.'));
 				}
+				self::omo1ImportJournalWrite('application_configuration_completed', array(
+					'activeApplications' => isset($applicationSync['activeApplications']) && is_array($applicationSync['activeApplications']) ? $applicationSync['activeApplications'] : array(),
+				));
 				$holonIdMap = isset($structureResult['holonIdMap']) && is_array($structureResult['holonIdMap']) ? $structureResult['holonIdMap'] : array();
 				$rulesRecords = $selectedModules['rules'] ? self::omo1ImportModuleRecords($payload, 'rules') : array();
 				$ruleDomainRecords = $selectedModules['rules'] ? self::omo1ImportRuleDomains($payload, $rulesRecords) : array();
@@ -5877,11 +6078,23 @@
 				);
 
 				if ($selectedModules['members']) {
+					self::omo1ImportJournalWrite('module_members_started', array(
+						'recordCount' => count(self::omo1ImportModuleRecords($payload, 'members')),
+					));
 					$memberRecords = self::omo1ImportModuleRecords($payload, 'members');
 					self::omo1ImportMembers($organization, $memberRecords, $actorUserId, $userIdMap, $pendingUserIds, $pendingInvitations, $stats, $warnings, $sendMemberInvitationEmails);
 					self::omo1ImportRoleAssignments($memberRecords, $userIdMap, $holonIdMap, $pendingUserIds, $stats);
+					self::omo1ImportJournalWrite('module_members_completed', array(
+						'members' => (int)$stats['members'],
+						'roleAssignments' => (int)$stats['roleAssignments'],
+						'pendingInvitations' => count($pendingInvitations),
+					));
 				}
 				if ($selectedModules['rules']) {
+					self::omo1ImportJournalWrite('module_rules_started', array(
+						'ruleCount' => count($rulesRecords),
+						'authorityCount' => count($ruleDomainRecords),
+					));
 					$authorityImportResult = self::omo1ImportAuthorities(
 						$organization,
 						$ruleDomainRecords,
@@ -5909,39 +6122,71 @@
 						!$hasAppliedOrganizationModel
 					);
 					self::omo1ImportRules($organization, $rulesRecords, $actorUserId, $userIdMap, $holonIdMap, $authorityIdMap, $authorityIdsByHolonId, $stats, $warnings);
+					self::omo1ImportJournalWrite('module_rules_completed', array(
+						'authorities' => (int)$stats['authorities'],
+						'rules' => (int)$stats['rules'],
+					));
 				}
 				if ($selectedModules['documents']) {
+					self::omo1ImportJournalWrite('module_documents_started');
 					self::omo1ImportDocuments($organization, self::omo1ImportModuleRecords($payload, 'documents'), $actorUserId, $userIdMap, $holonIdMap, $documentIdMap, $documentProjectSourceMap, $stats, $warnings);
+					self::omo1ImportJournalWrite('module_documents_completed', array('documents' => (int)$stats['documents']));
 				}
 				if ($selectedModules['projects']) {
+					self::omo1ImportJournalWrite('module_projects_started');
 					self::omo1ImportProjects($organization, self::omo1ImportModuleRecords($payload, 'projects'), $actorUserId, $userIdMap, $holonIdMap, $documentIdMap, $documentProjectSourceMap, $projectIdMap, $stats);
+					self::omo1ImportJournalWrite('module_projects_completed', array('projects' => (int)$stats['projects']));
 				}
 				if ($selectedModules['tasks']) {
+					self::omo1ImportJournalWrite('module_tasks_started');
 					self::omo1ImportTasks($organization, self::omo1ImportModuleRecords($payload, 'tasks'), $actorUserId, $userIdMap, $holonIdMap, $projectIdMap, $taskIdMap, $stats, $warnings);
+					self::omo1ImportJournalWrite('module_tasks_completed', array('tasks' => (int)$stats['tasks']));
 				}
 				if ($selectedModules['documents'] && ($selectedModules['projects'] || $selectedModules['tasks'])) {
+					self::omo1ImportJournalWrite('project_document_links_started');
 					self::omo1ImportLinkDocumentsToProjects($documentIdMap, $documentProjectSourceMap, $projectIdMap, $taskIdMap);
+					self::omo1ImportJournalWrite('project_document_links_completed');
 				}
 				$organization->remapImportedProjectPropertyValues($projectIdMap, $taskIdMap);
 				if ($selectedModules['checklists']) {
+					self::omo1ImportJournalWrite('module_checklists_started');
 					self::omo1ImportChecklists($organization, self::omo1ImportModuleRecords($payload, 'checklists'), $actorUserId, $userIdMap, $holonIdMap, $stats);
+					self::omo1ImportJournalWrite('module_checklists_completed', array(
+						'checklists' => (int)$stats['checklists'],
+						'checklistItems' => (int)$stats['checklistItems'],
+					));
 				}
 				if ($selectedModules['indicators']) {
+					self::omo1ImportJournalWrite('module_indicators_started');
 					self::omo1ImportIndicators($organization, self::omo1ImportModuleRecords($payload, 'indicators'), $actorUserId, $userIdMap, $holonIdMap, $stats);
+					self::omo1ImportJournalWrite('module_indicators_completed', array('indicators' => (int)$stats['indicators']));
 				}
 				if ($selectedModules['calendar']) {
+					self::omo1ImportJournalWrite('module_calendar_started');
 					self::omo1ImportCalendar($organization, self::omo1ImportModuleRecords($payload, 'calendar'), $actorUserId, $holonIdMap, $eventIdMap, $stats);
+					self::omo1ImportJournalWrite('module_calendar_completed', array('calendar' => (int)$stats['calendar']));
 				}
 				if ($selectedModules['pv']) {
-					self::omo1ImportPvs($organization, self::omo1ImportModuleRecords($payload, 'pv'), $actorUserId, $userIdMap, $holonIdMap, $eventIdMap, $stats);
+					self::omo1ImportJournalWrite('module_pv_started');
+					self::omo1ImportPvs($organization, self::omo1ImportModuleRecords($payload, 'pv'), $actorUserId, $userIdMap, $holonIdMap, $eventIdMap, $stats, $warnings);
+					self::omo1ImportJournalWrite('module_pv_completed', array(
+						'pv' => (int)$stats['pv'],
+						'pvPoints' => (int)$stats['pvPoints'],
+					));
 				}
 				$pdo->commit();
+				self::omo1ImportJournalWrite('content_transaction_completed');
+				self::omo1ImportJournalWrite('basic_parcours_started');
 				$basicParcoursResult = $organization->instantiateBasicParcours();
 				if (is_array($basicParcoursResult) && empty($basicParcoursResult['status'])) {
 					$warnings[] = 'Les tutoriels de base n ont pas pu etre rattaches a l organisation importee.';
 					error_log('organization basic parcours init failed for OMO 1 import org ' . (int)$organization->getId());
 				}
+				self::omo1ImportJournalWrite('basic_parcours_completed', array(
+					'status' => !is_array($basicParcoursResult) || !empty($basicParcoursResult['status']),
+				));
 				if ($sendMemberInvitationEmails) {
+					self::omo1ImportJournalWrite('member_invitations_started', array('count' => count($pendingInvitations)));
 					foreach ($pendingInvitations as $pendingInvitation) {
 						try {
 							$pendingInvitation->sendEmail();
@@ -5950,7 +6195,13 @@
 							$warnings[] = 'L invitation pour ' . trim((string)$pendingInvitation->get('email')) . ' n a pas pu etre envoyee.';
 						}
 					}
+					self::omo1ImportJournalWrite('member_invitations_completed', array('sent' => (int)$stats['invitations']));
 				}
+				self::omo1ImportJournalFinish(true, array(
+					'organizationId' => (int)$organization->getId(),
+					'stats' => $stats,
+					'warningCount' => count(array_unique($warnings)),
+				));
 
 				return array(
 					'status' => true,
@@ -5966,10 +6217,20 @@
 				if ($pdo && $pdo->inTransaction()) {
 					$pdo->rollBack();
 				}
+				$importJournalReference = self::omo1ImportJournalFinish(false, array(
+					'organizationId' => (int)$organization->getId(),
+					'errorClass' => get_class($exception),
+					'message' => self::omo1ImportJournalTrim($exception->getMessage(), 5000),
+					'file' => $exception->getFile(),
+					'line' => (int)$exception->getLine(),
+					'trace' => self::omo1ImportJournalTrim($exception->getTraceAsString(), 12000),
+					'lastDbError' => self::omo1ImportJournalLastDbError(),
+				));
 				return array(
 					'status' => false,
 					'message' => $exception->getMessage(),
 					'organization' => $organization,
+					'importJournalReference' => $importJournalReference,
 				);
 			}
 		}
@@ -12681,6 +12942,134 @@
 			return array_slice($results, 0, max(1, (int)$limit));
 		}
 
+		protected function searchTopbarRuleResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			$organizationId = (int)$this->getId();
+			if (
+				$organizationId <= 0
+				|| count($terms) === 0
+				|| !self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)
+			) {
+				return array();
+			}
+
+			$currentHolon = self::topbarSearchResolveCurrentHolon($this, $viewerContext);
+			if (!($currentHolon instanceof \dbObject\Holon)) {
+				return array();
+			}
+
+			$rules = new \dbObject\ArrayRule();
+			$rules->loadForPolicyContexts($organizationId, array((int)$currentHolon->getId()));
+			$results = array();
+
+			foreach ($rules as $rule) {
+				if (!($rule instanceof \dbObject\Rule) || (int)$rule->getId() <= 0) {
+					continue;
+				}
+
+				$ruleHolon = $rule->getHolon();
+				if (
+					!($ruleHolon instanceof \dbObject\Holon)
+					|| !self::topbarSearchViewerCanViewHolon($ruleHolon, $viewerContext)
+				) {
+					continue;
+				}
+
+				$title = trim((string)$rule->get('title'));
+				$description = self::cleanTopbarSearchTextValue((string)$rule->get('description'));
+				$intention = self::cleanTopbarSearchTextValue((string)$rule->get('intention'));
+				$holonLabel = trim((string)$ruleHolon->getFullDisplayName());
+				$authority = $rule->getAuthority();
+				$authorityLabel = $authority instanceof \dbObject\Authority
+					? trim((string)$authority->get('label'))
+					: '';
+
+				$titleScore = self::getTopbarSearchTextScore($title, $terms, array(
+					'exact' => 120,
+					'prefix' => 78,
+					'like' => 40,
+				));
+				$descriptionScore = self::getTopbarSearchTextScore($description, $terms, array(
+					'exact' => 42,
+					'prefix' => 26,
+					'like' => 14,
+				));
+				$intentionScore = self::getTopbarSearchTextScore($intention, $terms, array(
+					'exact' => 30,
+					'prefix' => 18,
+					'like' => 10,
+				));
+				$contextScore = self::getTopbarSearchTextScore($holonLabel, $terms, array(
+					'exact' => 20,
+					'prefix' => 12,
+					'like' => 6,
+				)) + self::getTopbarSearchTextScore($authorityLabel, $terms, array(
+					'exact' => 18,
+					'prefix' => 10,
+					'like' => 5,
+				));
+
+				$totalScore = $titleScore + $descriptionScore + $intentionScore + $contextScore;
+				if ($totalScore <= 0) {
+					continue;
+				}
+
+				$snippetCandidates = array($description, $intention, $title);
+				$snippetSource = '';
+				$snippetScore = -1;
+				foreach ($snippetCandidates as $candidate) {
+					$candidate = trim((string)$candidate);
+					if ($candidate === '') {
+						continue;
+					}
+
+					$candidateScore = self::getTopbarSearchTextScore($candidate, $terms);
+					if ($candidateScore <= $snippetScore) {
+						continue;
+					}
+
+					$snippetScore = $candidateScore;
+					$snippetSource = $candidate;
+				}
+
+				$updatedAt = $rule->get('updated_at');
+				$createdAt = $rule->get('created_at');
+				$searchDate = $updatedAt instanceof \DateTimeInterface
+					? $updatedAt->format('Y-m-d H:i:s')
+					: ($createdAt instanceof \DateTimeInterface ? $createdAt->format('Y-m-d H:i:s') : '');
+
+				$subtitleParts = array_filter(array($holonLabel, $authorityLabel), function ($part) {
+					return trim((string)$part) !== '';
+				});
+				$results[] = array(
+					'module' => 'rules',
+					'moduleLabel' => 'Regles',
+					'title' => $title !== '' ? $title : ('Regle #' . (int)$rule->getId()),
+					'subtitle' => implode(' | ', array_values($subtitleParts)),
+					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'relevance' => $totalScore,
+					'_searchDate' => $searchDate,
+					'action' => array(
+						'type' => 'rule',
+						'ruleId' => (int)$rule->getId(),
+						'holonId' => (int)$ruleHolon->getId(),
+					),
+				);
+			}
+
+			usort($results, function ($left, $right) {
+				$leftScore = (int)($left['relevance'] ?? 0);
+				$rightScore = (int)($right['relevance'] ?? 0);
+				if ($leftScore !== $rightScore) {
+					return $rightScore <=> $leftScore;
+				}
+
+				return strcmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
+			});
+
+			return array_slice($results, 0, max(1, (int)$limit));
+		}
+
 		protected function searchTopbarTutorialResults($query, array $terms, $limit = 12, array $viewerContext = array())
 		{
 			$organizationId = (int)$this->getId();
@@ -13920,6 +14309,7 @@
 				'structure' => 'structure',
 				'team' => 'team',
 				'calendar' => 'calendar',
+				'rules' => 'policy',
 				'documents' => 'documents',
 				'pv' => 'documents',
 				'decision' => 'decision',
@@ -13971,6 +14361,7 @@
 				'structure' => 0,
 				'team' => 0,
 				'calendar' => 0,
+				'rules' => 0,
 				'documents' => 0,
 				'pv' => 0,
 				'decision' => 0,
@@ -14001,6 +14392,12 @@
 				if (isset($normalizedScopes['calendar'])) {
 					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarCalendarResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
 					$counts['calendar'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
+				if (isset($normalizedScopes['rules'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarRuleResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
+					$counts['rules'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
 
@@ -14051,13 +14448,14 @@
 				'structure' => 1,
 				'team' => 2,
 				'calendar' => 3,
-				'decision' => 4,
-				'documents' => 5,
-				'pv' => 6,
-				'faq' => 7,
-				'tutorials' => 8,
-				'projects' => 9,
-				'stats' => 10,
+				'rules' => 4,
+				'decision' => 5,
+				'documents' => 6,
+				'pv' => 7,
+				'faq' => 8,
+				'tutorials' => 9,
+				'projects' => 10,
+				'stats' => 11,
 			);
 
 			usort($results, function ($left, $right) use ($moduleOrder) {

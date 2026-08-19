@@ -13,6 +13,7 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
             'calendar' => 'Calendrier',
             'documents' => 'Documents',
             'pv' => 'PV',
+            'rules' => 'Regles',
             'decision' => 'Decisions',
             'projects' => 'Projets',
             'stats' => 'Indicateurs',
@@ -28,6 +29,7 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
             'structure' => 'structure',
             'team' => 'team',
             'calendar' => 'calendar',
+            'rules' => 'policy',
             'documents' => 'documents',
             'pv' => 'documents',
             'decision' => 'decision',
@@ -508,6 +510,8 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                         $buttonAttributes = '';
                         if ($module === 'structure' && !empty($action['holonId'])) {
                             $buttonAttributes = ' data-omo-search-open-structure="' . (int)$action['holonId'] . '"';
+                        } elseif ($module === 'rules' && !empty($action['holonId'])) {
+                            $buttonAttributes = ' data-omo-search-open-rules-holon="' . (int)$action['holonId'] . '"';
                         } elseif ($module === 'team' && !empty($action['userId'])) {
                             $buttonAttributes = ' data-omo-search-open-user="' . (int)$action['userId'] . '"';
                         } elseif ($module === 'calendar' && !empty($action['eventId'])) {
@@ -786,6 +790,7 @@ omoSearchPopupRenderStyles();
                     'structure' => 0,
                     'team' => 0,
                     'calendar' => 0,
+                    'rules' => 0,
                     'documents' => 0,
                     'decision' => 0,
                     'projects' => 0,
@@ -1021,6 +1026,12 @@ omoSearchPopupRenderStyles();
         var structureButton = event.target.closest('[data-omo-search-open-structure]');
         if (structureButton && typeof window.omoOpenSearchStructureResult === 'function') {
             window.omoOpenSearchStructureResult(Number(structureButton.getAttribute('data-omo-search-open-structure') || '0'));
+            return;
+        }
+
+        var rulesButton = event.target.closest('[data-omo-search-open-rules-holon]');
+        if (rulesButton && typeof window.omoOpenSearchRulesResult === 'function') {
+            window.omoOpenSearchRulesResult(Number(rulesButton.getAttribute('data-omo-search-open-rules-holon') || '0'));
             return;
         }
 
