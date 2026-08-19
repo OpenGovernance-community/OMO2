@@ -1944,6 +1944,30 @@
                     toolbar: toolbar,
                     buttons: buttonsConfig,
                     callbacks: {
+                        onPaste: function (event) {
+                            const nativeEvent = event && event.originalEvent ? event.originalEvent : event;
+                            const clipboard = nativeEvent && nativeEvent.clipboardData;
+                            if (!clipboard || typeof clipboard.getData !== 'function') {
+                                return;
+                            }
+
+                            const pastedHtml = clipboard.getData('text/html') || '';
+                            const pastedText = clipboard.getData('text/plain') || '';
+                            if (pastedHtml === '' && pastedText === '') {
+                                return;
+                            }
+
+                            if (typeof nativeEvent.preventDefault === 'function') {
+                                nativeEvent.preventDefault();
+                            }
+                            if (event && event !== nativeEvent && typeof event.preventDefault === 'function') {
+                                event.preventDefault();
+                            }
+
+                            insertHtmlAtCursor(pastedHtml !== '' ? pastedHtml : buildTextInsertionHtml(pastedText));
+                            scheduleResizeEditableToContent();
+                            emitChange();
+                        },
                         onChange: function (contents) {
                             setRawValue(contents);
                             saveRange();

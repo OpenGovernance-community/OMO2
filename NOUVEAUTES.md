@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-19
 
+- Les collages dans les editeurs Summernote sont maintenant nettoyes immediatement selon la liste blanche HTML commune, afin de retirer les styles et balises non pris en charge avant leur insertion.
 - Le bouton de creation ou d enregistrement d un scrutin place dans l entete du sous-drawer declenche maintenant explicitement le formulaire correspondant, pour tous les modes de prise de decision.
 - Lors d un import cale sur un modele, les templates supplementaires du modele restent disponibles mais caches ; seuls les enfants obligatoires absents du fichier sont ajoutes aux cercles importes. Les correspondances de templates identiques par identifiant ou libelle sont proposees automatiquement.
 - Les personnes explicitement en charge d un role dans OMO1 sont maintenant importees comme admin de contexte du holon correspondant dans OMO2.
