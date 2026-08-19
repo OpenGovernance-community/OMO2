@@ -4,6 +4,8 @@ ErrorDocument  404  /404.php
 
 RewriteEngine On
 
+RewriteRule ^tmp/omo1-import-failures(?:/|$) - [F,L]
+
 RewriteCond %{HTTP:Authorization} .
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 

@@ -212,6 +212,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     var templateCatalog = <?= json_encode($templateCatalog, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     var importPayload = null;
     var templateMappings = {};
+    var touchedTemplateMappings = {};
     var propertyMappings = {};
     var touchedPropertyMappings = {};
     var isImporting = false;
@@ -318,6 +319,31 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         }).sort(function (left, right) {
             return String(left.templateName || left.name || '').localeCompare(String(right.templateName || right.name || ''));
         });
+    }
+
+    function findAutomaticTemplateMapping(sourceNode, candidates, usedTargetIds) {
+        var sourceId = Number(sourceNode && sourceNode.id || 0);
+        var matchingIds = candidates.filter(function (candidate) {
+            return Number(candidate && candidate.id || 0) === sourceId
+                && !usedTargetIds[sourceId];
+        });
+        if (matchingIds.length === 1) {
+            return sourceId;
+        }
+
+        var sourceName = normalizeMappingKey(sourceNode && (sourceNode.templateName || sourceNode.name));
+        if (!sourceName) {
+            return 0;
+        }
+
+        matchingIds = candidates.filter(function (candidate) {
+            var candidateId = Number(candidate && candidate.id || 0);
+            return candidateId > 0
+                && !usedTargetIds[candidateId]
+                && normalizeMappingKey(candidate && candidate.name) === sourceName;
+        });
+
+        return matchingIds.length === 1 ? Number(matchingIds[0].id || 0) : 0;
     }
 
     function selectedTemplateModel() {
@@ -580,6 +606,13 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         }
 
         var availableSourceIds = {};
+        var usedTargetIds = {};
+        Object.keys(templateMappings).forEach(function (sourceId) {
+            var targetId = Number(templateMappings[sourceId] || 0);
+            if (targetId > 0) {
+                usedTargetIds[targetId] = true;
+            }
+        });
         sourceNodes.forEach(function (sourceNode) {
             var sourceId = Number(sourceNode.id || 0);
             availableSourceIds[sourceId] = true;
@@ -603,12 +636,25 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
                 appendOption(select, Number(candidate.id || 0), String(candidate.path || candidate.name || 'Template'));
             });
             var selectedId = Number(templateMappings[sourceId] || 0);
+            if (selectedId === 0 && !touchedTemplateMappings[sourceId]) {
+                var automaticTargetId = findAutomaticTemplateMapping(sourceNode, candidates, usedTargetIds);
+                if (automaticTargetId > 0) {
+                    selectedId = automaticTargetId;
+                    templateMappings[sourceId] = selectedId;
+                    usedTargetIds[selectedId] = true;
+                }
+            }
             if (selectedId === -1) {
                 select.value = '-1';
                 templateMappings[sourceId] = -1;
             } else if (selectedId > 0 && candidates.some(function (candidate) { return Number(candidate.id || 0) === selectedId; })) {
                 select.value = String(selectedId);
                 templateMappings[sourceId] = selectedId;
+            } else if (selectedId > 0) {
+                delete templateMappings[sourceId];
+                delete propertyMappings[sourceId];
+                delete touchedPropertyMappings[sourceId];
+                delete touchedTemplateMappings[sourceId];
             } else {
                 delete templateMappings[sourceId];
                 delete propertyMappings[sourceId];
@@ -645,6 +691,9 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         Object.keys(templateMappings).forEach(function (sourceId) {
             if (!availableSourceIds[sourceId]) { delete templateMappings[sourceId]; }
         });
+        Object.keys(touchedTemplateMappings).forEach(function (sourceId) {
+            if (!availableSourceIds[sourceId]) { delete touchedTemplateMappings[sourceId]; }
+        });
         Object.keys(propertyMappings).forEach(function (sourceId) {
             if (!availableSourceIds[sourceId] || Number(templateMappings[sourceId] || 0) <= 0) {
                 delete propertyMappings[sourceId];
@@ -664,6 +713,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
                 try {
                     importPayload = JSON.parse(String(reader.result || ''));
                     templateMappings = {};
+                    touchedTemplateMappings = {};
                     propertyMappings = {};
                     touchedPropertyMappings = {};
                     setModuleAvailability(importPayload);
@@ -678,6 +728,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         var mappingSourceId = Number(event.target.getAttribute('data-omo-create-import-mapping-source') || 0);
         if (mappingSourceId > 0) {
             var mappingTargetId = Number(event.target.value || 0);
+            touchedTemplateMappings[mappingSourceId] = true;
             if (mappingTargetId > 0 || mappingTargetId === -1) {
                 templateMappings[mappingSourceId] = mappingTargetId;
             } else {
@@ -709,6 +760,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         }
         if (event.target === templateSelect) {
             templateMappings = {};
+            touchedTemplateMappings = {};
             propertyMappings = {};
             touchedPropertyMappings = {};
             renderTemplateMappings();
