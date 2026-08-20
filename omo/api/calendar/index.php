@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/calendar/upcoming_sections.php';
+require_once __DIR__ . '/permissions_shared.php';
 
 use dbObject\ArrayEvent;
 use dbObject\Event;
@@ -875,7 +876,7 @@ foreach ($events as $event) {
             )
         )
         : $eventPersonallyRelevantForViewer($event);
-    $canEditEvent = $currentUserId > 0 && (int)$event->get('IDuser') === $currentUserId;
+    $canEditEvent = omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false);
     $deletePermissionHolon = $rootHolon;
     if ($eventHolonId > 0) {
         $eventPermissionHolon = new Holon();

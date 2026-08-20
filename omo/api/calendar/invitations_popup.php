@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/invitations_shared.php';
+require_once __DIR__ . '/permissions_shared.php';
 require_once dirname(__DIR__, 3) . '/common/notification_center.php';
 
 use dbObject\DbObject;
@@ -85,7 +86,8 @@ if ($documentId > 0) {
         exit;
     }
     $resource = $event;
-    $canEditInvitations = (int)$event->get('IDuser') === $currentUserId;
+    $rootHolon = $organization->getEnabledStructuralRootHolon($currentUserId);
+    $canEditInvitations = omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false);
     foreach ($event->getAssociatedDocuments() as $associatedDocument) {
         if (!($associatedDocument instanceof Document) || !$associatedDocument->isPvDocument() || $associatedDocument->getPvStage() !== Document::PV_STAGE_PREPARATION || !$associatedDocument->canUserManagePvDocument($currentUserId)) {
             continue;
