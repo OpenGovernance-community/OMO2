@@ -3,13 +3,15 @@ namespace dbObject;
 
 class HolonPermission extends DbObject
 {
-    const PERMISSION_CACHE_VERSION = 17;
+    const PERMISSION_CACHE_VERSION = 20;
     const MEMBER_TYPE_MEMBER = 'member';
     const MEMBER_TYPE_ADMIN = 'admin';
+    const MEMBER_TYPE_COLLECTIVE = 'collective';
     const RANGE_SELF = 'self';
     const RANGE_PARENT_CIRCLE = 'parent_circle';
     const RANGE_PARENT_CIRCLE_ELEMENTS = 'parent_circle_elements';
     const RANGE_PARENT_CIRCLE_DESCENDANTS = 'parent_circle_descendants';
+    const RANGE_ORGANIZATION_ROOT = 'organization_root';
     const RANGE_ORGANIZATION = 'organization';
 
     public static function tableName()
@@ -49,7 +51,7 @@ class HolonPermission extends DbObject
             'IDholon' => 'Holon auquel le droit est attribue.',
             'IDpermission' => 'Droit accorde a ce holon.',
             'range' => 'Zone sur laquelle le droit peut etre exerce.',
-            'member_type' => 'Indique si le droit concerne les membres normaux ou les membres admin.',
+            'member_type' => 'Indique si le droit concerne les membres, les admins ou le collectif.',
         ];
     }
 
@@ -68,8 +70,9 @@ class HolonPermission extends DbObject
 
     public static function normalizeMemberType($memberType)
     {
-        return trim((string)$memberType) === self::MEMBER_TYPE_ADMIN
-            ? self::MEMBER_TYPE_ADMIN
+        $memberType = trim((string)$memberType);
+        return in_array($memberType, [self::MEMBER_TYPE_MEMBER, self::MEMBER_TYPE_ADMIN, self::MEMBER_TYPE_COLLECTIVE], true)
+            ? $memberType
             : self::MEMBER_TYPE_MEMBER;
     }
 
@@ -78,6 +81,7 @@ class HolonPermission extends DbObject
         return [
             self::MEMBER_TYPE_MEMBER => 'Membres',
             self::MEMBER_TYPE_ADMIN => 'Admins',
+            self::MEMBER_TYPE_COLLECTIVE => 'Collectif',
         ];
     }
 
@@ -86,9 +90,10 @@ class HolonPermission extends DbObject
         return [
             self::RANGE_SELF => 'Element courant',
             self::RANGE_PARENT_CIRCLE => 'Cercle englobant seul',
-            self::RANGE_PARENT_CIRCLE_ELEMENTS => 'Elements du cercle parent',
+            self::RANGE_PARENT_CIRCLE_ELEMENTS => 'Enfants directs',
             self::RANGE_PARENT_CIRCLE_DESCENDANTS => 'Cercle englobant et descendants',
-            self::RANGE_ORGANIZATION => 'Toute l organisation',
+            self::RANGE_ORGANIZATION_ROOT => "L'organisation",
+            self::RANGE_ORGANIZATION => "Toute l'organisation",
         ];
     }
 
@@ -266,9 +271,10 @@ class HolonPermission extends DbObject
         $profileMap = $memberType === null
             && (count($assignmentsByPermissionKey) === 0
                 || array_key_exists(self::MEMBER_TYPE_MEMBER, $assignmentsByPermissionKey)
-                || array_key_exists(self::MEMBER_TYPE_ADMIN, $assignmentsByPermissionKey));
+                || array_key_exists(self::MEMBER_TYPE_ADMIN, $assignmentsByPermissionKey)
+                || array_key_exists(self::MEMBER_TYPE_COLLECTIVE, $assignmentsByPermissionKey));
         $memberTypes = $memberType === null
-            ? ($profileMap ? [self::MEMBER_TYPE_MEMBER, self::MEMBER_TYPE_ADMIN] : [self::MEMBER_TYPE_MEMBER])
+            ? ($profileMap ? [self::MEMBER_TYPE_MEMBER, self::MEMBER_TYPE_ADMIN, self::MEMBER_TYPE_COLLECTIVE] : [self::MEMBER_TYPE_MEMBER])
             : [self::normalizeMemberType($memberType)];
         $normalizedAssignments = [];
         foreach ($memberTypes as $currentMemberType) {
@@ -814,11 +820,12 @@ class HolonPermission extends DbObject
                     continue;
                 }
 
-                $collectedHolonIds[$holonId] = $holonId;
-
                 if ((int)($row['IDtypeholon'] ?? 0) === 3) {
                     $appendGroupElements($holonId);
+                    continue;
                 }
+
+                $collectedHolonIds[$holonId] = $holonId;
             }
         };
 
@@ -892,6 +899,11 @@ class HolonPermission extends DbObject
         switch ($range) {
             case self::RANGE_ORGANIZATION:
                 return ['type' => 'organization', 'holonId' => 0];
+
+            case self::RANGE_ORGANIZATION_ROOT:
+                return $organizationRootHolonId > 0
+                    ? ['type' => 'exact', 'holonId' => $organizationRootHolonId]
+                    : ['type' => 'none', 'holonId' => 0];
 
             case self::RANGE_PARENT_CIRCLE_DESCENDANTS:
                 $circleId = self::resolveContainingCircleIdFromRows($assignedHolonId, $holonsById, true);
@@ -1082,6 +1094,9 @@ class HolonPermission extends DbObject
                 }
 
                 foreach ($assignmentsByHolonId[$permissionSourceHolonId] as $assignment) {
+                    if ($assignment['member_type'] === self::MEMBER_TYPE_COLLECTIVE) {
+                        continue;
+                    }
                     if ($assignment['member_type'] === self::MEMBER_TYPE_ADMIN && empty($membershipRow['is_admin'])) {
                         continue;
                     }
@@ -1235,6 +1250,9 @@ class HolonPermission extends DbObject
                 }
 
                 foreach ($assignmentsByHolonId[$permissionSourceHolonId] as $assignment) {
+                    if ($assignment['member_type'] === self::MEMBER_TYPE_COLLECTIVE) {
+                        continue;
+                    }
                     if ($assignment['member_type'] === self::MEMBER_TYPE_ADMIN && empty($membershipRow['is_admin'])) {
                         continue;
                     }

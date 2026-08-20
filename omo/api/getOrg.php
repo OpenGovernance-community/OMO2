@@ -1088,10 +1088,10 @@ $editTemplateContextId = $isCurrentTemplateHolon && $currentHolon->getParentHolo
     ? (int)$currentHolon->getParentHolon()->getId()
     : ($isOrganizationDefinitionHolon ? (int)$currentHolon->getId() : 0);
 $canAddMembers = $currentHolon->isAllowed('CAN_ADD_MEMBER');
-$canCreateChildHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(2, 3, 4), true);
-$canEditHolon = $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3, 4), true);
+$canCreateChildHolon = $currentHolon->isAllowed('CAN_ADD_HOLON') && in_array((int)$currentHolon->get('IDtypeholon'), array(2, 3, 4), true);
+$canEditHolon = $currentHolon->isAllowed('CAN_EDIT_HOLON') && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3, 4), true);
 $canMoveHolon = !$isCurrentTemplateHolon && $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
-$canDeleteHolon = $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
+$canDeleteHolon = $currentHolon->isAllowed('CAN_DELETE_HOLON') && $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
 $canViewHolonHistory = $currentHolon->canViewDetail();
 $deleteDescendantCount = $canDeleteHolon ? (int)$currentHolon->countVisibleDescendants() : 0;
 $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null;

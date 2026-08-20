@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/invitations_shared.php';
+require_once __DIR__ . '/permissions_shared.php';
 require_once dirname(__DIR__, 3) . '/common/etherpad.php';
 require_once dirname(__DIR__, 3) . '/common/ethercalc.php';
 require_once dirname(__DIR__, 3) . '/common/notification_center.php';
@@ -201,6 +202,10 @@ $sourceLang = array_merge([
         'text' => "Impossible d'enregistrer cet événement.",
         'context' => 'Generic error returned when the event could not be saved.',
     ],
+    'calendar.edit.error.forbidden' => [
+        'text' => "Vous ne pouvez pas modifier cet événement.",
+        'context' => 'Error returned when the current user cannot edit the requested event.',
+    ],
 ], omoCalendarInvitationSourceLang());
 
 $lang = omoLoadTranslationBundle('omo_calendar_create', $sourceLang);
@@ -383,7 +388,6 @@ if ($eventId > 0) {
     if (
         !$event->load($eventId)
         || (int)$event->get('IDorganization') !== $organizationId
-        || (int)$event->get('IDuser') !== $currentUserId
     ) {
         http_response_code(403);
         if (commonIsAjaxJsonRequest()) {
@@ -394,6 +398,20 @@ if ($eventId > 0) {
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } else {
             echo '<div class="omo-empty-state">Événement invalide.</div>';
+        }
+        exit;
+    }
+
+    if (!omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false)) {
+        http_response_code(403);
+        if (commonIsAjaxJsonRequest()) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode([
+                'status' => false,
+                'message' => omoCalendarCreateT('calendar.edit.error.forbidden'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } else {
+            echo '<div class="omo-empty-state">' . omoApiEscape(omoCalendarCreateT('calendar.edit.error.forbidden')) . '</div>';
         }
         exit;
     }
@@ -564,6 +582,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'message' => omoCalendarCreateT('calendar.create.error.holon'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
+    }
+
+    if ($isEditMode && (int)$event->get('IDuser') !== $currentUserId) {
+        $targetEditPermissionHolon = $rootHolon;
+        if ($selectedHolonId > 0) {
+            $targetEditPermissionHolon = new Holon();
+            if (!$targetEditPermissionHolon->load($selectedHolonId)) {
+                $targetEditPermissionHolon = null;
+            }
+        }
+
+        if (
+            !($targetEditPermissionHolon instanceof Holon)
+            || !omoCalendarCanUseEditEventPermission($targetEditPermissionHolon, $organizationId, $currentUserId, false)
+        ) {
+            http_response_code(403);
+            echo json_encode([
+                'status' => false,
+                'message' => omoCalendarCreateT('calendar.edit.error.forbidden'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
     }
 
     if (!$isEditMode) {

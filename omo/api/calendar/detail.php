@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/invitations_shared.php';
+require_once __DIR__ . '/permissions_shared.php';
 
 use dbObject\Event;
 use dbObject\Holon;
@@ -253,7 +254,7 @@ $canDelete = $currentUserId > 0
             ? $deletePermissionHolon->isAllowed('CAN_DELETE_EVENT', false, $currentUserId)
             : commonCurrentUserHasOrganizationAccess($organizationId)
     );
-$canEdit = $currentUserId > 0 && (int)$event->get('IDuser') === $currentUserId;
+$canEdit = omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false);
 $editContextHolonId = $currentHolonId > 0 ? $currentHolonId : $eventHolonId;
 $editUrl = '/omo/api/calendar/create.php?oid=' . rawurlencode((string)$organizationId);
 if ($editContextHolonId > 0) {
