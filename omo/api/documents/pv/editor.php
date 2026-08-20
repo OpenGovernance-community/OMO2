@@ -4575,7 +4575,7 @@ foreach ($points as $point) {
                 return;
             }
 
-            savePoint(pointId);
+            savePoint(pointId, true);
         }, autoSaveDelayMs));
     }
 
@@ -5233,6 +5233,7 @@ foreach ($points as $point) {
                     placeholder: <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.field.content'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
                     customButtons: customButtons,
                     indicatorValueUi: indicatorValueUi,
+                    resourceGapHelperLabel: <?= json_encode((string)$uiText['embedAddLine'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
                     onChange: function () {
                         if (isPointDirtySuppressed(pointId)) {
                             return;
@@ -6410,7 +6411,8 @@ foreach ($points as $point) {
             });
     }
 
-    function savePoint(pointId) {
+    function savePoint(pointId, preserveEditor) {
+        preserveEditor = preserveEditor === true;
         const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
         if (
             !card
@@ -6475,6 +6477,20 @@ foreach ($points as $point) {
                     renderPointCollection(Array.isArray(payload.points) ? payload.points : [], true);
                     return;
                 }
+                if (preserveEditor) {
+                    activeLockPointIds.delete(pointId);
+                    mergeKnownPointSignature(payload.point);
+                    if (hasChangesAfterSaveStarted) {
+                        schedulePointAutoSave(pointId);
+                        return;
+                    }
+                    markPointDirty(pointId, false);
+                    const currentStatus = card.querySelector('[data-omo-pv-point-status="' + pointId + '"]');
+                    if (currentStatus) {
+                        currentStatus.textContent = payload.message || savedLabel;
+                    }
+                    return;
+                }
                 const nextCard = replacePointHtml(payload.point);
                 activeLockPointIds.delete(pointId);
                 if (hasChangesAfterSaveStarted && drafts && drafts[pointId]) {
@@ -6488,7 +6504,7 @@ foreach ($points as $point) {
                 }
             })
             .catch(function (error) {
-                if (error && error.point) {
+                if (!preserveEditor && error && error.point) {
                     replacePointHtml(error.point);
                 }
                 markPointDirty(pointId, true, false);
@@ -6501,6 +6517,9 @@ foreach ($points as $point) {
                 if (currentCard) {
                     currentCard.removeAttribute('data-omo-pv-point-saving');
                     syncPointDirtyUi(pointId);
+                    if (preserveEditor && currentCard.getAttribute('data-omo-pv-point-dirty') === '1') {
+                        schedulePointAutoSave(pointId);
+                    }
                 }
             });
     }
