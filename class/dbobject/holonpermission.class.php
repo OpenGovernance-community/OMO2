@@ -3,11 +3,12 @@ namespace dbObject;
 
 class HolonPermission extends DbObject
 {
-    const PERMISSION_CACHE_VERSION = 20;
+    const PERMISSION_CACHE_VERSION = 21;
     const MEMBER_TYPE_MEMBER = 'member';
     const MEMBER_TYPE_ADMIN = 'admin';
     const MEMBER_TYPE_COLLECTIVE = 'collective';
     const RANGE_SELF = 'self';
+    const RANGE_DIRECT_CHILDREN = 'direct_children';
     const RANGE_PARENT_CIRCLE = 'parent_circle';
     const RANGE_PARENT_CIRCLE_ELEMENTS = 'parent_circle_elements';
     const RANGE_PARENT_CIRCLE_DESCENDANTS = 'parent_circle_descendants';
@@ -89,8 +90,9 @@ class HolonPermission extends DbObject
     {
         return [
             self::RANGE_SELF => 'Element courant',
+            self::RANGE_DIRECT_CHILDREN => 'Enfants directs',
             self::RANGE_PARENT_CIRCLE => 'Cercle englobant seul',
-            self::RANGE_PARENT_CIRCLE_ELEMENTS => 'Enfants directs',
+            self::RANGE_PARENT_CIRCLE_ELEMENTS => 'Enfants du cercle englobant',
             self::RANGE_PARENT_CIRCLE_DESCENDANTS => 'Cercle englobant et descendants',
             self::RANGE_ORGANIZATION_ROOT => "L'organisation",
             self::RANGE_ORGANIZATION => "Toute l'organisation",
@@ -905,15 +907,24 @@ class HolonPermission extends DbObject
                     ? ['type' => 'exact', 'holonId' => $organizationRootHolonId]
                     : ['type' => 'none', 'holonId' => 0];
 
+            case self::RANGE_DIRECT_CHILDREN:
+                if ((int)($holonsById[$assignedHolonId]['IDtypeholon'] ?? 0) !== 2) {
+                    return ['type' => 'none', 'holonId' => 0];
+                }
+                return [
+                    'type' => 'exact',
+                    'holonIds' => self::collectCircleElementHolonIdsFromRows($assignedHolonId, $holonsById),
+                ];
+
             case self::RANGE_PARENT_CIRCLE_DESCENDANTS:
-                $circleId = self::resolveContainingCircleIdFromRows($assignedHolonId, $holonsById, true);
+                $circleId = self::resolveContainingCircleIdFromRows($assignedHolonId, $holonsById, false);
                 if ($circleId > 0) {
                     return ['type' => 'subtree', 'holonId' => $circleId];
                 }
                 return ['type' => 'organization', 'holonId' => 0];
 
             case self::RANGE_PARENT_CIRCLE_ELEMENTS:
-                $circleId = self::resolveContainingCircleIdFromRows($assignedHolonId, $holonsById, true);
+                $circleId = self::resolveContainingCircleIdFromRows($assignedHolonId, $holonsById, false);
                 if ($circleId > 0) {
                     return [
                         'type' => 'exact',
@@ -923,7 +934,7 @@ class HolonPermission extends DbObject
                 return ['type' => 'none', 'holonId' => 0];
 
             case self::RANGE_PARENT_CIRCLE:
-                $circleId = self::resolveContainingCircleIdFromRows($assignedHolonId, $holonsById, true);
+                $circleId = self::resolveContainingCircleIdFromRows($assignedHolonId, $holonsById, false);
                 if ($circleId > 0) {
                     return ['type' => 'exact', 'holonId' => $circleId];
                 }

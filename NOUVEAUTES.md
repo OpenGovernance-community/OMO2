@@ -5,6 +5,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 ## 2026-08-20
 
 - Les droits contextuels d ajout, de modification et de suppression de holons sont disponibles dans les editeurs de droits et controlent les actions Ajouter, Modifier et Supprimer du menu de chaque holon.
+- Les portees distinguent les enfants directs du cercle courant de ceux du cercle englobant ; les premiers ne sont proposes que pour les cercles.
 - Le droit CAN_EDIT_EVENT permet de modifier les evenements rattaches au contexte autorise, en plus de leur createur.
 - Les portees de droits distinguent maintenant le holon de l organisation de toute son arborescence ; les enfants directs sont egalement identifies clairement et ignorent les groupes purement graphiques.
 - Les droits peuvent désormais être enregistrés pour le collectif dans les éditeurs de holons et de modèles de holon, via un troisième onglet, sans effet sur le calcul actuel des autorisations.
