@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260807-resource-embed-blocks';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260820-resource-embed-gaps';
 
     if (
         window.omoSimpleHtmlField
@@ -35,7 +35,9 @@
 
         const style = document.createElement('style');
         style.textContent = ''
-            + '.omo-simple-html-field{display:grid;gap:10px;}'
+            + '.omo-simple-html-field{position:relative;display:grid;gap:10px;}'
+            + '.omo-html-resource-gap-helper{position:absolute;z-index:7;display:none;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:1px solid color-mix(in srgb,var(--color-primary,#2563eb) 48%,var(--color-border,#d1d5db));border-radius:999px;background:var(--color-surface,#fff);box-shadow:0 5px 12px -7px rgba(15,23,42,.55);color:var(--color-primary,#2563eb);font-size:18px;font-weight:800;line-height:1;cursor:pointer;transform:translate(-50%,-50%);}'
+            + '.omo-html-resource-gap-helper:hover,.omo-html-resource-gap-helper:focus-visible{border-color:var(--color-primary,#2563eb);background:color-mix(in srgb,var(--color-primary,#2563eb) 10%,var(--color-surface,#fff));outline:none;}'
             + '.omo-simple-html-field .note-editor.note-frame{border:1px solid var(--color-border,#d1d5db);border-radius:var(--radius-md);background:var(--color-surface,#fff);}'
             + '.omo-simple-html-field .note-toolbar{position:sticky;top:0;z-index:6;border-bottom:1px solid var(--color-border,#d1d5db);background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 88%,white);border-top-left-radius:var(--radius-md);border-top-right-radius:var(--radius-md);padding:8px;box-shadow:0 8px 18px -18px rgba(15,23,42,.45);}'
             + '.omo-simple-html-field .note-btn{border-radius:var(--radius-md);border-color:var(--color-border,#d1d5db);}'
@@ -989,6 +991,7 @@
             simpleOnly: false,
             customButtons: [],
             indicatorValueUi: null,
+            resourceGapHelperLabel: '',
             onChange: null,
             onIndicatorValueAdd: null,
             onReady: null,
@@ -1006,6 +1009,9 @@
         let initialized = false;
         let $editor = null;
         let nativeSavedRange = null;
+        let resourceGapHelper = null;
+        let resourceGapTarget = null;
+        let resourceGapHideTimer = null;
         const toolbarButtons = {};
         const toolbarButtonState = {};
         const customToolbarButtons = Array.isArray(state.customButtons)
@@ -1433,6 +1439,127 @@
             }
         }
 
+        function clearResourceGapHideTimer() {
+            if (resourceGapHideTimer !== null) {
+                window.clearTimeout(resourceGapHideTimer);
+                resourceGapHideTimer = null;
+            }
+        }
+
+        function hideResourceGapHelper() {
+            clearResourceGapHideTimer();
+            resourceGapTarget = null;
+            if (resourceGapHelper) {
+                resourceGapHelper.style.display = 'none';
+            }
+        }
+
+        function scheduleResourceGapHelperHide() {
+            if (!resourceGapHelper) {
+                return;
+            }
+
+            clearResourceGapHideTimer();
+            resourceGapHideTimer = window.setTimeout(function () {
+                if (!resourceGapHelper.matches(':hover')) {
+                    hideResourceGapHelper();
+                }
+            }, 160);
+        }
+
+        function getResourceGapTarget(target) {
+            const editable = getEditableElement();
+            const targetElement = target instanceof Element ? target : null;
+            const embed = targetElement ? targetElement.closest('[data-omo-embed-type]') : null;
+            if (!editable || !embed || !editable.contains(embed)) {
+                return null;
+            }
+
+            const paragraph = embed.parentElement ? embed.parentElement.closest('p') : null;
+            if (!isResourceEmbedOnlyParagraph(paragraph) || !editable.contains(paragraph)) {
+                return null;
+            }
+
+            if (isResourceEmbedOnlyParagraph(paragraph.nextElementSibling)) {
+                return paragraph;
+            }
+
+            return isResourceEmbedOnlyParagraph(paragraph.previousElementSibling)
+                ? paragraph.previousElementSibling
+                : null;
+        }
+
+        function showResourceGapHelper(paragraph) {
+            const editable = getEditableElement();
+            const field = container.querySelector('.omo-simple-html-field');
+            if (!resourceGapHelper || !editable || !field || !paragraph || !editable.contains(paragraph)) {
+                return;
+            }
+
+            const nextParagraph = paragraph.nextElementSibling;
+            if (!isResourceEmbedOnlyParagraph(paragraph) || !isResourceEmbedOnlyParagraph(nextParagraph)) {
+                hideResourceGapHelper();
+                return;
+            }
+
+            const fieldRect = field.getBoundingClientRect();
+            const firstRect = paragraph.getBoundingClientRect();
+            const nextRect = nextParagraph.getBoundingClientRect();
+            resourceGapTarget = paragraph;
+            resourceGapHelper.style.left = ((firstRect.left + firstRect.right) / 2 - fieldRect.left) + 'px';
+            resourceGapHelper.style.top = ((firstRect.bottom + nextRect.top) / 2 - fieldRect.top) + 'px';
+            resourceGapHelper.style.display = 'inline-flex';
+            clearResourceGapHideTimer();
+        }
+
+        function mountResourceGapHelper() {
+            const editable = getEditableElement();
+            const field = container.querySelector('.omo-simple-html-field');
+            const label = String(state.resourceGapHelperLabel || '').trim();
+            if (!editable || !field || !label || state.disabled || resourceGapHelper) {
+                return;
+            }
+
+            resourceGapHelper = document.createElement('button');
+            resourceGapHelper.type = 'button';
+            resourceGapHelper.className = 'omo-html-resource-gap-helper';
+            resourceGapHelper.textContent = '+';
+            resourceGapHelper.setAttribute('aria-label', label);
+            resourceGapHelper.title = label;
+            resourceGapHelper.addEventListener('pointerdown', function (event) {
+                event.preventDefault();
+            });
+            resourceGapHelper.addEventListener('mouseenter', clearResourceGapHideTimer);
+            resourceGapHelper.addEventListener('mouseleave', scheduleResourceGapHelperHide);
+            resourceGapHelper.addEventListener('click', function () {
+                const paragraph = resourceGapTarget;
+                const nextParagraph = paragraph ? paragraph.nextElementSibling : null;
+                if (!paragraph || !nextParagraph || !editable.contains(paragraph) || !isResourceEmbedOnlyParagraph(nextParagraph)) {
+                    hideResourceGapHelper();
+                    return;
+                }
+
+                const normalParagraph = createNormalParagraph();
+                paragraph.after(normalParagraph);
+                editable.focus();
+                setCursorInParagraph(normalParagraph);
+                saveRange();
+                scheduleResizeEditableToContent();
+                hideResourceGapHelper();
+            });
+            field.appendChild(resourceGapHelper);
+
+            editable.addEventListener('mousemove', function (event) {
+                const paragraph = getResourceGapTarget(event.target);
+                if (paragraph) {
+                    showResourceGapHelper(paragraph);
+                } else {
+                    scheduleResourceGapHelperHide();
+                }
+            });
+            editable.addEventListener('mouseleave', scheduleResourceGapHelperHide);
+        }
+
         function handleResourceEmbedParagraphEnter(event) {
             if (!event || event.key !== 'Enter' || event.isComposing) {
                 return;
@@ -1837,6 +1964,11 @@
 
         function destroy() {
             destroyed = true;
+            hideResourceGapHelper();
+            if (resourceGapHelper) {
+                resourceGapHelper.remove();
+                resourceGapHelper = null;
+            }
 
             if (initialized && $editor) {
                 try {
@@ -1991,6 +2123,7 @@
                 });
 
                 $editor.summernote('code', state.value);
+                normalizeResourceEmbedBlocks(getEditableElement());
                 refreshIndicatorValueControls(getEditableElement(), state.indicatorValueUi);
                 if (state.disabled) {
                     $editor.summernote('disable');
@@ -2002,6 +2135,7 @@
 
                 const editable = getEditableElement();
                 if (editable) {
+                    mountResourceGapHelper();
                     editable.addEventListener('input', scheduleResizeEditableToContent);
                     editable.addEventListener('mousedown', preventResourceEmbedPointerFocus, true);
                     editable.addEventListener('keydown', handleResourceEmbedParagraphEnter);
