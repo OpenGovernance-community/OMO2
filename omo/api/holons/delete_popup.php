@@ -14,7 +14,7 @@ if ($organizationId <= 0 || $holonId <= 0) {
     $errorMessage = "Le holon a supprimer est invalide.";
 } elseif (!$organization->load($organizationId) || !$holon->load($holonId) || !$organization->containsHolon($holon)) {
     $errorMessage = 'Le holon demande est introuvable.';
-} elseif (!$holon->canEdit() || !$holon->canDelete() || !in_array((int)$holon->get('IDtypeholon'), array(1, 2, 3), true)) {
+} elseif (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete() || !in_array((int)$holon->get('IDtypeholon'), array(1, 2, 3), true)) {
     $errorMessage = "Vous n'avez pas les droits pour supprimer ce holon.";
 }
 

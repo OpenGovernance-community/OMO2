@@ -69,8 +69,11 @@ $omoHolonTemplateTexts = [
     'permissionSelf' => omoHolonTemplateT('parameters.holon_templates.permission.self'),
     'permissionMembers' => omoHolonTemplateT('parameters.holon_templates.permission.members'),
     'permissionAdmins' => omoHolonTemplateT('parameters.holon_templates.permission.admins', ['adminLabel' => $adminLabel]),
+    'permissionCollective' => omoHolonTemplateT('parameters.holon_templates.permission.collective'),
     'permissionChildren' => omoHolonTemplateT('parameters.holon_templates.permission.children'),
+    'permissionDirectChildren' => omoHolonTemplateT('parameters.holon_templates.permission.direct_children'),
     'permissionParentCircleElements' => omoHolonTemplateT('parameters.holon_templates.permission.parent_circle_elements'),
+    'permissionOrganizationRoot' => omoHolonTemplateT('parameters.holon_templates.permission.organization_root'),
     'permissionOrganization' => omoHolonTemplateT('parameters.holon_templates.permission.organization'),
     'permissionNoneAvailable' => omoHolonTemplateT('parameters.holon_templates.permission.none_available'),
     'permissionAddRange' => omoHolonTemplateT('parameters.holon_templates.permission.add_range'),
@@ -1317,8 +1320,9 @@ function omoHolonTemplateRenderPermissions(permissionAssignments) {
         : [
             { key: 'self', label: omoHolonTemplateTexts.permissionSelf || '' },
             { key: 'parent_circle', label: 'Cercle englobant seul' },
-            { key: 'parent_circle_elements', label: omoHolonTemplateTexts.permissionParentCircleElements || '' },
+            { key: 'parent_circle_elements', label: omoHolonTemplateTexts.permissionDirectChildren || omoHolonTemplateTexts.permissionParentCircleElements || '' },
             { key: 'parent_circle_descendants', label: 'Cercle englobant et descendants' },
+            { key: 'organization_root', label: omoHolonTemplateTexts.permissionOrganizationRoot || '' },
             { key: 'organization', label: omoHolonTemplateTexts.permissionOrganization || '' }
         ];
     const assignments = omoHolonTemplateNormalizePermissionProfiles(permissionAssignments);
@@ -1336,7 +1340,8 @@ function omoHolonTemplateRenderPermissions(permissionAssignments) {
 
     const profiles = [
         { key: 'member', label: omoHolonTemplateTexts.permissionMembers || 'Membres' },
-        { key: 'admin', label: omoHolonTemplateTexts.permissionAdmins || 'Admins' }
+        { key: 'admin', label: omoHolonTemplateTexts.permissionAdmins || 'Admins' },
+        { key: 'collective', label: omoHolonTemplateTexts.permissionCollective || 'Collectif' }
     ];
     const permissionGroups = omoHolonTemplateGroupPermissionCatalog(permissionCatalog);
     let tabsHtml = '';
@@ -1445,10 +1450,11 @@ function omoHolonTemplateGroupPermissionCatalog(permissionCatalog) {
 
 function omoHolonTemplateNormalizePermissionProfiles(value) {
     const source = value && typeof value === 'object' ? value : {};
-    const hasProfiles = Object.prototype.hasOwnProperty.call(source, 'member') || Object.prototype.hasOwnProperty.call(source, 'admin');
+    const hasProfiles = Object.prototype.hasOwnProperty.call(source, 'member') || Object.prototype.hasOwnProperty.call(source, 'admin') || Object.prototype.hasOwnProperty.call(source, 'collective');
     return {
         member: hasProfiles && source.member && typeof source.member === 'object' ? source.member : (hasProfiles ? {} : source),
-        admin: hasProfiles && source.admin && typeof source.admin === 'object' ? source.admin : {}
+        admin: hasProfiles && source.admin && typeof source.admin === 'object' ? source.admin : {},
+        collective: hasProfiles && source.collective && typeof source.collective === 'object' ? source.collective : {}
     };
 }
 
@@ -1457,7 +1463,7 @@ function omoHolonTemplateReadPermissions() {
         return {};
     }
 
-    const assignments = { member: {}, admin: {} };
+    const assignments = { member: {}, admin: {}, collective: {} };
     Array.from(omoHolonTemplateElements.permissions.querySelectorAll('[data-permission-key]')).forEach(function (row) {
         const profileKey = String(row.getAttribute('data-permission-profile') || 'member');
         const permissionKey = String(row.getAttribute('data-permission-key') || '').trim();

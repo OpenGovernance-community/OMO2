@@ -141,7 +141,7 @@ if ($organizationId <= 0) {
                                 <div class="generic-form-section__copy">
                                     <div class="omo-holon-create__section-title generic-title generic-title--medium">Droits</div>
                                     <p class="omo-holon-create__section-description generic-description">
-                                        Ce holon peut aussi porter des droits directs pour ses membres.
+                                        Ce holon peut aussi porter des droits directs pour ses membres, ses admins ou le collectif.
                                     </p>
                                 </div>
                                 <button
@@ -403,7 +403,7 @@ function readPermissions() {
         return {};
     }
 
-    const assignments = { member: {}, admin: {} };
+    const assignments = { member: {}, admin: {}, collective: {} };
     Array.from(elements.permissions.querySelectorAll('[data-permission-key]')).forEach(function (row) {
         const profileKey = String(row.getAttribute('data-permission-profile') || 'member');
         const permissionKey = String(row.getAttribute('data-permission-key') || '').trim();
@@ -427,10 +427,11 @@ function readPermissions() {
 
 function normalizePermissionProfiles(value) {
     const source = value && typeof value === 'object' ? value : {};
-    const hasProfiles = Object.prototype.hasOwnProperty.call(source, 'member') || Object.prototype.hasOwnProperty.call(source, 'admin');
+    const hasProfiles = Object.prototype.hasOwnProperty.call(source, 'member') || Object.prototype.hasOwnProperty.call(source, 'admin') || Object.prototype.hasOwnProperty.call(source, 'collective');
     return {
         member: hasProfiles && source.member && typeof source.member === 'object' ? source.member : (hasProfiles ? {} : source),
-        admin: hasProfiles && source.admin && typeof source.admin === 'object' ? source.admin : {}
+        admin: hasProfiles && source.admin && typeof source.admin === 'object' ? source.admin : {},
+        collective: hasProfiles && source.collective && typeof source.collective === 'object' ? source.collective : {}
     };
 }
 
@@ -527,7 +528,7 @@ function buildInheritedPermissionSummary(inheritedPermissions) {
 function buildLocalPermissionSummaryItems(assignments) {
     const defaultRangeOptions = getPermissionRangeOptions();
     const profiles = normalizePermissionProfiles(assignments);
-    const profileLabels = { member: 'Membres', admin: adminLexiconLabel };
+    const profileLabels = { member: 'Membres', admin: adminLexiconLabel, collective: 'Collectif' };
     const items = [];
 
     Object.keys(profiles).forEach(function (profileKey) {
@@ -560,7 +561,7 @@ function buildLocalPermissionSummaryItems(assignments) {
 
 function buildInheritedPermissionSummary(inheritedPermissions) {
     const profiles = normalizePermissionProfiles(inheritedPermissions);
-    const profileLabels = { member: 'Membres', admin: adminLexiconLabel };
+    const profileLabels = { member: 'Membres', admin: adminLexiconLabel, collective: 'Collectif' };
     const items = [];
 
     Object.keys(profiles).forEach(function (profileKey) {
@@ -702,7 +703,8 @@ function renderPermissions(permissionAssignments) {
     const assignments = normalizePermissionProfiles(permissionAssignments);
     const profiles = [
         { key: 'member', label: 'Membres' },
-        { key: 'admin', label: adminLexiconLabel }
+        { key: 'admin', label: adminLexiconLabel },
+        { key: 'collective', label: 'Collectif' }
     ];
     const permissionGroups = groupPermissionCatalog(permissionCatalog);
 
