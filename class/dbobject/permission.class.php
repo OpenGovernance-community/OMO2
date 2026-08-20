@@ -77,6 +77,24 @@ class Permission extends DbObject
     public static function getBuiltInCatalog()
     {
         return [
+            'CAN_ADD_HOLON' => [
+                'title' => 'Ajouter un holon',
+                'description' => 'Autorise l ajout d un holon dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'holons',
+            ],
+            'CAN_EDIT_HOLON' => [
+                'title' => 'Modifier des holons',
+                'description' => 'Autorise la modification de holons dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'holons',
+            ],
+            'CAN_DELETE_HOLON' => [
+                'title' => 'Supprimer des holons',
+                'description' => 'Autorise la suppression de holons dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'holons',
+            ],
             'CAN_ADD_MEMBER' => [
                 'title' => 'Ajouter un membre',
                 'description' => 'Autorise l ajout d un membre dans le contexte cible.',
@@ -104,6 +122,12 @@ class Permission extends DbObject
             'CAN_CREATE_EVENT' => [
                 'title' => 'Creer des dates',
                 'description' => 'Autorise la creation de dates dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'content',
+            ],
+            'CAN_EDIT_EVENT' => [
+                'title' => 'Modifier des dates',
+                'description' => 'Autorise la modification de dates dans le contexte cible.',
                 'iscontextual' => true,
                 'group' => 'content',
             ],
@@ -221,6 +245,7 @@ class Permission extends DbObject
     public static function getEditorGroupCatalog()
     {
         return [
+            'holons' => ['title' => 'Holons', 'order' => 5],
             'members' => ['title' => 'Membres et roles', 'order' => 10],
             'content' => ['title' => 'Contenus et reunions', 'order' => 20],
             'checklists' => ['title' => 'Checklists', 'order' => 25],

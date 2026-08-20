@@ -3223,6 +3223,7 @@
 			$assignmentsByPermissionKey = array(
 				\dbObject\HolonPermission::MEMBER_TYPE_MEMBER => array(),
 				\dbObject\HolonPermission::MEMBER_TYPE_ADMIN => array(),
+				\dbObject\HolonPermission::MEMBER_TYPE_COLLECTIVE => array(),
 			);
 
 			if (is_array($rows)) {
@@ -8612,8 +8613,12 @@
 				return $data;
 			}
 
-			$data['canCreate'] = !$isTemplateEditing && ($collectiveGovernance || $contextHolon->canEdit()) && in_array((int)$contextHolon->get('IDtypeholon'), array(2, 3, 4), true);
-			$data['canEdit'] = $editingHolon && ($collectiveGovernance || $editingHolon->canEdit()) && in_array((int)$editingHolon->get('IDtypeholon'), array(1, 2, 3), true);
+			$data['canCreate'] = !$isTemplateEditing
+				&& ($collectiveGovernance || $contextHolon->isAllowed('CAN_ADD_HOLON'))
+				&& in_array((int)$contextHolon->get('IDtypeholon'), array(2, 3, 4), true);
+			$data['canEdit'] = $editingHolon
+				&& ($collectiveGovernance || $editingHolon->isAllowed('CAN_EDIT_HOLON'))
+				&& in_array((int)$editingHolon->get('IDtypeholon'), array(1, 2, 3), true);
 			$canEditHolonPropertyValues = !$isTemplateEditing
 				&& ($collectiveGovernance || $contextHolon->isAllowed('CAN_EDIT_HOLON_PROPERTIES'));
 
@@ -8974,6 +8979,7 @@
 			$collectedAssignments = array(
 				\dbObject\HolonPermission::MEMBER_TYPE_MEMBER => array(),
 				\dbObject\HolonPermission::MEMBER_TYPE_ADMIN => array(),
+				\dbObject\HolonPermission::MEMBER_TYPE_COLLECTIVE => array(),
 			);
 			$visitedTemplateIds = array();
 			$currentTemplateId = (int)$holon->get('IDholon_template');
@@ -9042,7 +9048,7 @@
 				foreach ($profileSnapshot as $permissionKey => $permissionSnapshot) {
 					$historyKey = $memberType . ':' . $permissionKey;
 					$permissionSnapshot['memberType'] = $memberType;
-					$profileLabel = $memberType === \dbObject\HolonPermission::MEMBER_TYPE_ADMIN ? 'Admin' : 'Membre';
+					$profileLabel = \dbObject\HolonPermission::getMemberTypeLabels()[$memberType] ?? 'Membre';
 					$permissionSnapshot['name'] = $profileLabel . ' - ' . (string)($permissionSnapshot['name'] ?? $permissionKey);
 					$snapshot[$historyKey] = $permissionSnapshot;
 				}
@@ -10831,7 +10837,14 @@
 
 				$isTemplateEditing = $holon->isTemplateNode($rootHolon ? (int)$rootHolon->getId() : 0);
 
-				if (!$collectiveGovernance && !$holon->canEdit()) {
+				if (!$collectiveGovernance && !$isTemplateEditing && !$holon->isAllowed('CAN_EDIT_HOLON')) {
+					return array(
+						'status' => false,
+						'message' => "Vous n'avez pas les droits pour modifier ce holon.",
+					);
+				}
+
+				if (!$collectiveGovernance && $isTemplateEditing && !$holon->canEdit()) {
 					return array(
 						'status' => false,
 						'message' => "Vous n'avez pas les droits pour modifier ce holon.",
@@ -10864,7 +10877,14 @@
 				);
 			}
 
-			if (!$contextHolon || (!$collectiveGovernance && !$contextHolon->canEdit())) {
+			$canSaveInContext = false;
+			if ($contextHolon) {
+				$canSaveInContext = $collectiveGovernance
+					|| ($isEditing
+						? (!$isTemplateEditing || $contextHolon->canEdit())
+						: $contextHolon->isAllowed('CAN_ADD_HOLON'));
+			}
+			if (!$canSaveInContext) {
 				return array(
 					'status' => false,
 					'message' => $isEditing
@@ -11282,7 +11302,7 @@
 				);
 			}
 
-			if (!$holon->canEdit() || !$holon->canDelete()) {
+			if (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete()) {
 				return array(
 					'status' => false,
 					'message' => "Vous n'avez pas les droits pour supprimer ce holon.",
