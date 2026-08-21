@@ -4,6 +4,22 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-21
 
+- La phase de relecture des PV attribue automatiquement la main au dernier editeur officiel, ou au createur si aucun n est disponible. Seul cet editeur peut modifier le contenu des points ; ordre du jour, passation, ajout, suppression et autres metadonnees restent verrouilles.
+- Chaque point de PV dispose maintenant de sa propre discussion, ouverte par une bulle dans une popup commune reutilisable. Les discussions restent consultables, sans ecriture, apres validation du PV.
+- En relecture, chaque point affiche le nombre de signalements et un bouton `Signaler des erreurs`, afin de concentrer les echanges sur les erreurs de transcription et les fautes d orthographe.
+- En phase de relecture, l option de sauvegarde automatique est retiree : les changements de points sont conserves uniquement apres un clic explicite sur `Enregistrer`.
+- Les blocs de projets integres a un PV conservent maintenant le statut comme une donnee structuree lors du nettoyage HTML et le reconstruisent en une capsule unique, sans cumul a chaque sauvegarde.
+- Les modifications de points durant la relecture affichent maintenant un detail Avant/Apres ouvrable depuis leur entree de journal ; pour un contenu long, le detail conserve environ 20 caracteres autour de chaque zone modifiee et separe les extraits eloignes par des points de suspension.
+- Dans ces extraits Avant/Apres, le contenu des blocs integres (projet, document, decision, evenement, checklist ou indicateur) est maintenant entoure de crochets pour rester identifiable.
+- En phase validee, les corrections et discussions sont accessibles sous le point concerne via un lien discret, uniquement lorsqu il existe ; la discussion s ouvre en lecture seule pour les personnes autorisees a consulter le PV.
+- L export PDF affiche maintenant un etat d attente pendant sa generation, avec une notification topbar et prevention des doubles clics ; les points sont separes par des lignes horizontales plutot qu encadres.
+- Le menu d export PDF se referme automatiquement apres le telechargement reussi du fichier.
+- En phase de relecture, les PV apparaissent maintenant dans la liste des documents selon leur visibilite ; les membres non invites autorises a lire le document accedent a une vue lecture seule, tandis que les discussions de corrections restent reservees aux invites.
+- En relecture, seuls les invites conservent l acces a l editeur et aux discussions de corrections ; les autres membres autorises restent en consultation seule sur le contenu du PV.
+- Les droits de relecture distinguent maintenant la visibilite du document des droits d edition et de discussion, y compris pour les PV sans evenement associe.
+- La base visuelle de la popup de discussion est maintenant partagee avec le chat des decisions : avatars et messages recus a gauche, messages personnels a droite, meme zone de saisie et bouton Envoyer.
+- L ordre du jour des PV affiche maintenant l icone Information, Consultation ou Decision devant chaque point et la met a jour immediatement lors du changement de type.
+- Les points de PV sont maintenant verrouilles des leur prise de focus, restent verrouilles tant que des modifications ne sont pas sauvees, puis sont liberes juste apres la sauvegarde lorsque le focus a quitte le point.
 - Les dependances PHP, dont DOMpdf, sont maintenant verrouillees par Composer et installees lors des mises a jour automatiques du site, y compris durant la premiere bascule depuis l ancien deploiement.
 - Lorsqu un PV est valide et passe en lecture seule, ses sauvegardes automatiques, sa synchronisation et ses battements de verrou sont immediatement arretes.
 - L export PDF des PV renvoie maintenant une erreur explicite et journalisee si la preparation du contenu echoue, au lieu de telecharger un fichier vide.

@@ -62,6 +62,21 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.action.mark_template' => ['text' => 'Enregistrer comme modele', 'context' => 'Action used to make the current PV available as a reusable template.'],
         'documents.pv_editor.action.unmark_template' => ['text' => 'Retirer des modeles', 'context' => 'Action used to stop exposing the current PV as a reusable template.'],
         'documents.pv_editor.action.export_pdf' => ['text' => 'Exporter en PDF', 'context' => 'Action used to download the current PV as a PDF.'],
+        'documents.pv_editor.chat.title' => ['text' => 'Signalement d erreurs', 'context' => 'Title of the discussion used to report PV transcription errors during review.'],
+        'documents.pv_editor.chat.placeholder' => ['text' => 'Signalez une erreur de transcription ou une faute d orthographe...', 'context' => 'Placeholder of the PV review error report composer.'],
+        'documents.pv_editor.chat.send' => ['text' => 'Envoyer', 'context' => 'Send button of the PV review discussion.'],
+        'documents.pv_editor.chat.empty' => ['text' => 'Aucune erreur signalee pour le moment.', 'context' => 'Empty state of the PV review error report discussion.'],
+        'documents.pv_editor.chat.readonly' => ['text' => 'La discussion est disponible en lecture seule.', 'context' => 'Message when posting to a closed PV review discussion.'],
+        'documents.pv_editor.chat.invalid_message' => ['text' => 'Le message doit contenir entre 1 et 4000 caracteres.', 'context' => 'Validation error for a PV review discussion message.'],
+        'documents.pv_editor.chat.send_error' => ['text' => 'Le message ne peut pas etre envoye pour le moment.', 'context' => 'Error when sending a PV review discussion message fails.'],
+        'documents.pv_editor.chat.system_author' => ['text' => 'PV', 'context' => 'Author label used for automatic PV review discussion entries.'],
+        'documents.pv_editor.chat.open' => ['text' => 'Signaler des erreurs sur ce point', 'context' => 'Accessible label for the button opening a point error report discussion.'],
+        'documents.pv_editor.chat.report_errors' => ['text' => 'Signaler des erreurs', 'context' => 'Button opening the review error report discussion for one PV point.'],
+        'documents.pv_editor.chat.message_count' => ['text' => 'Nombre de messages : {count}', 'context' => 'Accessible label for the count of messages in a PV point error report discussion.'],
+        'documents.pv_editor.chat.change_details' => ['text' => 'Voir les modifications', 'context' => 'Button revealing the before and after values of a PV point modification.'],
+        'documents.pv_editor.chat.content_excerpt' => ['text' => 'Contenu (extrait)', 'context' => 'Label used when a long PV point content change is reduced to the affected excerpt.'],
+        'documents.pv_editor.chat.point_title' => ['text' => 'Erreurs signalees pour ce point', 'context' => 'Popup title for an error report discussion attached to one PV point.'],
+        'documents.pv_editor.chat.loading' => ['text' => 'Chargement de la discussion...', 'context' => 'Loading state in a PV point discussion popup.'],
         'documents.pv_editor.popup.invite_title' => ['text' => 'Invites', 'context' => 'Title of the invitation popup opened from the PV editor.'],
         'documents.pv_editor.notice.pv_editor_empty' => ['text' => 'Aucun editeur attribue.', 'context' => 'State shown when no one has claimed the PV secretary role.'],
         'documents.pv_editor.notice.pv_editor_active' => ['text' => 'Vous etes editeur du PV.', 'context' => 'State shown to the PV secretary.'],
@@ -306,6 +321,16 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null): array
         'markTemplate' => $resolve('documents.pv_editor.action.mark_template', 'Enregistrer comme modele'),
         'unmarkTemplate' => $resolve('documents.pv_editor.action.unmark_template', 'Retirer des modeles'),
         'exportPdf' => $resolve('documents.pv_editor.action.export_pdf', 'Exporter en PDF'),
+        'chatOpen' => $resolve('documents.pv_editor.chat.open', 'Ouvrir la discussion du point'),
+        'chatReportErrors' => $resolve('documents.pv_editor.chat.report_errors', 'Signaler des erreurs'),
+        'chatMessageCount' => $resolve('documents.pv_editor.chat.message_count', 'Nombre de messages : {count}'),
+        'chatChangeDetails' => $resolve('documents.pv_editor.chat.change_details', 'Voir les modifications'),
+        'chatContentExcerpt' => $resolve('documents.pv_editor.chat.content_excerpt', 'Contenu (extrait)'),
+        'chatPointTitle' => $resolve('documents.pv_editor.chat.point_title', 'Discussion du point'),
+        'chatLoading' => $resolve('documents.pv_editor.chat.loading', 'Chargement de la discussion...'),
+        'chatEmpty' => $resolve('documents.pv_editor.chat.empty', 'Aucun message pour le moment.'),
+        'chatPlaceholder' => $resolve('documents.pv_editor.chat.placeholder', 'Ecrire un message...'),
+        'chatSend' => $resolve('documents.pv_editor.chat.send', 'Envoyer'),
         'autoSummary' => $resolve('documents.pv_editor.action.auto_summary', 'Résumé auto'),
         'autoSummaryLoading' => $resolve('documents.pv_editor.action.auto_summary_loading', 'Résumé en cours...'),
         'autoSummaryReady' => $resolve('documents.pv_editor.state.auto_summary_ready', 'Résumé généré. Enregistrez le PV pour le conserver.'),
@@ -417,6 +442,23 @@ function omoDocumentsPvEditorBuildAuthorHolonOptions(
     return $optionsByAuthor;
 }
 
+function omoDocumentsPvEditorBuildPointDiscussionSummaryMap($organizationId, $points, $currentUserId): array
+{
+    $pointIds = [];
+    foreach ($points as $point) {
+        if ($point instanceof \dbObject\DocumentPvPoint && !$point->isGroup() && (int)$point->getId() > 0) {
+            $pointIds[] = (int)$point->getId();
+        }
+    }
+
+    return \dbObject\ChatThread::getSubjectDiscussionSummaries(
+        (int)$organizationId,
+        \dbObject\ChatThread::SUBJECT_DOCUMENT_PV_POINT,
+        $pointIds,
+        (int)$currentUserId
+    );
+}
+
 function omoDocumentsPvEditorBuildContextualPointPayload(
     \dbObject\DocumentPvPoint $point,
     \dbObject\Document $document,
@@ -428,15 +470,21 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     array $authorOptions,
     array $authorHolonOptions,
     string $positionLabel,
-    array $groupSummary = []
+    array $groupSummary = [],
+    array $discussionSummary = []
 ): array {
     $pointData = $point->buildEditorData($organizationId, $currentUserId, $lockToken);
     $pointData['positionLabel'] = $positionLabel !== '' ? $positionLabel : '--';
+    $pointData['documentId'] = (int)$document->getId();
+    $pointData['organizationId'] = $organizationId;
     $pointData['isEditable'] = $document->canUserEditPvPoint($point, $currentUserId);
     $pointData['canEditNow'] = !empty($pointData['isEditable']) && empty($pointData['lock']['isLockedByOther']);
     $pointData['canReorder'] = $document->canUserReorderPvItem($point, $currentUserId);
     $pointData['canEditGroup'] = $point->isGroup() && $document->canUserCreatePvGroups($currentUserId);
-    $pointData['canDelete'] = !$pointData['isHandled']
+    $pointData['isReview'] = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
+    $pointData['discussionMessageCount'] = max(0, (int)($discussionSummary['total_messages'] ?? 0));
+    $pointData['canDelete'] = !$pointData['isReview']
+        && !$pointData['isHandled']
         && ($point->isGroup()
             ? $pointData['canEditGroup']
             : !empty($pointData['canEditNow']));
@@ -444,7 +492,7 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     $pointData['canTakeOverLock'] = $pointData['isPvEditor']
         && $document->canUserManagePvDocument($currentUserId)
         && !empty($pointData['lock']['isLockedByOther']);
-    $pointData['canToggleHandled'] = $document->canUserManagePvDocument($currentUserId);
+    $pointData['canToggleHandled'] = !$pointData['isReview'] && $document->canUserManagePvDocument($currentUserId);
     $pointData['canAssignAuthor'] = $document->canUserManagePvDocument($currentUserId);
     $pointData['hasStructureApplication'] = $hasStructureApplication;
     $pointData['authorOptions'] = $authorOptions;
@@ -587,6 +635,15 @@ function omoDocumentsPvEditorBuildGroupSummaryMap(iterable $points): array
     return $summaries;
 }
 
+function omoDocumentsPvEditorPointTypeIcons(): array
+{
+    return [
+        'information' => '/omo/assets/images/documents/pv-point-type/information.png',
+        'consultation' => '/omo/assets/images/documents/pv-point-type/consultation.png',
+        'decision' => '/omo/assets/images/documents/pv-point-type/decision.png',
+    ];
+}
+
 function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): string
 {
     $pointId = (int)($pointData['id'] ?? 0);
@@ -620,6 +677,10 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
     }
 
     $author = trim((string)($pointData['authorLabel'] ?? ''));
+    $pointType = trim((string)($pointData['pointType'] ?? 'information'));
+    $pointTypeIcons = omoDocumentsPvEditorPointTypeIcons();
+    $pointTypeIcon = (string)($pointTypeIcons[$pointType] ?? $pointTypeIcons['information']);
+    $pointTypeLabel = trim((string)($pointData['pointTypeLabel'] ?? ($uiText[$pointType] ?? $pointType)));
     $metaParts = [];
     $metaParts[] = $author !== '' ? $author : (string)($uiText['readonly'] ?? 'Lecture seule');
     $metaParts[] = omoDocumentsPvEditorDurationLabel(
@@ -641,6 +702,7 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
         . '  <button type="button" class="omo-pv-editor__nav-item" data-omo-pv-point-nav-target="' . $pointId . '">'
         . '      <span class="omo-pv-editor__nav-titleline">'
         . '          <span class="omo-pv-editor__nav-order">' . omoDocumentsPvEditorEscape((string)($pointData['positionLabel'] ?? '--')) . '</span>'
+        . '          <img src="' . omoDocumentsPvEditorEscape($pointTypeIcon) . '" alt="' . omoDocumentsPvEditorEscape($pointTypeLabel) . '" class="omo-pv-editor__nav-point-type-icon" data-omo-pv-point-nav-type-icon="' . $pointId . '">'
         . '          <strong class="omo-pv-editor__nav-title">' . omoDocumentsPvEditorEscape($title) . '</strong>'
         . '      </span>'
         . '      <span class="omo-pv-editor__nav-meta">' . omoDocumentsPvEditorEscape(implode(' | ', $metaParts)) . '</span>'
@@ -654,6 +716,58 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
         . '</div>';
 }
 
+function omoDocumentsPvEditorRenderPointDiscussionTrigger(array $pointData, array $uiText, string $pointTitle): string
+{
+    if (empty($pointData['isReview'])) {
+        return '';
+    }
+
+    $pointId = (int)($pointData['id'] ?? 0);
+    $documentId = (int)($pointData['documentId'] ?? 0);
+    $organizationId = (int)($pointData['organizationId'] ?? 0);
+    if ($pointId <= 0 || $documentId <= 0 || $organizationId <= 0) {
+        return '';
+    }
+
+    $context = json_encode([
+        'oid' => $organizationId,
+        'document_id' => $documentId,
+        'point_id' => $pointId,
+    ], JSON_UNESCAPED_SLASHES);
+    $labels = json_encode([
+        'loading' => (string)($uiText['chatLoading'] ?? ''),
+        'empty' => (string)($uiText['chatEmpty'] ?? ''),
+        'placeholder' => (string)($uiText['chatPlaceholder'] ?? ''),
+        'send' => (string)($uiText['chatSend'] ?? ''),
+        'messageCount' => (string)($uiText['chatMessageCount'] ?? ''),
+        'changeDetails' => (string)($uiText['chatChangeDetails'] ?? ''),
+        'contentExcerpt' => (string)($uiText['chatContentExcerpt'] ?? ''),
+    ], JSON_UNESCAPED_SLASHES);
+    $messageCount = max(0, (int)($pointData['discussionMessageCount'] ?? 0));
+    $messageCountLabel = str_replace(
+        '{count}',
+        (string)$messageCount,
+        (string)($uiText['chatMessageCount'] ?? 'Nombre de messages : {count}')
+    );
+    $triggerAttributes = ' data-omo-chat-open'
+        . ' data-omo-chat-endpoint="/omo/api/documents/pv/discussion.php"'
+        . ' data-omo-chat-context="' . omoDocumentsPvEditorEscape((string)$context) . '"'
+        . ' data-omo-chat-title="' . omoDocumentsPvEditorEscape((string)($uiText['chatPointTitle'] ?? 'Erreurs signalees pour ce point')) . '"'
+        . ' data-omo-chat-point-title="' . omoDocumentsPvEditorEscape($pointTitle) . '"'
+        . ' data-omo-chat-labels="' . omoDocumentsPvEditorEscape((string)$labels) . '"'
+        . ' data-omo-chat-message-count="' . $messageCount . '"';
+
+    return '<div class="omo-chat-popup-actions">'
+        . '<span class="omo-chat-popup-count" data-omo-chat-message-count-display title="' . omoDocumentsPvEditorEscape($messageCountLabel) . '" aria-label="' . omoDocumentsPvEditorEscape($messageCountLabel) . '">'
+        . '<span class="omo-chat-popup-count-value">' . $messageCount . '</span></span>'
+        . '<button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__save-button omo-chat-popup-trigger"'
+        . $triggerAttributes
+        . ' title="' . omoDocumentsPvEditorEscape((string)($uiText['chatOpen'] ?? 'Signaler des erreurs sur ce point')) . '"'
+        . ' aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['chatOpen'] ?? 'Signaler des erreurs sur ce point')) . '">'
+        . omoDocumentsPvEditorEscape((string)($uiText['chatReportErrors'] ?? 'Signaler des erreurs'))
+        . '</button></div>';
+}
+
 function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): string
 {
     if (!empty($pointData['isGroup'])) {
@@ -662,11 +776,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     $pointId = (int)($pointData['id'] ?? 0);
     $pointType = trim((string)($pointData['pointType'] ?? 'information'));
     $pointTypeLabel = trim((string)($pointData['pointTypeLabel'] ?? ($uiText[$pointType] ?? $pointType)));
-    $pointTypeIcons = [
-        'information' => '/omo/assets/images/documents/pv-point-type/information.png',
-        'consultation' => '/omo/assets/images/documents/pv-point-type/consultation.png',
-        'decision' => '/omo/assets/images/documents/pv-point-type/decision.png',
-    ];
+    $pointTypeIcons = omoDocumentsPvEditorPointTypeIcons();
     $pointTypeIcon = (string)($pointTypeIcons[$pointType] ?? $pointTypeIcons['information']);
     $title = trim((string)($pointData['title'] ?? ''));
     if ($title === '') {
@@ -677,6 +787,9 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     $canEditNow = !empty($pointData['canEditNow']);
     $canAssignAuthor = !empty($pointData['canAssignAuthor']);
     $canReorder = !empty($pointData['canReorder']);
+    $isReview = !empty($pointData['isReview']);
+    $canEditDuration = $canEditNow && !$isReview;
+    $canEditConfidential = $canEditNow && !$isReview;
     $chips = '';
     $addressedHolons = is_array($pointData['addressedHolons'] ?? null) ? $pointData['addressedHolons'] : [];
     $tensions = is_array($pointData['tensions'] ?? null) ? $pointData['tensions'] : [];
@@ -714,10 +827,14 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     $html .= '      <span class="omo-document-pv__point-order">' . omoDocumentsPvEditorEscape((string)($pointData['positionLabel'] ?? '--')) . '</span>';
     if ($canEditNow) {
         $html .= '      <input type="text" class="omo-pv-editor__point-title-input" maxlength="80" value="' . omoDocumentsPvEditorEscape($title) . '" data-omo-pv-point-title="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['title']) . '">';
-        $html .= '      <label class="omo-pv-editor__point-duration-shell" title="' . omoDocumentsPvEditorEscape((string)$uiText['duration']) . '">';
-        $html .= '          <input type="number" min="0" step="1" class="omo-pv-editor__point-duration-input" value="' . omoDocumentsPvEditorEscape($durationValue > 0 ? (string)$durationValue : '') . '" data-omo-pv-point-duration="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['duration']) . '">';
-        $html .= '          <span>min</span>';
-        $html .= '      </label>';
+        if ($canEditDuration) {
+            $html .= '      <label class="omo-pv-editor__point-duration-shell" title="' . omoDocumentsPvEditorEscape((string)$uiText['duration']) . '">';
+            $html .= '          <input type="number" min="0" step="1" class="omo-pv-editor__point-duration-input" value="' . omoDocumentsPvEditorEscape($durationValue > 0 ? (string)$durationValue : '') . '" data-omo-pv-point-duration="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['duration']) . '">';
+            $html .= '          <span>min</span>';
+            $html .= '      </label>';
+        } else {
+            $html .= '      <span class="omo-pv-editor__point-duration-readonly">' . omoDocumentsPvEditorEscape($durationLabel) . '</span>';
+        }
         $html .= '      <input type="hidden" value="' . omoDocumentsPvEditorEscape($pointType) . '" data-omo-pv-point-type="' . $pointId . '">';
         $html .= '      <div class="omo-segmented omo-pv-editor__type-switch" role="radiogroup" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['type']) . '">';
         foreach ([
@@ -796,11 +913,13 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     } elseif (!empty($pointData['hasStructureApplication']) && trim((string)($pointData['concernedHolonLabel'] ?? '')) !== '') {
         $html .= '      <span class="omo-pv-editor__point-concerned-readonly">' . omoDocumentsPvEditorEscape(trim((string)$pointData['concernedHolonLabel'])) . '</span>';
     }
-    if ($canEditNow) {
+    if ($canEditConfidential) {
         $html .= '      <label class="omo-pv-editor__point-confidential" title="' . omoDocumentsPvEditorEscape((string)$uiText['confidentialHint']) . '">';
         $html .= '          <input type="checkbox" data-omo-pv-point-confidential="' . $pointId . '"' . (!empty($pointData['isConfidential']) ? ' checked' : '') . '>';
         $html .= '          <span>' . omoDocumentsPvEditorEscape((string)$uiText['confidential']) . '</span>';
         $html .= '      </label>';
+    } elseif (!empty($pointData['isConfidential'])) {
+        $html .= '      <span class="omo-pv-editor__point-confidential">' . omoDocumentsPvEditorEscape((string)$uiText['confidential']) . '</span>';
     }
     $html .= '    </div>';
     if ($chips !== '') {
@@ -824,7 +943,10 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '  <span class="omo-pv-editor__point-note">' . omoDocumentsPvEditorEscape(implode(' | ', $footerNoteParts)) . '</span>';
         $html .= '  <div class="omo-pv-editor__point-actions">';
         $html .= '    <button type="button" class="generic-action-button omo-pv-editor__save-button" data-omo-pv-point-save="' . $pointId . '" disabled aria-disabled="true">' . omoDocumentsPvEditorEscape((string)$uiText['saved']) . '</button>';
-        $html .= '    <button type="button" class="omo-pv-editor__delete-button" data-omo-pv-point-delete="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '"><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>';
+        if (!empty($pointData['canDelete'])) {
+            $html .= '    <button type="button" class="omo-pv-editor__delete-button" data-omo-pv-point-delete="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '"><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>';
+        }
+        $html .= omoDocumentsPvEditorRenderPointDiscussionTrigger($pointData, $uiText, $title);
         $html .= '  </div>';
         $html .= '</div>';
     } else {
@@ -847,6 +969,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         if (!empty($pointData['canTakeOverLock'])) {
             $html .= '  <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__take-over-lock" data-omo-pv-point-take-over-lock="' . $pointId . '">' . omoDocumentsPvEditorEscape((string)($uiText['takeOverLock'] ?? 'Reprendre l edition')) . '</button>';
         }
+        $html .= omoDocumentsPvEditorRenderPointDiscussionTrigger($pointData, $uiText, $title);
         $html .= '</div>';
         $html .= '<div class="omo-document-pv__point-content prose omo-simple-html-render">' . (string)($pointData['contentHtml'] ?? '') . '</div>';
     }
@@ -871,6 +994,7 @@ function omoDocumentsPvEditorBuildPointPayload(array $pointData, array $uiText):
         'parentId' => (int)($pointData['parentId'] ?? 0),
         'canReorder' => !empty($pointData['canReorder']),
         'canEditGroup' => !empty($pointData['canEditGroup']),
+        'isReview' => !empty($pointData['isReview']),
         'canTakeOverLock' => !empty($pointData['canTakeOverLock']),
         'title' => (string)($pointData['title'] ?? ''),
         'authorValue' => (string)($pointData['authorValue'] ?? ''),

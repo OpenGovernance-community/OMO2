@@ -1337,7 +1337,8 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
         }
 
         $alreadyRendered = true;
-        return '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260817-governance-summary">'
+        return '<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-unified-chat-errors">'
+            . '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260821-unified-chat">'
             . '<link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">'
             . '<script src="/common/choice/word-diff.js?v=20260815" defer></script>'
             . '<script src="/common/choice/change-details.js?v=20260816-governance-details" defer></script>'

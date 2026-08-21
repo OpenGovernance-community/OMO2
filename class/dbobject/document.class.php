@@ -31,7 +31,7 @@
 				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'etherpadpadid', 'ethercalcroomid'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
-				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDuser_pv_editor', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
+				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDuser_pv_editor', 'IDuser_pv_official_editor', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
 				[['id'], 'safe'],								// Champs proteges
 			];
 		}
@@ -55,6 +55,7 @@
 				'IDholon' => 'Holon',
 				'IDevent' => 'Evenement associe',
 				'IDuser_pv_editor' => 'Secretaire du PV',
+				'IDuser_pv_official_editor' => 'Dernier secretaire officiel du PV',
 				'pv_editor_handover_open' => 'Passation du secretaire ouverte',
 				'estDossier' => 'Dossier',
 				'IDdocument_parent' => 'Dossier parent',
@@ -102,6 +103,7 @@
 				'pvstage' => 'Etape actuelle du flux d un document PV: preparation, reunion, relecture ou valide',
 				'is_template' => 'Permet d utiliser la structure et le contenu de ce PV lors d une nouvelle creation',
 				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la reunion et peut modifier tous les points.',
+				'IDuser_pv_official_editor' => 'Derniere personne officielle a tenir le PV, utilisee pour le retour en relecture.',
 				'pv_editor_handover_open' => 'Indique que le secretaire actuel autorise un invite a reprendre son role.',
 				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
 				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenetre',
@@ -138,7 +140,7 @@
 		public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
 		{
 			$params = array('organization_id' => (int)$organizationId, 'source_creation' => (int)$userId, 'source_owner' => (int)$userId, 'source_modification' => (int)$userId, 'source_edition' => (int)$userId, 'source_pv_editor' => (int)$userId, 'ghost_creation' => (int)$ghostUserId, 'ghost_owner' => (int)$ghostUserId, 'ghost_modification' => (int)$ghostUserId);
-			return self::execute("UPDATE document SET IDusercreation = CASE WHEN IDusercreation = :source_creation THEN :ghost_creation ELSE IDusercreation END, IDuser = CASE WHEN IDuser = :source_owner THEN CASE WHEN active = 0 THEN :ghost_owner ELSE NULL END ELSE IDuser END, IDusermodification = CASE WHEN IDusermodification = :source_modification THEN CASE WHEN active = 0 THEN :ghost_modification ELSE NULL END ELSE IDusermodification END, IDuseredition = CASE WHEN IDuseredition = :source_edition THEN NULL ELSE IDuseredition END, IDuser_pv_editor = CASE WHEN IDuser_pv_editor = :source_pv_editor THEN NULL ELSE IDuser_pv_editor END WHERE IDorganization = :organization_id", $params);
+			return self::execute("UPDATE document SET IDusercreation = CASE WHEN IDusercreation = :source_creation THEN :ghost_creation ELSE IDusercreation END, IDuser = CASE WHEN IDuser = :source_owner THEN CASE WHEN active = 0 THEN :ghost_owner ELSE NULL END ELSE IDuser END, IDusermodification = CASE WHEN IDusermodification = :source_modification THEN CASE WHEN active = 0 THEN :ghost_modification ELSE NULL END ELSE IDusermodification END, IDuseredition = CASE WHEN IDuseredition = :source_edition THEN NULL ELSE IDuseredition END, IDuser_pv_editor = CASE WHEN IDuser_pv_editor = :source_pv_editor THEN NULL ELSE IDuser_pv_editor END, IDuser_pv_official_editor = CASE WHEN IDuser_pv_official_editor = :source_pv_editor THEN NULL ELSE IDuser_pv_official_editor END WHERE IDorganization = :organization_id", $params);
 		}
 
 		public function isArchived(): bool
@@ -876,6 +878,29 @@
 			return $this->isPvDocument() ? (int)$this->get('IDuser_pv_editor') : 0;
 		}
 
+		public function getLastOfficialPvEditorUserId(): int
+		{
+			return $this->isPvDocument() ? (int)$this->get('IDuser_pv_official_editor') : 0;
+		}
+
+		public function getPvReviewEditorUserId(): int
+		{
+			$officialEditorUserId = $this->getLastOfficialPvEditorUserId();
+			return $officialEditorUserId > 0 ? $officialEditorUserId : $this->getCreatedByUserId();
+		}
+
+		public function getPvDiscussionThread(bool $create = false, int $creatorUserId = 0)
+		{
+			if (!$this->isPvDocument() || (int)$this->getId() <= 0) {
+				return null;
+			}
+
+			$organizationId = (int)$this->get('IDorganization');
+			return $create
+				? \dbObject\ChatThread::getOrCreateForSubject($organizationId, \dbObject\ChatThread::SUBJECT_DOCUMENT_PV, (int)$this->getId(), $creatorUserId, trim((string)$this->get('title')))
+				: \dbObject\ChatThread::findBySubject($organizationId, \dbObject\ChatThread::SUBJECT_DOCUMENT_PV, (int)$this->getId());
+		}
+
 		public function isPvEditor(int $userId): bool
 		{
 			return $userId > 0 && $userId === $this->getPvEditorUserId();
@@ -917,6 +942,10 @@
 				return true;
 			}
 
+			if ($this->getPvStage() === self::PV_STAGE_REVIEW) {
+				return true;
+			}
+
 			if ($this->canUserAccessPvBeforeValidation($userId)) {
 				$stage = $this->getPvStage();
 				return $stage === self::PV_STAGE_REVIEW || $stage === self::PV_STAGE_VALIDATED;
@@ -955,12 +984,36 @@
 				return false;
 			}
 
+			if ($this->getPvStage() === self::PV_STAGE_REVIEW) {
+				return true;
+			}
+
 			if (!($this->getAssociatedEvent() instanceof \dbObject\Event)) {
 				return true;
 			}
 
 			return $this->canUserAccessPvBeforeValidation($userId, $organizationId)
 				|| ($this->isPvValidated() && $this->hasAssociatedEventStarted($referenceDate));
+		}
+
+		public function canUserViewPvReadOnly(int $userId, int $organizationId = 0, ?int $holonId = null): bool
+		{
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if (
+				!$this->isPvDocument()
+				|| $userId <= 0
+				|| $organizationId <= 0
+				|| (int)$this->get('IDorganization') !== $organizationId
+				|| !in_array($this->getPvStage(), [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)
+			) {
+				return false;
+			}
+
+			return $this->canUserPassPvMeetingVisibilityGate($userId, $organizationId)
+				&& (
+					$this->canViewInOrganizationContext($organizationId, $holonId)
+					|| $this->canViewDirectlyInOrganization($organizationId)
+				);
 		}
 
 		public function canUserAccessPvBeforeValidation(int $userId, int $organizationId = 0): bool
@@ -988,6 +1041,32 @@
 			}
 
 			return $this->canViewDirectlyInOrganization($organizationId);
+		}
+
+		public function canUserAccessPvReview(int $userId, int $organizationId = 0): bool
+		{
+			$organizationId = $organizationId > 0 ? (int)$organizationId : (int)$this->get('IDorganization');
+			if (
+				!$this->isPvDocument()
+				|| $this->getPvStage() !== self::PV_STAGE_REVIEW
+				|| $userId <= 0
+				|| $organizationId <= 0
+				|| (int)$this->get('IDorganization') !== $organizationId
+			) {
+				return false;
+			}
+
+			if ($this->isPvCreatorOrEditor($userId)) {
+				return true;
+			}
+
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof \dbObject\Event) {
+				return $event->isVisibleToInvitationViewer($userId, $organizationId);
+			}
+
+			return $this->hasExplicitInvitations()
+				&& $this->isUserInvited($userId, $organizationId);
 		}
 
 		public function getPvPermissionHolon(int $organizationId = 0)
@@ -1020,6 +1099,9 @@
 		public function canUserClaimPvEditor(int $organizationId, int $userId): bool
 		{
 			if (!$this->isPvDocument() || $this->isPvValidated() || $userId <= 0) {
+				return false;
+			}
+			if ($this->getPvStage() === self::PV_STAGE_REVIEW) {
 				return false;
 			}
 
@@ -1068,6 +1150,7 @@
 			}
 
 			$this->set('IDuser_pv_editor', $userId);
+			$this->set('IDuser_pv_official_editor', $userId);
 			$this->set('pv_editor_handover_open', 0);
 			$this->set('IDusermodification', $userId);
 			$this->set('datemodification', new \DateTimeImmutable());
@@ -1086,7 +1169,7 @@
 
 		public function openPvEditorHandover(int $userId): array
 		{
-			if (!$this->isPvEditor($userId) || $this->isPvValidated()) {
+			if (!$this->isPvEditor($userId) || $this->isPvValidated() || $this->getPvStage() === self::PV_STAGE_REVIEW) {
 				return array('status' => false, 'text' => 'Acces refuse.');
 			}
 
@@ -1123,7 +1206,14 @@
 
 		public function canUserEditPvPoint(\dbObject\DocumentPvPoint $point, int $userId): bool
 		{
-			if (!$this->isPvDocument() || $this->isPvValidated() || $point->isHandled() || (int)$point->get('IDdocument') !== (int)$this->getId()) {
+			if (!$this->isPvDocument() || $this->isPvValidated() || (int)$point->get('IDdocument') !== (int)$this->getId()) {
+				return false;
+			}
+
+			if ($this->getPvStage() === self::PV_STAGE_REVIEW) {
+				return $this->canUserManagePvDocument($userId);
+			}
+			if ($point->isHandled()) {
 				return false;
 			}
 
@@ -1132,7 +1222,7 @@
 
 		public function canUserReorderPvPoints(int $userId): bool
 		{
-			return $this->isPvDocument() && !$this->isPvValidated() && (
+			return $this->isPvDocument() && !$this->isPvValidated() && $this->getPvStage() !== self::PV_STAGE_REVIEW && (
 				$this->canUserManagePvDocument($userId)
 				|| $this->getPvStage() === self::PV_STAGE_PREPARATION
 			);
@@ -1150,7 +1240,9 @@
 
 		public function canUserCreatePvGroups(int $userId): bool
 		{
-			return !$this->isPvValidated() && $this->canUserManagePvDocument($userId);
+			return !$this->isPvValidated()
+				&& $this->getPvStage() !== self::PV_STAGE_REVIEW
+				&& $this->canUserManagePvDocument($userId);
 		}
 
 		public function getInvitations(bool $activeOnly = false)
@@ -1460,12 +1552,13 @@
 				return false;
 			}
 
-			$event = $this->getAssociatedEvent();
-			if ($event instanceof \dbObject\Event && !$this->canUserAccessPvBeforeValidation($userId, $organizationId)) {
+			if ($this->getPvStage() === self::PV_STAGE_REVIEW
+				&& !$this->canUserAccessPvReview($userId, $organizationId)) {
 				return false;
 			}
 
-			if ($this->getPvStage() === self::PV_STAGE_REVIEW && !$this->canUserManagePvDocument($userId)) {
+			$event = $this->getAssociatedEvent();
+			if ($event instanceof \dbObject\Event && !$this->canUserAccessPvBeforeValidation($userId, $organizationId)) {
 				return false;
 			}
 
@@ -1635,7 +1728,16 @@
 				];
 			}
 
-			$this->set('pvstage', self::normalizePvStage($stage));
+			$nextStage = self::normalizePvStage($stage);
+			if ($nextStage === self::PV_STAGE_REVIEW) {
+				$reviewEditorUserId = $this->getPvReviewEditorUserId();
+				if ($reviewEditorUserId > 0) {
+					$this->set('IDuser_pv_editor', $reviewEditorUserId);
+				}
+				$this->set('pv_editor_handover_open', 0);
+			}
+
+			$this->set('pvstage', $nextStage);
 			$this->set('IDusermodification', $userId);
 			$this->set('datemodification', new \DateTimeImmutable());
 
@@ -2837,10 +2939,10 @@
 			return $html;
 		}
 
-		public function getRenderedContentForCurrentViewer(): string
+		public function getRenderedContentForCurrentViewer(array $renderOptions = array()): string
 		{
 			if ($this->isPvDocument()) {
-				return $this->renderPvForViewer();
+				return $this->renderPvForViewer($renderOptions);
 			}
 
 			if ($this->isExternalLink()) {
@@ -3187,7 +3289,7 @@
 			return max(0, (int)$minutes) . ' min ' . trim($suffix);
 		}
 
-		protected function renderPvForViewer(): string
+		protected function renderPvForViewer(array $renderOptions = array()): string
 		{
 			if (!\dbObject\DocumentPvPoint::hasPointTable()) {
 				return '<div class="omo-document-pv omo-document-pv--empty">'
@@ -3200,6 +3302,27 @@
 				? (int)\commonGetCurrentUserId()
 				: (int)($_SESSION['currentUser'] ?? 0);
 			$points = $this->getVisiblePvPointsForUser($currentUserId, true);
+			$includeDiscussionLinks = !empty($renderOptions['includePvDiscussionLinks']);
+			$discussionLabels = is_array($renderOptions['pvDiscussionLabels'] ?? null)
+				? $renderOptions['pvDiscussionLabels']
+				: array();
+			$discussionSummaries = array();
+			if ($includeDiscussionLinks && in_array($this->getPvStage(), [self::PV_STAGE_REVIEW, self::PV_STAGE_VALIDATED], true)) {
+				$discussionPointIds = array();
+				foreach ($points as $discussionPoint) {
+					if ($discussionPoint instanceof \dbObject\DocumentPvPoint && !$discussionPoint->isGroup()) {
+						$discussionPointIds[] = (int)$discussionPoint->getId();
+					}
+				}
+				if (count($discussionPointIds) > 0) {
+					$discussionSummaries = \dbObject\ChatThread::getSubjectDiscussionSummaries(
+						$organizationId,
+						\dbObject\ChatThread::SUBJECT_DOCUMENT_PV_POINT,
+						$discussionPointIds,
+						$currentUserId
+					);
+				}
+			}
 			$positionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points);
 			$itemsByParent = array();
 			foreach ($points as $item) {
@@ -3352,6 +3475,33 @@
 
 				if (!empty($pointData['contentHtml'])) {
 					$html .= '<div class="omo-document-pv__point-content prose">' . (string)$pointData['contentHtml'] . '</div>';
+				}
+
+				$discussionSummary = $discussionSummaries[(int)$point->getId()] ?? array();
+				if ($includeDiscussionLinks && (int)($discussionSummary['total_messages'] ?? 0) > 0) {
+					$chatContext = json_encode(array(
+						'oid' => $organizationId,
+						'document_id' => (int)$this->getId(),
+						'point_id' => (int)$point->getId(),
+						'cid' => max(0, (int)($renderOptions['pvDiscussionContextHolonId'] ?? 0)),
+					), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+					$chatLabels = json_encode(array(
+						'loading' => (string)($discussionLabels['loading'] ?? 'Chargement de la discussion...'),
+						'empty' => (string)($discussionLabels['empty'] ?? 'Aucun message pour le moment.'),
+						'placeholder' => (string)($discussionLabels['placeholder'] ?? 'Lecture seule'),
+						'send' => (string)($discussionLabels['send'] ?? 'Envoyer'),
+						'changeDetails' => (string)($discussionLabels['changeDetails'] ?? 'Voir les modifications'),
+						'contentExcerpt' => (string)($discussionLabels['contentExcerpt'] ?? 'Contenu (extrait)'),
+					), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+					$html .= '<div class="omo-document-pv__point-discussion">'
+						. '<a href="#" class="omo-document-pv__point-discussion-link" data-omo-chat-open data-omo-chat-readonly="1"'
+						. ' data-omo-chat-endpoint="/omo/api/documents/pv/discussion.php"'
+						. ' data-omo-chat-context="' . self::escapeViewerText($chatContext === false ? '{}' : $chatContext) . '"'
+						. ' data-omo-chat-title="' . self::escapeViewerText((string)($discussionLabels['title'] ?? 'Discussion de relecture')) . '"'
+						. ' data-omo-chat-point-title="' . self::escapeViewerText((string)($pointData['title'] ?? '')) . '"'
+						. ' data-omo-chat-labels="' . self::escapeViewerText($chatLabels === false ? '{}' : $chatLabels) . '"'
+						. '>' . self::escapeViewerText((string)($discussionLabels['link'] ?? 'Voir les corrections effectuées')) . '</a>'
+						. '</div>';
 				}
 
 				$html .= '</article>';
@@ -4234,6 +4384,7 @@
 
 				if ($documentType === self::TYPE_PV && $this->canUserClaimPvEditor($organizationId, $userId)) {
 					$this->set('IDuser_pv_editor', $userId);
+					$this->set('IDuser_pv_official_editor', $userId);
 					$pvEditorSaveResult = $this->save();
 					if (!is_array($pvEditorSaveResult) || ($pvEditorSaveResult['status'] ?? false) !== true) {
 						if ($startedTransaction && $pdo->inTransaction()) {
