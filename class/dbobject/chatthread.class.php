@@ -4,6 +4,8 @@ namespace dbObject;
 class ChatThread extends DbObject
 {
     const SUBJECT_DECISION_PROPOSAL = 'decision_proposal';
+    const SUBJECT_DOCUMENT_PV = 'document_pv';
+    const SUBJECT_DOCUMENT_PV_POINT = 'document_pv_point';
 
     public static function tableName()
     {

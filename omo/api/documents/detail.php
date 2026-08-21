@@ -14,6 +14,9 @@ $sourceLang = [
     'documents.detail.event.virtual_fallback' => ['text' => 'Visio', 'context' => 'Fallback location label when only a virtual meeting link exists.'],
     'documents.detail.action.more' => ['text' => 'Plus d actions', 'context' => 'Accessible label for the read-only document action menu.'],
     'documents.detail.action.export_pdf' => ['text' => 'Exporter en PDF', 'context' => 'Action used to download a PV document as a PDF file.'],
+    'documents.detail.action.export_pdf_waiting' => ['text' => 'Veuillez patienter', 'context' => 'Temporary label shown while a PV PDF is being generated.'],
+    'documents.detail.action.export_pdf_notice' => ['text' => 'Génération du PDF en préparation.', 'context' => 'Topbar notification shown when a PV PDF export starts.'],
+    'documents.detail.action.export_pdf_error' => ['text' => 'Impossible de générer le PDF.', 'context' => 'Notification shown when a PV PDF export fails.'],
     'documents.detail.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening the document editor from the document detail drawer.'],
     'documents.detail.action.fullscreen' => ['text' => 'Plein écran', 'context' => 'Button used to show a collaborative document iframe in fullscreen.'],
     'documents.detail.action.exit_fullscreen' => ['text' => 'Quitter le plein écran', 'context' => 'Button used to leave the collaborative document fullscreen mode.'],
@@ -21,6 +24,14 @@ $sourceLang = [
     'documents.detail.alt_texts.fallback' => ['text' => 'Version texte', 'context' => 'Fallback title for an alternate text variant.'],
     'documents.detail.media.title' => ['text' => 'Médias associés', 'context' => 'Section title listing associated media.'],
     'documents.detail.media.open' => ['text' => 'Ouvrir le média', 'context' => 'Link label used to open a media item.'],
+    'documents.detail.pv_discussion.title' => ['text' => 'Discussion de relecture', 'context' => 'Read-only title for the discussion attached to a validated PV point.'],
+    'documents.detail.pv_discussion.link' => ['text' => 'Voir les corrections effectuées', 'context' => 'Subtle link opening a read-only validated PV point discussion.'],
+    'documents.detail.pv_discussion.loading' => ['text' => 'Chargement de la discussion...', 'context' => 'Loading state in a validated PV point discussion.'],
+    'documents.detail.pv_discussion.empty' => ['text' => 'Aucun message pour le moment.', 'context' => 'Empty state in a validated PV point discussion.'],
+    'documents.detail.pv_discussion.readonly' => ['text' => 'Lecture seule', 'context' => 'Placeholder for the disabled composer in a validated PV discussion.'],
+    'documents.detail.pv_discussion.send' => ['text' => 'Envoyer', 'context' => 'Send label shared by the chat popup.'],
+    'documents.detail.pv_discussion.changes' => ['text' => 'Voir les modifications', 'context' => 'Label opening before and after changes in a PV discussion.'],
+    'documents.detail.pv_discussion.content_excerpt' => ['text' => 'Contenu (extrait)', 'context' => 'Label for an excerpted PV point content change.'],
 ];
 
 $lang = omoLoadTranslationBundle('omo_documents_detail', $sourceLang);
@@ -105,7 +116,28 @@ $updatedAt = $document->get('datemodification');
 $author = $document->getCreatedByDisplayName();
 $updatedBy = $document->getUpdatedByDisplayName();
 $visibility = $document->getVisibilityDisplayData($organizationId);
-$renderedContent = $document->getRenderedContentForCurrentViewer();
+$includePvDiscussionLinks = $document->isPvDocument()
+    && (
+            $document->getPvStage() === \dbObject\Document::PV_STAGE_VALIDATED
+        || (
+            $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW
+            && $document->canUserAccessPvReview($currentUserId, $organizationId)
+        )
+    );
+$renderedContent = $document->getRenderedContentForCurrentViewer([
+    'includePvDiscussionLinks' => $includePvDiscussionLinks,
+    'pvDiscussionContextHolonId' => $holonId,
+    'pvDiscussionLabels' => [
+        'title' => omoDocumentsDetailT('documents.detail.pv_discussion.title'),
+        'link' => omoDocumentsDetailT('documents.detail.pv_discussion.link'),
+        'loading' => omoDocumentsDetailT('documents.detail.pv_discussion.loading'),
+        'empty' => omoDocumentsDetailT('documents.detail.pv_discussion.empty'),
+        'placeholder' => omoDocumentsDetailT('documents.detail.pv_discussion.readonly'),
+        'send' => omoDocumentsDetailT('documents.detail.pv_discussion.send'),
+        'changeDetails' => omoDocumentsDetailT('documents.detail.pv_discussion.changes'),
+        'contentExcerpt' => omoDocumentsDetailT('documents.detail.pv_discussion.content_excerpt'),
+    ],
+]);
 $hasCollaborativeFrame = $document->isEtherpadDocument() || $document->isEthercalcDocument();
 $drawerTitle = trim((string)$document->get('title'));
 $drawerDescription = $createdAt instanceof DateTimeInterface ? $formatDateTime($createdAt) : '';
@@ -117,6 +149,7 @@ $pdfExportUrl = $document->isPvDocument()
     ? '/omo/api/documents/pv/export_pdf.php?id=' . rawurlencode((string)(int)$document->getId())
         . '&oid=' . rawurlencode((string)$organizationId)
     : '';
+$showPvDiscussion = $includePvDiscussionLinks;
 $canManageDocument = !$document->isPvDocument()
     && $document->canManageInOrganizationContext($organizationId, $currentUserId, false);
 $canEditDocumentContent = !$document->isPvDocument()
@@ -157,6 +190,10 @@ if ($associatedEvent instanceof \dbObject\Event) {
     }
 }
 ?>
+<?php if ($showPvDiscussion): ?>
+<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-pv-review-changes">
+<link rel="stylesheet" href="/common/choice/change-details.css?v=20260821-pv-review">
+<?php endif; ?>
 <div
     class="omo-document-detail"
     data-omo-document-drawer-title="<?= $escape($drawerTitle) ?>"
@@ -188,7 +225,16 @@ if ($associatedEvent instanceof \dbObject\Event) {
                             title="<?= $escape(omoDocumentsDetailT('documents.detail.action.more')) ?>"
                         >...</summary>
                         <div class="omo-document-detail__more-actions-menu">
-                            <a class="generic-action-button" href="<?= $escape($pdfExportUrl) ?>" download>
+                            <a
+                                class="generic-action-button omo-document-detail__pdf-export"
+                                href="<?= $escape($pdfExportUrl) ?>"
+                                download
+                                data-omo-pv-pdf-export
+                                data-omo-pv-pdf-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf')) ?>"
+                                data-omo-pv-pdf-waiting-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf_waiting')) ?>"
+                                data-omo-pv-pdf-notice="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf_notice')) ?>"
+                                data-omo-pv-pdf-error="<?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf_error')) ?>"
+                            >
                                 <?= $escape(omoDocumentsDetailT('documents.detail.action.export_pdf')) ?>
                             </a>
                         </div>
@@ -736,6 +782,12 @@ if ($associatedEvent instanceof \dbObject\Event) {
     text-decoration: underline;
 }
 
+.omo-document-detail__pdf-export[aria-disabled="true"] {
+    cursor: wait;
+    opacity: 0.58;
+    pointer-events: none;
+}
+
 @media (max-width: 768px) {
     .omo-document-detail {
         padding: 14px;
@@ -750,3 +802,90 @@ if ($associatedEvent instanceof \dbObject\Event) {
     }
 }
 </style>
+<?php if ($pdfExportUrl !== ''): ?>
+<script>
+(function () {
+    'use strict';
+
+    function extractFilename(response) {
+        var disposition = response.headers.get('Content-Disposition') || '';
+        var encodedMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+        var plainMatch = disposition.match(/filename="([^"]+)"/i);
+        if (encodedMatch && encodedMatch[1]) {
+            try {
+                return decodeURIComponent(encodedMatch[1]);
+            } catch (error) {
+                return encodedMatch[1];
+            }
+        }
+        return plainMatch && plainMatch[1] ? plainMatch[1] : 'export.pdf';
+    }
+
+    document.querySelectorAll('[data-omo-pv-pdf-export]').forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            if (link.getAttribute('aria-disabled') === 'true') {
+                event.preventDefault();
+                return;
+            }
+
+            event.preventDefault();
+            var originalLabel = link.getAttribute('data-omo-pv-pdf-label') || link.textContent;
+            var waitingLabel = link.getAttribute('data-omo-pv-pdf-waiting-label') || 'Veuillez patienter';
+            var notice = link.getAttribute('data-omo-pv-pdf-notice') || '';
+            var errorLabel = link.getAttribute('data-omo-pv-pdf-error') || 'Impossible de generer le PDF.';
+            link.setAttribute('aria-disabled', 'true');
+            link.setAttribute('aria-busy', 'true');
+            link.textContent = waitingLabel;
+            if (typeof window.commonNotify === 'function' && notice !== '') {
+                window.commonNotify(notice, 'warning', {duration: 7000});
+            }
+
+            window.fetch(link.href, {credentials: 'same-origin', headers: {Accept: 'application/pdf'}})
+                .then(function (response) {
+                    if (!response.ok) {
+                        return response.text().then(function (message) {
+                            throw new Error(message || errorLabel);
+                        });
+                    }
+                    var contentType = (response.headers.get('Content-Type') || '').toLowerCase();
+                    return response.blob().then(function (blob) {
+                        if (contentType.indexOf('text/plain') !== -1) {
+                            return blob.text().then(function (message) {
+                                throw new Error(message || errorLabel);
+                            });
+                        }
+                        return {blob: blob, filename: extractFilename(response)};
+                    });
+                })
+                .then(function (result) {
+                    var blobUrl = window.URL.createObjectURL(result.blob);
+                    var downloadLink = document.createElement('a');
+                    downloadLink.href = blobUrl;
+                    downloadLink.download = result.filename;
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    downloadLink.remove();
+                    var exportMenu = link.closest('.omo-document-detail__more-actions');
+                    if (exportMenu) exportMenu.removeAttribute('open');
+                    window.setTimeout(function () { window.URL.revokeObjectURL(blobUrl); }, 1000);
+                })
+                .catch(function (error) {
+                    if (typeof window.commonNotify === 'function') {
+                        window.commonNotify(error.message || errorLabel, 'error');
+                    }
+                })
+                .finally(function () {
+                    link.removeAttribute('aria-disabled');
+                    link.removeAttribute('aria-busy');
+                    link.textContent = originalLabel;
+                });
+        });
+    });
+}());
+</script>
+<?php endif; ?>
+<?php if ($showPvDiscussion): ?>
+<script src="/common/choice/word-diff.js?v=20260821-pv-review"></script>
+<script src="/common/choice/change-details.js?v=20260821-pv-review"></script>
+<script src="/common/chat/thread.js?v=20260821-pv-review-block-brackets-readonly"></script>
+<?php endif; ?>

@@ -110,6 +110,9 @@ $pvCreatorLabel = $pvCreatorUserId > 0
     : '';
 $isPvEditor = $document->isPvEditor($currentUserId);
 $canManagePvDocument = $document->canUserManagePvDocument($currentUserId);
+$isPvReview = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
+$canEditPvDocumentHeader = $canManagePvDocument && !$isPvReview;
+$canPassPvEditor = $isPvEditor && !$isPvReview;
 $isPvTemplate = $document->isPvTemplate();
 $canCreatePvGroups = $document->canUserCreatePvGroups($currentUserId);
 $canClaimPvEditor = $document->canUserClaimPvEditor($organizationId, $currentUserId);
@@ -397,6 +400,9 @@ $authorHolonOptions = omoDocumentsPvEditorBuildAuthorHolonOptions(
     $authorOptions,
     $hasStructureApplication
 );
+$pointDiscussionSummaryMap = $pvStage === \dbObject\Document::PV_STAGE_REVIEW
+    ? omoDocumentsPvEditorBuildPointDiscussionSummaryMap($organizationId, $points, $currentUserId)
+    : [];
 
 foreach ($points as $point) {
     if (!($point instanceof \dbObject\DocumentPvPoint) || (int)$point->getId() <= 0) {
@@ -414,7 +420,8 @@ foreach ($points as $point) {
         $authorOptions,
         $authorHolonOptions,
         (string)($pointPositionLabels[(int)$point->getId()] ?? '--'),
-        $groupSummaryMap[(int)$point->getId()] ?? []
+        $groupSummaryMap[(int)$point->getId()] ?? [],
+        $pointDiscussionSummaryMap[(int)$point->getId()] ?? []
     );
     if (!$point->isGroup()) {
         $pointCards[] = $payload['cardHtml'];
@@ -422,7 +429,12 @@ foreach ($points as $point) {
     $pointNavItems[] = $payload['navHtml'];
     $pointPayloads[] = $payload;
 }
+$isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 ?>
+<?php if ($isPvReviewDiscussion): ?>
+<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-pv-review-changes">
+<link rel="stylesheet" href="/common/choice/change-details.css?v=20260821-pv-review">
+<?php endif; ?>
 <div
     class="omo-pv-editor"
     data-omo-pv-editor-root="1"
@@ -1323,6 +1335,14 @@ foreach ($points as $point) {
         min-width: 0;
     }
 
+    .omo-pv-editor__nav-point-type-icon {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+        object-fit: contain;
+        filter: var(--omo-pv-type-icon-filter, none);
+    }
+
     .omo-pv-editor__nav-meta {
         color: var(--color-text-light, #64748b);
         font-size: 0.8rem;
@@ -1679,6 +1699,10 @@ foreach ($points as $point) {
         filter: invert(1);
     }
 
+    html[data-theme="dark"] .omo-pv-editor__nav-point-type-icon {
+        filter: invert(1);
+    }
+
     .omo-pv-editor__field {
         display: grid;
         gap: 6px;
@@ -1907,12 +1931,14 @@ foreach ($points as $point) {
     }
 
     .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__save-button,
-    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__delete-button {
+    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__delete-button,
+    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-chat-popup-trigger {
         min-height: 28px;
         height: 28px;
     }
 
-    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__save-button {
+    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__save-button,
+    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-chat-popup-trigger {
         padding: 4px 9px;
         font-size: 0.78rem;
         line-height: 1;
@@ -2361,11 +2387,11 @@ foreach ($points as $point) {
     <aside class="omo-pv-editor__sidebar">
         <section class="omo-pv-editor__panel omo-pv-editor__agenda-panel">
             <div class="omo-pv-editor__toolbar">
-                <button type="button" class="omo-pv-editor__delete-dropzone" data-omo-pv-delete-dropzone title="<?= $escape((string)$uiText['deleteItem']) ?>" aria-label="<?= $escape((string)$uiText['deleteItem']) ?>"><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>
+                <button type="button" class="omo-pv-editor__delete-dropzone" data-omo-pv-delete-dropzone title="<?= $escape((string)$uiText['deleteItem']) ?>" aria-label="<?= $escape((string)$uiText['deleteItem']) ?>"<?= $isPvReview ? ' hidden' : '' ?>><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>
                 <?php if ($canCreatePvGroups): ?>
                     <button type="button" class="generic-action-button generic-action-button--secondary omo-pv-editor__add-button" data-omo-pv-editor-add-group title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>"><img src="/omo/assets/images/documents/add-folder.png" alt="" aria-hidden="true"></button>
                 <?php endif; ?>
-                <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__add-button" data-omo-pv-editor-add-point<?= $isPvValidated ? ' disabled' : '' ?> title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>"><img src="/omo/assets/images/documents/add.png" alt="" aria-hidden="true"></button>
+                <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__add-button" data-omo-pv-editor-add-point<?= $isPvValidated || $isPvReview ? ' disabled' : '' ?> title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>"><img src="/omo/assets/images/documents/add.png" alt="" aria-hidden="true"></button>
             </div>
             <div class="omo-pv-editor__nav" data-omo-pv-editor-nav>
                 <?php if (count($pointNavItems) === 0): ?>
@@ -2425,7 +2451,7 @@ foreach ($points as $point) {
             <div class="omo-pv-editor__panel omo-pv-editor__header-card">
             <div class="omo-pv-editor__page-title">
                 <div class="omo-pv-editor__identity-copy">
-                <?php if ($canManagePvDocument): ?>
+                <?php if ($canEditPvDocumentHeader): ?>
                     <div class="omo-pv-editor__document-meta-editor" data-omo-pv-document-meta-editor>
                         <input
                             type="text"
@@ -2455,7 +2481,7 @@ foreach ($points as $point) {
                 </div>
             </div>
             <div class="omo-pv-editor__page-side">
-                <?php if ($canManagePvDocument): ?>
+                <?php if ($canEditPvDocumentHeader): ?>
                     <div class="omo-pv-editor__document-visibility" data-omo-pv-document-visibility>
                         <?= commonRenderObjectVisibilitySelector(array(
                             'inputName' => 'pv_document_visibility',
@@ -2481,7 +2507,7 @@ foreach ($points as $point) {
                                 data-omo-pv-stage-option
                                 data-omo-pv-stage-value="<?= $escape($stageValue) ?>"
                                 aria-pressed="<?= $pvStage === $stageValue ? 'true' : 'false' ?>"
-                                <?= $canManagePvStage ? '' : ' disabled' ?>
+                                <?= $canManagePvStage && (!$isPvReview || $stageValue === \dbObject\Document::PV_STAGE_VALIDATED) ? '' : ' disabled' ?>
                             ><span class="omo-visibility-choice__text"><?= $escape($stageLabel) ?></span></button>
                         <?php endforeach; ?>
                     </div>
@@ -2531,7 +2557,7 @@ foreach ($points as $point) {
                     </div>
                 </div>
                 <div class="omo-pv-editor__secretary-actions">
-                    <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__secretary-claim<?= $isPvEditor && $pvEditorHandoverOpen ? ' is-waiting' : '' ?>" data-omo-pv-claim-secretary data-omo-pv-secretary-action="<?= $escape($isPvEditor ? 'pass_pv_editor' : ($canClaimPvEditor ? 'claim_pv_editor' : 'replace_pv_editor')) ?>"<?= ($isPvEditor || $canClaimPvEditor || $canReplacePvEditor) ? '' : ' hidden' ?><?= $isPvEditor && $pvEditorHandoverOpen ? ' disabled' : '' ?>><?php if ($isPvEditor && $pvEditorHandoverOpen): ?><svg class="omo-pv-editor__secretary-claim-spinner" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="32 18"></circle></svg><span><?= $escape((string)$uiText['pvEditorHandoverWaiting']) ?></span><?php else: ?><?= $escape($isPvEditor ? (string)$uiText['passPvEditor'] : ($canClaimPvEditor && $pvEditorUserId > 0 ? (string)$uiText['reclaimPvEditor'] : ($canReplacePvEditor ? (string)$uiText['replacePvEditor'] : (string)$uiText['claimPvEditor']))) ?><?php endif; ?></button>
+                    <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__secretary-claim<?= $isPvEditor && $pvEditorHandoverOpen ? ' is-waiting' : '' ?>" data-omo-pv-claim-secretary data-omo-pv-secretary-action="<?= $escape($isPvEditor ? 'pass_pv_editor' : ($canClaimPvEditor ? 'claim_pv_editor' : 'replace_pv_editor')) ?>"<?= (!$isPvReview && ($canPassPvEditor || $canClaimPvEditor || $canReplacePvEditor)) ? '' : ' hidden' ?><?= $isPvEditor && $pvEditorHandoverOpen ? ' disabled' : '' ?>><?php if ($isPvEditor && $pvEditorHandoverOpen): ?><svg class="omo-pv-editor__secretary-claim-spinner" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="32 18"></circle></svg><span><?= $escape((string)$uiText['pvEditorHandoverWaiting']) ?></span><?php else: ?><?= $escape($isPvEditor ? (string)$uiText['passPvEditor'] : ($canClaimPvEditor && $pvEditorUserId > 0 ? (string)$uiText['reclaimPvEditor'] : ($canReplacePvEditor ? (string)$uiText['replacePvEditor'] : (string)$uiText['claimPvEditor']))) ?><?php endif; ?></button>
                     <?php if ($pvInvitationPopupUrl !== ''): ?>
                         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-invitations-url="<?= $escape($pvInvitationPopupUrl) ?>" data-omo-pv-invitations-title="<?= $escape((string)$uiText['inviteTitle']) ?>"<?= $canManagePvInvitations ? '' : ' hidden' ?>><?= $escape((string)$uiText['invite']) ?></button>
                     <?php endif; ?>
@@ -2543,7 +2569,7 @@ foreach ($points as $point) {
                                 href="<?= $escape('/omo/api/documents/pv/export_pdf.php?id=' . rawurlencode((string)(int)$document->getId()) . '&oid=' . rawurlencode((string)$organizationId)) ?>"
                                 download
                             ><?= $escape((string)$uiText['exportPdf']) ?></a>
-                            <?php if ($canManagePvDocument): ?>
+                            <?php if ($canEditPvDocumentHeader): ?>
                                 <button
                                     type="button"
                                     class="generic-action-button"
@@ -2555,10 +2581,12 @@ foreach ($points as $point) {
                             <?php endif; ?>
                         </div>
                     </details>
-                    <label class="omo-pv-editor__auto-save">
-                        <input type="checkbox" data-omo-pv-auto-save checked<?= $isPvValidated ? ' disabled' : '' ?>>
-                        <span><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.field.auto_save')) ?></span>
-                    </label>
+                    <?php if (!$isPvReview): ?>
+                        <label class="omo-pv-editor__auto-save">
+                            <input type="checkbox" data-omo-pv-auto-save checked<?= $isPvValidated ? ' disabled' : '' ?>>
+                            <span><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.field.auto_save')) ?></span>
+                        </label>
+                    <?php endif; ?>
                 </div>
             </div>
             </div>
@@ -2589,7 +2617,7 @@ foreach ($points as $point) {
                                 <input
                                     type="checkbox"
                                     data-omo-pv-attendance-toggle="<?= $escape((string)($attendanceEntry['identityKey'] ?? '')) ?>"
-                                    <?= !$canManagePvDocument ? 'disabled' : '' ?>
+                                    <?= !$canEditPvDocumentHeader ? 'disabled' : '' ?>
                                     <?= !empty($attendanceEntry['isPresent']) ? 'checked' : '' ?>
                                 >
                                 <span class="omo-pv-editor__attendance-copy">
@@ -2611,6 +2639,12 @@ foreach ($points as $point) {
         </div>
     </section>
 </div>
+
+<?php if ($isPvReviewDiscussion): ?>
+<script src="/common/choice/word-diff.js?v=20260821-pv-review"></script>
+<script src="/common/choice/change-details.js?v=20260821-pv-review"></script>
+<script src="/common/chat/thread.js?v=20260821-pv-review-block-brackets-readonly"></script>
+<?php endif; ?>
 
 <script>
 (function () {
@@ -2671,7 +2705,7 @@ foreach ($points as $point) {
         'pvEditorHandoverOpen' => $pvEditorHandoverOpen,
         'isPvValidated' => $isPvValidated,
         'isPvTemplate' => $isPvTemplate,
-        'canManagePvTemplate' => $canManagePvDocument,
+        'canManagePvTemplate' => $canEditPvDocumentHeader,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const initialAttendancePayload = <?= json_encode($attendancePayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const attendanceEnabled = <?= json_encode($hasTeamApplication) ?>;
@@ -2787,7 +2821,7 @@ foreach ($points as $point) {
         'responsibleLabel' => $projectEmbedCreateResponsibleLabel,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const canEmbedChecklists = <?= count($embeddableChecklistsPayload) > 0 ? 'true' : 'false' ?>;
-    const canCompleteChecklistProjects = <?= $canManagePvDocument ? 'true' : 'false' ?>;
+    const canCompleteChecklistProjects = <?= $canEditPvDocumentHeader ? 'true' : 'false' ?>;
     const embeddableChecklists = <?= json_encode($embeddableChecklistsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const checklistEmbedUi = <?= json_encode([
         'buttonTitle' => omoDocumentsPvEditorT('documents.pv_editor.checklist.button_title'),
@@ -2857,6 +2891,7 @@ foreach ($points as $point) {
     };
     const activeLockPointIds = new Set();
     const pendingLockPointIds = new Set();
+    const pendingUnlockPointIds = new Set();
     let knownPointSignatures = {};
     let currentPointPayloads = {};
     let currentDocumentPayload = initialDocumentPayload && typeof initialDocumentPayload === 'object'
@@ -2945,6 +2980,16 @@ foreach ($points as $point) {
     }
 
     if (root instanceof Element) {
+        root.addEventListener('focusin', function (event) {
+            const target = event.target instanceof Element ? event.target : null;
+            const card = target ? target.closest('[data-omo-pv-point-card]') : null;
+            const pointId = card ? Number(card.getAttribute('data-omo-pv-point-card') || 0) : 0;
+            if (pointId > 0) {
+                setFocusedPoint(pointId);
+                syncPointLockState(pointId);
+            }
+        }, true);
+
         root.addEventListener('focusout', function (event) {
             const target = event.target instanceof Element ? event.target : null;
             const card = target ? target.closest('[data-omo-pv-point-card]') : null;
@@ -2958,8 +3003,10 @@ foreach ($points as $point) {
                 const activeCard = activeElement instanceof Element
                     ? activeElement.closest('[data-omo-pv-point-card]')
                     : null;
-                if (!activeCard && pointId > 0) {
+                const activePointId = activeCard ? Number(activeCard.getAttribute('data-omo-pv-point-card') || 0) : 0;
+                if (pointId > 0 && activePointId !== pointId) {
                     clearFocusedPoint(pointId);
+                    syncPointLockState(pointId);
                 }
             }, 0);
         }, true);
@@ -3291,7 +3338,7 @@ foreach ($points as $point) {
             ? '<em class="omo-project-embed__status' + (statusClass !== '' ? ' omo-project-embed__status--' + statusClass : '') + '">' + escapeDocumentEmbedHtml(statusLabel) + '</em>'
             : '';
         const priorityCapsule = statusCapsule + (priorityLabel !== '' ? '<em>' + escapeDocumentEmbedHtml(priorityLabel) + '</em>' : '');
-        return '<span class="omo-project-embed" contenteditable="false" data-omo-embed-type="project" data-omo-project-id="' + String(projectId) + '" data-omo-project-title="' + escapeDocumentEmbedHtml(title) + '"><strong><a href="' + projectHash + '">' + escapeDocumentEmbedHtml(title) + '</a><a class="omo-project-embed__external" href="' + escapeDocumentEmbedHtml(externalUrl) + '" target="_blank" rel="noopener noreferrer" title="' + escapeDocumentEmbedHtml(projectEmbedUi.openExternal || '') + '" aria-label="' + escapeDocumentEmbedHtml(projectEmbedUi.openExternal || '') + '">&#8599;</a>' + priorityCapsule + (sizeLabel !== '' ? '<em>' + escapeDocumentEmbedHtml(sizeLabel) + '</em>' : '') + '</strong>' + (metadata.length > 0 ? '<em>' + escapeDocumentEmbedHtml(metadata.join(' · ')) + '</em>' : '') + '</span>';
+        return '<span class="omo-project-embed" contenteditable="false" data-omo-embed-type="project" data-omo-project-id="' + String(projectId) + '" data-omo-project-title="' + escapeDocumentEmbedHtml(title) + '" data-omo-project-status="' + statusClass + '" data-omo-project-status-label="' + escapeDocumentEmbedHtml(statusLabel) + '"><strong><a href="' + projectHash + '">' + escapeDocumentEmbedHtml(title) + '</a><a class="omo-project-embed__external" href="' + escapeDocumentEmbedHtml(externalUrl) + '" target="_blank" rel="noopener noreferrer" title="' + escapeDocumentEmbedHtml(projectEmbedUi.openExternal || '') + '" aria-label="' + escapeDocumentEmbedHtml(projectEmbedUi.openExternal || '') + '">&#8599;</a>' + priorityCapsule + (sizeLabel !== '' ? '<em>' + escapeDocumentEmbedHtml(sizeLabel) + '</em>' : '') + '</strong>' + (metadata.length > 0 ? '<em>' + escapeDocumentEmbedHtml(metadata.join(' · ')) + '</em>' : '') + '</span>';
     }
 
     function openPvProjectEmbedPicker(field, targetNode) {
@@ -3798,12 +3845,19 @@ foreach ($points as $point) {
 
                 const status = String(payload.status || '').trim();
                 const statusLabel = String(payload.statusLabel || '').trim();
+                embedNode.setAttribute('data-omo-project-status', status);
+                embedNode.setAttribute('data-omo-project-status-label', statusLabel);
                 const header = embedNode.querySelector(':scope > strong');
-                if (header instanceof Element && statusLabel !== '') {
-                    header.querySelectorAll(':scope > .omo-project-embed__status').forEach(function (statusNode) {
-                        statusNode.remove();
+                if (header instanceof Element) {
+                    Array.from(header.children).filter(function (childNode) {
+                        if (childNode.tagName !== 'EM') {
+                            return false;
+                        }
+                        const capsuleLabel = String(childNode.textContent || '').trim().toUpperCase();
+                        return !/^P[1-5]$/.test(capsuleLabel) && !/^(?:S|M|L|XL|XXL)$/.test(capsuleLabel);
+                    }).forEach(function (oldStatusNode) {
+                        oldStatusNode.remove();
                     });
-
                     const metadata = Array.from(embedNode.children).find(function (child) {
                         return child instanceof HTMLElement && child.tagName === 'EM';
                     });
@@ -3822,12 +3876,16 @@ foreach ($points as $point) {
                         }
                     }
 
-                    const statusNode = document.createElement('em');
-                    statusNode.className = 'omo-project-embed__status'
-                        + (/^(?:someday|ready|in_progress|blocked|review|done)$/.test(status) ? ' omo-project-embed__status--' + status : '');
-                    statusNode.textContent = statusLabel;
-                    const firstCapsule = header.querySelector(':scope > em');
-                    header.insertBefore(statusNode, firstCapsule || null);
+                    if (statusLabel !== '') {
+                        const currentStatusNode = document.createElement('em');
+                        currentStatusNode.className = 'omo-project-embed__status'
+                            + (/^(?:someday|ready|in_progress|blocked|review|done)$/.test(status) ? ' omo-project-embed__status--' + status : '');
+                        currentStatusNode.textContent = statusLabel;
+                        const firstCapsule = Array.from(header.children).find(function (child) {
+                            return child.tagName === 'EM';
+                        });
+                        header.insertBefore(currentStatusNode, firstCapsule || null);
+                    }
                 }
 
                 if (!payload.hasChildren || !payload.statusBarHtml) {
@@ -4369,7 +4427,7 @@ foreach ($points as $point) {
     })();
 
     function ensureHtmlFieldLibrary(callback) {
-        const htmlFieldVersion = '20260804-indicator-group-route';
+        const htmlFieldVersion = '20260821-project-status-canonical';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -4498,6 +4556,26 @@ foreach ($points as $point) {
         }
     }
 
+    function pointWantsLock(pointId) {
+        const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+        if (!card) {
+            return false;
+        }
+
+        return card.getAttribute('data-omo-pv-point-dirty') === '1'
+            || card.contains(document.activeElement);
+    }
+
+    function syncPointLockState(pointId) {
+        if (!Number.isInteger(pointId) || pointId <= 0) {
+            return Promise.resolve(null);
+        }
+
+        return pointWantsLock(pointId)
+            ? ensurePointLock(pointId)
+            : releasePointLock(pointId);
+    }
+
     function syncDirtyUi() {
         root.querySelectorAll('[data-omo-pv-point-card]').forEach(function (card) {
             const pointId = Number(card.getAttribute('data-omo-pv-point-card') || 0);
@@ -4511,7 +4589,8 @@ foreach ($points as $point) {
         return autoSaveToggle instanceof HTMLInputElement
             && autoSaveToggle.checked
             && !autoSaveToggle.disabled
-            && currentDocumentPayload.isPvValidated !== true;
+            && currentDocumentPayload.isPvValidated !== true
+            && String(currentDocumentPayload.pvStage || '') !== 'review';
     }
 
     function clearDocumentMetadataAutoSave() {
@@ -4539,6 +4618,7 @@ foreach ($points as $point) {
 
         activeLockPointIds.clear();
         pendingLockPointIds.clear();
+        pendingUnlockPointIds.clear();
     }
 
     function scheduleDocumentMetadataAutoSave() {
@@ -4618,6 +4698,7 @@ foreach ($points as $point) {
         }
 
         syncPointDirtyUi(pointId);
+        syncPointLockState(pointId);
     }
 
     function buildPointSignatureMap(pointPayloads) {
@@ -4635,7 +4716,8 @@ foreach ($points as $point) {
             signatures[String(pointPayload.id)] = [
                 String(pointPayload.syncVersion || ''),
                 lock.isActive ? 1 : 0,
-                Number(lock.userId || 0)
+                Number(lock.userId || 0),
+                Number(pointPayload.discussionMessageCount || 0)
             ].join('|');
         });
 
@@ -4714,7 +4796,8 @@ foreach ($points as $point) {
             const isActive = String(button.getAttribute('data-omo-pv-stage-value') || '') === nextStage;
             button.classList.toggle('is-active', isActive);
             button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-            button.disabled = !canManageStage;
+            button.disabled = !canManageStage
+                || (nextStage === 'review' && String(button.getAttribute('data-omo-pv-stage-value') || '') !== 'validated');
             if (isActive) {
                 activeIndex = stageButtons.indexOf(button);
             }
@@ -4750,7 +4833,8 @@ foreach ($points as $point) {
             const canClaimEditor = documentPayload.canClaimPvEditor === true;
             const canReplaceEditor = documentPayload.canReplacePvEditor === true;
             const hasEditor = Number(documentPayload.pvEditorUserId || 0) > 0;
-            claimSecretaryButton.hidden = !isCurrentEditor && !canClaimEditor && !canReplaceEditor;
+            const isReview = String(documentPayload.pvStage || '') === 'review';
+            claimSecretaryButton.hidden = isReview || (!isCurrentEditor && !canClaimEditor && !canReplaceEditor);
             claimSecretaryButton.disabled = claimSecretaryButton.hidden || isWaitingForReplacement;
             claimSecretaryButton.classList.toggle('is-waiting', isWaitingForReplacement);
             claimSecretaryButton.dataset.omoPvSecretaryAction = isCurrentEditor
@@ -4796,7 +4880,14 @@ foreach ($points as $point) {
             addButton.disabled = documentPayload.isPvValidated === true;
         }
         if (autoSaveToggle instanceof HTMLInputElement) {
-            autoSaveToggle.disabled = documentPayload.isPvValidated === true;
+            const autoSaveAvailable = documentPayload.isPvValidated !== true
+                && String(documentPayload.pvStage || '') !== 'review';
+            autoSaveToggle.disabled = !autoSaveAvailable;
+            if (!autoSaveAvailable) {
+                autoSaveToggle.checked = false;
+                getDirtyPointIds().forEach(clearPointAutoSave);
+                clearDocumentMetadataAutoSave();
+            }
         }
 
         if (templateToggleButton instanceof HTMLButtonElement) {
@@ -4922,7 +5013,9 @@ foreach ($points as $point) {
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.checked = !!entry.isPresent;
-            checkbox.disabled = !(currentDocumentPayload && currentDocumentPayload.canManagePvDocument === true);
+            checkbox.disabled = !(currentDocumentPayload
+                && currentDocumentPayload.canManagePvDocument === true
+                && String(currentDocumentPayload.pvStage || '') !== 'review');
             checkbox.setAttribute('data-omo-pv-attendance-toggle', String(entry.identityKey));
 
             const copy = document.createElement('span');
@@ -5467,6 +5560,7 @@ foreach ($points as $point) {
         });
         activeLockPointIds.clear();
         pendingLockPointIds.clear();
+        pendingUnlockPointIds.clear();
     }
 
     function confirmCloseWithUnsavedChanges() {
@@ -5577,6 +5671,14 @@ foreach ($points as $point) {
             button.setAttribute('aria-checked', isActive ? 'true' : 'false');
             button.tabIndex = isActive ? 0 : -1;
         });
+
+        const activeOption = card.querySelector('[data-omo-pv-point-type-option="' + pointId + '"][data-omo-pv-point-type-value="' + resolvedType + '"]');
+        const navIcon = nav ? nav.querySelector('[data-omo-pv-point-nav-type-icon="' + pointId + '"]') : null;
+        const optionIcon = activeOption ? activeOption.querySelector('img') : null;
+        if (navIcon instanceof HTMLImageElement && optionIcon instanceof HTMLImageElement) {
+            navIcon.src = optionIcon.currentSrc || optionIcon.src;
+            navIcon.alt = String(activeOption.getAttribute('aria-label') || '');
+        }
     }
 
     function selectPointTypeOption(typeButton, focusSelectedButton) {
@@ -6318,6 +6420,7 @@ foreach ($points as $point) {
             if (isPointLockTakenOverRemotely(currentCard, pointPayload)) {
                 activeLockPointIds.delete(pointId);
                 pendingLockPointIds.delete(pointId);
+                pendingUnlockPointIds.delete(pointId);
             }
 
             replacePointHtml(pointPayload);
@@ -6353,11 +6456,11 @@ foreach ($points as $point) {
     }
 
     function ensurePointLock(pointId) {
-        if (!Number.isInteger(pointId) || pointId <= 0 || !editorToken) {
+        if (!Number.isInteger(pointId) || pointId <= 0 || !editorToken || !pointWantsLock(pointId)) {
             return Promise.resolve(null);
         }
 
-        if (activeLockPointIds.has(pointId) || pendingLockPointIds.has(pointId)) {
+        if (activeLockPointIds.has(pointId) || pendingLockPointIds.has(pointId) || pendingUnlockPointIds.has(pointId)) {
             return Promise.resolve(null);
         }
 
@@ -6368,6 +6471,9 @@ foreach ($points as $point) {
                 activeLockPointIds.add(pointId);
                 if (payload && payload.point) {
                     mergeKnownPointSignature(payload.point);
+                }
+                if (!pointWantsLock(pointId)) {
+                    return releasePointLock(pointId);
                 }
                 return payload;
             })
@@ -6381,20 +6487,31 @@ foreach ($points as $point) {
     }
 
     function releasePointLock(pointId) {
-        if (!Number.isInteger(pointId) || pointId <= 0 || !activeLockPointIds.has(pointId)) {
+        if (!Number.isInteger(pointId) || pointId <= 0 || pendingUnlockPointIds.has(pointId)) {
+            return Promise.resolve(null);
+        }
+
+        if (!activeLockPointIds.has(pointId)) {
             return Promise.resolve(null);
         }
 
         activeLockPointIds.delete(pointId);
+        pendingUnlockPointIds.add(pointId);
         return postPointAction('unlock_point', pointId)
             .then(function (payload) {
-                if (payload && payload.point) {
+                if (payload && payload.point && !pointWantsLock(pointId)) {
                     replacePointHtml(payload.point);
                 }
                 return payload;
             })
             .catch(function () {
                 return null;
+            })
+            .finally(function () {
+                pendingUnlockPointIds.delete(pointId);
+                if (pointWantsLock(pointId)) {
+                    ensurePointLock(pointId);
+                }
             });
     }
 
@@ -6501,11 +6618,12 @@ foreach ($points as $point) {
                 const drafts = hasChangesAfterSaveStarted ? captureDraftState() : null;
                 if (payload.hiddenPointId) {
                     activeLockPointIds.delete(pointId);
+                    pendingLockPointIds.delete(pointId);
+                    pendingUnlockPointIds.delete(pointId);
                     renderPointCollection(Array.isArray(payload.points) ? payload.points : [], true);
                     return;
                 }
                 if (preserveEditor) {
-                    activeLockPointIds.delete(pointId);
                     mergeKnownPointSignature(payload.point);
                     if (hasChangesAfterSaveStarted) {
                         schedulePointAutoSave(pointId);
@@ -6516,10 +6634,10 @@ foreach ($points as $point) {
                     if (currentStatus) {
                         currentStatus.textContent = payload.message || savedLabel;
                     }
+                    syncPointLockState(pointId);
                     return;
                 }
                 const nextCard = replacePointHtml(payload.point);
-                activeLockPointIds.delete(pointId);
                 if (hasChangesAfterSaveStarted && drafts && drafts[pointId]) {
                     restoreDraftState({ [pointId]: drafts[pointId] });
                 } else {
@@ -6529,6 +6647,7 @@ foreach ($points as $point) {
                 if (nextStatus) {
                     nextStatus.textContent = payload.message || savedLabel;
                 }
+                syncPointLockState(pointId);
             })
             .catch(function (error) {
                 if (!preserveEditor && error && error.point) {
@@ -6562,6 +6681,7 @@ foreach ($points as $point) {
         }
         activeLockPointIds.delete(pointId);
         pendingLockPointIds.delete(pointId);
+        pendingUnlockPointIds.delete(pointId);
         delete knownPointSignatures[String(pointId)];
         delete currentPointPayloads[String(pointId)];
         syncEmptyNavState();
@@ -6947,6 +7067,10 @@ foreach ($points as $point) {
                 .then(function (payload) {
                     const nextDocumentPayload = payload && payload.document ? payload.document : { pvStage: nextStage };
                     mergeCurrentDocumentPayload(nextDocumentPayload);
+                    if (nextStage === 'review') {
+                        window.location.reload();
+                        return;
+                    }
                     if (nextStage === 'validated' && currentDocumentPayload.isPvValidated === true) {
                         openValidatedPvViewer();
                     }

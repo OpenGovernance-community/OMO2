@@ -85,6 +85,9 @@ function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint
         $hasStructureApplication
     );
     $positionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($allPoints);
+    $pointDiscussionSummaryMap = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW
+        ? omoDocumentsPvEditorBuildPointDiscussionSummaryMap($organizationId, $allPoints, $currentUserId)
+        : [];
 
     return omoDocumentsPvEditorBuildContextualPointPayload(
         $point,
@@ -97,7 +100,8 @@ function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint
         $authorOptions,
         $authorHolonOptions,
         (string)($positionLabels[(int)$point->getId()] ?? '--'),
-        $groupSummaryMap[(int)$point->getId()] ?? []
+        $groupSummaryMap[(int)$point->getId()] ?? [],
+        $pointDiscussionSummaryMap[(int)$point->getId()] ?? []
     );
 }
 
@@ -116,6 +120,9 @@ function omoDocumentsPvEditorBuildPointsPayloadForDocument(int $documentId, int 
         : [];
     $positionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points);
     $groupSummaryMap = omoDocumentsPvEditorBuildGroupSummaryMap($points);
+    $pointDiscussionSummaryMap = $hasDocument && $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW
+        ? omoDocumentsPvEditorBuildPointDiscussionSummaryMap($organizationId, $points, $currentUserId)
+        : [];
 
     $payload = [];
     foreach ($points as $point) {
@@ -137,7 +144,8 @@ function omoDocumentsPvEditorBuildPointsPayloadForDocument(int $documentId, int 
             $authorOptions,
             $authorHolonOptions,
             (string)($positionLabels[(int)$point->getId()] ?? '--'),
-            $groupSummaryMap[(int)$point->getId()] ?? []
+            $groupSummaryMap[(int)$point->getId()] ?? [],
+            $pointDiscussionSummaryMap[(int)$point->getId()] ?? []
         );
     }
 
@@ -184,7 +192,8 @@ function omoDocumentsPvEditorBuildDocumentPayload(\dbObject\Document $document, 
         'pvEditorHandoverOpen' => $document->isPvEditorHandoverOpen(),
         'isPvValidated' => $document->isPvValidated(),
         'isPvTemplate' => $document->isPvTemplate(),
-        'canManagePvTemplate' => $document->canUserManagePvDocument($currentUserId),
+        'canManagePvTemplate' => $document->canUserManagePvDocument($currentUserId)
+            && $document->getPvStage() !== \dbObject\Document::PV_STAGE_REVIEW,
     ];
 }
 
@@ -252,6 +261,15 @@ $currentUserId = (int)commonGetCurrentUserId();
 $editorToken = trim((string)($_POST['editor_token'] ?? ''));
 
 $document = omoDocumentsPvEditorLoadDocumentOrFail($documentId, $organizationId, $currentUserId);
+if ($document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW) {
+    $reviewAllowedActions = ['lock_point', 'unlock_point', 'take_over_point_lock', 'save_point', 'update_stage', 'poll_updates'];
+    if (!in_array($action, $reviewAllowedActions, true) || (!$document->canUserManagePvDocument($currentUserId) && $action !== 'poll_updates')) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+}
 $hasTeamApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'team');
 $hasStructureApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'structure');
 $hasCalendarApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'calendar');
@@ -775,14 +793,18 @@ if ($action === 'save_point') {
         ], 403);
     }
 
+    $isReview = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
     $point->set('title', trim((string)($_POST['title'] ?? '')));
     $point->set('pointtype', trim((string)($_POST['pointtype'] ?? '')));
-    $point->set('desired_duration_minutes', trim((string)($_POST['desired_duration_minutes'] ?? '')));
+    $point->set(
+        'desired_duration_minutes',
+        $isReview ? $point->get('desired_duration_minutes') : trim((string)($_POST['desired_duration_minutes'] ?? ''))
+    );
     $point->set('IDuser_author', $requestedAuthorUserId > 0 ? $requestedAuthorUserId : null);
     $point->set('author_email', $requestedAuthorEmail !== '' ? $requestedAuthorEmail : null);
     $point->set('IDholon_concerned', $requestedConcernedHolonId > 0 ? $requestedConcernedHolonId : null);
     $point->set('content', (string)($_POST['content'] ?? ''));
-    $point->set('is_confidential', !empty($_POST['is_confidential']));
+    $point->set('is_confidential', $isReview ? $point->isConfidential() : !empty($_POST['is_confidential']));
     $point->set('IDuser_modification', $currentUserId);
 
     $saveResult = $point->save();
@@ -904,6 +926,15 @@ if ($action === 'reorder_points') {
 }
 
 if ($action === 'update_stage') {
+    if (
+        $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW
+        && trim((string)($_POST['pv_stage'] ?? '')) !== \dbObject\Document::PV_STAGE_VALIDATED
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
     $stageResult = $document->updatePvStageInOrganizationContext(
         $organizationId,
         $currentUserId,
