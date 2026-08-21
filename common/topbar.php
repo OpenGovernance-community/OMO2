@@ -261,6 +261,7 @@ function commonRenderTopbar(array $options = [])
         'notifications' => [
             'enabled' => !empty($options['notifications']['enabled']),
             'buttonLabel' => (string)($options['notifications']['buttonLabel'] ?? 'Notifications'),
+            'markAllReadLabel' => (string)($options['notifications']['markAllReadLabel'] ?? 'Tout marquer comme lu'),
             'inboxUrl' => (string)($options['notifications']['inboxUrl'] ?? ''),
             'markReadUrl' => (string)($options['notifications']['markReadUrl'] ?? ''),
             'csrfToken' => (string)($options['notifications']['csrfToken'] ?? ''),
@@ -396,10 +397,10 @@ function commonRenderTopbar(array $options = [])
         echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260819-filter-chips-level">' . PHP_EOL;
         echo '<script src="/common/assets/components.js?v=20260814-context-help-bounds" defer></script>' . PHP_EOL;
         echo '<script src="/common/holon_scope_picker.js?v=20260805-hover-label-priority" defer></script>' . PHP_EOL;
-        echo '<link rel="stylesheet" href="/common/assets/topbar.css?v=20260819-organization-level">' . PHP_EOL;
+        echo '<link rel="stylesheet" href="/common/assets/topbar.css?v=20260821-notification-mark-all-read">' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/notifications/notifications.css">' . PHP_EOL;
         echo '<script src="/common/notifications/notifications.js" defer></script>' . PHP_EOL;
-        echo '<script src="/common/notifications/inbox.js?v=20260806-explicit-read" defer></script>' . PHP_EOL;
+        echo '<script src="/common/notifications/inbox.js?v=20260821-mark-all-read" defer></script>' . PHP_EOL;
         echo '<script src="/common/assets/topbar.js?v=20260731-drawer-load-error" defer></script>' . PHP_EOL;
         $assetsLoaded = true;
     }
@@ -563,6 +564,9 @@ function commonRenderTopbar(array $options = [])
                 <span class="common-topbar__visually-hidden"><?= htmlspecialchars($config['notifications']['buttonLabel']) ?></span>
             </button>
             <div class="common-topbar__menu common-topbar__menu--panel common-topbar__menu--right" data-topbar-menu="notifications">
+                <div class="omo-notification-inbox__header">
+                    <button type="button" class="omo-notification-inbox__mark-all-read" data-omo-notification-mark-all-read><?= htmlspecialchars($config['notifications']['markAllReadLabel']) ?></button>
+                </div>
                 <div class="omo-notification-inbox" data-omo-notification-inbox>
                     <p class="omo-notification-inbox__empty">Chargement...</p>
                 </div>

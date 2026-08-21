@@ -307,6 +307,32 @@
     gap: 8px;
 }
 
+.omo-notification-inbox__header {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 12px 4px;
+}
+
+.omo-notification-inbox__mark-all-read {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-primary, #2563eb);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+}
+
+.omo-notification-inbox__mark-all-read:hover,
+.omo-notification-inbox__mark-all-read:focus-visible {
+    text-decoration: underline;
+}
+
+.omo-notification-inbox__mark-all-read:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
 .omo-notification-inbox__item {
     position: relative;
     display: grid;

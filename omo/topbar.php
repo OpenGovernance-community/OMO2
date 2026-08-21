@@ -270,6 +270,10 @@ function omoGetTopbarSourceLang(): array
             'text' => 'Notifications',
             'context' => 'Button label for the OMO notification inbox bell.',
         ],
+        'topbar.notifications.mark_all_read' => [
+            'text' => 'Tout marquer comme lu',
+            'context' => 'Action label for marking all notifications in the current organization as read.',
+        ],
     ];
 }
 
@@ -515,6 +519,7 @@ function omoBuildTopbarOptions(array $organizationContext, array $options = []):
         'notifications' => [
             'enabled' => !$isDemoGuest && $variant === 'app' && $currentUserId > 0 && $hasOrganizationContext,
             'buttonLabel' => omoTopbarTranslate('topbar.notifications.button'),
+            'markAllReadLabel' => omoTopbarTranslate('topbar.notifications.mark_all_read'),
             'inboxUrl' => '/omo/api/notifications/inbox.php',
             'markReadUrl' => '/omo/api/notifications/mark_read.php',
             'csrfToken' => (string)($_SESSION['omo_notification_inbox_csrf'] ?? ''),

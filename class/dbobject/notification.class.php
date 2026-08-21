@@ -196,4 +196,17 @@ class Notification extends DbObject
         }
         return self::execute('UPDATE `notification` SET `read_at` = NOW() WHERE ' . $where, $parameters);
     }
+
+    public static function markAllReadForUser($userId, $organizationId)
+    {
+        $userId = (int)$userId;
+        $organizationId = (int)$organizationId;
+        if ($userId <= 0 || $organizationId <= 0) {
+            return false;
+        }
+        return self::execute(
+            'UPDATE `notification` SET `read_at` = NOW() WHERE `IDuser` = :user_id AND `IDorganization` = :organization_id AND `read_at` IS NULL',
+            ['user_id' => $userId, 'organization_id' => $organizationId]
+        );
+    }
 }
