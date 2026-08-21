@@ -374,8 +374,9 @@ foreach ($metaRows as $metaRow) {
     $metaHtml .= '<div class="meta-row"><strong>' . omoDocumentsPdfEscape($metaRow[0]) . '</strong><span>' . omoDocumentsPdfEscape($metaRow[1]) . '</span></div>';
 }
 
-$generatedAt = (new \DateTimeImmutable())->format('d.m.Y H:i');
-$documentHtml = '<!doctype html><html lang="fr"><head><meta charset="UTF-8"><style>'
+try {
+    $generatedAt = (new \DateTimeImmutable())->format('d.m.Y H:i');
+    $documentHtml = '<!doctype html><html lang="fr"><head><meta charset="UTF-8"><style>'
     . '@page { margin: 18mm 16mm 18mm; }'
     . 'body { color:#172b3a; font-family:"DejaVu Sans",sans-serif; font-size:10pt; line-height:1.45; }'
     . 'h1 { margin:0 0 3mm; color:#092f43; font-size:23pt; line-height:1.15; }'
@@ -452,11 +453,10 @@ $documentHtml = '<!doctype html><html lang="fr"><head><meta charset="UTF-8"><sty
     . $document->getRenderedContentForCurrentViewer()
     . '<div class="footer">' . omoDocumentsPdfEscape(omoDocumentsPdfT('documents.pdf.footer.generated', ['date' => $generatedAt])) . '</div>'
     . '</body></html>';
-$documentHtml = omoDocumentsPdfConvertIndicatorSvgs($documentHtml);
-$projectRoot = dirname(__DIR__, 4);
-$documentHtml = omoDocumentsPdfEmbedLocalImages($documentHtml, $projectRoot);
+    $documentHtml = omoDocumentsPdfConvertIndicatorSvgs($documentHtml);
+    $projectRoot = dirname(__DIR__, 4);
+    $documentHtml = omoDocumentsPdfEmbedLocalImages($documentHtml, $projectRoot);
 
-try {
     $options = new Options();
     $options->set('defaultFont', 'DejaVu Sans');
     $options->set('isRemoteEnabled', false);
@@ -469,6 +469,7 @@ try {
     $dompdf->render();
     $pdfContent = $dompdf->output();
 } catch (\Throwable $exception) {
+    error_log('PV PDF export failed for document #' . $documentId . ': ' . $exception->getMessage());
     omoDocumentsPdfFail(500, omoDocumentsPdfT('documents.pdf.error.generate'));
 }
 

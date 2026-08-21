@@ -4510,7 +4510,8 @@ foreach ($points as $point) {
     function isAutoSaveEnabled() {
         return autoSaveToggle instanceof HTMLInputElement
             && autoSaveToggle.checked
-            && !autoSaveToggle.disabled;
+            && !autoSaveToggle.disabled
+            && currentDocumentPayload.isPvValidated !== true;
     }
 
     function clearDocumentMetadataAutoSave() {
@@ -4518,6 +4519,26 @@ foreach ($points as $point) {
             window.clearTimeout(documentMetadataAutoSaveTimer);
             documentMetadataAutoSaveTimer = null;
         }
+    }
+
+    function stopPvEditorBackgroundWork() {
+        autoSaveTimers.forEach(function (timerId) {
+            window.clearTimeout(timerId);
+        });
+        autoSaveTimers.clear();
+        clearDocumentMetadataAutoSave();
+
+        if (syncPollTimer !== null) {
+            window.clearInterval(syncPollTimer);
+            syncPollTimer = null;
+        }
+        if (lockHeartbeatTimer !== null) {
+            window.clearInterval(lockHeartbeatTimer);
+            lockHeartbeatTimer = null;
+        }
+
+        activeLockPointIds.clear();
+        pendingLockPointIds.clear();
     }
 
     function scheduleDocumentMetadataAutoSave() {
@@ -4774,6 +4795,9 @@ foreach ($points as $point) {
         if (addButton instanceof HTMLButtonElement) {
             addButton.disabled = documentPayload.isPvValidated === true;
         }
+        if (autoSaveToggle instanceof HTMLInputElement) {
+            autoSaveToggle.disabled = documentPayload.isPvValidated === true;
+        }
 
         if (templateToggleButton instanceof HTMLButtonElement) {
             const isTemplate = documentPayload.isPvTemplate === true;
@@ -4815,6 +4839,9 @@ foreach ($points as $point) {
 
         currentDocumentPayload = Object.assign({}, currentDocumentPayload, documentPayload);
         knownDocumentSyncVersion = String(currentDocumentPayload.syncVersion || knownDocumentSyncVersion || '');
+        if (currentDocumentPayload.isPvValidated === true) {
+            stopPvEditorBackgroundWork();
+        }
         syncDocumentStageUi(currentDocumentPayload);
         syncPvEditorUi(currentDocumentPayload);
         syncDocumentMetadataUi();
@@ -7329,6 +7356,10 @@ foreach ($points as $point) {
         if (syncPollTimer !== null) {
             window.clearInterval(syncPollTimer);
         }
+        if (currentDocumentPayload.isPvValidated === true) {
+            syncPollTimer = null;
+            return;
+        }
 
         syncPollTimer = window.setInterval(function () {
             renderTimingSummary();
@@ -7339,6 +7370,10 @@ foreach ($points as $point) {
     }
 
     function syncEditorFromServer() {
+        if (currentDocumentPayload.isPvValidated === true) {
+            return Promise.resolve(null);
+        }
+
         return postPointAction('poll_updates', 0)
             .then(function (payload) {
                 const remoteDocumentPayload = payload && payload.document ? payload.document : null;
@@ -7363,9 +7398,13 @@ foreach ($points as $point) {
         if (lockHeartbeatTimer !== null) {
             window.clearInterval(lockHeartbeatTimer);
         }
+        if (currentDocumentPayload.isPvValidated === true) {
+            lockHeartbeatTimer = null;
+            return;
+        }
 
         lockHeartbeatTimer = window.setInterval(function () {
-            if (document.hidden || activeLockPointIds.size === 0) {
+            if (currentDocumentPayload.isPvValidated === true || document.hidden || activeLockPointIds.size === 0) {
                 return;
             }
 
