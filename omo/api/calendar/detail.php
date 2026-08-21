@@ -284,7 +284,11 @@ $associatedDocument = $event->getAssociatedDocument();
 $canOpenAssociatedDocument = $associatedDocument instanceof \dbObject\Document
     && (
         $associatedDocument->isPvDocument() && !$associatedDocument->isPvValidated()
-            ? $associatedDocument->canUserAccessPvBeforeValidation($currentUserId, $organizationId)
+            ? (
+                $associatedDocument->canUserAccessPvBeforeValidation($currentUserId, $organizationId)
+                || ($associatedDocument->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW
+                    && $associatedDocument->canUserViewPvReadOnly($currentUserId, $organizationId, $eventHolonId > 0 ? $eventHolonId : null))
+            )
             : $associatedDocument->canViewDirectlyInOrganization($organizationId)
     );
 $associatedDocumentUrl = $canOpenAssociatedDocument

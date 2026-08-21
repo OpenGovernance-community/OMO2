@@ -319,6 +319,110 @@ class ChatMessage extends DbObject
         return $changes;
     }
 
+    public function getPvPointUpdateChanges()
+    {
+        if (self::normalizeMessageType($this->get('message_type')) !== self::TYPE_SYSTEM) {
+            return [];
+        }
+
+        $parameters = $this->getParametersArray();
+        if ((string)($parameters['action'] ?? '') !== 'pv_point_saved') {
+            return [];
+        }
+
+        $beforeValues = is_array($parameters['old'] ?? null) ? $parameters['old'] : [];
+        $afterValues = is_array($parameters['new'] ?? null) ? $parameters['new'] : [];
+        $organizationId = (int)$this->get('IDorganization');
+        $pointTypeLabels = [
+            'information' => 'Information',
+            'consultation' => 'Consultation',
+            'decision' => 'Decision',
+        ];
+        $userLabel = static function ($userId) use ($organizationId): string {
+            $userId = (int)$userId;
+            if ($userId <= 0) {
+                return '';
+            }
+            $user = new User();
+            if ($user->load($userId)) {
+                $label = trim((string)$user->getScopedDisplayName($organizationId));
+                if ($label !== '') {
+                    return $label;
+                }
+            }
+            return 'Utilisateur #' . $userId;
+        };
+        $holonLabel = static function ($holonId): string {
+            $holonId = (int)$holonId;
+            if ($holonId <= 0) {
+                return '';
+            }
+            $holon = new Holon();
+            if ($holon->load($holonId)) {
+                $label = trim((string)$holon->getLabel());
+                if ($label !== '') {
+                    return $label;
+                }
+            }
+            return 'Holon #' . $holonId;
+        };
+        $authorLabel = static function (array $values) use ($userLabel): string {
+            $user = $userLabel($values['author_user_id'] ?? 0);
+            if ($user !== '') {
+                return $user;
+            }
+            return trim((string)($values['author_email'] ?? ''));
+        };
+        $fields = [
+            'title' => [
+                'label' => 'Titre',
+                'value' => static function (array $values): string {
+                    return trim(self::normalizeProposalUpdateValue($values['title'] ?? ''));
+                },
+            ],
+            'point_type' => [
+                'label' => 'Type de point',
+                'value' => static function (array $values) use ($pointTypeLabels): string {
+                    $value = trim((string)($values['point_type'] ?? ''));
+                    return (string)($pointTypeLabels[$value] ?? $value);
+                },
+            ],
+            'content' => [
+                'label' => 'Contenu',
+                'value' => static function (array $values): string {
+                    return self::normalizeProposalUpdateValue($values['content'] ?? '');
+                },
+            ],
+            'author' => [
+                'label' => 'Porte par',
+                'value' => $authorLabel,
+            ],
+            'concerned_holon_id' => [
+                'label' => 'Holon concerne',
+                'value' => static function (array $values) use ($holonLabel): string {
+                    return $holonLabel($values['concerned_holon_id'] ?? 0);
+                },
+            ],
+        ];
+        $changes = [];
+        foreach ($fields as $field => $definition) {
+            $before = (string)$definition['value']($beforeValues);
+            $after = (string)$definition['value']($afterValues);
+            if ($before === $after) {
+                continue;
+            }
+            $changes[] = [
+                'field' => $field,
+                'label' => (string)$definition['label'],
+                'before' => $before,
+                'after' => $after,
+                'status' => $before === '' ? 'added' : ($after === '' ? 'removed' : 'changed'),
+            ];
+        }
+
+        return $changes;
+    }
+
     public function toClientArray($viewerUserId, $viewerParticipantId = 0)
     {
         $organizationId = (int)$this->get('IDorganization');
@@ -369,7 +473,7 @@ class ChatMessage extends DbObject
                 || ($authorParticipantId > 0 && $authorParticipantId === (int)$viewerParticipantId),
             'createdAt' => $createdAt,
             'createdAtLabel' => $createdAtLabel,
-            'changes' => $this->getProposalUpdateChanges(),
+            'changes' => array_merge($this->getProposalUpdateChanges(), $this->getPvPointUpdateChanges()),
         ];
     }
 }

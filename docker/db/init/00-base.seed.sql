@@ -936,6 +936,7 @@ CREATE TABLE `document` (
   `dateedition` datetime DEFAULT NULL,
   `IDuseredition` int(11) DEFAULT NULL,
   `IDuser_pv_editor` int(11) DEFAULT NULL,
+  `IDuser_pv_official_editor` int(11) DEFAULT NULL,
   `pv_editor_handover_open` tinyint(1) NOT NULL DEFAULT 0,
   `IDusermodification` int(11) DEFAULT NULL,
   `version` int(11) NOT NULL DEFAULT 1,
@@ -946,6 +947,7 @@ CREATE TABLE `document` (
   KEY `idx_document_holon` (`IDholon`),
   KEY `idx_document_pvstage` (`pvstage`),
   KEY `idx_document_pv_editor` (`IDuser_pv_editor`),
+  KEY `idx_document_pv_official_editor` (`IDuser_pv_official_editor`),
   KEY `idx_document_event` (`IDevent`),
   KEY `idx_document_parent` (`IDdocument_parent`),
   KEY `idx_document_folder` (`estDossier`),
@@ -964,6 +966,7 @@ CREATE TABLE `document` (
   CONSTRAINT `fk_document_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_document_parent` FOREIGN KEY (`IDdocument_parent`) REFERENCES `document` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_document_pv_editor` FOREIGN KEY (`IDuser_pv_editor`) REFERENCES `user` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_document_pv_official_editor` FOREIGN KEY (`IDuser_pv_official_editor`) REFERENCES `user` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_document_user_creation` FOREIGN KEY (`IDusercreation`) REFERENCES `user` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_document_user_editing` FOREIGN KEY (`IDuseredition`) REFERENCES `user` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_document_user_modification` FOREIGN KEY (`IDusermodification`) REFERENCES `user` (`id`) ON DELETE SET NULL
