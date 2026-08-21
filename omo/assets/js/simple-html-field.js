@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260820-resource-embed-gaps';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260821-resource-embed-gaps';
 
     if (
         window.omoSimpleHtmlField
@@ -1382,8 +1382,6 @@
                 : null;
             const embedParagraph = document.createElement('p');
             embedParagraph.appendChild(embedNode);
-            const normalParagraph = createNormalParagraph();
-
             if (markerParagraph instanceof HTMLParagraphElement && editable.contains(markerParagraph)) {
                 const trailingParagraph = markerParagraph.cloneNode(false);
                 const splitRange = document.createRange();
@@ -1398,10 +1396,7 @@
                     markerParagraph.after(embedParagraph);
                 }
 
-                if (isParagraphEmpty(trailingParagraph)) {
-                    embedParagraph.after(normalParagraph);
-                    setCursorInParagraph(normalParagraph);
-                } else {
+                if (!isParagraphEmpty(trailingParagraph)) {
                     embedParagraph.after(trailingParagraph);
                     setCursorInParagraph(trailingParagraph);
                 }
@@ -1409,8 +1404,7 @@
                 return true;
             }
 
-            markerNode.replaceWith(embedParagraph, normalParagraph);
-            setCursorInParagraph(normalParagraph);
+            markerNode.replaceWith(embedParagraph);
             return true;
         }
 
@@ -1429,14 +1423,6 @@
                 paragraph.appendChild(child);
             });
 
-            const blocks = Array.from(editable.children || []).filter(function (child) {
-                return isResourceEmbedOnlyParagraph(child);
-            });
-            const lastBlock = blocks.length > 0 ? blocks[blocks.length - 1] : null;
-
-            if (lastBlock && !lastBlock.nextElementSibling) {
-                lastBlock.after(createNormalParagraph());
-            }
         }
 
         function clearResourceGapHideTimer() {
@@ -1480,7 +1466,7 @@
                 return null;
             }
 
-            if (isResourceEmbedOnlyParagraph(paragraph.nextElementSibling)) {
+            if (!paragraph.nextElementSibling || isResourceEmbedOnlyParagraph(paragraph.nextElementSibling)) {
                 return paragraph;
             }
 
@@ -1497,17 +1483,22 @@
             }
 
             const nextParagraph = paragraph.nextElementSibling;
-            if (!isResourceEmbedOnlyParagraph(paragraph) || !isResourceEmbedOnlyParagraph(nextParagraph)) {
+            if (
+                !isResourceEmbedOnlyParagraph(paragraph)
+                || (nextParagraph && !isResourceEmbedOnlyParagraph(nextParagraph))
+            ) {
                 hideResourceGapHelper();
                 return;
             }
 
             const fieldRect = field.getBoundingClientRect();
             const firstRect = paragraph.getBoundingClientRect();
-            const nextRect = nextParagraph.getBoundingClientRect();
+            const nextRect = nextParagraph ? nextParagraph.getBoundingClientRect() : null;
             resourceGapTarget = paragraph;
             resourceGapHelper.style.left = ((firstRect.left + firstRect.right) / 2 - fieldRect.left) + 'px';
-            resourceGapHelper.style.top = ((firstRect.bottom + nextRect.top) / 2 - fieldRect.top) + 'px';
+            resourceGapHelper.style.top = (nextRect
+                ? ((firstRect.bottom + nextRect.top) / 2 - fieldRect.top)
+                : (firstRect.bottom - fieldRect.top + 8)) + 'px';
             resourceGapHelper.style.display = 'inline-flex';
             clearResourceGapHideTimer();
         }
@@ -1534,7 +1525,11 @@
             resourceGapHelper.addEventListener('click', function () {
                 const paragraph = resourceGapTarget;
                 const nextParagraph = paragraph ? paragraph.nextElementSibling : null;
-                if (!paragraph || !nextParagraph || !editable.contains(paragraph) || !isResourceEmbedOnlyParagraph(nextParagraph)) {
+                if (
+                    !paragraph
+                    || !editable.contains(paragraph)
+                    || (nextParagraph && !isResourceEmbedOnlyParagraph(nextParagraph))
+                ) {
                     hideResourceGapHelper();
                     return;
                 }
