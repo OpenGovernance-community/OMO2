@@ -432,8 +432,8 @@ foreach ($points as $point) {
 $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 ?>
 <?php if ($isPvReviewDiscussion): ?>
-<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-pv-review-changes">
-<link rel="stylesheet" href="/common/choice/change-details.css?v=20260821-pv-review">
+<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-pv-review-access-2">
+<link rel="stylesheet" href="/common/choice/change-details.css?v=20260821-pv-review-access-2">
 <?php endif; ?>
 <div
     class="omo-pv-editor"
@@ -2641,9 +2641,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 </div>
 
 <?php if ($isPvReviewDiscussion): ?>
-<script src="/common/choice/word-diff.js?v=20260821-pv-review"></script>
-<script src="/common/choice/change-details.js?v=20260821-pv-review"></script>
-<script src="/common/chat/thread.js?v=20260821-pv-review-block-brackets-readonly"></script>
+<script src="/common/choice/word-diff.js?v=20260821-pv-review-access-2"></script>
+<script src="/common/choice/change-details.js?v=20260821-pv-review-access-2"></script>
+<script src="/common/chat/thread.js?v=20260821-pv-review-access-2"></script>
 <?php endif; ?>
 
 <script>
@@ -4427,7 +4427,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     })();
 
     function ensureHtmlFieldLibrary(callback) {
-        const htmlFieldVersion = '20260821-project-status-canonical';
+        const htmlFieldVersion = '20260821-pv-review-access-2';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'

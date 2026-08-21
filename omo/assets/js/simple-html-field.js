@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260821-project-status-canonical';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260821-pv-review-access-2';
 
     if (
         window.omoSimpleHtmlField
