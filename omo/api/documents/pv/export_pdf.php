@@ -330,11 +330,15 @@ if (!$canAccessDocument) {
     omoDocumentsPdfFail(404, omoDocumentsPdfT('documents.pdf.error.forbidden'));
 }
 
-$dompdfAutoload = dirname(__DIR__, 4) . '/dompdf/vendor/autoload.php';
+$dompdfAutoload = dirname(__DIR__, 4) . '/vendor/autoload.php';
 if (!is_file($dompdfAutoload)) {
     omoDocumentsPdfFail(503, omoDocumentsPdfT('documents.pdf.error.library'));
 }
 require_once $dompdfAutoload;
+
+if (!class_exists(Dompdf::class)) {
+    omoDocumentsPdfFail(503, omoDocumentsPdfT('documents.pdf.error.library'));
+}
 
 $title = trim((string)$document->get('title'));
 $description = trim((string)$document->get('description'));
@@ -457,17 +461,23 @@ try {
     $projectRoot = dirname(__DIR__, 4);
     $documentHtml = omoDocumentsPdfEmbedLocalImages($documentHtml, $projectRoot);
 
-    $options = new Options();
-    $options->set('defaultFont', 'DejaVu Sans');
-    $options->set('isRemoteEnabled', false);
-    $options->set('isHtml5ParserEnabled', true);
-    $options->set('chroot', $projectRoot);
+    $previousErrorReporting = error_reporting();
+    error_reporting($previousErrorReporting & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+    try {
+        $options = new Options();
+        $options->set('defaultFont', 'DejaVu Sans');
+        $options->set('isRemoteEnabled', false);
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('chroot', $projectRoot);
 
-    $dompdf = new Dompdf($options);
-    $dompdf->setPaper('A4', 'portrait');
-    $dompdf->loadHtml($documentHtml, 'UTF-8');
-    $dompdf->render();
-    $pdfContent = $dompdf->output();
+        $dompdf = new Dompdf($options);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->loadHtml($documentHtml, 'UTF-8');
+        $dompdf->render();
+        $pdfContent = $dompdf->output();
+    } finally {
+        error_reporting($previousErrorReporting);
+    }
 } catch (\Throwable $exception) {
     error_log('PV PDF export failed for document #' . $documentId . ': ' . $exception->getMessage());
     omoDocumentsPdfFail(500, omoDocumentsPdfT('documents.pdf.error.generate'));

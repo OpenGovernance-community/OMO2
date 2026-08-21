@@ -1,0 +1,23 @@
+{
+    "name": "systemdd/open-my-organization",
+    "description": "Open My Organization application dependencies.",
+    "license": "proprietary",
+    "type": "project",
+    "require": {
+        "php": "^8.2",
+        "dompdf/dompdf": "^3.1",
+        "orhanerday/open-ai": "^4.9",
+        "phpmailer/phpmailer": "^6.12",
+        "robmorgan/phinx": "^0.16",
+        "tecnickcom/tcpdf": "^6.11",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "config": {
+        "allow-plugins": false,
+        "optimize-autoloader": true,
+        "platform": {
+            "php": "8.5.0"
+        },
+        "sort-packages": true
+    }
+}

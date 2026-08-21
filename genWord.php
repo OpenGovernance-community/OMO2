@@ -2,7 +2,7 @@
 // convert HTML to DOCX
 
 	require_once 'classes/CreateDocx.php';
-	require_once 'dompdf/autoload.inc.php';
+	require_once __DIR__ . '/vendor/autoload.php';
 	use Dompdf\Dompdf;
 	
 	//$docx = new CreateDocx();
