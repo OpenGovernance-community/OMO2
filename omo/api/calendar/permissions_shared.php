@@ -59,10 +59,6 @@ if (!function_exists('omoCalendarCanEditEvent')) {
             return false;
         }
 
-        if ((int)$event->get('IDuser') === $userId) {
-            return true;
-        }
-
         $permissionHolon = omoCalendarResolveEventPermissionHolon($event, $rootHolon);
         return $permissionHolon instanceof \dbObject\Holon
             && omoCalendarCanUseEditEventPermission($permissionHolon, $organizationId, $userId, $useSessionCache);

@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-21
 
+- Le panneau de notifications propose maintenant l action Tout marquer comme lu, qui actualise aussi immediatement la cloche et l affichage des notifications.
 - La phase de relecture des PV attribue automatiquement la main au dernier editeur officiel, ou au createur si aucun n est disponible. Seul cet editeur peut modifier le contenu des points ; ordre du jour, passation, ajout, suppression et autres metadonnees restent verrouilles.
 - Chaque point de PV dispose maintenant de sa propre discussion, ouverte par une bulle dans une popup commune reutilisable. Les discussions restent consultables, sans ecriture, apres validation du PV.
 - En relecture, chaque point affiche le nombre de signalements et un bouton `Signaler des erreurs`, afin de concentrer les echanges sur les erreurs de transcription et les fautes d orthographe.
@@ -17,6 +18,9 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - En phase de relecture, les PV apparaissent maintenant dans la liste des documents selon leur visibilite ; les membres non invites autorises a lire le document accedent a une vue lecture seule, tandis que les discussions de corrections restent reservees aux invites.
 - En relecture, seuls les invites conservent l acces a l editeur et aux discussions de corrections ; les autres membres autorises restent en consultation seule sur le contenu du PV.
 - Les droits de relecture distinguent maintenant la visibilite du document des droits d edition et de discussion, y compris pour les PV sans evenement associe.
+- Les ressources JavaScript et CSS utilisees par les PV portent maintenant une nouvelle version d URL afin de forcer leur rechargement apres publication.
+- La modification d un evenement depend maintenant toujours de `CAN_EDIT_EVENT` ; son createur ne conserve plus automatiquement ce droit s il perd le role ou la permission correspondante.
+- Le formulaire d evenement ne propose maintenant la creation d un document lie que si `CAN_CREATE_DOCUMENT` est autorise dans le contexte selectionne ; la verification serveur reste active a l enregistrement.
 - La base visuelle de la popup de discussion est maintenant partagee avec le chat des decisions : avatars et messages recus a gauche, messages personnels a droite, meme zone de saisie et bouton Envoyer.
 - L ordre du jour des PV affiche maintenant l icone Information, Consultation ou Decision devant chaque point et la met a jour immediatement lors du changement de type.
 - Les points de PV sont maintenant verrouilles des leur prise de focus, restent verrouilles tant que des modifications ne sont pas sauvees, puis sont liberes juste apres la sauvegarde lorsque le focus a quitte le point.

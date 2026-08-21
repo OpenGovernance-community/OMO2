@@ -32,6 +32,27 @@
         });
     }
 
+    function markAllRead() {
+        var config = getConfig();
+        if (!config || !config.markReadUrl) {
+            return Promise.resolve(false);
+        }
+        return fetch(config.markReadUrl, {
+            method: 'POST',
+            keepalive: true,
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            body: JSON.stringify({
+                csrf_token: config.csrfToken,
+                mark_all: true
+            })
+        }).then(function (response) {
+            return response.ok;
+        }).catch(function () {
+            return false;
+        });
+    }
+
     function updateBadge(count) {
         var badge = document.querySelector('[data-omo-notification-badge]');
         if (!badge) {
@@ -77,6 +98,20 @@
             }).catch(function () {
             });
     }
+
+    document.addEventListener('click', function (event) {
+        var markAllButton = event.target.closest('[data-omo-notification-mark-all-read]');
+        if (!markAllButton) {
+            return;
+        }
+        markAllButton.disabled = true;
+        markAllRead().then(function (success) {
+            markAllButton.disabled = false;
+            if (success) {
+                refreshInbox();
+            }
+        });
+    });
 
     document.addEventListener('click', function (event) {
         var item = event.target.closest('[data-omo-notification-item]');
