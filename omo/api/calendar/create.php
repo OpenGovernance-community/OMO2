@@ -138,6 +138,10 @@ $sourceLang = array_merge([
         'text' => 'Document actuel',
         'context' => 'Label shown above the existing linked document summary.',
     ],
+    'calendar.create.document.no_permission' => [
+        'text' => 'Vous ne disposez pas du droit de créer un document dans ce contexte.',
+        'context' => 'Notice shown when the current user can edit an event but cannot create a linked document in its context.',
+    ],
     'calendar.create.document.keyword_pv' => [
         'text' => 'PV',
         'context' => 'Localized keyword used as the default tag for PV documents created from the calendar.',
@@ -509,6 +513,17 @@ $invitationEditorState = omoCalendarBuildInvitationEditorState(
     true
 );
 
+$documentCreationHolonId = $defaultHolonId > 0
+    ? $defaultHolonId
+    : ($currentHolonId > 0 && isset($allowedHolonIds[$currentHolonId]) ? $currentHolonId : 0);
+$canCreateLinkedDocument = Document::canCreateInOrganizationContext(
+    $organizationId,
+    $documentCreationHolonId > 0 ? $documentCreationHolonId : null,
+    $currentUserId,
+    0,
+    false
+);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=UTF-8');
 
@@ -584,7 +599,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    if ($isEditMode && (int)$event->get('IDuser') !== $currentUserId) {
+    if ($isEditMode) {
         $targetEditPermissionHolon = $rootHolon;
         if ($selectedHolonId > 0) {
             $targetEditPermissionHolon = new Holon();
@@ -1134,40 +1149,46 @@ if ($isEditMode) {
                                     </div>
                                 </div>
                             <?php else: ?>
-                                <label class="omo-calendar-create__field generic-form-field">
-                                    <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?></span>
-                                    <select name="document_type" class="generic-form-control" data-omo-calendar-document-type>
-                                        <?php foreach ($documentTypeOptions as $optionValue => $optionLabel): ?>
-                                            <option value="<?= omoApiEscape((string)$optionValue) ?>"<?= (string)$optionValue === $documentTypeDefault ? ' selected' : '' ?>>
-                                                <?= omoApiEscape((string)$optionLabel) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </label>
-                                <div data-omo-calendar-document-fields<?= $documentTypeDefault !== '' ? '' : ' hidden' ?>>
+                                <?php if (!$canCreateLinkedDocument): ?>
+                                    <p class="omo-calendar-create__hint generic-description generic-description--relaxed">
+                                        <?= omoApiEscape(omoCalendarCreateT('calendar.create.document.no_permission')) ?>
+                                    </p>
+                                <?php else: ?>
                                     <label class="omo-calendar-create__field generic-form-field">
-                                        <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_title')) ?></span>
-                                        <input
-                                            type="text"
-                                            name="document_title"
-                                            class="generic-form-control"
-                                            value="<?= omoApiEscape($documentTitleDefault) ?>"
-                                            maxlength="255"
-                                        >
-                                    </label>
-                                    <label class="omo-calendar-create__field generic-form-field" data-omo-calendar-pv-template-field<?= $documentTypeDefault === Document::TYPE_PV ? '' : ' hidden' ?>>
-                                        <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template')) ?></span>
-                                        <select name="pv_template_id" class="generic-form-control">
-                                            <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template_none')) ?></option>
-                                            <?php foreach ($pvTemplatesPayload as $pvTemplateOption): ?>
-                                                <option value="<?= (int)$pvTemplateOption['id'] ?>"><?= omoApiEscape((string)$pvTemplateOption['label']) ?></option>
+                                        <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?></span>
+                                        <select name="document_type" class="generic-form-control" data-omo-calendar-document-type>
+                                            <?php foreach ($documentTypeOptions as $optionValue => $optionLabel): ?>
+                                                <option value="<?= omoApiEscape((string)$optionValue) ?>"<?= (string)$optionValue === $documentTypeDefault ? ' selected' : '' ?>>
+                                                    <?= omoApiEscape((string)$optionLabel) ?>
+                                                </option>
                                             <?php endforeach; ?>
                                         </select>
-                                        <span class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template_hint')) ?></span>
                                     </label>
-                                    <p class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.help_create')) ?></p>
-                                    <p class="omo-calendar-create__notice"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.created_notice')) ?></p>
-                                </div>
+                                    <div data-omo-calendar-document-fields<?= $documentTypeDefault !== '' ? '' : ' hidden' ?>>
+                                        <label class="omo-calendar-create__field generic-form-field">
+                                            <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_title')) ?></span>
+                                            <input
+                                                type="text"
+                                                name="document_title"
+                                                class="generic-form-control"
+                                                value="<?= omoApiEscape($documentTitleDefault) ?>"
+                                                maxlength="255"
+                                            >
+                                        </label>
+                                        <label class="omo-calendar-create__field generic-form-field" data-omo-calendar-pv-template-field<?= $documentTypeDefault === Document::TYPE_PV ? '' : ' hidden' ?>>
+                                            <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template')) ?></span>
+                                            <select name="pv_template_id" class="generic-form-control">
+                                                <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template_none')) ?></option>
+                                                <?php foreach ($pvTemplatesPayload as $pvTemplateOption): ?>
+                                                    <option value="<?= (int)$pvTemplateOption['id'] ?>"><?= omoApiEscape((string)$pvTemplateOption['label']) ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <span class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template_hint')) ?></span>
+                                        </label>
+                                        <p class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.help_create')) ?></p>
+                                        <p class="omo-calendar-create__notice"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.created_notice')) ?></p>
+                                    </div>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </section>
                     </div>

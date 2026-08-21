@@ -25,5 +25,8 @@ if (!is_array($input) || !hash_equals((string)($_SESSION['omo_notification_inbox
 
 $notificationId = (int)($input['notification_id'] ?? 0);
 $url = trim((string)($input['url'] ?? ''));
-$marked = \dbObject\Notification::markReadForUser($userId, $organizationId, $notificationId, $url);
+$markAll = !empty($input['mark_all']);
+$marked = $markAll
+    ? \dbObject\Notification::markAllReadForUser($userId, $organizationId)
+    : \dbObject\Notification::markReadForUser($userId, $organizationId, $notificationId, $url);
 omoNotificationMarkReadRespond($marked ? 200 : 422, ['status' => (bool)$marked]);
