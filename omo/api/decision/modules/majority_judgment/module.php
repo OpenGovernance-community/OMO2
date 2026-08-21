@@ -1020,6 +1020,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     return nodes;
                 };
 
+
                 Array.prototype.forEach.call(getScopedMatches('[data-omo-decision-majority-judgment-form]'), function (form) {
                     if (form.dataset.omoDecisionMjReady === '1') {
                         return;
