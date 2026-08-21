@@ -12,7 +12,15 @@ git clone -b Dev <url-du-repo> .
 
 Le point final `.` est important si vous voulez copier les fichiers directement dans le dossier courant.
 
-## 2. Ouvrir le site dans le navigateur
+## 2. Installer les dependances PHP
+
+Installer les versions verrouillees par `composer.lock` :
+
+```bash
+composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+```
+
+## 3. Ouvrir le site dans le navigateur
 
 Si aucun fichier `.env` n'est present, le site redirige automatiquement vers `install.php`.
 
@@ -27,9 +35,10 @@ L'assistant permet de :
 Le parcours le plus simple pour une premiere installation est donc :
 
 1. cloner le depot
-2. ouvrir l'URL du site
-3. suivre l'assistant
-4. se connecter avec le compte admin cree pendant l'installation
+2. installer les dependances PHP
+3. ouvrir l'URL du site
+4. suivre l'assistant
+5. se connecter avec le compte admin cree pendant l'installation
 
 ## 3. Choisir le mode d'URL des organisations
 
@@ -134,6 +143,7 @@ Procedure manuelle typique :
 cd /chemin/du/site
 git fetch origin Dev
 git reset --hard origin/Dev
+composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 php scripts/run-migrations.php
 ```
 
@@ -146,3 +156,4 @@ Si vous avez fait des modifications locales non versionnees sur le serveur, evit
 - Si le SMTP est mal configure, l'assistant d'installation teste l'envoi avec un timeout court.
 - Si la base cible est vide, l'installation importe le seed de depart.
 - Si la base existe deja mais ne correspond pas au seed attendu, l'installation s'arrete pour eviter un ecrasement involontaire.
+- Composer doit etre disponible sur le serveur pour installer les dependances verrouillees par `composer.lock`.

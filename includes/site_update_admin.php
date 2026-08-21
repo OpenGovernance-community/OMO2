@@ -53,6 +53,18 @@ function siteUpdateAdminGetGitBinary()
     return 'git';
 }
 
+function siteUpdateAdminGetComposerBinary()
+{
+    if (function_exists('envValue')) {
+        $configuredBinary = trim((string)envValue('SITE_UPDATE_COMPOSER_BINARY', ''));
+        if ($configuredBinary !== '') {
+            return $configuredBinary;
+        }
+    }
+
+    return 'composer';
+}
+
 function siteUpdateAdminGetPhpBinary()
 {
     if (function_exists('envValue')) {
@@ -681,7 +693,32 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false)
 
         siteUpdateAdminWriteState(array(
             'status' => 'running',
-            'message' => 'Synchronisation du code terminee. Application des migrations en cours.',
+            'message' => 'Synchronisation du code terminee. Installation des dependances en cours.',
+            'startedAt' => gmdate('c'),
+            'userId' => $actorUserId,
+            'forced' => (bool)$force,
+            'branch' => (string)$context['tracking'],
+            'behindCount' => $behindCount,
+            'localCommit' => $localCommit,
+            'remoteCommit' => $remoteCommit,
+            'localHeadline' => (string)($localSummary['headline'] ?? ''),
+            'remoteHeadline' => (string)($remoteSummary['headline'] ?? ''),
+            'localDate' => (string)($localSummary['date'] ?? ''),
+            'remoteDate' => (string)($remoteSummary['date'] ?? ''),
+        ));
+
+        $composerOutput = siteUpdateAdminRunCommand(
+            array(siteUpdateAdminGetComposerBinary(), 'install', '--no-dev', '--prefer-dist', '--no-interaction', '--optimize-autoloader'),
+            $repoRoot,
+            $exitCode
+        );
+        if ($exitCode !== 0) {
+            throw new RuntimeException(siteUpdateAdminFormatCommandOutput($composerOutput) ?: 'L installation des dependances PHP a echoue.');
+        }
+
+        siteUpdateAdminWriteState(array(
+            'status' => 'running',
+            'message' => 'Installation des dependances terminee. Application des migrations en cours.',
             'startedAt' => gmdate('c'),
             'userId' => $actorUserId,
             'forced' => (bool)$force,
@@ -729,6 +766,7 @@ function siteUpdateAdminRunUpdate($actorUserId, $force = false)
             'branch' => (string)$context['tracking'],
             'forced' => (bool)$force,
             'migrationOutput' => siteUpdateAdminFormatCommandOutput($migrationOutput),
+            'composerOutput' => siteUpdateAdminFormatCommandOutput($composerOutput),
             'resetOutput' => siteUpdateAdminFormatCommandOutput($resetOutput),
         );
     } finally {
