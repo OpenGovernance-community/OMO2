@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260821-resource-embed-gaps';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260821-project-status-canonical';
 
     if (
         window.omoSimpleHtmlField
@@ -714,9 +714,50 @@
                 embedNode.setAttribute('data-omo-project-title', title);
             }
 
+            const projectStatus = getElementAttributeValue(sourceNode, 'data-omo-project-status').trim();
+            const projectStatusLabel = getElementAttributeValue(sourceNode, 'data-omo-project-status-label').trim();
+            if (/^(?:someday|ready|in_progress|blocked|review|done)$/.test(projectStatus)) {
+                embedNode.setAttribute('data-omo-project-status', projectStatus);
+            }
+            if (projectStatusLabel) {
+                embedNode.setAttribute('data-omo-project-status-label', projectStatusLabel);
+            }
+
             Array.from(sourceNode.childNodes || []).forEach(function (childNode) {
                 appendSanitizedChild(embedNode, buildSanitizedNode(childNode, ownerDocument, options));
             });
+
+            const sourceStatusNode = sourceNode.querySelector('.omo-project-embed__status');
+            const canonicalStatusLabel = projectStatusLabel
+                || (sourceStatusNode ? String(sourceStatusNode.textContent || '').trim() : '');
+            const canonicalStatus = /^(?:someday|ready|in_progress|blocked|review|done)$/.test(projectStatus)
+                ? projectStatus
+                : (sourceStatusNode
+                    ? ((String(sourceStatusNode.getAttribute('class') || '').match(/omo-project-embed__status--(someday|ready|in_progress|blocked|review|done)/) || [])[1] || '')
+                    : '');
+            const headerNode = Array.from(embedNode.children || []).find(function (childNode) {
+                return String(childNode.tagName || '').toUpperCase() === 'STRONG';
+            });
+            if (headerNode && canonicalStatusLabel) {
+                Array.from(headerNode.children || []).filter(function (childNode) {
+                    if (String(childNode.tagName || '').toUpperCase() !== 'EM') {
+                        return false;
+                    }
+                    const capsuleLabel = String(childNode.textContent || '').trim().toUpperCase();
+                    return !/^P[1-5]$/.test(capsuleLabel) && !/^(?:S|M|L|XL|XXL)$/.test(capsuleLabel);
+                }).forEach(function (statusNode) {
+                    statusNode.remove();
+                });
+
+                const statusNode = ownerDocument.createElement('em');
+                statusNode.setAttribute('class', 'omo-project-embed__status'
+                    + (canonicalStatus ? ' omo-project-embed__status--' + canonicalStatus : ''));
+                statusNode.textContent = canonicalStatusLabel;
+                const firstCapsule = Array.from(headerNode.children || []).find(function (childNode) {
+                    return String(childNode.tagName || '').toUpperCase() === 'EM';
+                });
+                headerNode.insertBefore(statusNode, firstCapsule || null);
+            }
 
             return embedNode;
         }

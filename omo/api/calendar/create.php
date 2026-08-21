@@ -914,7 +914,11 @@ $documentTypeOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailab
 $canOpenAssociatedDocument = $associatedDocument instanceof Document
     && (
         $associatedDocument->isPvDocument() && !$associatedDocument->isPvValidated()
-            ? $associatedDocument->canUserAccessPvBeforeValidation($currentUserId, $organizationId)
+            ? (
+                $associatedDocument->canUserAccessPvBeforeValidation($currentUserId, $organizationId)
+                || ($associatedDocument->getPvStage() === Document::PV_STAGE_REVIEW
+                    && $associatedDocument->canUserViewPvReadOnly($currentUserId, $organizationId, $currentHolonId > 0 ? $currentHolonId : null))
+            )
             : $associatedDocument->canViewDirectlyInOrganization($organizationId)
     );
 $associatedDocumentUrl = $canOpenAssociatedDocument

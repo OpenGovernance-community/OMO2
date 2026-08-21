@@ -873,6 +873,13 @@ class DocumentPvPoint extends DbObject
 
     public function save()
     {
+        $previousValues = null;
+        if ((int)$this->getId() > 0) {
+            $previousPoint = new self();
+            if ($previousPoint->load((int)$this->getId())) {
+                $previousValues = $previousPoint->getReviewDiscussionValues();
+            }
+        }
         $title = trim((string)$this->get('title'));
         $content = \dbObject\PropertyFormat::sanitizeHtml((string)$this->get('content'));
         $documentId = (int)$this->get('IDdocument');
@@ -988,7 +995,57 @@ class DocumentPvPoint extends DbObject
         }
         $this->set('datemodification', $now);
 
-        return parent::save();
+        $saveResult = parent::save();
+        $currentValues = $this->getReviewDiscussionValues();
+        if (
+            is_array($saveResult)
+            && !empty($saveResult['status'])
+            && $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW
+            && $previousValues !== $currentValues
+        ) {
+            $thread = \dbObject\ChatThread::getOrCreateForSubject(
+                (int)$document->get('IDorganization'),
+                \dbObject\ChatThread::SUBJECT_DOCUMENT_PV_POINT,
+                (int)$this->getId(),
+                (int)$this->get('IDuser_modification'),
+                $title
+            );
+            if ($thread instanceof \dbObject\ChatThread) {
+                \dbObject\ChatMessage::createSystemMessage(
+                    $thread,
+                    'Un point du PV a ete modifie : ' . ($title !== '' ? $title : 'Point sans titre'),
+                    (int)$this->get('IDuser_modification'),
+                    [
+                        'action' => 'pv_point_saved',
+                        'point_id' => (int)$this->getId(),
+                        'old' => $previousValues,
+                        'new' => $currentValues,
+                    ]
+                );
+            }
+        }
+
+        return $saveResult;
+    }
+
+    private function getReviewDiscussionValues(): array
+    {
+        return [
+            'item_type' => self::normalizeItemType($this->get('item_type')),
+            'parent_id' => (int)$this->get('IDparent'),
+            'position' => (int)$this->get('position'),
+            'title' => trim((string)$this->get('title')),
+            'point_type' => self::normalizePointType($this->get('pointtype')),
+            'content' => (string)$this->get('content'),
+            'desired_duration_minutes' => $this->getDurationMinutesValue('desired_duration_minutes'),
+            'actual_duration_minutes' => $this->getDurationMinutesValue('actual_duration_minutes'),
+            'author_user_id' => (int)$this->get('IDuser_author'),
+            'author_email' => trim((string)$this->get('author_email')),
+            'concerned_holon_id' => (int)$this->get('IDholon_concerned'),
+            'is_handled' => $this->isHandled() ? 1 : 0,
+            'is_confidential' => $this->isConfidential() ? 1 : 0,
+            'active' => !empty($this->get('active')) ? 1 : 0,
+        ];
     }
 
     public static function reorderForDocument(int $documentId, array $pointIds): array
