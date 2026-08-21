@@ -2,7 +2,7 @@
 
 Cette configuration sert a lancer une version locale reproductible du projet avec :
 
-- PHP 8.2 + Apache
+- PHP 8.5 + Apache
 - MariaDB 11.4
 - Mailpit pour tester les emails en local
 - phpMyAdmin pour inspecter la base locale
@@ -88,6 +88,12 @@ Au premier demarrage :
 
 ```bash
 docker compose up --build
+```
+
+Apres le premier demarrage, installer les dependances PHP dans le volume du projet :
+
+```bash
+docker compose exec app composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 ```
 
 Les ports `80` et `443` doivent etre libres sur la machine hote.

@@ -3,6 +3,48 @@
 require_once dirname(__DIR__) . '/db/connection.php';
 require_once dirname(__DIR__) . '/db/migrations.php';
 
+function ensureMigrationComposerDependencies(): void
+{
+    $projectRoot = dirname(__DIR__);
+    $autoloadPath = $projectRoot . '/vendor/autoload.php';
+    if (is_file($autoloadPath)) {
+        return;
+    }
+
+    if (!function_exists('exec')) {
+        throw new RuntimeException('Les dependances PHP sont absentes et Composer ne peut pas etre lance sur ce serveur.');
+    }
+
+    $composerBinary = trim((string)envValue('SITE_UPDATE_COMPOSER_BINARY', 'composer'));
+    if ($composerBinary === '') {
+        $composerBinary = 'composer';
+    }
+
+    $command = escapeshellarg($composerBinary)
+        . ' install --no-dev --prefer-dist --no-interaction --optimize-autoloader 2>&1';
+    $originalDirectory = getcwd();
+    if (!@chdir($projectRoot)) {
+        throw new RuntimeException('Impossible d acceder au dossier du projet pour installer les dependances PHP.');
+    }
+
+    try {
+        echo "Dependances PHP absentes. Installation avec Composer.\n";
+        $outputLines = array();
+        exec($command, $outputLines, $exitCode);
+        if ($outputLines !== array()) {
+            echo implode("\n", $outputLines) . "\n";
+        }
+    } finally {
+        if ($originalDirectory !== false) {
+            @chdir($originalDirectory);
+        }
+    }
+
+    if ((int)$exitCode !== 0 || !is_file($autoloadPath)) {
+        throw new RuntimeException('L installation des dependances PHP a echoue.');
+    }
+}
+
 function displayMigrationHelp(): void
 {
     echo "Usage : php scripts/run-migrations.php [--sql-dir=CHEMIN] [--database=BASE] [--databases=BASE1,BASE2]\n";
@@ -80,6 +122,8 @@ try {
     if (PHP_SAPI !== 'cli') {
         throw new RuntimeException('Ce script doit être exécuté en ligne de commande.');
     }
+
+    ensureMigrationComposerDependencies();
 
     $options = parseMigrationCliOptions($argv);
     $sqlDir = $options['sqlDir'];
