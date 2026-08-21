@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-21
 
+- Les dependances PHP, dont DOMpdf, sont maintenant verrouillees par Composer et installees lors des mises a jour automatiques du site, y compris durant la premiere bascule depuis l ancien deploiement.
 - Lorsqu un PV est valide et passe en lecture seule, ses sauvegardes automatiques, sa synchronisation et ses battements de verrou sont immediatement arretes.
 - L export PDF des PV renvoie maintenant une erreur explicite et journalisee si la preparation du contenu echoue, au lieu de telecharger un fichier vide.
 - Les lignes vides ne sont plus ajoutees automatiquement apres les blocs de ressources : le bouton `+` permet de les creer a la demande entre deux blocs ou apres le dernier.

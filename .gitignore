@@ -13,6 +13,7 @@
 
 /test/**
 /*.htm
+/vendor/
 /dompdf/**
 /macros-libreoffice/**
 /library/**
