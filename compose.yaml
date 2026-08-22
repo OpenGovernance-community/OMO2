@@ -81,6 +81,23 @@ services:
       retries: 30
       start_period: 10s
 
+  collabora:
+    build:
+      context: ./docker/collabora
+      dockerfile: Dockerfile
+    image: omo-collabora:local
+    env_file:
+      - ./docker/collabora/.env.private
+    command:
+      - --o:ssl.enable=false
+      - --o:ssl.termination=true
+      - --o:welcome.enable=false
+      - --o:home_mode.enable=true
+      - --o:net.content_security_policy=frame-ancestors localtest.me:* *.localtest.me:*
+    expose:
+      - "9980"
+    privileged: true
+
   db:
     image: mariadb:11.4
     environment:

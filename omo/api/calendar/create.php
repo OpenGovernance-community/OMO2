@@ -345,7 +345,7 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
 
 $hasStructureApplication = $organization->isStructureApplicationEnabled($currentUserId);
 $rootHolon = $hasStructureApplication ? $organization->getEnabledStructuralRootHolon($currentUserId) : null;
-$nextcloudDocumentsAvailable = $organization->hasNextcloudDocumentStorage();
+$nextcloudDocumentsAvailable = $organization->hasDocumentStorage();
 $project = null;
 
 if ($requestedProjectId > 0) {
