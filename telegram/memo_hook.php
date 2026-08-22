@@ -1395,13 +1395,10 @@
 		$threadId = getMessageThreadId($message);
 		$isPrivateChat = isTelegramPrivateChat($message);
 		$groupDestinationContext = null;
+		$documentUser = $user;
+		$summaryOnly = false;
 
 		if ($actorId <= 0 || $chatId === null || !isset($message['voice'])) {
-			return;
-		}
-
-		if ((int)$user->getId() <= 0) {
-			sendMessage($chatId, "Votre compte Telegram doit etre connecte avec /connect en message prive avant d'envoyer un memo vocal.", null, $threadId);
 			return;
 		}
 
@@ -1411,23 +1408,35 @@
 				? $groupDestination->getDocumentContext()
 				: null;
 			if (!is_array($groupDestinationContext)) {
-				sendMessage($chatId, "Ce groupe n'est pas encore connecte a un role ou un projet. Une personne autorisee peut envoyer /connect.", null, $threadId);
-				return;
+				if ((int)$user->getId() <= 0) {
+					return;
+				}
+				$summaryOnly = true;
+			} elseif ((int)$user->getId() <= 0) {
+				$configuredUser = new \dbObject\User();
+				if (!$configuredUser->load((int)$groupDestination->get('IDuser_configured'))) {
+					return;
+				}
+				$documentUser = $configuredUser;
 			}
 
-			if (!\dbObject\Document::canCreateInOrganizationContext(
+			if (!$summaryOnly && !\dbObject\Document::canCreateInOrganizationContext(
 				(int)$groupDestinationContext['organizationId'],
 				(int)$groupDestinationContext['holonId'] > 0 ? (int)$groupDestinationContext['holonId'] : null,
-				(int)$user->getId(),
+				(int)$documentUser->getId(),
 				0,
 				false
 			)) {
-				sendMessage($chatId, "Vous n'avez plus le droit d'envoyer des memos vers cette destination.", null, $threadId);
+				if ((int)$user->getId() > 0) {
+					sendMessage($chatId, "Vous n'avez plus le droit d'envoyer des memos vers cette destination.", null, $threadId);
+				}
 				return;
 			}
+		} elseif ((int)$user->getId() <= 0) {
+			return;
 		}
 
-		if (!patreonUserCanUseAi((int)$user->getId())) {
+		if (!patreonUserCanUseAi((int)$documentUser->getId())) {
 			sendMessage(
 				$chatId,
 				"Les fonctions IA sont reservees aux contributeurs Patreon payants. Connectez votre compte avec /connect puis soutenez le projet sur Patreon pour utiliser la transcription audio.",
@@ -1454,7 +1463,14 @@
 			return;
 		}
 
-		$waitMessageId = sendMessage($chatId, "Un petit moment, je retranscris tout ça...", null, $threadId);
+		$waitMessageId = sendMessage(
+			$chatId,
+			$summaryOnly
+				? "Un instant, je retranscris tout ça. Si vous souhaitez conserver ce contenu dans OMO, connectez un rôle ou un projet avec /connect."
+				: "Un petit moment, je retranscris tout ça...",
+			null,
+			$threadId
+		);
 
 		set_time_limit(240);
 		ignore_user_abort(true);
@@ -1534,33 +1550,40 @@
 			return;
 		}
 
-		$metadataPrompt = "Return exactly three lines for the following text. TITLE: a concise document title. SUMMARY: a French summary of at most 150 characters. KEYWORDS: three to five French keywords separated only by commas. Do not use markdown or add any other text.\n".$response->text;
-		$metadataSystemInstruction = "You generate document metadata. Always return the requested TITLE, SUMMARY, and KEYWORDS lines exactly, even when the source text is in French.";
-		$metadata = (string)say($metadataPrompt, $metadataSystemInstruction);
 		$title = "Mémo vocal";
 		$resume = '';
 		$keywords = '';
-		if (preg_match('/^(?:TITLE|TITRE)\s*:\s*(.+)$/miu', $metadata, $titleMatch)) {
-			$title = trim($titleMatch[1], " \t\n\r\0\x0B*\"");
-		}
-		if ($title === '') {
-			$title = "Mémo vocal";
-		}
-		if (preg_match('/^(?:SUMMARY|RESUME|RÉSUMÉ)\s*:\s*(.+)$/miu', $metadata, $resumeMatch)) {
-			$resume = trim($resumeMatch[1], " \t\n\r\0\x0B*\"");
-		}
-		if (preg_match('/^(?:KEYWORDS|MOTS[ _-]*CLES|MOTS[ _-]*CLÉS)\s*:\s*(.+)$/miu', $metadata, $keywordsMatch)) {
-			$keywordItems = array_filter(array_map(function ($keyword) {
-				return trim(ltrim((string)$keyword, '#'));
-			}, explode(',', $keywordsMatch[1])));
-			$keywords = implode(', ', array_unique($keywordItems));
+		if ($summaryOnly) {
+			$resume = trim((string)say(
+				"Summarize the following French text in no more than 150 characters. Return only the summary, without a title, label, markdown, or quotation marks.\n".$response->text,
+				"You produce concise French summaries."
+			));
+		} else {
+			$metadataPrompt = "Return exactly three lines for the following text. TITLE: a concise document title. SUMMARY: a French summary of at most 150 characters. KEYWORDS: three to five French keywords separated only by commas. Do not use markdown or add any other text.\n".$response->text;
+			$metadataSystemInstruction = "You generate document metadata. Always return the requested TITLE, SUMMARY, and KEYWORDS lines exactly, even when the source text is in French.";
+			$metadata = (string)say($metadataPrompt, $metadataSystemInstruction);
+			if (preg_match('/^(?:TITLE|TITRE)\s*:\s*(.+)$/miu', $metadata, $titleMatch)) {
+				$title = trim($titleMatch[1], " \t\n\r\0\x0B*\"");
+			}
+			if ($title === '') {
+				$title = "Mémo vocal";
+			}
+			if (preg_match('/^(?:SUMMARY|RESUME|RÉSUMÉ)\s*:\s*(.+)$/miu', $metadata, $resumeMatch)) {
+				$resume = trim($resumeMatch[1], " \t\n\r\0\x0B*\"");
+			}
+			if (preg_match('/^(?:KEYWORDS|MOTS[ _-]*CLES|MOTS[ _-]*CLÉS)\s*:\s*(.+)$/miu', $metadata, $keywordsMatch)) {
+				$keywordItems = array_filter(array_map(function ($keyword) {
+					return trim(ltrim((string)$keyword, '#'));
+				}, explode(',', $keywordsMatch[1])));
+				$keywords = implode(', ', array_unique($keywordItems));
+			}
 		}
 
 		$content = (string)$response->text;
 
 		$doc = null;
-		if ($user->getId() > 0) {
-			$user->refreshDbh();
+		if (!$summaryOnly && $documentUser->getId() > 0) {
+			$documentUser->refreshDbh();
 
 			try {
 				$doc = new \dbObject\Document();
@@ -1568,7 +1591,7 @@
 				$doc->set("description", $resume);
 				$doc->set("content", $content);
 				$doc->set("keywords", $keywords);
-				$doc->set("IDuser", $user->getId());
+				$doc->set("IDuser", $documentUser->getId());
 
 				if (is_array($groupDestinationContext)) {
 					$doc->set("IDorganization", (int)$groupDestinationContext['organizationId']);
@@ -1626,8 +1649,10 @@
 			deleteMessage($chatId, $waitMessageId, $threadId);
 		}
 
-		$messageText = "\xE2\xAC\x86 ".($resume !== '' ? $resume : "Mémo vocal enregistré.");
-		if ($doc && $doc->getId() > 0) {
+		$messageText = $summaryOnly
+			? ($resume !== '' ? $resume : $content)
+			: "\xE2\xAC\x86 ".($resume !== '' ? $resume : "Mémo vocal enregistré.");
+		if (!$summaryOnly && $doc && $doc->getId() > 0) {
 			$messageText .= "\n".formatDocumentLink($doc);
 		}
 

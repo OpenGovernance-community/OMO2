@@ -330,15 +330,17 @@
 			];
 		}
 
-		public static function buildCurrentViewerContext(int $organizationId): array
+		public static function buildCurrentViewerContext(int $organizationId, ?int $viewerUserId = null): array
 		{
 			$organizationId = (int)$organizationId;
 			$shareLink = function_exists('commonGetCurrentShareLink')
 				? \commonGetCurrentShareLink()
 				: null;
-			$userId = function_exists('commonGetCurrentUserId')
-				? (int)\commonGetCurrentUserId()
-				: (int)($_SESSION['currentUser'] ?? 0);
+			$userId = $viewerUserId !== null
+				? (int)$viewerUserId
+				: (function_exists('commonGetCurrentUserId')
+					? (int)\commonGetCurrentUserId()
+					: (int)($_SESSION['currentUser'] ?? 0));
 
 			return [
 				'organizationId' => $organizationId,

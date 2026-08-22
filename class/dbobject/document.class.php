@@ -10,6 +10,7 @@
 		public const TYPE_PV = 'pv';
 		public const TYPE_ETHERPAD = 'etherpad';
 		public const TYPE_ETHERCALC = 'ethercalc';
+		public const TYPE_COLLABORA = 'collabora';
 		public const PV_STAGE_PREPARATION = 'preparation';
 		public const PV_STAGE_MEETING = 'meeting';
 		public const PV_STAGE_REVIEW = 'review';
@@ -107,7 +108,7 @@
 				'pv_editor_handover_open' => 'Indique que le secretaire actuel autorise un invite a reprendre son role.',
 				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
 				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenetre',
-				'storedfilepath' => 'Chemin du fichier sur le stockage Nextcloud de l organisation',
+				'storedfilepath' => 'Chemin du fichier sur le stockage de documents de l organisation',
 				'storedfilename' => 'Nom du fichier televerse par l utilisateur',
 				'storedfilemime' => 'Type MIME detecte pour le fichier distant',
 				'storedfilesize' => 'Taille du fichier distant en octets',
@@ -272,6 +273,19 @@
 					$ethercalcDeleteResult = omoEthercalcDeleteDocumentSheet($this->getEthercalcRoomId());
 					if (!is_array($ethercalcDeleteResult) || empty($ethercalcDeleteResult['status'])) {
 						throw new \RuntimeException('ethercalc_delete_failed');
+					}
+				}
+
+				if ($this->isCollaboraDocument() && $this->hasStoredFile()) {
+					$organization = new \dbObject\Organization();
+					$organizationId = (int)$this->get('IDorganization');
+					if ($organizationId <= 0 || !$organization->load($organizationId)) {
+						throw new \RuntimeException('collabora_organization_missing');
+					}
+
+					$deleteResult = $organization->deleteDocumentFileFromStorage((string)$this->get('storedfilepath'));
+					if (!is_array($deleteResult) || empty($deleteResult['status'])) {
+						throw new \RuntimeException('collabora_file_delete_failed');
 					}
 				}
 
@@ -752,11 +766,11 @@
 				return false;
 			}
 
-			if (!$this->currentViewerCanAccessVisibility($documentOrganizationId)) {
+			if (!$this->currentViewerCanAccessVisibility($documentOrganizationId, null, $userId)) {
 				return false;
 			}
 
-			return $this->currentViewerCanAccessEditVisibility($documentOrganizationId);
+			return $this->currentViewerCanAccessEditVisibility($documentOrganizationId, null, $userId);
 		}
 
 		public function canManageInOrganizationContext(int $organizationId, ?int $userId = null, bool $useSessionCache = true): bool
@@ -783,7 +797,7 @@
 				$organizationId !== $documentOrganizationId
 				|| (function_exists('commonUserHasOrganizationAccess')
 					&& !\commonUserHasOrganizationAccess($userId, $documentOrganizationId))
-				|| !$this->currentViewerCanAccessVisibility($documentOrganizationId)
+				|| !$this->currentViewerCanAccessVisibility($documentOrganizationId, null, $userId)
 			) {
 				return false;
 			}
@@ -938,11 +952,16 @@
 				return true;
 			}
 
+			$stage = $this->getPvStage();
+			if (in_array($stage, [self::PV_STAGE_PREPARATION, self::PV_STAGE_MEETING], true)) {
+				return $this->canUserAccessPvBeforeValidation($userId);
+			}
+
 			if (!($this->getAssociatedEvent() instanceof \dbObject\Event)) {
 				return true;
 			}
 
-			if ($this->getPvStage() === self::PV_STAGE_REVIEW) {
+			if ($stage === self::PV_STAGE_REVIEW) {
 				return true;
 			}
 
@@ -984,7 +1003,12 @@
 				return false;
 			}
 
-			if ($this->getPvStage() === self::PV_STAGE_REVIEW) {
+			$stage = $this->getPvStage();
+			if (in_array($stage, [self::PV_STAGE_PREPARATION, self::PV_STAGE_MEETING], true)) {
+				return $this->canUserAccessPvBeforeValidation($userId, $organizationId);
+			}
+
+			if ($stage === self::PV_STAGE_REVIEW) {
 				return true;
 			}
 
@@ -1040,7 +1064,7 @@
 				return $this->isUserInvited($userId, $organizationId);
 			}
 
-			return $this->canViewDirectlyInOrganization($organizationId);
+			return false;
 		}
 
 		public function canUserAccessPvReview(int $userId, int $organizationId = 0): bool
@@ -1552,7 +1576,13 @@
 				return false;
 			}
 
-			if ($this->getPvStage() === self::PV_STAGE_REVIEW
+			$stage = $this->getPvStage();
+			if (in_array($stage, [self::PV_STAGE_PREPARATION, self::PV_STAGE_MEETING], true)
+				&& !$this->canUserAccessPvBeforeValidation($userId, $organizationId)) {
+				return false;
+			}
+
+			if ($stage === self::PV_STAGE_REVIEW
 				&& !$this->canUserAccessPvReview($userId, $organizationId)) {
 				return false;
 			}
@@ -1637,6 +1667,10 @@
 
 			if ($documentType === self::TYPE_ETHERCALC) {
 				return self::TYPE_ETHERCALC;
+			}
+
+			if ($documentType === self::TYPE_COLLABORA) {
+				return self::TYPE_COLLABORA;
 			}
 
 			return self::TYPE_HTML;
@@ -1752,8 +1786,9 @@
 				self::TYPE_UPLOADED_FILE => 'Telechargement',
 				self::TYPE_FOLDER => 'Dossier',
 				self::TYPE_PV => 'PV',
-				self::TYPE_ETHERPAD => 'Document collaboratif',
+				self::TYPE_ETHERPAD => 'Pad coopératif',
 				self::TYPE_ETHERCALC => 'Tableur collaboratif',
+				self::TYPE_COLLABORA => 'Document Coopératif',
 			);
 		}
 
@@ -1802,6 +1837,97 @@
 		public function isEthercalcDocument(): bool
 		{
 			return $this->getDocumentType() === self::TYPE_ETHERCALC;
+		}
+
+		public function isCollaboraDocument(): bool
+		{
+			return $this->getDocumentType() === self::TYPE_COLLABORA;
+		}
+
+		public static function organizationHasCollaboraDocuments(int $organizationId): bool
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return false;
+			}
+
+			return self::fetchRow(
+				'select `id` from `document` where `IDorganization` = :organization_id and `documenttype` = :document_type limit 1',
+				array(
+					'organization_id' => $organizationId,
+					'document_type' => self::TYPE_COLLABORA,
+				)
+			) !== false;
+		}
+
+		public static function organizationHasStoredDocumentFiles(int $organizationId): bool
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return false;
+			}
+
+			return self::fetchRow(
+				'select `id` from `document` where `IDorganization` = :organization_id and `documenttype` in (:uploaded_type, :collabora_type) and `storedfilepath` is not null and `storedfilepath` <> :empty_path limit 1',
+				array(
+					'organization_id' => $organizationId,
+					'uploaded_type' => self::TYPE_UPLOADED_FILE,
+					'collabora_type' => self::TYPE_COLLABORA,
+					'empty_path' => '',
+				)
+			) !== false;
+		}
+
+		public static function deleteOrganizationStoredFiles(int $organizationId, \dbObject\Organization $organization, array $storageConfig): array
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return array('status' => false, 'text' => 'Organisation invalide.');
+			}
+
+			$documents = new \dbObject\ArrayDocument();
+			$documents->load(array(
+				'where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+				),
+			));
+
+			$deletedCount = 0;
+			foreach ($documents as $document) {
+				if (!$document instanceof self || !in_array($document->getDocumentType(), array(self::TYPE_UPLOADED_FILE, self::TYPE_COLLABORA), true)) {
+					continue;
+				}
+
+				$storedPath = trim((string)$document->get('storedfilepath'));
+				if ($storedPath === '') {
+					continue;
+				}
+
+				$deleteResult = $organization->deleteDocumentFileFromStorage($storedPath, $storageConfig);
+				if (!is_array($deleteResult) || empty($deleteResult['status'])) {
+					return array('status' => false, 'text' => trim((string)($deleteResult['text'] ?? 'Impossible de supprimer un fichier distant.')));
+				}
+
+				$document->clearStoredFileState();
+				$saveResult = $document->save();
+				if (!is_array($saveResult) || empty($saveResult['status'])) {
+					return array('status' => false, 'text' => 'Impossible de mettre à jour un document après suppression de son fichier.');
+				}
+
+				$deletedCount++;
+			}
+
+			return array('status' => true, 'deletedCount' => $deletedCount);
+		}
+
+		public function buildCollaboraOpenUrl(): string
+		{
+			if (!$this->isCollaboraDocument() || (int)$this->getId() <= 0) {
+				return '';
+			}
+
+			return '/omo/api/documents/collabora/open.php?id='
+				. rawurlencode((string)(int)$this->getId());
 		}
 
 		public function getEthercalcRoomId(): string
@@ -1853,6 +1979,7 @@
 					$this->supportsHtmlContent()
 					|| $this->isExternalLink()
 					|| $this->isUploadedFile()
+					|| $this->isCollaboraDocument()
 				);
 		}
 
@@ -1882,12 +2009,13 @@
 
 		public function hasStoredFile(): bool
 		{
-			return $this->isUploadedFile() && trim((string)$this->get('storedfilepath')) !== '';
+			return ($this->isUploadedFile() || $this->isCollaboraDocument())
+				&& trim((string)$this->get('storedfilepath')) !== '';
 		}
 
 		public function hasMissingUploadedFile(): bool
 		{
-			return $this->isUploadedFile() && !$this->hasStoredFile();
+			return ($this->isUploadedFile() || $this->isCollaboraDocument()) && !$this->hasStoredFile();
 		}
 
 		public function getStoredFileDownloadName(): string
@@ -2686,6 +2814,25 @@
 			return '<div class="omo-document-ethercalc-snapshot">Tableur collaboratif a consulter dans OMO.</div>';
 		}
 
+		protected function renderCollaboraForViewer(): string
+		{
+			$openUrl = $this->buildCollaboraOpenUrl();
+			if ($openUrl === '' || !$this->hasStoredFile()) {
+				return '<div class="omo-document-collabora omo-document-collabora--empty">Aucun fichier Collabora n est associe a ce document.</div>';
+			}
+
+			return '<div class="omo-document-collabora">'
+				. '<iframe class="omo-document-collabora__frame" src="'
+				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+				. '" loading="lazy" allow="clipboard-read; clipboard-write; fullscreen" allowfullscreen referrerpolicy="same-origin"></iframe>'
+				. '</div>';
+		}
+
+		protected function renderCollaboraSnapshotForViewer(): string
+		{
+			return '<div class="omo-document-collabora-snapshot">Document cooperatif a consulter dans Collabora.</div>';
+		}
+
 		protected function renderUploadedFileForViewer(): string
 		{
 			if (!$this->hasStoredFile()) {
@@ -2961,6 +3108,10 @@
 				return $this->renderEthercalcForViewer();
 			}
 
+			if ($this->isCollaboraDocument()) {
+				return $this->renderCollaboraForViewer();
+			}
+
 			return $this->renderResolvedHtmlForViewer(
 				(string)$this->get('content'),
 				(int)$this->get('IDorganization')
@@ -3017,6 +3168,13 @@
 			} elseif ($this->isEthercalcDocument()) {
 				$renderedContent = $this->renderEthercalcSnapshotForViewer();
 				$contentHashSource = $renderedContent;
+			} elseif ($this->isCollaboraDocument()) {
+				$renderedContent = $this->renderCollaboraSnapshotForViewer();
+				$contentHashSource = implode('|', array(
+					trim((string)$this->get('storedfilepath')),
+					$this->getStoredFileDownloadName(),
+					(string)$this->getStoredFileSize(),
+				));
 			} else {
 				$renderedContent = $this->renderResolvedHtmlForViewer($content, (int)$this->get('IDorganization'));
 				$contentHashSource = $content;
@@ -3963,11 +4121,11 @@
 			return $documentHolonId === 0;
 		}
 
-		public function canViewInOrganizationContext(int $organizationId, ?int $holonId = null): bool
+		public function canViewInOrganizationContext(int $organizationId, ?int $holonId = null, ?int $userId = null): bool
 		{
 			if (
 				!$this->matchesOrganizationContext($organizationId, $holonId)
-				|| !$this->currentViewerCanAccessVisibility($organizationId)
+				|| !$this->currentViewerCanAccessVisibility($organizationId, null, $userId)
 			) {
 				return false;
 			}
@@ -3976,7 +4134,7 @@
 				if (
 					!($parentFolder instanceof \dbObject\Document)
 					|| !$parentFolder->isFolder()
-					|| !$parentFolder->currentViewerCanAccessVisibility($organizationId)
+					|| !$parentFolder->currentViewerCanAccessVisibility($organizationId, null, $userId)
 				) {
 					return false;
 				}
@@ -4158,7 +4316,7 @@
 				return array('status' => true);
 			}
 
-			$deleteResult = $organization->deleteDocumentFileFromNextcloud($storedPath);
+			$deleteResult = $organization->deleteDocumentFileFromStorage($storedPath);
 			if (!is_array($deleteResult) || empty($deleteResult['status'])) {
 				return $deleteResult;
 			}
@@ -4169,7 +4327,7 @@
 
 		protected function applyUploadedFileToOrganizationStorage(\dbObject\Organization $organization, array $uploadedFile): array
 		{
-			$uploadResult = $organization->uploadDocumentFileToNextcloud((int)$this->getId(), $uploadedFile);
+			$uploadResult = $organization->uploadDocumentFileToStorage((int)$this->getId(), $uploadedFile);
 			if (!is_array($uploadResult) || empty($uploadResult['status'])) {
 				return $uploadResult;
 			}
@@ -4282,11 +4440,21 @@
 			$organization = new \dbObject\Organization();
 			$createdEtherpadPadId = '';
 			$createdEthercalcRoomId = '';
+			$createdCollaboraPath = '';
+			$cleanupCreatedCollaboraFile = static function () use (&$createdCollaboraPath, $organization): void {
+				if ($createdCollaboraPath !== '' && $organization instanceof \dbObject\Organization && (int)$organization->getId() > 0) {
+					$organization->deleteDocumentFileFromStorage($createdCollaboraPath);
+					$createdCollaboraPath = '';
+				}
+			};
 			if ($documentType === self::TYPE_ETHERPAD) {
 				require_once dirname(__DIR__, 2) . '/common/etherpad.php';
 			}
 			if ($documentType === self::TYPE_ETHERCALC) {
 				require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
+			}
+			if ($documentType === self::TYPE_COLLABORA) {
+				require_once dirname(__DIR__, 2) . '/common/collabora.php';
 			}
 
 			try {
@@ -4322,15 +4490,34 @@
 					}
 				}
 
-				if ($documentType === self::TYPE_UPLOADED_FILE && !$organization->hasNextcloudDocumentStorage()) {
+				if ($documentType === self::TYPE_UPLOADED_FILE && !$organization->hasDocumentStorage()) {
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
 					}
 
 					return array(
 						'status' => false,
-						'text' => 'Le stockage Nextcloud n est pas configure pour cette organisation.',
+						'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
 					);
+				}
+
+				if ($documentType === self::TYPE_COLLABORA) {
+					require_once dirname(__DIR__, 2) . '/common/collabora.php';
+					if (!$organization->hasDocumentStorage()) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return array('status' => false, 'text' => 'Un stockage de documents doit etre configure avant Collabora.');
+					}
+
+					if (!omoCollaboraHasConfig($organization)) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return array('status' => false, 'text' => 'Le serveur Collabora n est pas configure pour cette organisation.');
+					}
 				}
 
 				if ($documentType === self::TYPE_ETHERPAD && !omoEtherpadCanUseEditingSessions($organization)) {
@@ -4394,6 +4581,49 @@
 					}
 				}
 
+				if ($documentType === self::TYPE_COLLABORA) {
+					$blankFileResult = omoCollaboraBuildBlankDocumentFile($title);
+					if (!is_array($blankFileResult) || empty($blankFileResult['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return is_array($blankFileResult)
+							? $blankFileResult
+							: array('status' => false, 'text' => 'Impossible de creer le fichier Collabora.');
+					}
+
+					$uploadedFile = array(
+						'error' => UPLOAD_ERR_OK,
+						'tmp_name' => (string)$blankFileResult['tmpName'],
+						'name' => (string)$blankFileResult['name'],
+						'type' => (string)$blankFileResult['type'],
+						'size' => (int)$blankFileResult['size'],
+					);
+					$fileStorageResult = $this->applyUploadedFileToOrganizationStorage($organization, $uploadedFile);
+					@unlink((string)$blankFileResult['tmpName']);
+					if (!is_array($fileStorageResult) || empty($fileStorageResult['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return $fileStorageResult;
+					}
+
+					$createdCollaboraPath = trim((string)($fileStorageResult['uploadedPath'] ?? ''));
+					$collaboraFileSaveResult = $this->save();
+					if (!is_array($collaboraFileSaveResult) || ($collaboraFileSaveResult['status'] ?? false) !== true) {
+						if ($createdCollaboraPath !== '') {
+						$organization->deleteDocumentFileFromStorage($createdCollaboraPath);
+						}
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return $collaboraFileSaveResult;
+					}
+				}
+
 				$visibilityType = $this->normalizeScopeTypeForCurrentContext(
 					$visibilityType,
 					\dbObject\ObjectVisibility::TYPE_ORGANIZATION
@@ -4417,7 +4647,7 @@
 					if (!is_array($fileMetadataSaveResult) || ($fileMetadataSaveResult['status'] ?? false) !== true) {
 						$uploadedPath = trim((string)($fileStorageResult['uploadedPath'] ?? ''));
 						if ($uploadedPath !== '') {
-							$organization->deleteDocumentFileFromNextcloud($uploadedPath);
+						$organization->deleteDocumentFileFromStorage($uploadedPath);
 						}
 						if ($startedTransaction && $pdo->inTransaction()) {
 							$pdo->rollBack();
@@ -4429,6 +4659,7 @@
 
 				$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);
 				if (!is_array($visibilitySaveResult) || ($visibilitySaveResult['status'] ?? false) !== true) {
+					$cleanupCreatedCollaboraFile();
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
 					}
@@ -4438,6 +4669,7 @@
 
 				$editVisibilitySaveResult = $this->saveEditVisibilityRule($editVisibilityType);
 				if (!is_array($editVisibilitySaveResult) || ($editVisibilitySaveResult['status'] ?? false) !== true) {
+					$cleanupCreatedCollaboraFile();
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
 					}
@@ -4552,6 +4784,9 @@
 				if ($createdEthercalcRoomId !== '') {
 					omoEthercalcDeleteDocumentSheet($createdEthercalcRoomId);
 				}
+				if ($createdCollaboraPath !== '' && $organization instanceof \dbObject\Organization && (int)$organization->getId() > 0) {
+					$organization->deleteDocumentFileFromStorage($createdCollaboraPath);
+				}
 				if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
 					$pdo->rollBack();
 				}
@@ -4662,6 +4897,13 @@
 				)
 				: '';
 			$now = new \DateTimeImmutable();
+			$existingDocumentType = $this->getDocumentType();
+			if ($existingDocumentType === self::TYPE_COLLABORA && $documentType !== self::TYPE_COLLABORA) {
+				return array(
+					'status' => false,
+					'text' => 'Le type d un document cooperatif ne peut pas etre change depuis cet editeur.',
+				);
+			}
 
 			$this->set('title', $title);
 			$this->set('description', $description);
@@ -4720,7 +4962,7 @@
 					!$isWithoutContext
 					&& $documentType === self::TYPE_UPLOADED_FILE
 					&& ($uploadedFile !== null || $removeUploadedFile)
-					&& !$organization->hasNextcloudDocumentStorage()
+					&& !$organization->hasDocumentStorage()
 				) {
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
@@ -4728,7 +4970,7 @@
 
 					return array(
 						'status' => false,
-						'text' => 'Le stockage Nextcloud n est pas configure pour cette organisation.',
+						'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
 					);
 				}
 
@@ -4766,7 +5008,7 @@
 
 						$newStoredPath = trim((string)($fileStorageResult['uploadedPath'] ?? ''));
 						if ($previousStoredPath !== '' && $previousStoredPath !== $newStoredPath) {
-							$organization->deleteDocumentFileFromNextcloud($previousStoredPath);
+						$organization->deleteDocumentFileFromStorage($previousStoredPath);
 						}
 					}
 
@@ -5318,7 +5560,7 @@
 			);
 		}
 
-		public function currentViewerCanAccessVisibility($organizationId = 0, $ruleRow = null): bool
+		public function currentViewerCanAccessVisibility($organizationId = 0, $ruleRow = null, ?int $viewerUserId = null): bool
 		{
 			$organizationId = (int)$organizationId > 0
 				? (int)$organizationId
@@ -5327,7 +5569,7 @@
 				return false;
 			}
 
-			$viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId);
+			$viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId, $viewerUserId);
 			return \dbObject\ObjectVisibility::viewerCanAccessRule(
 				is_array($ruleRow) ? $ruleRow : $this->getPrimaryVisibilityRuleRow(),
 				$viewerContext,
@@ -5355,7 +5597,7 @@
 			);
 		}
 
-		public function currentViewerCanAccessEditVisibility($organizationId = 0, $ruleRow = null): bool
+		public function currentViewerCanAccessEditVisibility($organizationId = 0, $ruleRow = null, ?int $viewerUserId = null): bool
 		{
 			$organizationId = (int)$organizationId > 0
 				? (int)$organizationId
@@ -5364,7 +5606,7 @@
 				return false;
 			}
 
-			$viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId);
+			$viewerContext = \dbObject\ObjectVisibility::buildCurrentViewerContext($organizationId, $viewerUserId);
 			return \dbObject\ObjectVisibility::viewerCanAccessRule(
 				is_array($ruleRow) ? $ruleRow : $this->getPrimaryEditVisibilityRuleRow(),
 				$viewerContext,

@@ -1,6 +1,6 @@
 <?php
 
-require_once dirname(__DIR__, 4) . '/common/etherpad.php';
+require_once dirname(__DIR__, 4) . '/common/collabora.php';
 
 if (!function_exists('omoDocumentsParamsSourceLang')) {
     function omoDocumentsParamsSourceLang()
@@ -14,6 +14,28 @@ if (!function_exists('omoDocumentsParamsSourceLang')) {
         $sourceLang = [
             'documents.params.title' => ['text' => 'Paramètres Documents', 'context' => 'Title of the Documents application settings screen.'],
             'documents.params.description' => ['text' => 'Configurez ici le stockage distant utilisé par l’application Documents pour cette organisation.', 'context' => 'Intro text shown in the Documents application settings screen.'],
+            'documents.params.field.storage_enabled' => ['text' => 'Activer le stockage de documents', 'context' => 'Checkbox enabling remote document storage for the organization.'],
+            'documents.params.field.storage_enabled_hint' => ['text' => 'Les fichiers téléversés et les documents bureautiques collaboratifs seront conservés sur le serveur choisi ci-dessous.', 'context' => 'Explanation shown below the document storage checkbox.'],
+            'documents.params.field.storage_type' => ['text' => 'Serveur de stockage', 'context' => 'Label for the remote document storage provider choice.'],
+            'documents.params.field.storage_type_nextcloud' => ['text' => 'Nextcloud', 'context' => 'Radio label for Nextcloud document storage.'],
+            'documents.params.field.storage_type_kdrive' => ['text' => 'kDrive (Infomaniak)', 'context' => 'Radio label for Infomaniak kDrive document storage.'],
+            'documents.params.status.storage_ready' => ['text' => 'Stockage de documents configuré.', 'context' => 'Status shown when a document storage provider is configured.'],
+            'documents.params.status.storage_empty' => ['text' => 'Aucun stockage de documents configuré. Les fichiers téléversés et les documents coopératifs ne seront pas proposés.', 'context' => 'Status shown when no document storage provider is configured.'],
+            'documents.params.section.storage' => ['text' => 'Stockage des documents', 'context' => 'Heading of the remote document storage settings section.'],
+            'documents.params.field.kdrive_id' => ['text' => 'Identifiant du kDrive', 'context' => 'Label of the Infomaniak kDrive identifier field.'],
+            'documents.params.field.kdrive_id_hint' => ['text' => 'Vous le trouverez dans l’adresse du kDrive, après /drive/.', 'context' => 'Hint explaining where to find the Infomaniak kDrive identifier.'],
+            'documents.params.field.kdrive_username' => ['text' => 'Adresse e-mail Infomaniak', 'context' => 'Label of the Infomaniak WebDAV username field.'],
+            'documents.params.field.kdrive_password' => ['text' => 'Mot de passe d’application', 'context' => 'Label of the Infomaniak application password field.'],
+            'documents.params.field.kdrive_password_hint' => ['text' => 'Utilisez un mot de passe d’application dédié à cette organisation.', 'context' => 'Hint for the Infomaniak application password field.'],
+            'documents.params.field.kdrive_password_placeholder_new' => ['text' => 'Mot de passe d’application kDrive', 'context' => 'Placeholder shown for a fresh kDrive password field.'],
+            'documents.params.field.kdrive_password_placeholder_keep' => ['text' => 'Laisser vide pour conserver le mot de passe actuel', 'context' => 'Placeholder shown when a kDrive password already exists.'],
+            'documents.params.field.kdrive_folder_hint' => ['text' => 'Optionnel. OMO créera ensuite son dossier omo-documents dans ce dossier.', 'context' => 'Hint below the Infomaniak kDrive folder field.'],
+            'documents.params.action.test_storage' => ['text' => 'Tester la connexion', 'context' => 'Button used to test the selected document storage settings.'],
+            'documents.params.action.testing_storage' => ['text' => 'Test en cours...', 'context' => 'Button label shown while testing document storage.'],
+            'documents.params.feedback.storage_test_invalid' => ['text' => 'Impossible de tester la connexion au stockage.', 'context' => 'Fallback error shown when the document storage test fails unexpectedly.'],
+            'documents.params.feedback.storage_invalid' => ['text' => 'Renseignez les informations complètes du serveur de stockage choisi.', 'context' => 'Error returned when document storage settings are incomplete.'],
+            'documents.params.feedback.storage_change_warning' => ['text' => 'Ce changement fera perdre les fichiers associés aux documents existants. Confirmez pour supprimer ces fichiers de l’ancien stockage et enregistrer le nouveau serveur.', 'context' => 'Confirmation message shown before replacing a document storage server.'],
+            'documents.params.feedback.storage_cleanup_failed' => ['text' => 'Le nouveau stockage n’a pas été enregistré : certains fichiers de l’ancien stockage n’ont pas pu être supprimés.', 'context' => 'Error shown when old remote files cannot be removed during a storage change.'],
             'documents.params.status.ready' => ['text' => 'Connexion Nextcloud configurée pour les documents téléversés.', 'context' => 'Status text shown when Documents Nextcloud storage is configured.'],
             'documents.params.status.empty' => ['text' => 'Aucune connexion Nextcloud configurée. Le type de document téléversé ne sera pas proposé.', 'context' => 'Status text shown when no Documents Nextcloud storage is configured.'],
             'documents.params.status.legacy' => ['text' => 'Une ancienne configuration a été détectée. Un enregistrement ici la migrera vers l’application Documents.', 'context' => 'Hint shown when a legacy organization-level Nextcloud configuration is still used.'],
@@ -25,25 +47,30 @@ if (!function_exists('omoDocumentsParamsSourceLang')) {
             'documents.params.field.password_placeholder_new' => ['text' => 'Mot de passe applicatif Nextcloud', 'context' => 'Placeholder shown for a fresh Nextcloud password field.'],
             'documents.params.field.password_placeholder_keep' => ['text' => 'Laisser vide pour conserver le mot de passe actuel', 'context' => 'Placeholder shown when a Nextcloud password already exists.'],
             'documents.params.field.folder' => ['text' => 'Dossier distant', 'context' => 'Label of the remote Nextcloud folder field.'],
+            'documents.params.action.test_nextcloud' => ['text' => 'Tester la connexion', 'context' => 'Button used to test the current Nextcloud settings without saving them.'],
+            'documents.params.action.testing_nextcloud' => ['text' => 'Test en cours...', 'context' => 'Button label shown while testing the current Nextcloud settings.'],
+            'documents.params.feedback.nextcloud_test_invalid' => ['text' => 'Impossible de tester la connexion Nextcloud.', 'context' => 'Fallback error shown when the Nextcloud test fails unexpectedly.'],
             'documents.params.field.folder_hint' => ['text' => 'Optionnel. Si vide, OMO utilisera directement un dossier omo-documents à la racine du compte.', 'context' => 'Hint shown below the remote Nextcloud folder field.'],
             'documents.params.field.default_visibility' => ['text' => 'Visibilite par defaut', 'context' => 'Label of the default document visibility selector in Documents settings.'],
             'documents.params.section.nextcloud' => ['text' => 'Stockage Nextcloud', 'context' => 'Heading of the Nextcloud settings section.'],
-            'documents.params.section.etherpad' => ['text' => 'Documents Etherpad', 'context' => 'Heading of the Etherpad settings section.'],
-            'documents.params.status.etherpad_ready' => ['text' => 'Connexion Etherpad configuree pour les documents collaboratifs.', 'context' => 'Status text shown when Etherpad is configured.'],
-            'documents.params.status.etherpad_empty' => ['text' => 'Aucune connexion Etherpad configuree. Le type de document Etherpad ne sera pas propose.', 'context' => 'Status text shown when Etherpad is not configured.'],
-            'documents.params.status.etherpad_cookie_missing' => ['text' => 'Etherpad est configure, mais le domaine de cookie ne permet pas encore de transmettre les sessions OMO.', 'context' => 'Status text shown when Etherpad API works but browser sessions cannot be shared.'],
-            'documents.params.field.etherpad_base_url' => ['text' => 'URL du serveur Etherpad', 'context' => 'Label of the organization Etherpad URL field.'],
-            'documents.params.field.etherpad_base_url_hint' => ['text' => 'Laissez vide pour utiliser le serveur Etherpad defini dans les secrets du serveur.', 'context' => 'Hint below the organization Etherpad URL field.'],
-            'documents.params.field.etherpad_api_key' => ['text' => 'Cle API Etherpad', 'context' => 'Label of the organization Etherpad API key field.'],
-            'documents.params.field.etherpad_api_key_hint' => ['text' => 'Laissez vide pour utiliser la cle API globale avec le serveur global. Un autre serveur exige sa propre cle.', 'context' => 'Hint below the organization Etherpad API key field.'],
-            'documents.params.field.etherpad_api_key_placeholder_new' => ['text' => 'Cle API Etherpad de cette organisation', 'context' => 'Placeholder for a fresh Etherpad API key.'],
-            'documents.params.field.etherpad_api_key_placeholder_keep' => ['text' => 'Laisser vide pour conserver la cle actuelle', 'context' => 'Placeholder when an Etherpad API key override exists.'],
-            'documents.params.field.etherpad_clear' => ['text' => 'Supprimer la configuration Etherpad propre a cette organisation', 'context' => 'Checkbox label used to clear the Etherpad configuration.'],
-            'documents.params.feedback.etherpad_cleared' => ['text' => 'Configuration Etherpad de l organisation supprimee; les secrets globaux s appliquent a nouveau.', 'context' => 'Success message returned after clearing Etherpad configuration.'],
-            'documents.params.feedback.etherpad_invalid' => ['text' => 'L URL du serveur Etherpad doit etre une adresse http ou https valide.', 'context' => 'Error returned when the Etherpad URL is invalid.'],
-            'documents.params.feedback.etherpad_incomplete' => ['text' => 'Une cle API propre est requise lorsque l organisation utilise un autre serveur Etherpad.', 'context' => 'Error returned when a custom Etherpad server has no organization API key.'],
-            'documents.params.feedback.etherpad_server_in_use' => ['text' => 'Le serveur Etherpad ne peut pas etre change tant que cette organisation possede des documents Etherpad.', 'context' => 'Error returned when changing an Etherpad server that still owns organization pads.'],
-            'documents.params.feedback.etherpad_config_in_use' => ['text' => 'Cette configuration Etherpad ne peut pas etre supprimee tant que l organisation possede des documents Etherpad.', 'context' => 'Error returned when clearing credentials still needed by organization pads.'],
+            'documents.params.section.collabora' => ['text' => 'Documents Collabora', 'context' => 'Heading of the Collabora settings section.'],
+            'documents.params.field.collabora_enabled' => ['text' => 'Ajouter un serveur Collabora', 'context' => 'Checkbox enabling Collabora documents for the organization.'],
+            'documents.params.field.collabora_enabled_hint' => ['text' => 'Permet de créer et modifier des documents bureautiques collaboratifs stockés sur le serveur de documents choisi.', 'context' => 'Explanation shown below the Collabora enable checkbox.'],
+            'documents.params.field.collabora_base_url' => ['text' => 'URL publique du serveur Collabora', 'context' => 'Public Collabora URL field.'],
+            'documents.params.field.collabora_base_url_hint' => ['text' => 'Adresse HTTPS ouverte dans le navigateur, avec le proxy WebSocket actif.', 'context' => 'Hint below the public Collabora URL field.'],
+            'documents.params.field.collabora_internal_url' => ['text' => 'URL interne de Collabora', 'context' => 'Optional internal Collabora URL field.'],
+            'documents.params.field.collabora_internal_url_hint' => ['text' => 'Optionnel. Utilisee par OMO pour charger la decouverte quand Collabora est sur le meme reseau prive.', 'context' => 'Hint below the internal Collabora URL field.'],
+            'documents.params.field.collabora_appearance_hint' => ['text' => 'L editeur utilise les couleurs de cette organisation, le mode avec onglets et le theme clair ou sombre actif pour chaque utilisateur.', 'context' => 'Explanation of the Collabora appearance automatically applied by OMO.'],
+            'documents.params.status.collabora_ready' => ['text' => 'Connexion Collabora configuree pour les documents bureautiques collaboratifs.', 'context' => 'Status shown when Collabora is configured.'],
+            'documents.params.status.collabora_empty' => ['text' => 'Aucun serveur Collabora configure. Le document cooperatif ne sera pas propose.', 'context' => 'Status shown when Collabora is not configured.'],
+            'documents.params.status.collabora_requires_nextcloud' => ['text' => 'Configurez d abord un stockage Nextcloud pour activer Collabora.', 'context' => 'Status shown when Collabora cannot be enabled without Nextcloud.'],
+            'documents.params.field.collabora_clear' => ['text' => 'Supprimer cette configuration Collabora', 'context' => 'Checkbox used to clear Collabora configuration.'],
+            'documents.params.feedback.collabora_invalid' => ['text' => 'L URL publique de Collabora doit etre une adresse http ou https valide.', 'context' => 'Error shown for invalid Collabora URL.'],
+            'documents.params.feedback.collabora_incomplete' => ['text' => 'Une URL publique Collabora est necessaire pour activer cette integration.', 'context' => 'Error shown when Collabora configuration is incomplete.'],
+            'documents.params.status.collabora_requires_storage' => ['text' => 'Configurez d’abord un stockage de documents pour activer Collabora.', 'context' => 'Status shown when Collabora cannot be enabled without document storage.'],
+            'documents.params.feedback.collabora_cleared' => ['text' => 'Configuration Collabora supprimee.', 'context' => 'Success message returned after clearing Collabora configuration.'],
+            'documents.params.feedback.collabora_server_in_use' => ['text' => 'Le serveur Collabora ne peut pas etre change tant que cette organisation possede des documents cooperatifs.', 'context' => 'Error shown when changing Collabora configuration with existing documents.'],
+            'documents.params.feedback.collabora_config_in_use' => ['text' => 'Cette configuration Collabora ne peut pas etre supprimee tant que l organisation possede des documents cooperatifs.', 'context' => 'Error shown when clearing Collabora configuration with existing documents.'],
             'documents.params.field.default_edit_visibility' => ['text' => 'Edition par defaut', 'context' => 'Label of the default document edit visibility selector in Documents settings.'],
             'documents.params.field.default_visibility_hint' => ['text' => 'Valeur initiale proposee lors de la creation d un document.', 'context' => 'Hint shown below the default visibility selector in Documents settings.'],
             'documents.params.field.default_edit_visibility_hint' => ['text' => 'Definit qui peut modifier un nouveau document par defaut.', 'context' => 'Hint shown below the default edit visibility selector in Documents settings.'],
@@ -175,129 +202,6 @@ if (!function_exists('omoDocumentsParamsNormalizeNextcloudBaseUrl')) {
     }
 }
 
-if (!function_exists('omoDocumentsParamsNormalizeEtherpadConfig')) {
-    function omoDocumentsParamsNormalizeEtherpadConfig(array $config): array
-    {
-        return array(
-            'baseUrl' => omoEtherpadNormalizeBaseUrl((string)($config['baseUrl'] ?? '')),
-            'apiKey' => trim((string)($config['apiKey'] ?? '')),
-        );
-    }
-}
-
-if (!function_exists('omoDocumentsParamsExtractEtherpadPayload')) {
-    function omoDocumentsParamsExtractEtherpadPayload(array $parameters): array
-    {
-        return isset($parameters['etherpad']) && is_array($parameters['etherpad'])
-            ? $parameters['etherpad']
-            : array();
-    }
-}
-
-if (!function_exists('omoDocumentsParamsGetEtherpadConfig')) {
-    function omoDocumentsParamsGetEtherpadConfig(\dbObject\Organization $organization, ?\dbObject\OrganizationApplication $organizationApplication = null): array
-    {
-        $appParameters = $organizationApplication
-            ? $organizationApplication->getParametersArray()
-            : $organization->getApplicationParametersByDirectory('documents');
-        $storedConfig = omoDocumentsParamsNormalizeEtherpadConfig(omoDocumentsParamsExtractEtherpadPayload($appParameters));
-        return omoEtherpadResolveConfig($storedConfig);
-    }
-}
-
-if (!function_exists('omoDocumentsParamsHasEtherpadConfig')) {
-    function omoDocumentsParamsHasEtherpadConfig(array $config): bool
-    {
-        $config = omoDocumentsParamsNormalizeEtherpadConfig($config);
-        return $config['baseUrl'] !== '' && $config['apiKey'] !== '';
-    }
-}
-
-if (!function_exists('omoDocumentsParamsStoreEtherpadConfig')) {
-    function omoDocumentsParamsStoreEtherpadConfig(\dbObject\Organization $organization, array $values, bool $preserveExistingApiKey = true): array
-    {
-        $organizationId = (int)$organization->getId();
-        $organizationApplication = $organizationId > 0
-            ? omoDocumentsParamsGetApplicationLink($organizationId, true)
-            : null;
-        if (!$organizationApplication) {
-            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.unavailable'));
-        }
-
-        $parameters = $organizationApplication->getParametersArray();
-        $storedConfig = omoDocumentsParamsNormalizeEtherpadConfig(omoDocumentsParamsExtractEtherpadPayload($parameters));
-        if (!empty($values['etherpad_clear_config'])) {
-            $currentConfig = omoEtherpadResolveConfig($storedConfig);
-            $globalConfig = omoEtherpadResolveConfig();
-            if (
-                \dbObject\Document::organizationHasEtherpadDocuments($organizationId)
-                && (
-                    !hash_equals($currentConfig['baseUrl'], $globalConfig['baseUrl'])
-                    || $globalConfig['apiKey'] === ''
-                )
-            ) {
-                return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.etherpad_config_in_use'));
-            }
-
-            unset($parameters['etherpad']);
-            $organizationApplication->setParametersArray($parameters);
-            $saveResult = $organizationApplication->save();
-            return is_array($saveResult) && !empty($saveResult['status'])
-                ? array('status' => true, 'text' => omoDocumentsParamsT('documents.params.feedback.etherpad_cleared'))
-                : array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.save_failed'));
-        }
-
-        $baseUrlInput = trim((string)($values['etherpad_base_url'] ?? ''));
-        $baseUrl = omoEtherpadNormalizeBaseUrl($baseUrlInput);
-        $apiKey = trim((string)($values['etherpad_api_key'] ?? ''));
-        if ($baseUrlInput !== '' && $baseUrl === '') {
-            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.etherpad_invalid'));
-        }
-
-        $globalConfig = omoEtherpadResolveConfig();
-        $currentBaseUrl = $storedConfig['baseUrl'] !== '' ? $storedConfig['baseUrl'] : $globalConfig['baseUrl'];
-        $nextBaseUrl = $baseUrl !== '' ? $baseUrl : $globalConfig['baseUrl'];
-        if (
-            !hash_equals($currentBaseUrl, $nextBaseUrl)
-            && \dbObject\Document::organizationHasEtherpadDocuments($organizationId)
-        ) {
-            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.etherpad_server_in_use'));
-        }
-        if (
-            $preserveExistingApiKey
-            && $apiKey === ''
-            && $storedConfig['apiKey'] !== ''
-            && $currentBaseUrl !== ''
-            && $nextBaseUrl !== ''
-            && hash_equals($currentBaseUrl, $nextBaseUrl)
-        ) {
-            $apiKey = $storedConfig['apiKey'];
-        }
-
-        $normalizedConfig = omoDocumentsParamsNormalizeEtherpadConfig(array(
-            'baseUrl' => $baseUrl,
-            'apiKey' => $apiKey,
-        ));
-        if ($normalizedConfig['baseUrl'] === '' && $normalizedConfig['apiKey'] === '') {
-            unset($parameters['etherpad']);
-        } else {
-            $resolvedConfig = omoEtherpadResolveConfig($normalizedConfig);
-            if ($resolvedConfig['baseUrl'] === '' || $resolvedConfig['apiKey'] === '') {
-                return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.etherpad_incomplete'));
-            }
-            $parameters['etherpad'] = $normalizedConfig;
-        }
-
-        $organizationApplication->setParametersArray($parameters);
-        $saveResult = $organizationApplication->save();
-        if (!is_array($saveResult) || empty($saveResult['status'])) {
-            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.save_failed'));
-        }
-
-        return array('status' => true, 'text' => omoDocumentsParamsT('documents.params.feedback.saved'), 'config' => $normalizedConfig);
-    }
-}
-
 if (!function_exists('omoDocumentsParamsExtractNextcloudPayload')) {
     function omoDocumentsParamsExtractNextcloudPayload(array $parameters): array
     {
@@ -361,6 +265,11 @@ if (!function_exists('omoDocumentsParamsUsesLegacyNextcloudConfig')) {
         $appParameters = $organizationApplication
             ? $organizationApplication->getParametersArray()
             : $organization->getApplicationParametersByDirectory('documents');
+
+        if (isset($appParameters['storage']) && is_array($appParameters['storage']) && omoDocumentsParamsNormalizeStorageType($appParameters['storage']['type'] ?? '') !== '') {
+            return false;
+        }
+
         $appConfig = omoDocumentsParamsExtractNextcloudPayload($appParameters);
 
         return !omoDocumentsParamsHasNextcloudConfig($appConfig);
@@ -373,6 +282,17 @@ if (!function_exists('omoDocumentsParamsGetNextcloudConfig')) {
         $appParameters = $organizationApplication
             ? $organizationApplication->getParametersArray()
             : $organization->getApplicationParametersByDirectory('documents');
+
+        if (isset($appParameters['storage']) && is_array($appParameters['storage'])) {
+            $storageType = omoDocumentsParamsNormalizeStorageType($appParameters['storage']['type'] ?? '');
+            if ($storageType === 'nextcloud') {
+                return omoDocumentsParamsNormalizeNextcloudConfig($appParameters['storage']);
+            }
+            if ($storageType === 'kdrive') {
+                return omoDocumentsParamsNormalizeNextcloudConfig(array());
+            }
+        }
+
         $appConfig = omoDocumentsParamsExtractNextcloudPayload($appParameters);
         $normalizedAppConfig = omoDocumentsParamsNormalizeNextcloudConfig($appConfig);
 
@@ -400,6 +320,218 @@ if (!function_exists('omoDocumentsParamsClearLegacyNextcloudConfig')) {
         unset($parameters['nextcloudDocuments']);
         $organization->setParametersArray($parameters);
         $organization->save();
+    }
+}
+
+if (!function_exists('omoDocumentsParamsNormalizeStorageType')) {
+    function omoDocumentsParamsNormalizeStorageType($value): string
+    {
+        $value = strtolower(trim((string)$value));
+        return in_array($value, array('nextcloud', 'kdrive'), true) ? $value : '';
+    }
+}
+
+if (!function_exists('omoDocumentsParamsNormalizeKdriveConfig')) {
+    function omoDocumentsParamsNormalizeKdriveConfig(array $config): array
+    {
+        $driveId = trim((string)($config['driveId'] ?? $config['id'] ?? ''));
+        $driveId = preg_replace('/[^0-9]/', '', $driveId);
+        $username = trim((string)($config['username'] ?? ''));
+        $appPassword = trim((string)($config['appPassword'] ?? ''));
+        $folder = trim(str_replace('\\', '/', (string)($config['folder'] ?? '')), '/');
+
+        return array(
+            'type' => 'kdrive',
+            'driveId' => $driveId,
+            'username' => $username,
+            'appPassword' => $appPassword,
+            'folder' => $folder,
+        );
+    }
+}
+
+if (!function_exists('omoDocumentsParamsHasKdriveConfig')) {
+    function omoDocumentsParamsHasKdriveConfig(array $config): bool
+    {
+        $config = omoDocumentsParamsNormalizeKdriveConfig($config);
+        return $config['driveId'] !== ''
+            && $config['username'] !== ''
+            && $config['appPassword'] !== '';
+    }
+}
+
+if (!function_exists('omoDocumentsParamsNormalizeDocumentStorageConfig')) {
+    function omoDocumentsParamsNormalizeDocumentStorageConfig(array $config, string $type = ''): array
+    {
+        $type = omoDocumentsParamsNormalizeStorageType($type !== '' ? $type : ($config['type'] ?? ''));
+        if ($type === 'kdrive') {
+            return omoDocumentsParamsNormalizeKdriveConfig($config);
+        }
+
+        if ($type === 'nextcloud') {
+            return array_merge(
+                array('type' => 'nextcloud'),
+                omoDocumentsParamsNormalizeNextcloudConfig($config)
+            );
+        }
+
+        return array(
+            'type' => '',
+            'baseUrl' => '',
+            'driveId' => '',
+            'username' => '',
+            'appPassword' => '',
+            'folder' => '',
+        );
+    }
+}
+
+if (!function_exists('omoDocumentsParamsHasDocumentStorageConfig')) {
+    function omoDocumentsParamsHasDocumentStorageConfig(array $config): bool
+    {
+        $config = omoDocumentsParamsNormalizeDocumentStorageConfig($config);
+        if ($config['type'] === 'kdrive') {
+            return omoDocumentsParamsHasKdriveConfig($config);
+        }
+
+        return $config['type'] === 'nextcloud' && omoDocumentsParamsHasNextcloudConfig($config);
+    }
+}
+
+if (!function_exists('omoDocumentsParamsGetDocumentStorageConfig')) {
+    function omoDocumentsParamsGetDocumentStorageConfig(\dbObject\Organization $organization, ?\dbObject\OrganizationApplication $organizationApplication = null): array
+    {
+        $appParameters = $organizationApplication
+            ? $organizationApplication->getParametersArray()
+            : $organization->getApplicationParametersByDirectory('documents');
+
+        if (isset($appParameters['storage']) && is_array($appParameters['storage'])) {
+            $storedType = omoDocumentsParamsNormalizeStorageType($appParameters['storage']['type'] ?? '');
+            if ($storedType !== '') {
+                return omoDocumentsParamsNormalizeDocumentStorageConfig($appParameters['storage'], $storedType);
+            }
+        }
+
+        $legacyNextcloud = omoDocumentsParamsGetNextcloudConfig($organization, $organizationApplication, true);
+        if (omoDocumentsParamsHasNextcloudConfig($legacyNextcloud)) {
+            return omoDocumentsParamsNormalizeDocumentStorageConfig($legacyNextcloud, 'nextcloud');
+        }
+
+        return omoDocumentsParamsNormalizeDocumentStorageConfig(array());
+    }
+}
+
+if (!function_exists('omoDocumentsParamsStorageIdentity')) {
+    function omoDocumentsParamsStorageIdentity(array $config): string
+    {
+        $config = omoDocumentsParamsNormalizeDocumentStorageConfig($config);
+        return implode('|', array(
+            $config['type'],
+            $config['baseUrl'] ?? '',
+            $config['driveId'] ?? '',
+            $config['username'] ?? '',
+            $config['folder'] ?? '',
+        ));
+    }
+}
+
+if (!function_exists('omoDocumentsParamsBuildDocumentStorageConfigFromValues')) {
+    function omoDocumentsParamsBuildDocumentStorageConfigFromValues(array $values, array $currentConfig = array(), bool $preserveExistingPassword = true): array
+    {
+        if (empty($values['document_storage_enabled'])) {
+            return omoDocumentsParamsNormalizeDocumentStorageConfig(array());
+        }
+
+        $storageType = omoDocumentsParamsNormalizeStorageType($values['storage_type'] ?? '');
+        if ($storageType === 'nextcloud') {
+            $appPassword = trim((string)($values['nextcloud_app_password'] ?? ''));
+            if ($preserveExistingPassword && $appPassword === '' && ($currentConfig['type'] ?? '') === 'nextcloud') {
+                $appPassword = (string)($currentConfig['appPassword'] ?? '');
+            }
+            return omoDocumentsParamsNormalizeDocumentStorageConfig(array(
+                'baseUrl' => trim((string)($values['nextcloud_base_url'] ?? '')),
+                'username' => trim((string)($values['nextcloud_username'] ?? '')),
+                'appPassword' => $appPassword,
+                'folder' => trim((string)($values['nextcloud_folder'] ?? '')),
+            ), 'nextcloud');
+        }
+
+        if ($storageType === 'kdrive') {
+            $appPassword = trim((string)($values['kdrive_app_password'] ?? ''));
+            if ($preserveExistingPassword && $appPassword === '' && ($currentConfig['type'] ?? '') === 'kdrive') {
+                $appPassword = (string)($currentConfig['appPassword'] ?? '');
+            }
+            return omoDocumentsParamsNormalizeDocumentStorageConfig(array(
+                'driveId' => trim((string)($values['kdrive_id'] ?? '')),
+                'username' => trim((string)($values['kdrive_username'] ?? '')),
+                'appPassword' => $appPassword,
+                'folder' => trim((string)($values['kdrive_folder'] ?? '')),
+            ), 'kdrive');
+        }
+
+        return omoDocumentsParamsNormalizeDocumentStorageConfig(array());
+    }
+}
+
+if (!function_exists('omoDocumentsParamsStoreDocumentStorageConfig')) {
+    function omoDocumentsParamsStoreDocumentStorageConfig(\dbObject\Organization $organization, array $values, bool $preserveExistingPassword = true): array
+    {
+        $organizationId = (int)$organization->getId();
+        $organizationApplication = $organizationId > 0
+            ? omoDocumentsParamsGetApplicationLink($organizationId, true)
+            : null;
+        if (!$organizationApplication) {
+            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.unavailable'));
+        }
+
+        $currentConfig = omoDocumentsParamsGetDocumentStorageConfig($organization, $organizationApplication);
+        $targetConfig = omoDocumentsParamsBuildDocumentStorageConfigFromValues($values, $currentConfig, $preserveExistingPassword);
+        $enabled = !empty($values['document_storage_enabled']);
+
+        if ($enabled && !omoDocumentsParamsHasDocumentStorageConfig($targetConfig)) {
+            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.storage_invalid'));
+        }
+
+        $storageChanged = omoDocumentsParamsHasDocumentStorageConfig($currentConfig)
+            && omoDocumentsParamsStorageIdentity($currentConfig) !== omoDocumentsParamsStorageIdentity($targetConfig);
+        if ($storageChanged && \dbObject\Document::organizationHasStoredDocumentFiles($organizationId)) {
+            if (empty($values['storage_change_confirmed'])) {
+                return array(
+                    'status' => false,
+                    'confirmationRequired' => true,
+                    'text' => omoDocumentsParamsT('documents.params.feedback.storage_change_warning'),
+                );
+            }
+
+            $cleanupResult = \dbObject\Document::deleteOrganizationStoredFiles($organizationId, $organization, $currentConfig);
+            if (!is_array($cleanupResult) || empty($cleanupResult['status'])) {
+                return array(
+                    'status' => false,
+                    'text' => omoDocumentsParamsT('documents.params.feedback.storage_cleanup_failed'),
+                );
+            }
+        }
+
+        $parameters = $organizationApplication->getParametersArray();
+        if (omoDocumentsParamsHasDocumentStorageConfig($targetConfig)) {
+            $parameters['storage'] = $targetConfig;
+        } else {
+            unset($parameters['storage']);
+            unset($parameters['collabora']);
+        }
+        unset($parameters['nextcloud']);
+        $organizationApplication->setParametersArray($parameters);
+        $saveResult = $organizationApplication->save();
+        if (!is_array($saveResult) || empty($saveResult['status'])) {
+            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.save_failed'));
+        }
+
+        omoDocumentsParamsClearLegacyNextcloudConfig($organization);
+        return array(
+            'status' => true,
+            'text' => omoDocumentsParamsT('documents.params.feedback.saved'),
+            'config' => $targetConfig,
+        );
     }
 }
 
@@ -502,6 +634,106 @@ if (!function_exists('omoDocumentsParamsStoreNextcloudConfig')) {
                 : omoDocumentsParamsT('documents.params.feedback.saved'),
             'config' => $allFieldsEmpty ? omoDocumentsParamsNormalizeNextcloudConfig(array()) : $normalizedConfig,
         );
+    }
+}
+
+if (!function_exists('omoDocumentsParamsExtractCollaboraPayload')) {
+    function omoDocumentsParamsExtractCollaboraPayload(array $parameters): array
+    {
+        return isset($parameters['collabora']) && is_array($parameters['collabora'])
+            ? $parameters['collabora']
+            : array();
+    }
+}
+
+if (!function_exists('omoDocumentsParamsGetCollaboraConfig')) {
+    function omoDocumentsParamsGetCollaboraConfig(\dbObject\Organization $organization, ?\dbObject\OrganizationApplication $organizationApplication = null): array
+    {
+        $appParameters = $organizationApplication
+            ? $organizationApplication->getParametersArray()
+            : $organization->getApplicationParametersByDirectory('documents');
+        return omoCollaboraNormalizeConfig(omoDocumentsParamsExtractCollaboraPayload($appParameters));
+    }
+}
+
+if (!function_exists('omoDocumentsParamsHasCollaboraConfig')) {
+    function omoDocumentsParamsHasCollaboraConfig(array $config): bool
+    {
+        return omoCollaboraNormalizeConfig($config)['baseUrl'] !== '';
+    }
+}
+
+if (!function_exists('omoDocumentsParamsStoreCollaboraConfig')) {
+    function omoDocumentsParamsStoreCollaboraConfig(\dbObject\Organization $organization, array $values): array
+    {
+        $organizationId = (int)$organization->getId();
+        $organizationApplication = $organizationId > 0
+            ? omoDocumentsParamsGetApplicationLink($organizationId, true)
+            : null;
+        if (!$organizationApplication) {
+            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.unavailable'));
+        }
+
+        $parameters = $organizationApplication->getParametersArray();
+        $currentConfig = omoDocumentsParamsGetCollaboraConfig($organization, $organizationApplication);
+        $documentStorageConfig = omoDocumentsParamsGetDocumentStorageConfig($organization, $organizationApplication);
+        $enabled = !empty($values['collabora_enabled']);
+        $storageEnabled = !empty($values['document_storage_enabled']);
+        $clearConfig = !empty($values['collabora_clear_config']) || !$enabled || !$storageEnabled;
+
+        if (!$enabled && !$clearConfig) {
+            return array('status' => true, 'text' => omoDocumentsParamsT('documents.params.feedback.saved'));
+        }
+
+        if ($clearConfig) {
+            if ($storageEnabled && \dbObject\Document::organizationHasCollaboraDocuments($organizationId) && $currentConfig['baseUrl'] !== '') {
+                return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.collabora_config_in_use'));
+            }
+
+            unset($parameters['collabora']);
+            $organizationApplication->setParametersArray($parameters);
+            $saveResult = $organizationApplication->save();
+            return is_array($saveResult) && !empty($saveResult['status'])
+                ? array('status' => true, 'text' => omoDocumentsParamsT('documents.params.feedback.collabora_cleared'))
+                : array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.save_failed'));
+        }
+
+        if (!omoDocumentsParamsHasDocumentStorageConfig($documentStorageConfig) && !empty($values['document_storage_enabled'])) {
+            $documentStorageConfig = omoDocumentsParamsBuildDocumentStorageConfigFromValues($values, $documentStorageConfig, true);
+        }
+
+        if (!omoDocumentsParamsHasDocumentStorageConfig($documentStorageConfig)) {
+            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.status.collabora_requires_storage'));
+        }
+
+        $baseUrlInput = trim((string)($values['collabora_base_url'] ?? ''));
+        $internalUrlInput = trim((string)($values['collabora_internal_url'] ?? ''));
+        $config = omoCollaboraNormalizeConfig(array(
+            'baseUrl' => $baseUrlInput,
+            'internalUrl' => $internalUrlInput,
+        ));
+        if ($config['baseUrl'] === '') {
+            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.collabora_invalid'));
+        }
+
+        if ($internalUrlInput !== '' && $config['internalUrl'] === '') {
+            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.collabora_invalid'));
+        }
+
+        if (
+            $currentConfig['baseUrl'] !== ''
+            && !hash_equals($currentConfig['baseUrl'], $config['baseUrl'])
+            && \dbObject\Document::organizationHasCollaboraDocuments($organizationId)
+        ) {
+            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.collabora_server_in_use'));
+        }
+
+        $parameters['collabora'] = $config;
+        $organizationApplication->setParametersArray($parameters);
+        $saveResult = $organizationApplication->save();
+        return is_array($saveResult) && !empty($saveResult['status'])
+            ? array('status' => true, 'text' => omoDocumentsParamsT('documents.params.feedback.saved'), 'config' => $config)
+            : array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.save_failed'));
     }
 }
 

@@ -323,6 +323,365 @@
 				&& $config['appPassword'] !== '';
 		}
 
+		public function getDocumentStorageConfig(): array
+		{
+			require_once dirname(__DIR__, 2) . '/omo/api/documents/params/shared.php';
+
+			if (function_exists('omoDocumentsParamsGetDocumentStorageConfig')) {
+				return omoDocumentsParamsGetDocumentStorageConfig($this);
+			}
+
+			return array(
+				'type' => '',
+				'baseUrl' => '',
+				'driveId' => '',
+				'username' => '',
+				'appPassword' => '',
+				'folder' => '',
+			);
+		}
+
+		public function hasDocumentStorage(): bool
+		{
+			require_once dirname(__DIR__, 2) . '/omo/api/documents/params/shared.php';
+
+			if (function_exists('omoDocumentsParamsHasDocumentStorageConfig')) {
+				return omoDocumentsParamsHasDocumentStorageConfig($this->getDocumentStorageConfig());
+			}
+
+			return false;
+		}
+
+		public function testDocumentStorageConnection(array $config): array
+		{
+			require_once dirname(__DIR__, 2) . '/omo/api/documents/params/shared.php';
+			$config = function_exists('omoDocumentsParamsNormalizeDocumentStorageConfig')
+				? omoDocumentsParamsNormalizeDocumentStorageConfig($config)
+				: $config;
+
+			if (($config['type'] ?? '') === 'nextcloud') {
+				return $this->testNextcloudDocumentStorageConnection($config);
+			}
+
+			if (($config['type'] ?? '') !== 'kdrive') {
+				return array('status' => false, 'text' => 'Type de stockage invalide.');
+			}
+
+			if (!function_exists('curl_init')) {
+				return array('status' => false, 'text' => 'cURL est requis pour tester la connexion kDrive.');
+			}
+
+			$testConfig = $config;
+			$testConfig['folder'] = '';
+			$result = $this->executeKdriveDocumentsRequest('PROPFIND', '', $testConfig, array(
+				'timeout' => 30,
+				'headers' => array('Depth: 0', 'Content-Length: 0'),
+			));
+			if (is_array($result) && !empty($result['status'])) {
+				return array('status' => true, 'text' => 'Connexion kDrive réussie. Le compte WebDAV est accessible.');
+			}
+
+			$httpCode = (int)($result['httpCode'] ?? 0);
+			if (in_array($httpCode, array(401, 403), true)) {
+				return array('status' => false, 'text' => 'kDrive refuse les identifiants ou le mot de passe d’application.');
+			}
+
+			return array('status' => false, 'text' => trim((string)($result['text'] ?? 'La connexion kDrive a échoué.')));
+		}
+
+		protected function buildKdriveDocumentsDavUrl(array $config, string $relativePath = ''): string
+		{
+			$driveId = preg_replace('/[^0-9]/', '', trim((string)($config['driveId'] ?? '')));
+			if ($driveId === '') {
+				return '';
+			}
+
+			$segments = array_filter(
+				array_map('trim', explode('/', trim((string)($config['folder'] ?? '') . '/' . trim($relativePath, '/'), '/'))),
+				static function ($segment) {
+					return $segment !== '';
+				}
+			);
+
+			$encodedPath = count($segments) > 0
+				? '/' . implode('/', array_map('rawurlencode', $segments))
+				: '';
+			return 'https://' . $driveId . '.connect.kdrive.infomaniak.com' . $encodedPath;
+		}
+
+		protected function executeKdriveDocumentsRequest(string $method, string $relativePath, array $config, array $options = array()): array
+		{
+			$url = $this->buildKdriveDocumentsDavUrl($config, $relativePath);
+			$username = trim((string)($config['username'] ?? ''));
+			$appPassword = trim((string)($config['appPassword'] ?? ''));
+			if ($url === '' || $username === '' || $appPassword === '') {
+				return array('status' => false, 'text' => 'Configuration kDrive invalide.');
+			}
+
+			$curl = curl_init($url);
+			$body = array_key_exists('body', $options) ? $options['body'] : null;
+			$headers = !empty($options['headers']) && is_array($options['headers']) ? array_values($options['headers']) : array();
+			$timeout = isset($options['timeout']) ? max(5, (int)$options['timeout']) : 120;
+			curl_setopt_array($curl, array(
+				CURLOPT_RETURNTRANSFER => true,
+				CURLOPT_FOLLOWLOCATION => false,
+				CURLOPT_CUSTOMREQUEST => strtoupper($method),
+				CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
+				CURLOPT_USERPWD => $username . ':' . $appPassword,
+				CURLOPT_TIMEOUT => $timeout,
+				CURLOPT_HEADER => true,
+				CURLOPT_HTTPHEADER => $headers,
+				CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+			));
+			if ($body !== null) {
+				curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
+			}
+
+			$response = curl_exec($curl);
+			$curlError = trim((string)curl_error($curl));
+			$httpCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+			$headerSize = (int)curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+			if ($response === false) {
+				return array('status' => false, 'httpCode' => $httpCode, 'text' => $curlError !== '' ? $curlError : 'La requête kDrive a échoué.');
+			}
+
+			$rawHeaders = substr((string)$response, 0, max(0, $headerSize));
+			$responseBody = substr((string)$response, max(0, $headerSize));
+			$headerMap = array();
+			foreach (preg_split("/\r\n|\n|\r/", $rawHeaders) as $headerLine) {
+				$separatorPosition = strpos($headerLine, ':');
+				if ($separatorPosition === false) {
+					continue;
+				}
+				$headerName = strtolower(trim(substr($headerLine, 0, $separatorPosition)));
+				if ($headerName !== '') {
+					$headerMap[$headerName] = trim(substr($headerLine, $separatorPosition + 1));
+				}
+			}
+
+			return array(
+				'status' => $httpCode >= 200 && $httpCode < 300,
+				'httpCode' => $httpCode,
+				'headers' => $headerMap,
+				'body' => $responseBody,
+				'text' => $httpCode >= 200 && $httpCode < 300 ? 'OK' : 'Requête kDrive refusée (' . $httpCode . ').',
+			);
+		}
+
+		protected function ensureKdriveDocumentsFolder(string $relativeFolder, array $config): array
+		{
+			$normalizedFolder = trim(str_replace('\\', '/', $relativeFolder), '/');
+			if ($normalizedFolder === '') {
+				return array('status' => true);
+			}
+
+			$currentPath = '';
+			foreach (array_filter(explode('/', $normalizedFolder), static function ($segment) { return trim((string)$segment) !== ''; }) as $segment) {
+				$currentPath = $currentPath === '' ? $segment : $currentPath . '/' . $segment;
+				$result = $this->executeKdriveDocumentsRequest('MKCOL', $currentPath, $config, array('timeout' => 30));
+				$httpCode = (int)($result['httpCode'] ?? 0);
+				if (!is_array($result) || (!empty($result['status']) ? false : !in_array($httpCode, array(201, 405), true))) {
+					return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de préparer le dossier kDrive.')));
+				}
+			}
+
+			return array('status' => true);
+		}
+
+		protected function buildKdriveDocumentStorageRoot(array $config): string
+		{
+			return 'omo-documents';
+		}
+
+		public function uploadDocumentFileToStorage(int $documentId, array $uploadedFile): array
+		{
+			$config = $this->getDocumentStorageConfig();
+			if (($config['type'] ?? '') !== 'kdrive') {
+				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
+					return array('status' => false, 'text' => 'Le stockage de documents n est pas configure pour cette organisation.');
+				}
+				return $this->uploadDocumentFileToNextcloud($documentId, $uploadedFile);
+			}
+
+			$documentId = (int)$documentId;
+			$tmpName = trim((string)($uploadedFile['tmp_name'] ?? ''));
+			$errorCode = (int)($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE);
+			if ($documentId <= 0 || $errorCode !== UPLOAD_ERR_OK || $tmpName === '' || !is_file($tmpName)) {
+				return array('status' => false, 'text' => 'Aucun fichier valide n’a été téléversé.');
+			}
+
+			$originalName = trim((string)($uploadedFile['name'] ?? ''));
+			$mimeType = trim((string)($uploadedFile['type'] ?? ''));
+			if ($mimeType === '' && function_exists('mime_content_type')) {
+				$mimeType = trim((string)mime_content_type($tmpName));
+			}
+			$mimeType = $mimeType !== '' ? $mimeType : 'application/octet-stream';
+			$fileSize = isset($uploadedFile['size']) ? (int)$uploadedFile['size'] : (int)filesize($tmpName);
+			$remoteFilename = self::sanitizeNextcloudRemoteFilename($originalName !== '' ? $originalName : ('document-' . $documentId));
+			$storageDirectory = $this->buildKdriveDocumentStorageRoot($config) . '/' . $documentId;
+			$directoryResult = $this->ensureKdriveDocumentsFolder($storageDirectory, $config);
+			if (!is_array($directoryResult) || empty($directoryResult['status'])) {
+				return $directoryResult;
+			}
+
+			$fileContent = file_get_contents($tmpName);
+			if ($fileContent === false) {
+				return array('status' => false, 'text' => 'Impossible de lire le fichier à envoyer.');
+			}
+			$relativePath = $storageDirectory . '/' . $remoteFilename;
+			$uploadResult = $this->executeKdriveDocumentsRequest('PUT', $relativePath, $config, array(
+				'body' => $fileContent,
+				'timeout' => 300,
+				'headers' => array('Content-Type: ' . $mimeType, 'Content-Length: ' . strlen($fileContent)),
+			));
+			if (!is_array($uploadResult) || empty($uploadResult['status'])) {
+				return array('status' => false, 'text' => trim((string)($uploadResult['text'] ?? 'Impossible d’envoyer le fichier vers kDrive.')));
+			}
+
+			return array(
+				'status' => true,
+				'relativePath' => $relativePath,
+				'originalName' => $originalName !== '' ? $originalName : $remoteFilename,
+				'mimeType' => $mimeType,
+				'size' => max(0, $fileSize),
+			);
+		}
+
+		public function deleteDocumentFileFromStorage(string $relativePath, ?array $storageConfig = null): array
+		{
+			$config = $storageConfig ?: $this->getDocumentStorageConfig();
+			if (($config['type'] ?? '') !== 'kdrive') {
+				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
+					return array('status' => false, 'text' => 'Le stockage de documents n est pas configure pour cette organisation.');
+				}
+				return $this->deleteDocumentFileFromNextcloud($relativePath);
+			}
+
+			$normalizedPath = trim(str_replace('\\', '/', $relativePath), '/');
+			if ($normalizedPath === '') {
+				return array('status' => true);
+			}
+			$result = $this->executeKdriveDocumentsRequest('DELETE', $normalizedPath, $config, array('timeout' => 120));
+			$httpCode = (int)($result['httpCode'] ?? 0);
+			return in_array($httpCode, array(204, 404), true) || !empty($result['status'])
+				? array('status' => true)
+				: array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de supprimer le fichier distant.')));
+		}
+
+		public function downloadDocumentFileFromStorage(string $relativePath): array
+		{
+			$config = $this->getDocumentStorageConfig();
+			if (($config['type'] ?? '') !== 'kdrive') {
+				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
+					return array('status' => false, 'text' => 'Le stockage de documents n est pas configure pour cette organisation.');
+				}
+				return $this->downloadDocumentFileFromNextcloud($relativePath);
+			}
+
+			$normalizedPath = trim(str_replace('\\', '/', $relativePath), '/');
+			if ($normalizedPath === '') {
+				return array('status' => false, 'text' => 'Chemin de fichier distant invalide.');
+			}
+			$result = $this->executeKdriveDocumentsRequest('GET', $normalizedPath, $config, array('timeout' => 300, 'headers' => array('Accept: */*')));
+			if (!is_array($result) || empty($result['status'])) {
+				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de récupérer le fichier distant.')));
+			}
+
+			return array(
+				'status' => true,
+				'body' => (string)($result['body'] ?? ''),
+				'contentType' => trim((string)($result['headers']['content-type'] ?? 'application/octet-stream')),
+				'contentLength' => isset($result['headers']['content-length']) ? (int)$result['headers']['content-length'] : strlen((string)($result['body'] ?? '')),
+			);
+		}
+
+		public function updateDocumentFileContentsOnStorage(string $relativePath, string $contents, string $mimeType = 'application/octet-stream'): array
+		{
+			$config = $this->getDocumentStorageConfig();
+			if (($config['type'] ?? '') !== 'kdrive') {
+				if (($config['type'] ?? '') !== 'nextcloud' || !$this->hasDocumentStorage()) {
+					return array('status' => false, 'text' => 'Le stockage de documents n est pas configure pour cette organisation.');
+				}
+				return $this->updateDocumentFileContentsOnNextcloud($relativePath, $contents, $mimeType);
+			}
+
+			$normalizedPath = trim(str_replace('\\', '/', $relativePath), '/');
+			if ($normalizedPath === '') {
+				return array('status' => false, 'text' => 'Chemin de fichier distant invalide.');
+			}
+			$result = $this->executeKdriveDocumentsRequest('PUT', $normalizedPath, $config, array(
+				'body' => $contents,
+				'timeout' => 300,
+				'headers' => array('Content-Type: ' . ($mimeType !== '' ? $mimeType : 'application/octet-stream'), 'Content-Length: ' . strlen($contents)),
+			));
+			return !is_array($result) || empty($result['status'])
+				? array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de mettre à jour le fichier distant.')))
+				: array('status' => true, 'size' => strlen($contents));
+		}
+
+		public function testNextcloudDocumentStorageConnection(array $config): array
+		{
+			$baseUrl = rtrim(trim((string)($config['baseUrl'] ?? '')), '/');
+			$username = trim((string)($config['username'] ?? ''));
+			$appPassword = trim((string)($config['appPassword'] ?? ''));
+			$parsedUrl = parse_url($baseUrl);
+			if (
+				$baseUrl === ''
+				|| !is_array($parsedUrl)
+				|| !in_array(strtolower((string)($parsedUrl['scheme'] ?? '')), array('http', 'https'), true)
+				|| trim((string)($parsedUrl['host'] ?? '')) === ''
+				|| $username === ''
+				|| $appPassword === ''
+			) {
+				return array('status' => false, 'text' => 'Renseignez une URL, un utilisateur et un mot de passe applicatif Nextcloud valides.');
+			}
+
+			if (!function_exists('curl_init')) {
+				return array('status' => false, 'text' => 'cURL est requis pour tester la connexion Nextcloud.');
+			}
+
+			$url = $baseUrl . '/remote.php/dav/files/' . rawurlencode($username) . '/';
+			$curl = curl_init($url);
+			curl_setopt_array($curl, array(
+				CURLOPT_RETURNTRANSFER => true,
+				CURLOPT_HEADER => true,
+				CURLOPT_CUSTOMREQUEST => 'PROPFIND',
+				CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
+				CURLOPT_USERPWD => $username . ':' . $appPassword,
+				CURLOPT_HTTPHEADER => array(
+					'Depth: 0',
+					'Content-Length: 0',
+				),
+				CURLOPT_CONNECTTIMEOUT => 10,
+				CURLOPT_TIMEOUT => 30,
+				CURLOPT_FOLLOWLOCATION => false,
+				CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+			));
+
+			$host = strtolower(trim((string)($parsedUrl['host'] ?? '')));
+			$localCertificate = '/etc/apache2/ssl/dev-localhost.crt';
+			if ($host !== '' && ($host === 'localtest.me' || str_ends_with($host, '.localtest.me')) && is_file($localCertificate)) {
+				curl_setopt($curl, CURLOPT_CAINFO, $localCertificate);
+			}
+
+			$response = curl_exec($curl);
+			$curlError = trim((string)curl_error($curl));
+			$httpCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+			if ($response === false) {
+				return array('status' => false, 'text' => $curlError !== '' ? $curlError : 'La connexion Nextcloud a echoue.');
+			}
+
+			if ($httpCode >= 200 && $httpCode < 300) {
+				return array('status' => true, 'text' => 'Connexion Nextcloud reussie. Le compte WebDAV est accessible.');
+			}
+
+			if (in_array($httpCode, array(401, 403), true)) {
+				return array('status' => false, 'text' => 'Nextcloud refuse les identifiants ou le mot de passe applicatif.');
+			}
+
+			return array('status' => false, 'text' => 'Nextcloud a repondu avec le code HTTP ' . $httpCode . '.');
+		}
+
 		protected function buildNextcloudDocumentsDavUrl(string $relativePath = ''): string
 		{
 			$config = $this->getNextcloudDocumentsConfig();
@@ -390,6 +749,12 @@
 			curl_setopt($curl, CURLOPT_TIMEOUT, $timeout);
 			curl_setopt($curl, CURLOPT_HEADER, true);
 			curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+
+			$nextcloudHost = strtolower(trim((string)parse_url($url, PHP_URL_HOST)));
+			$localCertificate = '/etc/apache2/ssl/dev-localhost.crt';
+			if ($nextcloudHost !== '' && ($nextcloudHost === 'localtest.me' || str_ends_with($nextcloudHost, '.localtest.me')) && is_file($localCertificate)) {
+				curl_setopt($curl, CURLOPT_CAINFO, $localCertificate);
+			}
 
 			if ($body !== null) {
 				curl_setopt($curl, CURLOPT_POSTFIELDS, $body);
@@ -629,6 +994,32 @@
 				'contentType' => trim((string)(($result['headers']['content-type'] ?? 'application/octet-stream'))),
 				'contentLength' => isset($result['headers']['content-length']) ? (int)$result['headers']['content-length'] : strlen((string)($result['body'] ?? '')),
 			);
+		}
+
+		public function updateDocumentFileContentsOnNextcloud(string $relativePath, string $contents, string $mimeType = 'application/octet-stream'): array
+		{
+			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
+			if ($relativePath === '') {
+				return array('status' => false, 'text' => 'Chemin de fichier distant invalide.');
+			}
+
+			$mimeType = trim($mimeType) !== '' ? trim($mimeType) : 'application/octet-stream';
+			$result = $this->executeNextcloudDocumentsRequest('PUT', $relativePath, array(
+				'body' => $contents,
+				'timeout' => 300,
+				'headers' => array(
+					'Content-Type: ' . $mimeType,
+					'Content-Length: ' . strlen($contents),
+				),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array(
+					'status' => false,
+					'text' => trim((string)($result['text'] ?? 'Impossible de mettre a jour le fichier distant.')),
+				);
+			}
+
+			return array('status' => true, 'size' => strlen($contents));
 		}
 
 		public static function attributePattern()
