@@ -41,7 +41,7 @@ if (!$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $ho
 $organization = new Organization();
 if (
     !$organization->load((int)$document->get('IDorganization'))
-    || !$organization->hasNextcloudDocumentStorage()
+    || !$organization->hasDocumentStorage()
 ) {
     http_response_code(503);
     header('Content-Type: text/plain; charset=UTF-8');
@@ -49,7 +49,7 @@ if (
     exit;
 }
 
-$downloadResult = $organization->downloadDocumentFileFromNextcloud((string)$document->get('storedfilepath'));
+$downloadResult = $organization->downloadDocumentFileFromStorage((string)$document->get('storedfilepath'));
 if (!is_array($downloadResult) || empty($downloadResult['status'])) {
     http_response_code(502);
     header('Content-Type: text/plain; charset=UTF-8');

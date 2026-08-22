@@ -8,6 +8,7 @@ Cette configuration sert a lancer une version locale reproductible du projet ave
 - phpMyAdmin pour inspecter la base locale
 - Etherpad local pour tester les documents collaboratifs
 - EtherCalc local pour tester les tableurs collaboratifs
+- Collabora CODE local pour preparer l edition de documents bureautiques
 - prise en charge de `short_open_tag`
 - acceptation de `localhost`, `demo.localhost`, `org1.localhost`, `org2.localhost`
 - acceptation d'un domaine de dev partage recommande avec wildcard DNS : `localtest.me`, `demo.localtest.me`, `org1.localtest.me`
@@ -111,6 +112,7 @@ L'application sera disponible sur :
 - phpMyAdmin : `http://localhost:8081`
 - Etherpad : `https://doc.localtest.me`
 - EtherCalc : `https://calc.localtest.me`
+- Collabora CODE : `https://document.localtest.me`
 
 Adresses de demonstration utiles :
 
@@ -192,6 +194,8 @@ Dans cette configuration, les cookies peuvent etre poses sur `.localtest.me` et 
 Le service Etherpad local est preconfigure pour OMO et passe par le certificat HTTPS local partage avec Apache. Copier les valeurs Etherpad de `docker/app/.env.private.example` dans `docker/app/.env.private` et celles de `docker/etherpad/.env.private.example` dans `docker/etherpad/.env.private`, puis utiliser OMO et Etherpad en HTTPS. Si un ancien fichier prive contient encore des variables Etherpad vides, les supprimer ou les remplacer par les valeurs de l exemple, car ce fichier prive est prioritaire. Etherpad utilise une base MariaDB separee sur le meme serveur que OMO. Son image inclut aussi le module qui synchronise le theme defini dans OMO avec l iframe Etherpad.
 
 EtherCalc est egalement disponible localement via `https://calc.localtest.me`. Copier les variables EtherCalc de `docker/app/.env.private.example` dans `docker/app/.env.private`, puis copier `docker/ethercalc/.env.private.example` vers `docker/ethercalc/.env.private`. OMO cree et supprime les feuilles depuis le reseau Docker interne; l URL publique ne permet que l affichage et les editions autorisees par les jetons signes par OMO.
+
+Collabora CODE est disponible localement via `https://document.localtest.me`. Copier `docker/collabora/.env.private.example` vers `docker/collabora/.env.private` avant de lancer Docker. Le conteneur est accessible uniquement depuis le reseau Docker et Apache fournit le proxy HTTPS, y compris les connexions WebSocket. L image locale charge un script de marque OMO versionne qui reapplique les variables de palette apres l initialisation de CODE; apres une modification de `docker/collabora/branding.js`, changer aussi le suffixe de version dans `docker/collabora/Dockerfile`, puis reconstruire avec `docker compose up -d --build collabora`.
 
 `localtest.me` n'est pas "publie" par Docker sur Internet du projet : c'est simplement un domaine public qui renvoie automatiquement vers `127.0.0.1`, ce qui evite toute configuration DNS locale supplementaire.
 

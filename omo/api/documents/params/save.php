@@ -63,21 +63,34 @@ try {
         $pdo->beginTransaction();
     }
 
-    $result = omoDocumentsParamsStoreNextcloudConfig($organization, $_POST, true);
-    if (!is_array($result) || empty($result['status'])) {
-        $failureMessage = trim((string)($result['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
-        throw new \RuntimeException('documents_settings_save_failed');
-    }
-
-    $etherpadResult = omoDocumentsParamsStoreEtherpadConfig($organization, $_POST, true);
-    if (!is_array($etherpadResult) || empty($etherpadResult['status'])) {
-        $failureMessage = trim((string)($etherpadResult['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
+    $collaboraResult = omoDocumentsParamsStoreCollaboraConfig($organization, $_POST);
+    if (!is_array($collaboraResult) || empty($collaboraResult['status'])) {
+        $failureMessage = trim((string)($collaboraResult['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
         throw new \RuntimeException('documents_settings_save_failed');
     }
 
     $defaultsResult = omoDocumentsParamsStoreVisibilityDefaults($organization, $_POST);
     if (!is_array($defaultsResult) || empty($defaultsResult['status'])) {
         $failureMessage = trim((string)($defaultsResult['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
+        throw new \RuntimeException('documents_settings_save_failed');
+    }
+
+    $result = omoDocumentsParamsStoreDocumentStorageConfig($organization, $_POST, true);
+    if (!is_array($result) || empty($result['status'])) {
+        if (is_array($result) && !empty($result['confirmationRequired'])) {
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            http_response_code(409);
+            echo json_encode(array(
+                'status' => false,
+                'confirmationRequired' => true,
+                'message' => trim((string)($result['text'] ?? omoDocumentsParamsT('documents.params.feedback.storage_change_warning'))),
+            ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+
+        $failureMessage = trim((string)($result['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
         throw new \RuntimeException('documents_settings_save_failed');
     }
 
@@ -99,5 +112,5 @@ try {
 
 echo json_encode(array(
     'status' => true,
-    'message' => trim((string)($defaultsResult['text'] ?? $etherpadResult['text'] ?? $result['text'] ?? omoDocumentsParamsT('documents.params.feedback.saved'))),
+    'message' => trim((string)($defaultsResult['text'] ?? $collaboraResult['text'] ?? $result['text'] ?? omoDocumentsParamsT('documents.params.feedback.saved'))),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

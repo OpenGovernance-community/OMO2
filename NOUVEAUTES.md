@@ -21,6 +21,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les ressources JavaScript et CSS utilisees par les PV portent maintenant une nouvelle version d URL afin de forcer leur rechargement apres publication.
 - La modification d un evenement depend maintenant toujours de `CAN_EDIT_EVENT` ; son createur ne conserve plus automatiquement ce droit s il perd le role ou la permission correspondante.
 - Le formulaire d evenement ne propose maintenant la creation d un document lie que si `CAN_CREATE_DOCUMENT` est autorise dans le contexte selectionne ; la verification serveur reste active a l enregistrement.
+- Les PV en preparation ou en reunion ne contournent plus la barriere des invites via leur visibilite documentaire : ils restent absents des listes et inaccessibles en construction pour les personnes non invitees.
 - La base visuelle de la popup de discussion est maintenant partagee avec le chat des decisions : avatars et messages recus a gauche, messages personnels a droite, meme zone de saisie et bouton Envoyer.
 - L ordre du jour des PV affiche maintenant l icone Information, Consultation ou Decision devant chaque point et la met a jour immediatement lors du changement de type.
 - Les points de PV sont maintenant verrouilles des leur prise de focus, restent verrouilles tant que des modifications ne sont pas sauvees, puis sont liberes juste apres la sauvegarde lorsque le focus a quitte le point.
@@ -28,6 +29,30 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Lorsqu un PV est valide et passe en lecture seule, ses sauvegardes automatiques, sa synchronisation et ses battements de verrou sont immediatement arretes.
 - L export PDF des PV renvoie maintenant une erreur explicite et journalisee si la preparation du contenu echoue, au lieu de telecharger un fichier vide.
 - Les lignes vides ne sont plus ajoutees automatiquement apres les blocs de ressources : le bouton `+` permet de les creer a la demande entre deux blocs ou apres le dernier.
+
+## 2026-08-22
+
+- Le compose Docker local inclut maintenant un conteneur Collabora CODE, proxifie en HTTPS via `document.localtest.me` et autorise dans les iframes de `localtest.me` et `*.localtest.me`, pour preparer l edition de documents bureautiques.
+- La page de test Collabora transmet maintenant explicitement la permission `edit`, afin que le document TXT s ouvre en mode edition avec un curseur actif.
+- Le proxy Apache preserve maintenant les URL WOPI encodees et transmet les routes WebSocket `/cool/.../ws` de Collabora, afin de conserver la connexion de l editeur ouverte.
+- Le mode local Collabora active maintenant `home_mode` pour masquer l ecran de presentation et les fenetres de feedback ; ce mode reste limite a 20 connexions et 10 documents ouverts.
+- Une page de test sous `/test/collabora.php` ouvre maintenant un document TXT dans une iframe Collabora, avec un hote WOPI local capable de lire, verrouiller et sauvegarder le fichier.
+- L application Documents peut maintenant activer Collabora par organisation, uniquement avec un stockage Nextcloud configure, puis creer des documents cooperatifs DOCX ouverts selon les memes droits que les pads Etherpad.
+- La configuration Nextcloud de Documents propose maintenant un test WebDAV immediat des valeurs saisies, sans devoir enregistrer les parametres au prealable.
+- La creation des documents Collabora n essaie plus de charger une classe ZipArchive absente lorsque l extension PHP ZIP n est pas installee ; elle utilise directement son generateur DOCX autonome.
+- Les URLs WOPI utilisent maintenant un identifiant dans le chemin plutot qu une query string, afin d eviter que le jeton Collabora soit concatene a l identifiant ; les sous-domaines `*.localtest.me` sont pris en charge.
+- En Docker local, les documents Collabora utilisent le nom de service interne `app` pour joindre WOPI, ce qui evite que `*.localtest.me` resolve vers le conteneur Collabora lui-meme.
+- L acces WOPI Collabora ne depend plus de la session web OMO : il est authentifie uniquement par son jeton signe, puis soumis aux droits du document.
+- Le point d acces WOPI reconnait maintenant le chemin standard `/contents` de Collabora et retourne bien le DOCX, au lieu des metadonnees JSON du document.
+- Les documents Collabora reprennent maintenant automatiquement la couleur de leur organisation, le mode d interface a onglets et le theme clair ou sombre actif de leur utilisateur.
+- Le theme Collabora est maintenant transmis dans les parametres de son editeur avec `UITheme`, afin de forcer correctement le mode clair ou sombre meme si Collabora possede un etat d interface memorise.
+- La palette de l organisation est prioritaire sur la feuille de style de marque integree a Collabora, y compris en mode sombre.
+- En theme sombre, Collabora conserve maintenant le fond du document en clair, pour garder un rendu adapte a l impression tout en laissant les outils en sombre.
+- La couleur d organisation est maintenant appliquee aussi a la palette primaire de l editeur Collabora, et pas uniquement a ses anciennes variables de marque.
+- Le theme et le fond du document sont maintenant confirmes par les preferences WOPI finales, tandis que l image CODE locale reapplique la palette OMO apres l initialisation complete de Collabora via une ressource versionnee qui evite de conserver l ancien bleu en cache.
+- L application Documents peut maintenant choisir un stockage distant par organisation entre Nextcloud et kDrive Infomaniak via WebDAV, tester la connexion du serveur choisi et activer Collabora avec l un ou l autre stockage.
+- Lorsqu un serveur de stockage ou son dossier change, Documents demande confirmation puis supprime les fichiers distants des documents televerses et Collabora avant d enregistrer la nouvelle configuration.
+- La configuration Etherpad est maintenant centralisee au niveau du serveur; les organisations utilisent le domaine et les identifiants Etherpad globaux.
 
 ## 2026-08-20
 
@@ -329,6 +354,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - La navigation Telegram des destinations de groupe inclut les groupes et les cercles. L ouverture d un role propose maintenant explicitement sa selection ou les projets rattaches a ce role, et les erreurs d enregistrement conservent leur detail SQL dans les journaux.
 - Les groupes Telegram sans sujet utilisent maintenant une destination principale explicite, ce qui evite une erreur SQL lors de leur connexion.
 - Un vocal Telegram ignore parce que la transcription est arretee ou parce qu il dure moins de dix secondes recoit maintenant une explication dans la discussion.
+- Dans un groupe Telegram non connecte, un membre deja reconnu recoit une transcription resumee sans creation de document; les membres non reconnus ne declenchent aucune action. La configuration d un role ou projet conserve la creation des documents OMO.
 - La FAQ explique maintenant comment synchroniser les contacts et les reunions OMO sur un telephone ou un ordinateur avec CardDAV et CalDAV.
 - Un indicateur peut maintenant afficher ses mesures sous forme de barres et leur cumul sous forme de courbe, avec une echelle propre de chaque cote. Le cumul conserve son historique quelle que soit la periode affichee : une trajectoire datee fixe son debut, tandis qu un indicateur sans trajectoire datee repart de sa premiere mesure.
 - Apres la sauvegarde d un document existant, le sous-drawer reste ouvert sur le meme document en mode vue.

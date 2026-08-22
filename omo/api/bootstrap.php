@@ -94,6 +94,8 @@ $shareLink = function_exists('commonGetCurrentShareLink')
     ? commonGetCurrentShareLink()
     : null;
 $publicDecisionTokenAccess = false;
+$collaboraWopiTokenAccess = defined('OMO_COLLABORA_WOPI_TOKEN_ACCESS')
+    && OMO_COLLABORA_WOPI_TOKEN_ACCESS === true;
 
 if (!$shareLink) {
     require_once __DIR__ . '/decision/modules/public_access.php';
@@ -119,7 +121,7 @@ if ($shareLink) {
 
 commonRestoreRememberedUser();
 
-if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin() && !$shareLink && !$publicDecisionTokenAccess && !omoApiCanUsePublicBasicLmsAccess()) {
+if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin() && !$shareLink && !$publicDecisionTokenAccess && !$collaboraWopiTokenAccess && !omoApiCanUsePublicBasicLmsAccess()) {
     http_response_code(401);
     echo "Unauthorized";
     exit;
@@ -129,6 +131,7 @@ if (
     !commonCanAccessWithoutLogin()
     && !$shareLink
     && !$publicDecisionTokenAccess
+    && !$collaboraWopiTokenAccess
     && !omoApiCanUsePublicBasicLmsAccess()
     && !omoApiCanBypassOrganizationAccessCheck()
     && !commonCurrentUserHasOrganizationAccess()

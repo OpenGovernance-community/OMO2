@@ -16,15 +16,21 @@ $applicationLabel = $application && (int)$application->getId() > 0
 $applicationIcon = $application && (int)$application->getId() > 0
     ? trim((string)$application->get('icon'))
     : 'images/tools/documents-folder.png';
-$nextcloudConfig = $organizationLoaded
-    ? omoDocumentsParamsGetNextcloudConfig($organization, $organizationApplication, true)
+$documentStorageConfig = $organizationLoaded
+    ? omoDocumentsParamsGetDocumentStorageConfig($organization, $organizationApplication)
+    : omoDocumentsParamsNormalizeDocumentStorageConfig(array());
+$storageConfigured = $organizationLoaded && omoDocumentsParamsHasDocumentStorageConfig($documentStorageConfig);
+$storageType = (string)($documentStorageConfig['type'] ?? '');
+$nextcloudConfig = $storageType === 'nextcloud'
+    ? omoDocumentsParamsNormalizeNextcloudConfig($documentStorageConfig)
     : omoDocumentsParamsNormalizeNextcloudConfig(array());
-$nextcloudConfigured = omoDocumentsParamsHasNextcloudConfig($nextcloudConfig);
-$etherpadConfig = $organizationLoaded
-    ? omoDocumentsParamsGetEtherpadConfig($organization, $organizationApplication)
-    : array('baseUrl' => '', 'apiKey' => '', 'hasBaseUrlOverride' => false, 'hasApiKeyOverride' => false);
-$etherpadApiConfigured = $organizationLoaded && omoDocumentsParamsHasEtherpadConfig($etherpadConfig);
-$etherpadConfigured = $etherpadApiConfigured && omoEtherpadCanUseEditingSessions($organization);
+$kdriveConfig = $storageType === 'kdrive'
+    ? omoDocumentsParamsNormalizeKdriveConfig($documentStorageConfig)
+    : omoDocumentsParamsNormalizeKdriveConfig(array());
+$collaboraConfig = $organizationLoaded
+    ? omoDocumentsParamsGetCollaboraConfig($organization, $organizationApplication)
+    : omoCollaboraNormalizeConfig(array());
+$collaboraConfigured = $organizationLoaded && $storageConfigured && omoDocumentsParamsHasCollaboraConfig($collaboraConfig);
 $usesLegacyConfig = $organizationLoaded
     ? omoDocumentsParamsUsesLegacyNextcloudConfig($organization, $organizationApplication)
     : false;
@@ -55,23 +61,23 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
         <?php elseif (!$canManage): ?>
             <div class="omo-empty-state"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.error.forbidden'), ENT_QUOTES, 'UTF-8') ?></div>
         <?php else: ?>
-            <div class="omo-documents-params__status generic-soft-panel<?= $nextcloudConfigured ? ' is-ready' : '' ?>">
+            <div class="omo-documents-params__status generic-soft-panel<?= $storageConfigured ? ' is-ready' : '' ?>">
                 <?= htmlspecialchars(
-                    $nextcloudConfigured
-                        ? omoDocumentsParamsT('documents.params.status.ready')
-                        : omoDocumentsParamsT('documents.params.status.empty'),
+                    $storageConfigured
+                        ? omoDocumentsParamsT('documents.params.status.storage_ready')
+                        : omoDocumentsParamsT('documents.params.status.storage_empty'),
                     ENT_QUOTES,
                     'UTF-8'
                 ) ?>
             </div>
 
-            <div class="omo-documents-params__status generic-soft-panel<?= $etherpadConfigured ? ' is-ready' : '' ?>">
+            <div class="omo-documents-params__status generic-soft-panel<?= $collaboraConfigured ? ' is-ready' : '' ?>">
                 <?= htmlspecialchars(
-                    $etherpadConfigured
-                        ? omoDocumentsParamsT('documents.params.status.etherpad_ready')
-                        : ($etherpadApiConfigured
-                            ? omoDocumentsParamsT('documents.params.status.etherpad_cookie_missing')
-                            : omoDocumentsParamsT('documents.params.status.etherpad_empty')),
+                    $collaboraConfigured
+                        ? omoDocumentsParamsT('documents.params.status.collabora_ready')
+                        : ($storageConfigured
+                            ? omoDocumentsParamsT('documents.params.status.collabora_empty')
+                            : omoDocumentsParamsT('documents.params.status.collabora_requires_storage')),
                     ENT_QUOTES,
                     'UTF-8'
                 ) ?>
@@ -88,8 +94,36 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
 
                 <div class="omo-documents-params__grid generic-form-grid">
                     <h3 class="generic-card-title generic-card-title--small generic-form-field--full">
-                        <?= htmlspecialchars(omoDocumentsParamsT('documents.params.section.nextcloud'), ENT_QUOTES, 'UTF-8') ?>
+                        <?= htmlspecialchars(omoDocumentsParamsT('documents.params.section.storage'), ENT_QUOTES, 'UTF-8') ?>
                     </h3>
+
+                    <label class="omo-documents-params__checkbox omo-documents-params__field--full generic-form-field--full">
+                        <input
+                            type="checkbox"
+                            name="document_storage_enabled"
+                            value="1"
+                            data-omo-documents-storage-toggle
+                            <?= $storageConfigured ? ' checked' : '' ?>
+                        >
+                        <span><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.storage_enabled'), ENT_QUOTES, 'UTF-8') ?></span>
+                    </label>
+                    <p class="omo-documents-params__hint generic-help-text generic-form-field--full">
+                        <?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.storage_enabled_hint'), ENT_QUOTES, 'UTF-8') ?>
+                    </p>
+
+                    <fieldset class="omo-documents-params__storage-choice generic-form-field--full" data-omo-documents-storage-choice<?= $storageConfigured ? '' : ' hidden' ?>>
+                        <legend class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.storage_type'), ENT_QUOTES, 'UTF-8') ?></legend>
+                        <label class="omo-documents-params__radio">
+                            <input type="radio" name="storage_type" value="nextcloud" data-omo-documents-storage-type<?= $storageType === 'nextcloud' || !$storageConfigured ? ' checked' : '' ?>>
+                            <span><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.storage_type_nextcloud'), ENT_QUOTES, 'UTF-8') ?></span>
+                        </label>
+                        <label class="omo-documents-params__radio">
+                            <input type="radio" name="storage_type" value="kdrive" data-omo-documents-storage-type<?= $storageType === 'kdrive' ? ' checked' : '' ?>>
+                            <span><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.storage_type_kdrive'), ENT_QUOTES, 'UTF-8') ?></span>
+                        </label>
+                    </fieldset>
+
+                    <div class="omo-documents-params__storage-fields generic-form-grid generic-form-field--full" data-omo-documents-nextcloud-fields<?= $storageType === 'nextcloud' || !$storageConfigured ? '' : ' hidden' ?>>
 
                     <label class="omo-documents-params__field omo-documents-params__field--full generic-form-field generic-form-field--full">
                         <span class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.base_url'), ENT_QUOTES, 'UTF-8') ?></span>
@@ -127,7 +161,7 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                             maxlength="255"
                             autocomplete="new-password"
                             placeholder="<?= htmlspecialchars(
-                                $nextcloudConfigured
+                                ($storageConfigured && $storageType === 'nextcloud')
                                     ? omoDocumentsParamsT('documents.params.field.password_placeholder_keep')
                                     : omoDocumentsParamsT('documents.params.field.password_placeholder_new'),
                                 ENT_QUOTES,
@@ -151,42 +185,94 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                         <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.folder_hint'), ENT_QUOTES, 'UTF-8') ?></span>
                     </label>
 
+                    <div class="omo-documents-params__test-actions generic-form-actions generic-form-field--full">
+                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-documents-nextcloud-test>
+                            <?= htmlspecialchars(omoDocumentsParamsT('documents.params.action.test_storage'), ENT_QUOTES, 'UTF-8') ?>
+                        </button>
+                        <span class="omo-documents-params__test-feedback generic-help-text" data-omo-documents-nextcloud-test-feedback aria-live="polite"></span>
+                    </div>
+                    </div>
+
+                    <div class="omo-documents-params__storage-fields generic-form-grid generic-form-field--full" data-omo-documents-kdrive-fields<?= $storageType === 'kdrive' ? '' : ' hidden' ?>>
+                        <label class="omo-documents-params__field generic-form-field">
+                            <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.kdrive_id'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <input type="text" name="kdrive_id" class="generic-form-control" maxlength="30" inputmode="numeric" autocomplete="off" placeholder="123456" value="<?= htmlspecialchars((string)$kdriveConfig['driveId'], ENT_QUOTES, 'UTF-8') ?>">
+                            <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.kdrive_id_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                        </label>
+                        <label class="omo-documents-params__field generic-form-field">
+                            <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.kdrive_username'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <input type="email" name="kdrive_username" class="generic-form-control" maxlength="255" autocomplete="username" value="<?= htmlspecialchars((string)$kdriveConfig['username'], ENT_QUOTES, 'UTF-8') ?>">
+                        </label>
+                        <label class="omo-documents-params__field generic-form-field">
+                            <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.kdrive_password'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <input type="password" name="kdrive_app_password" class="generic-form-control" maxlength="255" autocomplete="new-password" placeholder="<?= htmlspecialchars($storageType === 'kdrive' ? omoDocumentsParamsT('documents.params.field.kdrive_password_placeholder_keep') : omoDocumentsParamsT('documents.params.field.kdrive_password_placeholder_new'), ENT_QUOTES, 'UTF-8') ?>">
+                            <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.kdrive_password_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                        </label>
+                        <label class="omo-documents-params__field omo-documents-params__field--full generic-form-field generic-form-field--full">
+                            <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.folder'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <input type="text" name="kdrive_folder" class="generic-form-control" maxlength="255" autocomplete="off" placeholder="Documents/OMO" value="<?= htmlspecialchars((string)$kdriveConfig['folder'], ENT_QUOTES, 'UTF-8') ?>">
+                            <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.kdrive_folder_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                        </label>
+                        <div class="omo-documents-params__test-actions generic-form-actions generic-form-field--full">
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-documents-storage-test>
+                                <?= htmlspecialchars(omoDocumentsParamsT('documents.params.action.test_storage'), ENT_QUOTES, 'UTF-8') ?>
+                            </button>
+                            <span class="omo-documents-params__test-feedback generic-help-text" data-omo-documents-storage-test-feedback aria-live="polite"></span>
+                        </div>
+                    </div>
+
                     <h3 class="generic-card-title generic-card-title--small generic-form-field--full">
-                        <?= htmlspecialchars(omoDocumentsParamsT('documents.params.section.etherpad'), ENT_QUOTES, 'UTF-8') ?>
+                        <?= htmlspecialchars(omoDocumentsParamsT('documents.params.section.collabora'), ENT_QUOTES, 'UTF-8') ?>
                     </h3>
 
-                    <label class="omo-documents-params__field omo-documents-params__field--full generic-form-field generic-form-field--full">
-                        <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.etherpad_base_url'), ENT_QUOTES, 'UTF-8') ?></span>
+                    <label class="omo-documents-params__checkbox omo-documents-params__field--full generic-form-field--full">
                         <input
-                            type="url"
-                            name="etherpad_base_url"
-                            class="generic-form-control"
-                            maxlength="500"
-                            autocomplete="off"
-                            placeholder="https://doc.example.org"
-                            value="<?= htmlspecialchars((string)($etherpadConfig['baseUrlOverride'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                            type="checkbox"
+                            name="collabora_enabled"
+                            value="1"
+                            data-omo-documents-collabora-toggle
+                            <?= $collaboraConfigured ? ' checked' : '' ?>
+                            <?= !$storageConfigured && !$collaboraConfigured ? ' disabled' : '' ?>
                         >
-                        <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.etherpad_base_url_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <span><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.collabora_enabled'), ENT_QUOTES, 'UTF-8') ?></span>
                     </label>
+                    <p class="omo-documents-params__hint generic-help-text generic-form-field--full">
+                        <?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.collabora_enabled_hint'), ENT_QUOTES, 'UTF-8') ?>
+                    </p>
 
-                    <label class="omo-documents-params__field generic-form-field">
-                        <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.etherpad_api_key'), ENT_QUOTES, 'UTF-8') ?></span>
-                        <input
-                            type="password"
-                            name="etherpad_api_key"
-                            class="generic-form-control"
-                            maxlength="255"
-                            autocomplete="new-password"
-                            placeholder="<?= htmlspecialchars(
-                                $etherpadConfig['hasApiKeyOverride']
-                                    ? omoDocumentsParamsT('documents.params.field.etherpad_api_key_placeholder_keep')
-                                    : omoDocumentsParamsT('documents.params.field.etherpad_api_key_placeholder_new'),
-                                ENT_QUOTES,
-                                'UTF-8'
-                            ) ?>"
-                        >
-                        <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.etherpad_api_key_hint'), ENT_QUOTES, 'UTF-8') ?></span>
-                    </label>
+                    <div class="omo-documents-params__collabora-fields generic-form-grid generic-form-field--full" data-omo-documents-collabora-fields<?= $collaboraConfigured ? '' : ' hidden' ?>>
+                        <label class="omo-documents-params__field generic-form-field">
+                            <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.collabora_base_url'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <input
+                                type="url"
+                                name="collabora_base_url"
+                                class="generic-form-control"
+                                maxlength="500"
+                                autocomplete="off"
+                                placeholder="https://document.example.org"
+                                value="<?= htmlspecialchars((string)$collaboraConfig['baseUrl'], ENT_QUOTES, 'UTF-8') ?>"
+                            >
+                            <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.collabora_base_url_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                        </label>
+
+                        <label class="omo-documents-params__field generic-form-field">
+                            <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.collabora_internal_url'), ENT_QUOTES, 'UTF-8') ?></span>
+                            <input
+                                type="url"
+                                name="collabora_internal_url"
+                                class="generic-form-control"
+                                maxlength="500"
+                                autocomplete="off"
+                                placeholder="http://collabora:9980"
+                                value="<?= htmlspecialchars((string)($collaboraConfig['internalUrl'] !== $collaboraConfig['baseUrl'] ? $collaboraConfig['internalUrl'] : ''), ENT_QUOTES, 'UTF-8') ?>"
+                            >
+                            <span class="omo-documents-params__hint generic-help-text"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.collabora_internal_url_hint'), ENT_QUOTES, 'UTF-8') ?></span>
+                        </label>
+
+                        <p class="omo-documents-params__hint generic-help-text generic-form-field--full">
+                            <?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.collabora_appearance_hint'), ENT_QUOTES, 'UTF-8') ?>
+                        </p>
+                    </div>
 
                     <div class="omo-documents-params__field omo-documents-params__field--full generic-form-field generic-form-field--full">
                         <?= commonRenderObjectVisibilitySelector(array(
@@ -212,19 +298,6 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                         )) ?>
                     </div>
 
-                    <?php if ($nextcloudConfigured): ?>
-                        <label class="omo-documents-params__checkbox omo-documents-params__field--full generic-form-field--full">
-                            <input type="checkbox" name="nextcloud_clear_config" value="1">
-                            <span><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.clear'), ENT_QUOTES, 'UTF-8') ?></span>
-                        </label>
-                    <?php endif; ?>
-
-                    <?php if ($etherpadConfig['hasBaseUrlOverride'] || $etherpadConfig['hasApiKeyOverride']): ?>
-                        <label class="omo-documents-params__checkbox omo-documents-params__field--full generic-form-field--full">
-                            <input type="checkbox" name="etherpad_clear_config" value="1">
-                            <span><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.etherpad_clear'), ENT_QUOTES, 'UTF-8') ?></span>
-                        </label>
-                    <?php endif; ?>
                 </div>
 
                 <div class="omo-documents-params__actions generic-form-actions">
@@ -293,6 +366,32 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
     color: var(--color-text, #0f172a);
 }
 
+.omo-documents-params__storage-choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--radius-md);
+}
+
+.omo-documents-params__storage-choice legend {
+    width: 100%;
+    padding: 0;
+}
+
+.omo-documents-params__radio {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.omo-documents-params__storage-fields[hidden],
+.omo-documents-params__storage-choice[hidden] {
+    display: none;
+}
+
 .omo-documents-params__feedback {
     color: var(--color-text-light, #475569);
 }
@@ -307,6 +406,18 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
     color: #b91c1c;
     border-color: color-mix(in srgb, #dc2626 18%, var(--color-border, #dbe4ee));
     background: color-mix(in srgb, #dc2626 8%, var(--color-surface, #ffffff));
+}
+
+.omo-documents-params__test-actions {
+    align-items: center;
+}
+
+.omo-documents-params__test-feedback.is-success {
+    color: #166534;
+}
+
+.omo-documents-params__test-feedback.is-error {
+    color: #b91c1c;
 }
 
 @media (max-width: 720px) {
@@ -332,12 +443,119 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
         var form = root.querySelector('[data-omo-documents-params-form]');
         var submitButton = root.querySelector('[data-omo-documents-params-submit]');
         var feedback = root.querySelector('[data-omo-documents-params-feedback]');
+        var storageToggle = root.querySelector('[data-omo-documents-storage-toggle]');
+        var storageChoice = root.querySelector('[data-omo-documents-storage-choice]');
+        var storageTypeInputs = root.querySelectorAll('[data-omo-documents-storage-type]');
+        var nextcloudFields = root.querySelector('[data-omo-documents-nextcloud-fields]');
+        var kdriveFields = root.querySelector('[data-omo-documents-kdrive-fields]');
+        var nextcloudTestButton = root.querySelector('[data-omo-documents-nextcloud-test]');
+        var nextcloudTestFeedback = root.querySelector('[data-omo-documents-nextcloud-test-feedback]');
+        var kdriveTestButton = root.querySelector('[data-omo-documents-storage-test]');
+        var kdriveTestFeedback = root.querySelector('[data-omo-documents-storage-test-feedback]');
+        var collaboraToggle = root.querySelector('[data-omo-documents-collabora-toggle]');
+        var collaboraFields = root.querySelector('[data-omo-documents-collabora-fields]');
         var idleLabel = <?= json_encode(omoDocumentsParamsT('documents.params.action.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var busyLabel = <?= json_encode(omoDocumentsParamsT('documents.params.action.saving'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var storageTestLabel = <?= json_encode(omoDocumentsParamsT('documents.params.action.test_storage'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        var storageTestingLabel = <?= json_encode(omoDocumentsParamsT('documents.params.action.testing_storage'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
         if (!form || !submitButton || !feedback) {
             return;
         }
+
+        function getSelectedStorageType() {
+            var selected = root.querySelector('[data-omo-documents-storage-type]:checked');
+            return selected ? selected.value : 'nextcloud';
+        }
+
+        function syncStorageFields() {
+            var enabled = !!(storageToggle && storageToggle.checked);
+            if (storageChoice) {
+                storageChoice.hidden = !enabled;
+            }
+            var selectedType = getSelectedStorageType();
+            if (nextcloudFields) {
+                nextcloudFields.hidden = !enabled || selectedType !== 'nextcloud';
+            }
+            if (kdriveFields) {
+                kdriveFields.hidden = !enabled || selectedType !== 'kdrive';
+            }
+            if (collaboraToggle && !enabled) {
+                collaboraToggle.checked = false;
+                collaboraToggle.disabled = true;
+            } else if (collaboraToggle) {
+                collaboraToggle.disabled = false;
+            }
+        }
+
+        function syncCollaboraFields() {
+            if (!collaboraFields || !collaboraToggle) {
+                return;
+            }
+
+            collaboraFields.hidden = !collaboraToggle.checked;
+        }
+
+        if (storageToggle) {
+            storageToggle.addEventListener('change', syncStorageFields);
+        }
+        storageTypeInputs.forEach(function (input) {
+            input.addEventListener('change', syncStorageFields);
+        });
+        syncStorageFields();
+
+        if (collaboraToggle) {
+            collaboraToggle.addEventListener('change', syncCollaboraFields);
+            syncCollaboraFields();
+        }
+
+        function testStorage(button, testFeedback) {
+            if (!button) {
+                return;
+            }
+
+            button.addEventListener('click', function () {
+                var formData = new FormData(form);
+                button.disabled = true;
+                button.textContent = storageTestingLabel;
+                if (testFeedback) {
+                    testFeedback.textContent = '';
+                    testFeedback.classList.remove('is-error', 'is-success');
+                }
+
+                window.fetch('/omo/api/documents/params/test_storage.php', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                }).then(function (response) {
+                    return response.json().catch(function () {
+                        return {
+                            status: false,
+                            message: <?= json_encode(omoDocumentsParamsT('documents.params.feedback.storage_test_invalid'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                        };
+                    });
+                }).then(function (payload) {
+                    var status = !!(payload && payload.status);
+                    if (testFeedback) {
+                        testFeedback.textContent = String(payload && payload.message ? payload.message : '');
+                        testFeedback.classList.toggle('is-error', !status);
+                        testFeedback.classList.toggle('is-success', status);
+                    }
+                }).catch(function () {
+                    if (testFeedback) {
+                        testFeedback.textContent = <?= json_encode(omoDocumentsParamsT('documents.params.feedback.storage_test_invalid'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                        testFeedback.classList.add('is-error');
+                        testFeedback.classList.remove('is-success');
+                    }
+                }).finally(function () {
+                    button.disabled = false;
+                    button.textContent = storageTestLabel;
+                });
+            });
+        }
+
+        testStorage(nextcloudTestButton, nextcloudTestFeedback);
+        testStorage(kdriveTestButton, kdriveTestFeedback);
 
         function renderFeedback(message, isError) {
             if (typeof window.commonNotify === 'function') {
@@ -351,16 +569,8 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
             feedback.classList.toggle('is-success', !isError);
         }
 
-        form.addEventListener('submit', function (event) {
-            event.preventDefault();
-
-            var formData = new FormData(form);
-            submitButton.disabled = true;
-            submitButton.textContent = busyLabel;
-            feedback.hidden = true;
-            feedback.classList.remove('is-error', 'is-success');
-
-            window.fetch(form.getAttribute('action') || '/omo/api/documents/params/save.php', {
+        function sendSettings(formData) {
+            return window.fetch(form.getAttribute('action') || '/omo/api/documents/params/save.php', {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin'
@@ -371,6 +581,29 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                         message: 'Invalid response.'
                     };
                 });
+            });
+        }
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            var formData = new FormData(form);
+            submitButton.disabled = true;
+            submitButton.textContent = busyLabel;
+            feedback.hidden = true;
+            feedback.classList.remove('is-error', 'is-success');
+
+            sendSettings(formData).then(function (payload) {
+                if (payload && payload.confirmationRequired) {
+                    if (window.confirm(String(payload.message || ''))) {
+                        var confirmedFormData = new FormData(form);
+                        confirmedFormData.append('storage_change_confirmed', '1');
+                        return sendSettings(confirmedFormData);
+                    }
+                    return payload;
+                }
+
+                return payload;
             }).then(function (payload) {
                 var status = !!(payload && payload.status);
                 renderFeedback(payload && payload.message ? payload.message : (status ? idleLabel : 'Error'), !status);
