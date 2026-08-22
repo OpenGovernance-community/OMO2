@@ -53,12 +53,15 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - L application Documents peut maintenant choisir un stockage distant par organisation entre Nextcloud et kDrive Infomaniak via WebDAV, tester la connexion du serveur choisi et activer Collabora avec l un ou l autre stockage.
 - Lorsqu un serveur de stockage ou son dossier change, Documents demande confirmation puis supprime les fichiers distants des documents televerses et Collabora avant d enregistrer la nouvelle configuration.
 - La configuration Etherpad est maintenant centralisee au niveau du serveur; les organisations utilisent le domaine et les identifiants Etherpad globaux.
+- La configuration kDrive rappelle maintenant que WebDAV necessite kSuite Business ou une offre superieure, et le test signale explicitement cette cause en cas de reponse HTTP 403.
 
 ## 2026-08-20
 
 - La sauvegarde automatique des points de PV envoie maintenant les modifications sans reconstruire l editeur Summernote, ce qui preserve le curseur, le focus et les insertions en cours.
 - Les droits contextuels d ajout, de modification et de suppression de holons sont disponibles dans les editeurs de droits et controlent les actions Ajouter, Modifier et Supprimer du menu de chaque holon.
 - Les portees distinguent les enfants directs du cercle courant de ceux du cercle englobant ; les premiers ne sont proposes que pour les cercles.
+- Les listes d autorites des proprietes de holon synchronisent maintenant les instances heritees du modele du cercle parent avant de les proposer comme autorites parentes.
+- L editeur de proprietes applique les droits du holon edite aussi aux proprietes seulement heritees, y compris lorsque le role cible est place dans un groupe.
 - Le droit CAN_EDIT_EVENT permet de modifier les evenements rattaches au contexte autorise, en plus de leur createur.
 - Les portees de droits distinguent maintenant le holon de l organisation de toute son arborescence ; les enfants directs sont egalement identifies clairement et ignorent les groupes purement graphiques.
 - Les droits peuvent désormais être enregistrés pour le collectif dans les éditeurs de holons et de modèles de holon, via un troisième onglet, sans effet sur le calcul actuel des autorisations.
