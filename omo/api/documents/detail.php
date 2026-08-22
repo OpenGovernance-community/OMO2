@@ -138,7 +138,7 @@ $renderedContent = $document->getRenderedContentForCurrentViewer([
         'contentExcerpt' => omoDocumentsDetailT('documents.detail.pv_discussion.content_excerpt'),
     ],
 ]);
-$hasCollaborativeFrame = $document->isEtherpadDocument() || $document->isEthercalcDocument();
+$hasCollaborativeFrame = $document->isEtherpadDocument() || $document->isEthercalcDocument() || $document->isCollaboraDocument();
 $drawerTitle = trim((string)$document->get('title'));
 $drawerDescription = $createdAt instanceof DateTimeInterface ? $formatDateTime($createdAt) : '';
 $associatedEvent = $document->getAssociatedEvent();
@@ -155,7 +155,7 @@ $canManageDocument = !$document->isPvDocument()
 $canEditDocumentContent = !$document->isPvDocument()
     && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
 $canEditDocument = !$document->isPvDocument()
-    && ($canManageDocument || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && $canEditDocumentContent));
+    && ($canManageDocument || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && !$document->isCollaboraDocument() && $canEditDocumentContent));
 $editUrl = $canEditDocument
     ? '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)
         . ($holonId > 0 ? '&cid=' . rawurlencode((string)$holonId) : '')
@@ -638,13 +638,15 @@ if ($associatedEvent instanceof \dbObject\Event) {
 }
 
 .omo-document-detail__content .omo-document-etherpad,
-.omo-document-detail__content .omo-document-ethercalc {
+.omo-document-detail__content .omo-document-ethercalc,
+.omo-document-detail__content .omo-document-collabora {
     width: 100%;
     min-height: 70vh;
 }
 
 .omo-document-detail__content .omo-document-etherpad__frame,
-.omo-document-detail__content .omo-document-ethercalc__frame {
+.omo-document-detail__content .omo-document-ethercalc__frame,
+.omo-document-detail__content .omo-document-collabora__frame {
     display: block;
     width: 100%;
     min-height: 70vh;
@@ -655,7 +657,8 @@ if ($associatedEvent instanceof \dbObject\Event) {
 }
 
 .omo-document-detail__content .omo-document-etherpad__frame:fullscreen,
-.omo-document-detail__content .omo-document-ethercalc__frame:fullscreen {
+.omo-document-detail__content .omo-document-ethercalc__frame:fullscreen,
+.omo-document-detail__content .omo-document-collabora__frame:fullscreen {
     width: 100vw;
     height: 100vh;
     min-height: 100vh;

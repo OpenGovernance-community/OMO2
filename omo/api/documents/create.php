@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/etherpad.php';
 require_once dirname(__DIR__, 3) . '/common/ethercalc.php';
+require_once dirname(__DIR__, 3) . '/common/collabora.php';
 require_once dirname(__DIR__, 3) . '/common/patreon.php';
 require_once dirname(__DIR__, 3) . '/common/openai_text.php';
 require_once dirname(__DIR__, 3) . '/common/object_visibility_selector.php';
@@ -24,7 +25,8 @@ $sourceLang = [
     'documents.create.type.external' => ['text' => 'Lien externe', 'context' => 'Option label for external links.'],
     'documents.create.type.uploaded' => ['text' => 'Fichier téléversé', 'context' => 'Option label for uploaded files.'],
     'documents.create.type.pv' => ['text' => 'PV', 'context' => 'Option label for PV documents.'],
-    'documents.create.type.etherpad' => ['text' => 'Document collaboratif', 'context' => 'Option label for Etherpad documents.'],
+    'documents.create.type.etherpad' => ['text' => 'Pad coopératif', 'context' => 'Option label for Etherpad documents.'],
+    'documents.create.type.collabora' => ['text' => 'Document Coopératif', 'context' => 'Option label for Collabora documents.'],
     'documents.create.type.ethercalc' => ['text' => 'Tableur collaboratif', 'context' => 'Option label for EtherCalc documents.'],
     'documents.create.type.folder' => ['text' => 'Dossier', 'context' => 'Option label for folders.'],
     'documents.create.field.title' => ['text' => 'Titre', 'context' => 'Label of the document title field.'],
@@ -46,14 +48,16 @@ $sourceLang = [
     'documents.create.field.pv_hint' => ['text' => 'Le contenu du PV se preparera ensuite dans l editeur PV dedie.', 'context' => 'Hint shown when creating a PV document from the generic document creator.'],
     'documents.create.field.etherpad_hint' => ['text' => 'Un nouveau pad sera cree sur le serveur Etherpad de cette organisation.', 'context' => 'Hint shown when creating an Etherpad document.'],
     'documents.create.field.etherpad_missing' => ['text' => 'Aucun serveur Etherpad n est configure pour cette organisation.', 'context' => 'Hint shown when Etherpad is not configured.'],
+    'documents.create.field.collabora_hint' => ['text' => 'Un nouveau fichier bureautique sera cree dans le stockage de documents choisi puis ouvert avec Collabora.', 'context' => 'Hint shown when creating a Collabora document.'],
+    'documents.create.field.collabora_missing' => ['text' => 'Configurez un stockage de documents et un serveur Collabora dans les parametres Documents.', 'context' => 'Hint shown when Collabora is not configured.'],
     'documents.create.field.ethercalc_hint' => ['text' => 'Un nouveau tableur sera cree sur le serveur EtherCalc configure pour OMO.', 'context' => 'Hint shown when creating an EtherCalc document.'],
     'documents.create.field.ethercalc_missing' => ['text' => 'Aucun serveur EtherCalc n est configure.', 'context' => 'Hint shown when EtherCalc is not configured.'],
     'documents.create.field.pv_template' => ['text' => 'Modele de base', 'context' => 'Label of the optional PV template selector.'],
     'documents.create.field.pv_template_none' => ['text' => 'PV vide', 'context' => 'Empty option of the PV template selector.'],
     'documents.create.field.pv_template_hint' => ['text' => 'Les groupes, points et contenus du modele seront copies sans leurs auteurs ni leurs invites.', 'context' => 'Help text below the PV template selector.'],
     'documents.create.field.upload' => ['text' => 'Fichier', 'context' => 'Label of the uploaded file field.'],
-    'documents.create.upload.hint_nextcloud' => ['text' => 'Le fichier sera envoyé vers le stockage Nextcloud configuré pour cette organisation.', 'context' => 'Hint shown when Nextcloud storage is available.'],
-    'documents.create.upload.hint_missing' => ['text' => 'Aucun stockage Nextcloud n’est configuré pour cette organisation.', 'context' => 'Hint shown when no Nextcloud storage is configured.'],
+    'documents.create.upload.hint_nextcloud' => ['text' => 'Le fichier sera envoyé vers le stockage de documents configuré pour cette organisation.', 'context' => 'Hint shown when document storage is available.'],
+    'documents.create.upload.hint_missing' => ['text' => 'Aucun stockage de documents n’est configuré pour cette organisation.', 'context' => 'Hint shown when no document storage is configured.'],
     'documents.create.upload.current' => ['text' => 'Fichier actuel', 'context' => 'Title shown above the current uploaded file metadata.'],
     'documents.create.upload.remove' => ['text' => 'Supprimer le fichier distant', 'context' => 'Checkbox label used to remove the uploaded file.'],
     'documents.create.action.cancel' => ['text' => 'Annuler', 'context' => 'Secondary action used to close the document editor.'],
@@ -110,7 +114,7 @@ if ($documentId > 0) {
         $formErrorMessage = omoDocumentsCreateT('documents.create.error.pv_unsupported');
     }
 
-    if ($canUseForm && ($document->isEtherpadDocument() || $document->isEthercalcDocument()) && !$canManageDocument) {
+    if ($canUseForm && ($document->isEtherpadDocument() || $document->isEthercalcDocument() || $document->isCollaboraDocument()) && !$canManageDocument) {
         $canUseForm = false;
     }
 
@@ -154,8 +158,9 @@ $embeddableDocumentsPayload = array();
 $pvTemplatesPayload = array();
 $organization = new Organization();
 $organizationLoaded = $organizationId > 0 && $organization->load($organizationId);
-$nextcloudDocumentsAvailable = $organizationLoaded && $organization->hasNextcloudDocumentStorage();
+$nextcloudDocumentsAvailable = $organizationLoaded && $organization->hasDocumentStorage();
 $etherpadDocumentsAvailable = $organizationLoaded && omoEtherpadCanUseEditingSessions($organization);
+$collaboraDocumentsAvailable = $organizationLoaded && $nextcloudDocumentsAvailable && omoCollaboraHasConfig($organization);
 $ethercalcDocumentsAvailable = omoEthercalcHasConfig();
 
 if (!$isEditing && $organizationLoaded) {
@@ -383,6 +388,9 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             <?php if ($etherpadDocumentsAvailable || $documentType === Document::TYPE_ETHERPAD): ?>
                                 <option value="<?= $escape(Document::TYPE_ETHERPAD) ?>" <?= $documentType === Document::TYPE_ETHERPAD ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.etherpad')) ?></option>
                             <?php endif; ?>
+                            <?php if ($collaboraDocumentsAvailable || $documentType === Document::TYPE_COLLABORA): ?>
+                                <option value="<?= $escape(Document::TYPE_COLLABORA) ?>" <?= $documentType === Document::TYPE_COLLABORA ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.collabora')) ?></option>
+                            <?php endif; ?>
                             <?php if ($ethercalcDocumentsAvailable || $documentType === Document::TYPE_ETHERCALC): ?>
                                 <option value="<?= $escape(Document::TYPE_ETHERCALC) ?>" <?= $documentType === Document::TYPE_ETHERCALC ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.ethercalc')) ?></option>
                             <?php endif; ?>
@@ -502,6 +510,15 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         <?= $escape($etherpadDocumentsAvailable || $documentType === Document::TYPE_ETHERPAD
                             ? omoDocumentsCreateT('documents.create.field.etherpad_hint')
                             : omoDocumentsCreateT('documents.create.field.etherpad_missing')) ?>
+                    </span>
+                </div>
+
+                <div class="omo-document-editor__field generic-form-field" data-omo-document-collabora-section<?= $documentType !== Document::TYPE_COLLABORA ? ' hidden' : '' ?>>
+                    <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.type.collabora')) ?></span>
+                    <span class="omo-document-editor__hint generic-help-text">
+                        <?= $escape($collaboraDocumentsAvailable || $documentType === Document::TYPE_COLLABORA
+                            ? omoDocumentsCreateT('documents.create.field.collabora_hint')
+                            : omoDocumentsCreateT('documents.create.field.collabora_missing')) ?>
                     </span>
                 </div>
 
@@ -845,6 +862,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     const externalSection = form.querySelector('[data-omo-document-external-section]');
     const uploadSection = form.querySelector('[data-omo-document-upload-section]');
     const etherpadSection = form.querySelector('[data-omo-document-etherpad-section]');
+    const collaboraSection = form.querySelector('[data-omo-document-collabora-section]');
     const ethercalcSection = form.querySelector('[data-omo-document-ethercalc-section]');
     const externalUrlField = form.querySelector('[data-omo-document-external-url]');
     const externalOpenInNewWindowField = form.querySelector('input[name="open_in_new_window"]');
@@ -920,6 +938,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         const isExternalLink = getSelectedDocumentType() === 'external_link';
         const isUploadedFile = isUploadedFileTypeSelected();
         const isEtherpad = getSelectedDocumentType() === 'etherpad';
+        const isCollabora = getSelectedDocumentType() === 'collabora';
         const isEthercalc = getSelectedDocumentType() === 'ethercalc';
 
         if (contentSection) {
@@ -944,6 +963,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
         if (etherpadSection) {
             etherpadSection.hidden = !isEtherpad;
+        }
+
+        if (collaboraSection) {
+            collaboraSection.hidden = !isCollabora;
         }
 
         if (ethercalcSection) {

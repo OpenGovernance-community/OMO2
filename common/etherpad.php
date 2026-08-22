@@ -44,29 +44,18 @@ if (!function_exists('omoEtherpadResolveConfig')) {
     {
         $globalBaseUrl = omoEtherpadNormalizeBaseUrl((string)($GLOBALS['etherpadBaseUrl'] ?? ''));
         $globalApiKey = trim((string)($GLOBALS['etherpadApiKey'] ?? ''));
-        $storedBaseUrl = omoEtherpadNormalizeBaseUrl((string)($storedConfig['baseUrl'] ?? ''));
-        $storedApiKey = trim((string)($storedConfig['apiKey'] ?? ''));
-        $baseUrl = $storedBaseUrl !== '' ? $storedBaseUrl : $globalBaseUrl;
-
-        // Never send the global secret to a different organization-defined host.
-        $usesDifferentServer = $storedBaseUrl !== ''
-            && ($globalBaseUrl === '' || !hash_equals($globalBaseUrl, $storedBaseUrl));
-        $apiKey = $storedApiKey !== ''
-            ? $storedApiKey
-            : ($usesDifferentServer ? '' : $globalApiKey);
-
-        $apiVersion = trim((string)($storedConfig['apiVersion'] ?? ($GLOBALS['etherpadApiVersion'] ?? '1')));
+        $apiVersion = trim((string)($GLOBALS['etherpadApiVersion'] ?? '1'));
         if (!preg_match('/^[0-9]+(?:\.[0-9]+)*$/', $apiVersion)) {
             $apiVersion = '1';
         }
 
         return array(
-            'baseUrl' => $baseUrl,
-            'apiKey' => $apiKey,
+            'baseUrl' => $globalBaseUrl,
+            'apiKey' => $globalApiKey,
             'apiVersion' => $apiVersion,
-            'baseUrlOverride' => $storedBaseUrl,
-            'hasBaseUrlOverride' => $storedBaseUrl !== '',
-            'hasApiKeyOverride' => $storedApiKey !== '',
+            'baseUrlOverride' => '',
+            'hasBaseUrlOverride' => false,
+            'hasApiKeyOverride' => false,
         );
     }
 }
@@ -74,15 +63,7 @@ if (!function_exists('omoEtherpadResolveConfig')) {
 if (!function_exists('omoEtherpadGetConfig')) {
     function omoEtherpadGetConfig(?\dbObject\Organization $organization = null): array
     {
-        $parameters = array();
-        if ($organization instanceof \dbObject\Organization && (int)$organization->getId() > 0) {
-            $parameters = $organization->getApplicationParametersByDirectory('documents');
-        }
-
-        $storedConfig = isset($parameters['etherpad']) && is_array($parameters['etherpad'])
-            ? $parameters['etherpad']
-            : array();
-        return omoEtherpadResolveConfig($storedConfig);
+        return omoEtherpadResolveConfig();
     }
 }
 
