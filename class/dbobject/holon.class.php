@@ -3342,7 +3342,10 @@
 			$definitionsByPropertyId = array();
 			$templatePropertyIds = array();
 			$templateAuthorityIdMap = $this->getTemplateAuthorityInstanceIdMap();
-			$canEditHolonProperties = $this->isAllowed('CAN_EDIT_HOLON_PROPERTIES');
+			// Les droits de propriete peuvent venir d un role et de son modele.
+			// Cette edition doit donc utiliser le calcul courant, sans conserver une
+			// ancienne portee en cache dans la session.
+			$canEditHolonProperties = $this->isAllowed('CAN_EDIT_HOLON_PROPERTIES', false);
 
 			$templateId = (int)$this->get('IDholon_template');
 			if ($templateId > 0) {
@@ -3351,6 +3354,11 @@
 					foreach ($template->getHolonCreationPropertyDefinitions() as $definition) {
 						$propertyId = (int)($definition['id'] ?? 0);
 						if ($propertyId > 0) {
+							// Une propriete uniquement heritee n a pas encore de ligne
+							// holonproperty locale. Son droit doit neanmoins etre evalue
+							// sur cette instance, et non sur le modele qui la definit.
+							$definition['canEditValue'] = empty($definition['effectiveLocked'])
+								&& $canEditHolonProperties;
 							$definition['isTemplateProperty'] = true;
 							$definition['isDirectProperty'] = false;
 							$definition['canEditDefinition'] = false;
