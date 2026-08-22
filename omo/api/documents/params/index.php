@@ -194,6 +194,9 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                     </div>
 
                     <div class="omo-documents-params__storage-fields generic-form-grid generic-form-field--full" data-omo-documents-kdrive-fields<?= $storageType === 'kdrive' ? '' : ' hidden' ?>>
+                        <p class="omo-documents-params__hint generic-help-text generic-form-field--full">
+                            <?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.kdrive_subscription_hint'), ENT_QUOTES, 'UTF-8') ?>
+                        </p>
                         <label class="omo-documents-params__field generic-form-field">
                             <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.kdrive_id'), ENT_QUOTES, 'UTF-8') ?></span>
                             <input type="text" name="kdrive_id" class="generic-form-control" maxlength="30" inputmode="numeric" autocomplete="off" placeholder="123456" value="<?= htmlspecialchars((string)$kdriveConfig['driveId'], ENT_QUOTES, 'UTF-8') ?>">

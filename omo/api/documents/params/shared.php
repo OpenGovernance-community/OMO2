@@ -30,6 +30,7 @@ if (!function_exists('omoDocumentsParamsSourceLang')) {
             'documents.params.field.kdrive_password_placeholder_new' => ['text' => 'Mot de passe d’application kDrive', 'context' => 'Placeholder shown for a fresh kDrive password field.'],
             'documents.params.field.kdrive_password_placeholder_keep' => ['text' => 'Laisser vide pour conserver le mot de passe actuel', 'context' => 'Placeholder shown when a kDrive password already exists.'],
             'documents.params.field.kdrive_folder_hint' => ['text' => 'Optionnel. OMO créera ensuite son dossier omo-documents dans ce dossier.', 'context' => 'Hint below the Infomaniak kDrive folder field.'],
+            'documents.params.field.kdrive_subscription_hint' => ['text' => 'Attention : cette connexion utilise WebDAV et nécessite une offre kSuite Business ou supérieure. WebDAV n’est pas disponible avec kSuite Standard.', 'context' => 'Warning shown when configuring kDrive storage.'],
             'documents.params.action.test_storage' => ['text' => 'Tester la connexion', 'context' => 'Button used to test the selected document storage settings.'],
             'documents.params.action.testing_storage' => ['text' => 'Test en cours...', 'context' => 'Button label shown while testing document storage.'],
             'documents.params.feedback.storage_test_invalid' => ['text' => 'Impossible de tester la connexion au stockage.', 'context' => 'Fallback error shown when the document storage test fails unexpectedly.'],

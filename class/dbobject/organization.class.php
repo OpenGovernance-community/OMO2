@@ -382,7 +382,10 @@
 			}
 
 			$httpCode = (int)($result['httpCode'] ?? 0);
-			if (in_array($httpCode, array(401, 403), true)) {
+			if ($httpCode === 403) {
+				return array('status' => false, 'text' => 'kDrive a refusé la connexion (HTTP 403). Vérifiez votre offre : l’accès WebDAV nécessite kSuite Business ou supérieur ; kSuite Standard ne le permet pas.');
+			}
+			if ($httpCode === 401) {
 				return array('status' => false, 'text' => 'kDrive refuse les identifiants ou le mot de passe d’application.');
 			}
 
@@ -8108,7 +8111,7 @@
 
 				// La modification soumise est une valeur locale de l instance,
 				// et non une modification de la definition du modele.
-				if ($permissionHolon->isAllowed('CAN_EDIT_HOLON_PROPERTIES')) {
+				if ($permissionHolon->isAllowed('CAN_EDIT_HOLON_PROPERTIES', false)) {
 					continue;
 				}
 
@@ -8346,6 +8349,9 @@
 			$authorityParentHolon = $parentHolon instanceof \dbObject\Holon
 				? $parentHolon->getAuthorityParentHolon(true)
 				: null;
+			if ($authorityParentHolon instanceof \dbObject\Holon) {
+				$this->ensureTemplateAuthorityInstancesForHolon($authorityParentHolon);
+			}
 			$parentHolonId = $authorityParentHolon instanceof \dbObject\Holon
 				? (int)$authorityParentHolon->getId()
 				: 0;
