@@ -543,7 +543,10 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 		$allowGeneric = !empty($options['allowGeneric']);
 		$allowParcoursAttachment = !empty($options['allowParcoursAttachment']);
 		$allowContextualAttachment = !empty($options['allowContextualAttachment']);
-		$parcoursOnly = $allowParcoursAttachment && !$allowContextualAttachment;
+		$parcoursOnly = $allowParcoursAttachment
+			&& !$allowContextualAttachment
+			&& !$canManageAllFaqs
+			&& !$canManageOrganizationFaqs;
 		$selectedOrganizationId = (int)$faq->getResolvedOrganizationId();
 		$selectedHolonId = (int)$faq->get('IDholon');
 		$selectedParcoursId = \dbObject\FAQ::hasParcoursColumn() ? (int)$faq->get('IDparcours') : 0;
@@ -602,6 +605,33 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 					<label class="faq-popup__scope-label generic-form-label" for="faqScopeType">Attachement</label>
 					<select class="faq-popup__scope-control generic-form-control" id="faqScopeType" data-faq-scope-kind>
 						<option value="parcours" selected>Parcours</option>
+					</select>
+				</div>
+				<div class="faq-popup__scope-field generic-form-field generic-form-field--full" data-faq-scope-parcours-shell>
+					<label class="faq-popup__scope-label generic-form-label" for="faqScopeParcours">Parcours</label>
+					<select
+						class="faq-popup__scope-control generic-form-control"
+						id="faqScopeParcours"
+						data-faq-scope-parcours
+					>
+						<option value="">Choisir un parcours</option>
+						<?php foreach ($parcoursOptions as $parcoursOption): ?>
+							<?php
+							$parcoursOptionId = (int)($parcoursOption['id'] ?? 0);
+							$parcoursOptionTitle = trim((string)($parcoursOption['title'] ?? ''));
+							$parcoursOrganizationId = (int)($parcoursOption['organizationId'] ?? 0);
+							if ($parcoursOptionId <= 0 || $parcoursOptionTitle === '') {
+								continue;
+							}
+							?>
+							<option
+								value="<?= $parcoursOptionId ?>"
+								data-organization-id="<?= $parcoursOrganizationId ?>"
+								<?= $selectedParcoursId === $parcoursOptionId ? ' selected' : '' ?>
+							>
+								<?= htmlspecialchars($parcoursOptionTitle, ENT_QUOTES, 'UTF-8') ?>
+							</option>
+						<?php endforeach; ?>
 					</select>
 				</div>
 			<?php elseif ($isContextualOnly): ?>
