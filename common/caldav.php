@@ -513,9 +513,20 @@ if (!function_exists('commonCalDavNormalizeEventStatus')) {
 }
 
 if (!function_exists('commonCalDavBuildTimedDateLine')) {
-    function commonCalDavBuildTimedDateLine($label, ?DateTimeInterface $dateTime = null)
+    function commonCalDavBuildTimedDateLine($label, ?DateTimeInterface $dateTime = null, $timezoneName = '')
     {
-        return $label . ':' . commonCardDavFormatTimestamp($dateTime);
+        if (!$dateTime) {
+            return $label . ':';
+        }
+
+        $timezone = commonCalDavResolveIcalendarTimezone($timezoneName, $dateTime->getTimezone()->getName());
+        $localDateTime = DateTimeImmutable::createFromInterface($dateTime)->setTimezone($timezone);
+        $timezoneId = $timezone->getName();
+        if (in_array(strtoupper($timezoneId), array('UTC', 'GMT'), true)) {
+            return $label . ':' . $localDateTime->format('Ymd\\THis\\Z');
+        }
+
+        return $label . ';TZID=' . $timezoneId . ':' . $localDateTime->format('Ymd\\THis');
     }
 }
 
@@ -566,11 +577,14 @@ if (!function_exists('commonCalDavBuildEventCalendarData')) {
             : array();
         $locationAddress = trim((string)($locationData['address'] ?? ''));
         $videoMeetingUrl = trim((string)($locationData['videoUrl'] ?? ''));
+        $eventTimezone = commonCalDavResolveIcalendarTimezone((string)$event->get('timezone'), date_default_timezone_get());
+        $eventTimezoneName = $eventTimezone->getName();
         $lines = array(
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
             'PRODID:-//OpenMyOrganization//CalDAV//EN',
             'CALSCALE:GREGORIAN',
+            'X-WR-TIMEZONE:' . $eventTimezoneName,
             'BEGIN:VEVENT',
             'UID:' . commonCalDavBuildEventUid($event),
             'DTSTAMP:' . commonCardDavFormatTimestamp($updatedAt ?: $createdAt ?: new DateTimeImmutable('now', new DateTimeZone('UTC'))),
@@ -614,8 +628,8 @@ if (!function_exists('commonCalDavBuildEventCalendarData')) {
             $lines[] = commonCalDavBuildAllDayDateLine('DTSTART', $startAt instanceof DateTimeInterface ? $startAt : null);
             $lines[] = commonCalDavBuildAllDayDateLine('DTEND', commonCalDavResolveAllDayEndExclusive($event));
         } else {
-            $lines[] = commonCalDavBuildTimedDateLine('DTSTART', $startAt instanceof DateTimeInterface ? $startAt : null);
-            $lines[] = commonCalDavBuildTimedDateLine('DTEND', $endAt instanceof DateTimeInterface ? $endAt : null);
+            $lines[] = commonCalDavBuildTimedDateLine('DTSTART', $startAt instanceof DateTimeInterface ? $startAt : null, $eventTimezoneName);
+            $lines[] = commonCalDavBuildTimedDateLine('DTEND', $endAt instanceof DateTimeInterface ? $endAt : null, $eventTimezoneName);
         }
 
         $lines[] = 'END:VEVENT';
@@ -1764,16 +1778,22 @@ if (!function_exists('commonCalDavParseEventUpdate')) {
 if (!function_exists('commonCalDavRequestMatchesEventEtag')) {
     function commonCalDavRequestMatchesEventEtag(array $resource)
     {
-        $etag = trim((string)($resource['etag'] ?? ''));
+        $normalizeEtag = static function ($value) {
+            $value = trim((string)$value);
+            return strtoupper(substr($value, 0, 2)) === 'W/' ? trim(substr($value, 2)) : $value;
+        };
+        $etag = $normalizeEtag($resource['etag'] ?? '');
         $ifMatch = trim((string)($_SERVER['HTTP_IF_MATCH'] ?? ''));
         if ($ifMatch !== '') {
-            if ($ifMatch !== '*' && !in_array($etag, array_map('trim', explode(',', $ifMatch)), true)) {
+            $ifMatchValues = array_map($normalizeEtag, explode(',', $ifMatch));
+            if ($ifMatch !== '*' && !in_array($etag, $ifMatchValues, true)) {
                 return false;
             }
         }
 
         $ifNoneMatch = trim((string)($_SERVER['HTTP_IF_NONE_MATCH'] ?? ''));
-        if ($ifNoneMatch !== '' && ($ifNoneMatch === '*' || in_array($etag, array_map('trim', explode(',', $ifNoneMatch)), true))) {
+        $ifNoneMatchValues = array_map($normalizeEtag, explode(',', $ifNoneMatch));
+        if ($ifNoneMatch !== '' && ($ifNoneMatch === '*' || in_array($etag, $ifNoneMatchValues, true))) {
             return false;
         }
 
@@ -1825,6 +1845,8 @@ if (!function_exists('commonCalDavHandleEventPut')) {
             'calendarHref' => (string)($resource['calendarHref'] ?? ''),
         ));
         header('ETag: ' . (string)$updatedResource['etag']);
+        header('Location: ' . (string)$updatedResource['href']);
+        header('Content-Length: 0');
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
         commonCardDavSetDebugValue('request_method', 'PUT');
