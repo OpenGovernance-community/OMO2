@@ -5,6 +5,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 ## 2026-08-23
 
 - Les utilisateurs disposant de `CAN_CREATE_PARCOURS` ou `CAN_EDIT_PARCOURS` peuvent maintenant creer et modifier depuis la FAQ une question rattachee aux parcours dont leur organisation est proprietaire, avec le meme controle applique lors de la sauvegarde.
+- Le formulaire d edition des FAQ preserve maintenant le choix `FAQ generique` pour les super admins et affiche effectivement la liste des parcours autorises lorsque le rattachement a un parcours est permis.
 
 ## 2026-08-21
 
