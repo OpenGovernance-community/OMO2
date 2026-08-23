@@ -25,6 +25,7 @@ if ($resourceType === 'calendar') {
 } elseif ($resourceType === 'event') {
     $allowedMethods[] = 'GET';
     $allowedMethods[] = 'HEAD';
+    $allowedMethods[] = 'PUT';
 } else {
     $allowedMethods[] = 'GET';
     $allowedMethods[] = 'HEAD';
@@ -50,6 +51,10 @@ if ($method === 'REPORT') {
 
 if ($resourceType === 'event' && ($method === 'GET' || $method === 'HEAD')) {
     commonCalDavSendEvent($resource, $method === 'GET');
+}
+
+if ($resourceType === 'event' && $method === 'PUT') {
+    commonCalDavHandleEventPut($viewer, $resource);
 }
 
 http_response_code(200);
