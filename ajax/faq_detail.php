@@ -1,6 +1,7 @@
 <?php
 require_once("../config.php");
 require_once("../shared_functions.php");
+require_once("../omo/api/lms/inc/access.php");
 require_once("../common/faq_popup_helper.php");
 
 $faqId = (int)($_GET["id"] ?? 0);
@@ -26,6 +27,7 @@ if (!$faq->canBeViewedInContext($faqContext ?: array(), $faqScope)) {
 
 $isEditMode = !empty($_GET['edit']) && $_GET['edit'] !== '0';
 $canEditFaq = $faq->canBeEditedInContext($faqContext ?: array());
+$canManageParcoursFaqs = \dbObject\FAQ::canManageParcoursInContext($faqContext ?: array(), 0, true);
 $scopeInfo = faqPopupDescribeScope($faq);
 
 if ($isEditMode) {
@@ -58,6 +60,7 @@ if ($isEditMode) {
 			<?php faqPopupRenderScopeFields($faq, $faqContext ?: array(), array(
 				'allowScopeEditing' => true,
 				'allowGeneric' => $allowGeneric,
+				'allowParcoursAttachment' => $canManageParcoursFaqs,
 			)); ?>
 			<?php
 			$params = array(

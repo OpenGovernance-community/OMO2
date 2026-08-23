@@ -5,18 +5,7 @@ require_once __DIR__ . '/omo_context_scope.php';
 if (!function_exists('faqPopupCanCreateParcoursFaqs')) {
 	function faqPopupCanCreateParcoursFaqs(array $faqContext, $userId = 0, $useSessionCache = true)
 	{
-		$organizationId = (int)($faqContext['organizationId'] ?? 0);
-		$userId = (int)$userId;
-		if ($organizationId <= 0 || $userId <= 0) {
-			return false;
-		}
-
-		if (!function_exists('lmsCurrentUserCanCreateParcours') || !function_exists('lmsCurrentUserCanEditParcours')) {
-			return false;
-		}
-
-		return lmsCurrentUserCanCreateParcours($organizationId, $userId, (bool)$useSessionCache)
-			|| lmsCurrentUserCanEditParcours($organizationId, $userId, (bool)$useSessionCache);
+		return \dbObject\FAQ::canManageParcoursInContext($faqContext, $userId, $useSessionCache);
 	}
 }
 
