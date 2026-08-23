@@ -999,6 +999,54 @@ class FAQ extends DbObject
 		return !empty($viewerAccess['canManageAllFaqs']);
 	}
 
+	public function canBeDeletedInContext(array $context = array())
+	{
+		return $this->canBeEditedInContext($context);
+	}
+
+	public function delete()
+	{
+		$faqId = (int)$this->getId();
+		$pdo = self::getPdo();
+		if ($faqId <= 0 || !($pdo instanceof \PDO)) {
+			return false;
+		}
+
+		$startedTransaction = !$pdo->inTransaction();
+		$relatedTables = array('faq_choice', 'mission_faq', 'user_faq_response');
+
+		try {
+			if ($startedTransaction) {
+				$pdo->beginTransaction();
+			}
+
+			foreach ($relatedTables as $tableName) {
+				if (self::tableExists($tableName) && !self::execute(
+					'DELETE FROM `' . $tableName . '` WHERE `IDfaq` = :faq_id',
+					array('faq_id' => $faqId)
+				)) {
+					throw new \RuntimeException('faq_related_rows_delete_failed');
+				}
+			}
+
+			if (!parent::delete()) {
+				throw new \RuntimeException('faq_delete_failed');
+			}
+
+			if ($startedTransaction && $pdo->inTransaction()) {
+				$pdo->commit();
+			}
+
+			return true;
+		} catch (\Throwable $exception) {
+			if ($startedTransaction && $pdo->inTransaction()) {
+				$pdo->rollBack();
+			}
+
+			return false;
+		}
+	}
+
 	public function canBeViewedInContext(array $context = array(), $scope = 'contextual')
 	{
 		$scope = self::normalizePopupScope($scope, $context);
