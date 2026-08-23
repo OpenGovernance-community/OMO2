@@ -52,7 +52,7 @@ if ($isEditMode) {
 		<div class="faq-popup__editor-shell" data-faq-form-shell>
 			<div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
 				<h4 style="margin:0; font-size:20px; color:#0f172a;"><?= htmlspecialchars($editorTitle, ENT_QUOTES, 'UTF-8') ?></h4>
-				<button type="button" class="faq-popup__back" data-faq-cancel-edit data-faq-id="<?= (int)$faq->getId() ?>">Retour</button>
+				<button type="button" class="faq-popup__back generic-action-button generic-action-button--secondary" data-faq-cancel-edit data-faq-id="<?= (int)$faq->getId() ?>">Retour</button>
 			</div>
 			<div class="faq-popup__editor-status">
 				<?= htmlspecialchars($editorStatus, ENT_QUOTES, 'UTF-8') ?>
@@ -70,9 +70,9 @@ if ($isEditMode) {
 			);
 			$faq->display('adminEdit.php', $params);
 			?>
-			<div class="faq-popup__editor-actions">
-				<button type="button" class="faq-popup__back" data-faq-cancel-edit data-faq-id="<?= (int)$faq->getId() ?>">Annuler</button>
-				<button type="button" class="faq-popup__add" data-faq-save>Enregistrer</button>
+			<div class="faq-popup__editor-actions generic-action-row">
+				<button type="button" class="faq-popup__back generic-action-button generic-action-button--secondary" data-faq-cancel-edit data-faq-id="<?= (int)$faq->getId() ?>">Annuler</button>
+				<button type="button" class="faq-popup__add generic-action-button generic-action-button--main" data-faq-save>Enregistrer</button>
 			</div>
 		</div>
 	</div>

@@ -1511,9 +1511,16 @@ if ($canManageAllFaqs) {
 		}
 
 		const scopeKind = typeSelect ? String(typeSelect.value || 'organization') : 'organization';
-		const organizationId = organizationSelect
+		const selectedOrganizationId = organizationSelect
 			? Number(organizationSelect.value || 0)
+			: 0;
+		const organizationId = selectedOrganizationId > 0
+			? selectedOrganizationId
 			: (currentOid > 0 ? currentOid : Number((organizationInput && organizationInput.value) || 0));
+
+		if (scopeKind !== 'generic' && organizationSelect && selectedOrganizationId <= 0 && organizationId > 0) {
+			organizationSelect.value = String(organizationId);
+		}
 
 		if (scopeKindInput) {
 			scopeKindInput.value = scopeKind;
@@ -1648,6 +1655,7 @@ if ($canManageAllFaqs) {
 			return;
 		}
 
+		syncScopeSelectors(form.closest('[data-faq-form-shell]') || form);
 		syncFaqRichTextFields(form);
 		form.classList.add('disabled');
 
