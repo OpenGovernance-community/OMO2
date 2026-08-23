@@ -2,6 +2,24 @@
 
 require_once __DIR__ . '/omo_context_scope.php';
 
+if (!function_exists('faqPopupCanCreateParcoursFaqs')) {
+	function faqPopupCanCreateParcoursFaqs(array $faqContext, $userId = 0, $useSessionCache = true)
+	{
+		$organizationId = (int)($faqContext['organizationId'] ?? 0);
+		$userId = (int)$userId;
+		if ($organizationId <= 0 || $userId <= 0) {
+			return false;
+		}
+
+		if (!function_exists('lmsCurrentUserCanCreateParcours') || !function_exists('lmsCurrentUserCanEditParcours')) {
+			return false;
+		}
+
+		return lmsCurrentUserCanCreateParcours($organizationId, $userId, (bool)$useSessionCache)
+			|| lmsCurrentUserCanEditParcours($organizationId, $userId, (bool)$useSessionCache);
+	}
+}
+
 if (!function_exists('faqPopupDescribeScope')) {
 	function faqPopupDescribeScope(\dbObject\FAQ $faq)
 	{
@@ -465,6 +483,11 @@ if (!function_exists('faqPopupLoadParcoursOptions')) {
 	function faqPopupLoadParcoursOptions(array $faqContext, array $organizations)
 	{
 		$viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext);
+		$canCreateParcoursFaqs = faqPopupCanCreateParcoursFaqs(
+			$faqContext,
+			(int)($viewerAccess['userId'] ?? 0),
+			true
+		);
 		$options = array();
 
 		if (!empty($viewerAccess['canManageAllFaqs'])) {
@@ -498,7 +521,7 @@ if (!function_exists('faqPopupLoadParcoursOptions')) {
 		}
 
 		$organizationId = (int)($faqContext['organizationId'] ?? 0);
-		if ($organizationId <= 0) {
+		if ($organizationId <= 0 || (!$canCreateParcoursFaqs && empty($viewerAccess['canManageOrganizationFaqs']))) {
 			return $options;
 		}
 
@@ -529,6 +552,9 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 		$canManageOrganizationFaqs = !empty($viewerAccess['canManageOrganizationFaqs']);
 		$isContextualOnly = empty($options['allowScopeEditing']);
 		$allowGeneric = !empty($options['allowGeneric']);
+		$allowParcoursAttachment = !empty($options['allowParcoursAttachment']);
+		$allowContextualAttachment = !empty($options['allowContextualAttachment']);
+		$parcoursOnly = $allowParcoursAttachment && !$allowContextualAttachment;
 		$selectedOrganizationId = (int)$faq->getResolvedOrganizationId();
 		$selectedHolonId = (int)$faq->get('IDholon');
 		$selectedParcoursId = \dbObject\FAQ::hasParcoursColumn() ? (int)$faq->get('IDparcours') : 0;
@@ -550,12 +576,29 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 		if ($selectedOrganizationId <= 0 && !$canManageAllFaqs) {
 			$selectedOrganizationId = $contextOrganizationId;
 		}
+		if ($parcoursOnly) {
+			$selectedOrganizationId = $contextOrganizationId;
+			$selectedHolonId = 0;
+		}
 
 		$organizations = faqPopupLoadOrganizationOptions($faqContext, $faq);
 		$holons = faqPopupLoadHolonOptions($faqContext, $organizations);
 		$parcoursOptions = faqPopupLoadParcoursOptions($faqContext, $organizations);
+		if ($allowContextualAttachment && $allowParcoursAttachment && !$canManageAllFaqs && !$canManageOrganizationFaqs) {
+			$currentHolon = $faqContext['currentHolon'] ?? null;
+			$holons = $currentHolon instanceof \dbObject\Holon
+				? array(array(
+					'id' => (int)$currentHolon->getId(),
+					'organizationId' => $contextOrganizationId,
+					'label' => trim((string)$currentHolon->getDisplayName()),
+					'organizationLabel' => '',
+				))
+				: array();
+			$selectedHolonId = $currentHolon instanceof \dbObject\Holon ? (int)$currentHolon->getId() : 0;
+			$selectedOrganizationId = $contextOrganizationId;
+		}
 		$applicationOptions = $canLinkApplication ? \dbObject\Application::fetchFaqAttachmentOptions() : array();
-		$hasScopeControls = $canManageAllFaqs || $canManageOrganizationFaqs || !$isContextualOnly;
+		$hasScopeControls = $canManageAllFaqs || $canManageOrganizationFaqs || !$isContextualOnly || $allowParcoursAttachment;
 
 		if (!$hasScopeControls) {
 			return;
@@ -565,7 +608,14 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 			<input type="hidden" name="IDorganization" value="<?= $selectedOrganizationId > 0 ? $selectedOrganizationId : $contextOrganizationId ?>">
 			<input type="hidden" name="IDholon" value="<?= $selectedHolonId > 0 ? $selectedHolonId : '' ?>">
 			<input type="hidden" name="IDparcours" value="<?= $selectedParcoursId > 0 ? $selectedParcoursId : '' ?>">
-			<?php if ($isContextualOnly): ?>
+			<?php if ($parcoursOnly): ?>
+				<div class="faq-popup__scope-field generic-form-field generic-form-field--full">
+					<label class="faq-popup__scope-label generic-form-label" for="faqScopeType">Attachement</label>
+					<select class="faq-popup__scope-control generic-form-control" id="faqScopeType" data-faq-scope-kind>
+						<option value="parcours" selected>Parcours</option>
+					</select>
+				</div>
+			<?php elseif ($isContextualOnly): ?>
 				<div class="faq-popup__scope-field generic-form-field">
 					<label class="faq-popup__scope-label generic-form-label">Attachement</label>
 					<div class="faq-popup__scope-fixed generic-soft-panel">
@@ -600,8 +650,12 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 						id="faqScopeType"
 						data-faq-scope-kind
 					>
-						<option value="organization"<?= $selectedAttachmentType === 'organization' ? ' selected' : '' ?>>Organisation courante</option>
-						<option value="parcours"<?= $selectedAttachmentType === 'parcours' ? ' selected' : '' ?>>Parcours</option>
+						<?php if ($allowContextualAttachment || $canManageAllFaqs || $canManageOrganizationFaqs): ?>
+							<option value="organization"<?= $selectedAttachmentType === 'organization' ? ' selected' : '' ?>><?= $allowContextualAttachment && !$canManageAllFaqs && !$canManageOrganizationFaqs ? 'Holon courant' : 'Organisation courante' ?></option>
+						<?php endif; ?>
+						<?php if ($allowParcoursAttachment || $canManageAllFaqs || $canManageOrganizationFaqs): ?>
+							<option value="parcours"<?= $selectedAttachmentType === 'parcours' ? ' selected' : '' ?>>Parcours</option>
+						<?php endif; ?>
 						<?php if ($allowGeneric): ?>
 							<option value="generic"<?= $selectedAttachmentType === 'generic' ? ' selected' : '' ?>>FAQ generique</option>
 						<?php endif; ?>
@@ -698,6 +752,7 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 		$canManageAllFaqs = !empty($viewerAccess['canManageAllFaqs']);
 		$canManageOrganizationFaqs = !empty($viewerAccess['canManageOrganizationFaqs']);
 		$allowContextualCreate = !empty($options['allowContextualCreate']);
+		$allowParcoursCreate = !empty($options['allowParcoursCreate']);
 		$organizationId = isset($postData['IDorganization']) && is_numeric($postData['IDorganization'])
 			? (int)$postData['IDorganization']
 			: 0;
@@ -847,6 +902,33 @@ if (!function_exists('faqPopupResolveSubmittedScope')) {
 				'holonId' => $holon ? (int)$holon->getId() : null,
 				'parcoursId' => $parcours ? (int)$parcours->getId() : null,
 				'holon' => $holon,
+				'parcours' => $parcours,
+			);
+		}
+
+		if ($allowParcoursCreate && $attachmentType === 'parcours') {
+			$contextOrganizationId = (int)($faqContext['organizationId'] ?? 0);
+			if ($contextOrganizationId <= 0 || $organizationId !== $contextOrganizationId || !$parcours) {
+				return array(
+					'status' => false,
+					'message' => 'Le parcours selectionne est invalide dans cette organisation.',
+				);
+			}
+
+			$availableParcoursIds = \dbObject\Parcours::fetchOwnedFaqTargetIdsForOrganization($contextOrganizationId);
+			if (!in_array((int)$parcours->getId(), $availableParcoursIds, true)) {
+				return array(
+					'status' => false,
+					'message' => 'Vous ne pouvez pas rattacher une FAQ a ce parcours.',
+				);
+			}
+
+			return array(
+				'status' => true,
+				'organizationId' => $contextOrganizationId,
+				'holonId' => null,
+				'parcoursId' => (int)$parcours->getId(),
+				'holon' => null,
 				'parcours' => $parcours,
 			);
 		}

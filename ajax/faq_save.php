@@ -3,6 +3,7 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
+require_once("../omo/api/lms/inc/access.php");
 require_once("../common/faq_popup_helper.php");
 
 if (!checklogin()) {
@@ -36,8 +37,9 @@ $canManageFaqCollection = !empty($viewerAccess['canManageAllFaqs']) || !empty($v
 $canCreateContextualFaq = $contextHolon
 	? \dbObject\FAQ::canCreateContextualForHolon($contextHolon, $currentUserId, $contextOrganizationId, false)
 	: false;
+$canCreateParcoursFaqs = faqPopupCanCreateParcoursFaqs($faqContext ?: array(), $currentUserId, false);
 
-if (!$canManageFaqCollection && !$canCreateContextualFaq) {
+if (!$canManageFaqCollection && !$canCreateContextualFaq && !$canCreateParcoursFaqs) {
 	echo json_encode([
 		'status' => false,
 		'success' => false,
@@ -48,6 +50,7 @@ if (!$canManageFaqCollection && !$canCreateContextualFaq) {
 
 $scope = faqPopupResolveSubmittedScope($faqContext ?: array(), $_POST, array(
 	'allowContextualCreate' => $canCreateContextualFaq,
+	'allowParcoursCreate' => $canCreateParcoursFaqs,
 ));
 if (empty($scope['status'])) {
 	echo json_encode([
