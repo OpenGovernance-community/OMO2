@@ -2,6 +2,10 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-23
+
+- Les utilisateurs disposant de `CAN_CREATE_PARCOURS` ou `CAN_EDIT_PARCOURS` peuvent maintenant creer depuis la FAQ une question rattachee aux parcours dont leur organisation est proprietaire, avec le meme controle applique lors de la sauvegarde.
+
 ## 2026-08-21
 
 - Le panneau de notifications propose maintenant l action Tout marquer comme lu, qui actualise aussi immediatement la cloche et l affichage des notifications.

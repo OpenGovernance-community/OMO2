@@ -1,6 +1,7 @@
 <?php
 require_once("../config.php");
 require_once("../shared_functions.php");
+require_once("../omo/api/lms/inc/access.php");
 require_once("../common/faq_popup_helper.php");
 
 $faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET);
@@ -36,7 +37,10 @@ $usePermissionSessionCache = $_SERVER['REQUEST_METHOD'] !== 'POST';
 $canCreateContextualFaq = $contextHolon
 	? \dbObject\FAQ::canCreateContextualForHolon($contextHolon, $currentUserId, $contextOrganizationId, $usePermissionSessionCache)
 	: false;
-$canAddFaq = $faqStorageAvailable && ($canManageFaqCollection || $canCreateContextualFaq);
+$canCreateParcoursFaqs = $faqStorageAvailable
+	? faqPopupCanCreateParcoursFaqs($faqContext ?: array(), $currentUserId, $usePermissionSessionCache)
+	: false;
+$canAddFaq = $faqStorageAvailable && ($canManageFaqCollection || $canCreateContextualFaq || $canCreateParcoursFaqs);
 
 $allFAQ = \dbObject\FAQ::loadPopupCollection($faqContext ?: array(), $faqScope);
 $faqReliabilityRange = faqPopupBuildReliabilityRange($allFAQ);
@@ -84,6 +88,8 @@ $editorStatus = $contextHolon
 	: 'Cette FAQ sera creee dans le contexte courant.';
 $editorAllowScopeEditing = false;
 $editorAllowGeneric = false;
+$editorAllowParcoursAttachment = false;
+$editorAllowContextualAttachment = false;
 $editorFields = array(
 	'question',
 	'answer',
@@ -105,6 +111,12 @@ if ($canManageAllFaqs) {
 	$editorAllowScopeEditing = true;
 	$editorFields[] = 'displayorder';
 	$editorFields[] = 'isactive';
+} elseif ($canCreateParcoursFaqs) {
+	$editorTitle = 'Nouvelle FAQ de parcours';
+	$editorStatus = 'Cette FAQ sera rattachee a un parcours LMS que vous pouvez gerer.';
+	$editorAllowScopeEditing = true;
+	$editorAllowParcoursAttachment = true;
+	$editorAllowContextualAttachment = $canCreateContextualFaq;
 }
 
 ?>
@@ -898,6 +910,8 @@ if ($canManageAllFaqs) {
 				<?php faqPopupRenderScopeFields($newFaq, $faqContext ?: array(), array(
 					'allowScopeEditing' => $editorAllowScopeEditing,
 					'allowGeneric' => $editorAllowGeneric,
+					'allowParcoursAttachment' => $editorAllowParcoursAttachment,
+					'allowContextualAttachment' => $editorAllowContextualAttachment,
 				)); ?>
 				<?php
 				$params = array(
