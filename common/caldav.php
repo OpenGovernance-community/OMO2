@@ -1,10 +1,13 @@
 <?php
 
 require_once __DIR__ . '/carddav.php';
+require_once __DIR__ . '/omo_context_scope.php';
+require_once dirname(__DIR__) . '/omo/api/calendar/permissions_shared.php';
 
 use dbObject\ArrayEvent;
 use dbObject\ArrayUserOrganization;
 use dbObject\Event;
+use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\User;
 
@@ -22,6 +25,7 @@ if (!function_exists('commonCalDavNamespaceMap')) {
             'd' => 'DAV:',
             'cal' => 'urn:ietf:params:xml:ns:caldav',
             'cs' => 'http://calendarserver.org/ns/',
+            'ical' => 'http://apple.com/ns/ical/',
         );
     }
 }
@@ -51,6 +55,68 @@ if (!function_exists('commonCalDavBuildHref')) {
         }
 
         return $base . '/' . ltrim($suffix, '/');
+    }
+}
+
+if (!function_exists('commonCalDavNormalizeScopedRange')) {
+    function commonCalDavNormalizeScopedRange($range)
+    {
+        $range = strtolower(trim((string)$range));
+        if ($range === 'global') {
+            $range = 'descendants';
+        }
+
+        return in_array($range, array('contextual', 'children', 'descendants'), true)
+            ? $range
+            : 'contextual';
+    }
+}
+
+if (!function_exists('commonCalDavNormalizeScopedColor')) {
+    function commonCalDavNormalizeScopedColor($color)
+    {
+        $color = strtolower(trim((string)$color));
+        $color = ltrim($color, '#');
+
+        return preg_match('/^[0-9a-f]{6}$/', $color) === 1 ? $color : '2563eb';
+    }
+}
+
+if (!function_exists('commonCalDavBuildScopedCalendarHref')) {
+    function commonCalDavBuildScopedCalendarHref($organizationId, $holonId, $range, $color = null)
+    {
+        $suffix = 'scoped/'
+            . (int)$organizationId
+            . '/'
+            . (int)$holonId
+            . '/'
+            . commonCalDavNormalizeScopedRange($range)
+            . '/';
+
+        if ($color !== null) {
+            $suffix .= commonCalDavNormalizeScopedColor($color) . '/';
+        }
+
+        return commonCalDavBuildHref($suffix);
+    }
+}
+
+if (!function_exists('commonCalDavBuildAbsoluteHref')) {
+    function commonCalDavBuildAbsoluteHref($href)
+    {
+        $href = '/' . ltrim((string)$href, '/');
+        $host = trim((string)($_SERVER['HTTP_HOST'] ?? ''));
+        if ($host === '') {
+            return $href;
+        }
+
+        $forwardedProtocol = trim((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+        $protocol = strtolower(trim((string)explode(',', $forwardedProtocol)[0]));
+        if ($protocol !== 'http' && $protocol !== 'https') {
+            $protocol = (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') ? 'https' : 'http';
+        }
+
+        return $protocol . '://' . $host . $href;
     }
 }
 
@@ -565,14 +631,20 @@ if (!function_exists('commonCalDavBuildEventCalendarData')) {
 }
 
 if (!function_exists('commonCalDavBuildEventResource')) {
-    function commonCalDavBuildEventResource(User $viewer, Organization $organization, Event $event)
+    function commonCalDavBuildEventResource(User $viewer, Organization $organization, Event $event, array $options = array())
     {
         $viewerUserId = (int)$viewer->getId();
         $organizationId = (int)$organization->getId();
         $eventId = (int)$event->getId();
         $calendarSlug = 'organization-' . $organizationId;
         $fileName = 'event-' . $eventId . '.ics';
-        $href = commonCalDavBuildHref('calendars/' . $viewerUserId . '/' . $calendarSlug . '/' . $fileName);
+        $calendarHref = trim((string)($options['calendarHref'] ?? ''));
+        if ($calendarHref === '') {
+            $calendarHref = commonCalDavBuildHref('calendars/' . $viewerUserId . '/' . $calendarSlug . '/');
+        }
+        $calendarHref = rtrim($calendarHref, '/') . '/';
+        $calendarIdentity = trim((string)($options['calendarIdentity'] ?? ''));
+        $href = $calendarHref . $fileName;
         $calendarData = commonCalDavBuildEventCalendarData($organization, $event);
         $updatedAt = commonCalDavResolveEventUpdatedAt($event);
         $createdAt = commonCalDavResolveEventCreatedAt($event);
@@ -581,13 +653,19 @@ if (!function_exists('commonCalDavBuildEventResource')) {
         return array(
             'type' => 'event',
             'href' => $href,
-            'calendarHref' => commonCalDavBuildHref('calendars/' . $viewerUserId . '/' . $calendarSlug . '/'),
+            'calendarHref' => $calendarHref,
             'fileName' => $fileName,
             'eventId' => $eventId,
             'organizationId' => $organizationId,
             'organizationName' => trim((string)$organization->get('name')),
             'displayName' => trim((string)$event->get('title')),
-            'resourceId' => 'urn:uuid:' . commonCardDavBuildStableUuid('caldav:event:' . $organizationId . ':' . $eventId),
+            'resourceId' => 'urn:uuid:' . commonCardDavBuildStableUuid(
+                'caldav:event:'
+                . ($calendarIdentity !== '' ? $calendarIdentity . ':' : '')
+                . $organizationId
+                . ':'
+                . $eventId
+            ),
             'contentType' => 'text/calendar; charset=utf-8; component=VEVENT',
             'contentLength' => strlen($calendarData),
             'etag' => $etag,
@@ -601,9 +679,13 @@ if (!function_exists('commonCalDavBuildEventResource')) {
 }
 
 if (!function_exists('commonCalDavBuildCalendarSyncToken')) {
-    function commonCalDavBuildCalendarSyncToken($organizationId, array $eventResources)
+    function commonCalDavBuildCalendarSyncToken($organizationId, array $eventResources, $calendarIdentity = '')
     {
         $parts = array('org:' . (int)$organizationId);
+        $calendarIdentity = trim((string)$calendarIdentity);
+        if ($calendarIdentity !== '') {
+            $parts[] = 'calendar:' . $calendarIdentity;
+        }
 
         foreach ($eventResources as $eventResource) {
             $parts[] = (string)($eventResource['eventId'] ?? 0)
@@ -612,6 +694,114 @@ if (!function_exists('commonCalDavBuildCalendarSyncToken')) {
         }
 
         return 'data:,' . sha1(implode('|', $parts));
+    }
+}
+
+if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
+    function commonCalDavLoadScopedCalendarForViewer(User $viewer, $organizationId, $holonId, $range, $color)
+    {
+        $viewerUserId = (int)$viewer->getId();
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holonId;
+        $range = commonCalDavNormalizeScopedRange($range);
+        $color = commonCalDavNormalizeScopedColor($color);
+
+        if ($viewerUserId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+            return null;
+        }
+
+        $memberships = new ArrayUserOrganization();
+        $memberships->loadActiveForUser($viewerUserId);
+        $hasOrganizationAccess = false;
+        foreach ($memberships as $membership) {
+            if ($membership instanceof \dbObject\UserOrganization && (int)$membership->get('IDorganization') === $organizationId) {
+                $hasOrganizationAccess = true;
+                break;
+            }
+        }
+
+        if (!$hasOrganizationAccess) {
+            return null;
+        }
+
+        $organization = new Organization();
+        if (!$organization->load($organizationId) || !$organization->isApplicationEnabled('calendar', $viewerUserId)) {
+            return null;
+        }
+
+        $rootHolon = $organization->getEnabledStructuralRootHolon();
+        $holon = new Holon();
+        if (
+            !($rootHolon instanceof Holon)
+            || !$holon->load($holonId)
+            || !$holon->isDescendantOf((int)$rootHolon->getId(), true)
+        ) {
+            return null;
+        }
+
+        $availableRanges = omoApiGetAvailableContextScopes(true, $holon, $rootHolon);
+        if (!in_array($range, $availableRanges, true)) {
+            return null;
+        }
+
+        $visibleHolonIds = array((int)$holon->getId() => true);
+        if ($range === 'children') {
+            $visibleHolonIds += omoApiGetDirectChildHolonIdMap($holon);
+        } elseif ($range === 'descendants') {
+            $visibleHolonIds += omoApiGetDescendantHolonIdMap($holon);
+        }
+
+        $calendarHref = commonCalDavBuildScopedCalendarHref($organizationId, $holonId, $range, $color);
+        $calendarSlug = 'scoped-' . $organizationId . '-' . $holonId . '-' . $range . '-' . $color;
+        $viewerScopedEmail = trim(mb_strtolower((string)$viewer->getScopedEmail($organizationId), 'UTF-8'));
+        $events = new ArrayEvent();
+        $events->loadForOrganization($organizationId, false);
+        $eventResources = array();
+
+        foreach ($events as $event) {
+            if (!($event instanceof Event) || !$event->isVisibleToInvitationViewer($viewerUserId, $organizationId, $viewerScopedEmail)) {
+                continue;
+            }
+
+            $eventHolonId = (int)$event->get('IDholon');
+            if ($eventHolonId > 0 && !isset($visibleHolonIds[$eventHolonId])) {
+                continue;
+            }
+
+            $eventResource = commonCalDavBuildEventResource($viewer, $organization, $event, array(
+                'calendarHref' => $calendarHref,
+                'calendarIdentity' => $calendarSlug,
+            ));
+            $eventResources[(string)$eventResource['fileName']] = $eventResource;
+        }
+
+        $scopeLabels = array(
+            'contextual' => 'Current context',
+            'children' => 'Direct children',
+            'descendants' => 'Descendants',
+        );
+        $holonLabel = trim((string)$holon->getDisplayName());
+        $organizationName = trim((string)$organization->get('name'));
+        $displayName = trim($organizationName . ' - ' . ($holonLabel !== '' ? $holonLabel : 'Calendar'));
+        $syncToken = commonCalDavBuildCalendarSyncToken($organizationId, array_values($eventResources), $calendarSlug);
+
+        return array(
+            'type' => 'calendar',
+            'href' => $calendarHref,
+            'calendarSlug' => $calendarSlug,
+            'organizationId' => $organizationId,
+            'holonId' => $holonId,
+            'range' => $range,
+            'color' => '#' . $color . 'FF',
+            'displayName' => $displayName,
+            'description' => trim($organizationName . ' - ' . ($scopeLabels[$range] ?? $range)),
+            'resourceId' => 'urn:uuid:' . commonCardDavBuildStableUuid('caldav:calendar:' . $calendarSlug),
+            'syncToken' => $syncToken,
+            'ctag' => sha1($syncToken),
+            'organization' => $organization,
+            'events' => array_values($eventResources),
+            'eventMap' => $eventResources,
+        );
     }
 }
 
@@ -732,6 +922,16 @@ if (!function_exists('commonCalDavResolveRouteResource')) {
                 'type' => 'calendar-home',
                 'href' => commonCalDavBuildHref('calendars/' . $viewerUserId . '/'),
             );
+        }
+
+        if (preg_match('#^/scoped/(\d+)/(\d+)/(contextual|children|descendants)/([0-9a-fA-F]{6})$#', $routePath, $matches)) {
+            return commonCalDavLoadScopedCalendarForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4]);
+        }
+
+        if (preg_match('#^/scoped/(\d+)/(\d+)/(contextual|children|descendants)/([0-9a-fA-F]{6})/(event-\d+\.ics)$#', $routePath, $matches)) {
+            $calendar = commonCalDavLoadScopedCalendarForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4]);
+            $fileName = (string)$matches[5];
+            return is_array($calendar) && isset($calendar['eventMap'][$fileName]) ? $calendar['eventMap'][$fileName] : null;
         }
 
         $calendarMap = commonCalDavLoadCalendarsForViewer($viewer);
@@ -906,7 +1106,7 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                 );
 
             case 'calendar':
-                return array(
+                $properties = array(
                     '{DAV:}displayname' => array('type' => 'text', 'value' => (string)($resource['displayName'] ?? 'Calendar')),
                     '{DAV:}resourcetype' => array(
                         'type' => 'resourcetype',
@@ -935,6 +1135,13 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                     '{http://calendarserver.org/ns/}getctag' => array('type' => 'text', 'value' => (string)($resource['ctag'] ?? '')),
                     '{DAV:}resource-id' => array('type' => 'href', 'value' => (string)($resource['resourceId'] ?? '')),
                 );
+
+                $calendarColor = trim((string)($resource['color'] ?? ''));
+                if ($calendarColor !== '') {
+                    $properties['{http://apple.com/ns/ical/}calendar-color'] = array('type' => 'text', 'value' => $calendarColor);
+                }
+
+                return $properties;
 
             case 'event':
                 return array(
@@ -1245,6 +1452,386 @@ if (!function_exists('commonCalDavHandleReport')) {
         }
 
         commonCalDavSendStatusText(403, 'Unsupported REPORT.');
+    }
+}
+
+if (!function_exists('commonCalDavUnfoldCalendarLines')) {
+    function commonCalDavUnfoldCalendarLines($rawCalendar)
+    {
+        $rawCalendar = str_replace(array("\r\n", "\r"), "\n", (string)$rawCalendar);
+        $sourceLines = explode("\n", $rawCalendar);
+        $lines = array();
+
+        foreach ($sourceLines as $line) {
+            if ($line !== '' && ($line[0] === ' ' || $line[0] === "\t") && count($lines) > 0) {
+                $lines[count($lines) - 1] .= substr($line, 1);
+                continue;
+            }
+
+            $lines[] = $line;
+        }
+
+        return $lines;
+    }
+}
+
+if (!function_exists('commonCalDavSplitCalendarPropertyLine')) {
+    function commonCalDavSplitCalendarPropertyLine($line)
+    {
+        $line = (string)$line;
+        $quoted = false;
+        $length = strlen($line);
+
+        for ($index = 0; $index < $length; $index++) {
+            if ($line[$index] === '"') {
+                $quoted = !$quoted;
+                continue;
+            }
+
+            if ($line[$index] === ':' && !$quoted) {
+                return array(substr($line, 0, $index), substr($line, $index + 1));
+            }
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('commonCalDavParseCalendarProperty')) {
+    function commonCalDavParseCalendarProperty($property)
+    {
+        $parts = explode(';', (string)$property);
+        $name = strtoupper(trim((string)array_shift($parts)));
+        if ($name === '') {
+            return null;
+        }
+
+        $parameters = array();
+        foreach ($parts as $part) {
+            $parameterParts = explode('=', $part, 2);
+            $parameterName = strtoupper(trim((string)($parameterParts[0] ?? '')));
+            if ($parameterName === '' || count($parameterParts) !== 2) {
+                continue;
+            }
+
+            $parameters[$parameterName] = trim((string)$parameterParts[1], ' "');
+        }
+
+        return array(
+            'name' => $name,
+            'parameters' => $parameters,
+        );
+    }
+}
+
+if (!function_exists('commonCalDavUnescapeText')) {
+    function commonCalDavUnescapeText($value)
+    {
+        $value = str_replace(array('\\\\', '\\n', '\\N', '\\,', '\\;'), array("\0", "\n", "\n", ',', ';'), (string)$value);
+        return str_replace("\0", '\\', $value);
+    }
+}
+
+if (!function_exists('commonCalDavResolveIcalendarTimezone')) {
+    function commonCalDavResolveIcalendarTimezone($timezoneName, $fallbackTimezoneName = '')
+    {
+        $candidates = array(
+            trim((string)$timezoneName),
+            trim((string)$fallbackTimezoneName),
+            date_default_timezone_get(),
+            'UTC',
+        );
+
+        foreach ($candidates as $candidate) {
+            if ($candidate === '') {
+                continue;
+            }
+
+            try {
+                return new DateTimeZone($candidate);
+            } catch (Exception $exception) {
+            }
+        }
+
+        return new DateTimeZone('UTC');
+    }
+}
+
+if (!function_exists('commonCalDavParseIcalendarDateTime')) {
+    function commonCalDavParseIcalendarDateTime($rawValue, array $parameters, $fallbackTimezoneName = '')
+    {
+        $rawValue = trim((string)$rawValue);
+        $isAllDay = strtoupper((string)($parameters['VALUE'] ?? '')) === 'DATE' || preg_match('/^\d{8}$/', $rawValue) === 1;
+        $timezoneName = trim((string)($parameters['TZID'] ?? ''));
+        $isUtc = substr($rawValue, -1) === 'Z';
+        if ($isUtc) {
+            $timezoneName = 'UTC';
+            $rawValue = substr($rawValue, 0, -1);
+        }
+
+        $timezone = commonCalDavResolveIcalendarTimezone($timezoneName, $fallbackTimezoneName);
+        $format = $isAllDay ? '!Ymd' : '!Ymd\\THis';
+        if (!$isAllDay && preg_match('/^\d{8}T\d{4}$/', $rawValue) === 1) {
+            $format = '!Ymd\\THi';
+        }
+
+        $dateTime = DateTimeImmutable::createFromFormat($format, $rawValue, $timezone);
+        $errors = DateTimeImmutable::getLastErrors();
+        if (
+            !($dateTime instanceof DateTimeImmutable)
+            || ($errors !== false && ((int)($errors['warning_count'] ?? 0) > 0 || (int)($errors['error_count'] ?? 0) > 0))
+        ) {
+            return null;
+        }
+
+        return array(
+            'value' => $dateTime,
+            'isAllDay' => $isAllDay,
+            'timezone' => $timezone->getName(),
+        );
+    }
+}
+
+if (!function_exists('commonCalDavParseEventUpdate')) {
+    function commonCalDavParseEventUpdate($rawCalendar, Event $event)
+    {
+        $rawCalendar = (string)$rawCalendar;
+        if ($rawCalendar === '' || strlen($rawCalendar) > 524288 || strpos($rawCalendar, "\0") !== false) {
+            return array('status' => false, 'code' => 400, 'text' => 'Invalid calendar data.');
+        }
+
+        $inEvent = false;
+        $nestedComponentDepth = 0;
+        $eventCount = 0;
+        $properties = array();
+        foreach (commonCalDavUnfoldCalendarLines($rawCalendar) as $line) {
+            $line = rtrim((string)$line, "\n");
+            if ($line === '') {
+                continue;
+            }
+
+            $parts = commonCalDavSplitCalendarPropertyLine($line);
+            if (!is_array($parts)) {
+                return array('status' => false, 'code' => 400, 'text' => 'Invalid iCalendar property.');
+            }
+
+            $property = commonCalDavParseCalendarProperty($parts[0]);
+            if (!is_array($property)) {
+                return array('status' => false, 'code' => 400, 'text' => 'Invalid iCalendar property.');
+            }
+
+            $name = (string)$property['name'];
+            $value = (string)$parts[1];
+            if ($name === 'BEGIN' && strtoupper($value) === 'VEVENT') {
+                if ($inEvent || $eventCount > 0) {
+                    return array('status' => false, 'code' => 409, 'text' => 'Only one VEVENT can be updated at a time.');
+                }
+                $inEvent = true;
+                $nestedComponentDepth = 0;
+                $eventCount++;
+                continue;
+            }
+
+            if ($name === 'END' && strtoupper($value) === 'VEVENT') {
+                if (!$inEvent || $nestedComponentDepth > 0) {
+                    return array('status' => false, 'code' => 400, 'text' => 'Invalid VEVENT component.');
+                }
+                $inEvent = false;
+                continue;
+            }
+
+            if (!$inEvent) {
+                continue;
+            }
+
+            if ($name === 'BEGIN') {
+                $nestedComponentDepth++;
+                continue;
+            }
+
+            if ($name === 'END') {
+                if ($nestedComponentDepth > 0) {
+                    $nestedComponentDepth--;
+                }
+                continue;
+            }
+
+            if ($nestedComponentDepth > 0) {
+                continue;
+            }
+
+            if (in_array($name, array('RRULE', 'RDATE', 'EXDATE', 'RECURRENCE-ID'), true)) {
+                return array('status' => false, 'code' => 409, 'text' => 'Recurring events are not supported.');
+            }
+
+            if (!in_array($name, array('UID', 'SUMMARY', 'DESCRIPTION', 'LOCATION', 'URL', 'DTSTART', 'DTEND'), true)) {
+                continue;
+            }
+
+            if (isset($properties[$name])) {
+                return array('status' => false, 'code' => 400, 'text' => 'Duplicate iCalendar property.');
+            }
+
+            $properties[$name] = array(
+                'value' => $value,
+                'parameters' => (array)$property['parameters'],
+            );
+        }
+
+        if ($inEvent || $eventCount !== 1) {
+            return array('status' => false, 'code' => 400, 'text' => 'A single VEVENT component is required.');
+        }
+
+        $expectedUid = commonCalDavBuildEventUid($event);
+        $receivedUid = trim((string)commonCalDavUnescapeText($properties['UID']['value'] ?? ''));
+        if ($receivedUid !== '' && !hash_equals($expectedUid, $receivedUid)) {
+            return array('status' => false, 'code' => 409, 'text' => 'The event UID does not match this resource.');
+        }
+
+        $summary = trim((string)commonCalDavUnescapeText($properties['SUMMARY']['value'] ?? ''));
+        if ($summary === '') {
+            return array('status' => false, 'code' => 400, 'text' => 'A calendar event title is required.');
+        }
+
+        if (!isset($properties['DTSTART'])) {
+            return array('status' => false, 'code' => 400, 'text' => 'DTSTART is required.');
+        }
+
+        $fallbackTimezone = trim((string)$event->get('timezone'));
+        $start = commonCalDavParseIcalendarDateTime(
+            $properties['DTSTART']['value'],
+            (array)$properties['DTSTART']['parameters'],
+            $fallbackTimezone
+        );
+        if (!is_array($start)) {
+            return array('status' => false, 'code' => 400, 'text' => 'Invalid DTSTART value.');
+        }
+
+        $end = null;
+        if (isset($properties['DTEND'])) {
+            $end = commonCalDavParseIcalendarDateTime(
+                $properties['DTEND']['value'],
+                (array)$properties['DTEND']['parameters'],
+                (string)$start['timezone']
+            );
+            if (!is_array($end) || (bool)$end['isAllDay'] !== (bool)$start['isAllDay']) {
+                return array('status' => false, 'code' => 400, 'text' => 'Invalid DTEND value.');
+            }
+        }
+
+        $storageTimezone = commonCalDavResolveIcalendarTimezone(
+            (string)($properties['DTSTART']['parameters']['TZID'] ?? ''),
+            $fallbackTimezone
+        );
+        $startAt = DateTimeImmutable::createFromInterface($start['value'])->setTimezone($storageTimezone);
+        if ((bool)$start['isAllDay']) {
+            $startAt = $startAt->setTime(0, 0, 0);
+            $endAt = is_array($end)
+                ? DateTimeImmutable::createFromInterface($end['value'])->setTimezone($storageTimezone)->setTime(0, 0, 0)->modify('-1 second')
+                : $startAt->setTime(23, 59, 59);
+        } else {
+            $endAt = is_array($end)
+                ? DateTimeImmutable::createFromInterface($end['value'])->setTimezone($storageTimezone)
+                : $startAt->modify('+1 hour');
+        }
+
+        if ($endAt < $startAt) {
+            return array('status' => false, 'code' => 400, 'text' => 'DTEND must not be before DTSTART.');
+        }
+
+        $location = trim((string)commonCalDavUnescapeText($properties['LOCATION']['value'] ?? ''));
+        $videoUrl = Event::sanitizeVideoMeetingUrl(commonCalDavUnescapeText($properties['URL']['value'] ?? ''));
+        if ($videoUrl !== '' && mb_strtolower($location, 'UTF-8') === 'visio') {
+            $location = '';
+        }
+
+        return array(
+            'status' => true,
+            'values' => array(
+                'title' => $summary,
+                'description' => isset($properties['DESCRIPTION']) ? commonCalDavUnescapeText($properties['DESCRIPTION']['value']) : '',
+                'locationaddress' => $location,
+                'videomeetingurl' => $videoUrl,
+                'timezone' => $storageTimezone->getName(),
+                'start_at' => $startAt,
+                'end_at' => $endAt,
+                'is_all_day' => !empty($start['isAllDay']) ? 1 : 0,
+            ),
+        );
+    }
+}
+
+if (!function_exists('commonCalDavRequestMatchesEventEtag')) {
+    function commonCalDavRequestMatchesEventEtag(array $resource)
+    {
+        $etag = trim((string)($resource['etag'] ?? ''));
+        $ifMatch = trim((string)($_SERVER['HTTP_IF_MATCH'] ?? ''));
+        if ($ifMatch !== '') {
+            if ($ifMatch !== '*' && !in_array($etag, array_map('trim', explode(',', $ifMatch)), true)) {
+                return false;
+            }
+        }
+
+        $ifNoneMatch = trim((string)($_SERVER['HTTP_IF_NONE_MATCH'] ?? ''));
+        if ($ifNoneMatch !== '' && ($ifNoneMatch === '*' || in_array($etag, array_map('trim', explode(',', $ifNoneMatch)), true))) {
+            return false;
+        }
+
+        return true;
+    }
+}
+
+if (!function_exists('commonCalDavHandleEventPut')) {
+    function commonCalDavHandleEventPut(User $viewer, array $resource)
+    {
+        $event = $resource['event'] ?? null;
+        $organizationId = (int)($resource['organizationId'] ?? 0);
+        if (!($event instanceof Event) || $organizationId <= 0) {
+            commonCalDavSendStatusText(404, 'CalDAV event not found.');
+        }
+
+        $organization = new Organization();
+        $rootHolon = $organization->load($organizationId) ? $organization->getEnabledStructuralRootHolon() : null;
+        if (!omoCalendarCanEditEvent($event, $organizationId, (int)$viewer->getId(), $rootHolon instanceof Holon ? $rootHolon : null, false)) {
+            commonCalDavSendStatusText(403, 'You are not allowed to edit this event.');
+        }
+
+        if (!commonCalDavRequestMatchesEventEtag($resource)) {
+            commonCalDavSendStatusText(412, 'The event has changed on the server.');
+        }
+
+        $parsed = commonCalDavParseEventUpdate(file_get_contents('php://input'), $event);
+        if (empty($parsed['status'])) {
+            commonCalDavSendStatusText((int)($parsed['code'] ?? 400), (string)($parsed['text'] ?? 'Invalid calendar data.'));
+        }
+
+        $values = (array)($parsed['values'] ?? array());
+        $event->set('title', (string)$values['title']);
+        $event->set('description', (string)$values['description'] !== '' ? (string)$values['description'] : null);
+        $event->set('timezone', (string)$values['timezone']);
+        $event->set('locationaddress', (string)$values['locationaddress'] !== '' ? (string)$values['locationaddress'] : null);
+        $event->set('videomeetingurl', (string)$values['videomeetingurl'] !== '' ? (string)$values['videomeetingurl'] : null);
+        $event->set('start_at', $values['start_at']);
+        $event->set('end_at', $values['end_at']);
+        $event->set('is_all_day', !empty($values['is_all_day']) ? 1 : 0);
+        $event->set('updated_at', new DateTimeImmutable('now'));
+
+        $saveResult = $event->save();
+        if (!is_array($saveResult) || empty($saveResult['status'])) {
+            commonCalDavSendStatusText(409, trim((string)($saveResult['text'] ?? 'The event could not be updated.')));
+        }
+
+        $updatedResource = commonCalDavBuildEventResource($viewer, $organization, $event, array(
+            'calendarHref' => (string)($resource['calendarHref'] ?? ''),
+        ));
+        header('ETag: ' . (string)$updatedResource['etag']);
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        commonCardDavSetDebugValue('request_method', 'PUT');
+        commonCardDavSetDebugValue('resource_type', 'event');
+        commonCardDavSendDebugHeaders();
+        http_response_code(204);
+        exit;
     }
 }
 
