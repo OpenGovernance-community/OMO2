@@ -3,6 +3,7 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
+require_once("../omo/api/lms/inc/access.php");
 require_once("../common/faq_popup_helper.php");
 
 if (!checklogin()) {
@@ -48,8 +49,11 @@ if (!$faq->canBeEditedInContext($faqContext ?: array())) {
 
 $viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext ?: array());
 $canManageFaqCollection = !empty($viewerAccess['canManageAllFaqs']) || !empty($viewerAccess['canManageOrganizationFaqs']);
+$canManageParcoursFaqs = \dbObject\FAQ::canManageParcoursInContext($faqContext ?: array(), (int)($viewerAccess['userId'] ?? 0), false);
 
-$scope = faqPopupResolveSubmittedScope($faqContext ?: array(), $_POST);
+$scope = faqPopupResolveSubmittedScope($faqContext ?: array(), $_POST, array(
+	'allowParcoursCreate' => $canManageParcoursFaqs,
+));
 if (empty($scope['status'])) {
 	echo json_encode([
 		'status' => false,

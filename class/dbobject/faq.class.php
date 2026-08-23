@@ -951,8 +951,46 @@ class FAQ extends DbObject
 			return false;
 		}
 
-		return !empty($viewerAccess['canManageOrganizationFaqs'])
-			&& $organizationId === (int)($viewerAccess['organizationId'] ?? 0);
+		if (!empty($viewerAccess['canManageOrganizationFaqs'])
+			&& $organizationId === (int)($viewerAccess['organizationId'] ?? 0)) {
+			return true;
+		}
+
+		$parcoursId = self::hasParcoursColumn() ? (int)$this->get('IDparcours') : 0;
+		$contextOrganizationId = (int)($context['organizationId'] ?? 0);
+		if ($parcoursId <= 0 || $contextOrganizationId <= 0 || $organizationId !== $contextOrganizationId) {
+			return false;
+		}
+
+		$ownedParcoursIds = \dbObject\Parcours::fetchOwnedFaqTargetIdsForOrganization($contextOrganizationId);
+		if (!in_array($parcoursId, $ownedParcoursIds, true)) {
+			return false;
+		}
+
+		return self::canManageParcoursInContext(
+			$context,
+			(int)($viewerAccess['userId'] ?? 0),
+			true
+		);
+	}
+
+	public static function canManageParcoursInContext(array $context = array(), $userId = 0, $useSessionCache = true)
+	{
+		$organizationId = (int)($context['organizationId'] ?? 0);
+		$userId = (int)$userId;
+		if ($userId <= 0) {
+			$userId = self::resolveCurrentUserId();
+		}
+		if ($organizationId <= 0 || $userId <= 0) {
+			return false;
+		}
+
+		if (!function_exists('lmsCurrentUserCanCreateParcours') || !function_exists('lmsCurrentUserCanEditParcours')) {
+			return false;
+		}
+
+		return \lmsCurrentUserCanCreateParcours($organizationId, $userId, (bool)$useSessionCache)
+			|| \lmsCurrentUserCanEditParcours($organizationId, $userId, (bool)$useSessionCache);
 	}
 
 	public function canBeDetachedInContext(array $context = array())
