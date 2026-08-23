@@ -49,6 +49,10 @@ $sourceLang = [
         'text' => 'Actions',
         'context' => 'Accessible label for the compact event action menu.',
     ],
+    'calendar.action.connect' => [
+        'text' => 'Connecter',
+        'context' => 'Action opening the CalDAV connection popup for the current calendar scope.',
+    ],
     'calendar.confirm.delete' => [
         'text' => 'Supprimer cet événement ?',
         'context' => 'Confirmation shown before deleting an event from the compact menu.',
@@ -1185,6 +1189,8 @@ foreach ($calendarScopes as $scopeKey) {
 $currentUrl = $viewUrlsByScope[$calendarScope][$viewMode] ?? $viewUrlsByScope['contextual']['month'];
 $createUrl = '/omo/api/calendar/create.php?oid=' . rawurlencode((string)$organizationId);
 $detailUrl = '/omo/api/calendar/detail.php?oid=' . rawurlencode((string)$organizationId);
+$connectUrl = '/omo/api/calendar/connect.php?oid=' . rawurlencode((string)$organizationId)
+    . '&cid=' . rawurlencode((string)($currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0));
 if ($currentHolon instanceof Holon) {
     $createUrl .= '&cid=' . rawurlencode((string)(int)$currentHolon->getId());
     $detailUrl .= '&cid=' . rawurlencode((string)(int)$currentHolon->getId());
@@ -1288,6 +1294,20 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     >
                         <?= omoApiEscape(omoCalendarT('calendar.action.today')) ?>
                     </button>
+                </div>
+                <div class="generic-menu omo-calendar__header-menu" data-omo-calendar-header-menu>
+                    <button
+                        type="button"
+                        class="generic-menu-toggle omo-calendar__header-menu-toggle"
+                        data-omo-calendar-header-menu-toggle
+                        aria-expanded="false"
+                        aria-haspopup="menu"
+                        aria-label="<?= omoApiEscape(omoCalendarT('calendar.action.more')) ?>"
+                        title="<?= omoApiEscape(omoCalendarT('calendar.action.more')) ?>"
+                    >&#8942;</button>
+                    <div class="generic-menu-panel omo-calendar__header-menu-panel" data-omo-calendar-header-menu-panel role="menu" hidden>
+                        <button type="button" class="generic-menu-item" data-omo-calendar-open-connect role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.action.connect')) ?></button>
+                    </div>
                 </div>
                 <?php if ($canCreateEvent): ?>
                     <button
@@ -1728,6 +1748,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         var filterPanelOpen = false;
         var createUrl = root.getAttribute('data-omo-calendar-create-url') || '';
         var detailUrl = root.getAttribute('data-omo-calendar-detail-url') || '';
+        var connectUrl = <?= json_encode($connectUrl, JSON_UNESCAPED_SLASHES) ?>;
         var headerCount = root.querySelector('[data-omo-calendar-header-count]');
         var headerSummary = root.querySelector('[data-omo-calendar-header-summary]');
         var requestToken = 0;
@@ -1793,6 +1814,85 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             floatingCalendarMenu.style.visibility = '';
             floatingCalendarMenu.replaceChildren();
         }
+
+        var calendarHeaderMenu = root.querySelector('[data-omo-calendar-header-menu]');
+        var calendarHeaderMenuToggle = root.querySelector('[data-omo-calendar-header-menu-toggle]');
+        var calendarHeaderMenuPanel = root.querySelector('[data-omo-calendar-header-menu-panel]');
+
+        function closeCalendarHeaderMenu() {
+            if (calendarHeaderMenu) {
+                calendarHeaderMenu.classList.remove('is-open');
+            }
+            if (calendarHeaderMenuToggle) {
+                calendarHeaderMenuToggle.setAttribute('aria-expanded', 'false');
+            }
+            if (calendarHeaderMenuPanel) {
+                calendarHeaderMenuPanel.hidden = true;
+            }
+        }
+
+        function openCalendarConnectPopup() {
+            if (!connectUrl || typeof window.commonTopbarOpenModal !== 'function') {
+                return;
+            }
+
+            closeCalendarHeaderMenu();
+            fetch(resolveUrl(connectUrl + '&scope=' + encodeURIComponent(currentScope)), {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            }).then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Unable to load calendar connection details');
+                }
+                return response.text();
+            }).then(function (html) {
+                var preview = document.createElement('div');
+                preview.innerHTML = html;
+                var popup = preview.querySelector('[data-omo-calendar-connect-popup]');
+                var popupTitle = popup ? popup.getAttribute('data-omo-calendar-connect-title') : <?= json_encode(omoCalendarT('calendar.action.connect')) ?>;
+
+                window.commonTopbarOpenModal(popupTitle, html, 'html');
+                var modalBody = document.getElementById('commonTopbarModalBody');
+                if (modalBody) {
+                    if (typeof window.initGenericComponents === 'function') {
+                        window.initGenericComponents(modalBody);
+                    }
+                    initCalendarConnectControls(modalBody);
+                }
+            }).catch(function () {
+                window.commonTopbarOpenModal(<?= json_encode(omoCalendarT('calendar.action.connect')) ?>, '<div class="generic-section"><?= omoApiEscape(omoCalendarT('calendar.error.load_form')) ?></div>', 'html');
+            });
+        }
+
+        if (calendarHeaderMenuToggle && calendarHeaderMenuPanel) {
+            calendarHeaderMenuToggle.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                var isOpen = !calendarHeaderMenuPanel.hidden;
+                closeCalendarHeaderMenu();
+                if (!isOpen) {
+                    calendarHeaderMenu.classList.add('is-open');
+                    calendarHeaderMenuToggle.setAttribute('aria-expanded', 'true');
+                    calendarHeaderMenuPanel.hidden = false;
+                }
+            });
+        }
+
+        root.addEventListener('click', function (event) {
+            var connectButton = event.target.closest('[data-omo-calendar-open-connect]');
+            if (connectButton) {
+                event.preventDefault();
+                openCalendarConnectPopup();
+                return;
+            }
+
+            if (calendarHeaderMenu && !calendarHeaderMenu.contains(event.target)) {
+                closeCalendarHeaderMenu();
+            }
+        });
 
         function openCalendarMenu(toggle) {
             var menu = toggle ? toggle.closest('[data-omo-calendar-event-menu]') : null;
@@ -3274,6 +3374,51 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             button.addEventListener('click', closeDrawer);
         });
 
+        function initCalendarConnectControls(container) {
+            if (!container || container.dataset.omoCalendarConnectReady === '1') {
+                return;
+            }
+            container.dataset.omoCalendarConnectReady = '1';
+
+            container.addEventListener('input', function (event) {
+                var colorField = event.target.closest('[data-omo-calendar-connect-color]');
+                var connectDetails = colorField ? colorField.closest('[data-omo-calendar-connect-details]') : null;
+                var urlField = connectDetails ? connectDetails.querySelector('[data-omo-calendar-connect-url]') : null;
+                var urlPrefix = connectDetails ? (connectDetails.getAttribute('data-omo-calendar-connect-url-prefix') || '') : '';
+                var color = colorField ? String(colorField.value || '').replace(/^#/, '').toLowerCase() : '';
+
+                if (urlField && /^[0-9a-f]{6}$/.test(color)) {
+                    urlField.value = urlPrefix + color + '/';
+                }
+            });
+
+            container.addEventListener('click', function (event) {
+                var copyButton = event.target.closest('[data-omo-calendar-connect-copy]');
+                if (!copyButton) {
+                    return;
+                }
+
+                var connectDetails = copyButton.closest('[data-omo-calendar-connect-details]');
+                var urlField = connectDetails ? connectDetails.querySelector('[data-omo-calendar-connect-url]') : null;
+                if (!urlField) {
+                    return;
+                }
+
+                var value = String(urlField.value || '');
+                var copyValue = function () {
+                    urlField.focus();
+                    urlField.select();
+                    document.execCommand('copy');
+                };
+
+                if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                    navigator.clipboard.writeText(value).catch(copyValue);
+                } else {
+                    copyValue();
+                }
+            });
+        }
+
         root.querySelectorAll('[data-omo-calendar-filter-toggle]').forEach(function (button) {
             button.addEventListener('click', function () {
                 if (filterPanelOpen) {
@@ -3352,6 +3497,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         root.addEventListener('keydown', function (event) {
             if (event.key === 'Escape' && filterPanelOpen) {
                 closeCalendarFilterPanel(false, false);
+            }
+            if (event.key === 'Escape') {
+                closeCalendarHeaderMenu();
             }
         });
 
@@ -3729,6 +3877,18 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
 .omo-calendar__count {
     min-width: 0;
+}
+
+.omo-calendar__header-menu {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.omo-calendar__header-menu-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 60;
 }
 
 .omo-calendar__header-text {

@@ -27,6 +27,7 @@ if (!$faq->canBeViewedInContext($faqContext ?: array(), $faqScope)) {
 
 $isEditMode = !empty($_GET['edit']) && $_GET['edit'] !== '0';
 $canEditFaq = $faq->canBeEditedInContext($faqContext ?: array());
+$canDeleteFaq = $faq->canBeDeletedInContext($faqContext ?: array());
 $canManageParcoursFaqs = \dbObject\FAQ::canManageParcoursInContext($faqContext ?: array(), 0, true);
 $scopeInfo = faqPopupDescribeScope($faq);
 
@@ -109,6 +110,21 @@ if (\dbObject\FAQ::hasViewcountColumn()) {
 						data-faq-edit
 						data-faq-id="<?= (int)$faq->getId() ?>"
 					>Editer</button>
+				<?php endif; ?>
+				<?php if ($canDeleteFaq): ?>
+					<button
+						type="button"
+						class="generic-action-button generic-action-button--danger generic-action-button--icon-only"
+						data-faq-delete
+						data-faq-id="<?= (int)$faq->getId() ?>"
+						data-faq-delete-confirm="Supprimer cette FAQ ? Cette action est definitive."
+						title="Supprimer"
+						aria-label="Supprimer"
+					>
+						<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+							<path d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2m-9 0 1 13h10l1-13"></path>
+						</svg>
+					</button>
 				<?php endif; ?>
 				<button type="button" class="faq-popup__back generic-action-button generic-action-button--secondary" data-faq-back>Retour a la FAQ</button>
 			</div>

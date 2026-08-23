@@ -4,11 +4,14 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-23
 
+- Les evenements CalDAV existants peuvent maintenant etre modifies depuis un client calendrier compatible. Les droits `CAN_EDIT_EVENT` et les ETags sont verifies; la creation et les evenements recurrents restent volontairement refuses.
+- Le Calendrier propose maintenant, depuis une popup de la topbar, un menu Connecter qui fournit une URL CalDAV limitee au holon et a la portee actuellement affiches. La couleur choisie est incluse dans cette URL et transmise aux clients compatibles; les comptes sans mot de passe sont guides vers le menu Profil avant toute connexion.
 - Les utilisateurs disposant de `CAN_CREATE_PARCOURS` ou `CAN_EDIT_PARCOURS` peuvent maintenant creer et modifier depuis la FAQ une question rattachee aux parcours dont leur organisation est proprietaire, avec le meme controle applique lors de la sauvegarde.
 - Le formulaire d edition des FAQ preserve maintenant le choix `FAQ generique` pour les super admins et affiche effectivement la liste des parcours autorises lorsque le rattachement a un parcours est permis.
 - Depuis une FAQ generique, le passage vers un rattachement de parcours selectionne et conserve le filtre des parcours de l organisation courante.
 - La sauvegarde d une FAQ reapplique maintenant la synchronisation de son attachement juste avant l envoi, afin que le passage de FAQ generique a organisation courante enregistre bien l organisation selectionnee.
 - Les actions Retour, Annuler et Enregistrer de l edition d une FAQ reutilisent les boutons generiques, comme le formulaire de creation.
+- Les FAQ peuvent maintenant etre supprimees depuis leur detail apres confirmation, via un bouton poubelle. La suppression retire aussi leurs choix et leurs liens de missions ou de reponses devenus orphelins.
 
 ## 2026-08-21
 

@@ -1681,6 +1681,49 @@ if ($canManageAllFaqs) {
 			});
 	}
 
+	function deleteFaq(deleteButton) {
+		const faqId = Number(deleteButton && deleteButton.getAttribute('data-faq-id') || 0);
+		if (!faqId) {
+			return;
+		}
+
+		const confirmationMessage = deleteButton.getAttribute('data-faq-delete-confirm') || 'Supprimer cette FAQ ?';
+		if (!window.confirm(confirmationMessage)) {
+			return;
+		}
+
+		deleteButton.disabled = true;
+		fetch('/ajax/faq_delete.php?' + buildFaqQuery(faqId), {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: {
+				'X-Requested-With': 'XMLHttpRequest'
+			}
+		})
+			.then(function (response) {
+				return response.text();
+			})
+			.then(function (data) {
+				let payload = null;
+				try {
+					payload = JSON.parse(data);
+				} catch (error) {
+				}
+
+				if (!payload || payload.status === false) {
+					deleteButton.disabled = false;
+					window.alert(payload && payload.message ? payload.message : 'Impossible de supprimer cette FAQ.');
+					return;
+				}
+
+				handleSaveResponse(payload);
+			})
+			.catch(function () {
+				deleteButton.disabled = false;
+				window.alert('Impossible de supprimer cette FAQ.');
+			});
+	}
+
 	function formatVoteScore(value) {
 		const numericValue = Number(value || 0);
 		if (!Number.isFinite(numericValue)) {
@@ -1888,6 +1931,12 @@ if ($canManageAllFaqs) {
 		const detailButton = event.target.closest('[data-faq-detail]');
 		if (detailButton) {
 			showDetail(detailButton.getAttribute('data-faq-id'));
+			return;
+		}
+
+		const deleteButton = event.target.closest('[data-faq-delete]');
+		if (deleteButton) {
+			deleteFaq(deleteButton);
 			return;
 		}
 
