@@ -22,6 +22,7 @@ if ($resourceType === 'calendar') {
     $allowedMethods[] = 'REPORT';
     $allowedMethods[] = 'GET';
     $allowedMethods[] = 'HEAD';
+    $allowedMethods[] = 'PUT';
 } elseif ($resourceType === 'event') {
     $allowedMethods[] = 'GET';
     $allowedMethods[] = 'HEAD';
@@ -55,6 +56,10 @@ if ($resourceType === 'event' && ($method === 'GET' || $method === 'HEAD')) {
 
 if ($resourceType === 'event' && $method === 'PUT') {
     commonCalDavHandleEventPut($viewer, $resource);
+}
+
+if ($resourceType === 'calendar' && $method === 'PUT') {
+    commonCalDavSendStatusText(405, 'Creating calendar events is not supported.');
 }
 
 http_response_code(200);
