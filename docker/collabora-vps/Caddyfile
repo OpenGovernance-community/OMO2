@@ -1,0 +1,9 @@
+{
+    email david.d@instantz.org
+}
+
+collabora.opengov.tools {
+    reverse_proxy collabora:9980 {
+        header_up Host {host}
+    }
+}
