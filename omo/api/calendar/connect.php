@@ -62,7 +62,7 @@ $sourceLang = [
         'context' => 'Heading before the CalDAV connection instructions.',
     ],
     'calendar.connect.steps' => [
-        'text' => 'Dans les reglages de votre telephone ou de votre application de calendrier, ajoutez un compte CalDAV. Saisissez l adresse ci dessus, votre identifiant et votre mot de passe OMO. Les modifications se font ensuite directement dans OMO : la synchronisation est en lecture seule.',
+        'text' => 'Dans les reglages de votre telephone ou de votre application de calendrier, ajoutez un compte CalDAV. Saisissez l adresse ci dessus, votre identifiant et votre mot de passe OMO. Deux agendas seront proposes : Modifiables contient les evenements que vous pouvez modifier, tandis que Lecture seule contient les autres evenements visibles.',
         'context' => 'Complete CalDAV connection instructions for a user with a password.',
     ],
 ];
