@@ -193,6 +193,7 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.import.edit_title' => ['text' => 'Modifier la source importée', 'context' => 'Title of the indicator import edit picker modal.'],
             'stats.import.source_indicators' => ['text' => 'Indicateurs existants', 'context' => 'Tab label for importing an existing OMO indicator.'],
             'stats.import.source_ethercalc' => ['text' => 'Framacalc', 'context' => 'Tab label for the EtherCalc spreadsheet source prototype.'],
+            'stats.import.source_spreadsheet' => ['text' => 'Documents tableurs', 'context' => 'Tab label for uploaded spreadsheet documents used as indicator sources.'],
             'stats.import.search' => ['text' => 'Rechercher', 'context' => 'Label for the indicator picker search field.'],
             'stats.import.search_placeholder' => ['text' => 'Nom ou contexte', 'context' => 'Placeholder for the indicator picker search field.'],
             'stats.import.visible' => ['text' => 'Indicateurs visibles', 'context' => 'Label for the indicator picker result list.'],
@@ -203,6 +204,8 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.import.ethercalc.mode_table' => ['text' => 'Représenter un tableau', 'context' => 'Option importing an EtherCalc data table in the indicator import prototype.'],
             'stats.import.ethercalc.cell' => ['text' => 'Cellule', 'context' => 'Label for the EtherCalc cell reference in the indicator import prototype.'],
             'stats.import.ethercalc.frequency' => ['text' => 'Fréquence', 'context' => 'Label for the EtherCalc read schedule in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_measurement' => ['text' => 'Rythme de mesure', 'context' => 'Label for the schedule of a single EtherCalc cell source.'],
+            'stats.import.ethercalc.frequency_sync' => ['text' => 'Frequence de synchronisation', 'context' => 'Label for the EtherCalc table refresh schedule.'],
             'stats.import.ethercalc.frequency_hourly' => ['text' => 'Toutes les heures', 'context' => 'Hourly EtherCalc read schedule option in the indicator import prototype.'],
             'stats.import.ethercalc.frequency_daily' => ['text' => 'Chaque jour', 'context' => 'Daily EtherCalc read schedule option in the indicator import prototype.'],
             'stats.import.ethercalc.frequency_weekly' => ['text' => 'Chaque semaine', 'context' => 'Weekly EtherCalc read schedule option in the indicator import prototype.'],
@@ -214,6 +217,27 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.import.ethercalc.prototype_notice' => ['text' => 'La configuration Framacalc est prête pour test visuel. Son enregistrement et la synchronisation seront ajoutés dans la prochaine étape.', 'context' => 'Notice shown when submitting the EtherCalc import prototype.'],
             'stats.import.ethercalc.name' => ['text' => 'Nom de l indicateur', 'context' => 'Label for the EtherCalc indicator name or table name prefix.'],
             'stats.import.ethercalc.create_action' => ['text' => 'Creer les indicateurs', 'context' => 'Action label creating EtherCalc-backed indicators.'],
+            'stats.import.spreadsheet.document' => ['text' => 'Document tableur', 'context' => 'Label for the uploaded spreadsheet document picker.'],
+            'stats.import.spreadsheet.no_documents' => ['text' => 'Aucun document tableur compatible n est visible dans cette organisation.', 'context' => 'Empty state for the uploaded spreadsheet document picker.'],
+            'stats.import.spreadsheet.sheet' => ['text' => 'Feuille', 'context' => 'Worksheet name for an uploaded spreadsheet source.'],
+            'stats.import.spreadsheet.mode' => ['text' => 'Mode de lecture', 'context' => 'Label for the spreadsheet reading mode selector.'],
+            'stats.import.spreadsheet.mode_cell' => ['text' => 'Lire une cellule', 'context' => 'Option reading one spreadsheet cell.'],
+            'stats.import.spreadsheet.mode_table' => ['text' => 'Lire un tableau', 'context' => 'Option importing a spreadsheet data table.'],
+            'stats.import.spreadsheet.name' => ['text' => 'Nom de l indicateur', 'context' => 'Label for the spreadsheet indicator name or table name prefix.'],
+            'stats.import.spreadsheet.cell' => ['text' => 'Cellule', 'context' => 'Label for the spreadsheet cell reference.'],
+            'stats.import.spreadsheet.frequency' => ['text' => 'Frequence de synchronisation', 'context' => 'Label for the spreadsheet read schedule.'],
+            'stats.import.spreadsheet.frequency_measurement' => ['text' => 'Rythme de mesure', 'context' => 'Label for the schedule of a single spreadsheet cell source.'],
+            'stats.import.spreadsheet.frequency_sync' => ['text' => 'Frequence de synchronisation', 'context' => 'Label for the spreadsheet table refresh schedule.'],
+            'stats.import.spreadsheet.frequency_hourly' => ['text' => 'Toutes les heures', 'context' => 'Hourly spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.frequency_daily' => ['text' => 'Chaque jour', 'context' => 'Daily spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.frequency_weekly' => ['text' => 'Chaque semaine', 'context' => 'Weekly spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.range' => ['text' => 'Plage de donnees', 'context' => 'Label for the spreadsheet table range.'],
+            'stats.import.spreadsheet.date_column' => ['text' => 'Colonne de date', 'context' => 'Label for the spreadsheet date column.'],
+            'stats.import.spreadsheet.value_columns' => ['text' => 'Colonnes de valeurs', 'context' => 'Label for the spreadsheet value columns.'],
+            'stats.import.spreadsheet.table_help' => ['text' => 'La plage doit inclure une colonne de dates et une ou plusieurs colonnes de valeurs.', 'context' => 'Help text for the spreadsheet table source.'],
+            'stats.import.spreadsheet.create_action' => ['text' => 'Creer les indicateurs', 'context' => 'Action label creating spreadsheet-backed indicators.'],
+            'stats.import.spreadsheet.source_title' => ['text' => 'Source document tableur', 'context' => 'Heading for the spreadsheet source editor inside an indicator form.'],
+            'stats.import.spreadsheet.value_column' => ['text' => 'Colonne de valeur', 'context' => 'Label for one spreadsheet table value column.'],
             'stats.import.ethercalc.source_title' => ['text' => 'Source Framacalc', 'context' => 'Heading for the EtherCalc source editor inside an indicator form.'],
             'stats.import.ethercalc.value_column' => ['text' => 'Colonne de valeur', 'context' => 'Label for one EtherCalc table value column.'],
             'stats.group.title' => ['text' => 'Grouper des indicateurs', 'context' => 'Title of the indicator group picker modal.'],
@@ -595,6 +619,39 @@ if (!function_exists('omoStatsLoadVisibleEthercalcDocument')) {
         $documents->filterVisibleForCurrentViewer($organizationId);
         foreach ($documents as $document) {
             if ($document instanceof Document && $document->isEthercalcDocument() && $document->getEthercalcRoomId() !== '') {
+                return $document;
+            }
+        }
+        return null;
+    }
+}
+
+if (!function_exists('omoStatsLoadVisibleSpreadsheetDocument')) {
+    function omoStatsLoadVisibleSpreadsheetDocument($documentId, $organizationId)
+    {
+        require_once dirname(__DIR__, 3) . '/common/spreadsheet.php';
+        $documentId = (int)$documentId;
+        $organizationId = (int)$organizationId;
+        if ($documentId <= 0 || $organizationId <= 0) {
+            return null;
+        }
+
+        $documents = new ArrayDocument();
+        $documents->load([
+            'where' => [
+                ['field' => 'id', 'value' => $documentId],
+                ['field' => 'IDorganization', 'value' => $organizationId],
+                ['field' => 'active', 'value' => 1],
+            ],
+        ]);
+        $documents->filterVisibleForCurrentViewer($organizationId);
+        foreach ($documents as $document) {
+            if (
+                $document instanceof Document
+                && ($document->isUploadedFile() || $document->isCollaboraDocument())
+                && $document->hasStoredFile()
+                && omoSpreadsheetSupportsFilename($document->getStoredFileDownloadName())
+            ) {
                 return $document;
             }
         }

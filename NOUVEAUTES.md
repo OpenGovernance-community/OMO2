@@ -4,6 +4,9 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-24
 
+- Les panneaux de configuration des sources statistiques sont correctement masques selon le mode choisi, et les indicateurs crees depuis un tableau utilisent les entetes de colonnes comme libelles lorsqu une ligne d entete est detectee.
+- Les indicateurs provenant d une cellule affichent uniquement leur rythme de mesure, tandis que les indicateurs provenant d une plage affichent uniquement leur frequence de synchronisation.
+- Les indicateurs peuvent maintenant lire une cellule ou un tableau dans les documents tableurs stockes sur Nextcloud ou kDrive, avec une synchronisation periodique executee par le cron.
 - Les checklists sont maintenant presentees comme des processus, avec une nouvelle icone et des libelles adaptes dans les applications, formulaires, droits et PV.
 - L icone partagee des indicateurs utilise maintenant le visuel compteur de vitesse dans les applications et les blocs d indicateurs integres.
 - L icone partagee des projets utilise maintenant le visuel fusee dans les applications et les blocs de projets integres.
