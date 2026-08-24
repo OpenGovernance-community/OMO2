@@ -34,7 +34,7 @@ class ChecklistItem extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDchecklist' => 'Checklist',
+            'IDchecklist' => 'Processus',
             'IDproject_template' => 'Projet modele',
             'stable_key' => 'Cle stable',
             'activation_type' => 'Activation',

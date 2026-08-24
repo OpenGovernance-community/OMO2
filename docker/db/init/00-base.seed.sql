@@ -112,7 +112,7 @@ INSERT INTO `application` VALUES
 (1,'Structure','structure',NULL,'images/tools/connection.png','drawer_structure','api/getStructure.php?drawer=1','drawer',10,0,1),
 (2,'Projets','projects','projects','images/tools/product.png','drawer_projects','api/projects/index.php','drawer',20,0,1),
 (3,'Reglement','policy','policy','images/tools/policy.png','drawer_policy','api/policy/index.php','drawer',30,1,1),
-(4,'Checklist','checklist','checklist','images/tools/checklist.png','drawer_checklist','api/checklist/index.php','drawer',40,1,1),
+(4,'Processus','checklist','checklist','images/tools/checklist.png','drawer_checklist','api/checklist/index.php','drawer',40,1,1),
 (5,'Indicateurs','stats','stats','images/tools/stats.png','drawer_stats','api/stats/index.php','drawer',50,0,1),
 (6,'Documents','documents','documents','images/tools/documents-folder.png','drawer_documents','api/documents/index.php','drawer',60,1,1),
 (7,'Team','team','team','images/tools/team.png','drawer_team','api/team/index.php','drawer',8,1,1),
@@ -924,6 +924,7 @@ CREATE TABLE `document` (
   `is_template` tinyint(1) NOT NULL DEFAULT 0,
   `externalurl` varchar(2000) DEFAULT NULL,
   `openinnewwindow` tinyint(1) NOT NULL DEFAULT 0,
+  `project_visible_in_holon` tinyint(1) NOT NULL DEFAULT 0,
   `storedfilepath` varchar(1000) DEFAULT NULL,
   `storedfilename` varchar(255) DEFAULT NULL,
   `storedfilemime` varchar(255) DEFAULT NULL,
@@ -979,7 +980,7 @@ CREATE TABLE `document` (
 
 LOCK TABLES `document` WRITE;
 /*!40000 ALTER TABLE `document` DISABLE KEYS */;
-INSERT INTO `document` VALUES
+INSERT INTO `document` (`id`, `title`, `description`, `content`, `contentedition`, `datecontentedition`, `keywords`, `IDuser`, `IDusercreation`, `IDorganization`, `IDholon`, `IDevent`, `estDossier`, `active`, `documenttype`, `pvstage`, `is_template`, `externalurl`, `openinnewwindow`, `storedfilepath`, `storedfilename`, `storedfilemime`, `storedfilesize`, `etherpadpadid`, `ethercalcroomid`, `IDdocument_parent`, `datecreation`, `datemodification`, `dateedition`, `IDuseredition`, `IDuser_pv_editor`, `IDuser_pv_official_editor`, `pv_editor_handover_open`, `IDusermodification`, `version`, `codeview`, `codeedit`) VALUES
 (9,'Analyse et Conséquences d\'un Test Fonctionnel','Evaluation d\'un test montrant son succès et les opportunités d\'amélioration.','<div><h2>Première section: Compte rendu</h2><ul><li>Rouge</li><li>Vert</li><li>Bleu</li></ul><h2>Deuxième partie: Conséquences à en tirer</h2><ol><li>Ça fonctionne</li><li>Ça peut être amélioré</li></ol></div>',NULL,NULL,NULL,1,1,NULL,NULL,NULL,0,1,'html',NULL,0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2024-03-03 08:52:50',NULL,NULL,NULL,NULL,0,1,1,'',''),
 (2003,'Liste des actions urgentes','Document de travail pour les tâches à finaliser avant la fin de semaine.','<ul><li>Relancer les partenaires</li><li>Valider le budget</li><li>Préparer la réunion du lundi</li></ul>',NULL,NULL,'actions,urgent,suivi',1,1,1,679,NULL,0,1,'html',NULL,0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-04-20 08:05:00','2026-04-20 08:20:00',NULL,NULL,NULL,0,1,1,'',''),
 (2004,'Préparation réunion trimestrielle','Première trame pour la réunion de gouvernance du trimestre.','<p>Ordre du jour provisoire, points de vigilance et sujets à arbitrer.</p>',NULL,NULL,'réunion,gouvernance,trimestre',1,1,1,687,NULL,0,1,'html',NULL,0,NULL,0,NULL,NULL,NULL,NULL,NULL,'2026-04-16 14:40:00','2026-04-17 07:55:00',NULL,NULL,NULL,0,1,1,'',''),

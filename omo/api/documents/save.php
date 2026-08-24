@@ -30,6 +30,8 @@ $isFolder = !empty($_POST['is_folder']) || trim(mb_strtolower($documentType, 'UT
 $parentDocumentId = isset($_POST['parent_document_id']) ? (int)$_POST['parent_document_id'] : 0;
 $pvTemplateId = isset($_POST['pv_template_id']) ? max(0, (int)$_POST['pv_template_id']) : 0;
 $projectId = isset($_POST['project_id']) ? max(0, (int)$_POST['project_id']) : 0;
+$projectVisibleInHolon = !empty($_POST['project_visible_in_holon']);
+$canManageProjectVisibility = false;
 
 if ($projectId > 0) {
     $project = new \dbObject\Project();
@@ -39,7 +41,7 @@ if ($projectId > 0) {
         || (int)$project->get('IDorganization') !== $organizationId
         || (int)$project->get('active') !== 1
         || !(($projectHolon = $project->getHolon()) instanceof \dbObject\Holon)
-        || !$projectHolon->canEdit()
+        || !$projectHolon->isAllowed('CAN_CREATE_DOCUMENT', true, $currentUserId)
     ) {
         http_response_code(403);
         echo json_encode(array(
@@ -57,6 +59,8 @@ if ($projectId > 0) {
         ));
         exit;
     }
+
+    $canManageProjectVisibility = true;
 }
 
 if (
@@ -140,6 +144,8 @@ if ($documentId > 0) {
         exit;
     }
 
+    $canManageProjectVisibility = $canManageDocument;
+
     $result = $document->updateInOrganizationContext(
         $organizationId,
         $currentUserId,
@@ -186,6 +192,18 @@ if ($projectId > 0) {
             ));
             exit;
         }
+    }
+}
+
+if ($canManageProjectVisibility && $document->hasProjectAssociation()) {
+    $projectVisibilityResult = $document->saveProjectHolonVisibility($projectVisibleInHolon);
+    if (!is_array($projectVisibilityResult) || ($projectVisibilityResult['status'] ?? false) !== true) {
+        http_response_code(422);
+        echo json_encode(array(
+            'status' => false,
+            'message' => 'Impossible de modifier la visibilite du document dans le holon.',
+        ));
+        exit;
     }
 }
 

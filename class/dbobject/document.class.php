@@ -28,7 +28,7 @@
 		{
 			return [
 				[['title'], 'required'],						// Champs obligatoires
-				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'storedfilesize'], 'integer'],				// Nombres entiers
+				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'project_visible_in_holon', 'storedfilesize'], 'integer'],				// Nombres entiers
 				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'etherpadpadid', 'ethercalcroomid'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
@@ -72,6 +72,7 @@
 				'is_template' => 'Modele de PV',
 				'externalurl' => 'URL externe',
 				'openinnewwindow' => 'Ouvrir dans une nouvelle fenetre',
+				'project_visible_in_holon' => 'Afficher dans le holon si le document est lie a un projet',
 				'storedfilepath' => 'Chemin distant du fichier',
 				'storedfilename' => 'Nom original du fichier',
 				'storedfilemime' => 'Type MIME du fichier',
@@ -108,6 +109,7 @@
 				'pv_editor_handover_open' => 'Indique que le secretaire actuel autorise un invite a reprendre son role.',
 				'externalurl' => 'Adresse du site a ouvrir pour un document de type lien externe',
 				'openinnewwindow' => 'Ouvre le lien externe directement dans une autre fenetre',
+				'project_visible_in_holon' => 'Autorise l affichage dans la liste du holon pour un document lie a un projet',
 				'storedfilepath' => 'Chemin du fichier sur le stockage de documents de l organisation',
 				'storedfilename' => 'Nom du fichier televerse par l utilisateur',
 				'storedfilemime' => 'Type MIME detecte pour le fichier distant',
@@ -147,6 +149,35 @@
 		public function isArchived(): bool
 		{
 			return (int)$this->get('active') !== 1;
+		}
+
+		public function isVisibleInHolonWhenProjectDocument(): bool
+		{
+			return (int)$this->get('project_visible_in_holon') === 1;
+		}
+
+		public function hasProjectAssociation(): bool
+		{
+			if ((int)$this->getId() <= 0) {
+				return false;
+			}
+
+			$projectDocuments = new \dbObject\ArrayProjectDocument();
+			$projectDocuments->loadForDocument((int)$this->getId());
+			return count($projectDocuments) > 0;
+		}
+
+		public function saveProjectHolonVisibility(bool $visible): array
+		{
+			if ((int)$this->getId() <= 0) {
+				return array('status' => false, 'text' => 'Document introuvable.');
+			}
+
+			$this->set('project_visible_in_holon', $visible ? 1 : 0);
+			$result = $this->save();
+			return is_array($result)
+				? $result
+				: array('status' => false, 'text' => 'Impossible de modifier la visibilite du document.');
 		}
 
 		public function isPvTemplate(): bool
@@ -1844,6 +1875,16 @@
 			return $this->getDocumentType() === self::TYPE_COLLABORA;
 		}
 
+		public function canOpenWithCollabora(): bool
+		{
+			if ((!$this->isCollaboraDocument() && !$this->isUploadedFile()) || !$this->hasStoredFile()) {
+				return false;
+			}
+
+			require_once dirname(__DIR__, 2) . '/common/collabora.php';
+			return omoCollaboraSupportsFilename($this->getStoredFileDownloadName());
+		}
+
 		public static function organizationHasCollaboraDocuments(int $organizationId): bool
 		{
 			$organizationId = (int)$organizationId;
@@ -1922,7 +1963,7 @@
 
 		public function buildCollaboraOpenUrl(): string
 		{
-			if (!$this->isCollaboraDocument() || (int)$this->getId() <= 0) {
+			if (!$this->canOpenWithCollabora() || (int)$this->getId() <= 0) {
 				return '';
 			}
 
@@ -2556,11 +2597,11 @@
 			$fallbackTitle = trim((string)self::getDocumentEmbedAttributeValue($element, 'data-omo-checklist-title'));
 			$checklist = new \dbObject\Checklist();
 			if ($checklistId <= 0 || !$checklist->load($checklistId) || (int)$checklist->get('IDorganization') !== $organizationId || (int)$checklist->get('active') !== 1) {
-				return '<span class="omo-checklist-embed" data-omo-embed-type="checklist">' . htmlspecialchars($fallbackTitle !== '' ? $fallbackTitle : 'Checklist', ENT_QUOTES, 'UTF-8') . '</span>';
+				return '<span class="omo-checklist-embed" data-omo-embed-type="checklist">' . htmlspecialchars($fallbackTitle !== '' ? $fallbackTitle : 'Processus', ENT_QUOTES, 'UTF-8') . '</span>';
 			}
 			$summary = $checklist->getPvReviewSummary();
 			$title = trim((string)($summary['title'] ?? '')) ?: $fallbackTitle;
-			$title = $title !== '' ? $title : ('Checklist #' . $checklistId);
+			$title = $title !== '' ? $title : ('Processus #' . $checklistId);
 			$total = (int)($summary['total'] ?? 0);
 			$counts = (array)($summary['counts'] ?? []);
 			$html = '<div class="omo-checklist-embed omo-checklist-embed--resolved" data-omo-embed-type="checklist" data-omo-checklist-id="' . $checklistId . '">';
@@ -2821,6 +2862,11 @@
 				return '<div class="omo-document-collabora omo-document-collabora--empty">Aucun fichier Collabora n est associe a ce document.</div>';
 			}
 
+			return $this->renderCollaboraFrameForViewer($openUrl);
+		}
+
+		protected function renderCollaboraFrameForViewer(string $openUrl): string
+		{
 			return '<div class="omo-document-collabora">'
 				. '<iframe class="omo-document-collabora__frame" src="'
 				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
@@ -2837,6 +2883,19 @@
 		{
 			if (!$this->hasStoredFile()) {
 				return '<div class="omo-document-file omo-document-file--empty">Aucun fichier n est actuellement televerse pour ce document.</div>';
+			}
+
+			$collaboraOpenUrl = $this->buildCollaboraOpenUrl();
+			if ($collaboraOpenUrl !== '') {
+				require_once dirname(__DIR__, 2) . '/common/collabora.php';
+				$organization = new \dbObject\Organization();
+				if (
+					$organization->load((int)$this->get('IDorganization'))
+					&& $organization->hasDocumentStorage()
+					&& omoCollaboraHasConfig($organization)
+				) {
+					return $this->renderCollaboraFrameForViewer($collaboraOpenUrl);
+				}
 			}
 
 			$downloadUrl = '/omo/api/documents/upload/download.php?id=' . (int)$this->getId();

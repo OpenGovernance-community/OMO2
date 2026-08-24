@@ -75,7 +75,19 @@
         attachEmpty: 'Aucun projet sans parent ne correspond à la recherche.',
         attachSubmit: 'Attacher',
         attachSelectRequired: 'Choisissez un projet à attacher.',
-        cancel: 'Annuler'
+        cancel: 'Annuler',
+        documentsPickerTitle: 'Ajouter un document',
+        documentsPickerTabs: 'Choix du document',
+        documentsPickerExisting: 'Document existant',
+        documentsPickerNew: 'Nouveau document',
+        documentsPickerSearch: 'Rechercher un document',
+        documentsPickerVisible: 'Documents visibles',
+        documentsPickerNone: 'Aucun document ne correspond à votre recherche.',
+        documentsPickerAttach: 'Associer au projet',
+        documentsPickerSelectRequired: 'Choisissez un document à associer.',
+        documentsPickerError: 'Impossible de charger les documents disponibles.',
+        documentsPickerAttachError: "Impossible d'associer ce document au projet.",
+        documentsPickerCreateError: 'Impossible de créer ce document.'
     };
     var mobileColumnIndex = 0;
     var requestToken = 0;
@@ -602,6 +614,231 @@
                 setDocumentDrawerMessage(texts.loadingError, true);
             }
             return false;
+        });
+    }
+
+    function openProjectDocumentPicker(url) {
+        if (!url || typeof window.commonTopbarOpenModal !== 'function') {
+            return;
+        }
+
+        window.commonTopbarOpenModal(
+            texts.documentsPickerTitle || 'Ajouter un document',
+            '<p class="omo-project-document-picker__loading generic-description generic-description--small">' + escapeHtml(texts.documentsLoading || 'Chargement...') + '</p>',
+            'html'
+        );
+
+        fetch(resolveUrl(url), {
+            credentials: 'same-origin',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            cache: 'no-store'
+        }).then(function (response) {
+            return response.text().then(function (body) {
+                var data;
+                try {
+                    data = JSON.parse(body);
+                } catch (error) {
+                    data = null;
+                }
+                if (!response.ok || !data || !data.success) {
+                    throw new Error(data && data.message ? data.message : texts.documentsPickerError);
+                }
+                return data;
+            });
+        }).then(function (data) {
+            var modalBody = document.getElementById('commonTopbarModalBody');
+            if (!(modalBody instanceof Element)) {
+                return;
+            }
+
+            var existingTabId = 'omo-project-document-picker-existing-' + String(Date.now());
+            var newTabId = 'omo-project-document-picker-new-' + String(Date.now() + 1);
+            var html = '<div class="generic-tabs omo-document-embed-picker omo-project-document-picker" data-generic-tabs>'
+                + '<div class="generic-tabs__list" aria-label="' + escapeHtml(texts.documentsPickerTabs || 'Choix du document') + '">'
+                + '<button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="' + existingTabId + '">' + escapeHtml(texts.documentsPickerExisting || 'Document existant') + '</button>'
+                + '<button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="' + newTabId + '">' + escapeHtml(texts.documentsPickerNew || 'Nouveau document') + '</button>'
+                + '</div><div class="generic-tabs__panels">'
+                + '<section id="' + existingTabId + '" class="generic-tabs__panel" data-generic-tab-panel>'
+                + '<div class="omo-resource-picker"><aside class="omo-resource-picker__navigation" data-omo-project-document-picker-scope></aside>'
+                + '<div class="omo-resource-picker__content">'
+                + '<label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-omo-project-document-picker-search aria-label="' + escapeHtml(texts.documentsPickerSearch || 'Rechercher un document') + '" placeholder="' + escapeHtml(texts.documentsPickerSearch || 'Rechercher un document') + '"></label>'
+                + '<div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" data-omo-project-document-picker-select aria-label="' + escapeHtml(texts.documentsPickerVisible || 'Documents visibles') + '" size="10"></select></div>'
+                + '<div class="omo-document-embed-picker__preview"><div class="omo-document-embed-picker__preview-title" data-omo-project-document-picker-title></div><div class="omo-document-embed-picker__preview-description" data-omo-project-document-picker-description hidden></div></div>'
+                + '<p class="omo-project-document-picker__error" data-omo-project-document-picker-error hidden></p>'
+                + '<div class="omo-document-embed-picker__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-document-picker-cancel>' + escapeHtml(texts.cancel || 'Annuler') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-project-document-picker-attach disabled>' + escapeHtml(texts.documentsPickerAttach || 'Associer au projet') + '</button></div>'
+                + '</div></div></section>'
+                + '<section id="' + newTabId + '" class="generic-tabs__panel" data-generic-tab-panel hidden><div data-omo-project-document-picker-create-content><p class="omo-project-document-picker__loading generic-description generic-description--small">' + escapeHtml(texts.documentsLoading || 'Chargement...') + '</p></div></section></div></div>';
+
+            modalBody.innerHTML = html;
+            if (typeof window.initGenericComponents === 'function') {
+                window.initGenericComponents(modalBody);
+            }
+
+            var dialog = modalBody.querySelector('[data-generic-tabs].omo-project-document-picker');
+            if (!dialog) {
+                return;
+            }
+
+            var search = dialog.querySelector('[data-omo-project-document-picker-search]');
+            var select = dialog.querySelector('[data-omo-project-document-picker-select]');
+            var title = dialog.querySelector('[data-omo-project-document-picker-title]');
+            var description = dialog.querySelector('[data-omo-project-document-picker-description]');
+            var error = dialog.querySelector('[data-omo-project-document-picker-error]');
+            var attachButton = dialog.querySelector('[data-omo-project-document-picker-attach]');
+            var createContent = dialog.querySelector('[data-omo-project-document-picker-create-content]');
+            var newTabButton = dialog.querySelector('[data-generic-tab-target="' + newTabId + '"]');
+            var selectedDocumentId = 0;
+            var scopePicker = null;
+            var documents = Array.isArray(data.documents) ? data.documents : [];
+
+            function showError(target, message) {
+                if (target) {
+                    target.textContent = String(message || '');
+                    target.hidden = false;
+                }
+            }
+
+            function renderDocuments() {
+                if (!select) {
+                    return;
+                }
+                var query = String(search && search.value || '').trim().toLowerCase();
+                var matches = documents.filter(function (item) {
+                    var contextHolonId = Number(item && item.contextHolonId || 0);
+                    var matchesScope = !scopePicker || contextHolonId <= 0 || scopePicker.matches(contextHolonId);
+                    var text = [item && item.title, item && item.description, item && item.contextLabel].join(' ').toLowerCase();
+                    return matchesScope && (query === '' || text.indexOf(query) !== -1);
+                });
+                select.innerHTML = '';
+                matches.forEach(function (item) {
+                    var option = document.createElement('option');
+                    option.value = String(item.id || 0);
+                    option.textContent = String(item.title || '') + (item.contextLabel ? ' - ' + String(item.contextLabel) : '');
+                    select.appendChild(option);
+                });
+                selectedDocumentId = matches.some(function (item) { return Number(item.id || 0) === selectedDocumentId; }) ? selectedDocumentId : 0;
+                select.value = selectedDocumentId > 0 ? String(selectedDocumentId) : '';
+                if (title) {
+                    title.textContent = selectedDocumentId > 0 ? String((documents.find(function (item) { return Number(item.id || 0) === selectedDocumentId; }) || {}).title || '') : (texts.documentsPickerNone || '');
+                }
+                var selectedItem = documents.find(function (item) { return Number(item.id || 0) === selectedDocumentId; });
+                if (description) {
+                    description.textContent = selectedItem && selectedItem.description ? String(selectedItem.description) : '';
+                    description.hidden = !selectedItem || !selectedItem.description;
+                }
+                if (attachButton) {
+                    attachButton.disabled = selectedDocumentId <= 0;
+                }
+            }
+
+            scopePicker = typeof window.omoMountHolonScopePicker === 'function'
+                ? window.omoMountHolonScopePicker({
+                    host: dialog.querySelector('[data-omo-project-document-picker-scope]'),
+                    organizationId: Number(root.getAttribute('data-omo-projects-oid') || 0),
+                    initialHolonId: Number(data.projectHolonId || routeCid || 0),
+                    initialScope: 'local',
+                    labels: data.scopeLabels || {},
+                    onChange: renderDocuments
+                })
+                : null;
+
+            if (search) {
+                search.addEventListener('input', renderDocuments);
+                search.focus();
+            }
+            if (select) {
+                select.addEventListener('change', function () {
+                    selectedDocumentId = Number(select.value || 0);
+                    renderDocuments();
+                    if (error) {
+                        error.hidden = true;
+                    }
+                });
+            }
+            dialog.querySelectorAll('[data-omo-project-document-picker-cancel]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    window.commonTopbarCloseModal();
+                });
+            });
+            if (attachButton) {
+                attachButton.addEventListener('click', function () {
+                    if (selectedDocumentId <= 0) {
+                        showError(error, texts.documentsPickerSelectRequired);
+                        return;
+                    }
+                    attachButton.disabled = true;
+                    postProjectAction(Number(data.projectId || 0), 'attach_document', {document_id: selectedDocumentId}).then(function (result) {
+                        window.dispatchEvent(new CustomEvent('omo-project-document-saved', {detail: {projectId: Number(result.projectId || data.projectId || 0), documentId: Number(result.documentId || selectedDocumentId)}}));
+                        window.commonTopbarCloseModal();
+                    }).catch(function (actionError) {
+                        attachButton.disabled = false;
+                        showError(error, actionError.message || texts.documentsPickerAttachError);
+                    });
+                });
+            }
+            function loadCreateForm() {
+                if (!createContent || createContent.dataset.omoProjectDocumentCreateLoaded === '1' || createContent.dataset.omoProjectDocumentCreateLoading === '1') {
+                    return;
+                }
+
+                var createUrl = String(data.createUrl || '');
+                if (createUrl === '') {
+                    createContent.innerHTML = '<p class="omo-project-document-picker__error"></p>';
+                    showError(createContent.firstElementChild, texts.documentsPickerCreateError);
+                    return;
+                }
+
+                createContent.dataset.omoProjectDocumentCreateLoading = '1';
+                fetch(resolveUrl(createUrl + '&editor_instance=' + encodeURIComponent(String(Date.now()))), {
+                    credentials: 'same-origin',
+                    headers: {'X-Requested-With': 'XMLHttpRequest'},
+                    cache: 'no-store'
+                }).then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('load_failed');
+                    }
+                    return response.text();
+                }).then(function (html) {
+                    if (!createContent.isConnected) {
+                        return;
+                    }
+                    createContent.innerHTML = html;
+                    createContent.dataset.omoProjectDocumentCreateLoaded = '1';
+                    createContent.removeAttribute('data-omo-project-document-create-loading');
+                    if (typeof window.initGenericComponents === 'function') {
+                        window.initGenericComponents(createContent);
+                    }
+                    return executeFetchedScripts(createContent).then(function () {
+                        if (typeof window.initGenericComponents === 'function') {
+                            window.initGenericComponents(createContent);
+                        }
+                    });
+                }).catch(function () {
+                    if (!createContent.isConnected) {
+                        return;
+                    }
+                    createContent.innerHTML = '<p class="omo-project-document-picker__error"></p>';
+                    showError(createContent.firstElementChild, texts.documentsPickerCreateError);
+                }).finally(function () {
+                    if (createContent.isConnected) {
+                        createContent.removeAttribute('data-omo-project-document-create-loading');
+                    }
+                });
+            }
+
+            if (newTabButton) {
+                newTabButton.addEventListener('click', loadCreateForm);
+            }
+            renderDocuments();
+        }).catch(function (error) {
+            var modalBody = document.getElementById('commonTopbarModalBody');
+            if (modalBody) {
+                modalBody.innerHTML = '<p class="omo-project-document-picker__error"></p>';
+                var message = modalBody.querySelector('.omo-project-document-picker__error');
+                if (message) {
+                    message.textContent = error.message || texts.documentsPickerError;
+                }
+            }
         });
     }
 
@@ -1444,12 +1681,12 @@
     }
 
     function closeProjectMenus(exceptMenu) {
-        root.querySelectorAll('[data-omo-project-menu], [data-omo-projects-header-menu]').forEach(function (menu) {
+        root.querySelectorAll('[data-omo-project-menu], [data-omo-projects-header-menu], [data-omo-project-detail-document-menu]').forEach(function (menu) {
             if (menu === exceptMenu) {
                 return;
             }
-            var panel = menu.querySelector('[data-omo-project-menu-panel], [data-omo-projects-header-menu-panel]');
-            var toggle = menu.querySelector('[data-omo-project-menu-toggle], [data-omo-projects-header-menu-toggle]');
+            var panel = menu.querySelector('[data-omo-project-menu-panel], [data-omo-projects-header-menu-panel], [data-omo-project-detail-document-menu-panel]');
+            var toggle = menu.querySelector('[data-omo-project-menu-toggle], [data-omo-projects-header-menu-toggle], [data-omo-project-detail-document-menu-toggle]');
             if (panel) {
                 panel.hidden = true;
             }
@@ -1850,7 +2087,7 @@
         if (addDocumentButton) {
             event.preventDefault();
             event.stopPropagation();
-            openProjectDocumentDrawer(addDocumentButton.getAttribute('data-omo-project-detail-add-document-url') || '');
+            openProjectDocumentPicker(addDocumentButton.getAttribute('data-omo-project-detail-add-document-url') || '');
             return;
         }
 
@@ -1873,6 +2110,52 @@
                     'fetch'
                 );
             }
+            return;
+        }
+
+        var documentMenuToggle = event.target.closest('[data-omo-project-detail-document-menu-toggle]');
+        if (documentMenuToggle) {
+            event.preventDefault();
+            event.stopPropagation();
+            var documentMenu = documentMenuToggle.closest('[data-omo-project-detail-document-menu]');
+            var documentMenuPanel = documentMenu ? documentMenu.querySelector('[data-omo-project-detail-document-menu-panel]') : null;
+            var isDocumentMenuOpen = !!documentMenuPanel && !documentMenuPanel.hidden;
+            closeProjectMenus(documentMenu);
+            if (documentMenuPanel) {
+                documentMenuPanel.hidden = isDocumentMenuOpen;
+            }
+            if (documentMenu) {
+                documentMenu.classList.toggle('is-open', !isDocumentMenuOpen);
+            }
+            documentMenuToggle.setAttribute('aria-expanded', isDocumentMenuOpen ? 'false' : 'true');
+            return;
+        }
+
+        var removeDocumentButton = event.target.closest('[data-omo-project-detail-document-remove]');
+        if (removeDocumentButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            var removeProjectId = Number(removeDocumentButton.getAttribute('data-project-id') || 0);
+            var removeDocumentId = Number(removeDocumentButton.getAttribute('data-document-id') || 0);
+            var removeConfirm = removeDocumentButton.getAttribute('data-confirm') || '';
+            if (!Number.isInteger(removeProjectId) || removeProjectId <= 0 || !Number.isInteger(removeDocumentId) || removeDocumentId <= 0) {
+                return;
+            }
+            if (removeConfirm !== '' && !window.confirm(removeConfirm)) {
+                return;
+            }
+            removeDocumentButton.disabled = true;
+            closeProjectMenus();
+            postProjectAction(removeProjectId, 'remove_document', {document_id: removeDocumentId}).then(function () {
+                window.dispatchEvent(new CustomEvent('omo-project-document-saved', {
+                    detail: {projectId: removeProjectId, documentId: removeDocumentId}
+                }));
+            }).catch(function (error) {
+                if (typeof window.omoNotify === 'function') {
+                    window.omoNotify(error.message || texts.documentsRemoveError || texts.actionError, 'error');
+                }
+                removeDocumentButton.disabled = false;
+            });
             return;
         }
 
