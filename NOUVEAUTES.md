@@ -10,6 +10,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 - L export CalDAV conserve maintenant le fuseau horaire des evenements avec `TZID` et `X-WR-TIMEZONE`, afin que leur edition sur un telephone reste a l heure locale.
 - Le droit d edition des evenements CalDAV reutilise maintenant directement le moteur de permissions OMO, y compris les membres lorsque le droit n est pas configure et les overrides administrateur.
+- Les refus de modification CalDAV exposes sur beta indiquent maintenant le compte et les holons effectivement evalues, afin de diagnostiquer un droit ou une identite incoherente sans consulter les logs serveur.
 - Un lien CalDAV cible annonce maintenant un principal et un accueil de calendrier limites a sa portee, afin que les clients ne decouvrent pas les autres organisations du compte.
 - Les evenements CalDAV existants peuvent maintenant etre modifies depuis un client calendrier compatible. La collection annonce sa capacite d ecriture, tandis que les droits `CAN_EDIT_EVENT` et les ETags sont verifies; la creation et les evenements recurrents restent volontairement refuses.
 - Le Calendrier propose maintenant, depuis une popup de la topbar, un menu Connecter qui fournit une URL CalDAV limitee au holon et a la portee actuellement affiches. La couleur choisie est incluse dans cette URL et transmise aux clients compatibles; les comptes sans mot de passe sont guides vers le menu Profil avant toute connexion.

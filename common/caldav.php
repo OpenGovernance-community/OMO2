@@ -1921,6 +1921,37 @@ if (!function_exists('commonCalDavRequestMatchesEventEtag')) {
 }
 
 if (!function_exists('commonCalDavHandleEventPut')) {
+    function commonCalDavBuildEditDeniedMessage(User $viewer, Event $event, $organizationId, $rootHolon = null)
+    {
+        $message = 'You are not allowed to edit this event.';
+        $environment = function_exists('appGetEnvironmentSubdomain')
+            ? appGetEnvironmentSubdomain()
+            : '';
+        if ($environment !== 'beta' && !commonCardDavCanExposeDebug()) {
+            return $message;
+        }
+
+        $organizationId = (int)$organizationId;
+        $eventHolonId = (int)$event->get('IDholon');
+        $permissionHolon = omoCalendarResolveEventPermissionHolon(
+            $event,
+            $rootHolon instanceof Holon ? $rootHolon : null
+        );
+        $viewerEmail = trim((string)$viewer->get('email'));
+
+        return $message
+            . ' CalDAV diagnostic:'
+            . ' viewer_id=' . (int)$viewer->getId()
+            . '; viewer_email=' . ($viewerEmail !== '' ? $viewerEmail : '-')
+            . '; organization_id=' . $organizationId
+            . '; event_id=' . (int)$event->getId()
+            . '; event_holon_id=' . $eventHolonId
+            . '; root_holon_id=' . ($rootHolon instanceof Holon ? (int)$rootHolon->getId() : 0)
+            . '; permission_holon_id=' . ($permissionHolon instanceof Holon ? (int)$permissionHolon->getId() : 0);
+    }
+}
+
+if (!function_exists('commonCalDavHandleEventPut')) {
     function commonCalDavHandleEventPut(User $viewer, array $resource)
     {
         $event = $resource['event'] ?? null;
@@ -1932,7 +1963,7 @@ if (!function_exists('commonCalDavHandleEventPut')) {
         $organization = new Organization();
         $rootHolon = $organization->load($organizationId) ? $organization->getEnabledStructuralRootHolon() : null;
         if (!omoCalendarCanEditEvent($event, $organizationId, (int)$viewer->getId(), $rootHolon instanceof Holon ? $rootHolon : null, false)) {
-            commonCalDavSendStatusText(403, 'You are not allowed to edit this event.');
+            commonCalDavSendStatusText(403, commonCalDavBuildEditDeniedMessage($viewer, $event, $organizationId, $rootHolon));
         }
 
         if (!commonCalDavRequestMatchesEventEtag($resource)) {
