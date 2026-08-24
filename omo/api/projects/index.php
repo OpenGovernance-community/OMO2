@@ -651,12 +651,25 @@ $projectTexts = [
     'eventsLoading' => omoProjectsT('projects.detail.events.loading'),
     'eventsError' => omoProjectsT('projects.detail.events.error'),
     'documentsAdd' => omoProjectsT('projects.detail.documents.add'),
+    'documentsPickerTitle' => omoProjectsT('projects.detail.documents.picker_title'),
+    'documentsPickerTabs' => omoProjectsT('projects.detail.documents.picker_tabs'),
+    'documentsPickerExisting' => omoProjectsT('projects.detail.documents.picker_existing'),
+    'documentsPickerNew' => omoProjectsT('projects.detail.documents.picker_new'),
+    'documentsPickerSearch' => omoProjectsT('projects.detail.documents.picker_search'),
+    'documentsPickerVisible' => omoProjectsT('projects.detail.documents.picker_visible'),
+    'documentsPickerNone' => omoProjectsT('projects.detail.documents.picker_none'),
+    'documentsPickerAttach' => omoProjectsT('projects.detail.documents.picker_attach'),
+    'documentsPickerSelectRequired' => omoProjectsT('projects.detail.documents.picker_select_required'),
+    'documentsPickerError' => omoProjectsT('projects.detail.documents.picker_error'),
+    'documentsPickerAttachError' => omoProjectsT('projects.detail.documents.picker_attach_error'),
+    'documentsPickerCreateError' => omoProjectsT('projects.detail.documents.picker_create_error'),
+    'documentsRemoveError' => omoProjectsT('projects.detail.documents.remove_error'),
     'taskDeleteConfirm' => omoProjectsT('projects.detail.task.delete_confirm'),
     'archivesTitle' => omoProjectsT('projects.archives.title'),
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260807-project-bulk-actions-icons">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260824-project-document-actions">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
@@ -1086,4 +1099,4 @@ $projectTexts = [
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
 <script src="/common/calendar/event-editor.js?v=20260804-project-events"></script>
-<script src="/omo/api/projects/projects.js?v=20260807-project-scroll-preservation"></script>
+<script src="/omo/api/projects/projects.js?v=20260824-project-document-actions"></script>

@@ -49,7 +49,7 @@ if ($accessToken === '' && preg_match('/^Bearer\s+(.+)$/i', (string)($_SERVER['H
 }
 
 $document = new Document();
-if ($documentId <= 0 || !$document->load($documentId) || !$document->isCollaboraDocument() || !$document->hasStoredFile()) {
+if ($documentId <= 0 || !$document->load($documentId) || !$document->canOpenWithCollabora()) {
     http_response_code(404);
     exit;
 }

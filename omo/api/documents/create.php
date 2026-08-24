@@ -40,6 +40,8 @@ $sourceLang = [
     'documents.create.field.tags_remove' => ['text' => 'Retirer le tag', 'context' => 'Accessible label prefix used to remove a tag from the editor.'],
     'documents.create.field.edit_visibility' => ['text' => 'Edition', 'context' => 'Label of the document edit visibility field.'],
     'documents.create.field.visibility' => ['text' => 'Visibilité', 'context' => 'Label of the document visibility field.'],
+    'documents.create.field.project_visible_in_holon' => ['text' => 'Afficher dans le holon', 'context' => 'Checkbox allowing a project-attached document to remain visible in the holon document list.'],
+    'documents.create.field.project_visible_in_holon_hint' => ['text' => 'Les documents liés à un projet sont masqués dans le holon par défaut.', 'context' => 'Help text for the project document holon visibility checkbox.'],
     'documents.create.field.html' => ['text' => 'Contenu HTML', 'context' => 'Label of the HTML content area.'],
     'documents.create.field.external_url' => ['text' => 'URL externe', 'context' => 'Label of the external URL field.'],
     'documents.create.field.external_url_placeholder' => ['text' => 'https://example.com/', 'context' => 'Placeholder shown in the external URL field.'],
@@ -85,7 +87,11 @@ $holonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $documentId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $parentDocumentId = isset($_GET['pid']) ? (int)$_GET['pid'] : 0;
 $projectId = isset($_GET['project_id']) ? max(0, (int)$_GET['project_id']) : 0;
-$editorHost = trim((string)($_GET['editor_host'] ?? '')) === 'project' && $projectId > 0 ? 'project' : 'documents';
+$requestedEditorHost = trim((string)($_GET['editor_host'] ?? ''));
+$editorHost = in_array($requestedEditorHost, ['project', 'project_picker'], true) && $projectId > 0
+    ? $requestedEditorHost
+    : 'documents';
+$editorInstance = preg_replace('/[^A-Za-z0-9_-]/', '', (string)($_GET['editor_instance'] ?? ''));
 $currentUserId = (int)commonGetCurrentUserId();
 $escape = 'omoApiEscape';
 $document = new Document();
@@ -94,6 +100,8 @@ $canCreate = false;
 $canUseForm = $canCreate;
 $canManageDocument = false;
 $canEditDocumentContent = false;
+$isProjectDocument = false;
+$projectVisibleInHolon = false;
 $formErrorMessage = '';
 $openAiAvailable = commonOpenAiGetApiKey() !== '';
 $canUseAiTools = $openAiAvailable && patreonUserCanUseAi($currentUserId);
@@ -106,6 +114,8 @@ if ($documentId > 0) {
             && $document->canManageInOrganizationContext($organizationId, $currentUserId, false);
         $canEditDocumentContent = !$document->isPvDocument()
             && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
+        $isProjectDocument = $document->hasProjectAssociation();
+        $projectVisibleInHolon = $document->isVisibleInHolonWhenProjectDocument();
     }
     $canUseForm = $isEditing && ($canManageDocument || $canEditDocumentContent);
 
@@ -126,6 +136,8 @@ if ($documentId > 0) {
         }
     }
 }
+
+$isProjectDocument = $isProjectDocument || $projectId > 0;
 
 if ($isEditing && !$canEditDocumentContent) {
     $canUseAiTools = false;
@@ -338,7 +350,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     <?php if (!$canUseForm): ?>
         <div class="omo-empty-state"><?= $escape($formErrorMessage !== '' ? $formErrorMessage : ($isEditing ? omoDocumentsCreateT('documents.create.error.edit') : omoDocumentsCreateT('documents.create.error.create'))) ?></div>
     <?php else: ?>
-        <?php $documentFormId = 'omoDocumentEditorForm'; ?>
+        <?php $documentFormId = 'omoDocumentEditorForm' . ($editorInstance !== '' ? '-' . $editorInstance : ''); ?>
         <div
             hidden
             data-omo-subdrawer-header
@@ -427,6 +439,20 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             'hint' => $visibilityHelpText,
                         )) ?>
                     </div>
+
+                    <?php if ($isProjectDocument): ?>
+                        <label class="omo-document-editor__checkbox">
+                            <input
+                                type="checkbox"
+                                name="project_visible_in_holon"
+                                value="1"
+                                <?= $projectVisibleInHolon ? ' checked' : '' ?>
+                                <?= $isEditing && !$canManageDocument ? ' disabled' : '' ?>
+                            >
+                            <span><?= $escape(omoDocumentsCreateT('documents.create.field.project_visible_in_holon')) ?></span>
+                        </label>
+                        <span class="omo-document-editor__hint generic-help-text"><?= $escape(omoDocumentsCreateT('documents.create.field.project_visible_in_holon_hint')) ?></span>
+                    <?php endif; ?>
                 </div>
 
                 <label class="omo-document-editor__field generic-form-field">
@@ -602,6 +628,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             <div class="omo-document-editor__status" data-omo-document-editor-status hidden></div>
 
             <div class="omo-document-editor__actions generic-form-actions generic-form-actions--stack-mobile">
+                <?php if ($editorHost === 'project_picker'): ?>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-document-editor-cancel><?= $escape(omoDocumentsCreateT('documents.create.action.cancel')) ?></button>
+                    <button type="submit" class="generic-action-button generic-action-button--main" data-omo-document-editor-submit><?= $escape(omoDocumentsCreateT('documents.create.action.create')) ?></button>
+                <?php endif; ?>
             </div>
         </form>
     <?php endif; ?>
@@ -838,7 +868,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
 <script>
 (function () {
-    const form = document.querySelector('[data-omo-document-create-form]');
+    const form = document.getElementById(<?= json_encode($documentFormId, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);
     if (!form || form.dataset.omoDocumentCreateReady === '1') {
         return;
     }
@@ -905,6 +935,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     function closeDocumentEditor(options) {
         if (editorHost === 'project' && typeof window.omoCloseProjectDocumentEditorDrawer === 'function') {
             window.omoCloseProjectDocumentEditorDrawer(options);
+            return;
+        }
+        if (editorHost === 'project_picker' && typeof window.commonTopbarCloseModal === 'function') {
+            window.commonTopbarCloseModal();
             return;
         }
         if (typeof window.omoCloseDocumentEditorDrawer === 'function') {
@@ -2450,6 +2484,9 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     };
 
     window.addEventListener('omo-document-editor-drawer-close', handleDrawerClose);
+    if (editorHost === 'project_picker') {
+        window.addEventListener('common-topbar-modal-close', handleDrawerClose, { once: true });
+    }
 
     if (typeSelect) {
         typeSelect.addEventListener('change', syncTypeUi);
@@ -2560,7 +2597,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
                 const savedDocumentId = Number(payload.id || editingDocumentId || 0);
 
-                const refreshPromise = editorHost !== 'project' && typeof window.omoRefreshDocumentsPanel === 'function'
+                const refreshPromise = editorHost !== 'project' && editorHost !== 'project_picker' && typeof window.omoRefreshDocumentsPanel === 'function'
                     ? window.omoRefreshDocumentsPanel()
                     : Promise.resolve(null);
 
@@ -2570,7 +2607,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     cleanupRewrite({ keepStatus: true });
                     cleanupSummarize({ keepStatus: true });
 
-                    if (editorHost === 'project') {
+                    if (editorHost === 'project' || editorHost === 'project_picker') {
                         window.dispatchEvent(new CustomEvent('omo-project-document-saved', {
                             detail: {
                                 projectId: Number(form.querySelector('input[name="project_id"]') && form.querySelector('input[name="project_id"]').value || 0),

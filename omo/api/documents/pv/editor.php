@@ -3292,7 +3292,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     function buildPvChecklistEmbedHtml(item) {
         const checklistId = Number.parseInt(String(item && item.id || ''), 10);
         if (!Number.isInteger(checklistId) || checklistId <= 0) return '';
-        const title = String(item.title || '').trim() || ('Checklist #' + String(checklistId));
+        const title = String(item.title || '').trim() || ('Processus #' + String(checklistId));
         const summary = String(item.contextLabel || '').trim();
         return '<span class="omo-checklist-embed" contenteditable="false" data-omo-embed-type="checklist" data-omo-checklist-id="' + String(checklistId) + '" data-omo-checklist-title="' + escapeDocumentEmbedHtml(title) + '"><strong><a href="#checklist-c' + String(checklistId) + '">' + escapeDocumentEmbedHtml(title) + '</a></strong>' + (summary ? '<em>' + escapeDocumentEmbedHtml(summary) + '</em>' : '') + '</span>';
     }
@@ -5322,7 +5322,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     });
                 }
                 if (canEmbedChecklists) {
-                    customButtons.push({ name: 'omoPvChecklistEmbed', group: 'omo-pv-checklist-embed', label: 'Checklist', title: checklistEmbedUi.buttonTitle || 'Inserer une checklist', className: 'note-btn-light omo-pv-editor__checklist-embed-button', onClick: function (context) { openPvChecklistEmbedPicker(context && context.api ? context.api : field); } });
+                    customButtons.push({ name: 'omoPvChecklistEmbed', group: 'omo-pv-checklist-embed', label: 'Processus', title: checklistEmbedUi.buttonTitle || 'Inserer un processus', className: 'note-btn-light omo-pv-editor__checklist-embed-button', onClick: function (context) { openPvChecklistEmbedPicker(context && context.api ? context.api : field); } });
                 }
                 if (canEmbedEvents) {
                     customButtons.push({

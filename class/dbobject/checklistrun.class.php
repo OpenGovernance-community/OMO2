@@ -29,7 +29,7 @@ class ChecklistRun extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDchecklist' => 'Checklist',
+            'IDchecklist' => 'Processus',
             'IDchecklisttrigger' => 'Declencheur',
             'IDorganization' => 'Organisation',
             'IDholon' => 'Contexte',

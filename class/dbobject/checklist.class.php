@@ -31,7 +31,7 @@ class Checklist extends DbObject
         return [
             'id' => 'ID',
             'IDorganization' => 'Organisation',
-            'IDchecklist_previous' => 'Checklist precedente',
+            'IDchecklist_previous' => 'Processus precedent',
             'IDproject_template_root' => 'Projet modele racine',
             'IDdocument' => 'Documentation',
             'status' => 'Statut',
