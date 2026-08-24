@@ -23,6 +23,7 @@ RUN apt-get update \
         intl \
         mysqli \
         pdo_mysql \
+        zip \
     && mkdir -p /etc/apache2/ssl \
     && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
         -keyout /etc/apache2/ssl/dev-localhost.key \
