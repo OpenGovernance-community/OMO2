@@ -13,6 +13,15 @@ services:
       - --o:ssl.termination=true
       - --o:welcome.enable=false
       - --o:home_mode.enable=true
+      - --o:server_name=collabora.opengov.tools:443
+      - --o:storage.wopi.host[0]=.*\.opengov\.tools:443
+      - --o:storage.wopi.host[1]=opengov\.tools:443
+      - --o:storage.wopi.alias_groups[@mode]=groups
+      - --o:storage.wopi.alias_groups.group[0].host=https://opengov.tools:443
+      - --o:storage.wopi.alias_groups.group[0].host[@allow]=true
+      - --o:storage.wopi.alias_groups.group[0].alias[0]=https://.*\.opengov\.tools:443
+      - --o:storage.wopi.alias_groups.group[1].host=https://.*\.opengov\.tools:443
+      - --o:storage.wopi.alias_groups.group[1].host[@allow]=true
       - --o:net.content_security_policy=frame-ancestors https://opengov.tools https://*.opengov.tools
     expose:
       - "9980"
