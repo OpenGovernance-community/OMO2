@@ -34,7 +34,7 @@ class ChecklistTrigger extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDchecklist' => 'Checklist',
+            'IDchecklist' => 'Processus',
             'stable_key' => 'Cle stable',
             'trigger_type' => 'Type de declenchement',
             'frequency' => 'Frequence',

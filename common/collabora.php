@@ -49,6 +49,26 @@ if (!function_exists('omoCollaboraNormalizeConfig')) {
     }
 }
 
+if (!function_exists('omoCollaboraEditableExtensions')) {
+    function omoCollaboraEditableExtensions(): array
+    {
+        return array(
+            'odt', 'fodt', 'ott', 'doc', 'docx', 'docm', 'dotx', 'dotm', 'rtf', 'txt',
+            'ods', 'fods', 'ots', 'xls', 'xlsx', 'xlsb', 'xlsm', 'xltx', 'xltm', 'csv', 'tsv',
+            'odp', 'fodp', 'otp', 'ppt', 'pptx', 'pptm', 'potx', 'potm', 'ppsx',
+            'odg', 'fodg', 'otg', 'svg', 'vsd', 'vsdx', 'vss', 'pub', 'dxf', 'emf', 'wmf',
+        );
+    }
+}
+
+if (!function_exists('omoCollaboraSupportsFilename')) {
+    function omoCollaboraSupportsFilename(string $filename): bool
+    {
+        $extension = strtolower((string)pathinfo($filename, PATHINFO_EXTENSION));
+        return $extension !== '' && in_array($extension, omoCollaboraEditableExtensions(), true);
+    }
+}
+
 if (!function_exists('omoCollaboraGetConfig')) {
     function omoCollaboraGetConfig(?\dbObject\Organization $organization = null): array
     {

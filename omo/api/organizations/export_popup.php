@@ -9,7 +9,7 @@ $sourceLang = [
     'organization_export.module.documents' => ['text' => 'Documents', 'context' => 'Documents module label in the organization export popup.'],
     'organization_export.module.projects' => ['text' => 'Projets', 'context' => 'Projects module label in the organization export popup.'],
     'organization_export.module.tasks' => ['text' => 'Taches et sous-projets', 'context' => 'Tasks module label in the organization export popup.'],
-    'organization_export.module.checklists' => ['text' => 'Checklists', 'context' => 'Checklists module label in the organization export popup.'],
+    'organization_export.module.checklists' => ['text' => 'Processus', 'context' => 'Process module label in the organization export popup.'],
     'organization_export.module.indicators' => ['text' => 'Indicateurs et mesures', 'context' => 'Indicators module label in the organization export popup.'],
     'organization_export.module.calendar' => ['text' => 'Calendrier', 'context' => 'Calendar module label in the organization export popup.'],
     'organization_export.module.pv' => ['text' => 'Proces-verbaux', 'context' => 'Meeting minutes module label in the organization export popup.'],

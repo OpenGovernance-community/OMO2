@@ -5,6 +5,9 @@ require_once __DIR__ . '/shared.php';
 use dbObject\Project;
 use dbObject\ArrayProject;
 use dbObject\Holon;
+use dbObject\Document;
+use dbObject\ArrayProjectDocument;
+use dbObject\ProjectDocument;
 use dbObject\PropertyFormat;
 use dbObject\UserOrganization;
 
@@ -166,10 +169,104 @@ $canCreateProject = omoProjectsCanCreateContext($context);
 if (
     $currentUserId <= 0
     || ($existingProject instanceof Project
-        ? !omoProjectsCanManageProject($existingProject, $context)
+        ? (in_array($action, ['attach_document', 'remove_document'], true)
+            ? !omoProjectsCanCreateDocument($existingProject, $currentUserId)
+            : !omoProjectsCanManageProject($existingProject, $context))
         : !$canCreateProject)
 ) {
     omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
+}
+
+if ($action === 'attach_document') {
+    if (!($existingProject instanceof Project)) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.not_found'), [], 404);
+    }
+
+    $documentId = isset($_POST['document_id']) && is_numeric($_POST['document_id'])
+        ? (int)$_POST['document_id']
+        : 0;
+    $projectHolon = $existingProject->getHolon();
+    $document = new Document();
+    if (
+        $documentId <= 0
+        || !($projectHolon instanceof Holon)
+        || !$document->load($documentId)
+        || (int)$document->get('IDorganization') !== $organizationId
+        || (int)$document->get('active') !== 1
+        || !$document->canBeEmbedded()
+        || !(
+            $document->canViewInOrganizationContext($organizationId, (int)$document->get('IDholon'), $currentUserId)
+            || $document->canViewDirectlyInOrganization($organizationId)
+        )
+    ) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
+    }
+
+    $projectDocument = new ProjectDocument();
+    if (!$projectDocument->load([['IDproject', $projectId], ['IDdocument', $documentId]])) {
+        $projectDocument->set('IDproject', $projectId);
+        $projectDocument->set('IDdocument', $documentId);
+        $saveResult = $projectDocument->save();
+        if (!is_array($saveResult) || empty($saveResult['status'])) {
+            omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
+        }
+    }
+
+    omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), [
+        'projectId' => $projectId,
+        'documentId' => $documentId,
+    ]);
+}
+
+if ($action === 'remove_document') {
+    if (!($existingProject instanceof Project)) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.not_found'), [], 404);
+    }
+
+    $documentId = isset($_POST['document_id']) && is_numeric($_POST['document_id'])
+        ? (int)$_POST['document_id']
+        : 0;
+    $document = new Document();
+    $projectDocument = new ProjectDocument();
+    if (
+        $documentId <= 0
+        || !$document->load($documentId)
+        || (int)$document->get('IDorganization') !== $organizationId
+        || !$projectDocument->load([['IDproject', $projectId], ['IDdocument', $documentId]])
+    ) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.not_found'), [], 404);
+    }
+
+    $documentProjects = new ArrayProjectDocument();
+    $documentProjects->loadForDocument($documentId);
+    $hasOtherProject = false;
+    foreach ($documentProjects as $documentProject) {
+        if (
+            $documentProject instanceof ProjectDocument
+            && (int)$documentProject->get('IDproject') !== $projectId
+        ) {
+            $hasOtherProject = true;
+            break;
+        }
+    }
+
+    $shouldDetach = $hasOtherProject
+        || $document->isVisibleInHolonWhenProjectDocument()
+        || !$document->canDeleteDocument()
+        || !$document->canManageLifecycle($organizationId, $currentUserId);
+    if ($shouldDetach) {
+        if (!$projectDocument->delete()) {
+            omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
+        }
+    } elseif (!$document->delete()) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
+    }
+
+    omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), [
+        'projectId' => $projectId,
+        'documentId' => $documentId,
+        'mode' => $shouldDetach ? 'detach' : 'delete',
+    ]);
 }
 
 if ($action === 'update_kanban_position') {

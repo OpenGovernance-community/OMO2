@@ -187,7 +187,60 @@
 			}
 
 			$this->load($loadParams);
+			$this->filterProjectDocumentsNotVisibleInHolon();
 			return $this->filterVisibleForCurrentViewer($organizationId);
+		}
+
+		protected function filterProjectDocumentsNotVisibleInHolon(): void
+		{
+			$documentIds = array();
+			foreach ($this as $document) {
+				if ($document instanceof \dbObject\Document && (int)$document->getId() > 0) {
+					$documentIds[] = (int)$document->getId();
+				}
+			}
+
+			$documentIds = array_values(array_unique($documentIds));
+			if (count($documentIds) === 0) {
+				return;
+			}
+
+			$placeholders = array();
+			$params = array();
+			foreach ($documentIds as $index => $documentId) {
+				$parameterName = 'project_document_id_' . $index;
+				$placeholders[] = ':' . $parameterName;
+				$params[$parameterName] = $documentId;
+			}
+
+			$rows = \dbObject\DbObject::fetchAll(
+				'SELECT DISTINCT `IDdocument` FROM `project_document` WHERE `IDdocument` IN (' . implode(', ', $placeholders) . ')',
+				$params
+			);
+			if (!is_array($rows) || count($rows) === 0) {
+				return;
+			}
+
+			$projectDocumentIds = array();
+			foreach ($rows as $row) {
+				$projectDocumentId = (int)($row['IDdocument'] ?? 0);
+				if ($projectDocumentId > 0) {
+					$projectDocumentIds[$projectDocumentId] = true;
+				}
+			}
+
+			$this->exchangeArray(array_values(array_filter(
+				$this->getArrayCopy(),
+				static function ($document) use ($projectDocumentIds): bool {
+					if (!($document instanceof \dbObject\Document)) {
+						return false;
+					}
+
+					$documentId = (int)$document->getId();
+					return !isset($projectDocumentIds[$documentId])
+						|| $document->isVisibleInHolonWhenProjectDocument();
+				}
+			)));
 		}
 
 		public function loadVisibleForOrganization($organizationId)

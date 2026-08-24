@@ -12,7 +12,7 @@ if (!function_exists('omoChecklistSourceLang')) {
     function omoChecklistSourceLang()
     {
         return [
-            'checklist.title' => ['text' => 'Checklists', 'context' => 'Main title of the checklist application.'],
+            'checklist.title' => ['text' => 'Processus', 'context' => 'Main title of the process application.'],
             'checklist.action.new' => ['text' => 'Ajouter', 'context' => 'Button opening checklist creation.'],
             'checklist.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening checklist edition.'],
             'checklist.action.delete' => ['text' => 'Supprimer', 'context' => 'Button deleting a checklist.'],
@@ -52,7 +52,7 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.empty.contextual' => ['text' => 'Aucune checklist dans ce contexte.', 'context' => 'Empty state for local checklist scope.'],
             'checklist.empty.children' => ['text' => 'Aucune checklist dans ce contexte ou ses enfants directs.', 'context' => 'Empty state for direct children scope.'],
             'checklist.empty.descendants' => ['text' => 'Aucune checklist dans ce contexte ou ses descendants.', 'context' => 'Empty state for descendant scope.'],
-            'checklist.drawer.title' => ['text' => 'Checklist', 'context' => 'Default nested drawer title.'],
+            'checklist.drawer.title' => ['text' => 'Processus', 'context' => 'Default nested drawer title.'],
             'checklist.drawer.description' => ['text' => 'Structure, activation et responsabilités.', 'context' => 'Default nested drawer description.'],
             'checklist.loading' => ['text' => 'Chargement de la checklist...', 'context' => 'Loading state inside the checklist drawer.'],
             'checklist.error.load' => ['text' => 'Impossible de charger cette checklist.', 'context' => 'Checklist drawer loading error.'],
@@ -87,8 +87,8 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.confirm.delete_item' => ['text' => 'Supprimer cet élément de la checklist ?', 'context' => 'Confirmation before deleting a checklist item.'],
             'checklist.confirm.delete_checklist' => ['text' => 'Supprimer cette checklist et ses éléments ?', 'context' => 'Confirmation before deleting a checklist.'],
             'checklist.confirm.extract_item' => ['text' => 'Extraire cet élément dans une nouvelle checklist récurrente ?', 'context' => 'Confirmation before extracting a recurring item.'],
-            'checklist.form.create_title' => ['text' => 'Nouvelle checklist', 'context' => 'Checklist creation drawer title.'],
-            'checklist.form.edit_title' => ['text' => 'Modifier la checklist', 'context' => 'Checklist edition drawer title.'],
+            'checklist.form.create_title' => ['text' => 'Nouveau processus', 'context' => 'Process creation drawer title.'],
+            'checklist.form.edit_title' => ['text' => 'Modifier le processus', 'context' => 'Process edition drawer title.'],
             'checklist.form.intro' => ['text' => 'Définissez le modèle, ses éléments et les conditions qui les rendent visibles.', 'context' => 'Checklist editor introduction.'],
             'checklist.form.base_intro' => ['text' => 'Commencez par les informations générales. Les étapes seront ajoutées ensuite depuis la vue de la checklist.', 'context' => 'Checklist base information editor introduction.'],
             'checklist.form.activate_title' => ['text' => 'Activer la checklist', 'context' => 'Checklist activation drawer title.'],
