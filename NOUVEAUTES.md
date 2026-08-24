@@ -4,7 +4,11 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-24
 
+- Les checklists sont maintenant presentees comme des processus, avec une nouvelle icone et des libelles adaptes dans les applications, formulaires, droits et PV.
+- L icone partagee des indicateurs utilise maintenant le visuel compteur de vitesse dans les applications et les blocs d indicateurs integres.
+- L icone partagee des projets utilise maintenant le visuel fusee dans les applications et les blocs de projets integres.
 - Le Collabora du VPS autorise maintenant Nextcloud `cloud.instantz.org` comme hote WOPI et comme origine d integration, en plus des domaines `*.opengov.tools`.
+- Les documents associes a un projet sont masques par defaut dans la liste du holon, avec une case dans leur edition pour les rendre visibles, et l onglet Documents des projets propose maintenant un selecteur a deux onglets pour associer un document existant ou ouvrir le formulaire complet de creation de document. Chaque ligne affiche aussi son icone de type et un menu permettant de l ouvrir dans un nouvel onglet, de le detacher ou, lorsqu il n est ni visible dans le holon ni associe a un autre projet, de le supprimer definitivement.
 
 ## 2026-08-23
 

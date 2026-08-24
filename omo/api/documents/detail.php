@@ -138,7 +138,18 @@ $renderedContent = $document->getRenderedContentForCurrentViewer([
         'contentExcerpt' => omoDocumentsDetailT('documents.detail.pv_discussion.content_excerpt'),
     ],
 ]);
-$hasCollaborativeFrame = $document->isEtherpadDocument() || $document->isEthercalcDocument() || $document->isCollaboraDocument();
+$uploadedFileCollaboraAvailable = false;
+if ($document->isUploadedFile() && $document->canOpenWithCollabora()) {
+    require_once dirname(__DIR__, 3) . '/common/collabora.php';
+    $detailOrganization = new \dbObject\Organization();
+    $uploadedFileCollaboraAvailable = $detailOrganization->load($organizationId)
+        && $detailOrganization->hasDocumentStorage()
+        && omoCollaboraHasConfig($detailOrganization);
+}
+$hasCollaborativeFrame = $document->isEtherpadDocument()
+    || $document->isEthercalcDocument()
+    || $document->isCollaboraDocument()
+    || $uploadedFileCollaboraAvailable;
 $drawerTitle = trim((string)$document->get('title'));
 $drawerDescription = $createdAt instanceof DateTimeInterface ? $formatDateTime($createdAt) : '';
 $associatedEvent = $document->getAssociatedEvent();

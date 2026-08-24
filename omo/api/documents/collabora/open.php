@@ -16,7 +16,7 @@ if ($documentId <= 0 || $userId <= 0) {
 }
 
 $document = new Document();
-if (!$document->load($documentId) || !$document->isCollaboraDocument() || !$document->hasStoredFile()) {
+if (!$document->load($documentId) || !$document->canOpenWithCollabora()) {
     http_response_code(404);
     echo 'Document introuvable.';
     exit;

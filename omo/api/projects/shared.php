@@ -3,6 +3,7 @@
 use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\ArrayProjectDocument;
+use dbObject\Document;
 use dbObject\Project;
 
 if (!function_exists('omoProjectsSourceLang')) {
@@ -151,13 +152,32 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.tabs.documents' => ['text' => 'Documents associés', 'context' => 'Project detail tab containing documents attached to the project.'],
             'projects.detail.documents.empty' => ['text' => 'Aucun fichier à afficher', 'context' => 'Empty state for a project without attached documents.'],
             'projects.detail.documents.empty_hint' => ['text' => 'Créez un premier fichier pour le retrouver directement dans ce projet.', 'context' => 'Explanation shown in the empty project documents tab.'],
-            'projects.detail.documents.new' => ['text' => 'Nouveau fichier', 'context' => 'Action opening the project document creation drawer.'],
-            'projects.detail.documents.drawer_title' => ['text' => 'Nouveau fichier', 'context' => 'Title of the document creation subdrawer opened from a project.'],
-            'projects.detail.documents.drawer_description' => ['text' => 'Ajoutez un fichier associé à ce projet.', 'context' => 'Description of the document creation subdrawer opened from a project.'],
-            'projects.detail.documents.add' => ['text' => 'Ajouter un fichier', 'context' => 'Action opening the documents application from an empty project document list.'],
+            'projects.detail.documents.new' => ['text' => 'Ajouter un document', 'context' => 'Action opening the project document creation drawer.'],
+            'projects.detail.documents.drawer_title' => ['text' => 'Ajouter un document', 'context' => 'Title of the document creation subdrawer opened from a project.'],
+            'projects.detail.documents.drawer_description' => ['text' => 'Ajoutez un document associé à ce projet.', 'context' => 'Description of the document creation subdrawer opened from a project.'],
+            'projects.detail.documents.add' => ['text' => 'Ajouter un document', 'context' => 'Action opening the documents application from an empty project document list.'],
             'projects.detail.documents.added' => ['text' => 'Ajouté le {date}', 'context' => 'Date label shown for a document attached to a project.'],
             'projects.detail.documents.loading' => ['text' => 'Chargement des documents…', 'context' => 'Loading state for lazy project documents.'],
             'projects.detail.documents.error' => ['text' => 'Impossible de charger les documents du projet.', 'context' => 'Error state for lazy project documents.'],
+            'projects.detail.documents.menu' => ['text' => 'Options du document', 'context' => 'Accessible label for the project document actions menu.'],
+            'projects.detail.documents.open_new_window' => ['text' => 'Ouvrir dans un nouvel onglet', 'context' => 'Menu action opening a project document in a new browser tab.'],
+            'projects.detail.documents.detach' => ['text' => 'Détacher du projet', 'context' => 'Menu action removing only the project-document association.'],
+            'projects.detail.documents.delete' => ['text' => 'Supprimer le document', 'context' => 'Menu action permanently deleting a project-owned document.'],
+            'projects.detail.documents.confirm_detach' => ['text' => 'Détacher ce document du projet ?', 'context' => 'Confirmation before removing a project-document association.'],
+            'projects.detail.documents.confirm_delete' => ['text' => 'Supprimer définitivement ce document ?', 'context' => 'Confirmation before deleting a project-owned document.'],
+            'projects.detail.documents.remove_error' => ['text' => 'Impossible de retirer ce document du projet.', 'context' => 'Error shown when a project document cannot be detached or deleted.'],
+            'projects.detail.documents.picker_title' => ['text' => 'Ajouter un document', 'context' => 'Title of the project document picker.'],
+            'projects.detail.documents.picker_tabs' => ['text' => 'Choix du document', 'context' => 'Accessible label for the project document picker tabs.'],
+            'projects.detail.documents.picker_existing' => ['text' => 'Document existant', 'context' => 'Existing document tab in the project document picker.'],
+            'projects.detail.documents.picker_new' => ['text' => 'Nouveau document', 'context' => 'New document tab in the project document picker.'],
+            'projects.detail.documents.picker_search' => ['text' => 'Rechercher un document', 'context' => 'Search label in the project document picker.'],
+            'projects.detail.documents.picker_visible' => ['text' => 'Documents visibles', 'context' => 'Accessible label for the document selection list.'],
+            'projects.detail.documents.picker_none' => ['text' => 'Aucun document ne correspond à votre recherche.', 'context' => 'Empty state in the project document picker.'],
+            'projects.detail.documents.picker_attach' => ['text' => 'Associer au projet', 'context' => 'Action associating an existing document with a project.'],
+            'projects.detail.documents.picker_select_required' => ['text' => 'Choisissez un document à associer.', 'context' => 'Validation message when no document is selected.'],
+            'projects.detail.documents.picker_error' => ['text' => 'Impossible de charger les documents disponibles.', 'context' => 'Error shown when the project document picker cannot load.'],
+            'projects.detail.documents.picker_attach_error' => ['text' => "Impossible d'associer ce document au projet.", 'context' => 'Error shown when an existing document cannot be associated.'],
+            'projects.detail.documents.picker_create_error' => ['text' => 'Impossible de créer ce document.', 'context' => 'Error shown when a new project document cannot be created.'],
             'projects.detail.task.archive' => ['text' => 'Archiver', 'context' => 'Task action in the project detail status selector.'],
             'projects.detail.task.delete' => ['text' => 'Supprimer', 'context' => 'Task action in the project detail status selector.'],
             'projects.detail.task.delete_confirm' => ['text' => 'Supprimer définitivement cette tâche ? Cette action est irréversible.', 'context' => 'Confirmation before permanently deleting a task from the project detail.'],
@@ -371,6 +391,23 @@ if (!function_exists('omoProjectsCanManageProject')) {
     }
 }
 
+if (!function_exists('omoProjectsCanCreateDocument')) {
+    function omoProjectsCanCreateDocument(Project $project, $currentUserId = 0)
+    {
+        $currentUserId = (int)$currentUserId;
+        if ($currentUserId <= 0 || (int)$project->get('active') !== 1) {
+            return false;
+        }
+
+        $projectHolon = $project->getHolon();
+        if ($projectHolon instanceof Holon) {
+            return $projectHolon->isAllowed('CAN_CREATE_DOCUMENT', true, $currentUserId);
+        }
+
+        return commonCurrentUserHasOrganizationAccess((int)$project->get('IDorganization'));
+    }
+}
+
 if (!function_exists('omoProjectsCanDeleteProject')) {
     function omoProjectsCanDeleteProject(Project $project, array $context)
     {
@@ -574,6 +611,21 @@ if (!function_exists('omoProjectsResolveGanttDates')) {
     }
 }
 
+if (!function_exists('omoProjectsGetDocumentTypeIconUrl')) {
+    function omoProjectsGetDocumentTypeIconUrl(Document $document): string
+    {
+        return match ($document->getDocumentType()) {
+            Document::TYPE_EXTERNAL_LINK => '/omo/assets/images/documents/link.png',
+            Document::TYPE_UPLOADED_FILE => '/omo/assets/images/documents/download.png',
+            Document::TYPE_FOLDER => '/omo/assets/images/documents/folder.png',
+            Document::TYPE_PV => '/omo/assets/images/documents/pv.png',
+            Document::TYPE_ETHERPAD, Document::TYPE_COLLABORA => '/omo/assets/images/documents/collaborative.png',
+            Document::TYPE_ETHERCALC => '/omo/assets/images/documents/spreadsheet.png',
+            default => '/omo/assets/images/documents/file.png',
+        };
+    }
+}
+
 if (!function_exists('omoProjectsGetVisibleDocuments')) {
     function omoProjectsGetVisibleDocuments(Project $project, $organizationId, $projectHolon = null)
     {
@@ -590,7 +642,7 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
                 || !(
                     $document->canViewInOrganizationContext(
                         (int)$organizationId,
-                        $projectHolon instanceof Holon ? (int)$projectHolon->getId() : null
+                        (int)$document->get('IDholon')
                     )
                     || $document->canViewDirectlyInOrganization((int)$organizationId)
                 )
@@ -599,10 +651,27 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
             }
 
             $createdAt = $projectDocument->get('datecreation');
+            $documentProjects = new ArrayProjectDocument();
+            $documentProjects->loadForDocument((int)$document->getId());
+            $otherProjectCount = 0;
+            foreach ($documentProjects as $documentProject) {
+                if (
+                    $documentProject instanceof \dbObject\ProjectDocument
+                    && (int)$documentProject->get('IDproject') !== (int)$project->getId()
+                ) {
+                    $otherProjectCount++;
+                }
+            }
             $visibleDocuments[] = [
                 'id' => (int)$document->getId(),
                 'title' => trim((string)$document->get('title')),
                 'type' => $document->getDocumentTypeLabel(),
+                'iconUrl' => omoProjectsGetDocumentTypeIconUrl($document),
+                'documentType' => $document->getDocumentType(),
+                'visibleInHolon' => $document->isVisibleInHolonWhenProjectDocument(),
+                'otherProjectCount' => $otherProjectCount,
+                'canDelete' => $document->canDeleteDocument(),
+                'canManageLifecycle' => $document->canManageLifecycle((int)$organizationId, (int)commonGetCurrentUserId()),
                 'addedAt' => $createdAt instanceof \DateTimeInterface ? $createdAt->format('d.m.Y') : '',
             ];
         }

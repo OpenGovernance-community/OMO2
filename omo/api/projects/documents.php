@@ -3,7 +3,6 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 
 use dbObject\Holon;
-use dbObject\Document;
 use dbObject\Project;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
@@ -44,16 +43,13 @@ if (
 }
 
 $documents = omoProjectsGetVisibleDocuments($project, $organizationId, $projectHolon);
-$canCreateDocument = !$isArchivedProject && Document::canCreateInOrganizationContext(
-    $organizationId,
-    null,
-    (int)commonGetCurrentUserId(),
-    0,
-    true
-);
-$createDocumentUrl = '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)
-    . '&project_id=' . rawurlencode((string)$projectId)
-    . '&editor_host=project';
+$currentUserId = (int)commonGetCurrentUserId();
+$canCreateDocument = !$isArchivedProject && omoProjectsCanCreateDocument($project, $currentUserId);
+$createDocumentUrl = '/omo/api/projects/document_picker.php?oid=' . rawurlencode((string)$organizationId)
+    . '&id=' . rawurlencode((string)$projectId);
+if ($projectHolon instanceof Holon) {
+    $createDocumentUrl .= '&cid=' . rawurlencode((string)(int)$projectHolon->getId());
+}
 $createDocumentButton = '<button type="button" class="generic-action-button generic-action-button--main"'
     . ' data-omo-project-detail-add-document'
     . ' data-omo-project-detail-add-document-url="' . omoApiEscape($createDocumentUrl) . '">'
@@ -77,17 +73,62 @@ if (count($documents) === 0) {
 <?php endif; ?>
 <div class="omo-project-detail__documents-list">
     <?php foreach ($documents as $documentItem): ?>
-        <a
-            class="omo-project-detail__document-item"
-            href="#documents-d<?= (int)$documentItem['id'] ?>"
-            data-omo-project-detail-document-link
-            data-document-id="<?= (int)$documentItem['id'] ?>"
-        >
-            <span class="omo-project-detail__document-copy">
-                <strong><?= omoApiEscape($documentItem['title'] !== '' ? $documentItem['title'] : ('Document #' . (int)$documentItem['id'])) ?></strong>
-                <span><?= omoApiEscape($documentItem['type']) ?><?php if ($documentItem['addedAt'] !== ''): ?> · <?= omoApiEscape(omoProjectsT('projects.detail.documents.added', ['date' => $documentItem['addedAt']])) ?><?php endif; ?></span>
-            </span>
-            <span class="omo-project-detail__document-arrow" aria-hidden="true">&#8250;</span>
-        </a>
+        <?php
+        $canRemoveDocument = !$isArchivedProject && $canCreateDocument;
+        $shouldDeleteDocument = $canRemoveDocument
+            && empty($documentItem['visibleInHolon'])
+            && (int)($documentItem['otherProjectCount'] ?? 0) === 0
+            && !empty($documentItem['canDelete'])
+            && !empty($documentItem['canManageLifecycle']);
+        $removeLabel = omoProjectsT($shouldDeleteDocument
+            ? 'projects.detail.documents.delete'
+            : 'projects.detail.documents.detach');
+        $removeConfirm = omoProjectsT($shouldDeleteDocument
+            ? 'projects.detail.documents.confirm_delete'
+            : 'projects.detail.documents.confirm_detach');
+        ?>
+        <div class="omo-project-detail__document-item">
+            <a
+                class="omo-project-detail__document-link"
+                href="#documents-d<?= (int)$documentItem['id'] ?>"
+                data-omo-project-detail-document-link
+                data-document-id="<?= (int)$documentItem['id'] ?>"
+            >
+                <span class="omo-project-detail__document-icon" aria-hidden="true">
+                    <img src="<?= omoApiEscape((string)$documentItem['iconUrl']) ?>" alt="" class="black-icon" loading="lazy">
+                </span>
+                <span class="omo-project-detail__document-copy">
+                    <strong><?= omoApiEscape($documentItem['title'] !== '' ? $documentItem['title'] : ('Document #' . (int)$documentItem['id'])) ?></strong>
+                    <span><?= omoApiEscape($documentItem['type']) ?><?php if ($documentItem['addedAt'] !== ''): ?> · <?= omoApiEscape(omoProjectsT('projects.detail.documents.added', ['date' => $documentItem['addedAt']])) ?><?php endif; ?></span>
+                </span>
+            </a>
+            <div class="generic-menu omo-project-detail__document-menu" data-omo-project-detail-document-menu>
+                <button
+                    type="button"
+                    class="generic-menu-toggle omo-project-detail__document-menu-toggle"
+                    data-omo-project-detail-document-menu-toggle
+                    aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.documents.menu')) ?>"
+                    aria-expanded="false"
+                >&#8230;</button>
+                <div class="generic-menu-panel omo-project-detail__document-menu-panel" data-omo-project-detail-document-menu-panel hidden>
+                    <a
+                        class="generic-menu-item"
+                        href="/omo/#documents-d<?= (int)$documentItem['id'] ?>"
+                        target="_blank"
+                        rel="noopener"
+                    ><?= omoApiEscape(omoProjectsT('projects.detail.documents.open_new_window')) ?></a>
+                    <?php if ($canRemoveDocument): ?>
+                        <button
+                            type="button"
+                            class="generic-menu-item generic-menu-item--danger"
+                            data-omo-project-detail-document-remove
+                            data-project-id="<?= (int)$projectId ?>"
+                            data-document-id="<?= (int)$documentItem['id'] ?>"
+                            data-confirm="<?= omoApiEscape($removeConfirm) ?>"
+                        ><?= omoApiEscape($removeLabel) ?></button>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
     <?php endforeach; ?>
 </div>

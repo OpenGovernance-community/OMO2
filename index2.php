@@ -499,7 +499,7 @@ $sourceLang = [
     'module.frame' => ['text' => 'Cadre', 'context' => 'Module card label.'],
     'module.projects' => ['text' => 'Projets', 'context' => 'Module card label.'],
     'module.metrics' => ['text' => 'Indicateurs', 'context' => 'Module card label.'],
-    'module.checklists' => ['text' => 'Checklists', 'context' => 'Module card label.'],
+    'module.checklists' => ['text' => 'Processus', 'context' => 'Module card label.'],
     'module.processes' => ['text' => 'Processus', 'context' => 'Module card label.'],
     'module.meetings' => ['text' => 'Séances', 'context' => 'Module card label.'],
     'module.documentation' => ['text' => 'Documentation', 'context' => 'Module card label.'],
