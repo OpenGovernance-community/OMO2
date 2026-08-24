@@ -101,6 +101,20 @@ if (!function_exists('commonCalDavBuildScopedCalendarHref')) {
     }
 }
 
+if (!function_exists('commonCalDavBuildScopedPrincipalHref')) {
+    function commonCalDavBuildScopedPrincipalHref($organizationId, $holonId, $range, $color)
+    {
+        return rtrim(commonCalDavBuildScopedCalendarHref($organizationId, $holonId, $range, $color), '/') . '/principal/';
+    }
+}
+
+if (!function_exists('commonCalDavBuildScopedCalendarHomeHref')) {
+    function commonCalDavBuildScopedCalendarHomeHref($organizationId, $holonId, $range, $color)
+    {
+        return rtrim(commonCalDavBuildScopedCalendarHref($organizationId, $holonId, $range, $color), '/') . '/home/';
+    }
+}
+
 if (!function_exists('commonCalDavBuildAbsoluteHref')) {
     function commonCalDavBuildAbsoluteHref($href)
     {
@@ -766,6 +780,8 @@ if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
         }
 
         $calendarHref = commonCalDavBuildScopedCalendarHref($organizationId, $holonId, $range, $color);
+        $principalHref = commonCalDavBuildScopedPrincipalHref($organizationId, $holonId, $range, $color);
+        $calendarHomeHref = commonCalDavBuildScopedCalendarHomeHref($organizationId, $holonId, $range, $color);
         $calendarSlug = 'scoped-' . $organizationId . '-' . $holonId . '-' . $range . '-' . $color;
         $viewerScopedEmail = trim(mb_strtolower((string)$viewer->getScopedEmail($organizationId), 'UTF-8'));
         $events = new ArrayEvent();
@@ -802,6 +818,9 @@ if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
         return array(
             'type' => 'calendar',
             'href' => $calendarHref,
+            'isScopedCalendar' => true,
+            'principalHref' => $principalHref,
+            'calendarHomeHref' => $calendarHomeHref,
             'calendarSlug' => $calendarSlug,
             'organizationId' => $organizationId,
             'holonId' => $holonId,
@@ -942,6 +961,34 @@ if (!function_exists('commonCalDavResolveRouteResource')) {
             return commonCalDavLoadScopedCalendarForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4]);
         }
 
+        if (preg_match('#^/scoped/(\d+)/(\d+)/(contextual|children|descendants)/([0-9a-fA-F]{6})/principal$#', $routePath, $matches)) {
+            $calendar = commonCalDavLoadScopedCalendarForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4]);
+            if (!is_array($calendar)) {
+                return null;
+            }
+
+            return array(
+                'type' => 'scoped-principal',
+                'href' => (string)$calendar['principalHref'],
+                'calendarHomeHref' => (string)$calendar['calendarHomeHref'],
+                'calendar' => $calendar,
+            );
+        }
+
+        if (preg_match('#^/scoped/(\d+)/(\d+)/(contextual|children|descendants)/([0-9a-fA-F]{6})/home$#', $routePath, $matches)) {
+            $calendar = commonCalDavLoadScopedCalendarForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4]);
+            if (!is_array($calendar)) {
+                return null;
+            }
+
+            return array(
+                'type' => 'scoped-calendar-home',
+                'href' => (string)$calendar['calendarHomeHref'],
+                'principalHref' => (string)$calendar['principalHref'],
+                'calendar' => $calendar,
+            );
+        }
+
         if (preg_match('#^/scoped/(\d+)/(\d+)/(contextual|children|descendants)/([0-9a-fA-F]{6})/(event-\d+\.ics)$#', $routePath, $matches)) {
             $calendar = commonCalDavLoadScopedCalendarForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4]);
             $fileName = (string)$matches[5];
@@ -1007,6 +1054,25 @@ if (!function_exists('commonCalDavListChildResources')) {
 
             case 'calendar-home':
                 return array_values($calendarMap);
+
+            case 'scoped-principal':
+                $calendar = $resource['calendar'] ?? null;
+                if (!is_array($calendar)) {
+                    return array();
+                }
+
+                return array(
+                    array(
+                        'type' => 'scoped-calendar-home',
+                        'href' => (string)($resource['calendarHomeHref'] ?? $calendar['calendarHomeHref'] ?? ''),
+                        'principalHref' => (string)($resource['href'] ?? $calendar['principalHref'] ?? ''),
+                        'calendar' => $calendar,
+                    ),
+                );
+
+            case 'scoped-calendar-home':
+                $calendar = $resource['calendar'] ?? null;
+                return is_array($calendar) ? array($calendar) : array();
 
             case 'calendar':
                 return array_values((array)($resource['events'] ?? array()));
@@ -1096,6 +1162,32 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                     '{DAV:}resource-id' => array('type' => 'href', 'value' => 'urn:uuid:' . commonCardDavBuildStableUuid('caldav:principal:' . $viewerUserId)),
                 );
 
+            case 'scoped-principal':
+                $calendar = is_array($resource['calendar'] ?? null) ? $resource['calendar'] : array();
+                $scopedPrincipalHref = (string)($resource['href'] ?? $calendar['principalHref'] ?? '');
+                $scopedCalendarHomeHref = (string)($resource['calendarHomeHref'] ?? $calendar['calendarHomeHref'] ?? '');
+                $scopeKey = (string)($calendar['calendarSlug'] ?? $scopedPrincipalHref);
+
+                return array(
+                    '{DAV:}displayname' => array('type' => 'text', 'value' => (string)$viewer->getScopedDisplayName()),
+                    '{DAV:}resourcetype' => array(
+                        'type' => 'resourcetype',
+                        'value' => array(
+                            array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'collection'),
+                            array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'principal'),
+                        ),
+                    ),
+                    '{DAV:}principal-URL' => array('type' => 'href', 'value' => $scopedPrincipalHref),
+                    '{DAV:}current-user-principal' => array('type' => 'href', 'value' => $scopedPrincipalHref),
+                    '{DAV:}supported-report-set' => array('type' => 'supported-report-set', 'value' => commonCalDavSupportedReports()),
+                    '{urn:ietf:params:xml:ns:caldav}calendar-home-set' => array('type' => 'href', 'value' => $scopedCalendarHomeHref),
+                    '{http://calendarserver.org/ns/}email-address-set' => array(
+                        'type' => 'email-address-set',
+                        'value' => $viewerEmail !== '' ? array($viewerEmail) : array(),
+                    ),
+                    '{DAV:}resource-id' => array('type' => 'href', 'value' => 'urn:uuid:' . commonCardDavBuildStableUuid('caldav:scoped-principal:' . $scopeKey)),
+                );
+
             case 'calendars':
                 return array(
                     '{DAV:}displayname' => array('type' => 'text', 'value' => 'Calendars'),
@@ -1119,7 +1211,32 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                     '{urn:ietf:params:xml:ns:caldav}calendar-home-set' => array('type' => 'href', 'value' => $calendarRootHref),
                 );
 
+            case 'scoped-calendar-home':
+                $calendar = is_array($resource['calendar'] ?? null) ? $resource['calendar'] : array();
+                $scopedCalendarHomeHref = (string)($resource['href'] ?? $calendar['calendarHomeHref'] ?? '');
+                $scopedPrincipalHref = (string)($resource['principalHref'] ?? $calendar['principalHref'] ?? '');
+                $scopeKey = (string)($calendar['calendarSlug'] ?? $scopedCalendarHomeHref);
+
+                return array(
+                    '{DAV:}displayname' => array('type' => 'text', 'value' => 'Calendar home'),
+                    '{DAV:}resourcetype' => array(
+                        'type' => 'resourcetype',
+                        'value' => array(
+                            array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'collection'),
+                        ),
+                    ),
+                    '{DAV:}current-user-principal' => array('type' => 'href', 'value' => $scopedPrincipalHref),
+                    '{urn:ietf:params:xml:ns:caldav}calendar-home-set' => array('type' => 'href', 'value' => $scopedCalendarHomeHref),
+                    '{DAV:}resource-id' => array('type' => 'href', 'value' => 'urn:uuid:' . commonCardDavBuildStableUuid('caldav:scoped-calendar-home:' . $scopeKey)),
+                );
+
             case 'calendar':
+                $calendarPrincipalHref = !empty($resource['isScopedCalendar'])
+                    ? (string)($resource['principalHref'] ?? '')
+                    : $principalHref;
+                $calendarHomeHref = !empty($resource['isScopedCalendar'])
+                    ? (string)($resource['calendarHomeHref'] ?? '')
+                    : $calendarRootHref;
                 $properties = array(
                     '{DAV:}displayname' => array('type' => 'text', 'value' => (string)($resource['displayName'] ?? 'Calendar')),
                     '{DAV:}resourcetype' => array(
@@ -1129,8 +1246,10 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                             array('namespace' => 'urn:ietf:params:xml:ns:caldav', 'prefix' => 'cal', 'localName' => 'calendar'),
                         ),
                     ),
-                    '{DAV:}owner' => array('type' => 'href', 'value' => $principalHref),
+                    '{DAV:}owner' => array('type' => 'href', 'value' => $calendarPrincipalHref),
+                    '{DAV:}current-user-principal' => array('type' => 'href', 'value' => $calendarPrincipalHref),
                     '{DAV:}supported-report-set' => array('type' => 'supported-report-set', 'value' => commonCalDavSupportedReports()),
+                    '{urn:ietf:params:xml:ns:caldav}calendar-home-set' => array('type' => 'href', 'value' => $calendarHomeHref),
                     '{urn:ietf:params:xml:ns:caldav}calendar-description' => array('type' => 'text', 'value' => (string)($resource['description'] ?? '')),
                     '{urn:ietf:params:xml:ns:caldav}supported-calendar-component-set' => array(
                         'type' => 'calendar-component-set',
