@@ -5,6 +5,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 ## 2026-08-23
 
 - L export CalDAV conserve maintenant le fuseau horaire des evenements avec `TZID` et `X-WR-TIMEZONE`, afin que leur edition sur un telephone reste a l heure locale.
+- Le droit d edition des evenements CalDAV reutilise maintenant directement le moteur de permissions OMO, y compris les membres lorsque le droit n est pas configure et les overrides administrateur.
 - Les evenements CalDAV existants peuvent maintenant etre modifies depuis un client calendrier compatible. La collection annonce sa capacite d ecriture, tandis que les droits `CAN_EDIT_EVENT` et les ETags sont verifies; la creation et les evenements recurrents restent volontairement refuses.
 - Le Calendrier propose maintenant, depuis une popup de la topbar, un menu Connecter qui fournit une URL CalDAV limitee au holon et a la portee actuellement affiches. La couleur choisie est incluse dans cette URL et transmise aux clients compatibles; les comptes sans mot de passe sont guides vers le menu Profil avant toute connexion.
 - Les utilisateurs disposant de `CAN_CREATE_PARCOURS` ou `CAN_EDIT_PARCOURS` peuvent maintenant creer et modifier depuis la FAQ une question rattachee aux parcours dont leur organisation est proprietaire, avec le meme controle applique lors de la sauvegarde.
@@ -67,6 +68,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - La configuration Etherpad est maintenant centralisee au niveau du serveur; les organisations utilisent le domaine et les identifiants Etherpad globaux.
 - La configuration kDrive rappelle maintenant que WebDAV necessite kSuite Business ou une offre superieure, et le test signale explicitement cette cause en cas de reponse HTTP 403.
 - Une configuration de deploiement VPS est maintenant fournie pour Collabora CODE 25.04 avec Caddy, HTTPS automatique et relais WebSocket pour `collabora.opengov.tools`.
+- Le deploiement VPS Collabora autorise maintenant explicitement les hotes WOPI `*.opengov.tools`, y compris lorsque les alias groupes sont actives.
 
 ## 2026-08-20
 
