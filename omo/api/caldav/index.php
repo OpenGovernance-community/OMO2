@@ -22,11 +22,15 @@ if ($resourceType === 'calendar') {
     $allowedMethods[] = 'REPORT';
     $allowedMethods[] = 'GET';
     $allowedMethods[] = 'HEAD';
-    $allowedMethods[] = 'PUT';
+    if (empty($resource['readOnly'])) {
+        $allowedMethods[] = 'PUT';
+    }
 } elseif ($resourceType === 'event') {
     $allowedMethods[] = 'GET';
     $allowedMethods[] = 'HEAD';
-    $allowedMethods[] = 'PUT';
+    if (empty($resource['readOnly'])) {
+        $allowedMethods[] = 'PUT';
+    }
 } else {
     $allowedMethods[] = 'GET';
     $allowedMethods[] = 'HEAD';
@@ -69,6 +73,6 @@ header('Pragma: no-cache');
 
 if ($method === 'GET') {
     echo "OpenMyOrganization CalDAV endpoint.\n";
-    echo 'Principal: ' . commonCalDavBuildHref('principals/' . (int)$viewer->getId() . '/') . "\n";
-    echo 'Calendar home: ' . commonCalDavBuildHref('calendars/' . (int)$viewer->getId() . '/') . "\n";
+    echo 'Principal: ' . (string)($resource['principalHref'] ?? commonCalDavBuildHref('principals/' . (int)$viewer->getId() . '/')) . "\n";
+    echo 'Calendar home: ' . (string)($resource['calendarHomeHref'] ?? commonCalDavBuildHref('calendars/' . (int)$viewer->getId() . '/')) . "\n";
 }
