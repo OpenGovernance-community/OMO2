@@ -115,6 +115,23 @@ if (!function_exists('commonCalDavBuildScopedCalendarHomeHref')) {
     }
 }
 
+if (!function_exists('commonCalDavNormalizeScopedCalendarGroup')) {
+    function commonCalDavNormalizeScopedCalendarGroup($group)
+    {
+        return strtolower(trim((string)$group)) === 'readonly' ? 'readonly' : 'editable';
+    }
+}
+
+if (!function_exists('commonCalDavBuildScopedCalendarGroupHref')) {
+    function commonCalDavBuildScopedCalendarGroupHref($organizationId, $holonId, $range, $color, $group)
+    {
+        return rtrim(commonCalDavBuildScopedCalendarHref($organizationId, $holonId, $range, $color), '/')
+            . '/'
+            . commonCalDavNormalizeScopedCalendarGroup($group)
+            . '/';
+    }
+}
+
 if (!function_exists('commonCalDavBuildAbsoluteHref')) {
     function commonCalDavBuildAbsoluteHref($href)
     {
@@ -290,6 +307,22 @@ if (!function_exists('commonCalDavAppendPropertyValue')) {
                 $nameElement->appendChild($document->createElementNS($namespace, $prefix . ':' . $localName));
                 $reportElement->appendChild($nameElement);
                 $propertyElement->appendChild($reportElement);
+            }
+            return;
+        }
+
+        if ($type === 'current-user-privilege-set') {
+            foreach ((array)($value['value'] ?? array()) as $privilege) {
+                $namespace = (string)($privilege['namespace'] ?? 'DAV:');
+                $prefix = (string)($privilege['prefix'] ?? 'd');
+                $localName = (string)($privilege['localName'] ?? '');
+                if ($localName === '') {
+                    continue;
+                }
+
+                $privilegeElement = $document->createElementNS('DAV:', 'd:privilege');
+                $privilegeElement->appendChild($document->createElementNS($namespace, $prefix . ':' . $localName));
+                $propertyElement->appendChild($privilegeElement);
             }
             return;
         }
@@ -838,6 +871,99 @@ if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
     }
 }
 
+if (!function_exists('commonCalDavLoadScopedCalendarGroupsForViewer')) {
+    function commonCalDavLoadScopedCalendarGroupsForViewer(User $viewer, $organizationId, $holonId, $range, $color)
+    {
+        $baseCalendar = commonCalDavLoadScopedCalendarForViewer($viewer, $organizationId, $holonId, $range, $color);
+        if (!is_array($baseCalendar)) {
+            return array();
+        }
+
+        $organization = $baseCalendar['organization'] ?? null;
+        if (!($organization instanceof Organization)) {
+            return array();
+        }
+
+        $rootHolon = $organization->getEnabledStructuralRootHolon((int)$viewer->getId());
+        if (!($rootHolon instanceof Holon)) {
+            return array();
+        }
+
+        $organizationId = (int)$baseCalendar['organizationId'];
+        $holonId = (int)$baseCalendar['holonId'];
+        $range = (string)$baseCalendar['range'];
+        $color = commonCalDavNormalizeScopedColor($color);
+        $groupDefinitions = array(
+            'editable' => array(
+                'label' => 'Modifiables',
+                'description' => 'Events you can edit',
+                'readOnly' => false,
+            ),
+            'readonly' => array(
+                'label' => 'Lecture seule',
+                'description' => 'Events you cannot edit',
+                'readOnly' => true,
+            ),
+        );
+        $groupEvents = array(
+            'editable' => array(),
+            'readonly' => array(),
+        );
+        $groupEventMaps = array(
+            'editable' => array(),
+            'readonly' => array(),
+        );
+
+        foreach ((array)($baseCalendar['events'] ?? array()) as $eventResource) {
+            $event = $eventResource['event'] ?? null;
+            if (!($event instanceof Event)) {
+                continue;
+            }
+
+            $group = omoCalendarCanEditEvent(
+                $event,
+                $organizationId,
+                (int)$viewer->getId(),
+                $rootHolon,
+                false
+            ) ? 'editable' : 'readonly';
+            $groupHref = commonCalDavBuildScopedCalendarGroupHref($organizationId, $holonId, $range, $color, $group);
+            $groupSlug = (string)$baseCalendar['calendarSlug'] . '-' . $group;
+            $groupEventResource = commonCalDavBuildEventResource($viewer, $organization, $event, array(
+                'calendarHref' => $groupHref,
+                'calendarIdentity' => $groupSlug,
+            ));
+            if (!empty($groupDefinitions[$group]['readOnly'])) {
+                $groupEventResource['readOnly'] = true;
+            }
+
+            $groupEvents[$group][] = $groupEventResource;
+            $groupEventMaps[$group][(string)$groupEventResource['fileName']] = $groupEventResource;
+        }
+
+        $groupMap = array();
+        foreach ($groupDefinitions as $group => $definition) {
+            $groupSlug = (string)$baseCalendar['calendarSlug'] . '-' . $group;
+            $events = $groupEvents[$group];
+            $syncToken = commonCalDavBuildCalendarSyncToken($organizationId, $events, $groupSlug);
+            $groupMap[$group] = array_merge($baseCalendar, array(
+                'href' => commonCalDavBuildScopedCalendarGroupHref($organizationId, $holonId, $range, $color, $group),
+                'calendarSlug' => $groupSlug,
+                'displayName' => trim((string)$baseCalendar['displayName'] . ' - ' . (string)$definition['label']),
+                'description' => trim((string)$baseCalendar['description'] . ' - ' . (string)$definition['description']),
+                'resourceId' => 'urn:uuid:' . commonCardDavBuildStableUuid('caldav:calendar:' . $groupSlug),
+                'syncToken' => $syncToken,
+                'ctag' => sha1($syncToken),
+                'readOnly' => !empty($definition['readOnly']),
+                'events' => $events,
+                'eventMap' => $groupEventMaps[$group],
+            ));
+        }
+
+        return $groupMap;
+    }
+}
+
 if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
     function commonCalDavLoadCalendarsForViewer(User $viewer)
     {
@@ -958,7 +1084,32 @@ if (!function_exists('commonCalDavResolveRouteResource')) {
         }
 
         if (preg_match('#^/scoped/(\d+)/(\d+)/(contextual|children|descendants)/([0-9a-fA-F]{6})$#', $routePath, $matches)) {
-            return commonCalDavLoadScopedCalendarForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4]);
+            $calendar = commonCalDavLoadScopedCalendarForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4]);
+            if (!is_array($calendar)) {
+                return null;
+            }
+
+            return array(
+                'type' => 'scoped-entrypoint',
+                'href' => (string)$calendar['href'],
+                'principalHref' => (string)$calendar['principalHref'],
+                'calendarHomeHref' => (string)$calendar['calendarHomeHref'],
+                'calendar' => $calendar,
+                'calendarMap' => commonCalDavLoadScopedCalendarGroupsForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4]),
+            );
+        }
+
+        if (preg_match('#^/scoped/(\d+)/(\d+)/(contextual|children|descendants)/([0-9a-fA-F]{6})/(editable|readonly)$#', $routePath, $matches)) {
+            $calendarGroups = commonCalDavLoadScopedCalendarGroupsForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4]);
+            $group = commonCalDavNormalizeScopedCalendarGroup($matches[5]);
+            return $calendarGroups[$group] ?? null;
+        }
+
+        if (preg_match('#^/scoped/(\d+)/(\d+)/(contextual|children|descendants)/([0-9a-fA-F]{6})/(editable|readonly)/(event-\d+\.ics)$#', $routePath, $matches)) {
+            $calendarGroups = commonCalDavLoadScopedCalendarGroupsForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4]);
+            $group = commonCalDavNormalizeScopedCalendarGroup($matches[5]);
+            $fileName = (string)$matches[6];
+            return isset($calendarGroups[$group]['eventMap'][$fileName]) ? $calendarGroups[$group]['eventMap'][$fileName] : null;
         }
 
         if (preg_match('#^/scoped/(\d+)/(\d+)/(contextual|children|descendants)/([0-9a-fA-F]{6})/principal$#', $routePath, $matches)) {
@@ -981,11 +1132,14 @@ if (!function_exists('commonCalDavResolveRouteResource')) {
                 return null;
             }
 
+            $calendarGroups = commonCalDavLoadScopedCalendarGroupsForViewer($viewer, (int)$matches[1], (int)$matches[2], (string)$matches[3], (string)$matches[4]);
+
             return array(
                 'type' => 'scoped-calendar-home',
                 'href' => (string)$calendar['calendarHomeHref'],
                 'principalHref' => (string)$calendar['principalHref'],
                 'calendar' => $calendar,
+                'calendarMap' => $calendarGroups,
             );
         }
 
@@ -1071,8 +1225,10 @@ if (!function_exists('commonCalDavListChildResources')) {
                 );
 
             case 'scoped-calendar-home':
-                $calendar = $resource['calendar'] ?? null;
-                return is_array($calendar) ? array($calendar) : array();
+                return array_values((array)($resource['calendarMap'] ?? array()));
+
+            case 'scoped-entrypoint':
+                return array_values((array)($resource['calendarMap'] ?? array()));
 
             case 'calendar':
                 return array_values((array)($resource['events'] ?? array()));
@@ -1230,6 +1386,25 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                     '{DAV:}resource-id' => array('type' => 'href', 'value' => 'urn:uuid:' . commonCardDavBuildStableUuid('caldav:scoped-calendar-home:' . $scopeKey)),
                 );
 
+            case 'scoped-entrypoint':
+                $calendar = is_array($resource['calendar'] ?? null) ? $resource['calendar'] : array();
+                $scopedPrincipalHref = (string)($resource['principalHref'] ?? $calendar['principalHref'] ?? '');
+                $scopedCalendarHomeHref = (string)($resource['calendarHomeHref'] ?? $calendar['calendarHomeHref'] ?? '');
+                $scopeKey = (string)($calendar['calendarSlug'] ?? $resource['href'] ?? '');
+
+                return array(
+                    '{DAV:}displayname' => array('type' => 'text', 'value' => (string)($calendar['displayName'] ?? 'Calendar connection')),
+                    '{DAV:}resourcetype' => array(
+                        'type' => 'resourcetype',
+                        'value' => array(
+                            array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'collection'),
+                        ),
+                    ),
+                    '{DAV:}current-user-principal' => array('type' => 'href', 'value' => $scopedPrincipalHref),
+                    '{urn:ietf:params:xml:ns:caldav}calendar-home-set' => array('type' => 'href', 'value' => $scopedCalendarHomeHref),
+                    '{DAV:}resource-id' => array('type' => 'href', 'value' => 'urn:uuid:' . commonCardDavBuildStableUuid('caldav:scoped-entrypoint:' . $scopeKey)),
+                );
+
             case 'calendar':
                 $calendarPrincipalHref = !empty($resource['isScopedCalendar'])
                     ? (string)($resource['principalHref'] ?? '')
@@ -1237,6 +1412,17 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                 $calendarHomeHref = !empty($resource['isScopedCalendar'])
                     ? (string)($resource['calendarHomeHref'] ?? '')
                     : $calendarRootHref;
+                $calendarPrivileges = array(
+                    array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'read'),
+                    array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'read-current-user-privilege-set'),
+                );
+                if (empty($resource['readOnly'])) {
+                    $calendarPrivileges[] = array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'write');
+                    $calendarPrivileges[] = array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'write-content');
+                    $calendarPrivileges[] = array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'bind');
+                    $calendarPrivileges[] = array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'unbind');
+                }
+
                 $properties = array(
                     '{DAV:}displayname' => array('type' => 'text', 'value' => (string)($resource['displayName'] ?? 'Calendar')),
                     '{DAV:}resourcetype' => array(
@@ -1248,6 +1434,7 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                     ),
                     '{DAV:}owner' => array('type' => 'href', 'value' => $calendarPrincipalHref),
                     '{DAV:}current-user-principal' => array('type' => 'href', 'value' => $calendarPrincipalHref),
+                    '{DAV:}current-user-privilege-set' => array('type' => 'current-user-privilege-set', 'value' => $calendarPrivileges),
                     '{DAV:}supported-report-set' => array('type' => 'supported-report-set', 'value' => commonCalDavSupportedReports()),
                     '{urn:ietf:params:xml:ns:caldav}calendar-home-set' => array('type' => 'href', 'value' => $calendarHomeHref),
                     '{urn:ietf:params:xml:ns:caldav}calendar-description' => array('type' => 'text', 'value' => (string)($resource['description'] ?? '')),
