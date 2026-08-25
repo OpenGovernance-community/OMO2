@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 require_once dirname(__DIR__, 3) . '/common/ethercalc.php';
+require_once dirname(__DIR__, 3) . '/common/spreadsheet.php';
 
 use dbObject\ArrayDocument;
 use dbObject\ArrayStatIndicator;
@@ -257,36 +258,49 @@ foreach ($pickerItems as $indicator) {
     ];
 }
 $ethercalcPickerData = [];
+$spreadsheetPickerData = [];
 $ethercalcPickerAvailable = omoEthercalcHasConfig();
-if ($ethercalcPickerAvailable) {
-    $pickerDocuments = new ArrayDocument();
-    $pickerDocuments->load([
-        'where' => [
-            ['field' => 'IDorganization', 'value' => $organizationId],
-            ['field' => 'active', 'value' => 1],
-        ],
-        'orderBy' => [
-            ['field' => 'title', 'dir' => 'ASC'],
-            ['field' => 'id', 'dir' => 'ASC'],
-        ],
-    ]);
-    $pickerDocuments->filterVisibleForCurrentViewer($organizationId);
-    foreach ($pickerDocuments as $document) {
-        if (!($document instanceof Document) || !$document->isEthercalcDocument() || $document->getEthercalcRoomId() === '') {
-            continue;
-        }
+ $pickerDocuments = new ArrayDocument();
+ $pickerDocuments->load([
+     'where' => [
+         ['field' => 'IDorganization', 'value' => $organizationId],
+         ['field' => 'active', 'value' => 1],
+     ],
+     'orderBy' => [
+         ['field' => 'title', 'dir' => 'ASC'],
+         ['field' => 'id', 'dir' => 'ASC'],
+     ],
+ ]);
+ $pickerDocuments->filterVisibleForCurrentViewer($organizationId);
+ foreach ($pickerDocuments as $document) {
+     if (!($document instanceof Document) || !$document->isEthercalcDocument() || $document->getEthercalcRoomId() === '') {
+         if (
+             $document instanceof Document
+             && $document->isUploadedFile()
+             && $document->hasStoredFile()
+             && omoSpreadsheetSupportsFilename($document->getStoredFileDownloadName())
+         ) {
+             $spreadsheetPickerData[] = [
+                 'id' => (int)$document->getId(),
+                 'name' => trim((string)$document->get('title')),
+                 'description' => trim((string)$document->get('description')),
+                 'filename' => $document->getStoredFileDownloadName(),
+             ];
+         }
+         continue;
+     }
 
         $ethercalcPickerData[] = [
             'id' => (int)$document->getId(),
             'name' => trim((string)$document->get('title')),
             'description' => trim((string)$document->get('description')),
         ];
-    }
-}
+ }
+$spreadsheetPickerAvailable = count($spreadsheetPickerData) > 0;
 $displayItemCount = count($statsEntries);
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
-<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260807-range-handles">
+<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260824-source-fields">
 <div
     class="omo-stats omo-panel-view"
     id="omo-stats-root"
@@ -308,6 +322,8 @@ $displayItemCount = count($statsEntries);
     data-omo-stats-picker="<?= omoApiEscape(json_encode($pickerData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     data-omo-stats-ethercalc-picker="<?= omoApiEscape(json_encode($ethercalcPickerData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     data-omo-stats-ethercalc-available="<?= $ethercalcPickerAvailable ? '1' : '0' ?>"
+    data-omo-stats-spreadsheet-picker="<?= omoApiEscape(json_encode($spreadsheetPickerData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+    data-omo-stats-spreadsheet-available="<?= $spreadsheetPickerAvailable ? '1' : '0' ?>"
 >
     <header class="omo-stats__header omo-panel-view__header omo-panel-view__header--stacked">
         <div class="omo-panel-view__header-main">
@@ -751,6 +767,7 @@ $displayItemCount = count($statsEntries);
         'editImportTitle' => omoStatsT('stats.import.edit_title'),
         'importSourceIndicators' => omoStatsT('stats.import.source_indicators'),
         'importSourceEthercalc' => omoStatsT('stats.import.source_ethercalc'),
+        'importSourceSpreadsheet' => omoStatsT('stats.import.source_spreadsheet'),
         'groupTitle' => omoStatsT('stats.group.title'),
         'editGroupTitle' => omoStatsT('stats.group.edit_title'),
         'search' => omoStatsT('stats.import.search'),
@@ -764,6 +781,8 @@ $displayItemCount = count($statsEntries);
         'ethercalcName' => omoStatsT('stats.import.ethercalc.name'),
         'ethercalcCell' => omoStatsT('stats.import.ethercalc.cell'),
         'ethercalcFrequency' => omoStatsT('stats.import.ethercalc.frequency'),
+        'ethercalcMeasurementFrequency' => omoStatsT('stats.import.ethercalc.frequency_measurement'),
+        'ethercalcSyncFrequency' => omoStatsT('stats.import.ethercalc.frequency_sync'),
         'ethercalcFrequencyHourly' => omoStatsT('stats.import.ethercalc.frequency_hourly'),
         'ethercalcFrequencyDaily' => omoStatsT('stats.import.ethercalc.frequency_daily'),
         'ethercalcFrequencyWeekly' => omoStatsT('stats.import.ethercalc.frequency_weekly'),
@@ -772,6 +791,25 @@ $displayItemCount = count($statsEntries);
         'ethercalcValueColumns' => omoStatsT('stats.import.ethercalc.value_columns'),
         'ethercalcTableHelp' => omoStatsT('stats.import.ethercalc.table_help'),
         'ethercalcCreateAction' => omoStatsT('stats.import.ethercalc.create_action'),
+        'spreadsheetDocument' => omoStatsT('stats.import.spreadsheet.document'),
+        'spreadsheetNoDocuments' => omoStatsT('stats.import.spreadsheet.no_documents'),
+        'spreadsheetSheet' => omoStatsT('stats.import.spreadsheet.sheet'),
+        'spreadsheetMode' => omoStatsT('stats.import.spreadsheet.mode'),
+        'spreadsheetModeCell' => omoStatsT('stats.import.spreadsheet.mode_cell'),
+        'spreadsheetModeTable' => omoStatsT('stats.import.spreadsheet.mode_table'),
+        'spreadsheetName' => omoStatsT('stats.import.spreadsheet.name'),
+        'spreadsheetCell' => omoStatsT('stats.import.spreadsheet.cell'),
+        'spreadsheetFrequency' => omoStatsT('stats.import.spreadsheet.frequency'),
+        'spreadsheetMeasurementFrequency' => omoStatsT('stats.import.spreadsheet.frequency_measurement'),
+        'spreadsheetSyncFrequency' => omoStatsT('stats.import.spreadsheet.frequency_sync'),
+        'spreadsheetFrequencyHourly' => omoStatsT('stats.import.spreadsheet.frequency_hourly'),
+        'spreadsheetFrequencyDaily' => omoStatsT('stats.import.spreadsheet.frequency_daily'),
+        'spreadsheetFrequencyWeekly' => omoStatsT('stats.import.spreadsheet.frequency_weekly'),
+        'spreadsheetRange' => omoStatsT('stats.import.spreadsheet.range'),
+        'spreadsheetDateColumn' => omoStatsT('stats.import.spreadsheet.date_column'),
+        'spreadsheetValueColumns' => omoStatsT('stats.import.spreadsheet.value_columns'),
+        'spreadsheetTableHelp' => omoStatsT('stats.import.spreadsheet.table_help'),
+        'spreadsheetCreateAction' => omoStatsT('stats.import.spreadsheet.create_action'),
         'groupName' => omoStatsT('stats.group.name'),
         'groupMode' => omoStatsT('stats.group.mode'),
         'groupHideSameHolonSources' => omoStatsT('stats.group.hide_same_holon_sources'),
@@ -1603,6 +1641,16 @@ $displayItemCount = count($statsEntries);
         }
     }
 
+    function getSpreadsheetPickerItems() {
+        try {
+            var raw = root.getAttribute('data-omo-stats-spreadsheet-picker') || '[]';
+            var items = JSON.parse(raw);
+            return Array.isArray(items) ? items : [];
+        } catch (error) {
+            return [];
+        }
+    }
+
     function openGroupDrawerEditor(editData) {
         if (!drawer || !drawerBody) {
             return;
@@ -1830,31 +1878,52 @@ $displayItemCount = count($statsEntries);
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.search) + '</span><input type="search" class="generic-form-control" data-omo-stats-picker-search placeholder="' + escapeHtml(texts.searchPlaceholder) + '"></label>'
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.visible) + '</span><select class="generic-form-control omo-stats-picker__select" data-omo-stats-picker-select size="10"' + multiple + '></select></label>'
             + (isGroup ? '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.groupMode) + '</span><select class="generic-form-control" data-omo-stats-picker-mode><option value="overlay">' + escapeHtml(texts.overlay) + '</option><option value="sum">' + escapeHtml(texts.sum) + '</option></select></label>' : '');
+        var spreadsheetAvailable = !isGroup && !isEditing && root.getAttribute('data-omo-stats-spreadsheet-available') === '1';
         var ethercalcFieldsHtml = '';
-        if (ethercalcAvailable) {
+        if (ethercalcAvailable || spreadsheetAvailable) {
             ethercalcFieldsHtml = '<div class="generic-tabs omo-stats-picker__tabs" data-generic-tabs>'
                 + '<div class="generic-tabs__list" aria-label="' + escapeHtml(texts.importTitle) + '">'
                 + '<button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omo-stats-import-indicators">' + escapeHtml(texts.importSourceIndicators) + '</button>'
-                + '<button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-stats-import-ethercalc">' + escapeHtml(texts.importSourceEthercalc) + '</button>'
+                + (ethercalcAvailable ? '<button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-stats-import-ethercalc">' + escapeHtml(texts.importSourceEthercalc) + '</button>' : '')
+                + (spreadsheetAvailable ? '<button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-stats-import-spreadsheet">' + escapeHtml(texts.importSourceSpreadsheet) + '</button>' : '')
                 + '</div>'
                 + '<div class="generic-tabs__panels">'
                 + '<section id="omo-stats-import-indicators" class="generic-tabs__panel omo-stats-picker" data-generic-tab-panel>' + pickerFieldsHtml + '</section>'
-                + '<section id="omo-stats-import-ethercalc" class="generic-tabs__panel omo-stats-picker" data-generic-tab-panel hidden>'
-                + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcDocument) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-document></select></label>'
-                + '<div class="generic-soft-panel" data-omo-stats-ethercalc-empty hidden>' + escapeHtml(texts.ethercalcNoDocuments) + '</div>'
-                + '<label class="omo-stats-picker__field"><span data-omo-stats-ethercalc-name-label>' + escapeHtml(texts.ethercalcName) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-name></label>'
-                + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcMode) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-mode><option value="cell">' + escapeHtml(texts.ethercalcModeCell) + '</option><option value="table">' + escapeHtml(texts.ethercalcModeTable) + '</option></select></label>'
-                + '<section class="generic-soft-panel generic-soft-panel--stack" data-omo-stats-ethercalc-cell-fields>'
-                + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcCell) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-cell value="A1" placeholder="A1"></label>'
-                + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcFrequency) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-frequency><option value="hourly">' + escapeHtml(texts.ethercalcFrequencyHourly) + '</option><option value="daily">' + escapeHtml(texts.ethercalcFrequencyDaily) + '</option><option value="weekly">' + escapeHtml(texts.ethercalcFrequencyWeekly) + '</option></select></label>'
-                + '</section>'
-                + '<section class="generic-soft-panel generic-soft-panel--stack" data-omo-stats-ethercalc-table-fields hidden>'
-                + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcRange) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-range value="A1:C100" placeholder="A1:C100"></label>'
-                + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcDateColumn) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-date-column value="A" placeholder="A"></label>'
-                + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcValueColumns) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-value-columns value="B,C" placeholder="B,C"></label>'
-                + '<p class="generic-description">' + escapeHtml(texts.ethercalcTableHelp) + '</p>'
-                + '</section>'
-                + '</section>'
+                + (ethercalcAvailable ? '<section id="omo-stats-import-ethercalc" class="generic-tabs__panel omo-stats-picker" data-generic-tab-panel hidden>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcDocument) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-document></select></label>'
+                    + '<div class="generic-soft-panel" data-omo-stats-ethercalc-empty hidden>' + escapeHtml(texts.ethercalcNoDocuments) + '</div>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcName) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-name></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcMode) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-mode><option value="cell">' + escapeHtml(texts.ethercalcModeCell) + '</option><option value="table">' + escapeHtml(texts.ethercalcModeTable) + '</option></select></label>'
+                    + '<section class="generic-soft-panel generic-soft-panel--stack" data-omo-stats-ethercalc-cell-fields>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcCell) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-cell value="A1" placeholder="A1"></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcMeasurementFrequency) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-frequency><option value="hourly">' + escapeHtml(texts.ethercalcFrequencyHourly) + '</option><option value="daily">' + escapeHtml(texts.ethercalcFrequencyDaily) + '</option><option value="weekly">' + escapeHtml(texts.ethercalcFrequencyWeekly) + '</option></select></label>'
+                    + '</section>'
+                    + '<section class="generic-soft-panel generic-soft-panel--stack" data-omo-stats-ethercalc-table-fields hidden>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcRange) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-range value="A1:C100" placeholder="A1:C100"></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcDateColumn) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-date-column value="A" placeholder="A"></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcValueColumns) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-value-columns value="B,C" placeholder="B,C"></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcSyncFrequency) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-table-frequency><option value="hourly">' + escapeHtml(texts.ethercalcFrequencyHourly) + '</option><option value="daily" selected>' + escapeHtml(texts.ethercalcFrequencyDaily) + '</option><option value="weekly">' + escapeHtml(texts.ethercalcFrequencyWeekly) + '</option></select></label>'
+                    + '<p class="generic-description">' + escapeHtml(texts.ethercalcTableHelp) + '</p>'
+                    + '</section>'
+                    + '</section>' : '')
+                + (spreadsheetAvailable ? '<section id="omo-stats-import-spreadsheet" class="generic-tabs__panel omo-stats-picker" data-generic-tab-panel hidden>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetDocument) + '</span><select class="generic-form-control" data-omo-stats-spreadsheet-document></select></label>'
+                    + '<div class="generic-soft-panel" data-omo-stats-spreadsheet-empty hidden>' + escapeHtml(texts.spreadsheetNoDocuments) + '</div>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetName) + '</span><input type="text" class="generic-form-control" data-omo-stats-spreadsheet-name></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetSheet) + '</span><input type="text" class="generic-form-control" data-omo-stats-spreadsheet-sheet placeholder="Feuille1"></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetMode) + '</span><select class="generic-form-control" data-omo-stats-spreadsheet-mode><option value="cell">' + escapeHtml(texts.spreadsheetModeCell) + '</option><option value="table">' + escapeHtml(texts.spreadsheetModeTable) + '</option></select></label>'
+                    + '<section class="generic-soft-panel generic-soft-panel--stack" data-omo-stats-spreadsheet-cell-fields>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetCell) + '</span><input type="text" class="generic-form-control" data-omo-stats-spreadsheet-cell value="A1" placeholder="A1"></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetMeasurementFrequency) + '</span><select class="generic-form-control" data-omo-stats-spreadsheet-frequency><option value="hourly">' + escapeHtml(texts.spreadsheetFrequencyHourly) + '</option><option value="daily" selected>' + escapeHtml(texts.spreadsheetFrequencyDaily) + '</option><option value="weekly">' + escapeHtml(texts.spreadsheetFrequencyWeekly) + '</option></select></label>'
+                    + '</section>'
+                    + '<section class="generic-soft-panel generic-soft-panel--stack" data-omo-stats-spreadsheet-table-fields hidden>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetRange) + '</span><input type="text" class="generic-form-control" data-omo-stats-spreadsheet-range value="A1:C100" placeholder="A1:C100"></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetDateColumn) + '</span><input type="text" class="generic-form-control" data-omo-stats-spreadsheet-date-column value="A" placeholder="A"></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetValueColumns) + '</span><input type="text" class="generic-form-control" data-omo-stats-spreadsheet-value-columns value="B,C" placeholder="B,C"></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetSyncFrequency) + '</span><select class="generic-form-control" data-omo-stats-spreadsheet-table-frequency><option value="hourly">' + escapeHtml(texts.spreadsheetFrequencyHourly) + '</option><option value="daily" selected>' + escapeHtml(texts.spreadsheetFrequencyDaily) + '</option><option value="weekly">' + escapeHtml(texts.spreadsheetFrequencyWeekly) + '</option></select></label>'
+                    + '<p class="generic-description">' + escapeHtml(texts.spreadsheetTableHelp) + '</p>'
+                    + '</section>'
+                    + '</section>' : '')
                 + '</div>'
                 + '</div>';
         }
@@ -1880,6 +1949,13 @@ $displayItemCount = count($statsEntries);
         var ethercalcModeSelect = modalBody.querySelector('[data-omo-stats-ethercalc-mode]');
         var ethercalcCellFields = modalBody.querySelector('[data-omo-stats-ethercalc-cell-fields]');
         var ethercalcTableFields = modalBody.querySelector('[data-omo-stats-ethercalc-table-fields]');
+        var spreadsheetTab = modalBody.querySelector('[data-generic-tab-target="omo-stats-import-spreadsheet"]');
+        var spreadsheetDocumentSelect = modalBody.querySelector('[data-omo-stats-spreadsheet-document]');
+        var spreadsheetEmpty = modalBody.querySelector('[data-omo-stats-spreadsheet-empty]');
+        var spreadsheetNameInput = modalBody.querySelector('[data-omo-stats-spreadsheet-name]');
+        var spreadsheetModeSelect = modalBody.querySelector('[data-omo-stats-spreadsheet-mode]');
+        var spreadsheetCellFields = modalBody.querySelector('[data-omo-stats-spreadsheet-cell-fields]');
+        var spreadsheetTableFields = modalBody.querySelector('[data-omo-stats-spreadsheet-table-fields]');
         if (nameInput && isEditing) {
             nameInput.value = String(editData.name || '');
         }
@@ -1918,8 +1994,40 @@ $displayItemCount = count($statsEntries);
                 ethercalcTableFields.hidden = !isTableMode;
             }
         }
+        function renderSpreadsheetDocuments() {
+            if (!spreadsheetDocumentSelect) {
+                return;
+            }
+            var documents = getSpreadsheetPickerItems();
+            spreadsheetDocumentSelect.innerHTML = '';
+            documents.forEach(function (item) {
+                var option = document.createElement('option');
+                option.value = String(item.id || '');
+                option.textContent = String(item.name || '') + (item.filename ? ' (' + String(item.filename) + ')' : '');
+                spreadsheetDocumentSelect.appendChild(option);
+            });
+            spreadsheetDocumentSelect.disabled = documents.length === 0;
+            if (spreadsheetEmpty) {
+                spreadsheetEmpty.hidden = documents.length > 0;
+            }
+            if (spreadsheetNameInput && !spreadsheetNameInput.value && documents.length > 0) {
+                spreadsheetNameInput.value = String(documents[0].name || '');
+            }
+        }
+        function syncSpreadsheetMode() {
+            var isTableMode = spreadsheetModeSelect && spreadsheetModeSelect.value === 'table';
+            if (spreadsheetCellFields) {
+                spreadsheetCellFields.hidden = !!isTableMode;
+            }
+            if (spreadsheetTableFields) {
+                spreadsheetTableFields.hidden = !isTableMode;
+            }
+        }
         function isEthercalcTabActive() {
             return !!ethercalcTab && ethercalcTab.classList.contains('is-active');
+        }
+        function isSpreadsheetTabActive() {
+            return !!spreadsheetTab && spreadsheetTab.classList.contains('is-active');
         }
         function syncApplyButton() {
             if (!applyButton || isGroup) {
@@ -1927,16 +2035,26 @@ $displayItemCount = count($statsEntries);
             }
             applyButton.textContent = isEthercalcTabActive()
                 ? texts.ethercalcCreateAction
-                : (isEditing ? texts.update : texts.add);
+                : (isSpreadsheetTabActive() ? texts.spreadsheetCreateAction : (isEditing ? texts.update : texts.add));
         }
         renderEthercalcDocuments();
+        renderSpreadsheetDocuments();
         syncEthercalcMode();
+        syncSpreadsheetMode();
         syncApplyButton();
         if (ethercalcModeSelect) {
             ethercalcModeSelect.addEventListener('change', syncEthercalcMode);
         }
+        if (spreadsheetModeSelect) {
+            spreadsheetModeSelect.addEventListener('change', syncSpreadsheetMode);
+        }
         if (ethercalcTab) {
             ethercalcTab.closest('[data-generic-tabs]').addEventListener('click', function () {
+                window.setTimeout(syncApplyButton, 0);
+            });
+        }
+        if (spreadsheetTab) {
+            spreadsheetTab.closest('[data-generic-tabs]').addEventListener('click', function () {
                 window.setTimeout(syncApplyButton, 0);
             });
         }
@@ -1992,12 +2110,48 @@ $displayItemCount = count($statsEntries);
                     ethercalcFormData.append('ethercalc_name', ethercalcNameInput ? ethercalcNameInput.value : '');
                     ethercalcFormData.append('ethercalc_mode', ethercalcModeSelect ? ethercalcModeSelect.value : 'cell');
                     ethercalcFormData.append('ethercalc_cell', (modalBody.querySelector('[data-omo-stats-ethercalc-cell]') || {}).value || '');
-                    ethercalcFormData.append('ethercalc_frequency', (modalBody.querySelector('[data-omo-stats-ethercalc-frequency]') || {}).value || '');
+                    var ethercalcFrequencyField = ethercalcModeSelect && ethercalcModeSelect.value === 'table'
+                        ? modalBody.querySelector('[data-omo-stats-ethercalc-table-frequency]')
+                        : modalBody.querySelector('[data-omo-stats-ethercalc-frequency]');
+                    ethercalcFormData.append('ethercalc_frequency', ethercalcFrequencyField ? ethercalcFrequencyField.value : '');
                     ethercalcFormData.append('ethercalc_range', (modalBody.querySelector('[data-omo-stats-ethercalc-range]') || {}).value || '');
                     ethercalcFormData.append('ethercalc_date_column', (modalBody.querySelector('[data-omo-stats-ethercalc-date-column]') || {}).value || '');
                     ethercalcFormData.append('ethercalc_value_columns', (modalBody.querySelector('[data-omo-stats-ethercalc-value-columns]') || {}).value || '');
                     applyButton.disabled = true;
                     postFormData(ethercalcFormData).then(function () {
+                        if (typeof window.commonTopbarCloseModal === 'function') {
+                            window.commonTopbarCloseModal();
+                        }
+                        return refreshRoot(currentUrl);
+                    }).catch(function (error) {
+                        window.omoNotify(error.message || texts.loadError, 'error');
+                        applyButton.disabled = false;
+                    });
+                    return;
+                }
+                if (isSpreadsheetTabActive()) {
+                    if (!spreadsheetDocumentSelect || !spreadsheetDocumentSelect.value) {
+                        window.omoNotify(texts.spreadsheetNoDocuments, 'error');
+                        return;
+                    }
+                    var spreadsheetFormData = new FormData();
+                    spreadsheetFormData.append('stats_action', 'create_spreadsheet_indicator');
+                    spreadsheetFormData.append('oid', root.getAttribute('data-omo-stats-oid') || '');
+                    spreadsheetFormData.append('cid', root.getAttribute('data-omo-stats-cid') || '');
+                    spreadsheetFormData.append('spreadsheet_document_id', spreadsheetDocumentSelect.value);
+                    spreadsheetFormData.append('spreadsheet_name', spreadsheetNameInput ? spreadsheetNameInput.value : '');
+                    spreadsheetFormData.append('spreadsheet_sheet', (modalBody.querySelector('[data-omo-stats-spreadsheet-sheet]') || {}).value || '');
+                    spreadsheetFormData.append('spreadsheet_mode', spreadsheetModeSelect ? spreadsheetModeSelect.value : 'cell');
+                    spreadsheetFormData.append('spreadsheet_cell', (modalBody.querySelector('[data-omo-stats-spreadsheet-cell]') || {}).value || '');
+                    var spreadsheetFrequencyField = spreadsheetModeSelect && spreadsheetModeSelect.value === 'table'
+                        ? modalBody.querySelector('[data-omo-stats-spreadsheet-table-frequency]')
+                        : modalBody.querySelector('[data-omo-stats-spreadsheet-frequency]');
+                    spreadsheetFormData.append('spreadsheet_frequency', spreadsheetFrequencyField ? spreadsheetFrequencyField.value : '');
+                    spreadsheetFormData.append('spreadsheet_range', (modalBody.querySelector('[data-omo-stats-spreadsheet-range]') || {}).value || '');
+                    spreadsheetFormData.append('spreadsheet_date_column', (modalBody.querySelector('[data-omo-stats-spreadsheet-date-column]') || {}).value || '');
+                    spreadsheetFormData.append('spreadsheet_value_columns', (modalBody.querySelector('[data-omo-stats-spreadsheet-value-columns]') || {}).value || '');
+                    applyButton.disabled = true;
+                    postFormData(spreadsheetFormData).then(function () {
                         if (typeof window.commonTopbarCloseModal === 'function') {
                             window.commonTopbarCloseModal();
                         }

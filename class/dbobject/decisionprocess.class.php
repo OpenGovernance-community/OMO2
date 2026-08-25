@@ -18,6 +18,7 @@ class DecisionProcess extends DbObject
     const METHOD_SIMPLE_VOTE = 'simple_vote';
     const METHOD_MAJORITY_JUDGMENT = 'majority_judgment';
     const METHOD_CONSENT = 'consent';
+    const METHOD_CONSULTATION_ONLY = 'consultation_only';
 
     public function getAnonymousPseudonymForUser($userId)
     {
@@ -235,6 +236,12 @@ class DecisionProcess extends DbObject
                 'response_shape' => 'consent_objection',
                 'supports_multiple_proposals' => true,
             ],
+            self::METHOD_CONSULTATION_ONLY => [
+                'label' => 'Consultation seule',
+                'description' => 'Les participants consultent, discutent et peuvent proposer sans phase de vote.',
+                'response_shape' => 'none',
+                'supports_multiple_proposals' => true,
+            ],
         ];
     }
 
@@ -320,6 +327,139 @@ class DecisionProcess extends DbObject
         return $saveResult;
     }
 
+    public function canMoveInOrganizationContext(int $organizationId, int $userId): bool
+    {
+        $organizationId = (int)$organizationId;
+        $userId = (int)$userId;
+
+        if (
+            $organizationId <= 0
+            || $userId <= 0
+            || (int)$this->getId() <= 0
+            || (int)$this->get('IDorganization') !== $organizationId
+        ) {
+            return false;
+        }
+
+        if ($userId === (int)$this->get('IDuser')) {
+            return true;
+        }
+
+        $participant = \dbObject\DecisionParticipant::findByDecisionAndUser((int)$this->getId(), $userId);
+        return $participant instanceof \dbObject\DecisionParticipant
+            && (int)$participant->get('active') === 1
+            && \dbObject\DecisionParticipant::normalizeRole($participant->get('role')) === \dbObject\DecisionParticipant::ROLE_OWNER;
+    }
+
+    public function moveToHolonContext(int $organizationId, int $targetHolonId, int $userId): array
+    {
+        $organizationId = (int)$organizationId;
+        $targetHolonId = (int)$targetHolonId;
+        $userId = (int)$userId;
+
+        if ($targetHolonId <= 0) {
+            return [
+                'status' => false,
+                'text' => 'Destination invalide.',
+            ];
+        }
+
+        if (!$this->canMoveInOrganizationContext($organizationId, $userId)) {
+            return [
+                'status' => false,
+                'text' => 'Accès refusé.',
+            ];
+        }
+
+        $organization = new \dbObject\Organization();
+        $targetHolon = new \dbObject\Holon();
+        if (
+            !$organization->load($organizationId)
+            || !$targetHolon->load($targetHolonId)
+            || !(bool)$targetHolon->get('active')
+            || !(bool)$targetHolon->get('visible')
+            || !$organization->containsHolon($targetHolon)
+            || !$targetHolon->isAllowed('CAN_CREATE_DECISION', false, $userId)
+        ) {
+            return [
+                'status' => false,
+                'text' => 'Accès refusé pour cette destination.',
+            ];
+        }
+
+        $currentHolonId = (int)$this->get('IDholon');
+        if ($currentHolonId === $targetHolonId) {
+            return [
+                'status' => false,
+                'text' => 'Cette prise de décision est déjà à cette destination.',
+            ];
+        }
+
+        $previousVisibilityType = self::normalizeVisibilityType($this->get('visibility_type'));
+        $this->set('IDholon', $targetHolonId);
+        $resolvedVisibility = $this->resolveVisibilityRuleInput($previousVisibilityType);
+        if (($resolvedVisibility['status'] ?? false) !== true) {
+            $resolvedVisibility = $this->resolveVisibilityRuleInput(self::getDefaultVisibilityType());
+        }
+        if (($resolvedVisibility['status'] ?? false) !== true) {
+            $this->set('IDholon', $currentHolonId > 0 ? $currentHolonId : null);
+            return [
+                'status' => false,
+                'text' => trim((string)($resolvedVisibility['text'] ?? 'Visibilité invalide pour cette destination.')),
+            ];
+        }
+
+        $pdo = self::getPdo();
+        $ownsTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+        try {
+            if ($ownsTransaction) {
+                $pdo->beginTransaction();
+            }
+
+            $this->set('visibility_type', (string)($resolvedVisibility['type'] ?? self::getDefaultVisibilityType()));
+            $saveResult = $this->save();
+            if (!is_array($saveResult) || empty($saveResult['status'])) {
+                throw new \RuntimeException('decision_move_save_failed');
+            }
+
+            $visibilityResult = \dbObject\ObjectVisibility::saveSingleRule(
+                self::getVisibilityObjectType(),
+                (int)$this->getId(),
+                $organizationId,
+                (string)($resolvedVisibility['type'] ?? self::getDefaultVisibilityType()),
+                $resolvedVisibility['holonId'] ?? null
+            );
+            if (!is_array($visibilityResult) || empty($visibilityResult['status'])) {
+                throw new \RuntimeException(trim((string)($visibilityResult['text'] ?? 'decision_move_visibility_failed')));
+            }
+
+            if ($ownsTransaction) {
+                $pdo->commit();
+            }
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            $this->set('IDholon', $currentHolonId > 0 ? $currentHolonId : null);
+            $this->set('visibility_type', $previousVisibilityType);
+            return [
+                'status' => false,
+                'text' => trim((string)$exception->getMessage()) !== ''
+                    ? trim((string)$exception->getMessage())
+                    : 'Impossible de déplacer cette prise de décision.',
+            ];
+        }
+
+        return [
+            'status' => true,
+            'text' => 'Prise de décision déplacée.',
+            'previousHolonId' => $currentHolonId,
+            'targetHolonId' => $targetHolonId,
+            'visibilityType' => (string)$this->get('visibility_type'),
+        ];
+    }
+
     public function resolveAutomaticStatus($referenceDateTime = null)
     {
         $currentStatus = self::normalizeStatus($this->get('status'));
@@ -330,6 +470,7 @@ class DecisionProcess extends DbObject
         }
 
         $consultationStart = self::normalizeDateTimeValue($this->get('consultation_start_at'));
+        $consultationEnd = self::normalizeDateTimeValue($this->get('consultation_end_at'));
         $evaluationStart = self::normalizeDateTimeValue($this->get('evaluation_start_at'));
         $evaluationEnd = self::normalizeDateTimeValue($this->get('evaluation_end_at'));
         $resultsPublishedAt = self::normalizeDateTimeValue($this->get('results_published_at'));
@@ -362,6 +503,18 @@ class DecisionProcess extends DbObject
 
         if ($archivedAt instanceof \DateTimeInterface && $archivedAt <= $referenceDateTime) {
             $derivedStatus = self::STATUS_ARCHIVED;
+        }
+
+        $consultationEndedWithoutCurrentEvaluation = $consultationEnd instanceof \DateTimeInterface
+            && $consultationEnd <= $referenceDateTime
+            && (!$evaluationStart instanceof \DateTimeInterface || $evaluationStart > $referenceDateTime);
+        if (
+            $consultationEndedWithoutCurrentEvaluation
+            && in_array($currentStatus, [self::STATUS_DRAFT, self::STATUS_SCHEDULED, self::STATUS_CONSULTATION], true)
+        ) {
+            $hasUpcomingEvaluation = ($evaluationStart instanceof \DateTimeInterface && $evaluationStart > $referenceDateTime)
+                || ($evaluationEnd instanceof \DateTimeInterface && $evaluationEnd > $referenceDateTime);
+            return $hasUpcomingEvaluation ? self::STATUS_SCHEDULED : self::STATUS_DRAFT;
         }
 
         return self::getStatusRank($derivedStatus) > self::getStatusRank($currentStatus)
@@ -1183,6 +1336,75 @@ class DecisionProcess extends DbObject
     public function hasSubmittedResponses()
     {
         return $this->getSubmittedResponseCount() > 0;
+    }
+
+    public function hasProposalsFromOtherPeople()
+    {
+        $decisionId = (int)$this->getId();
+        $ownerUserId = (int)$this->get('IDuser');
+        if ($decisionId <= 0) {
+            return false;
+        }
+
+        return (int)self::fetchValue(
+            'SELECT COUNT(*)
+             FROM `decision_proposal`
+             WHERE `IDdecision_process` = :decision_process_id
+               AND (
+                    `IDuser_author` IS NULL
+                    OR `IDuser_author` != :owner_user_id
+               )',
+            [
+                'decision_process_id' => $decisionId,
+                'owner_user_id' => $ownerUserId,
+            ]
+        ) > 0;
+    }
+
+    public function hasProposalDiscussionMessages()
+    {
+        $decisionId = (int)$this->getId();
+        $organizationId = (int)$this->get('IDorganization');
+        if ($decisionId <= 0 || $organizationId <= 0) {
+            return false;
+        }
+
+        return (int)self::fetchValue(
+            'SELECT COUNT(*)
+             FROM `chat_message` message
+             INNER JOIN `chat_thread` thread ON thread.`id` = message.`IDchat_thread`
+             INNER JOIN `decision_proposal` proposal ON proposal.`id` = thread.`subject_id`
+             WHERE proposal.`IDdecision_process` = :decision_process_id
+               AND thread.`IDorganization` = :organization_id
+               AND thread.`subject_type` = :subject_type
+               AND message.`message_type` = :message_type',
+            [
+                'decision_process_id' => $decisionId,
+                'organization_id' => $organizationId,
+                'subject_type' => \dbObject\ChatThread::SUBJECT_DECISION_PROPOSAL,
+                'message_type' => \dbObject\ChatMessage::TYPE_USER,
+            ]
+        ) > 0;
+    }
+
+    public function hasParticipationPreventingNamedVote()
+    {
+        return $this->hasSubmittedResponses()
+            || $this->hasProposalsFromOtherPeople()
+            || $this->hasProposalDiscussionMessages();
+    }
+
+    public function canEnableNamedVote($referenceDateTime = null)
+    {
+        if ((int)$this->getId() <= 0) {
+            return true;
+        }
+
+        if ($this->hasEvaluationStarted($referenceDateTime)) {
+            return false;
+        }
+
+        return !$this->hasParticipationPreventingNamedVote();
     }
 
     public function resolveManagerCloseAction()
@@ -2452,6 +2674,24 @@ class DecisionProcess extends DbObject
         }
 
         return $this->hasEvaluationStarted($referenceDateTime);
+    }
+
+    public function isConsultationOpen($referenceDateTime = null)
+    {
+        $status = self::normalizeStatus($this->get('status'));
+        if (in_array($status, [self::STATUS_RESULTS, self::STATUS_ARCHIVED], true)) {
+            return false;
+        }
+
+        return $this->hasConsultationStarted($referenceDateTime)
+            && !$this->hasConsultationEnded($referenceDateTime)
+            && !$this->hasEvaluationStarted($referenceDateTime);
+    }
+
+    public function isParticipationInterfaceOpen($referenceDateTime = null)
+    {
+        return $this->isConsultationOpen($referenceDateTime)
+            || $this->isParticipationOpen($referenceDateTime);
     }
 
     public function hasEvaluationStarted($referenceDateTime = null)

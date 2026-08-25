@@ -133,9 +133,20 @@ if (!$decision instanceof DecisionProcess || empty($availability['allowed'])) {
     omoDecisionConsultationProposalRedirect($context, 'denied');
 }
 
-$proposalTitle = trim((string)($_POST['consultation_proposal_title'] ?? ''));
-$proposalDescription = trim((string)($_POST['consultation_proposal_description'] ?? ''));
-$proposalInfoUrl = omoDecisionNormalizeProposalInfoUrl($_POST['consultation_proposal_info_url'] ?? '');
+$decisionGroup = ($context['decisionGroup'] ?? null) instanceof \dbObject\DecisionGroup
+    ? $context['decisionGroup']
+    : $decision->getPrimaryGroup(false);
+$methodConfig = omoDecisionBuildMethodConfig($decisionGroup instanceof \dbObject\DecisionGroup ? $decisionGroup : $decision);
+$proposalContent = omoDecisionNormalizeProposalContent($methodConfig['proposal_content'] ?? null);
+$proposalTitle = $proposalContent['title'] ? trim((string)($_POST['consultation_proposal_title'] ?? '')) : '';
+$proposalDescription = $proposalContent['description'] ? trim((string)($_POST['consultation_proposal_description'] ?? '')) : '';
+$proposalInfoUrl = $proposalContent['url']
+    ? omoDecisionNormalizeProposalInfoUrl($_POST['consultation_proposal_info_url'] ?? '')
+    : null;
+if (!$proposalContent['title']) {
+    $proposalTitle = trim(preg_replace('/\s+/u', ' ', strip_tags($proposalDescription)));
+    $proposalTitle = mb_substr($proposalTitle, 0, 190, 'UTF-8');
+}
 if ($proposalTitle === '') {
     omoDecisionConsultationProposalRedirect($context, 'empty');
 }

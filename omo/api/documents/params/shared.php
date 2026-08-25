@@ -70,8 +70,6 @@ if (!function_exists('omoDocumentsParamsSourceLang')) {
             'documents.params.feedback.collabora_incomplete' => ['text' => 'Une URL publique Collabora est necessaire pour activer cette integration.', 'context' => 'Error shown when Collabora configuration is incomplete.'],
             'documents.params.status.collabora_requires_storage' => ['text' => 'Configurez d’abord un stockage de documents pour activer Collabora.', 'context' => 'Status shown when Collabora cannot be enabled without document storage.'],
             'documents.params.feedback.collabora_cleared' => ['text' => 'Configuration Collabora supprimee.', 'context' => 'Success message returned after clearing Collabora configuration.'],
-            'documents.params.feedback.collabora_server_in_use' => ['text' => 'Le serveur Collabora ne peut pas etre change tant que cette organisation possede des documents cooperatifs.', 'context' => 'Error shown when changing Collabora configuration with existing documents.'],
-            'documents.params.feedback.collabora_config_in_use' => ['text' => 'Cette configuration Collabora ne peut pas etre supprimee tant que l organisation possede des documents cooperatifs.', 'context' => 'Error shown when clearing Collabora configuration with existing documents.'],
             'documents.params.field.default_edit_visibility' => ['text' => 'Edition par defaut', 'context' => 'Label of the default document edit visibility selector in Documents settings.'],
             'documents.params.field.default_visibility_hint' => ['text' => 'Valeur initiale proposee lors de la creation d un document.', 'context' => 'Hint shown below the default visibility selector in Documents settings.'],
             'documents.params.field.default_edit_visibility_hint' => ['text' => 'Definit qui peut modifier un nouveau document par defaut.', 'context' => 'Hint shown below the default edit visibility selector in Documents settings.'],
@@ -676,7 +674,6 @@ if (!function_exists('omoDocumentsParamsStoreCollaboraConfig')) {
         }
 
         $parameters = $organizationApplication->getParametersArray();
-        $currentConfig = omoDocumentsParamsGetCollaboraConfig($organization, $organizationApplication);
         $documentStorageConfig = omoDocumentsParamsGetDocumentStorageConfig($organization, $organizationApplication);
         $enabled = !empty($values['collabora_enabled']);
         $storageEnabled = !empty($values['document_storage_enabled']);
@@ -687,10 +684,6 @@ if (!function_exists('omoDocumentsParamsStoreCollaboraConfig')) {
         }
 
         if ($clearConfig) {
-            if ($storageEnabled && \dbObject\Document::organizationHasCollaboraDocuments($organizationId) && $currentConfig['baseUrl'] !== '') {
-                return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.collabora_config_in_use'));
-            }
-
             unset($parameters['collabora']);
             $organizationApplication->setParametersArray($parameters);
             $saveResult = $organizationApplication->save();
@@ -719,14 +712,6 @@ if (!function_exists('omoDocumentsParamsStoreCollaboraConfig')) {
 
         if ($internalUrlInput !== '' && $config['internalUrl'] === '') {
             return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.collabora_invalid'));
-        }
-
-        if (
-            $currentConfig['baseUrl'] !== ''
-            && !hash_equals($currentConfig['baseUrl'], $config['baseUrl'])
-            && \dbObject\Document::organizationHasCollaboraDocuments($organizationId)
-        ) {
-            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.feedback.collabora_server_in_use'));
         }
 
         $parameters['collabora'] = $config;

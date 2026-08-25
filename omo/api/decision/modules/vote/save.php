@@ -2,6 +2,7 @@
 require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once dirname(__DIR__) . '/context.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__) . '/consultation_only/shared.php';
 require_once dirname(__DIR__, 5) . '/common/notification_center.php';
 
 use dbObject\DbObject;
@@ -39,6 +40,12 @@ $targetHolonId = (int)$context['targetHolonId'];
 $decisionId = $decision instanceof DecisionProcess ? (int)$decision->getId() : 0;
 $coreLocked = $decision instanceof DecisionProcess ? $decision->hasEvaluationStarted() : false;
 $startDatesLocked = $coreLocked || ($decision instanceof DecisionProcess && $decision->hasSubmittedResponses());
+$evaluationMethod = DecisionProcess::normalizeEvaluationMethod((string)($_POST['evaluation_method'] ?? DecisionProcess::METHOD_SIMPLE_VOTE));
+if (!in_array($evaluationMethod, [DecisionProcess::METHOD_SIMPLE_VOTE, DecisionProcess::METHOD_CONSULTATION_ONLY], true)) {
+    omoDecisionModuleJsonResponse(400, ['status' => false, 'message' => 'Methode de scrutin invalide.']);
+}
+$consultationOnly = $evaluationMethod === DecisionProcess::METHOD_CONSULTATION_ONLY;
+$methodKey = $consultationOnly ? omoDecisionConsultationOnlyGetMethodKey() : omoDecisionVoteGetMethodKey();
 if ($createGroupRequested && $coreLocked) {
     omoDecisionModuleJsonResponse(409, ['status' => false, 'message' => 'Il n’est plus possible d’ajouter une question après le début du vote.']);
 }
@@ -48,6 +55,7 @@ $processDescription = trim((string)($_POST['process_description'] ?? ''));
 $title = trim((string)($_POST['title'] ?? ''));
 $description = trim((string)($_POST['description'] ?? ''));
 $decisionType = DecisionProcess::normalizeDecisionType((string)($_POST['decision_type'] ?? DecisionProcess::TYPE_DECISION));
+$decisionType = $consultationOnly ? DecisionProcess::TYPE_CONSULTATION : $decisionType;
 $visibilityType = DecisionProcess::normalizeVisibilityType((string)($_POST['visibility_type'] ?? DecisionProcess::getDefaultVisibilityType()));
 $status = DecisionProcess::normalizeStatus((string)($_POST['status'] ?? DecisionProcess::STATUS_DRAFT));
 $consultationStartAt = trim((string)($_POST['consultation_start_at'] ?? ''));
@@ -61,6 +69,11 @@ $allowAnonymousVotes = !empty($_POST['allow_anonymous_votes']);
 $allowConsultationProposals = !empty($_POST['allow_consultation_proposals']);
 $allowProposalDiscussions = !empty($_POST['allow_proposal_discussions']);
 $showLiveResults = !empty($_POST['show_live_results']);
+$proposalContentInput = omoDecisionNormalizeProposalContent([
+    'title' => !empty($_POST['proposal_content_title']),
+    'description' => !empty($_POST['proposal_content_description']),
+    'url' => !empty($_POST['proposal_content_url']),
+]);
 $voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig([
     'enabled' => !empty($_POST['vote_weight_enabled']),
     'question' => $_POST['vote_weight_question'] ?? '',
@@ -70,7 +83,8 @@ $proposalItems = omoDecisionBuildProposalItemsFromInput(
     $_POST['proposals'] ?? [],
     $_POST['proposal_descriptions'] ?? [],
     $_POST['proposal_info_urls'] ?? [],
-    $_POST['proposal_ids'] ?? []
+    $_POST['proposal_ids'] ?? [],
+    $proposalContentInput
 );
 
 if (!$coreLocked && $processTitle === '') {
@@ -91,10 +105,10 @@ if ($decision instanceof DecisionProcess) {
     $existingMethod = $selectedGroup instanceof DecisionGroup
         ? DecisionProcess::normalizeEvaluationMethod($selectedGroup->get('evaluation_method'))
         : DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method'));
-    if (!$createGroupRequested && $existingMethod !== DecisionProcess::METHOD_SIMPLE_VOTE) {
+    if (!$createGroupRequested && $existingMethod !== $evaluationMethod) {
         omoDecisionModuleJsonResponse(400, [
             'status' => false,
-            'message' => 'Cette prise de decision n utilise pas le module de vote simple.',
+            'message' => 'Cette prise de decision n utilise pas ce module.',
         ]);
     }
 } else {
@@ -104,7 +118,14 @@ if ($decision instanceof DecisionProcess) {
     if ($targetHolonId > 0) {
         $decision->set('IDholon', $targetHolonId);
     }
-    $decision->set('evaluation_method', DecisionProcess::METHOD_SIMPLE_VOTE);
+    $decision->set('evaluation_method', $evaluationMethod);
+}
+
+if ($consultationOnly && !in_array($status, [DecisionProcess::STATUS_DRAFT, DecisionProcess::STATUS_SCHEDULED, DecisionProcess::STATUS_CONSULTATION], true)) {
+    omoDecisionModuleJsonResponse(400, [
+        'status' => false,
+        'message' => 'Une consultation seule ne peut pas entrer en phase de vote.',
+    ]);
 }
 
 $resolvedVisibility = $decision->resolveVisibilityRuleInput($visibilityType);
@@ -116,7 +137,9 @@ if (!$coreLocked && ($resolvedVisibility['status'] ?? false) !== true) {
 }
 
 $currentVoteConfig = $decision instanceof DecisionProcess
-    ? omoDecisionVoteBuildConfig($selectedGroup instanceof DecisionGroup ? $selectedGroup : $decision->get('parameters'))
+    ? ($consultationOnly
+        ? omoDecisionConsultationOnlyBuildConfig($selectedGroup instanceof DecisionGroup ? $selectedGroup : $decision->get('parameters'))
+        : omoDecisionVoteBuildConfig($selectedGroup instanceof DecisionGroup ? $selectedGroup : $decision->get('parameters')))
     : [
         'choice_mode' => $choiceMode,
         'max_choices' => $maxChoices,
@@ -125,10 +148,32 @@ $currentVoteConfig = $decision instanceof DecisionProcess
         'allow_consultation_proposals' => $allowConsultationProposals,
         'allow_proposal_discussions' => $allowProposalDiscussions,
         'show_live_results' => $showLiveResults,
+        'proposal_content' => $proposalContentInput,
         'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
         'vote_weight_question' => (string)$voteWeightConfig['question'],
         'vote_weight_options' => (array)$voteWeightConfig['options'],
     ];
+if (!$consultationOnly && $decision instanceof DecisionProcess
+    && $coreLocked
+    && (
+        $isAnonymous !== !empty($currentVoteConfig['is_anonymous'])
+        || $allowAnonymousVotes !== !empty($currentVoteConfig['allow_anonymous_votes'])
+    )) {
+    omoDecisionModuleJsonResponse(409, [
+        'status' => false,
+        'message' => 'Les conditions d anonymat ne peuvent plus etre modifiees apres le debut du vote.',
+    ]);
+}
+if (!$consultationOnly && $decision instanceof DecisionProcess
+    && !$coreLocked
+    && !empty($currentVoteConfig['is_anonymous'])
+    && !$isAnonymous
+    && !$decision->canEnableNamedVote()) {
+    omoDecisionModuleJsonResponse(409, [
+        'status' => false,
+        'message' => 'Le vote nominatif ne peut plus etre active apres une participation.',
+    ]);
+}
 $canEditProposals = !$coreLocked;
 $allowsEmptyProposalList = omoDecisionCanSaveEmptyConsultationProposalList(
     !$coreLocked ? $allowConsultationProposals : !empty($currentVoteConfig['allow_consultation_proposals']),
@@ -136,7 +181,7 @@ $allowsEmptyProposalList = omoDecisionCanSaveEmptyConsultationProposalList(
     $consultationEndAt
 );
 
-if ($canEditProposals && count($proposalItems) < 2 && !(count($proposalItems) === 0 && $allowsEmptyProposalList)) {
+if (!$consultationOnly && $canEditProposals && count($proposalItems) < 2 && !(count($proposalItems) === 0 && $allowsEmptyProposalList)) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
         'message' => count($proposalItems) === 0 && (!$coreLocked ? $allowConsultationProposals : !empty($currentVoteConfig['allow_consultation_proposals']))
@@ -165,7 +210,7 @@ try {
     }
 
     $decision->set('status', $status);
-    $decision->set('evaluation_method', DecisionProcess::METHOD_SIMPLE_VOTE);
+    $decision->set('evaluation_method', $evaluationMethod);
     if (!$coreLocked) {
         $decision->set('title', $processTitle);
         $decision->set('description', $processDescription !== '' ? $processDescription : null);
@@ -175,8 +220,8 @@ try {
     if (!$startDatesLocked) {
         $decision->set('consultation_start_at', $consultationStartAt !== '' ? $consultationStartAt : null);
         $decision->set('consultation_end_at', $consultationEndAt !== '' ? $consultationEndAt : null);
-        $decision->set('evaluation_start_at', $evaluationStartAt !== '' ? $evaluationStartAt : null);
-        $decision->set('evaluation_end_at', $evaluationEndAt !== '' ? $evaluationEndAt : null);
+        $decision->set('evaluation_start_at', !$consultationOnly && $evaluationStartAt !== '' ? $evaluationStartAt : null);
+        $decision->set('evaluation_end_at', !$consultationOnly && $evaluationEndAt !== '' ? $evaluationEndAt : null);
     }
 
     $decisionGroup = $selectedGroup instanceof DecisionGroup ? $selectedGroup : null;
@@ -185,18 +230,18 @@ try {
     $isPrimaryGroup = (!$decisionGroup && !$createAdditionalGroup) || ($primaryGroup instanceof DecisionGroup && (int)$primaryGroup->getId() === (int)$decisionGroup->getId());
     $existingVoteParameters = omoDecisionModuleGetMethodParameters(
         $decisionGroup instanceof DecisionGroup ? $decisionGroup->get('parameters') : $decision->get('parameters'),
-        omoDecisionVoteGetMethodKey()
+        $methodKey
     );
     $proposalCount = $canEditProposals
         ? count($proposalItems)
         : (int)($existingVoteParameters['proposal_count'] ?? count($proposalItems));
     $extraParameters = [
         'proposal_count' => $proposalCount,
-        'created_from_module' => 'vote',
+        'created_from_module' => $consultationOnly ? 'consultation_only' : 'vote',
     ];
 
     if (!$coreLocked) {
-        $parameters = omoDecisionVoteMergeConfigIntoParameters($decisionGroup instanceof DecisionGroup ? $decisionGroup->get('parameters') : $decision->get('parameters'), [
+        $configToSave = [
             'choice_mode' => $choiceMode,
             'max_choices' => $choiceMode === 'multiple' ? $maxChoices : 1,
             'is_anonymous' => $isAnonymous,
@@ -204,17 +249,21 @@ try {
             'allow_consultation_proposals' => $allowConsultationProposals,
             'allow_proposal_discussions' => $allowProposalDiscussions,
             'show_live_results' => $showLiveResults,
+            'proposal_content' => $proposalContentInput,
             'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
             'vote_weight_question' => (string)$voteWeightConfig['question'],
             'vote_weight_options' => (array)$voteWeightConfig['options'],
-        ], $extraParameters);
+        ];
+        $parameters = $consultationOnly
+            ? omoDecisionConsultationOnlyMergeConfigIntoParameters($decisionGroup instanceof DecisionGroup ? $decisionGroup->get('parameters') : $decision->get('parameters'), $configToSave, $extraParameters)
+            : omoDecisionVoteMergeConfigIntoParameters($decisionGroup instanceof DecisionGroup ? $decisionGroup->get('parameters') : $decision->get('parameters'), $configToSave, $extraParameters);
     } else {
         $parameters = omoDecisionModuleDecodeParameters($decisionGroup instanceof DecisionGroup ? $decisionGroup->get('parameters') : $decision->get('parameters'));
-        $lockedVoteParameters = omoDecisionModuleGetMethodParameters($parameters, omoDecisionVoteGetMethodKey());
+        $lockedVoteParameters = omoDecisionModuleGetMethodParameters($parameters, $methodKey);
         foreach ($extraParameters as $extraKey => $extraValue) {
             $lockedVoteParameters[$extraKey] = $extraValue;
         }
-        $parameters[omoDecisionVoteGetMethodKey()] = $lockedVoteParameters;
+        $parameters[$methodKey] = $lockedVoteParameters;
     }
 
     $saveDecision = $decision->save();
@@ -225,7 +274,7 @@ try {
     $decisionId = (int)$decision->getId();
     if (!$decisionGroup instanceof DecisionGroup) {
         if ($createAdditionalGroup) {
-            $decisionGroup = $decision->addDecisionGroup(DecisionProcess::METHOD_SIMPLE_VOTE, $decisionType, $title, $description !== '' ? $description : null);
+            $decisionGroup = $decision->addDecisionGroup($evaluationMethod, $decisionType, $title, $description !== '' ? $description : null);
             $isPrimaryGroup = false;
         } else {
             $decisionGroup = $decision->ensurePrimaryGroup();
@@ -240,7 +289,7 @@ try {
         $decisionGroup->set('description', $description !== '' ? $description : null);
         $decisionGroup->set('decision_type', $decisionType);
     }
-    $decisionGroup->set('evaluation_method', DecisionProcess::METHOD_SIMPLE_VOTE);
+    $decisionGroup->set('evaluation_method', $evaluationMethod);
     $decisionGroup->set('parameters', $parameters);
     $saveDecisionGroup = $decisionGroup->save();
     if (empty($saveDecisionGroup['status'])) {
@@ -251,7 +300,7 @@ try {
     if ($isPrimaryGroup) {
         $decision->set('decision_type', $decisionType);
         $decision->set('parameters', $parameters);
-        $decision->set('evaluation_method', DecisionProcess::METHOD_SIMPLE_VOTE);
+        $decision->set('evaluation_method', $evaluationMethod);
         $saveDecisionMirror = $decision->save();
         if (empty($saveDecisionMirror['status'])) {
             throw new RuntimeException('decision_mirror_save_failed');
@@ -298,7 +347,7 @@ try {
             $proposal->set('info_url', $proposalItem['info_url'] ?? null);
             $proposal->set('position', $index + 1);
             $proposalParameters = omoDecisionModuleDecodeParameters($proposal->get('parameters'));
-            $proposalParameters[omoDecisionVoteGetMethodKey()] = ['ballot_position' => $index + 1];
+            $proposalParameters[$methodKey] = ['ballot_position' => $index + 1];
             $proposal->set('parameters', $proposalParameters);
             $proposal->set('active', 1);
 
@@ -385,6 +434,6 @@ omoDecisionModuleJsonResponse(200, [
         ? 'Scrutin mis a jour.'
         : 'Scrutin cree.',
     'decisionId' => $decisionId,
-    'redirectUrl' => omoDecisionBuildEditorUrl($organizationId, $targetHolonId, $decisionId, DecisionProcess::METHOD_SIMPLE_VOTE, 'manage', $decisionGroupId),
+    'redirectUrl' => omoDecisionBuildEditorUrl($organizationId, $targetHolonId, $decisionId, $evaluationMethod, 'manage', $decisionGroupId),
     'drawerTitle' => 'Prises de decision',
 ]);

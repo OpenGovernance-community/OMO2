@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__, 3) . '/common/spreadsheet.php';
 
 use dbObject\StatIndicator;
 use dbObject\StatIndicatorReferencePoint;
@@ -89,6 +90,7 @@ foreach (StatIndicator::getMeasurementFrequencyCatalog() as $frequency) {
 }
 
 $isEthercalcSource = $indicatorId > 0 && $indicator->isEthercalcSource();
+$isSpreadsheetSource = $indicatorId > 0 && $indicator->isSpreadsheetSource();
 $ethercalcDocuments = [];
 if ($isEthercalcSource) {
     $documents = new ArrayDocument();
@@ -106,6 +108,31 @@ if ($isEthercalcSource) {
     foreach ($documents as $document) {
         if ($document instanceof Document && $document->isEthercalcDocument() && $document->getEthercalcRoomId() !== '') {
             $ethercalcDocuments[] = $document;
+        }
+    }
+}
+$spreadsheetDocuments = [];
+if ($isSpreadsheetSource) {
+    $documents = new ArrayDocument();
+    $documents->load([
+        'where' => [
+            ['field' => 'IDorganization', 'value' => $organizationId],
+            ['field' => 'active', 'value' => 1],
+        ],
+        'orderBy' => [
+            ['field' => 'title', 'dir' => 'ASC'],
+            ['field' => 'id', 'dir' => 'ASC'],
+        ],
+    ]);
+    $documents->filterVisibleForCurrentViewer($organizationId);
+    foreach ($documents as $document) {
+        if (
+            $document instanceof Document
+            && $document->isUploadedFile()
+            && $document->hasStoredFile()
+            && omoSpreadsheetSupportsFilename($document->getStoredFileDownloadName())
+        ) {
+            $spreadsheetDocuments[] = $document;
         }
     }
 }
@@ -156,7 +183,7 @@ ob_start();
                     <input type="text" class="generic-form-control" name="ethercalc_cell" value="<?= omoApiEscape((string)$indicator->get('ethercalc_cell')) ?>" placeholder="A1" required>
                 </label>
                 <label class="omo-stats-field generic-form-field">
-                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.frequency')) ?></span>
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.frequency_measurement')) ?></span>
                     <select class="generic-form-control" name="ethercalc_frequency">
                         <?php foreach (StatIndicator::getEthercalcFrequencyCatalog() as $frequency => $label): ?>
                             <option value="<?= omoApiEscape($frequency) ?>"<?= $frequency === StatIndicator::normalizeEthercalcFrequency($indicator->get('ethercalc_frequency')) ? ' selected' : '' ?>><?= omoApiEscape(omoStatsT('stats.import.ethercalc.frequency_' . $frequency)) ?></option>
@@ -176,10 +203,69 @@ ob_start();
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.value_columns')) ?></span>
                     <input type="text" class="generic-form-control" name="ethercalc_value_columns" value="<?= omoApiEscape((string)$indicator->get('ethercalc_value_column')) ?>" placeholder="B,C" required>
                 </label>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.frequency_sync')) ?></span>
+                    <select class="generic-form-control" name="ethercalc_frequency">
+                        <?php foreach (StatIndicator::getEthercalcFrequencyCatalog() as $frequency => $label): ?>
+                            <option value="<?= omoApiEscape($frequency) ?>"<?= $frequency === StatIndicator::normalizeEthercalcFrequency($indicator->get('ethercalc_frequency')) ? ' selected' : '' ?>><?= omoApiEscape(omoStatsT('stats.import.ethercalc.frequency_' . $frequency)) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
             <?php endif; ?>
         </div>
     </section>
 <?php endif; ?>
+<?php if ($isSpreadsheetSource): ?>
+    <section class="generic-section generic-section--stack generic-form-section">
+        <div class="generic-form-section__heading">
+            <div class="generic-form-section__copy">
+                <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.source_title')) ?></h3>
+            </div>
+        </div>
+        <div class="generic-form-grid">
+            <label class="omo-stats-field generic-form-field">
+                <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.document')) ?></span>
+                <select class="generic-form-control" name="spreadsheet_document_id" required>
+                    <?php foreach ($spreadsheetDocuments as $document): ?>
+                        <option value="<?= (int)$document->getId() ?>"<?= (int)$document->getId() === (int)$indicator->get('IDdocument') ? ' selected' : '' ?>><?= omoApiEscape((string)$document->get('title')) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label class="omo-stats-field generic-form-field">
+                <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.sheet')) ?></span>
+                <input type="text" class="generic-form-control" name="spreadsheet_sheet" value="<?= omoApiEscape((string)$indicator->get('spreadsheet_sheet')) ?>" placeholder="Feuille1">
+            </label>
+            <?php if ($indicator->isSpreadsheetCellSource()): ?>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.cell')) ?></span>
+                    <input type="text" class="generic-form-control" name="spreadsheet_cell" value="<?= omoApiEscape((string)$indicator->get('spreadsheet_cell')) ?>" placeholder="A1" required>
+                </label>
+            <?php else: ?>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.range')) ?></span>
+                    <input type="text" class="generic-form-control" name="spreadsheet_range" value="<?= omoApiEscape((string)$indicator->get('spreadsheet_range')) ?>" placeholder="A1:C100" required>
+                </label>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.date_column')) ?></span>
+                    <input type="text" class="generic-form-control" name="spreadsheet_date_column" value="<?= omoApiEscape((string)$indicator->get('spreadsheet_date_column')) ?>" placeholder="A" required>
+                </label>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.value_columns')) ?></span>
+                    <input type="text" class="generic-form-control" name="spreadsheet_value_columns" value="<?= omoApiEscape((string)$indicator->get('spreadsheet_value_column')) ?>" placeholder="B,C" required>
+                </label>
+            <?php endif; ?>
+            <label class="omo-stats-field generic-form-field">
+                <span class="generic-form-label"><?= omoApiEscape(omoStatsT($indicator->isSpreadsheetCellSource() ? 'stats.import.spreadsheet.frequency_measurement' : 'stats.import.spreadsheet.frequency_sync')) ?></span>
+                <select class="generic-form-control" name="spreadsheet_frequency">
+                    <?php foreach (StatIndicator::getSpreadsheetFrequencyCatalog() as $frequency => $label): ?>
+                        <option value="<?= omoApiEscape($frequency) ?>"<?= $frequency === StatIndicator::normalizeSpreadsheetFrequency($indicator->get('spreadsheet_frequency')) ? ' selected' : '' ?>><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.frequency_' . $frequency)) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+        </div>
+    </section>
+<?php endif; ?>
+<?php if (!$isEthercalcSource && !$isSpreadsheetSource): ?>
 <section class="generic-section generic-section--stack generic-form-section omo-stats-schedule" data-omo-stats-schedule>
     <div class="omo-stats-schedule__heading generic-form-section__heading">
         <div class="generic-form-section__copy">
@@ -202,6 +288,7 @@ ob_start();
         </label>
     </div>
 </section>
+<?php endif; ?>
 <section class="generic-section generic-section--stack generic-form-section omo-stats-ceiling-editor" data-omo-stats-ceiling-editor hidden>
     <div class="omo-stats-ceiling-editor__heading generic-form-section__copy">
         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.form.ceiling_title')) ?></h3>

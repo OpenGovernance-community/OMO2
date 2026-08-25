@@ -16,6 +16,7 @@ if (!function_exists('omoDecisionParamsSourceLang')) {
             'decisions.params.field.simple_vote' => ['text' => 'Vote simple', 'context' => 'Simple vote availability label.'],
             'decisions.params.field.majority_judgment' => ['text' => 'Jugement majoritaire', 'context' => 'Majority judgment availability label.'],
             'decisions.params.field.consent' => ['text' => 'Consentement', 'context' => 'Consent availability label.'],
+            'decisions.params.field.consultation_only' => ['text' => 'Consultation seule', 'context' => 'Consultation only availability label.'],
             'decisions.params.field.governance_enabled' => ['text' => 'Activer les decisions hors reorg', 'context' => 'Governance workflow availability label.'],
             'decisions.params.field.governance_method' => ['text' => 'Methode de validation', 'context' => 'Default evaluation method for governance workflows.'],
             'decisions.params.option.governance_method.simple_vote' => ['text' => 'Vote simple', 'context' => 'Simple vote option for governance workflow settings.'],
@@ -63,6 +64,7 @@ if (!function_exists('omoDecisionParamsGetDefaultConfig')) {
                 DecisionProcess::METHOD_SIMPLE_VOTE => true,
                 DecisionProcess::METHOD_MAJORITY_JUDGMENT => true,
                 DecisionProcess::METHOD_CONSENT => true,
+                DecisionProcess::METHOD_CONSULTATION_ONLY => true,
             ],
             'governance' => [
                 'enabled' => false,
@@ -88,7 +90,7 @@ if (!function_exists('omoDecisionParamsNormalizeConfig')) {
         foreach ($defaults['methods'] as $method => $enabled) {
             $normalizedMethods[$method] = array_key_exists($method, $methods)
                 ? !empty($methods[$method])
-                : (!$hasMethods && $enabled);
+                : ((!$hasMethods || $method === DecisionProcess::METHOD_CONSULTATION_ONLY) && $enabled);
         }
         $question = trim((string)($governance['question'] ?? ''));
         if (mb_strlen($question, 'UTF-8') > 1000) {

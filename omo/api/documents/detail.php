@@ -148,7 +148,6 @@ if ($document->isUploadedFile() && $document->canOpenWithCollabora()) {
 }
 $hasCollaborativeFrame = $document->isEtherpadDocument()
     || $document->isEthercalcDocument()
-    || $document->isCollaboraDocument()
     || $uploadedFileCollaboraAvailable;
 $drawerTitle = trim((string)$document->get('title'));
 $drawerDescription = $createdAt instanceof DateTimeInterface ? $formatDateTime($createdAt) : '';
@@ -166,7 +165,7 @@ $canManageDocument = !$document->isPvDocument()
 $canEditDocumentContent = !$document->isPvDocument()
     && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
 $canEditDocument = !$document->isPvDocument()
-    && ($canManageDocument || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && !$document->isCollaboraDocument() && $canEditDocumentContent));
+    && ($canManageDocument || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && $canEditDocumentContent));
 $editUrl = $canEditDocument
     ? '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)
         . ($holonId > 0 ? '&cid=' . rawurlencode((string)$holonId) : '')
@@ -646,6 +645,24 @@ if ($associatedEvent instanceof \dbObject\Event) {
 
 .omo-document-detail__content .omo-document-file__download {
     justify-self: flex-start;
+}
+
+.omo-document-detail__content .omo-document-file__media {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.omo-document-detail__content .omo-document-file__media--image img {
+    display: block;
+    max-width: 100%;
+    max-height: 65vh;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+}
+
+.omo-document-detail__content .omo-document-file__media--audio audio {
+    width: min(100%, 560px);
 }
 
 .omo-document-detail__content .omo-document-etherpad,
