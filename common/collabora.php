@@ -327,22 +327,42 @@ if (!function_exists('omoCollaboraFetchDiscovery')) {
     }
 }
 
-if (!function_exists('omoCollaboraBuildBlankDocumentFile')) {
-    function omoCollaboraBuildBlankDocumentFile(string $title): array
+if (!function_exists('omoCollaboraBuildBlankOpenDocumentFile')) {
+    function omoCollaboraBuildBlankOpenDocumentFile(string $title, string $kind): array
     {
         $safeTitle = trim($title) !== '' ? trim($title) : 'Document';
+        $kind = in_array($kind, array('presentation', 'drawing'), true) ? $kind : 'document';
+        $definitions = array(
+            'document' => array(
+                'extension' => 'odt',
+                'mime' => 'application/vnd.oasis.opendocument.text',
+                'body' => '<office:text><text:p>' . htmlspecialchars($safeTitle, ENT_XML1 | ENT_QUOTES, 'UTF-8') . '</text:p></office:text>',
+            ),
+            'presentation' => array(
+                'extension' => 'odp',
+                'mime' => 'application/vnd.oasis.opendocument.presentation',
+                'body' => '<office:presentation><draw:page draw:name="page1"><draw:frame svg:x="2cm" svg:y="2cm" svg:width="24cm" svg:height="4cm"><draw:text-box><text:p>' . htmlspecialchars($safeTitle, ENT_XML1 | ENT_QUOTES, 'UTF-8') . '</text:p></draw:text-box></draw:frame></draw:page></office:presentation>',
+            ),
+            'drawing' => array(
+                'extension' => 'odg',
+                'mime' => 'application/vnd.oasis.opendocument.graphics',
+                'body' => '<office:drawing><draw:page draw:name="page1"><draw:frame svg:x="2cm" svg:y="2cm" svg:width="24cm" svg:height="4cm"><draw:text-box><text:p>' . htmlspecialchars($safeTitle, ENT_XML1 | ENT_QUOTES, 'UTF-8') . '</text:p></draw:text-box></draw:frame></draw:page></office:drawing>',
+            ),
+        );
+        $definition = $definitions[$kind];
+        $namespace = 'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0"';
+        $entries = array(
+            'mimetype' => $definition['mime'],
+            'content.xml' => '<?xml version="1.0" encoding="UTF-8"?><office:document-content ' . $namespace . ' office:version="1.3"><office:automatic-styles/><office:body>' . $definition['body'] . '</office:body></office:document-content>',
+            'styles.xml' => '<?xml version="1.0" encoding="UTF-8"?><office:document-styles ' . $namespace . ' office:version="1.3"><office:styles><style:style style:name="Standard" style:family="paragraph"/></office:styles><office:automatic-styles/><office:master-styles/></office:document-styles>',
+            'meta.xml' => '<?xml version="1.0" encoding="UTF-8"?><office:document-meta ' . $namespace . ' office:version="1.3"><office:meta><dc:title>' . htmlspecialchars($safeTitle, ENT_XML1 | ENT_QUOTES, 'UTF-8') . '</dc:title></office:meta></office:document-meta>',
+            'settings.xml' => '<?xml version="1.0" encoding="UTF-8"?><office:document-settings ' . $namespace . ' office:version="1.3"><office:settings/></office:document-settings>',
+            'META-INF/manifest.xml' => '<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.3"><manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.' . ($kind === 'document' ? 'text' : ($kind === 'presentation' ? 'presentation' : 'graphics')) . '"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="settings.xml" manifest:media-type="text/xml"/></manifest:manifest>',
+        );
         $tmpPath = tempnam(sys_get_temp_dir(), 'omo-collabora-');
         if (!is_string($tmpPath) || $tmpPath === '') {
             return array('status' => false, 'text' => 'Impossible de preparer le document Collabora.');
         }
-
-        $entries = array(
-            '[Content_Types].xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>',
-            '_rels/.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
-            'word/_rels/document.xml.rels' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
-            'word/document.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>' . htmlspecialchars($safeTitle, ENT_XML1 | ENT_QUOTES, 'UTF-8') . '</w:t></w:r></w:p><w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>',
-            'word/styles.xml' => '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>',
-        );
 
         if (class_exists('ZipArchive', false)) {
             $zip = new ZipArchive();
@@ -353,21 +373,20 @@ if (!function_exists('omoCollaboraBuildBlankDocumentFile')) {
             foreach ($entries as $entryName => $entryContents) {
                 $zip->addFromString($entryName, $entryContents);
             }
+            if (defined('ZipArchive::CM_STORE')) {
+                $zip->setCompressionName('mimetype', ZipArchive::CM_STORE);
+            }
             $zip->close();
         } else {
             $localDirectory = '';
             $centralDirectory = '';
             $offset = 0;
             foreach ($entries as $entryName => $entryContents) {
-                $entryName = (string)$entryName;
-                $entryContents = (string)$entryContents;
-                $nameLength = strlen($entryName);
-                $contentLength = strlen($entryContents);
-                $checksum = crc32($entryContents);
-                $localDirectory .= pack('VvvvvvVVVvv', 0x04034b50, 20, 0, 0, 0, 0, $checksum, $contentLength, $contentLength, $nameLength, 0);
-                $localDirectory .= $entryName . $entryContents;
-                $centralDirectory .= pack('VvvvvvvVVVvvvvvVV', 0x02014b50, 20, 20, 0, 0, 0, 0, $checksum, $contentLength, $contentLength, $nameLength, 0, 0, 0, 0, 0, $offset);
-                $centralDirectory .= $entryName;
+                $nameLength = strlen((string)$entryName);
+                $contentLength = strlen((string)$entryContents);
+                $checksum = crc32((string)$entryContents);
+                $localDirectory .= pack('VvvvvvVVVvv', 0x04034b50, 20, 0, 0, 0, 0, $checksum, $contentLength, $contentLength, $nameLength, 0) . $entryName . $entryContents;
+                $centralDirectory .= pack('VvvvvvvVVVvvvvvVV', 0x02014b50, 20, 20, 0, 0, 0, 0, $checksum, $contentLength, $contentLength, $nameLength, 0, 0, 0, 0, 0, $offset) . $entryName;
                 $offset += 30 + $nameLength + $contentLength;
             }
             $centralOffset = strlen($localDirectory);
@@ -382,9 +401,17 @@ if (!function_exists('omoCollaboraBuildBlankDocumentFile')) {
         return array(
             'status' => true,
             'tmpName' => $tmpPath,
-            'name' => $safeTitle . '.docx',
-            'type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'name' => $safeTitle . '.' . $definition['extension'],
+            'type' => $definition['mime'],
             'size' => (int)filesize($tmpPath),
         );
+    }
+}
+
+if (!function_exists('omoCollaboraBuildBlankDocumentFile')) {
+    function omoCollaboraBuildBlankDocumentFile(string $title, string $kind = 'document'): array
+    {
+        $normalizedKind = in_array($kind, array('presentation', 'drawing'), true) ? $kind : 'document';
+        return omoCollaboraBuildBlankOpenDocumentFile($title, $normalizedKind);
     }
 }

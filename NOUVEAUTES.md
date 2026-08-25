@@ -2,8 +2,35 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-25
+
+- Un nouveau mode Consultation seule permet de recueillir, discuter et enrichir des propositions sans annoncer ni planifier de vote. Apres la fin de cette phase, il peut etre converti vers le vote simple, le jugement majoritaire ou le consentement afin de planifier le scrutin et d en regler les parametres.
+
+- Les libelles des prises de decision distinguent maintenant une decision indicative de la phase d elaboration des propositions, pour ne plus confondre cette phase avec le mode Consultation seule.
+
+- Apres une phase d elaboration terminee sans vote planifie, le statut revient a En preparation. Un vote planifie reste Planifie et un vote termine conserve son statut de fin de scrutin.
+
+- L aide de l option de vote anonyme individuel reste alignee a la fin de son libelle et s ouvre a cote du bouton d aide.
+
+- Le passage d un scrutin anonyme a un scrutin nominatif est bloque des qu une personne externe a propose, discute ou vote. Le retour au vote anonyme reste possible avant le debut du vote ; ces conditions sont ensuite gelees.
+
+- Les nouveaux scrutins sont anonymes par defaut. L option Vote nominatif revele a present le choix permettant a chaque participant de rester anonyme individuellement, avec une aide expliquant que son nom ne sera jamais affiche dans les resultats.
+
+- Les erreurs de creation ou d enregistrement d un scrutin sont maintenant affichees dans la notification de la topbar, plutot qu en bas du formulaire.
+
+- Les proprietaires de prises de decision peuvent maintenant les deplacer depuis le menu d actions. Le selecteur affiche les destinations autorisees en couleur et les autres holons en gris, selon le droit `CAN_CREATE_DECISION`.
+- Les documents collaboratifs, presentations collaboratives et dessins collaboratifs sont maintenant crees comme de vrais fichiers ODT, ODP ou ODG stockes avec les fichiers telecharges. Ils peuvent donc etre modifies, remplaces et supprimes selon le meme cycle de vie.
+- Les fichiers telecharges compatibles avec Collabora utilisent maintenant une icone adaptee a leur nature : image, video, document texte, tableur, presentation ou dessin. Le remplacement d un fichier existant demande une confirmation et supprime l ancienne version du stockage.
+- Les modeles collaboratifs sont stockes directement comme des fichiers televerses ; le type Collabora historique n est plus gere. La creation d un modele ne tente plus de televerser deux fois son fichier temporaire.
+- Les images telechargees sont maintenant affichees directement dans la fiche Document, et les fichiers audio reconnus utilisent une icone dediee avec un lecteur integre.
+
 ## 2026-08-24
 
+- Pendant la consultation d un jugement majoritaire, les mentions et les autres controles de vote sont masques. L action Participer ouvre directement cette interface de consultation, y compris depuis les liens personnels ; les participants peuvent uniquement lire les propositions, les discuter et, si autorise, en ajouter.
+- Les prises de decision permettent maintenant de choisir depuis la fenetre de parametres du scrutin si les propositions utilisent un titre, une description et/ou une URL. Le resume et la liste des propositions se mettent a jour immediatement, la description devient le champ HTML principal sans titre et n est alors plus dupliquee dans Details, et le bouton Details est masque lorsque les URL sont desactivees.
+- Les panneaux de configuration des sources statistiques sont correctement masques selon le mode choisi, et les indicateurs crees depuis un tableau utilisent les entetes de colonnes comme libelles lorsqu une ligne d entete est detectee.
+- Les indicateurs provenant d une cellule affichent uniquement leur rythme de mesure, tandis que les indicateurs provenant d une plage affichent uniquement leur frequence de synchronisation.
+- Les indicateurs peuvent maintenant lire une cellule ou un tableau dans les documents tableurs stockes sur Nextcloud ou kDrive, avec une synchronisation periodique executee par le cron.
 - Les checklists sont maintenant presentees comme des processus, avec une nouvelle icone et des libelles adaptes dans les applications, formulaires, droits et PV.
 - L icone partagee des indicateurs utilise maintenant le visuel compteur de vitesse dans les applications et les blocs d indicateurs integres.
 - L icone partagee des projets utilise maintenant le visuel fusee dans les applications et les blocs de projets integres.

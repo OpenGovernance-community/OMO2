@@ -35,21 +35,22 @@ if (!function_exists('commonDecisionParticipationGetSourceLang')) {
             'decisions.public.method.simple_vote' => ['text' => 'Vote simple', 'context' => 'Public label for the simple vote method.'],
             'decisions.public.method.majority_judgment' => ['text' => 'Jugement majoritaire', 'context' => 'Public label for the majority judgment method.'],
             'decisions.public.method.consent' => ['text' => 'Consentement', 'context' => 'Public label for the consent method.'],
+            'decisions.public.method.consultation_only' => ['text' => 'Consultation seule', 'context' => 'Public label for the consultation only method.'],
             'decisions.public.method.unknown' => ['text' => 'Mode de décision', 'context' => 'Fallback public label for an unknown decision method.'],
             'decisions.public.type.consultation' => ['text' => 'consultation', 'context' => 'Public label for a consultation process.'],
             'decisions.public.type.decision' => ['text' => 'décision', 'context' => 'Public label for a decision process.'],
             'decisions.public.timeline.now' => ['text' => 'Maintenant', 'context' => 'Current moment label on the public decision timeline.'],
-            'decisions.public.timeline.consultation_start' => ['text' => 'Début de la consultation', 'context' => 'Consultation start milestone label.'],
-            'decisions.public.timeline.consultation_end' => ['text' => 'Fin de la consultation', 'context' => 'Consultation end milestone label.'],
+            'decisions.public.timeline.consultation_start' => ['text' => 'Début de la phase d’élaboration', 'context' => 'Elaboration start milestone label.'],
+            'decisions.public.timeline.consultation_end' => ['text' => 'Fin de la phase d’élaboration', 'context' => 'Elaboration end milestone label.'],
             'decisions.public.timeline.evaluation_start' => ['text' => 'Début du vote', 'context' => 'Evaluation start milestone label.'],
             'decisions.public.timeline.evaluation_end' => ['text' => 'Fin du vote', 'context' => 'Evaluation end milestone label.'],
             'decisions.public.timeline.results' => ['text' => 'Résultats', 'context' => 'Results milestone label.'],
             'decisions.public.timeline.title' => ['text' => 'Étapes du scrutin', 'context' => 'Public timeline accordion title.'],
             'decisions.public.timeline.hint' => ['text' => 'Afficher la représentation graphique', 'context' => 'Public timeline accordion hint.'],
-            'decisions.public.timeline.waiting_consultation' => ['text' => 'En attente du début de la consultation le {date}', 'context' => 'Timeline summary before consultation starts.'],
+            'decisions.public.timeline.waiting_consultation' => ['text' => 'En attente du début de la phase d’élaboration le {date}', 'context' => 'Timeline summary before elaboration starts.'],
             'decisions.public.timeline.waiting_vote' => ['text' => 'En attente du début du vote le {date}', 'context' => 'Timeline summary before evaluation starts.'],
-            'decisions.public.timeline.consultation_until' => ['text' => 'En consultation jusqu’au {date}', 'context' => 'Timeline summary while consultation is open with an end date.'],
-            'decisions.public.timeline.consultation_open' => ['text' => 'En consultation', 'context' => 'Timeline summary while consultation is open without an end date.'],
+            'decisions.public.timeline.consultation_until' => ['text' => 'En élaboration jusqu’au {date}', 'context' => 'Timeline summary while elaboration is open with an end date.'],
+            'decisions.public.timeline.consultation_open' => ['text' => 'En élaboration', 'context' => 'Timeline summary while elaboration is open without an end date.'],
             'decisions.public.timeline.vote_until' => ['text' => 'Vote ouvert jusqu’au {date}', 'context' => 'Timeline summary while voting is open with an end date.'],
             'decisions.public.timeline.vote_open' => ['text' => 'Vote ouvert', 'context' => 'Timeline summary while voting is open without an end date.'],
             'decisions.public.timeline.finished' => ['text' => 'Terminé', 'context' => 'Timeline summary after the decision is finished.'],
@@ -65,8 +66,8 @@ if (!function_exists('commonDecisionParticipationGetSourceLang')) {
             'decisions.public.options.mixed_anonymity' => ['text' => 'Le caractère anonyme peut varier selon les blocs.', 'context' => 'Public option indicating mixed anonymity settings.'],
             'decisions.public.options.proposals_all' => ['text' => 'Vous pouvez faire des propositions durant la consultation.', 'context' => 'Public option when proposals are allowed in every block.'],
             'decisions.public.options.proposals_some' => ['text' => 'Vous pouvez faire des propositions durant la consultation pour certains blocs.', 'context' => 'Public option when proposals are allowed in some blocks.'],
-            'decisions.public.options.discussions_all' => ['text' => 'Vous pouvez discuter les propositions pendant la consultation', 'context' => 'Public option when discussions are allowed in every block.'],
-            'decisions.public.options.discussions_some' => ['text' => 'Vous pouvez discuter les propositions pendant la consultation pour certains blocs', 'context' => 'Public option when discussions are allowed in some blocks.'],
+            'decisions.public.options.discussions_all' => ['text' => 'Vous pouvez discuter les propositions pendant la phase d’élaboration', 'context' => 'Public option when discussions are allowed in every block.'],
+            'decisions.public.options.discussions_some' => ['text' => 'Vous pouvez discuter les propositions pendant la phase d’élaboration pour certains blocs', 'context' => 'Public option when discussions are allowed in some blocks.'],
             'decisions.public.options.discussions_anonymous' => ['text' => ' de façon anonyme.', 'context' => 'Suffix when discussion anonymity is mandatory.'],
             'decisions.public.options.discussions_optional_anonymity' => ['text' => ', anonymement si vous le souhaitez.', 'context' => 'Suffix when participants may discuss anonymously.'],
             'decisions.public.context.organizer' => ['text' => 'Organisateur', 'context' => 'Public context card title for the organizer.'],
@@ -204,6 +205,9 @@ function commonDecisionParticipationGetMethodLabel($method)
     }
     if ($method === DecisionProcess::METHOD_CONSENT) {
         return commonDecisionParticipationT('decisions.public.method.consent');
+    }
+    if ($method === DecisionProcess::METHOD_CONSULTATION_ONLY) {
+        return commonDecisionParticipationT('decisions.public.method.consultation_only');
     }
 
     return commonDecisionParticipationT('decisions.public.method.unknown');
@@ -684,7 +688,14 @@ function commonDecisionParticipationRenderGroupBlocks(DecisionProcess $decision,
             if ($definition && !empty($definition['shared_file']) && is_file((string)$definition['shared_file'])) {
                 require_once (string)$definition['shared_file'];
             }
-            $majorityLegend = $method === DecisionProcess::METHOD_MAJORITY_JUDGMENT
+            $isConsultationPhase = $decision->hasConsultationStarted()
+                && !$decision->hasEvaluationStarted()
+                && !in_array(
+                    DecisionProcess::normalizeStatus($decision->get('status')),
+                    [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED],
+                    true
+                );
+            $majorityLegend = $method === DecisionProcess::METHOD_MAJORITY_JUDGMENT && !$isConsultationPhase
                 ? commonDecisionParticipationRenderMajorityJudgmentLegend($group)
                 : '';
             ?>
@@ -1035,7 +1046,7 @@ if ($requiresPublicAccessEmail && (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'PO
             ]);
         }
 
-        $redirectIntent = $decision->isParticipationOpen() ? 'participate' : 'view';
+        $redirectIntent = $decision->isParticipationInterfaceOpen() ? 'participate' : 'view';
         $redirectUrl = trim((string)$resolveResult['participant']->getPublicAccessUrl($redirectIntent));
         if ($redirectUrl === '') {
             omoDecisionModuleJsonResponse(500, [

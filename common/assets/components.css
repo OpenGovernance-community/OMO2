@@ -690,6 +690,17 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
     min-width: 0;
 }
 
+.generic-inline-help {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--generic-space-2);
+    max-width: 100%;
+}
+
+.generic-inline-help > label {
+    min-width: 0;
+}
+
 .generic-meta {
     margin: 0;
     color: var(--color-text-light, #64748b);

@@ -170,13 +170,37 @@ $sourceLang = [
         'text' => 'Pad coopératif',
         'context' => 'Alternative text for the Etherpad document type icon.',
     ],
-    'documents.icon.collabora' => [
-        'text' => 'Document Coopératif',
-        'context' => 'Alternative text for the Collabora document type icon.',
-    ],
     'documents.icon.ethercalc' => [
         'text' => 'Tableur collaboratif',
         'context' => 'Alternative text for the EtherCalc document type icon.',
+    ],
+    'documents.icon.image' => [
+        'text' => 'Image',
+        'context' => 'Alternative text for image file icons.',
+    ],
+    'documents.icon.video' => [
+        'text' => 'Video',
+        'context' => 'Alternative text for video file icons.',
+    ],
+    'documents.icon.audio' => [
+        'text' => 'Audio',
+        'context' => 'Alternative text for audio file icons.',
+    ],
+    'documents.icon.text' => [
+        'text' => 'Document texte',
+        'context' => 'Alternative text for text document icons.',
+    ],
+    'documents.icon.spreadsheet' => [
+        'text' => 'Tableur',
+        'context' => 'Alternative text for spreadsheet file icons.',
+    ],
+    'documents.icon.presentation' => [
+        'text' => 'Presentation',
+        'context' => 'Alternative text for presentation file icons.',
+    ],
+    'documents.icon.drawing' => [
+        'text' => 'Dessin',
+        'context' => 'Alternative text for drawing file icons.',
     ],
     'documents.action.loading' => [
         'text' => 'Chargement...',
@@ -545,6 +569,7 @@ foreach ($documents as $document) {
         'title' => $documentTitle,
         'listTitle' => $listTitle,
         'documentType' => $document->getDocumentType(),
+        'storedFileKind' => $document->isUploadedFile() ? $document->getStoredFileKind() : '',
         'isMissingUploadedFile' => $document->hasMissingUploadedFile(),
         'canExportPdf' => $document->isPvDocument(),
         'pdfExportUrl' => $document->isPvDocument()
@@ -1015,15 +1040,21 @@ if (!is_string($documentsPayload)) {
                 const omoDocumentsLinkIconUrl = '/omo/assets/images/documents/link.png';
                 const omoDocumentsPvIconUrl = '/omo/assets/images/documents/pv.png';
                  const omoDocumentsEtherpadIconUrl = '/omo/assets/images/documents/collaborative.png';
-                 const omoDocumentsCollaboraIconUrl = '/omo/assets/images/documents/collaborative.png';
                  const omoDocumentsEthercalcIconUrl = '/omo/assets/images/documents/spreadsheet.png';
+                const omoDocumentsStoredKindIconUrls = {
+                    image: '/omo/assets/images/documents/image.png',
+                    video: '/omo/assets/images/documents/video.png',
+                    audio: '/omo/assets/images/documents/audio.png',
+                    text: '/omo/assets/images/documents/text.png',
+                    spreadsheet: '/omo/assets/images/documents/spreadsheet-kind.png',
+                    presentation: '/omo/assets/images/documents/presentation.png',
+                    drawing: '/omo/assets/images/documents/drawing.png'
+                };
                 const omoDocumentsPvType = 'pv';
                  const omoDocumentsEtherpadType = 'etherpad';
-                 const omoDocumentsCollaboraType = 'collabora';
                  const omoDocumentsEthercalcType = 'ethercalc';
                 const omoDocumentsMissingUploadedFileLabel = <?= json_encode(omoDocumentsScopeT('documents.upload_missing.badge'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                  const omoDocumentsEtherpadIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.etherpad'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-                 const omoDocumentsCollaboraIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.collabora'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                  const omoDocumentsEthercalcIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.ethercalc'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
                 const omoDocumentsGetIconUrl = function (documentItem) {
@@ -1036,7 +1067,8 @@ if (!is_string($documentsPayload)) {
                     }
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === 'uploaded_file') {
-                        return omoDocumentsDownloadIconUrl;
+                        const storedFileKind = String(documentItem.storedFileKind || '').trim().toLowerCase();
+                        return omoDocumentsStoredKindIconUrls[storedFileKind] || omoDocumentsDownloadIconUrl;
                     }
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
@@ -1045,10 +1077,6 @@ if (!is_string($documentsPayload)) {
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEtherpadType) {
                         return omoDocumentsEtherpadIconUrl;
-                    }
-
-                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsCollaboraType) {
-                        return omoDocumentsCollaboraIconUrl;
                     }
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEthercalcType) {
@@ -1068,7 +1096,17 @@ if (!is_string($documentsPayload)) {
                     }
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === 'uploaded_file') {
-                        return 'Fichier a telecharger';
+                        const storedFileKind = String(documentItem.storedFileKind || '').trim().toLowerCase();
+                        const storedKindLabels = {
+                            image: <?= json_encode(omoDocumentsScopeT('documents.icon.image'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                            video: <?= json_encode(omoDocumentsScopeT('documents.icon.video'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                            audio: <?= json_encode(omoDocumentsScopeT('documents.icon.audio'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                            text: <?= json_encode(omoDocumentsScopeT('documents.icon.text'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                            spreadsheet: <?= json_encode(omoDocumentsScopeT('documents.icon.spreadsheet'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                            presentation: <?= json_encode(omoDocumentsScopeT('documents.icon.presentation'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                            drawing: <?= json_encode(omoDocumentsScopeT('documents.icon.drawing'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                        };
+                        return storedKindLabels[storedFileKind] || 'Fichier a telecharger';
                     }
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
@@ -1077,10 +1115,6 @@ if (!is_string($documentsPayload)) {
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEtherpadType) {
                         return omoDocumentsEtherpadIconLabel;
-                    }
-
-                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsCollaboraType) {
-                        return omoDocumentsCollaboraIconLabel;
                     }
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEthercalcType) {

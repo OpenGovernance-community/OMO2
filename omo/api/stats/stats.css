@@ -81,7 +81,11 @@
 
 .omo-stats-picker[hidden],
 .omo-stats-picker__field[hidden],
-.omo-stats-picker__tabs [hidden] {
+.omo-stats-picker__tabs [hidden],
+.omo-stats-picker [data-omo-stats-ethercalc-cell-fields][hidden],
+.omo-stats-picker [data-omo-stats-ethercalc-table-fields][hidden],
+.omo-stats-picker [data-omo-stats-spreadsheet-cell-fields][hidden],
+.omo-stats-picker [data-omo-stats-spreadsheet-table-fields][hidden] {
     display: none !important;
 }
 

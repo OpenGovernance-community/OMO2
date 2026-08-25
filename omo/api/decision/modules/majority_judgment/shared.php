@@ -212,6 +212,7 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildConfig')) {
                 || array_key_exists('allow_consultation_proposals', $decisionOrParameters)
                 || array_key_exists('allow_proposal_discussions', $decisionOrParameters)
                 || array_key_exists('show_live_results', $decisionOrParameters)
+                || array_key_exists('proposal_content', $decisionOrParameters)
             );
 
         if ($isConfigLikeArray) {
@@ -262,11 +263,12 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildConfig')) {
         $voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig($methodParameters);
 
         return [
-            'is_anonymous' => !empty($methodParameters['is_anonymous']),
+            'is_anonymous' => !array_key_exists('is_anonymous', $methodParameters) || !empty($methodParameters['is_anonymous']),
             'allow_anonymous_votes' => !empty($methodParameters['allow_anonymous_votes']),
             'allow_consultation_proposals' => !empty($methodParameters['allow_consultation_proposals']),
             'allow_proposal_discussions' => !array_key_exists('allow_proposal_discussions', $methodParameters) || !empty($methodParameters['allow_proposal_discussions']),
             'show_live_results' => !empty($methodParameters['show_live_results']),
+            'proposal_content' => omoDecisionNormalizeProposalContent($methodParameters['proposal_content'] ?? null),
             'scale_size' => count($activeScores),
             'mentions' => $mentions,
             'all_mentions' => $allMentions,
@@ -292,7 +294,7 @@ if (!function_exists('omoDecisionMajorityJudgmentGetMentions')) {
         if ($decisionOrParameters === null) {
             $decisionOrParameters = [
                 'mention_options' => omoDecisionMajorityJudgmentGetDefaultMentionOptions(),
-                'is_anonymous' => 0,
+                'is_anonymous' => 1,
                 'allow_consultation_proposals' => 0,
             ];
         }
@@ -413,6 +415,7 @@ if (!function_exists('omoDecisionMajorityJudgmentMergeConfigIntoParameters')) {
         $methodParameters['allow_consultation_proposals'] = !empty($normalizedConfig['allow_consultation_proposals']) ? 1 : 0;
         $methodParameters['allow_proposal_discussions'] = !empty($normalizedConfig['allow_proposal_discussions']) ? 1 : 0;
         $methodParameters['show_live_results'] = !empty($normalizedConfig['show_live_results']) ? 1 : 0;
+        $methodParameters['proposal_content'] = omoDecisionNormalizeProposalContent($normalizedConfig['proposal_content'] ?? ($methodParameters['proposal_content'] ?? null));
         unset($methodParameters['live_results_anonymous']);
         $methodParameters['mention_customization_enabled'] = !empty($normalizedConfig['mention_customization_enabled']) ? 1 : 0;
         $methodParameters['scale_size'] = (int)count((array)($normalizedConfig['active_scores'] ?? []));

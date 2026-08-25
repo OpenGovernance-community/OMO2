@@ -44,6 +44,7 @@ $governance = $config['governance'];
             <label class="generic-checkbox"><input type="checkbox" name="methods[simple_vote]" value="1"<?= !empty($methods['simple_vote']) ? ' checked' : '' ?>><span><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.simple_vote'), ENT_QUOTES, 'UTF-8') ?></span></label>
             <label class="generic-checkbox"><input type="checkbox" name="methods[majority_judgment]" value="1"<?= !empty($methods['majority_judgment']) ? ' checked' : '' ?>><span><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.majority_judgment'), ENT_QUOTES, 'UTF-8') ?></span></label>
             <label class="generic-checkbox"><input type="checkbox" name="methods[consent]" value="1"<?= !empty($methods['consent']) ? ' checked' : '' ?>><span><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.consent'), ENT_QUOTES, 'UTF-8') ?></span></label>
+            <label class="generic-checkbox"><input type="checkbox" name="methods[consultation_only]" value="1"<?= !empty($methods['consultation_only']) ? ' checked' : '' ?>><span><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.consultation_only'), ENT_QUOTES, 'UTF-8') ?></span></label>
         </section>
 
         <?php if ($canUseGovernance): ?>

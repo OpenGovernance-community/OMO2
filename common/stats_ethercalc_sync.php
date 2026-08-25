@@ -151,7 +151,16 @@ if (!function_exists('omoStatsEthercalcReadTable')) {
         }
 
         $measurements = [];
-        for ($rowIndex = $startRow; $rowIndex <= $endRow; $rowIndex += 1) {
+        $dataStartRow = $startRow;
+        $headerLabel = '';
+        $firstRow = $result['rows'][$startRow] ?? [];
+        $firstDate = omoStatsEthercalcParseDate($firstRow[$dateColumnIndex] ?? null);
+        $firstValue = omoStatsEthercalcParseDecimal($firstRow[$valueColumnIndex] ?? null);
+        if (!($firstDate instanceof \DateTimeInterface) || $firstValue === null) {
+            $headerLabel = trim((string)($firstRow[$valueColumnIndex] ?? ''));
+            $dataStartRow += 1;
+        }
+        for ($rowIndex = $dataStartRow; $rowIndex <= $endRow; $rowIndex += 1) {
             $row = $result['rows'][$rowIndex] ?? [];
             $measuredAt = omoStatsEthercalcParseDate($row[$dateColumnIndex] ?? null);
             $value = omoStatsEthercalcParseDecimal($row[$valueColumnIndex] ?? null);
@@ -161,7 +170,7 @@ if (!function_exists('omoStatsEthercalcReadTable')) {
         }
 
         usort($measurements, static fn (array $left, array $right) => $left['measured_at']->getTimestamp() <=> $right['measured_at']->getTimestamp());
-        return ['status' => true, 'measurements' => $measurements];
+        return ['status' => true, 'measurements' => $measurements, 'header_label' => $headerLabel];
     }
 }
 
@@ -207,7 +216,7 @@ if (!function_exists('omoStatsSynchronizeEthercalcIndicator')) {
 
         $saveResult = $indicator->markEthercalcSynced($referenceDate);
         return is_array($saveResult) && !empty($saveResult['status'])
-            ? ['status' => true]
+            ? ['status' => true, 'header_label' => trim((string)($result['header_label'] ?? ''))]
             : ['status' => false, 'text' => 'Impossible de dater la synchronisation EtherCalc.'];
     }
 }
