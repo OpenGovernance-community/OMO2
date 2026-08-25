@@ -10,6 +10,9 @@ $sourceLang = [
     'documents.move.error.organization_not_found' => ['text' => 'Organisation introuvable.', 'context' => 'Error shown when the document organization cannot be loaded.'],
     'documents.move.error.forbidden' => ['text' => 'Vous n’avez pas le droit de déplacer ce document.', 'context' => 'Error shown when the user cannot move the document.'],
     'documents.move.error.no_destination' => ['text' => 'Aucune destination compatible n’a été trouvée pour ce document.', 'context' => 'Error shown when no destination is available.'],
+    'documents.move.error.bulk_not_found' => ['text' => 'Un des documents selectionnes est introuvable.', 'context' => 'Error shown when a selected document cannot be loaded for a bulk move.'],
+    'documents.move.error.bulk_forbidden' => ['text' => 'Vous n avez pas le droit de deplacer tous les documents selectionnes.', 'context' => 'Error shown when the user cannot move every selected document.'],
+    'documents.move.selected_count' => ['text' => '{count} documents selectionnes', 'context' => 'Summary shown when several documents are selected for moving.'],
     'documents.move.field.destination' => ['text' => 'Dossier de destination', 'context' => 'Label shown above the destination picker.'],
     'documents.move.field.search_placeholder' => ['text' => 'Rechercher une destination', 'context' => 'Search placeholder used in the move dialog.'],
     'documents.move.field.holon' => ['text' => 'Holon de destination', 'context' => 'Label shown above the visual holon picker in the move dialog.'],
@@ -30,7 +33,23 @@ function omoDocumentsMoveT($key, array $replace = [])
     return t($key, $replace, $lang, $sourceLang);
 }
 
+$documentIds = [];
+$rawDocumentIds = $_GET['ids'] ?? [];
+if (!is_array($rawDocumentIds)) {
+    $rawDocumentIds = preg_split('/[,\s]+/', (string)$rawDocumentIds, -1, PREG_SPLIT_NO_EMPTY);
+}
+foreach ($rawDocumentIds as $rawDocumentId) {
+    $normalizedDocumentId = (int)$rawDocumentId;
+    if ($normalizedDocumentId > 0 && !in_array($normalizedDocumentId, $documentIds, true)) {
+        $documentIds[] = $normalizedDocumentId;
+    }
+}
 $documentId = (int)($_GET['id'] ?? 0);
+if ($documentId > 0 && !in_array($documentId, $documentIds, true)) {
+    array_unshift($documentIds, $documentId);
+}
+$documentId = (int)($documentIds[0] ?? 0);
+$isBulkMove = count($documentIds) > 1;
 $document = new Document();
 $organization = new Organization();
 $moveData = null;
@@ -56,6 +75,21 @@ if ($documentId <= 0) {
         } elseif (empty($moveData['canMove'])) {
             $errorMessage = omoDocumentsMoveT('documents.move.error.forbidden');
         } else {
+            foreach ($documentIds as $selectedDocumentId) {
+                $selectedDocument = new Document();
+                if (
+                    !$selectedDocument->load($selectedDocumentId)
+                    || (int)$selectedDocument->get('IDorganization') !== $organizationId
+                ) {
+                    $errorMessage = omoDocumentsMoveT('documents.move.error.bulk_not_found');
+                    break;
+                }
+                if (!$selectedDocument->canMoveInOrganizationContext($organizationId, (int)commonGetCurrentUserId())) {
+                    $errorMessage = omoDocumentsMoveT('documents.move.error.bulk_forbidden');
+                    break;
+                }
+            }
+
             $alternativeCount = 0;
             foreach (($moveData['destinations'] ?? array()) as $destination) {
                 if (empty($destination['isCurrentDestination'])) {
@@ -63,8 +97,13 @@ if ($documentId <= 0) {
                 }
             }
 
-            if ($alternativeCount <= 0) {
+            if ($errorMessage === '' && $alternativeCount <= 0) {
                 $errorMessage = omoDocumentsMoveT('documents.move.error.no_destination');
+            }
+
+            if ($errorMessage === '') {
+                $moveData['documentIds'] = $documentIds;
+                $moveData['documentCount'] = count($documentIds);
             }
         }
     }
@@ -76,7 +115,9 @@ if ($documentId <= 0) {
     <form id="omo-document-move-form" class="omo-document-move generic-stack generic-stack--flush">
         <div class="omo-document-move__shell generic-drawer-content">
         <div class="omo-document-move__intro generic-description">
-            <strong><?= omoApiEscape((string)($moveData['document']['title'] ?? '')) ?></strong>
+            <strong><?= omoApiEscape($isBulkMove
+                ? omoDocumentsMoveT('documents.move.selected_count', ['count' => count($documentIds)])
+                : (string)($moveData['document']['title'] ?? '')) ?></strong>
             <span>&rarr;</span>
             <span data-omo-document-move-path></span>
         </div>
@@ -430,6 +471,9 @@ function submitMove(event) {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+            ids: Array.isArray(state.data.documentIds) && state.data.documentIds.length > 0
+                ? state.data.documentIds
+                : [Number(state.data.documentId || 0)],
             targetHolonId: Number(targetDestination.holonId || 0),
             targetParentDocumentId: Number(targetDestination.parentDocumentId || 0)
         })
@@ -447,6 +491,12 @@ function submitMove(event) {
         .then(function (result) {
             if (!result.ok || !result.data || result.data.status !== 'ok') {
                 throw new Error(result.data && result.data.message ? result.data.message : "Impossible de déplacer le document.");
+            }
+
+            if (Array.isArray(state.data.documentIds) && state.data.documentIds.length > 0) {
+                window.dispatchEvent(new CustomEvent('omo-documents-bulk-move-complete', {
+                    detail: {ids: state.data.documentIds}
+                }));
             }
 
             closeMovePopup();

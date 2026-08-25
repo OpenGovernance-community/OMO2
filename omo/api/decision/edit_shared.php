@@ -336,6 +336,14 @@ $baseSourceLang = [
         'text' => 'Déroulement',
         'context' => 'Heading for voting behavior settings in the compact settings summary.',
     ],
+    'decisions.edit.settings.participation' => [
+        'text' => 'Participation et echanges',
+        'context' => 'Heading for proposal participation and discussion settings.',
+    ],
+    'decisions.edit.settings.presentation' => [
+        'text' => 'Presentation du vote',
+        'context' => 'Heading for proposal display settings during voting.',
+    ],
     'decisions.edit.settings.privacy' => [
         'text' => 'Confidentialité et résultats',
         'context' => 'Heading for privacy and result visibility settings in the compact settings summary.',

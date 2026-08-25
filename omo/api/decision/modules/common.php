@@ -830,6 +830,57 @@ if (!function_exists('omoDecisionNormalizeProposalContent')) {
     }
 }
 
+if (!function_exists('omoDecisionProposalTitleIsVisible')) {
+    function omoDecisionProposalTitleIsVisible($proposalContent, $title)
+    {
+        $proposalContent = omoDecisionNormalizeProposalContent($proposalContent);
+        return !empty($proposalContent['title']) && trim((string)$title) !== '';
+    }
+}
+
+if (!function_exists('omoDecisionGetProposalLabel')) {
+    function omoDecisionGetProposalLabel($proposal, $proposalContent)
+    {
+        $title = is_object($proposal) && method_exists($proposal, 'get')
+            ? trim((string)$proposal->get('title'))
+            : '';
+        if (omoDecisionProposalTitleIsVisible($proposalContent, $title)) {
+            return $title;
+        }
+
+        $position = is_object($proposal) && method_exists($proposal, 'get')
+            ? (int)$proposal->get('position')
+            : 0;
+        return $position > 0 ? 'Proposition ' . $position : 'Proposition';
+    }
+}
+
+if (!function_exists('omoDecisionShuffleProposalsForParticipant')) {
+    function omoDecisionShuffleProposalsForParticipant(array $proposals, array $context, $scope = '')
+    {
+        if (count($proposals) < 2) {
+            return $proposals;
+        }
+
+        $participantId = omoDecisionGetContextParticipantId($context);
+        $viewerKey = $participantId > 0
+            ? 'participant:' . $participantId
+            : ((int)($context['currentUserId'] ?? 0) > 0
+                ? 'user:' . (int)$context['currentUserId']
+                : 'token:' . trim((string)($context['publicToken'] ?? '')));
+        $scope = trim((string)$scope);
+        usort($proposals, static function ($left, $right) use ($viewerKey, $scope) {
+            $leftId = is_object($left) && method_exists($left, 'getId') ? (int)$left->getId() : 0;
+            $rightId = is_object($right) && method_exists($right, 'getId') ? (int)$right->getId() : 0;
+            return strcmp(
+                hash('sha256', $scope . '|' . $viewerKey . '|' . $leftId),
+                hash('sha256', $scope . '|' . $viewerKey . '|' . $rightId)
+            );
+        });
+        return $proposals;
+    }
+}
+
 if (!function_exists('omoDecisionRenderProposalContentSettings')) {
     function omoDecisionRenderProposalContentSettings(array $content, $lang, array $sourceLang, $escape, $canEdit, $mode = 'inline')
     {
@@ -908,15 +959,7 @@ if (!function_exists('omoDecisionBuildProposalItemsFromInput')) {
                 $infoUrl = null;
             }
 
-            if (!$proposalContent['title']) {
-                $title = trim(preg_replace('/\s+/u', ' ', strip_tags($description)));
-                if ($title === '' && $infoUrl !== null) {
-                    $title = $infoUrl;
-                }
-                $title = mb_substr($title, 0, 190, 'UTF-8');
-            }
-
-            if ($title === '') {
+            if ($title === '' && $description === '' && $infoUrl === null) {
                 continue;
             }
 
@@ -1430,6 +1473,7 @@ if (!function_exists('omoDecisionBuildProposalDiscussionContextPayload')) {
     {
         $decisionGroup = $context['decisionGroup'] ?? null;
         $decision = $context['decision'] ?? null;
+        $methodConfig = omoDecisionBuildMethodConfig($decisionGroup instanceof DecisionGroup ? $decisionGroup : $decision);
         return [
             'oid' => (int)($context['organizationId'] ?? 0),
             'cid' => (int)($context['targetHolonId'] ?? 0),
@@ -1440,6 +1484,7 @@ if (!function_exists('omoDecisionBuildProposalDiscussionContextPayload')) {
                 : ($decision instanceof DecisionProcess ? trim((string)$decision->get('evaluation_method')) : ''),
             'intent' => 'view',
             'token' => trim((string)($context['publicToken'] ?? '')),
+            'proposalContent' => omoDecisionNormalizeProposalContent($methodConfig['proposal_content'] ?? null),
         ];
     }
 }
@@ -1464,6 +1509,20 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
             . '<script src="/common/choice/decision-notifications.js?v=20260825-topbar-errors" defer></script>'
             . '<script src="/common/choice/proposal-html.js?v=20260824-proposal-content-refresh" defer></script>'
             . '<script src="/common/choice/proposal-discussion.js?v=20260817-generic-actions" defer></script>';
+    }
+}
+
+if (!function_exists('omoDecisionRenderOneProposalAtATimeAssets')) {
+    function omoDecisionRenderOneProposalAtATimeAssets()
+    {
+        static $alreadyRendered = false;
+        if ($alreadyRendered) {
+            return '';
+        }
+
+        $alreadyRendered = true;
+        return '<link rel="stylesheet" href="/common/choice/one-proposal-at-a-time.css?v=20260825-1">'
+            . '<script src="/common/choice/one-proposal-at-a-time.js?v=20260825-1" defer></script>';
     }
 }
 
