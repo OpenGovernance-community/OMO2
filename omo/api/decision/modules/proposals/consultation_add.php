@@ -143,11 +143,7 @@ $proposalDescription = $proposalContent['description'] ? trim((string)($_POST['c
 $proposalInfoUrl = $proposalContent['url']
     ? omoDecisionNormalizeProposalInfoUrl($_POST['consultation_proposal_info_url'] ?? '')
     : null;
-if (!$proposalContent['title']) {
-    $proposalTitle = trim(preg_replace('/\s+/u', ' ', strip_tags($proposalDescription)));
-    $proposalTitle = mb_substr($proposalTitle, 0, 190, 'UTF-8');
-}
-if ($proposalTitle === '') {
+if ($proposalTitle === '' && $proposalDescription === '' && $proposalInfoUrl === null) {
     omoDecisionConsultationProposalRedirect($context, 'empty');
 }
 
@@ -170,7 +166,7 @@ foreach ($decision->getProposals(false) as $proposal) {
 }
 
 $normalizedTitle = omoApiNormalizeLabel($proposalTitle);
-if ($normalizedTitle === '' || isset($existingTitles[$normalizedTitle])) {
+if ($normalizedTitle !== '' && isset($existingTitles[$normalizedTitle])) {
     omoDecisionConsultationProposalRedirect($context, 'duplicate');
 }
 

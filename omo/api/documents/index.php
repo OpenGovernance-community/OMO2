@@ -246,6 +246,10 @@ $sourceLang = [
         'text' => 'Supprimer la selection',
         'context' => 'Bulk action deleting the selected documents.',
     ],
+    'documents.selection.move' => [
+        'text' => 'Deplacer la selection',
+        'context' => 'Bulk action moving the selected documents.',
+    ],
     'documents.selection.confirm_archive' => [
         'text' => 'Archiver les {count} documents selectionnes ? Ils ne seront plus visibles dans la liste.',
         'context' => 'Confirmation shown before bulk archiving documents.',
@@ -789,6 +793,9 @@ if (!is_string($documentsPayload)) {
             <div class="omo-panel-view__aside omo-documents__header-main-actions" data-omo-header-actions>
                 <div class="omo-documents__bulk-actions" data-omo-documents-bulk-actions hidden>
                     <span class="omo-documents__bulk-count" data-omo-documents-bulk-count></span>
+                    <button type="button" class="generic-action-button generic-action-button--secondary omo-documents__bulk-action-button" data-omo-documents-bulk-action="move" title="<?= $escape(omoDocumentsScopeT('documents.selection.move')) ?>" aria-label="<?= $escape(omoDocumentsScopeT('documents.selection.move')) ?>">
+                        <span class="omo-documents__bulk-action-icon omo-documents__bulk-action-icon--move" aria-hidden="true">&#8594;</span>
+                    </button>
                     <button type="button" class="generic-action-button generic-action-button--secondary omo-documents__bulk-action-button" data-omo-documents-bulk-action="archive" title="<?= $escape(omoDocumentsScopeT('documents.selection.archive')) ?>" aria-label="<?= $escape(omoDocumentsScopeT('documents.selection.archive')) ?>">
                         <span class="omo-documents__bulk-action-icon omo-documents__bulk-action-icon--archive" aria-hidden="true"></span>
                     </button>
@@ -1713,11 +1720,21 @@ if (!is_string($documentsPayload)) {
                                 });
                             };
 
+                            const selectedDocumentsCanBeMoved = function (selectedDocumentIds) {
+                                return selectedDocumentIds.every(function (documentId) {
+                                    return documents.some(function (documentItem) {
+                                        return Number(documentItem && documentItem.id || 0) === documentId
+                                            && documentItem.canMove === true;
+                                    });
+                                });
+                            };
+
                             const syncDocumentSelection = function () {
                                 const selectedDocumentIds = getSelectedDocumentIds();
                                 const selectedCount = selectedDocumentIds.length;
                                 const bulkActions = panel.querySelector('[data-omo-documents-bulk-actions]');
                                 const bulkCount = panel.querySelector('[data-omo-documents-bulk-count]');
+                                const moveButton = panel.querySelector('[data-omo-documents-bulk-action="move"]');
                                 const deleteButton = panel.querySelector('[data-omo-documents-bulk-action="delete"]');
 
                                 if (bulkActions) {
@@ -1728,6 +1745,9 @@ if (!is_string($documentsPayload)) {
                                         <?= json_encode(omoDocumentsScopeT('documents.selection.count'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
                                         {count: selectedCount}
                                     );
+                                }
+                                if (moveButton) {
+                                    moveButton.hidden = selectedCount === 0 || !selectedDocumentsCanBeMoved(selectedDocumentIds);
                                 }
                                 if (deleteButton) {
                                     deleteButton.hidden = selectedCount === 0 || !selectedDocumentsCanBeDeleted(selectedDocumentIds);
@@ -1747,7 +1767,7 @@ if (!is_string($documentsPayload)) {
                             };
 
                             const createDocumentSelectionControl = function (documentItem) {
-                                if (!documentItem || !documentItem.canArchive) {
+                                if (!documentItem || (!documentItem.canArchive && !documentItem.canMove)) {
                                     return null;
                                 }
 
@@ -1769,6 +1789,13 @@ if (!is_string($documentsPayload)) {
                                 return control;
                             };
 
+                            const createDocumentSelectionPlaceholder = function () {
+                                const placeholder = document.createElement('span');
+                                placeholder.className = 'omo-documents__selection-placeholder';
+                                placeholder.setAttribute('aria-hidden', 'true');
+                                return placeholder;
+                            };
+
                             const postBulkDocumentAction = function (action) {
                                 return fetch('/omo/api/documents/lifecycle_action.php', {
                                     method: 'POST',
@@ -1784,6 +1811,19 @@ if (!is_string($documentsPayload)) {
                                     });
                                 });
                             };
+
+                            window.addEventListener('omo-documents-bulk-move-complete', function (event) {
+                                const completedIds = event && event.detail && Array.isArray(event.detail.ids)
+                                    ? event.detail.ids
+                                    : [];
+                                completedIds.forEach(function (documentId) {
+                                    const normalizedId = Number(documentId || 0);
+                                    if (Number.isInteger(normalizedId) && normalizedId > 0) {
+                                        state.selectedDocumentIds.delete(normalizedId);
+                                    }
+                                });
+                                syncDocumentSelection();
+                            });
 
                             const appendDocumentCardContent = function (container, documentItem, options) {
                                 const settings = options && typeof options === 'object' ? options : {};
@@ -1819,11 +1859,9 @@ if (!is_string($documentsPayload)) {
                                 container.classList.toggle('omo-documents__item--missing-upload', !!documentItem.isMissingUploadedFile);
 
                                 const frame = document.createElement('div');
-                                frame.className = 'omo-documents__item-frame';
+                                frame.className = 'omo-documents__item-frame omo-documents__item-frame--with-selection';
                                 const selectionControl = createDocumentSelectionControl(documentItem);
-                                if (selectionControl) {
-                                    frame.classList.add('omo-documents__item-frame--with-selection');
-                                }
+                                frame.appendChild(selectionControl || createDocumentSelectionPlaceholder());
 
                                 const visual = document.createElement('div');
                                 visual.className = 'omo-documents__visual';
@@ -1943,9 +1981,7 @@ if (!is_string($documentsPayload)) {
                                         }
                                     }
 
-                                    if (selectionControl) {
-                                        compactNameMain.appendChild(selectionControl);
-                                    }
+                                    compactNameMain.appendChild(selectionControl || createDocumentSelectionPlaceholder());
                                     compactNameMain.appendChild(visual);
                                     compactNameMain.appendChild(compactTitleBlock);
                                     compactNameCell.appendChild(compactNameMain);
@@ -3117,8 +3153,16 @@ if (!is_string($documentsPayload)) {
                                     const selectedCount = selectedDocumentIds.length;
                                     const action = String(bulkActionButton.getAttribute('data-omo-documents-bulk-action') || '').trim();
                                     const isDelete = action === 'delete';
+                                    const isMove = action === 'move';
 
-                                    if (selectedCount <= 0 || (!isDelete && action !== 'archive')) {
+                                    if (selectedCount <= 0 || (!isDelete && !isMove && action !== 'archive')) {
+                                        return;
+                                    }
+                                    if (isMove) {
+                                        if (!selectedDocumentsCanBeMoved(selectedDocumentIds)) {
+                                            return;
+                                        }
+                                        openDocumentMovePopup(null, selectedDocumentIds);
                                         return;
                                     }
                                     if (isDelete && !selectedDocumentsCanBeDeleted(selectedDocumentIds)) {
@@ -3844,22 +3888,38 @@ if (!is_string($documentsPayload)) {
                     : ('documents-d' + String(resolvedDocumentId));
             }
 
-            function openDocumentMovePopup(documentId) {
+            function openDocumentMovePopup(documentId, documentIds) {
                 const resolvedDocumentId = Number(documentId || 0);
+                const resolvedDocumentIds = (Array.isArray(documentIds) ? documentIds : [resolvedDocumentId])
+                    .map(function (value) { return Number(value || 0); })
+                    .filter(function (value, index, values) {
+                        return Number.isInteger(value) && value > 0 && values.indexOf(value) === index;
+                    });
 
-                if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
+                if (resolvedDocumentIds.length === 0) {
                     return;
                 }
 
+                if (resolvedDocumentIds.length > 1 && typeof window.commonTopbarOpenModal === 'function') {
+                    window.commonTopbarOpenModal(
+                        <?= json_encode(omoDocumentsScopeT('documents.selection.move'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                        '/omo/api/documents/move.php?ids=' + encodeURIComponent(resolvedDocumentIds.join(',')),
+                        'fetch'
+                    );
+                    return;
+                }
+
+                const singleDocumentId = resolvedDocumentIds[0];
+
                 if (typeof window.omoOpenPopupHashState === 'function') {
-                    window.omoOpenPopupHashState('document-move', resolvedDocumentId);
+                    window.omoOpenPopupHashState('document-move', singleDocumentId);
                     return;
                 }
 
                 if (typeof window.commonTopbarOpenModal === 'function') {
                     window.commonTopbarOpenModal(
                         'Déplacer',
-                        '/omo/api/documents/move.php?id=' + encodeURIComponent(String(resolvedDocumentId)),
+                        '/omo/api/documents/move.php?id=' + encodeURIComponent(String(singleDocumentId)),
                         'fetch'
                     );
                 }
@@ -4767,6 +4827,15 @@ if (!is_string($documentsPayload)) {
     -webkit-mask-image: url('/omo/assets/images/documents/poubelle.png');
 }
 
+.omo-documents__bulk-action-icon--move {
+    align-items: center;
+    background: none;
+    display: flex;
+    font-size: 1.25rem;
+    justify-content: center;
+    line-height: 1;
+}
+
 .omo-documents__new-button {
     flex: 0 0 auto;
 }
@@ -5089,6 +5158,13 @@ if (!is_string($documentsPayload)) {
     margin: 0;
     accent-color: var(--color-primary, #2563eb);
     cursor: pointer;
+}
+
+.omo-documents__selection-placeholder {
+    display: inline-block;
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
 }
 
 .omo-documents__kind-detail {

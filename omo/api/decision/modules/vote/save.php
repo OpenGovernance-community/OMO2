@@ -69,6 +69,8 @@ $allowAnonymousVotes = !empty($_POST['allow_anonymous_votes']);
 $allowConsultationProposals = !empty($_POST['allow_consultation_proposals']);
 $allowProposalDiscussions = !empty($_POST['allow_proposal_discussions']);
 $showLiveResults = !empty($_POST['show_live_results']);
+$randomizeProposalOrder = !empty($_POST['randomize_proposal_order']);
+$oneProposalAtATime = !empty($_POST['one_proposal_at_a_time']);
 $proposalContentInput = omoDecisionNormalizeProposalContent([
     'title' => !empty($_POST['proposal_content_title']),
     'description' => !empty($_POST['proposal_content_description']),
@@ -148,6 +150,8 @@ $currentVoteConfig = $decision instanceof DecisionProcess
         'allow_consultation_proposals' => $allowConsultationProposals,
         'allow_proposal_discussions' => $allowProposalDiscussions,
         'show_live_results' => $showLiveResults,
+        'randomize_proposal_order' => $randomizeProposalOrder,
+        'one_proposal_at_a_time' => $oneProposalAtATime,
         'proposal_content' => $proposalContentInput,
         'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
         'vote_weight_question' => (string)$voteWeightConfig['question'],
@@ -164,7 +168,7 @@ if (!$consultationOnly && $decision instanceof DecisionProcess
         'message' => 'Les conditions d anonymat ne peuvent plus etre modifiees apres le debut du vote.',
     ]);
 }
-if (!$consultationOnly && $decision instanceof DecisionProcess
+if ($decision instanceof DecisionProcess
     && !$coreLocked
     && !empty($currentVoteConfig['is_anonymous'])
     && !$isAnonymous
@@ -249,6 +253,8 @@ try {
             'allow_consultation_proposals' => $allowConsultationProposals,
             'allow_proposal_discussions' => $allowProposalDiscussions,
             'show_live_results' => $showLiveResults,
+            'randomize_proposal_order' => $randomizeProposalOrder,
+            'one_proposal_at_a_time' => $oneProposalAtATime,
             'proposal_content' => $proposalContentInput,
             'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
             'vote_weight_question' => (string)$voteWeightConfig['question'],

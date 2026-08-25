@@ -166,6 +166,18 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'text' => 'Sans limite',
                 'context' => 'Label used when the maximum number of choices is unlimited.',
             ],
+            'decisions.vote.field.one_proposal_at_a_time' => [
+                'text' => 'Une proposition a la fois',
+                'context' => 'Label for displaying one proposal at a time during voting.',
+            ],
+            'decisions.vote.action.previous_proposal' => [
+                'text' => 'Précédente',
+                'context' => 'Button to show the previous proposal in one-at-a-time voting.',
+            ],
+            'decisions.vote.action.next_proposal' => [
+                'text' => 'Suivante',
+                'context' => 'Button to show the next proposal in one-at-a-time voting.',
+            ],
             'decisions.vote.field.anonymous' => [
                 'text' => 'Vote anonyme',
                 'context' => 'Label for the anonymity setting.',
@@ -185,6 +197,7 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
             'decisions.vote.field.live_results' => ['text' => 'Afficher les resultats pendant le scrutin', 'context' => 'Label for showing intermediate simple vote results.'],
             'decisions.vote.field.live_results_summary' => ['text' => 'Resultats en cours', 'context' => 'Summary label for intermediate simple vote results setting.'],
             'decisions.vote.field.live_results_heading' => ['text' => 'Votes en cours', 'context' => 'Heading for intermediate simple vote results.'],
+            'decisions.vote.field.random_order' => ['text' => 'Ordre aléatoire des propositions', 'context' => 'Randomize proposal order for each voter.'],
             'decisions.vote.option.live_results.named' => ['text' => 'Oui, nominatifs', 'context' => 'Summary for named intermediate simple vote results.'],
             'decisions.vote.option.live_results.anonymous' => ['text' => 'Oui, anonymes', 'context' => 'Summary for anonymous intermediate simple vote results.'],
             'decisions.vote.field.multiple_hint' => [
@@ -469,6 +482,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         $allowConsultationProposals = !empty($voteConfig['allow_consultation_proposals']);
         $allowProposalDiscussions = !empty($voteConfig['allow_proposal_discussions']);
         $showLiveResults = !empty($voteConfig['show_live_results']);
+        $randomizeProposalOrder = !$consultationOnly && !empty($voteConfig['randomize_proposal_order']);
+        $oneProposalAtATime = !$consultationOnly && !empty($voteConfig['one_proposal_at_a_time']);
         $proposalContent = omoDecisionNormalizeProposalContent($voteConfig['proposal_content'] ?? null);
         $proposalContentSummary = omoDecisionBuildProposalContentSummary($proposalContent, $lang, $sourceLang);
         $proposalContentUrlEnabled = !empty($proposalContent['url']);
@@ -491,6 +506,9 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
 
         $consultationStarted = $decision instanceof DecisionProcess ? $decision->hasConsultationStarted() : false;
         $evaluationStarted = $decision instanceof DecisionProcess ? $decision->hasEvaluationStarted() : false;
+        if ($isParticipateMode && $evaluationStarted && $randomizeProposalOrder) {
+            $proposalObjects = omoDecisionShuffleProposalsForParticipant($proposalObjects, $context, 'vote:' . (int)($decisionGroup instanceof DecisionGroup ? $decisionGroup->getId() : 0));
+        }
         $hasSubmittedResponses = $decision instanceof DecisionProcess ? $decision->hasSubmittedResponses() : false;
         $resultsMode = $decision instanceof DecisionProcess
             && in_array($status, [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
@@ -641,6 +659,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         <section class="omo-decision-vote<?= $isManageMode && !$embeddedQuestion ? '' : ' generic-section generic-section--stack' ?>">
             <?= omoDecisionRenderVoteWeightEditorAssets() ?>
             <?= omoDecisionRenderProposalDiscussionAssets() ?>
+            <?= omoDecisionRenderOneProposalAtATimeAssets() ?>
             <?php if ($resultsMode && !$publicLayout): ?>
             <div class="generic-soft-panel generic-soft-panel--stack omo-decision-vote__notice">
                 <p class="omo-decision-vote__text"><?= $escape(t('decisions.vote.notice.results', [], $lang, $sourceLang)) ?></p>
@@ -843,13 +862,15 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                 <option selected><?= $escape(t($methodLabelKey, [], $lang, $sourceLang)) ?></option>
                             </select>
                         </label>
+                        <?php if (!$consultationOnly): ?>
                         <label class="omo-decision-vote__field">
                             <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.type', [], $lang, $sourceLang)) ?></span>
-                            <select name="decision_type" class="generic-form-control" <?= $canEditStructure && !$consultationOnly ? '' : 'disabled' ?>>
+                            <select name="decision_type" class="generic-form-control" <?= $canEditStructure ? '' : 'disabled' ?>>
                                 <option value="<?= $escape(DecisionProcess::TYPE_DECISION) ?>"<?= $decisionType === DecisionProcess::TYPE_DECISION ? ' selected' : '' ?>><?= $escape(t('decisions.vote.option.type.decision', [], $lang, $sourceLang)) ?></option>
                                 <option value="<?= $escape(DecisionProcess::TYPE_CONSULTATION) ?>"<?= $decisionType === DecisionProcess::TYPE_CONSULTATION ? ' selected' : '' ?>><?= $escape(t('decisions.vote.option.type.consultation', [], $lang, $sourceLang)) ?></option>
                             </select>
                         </label>
+                        <?php endif; ?>
                     </div>
 
                     <div class="omo-decision-vote__field">
@@ -863,6 +884,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         <input type="hidden" name="allow_consultation_proposals" value="<?= $allowConsultationProposals ? '1' : '' ?>" data-omo-decision-vote-hidden-consultation-proposals>
                         <input type="hidden" name="allow_proposal_discussions" value="<?= $allowProposalDiscussions ? '1' : '' ?>" data-omo-decision-vote-hidden-proposal-discussions>
                         <input type="hidden" name="show_live_results" value="<?= $showLiveResults ? '1' : '' ?>" data-omo-decision-vote-hidden-live-results>
+                        <input type="hidden" name="randomize_proposal_order" value="<?= $randomizeProposalOrder ? '1' : '' ?>" data-omo-decision-vote-hidden-random-order>
+                        <input type="hidden" name="one_proposal_at_a_time" value="<?= $oneProposalAtATime ? '1' : '' ?>" data-omo-decision-vote-hidden-one-proposal-at-a-time>
                         <?= omoDecisionRenderProposalContentSettings($proposalContent, $lang, $sourceLang, $escape, $canEditStructure, 'hidden') ?>
                         <input type="hidden" name="vote_weight_enabled" value="<?= $voteWeightEnabled ? '1' : '' ?>" data-omo-decision-vote-hidden-vote-weight-enabled>
                         <input type="hidden" name="vote_weight_question" value="<?= $escape($voteWeightQuestion) ?>" data-omo-decision-vote-hidden-vote-weight-question>
@@ -881,6 +904,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                         <div class="omo-decision-settings-overview__items">
                                     <span class="omo-decision-vote__readonly-stat"><strong><?= $escape(t('decisions.edit.proposal_content.summary_label', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-vote-proposal-content-summary data-title-label="<?= $escape(t('decisions.edit.proposal_content.title_field', [], $lang, $sourceLang)) ?>" data-description-label="<?= $escape(t('decisions.edit.proposal_content.description_field', [], $lang, $sourceLang)) ?>" data-url-label="<?= $escape(t('decisions.edit.proposal_content.url_field', [], $lang, $sourceLang)) ?>"><?= $escape($proposalContentSummary) ?></span></span>
                                     <?php if (!$consultationOnly): ?>
+                                    <span class="omo-decision-vote__readonly-stat"><strong><?= $escape(t('decisions.vote.field.random_order', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-vote-random-order-summary data-yes-label="<?= $escape(t('decisions.vote.option.common.yes', [], $lang, $sourceLang)) ?>" data-no-label="<?= $escape(t('decisions.vote.option.common.no', [], $lang, $sourceLang)) ?>"><?= $escape($randomizeProposalOrder ? t('decisions.vote.option.common.yes', [], $lang, $sourceLang) : t('decisions.vote.option.common.no', [], $lang, $sourceLang)) ?></span></span>
+                                    <span class="omo-decision-vote__readonly-stat"><strong><?= $escape(t('decisions.vote.field.one_proposal_at_a_time', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-vote-one-proposal-at-a-time-summary data-yes-label="<?= $escape(t('decisions.vote.option.common.yes', [], $lang, $sourceLang)) ?>" data-no-label="<?= $escape(t('decisions.vote.option.common.no', [], $lang, $sourceLang)) ?>"><?= $escape($oneProposalAtATime ? t('decisions.vote.option.common.yes', [], $lang, $sourceLang) : t('decisions.vote.option.common.no', [], $lang, $sourceLang)) ?></span></span>
                                     <span class="omo-decision-vote__readonly-stat">
                                         <strong><?= $escape(t('decisions.vote.field.choice_mode', [], $lang, $sourceLang)) ?></strong>
                                         <span
@@ -926,16 +951,16 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     <?php endif; ?>
                                         </div>
                                     </section>
-                                    <?php if (!$consultationOnly): ?>
                                     <section class="omo-decision-settings-overview__group">
                                         <span class="omo-decision-settings-overview__title"><?= $escape(t('decisions.edit.settings.privacy', [], $lang, $sourceLang)) ?></span>
                                         <div class="omo-decision-settings-overview__items">
                                             <span class="omo-decision-vote__readonly-stat"><strong><?= $escape(t('decisions.vote.field.named', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-vote-anonymous-summary data-yes-label="<?= $escape(t('decisions.vote.option.common.yes', [], $lang, $sourceLang)) ?>" data-no-label="<?= $escape(t('decisions.vote.option.common.no', [], $lang, $sourceLang)) ?>"><?= $escape(!$isAnonymous ? t('decisions.vote.option.common.yes', [], $lang, $sourceLang) : t('decisions.vote.option.common.no', [], $lang, $sourceLang)) ?></span></span>
+                                            <?php if (!$consultationOnly): ?>
                                             <span class="omo-decision-vote__readonly-stat" data-omo-decision-vote-allow-anonymous-votes-stat<?= $isAnonymous ? ' hidden' : '' ?>><strong><?= $escape(t('decisions.vote.field.allow_anonymous_votes', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-vote-allow-anonymous-votes-summary data-yes-label="<?= $escape(t('decisions.vote.option.common.yes', [], $lang, $sourceLang)) ?>" data-no-label="<?= $escape(t('decisions.vote.option.common.no', [], $lang, $sourceLang)) ?>"><?= $escape($allowAnonymousVotes ? t('decisions.vote.option.common.yes', [], $lang, $sourceLang) : t('decisions.vote.option.common.no', [], $lang, $sourceLang)) ?></span></span>
                                             <span class="omo-decision-vote__readonly-stat"><strong><?= $escape(t('decisions.vote.field.live_results_summary', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-vote-live-results-summary data-no-label="<?= $escape(t('decisions.vote.option.common.no', [], $lang, $sourceLang)) ?>" data-named-label="<?= $escape(t('decisions.vote.option.live_results.named', [], $lang, $sourceLang)) ?>" data-anonymous-label="<?= $escape(t('decisions.vote.option.live_results.anonymous', [], $lang, $sourceLang)) ?>"><?= $escape(!$showLiveResults ? t('decisions.vote.option.common.no', [], $lang, $sourceLang) : ($liveResultsAnonymous ? t('decisions.vote.option.live_results.anonymous', [], $lang, $sourceLang) : t('decisions.vote.option.live_results.named', [], $lang, $sourceLang))) ?></span></span>
+                                            <?php endif; ?>
                                         </div>
                                     </section>
-                                    <?php endif; ?>
                                 </div>
                             </div>
                             <button
@@ -951,7 +976,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             <div class="omo-decision-settings-popup omo-decision-vote-popup generic-section generic-section--stack" data-topbar-modal-max-width="760px">
                                 <div class="omo-decision-vote-popup__stack">
                                     <?php if (!$consultationOnly): ?>
-                                    <div class="generic-soft-panel generic-soft-panel--stack">
+                                    <section class="omo-decision-settings-popup__group">
+                                        <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.behavior', [], $lang, $sourceLang)) ?></span>
                                         <div class="omo-decision-vote-popup__choice-grid">
                                             <label class="omo-decision-vote-popup__field">
                                                 <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.choice_mode', [], $lang, $sourceLang)) ?></span>
@@ -966,51 +992,63 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                                 <input type="number" min="0" class="generic-form-control" data-omo-decision-vote-popup-max-choices <?= $canEditStructure ? '' : 'disabled' ?>>
                                             </label>
                                         </div>
-                                    </div>
+                                    </section>
                                     <?php endif; ?>
 
+                                    <section class="omo-decision-settings-popup__group">
+                                        <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.participation', [], $lang, $sourceLang)) ?></span>
+                                        <div class="omo-decision-settings-popup__options">
+                                            <label class="omo-decision-settings-popup__option">
+                                                <input type="checkbox" value="1" data-omo-decision-vote-popup-consultation-proposals <?= $canEditStructure ? '' : 'disabled' ?>>
+                                                <span><?= $escape(t('decisions.vote.field.allow_consultation_proposals', [], $lang, $sourceLang)) ?></span>
+                                            </label>
+                                            <label class="omo-decision-settings-popup__option">
+                                                <input type="checkbox" value="1" data-omo-decision-vote-popup-proposal-discussions <?= $canEditStructure ? '' : 'disabled' ?>>
+                                                <span><?= $escape(t('decisions.vote.field.allow_proposal_discussions', [], $lang, $sourceLang)) ?></span>
+                                            </label>
+                                        </div>
+                                    </section>
                                     <?php if (!$consultationOnly): ?>
-                                    <label class="omo-decision-vote-popup__field omo-decision-vote-popup__field--checkbox">
-                                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.named', [], $lang, $sourceLang)) ?></span>
-                                        <span class="omo-decision-vote__check-row">
-                                            <input type="checkbox" value="1" data-omo-decision-vote-popup-anonymous <?= $canEditStructure && $canEnableNamedVote ? '' : 'disabled' ?>>
-                                            <span><?= $escape(t('decisions.vote.option.common.yes', [], $lang, $sourceLang)) ?></span>
-                                        </span>
-                                    </label>
-
-                                    <div class="generic-inline-help" data-omo-decision-vote-popup-allow-anonymous-votes-option hidden>
-                                        <label class="omo-decision-vote__check-row">
-                                            <input type="checkbox" value="1" data-omo-decision-vote-popup-allow-anonymous-votes <?= $canEditStructure ? '' : 'disabled' ?>>
-                                            <span><?= $escape(t('decisions.vote.field.allow_anonymous_votes', [], $lang, $sourceLang)) ?></span>
-                                        </label>
-                                        <details class="generic-context-help">
-                                            <summary aria-label="<?= $escape(t('decisions.vote.field.allow_anonymous_votes_help', [], $lang, $sourceLang)) ?>">?</summary>
-                                            <div class="generic-context-help__content"><?= $escape(t('decisions.vote.field.allow_anonymous_votes_help', [], $lang, $sourceLang)) ?></div>
-                                        </details>
-                                    </div>
+                                    <section class="omo-decision-settings-popup__group">
+                                        <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.presentation', [], $lang, $sourceLang)) ?></span>
+                                        <div class="omo-decision-settings-popup__options">
+                                            <label class="omo-decision-settings-popup__option">
+                                                <input type="checkbox" value="1" data-omo-decision-vote-popup-random-order <?= $canEditStructure ? '' : 'disabled' ?>>
+                                                <span><?= $escape(t('decisions.vote.field.random_order', [], $lang, $sourceLang)) ?></span>
+                                            </label>
+                                            <label class="omo-decision-settings-popup__option">
+                                                <input type="checkbox" value="1" data-omo-decision-vote-popup-one-proposal-at-a-time <?= $canEditStructure ? '' : 'disabled' ?>>
+                                                <span><?= $escape(t('decisions.vote.field.one_proposal_at_a_time', [], $lang, $sourceLang)) ?></span>
+                                            </label>
+                                        </div>
+                                    </section>
                                     <?php endif; ?>
 
-                                    <label class="omo-decision-vote-popup__field omo-decision-vote-popup__field--checkbox">
-                                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.allow_consultation_proposals', [], $lang, $sourceLang)) ?></span>
-                                        <span class="omo-decision-vote__check-row">
-                                            <input type="checkbox" value="1" data-omo-decision-vote-popup-consultation-proposals <?= $canEditStructure ? '' : 'disabled' ?>>
-                                            <span><?= $escape(t('decisions.vote.option.common.yes', [], $lang, $sourceLang)) ?></span>
-                                        </span>
-                                    </label>
-
-                                    <label class="omo-decision-vote-popup__field omo-decision-vote-popup__field--checkbox">
-                                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.allow_proposal_discussions', [], $lang, $sourceLang)) ?></span>
-                                        <span class="omo-decision-vote__check-row">
-                                            <input type="checkbox" value="1" data-omo-decision-vote-popup-proposal-discussions <?= $canEditStructure ? '' : 'disabled' ?>>
-                                            <span><?= $escape(t('decisions.vote.option.common.yes', [], $lang, $sourceLang)) ?></span>
-                                        </span>
-                                    </label>
-                                    <?php if (!$consultationOnly): ?>
-                                    <label class="omo-decision-vote-popup__field omo-decision-vote-popup__field--checkbox">
-                                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.live_results', [], $lang, $sourceLang)) ?></span>
-                                        <span class="omo-decision-vote__check-row"><input type="checkbox" value="1" data-omo-decision-vote-popup-live-results <?= $canEditStructure ? '' : 'disabled' ?>><span><?= $escape(t('decisions.vote.option.common.yes', [], $lang, $sourceLang)) ?></span></span>
-                                    </label>
-                                    <?php endif; ?>
+                                    <section class="omo-decision-settings-popup__group">
+                                        <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.privacy', [], $lang, $sourceLang)) ?></span>
+                                        <div class="omo-decision-settings-popup__options">
+                                            <label class="omo-decision-settings-popup__option">
+                                                <input type="checkbox" value="1" data-omo-decision-vote-popup-anonymous <?= $canEditStructure && $canEnableNamedVote ? '' : 'disabled' ?>>
+                                                <span><?= $escape(t('decisions.vote.field.named', [], $lang, $sourceLang)) ?></span>
+                                            </label>
+                                            <?php if (!$consultationOnly): ?>
+                                            <div class="omo-decision-settings-popup__option-with-help" data-omo-decision-vote-popup-allow-anonymous-votes-option hidden>
+                                                <label class="omo-decision-settings-popup__option">
+                                                    <input type="checkbox" value="1" data-omo-decision-vote-popup-allow-anonymous-votes <?= $canEditStructure ? '' : 'disabled' ?>>
+                                                    <span><?= $escape(t('decisions.vote.field.allow_anonymous_votes', [], $lang, $sourceLang)) ?></span>
+                                                </label>
+                                                <details class="generic-context-help">
+                                                    <summary aria-label="<?= $escape(t('decisions.vote.field.allow_anonymous_votes_help', [], $lang, $sourceLang)) ?>">?</summary>
+                                                    <div class="generic-context-help__content"><?= $escape(t('decisions.vote.field.allow_anonymous_votes_help', [], $lang, $sourceLang)) ?></div>
+                                                </details>
+                                            </div>
+                                            <label class="omo-decision-settings-popup__option omo-decision-settings-popup__option--wide">
+                                                <input type="checkbox" value="1" data-omo-decision-vote-popup-live-results <?= $canEditStructure ? '' : 'disabled' ?>>
+                                                <span><?= $escape(t('decisions.vote.field.live_results', [], $lang, $sourceLang)) ?></span>
+                                            </label>
+                                            <?php endif; ?>
+                                        </div>
+                                    </section>
 
                                     <?= omoDecisionRenderProposalContentSettings($proposalContent, $lang, $sourceLang, $escape, $canEditStructure, 'popup') ?>
                                     <?php if (!$consultationOnly): ?>
@@ -1139,7 +1177,6 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                 <div class="omo-decision-vote__summary-grid">
                     <?php if ($consultationOnly): ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.vote.field.status', [], $lang, $sourceLang), t('decisions.vote.option.status.' . $status, [], $lang, $sourceLang), $escape, 'omo-decision-vote__meta-card') ?>
-                    <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.vote.field.type', [], $lang, $sourceLang), t('decisions.vote.option.type.consultation', [], $lang, $sourceLang), $escape, 'omo-decision-vote__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.vote.field.allow_consultation_proposals', [], $lang, $sourceLang), $allowConsultationProposals ? t('decisions.vote.option.common.yes', [], $lang, $sourceLang) : t('decisions.vote.option.common.no', [], $lang, $sourceLang), $escape, 'omo-decision-vote__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.vote.field.allow_proposal_discussions', [], $lang, $sourceLang), $allowProposalDiscussions ? t('decisions.vote.option.common.yes', [], $lang, $sourceLang) : t('decisions.vote.option.common.no', [], $lang, $sourceLang), $escape, 'omo-decision-vote__meta-card') ?>
                     <?= omoDecisionModuleRenderReadonlyMeta(t('decisions.vote.field.consultation_start', [], $lang, $sourceLang), $decision instanceof DecisionProcess ? omoDecisionVoteFormatDateTimeLocal($decision->get('consultation_start_at')) : '', $escape, 'omo-decision-vote__meta-card') ?>
@@ -1193,7 +1230,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
                     <input type="hidden" name="choice_mode" value="<?= $escape($choiceMode) ?>">
 
-                    <fieldset class="omo-decision-vote__fieldset">
+                    <fieldset class="omo-decision-vote__fieldset"<?= $oneProposalAtATime && $evaluationStarted ? ' data-omo-decision-one-at-a-time' : '' ?><?= $oneProposalAtATime && $evaluationStarted && $choiceMode === 'single' ? ' data-omo-decision-one-at-a-time-single-choice="1"' : '' ?><?= $oneProposalAtATime && $evaluationStarted && (!($selectedResponse instanceof DecisionResponse) || DecisionResponse::normalizeStatus($selectedResponse->get('status')) !== DecisionResponse::STATUS_SUBMITTED) ? ' data-omo-decision-one-at-a-time-draft-url="/omo/api/decision/modules/vote/respond.php"' : '' ?>>
                         <legend class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.your_choice', [], $lang, $sourceLang)) ?></legend>
                         <?php if ($choiceMode === 'multiple'): ?>
                         <p class="omo-decision-vote__text"><?= $escape($maxChoices === 0
@@ -1205,7 +1242,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         <p class="omo-decision-vote__text"><?= $escape(t('decisions.vote.empty_proposals', [], $lang, $sourceLang)) ?></p>
                         <?php else: ?>
                             <?php foreach ($proposalObjects as $proposal): ?>
-                            <label class="omo-decision-vote__option generic-section generic-section--stack">
+                            <label class="omo-decision-vote__option generic-section generic-section--stack"<?= $oneProposalAtATime && $evaluationStarted ? ' data-omo-decision-one-at-a-time-item' : '' ?>>
                                 <input
                                     type="<?= $choiceMode === 'multiple' ? 'checkbox' : 'radio' ?>"
                                     name="<?= $choiceMode === 'multiple' ? 'proposal_ids[]' : 'proposal_id' ?>"
@@ -1214,13 +1251,20 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     <?= $choiceMode === 'single' ? 'required' : '' ?>
                                 >
                                 <span>
-                                    <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
+                                    <?php if (omoDecisionProposalTitleIsVisible($proposalContent, $proposal->get('title'))): ?><strong data-omo-proposal-title><?= $escape(trim((string)$proposal->get('title'))) ?></strong><?php endif; ?>
                                     <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-vote__text', 'omo-decision-vote__link') ?>
                                     <?= omoDecisionRenderGovernanceChanges($proposal, $escape) ?>
                                     <?= omoDecisionRenderProposalDiscussionActions($proposal, $context, $escape) ?>
                                 </span>
                             </label>
                             <?php endforeach; ?>
+                            <?php if ($oneProposalAtATime && $evaluationStarted): ?>
+                            <div class="omo-decision-one-at-a-time__navigation">
+                                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-one-at-a-time-previous><?= $escape(t('decisions.vote.action.previous_proposal', [], $lang, $sourceLang)) ?></button>
+                                <div class="omo-decision-one-at-a-time__dots" data-omo-decision-one-at-a-time-dots aria-label="Propositions"></div>
+                                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-one-at-a-time-next><?= $escape(t('decisions.vote.action.next_proposal', [], $lang, $sourceLang)) ?></button>
+                            </div>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </fieldset>
                     <?= omoDecisionRenderVoteWeightResponseSelector($lang, $sourceLang, $escape, [
@@ -1251,7 +1295,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.live_results_heading', [], $lang, $sourceLang)) ?></span>
                     <?php foreach ($proposalObjects as $liveProposal): ?>
                     <?php $liveProposalId = (int)$liveProposal->getId(); ?>
-                    <div class="omo-decision-vote__readonly-stat"><strong><?= $escape(trim((string)$liveProposal->get('title'))) ?></strong><span><?= $escape((string)($proposalVoteCounts[$liveProposalId] ?? 0)) ?></span></div>
+                    <div class="omo-decision-vote__readonly-stat"><strong><?= $escape(omoDecisionGetProposalLabel($liveProposal, $proposalContent)) ?></strong><span><?= $escape((string)($proposalVoteCounts[$liveProposalId] ?? 0)) ?></span></div>
                     <?php endforeach; ?>
                     <?php if (!$liveResultsAnonymous && !$isAnonymous): ?>
                     <?php foreach ($submittedResponses as $liveResponse): ?>
@@ -1261,7 +1305,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     $liveTitles = [];
                     foreach (omoDecisionVoteExtractSelectedProposalIds($liveResponse) as $liveProposalId) {
                         foreach ($proposalObjects as $liveProposal) {
-                            if ((int)$liveProposal->getId() === (int)$liveProposalId) $liveTitles[] = trim((string)$liveProposal->get('title'));
+                            if ((int)$liveProposal->getId() === (int)$liveProposalId) $liveTitles[] = omoDecisionGetProposalLabel($liveProposal, $proposalContent);
                         }
                     }
                     ?>
@@ -1300,11 +1344,11 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             class="omo-decision-vote__readonly-item generic-section generic-section--stack<?= in_array($proposalId, $selectedProposalIds, true) ? ' is-selected' : '' ?>"
                             data-omo-decision-vote-result-item
                             data-omo-decision-vote-result-position="<?= $escape((string)$proposalPosition) ?>"
-                            data-omo-decision-vote-result-title="<?= $escape(trim((string)$proposal->get('title'))) ?>"
+                            data-omo-decision-vote-result-title="<?= $escape(omoDecisionGetProposalLabel($proposal, $proposalContent)) ?>"
                             data-omo-decision-vote-result-votes="0"
                         >
                             <div>
-                                <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
+                                <?php if (omoDecisionProposalTitleIsVisible($proposalContent, $proposal->get('title'))): ?><strong data-omo-proposal-title><?= $escape(trim((string)$proposal->get('title'))) ?></strong><?php endif; ?>
                                 <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-vote__text', 'omo-decision-vote__link') ?>
                                 <?= omoDecisionRenderGovernanceChanges($proposal, $escape) ?>
                                 <?= omoDecisionRenderProposalDiscussionActions($proposal, $context, $escape) ?>
@@ -1377,11 +1421,11 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             class="omo-decision-vote__readonly-item generic-section generic-section--stack<?= in_array($proposalId, $selectedProposalIds, true) ? ' is-selected' : '' ?>"
                             data-omo-decision-vote-result-item
                             data-omo-decision-vote-result-position="<?= $escape((string)$proposalPosition) ?>"
-                            data-omo-decision-vote-result-title="<?= $escape(trim((string)$proposal->get('title'))) ?>"
+                            data-omo-decision-vote-result-title="<?= $escape(omoDecisionGetProposalLabel($proposal, $proposalContent)) ?>"
                             data-omo-decision-vote-result-votes="<?= $escape($voteWeightEnabled ? (string)$proposalWeightedVoteUnit : (string)$proposalVoteCount) ?>"
                         >
                             <div>
-                                <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
+                                <?php if (omoDecisionProposalTitleIsVisible($proposalContent, $proposal->get('title'))): ?><strong data-omo-proposal-title><?= $escape(trim((string)$proposal->get('title'))) ?></strong><?php endif; ?>
                                 <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-vote__text', 'omo-decision-vote__link') ?>
                                 <?= omoDecisionRenderGovernanceChanges($proposal, $escape) ?>
                                 <?= omoDecisionRenderProposalDiscussionActions($proposal, $context, $escape) ?>
@@ -1463,8 +1507,10 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         }
 
                         const payloadNode = form.querySelector('[data-omo-decision-vote-data]');
-                        const submitButton = form.querySelector('[data-omo-decision-vote-submit]')
-                            || (form.id !== '' ? document.querySelector('[data-omo-decision-editor-submit][form="' + form.id + '"]') : null);
+                        const getSubmitButton = function () {
+                            return form.querySelector('[data-omo-decision-vote-submit]')
+                                || (form.id !== '' ? document.querySelector('[data-omo-decision-editor-submit][form="' + form.id + '"]') : null);
+                        };
                         const feedbackNode = form.querySelector('[data-omo-decision-vote-feedback]');
                         const proposalList = form.querySelector('[data-omo-decision-vote-proposal-list]');
                         const proposalAddButton = form.querySelector('[data-omo-decision-vote-proposal-add]');
@@ -1479,6 +1525,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         const hiddenConsultationProposalsInput = form.querySelector('[data-omo-decision-vote-hidden-consultation-proposals]');
                         const hiddenProposalDiscussionsInput = form.querySelector('[data-omo-decision-vote-hidden-proposal-discussions]');
                         const hiddenLiveResultsInput = form.querySelector('[data-omo-decision-vote-hidden-live-results]');
+                        const hiddenRandomOrderInput = form.querySelector('[data-omo-decision-vote-hidden-random-order]');
+                        const hiddenOneProposalAtATimeInput = form.querySelector('[data-omo-decision-vote-hidden-one-proposal-at-a-time]');
                         const hiddenProposalContentTitleInput = form.querySelector('[data-omo-decision-proposal-content-hidden-title]');
                         const hiddenProposalContentDescriptionInput = form.querySelector('[data-omo-decision-proposal-content-hidden-description]');
                         const hiddenProposalContentUrlInput = form.querySelector('[data-omo-decision-proposal-content-hidden-url]');
@@ -1492,6 +1540,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         const consultationSummary = form.querySelector('[data-omo-decision-vote-consultation-summary]');
                         const discussionsSummary = form.querySelector('[data-omo-decision-vote-discussions-summary]');
                         const liveResultsSummary = form.querySelector('[data-omo-decision-vote-live-results-summary]');
+                        const randomOrderSummary = form.querySelector('[data-omo-decision-vote-random-order-summary]');
+                        const oneProposalAtATimeSummary = form.querySelector('[data-omo-decision-vote-one-proposal-at-a-time-summary]');
                         const proposalContentSummary = form.querySelector('[data-omo-decision-vote-proposal-content-summary]');
                         const voteWeightSummary = form.querySelector('[data-omo-decision-vote-vote-weight-summary]');
 
@@ -1702,6 +1752,16 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
 
                         const syncSettingsSummary = function () {
                             syncChoiceModeFields();
+                            if (randomOrderSummary && hiddenRandomOrderInput) {
+                                const yesLabel = String(randomOrderSummary.getAttribute('data-yes-label') || 'Oui');
+                                const noLabel = String(randomOrderSummary.getAttribute('data-no-label') || 'Non');
+                                randomOrderSummary.textContent = hiddenRandomOrderInput.value ? yesLabel : noLabel;
+                            }
+                            if (oneProposalAtATimeSummary && hiddenOneProposalAtATimeInput) {
+                                const yesLabel = String(oneProposalAtATimeSummary.getAttribute('data-yes-label') || 'Oui');
+                                const noLabel = String(oneProposalAtATimeSummary.getAttribute('data-no-label') || 'Non');
+                                oneProposalAtATimeSummary.textContent = hiddenOneProposalAtATimeInput.value ? yesLabel : noLabel;
+                            }
                             if (anonymousSummary && hiddenAnonymousInput) {
                                 const yesLabel = String(anonymousSummary.getAttribute('data-yes-label') || 'Oui');
                                 const noLabel = String(anonymousSummary.getAttribute('data-no-label') || 'Non');
@@ -1780,6 +1840,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             const popupConsultationProposals = modalBody.querySelector('[data-omo-decision-vote-popup-consultation-proposals]');
                             const popupProposalDiscussions = modalBody.querySelector('[data-omo-decision-vote-popup-proposal-discussions]');
                             const popupLiveResults = modalBody.querySelector('[data-omo-decision-vote-popup-live-results]');
+                            const popupRandomOrder = modalBody.querySelector('[data-omo-decision-vote-popup-random-order]');
+                            const popupOneProposalAtATime = modalBody.querySelector('[data-omo-decision-vote-popup-one-proposal-at-a-time]');
                             const popupProposalContentTitle = modalBody.querySelector('[data-omo-decision-proposal-content-popup-title]');
                             const popupProposalContentDescription = modalBody.querySelector('[data-omo-decision-proposal-content-popup-description]');
                             const popupProposalContentUrl = modalBody.querySelector('[data-omo-decision-proposal-content-popup-url]');
@@ -1793,19 +1855,21 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             if (!popupConsultationProposals || !popupProposalDiscussions || !popupProposalContentTitle || !popupProposalContentDescription || !popupProposalContentUrl || !popupApply) {
                                 return;
                             }
-                            if (!isConsultationOnly && (!popupChoiceMode || !popupMaxChoices || !popupAnonymous || !popupAllowAnonymousVotes || !popupAllowAnonymousVotesOption || !popupLiveResults || !popupVoteWeightEditor)) {
+                            if (!popupAnonymous || (!isConsultationOnly && (!popupChoiceMode || !popupMaxChoices || !popupAllowAnonymousVotes || !popupAllowAnonymousVotesOption || !popupLiveResults || !popupRandomOrder || !popupOneProposalAtATime || !popupVoteWeightEditor))) {
                                 return;
                             }
 
+                            popupAnonymous.checked = !(hiddenAnonymousInput && hiddenAnonymousInput.value);
                             if (!isConsultationOnly) {
                                 popupChoiceMode.value = String(hiddenChoiceModeInput && hiddenChoiceModeInput.value ? hiddenChoiceModeInput.value : 'single');
                                 popupMaxChoices.value = String(hiddenMaxChoicesInput && hiddenMaxChoicesInput.value ? hiddenMaxChoicesInput.value : '1');
-                                popupAnonymous.checked = !(hiddenAnonymousInput && hiddenAnonymousInput.value);
                                 popupAllowAnonymousVotes.checked = !!(hiddenAllowAnonymousVotesInput && hiddenAllowAnonymousVotesInput.value);
                                 if (typeof window.omoDecisionBindIndividualAnonymousVoteOption === 'function') {
                                     window.omoDecisionBindIndividualAnonymousVoteOption(popupAnonymous, popupAllowAnonymousVotes, popupAllowAnonymousVotesOption);
                                 }
                                 popupLiveResults.checked = !!(hiddenLiveResultsInput && hiddenLiveResultsInput.value);
+                                popupRandomOrder.checked = !!(hiddenRandomOrderInput && hiddenRandomOrderInput.value);
+                                popupOneProposalAtATime.checked = !!(hiddenOneProposalAtATimeInput && hiddenOneProposalAtATimeInput.value);
                                 popupVoteWeightEditor.setState({
                                     enabled: !!(hiddenVoteWeightEnabledInput && hiddenVoteWeightEnabledInput.value),
                                     question: hiddenVoteWeightQuestionInput ? String(hiddenVoteWeightQuestionInput.value || '') : '',
@@ -1842,6 +1906,9 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             }
 
                             popupApply.addEventListener('click', function () {
+                                if (hiddenAnonymousInput) {
+                                    hiddenAnonymousInput.value = popupAnonymous.checked ? '' : '1';
+                                }
                                 if (!isConsultationOnly) {
                                     const isMultiple = String(popupChoiceMode.value || 'single') === 'multiple';
                                     const normalizedChoiceMode = isMultiple ? 'multiple' : 'single';
@@ -1856,14 +1923,17 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     if (hiddenMaxChoicesInput) {
                                         hiddenMaxChoicesInput.value = String(isMultiple ? normalizedMaxChoices : 1);
                                     }
-                                    if (hiddenAnonymousInput) {
-                                        hiddenAnonymousInput.value = popupAnonymous.checked ? '' : '1';
-                                    }
                                     if (hiddenAllowAnonymousVotesInput) {
                                         hiddenAllowAnonymousVotesInput.value = popupAllowAnonymousVotes.checked ? '1' : '';
                                     }
                                     if (hiddenLiveResultsInput) {
                                         hiddenLiveResultsInput.value = popupLiveResults.checked ? '1' : '';
+                                    }
+                                    if (hiddenRandomOrderInput) {
+                                        hiddenRandomOrderInput.value = popupRandomOrder.checked ? '1' : '';
+                                    }
+                                    if (hiddenOneProposalAtATimeInput) {
+                                        hiddenOneProposalAtATimeInput.value = popupOneProposalAtATime.checked ? '1' : '';
                                     }
                                 }
                                 if (hiddenConsultationProposalsInput) {
@@ -2195,18 +2265,43 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         }
 
                         form.addEventListener('submit', function (event) {
-                            if (!submitButton) {
-                                return;
-                            }
-
                             event.preventDefault();
 
+                            const submitButton = getSubmitButton();
+                            Array.prototype.forEach.call(
+                                form.querySelectorAll('[data-omo-decision-vote-proposal-description-editor]'),
+                                function (editor) {
+                                    const descriptionInput = editor.closest('[data-omo-proposal-html-field]')
+                                        ? editor.closest('[data-omo-proposal-html-field]').querySelector('[data-omo-decision-vote-proposal-description]')
+                                        : null;
+                                    if (descriptionInput && window.omoProposalHtml && typeof window.omoProposalHtml.getValue === 'function') {
+                                        descriptionInput.value = String(window.omoProposalHtml.getValue(editor) || '').trim();
+                                    }
+                                }
+                            );
+
                             const formData = new FormData(form);
-                            const defaultLabel = payload.texts && payload.texts.save ? payload.texts.save : submitButton.textContent;
+                            formData.delete('proposal_descriptions[]');
+                            Array.prototype.forEach.call(
+                                proposalList.querySelectorAll('[data-omo-decision-vote-proposal-card]'),
+                                function (card) {
+                                    const editor = card.querySelector('[data-omo-decision-vote-proposal-description-editor]');
+                                    const descriptionInput = card.querySelector('[data-omo-decision-vote-proposal-description]');
+                                    const description = editor && window.omoProposalHtml && typeof window.omoProposalHtml.getValue === 'function'
+                                        ? String(window.omoProposalHtml.getValue(editor) || '').trim()
+                                        : String(descriptionInput ? descriptionInput.value || '' : '').trim();
+                                    formData.append('proposal_descriptions[]', description);
+                                }
+                            );
+                            const defaultLabel = payload.texts && payload.texts.save
+                                ? payload.texts.save
+                                : (submitButton ? submitButton.textContent : '');
                             const savingLabel = payload.texts && payload.texts.saving ? payload.texts.saving : defaultLabel;
 
-                            submitButton.disabled = true;
-                            submitButton.textContent = savingLabel;
+                            if (submitButton) {
+                                submitButton.disabled = true;
+                                submitButton.textContent = savingLabel;
+                            }
                             clearFeedback();
 
                             fetch(payload.saveUrl || form.action, {
@@ -2223,8 +2318,10 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     });
                                 })
                                 .then(function (response) {
-                                    submitButton.disabled = false;
-                                    submitButton.textContent = defaultLabel;
+                                    if (submitButton) {
+                                        submitButton.disabled = false;
+                                        submitButton.textContent = defaultLabel;
+                                    }
 
                                     if (!response || !response.status) {
                                         setFeedback(response && response.message ? response.message : (payload.texts && payload.texts.error ? payload.texts.error : 'Erreur.'), true);
@@ -2250,8 +2347,10 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     }
                                 })
                                 .catch(function () {
-                                    submitButton.disabled = false;
-                                    submitButton.textContent = defaultLabel;
+                                    if (submitButton) {
+                                        submitButton.disabled = false;
+                                        submitButton.textContent = defaultLabel;
+                                    }
                                     setFeedback(payload.texts && payload.texts.error ? payload.texts.error : 'Erreur.', true);
                                 });
                         });

@@ -13,7 +13,7 @@ class DecisionProposal extends DbObject
     public static function rules()
     {
         return [
-            [['IDdecision_group', 'title'], 'required'],
+            [['IDdecision_group'], 'required'],
             [['id', 'position'], 'integer'],
             [['IDdecision_process', 'IDdecision_group', 'IDuser_author'], 'fk'],
             [['title'], 'string'],
@@ -311,11 +311,11 @@ class DecisionProposal extends DbObject
                 'message' => 'Vous ne pouvez modifier que vos propres propositions.',
             ];
         }
-        if ($title === '' || mb_strlen($title, 'UTF-8') > 190) {
+        if (mb_strlen($title, 'UTF-8') > 190) {
             return [
                 'status' => false,
                 'reason' => 'invalid_title',
-                'message' => 'Le titre doit contenir entre 1 et 190 caractères.',
+                'message' => 'Le titre ne peut pas depasser 190 caracteres.',
             ];
         }
         if (mb_strlen($description, 'UTF-8') > 10000) {
@@ -330,6 +330,13 @@ class DecisionProposal extends DbObject
                 'status' => false,
                 'reason' => 'invalid_url',
                 'message' => 'Le lien d’information n’est pas valide.',
+            ];
+        }
+        if ($title === '' && $description === '' && $infoUrl === '') {
+            return [
+                'status' => false,
+                'reason' => 'invalid_content',
+                'message' => 'La proposition doit contenir un titre, une description ou un lien.',
             ];
         }
 

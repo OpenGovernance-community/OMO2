@@ -212,6 +212,8 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildConfig')) {
                 || array_key_exists('allow_consultation_proposals', $decisionOrParameters)
                 || array_key_exists('allow_proposal_discussions', $decisionOrParameters)
                 || array_key_exists('show_live_results', $decisionOrParameters)
+                || array_key_exists('randomize_proposal_order', $decisionOrParameters)
+                || array_key_exists('one_proposal_at_a_time', $decisionOrParameters)
                 || array_key_exists('proposal_content', $decisionOrParameters)
             );
 
@@ -268,6 +270,8 @@ if (!function_exists('omoDecisionMajorityJudgmentBuildConfig')) {
             'allow_consultation_proposals' => !empty($methodParameters['allow_consultation_proposals']),
             'allow_proposal_discussions' => !array_key_exists('allow_proposal_discussions', $methodParameters) || !empty($methodParameters['allow_proposal_discussions']),
             'show_live_results' => !empty($methodParameters['show_live_results']),
+            'randomize_proposal_order' => !empty($methodParameters['randomize_proposal_order']),
+            'one_proposal_at_a_time' => !empty($methodParameters['one_proposal_at_a_time']),
             'proposal_content' => omoDecisionNormalizeProposalContent($methodParameters['proposal_content'] ?? null),
             'scale_size' => count($activeScores),
             'mentions' => $mentions,
@@ -415,6 +419,8 @@ if (!function_exists('omoDecisionMajorityJudgmentMergeConfigIntoParameters')) {
         $methodParameters['allow_consultation_proposals'] = !empty($normalizedConfig['allow_consultation_proposals']) ? 1 : 0;
         $methodParameters['allow_proposal_discussions'] = !empty($normalizedConfig['allow_proposal_discussions']) ? 1 : 0;
         $methodParameters['show_live_results'] = !empty($normalizedConfig['show_live_results']) ? 1 : 0;
+        $methodParameters['randomize_proposal_order'] = !empty($normalizedConfig['randomize_proposal_order']) ? 1 : 0;
+        $methodParameters['one_proposal_at_a_time'] = !empty($normalizedConfig['one_proposal_at_a_time']) ? 1 : 0;
         $methodParameters['proposal_content'] = omoDecisionNormalizeProposalContent($normalizedConfig['proposal_content'] ?? ($methodParameters['proposal_content'] ?? null));
         unset($methodParameters['live_results_anonymous']);
         $methodParameters['mention_customization_enabled'] = !empty($normalizedConfig['mention_customization_enabled']) ? 1 : 0;
