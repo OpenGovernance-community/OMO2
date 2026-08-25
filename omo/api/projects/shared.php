@@ -619,7 +619,7 @@ if (!function_exists('omoProjectsGetDocumentTypeIconUrl')) {
             Document::TYPE_UPLOADED_FILE => '/omo/assets/images/documents/download.png',
             Document::TYPE_FOLDER => '/omo/assets/images/documents/folder.png',
             Document::TYPE_PV => '/omo/assets/images/documents/pv.png',
-            Document::TYPE_ETHERPAD, Document::TYPE_COLLABORA => '/omo/assets/images/documents/collaborative.png',
+            Document::TYPE_ETHERPAD => '/omo/assets/images/documents/collaborative.png',
             Document::TYPE_ETHERCALC => '/omo/assets/images/documents/spreadsheet.png',
             default => '/omo/assets/images/documents/file.png',
         };

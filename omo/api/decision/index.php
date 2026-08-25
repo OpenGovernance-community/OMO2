@@ -303,7 +303,7 @@ $sourceLang = [
         'context' => 'Status filter label for scheduled decisions.',
     ],
     'decisions.index.filters.status.consultation' => [
-        'text' => 'En consultation',
+        'text' => 'En élaboration',
         'context' => 'Status filter label for consultation decisions.',
     ],
     'decisions.index.filters.status.evaluation' => [
@@ -339,7 +339,7 @@ $sourceLang = [
         'context' => 'UI label for a decision-oriented decision process.',
     ],
     'decisions.index.filters.type.consultation' => [
-        'text' => 'Consultative',
+        'text' => 'Indicative',
         'context' => 'UI label for a consultation-oriented decision process.',
     ],
     'decisions.index.filters.method.label' => [
@@ -573,6 +573,14 @@ $sourceLang = [
     'decisions.index.action.export' => [
         'text' => 'Export',
         'context' => 'Menu action used to open the export picker for one decision.',
+    ],
+    'decisions.index.action.move' => [
+        'text' => 'Déplacer',
+        'context' => 'Menu action used to move a decision to another holon.',
+    ],
+    'decisions.index.move.modal_title' => [
+        'text' => 'Déplacer la prise de décision',
+        'context' => 'Title of the decision move dialog.',
     ],
     'decisions.index.action.participant_qr_codes' => [
         'text' => 'Imprimer les codes QR',
@@ -921,8 +929,9 @@ foreach ($decisionRows as $row) {
     }
 
     $consultationStarted = $decision->hasConsultationStarted();
-    $participationOpen = $decision->isParticipationOpen();
-    $canParticipate = $participationOpen && ($isOwner || $hasUserParticipation || $hasEmailParticipation);
+    $consultationOpen = $decision->isConsultationOpen();
+    $canParticipate = $decision->isParticipationInterfaceOpen()
+        && ($isOwner || $hasUserParticipation || $hasEmailParticipation);
 
     $deadline = $decision->get('evaluation_end_at');
     if (!$deadline instanceof DateTimeInterface) {
@@ -1003,6 +1012,22 @@ foreach ($decisionRows as $row) {
             'mode' => 'view',
             'variant' => 'main',
         ];
+    } elseif ($consultationOpen && $canParticipate) {
+        $actions[] = [
+            'label' => t('decisions.index.action.participate', [], $lang, $sourceLang),
+            'url' => $participateUrl,
+            'mode' => 'participate',
+            'variant' => 'main',
+        ];
+
+        if ($canManage) {
+            $actions[] = [
+                'label' => t('decisions.index.action.manage', [], $lang, $sourceLang),
+                'url' => $manageUrl,
+                'mode' => 'manage',
+                'variant' => 'secondary',
+            ];
+        }
     } elseif ($consultationStarted) {
         $actions[] = [
             'label' => t('decisions.index.action.view', [], $lang, $sourceLang),
@@ -1048,6 +1073,13 @@ foreach ($decisionRows as $row) {
 
     $menuActions = [];
     if ($canManage) {
+        $menuActions[] = [
+            'label' => t('decisions.index.action.move', [], $lang, $sourceLang),
+            'behavior' => 'modal',
+            'url' => '/omo/api/decision/move.php?id=' . $decisionId,
+            'title' => t('decisions.index.move.modal_title', [], $lang, $sourceLang),
+        ];
+
         $menuActions[] = [
             'label' => t('decisions.index.action.export', [], $lang, $sourceLang),
             'behavior' => 'export',
@@ -1292,6 +1324,7 @@ $payload = [
         'moreActionLabel' => t('decisions.index.action.more', [], $lang, $sourceLang),
         'moreActionAriaLabel' => t('decisions.index.action.more_aria', [], $lang, $sourceLang),
         'actionErrorUpdate' => t('decisions.index.action.error_update', [], $lang, $sourceLang),
+        'moveModalTitle' => t('decisions.index.move.modal_title', [], $lang, $sourceLang),
         'exportActionLabel' => t('decisions.index.action.export', [], $lang, $sourceLang),
         'exportModalTitle' => t('decisions.index.export.modal_title', [], $lang, $sourceLang),
         'exportModalIntro' => t('decisions.index.export.modal_intro', [], $lang, $sourceLang),
@@ -3496,7 +3529,7 @@ function isDecisionMenuActionUsable(action) {
         return String(action.exportUrl || '').trim() !== '';
     }
 
-    if (behavior === 'window') {
+    if (behavior === 'window' || behavior === 'modal') {
         return String(action.url || '').trim() !== '';
     }
 
@@ -4077,7 +4110,7 @@ function buildCompactMenuItem(action, title, description) {
     button.setAttribute('role', 'menuitem');
     button.setAttribute(
         'data-omo-decision-menu-behavior',
-        behavior === 'mutation' || behavior === 'export' || behavior === 'window' ? behavior : 'open'
+        behavior === 'mutation' || behavior === 'export' || behavior === 'window' || behavior === 'modal' ? behavior : 'open'
     );
     if (behavior === 'mutation') {
         button.setAttribute('data-omo-decision-menu-request-url', String(action && action.requestUrl ? action.requestUrl : ''));
@@ -4494,6 +4527,21 @@ omoDecisionRegisterGlobalListener(ownerDocument, 'click', function (event) {
             return;
         }
 
+        if (behavior === 'modal') {
+            const targetUrl = String(actionButton.getAttribute('data-open-url') || '').trim();
+            if (targetUrl !== '' && typeof window.commonTopbarOpenModal === 'function') {
+                window.commonTopbarOpenModal(
+                    String(actionButton.getAttribute('data-open-title') || '').trim()
+                        || String(payload.text && payload.text.moveModalTitle ? payload.text.moveModalTitle : 'Déplacer la prise de décision'),
+                    targetUrl,
+                    'fetch'
+                );
+            }
+
+            closeCompactMenus();
+            return;
+        }
+
         const targetUrl = String(actionButton.getAttribute('data-open-url') || '').trim();
         if (targetUrl !== '') {
             openDecisionFromInteraction(
@@ -4544,6 +4592,9 @@ omoDecisionRegisterGlobalListener(window, 'resize', function () {
 });
 
 omoDecisionRegisterGlobalListener(window, 'resize', syncStatusTabsOverflow);
+omoDecisionRegisterGlobalListener(window, 'omo-decision-moved', function () {
+    omoDecisionRefreshIndex({ silent: false });
+});
 
 root.querySelectorAll('[data-omo-decisions-filter-toggle]').forEach(function (button) {
     button.addEventListener('click', function () {

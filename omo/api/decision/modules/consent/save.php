@@ -59,6 +59,11 @@ $allowAnonymousVotes = !empty($_POST['allow_anonymous_votes']);
 $allowConsultationProposals = !empty($_POST['allow_consultation_proposals']);
 $allowProposalDiscussions = !empty($_POST['allow_proposal_discussions']);
 $showLiveResults = !empty($_POST['show_live_results']);
+$proposalContentInput = omoDecisionNormalizeProposalContent([
+    'title' => !empty($_POST['proposal_content_title']),
+    'description' => !empty($_POST['proposal_content_description']),
+    'url' => !empty($_POST['proposal_content_url']),
+]);
 $voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig([
     'enabled' => !empty($_POST['vote_weight_enabled']),
     'question' => $_POST['vote_weight_question'] ?? '',
@@ -68,7 +73,8 @@ $proposalItems = omoDecisionBuildProposalItemsFromInput(
     $_POST['proposals'] ?? [],
     $_POST['proposal_descriptions'] ?? [],
     $_POST['proposal_info_urls'] ?? [],
-    $_POST['proposal_ids'] ?? []
+    $_POST['proposal_ids'] ?? [],
+    $proposalContentInput
 );
 
 if (!$coreLocked && $processTitle === '') {
@@ -128,10 +134,32 @@ $currentConfig = $decision instanceof DecisionProcess
         'allow_consultation_proposals' => $allowConsultationProposals,
         'allow_proposal_discussions' => $allowProposalDiscussions,
         'show_live_results' => $showLiveResults,
+        'proposal_content' => $proposalContentInput,
         'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
         'vote_weight_question' => (string)$voteWeightConfig['question'],
         'vote_weight_options' => (array)$voteWeightConfig['options'],
     ];
+if ($decision instanceof DecisionProcess
+    && $coreLocked
+    && (
+        $isAnonymous !== !empty($currentConfig['is_anonymous'])
+        || $allowAnonymousVotes !== !empty($currentConfig['allow_anonymous_votes'])
+    )) {
+    omoDecisionModuleJsonResponse(409, [
+        'status' => false,
+        'message' => 'Les conditions d anonymat ne peuvent plus etre modifiees apres le debut du vote.',
+    ]);
+}
+if ($decision instanceof DecisionProcess
+    && !$coreLocked
+    && !empty($currentConfig['is_anonymous'])
+    && !$isAnonymous
+    && !$decision->canEnableNamedVote()) {
+    omoDecisionModuleJsonResponse(409, [
+        'status' => false,
+        'message' => 'Le vote nominatif ne peut plus etre active apres une participation.',
+    ]);
+}
 $canEditSettings = !$coreLocked;
 $configToSave = [
     'is_anonymous' => $canEditSettings ? $isAnonymous : !empty($currentConfig['is_anonymous']),
@@ -139,6 +167,7 @@ $configToSave = [
     'allow_consultation_proposals' => $canEditSettings ? $allowConsultationProposals : !empty($currentConfig['allow_consultation_proposals']),
     'allow_proposal_discussions' => $canEditSettings ? $allowProposalDiscussions : !empty($currentConfig['allow_proposal_discussions']),
     'show_live_results' => $canEditSettings ? $showLiveResults : !empty($currentConfig['show_live_results']),
+    'proposal_content' => $canEditSettings ? $proposalContentInput : omoDecisionNormalizeProposalContent($currentConfig['proposal_content'] ?? null),
     'vote_weight_enabled' => $canEditSettings ? !empty($voteWeightConfig['enabled']) : !empty($currentConfig['vote_weight_enabled']),
     'vote_weight_question' => $canEditSettings ? (string)$voteWeightConfig['question'] : (string)($currentConfig['vote_weight_question'] ?? ''),
     'vote_weight_options' => $canEditSettings ? (array)$voteWeightConfig['options'] : (array)($currentConfig['vote_weight_options'] ?? []),

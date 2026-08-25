@@ -26,6 +26,13 @@ if (empty($context['status']) || (string)($context['intent'] ?? '') !== 'partici
 }
 
 $decision = $context['decision'];
+if (!$decision instanceof DecisionProcess || !$decision->isParticipationOpen()) {
+    omoDecisionModuleJsonResponse(403, [
+        'status' => false,
+        'message' => 'Le vote n est pas ouvert pour le moment.',
+    ]);
+}
+
 $participant = $context['participant'] ?? null;
 $currentUserId = (int)($context['currentUserId'] ?? 0);
 if ($decision instanceof DecisionProcess && (!$participant || (int)$participant->getId() <= 0) && !empty($context['isOwner']) && $currentUserId > 0) {

@@ -328,7 +328,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             $canManage = false;
             $canCreate = false;
             $canView = $hasParticipation;
-            $canParticipate = $hasParticipation && $decision->isParticipationOpen();
+            $canParticipate = $hasParticipation && $decision->isParticipationInterfaceOpen();
 
             $intent = $canParticipate ? 'participate' : 'view';
             if (in_array($requestedIntent, ['view', 'participate'], true)) {
@@ -546,7 +546,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             )
             : $canCreate;
         $canParticipate = $decision instanceof DecisionProcess
-            ? (($isOwner || $hasParticipation) && $decision->isParticipationOpen())
+            ? (($isOwner || $hasParticipation) && $decision->isParticipationInterfaceOpen())
             : false;
 
         $intent = 'manage';

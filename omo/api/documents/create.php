@@ -27,6 +27,8 @@ $sourceLang = [
     'documents.create.type.pv' => ['text' => 'PV', 'context' => 'Option label for PV documents.'],
     'documents.create.type.etherpad' => ['text' => 'Pad coopératif', 'context' => 'Option label for Etherpad documents.'],
     'documents.create.type.collabora' => ['text' => 'Document Coopératif', 'context' => 'Option label for Collabora documents.'],
+    'documents.create.type.collabora_presentation' => ['text' => 'Présentation collaborative', 'context' => 'Option label for collaborative presentation documents.'],
+    'documents.create.type.collabora_drawing' => ['text' => 'Dessin collaboratif', 'context' => 'Option label for collaborative drawing documents.'],
     'documents.create.type.ethercalc' => ['text' => 'Tableur collaboratif', 'context' => 'Option label for EtherCalc documents.'],
     'documents.create.type.folder' => ['text' => 'Dossier', 'context' => 'Option label for folders.'],
     'documents.create.field.title' => ['text' => 'Titre', 'context' => 'Label of the document title field.'],
@@ -51,6 +53,8 @@ $sourceLang = [
     'documents.create.field.etherpad_hint' => ['text' => 'Un nouveau pad sera cree sur le serveur Etherpad de cette organisation.', 'context' => 'Hint shown when creating an Etherpad document.'],
     'documents.create.field.etherpad_missing' => ['text' => 'Aucun serveur Etherpad n est configure pour cette organisation.', 'context' => 'Hint shown when Etherpad is not configured.'],
     'documents.create.field.collabora_hint' => ['text' => 'Un nouveau fichier bureautique sera cree dans le stockage de documents choisi puis ouvert avec Collabora.', 'context' => 'Hint shown when creating a Collabora document.'],
+    'documents.create.field.collabora_presentation_hint' => ['text' => 'Une nouvelle presentation sera creee dans le stockage de documents choisi puis ouverte avec Collabora.', 'context' => 'Hint shown when creating a collaborative presentation.'],
+    'documents.create.field.collabora_drawing_hint' => ['text' => 'Un nouveau dessin sera cree dans le stockage de documents choisi puis ouvert avec Collabora.', 'context' => 'Hint shown when creating a collaborative drawing.'],
     'documents.create.field.collabora_missing' => ['text' => 'Configurez un stockage de documents et un serveur Collabora dans les parametres Documents.', 'context' => 'Hint shown when Collabora is not configured.'],
     'documents.create.field.ethercalc_hint' => ['text' => 'Un nouveau tableur sera cree sur le serveur EtherCalc configure pour OMO.', 'context' => 'Hint shown when creating an EtherCalc document.'],
     'documents.create.field.ethercalc_missing' => ['text' => 'Aucun serveur EtherCalc n est configure.', 'context' => 'Hint shown when EtherCalc is not configured.'],
@@ -62,6 +66,13 @@ $sourceLang = [
     'documents.create.upload.hint_missing' => ['text' => 'Aucun stockage de documents n’est configuré pour cette organisation.', 'context' => 'Hint shown when no document storage is configured.'],
     'documents.create.upload.current' => ['text' => 'Fichier actuel', 'context' => 'Title shown above the current uploaded file metadata.'],
     'documents.create.upload.remove' => ['text' => 'Supprimer le fichier distant', 'context' => 'Checkbox label used to remove the uploaded file.'],
+    'documents.create.upload.replace_confirm' => ['text' => 'Le fichier actuel sera définitivement remplacé par le nouveau fichier. L’ancien fichier sera supprimé. Continuer ?', 'context' => 'Confirmation shown before replacing an uploaded document file.'],
+    'documents.icon.image' => ['text' => 'Image', 'context' => 'Alternative text for image file icons.'],
+    'documents.icon.video' => ['text' => 'Vidéo', 'context' => 'Alternative text for video file icons.'],
+    'documents.icon.text' => ['text' => 'Document texte', 'context' => 'Alternative text for text document icons.'],
+    'documents.icon.spreadsheet' => ['text' => 'Tableur', 'context' => 'Alternative text for spreadsheet file icons.'],
+    'documents.icon.presentation' => ['text' => 'Présentation', 'context' => 'Alternative text for presentation file icons.'],
+    'documents.icon.drawing' => ['text' => 'Dessin', 'context' => 'Alternative text for drawing file icons.'],
     'documents.create.action.cancel' => ['text' => 'Annuler', 'context' => 'Secondary action used to close the document editor.'],
     'documents.create.action.save' => ['text' => 'Enregistrer', 'context' => 'Primary action used to save an existing document.'],
     'documents.create.action.create' => ['text' => 'Créer le document', 'context' => 'Primary action used to create a document.'],
@@ -124,7 +135,7 @@ if ($documentId > 0) {
         $formErrorMessage = omoDocumentsCreateT('documents.create.error.pv_unsupported');
     }
 
-    if ($canUseForm && ($document->isEtherpadDocument() || $document->isEthercalcDocument() || $document->isCollaboraDocument()) && !$canManageDocument) {
+    if ($canUseForm && ($document->isEtherpadDocument() || $document->isEthercalcDocument()) && !$canManageDocument) {
         $canUseForm = false;
     }
 
@@ -400,8 +411,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             <?php if ($etherpadDocumentsAvailable || $documentType === Document::TYPE_ETHERPAD): ?>
                                 <option value="<?= $escape(Document::TYPE_ETHERPAD) ?>" <?= $documentType === Document::TYPE_ETHERPAD ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.etherpad')) ?></option>
                             <?php endif; ?>
-                            <?php if ($collaboraDocumentsAvailable || $documentType === Document::TYPE_COLLABORA): ?>
-                                <option value="<?= $escape(Document::TYPE_COLLABORA) ?>" <?= $documentType === Document::TYPE_COLLABORA ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.collabora')) ?></option>
+                            <?php if ($collaboraDocumentsAvailable || in_array($documentType, [Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true)): ?>
+                                <option value="<?= $escape(Document::TYPE_COLLABORA_DOCUMENT) ?>" <?= $documentType === Document::TYPE_COLLABORA_DOCUMENT ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.collabora')) ?></option>
+                                <option value="<?= $escape(Document::TYPE_COLLABORA_PRESENTATION) ?>" <?= $documentType === Document::TYPE_COLLABORA_PRESENTATION ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.collabora_presentation')) ?></option>
+                                <option value="<?= $escape(Document::TYPE_COLLABORA_DRAWING) ?>" <?= $documentType === Document::TYPE_COLLABORA_DRAWING ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.collabora_drawing')) ?></option>
                             <?php endif; ?>
                             <?php if ($ethercalcDocumentsAvailable || $documentType === Document::TYPE_ETHERCALC): ?>
                                 <option value="<?= $escape(Document::TYPE_ETHERCALC) ?>" <?= $documentType === Document::TYPE_ETHERCALC ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.ethercalc')) ?></option>
@@ -539,11 +552,15 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     </span>
                 </div>
 
-                <div class="omo-document-editor__field generic-form-field" data-omo-document-collabora-section<?= $documentType !== Document::TYPE_COLLABORA ? ' hidden' : '' ?>>
+                <div class="omo-document-editor__field generic-form-field" data-omo-document-collabora-section<?= !in_array($documentType, [Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true) ? ' hidden' : '' ?>>
                     <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.type.collabora')) ?></span>
                     <span class="omo-document-editor__hint generic-help-text">
-                        <?= $escape($collaboraDocumentsAvailable || $documentType === Document::TYPE_COLLABORA
-                            ? omoDocumentsCreateT('documents.create.field.collabora_hint')
+                        <?= $escape($collaboraDocumentsAvailable || in_array($documentType, [Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true)
+                            ? ($documentType === Document::TYPE_COLLABORA_PRESENTATION
+                                ? omoDocumentsCreateT('documents.create.field.collabora_presentation_hint')
+                                : ($documentType === Document::TYPE_COLLABORA_DRAWING
+                                    ? omoDocumentsCreateT('documents.create.field.collabora_drawing_hint')
+                                    : omoDocumentsCreateT('documents.create.field.collabora_hint')))
                             : omoDocumentsCreateT('documents.create.field.collabora_missing')) ?>
                     </span>
                 </div>
@@ -909,6 +926,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         'embedUpdate' => omoDocumentsCreateT('documents.create.embed.update'),
         'embedInsert' => omoDocumentsCreateT('documents.create.embed.insert'),
         'tagRemove' => omoDocumentsCreateT('documents.create.field.tags_remove'),
+        'uploadReplaceConfirm' => omoDocumentsCreateT('documents.create.upload.replace_confirm'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const editingDocumentId = <?= $isEditing && $canEditDocumentContent && $document->supportsHtmlContent() ? (int)$document->getId() : 0 ?>;
     const editLockEndpointUrl = '/omo/api/documents/edit_lock.php';
@@ -972,7 +990,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         const isExternalLink = getSelectedDocumentType() === 'external_link';
         const isUploadedFile = isUploadedFileTypeSelected();
         const isEtherpad = getSelectedDocumentType() === 'etherpad';
-        const isCollabora = getSelectedDocumentType() === 'collabora';
+        const isCollabora = ['collabora_document', 'collabora_presentation', 'collabora_drawing'].includes(getSelectedDocumentType());
         const isEthercalc = getSelectedDocumentType() === 'ethercalc';
 
         if (contentSection) {
@@ -2560,6 +2578,16 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         commitKeywordInput();
+
+        if (
+            uploadHasExistingFile
+            && uploadInput
+            && uploadInput.files
+            && uploadInput.files.length > 0
+            && !window.confirm(String(uiText.uploadReplaceConfirm || 'Le fichier actuel sera remplace. Continuer ?'))
+        ) {
+            return;
+        }
 
         const formData = new FormData(form);
         formData.set('content', !isHtmlTypeSelected()

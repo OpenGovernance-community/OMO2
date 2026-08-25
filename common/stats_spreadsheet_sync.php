@@ -85,7 +85,7 @@ if (!function_exists('omoStatsSpreadsheetLoadWorksheet')) {
             !($document instanceof Document)
             || (int)$document->get('IDorganization') !== (int)$indicator->get('IDorganization')
             || !$document->hasStoredFile()
-            || !$document->isUploadedFile() && !$document->isCollaboraDocument()
+            || !$document->isUploadedFile()
             || !omoSpreadsheetSupportsFilename($document->getStoredFileDownloadName())
         ) {
             return ['status' => false, 'text' => 'Le document tableur source est introuvable ou invalide.'];

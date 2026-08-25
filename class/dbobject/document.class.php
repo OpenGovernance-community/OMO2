@@ -10,7 +10,9 @@
 		public const TYPE_PV = 'pv';
 		public const TYPE_ETHERPAD = 'etherpad';
 		public const TYPE_ETHERCALC = 'ethercalc';
-		public const TYPE_COLLABORA = 'collabora';
+		public const TYPE_COLLABORA_DOCUMENT = 'collabora_document';
+		public const TYPE_COLLABORA_PRESENTATION = 'collabora_presentation';
+		public const TYPE_COLLABORA_DRAWING = 'collabora_drawing';
 		public const PV_STAGE_PREPARATION = 'preparation';
 		public const PV_STAGE_MEETING = 'meeting';
 		public const PV_STAGE_REVIEW = 'review';
@@ -307,16 +309,16 @@
 					}
 				}
 
-				if ($this->isCollaboraDocument() && $this->hasStoredFile()) {
+				if ($this->isUploadedFile() && $this->hasStoredFile()) {
 					$organization = new \dbObject\Organization();
 					$organizationId = (int)$this->get('IDorganization');
 					if ($organizationId <= 0 || !$organization->load($organizationId)) {
-						throw new \RuntimeException('collabora_organization_missing');
+						throw new \RuntimeException('uploaded_file_organization_missing');
 					}
 
 					$deleteResult = $organization->deleteDocumentFileFromStorage((string)$this->get('storedfilepath'));
 					if (!is_array($deleteResult) || empty($deleteResult['status'])) {
-						throw new \RuntimeException('collabora_file_delete_failed');
+						throw new \RuntimeException('uploaded_file_delete_failed');
 					}
 				}
 
@@ -1700,8 +1702,16 @@
 				return self::TYPE_ETHERCALC;
 			}
 
-			if ($documentType === self::TYPE_COLLABORA) {
-				return self::TYPE_COLLABORA;
+			if ($documentType === self::TYPE_COLLABORA_DOCUMENT) {
+				return self::TYPE_COLLABORA_DOCUMENT;
+			}
+
+			if ($documentType === self::TYPE_COLLABORA_PRESENTATION) {
+				return self::TYPE_COLLABORA_PRESENTATION;
+			}
+
+			if ($documentType === self::TYPE_COLLABORA_DRAWING) {
+				return self::TYPE_COLLABORA_DRAWING;
 			}
 
 			return self::TYPE_HTML;
@@ -1819,7 +1829,9 @@
 				self::TYPE_PV => 'PV',
 				self::TYPE_ETHERPAD => 'Pad coopératif',
 				self::TYPE_ETHERCALC => 'Tableur collaboratif',
-				self::TYPE_COLLABORA => 'Document Coopératif',
+				self::TYPE_COLLABORA_DOCUMENT => 'Document Coopératif',
+				self::TYPE_COLLABORA_PRESENTATION => 'Présentation collaborative',
+				self::TYPE_COLLABORA_DRAWING => 'Dessin collaboratif',
 			);
 		}
 
@@ -1870,35 +1882,14 @@
 			return $this->getDocumentType() === self::TYPE_ETHERCALC;
 		}
 
-		public function isCollaboraDocument(): bool
-		{
-			return $this->getDocumentType() === self::TYPE_COLLABORA;
-		}
-
 		public function canOpenWithCollabora(): bool
 		{
-			if ((!$this->isCollaboraDocument() && !$this->isUploadedFile()) || !$this->hasStoredFile()) {
+			if (!$this->isUploadedFile() || !$this->hasStoredFile()) {
 				return false;
 			}
 
 			require_once dirname(__DIR__, 2) . '/common/collabora.php';
 			return omoCollaboraSupportsFilename($this->getStoredFileDownloadName());
-		}
-
-		public static function organizationHasCollaboraDocuments(int $organizationId): bool
-		{
-			$organizationId = (int)$organizationId;
-			if ($organizationId <= 0) {
-				return false;
-			}
-
-			return self::fetchRow(
-				'select `id` from `document` where `IDorganization` = :organization_id and `documenttype` = :document_type limit 1',
-				array(
-					'organization_id' => $organizationId,
-					'document_type' => self::TYPE_COLLABORA,
-				)
-			) !== false;
 		}
 
 		public static function organizationHasStoredDocumentFiles(int $organizationId): bool
@@ -1909,11 +1900,10 @@
 			}
 
 			return self::fetchRow(
-				'select `id` from `document` where `IDorganization` = :organization_id and `documenttype` in (:uploaded_type, :collabora_type) and `storedfilepath` is not null and `storedfilepath` <> :empty_path limit 1',
+				'select `id` from `document` where `IDorganization` = :organization_id and `documenttype` = :uploaded_type and `storedfilepath` is not null and `storedfilepath` <> :empty_path limit 1',
 				array(
 					'organization_id' => $organizationId,
 					'uploaded_type' => self::TYPE_UPLOADED_FILE,
-					'collabora_type' => self::TYPE_COLLABORA,
 					'empty_path' => '',
 				)
 			) !== false;
@@ -1935,7 +1925,7 @@
 
 			$deletedCount = 0;
 			foreach ($documents as $document) {
-				if (!$document instanceof self || !in_array($document->getDocumentType(), array(self::TYPE_UPLOADED_FILE, self::TYPE_COLLABORA), true)) {
+				if (!$document instanceof self || $document->getDocumentType() !== self::TYPE_UPLOADED_FILE) {
 					continue;
 				}
 
@@ -2019,8 +2009,7 @@
 				&& (
 					$this->supportsHtmlContent()
 					|| $this->isExternalLink()
-					|| $this->isUploadedFile()
-					|| $this->isCollaboraDocument()
+				|| $this->isUploadedFile()
 				);
 		}
 
@@ -2050,13 +2039,13 @@
 
 		public function hasStoredFile(): bool
 		{
-			return ($this->isUploadedFile() || $this->isCollaboraDocument())
+			return $this->isUploadedFile()
 				&& trim((string)$this->get('storedfilepath')) !== '';
 		}
 
 		public function hasMissingUploadedFile(): bool
 		{
-			return ($this->isUploadedFile() || $this->isCollaboraDocument()) && !$this->hasStoredFile();
+			return $this->isUploadedFile() && !$this->hasStoredFile();
 		}
 
 		public function getStoredFileDownloadName(): string
@@ -2079,6 +2068,43 @@
 		public function getStoredFileSize(): int
 		{
 			return max(0, (int)$this->get('storedfilesize'));
+		}
+
+		public function getStoredFileKind(): string
+		{
+			$filename = strtolower($this->getStoredFileDownloadName());
+			$extension = strtolower((string)pathinfo($filename, PATHINFO_EXTENSION));
+			$mimeType = strtolower($this->getStoredFileMimeType());
+
+			if (str_starts_with($mimeType, 'image/') || in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif', 'heic', 'heif', 'svg'], true)) {
+				return 'image';
+			}
+
+			if (str_starts_with($mimeType, 'video/') || in_array($extension, ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v'], true)) {
+				return 'video';
+			}
+
+			if (str_starts_with($mimeType, 'audio/') || in_array($extension, ['mp3', 'wav', 'ogg', 'oga', 'm4a', 'aac', 'flac', 'opus', 'wma', 'aif', 'aiff', 'alac'], true)) {
+				return 'audio';
+			}
+
+			if (in_array($extension, ['ods', 'fods', 'ots', 'xls', 'xlsx', 'xlsb', 'xlsm', 'xltx', 'xltm', 'csv', 'tsv'], true) || str_contains($mimeType, 'spreadsheet') || str_contains($mimeType, 'excel')) {
+				return 'spreadsheet';
+			}
+
+			if (in_array($extension, ['odp', 'fodp', 'otp', 'ppt', 'pptx', 'pptm', 'potx', 'potm', 'ppsx'], true) || str_contains($mimeType, 'presentation')) {
+				return 'presentation';
+			}
+
+			if (in_array($extension, ['odg', 'fodg', 'otg', 'vsd', 'vsdx', 'vss', 'pub', 'dxf', 'emf', 'wmf'], true) || str_contains($mimeType, 'graphics') || str_contains($mimeType, 'drawing')) {
+				return 'drawing';
+			}
+
+			if (str_starts_with($mimeType, 'text/') || in_array($extension, ['odt', 'fodt', 'ott', 'doc', 'docx', 'docm', 'dotx', 'dotm', 'rtf', 'txt', 'md', 'pdf', 'xml', 'json'], true) || str_contains($mimeType, 'word') || str_contains($mimeType, 'opendocument.text') || $mimeType === 'application/pdf') {
+				return 'text';
+			}
+
+			return 'file';
 		}
 
 		protected function clearStoredFileState(): void
@@ -2855,16 +2881,6 @@
 			return '<div class="omo-document-ethercalc-snapshot">Tableur collaboratif a consulter dans OMO.</div>';
 		}
 
-		protected function renderCollaboraForViewer(): string
-		{
-			$openUrl = $this->buildCollaboraOpenUrl();
-			if ($openUrl === '' || !$this->hasStoredFile()) {
-				return '<div class="omo-document-collabora omo-document-collabora--empty">Aucun fichier Collabora n est associe a ce document.</div>';
-			}
-
-			return $this->renderCollaboraFrameForViewer($openUrl);
-		}
-
 		protected function renderCollaboraFrameForViewer(string $openUrl): string
 		{
 			return '<div class="omo-document-collabora">'
@@ -2872,11 +2888,6 @@
 				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
 				. '" loading="lazy" allow="clipboard-read; clipboard-write; fullscreen" allowfullscreen referrerpolicy="same-origin"></iframe>'
 				. '</div>';
-		}
-
-		protected function renderCollaboraSnapshotForViewer(): string
-		{
-			return '<div class="omo-document-collabora-snapshot">Document cooperatif a consulter dans Collabora.</div>';
 		}
 
 		protected function renderUploadedFileForViewer(): string
@@ -2899,6 +2910,8 @@
 			}
 
 			$downloadUrl = '/omo/api/documents/upload/download.php?id=' . (int)$this->getId();
+			$inlineMediaUrl = $downloadUrl . '&inline=1';
+			$storedFileKind = $this->getStoredFileKind();
 			$fileSize = $this->getStoredFileSize();
 			$fileMeta = array();
 			if ($this->getStoredFileMimeType() !== '') {
@@ -2908,8 +2921,23 @@
 				$fileMeta[] = number_format($fileSize, 0, '.', '\'') . ' octets';
 			}
 
-			return '<div class="omo-document-file">'
+			$mediaHtml = '';
+			if ($storedFileKind === 'image') {
+				$mediaHtml = '<div class="omo-document-file__media omo-document-file__media--image">'
+					. '<img src="' . htmlspecialchars($inlineMediaUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" alt="'
+					. htmlspecialchars($this->getStoredFileDownloadName(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" loading="lazy">'
+					. '</div>';
+			} elseif ($storedFileKind === 'audio') {
+				$mediaHtml = '<div class="omo-document-file__media omo-document-file__media--audio">'
+					. '<audio controls preload="metadata" src="' . htmlspecialchars($inlineMediaUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">'
+					. 'Votre navigateur ne peut pas lire ce fichier audio.'
+					. '</audio>'
+					. '</div>';
+			}
+
+			return '<div class="omo-document-file omo-document-file--' . htmlspecialchars($storedFileKind, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">'
 				. '<div class="omo-document-file__title">' . htmlspecialchars($this->getStoredFileDownloadName(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</div>'
+				. $mediaHtml
 				. (count($fileMeta) > 0
 					? '<div class="omo-document-file__meta">' . implode(' · ', $fileMeta) . '</div>'
 					: '')
@@ -3167,10 +3195,6 @@
 				return $this->renderEthercalcForViewer();
 			}
 
-			if ($this->isCollaboraDocument()) {
-				return $this->renderCollaboraForViewer();
-			}
-
 			return $this->renderResolvedHtmlForViewer(
 				(string)$this->get('content'),
 				(int)$this->get('IDorganization')
@@ -3227,13 +3251,6 @@
 			} elseif ($this->isEthercalcDocument()) {
 				$renderedContent = $this->renderEthercalcSnapshotForViewer();
 				$contentHashSource = $renderedContent;
-			} elseif ($this->isCollaboraDocument()) {
-				$renderedContent = $this->renderCollaboraSnapshotForViewer();
-				$contentHashSource = implode('|', array(
-					trim((string)$this->get('storedfilepath')),
-					$this->getStoredFileDownloadName(),
-					(string)$this->getStoredFileSize(),
-				));
 			} else {
 				$renderedContent = $this->renderResolvedHtmlForViewer($content, (int)$this->get('IDorganization'));
 				$contentHashSource = $content;
@@ -4423,13 +4440,18 @@
 			$description = trim((string)($values['description'] ?? ''));
 			$requestedDocumentType = (string)($values['document_type'] ?? '');
 			$isFolder = !empty($values['is_folder']) || trim(mb_strtolower($requestedDocumentType, 'UTF-8')) === self::TYPE_FOLDER;
-			$documentType = self::normalizeDocumentType($requestedDocumentType, $isFolder);
+			$normalizedRequestedDocumentType = self::normalizeDocumentType($requestedDocumentType, $isFolder);
+			$isCollaboraTemplate = in_array($normalizedRequestedDocumentType, [self::TYPE_COLLABORA_DOCUMENT, self::TYPE_COLLABORA_PRESENTATION, self::TYPE_COLLABORA_DRAWING], true);
+			$collaboraTemplateKind = $normalizedRequestedDocumentType === self::TYPE_COLLABORA_PRESENTATION
+				? 'presentation'
+				: ($normalizedRequestedDocumentType === self::TYPE_COLLABORA_DRAWING ? 'drawing' : 'document');
+			$documentType = $isCollaboraTemplate ? self::TYPE_UPLOADED_FILE : $normalizedRequestedDocumentType;
 			$allowEmptyTypePayload = !empty($values['allow_empty_type_payload']);
 			$eventId = isset($values['event_id']) ? (int)$values['event_id'] : 0;
 			$pvTemplateId = $documentType === self::TYPE_PV && isset($values['pv_template_id'])
 				? max(0, (int)$values['pv_template_id'])
 				: 0;
-			$uploadedFile = $documentType === self::TYPE_UPLOADED_FILE
+			$uploadedFile = $documentType === self::TYPE_UPLOADED_FILE && !$isCollaboraTemplate
 				? self::extractValidUploadedFile($values['uploaded_file'] ?? null)
 				: null;
 			$parentDocumentId = isset($values['parent_document_id']) ? (int)$values['parent_document_id'] : 0;
@@ -4446,7 +4468,7 @@
 					'text' => "L URL externe est obligatoire.",
 				);
 			}
-			if ($documentType === self::TYPE_UPLOADED_FILE && $uploadedFile === null && !$allowEmptyTypePayload) {
+			if ($documentType === self::TYPE_UPLOADED_FILE && !$isCollaboraTemplate && $uploadedFile === null && !$allowEmptyTypePayload) {
 				return array(
 					'status' => false,
 					'text' => 'Un fichier est obligatoire pour ce type de document.',
@@ -4512,7 +4534,7 @@
 			if ($documentType === self::TYPE_ETHERCALC) {
 				require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
 			}
-			if ($documentType === self::TYPE_COLLABORA) {
+			if ($isCollaboraTemplate) {
 				require_once dirname(__DIR__, 2) . '/common/collabora.php';
 			}
 
@@ -4560,7 +4582,7 @@
 					);
 				}
 
-				if ($documentType === self::TYPE_COLLABORA) {
+				if ($isCollaboraTemplate) {
 					require_once dirname(__DIR__, 2) . '/common/collabora.php';
 					if (!$organization->hasDocumentStorage()) {
 						if ($startedTransaction && $pdo->inTransaction()) {
@@ -4640,8 +4662,8 @@
 					}
 				}
 
-				if ($documentType === self::TYPE_COLLABORA) {
-					$blankFileResult = omoCollaboraBuildBlankDocumentFile($title);
+				if ($isCollaboraTemplate) {
+					$blankFileResult = omoCollaboraBuildBlankDocumentFile($title, $collaboraTemplateKind);
 					if (!is_array($blankFileResult) || empty($blankFileResult['status'])) {
 						if ($startedTransaction && $pdo->inTransaction()) {
 							$pdo->rollBack();
@@ -4692,7 +4714,7 @@
 					self::getDefaultEditVisibilityType()
 				);
 
-				if ($documentType === self::TYPE_UPLOADED_FILE && $uploadedFile !== null) {
+				if ($documentType === self::TYPE_UPLOADED_FILE && !$isCollaboraTemplate && $uploadedFile !== null) {
 					$fileStorageResult = $this->applyUploadedFileToOrganizationStorage($organization, $uploadedFile);
 					if (!is_array($fileStorageResult) || empty($fileStorageResult['status'])) {
 						if ($startedTransaction && $pdo->inTransaction()) {
@@ -4956,14 +4978,6 @@
 				)
 				: '';
 			$now = new \DateTimeImmutable();
-			$existingDocumentType = $this->getDocumentType();
-			if ($existingDocumentType === self::TYPE_COLLABORA && $documentType !== self::TYPE_COLLABORA) {
-				return array(
-					'status' => false,
-					'text' => 'Le type d un document cooperatif ne peut pas etre change depuis cet editeur.',
-				);
-			}
-
 			$this->set('title', $title);
 			$this->set('description', $description);
 			$this->set('content', $content);

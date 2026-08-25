@@ -77,6 +77,7 @@ if (!function_exists('omoDecisionConsentBuildConfig')) {
                 || array_key_exists('allow_consultation_proposals', $decisionOrParameters)
                 || array_key_exists('allow_proposal_discussions', $decisionOrParameters)
                 || array_key_exists('show_live_results', $decisionOrParameters)
+                || array_key_exists('proposal_content', $decisionOrParameters)
                 || array_key_exists('vote_weight_enabled', $decisionOrParameters)
             );
         if ($isConfigLikeArray) {
@@ -90,11 +91,12 @@ if (!function_exists('omoDecisionConsentBuildConfig')) {
         $voteWeightConfig = omoDecisionBlockSettingsBuildVoteWeightConfig($methodParameters);
 
         return [
-            'is_anonymous' => !empty($methodParameters['is_anonymous']),
+            'is_anonymous' => !array_key_exists('is_anonymous', $methodParameters) || !empty($methodParameters['is_anonymous']),
             'allow_anonymous_votes' => !empty($methodParameters['allow_anonymous_votes']),
             'allow_consultation_proposals' => !empty($methodParameters['allow_consultation_proposals']),
             'allow_proposal_discussions' => !array_key_exists('allow_proposal_discussions', $methodParameters) || !empty($methodParameters['allow_proposal_discussions']),
             'show_live_results' => !empty($methodParameters['show_live_results']),
+            'proposal_content' => omoDecisionNormalizeProposalContent($methodParameters['proposal_content'] ?? null),
             'choices' => omoDecisionConsentGetChoices(),
             'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
             'vote_weight_question' => (string)$voteWeightConfig['question'],
@@ -115,6 +117,7 @@ if (!function_exists('omoDecisionConsentMergeConfigIntoParameters')) {
         $methodParameters['allow_consultation_proposals'] = !empty($config['allow_consultation_proposals']) ? 1 : 0;
         $methodParameters['allow_proposal_discussions'] = !empty($config['allow_proposal_discussions']) ? 1 : 0;
         $methodParameters['show_live_results'] = !empty($config['show_live_results']) ? 1 : 0;
+        $methodParameters['proposal_content'] = omoDecisionNormalizeProposalContent($config['proposal_content'] ?? ($methodParameters['proposal_content'] ?? null));
         unset($methodParameters['live_results_anonymous']);
         $methodParameters = omoDecisionBlockSettingsMergeVoteWeightConfig($methodParameters, [
             'vote_weight_enabled' => !empty($config['vote_weight_enabled']),

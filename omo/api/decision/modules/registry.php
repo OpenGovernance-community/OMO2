@@ -50,6 +50,16 @@ if (!function_exists('omoDecisionGetModuleRegistry')) {
                 'export_function' => 'omoDecisionConsentBuildExportPayload',
                 'import_function' => 'omoDecisionConsentImportBlock',
             ],
+            DecisionProcess::METHOD_CONSULTATION_ONLY => [
+                'key' => DecisionProcess::METHOD_CONSULTATION_ONLY,
+                'available' => true,
+                'label_key' => 'decisions.edit.method.consultation_only.label',
+                'description_key' => 'decisions.edit.method.consultation_only.description',
+                'shared_file' => __DIR__ . '/consultation_only/shared.php',
+                'editor_file' => __DIR__ . '/consultation_only/module.php',
+                'source_lang_function' => 'omoDecisionConsultationOnlyModuleGetSourceLang',
+                'render_function' => 'omoDecisionConsultationOnlyModuleRender',
+            ],
         ];
 
         $settings = omoDecisionParamsGetConfigForOrganizationId((int)$organizationId);

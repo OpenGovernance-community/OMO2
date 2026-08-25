@@ -70,6 +70,14 @@ $baseSourceLang = [
         'text' => 'Une proposition est retenue tant qu aucune objection bloquante n est posee.',
         'context' => 'Description of the consent module card.',
     ],
+    'decisions.edit.method.consultation_only.label' => [
+        'text' => 'Consultation seule',
+        'context' => 'Label of the consultation only module card.',
+    ],
+    'decisions.edit.method.consultation_only.description' => [
+        'text' => 'Recueillez et discutez des propositions avant de choisir, ou non, un mode de vote.',
+        'context' => 'Description of the consultation only module card.',
+    ],
     'decisions.edit.field.evaluation_method' => [
         'text' => 'Mode de prise de décision',
         'context' => 'Label for the read-only evaluation method reminder in one question.',
@@ -208,16 +216,16 @@ $baseSourceLang = [
     ],
     'decisions.edit.multi.status.draft' => ['text' => 'En préparation', 'context' => 'Draft decision status.'],
     'decisions.edit.multi.status.scheduled' => ['text' => 'Planifiée', 'context' => 'Scheduled decision status.'],
-    'decisions.edit.multi.status.consultation' => ['text' => 'En consultation', 'context' => 'Consultation decision status.'],
+    'decisions.edit.multi.status.consultation' => ['text' => 'En élaboration', 'context' => 'Elaboration decision status.'],
     'decisions.edit.multi.status.evaluation' => ['text' => 'En évaluation', 'context' => 'Evaluation decision status.'],
     'decisions.edit.multi.status.results' => ['text' => 'Résultats', 'context' => 'Results decision status.'],
     'decisions.edit.multi.status.archived' => ['text' => 'Archivée', 'context' => 'Archived decision status.'],
     'decisions.edit.multi.consultation_start' => [
-        'text' => 'Début de la consultation',
+        'text' => 'Début de la phase d’élaboration',
         'context' => 'Label for the shared consultation start date.',
     ],
     'decisions.edit.multi.consultation_end' => [
-        'text' => 'Fin de la consultation',
+        'text' => 'Fin de la phase d’élaboration',
         'context' => 'Label for the shared consultation end date.',
     ],
     'decisions.edit.multi.evaluation_start' => [
@@ -331,6 +339,30 @@ $baseSourceLang = [
     'decisions.edit.settings.privacy' => [
         'text' => 'Confidentialité et résultats',
         'context' => 'Heading for privacy and result visibility settings in the compact settings summary.',
+    ],
+    'decisions.edit.proposal_content.title' => [
+        'text' => 'Teneur des propositions',
+        'context' => 'Section title for choosing which proposal fields are enabled.',
+    ],
+    'decisions.edit.proposal_content.hint' => [
+        'text' => 'Choisissez les champs presentes lors de la saisie des propositions.',
+        'context' => 'Help text for proposal content settings.',
+    ],
+    'decisions.edit.proposal_content.summary_label' => [
+        'text' => 'Champs des propositions',
+        'context' => 'Summary label for the enabled proposal fields.',
+    ],
+    'decisions.edit.proposal_content.title_field' => [
+        'text' => 'Titre',
+        'context' => 'Option to enable the proposal title field.',
+    ],
+    'decisions.edit.proposal_content.description_field' => [
+        'text' => 'Description',
+        'context' => 'Option to enable the proposal description field.',
+    ],
+    'decisions.edit.proposal_content.url_field' => [
+        'text' => 'URL',
+        'context' => 'Option to enable the proposal URL field.',
     ],
     'decisions.edit.block_settings.vote_weighting_summary_yes' => [
         'text' => 'Oui',
@@ -647,6 +679,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
             <?php elseif ($useMultiQuestionEditor): ?>
                 <?php
                 $multiStatus = DecisionProcess::normalizeStatus($decision->get('status'));
+                $multiConsultationOnly = DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method')) === DecisionProcess::METHOD_CONSULTATION_ONLY;
                 $multiCoreLocked = $decision->hasEvaluationStarted();
                 $multiStartDatesLocked = $multiCoreLocked || $decision->hasSubmittedResponses();
                 $multiResultsMode = in_array($multiStatus, [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
@@ -726,6 +759,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                                     <span class="generic-form-label"><?= $escape(t('decisions.edit.multi.status', [], $lang, $baseSourceLang)) ?></span>
                                     <select class="generic-form-control" name="status">
                                         <?php foreach ($multiStatusOptions as $statusValue => $statusLabelKey): ?>
+                                        <?php if ($multiConsultationOnly && !in_array($statusValue, [DecisionProcess::STATUS_DRAFT, DecisionProcess::STATUS_SCHEDULED, DecisionProcess::STATUS_CONSULTATION], true)) continue; ?>
                                         <option value="<?= $escape($statusValue) ?>" <?= $multiStatus === $statusValue ? 'selected' : '' ?>><?= $escape(t($statusLabelKey, [], $lang, $baseSourceLang)) ?></option>
                                         <?php endforeach; ?>
                                     </select>
@@ -735,8 +769,10 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                             <div class="omo-decision-edit__process-dates">
                                 <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.consultation_start', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="consultation_start_at" value="<?= $escape($multiDateValue($decision->get('consultation_start_at'))) ?>" <?= $multiCanEditStartDates ? '' : 'readonly' ?>></label>
                                 <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.consultation_end', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="consultation_end_at" value="<?= $escape($multiDateValue($decision->get('consultation_end_at'))) ?>"></label>
+                                <?php if (!$multiConsultationOnly): ?>
                                 <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.evaluation_start', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="evaluation_start_at" value="<?= $escape($multiDateValue($decision->get('evaluation_start_at'))) ?>" <?= $multiCanEditStartDates ? '' : 'readonly' ?>></label>
                                 <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.evaluation_end', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="evaluation_end_at" value="<?= $escape($multiDateValue($decision->get('evaluation_end_at'))) ?>"></label>
+                                <?php endif; ?>
                             </div>
 
                             <?= omoDecisionRenderInvitationSection($decision, $multiContext, $lang, $baseSourceLang, $escape, 'omo-decision-edit__multi-invitations') ?>
