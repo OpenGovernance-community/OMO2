@@ -38,15 +38,19 @@
 
 .omo-decision-settings-head.omo-decision-settings-head {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-    gap: var(--generic-space-3, 12px);
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .omo-decision-settings-button {
-    min-width: 118px;
     justify-content: center;
     white-space: nowrap;
+}
+
+.omo-decision-settings-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--generic-space-3, 12px);
 }
 
 .omo-decision-proposal-menu-panel {
@@ -80,7 +84,7 @@
 
 .omo-decision-settings-overview {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--generic-space-4, 16px);
 }
 
@@ -593,8 +597,8 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .omo-decision-settings-button {
-        width: 100%;
+    .omo-decision-settings-title-row {
+        align-items: flex-start;
     }
 
     .omo-decision-edit__question-nav {
