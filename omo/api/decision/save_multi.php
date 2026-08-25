@@ -49,6 +49,7 @@ $saveFiles = [
     DecisionProcess::METHOD_SIMPLE_VOTE => __DIR__ . '/modules/vote/save.php',
     DecisionProcess::METHOD_MAJORITY_JUDGMENT => __DIR__ . '/modules/majority_judgment/save.php',
     DecisionProcess::METHOD_CONSENT => __DIR__ . '/modules/consent/save.php',
+    DecisionProcess::METHOD_CONSULTATION_ONLY => __DIR__ . '/modules/consultation_only/save.php',
 ];
 $groupPayloads = [];
 foreach ($serializedGroups as $groupIndex => $serializedGroup) {

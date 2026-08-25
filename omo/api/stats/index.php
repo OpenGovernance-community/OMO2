@@ -276,7 +276,7 @@ $ethercalcPickerAvailable = omoEthercalcHasConfig();
      if (!($document instanceof Document) || !$document->isEthercalcDocument() || $document->getEthercalcRoomId() === '') {
          if (
              $document instanceof Document
-             && ($document->isUploadedFile() || $document->isCollaboraDocument())
+             && $document->isUploadedFile()
              && $document->hasStoredFile()
              && omoSpreadsheetSupportsFilename($document->getStoredFileDownloadName())
          ) {

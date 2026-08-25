@@ -8580,6 +8580,105 @@
 			});
 		}
 
+		protected function buildDecisionMoveDestinationCatalog(\dbObject\Holon $candidate, array &$catalog, array $path = array(), int $currentUserId = 0)
+		{
+			if (!(bool)$candidate->get('active') || !(bool)$candidate->get('visible')) {
+				return;
+			}
+
+			$currentPath = $path;
+			$displayName = trim((string)$candidate->getDisplayName());
+			$isOrganizationRoot = (int)$candidate->get('IDtypeholon') === 4;
+			if ($displayName !== '' && !$isOrganizationRoot) {
+				$currentPath[] = $displayName;
+			}
+
+			if (
+				$currentUserId > 0
+				&& $displayName !== ''
+				&& $candidate->isAllowed('CAN_CREATE_DECISION', false, $currentUserId)
+			) {
+				$catalog[] = array(
+					'key' => 'holon-' . (int)$candidate->getId(),
+					'holonId' => (int)$candidate->getId(),
+					'name' => $displayName,
+					'typeId' => (int)$candidate->get('IDtypeholon'),
+					'typeLabel' => $candidate->getTypeLabel(),
+					'pathLabel' => implode(' > ', $currentPath),
+				);
+			}
+
+			foreach ($candidate->getChildren() as $child) {
+				$this->buildDecisionMoveDestinationCatalog($child, $catalog, $currentPath, $currentUserId);
+			}
+		}
+
+		public function getDecisionMoveEditorData($decisionId = 0)
+		{
+			$rootHolon = $this->getEnabledStructuralRootHolon();
+			$currentUserId = function_exists('commonGetCurrentUserId')
+				? (int)\commonGetCurrentUserId()
+				: (int)($_SESSION['currentUser'] ?? 0);
+			$decisionId = (int)$decisionId;
+			$decision = new \dbObject\DecisionProcess();
+			$organizationLabel = trim((string)$this->get('name'));
+
+			$data = array(
+				'organizationId' => (int)$this->getId(),
+				'organizationName' => $organizationLabel,
+				'decisionId' => 0,
+				'canMove' => false,
+				'decision' => null,
+				'currentDestination' => null,
+				'destinations' => array(),
+			);
+
+			if (
+				$decisionId <= 0
+				|| !$decision->load($decisionId)
+				|| (int)$decision->get('IDorganization') !== (int)$this->getId()
+			) {
+				return $data;
+			}
+
+			$currentHolonId = (int)$decision->get('IDholon');
+			$data['decisionId'] = (int)$decision->getId();
+			$data['decision'] = array(
+				'id' => (int)$decision->getId(),
+				'title' => (string)$decision->get('title'),
+				'holonId' => $currentHolonId,
+			);
+			$data['currentDestination'] = array(
+				'key' => $currentHolonId > 0 ? 'holon-' . $currentHolonId : '',
+				'holonId' => $currentHolonId,
+				'pathLabel' => $currentHolonId > 0 ? '' : $organizationLabel,
+			);
+			$data['canMove'] = $decision->canMoveInOrganizationContext((int)$this->getId(), $currentUserId);
+
+			if (!$data['canMove'] || !($rootHolon instanceof \dbObject\Holon)) {
+				return $data;
+			}
+
+			$this->buildDecisionMoveDestinationCatalog(
+				$rootHolon,
+				$data['destinations'],
+				$organizationLabel !== '' ? array($organizationLabel) : array('Organisation'),
+				$currentUserId
+			);
+
+			foreach ($data['destinations'] as $index => $destination) {
+				$data['destinations'][$index]['isCurrentDestination'] = (
+					(int)($destination['holonId'] ?? 0) === $currentHolonId
+				);
+				if (!empty($data['destinations'][$index]['isCurrentDestination'])) {
+					$data['currentDestination']['pathLabel'] = (string)($destination['pathLabel'] ?? '');
+				}
+			}
+
+			$this->sortDocumentMoveDestinations($data['destinations']);
+			return $data;
+		}
+
 		public function getDocumentMoveEditorData($documentId = 0)
 		{
 			$rootHolon = $this->getEnabledStructuralRootHolon();
@@ -13099,7 +13198,7 @@
 			}
 
 			$canManage = $isOwner;
-			$canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationOpen();
+			$canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationInterfaceOpen();
 			$canView = $canManage
 				|| $hasParticipation
 				|| ($status !== \dbObject\DecisionProcess::STATUS_DRAFT && $visibilityAccess);

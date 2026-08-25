@@ -128,7 +128,7 @@ if ($isSpreadsheetSource) {
     foreach ($documents as $document) {
         if (
             $document instanceof Document
-            && ($document->isUploadedFile() || $document->isCollaboraDocument())
+            && $document->isUploadedFile()
             && $document->hasStoredFile()
             && omoSpreadsheetSupportsFilename($document->getStoredFileDownloadName())
         ) {

@@ -90,7 +90,7 @@ class ArrayDecisionProcess extends ArrayDbObject
         }
 
         $canManage = $isOwner;
-        $canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationOpen();
+        $canParticipate = ($isOwner || $hasParticipation) && $decision->isParticipationInterfaceOpen();
         $canView = $canManage
             || $hasParticipation
             || ($status !== \dbObject\DecisionProcess::STATUS_DRAFT && $visibilityAccess);

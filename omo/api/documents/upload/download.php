@@ -65,12 +65,19 @@ if ($asciiFallbackName === '') {
 }
 
 $contentType = trim((string)($downloadResult['contentType'] ?? 'application/octet-stream'));
+if ($contentType === '' || $contentType === 'application/octet-stream') {
+    $storedMimeType = trim($document->getStoredFileMimeType());
+    if ($storedMimeType !== '') {
+        $contentType = $storedMimeType;
+    }
+}
 $contentLength = max(0, (int)($downloadResult['contentLength'] ?? 0));
 $body = (string)($downloadResult['body'] ?? '');
+$inline = !empty($_GET['inline']);
 
 header('X-Content-Type-Options: nosniff');
 header('Content-Type: ' . $contentType);
-header('Content-Disposition: attachment; filename="' . addcslashes($asciiFallbackName, "\\\"") . '"; filename*=UTF-8\'\'' . rawurlencode($downloadName));
+header('Content-Disposition: ' . ($inline ? 'inline' : 'attachment') . '; filename="' . addcslashes($asciiFallbackName, "\\\"") . '"; filename*=UTF-8\'\'' . rawurlencode($downloadName));
 if ($contentLength > 0) {
     header('Content-Length: ' . $contentLength);
 }

@@ -40,6 +40,7 @@
         }
 
         var valueField = options.valueField || getValueField(host);
+        var disabled = !!options.disabled || host.getAttribute('data-omo-proposal-html-disabled') === '1';
         var initialValue = Object.prototype.hasOwnProperty.call(options, 'value')
             ? String(options.value || '')
             : (valueField ? String(valueField.value || '') : String(host.getAttribute('data-omo-proposal-html-initial') || ''));
@@ -54,6 +55,7 @@
 
                 var api = window.omoSimpleHtmlField.mount(host, {
                     value: initialValue,
+                    disabled: disabled,
                     placeholder: String(options.placeholder || 'Ajoutez une description mise en forme...'),
                     minHeight: Number(options.minHeight || 170),
                     customButtons: [{
@@ -162,11 +164,102 @@
         });
     }
 
+    function getPlainText(value) {
+        var temporary = document.createElement('div');
+        temporary.innerHTML = String(value || '');
+        return String(temporary.textContent || temporary.innerText || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function refreshDecisionProposalCards(root, content, options) {
+        if (!root || !root.querySelectorAll) {
+            return;
+        }
+
+        content = content || {};
+        options = options || {};
+        var descriptionSelector = String(options.descriptionSelector || '[data-omo-decision-proposal-description]');
+        var detailsSelector = String(options.detailsSelector || '');
+        var canEdit = options.canEdit !== false;
+        var cards = root.querySelectorAll('.omo-decision-proposal-card');
+
+        Array.prototype.forEach.call(cards, function (card) {
+            var titleInput = card.querySelector('input[name="proposals[]"]');
+            var descriptionInput = card.querySelector(descriptionSelector);
+            var detailsButton = detailsSelector !== '' ? card.querySelector(detailsSelector) : null;
+            if (!titleInput || !descriptionInput) {
+                return;
+            }
+
+            if (!content.url && detailsButton) {
+                detailsButton.remove();
+            }
+
+            var field = descriptionInput.closest ? descriptionInput.closest('[data-omo-proposal-html-field]') : null;
+            var editor = field ? field.querySelector('[data-omo-proposal-html-editor]') : null;
+
+            if (content.title) {
+                if (titleInput.type === 'hidden') {
+                    var derivedTitle = getPlainText(descriptionInput.value);
+                    titleInput.type = 'text';
+                    titleInput.className = 'generic-form-control';
+                    if (String(titleInput.value || '').trim() === '' && derivedTitle !== '') {
+                        titleInput.value = derivedTitle;
+                    }
+                }
+                if (field) {
+                    field.hidden = true;
+                }
+                descriptionInput.hidden = true;
+                return;
+            }
+
+            titleInput.type = 'hidden';
+            if (!content.description) {
+                if (field) {
+                    field.hidden = true;
+                }
+                descriptionInput.hidden = true;
+                return;
+            }
+
+            if (!field) {
+                field = document.createElement('div');
+                field.setAttribute('data-omo-proposal-html-field', '');
+                editor = document.createElement('div');
+                editor.className = 'omo-proposal-html-editor';
+                editor.setAttribute('data-omo-proposal-html-editor', '');
+                if (!canEdit) {
+                    editor.setAttribute('data-omo-proposal-html-disabled', '1');
+                }
+                descriptionInput.parentNode.insertBefore(field, descriptionInput);
+                field.appendChild(editor);
+                field.appendChild(descriptionInput);
+            }
+
+            field.hidden = false;
+            descriptionInput.hidden = true;
+            if (editor) {
+                if (!canEdit) {
+                    editor.setAttribute('data-omo-proposal-html-disabled', '1');
+                } else {
+                    editor.removeAttribute('data-omo-proposal-html-disabled');
+                }
+                mount(editor, {
+                    value: String(descriptionInput.value || ''),
+                    disabled: !canEdit
+                }).catch(function () {
+                    editor.setAttribute('data-omo-proposal-html-error', '1');
+                });
+            }
+        });
+    }
+
     window.omoProposalHtml = {
         mount: mount,
         mountAll: mountAll,
         getValue: getValue,
-        setValue: setValue
+        setValue: setValue,
+        refreshDecisionProposalCards: refreshDecisionProposalCards
     };
 
     if (document.readyState === 'loading') {
