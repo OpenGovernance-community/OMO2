@@ -20,6 +20,7 @@ if (!function_exists('omoDecisionConsultationOnlyBuildConfig')) {
             && !array_key_exists($methodKey, $decisionOrParameters)
             && (
                 array_key_exists('allow_consultation_proposals', $decisionOrParameters)
+                || array_key_exists('is_anonymous', $decisionOrParameters)
                 || array_key_exists('allow_proposal_discussions', $decisionOrParameters)
                 || array_key_exists('proposal_content', $decisionOrParameters)
             );
@@ -36,7 +37,7 @@ if (!function_exists('omoDecisionConsultationOnlyBuildConfig')) {
         return [
             'choice_mode' => 'single',
             'max_choices' => 1,
-            'is_anonymous' => true,
+            'is_anonymous' => !array_key_exists('is_anonymous', $config) || !empty($config['is_anonymous']),
             'allow_anonymous_votes' => false,
             'allow_consultation_proposals' => !empty($config['allow_consultation_proposals']),
             'allow_proposal_discussions' => !array_key_exists('allow_proposal_discussions', $config) || !empty($config['allow_proposal_discussions']),
@@ -58,6 +59,7 @@ if (!function_exists('omoDecisionConsultationOnlyMergeConfigIntoParameters')) {
         $methodParameters = omoDecisionModuleGetMethodParameters($parameters, $methodKey);
 
         $methodParameters['allow_consultation_proposals'] = !empty($config['allow_consultation_proposals']) ? 1 : 0;
+        $methodParameters['is_anonymous'] = !empty($config['is_anonymous']) ? 1 : 0;
         $methodParameters['allow_proposal_discussions'] = !empty($config['allow_proposal_discussions']) ? 1 : 0;
         $methodParameters['proposal_content'] = omoDecisionNormalizeProposalContent($config['proposal_content'] ?? ($methodParameters['proposal_content'] ?? null));
 

@@ -83,6 +83,7 @@ if (DecisionProcess::normalizeEvaluationMethod($decisionGroup->get('evaluation_m
 }
 
 $voteConfig = omoDecisionVoteBuildConfig($decisionGroup);
+$draftRequested = !empty($_POST['draft']) && !empty($voteConfig['one_proposal_at_a_time']);
 $responseIsAnonymous = !empty($voteConfig['is_anonymous'])
     || (!empty($voteConfig['allow_anonymous_votes']) && !empty($_POST['is_anonymous']));
 $choiceMode = (string)$voteConfig['choice_mode'];
@@ -148,7 +149,7 @@ if (!$response) {
 }
 
 $orderedProposalIds = array_values($matchedProposalIds);
-$response->set('status', DecisionResponse::STATUS_SUBMITTED);
+$response->set('status', $draftRequested ? DecisionResponse::STATUS_DRAFT : DecisionResponse::STATUS_SUBMITTED);
 $response->set('parameters', omoDecisionVoteBuildResponseParameters(
     $choiceMode,
     $orderedProposalIds,
@@ -169,7 +170,7 @@ if (empty($saveResult['status'])) {
 
 omoDecisionModuleJsonResponse(200, [
     'status' => true,
-    'message' => 'Vote enregistre.',
+    'message' => $draftRequested ? 'Brouillon enregistre.' : 'Vote enregistre.',
     'redirectUrl' => omoDecisionBuildContextualEditorUrl($context, 'participate'),
     'drawerTitle' => 'Prises de decision',
 ]);

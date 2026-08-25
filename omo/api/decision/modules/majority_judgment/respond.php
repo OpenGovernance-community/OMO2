@@ -83,6 +83,7 @@ if (DecisionProcess::normalizeEvaluationMethod($decisionGroup->get('evaluation_m
 }
 
 $config = omoDecisionMajorityJudgmentBuildConfig($decisionGroup);
+$draftRequested = !empty($_POST['draft']) && !empty($config['one_proposal_at_a_time']);
 $responseIsAnonymous = !empty($config['is_anonymous'])
     || (!empty($config['allow_anonymous_votes']) && !empty($_POST['is_anonymous']));
 $activeMentions = (array)($config['mentions'] ?? []);
@@ -94,6 +95,9 @@ foreach ($activeProposals as $proposal) {
     $proposalId = (int)$proposal->getId();
     $scoreValue = isset($_POST['scores'][$proposalId]) ? $_POST['scores'][$proposalId] : null;
     if ($scoreValue === null || $scoreValue === '') {
+        if ($draftRequested) {
+            continue;
+        }
         omoDecisionModuleJsonResponse(400, [
             'status' => false,
             'message' => 'Veuillez attribuer une mention a chaque proposition.',
@@ -115,7 +119,7 @@ foreach ($activeProposals as $proposal) {
     ];
 }
 
-if (count($scoreMap) === 0) {
+if (count($scoreMap) === 0 && !$draftRequested) {
     omoDecisionModuleJsonResponse(400, [
         'status' => false,
         'message' => 'Aucune proposition active pour ce scrutin.',
@@ -130,7 +134,7 @@ if (!$response) {
     $response->set('IDdecision_participant', (int)$participant->getId());
 }
 
-$response->set('status', DecisionResponse::STATUS_SUBMITTED);
+$response->set('status', $draftRequested ? DecisionResponse::STATUS_DRAFT : DecisionResponse::STATUS_SUBMITTED);
 $response->set('parameters', omoDecisionMajorityJudgmentBuildResponseParameters($scoreMap, $proposalMeta, $config, $_POST['vote_weight'] ?? null, $responseIsAnonymous));
 
 $saveResult = $response->save();
@@ -143,7 +147,7 @@ if (empty($saveResult['status'])) {
 
 omoDecisionModuleJsonResponse(200, [
     'status' => true,
-    'message' => 'Vote enregistre.',
+    'message' => $draftRequested ? 'Brouillon enregistre.' : 'Vote enregistre.',
     'redirectUrl' => omoDecisionBuildContextualEditorUrl($context, 'participate'),
     'drawerTitle' => 'Prises de decision',
 ]);

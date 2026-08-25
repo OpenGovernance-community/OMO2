@@ -47,6 +47,8 @@ if (!function_exists('omoDecisionVoteBuildConfig')) {
                 || array_key_exists('allow_consultation_proposals', $decisionOrParameters)
                 || array_key_exists('allow_proposal_discussions', $decisionOrParameters)
                 || array_key_exists('show_live_results', $decisionOrParameters)
+                || array_key_exists('randomize_proposal_order', $decisionOrParameters)
+                || array_key_exists('one_proposal_at_a_time', $decisionOrParameters)
                 || array_key_exists('proposal_content', $decisionOrParameters)
                 || array_key_exists('vote_weight_enabled', $decisionOrParameters)
                 || array_key_exists('vote_weight_options', $decisionOrParameters)
@@ -73,6 +75,8 @@ if (!function_exists('omoDecisionVoteBuildConfig')) {
             'allow_consultation_proposals' => !empty($simpleVote['allow_consultation_proposals']),
             'allow_proposal_discussions' => !array_key_exists('allow_proposal_discussions', $simpleVote) || !empty($simpleVote['allow_proposal_discussions']),
             'show_live_results' => !empty($simpleVote['show_live_results']),
+            'randomize_proposal_order' => !empty($simpleVote['randomize_proposal_order']),
+            'one_proposal_at_a_time' => !empty($simpleVote['one_proposal_at_a_time']),
             'proposal_content' => omoDecisionNormalizeProposalContent($simpleVote['proposal_content'] ?? null),
             'vote_weight_enabled' => !empty($voteWeightConfig['enabled']),
             'vote_weight_question' => (string)$voteWeightConfig['question'],
@@ -98,6 +102,8 @@ if (!function_exists('omoDecisionVoteMergeConfigIntoParameters')) {
         $simpleVote['allow_consultation_proposals'] = !empty($config['allow_consultation_proposals']) ? 1 : 0;
         $simpleVote['allow_proposal_discussions'] = !empty($config['allow_proposal_discussions']) ? 1 : 0;
         $simpleVote['show_live_results'] = !empty($config['show_live_results']) ? 1 : 0;
+        $simpleVote['randomize_proposal_order'] = !empty($config['randomize_proposal_order']) ? 1 : 0;
+        $simpleVote['one_proposal_at_a_time'] = !empty($config['one_proposal_at_a_time']) ? 1 : 0;
         $simpleVote['proposal_content'] = omoDecisionNormalizeProposalContent($config['proposal_content'] ?? ($simpleVote['proposal_content'] ?? null));
         unset($simpleVote['live_results_anonymous']);
         $simpleVote = omoDecisionBlockSettingsMergeVoteWeightConfig($simpleVote, [
