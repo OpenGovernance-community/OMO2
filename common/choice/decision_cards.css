@@ -80,7 +80,7 @@
 
 .omo-decision-settings-overview {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
     gap: var(--generic-space-4, 16px);
 }
 
@@ -89,10 +89,14 @@
     align-content: start;
     gap: var(--generic-space-2, 8px);
     min-width: 0;
+    padding: var(--generic-space-3, 12px);
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--generic-radius-md, 10px);
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 52%, var(--color-surface, #ffffff));
 }
 
 .omo-decision-settings-overview__group + .omo-decision-settings-overview__group {
-    padding-left: var(--generic-space-4, 16px);
+    padding-left: var(--generic-space-3, 12px);
     border-left: 1px solid var(--color-border, #d1d5db);
 }
 
@@ -106,7 +110,7 @@
 
 .omo-decision-settings-overview__items {
     display: grid;
-    gap: 5px;
+    gap: 0;
 }
 
 .omo-decision-settings-overview .omo-decision-consent__readonly-stat,
@@ -116,8 +120,9 @@
     grid-template-columns: minmax(0, 1fr) auto;
     gap: var(--generic-space-2, 8px);
     align-items: baseline;
-    padding: 0;
+    padding: 7px 0;
     border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 62%, transparent);
     border-radius: 0;
     background: transparent;
     font-size: var(--generic-type-size-sm, 0.84rem);
@@ -127,6 +132,83 @@
 .omo-decision-settings-overview .omo-decision-vote__readonly-stat > span,
 .omo-decision-settings-overview .omo-decision-majority-judgment__readonly-stat > span {
     text-align: right;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
+    color: var(--color-text, #1f2937);
+    font-size: var(--generic-type-size-xs, 0.78rem);
+    font-weight: 700;
+}
+
+.omo-decision-settings-overview .omo-decision-consent__readonly-stat:last-child,
+.omo-decision-settings-overview .omo-decision-vote__readonly-stat:last-child,
+.omo-decision-settings-overview .omo-decision-majority-judgment__readonly-stat:last-child {
+    border-bottom: 0;
+}
+
+.omo-decision-settings-popup__stack,
+.omo-decision-settings-popup__groups {
+    display: grid;
+    gap: var(--generic-space-4, 16px);
+}
+
+.omo-decision-settings-popup__group {
+    display: grid;
+    gap: var(--generic-space-3, 12px);
+    padding: var(--generic-space-3, 12px);
+    border: 1px solid var(--color-border, #d1d5db);
+    border-radius: var(--generic-radius-md, 10px);
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 58%, var(--color-surface, #ffffff));
+}
+
+.omo-decision-settings-popup__group-title {
+    color: var(--color-text, #1f2937);
+    font-size: var(--generic-type-size-sm, 0.84rem);
+    font-weight: 800;
+    line-height: var(--generic-type-line-title, 1.3);
+}
+
+.omo-decision-settings-popup__options,
+.omo-decision-settings-popup__choice-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--generic-space-2, 8px);
+}
+
+.omo-decision-settings-popup__option,
+.omo-decision-settings-popup__option-with-help {
+    display: flex;
+    align-items: center;
+    gap: var(--generic-space-2, 8px);
+    min-height: 38px;
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 80%, transparent);
+    border-radius: var(--generic-radius-sm, 7px);
+    background: var(--color-surface, #ffffff);
+    color: var(--color-text, #1f2937);
+    font-size: var(--generic-type-size-sm, 0.9rem);
+    line-height: 1.35;
+}
+
+.omo-decision-settings-popup__option {
+    cursor: pointer;
+}
+
+.omo-decision-settings-popup__option input {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.omo-decision-settings-popup__option-with-help {
+    justify-content: space-between;
+}
+
+.omo-decision-settings-popup__option-with-help .omo-decision-settings-popup__option {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
 }
 
 .omo-decision-consent__grid.omo-decision-schedule__primary,
@@ -546,10 +628,8 @@
     }
 
     .omo-decision-settings-overview__group + .omo-decision-settings-overview__group {
-        padding-top: var(--generic-space-3, 12px);
-        padding-left: 0;
-        border-top: 1px solid var(--color-border, #d1d5db);
-        border-left: 0;
+        padding-left: var(--generic-space-3, 12px);
+        border-left: 1px solid var(--color-border, #d1d5db);
     }
 
     .omo-decisions-card__header {

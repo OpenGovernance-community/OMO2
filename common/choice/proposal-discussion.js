@@ -159,12 +159,22 @@
             + '</div>';
     }
 
-    function buildEditorHtml() {
+    function buildEditorHtml(proposalContent) {
+        proposalContent = proposalContent && typeof proposalContent === 'object' ? proposalContent : {};
+        var titleField = proposalContent.title !== false
+            ? '<label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Titre</span><input class="generic-form-control" type="text" name="title" maxlength="190" required></label>'
+            : '<input type="hidden" name="title" value="">';
+        var descriptionField = proposalContent.description !== false
+            ? '<label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Description</span><div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-proposal-editor-description></div><textarea hidden aria-hidden="true" name="description" data-omo-proposal-html-value></textarea></div></label>'
+            : '<input type="hidden" name="description" value="">';
+        var urlField = proposalContent.url !== false
+            ? '<label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Lien d information</span><input class="generic-form-control" type="url" name="info_url" maxlength="500" placeholder="https://..."></label>'
+            : '<input type="hidden" name="info_url" value="">';
         return ''
             + '<form class="omo-proposal-popup-content omo-proposal-editor" data-omo-proposal-editor data-topbar-modal-max-width="660px">'
-            + '  <label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Titre</span><input class="generic-form-control" type="text" name="title" maxlength="190" required></label>'
-            + '  <label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Description</span><div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-proposal-editor-description></div><textarea hidden aria-hidden="true" name="description" data-omo-proposal-html-value></textarea></div></label>'
-            + '  <label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Lien d information</span><input class="generic-form-control" type="url" name="info_url" maxlength="500" placeholder="https://..."></label>'
+            + titleField
+            + descriptionField
+            + urlField
             + '  <div class="generic-form-actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-proposal-editor-cancel>Annuler</button><button type="submit" class="generic-action-button generic-action-button--main">Enregistrer</button></div>'
             + '</form>';
     }
@@ -603,7 +613,12 @@
         root.__omoProposal = proposal || {};
         var title = root.querySelector('[data-omo-proposal-chat-title]');
         if (title) {
-            title.textContent = String(proposal.title || 'Proposition');
+            var proposalContent = root.__omoContext && root.__omoContext.proposalContent && typeof root.__omoContext.proposalContent === 'object'
+                ? root.__omoContext.proposalContent
+                : {};
+            title.textContent = proposalContent.title === false
+                ? 'Proposition'
+                : String(proposal.title || 'Proposition');
         }
         if (typeof messageCount !== 'undefined') {
             updateDiscussionCount(root.__omoDiscussionButton, messageCount);
@@ -647,7 +662,7 @@
         if (Object.prototype.hasOwnProperty.call(proposal || {}, 'discussionMessageCount')) {
             updateDiscussionCount(button, proposal.discussionMessageCount);
         }
-        var title = card.querySelector('strong');
+        var title = card.querySelector('[data-omo-proposal-title]');
         if (title) {
             title.textContent = String(proposal.title || '');
         }
@@ -797,7 +812,7 @@
 
         var context = parseContext(button);
         var proposalId = Number(button.getAttribute('data-proposal-id') || 0);
-        window.commonTopbarOpenModal('Modifier la proposition', buildEditorHtml(), 'html');
+        window.commonTopbarOpenModal('Modifier la proposition', buildEditorHtml(context.proposalContent), 'html');
         var form = document.querySelector('#commonTopbarModalBody [data-omo-proposal-editor]');
         if (!form) {
             return;

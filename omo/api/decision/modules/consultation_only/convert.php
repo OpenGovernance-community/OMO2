@@ -45,7 +45,7 @@ require_once $definition['shared_file'];
 
 $consultationConfig = omoDecisionConsultationOnlyBuildConfig($decisionGroup);
 $config = [
-    'is_anonymous' => true,
+    'is_anonymous' => !empty($consultationConfig['is_anonymous']),
     'allow_anonymous_votes' => false,
     'allow_consultation_proposals' => !empty($consultationConfig['allow_consultation_proposals']),
     'allow_proposal_discussions' => !empty($consultationConfig['allow_proposal_discussions']),

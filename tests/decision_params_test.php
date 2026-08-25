@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/class/dbobject/dbobject.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/decisionprocess.class.php';
+require_once dirname(__DIR__) . '/omo/api/decision/modules/common.php';
 require_once dirname(__DIR__) . '/omo/api/decision/params/shared.php';
 require_once dirname(__DIR__) . '/omo/api/decision/modules/vote/shared.php';
 require_once dirname(__DIR__) . '/omo/api/decision/modules/majority_judgment/shared.php';
@@ -52,6 +53,53 @@ assertDecisionParams(!empty(omoDecisionVoteBuildConfig([])['is_anonymous']), 'Si
 assertDecisionParams(!empty(omoDecisionMajorityJudgmentBuildConfig([])['is_anonymous']), 'Majority judgment votes must be anonymous by default.');
 assertDecisionParams(!empty(omoDecisionConsentBuildConfig([])['is_anonymous']), 'Consent votes must be anonymous by default.');
 assertDecisionParams(!empty(omoDecisionConsultationOnlyBuildConfig([])['proposal_content']['description']), 'Consultation only must keep a description field for proposals by default.');
+assertDecisionParams(!empty(omoDecisionVoteBuildConfig(['randomize_proposal_order' => true])['randomize_proposal_order']), 'Simple votes must retain the random proposal order setting.');
+assertDecisionParams(!empty(omoDecisionMajorityJudgmentBuildConfig(['randomize_proposal_order' => true])['randomize_proposal_order']), 'Majority judgment votes must retain the random proposal order setting.');
+assertDecisionParams(!empty(omoDecisionConsentBuildConfig(['randomize_proposal_order' => true])['randomize_proposal_order']), 'Consent votes must retain the random proposal order setting.');
+assertDecisionParams(!empty(omoDecisionVoteBuildConfig(['one_proposal_at_a_time' => true])['one_proposal_at_a_time']), 'Simple votes must retain the one-proposal-at-a-time setting.');
+assertDecisionParams(!empty(omoDecisionMajorityJudgmentBuildConfig(['one_proposal_at_a_time' => true])['one_proposal_at_a_time']), 'Majority judgment votes must retain the one-proposal-at-a-time setting.');
+assertDecisionParams(!empty(omoDecisionConsentBuildConfig(['one_proposal_at_a_time' => true])['one_proposal_at_a_time']), 'Consent votes must retain the one-proposal-at-a-time setting.');
+assertDecisionParams(empty(omoDecisionConsultationOnlyBuildConfig(['is_anonymous' => false])['is_anonymous']), 'Consultation only must retain its named participation setting.');
+
+$shuffleProposals = [
+    new class(1) {
+        public function __construct(private int $id) {}
+        public function getId(): int { return $this->id; }
+    },
+    new class(2) {
+        public function __construct(private int $id) {}
+        public function getId(): int { return $this->id; }
+    },
+    new class(3) {
+        public function __construct(private int $id) {}
+        public function getId(): int { return $this->id; }
+    },
+];
+$firstShuffle = omoDecisionShuffleProposalsForParticipant($shuffleProposals, ['currentUserId' => 12], 'test');
+$secondShuffle = omoDecisionShuffleProposalsForParticipant($shuffleProposals, ['currentUserId' => 12], 'test');
+assertDecisionParams(
+    array_map(static fn ($proposal) => $proposal->getId(), $firstShuffle) === array_map(static fn ($proposal) => $proposal->getId(), $secondShuffle),
+    'Random proposal order must remain stable for the same participant.'
+);
+
+$untitledProposalItems = omoDecisionBuildProposalItemsFromInput(
+    [''],
+    ['<p>Proposition sans titre</p>'],
+    [''],
+    [0],
+    ['title' => false, 'description' => true, 'url' => false]
+);
+assertDecisionParams(count($untitledProposalItems) === 1, 'A description-only proposal must be retained.');
+assertDecisionParams($untitledProposalItems[0]['title'] === '', 'A description-only proposal must not receive a copied title.');
+
+$emptyProposalItems = omoDecisionBuildProposalItemsFromInput(
+    [''],
+    [''],
+    [''],
+    [0],
+    ['title' => false, 'description' => true, 'url' => false]
+);
+assertDecisionParams(count($emptyProposalItems) === 0, 'An empty proposal must not be retained.');
 
 $newDecision = new DecisionProcess();
 assertDecisionParams($newDecision->canEnableNamedVote(), 'A new decision must allow a named vote configuration.');

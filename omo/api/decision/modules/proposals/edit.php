@@ -48,6 +48,10 @@ if (!omoDecisionCanEditProposalFromPublicInterface($proposal, $context)) {
     ]);
 }
 
+$decisionGroup = $proposal->getDecisionGroup();
+$methodConfig = omoDecisionBuildMethodConfig($decisionGroup instanceof \dbObject\DecisionGroup ? $decisionGroup : $proposal->getDecisionProcess());
+$proposalContent = omoDecisionNormalizeProposalContent($methodConfig['proposal_content'] ?? null);
+
 if ($requestMethod === 'GET') {
     if ($proposal->hasGovernanceActions()) {
         $decision = $proposal->getDecisionProcess();
@@ -76,9 +80,9 @@ if ($requestMethod === 'GET') {
 
 $result = $proposal->updateContentByAuthor(
     $userId,
-    $_POST['title'] ?? '',
-    $_POST['description'] ?? '',
-    $_POST['info_url'] ?? '',
+    $proposalContent['title'] ? ($_POST['title'] ?? '') : '',
+    $proposalContent['description'] ? ($_POST['description'] ?? '') : '',
+    $proposalContent['url'] ? ($_POST['info_url'] ?? '') : '',
     $participantId
 );
 if (empty($result['status'])) {

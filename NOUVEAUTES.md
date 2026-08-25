@@ -4,6 +4,17 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-25
 
+- Les parametres des scrutins proposent maintenant un ordre aleatoire stable des propositions pour chaque participant pendant le vote, avec un resume dans la console de gestion. La Consultation seule affiche de nouveau son choix de participation anonyme ou nominative.
+
+- Les parametres des scrutins sont regroupes par usage dans la fenetre de configuration. Le resume distingue davantage les reglages et les cases a cocher restent lisibles sur une seule ligne.
+- Les scrutins peuvent afficher une seule proposition a la fois pendant le vote. Les participants naviguent entre les propositions, voient les reponses deja renseignees et reprennent sur la premiere proposition restante.
+
+- Les propositions composees uniquement d une description HTML sont envoyees explicitement lors de la creation ou de l edition d une Consultation seule. Ce mode ne presente plus le choix entre prise de decision indicative ou decisionnaire.
+
+- La creation d une Consultation seule depuis le drawer reste maintenant dans le drawer apres enregistrement. Les descriptions HTML des propositions sans titre sont synchronisees avant la sauvegarde, afin que les propositions soient bien creees.
+
+- Une proposition peut maintenant etre enregistree sans titre lorsqu au moins une description ou une URL est presente. Son titre ne reprend plus automatiquement le texte de sa description.
+
 - Un nouveau mode Consultation seule permet de recueillir, discuter et enrichir des propositions sans annoncer ni planifier de vote. Apres la fin de cette phase, il peut etre converti vers le vote simple, le jugement majoritaire ou le consentement afin de planifier le scrutin et d en regler les parametres.
 
 - Les libelles des prises de decision distinguent maintenant une decision indicative de la phase d elaboration des propositions, pour ne plus confondre cette phase avec le mode Consultation seule.
@@ -23,6 +34,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les fichiers telecharges compatibles avec Collabora utilisent maintenant une icone adaptee a leur nature : image, video, document texte, tableur, presentation ou dessin. Le remplacement d un fichier existant demande une confirmation et supprime l ancienne version du stockage.
 - Les modeles collaboratifs sont stockes directement comme des fichiers televerses ; le type Collabora historique n est plus gere. La creation d un modele ne tente plus de televerser deux fois son fichier temporaire.
 - Les images telechargees sont maintenant affichees directement dans la fiche Document, et les fichiers audio reconnus utilisent une icone dediee avec un lecteur integre.
+- La liste Documents reserve maintenant la largeur de la case de selection sur toutes les cartes, y compris lorsque le document ne peut pas etre selectionne, afin de garder les contenus alignes.
+- Les actions groupees de la liste Documents proposent maintenant le deplacement de plusieurs holons et/ou dossiers avec le meme selecteur de destination que le deplacement individuel.
 
 ## 2026-08-24
 

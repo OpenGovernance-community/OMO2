@@ -61,6 +61,10 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleGetSourceLang')) {
             'decisions.majority_judgment.field.allow_consultation_proposals' => ['text' => 'Autoriser les propositions pendant la consultation', 'context' => 'Label for allowing proposals during consultation.'],
             'decisions.majority_judgment.field.allow_proposal_discussions' => ['text' => 'Autoriser les discussions des propositions', 'context' => 'Label for allowing account users to discuss proposals.'],
             'decisions.majority_judgment.field.live_results' => ['text' => 'Afficher les resultats pendant le scrutin', 'context' => 'Label for showing intermediate majority judgment results.'],
+            'decisions.majority_judgment.field.random_order' => ['text' => 'Ordre aléatoire des propositions', 'context' => 'Label for shuffling proposal order during voting.'],
+            'decisions.majority_judgment.field.one_proposal_at_a_time' => ['text' => 'Une proposition a la fois', 'context' => 'Label for displaying one proposal at a time during voting.'],
+            'decisions.majority_judgment.action.previous_proposal' => ['text' => 'Précédente', 'context' => 'Button to show the previous proposal in one-at-a-time voting.'],
+            'decisions.majority_judgment.action.next_proposal' => ['text' => 'Suivante', 'context' => 'Button to show the next proposal in one-at-a-time voting.'],
             'decisions.majority_judgment.field.live_results_summary' => ['text' => 'Resultats en cours', 'context' => 'Summary label for intermediate majority judgment results setting.'],
             'decisions.majority_judgment.field.live_results_heading' => ['text' => 'Mentions en cours', 'context' => 'Heading for intermediate majority judgment results.'],
             'decisions.majority_judgment.option.live_results.named' => ['text' => 'Oui, nominatifs', 'context' => 'Summary for named intermediate majority judgment results.'],
@@ -188,6 +192,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         $allowConsultationProposals = !empty($config['allow_consultation_proposals']);
         $allowProposalDiscussions = !empty($config['allow_proposal_discussions']);
         $showLiveResults = !empty($config['show_live_results']);
+        $randomizeProposalOrder = !empty($config['randomize_proposal_order']);
+        $oneProposalAtATime = !empty($config['one_proposal_at_a_time']);
         $proposalContent = omoDecisionNormalizeProposalContent($config['proposal_content'] ?? null);
         $proposalContentSummary = omoDecisionBuildProposalContentSummary($proposalContent, $lang, $sourceLang);
         $proposalContentUrlEnabled = !empty($proposalContent['url']);
@@ -219,6 +225,13 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
 
         $consultationStarted = $decision instanceof DecisionProcess ? $decision->hasConsultationStarted() : false;
         $evaluationStarted = $decision instanceof DecisionProcess ? $decision->hasEvaluationStarted() : false;
+        if ($isParticipateMode && $evaluationStarted && $randomizeProposalOrder) {
+            $proposalObjects = omoDecisionShuffleProposalsForParticipant(
+                $proposalObjects,
+                $context,
+                'majority_judgment:' . ($decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0)
+            );
+        }
         $hasSubmittedResponses = $decision instanceof DecisionProcess ? $decision->hasSubmittedResponses() : false;
         $resultsMode = $decision instanceof DecisionProcess
             && in_array($status, [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
@@ -359,6 +372,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         <section class="omo-decision-majority-judgment<?= $isManageMode && !$embeddedQuestion ? '' : ' generic-section generic-section--stack' ?>">
             <?= omoDecisionRenderVoteWeightEditorAssets() ?>
             <?= omoDecisionRenderProposalDiscussionAssets() ?>
+            <?= omoDecisionRenderOneProposalAtATimeAssets() ?>
             <?php if ($resultsMode && !$publicLayout): ?>
             <div class="generic-soft-panel generic-soft-panel--stack omo-decision-majority-judgment__notice">
                 <p class="omo-decision-majority-judgment__text"><?= $escape(t('decisions.majority_judgment.notice.results', [], $lang, $sourceLang)) ?></p>
@@ -517,6 +531,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         <input type="hidden" name="allow_consultation_proposals" value="<?= $allowConsultationProposals ? '1' : '' ?>" data-omo-decision-mj-hidden-consultation-proposals>
                         <input type="hidden" name="allow_proposal_discussions" value="<?= $allowProposalDiscussions ? '1' : '' ?>" data-omo-decision-mj-hidden-proposal-discussions>
                         <input type="hidden" name="show_live_results" value="<?= $showLiveResults ? '1' : '' ?>" data-omo-decision-mj-hidden-live-results>
+                        <input type="hidden" name="randomize_proposal_order" value="<?= $randomizeProposalOrder ? '1' : '' ?>" data-omo-decision-mj-hidden-random-order>
+                        <input type="hidden" name="one_proposal_at_a_time" value="<?= $oneProposalAtATime ? '1' : '' ?>" data-omo-decision-mj-hidden-one-proposal-at-a-time>
                         <?= omoDecisionRenderProposalContentSettings($proposalContent, $lang, $sourceLang, $escape, $canEditStructure, 'hidden') ?>
                         <input type="hidden" name="vote_weight_enabled" value="<?= $voteWeightEnabled ? '1' : '' ?>" data-omo-decision-mj-hidden-vote-weight-enabled>
                         <input type="hidden" name="vote_weight_question" value="<?= $escape($voteWeightQuestion) ?>" data-omo-decision-mj-hidden-vote-weight-question>
@@ -551,6 +567,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                         <span class="omo-decision-settings-overview__title"><?= $escape(t('decisions.edit.settings.behavior', [], $lang, $sourceLang)) ?></span>
                                         <div class="omo-decision-settings-overview__items">
                                             <span class="omo-decision-majority-judgment__readonly-stat"><strong><?= $escape(t('decisions.edit.proposal_content.summary_label', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-mj-proposal-content-summary data-title-label="<?= $escape(t('decisions.edit.proposal_content.title_field', [], $lang, $sourceLang)) ?>" data-description-label="<?= $escape(t('decisions.edit.proposal_content.description_field', [], $lang, $sourceLang)) ?>" data-url-label="<?= $escape(t('decisions.edit.proposal_content.url_field', [], $lang, $sourceLang)) ?>"><?= $escape($proposalContentSummary) ?></span></span>
+                                            <span class="omo-decision-majority-judgment__readonly-stat"><strong><?= $escape(t('decisions.majority_judgment.field.random_order', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-mj-random-order-summary data-yes-label="<?= $escape(t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang)) ?>" data-no-label="<?= $escape(t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang)) ?>"><?= $escape($randomizeProposalOrder ? t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang) : t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang)) ?></span></span>
+                                            <span class="omo-decision-majority-judgment__readonly-stat"><strong><?= $escape(t('decisions.majority_judgment.field.one_proposal_at_a_time', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-mj-one-proposal-at-a-time-summary data-yes-label="<?= $escape(t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang)) ?>" data-no-label="<?= $escape(t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang)) ?>"><?= $escape($oneProposalAtATime ? t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang) : t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang)) ?></span></span>
                                             <span class="omo-decision-majority-judgment__readonly-stat"><strong><?= $escape(t('decisions.majority_judgment.field.scale', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-mj-scale-summary><?= $escape($settingsScaleSummary) ?></span></span>
                                             <span class="omo-decision-majority-judgment__readonly-stat"><strong><?= $escape(t('decisions.majority_judgment.field.allow_consultation_proposals', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-mj-consultation-summary data-yes-label="<?= $escape(t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang)) ?>" data-no-label="<?= $escape(t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang)) ?>"><?= $escape($allowConsultationProposals ? t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang) : t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang)) ?></span></span>
                                             <span class="omo-decision-majority-judgment__readonly-stat"><strong><?= $escape(t('decisions.majority_judgment.field.allow_proposal_discussions', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-mj-discussions-summary data-yes-label="<?= $escape(t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang)) ?>" data-no-label="<?= $escape(t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang)) ?>"><?= $escape($allowProposalDiscussions ? t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang) : t('decisions.majority_judgment.option.common.no', [], $lang, $sourceLang)) ?></span></span>
@@ -613,41 +631,55 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                     <p class="omo-decision-majority-judgment__text"><?= $escape(t('decisions.majority_judgment.field.scale_center_hint', [], $lang, $sourceLang)) ?></p>
                                     </div>
                                 </div>
-                                <label class="omo-decision-majority-judgment-popup__field">
-                                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.named', [], $lang, $sourceLang)) ?></span>
-                                    <span class="omo-decision-majority-judgment__toggle">
-                                        <input type="checkbox" data-omo-decision-mj-popup-anonymous <?= !$isAnonymous ? 'checked' : '' ?> <?= $canEditStructure && $canEnableNamedVote ? '' : 'disabled' ?>>
-                                        <span><?= $escape(t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang)) ?></span>
-                                    </span>
-                                </label>
-                                <div class="generic-inline-help" data-omo-decision-mj-popup-allow-anonymous-votes-option hidden>
-                                    <label class="omo-decision-majority-judgment__toggle">
-                                        <input type="checkbox" data-omo-decision-mj-popup-allow-anonymous-votes <?= $allowAnonymousVotes ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
-                                        <span><?= $escape(t('decisions.majority_judgment.field.allow_anonymous_votes', [], $lang, $sourceLang)) ?></span>
-                                    </label>
-                                    <details class="generic-context-help">
-                                        <summary aria-label="<?= $escape(t('decisions.majority_judgment.field.allow_anonymous_votes_help', [], $lang, $sourceLang)) ?>">?</summary>
-                                        <div class="generic-context-help__content"><?= $escape(t('decisions.majority_judgment.field.allow_anonymous_votes_help', [], $lang, $sourceLang)) ?></div>
-                                    </details>
-                                </div>
-                                <label class="omo-decision-majority-judgment-popup__field">
-                                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.allow_consultation_proposals', [], $lang, $sourceLang)) ?></span>
-                                    <span class="omo-decision-majority-judgment__toggle">
-                                        <input type="checkbox" data-omo-decision-mj-popup-consultation-proposals <?= $allowConsultationProposals ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
-                                        <span><?= $escape(t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang)) ?></span>
-                                    </span>
-                                </label>
-                                <label class="omo-decision-majority-judgment-popup__field">
-                                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.allow_proposal_discussions', [], $lang, $sourceLang)) ?></span>
-                                    <span class="omo-decision-majority-judgment__toggle">
-                                        <input type="checkbox" data-omo-decision-mj-popup-proposal-discussions <?= $allowProposalDiscussions ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
-                                        <span><?= $escape(t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang)) ?></span>
-                                    </span>
-                                </label>
-                                <label class="omo-decision-majority-judgment-popup__field">
-                                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.live_results', [], $lang, $sourceLang)) ?></span>
-                                    <span class="omo-decision-majority-judgment__toggle"><input type="checkbox" data-omo-decision-mj-popup-live-results <?= $showLiveResults ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>><span><?= $escape(t('decisions.majority_judgment.option.common.yes', [], $lang, $sourceLang)) ?></span></span>
-                                </label>
+                                <section class="omo-decision-settings-popup__group">
+                                    <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.participation', [], $lang, $sourceLang)) ?></span>
+                                    <div class="omo-decision-settings-popup__options">
+                                        <label class="omo-decision-settings-popup__option">
+                                            <input type="checkbox" data-omo-decision-mj-popup-consultation-proposals <?= $allowConsultationProposals ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                                            <span><?= $escape(t('decisions.majority_judgment.field.allow_consultation_proposals', [], $lang, $sourceLang)) ?></span>
+                                        </label>
+                                        <label class="omo-decision-settings-popup__option">
+                                            <input type="checkbox" data-omo-decision-mj-popup-proposal-discussions <?= $allowProposalDiscussions ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                                            <span><?= $escape(t('decisions.majority_judgment.field.allow_proposal_discussions', [], $lang, $sourceLang)) ?></span>
+                                        </label>
+                                    </div>
+                                </section>
+                                <section class="omo-decision-settings-popup__group">
+                                    <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.presentation', [], $lang, $sourceLang)) ?></span>
+                                    <div class="omo-decision-settings-popup__options">
+                                        <label class="omo-decision-settings-popup__option">
+                                            <input type="checkbox" data-omo-decision-mj-popup-random-order <?= $randomizeProposalOrder ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                                            <span><?= $escape(t('decisions.majority_judgment.field.random_order', [], $lang, $sourceLang)) ?></span>
+                                        </label>
+                                        <label class="omo-decision-settings-popup__option">
+                                            <input type="checkbox" data-omo-decision-mj-popup-one-proposal-at-a-time <?= $oneProposalAtATime ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                                            <span><?= $escape(t('decisions.majority_judgment.field.one_proposal_at_a_time', [], $lang, $sourceLang)) ?></span>
+                                        </label>
+                                    </div>
+                                </section>
+                                <section class="omo-decision-settings-popup__group">
+                                    <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.privacy', [], $lang, $sourceLang)) ?></span>
+                                    <div class="omo-decision-settings-popup__options">
+                                        <label class="omo-decision-settings-popup__option">
+                                            <input type="checkbox" data-omo-decision-mj-popup-anonymous <?= !$isAnonymous ? 'checked' : '' ?> <?= $canEditStructure && $canEnableNamedVote ? '' : 'disabled' ?>>
+                                            <span><?= $escape(t('decisions.majority_judgment.field.named', [], $lang, $sourceLang)) ?></span>
+                                        </label>
+                                        <div class="omo-decision-settings-popup__option-with-help" data-omo-decision-mj-popup-allow-anonymous-votes-option hidden>
+                                            <label class="omo-decision-settings-popup__option">
+                                                <input type="checkbox" data-omo-decision-mj-popup-allow-anonymous-votes <?= $allowAnonymousVotes ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                                                <span><?= $escape(t('decisions.majority_judgment.field.allow_anonymous_votes', [], $lang, $sourceLang)) ?></span>
+                                            </label>
+                                            <details class="generic-context-help">
+                                                <summary aria-label="<?= $escape(t('decisions.majority_judgment.field.allow_anonymous_votes_help', [], $lang, $sourceLang)) ?>">?</summary>
+                                                <div class="generic-context-help__content"><?= $escape(t('decisions.majority_judgment.field.allow_anonymous_votes_help', [], $lang, $sourceLang)) ?></div>
+                                            </details>
+                                        </div>
+                                        <label class="omo-decision-settings-popup__option omo-decision-settings-popup__option--wide">
+                                            <input type="checkbox" data-omo-decision-mj-popup-live-results <?= $showLiveResults ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                                            <span><?= $escape(t('decisions.majority_judgment.field.live_results', [], $lang, $sourceLang)) ?></span>
+                                        </label>
+                                    </div>
+                                </section>
                                 <?= omoDecisionRenderProposalContentSettings($proposalContent, $lang, $sourceLang, $escape, $canEditStructure, 'popup') ?>
                                 <?= omoDecisionRenderVoteWeightEditor($lang, $sourceLang, $escape, [
                                     'canEdit' => $canEditStructure,
@@ -764,12 +796,12 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         <?php if (count($proposalObjects) === 0): ?>
                         <p class="omo-decision-majority-judgment__text"><?= $escape(t('decisions.majority_judgment.empty_proposals', [], $lang, $sourceLang)) ?></p>
                         <?php else: ?>
-                        <div class="omo-decision-majority-judgment__rating-list">
+                        <div class="omo-decision-majority-judgment__rating-list"<?= $oneProposalAtATime && !$isConsultationPhase ? ' data-omo-decision-one-at-a-time' : '' ?><?= $oneProposalAtATime && !$isConsultationPhase && (!($selectedResponse instanceof DecisionResponse) || DecisionResponse::normalizeStatus($selectedResponse->get('status')) !== DecisionResponse::STATUS_SUBMITTED) ? ' data-omo-decision-one-at-a-time-draft-url="/omo/api/decision/modules/majority_judgment/respond.php"' : '' ?>>
                             <?php foreach ($proposalObjects as $proposal): ?>
                             <?php $proposalId = (int)$proposal->getId(); ?>
-                            <div class="generic-section generic-section--stack omo-decision-majority-judgment__rating-card">
+                            <div class="generic-section generic-section--stack omo-decision-majority-judgment__rating-card"<?= $oneProposalAtATime && !$isConsultationPhase ? ' data-omo-decision-one-at-a-time-item' : '' ?>>
                                 <div class="omo-decision-majority-judgment__rating-head">
-                                    <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
+                                    <?php if (omoDecisionProposalTitleIsVisible($proposalContent, $proposal->get('title'))): ?><strong data-omo-proposal-title><?= $escape(trim((string)$proposal->get('title'))) ?></strong><?php endif; ?>
                                     <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-majority-judgment__text', 'omo-decision-majority-judgment__link') ?>
                                     <?= omoDecisionRenderProposalDiscussionActions($proposal, $context, $escape) ?>
                                 </div>
@@ -796,6 +828,13 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 <?php endif; ?>
                             </div>
                             <?php endforeach; ?>
+                            <?php if ($oneProposalAtATime && !$isConsultationPhase): ?>
+                            <div class="omo-decision-one-at-a-time__navigation">
+                                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-one-at-a-time-previous><?= $escape(t('decisions.majority_judgment.action.previous_proposal', [], $lang, $sourceLang)) ?></button>
+                                <div class="omo-decision-one-at-a-time__dots" data-omo-decision-one-at-a-time-dots aria-label="Propositions"></div>
+                                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-one-at-a-time-next><?= $escape(t('decisions.majority_judgment.action.next_proposal', [], $lang, $sourceLang)) ?></button>
+                            </div>
+                            <?php endif; ?>
                         </div>
                         <?php endif; ?>
 
@@ -833,7 +872,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.live_results_heading', [], $lang, $sourceLang)) ?></span>
                     <?php foreach ($proposalObjects as $liveProposal): ?>
                     <?php $liveStat = $proposalStats[(int)$liveProposal->getId()] ?? []; ?>
-                    <div class="omo-decision-majority-judgment__readonly-stat"><strong><?= $escape(trim((string)$liveProposal->get('title'))) ?></strong><span><?= $escape((string)($liveStat['majority_label'] ?? '')) ?> (<?= $escape((string)($liveStat['count'] ?? 0)) ?>)</span></div>
+                    <div class="omo-decision-majority-judgment__readonly-stat"><strong><?= $escape(omoDecisionGetProposalLabel($liveProposal, $proposalContent)) ?></strong><span><?= $escape((string)($liveStat['majority_label'] ?? '')) ?> (<?= $escape((string)($liveStat['count'] ?? 0)) ?>)</span></div>
                     <?php endforeach; ?>
                     <?php if (!$liveResultsAnonymous && !$isAnonymous): ?>
                     <?php foreach ($submittedResponses as $liveResponse): ?>
@@ -844,7 +883,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     $liveParts = [];
                     foreach ($proposalObjects as $liveProposal) {
                         $liveProposalId = (int)$liveProposal->getId();
-                        if (array_key_exists($liveProposalId, $liveScores)) $liveParts[] = trim((string)$liveProposal->get('title')) . ' : ' . (string)($allMentions[(int)$liveScores[$liveProposalId]] ?? '');
+                        if (array_key_exists($liveProposalId, $liveScores)) $liveParts[] = omoDecisionGetProposalLabel($liveProposal, $proposalContent) . ' : ' . (string)($allMentions[(int)$liveScores[$liveProposalId]] ?? '');
                     }
                     ?>
                     <?php if ($liveName !== '' && count($liveParts) > 0): ?><div class="omo-decision-majority-judgment__readonly-stat"><strong><?= $escape($liveName) ?></strong><span><?= $escape(implode(' · ', $liveParts)) ?></span></div><?php endif; ?>
@@ -897,11 +936,11 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             data-omo-decision-mj-result-item
                             data-omo-decision-mj-result-rank="<?= $escape((string)($resultRankIndex + 1)) ?>"
                             data-omo-decision-mj-result-position="<?= $escape((string)$proposalPosition) ?>"
-                            data-omo-decision-mj-result-title="<?= $escape(trim((string)$proposal->get('title'))) ?>"
+                            data-omo-decision-mj-result-title="<?= $escape(omoDecisionGetProposalLabel($proposal, $proposalContent)) ?>"
                         >
                             <div class="omo-decision-majority-judgment__result-head">
                                 <div>
-                                    <strong><?= $escape(trim((string)$proposal->get('title'))) ?></strong>
+                                    <?php if (omoDecisionProposalTitleIsVisible($proposalContent, $proposal->get('title'))): ?><strong data-omo-proposal-title><?= $escape(trim((string)$proposal->get('title'))) ?></strong><?php endif; ?>
                                     <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-majority-judgment__text', 'omo-decision-majority-judgment__link') ?>
                                     <?= omoDecisionRenderProposalDiscussionActions($proposal, $context, $escape) ?>
                                 </div>
@@ -1087,6 +1126,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         const hiddenConsultationInput = form.querySelector('[data-omo-decision-mj-hidden-consultation-proposals]');
                         const hiddenProposalDiscussionsInput = form.querySelector('[data-omo-decision-mj-hidden-proposal-discussions]');
                         const hiddenLiveResultsInput = form.querySelector('[data-omo-decision-mj-hidden-live-results]');
+                        const hiddenRandomOrderInput = form.querySelector('[data-omo-decision-mj-hidden-random-order]');
+                        const hiddenOneProposalAtATimeInput = form.querySelector('[data-omo-decision-mj-hidden-one-proposal-at-a-time]');
                         const hiddenProposalContentTitleInput = form.querySelector('[data-omo-decision-proposal-content-hidden-title]');
                         const hiddenProposalContentDescriptionInput = form.querySelector('[data-omo-decision-proposal-content-hidden-description]');
                         const hiddenProposalContentUrlInput = form.querySelector('[data-omo-decision-proposal-content-hidden-url]');
@@ -1100,6 +1141,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         const consultationSummary = form.querySelector('[data-omo-decision-mj-consultation-summary]');
                         const discussionsSummary = form.querySelector('[data-omo-decision-mj-discussions-summary]');
                         const liveResultsSummary = form.querySelector('[data-omo-decision-mj-live-results-summary]');
+                        const randomOrderSummary = form.querySelector('[data-omo-decision-mj-random-order-summary]');
+                        const oneProposalAtATimeSummary = form.querySelector('[data-omo-decision-mj-one-proposal-at-a-time-summary]');
                         const proposalContentSummary = form.querySelector('[data-omo-decision-mj-proposal-content-summary]');
                         const voteWeightSummary = form.querySelector('[data-omo-decision-mj-vote-weight-summary]');
                         const hiddenMentionCustomizationInput = form.querySelector('[data-omo-decision-mj-hidden-mention-customization-enabled]');
@@ -1320,6 +1363,12 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                         ? String(liveResultsSummary.getAttribute('data-anonymous-label') || yesLabel)
                                     : String(liveResultsSummary.getAttribute('data-named-label') || yesLabel));
                             }
+                            if (randomOrderSummary) {
+                                randomOrderSummary.textContent = hiddenRandomOrderInput && hiddenRandomOrderInput.value ? yesLabel : noLabel;
+                            }
+                            if (oneProposalAtATimeSummary) {
+                                oneProposalAtATimeSummary.textContent = hiddenOneProposalAtATimeInput && hiddenOneProposalAtATimeInput.value ? yesLabel : noLabel;
+                            }
                             if (proposalContentSummary) {
                                 const labels = [];
                                 if (hiddenProposalContentTitleInput && hiddenProposalContentTitleInput.value) {
@@ -1402,6 +1451,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             const popupConsultation = modalBody.querySelector('[data-omo-decision-mj-popup-consultation-proposals]');
                             const popupProposalDiscussions = modalBody.querySelector('[data-omo-decision-mj-popup-proposal-discussions]');
                             const popupLiveResults = modalBody.querySelector('[data-omo-decision-mj-popup-live-results]');
+                            const popupRandomOrder = modalBody.querySelector('[data-omo-decision-mj-popup-random-order]');
+                            const popupOneProposalAtATime = modalBody.querySelector('[data-omo-decision-mj-popup-one-proposal-at-a-time]');
                             const popupProposalContentTitle = modalBody.querySelector('[data-omo-decision-proposal-content-popup-title]');
                             const popupProposalContentDescription = modalBody.querySelector('[data-omo-decision-proposal-content-popup-description]');
                             const popupProposalContentUrl = modalBody.querySelector('[data-omo-decision-proposal-content-popup-url]');
@@ -1429,7 +1480,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 }
                             });
 
-                            if (!popupAnonymous || !popupAllowAnonymousVotes || !popupAllowAnonymousVotesOption || !popupConsultation || !popupProposalDiscussions || !popupLiveResults || !popupProposalContentTitle || !popupProposalContentDescription || !popupProposalContentUrl || !popupVoteWeightEditor || !popupApply) {
+                            if (!popupAnonymous || !popupAllowAnonymousVotes || !popupAllowAnonymousVotesOption || !popupConsultation || !popupProposalDiscussions || !popupLiveResults || !popupRandomOrder || !popupOneProposalAtATime || !popupProposalContentTitle || !popupProposalContentDescription || !popupProposalContentUrl || !popupVoteWeightEditor || !popupApply) {
                                 return;
                             }
 
@@ -1460,6 +1511,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             popupConsultation.checked = !!(hiddenConsultationInput && hiddenConsultationInput.value);
                             popupProposalDiscussions.checked = !!(hiddenProposalDiscussionsInput && hiddenProposalDiscussionsInput.value);
                             popupLiveResults.checked = !!(hiddenLiveResultsInput && hiddenLiveResultsInput.value);
+                            popupRandomOrder.checked = !!(hiddenRandomOrderInput && hiddenRandomOrderInput.value);
+                            popupOneProposalAtATime.checked = !!(hiddenOneProposalAtATimeInput && hiddenOneProposalAtATimeInput.value);
                             popupProposalContentTitle.checked = !!(hiddenProposalContentTitleInput && hiddenProposalContentTitleInput.value);
                             popupProposalContentDescription.checked = !!(hiddenProposalContentDescriptionInput && hiddenProposalContentDescriptionInput.value);
                             popupProposalContentUrl.checked = !!(hiddenProposalContentUrlInput && hiddenProposalContentUrlInput.value);
@@ -1510,6 +1563,12 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 }
                                 if (hiddenLiveResultsInput) {
                                     hiddenLiveResultsInput.value = popupLiveResults.checked ? '1' : '';
+                                }
+                                if (hiddenRandomOrderInput) {
+                                    hiddenRandomOrderInput.value = popupRandomOrder.checked ? '1' : '';
+                                }
+                                if (hiddenOneProposalAtATimeInput) {
+                                    hiddenOneProposalAtATimeInput.value = popupOneProposalAtATime.checked ? '1' : '';
                                 }
                                 if (hiddenProposalContentTitleInput) {
                                     hiddenProposalContentTitleInput.value = popupProposalContentTitle.checked ? '1' : '';
