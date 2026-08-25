@@ -6,7 +6,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 - Les parametres des scrutins proposent maintenant un ordre aleatoire stable des propositions pour chaque participant pendant le vote, avec un resume dans la console de gestion. La Consultation seule affiche de nouveau son choix de participation anonyme ou nominative.
 
-- Les parametres des scrutins sont regroupes par usage dans la fenetre de configuration. Le resume distingue davantage les reglages et les cases a cocher restent lisibles sur une seule ligne.
+- Les parametres des scrutins sont regroupes par usage dans la fenetre de configuration et le resume. Le bouton Configurer reste dans l en-tete, sans prendre de place dans les reglages.
 - Les scrutins peuvent afficher une seule proposition a la fois pendant le vote. Les participants naviguent entre les propositions, voient les reponses deja renseignees et reprennent sur la premiere proposition restante.
 
 - Les propositions composees uniquement d une description HTML sont envoyees explicitement lors de la creation ou de l edition d une Consultation seule. Ce mode ne presente plus le choix entre prise de decision indicative ou decisionnaire.
