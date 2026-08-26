@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-08-26
 
+- L editeur de PV suspend maintenant sa synchronisation lorsque son panneau est ferme, replie ou masque. Lorsqu il est visible, une empreinte legere evite de reconstruire les points, presences et discussions tant que leurs donnees n ont pas change, avec une frequence reduite hors edition active.
 - Un journal SQL optionnel mesure maintenant la duree complete des requetes, y compris la lecture des resultats, et produit un resume par requete HTTP pour faciliter l identification des acces couteux sans enregistrer les valeurs sensibles.
 - Les appels de maintenance OMO sont maintenant consignes dans un journal unique et compact avec leur origine, leur statut et leur duree totale afin de mesurer leur frequence en utilisation reelle.
 - Les images statiques surdimensionnees ont ete allegees, les icones d interface sont ramenees a une definition adaptee a leur affichage et les nouvelles photos de profil sont stockees en WebP 320 x 320 sans apparition temporaire en plein ecran.

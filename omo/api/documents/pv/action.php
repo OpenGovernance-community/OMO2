@@ -263,13 +263,42 @@ $editorToken = trim((string)($_POST['editor_token'] ?? ''));
 $document = omoDocumentsPvEditorLoadDocumentOrFail($documentId, $organizationId, $currentUserId);
 if ($document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW) {
     $reviewAllowedActions = ['lock_point', 'unlock_point', 'take_over_point_lock', 'save_point', 'update_stage', 'poll_updates'];
-    if (!in_array($action, $reviewAllowedActions, true) || (!$document->canUserManagePvDocument($currentUserId) && $action !== 'poll_updates')) {
+    if (!in_array($action, $reviewAllowedActions, true) || ($action !== 'poll_updates' && !$document->canUserManagePvDocument($currentUserId))) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
             'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
         ], 403);
     }
 }
+
+if ($action === 'poll_updates') {
+    $knownPollingRevision = trim((string)($_POST['poll_revision'] ?? ''));
+    $pollingRevision = $document->getPvEditorPollingRevision($organizationId);
+    if (
+        $knownPollingRevision !== ''
+        && $pollingRevision !== ''
+        && hash_equals($pollingRevision, $knownPollingRevision)
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => true,
+            'unchanged' => true,
+            'pollRevision' => $pollingRevision,
+            'serverTime' => date(DATE_ATOM),
+        ]);
+    }
+
+    $hasTeamApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'team');
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'unchanged' => false,
+        'pollRevision' => $pollingRevision,
+        'serverTime' => date(DATE_ATOM),
+        'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
+        'attendance' => $hasTeamApplication ? omoDocumentsPvEditorBuildAttendancePayload($document, $organizationId) : null,
+        'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken),
+    ]);
+}
+
 $hasTeamApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'team');
 $hasStructureApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'structure');
 $hasCalendarApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'calendar');
@@ -1074,16 +1103,6 @@ if ($action === 'create_event') {
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
         'event' => omoDocumentsPvEditorBuildEventEmbedPayload($event),
-    ]);
-}
-
-if ($action === 'poll_updates') {
-    omoDocumentsPvEditorJsonResponse([
-        'status' => true,
-        'serverTime' => date(DATE_ATOM),
-        'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
-        'attendance' => $hasTeamApplication ? omoDocumentsPvEditorBuildAttendancePayload($document, $organizationId) : null,
-        'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken),
     ]);
 }
 
