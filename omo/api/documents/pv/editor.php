@@ -151,7 +151,7 @@ $documentSyncVersion = hash('sha256', implode('|', [
 $eventTitle = $hasAssociatedEvent
     ? (trim((string)$event->get('title')) !== ''
         ? trim((string)$event->get('title'))
-        : ('Evenement #' . (int)$event->getId()))
+        : ('Événement n°' . (int)$event->getId()))
     : '';
 $eventSchedule = '';
 if ($eventStartAt instanceof DateTimeInterface) {
@@ -458,8 +458,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     .omo-pv-editor__page-head {
-        display: grid;
-        gap: 12px;
         min-width: 0;
     }
 
@@ -495,12 +493,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         width: 46px;
         height: 46px;
         object-fit: contain;
-    }
-
-    .omo-pv-editor__identity-copy {
-        display: grid;
-        gap: 7px;
-        min-width: 0;
     }
 
     .omo-pv-editor__page-title h2,
@@ -674,8 +666,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     .omo-pv-editor__page-side {
-        display: grid;
-        gap: 10px;
         justify-items: stretch;
         align-content: start;
         align-self: start;
@@ -946,8 +936,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     .omo-pv-editor__attendance-body {
-        display: grid;
-        gap: 8px;
         min-width: 0;
     }
 
@@ -1075,11 +1063,11 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     .omo-pv-editor__panel {
-        padding: 14px;
-        border: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 84%, white 16%);
-        border-radius: var(--radius-md);
-        background: color-mix(in srgb, var(--color-surface, #ffffff) 92%, white 8%);
-        box-shadow: 0 18px 40px -32px rgba(15, 23, 42, 0.35);
+        --generic-section-padding-block: 14px;
+        --generic-section-padding-inline: 14px;
+        --generic-section-border: color-mix(in srgb, var(--color-border, #d1d5db) 84%, white 16%);
+        --generic-section-background: color-mix(in srgb, var(--color-surface, #ffffff) 92%, white 8%);
+        --generic-section-shadow: 0 18px 40px -32px rgba(15, 23, 42, 0.35);
     }
 
     .omo-pv-editor__agenda-panel {
@@ -1098,8 +1086,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     .omo-pv-editor__nav {
-        display: grid;
-        gap: 6px;
         align-content: start;
         grid-auto-rows: max-content;
         overflow: auto;
@@ -1121,8 +1107,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     .omo-pv-editor__nav-group {
-        display: grid;
-        gap: 6px;
         min-width: 0;
         position: relative;
     }
@@ -1216,8 +1200,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 
     .omo-pv-editor__group-children,
     .omo-pv-editor__nav-root {
-        display: grid;
-        gap: 6px;
         align-content: start;
         min-width: 0;
     }
@@ -1395,8 +1377,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     .omo-pv-editor__main {
-        display: grid;
-        gap: 12px;
         grid-auto-rows: max-content;
         align-content: start;
         min-height: 0;
@@ -1497,8 +1477,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     .omo-pv-editor__points {
-        display: grid;
-        gap: 12px;
         min-height: 0;
         overflow: visible;
         padding-right: 4px;
@@ -1710,11 +1688,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 
     .omo-pv-editor__field--compact .generic-form-control {
         text-align: right;
-    }
-
-    .omo-pv-editor__editor-block {
-        display: grid;
-        gap: 8px;
     }
 
     .omo-pv-editor__point-meta-line {
@@ -2385,7 +2358,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     </style>
 
     <aside class="omo-pv-editor__sidebar">
-        <section class="omo-pv-editor__panel omo-pv-editor__agenda-panel">
+        <section class="omo-pv-editor__panel generic-section omo-pv-editor__agenda-panel">
             <div class="omo-pv-editor__toolbar">
                 <button type="button" class="omo-pv-editor__delete-dropzone" data-omo-pv-delete-dropzone title="<?= $escape((string)$uiText['deleteItem']) ?>" aria-label="<?= $escape((string)$uiText['deleteItem']) ?>"<?= $isPvReview ? ' hidden' : '' ?>><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>
                 <?php if ($canCreatePvGroups): ?>
@@ -2393,7 +2366,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 <?php endif; ?>
                 <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__add-button" data-omo-pv-editor-add-point<?= $isPvValidated || $isPvReview ? ' disabled' : '' ?> title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>"><img src="/omo/assets/images/documents/add.png" alt="" aria-hidden="true"></button>
             </div>
-            <div class="omo-pv-editor__nav" data-omo-pv-editor-nav>
+            <div class="omo-pv-editor__nav generic-stack generic-stack--compact" data-omo-pv-editor-nav>
                 <?php if (count($pointNavItems) === 0): ?>
                     <div class="omo-empty-state omo-pv-editor__empty"><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.nav.empty')) ?></div>
                 <?php else: ?>
@@ -2402,7 +2375,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             </div>
         </section>
 
-        <section class="omo-pv-editor__panel omo-pv-editor__timing" data-omo-pv-timing-panel>
+        <section class="omo-pv-editor__panel generic-section omo-pv-editor__timing" data-omo-pv-timing-panel>
             <div class="omo-pv-editor__timing-chart-shell">
                 <div class="omo-pv-editor__timing-chart" data-omo-pv-timing-chart="1">
                     <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
@@ -2446,11 +2419,11 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         aria-label="<?= $escape($documentTitle !== '' ? $documentTitle : omoDocumentsPvEditorT('documents.pv_editor.page.title')) ?>"
     ></button>
 
-    <section class="omo-pv-editor__main">
-        <section class="omo-pv-editor__page-head">
-            <div class="omo-pv-editor__panel omo-pv-editor__header-card">
+    <section class="omo-pv-editor__main generic-stack">
+        <section class="omo-pv-editor__page-head generic-stack">
+            <div class="omo-pv-editor__panel generic-section omo-pv-editor__header-card">
             <div class="omo-pv-editor__page-title">
-                <div class="omo-pv-editor__identity-copy">
+                <div class="omo-pv-editor__identity-copy generic-stack generic-stack--compact">
                 <?php if ($canEditPvDocumentHeader): ?>
                     <div class="omo-pv-editor__document-meta-editor" data-omo-pv-document-meta-editor>
                         <input
@@ -2480,7 +2453,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 <?php endif; ?>
                 </div>
             </div>
-            <div class="omo-pv-editor__page-side">
+            <div class="omo-pv-editor__page-side generic-stack">
                 <?php if ($canEditPvDocumentHeader): ?>
                     <div class="omo-pv-editor__document-visibility" data-omo-pv-document-visibility>
                         <?= commonRenderObjectVisibilitySelector(array(
@@ -2595,7 +2568,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 <div class="omo-pv-editor__attendance-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="M16 20v-1.5a4.5 4.5 0 0 0-4.5-4.5h-4A4.5 4.5 0 0 0 3 18.5V20"></path><circle cx="9.5" cy="7" r="3.5"></circle><path d="M17 10a3 3 0 1 0 0-6M18 14c2.2.7 3 2.2 3 4.5V20"></path></svg>
                 </div>
-                <div class="omo-pv-editor__attendance-body">
+                <div class="omo-pv-editor__attendance-body generic-stack generic-stack--compact">
                 <div class="omo-pv-editor__attendance-head">
                     <span class="omo-pv-editor__field-label"><?= $escape((string)$uiText['attendance']) ?></span>
                     <span class="omo-pv-editor__attendance-count" data-omo-pv-attendance-count>
@@ -2634,7 +2607,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             </div>
             <?php endif; ?>
         </section>
-        <div class="omo-pv-editor__points" data-omo-pv-editor-points>
+        <div class="omo-pv-editor__points generic-stack" data-omo-pv-editor-points>
             <?= count($pointCards) > 0 ? implode('', $pointCards) : '' ?>
         </div>
     </section>
@@ -3208,7 +3181,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             return '';
         }
 
-        const title = String(decisionItem.title || '').trim() || ('Decision #' + String(decisionId));
+        const title = String(decisionItem.title || '').trim() || ('Décision n°' + String(decisionId));
         const typeLabel = String(decisionItem.typeLabel || '').trim();
         const summary = String(decisionItem.summary || '').trim();
         const displaySummary = [typeLabel, summary].filter(function (value) { return value !== ''; }).join(' - ');
@@ -3262,7 +3235,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
         const updatePreview = function () {
             if (selectNode && selectNode.value !== '') selectedItem = embeddableDecisions.find(function (item) { return String(item.id) === String(selectNode.value); }) || null;
-            if (titleNode) titleNode.textContent = selectedItem ? (String(selectedItem.title || '').trim() || ('Decision #' + String(selectedItem.id))) : String(decisionEmbedUi.none || '');
+            if (titleNode) titleNode.textContent = selectedItem ? (String(selectedItem.title || '').trim() || ('Décision n°' + String(selectedItem.id))) : String(decisionEmbedUi.none || '');
             if (typeNode) { typeNode.textContent = selectedItem ? String(selectedItem.typeLabel || '') : ''; typeNode.hidden = typeNode.textContent === ''; }
             if (summaryNode) { summaryNode.textContent = selectedItem ? String(selectedItem.summary || '') : ''; summaryNode.hidden = summaryNode.textContent === ''; }
             if (insertButton) insertButton.disabled = !selectedItem;
@@ -3272,7 +3245,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const matches = embeddableDecisions.filter(function (item) { return (!scopePicker || scopePicker.matches(item.contextHolonId)) && (query === '' || [item.title, item.typeLabel, item.summary].join(' ').toLowerCase().indexOf(query) >= 0); });
             if (selectNode) {
                 selectNode.innerHTML = '';
-                matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Decision #' + String(item.id))) + (item.typeLabel ? ' - ' + String(item.typeLabel) : ''); selectNode.appendChild(option); });
+                matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Décision n°' + String(item.id))) + (item.typeLabel ? ' - ' + String(item.typeLabel) : ''); selectNode.appendChild(option); });
                 selectNode.disabled = matches.length === 0;
             }
             selectedItem = matches.find(function (item) { return Number(item.id) === currentDecisionId; }) || matches[0] || null;
@@ -3440,7 +3413,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             return '';
         }
 
-        const title = String(eventItem.title || '').trim() || ('Evenement #' + String(eventId));
+        const title = String(eventItem.title || '').trim() || ('Événement n°' + String(eventId));
         const scheduleLabel = String(eventItem.scheduleLabel || '').trim();
         const locationLabel = truncateDocumentEmbedSummary(eventItem.locationLabel || '', 420, 1);
         const summary = [scheduleLabel, locationLabel].filter(function (value) { return value !== ''; }).join(' - ');
@@ -3537,7 +3510,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         };
         const updatePreview = function () {
             if (selectNode && selectNode.value !== '') selectedItem = embeddableEvents.find(function (item) { return String(item.id) === String(selectNode.value); }) || null;
-            if (titleNode) titleNode.textContent = selectedItem ? (String(selectedItem.title || '').trim() || ('Evenement #' + String(selectedItem.id))) : String(eventEmbedUi.none || '');
+            if (titleNode) titleNode.textContent = selectedItem ? (String(selectedItem.title || '').trim() || ('Événement n°' + String(selectedItem.id))) : String(eventEmbedUi.none || '');
             if (scheduleNode) { scheduleNode.textContent = selectedItem ? String(selectedItem.scheduleLabel || '') : ''; scheduleNode.hidden = scheduleNode.textContent === ''; }
             if (descriptionNode) { descriptionNode.textContent = selectedItem ? String(selectedItem.locationLabel || '') : ''; descriptionNode.hidden = descriptionNode.textContent === ''; }
             if (insertButton) insertButton.disabled = !selectedItem;
@@ -3547,7 +3520,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const matches = embeddableEvents.filter(function (item) { return (!scopePicker || scopePicker.matches(item.contextHolonId)) && (query === '' || [item.title, item.scheduleLabel, item.locationLabel].join(' ').toLowerCase().indexOf(query) >= 0); });
             if (selectNode) {
                 selectNode.innerHTML = '';
-                matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Evenement #' + String(item.id))) + (item.scheduleLabel ? ' - ' + String(item.scheduleLabel) : ''); selectNode.appendChild(option); });
+                matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Événement n°' + String(item.id))) + (item.scheduleLabel ? ' - ' + String(item.scheduleLabel) : ''); selectNode.appendChild(option); });
                 selectNode.disabled = matches.length === 0;
             }
             selectedItem = matches.find(function (item) { return Number(item.id) === currentEventId; }) || matches[0] || null;
@@ -3835,7 +3808,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 cache: 'no-store'
             }).then(function (response) {
                 if (!response.ok) {
-                    throw new Error('Project review unavailable');
+                    throw new Error('Impossible de charger la relecture du projet.');
                 }
                 return response.json();
             }).then(function (payload) {
@@ -3916,7 +3889,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     function getPvChecklistRunReview(runId) {
         const normalizedRunId = Number(runId || 0);
         if (!Number.isInteger(normalizedRunId) || normalizedRunId <= 0) {
-            return Promise.reject(new Error('Invalid checklist run'));
+            return Promise.reject(new Error('Instance de processus invalide.'));
         }
         if (checklistRunReviewCache.has(normalizedRunId)) {
             return checklistRunReviewCache.get(normalizedRunId);
@@ -3926,12 +3899,12 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             cache: 'no-store'
         }).then(function (response) {
             if (!response.ok) {
-                throw new Error('Checklist run unavailable');
+                throw new Error('Impossible de charger l’instance du processus.');
             }
             return response.json();
         }).then(function (payload) {
             if (!payload || !payload.success) {
-                throw new Error('Checklist run unavailable');
+                throw new Error('Impossible de charger l’instance du processus.');
             }
             return payload;
         }).catch(function (error) {
@@ -3993,7 +3966,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 credentials: 'same-origin',
                 cache: 'no-store'
             }).then(function (response) {
-                if (!response.ok) throw new Error('Project review unavailable');
+                if (!response.ok) throw new Error('Impossible de charger la relecture du projet.');
                 return response.json();
             }).then(function (payload) {
                 if (!payload || !payload.success || !payload.hasChildren || !payload.statusBarHtml || !summaryNode.isConnected) return;
@@ -4032,7 +4005,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 const runtime = document.createElement('span'); runtime.className = 'omo-checklist-embed__review' + (Number(payload.overdueCount || 0) > 0 ? ' is-overdue' : ''); runtime.setAttribute('contenteditable', 'false'); runtime.setAttribute('data-omo-checklist-embed-runtime', '1');
                 const entries = Array.isArray(payload.entries) ? payload.entries : [];
                 const hasNoRuns = !payload.isContainer && entries.length === 0;
-                const label = payload.isContainer ? 'Elements recurrents' : 'Instances en cours';
+                const label = payload.isContainer ? 'Éléments récurrents' : 'Instances en cours';
                 let overview = '';
                 if (payload.isContainer) {
                     overview = '<button type="button" class="omo-checklist-embed__container-toggle" data-omo-checklist-container-toggle aria-expanded="false"><span class="omo-project-status-bar">';
@@ -4112,19 +4085,19 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             button.classList.remove('is-expanded');
         });
         childrenHost.hidden = false;
-        childrenHost.textContent = 'Chargement des elements...';
+        childrenHost.textContent = 'Chargement des éléments…';
         childrenHost.className = 'omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children omo-project-embed__children-loading';
         toggle.disabled = true;
 
         getPvChecklistRunReview(runId).then(function (payload) {
             if (!runtime.isConnected) {
-                throw new Error('Checklist run unavailable');
+                throw new Error('Impossible de charger l’instance du processus.');
             }
             const items = Array.isArray(payload.items) ? payload.items : [];
             childrenHost.dataset.omoChecklistRunId = String(runId);
             childrenHost.className = 'omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children';
             if (items.length === 0) {
-                childrenHost.textContent = 'Aucun element dans cette instance.';
+                childrenHost.textContent = 'Aucun élément dans cette instance.';
             } else {
                 childrenHost.innerHTML = buildPvChecklistItemsList(items);
                 refreshPvChecklistRunItemSubprojectBars(childrenHost);
@@ -4133,7 +4106,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             toggle.classList.add('is-expanded');
         }).catch(function () {
             childrenHost.className = 'omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children omo-project-embed__children-error';
-            childrenHost.textContent = 'Impossible de charger les elements de cette instance.';
+            childrenHost.textContent = 'Impossible de charger les éléments de cette instance.';
             childrenHost.hidden = false;
             toggle.setAttribute('aria-expanded', 'false');
         }).finally(function () {
@@ -4159,7 +4132,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         childrenHost.dataset.omoChecklistReviewType = 'container';
         childrenHost.className = 'omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children';
         if (items.length === 0) {
-            childrenHost.textContent = 'Aucun element recurrent actif.';
+            childrenHost.textContent = 'Aucun élément récurrent actif.';
         } else {
             childrenHost.innerHTML = buildPvChecklistItemsList(items);
             refreshPvChecklistRunItemSubprojectBars(childrenHost);
@@ -5296,7 +5269,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                         name: 'omoPvDocumentEmbed',
                         group: 'omo-pv-document-embed',
                         label: 'Document',
-                        title: documentEmbedUi.buttonTitle || 'Inserer un document',
+                        title: documentEmbedUi.buttonTitle || 'Insérer un document',
                         className: 'note-btn-light omo-pv-editor__document-embed-button',
                         onClick: function (context) {
                             openPvDocumentEmbedPicker(context && context.api ? context.api : field);
@@ -5307,8 +5280,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     customButtons.push({
                         name: 'omoPvDecisionEmbed',
                         group: 'omo-pv-decision-embed',
-                        label: 'Decision',
-                        title: decisionEmbedUi.buttonTitle || 'Inserer une decision',
+                        label: 'Décision',
+                        title: decisionEmbedUi.buttonTitle || 'Insérer une décision',
                         className: 'note-btn-light omo-pv-editor__decision-embed-button',
                         onClick: function (context) {
                             openPvDecisionEmbedPicker(context && context.api ? context.api : field);
@@ -5317,19 +5290,19 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 }
                 if (canEmbedProjects) {
                     customButtons.push({
-                        name: 'omoPvProjectEmbed', group: 'omo-pv-project-embed', label: 'Projet', title: projectEmbedUi.buttonTitle || 'Inserer un projet', className: 'note-btn-light omo-pv-editor__project-embed-button',
+                        name: 'omoPvProjectEmbed', group: 'omo-pv-project-embed', label: 'Projet', title: projectEmbedUi.buttonTitle || 'Insérer un projet', className: 'note-btn-light omo-pv-editor__project-embed-button',
                         onClick: function (context) { openPvProjectEmbedPicker(context && context.api ? context.api : field); }
                     });
                 }
                 if (canEmbedChecklists) {
-                    customButtons.push({ name: 'omoPvChecklistEmbed', group: 'omo-pv-checklist-embed', label: 'Processus', title: checklistEmbedUi.buttonTitle || 'Inserer un processus', className: 'note-btn-light omo-pv-editor__checklist-embed-button', onClick: function (context) { openPvChecklistEmbedPicker(context && context.api ? context.api : field); } });
+                    customButtons.push({ name: 'omoPvChecklistEmbed', group: 'omo-pv-checklist-embed', label: 'Processus', title: checklistEmbedUi.buttonTitle || 'Insérer un processus', className: 'note-btn-light omo-pv-editor__checklist-embed-button', onClick: function (context) { openPvChecklistEmbedPicker(context && context.api ? context.api : field); } });
                 }
                 if (canEmbedEvents) {
                     customButtons.push({
                         name: 'omoPvEventEmbed',
                         group: 'omo-pv-event-embed',
                         label: 'Date',
-                        title: eventEmbedUi.buttonTitle || 'Inserer une date',
+                        title: eventEmbedUi.buttonTitle || 'Insérer une date',
                         className: 'note-btn-light omo-pv-editor__event-embed-button',
                         onClick: function (context) {
                             openPvEventEmbedPicker(context && context.api ? context.api : field);
@@ -5341,7 +5314,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                         name: 'omoPvIndicatorEmbed',
                         group: 'omo-pv-indicator-embed',
                         label: 'Indicateur',
-                        title: indicatorEmbedUi.buttonTitle || 'Inserer un indicateur',
+                        title: indicatorEmbedUi.buttonTitle || 'Insérer un indicateur',
                         className: 'note-btn-light omo-pv-editor__indicator-embed-button',
                         onClick: function (context) {
                             openPvIndicatorEmbedPicker(context && context.api ? context.api : field);
@@ -5947,7 +5920,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         });
 
         const rootNode = document.createElement('div');
-        rootNode.className = 'omo-pv-editor__nav-root';
+        rootNode.className = 'omo-pv-editor__nav-root generic-stack generic-stack--compact';
         rootNode.setAttribute('data-omo-pv-nav-children', '0');
         const visited = new Set();
         const appendChildren = function (parentId, container) {
@@ -6917,7 +6890,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             })
             .catch(function (payload) {
                 if (documentMetaStatus instanceof Element) {
-                    documentMetaStatus.textContent = String(payload && payload.message ? payload.message : 'Impossible de sauver le PV.');
+                    documentMetaStatus.textContent = String(payload && payload.message ? payload.message : 'Impossible d’enregistrer le PV.');
                 }
             })
             .finally(function () {
@@ -6957,7 +6930,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             .then(function (response) {
                 return response.json().catch(function () { return null; }).then(function (payload) {
                     if (!response.ok || !payload || payload.status !== true) {
-                        throw new Error(payload && payload.message ? payload.message : 'Impossible de generer le resume.');
+                        throw new Error(payload && payload.message ? payload.message : 'Impossible de générer le résumé.');
                     }
                     return payload;
                 });
@@ -6965,7 +6938,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             .then(function (payload) {
                 const summary = String(payload.text || '').trim();
                 if (summary === '') {
-                    throw new Error('Le resume genere est vide.');
+                    throw new Error('Le résumé généré est vide.');
                 }
                 documentDescriptionInput.value = summary;
                 resizeDocumentDescriptionInput();
@@ -6976,7 +6949,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             })
             .catch(function (error) {
                 if (documentMetaStatus instanceof Element) {
-                    documentMetaStatus.textContent = error && error.message ? error.message : 'Impossible de generer le resume.';
+                    documentMetaStatus.textContent = error && error.message ? error.message : 'Impossible de générer le résumé.';
                 }
             })
             .finally(function () {
@@ -7596,7 +7569,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const invitationUrl = String(invitationsButton.getAttribute('data-omo-pv-invitations-url') || '').trim();
             const invitationTitle = String(invitationsButton.getAttribute('data-omo-pv-invitations-title') || '').trim();
             if (invitationUrl && typeof window.commonTopbarOpenModal === 'function') {
-                window.commonTopbarOpenModal(invitationTitle || 'Invites', invitationUrl, 'fetch');
+                window.commonTopbarOpenModal(invitationTitle || 'Invités', invitationUrl, 'fetch');
             }
         });
     }

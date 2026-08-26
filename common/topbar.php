@@ -584,6 +584,9 @@ function commonRenderTopbar(array $options = [])
                             alt="<?= htmlspecialchars($profileDisplayName) ?>"
                             class="common-topbar__avatar-image"
                             data-common-topbar-avatar-image
+                            width="30"
+                            height="30"
+                            decoding="async"
                         >
                     <?php else: ?>
                         <span class="common-topbar__avatar-initial" data-common-topbar-avatar-initial aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></span>
@@ -601,6 +604,9 @@ function commonRenderTopbar(array $options = [])
                                     alt="<?= htmlspecialchars($profileDisplayName) ?>"
                                     class="common-topbar-profile-card__photo"
                                     data-common-topbar-profile-photo
+                                    width="96"
+                                    height="96"
+                                    decoding="async"
                                 >
                             <?php else: ?>
                                 <div class="common-topbar-profile-card__placeholder" data-common-topbar-profile-placeholder style="<?= htmlspecialchars($profileAvatarStyle, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"><?= htmlspecialchars($profileInitials) ?></div>

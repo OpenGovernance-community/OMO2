@@ -1381,7 +1381,9 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
         }
         $authorName = omoDecisionResolveProposalParticipantName($decision, $authorUserId, $authorFallbackName, $isAnonymous);
         if ($authorName === '') {
-            $authorName = $isAnonymous ? 'Auteur anonyme' : 'Auteur inconnu';
+            $authorName = $isAnonymous
+                ? omoDecisionProposalT('decisions.proposals.metadata.anonymous_author')
+                : omoDecisionProposalT('decisions.proposals.metadata.unknown_author');
         }
 
         $createdAt = $proposal->get('created_at');
@@ -1400,10 +1402,13 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
             }
         }
 
-        $authorLine = '<span>Proposée par <strong>' . $escape($authorName) . '</strong>';
+        $authorLine = '<span>' . $escape(omoDecisionProposalT('decisions.proposals.metadata.proposed_by')) . ' <strong>' . $escape($authorName) . '</strong>';
         if ($dateLabel !== '') {
             $authorLine .= '<span data-omo-proposal-date>, '
-                . ($wasModified ? 'modifiée le ' : 'le ')
+                . $escape($wasModified
+                    ? omoDecisionProposalT('decisions.proposals.metadata.modified_on')
+                    : omoDecisionProposalT('decisions.proposals.metadata.on'))
+                . ' '
                 . $escape($dateLabel)
                 . '</span>';
         }
@@ -1418,15 +1423,15 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
                 $newMessages = max(0, (int)($summary['messages_since_viewer'] ?? 0));
                 $items[] = '<span class="omo-proposal-meta__discussion">'
                     . ($newMessages === 0
-                        ? 'Aucun nouveau message depuis votre dernière intervention'
-                        : $escape((string)$newMessages) . ' nouveau' . ($newMessages > 1 ? 'x' : '') . ' message' . ($newMessages > 1 ? 's' : '') . ' depuis votre dernière intervention')
+                        ? $escape(omoDecisionProposalT('decisions.proposals.metadata.no_new_messages'))
+                        : $escape(omoDecisionProposalT('decisions.proposals.metadata.new_messages', ['count' => $newMessages])))
                     . '</span>';
             } elseif ($totalMessages > 0) {
                 $lastMessageType = (string)($summary['last_message_type'] ?? '');
                 $lastMessageUserId = (int)($summary['last_message_user_id'] ?? 0);
                 $lastMessageParticipantId = (int)($summary['last_message_participant_id'] ?? 0);
                 if ($lastMessageType === 'system') {
-                    $lastAuthor = 'Systeme';
+                    $lastAuthor = omoDecisionProposalT('decisions.proposals.metadata.system');
                 } elseif ($isAnonymous && $lastMessageUserId <= 0 && $lastMessageParticipantId > 0) {
                     $lastAuthor = $decision->getAnonymousPseudonymForParticipant($lastMessageParticipantId);
                 } else {
@@ -1438,16 +1443,20 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
                     );
                 }
                 if ($lastAuthor === '') {
-                    $lastAuthor = (string)($summary['last_message_type'] ?? '') === 'system' ? 'Système' : 'Participant';
+                    $lastAuthor = (string)($summary['last_message_type'] ?? '') === 'system'
+                        ? omoDecisionProposalT('decisions.proposals.metadata.system')
+                        : omoDecisionProposalT('decisions.proposals.metadata.participant');
                 }
                 $lastDate = omoDecisionFormatProposalDateLabel($summary['last_message_at'] ?? '');
-                $lastDetails = $lastDate !== '' ? ' · dernier le ' . $escape($lastDate) . ' par ' . $escape($lastAuthor) : '';
+                $lastDetails = $lastDate !== ''
+                    ? ' · ' . $escape(omoDecisionProposalT('decisions.proposals.metadata.last_message', ['date' => $lastDate, 'author' => $lastAuthor]))
+                    : '';
                 $items[] = '<span class="omo-proposal-meta__discussion">'
-                    . $escape((string)$totalMessages) . ' message' . ($totalMessages > 1 ? 's' : '')
+                    . $escape(omoDecisionProposalT('decisions.proposals.metadata.message_count', ['count' => $totalMessages]))
                     . $lastDetails
                     . '</span>';
             } else {
-                $items[] = '<span class="omo-proposal-meta__discussion">Aucun message</span>';
+                $items[] = '<span class="omo-proposal-meta__discussion">' . $escape(omoDecisionProposalT('decisions.proposals.metadata.no_messages')) . '</span>';
             }
         }
 
@@ -1543,7 +1552,7 @@ if (!function_exists('omoDecisionRenderProposalDiscussionActions')) {
         }
         if ($canDiscuss) {
             $discussionCountHidden = $discussionMessageCount > 0 ? '' : ' hidden';
-            $discussionCountLabel = 'Nombre de messages : ' . (string)$discussionMessageCount;
+            $discussionCountLabel = omoDecisionProposalT('decisions.proposals.metadata.message_count_label', ['count' => $discussionMessageCount]);
             $html .= '<span class="omo-proposal-discussion-count" data-omo-proposal-discussion-count data-message-count="' . $escape($discussionMessageCount) . '" title="' . $escape($discussionCountLabel) . '" aria-label="' . $escape($discussionCountLabel) . '"' . $discussionCountHidden . '>'
                     . '<span class="omo-proposal-discussion-count-value" data-omo-proposal-discussion-count-value>' . $escape($discussionMessageCount) . '</span>'
                 . '</span>';
@@ -1551,8 +1560,8 @@ if (!function_exists('omoDecisionRenderProposalDiscussionActions')) {
                     . ' data-omo-proposal-discussion-open'
                     . ' data-proposal-id="' . (int)$proposal->getId() . '"'
                     . ' data-proposal-context="' . $escape($contextPayload) . '">'
-                    . '<span class="omo-proposal-action-label omo-proposal-action-label--full">Discuter la proposition</span>'
-                    . '<span class="omo-proposal-action-label omo-proposal-action-label--short">Discuter</span>'
+                    . '<span class="omo-proposal-action-label omo-proposal-action-label--full">' . $escape(omoDecisionProposalT('decisions.proposals.action.discuss_proposal')) . '</span>'
+                    . '<span class="omo-proposal-action-label omo-proposal-action-label--short">' . $escape(omoDecisionProposalT('decisions.proposals.action.discuss')) . '</span>'
                 . '</button>';
         }
         if ($canEdit) {
@@ -1560,13 +1569,13 @@ if (!function_exists('omoDecisionRenderProposalDiscussionActions')) {
                     . ' data-omo-proposal-edit-open'
                     . ' data-proposal-id="' . (int)$proposal->getId() . '"'
                     . ' data-proposal-context="' . $escape($contextPayload) . '">'
-                    . '<span class="omo-proposal-action-label omo-proposal-action-label--full">Modifier la proposition</span>'
-                    . '<span class="omo-proposal-action-label omo-proposal-action-label--short">Modifier</span>'
+                    . '<span class="omo-proposal-action-label omo-proposal-action-label--full">' . $escape(omoDecisionProposalT('decisions.proposals.action.edit_proposal')) . '</span>'
+                    . '<span class="omo-proposal-action-label omo-proposal-action-label--short">' . $escape(omoDecisionProposalT('decisions.proposals.action.edit')) . '</span>'
                 . '</button>';
             $html .= '<div class="omo-proposal-action-menu generic-menu" data-omo-proposal-action-menu>'
-                    . '<button type="button" class="omo-proposal-action-menu__toggle generic-menu-toggle" data-omo-proposal-action-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Autres actions">...</button>'
+                    . '<button type="button" class="omo-proposal-action-menu__toggle generic-menu-toggle" data-omo-proposal-action-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="' . $escape(omoDecisionProposalT('decisions.proposals.action.other_actions')) . '">...</button>'
                     . '<div class="omo-proposal-action-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-proposal-action-menu-panel role="menu" hidden>'
-                        . '<button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-proposal-delete-open data-proposal-id="' . (int)$proposal->getId() . '" data-proposal-context="' . $escape($contextPayload) . '" role="menuitem">Supprimer</button>'
+                        . '<button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-proposal-delete-open data-proposal-id="' . (int)$proposal->getId() . '" data-proposal-context="' . $escape($contextPayload) . '" role="menuitem">' . $escape(omoDecisionProposalT('decisions.proposals.action.delete')) . '</button>'
                     . '</div>'
                 . '</div>';
         }
@@ -1773,6 +1782,85 @@ if (!function_exists('omoDecisionProposalGetSourceLang')) {
             'decisions.proposals.denied.default' => [
                 'text' => 'Ce lien ne permet pas d’ajouter des propositions pour le moment.',
                 'context' => 'Fallback error for public proposal submission.',
+            ],
+            'decisions.proposals.metadata.anonymous_author' => [
+                'text' => 'Auteur anonyme',
+                'context' => 'Fallback proposal author name when the proposal is anonymous.',
+            ],
+            'decisions.proposals.metadata.unknown_author' => [
+                'text' => 'Auteur inconnu',
+                'context' => 'Fallback proposal author name when it cannot be resolved.',
+            ],
+            'decisions.proposals.metadata.proposed_by' => [
+                'text' => 'Proposée par',
+                'context' => 'Prefix before the proposal author name.',
+            ],
+            'decisions.proposals.metadata.modified_on' => [
+                'text' => 'modifiée le',
+                'context' => 'Date prefix when a proposal was modified.',
+            ],
+            'decisions.proposals.metadata.on' => [
+                'text' => 'le',
+                'context' => 'Date prefix when a proposal was created.',
+            ],
+            'decisions.proposals.metadata.no_new_messages' => [
+                'text' => 'Aucun nouveau message depuis votre dernière intervention',
+                'context' => 'Discussion metadata when no newer message exists.',
+            ],
+            'decisions.proposals.metadata.new_messages' => [
+                'one' => '{count} nouveau message depuis votre dernière intervention',
+                'other' => '{count} nouveaux messages depuis votre dernière intervention',
+                'context' => 'Discussion metadata when newer messages exist.',
+            ],
+            'decisions.proposals.metadata.system' => [
+                'text' => 'Système',
+                'context' => 'System message author label.',
+            ],
+            'decisions.proposals.metadata.participant' => [
+                'text' => 'Participant',
+                'context' => 'Fallback discussion message author label.',
+            ],
+            'decisions.proposals.metadata.last_message' => [
+                'text' => 'dernier le {date}, par {author}',
+                'context' => 'Details about the latest discussion message.',
+            ],
+            'decisions.proposals.metadata.message_count' => [
+                'one' => '{count} message',
+                'other' => '{count} messages',
+                'context' => 'Discussion message count.',
+            ],
+            'decisions.proposals.metadata.message_count_label' => [
+                'one' => 'Nombre de messages : {count}',
+                'other' => 'Nombre de messages : {count}',
+                'context' => 'Accessible discussion message count label.',
+            ],
+            'decisions.proposals.metadata.no_messages' => [
+                'text' => 'Aucun message',
+                'context' => 'Discussion metadata when no messages exist.',
+            ],
+            'decisions.proposals.action.discuss_proposal' => [
+                'text' => 'Discuter la proposition',
+                'context' => 'Button to open the proposal discussion.',
+            ],
+            'decisions.proposals.action.discuss' => [
+                'text' => 'Discuter',
+                'context' => 'Short button label to open the proposal discussion.',
+            ],
+            'decisions.proposals.action.edit_proposal' => [
+                'text' => 'Modifier la proposition',
+                'context' => 'Button to edit a proposal.',
+            ],
+            'decisions.proposals.action.edit' => [
+                'text' => 'Modifier',
+                'context' => 'Short button label to edit a proposal.',
+            ],
+            'decisions.proposals.action.other_actions' => [
+                'text' => 'Autres actions',
+                'context' => 'Accessible label for the proposal actions menu.',
+            ],
+            'decisions.proposals.action.delete' => [
+                'text' => 'Supprimer',
+                'context' => 'Button to delete a proposal.',
             ],
         ];
     }

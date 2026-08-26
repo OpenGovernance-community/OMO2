@@ -31,7 +31,7 @@ $sourceLang = [
         'context' => 'Success message returned when several documents are moved together.',
     ],
     'documents.move.success_none' => [
-        'text' => 'Aucun document n a été déplacé.',
+        'text' => 'Aucun document n’a été déplacé.',
         'context' => 'Success message returned when all selected documents were already at the destination.',
     ],
 ];

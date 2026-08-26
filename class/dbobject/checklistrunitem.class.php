@@ -237,8 +237,8 @@ class ChecklistRunItem extends DbObject
         if (!($pdo instanceof \PDO)) {
             return 0;
         }
-        $lockStatement = $pdo->query("SELECT GET_LOCK('omo_checklist_due_items', 0)");
-        if (!$lockStatement || (int)$lockStatement->fetchColumn() !== 1) {
+        $lockAcquired = DbObject::fetchValue("SELECT GET_LOCK('omo_checklist_due_items', 0)");
+        if ((int)$lockAcquired !== 1) {
             return 0;
         }
         try {
@@ -268,7 +268,7 @@ class ChecklistRunItem extends DbObject
             }
             return $processedCount;
         } finally {
-            $pdo->query("SELECT RELEASE_LOCK('omo_checklist_due_items')");
+            DbObject::fetchValue("SELECT RELEASE_LOCK('omo_checklist_due_items')");
         }
     }
 }

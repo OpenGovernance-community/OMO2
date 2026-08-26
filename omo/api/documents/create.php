@@ -14,7 +14,7 @@ use dbObject\Organization;
 
 $sourceLang = [
     'documents.create.error.edit' => ['text' => 'Impossible de modifier ce document.', 'context' => 'Error shown when the document editor cannot be opened in edit mode.'],
-    'documents.create.error.pv_unsupported' => ['text' => 'Ce document PV se cree ici, mais son contenu se modifie via l editeur PV dedie.', 'context' => 'Error shown when trying to edit a PV document from the generic documents editor.'],
+    'documents.create.error.pv_unsupported' => ['text' => 'Ce document PV se crée ici, mais son contenu se modifie via l’éditeur PV dédié.', 'context' => 'Error shown when trying to edit a PV document from the generic documents editor.'],
     'documents.create.error.create' => ['text' => 'Impossible de créer un document dans ce contexte.', 'context' => 'Error shown when the document editor cannot be opened in creation mode.'],
     'documents.create.visibility.help_context_holon' => ['text' => 'Les portées cercle et rôle suivent automatiquement le holon du document.', 'context' => 'Visibility help text shown when the document has a contextual holon.'],
     'documents.create.visibility.help_no_holon' => ['text' => 'Ce document n’est pas lié à un holon. Les portées cercle et rôle ne sont pas disponibles.', 'context' => 'Visibility help text shown when the document has no holon but still belongs to an organization.'],
@@ -26,7 +26,7 @@ $sourceLang = [
     'documents.create.type.uploaded' => ['text' => 'Fichier téléversé', 'context' => 'Option label for uploaded files.'],
     'documents.create.type.pv' => ['text' => 'PV', 'context' => 'Option label for PV documents.'],
     'documents.create.type.etherpad' => ['text' => 'Pad coopératif', 'context' => 'Option label for Etherpad documents.'],
-    'documents.create.type.collabora' => ['text' => 'Document Coopératif', 'context' => 'Option label for Collabora documents.'],
+    'documents.create.type.collabora' => ['text' => 'Document coopératif', 'context' => 'Option label for Collabora documents.'],
     'documents.create.type.collabora_presentation' => ['text' => 'Présentation collaborative', 'context' => 'Option label for collaborative presentation documents.'],
     'documents.create.type.collabora_drawing' => ['text' => 'Dessin collaboratif', 'context' => 'Option label for collaborative drawing documents.'],
     'documents.create.type.ethercalc' => ['text' => 'Tableur collaboratif', 'context' => 'Option label for EtherCalc documents.'],
@@ -40,7 +40,7 @@ $sourceLang = [
     'documents.create.field.tags_placeholder' => ['text' => 'Ajouter un tag', 'context' => 'Placeholder shown in the tag input field.'],
     'documents.create.field.tags_hint' => ['text' => 'Écrivez un tag puis utilisez TAB ou une virgule pour le transformer en capsule.', 'context' => 'Hint shown below the tag editor field.'],
     'documents.create.field.tags_remove' => ['text' => 'Retirer le tag', 'context' => 'Accessible label prefix used to remove a tag from the editor.'],
-    'documents.create.field.edit_visibility' => ['text' => 'Edition', 'context' => 'Label of the document edit visibility field.'],
+    'documents.create.field.edit_visibility' => ['text' => 'Édition', 'context' => 'Label of the document edit visibility field.'],
     'documents.create.field.visibility' => ['text' => 'Visibilité', 'context' => 'Label of the document visibility field.'],
     'documents.create.field.project_visible_in_holon' => ['text' => 'Afficher dans le holon', 'context' => 'Checkbox allowing a project-attached document to remain visible in the holon document list.'],
     'documents.create.field.project_visible_in_holon_hint' => ['text' => 'Les documents liés à un projet sont masqués dans le holon par défaut.', 'context' => 'Help text for the project document holon visibility checkbox.'],
@@ -49,18 +49,18 @@ $sourceLang = [
     'documents.create.field.external_url_placeholder' => ['text' => 'https://example.com/', 'context' => 'Placeholder shown in the external URL field.'],
     'documents.create.field.external_url_hint' => ['text' => 'Utilisez une adresse complète en http:// ou https://.', 'context' => 'Hint shown below the external URL field.'],
     'documents.create.field.open_new_window' => ['text' => 'Ouvrir dans une nouvelle fenêtre', 'context' => 'Checkbox label used for external links.'],
-    'documents.create.field.pv_hint' => ['text' => 'Le contenu du PV se preparera ensuite dans l editeur PV dedie.', 'context' => 'Hint shown when creating a PV document from the generic document creator.'],
-    'documents.create.field.etherpad_hint' => ['text' => 'Un nouveau pad sera cree sur le serveur Etherpad de cette organisation.', 'context' => 'Hint shown when creating an Etherpad document.'],
-    'documents.create.field.etherpad_missing' => ['text' => 'Aucun serveur Etherpad n est configure pour cette organisation.', 'context' => 'Hint shown when Etherpad is not configured.'],
-    'documents.create.field.collabora_hint' => ['text' => 'Un nouveau fichier bureautique sera cree dans le stockage de documents choisi puis ouvert avec Collabora.', 'context' => 'Hint shown when creating a Collabora document.'],
-    'documents.create.field.collabora_presentation_hint' => ['text' => 'Une nouvelle presentation sera creee dans le stockage de documents choisi puis ouverte avec Collabora.', 'context' => 'Hint shown when creating a collaborative presentation.'],
-    'documents.create.field.collabora_drawing_hint' => ['text' => 'Un nouveau dessin sera cree dans le stockage de documents choisi puis ouvert avec Collabora.', 'context' => 'Hint shown when creating a collaborative drawing.'],
-    'documents.create.field.collabora_missing' => ['text' => 'Configurez un stockage de documents et un serveur Collabora dans les parametres Documents.', 'context' => 'Hint shown when Collabora is not configured.'],
-    'documents.create.field.ethercalc_hint' => ['text' => 'Un nouveau tableur sera cree sur le serveur EtherCalc configure pour OMO.', 'context' => 'Hint shown when creating an EtherCalc document.'],
-    'documents.create.field.ethercalc_missing' => ['text' => 'Aucun serveur EtherCalc n est configure.', 'context' => 'Hint shown when EtherCalc is not configured.'],
-    'documents.create.field.pv_template' => ['text' => 'Modele de base', 'context' => 'Label of the optional PV template selector.'],
+    'documents.create.field.pv_hint' => ['text' => 'Le contenu du PV se préparera ensuite dans l’éditeur PV dédié.', 'context' => 'Hint shown when creating a PV document from the generic document creator.'],
+    'documents.create.field.etherpad_hint' => ['text' => 'Un nouveau pad sera créé sur le serveur Etherpad de cette organisation.', 'context' => 'Hint shown when creating an Etherpad document.'],
+    'documents.create.field.etherpad_missing' => ['text' => 'Aucun serveur Etherpad n’est configuré pour cette organisation.', 'context' => 'Hint shown when Etherpad is not configured.'],
+    'documents.create.field.collabora_hint' => ['text' => 'Un nouveau fichier bureautique sera créé dans le stockage de documents choisi puis ouvert avec Collabora.', 'context' => 'Hint shown when creating a Collabora document.'],
+    'documents.create.field.collabora_presentation_hint' => ['text' => 'Une nouvelle présentation sera créée dans le stockage de documents choisi puis ouverte avec Collabora.', 'context' => 'Hint shown when creating a collaborative presentation.'],
+    'documents.create.field.collabora_drawing_hint' => ['text' => 'Un nouveau dessin sera créé dans le stockage de documents choisi puis ouvert avec Collabora.', 'context' => 'Hint shown when creating a collaborative drawing.'],
+    'documents.create.field.collabora_missing' => ['text' => 'Configurez un stockage de documents et un serveur Collabora dans les paramètres Documents.', 'context' => 'Hint shown when Collabora is not configured.'],
+    'documents.create.field.ethercalc_hint' => ['text' => 'Un nouveau tableur sera créé sur le serveur EtherCalc configuré pour OMO.', 'context' => 'Hint shown when creating an EtherCalc document.'],
+    'documents.create.field.ethercalc_missing' => ['text' => 'Aucun serveur EtherCalc n’est configuré.', 'context' => 'Hint shown when EtherCalc is not configured.'],
+    'documents.create.field.pv_template' => ['text' => 'Modèle de base', 'context' => 'Label of the optional PV template selector.'],
     'documents.create.field.pv_template_none' => ['text' => 'PV vide', 'context' => 'Empty option of the PV template selector.'],
-    'documents.create.field.pv_template_hint' => ['text' => 'Les groupes, points et contenus du modele seront copies sans leurs auteurs ni leurs invites.', 'context' => 'Help text below the PV template selector.'],
+    'documents.create.field.pv_template_hint' => ['text' => 'Les groupes, points et contenus du modèle seront copiés sans leurs auteurs ni leurs invités.', 'context' => 'Help text below the PV template selector.'],
     'documents.create.field.upload' => ['text' => 'Fichier', 'context' => 'Label of the uploaded file field.'],
     'documents.create.upload.hint_nextcloud' => ['text' => 'Le fichier sera envoyé vers le stockage de documents configuré pour cette organisation.', 'context' => 'Hint shown when document storage is available.'],
     'documents.create.upload.hint_missing' => ['text' => 'Aucun stockage de documents n’est configuré pour cette organisation.', 'context' => 'Hint shown when no document storage is configured.'],
@@ -143,7 +143,7 @@ if ($documentId > 0) {
         $lockResult = $document->touchEditLock($organizationId, $currentUserId);
         if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
             $canUseForm = false;
-            $formErrorMessage = trim((string)($lockResult['text'] ?? 'Ce document est deja en cours d edition.'));
+            $formErrorMessage = trim((string)($lockResult['text'] ?? 'Ce document est déjà en cours d’édition.'));
         }
     }
 }
@@ -454,7 +454,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     </div>
 
                     <?php if ($isProjectDocument): ?>
-                        <label class="omo-document-editor__checkbox">
+                        <label class="omo-document-editor__checkbox generic-checkbox">
                             <input
                                 type="checkbox"
                                 name="project_visible_in_holon"
@@ -525,7 +525,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         <?php else: ?>
                             <div class="omo-document-editor__html" data-omo-document-editor-html></div>
                         <?php endif; ?>
-                        <div class="omo-document-editor__dictation-status" data-omo-document-dictation-status hidden></div>
+                        <div class="omo-document-editor__dictation-status generic-soft-panel" data-omo-document-dictation-status hidden></div>
                     </div>
                 </div>
 
@@ -591,7 +591,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         <span class="omo-document-editor__hint generic-help-text"><?= $escape(omoDocumentsCreateT('documents.create.field.external_url_hint')) ?></span>
                     </label>
 
-                    <label class="omo-document-editor__checkbox">
+                    <label class="omo-document-editor__checkbox generic-checkbox">
                         <input
                             type="checkbox"
                             name="open_in_new_window"
@@ -623,7 +623,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     </label>
 
                     <?php if ($documentType === Document::TYPE_UPLOADED_FILE && $documentHasStoredFile): ?>
-                        <div class="omo-document-editor__upload-current">
+                        <div class="omo-document-editor__upload-current generic-soft-panel generic-soft-panel--stack">
                             <div class="omo-document-editor__upload-current-title"><?= $escape(omoDocumentsCreateT('documents.create.upload.current')) ?></div>
                             <div class="omo-document-editor__upload-current-name"><?= $escape($documentStoredFilename) ?></div>
                             <div class="omo-document-editor__upload-current-meta">
@@ -634,7 +634,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             </div>
                         </div>
 
-                        <label class="omo-document-editor__checkbox">
+                        <label class="omo-document-editor__checkbox generic-checkbox">
                             <input type="checkbox" name="remove_uploaded_file" value="1"<?= $isEditing && !$canEditDocumentContent ? ' disabled' : '' ?>>
                             <span><?= $escape(omoDocumentsCreateT('documents.create.upload.remove')) ?></span>
                         </label>
@@ -642,7 +642,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 </div>
             </div>
 
-            <div class="omo-document-editor__status" data-omo-document-editor-status hidden></div>
+            <div class="omo-document-editor__status generic-soft-panel generic-feedback" data-omo-document-editor-status hidden></div>
 
             <div class="omo-document-editor__actions generic-form-actions generic-form-actions--stack-mobile">
                 <?php if ($editorHost === 'project_picker'): ?>
@@ -802,27 +802,8 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     color: var(--color-text-light);
 }
 
-.omo-document-editor__checkbox {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--color-text);
-    font-size: 0.92rem;
-}
-
-.omo-document-editor__checkbox input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    margin: 0;
-}
-
 .omo-document-editor__upload-current {
-    display: grid;
-    gap: 4px;
-    padding: 12px 14px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
-    background: var(--color-surface-alt);
+    --generic-soft-panel-gap: 4px;
 }
 
 .omo-document-editor__upload-current-title {
@@ -845,39 +826,36 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 }
 
 .omo-document-editor__status {
-    padding: 12px 14px;
-    border-radius: var(--radius-md);
-    border: 1px solid color-mix(in srgb, #dc2626 25%, var(--color-border));
-    background: color-mix(in srgb, #fef2f2 88%, var(--color-surface));
+    --generic-soft-panel-border: color-mix(in srgb, #dc2626 25%, var(--color-border));
+    --generic-soft-panel-background: color-mix(in srgb, #fef2f2 88%, var(--color-surface));
     color: #991b1b;
 }
 
 .omo-document-editor__dictation-status {
+    --generic-soft-panel-gap: 0;
+    --generic-soft-panel-border: color-mix(in srgb, var(--color-border) 85%, #38bdf8 15%);
+    --generic-soft-panel-background: color-mix(in srgb, var(--color-surface) 88%, #eff6ff 12%);
     margin-top: 10px;
-    padding: 10px 12px;
-    border-radius: var(--radius-md);
-    border: 1px solid color-mix(in srgb, var(--color-border) 85%, #38bdf8 15%);
-    background: color-mix(in srgb, var(--color-surface) 88%, #eff6ff 12%);
     color: var(--color-text-light);
     font-size: 0.84rem;
     line-height: 1.45;
 }
 
 .omo-document-editor__dictation-status.is-live {
-    border-color: color-mix(in srgb, #f59e0b 35%, var(--color-border));
-    background: color-mix(in srgb, #fffbeb 82%, var(--color-surface));
+    --generic-soft-panel-border: color-mix(in srgb, #f59e0b 35%, var(--color-border));
+    --generic-soft-panel-background: color-mix(in srgb, #fffbeb 82%, var(--color-surface));
     color: #92400e;
 }
 
 .omo-document-editor__dictation-status.is-error {
-    border-color: color-mix(in srgb, #dc2626 28%, var(--color-border));
-    background: color-mix(in srgb, #fef2f2 88%, var(--color-surface));
+    --generic-soft-panel-border: color-mix(in srgb, #dc2626 28%, var(--color-border));
+    --generic-soft-panel-background: color-mix(in srgb, #fef2f2 88%, var(--color-surface));
     color: #991b1b;
 }
 
 .omo-document-editor__dictation-status.is-success {
-    border-color: color-mix(in srgb, #16a34a 26%, var(--color-border));
-    background: color-mix(in srgb, #f0fdf4 88%, var(--color-surface));
+    --generic-soft-panel-border: color-mix(in srgb, #16a34a 26%, var(--color-border));
+    --generic-soft-panel-background: color-mix(in srgb, #f0fdf4 88%, var(--color-surface));
     color: #166534;
 }
 
@@ -1213,7 +1191,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         html += ' contenteditable="false">'
-            + '<strong>Document lie</strong><br>'
+            + '<strong>Document lié</strong><br>'
             + '<strong>' + escapeHtml(resolvedTitle) + '</strong>';
 
         if (description !== '') {
@@ -1751,13 +1729,13 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         });
 
         htmlField.setToolbarButtonState('omoDocumentDictate', {
-            label: isRecording ? 'En cours...' : 'Dicter',
+            label: isRecording ? 'En cours…' : 'Dicter',
             title: isRecording ? 'Enregistrement en cours' : 'Démarrer une dictée',
             disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
             hidden: !aiToolsVisible
         });
         htmlField.setToolbarButtonState('omoDocumentTranscript', {
-            label: isTranscribing ? 'Transcription...' : 'Transcrire',
+            label: isTranscribing ? 'Transcription…' : 'Transcrire',
             title: 'Arrêter l’enregistrement et transcrire',
             disabled: !isRecording || isTranscribing || isRewriting || isSummarizing,
             hidden: !aiToolsVisible
@@ -1769,13 +1747,13 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             hidden: !aiToolsVisible || (!isRecording && !isTranscribing)
         });
         htmlField.setToolbarButtonState('omoDocumentRewrite', {
-            label: isRewriting ? 'Rewrite...' : 'Rewrite',
+            label: isRewriting ? 'Réécriture…' : 'Réécrire',
             title: isRewriting ? 'Réécriture en cours' : 'Réécrire la sélection',
             disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
             hidden: !aiToolsVisible
         });
         htmlField.setToolbarButtonState('omoDocumentSummarize', {
-            label: isSummarizing ? 'Résumer...' : 'Résumer',
+            label: isSummarizing ? 'Résumé…' : 'Résumer',
             title: isSummarizing ? 'Résumé en cours' : 'Résumer la sélection',
             disabled: isRecording || isTranscribing || isRewriting || isSummarizing,
             hidden: !aiToolsVisible
@@ -1808,7 +1786,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         const errorName = error && error.name ? String(error.name) : '';
 
         if (errorName === 'NotAllowedError' || errorName === 'SecurityError') {
-            return 'L acces au micro a ete refuse.';
+            return 'L’accès au micro a été refusé.';
         }
 
         if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
@@ -1880,7 +1858,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
             const handleError = function () {
                 resetDictationRecorderState();
-                reject(new Error('Impossible de finaliser l enregistrement audio.'));
+                reject(new Error('Impossible de finaliser l’enregistrement audio.'));
             };
 
             recorder.addEventListener('stop', handleStop, { once: true });
@@ -2078,7 +2056,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
         htmlField = window.omoSimpleHtmlField.mount(htmlHost, {
             value: htmlValueCache,
-            placeholder: 'Redigez le contenu du document...',
+            placeholder: 'Rédigez le contenu du document…',
             height: 240,
             customButtons: customButtons,
             onChange: function (value) {
@@ -2212,12 +2190,12 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         setDictationMode('transcribing');
-        setDictationStatus('Transcription en cours...', 'live');
+        setDictationStatus('Transcription en cours…', 'live');
 
         try {
             const audioBlob = await stopRecorder(false);
             if (!audioBlob || audioBlob.size <= 0) {
-                throw new Error('Aucun son n a ete enregistre.');
+                throw new Error('Aucun son n’a été enregistré.');
             }
 
             const formData = new FormData();
@@ -2307,7 +2285,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         setRewriteMode('pending');
-        setDictationStatus('Réécriture en cours...', 'live');
+        setDictationStatus('Réécriture en cours…', 'live');
 
         try {
             const formData = new FormData();
@@ -2397,7 +2375,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         }
 
         setSummarizeMode('pending');
-        setDictationStatus('Résumé en cours...', 'live');
+        setDictationStatus('Résumé en cours…', 'live');
 
         try {
             const formData = new FormData();
@@ -2584,7 +2562,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             && uploadInput
             && uploadInput.files
             && uploadInput.files.length > 0
-            && !window.confirm(String(uiText.uploadReplaceConfirm || 'Le fichier actuel sera remplace. Continuer ?'))
+            && !window.confirm(String(uiText.uploadReplaceConfirm || 'Le fichier actuel sera remplacé. Continuer ?'))
         ) {
             return;
         }
@@ -2665,7 +2643,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             .catch(function (error) {
                 setStatus(error && error.message && error.message !== 'save_failed'
                     ? error.message
-                    : 'Impossible d enregistrer ce document pour le moment.');
+                    : 'Impossible d’enregistrer ce document pour le moment.');
             })
             .finally(function () {
                 setSavingState(false);

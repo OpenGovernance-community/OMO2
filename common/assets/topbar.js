@@ -60,6 +60,9 @@
             image.src = String(profile.photoUrl);
             image.alt = String(profile.displayName || 'Profil');
             image.className = imageClass;
+            image.width = imageClass === 'common-topbar__avatar-image' ? 30 : 96;
+            image.height = image.width;
+            image.decoding = 'async';
             container.appendChild(image);
             container.removeAttribute('style');
             return;
@@ -97,6 +100,9 @@
                 mediaImage.src = String(profile.photoUrl);
                 mediaImage.alt = String(profile.displayName || 'Profil');
                 mediaImage.className = 'common-topbar-profile-card__photo';
+                mediaImage.width = 96;
+                mediaImage.height = 96;
+                mediaImage.decoding = 'async';
                 mediaImage.setAttribute('data-common-topbar-profile-photo', '');
                 mediaAvatar.replaceWith(mediaImage);
             } else {

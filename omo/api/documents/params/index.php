@@ -45,7 +45,7 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
             <span class="omo-documents-params__icon-shell">
                 <img src="<?= htmlspecialchars($iconUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" class="omo-documents-params__icon black-icon" loading="lazy">
             </span>
-            <div class="omo-documents-params__copy">
+            <div class="omo-documents-params__copy generic-stack generic-stack--compact">
                 <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars($applicationLabel, ENT_QUOTES, 'UTF-8') ?></div>
                 <h2 class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.title'), ENT_QUOTES, 'UTF-8') ?></h2>
                 <p class="omo-documents-params__description generic-description"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.description'), ENT_QUOTES, 'UTF-8') ?></p>
@@ -97,7 +97,7 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                         <?= htmlspecialchars(omoDocumentsParamsT('documents.params.section.storage'), ENT_QUOTES, 'UTF-8') ?>
                     </h3>
 
-                    <label class="omo-documents-params__checkbox omo-documents-params__field--full generic-form-field--full">
+                    <label class="omo-documents-params__checkbox generic-checkbox omo-documents-params__field--full generic-form-field--full">
                         <input
                             type="checkbox"
                             name="document_storage_enabled"
@@ -228,7 +228,7 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                         <?= htmlspecialchars(omoDocumentsParamsT('documents.params.section.collabora'), ENT_QUOTES, 'UTF-8') ?>
                     </h3>
 
-                    <label class="omo-documents-params__checkbox omo-documents-params__field--full generic-form-field--full">
+                    <label class="omo-documents-params__checkbox generic-checkbox omo-documents-params__field--full generic-form-field--full">
                         <input
                             type="checkbox"
                             name="collabora_enabled"
@@ -340,11 +340,6 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
     object-fit: contain;
 }
 
-.omo-documents-params__copy {
-    display: grid;
-    gap: 6px;
-}
-
 .omo-documents-params__status,
 .omo-documents-params__legacy {
     color: var(--color-text-light, #475569);
@@ -360,13 +355,6 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
     color: #92400e;
     border-color: color-mix(in srgb, #f59e0b 18%, var(--color-border, #dbe4ee));
     background: color-mix(in srgb, #f59e0b 8%, var(--color-surface, #ffffff));
-}
-
-.omo-documents-params__checkbox {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--color-text, #0f172a);
 }
 
 .omo-documents-params__storage-choice {
@@ -388,11 +376,6 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
     display: inline-flex;
     align-items: center;
     gap: 8px;
-}
-
-.omo-documents-params__storage-fields[hidden],
-.omo-documents-params__storage-choice[hidden] {
-    display: none;
 }
 
 .omo-documents-params__feedback {

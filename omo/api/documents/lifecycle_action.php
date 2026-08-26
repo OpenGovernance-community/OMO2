@@ -46,7 +46,7 @@ foreach ($documentIds as $requestedDocumentId) {
     }
     $expectedOrganizationId = $organizationId;
     if (!commonCurrentUserHasOrganizationAccess($organizationId) || !$document->canManageLifecycle($organizationId, $userId)) {
-        $error('Acces refuse.', 403);
+        $error('Accès refusé.', 403);
     }
 
     if ($action === 'archive' && $document->isArchived()) {
@@ -54,7 +54,7 @@ foreach ($documentIds as $requestedDocumentId) {
     }
 
     if ($action === 'delete' && !$document->canDeleteDocument()) {
-        $error('Ce document ne peut pas etre supprime car il est utilise ailleurs ou contient encore des documents.', 422);
+        $error('Ce document ne peut pas être supprimé car il est utilisé ailleurs ou contient encore des documents.', 422);
     }
 
     $documents[] = $document;

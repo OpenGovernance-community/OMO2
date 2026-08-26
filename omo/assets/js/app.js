@@ -242,7 +242,7 @@ function omoGetUserProfile() {
             <section class="omo-profile-panel__section omo-profile-panel__section--media">
                 <div class="omo-profile-card generic-section">
                     ${profile.photoUrl
-                        ? `<img src="${omoEscapeHtml(profile.photoUrl)}" alt="${omoEscapeHtml(displayName)}" class="omo-profile-card__photo">`
+                        ? `<img src="${omoEscapeHtml(profile.photoUrl)}" alt="${omoEscapeHtml(displayName)}" class="omo-profile-card__photo" width="96" height="96" decoding="async">`
                         : `<div class="omo-profile-card__placeholder" aria-hidden="true">${omoEscapeHtml(initial)}</div>`
                     }
                     <div class="omo-profile-card__identity">

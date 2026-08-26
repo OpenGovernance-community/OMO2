@@ -30,7 +30,7 @@ if (
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Acces refuse.',
+        'message' => 'Accès refusé.',
     ));
     exit;
 }

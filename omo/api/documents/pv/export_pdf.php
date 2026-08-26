@@ -7,13 +7,13 @@ use Dompdf\Options;
 $sourceLang = [
     'documents.pdf.error.invalid' => ['text' => 'PV invalide.', 'context' => 'Error shown when a PDF export request has no valid PV id.'],
     'documents.pdf.error.forbidden' => ['text' => 'PV introuvable ou inaccessible.', 'context' => 'Error shown when a user cannot export the requested PV.'],
-    'documents.pdf.error.library' => ['text' => 'La librairie d export PDF est indisponible.', 'context' => 'Error shown when Dompdf cannot be loaded.'],
-    'documents.pdf.error.generate' => ['text' => 'Impossible de generer le PDF.', 'context' => 'Error shown when Dompdf fails to generate the PV export.'],
-    'documents.pdf.meta.stage' => ['text' => 'Etape', 'context' => 'PV stage label in the PDF header.'],
-    'documents.pdf.meta.event' => ['text' => 'Reunion', 'context' => 'Associated event label in the PDF header.'],
+    'documents.pdf.error.library' => ['text' => 'La bibliothèque d’export PDF est indisponible.', 'context' => 'Error shown when Dompdf cannot be loaded.'],
+    'documents.pdf.error.generate' => ['text' => 'Impossible de générer le PDF.', 'context' => 'Error shown when Dompdf fails to generate the PV export.'],
+    'documents.pdf.meta.stage' => ['text' => 'Étape', 'context' => 'PV stage label in the PDF header.'],
+    'documents.pdf.meta.event' => ['text' => 'Réunion', 'context' => 'Associated event label in the PDF header.'],
     'documents.pdf.meta.schedule' => ['text' => 'Horaire', 'context' => 'Meeting schedule label in the PDF header.'],
     'documents.pdf.meta.location' => ['text' => 'Lieu', 'context' => 'Meeting location label in the PDF header.'],
-    'documents.pdf.footer.generated' => ['text' => 'Exporte le {date}', 'context' => 'Generation timestamp shown in the PDF footer.'],
+    'documents.pdf.footer.generated' => ['text' => 'Exporté le {date}', 'context' => 'Generation timestamp shown in the PDF footer.'],
 ];
 $lang = omoLoadTranslationBundle('omo_documents_pdf', $sourceLang);
 
@@ -297,7 +297,7 @@ function omoDocumentsPdfConvertIndicatorSvgs(string $html): string
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
-    omoDocumentsPdfFail(405, 'Methode non autorisee.');
+    omoDocumentsPdfFail(405, 'Méthode non autorisée.');
 }
 
 $documentId = isset($_GET['id']) ? (int)$_GET['id'] : 0;

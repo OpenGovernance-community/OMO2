@@ -6,7 +6,7 @@ use dbObject\DecisionProcess;
 header('Content-Type: application/json; charset=UTF-8');
 
 $sourceLang = [
-    'decisions.move_action.error.access_denied' => ['text' => 'Acces refuse.', 'context' => 'Error returned when the user cannot move a decision.'],
+    'decisions.move_action.error.access_denied' => ['text' => 'Accès refusé.', 'context' => 'Error returned when the user cannot move a decision.'],
     'decisions.move_action.error.invalid_request' => ['text' => 'Le déplacement demandé est invalide.', 'context' => 'Error returned when the target destination is invalid.'],
     'decisions.move_action.error.not_found' => ['text' => 'La prise de décision demandée est introuvable.', 'context' => 'Error returned when the source decision cannot be found.'],
     'decisions.move_action.error.failed' => ['text' => 'Impossible de déplacer cette prise de décision.', 'context' => 'Fallback error returned when moving fails.'],
