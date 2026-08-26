@@ -167,7 +167,7 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'context' => 'Label used when the maximum number of choices is unlimited.',
             ],
             'decisions.vote.field.one_proposal_at_a_time' => [
-                'text' => 'Une proposition a la fois',
+                'text' => 'Une proposition à la fois',
                 'context' => 'Label for displaying one proposal at a time during voting.',
             ],
             'decisions.vote.action.previous_proposal' => [
@@ -194,8 +194,8 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'text' => 'Autoriser les discussions des propositions',
                 'context' => 'Label for allowing account users to discuss proposals.',
             ],
-            'decisions.vote.field.live_results' => ['text' => 'Afficher les resultats pendant le scrutin', 'context' => 'Label for showing intermediate simple vote results.'],
-            'decisions.vote.field.live_results_summary' => ['text' => 'Resultats en cours', 'context' => 'Summary label for intermediate simple vote results setting.'],
+            'decisions.vote.field.live_results' => ['text' => 'Afficher les résultats pendant le scrutin', 'context' => 'Label for showing intermediate simple vote results.'],
+            'decisions.vote.field.live_results_summary' => ['text' => 'Résultats en cours', 'context' => 'Summary label for intermediate simple vote results setting.'],
             'decisions.vote.field.live_results_heading' => ['text' => 'Votes en cours', 'context' => 'Heading for intermediate simple vote results.'],
             'decisions.vote.field.random_order' => ['text' => 'Ordre aléatoire des propositions', 'context' => 'Randomize proposal order for each voter.'],
             'decisions.vote.option.live_results.named' => ['text' => 'Oui, nominatifs', 'context' => 'Summary for named intermediate simple vote results.'],
@@ -974,7 +974,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         </div>
                         <template data-omo-decision-vote-settings-template>
                             <div class="omo-decision-settings-popup omo-decision-vote-popup generic-section generic-section--stack" data-topbar-modal-max-width="760px">
-                                <div class="omo-decision-vote-popup__stack">
+                                <div class="omo-decision-vote-popup__stack omo-decision-settings-popup__stack">
                                     <?php if (!$consultationOnly): ?>
                                     <section class="omo-decision-settings-popup__group">
                                         <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.behavior', [], $lang, $sourceLang)) ?></span>
@@ -1743,7 +1743,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     const maxChoicesLabel = String(hiddenMaxChoicesInput && hiddenMaxChoicesInput.value ? hiddenMaxChoicesInput.value : '0') === '0'
                                         ? unlimitedLabel
                                         : String(hiddenMaxChoicesInput && hiddenMaxChoicesInput.value ? hiddenMaxChoicesInput.value : '1');
-                                    choiceSummary.textContent = 'Plusieurs reponses (max ' + maxChoicesLabel + ')';
+                                    choiceSummary.textContent = 'Plusieurs réponses (max. ' + maxChoicesLabel + ')';
                                 } else {
                                     choiceSummary.textContent = 'Une seule reponse';
                                 }
@@ -1822,8 +1822,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             }
 
                             const modalTitle = settingsOpenButton
-                                ? String(settingsOpenButton.getAttribute('data-omo-decision-vote-settings-title') || settingsOpenButton.textContent || 'Parametres du vote')
-                                : 'Parametres du vote';
+                                ? String(settingsOpenButton.getAttribute('data-omo-decision-vote-settings-title') || settingsOpenButton.textContent || 'Paramètres du vote')
+                                : 'Paramètres du vote';
                             window.commonTopbarOpenModal(modalTitle, settingsTemplate.innerHTML, 'html');
                             const modalBody = document.getElementById('commonTopbarModalBody');
                             if (!modalBody) {
@@ -2622,19 +2622,6 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             resize: vertical;
         }
 
-        .omo-decision-vote__settings-summary,
-        .omo-decision-vote__settings-head {
-            display: grid;
-            gap: 12px;
-        }
-
-        .omo-decision-vote__settings-head {
-            grid-template-columns: minmax(0, 1fr) auto;
-            align-items: start;
-        }
-
-        .omo-decision-vote-popup__stack,
-        .omo-decision-vote-popup__choice-grid,
         .omo-decision-vote-popup__actions {
             display: grid;
             gap: 12px;

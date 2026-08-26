@@ -7,7 +7,7 @@ header('Content-Type: application/json; charset=UTF-8');
 
 $sourceLang = [
     'documents.rewrite.error.contributor_required' => [
-        'text' => 'Les fonctions IA sont reservees aux contributeurs Patreon actifs.',
+        'text' => 'Les fonctions IA sont réservées aux contributeurs Patreon actifs.',
         'context' => 'Error returned when the current user does not have access to AI features.',
     ],
     'documents.rewrite.error.access_denied' => [

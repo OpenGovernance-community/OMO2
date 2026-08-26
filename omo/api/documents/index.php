@@ -28,7 +28,7 @@ $sourceLang = [
         'context' => 'Short label used before the document visibility scope in tooltips.',
     ],
     'documents.scope.edit' => [
-        'text' => 'Editer',
+        'text' => 'Éditer',
         'context' => 'Short label used before the document edit scope in tooltips.',
     ],
     'documents.empty.visible_children' => [
@@ -179,7 +179,7 @@ $sourceLang = [
         'context' => 'Alternative text for image file icons.',
     ],
     'documents.icon.video' => [
-        'text' => 'Video',
+        'text' => 'Vidéo',
         'context' => 'Alternative text for video file icons.',
     ],
     'documents.icon.audio' => [
@@ -195,7 +195,7 @@ $sourceLang = [
         'context' => 'Alternative text for spreadsheet file icons.',
     ],
     'documents.icon.presentation' => [
-        'text' => 'Presentation',
+        'text' => 'Présentation',
         'context' => 'Alternative text for presentation file icons.',
     ],
     'documents.icon.drawing' => [
@@ -203,7 +203,7 @@ $sourceLang = [
         'context' => 'Alternative text for drawing file icons.',
     ],
     'documents.action.loading' => [
-        'text' => 'Chargement...',
+        'text' => 'Chargement…',
         'context' => 'Loading state shown while a document drawer is loading.',
     ],
     'documents.menu.archive' => [
@@ -223,7 +223,7 @@ $sourceLang = [
         'context' => 'Confirmation shown before archiving a document.',
     ],
     'documents.menu.confirm_delete' => [
-        'text' => 'Supprimer definitivement ce document ?',
+        'text' => 'Supprimer définitivement ce document ?',
         'context' => 'Confirmation shown before permanently deleting a document.',
     ],
     'documents.menu.action_error' => [
@@ -231,31 +231,31 @@ $sourceLang = [
         'context' => 'Fallback error shown when a document lifecycle action fails.',
     ],
     'documents.selection.toggle' => [
-        'text' => 'Selectionner ce document',
+        'text' => 'Sélectionner ce document',
         'context' => 'Accessible label for the checkbox selecting a document for bulk actions.',
     ],
     'documents.selection.count' => [
-        'text' => '{count} selectionnes',
+        'text' => '{count} sélectionnés',
         'context' => 'Number of documents selected for bulk actions.',
     ],
     'documents.selection.archive' => [
-        'text' => 'Archiver la selection',
+        'text' => 'Archiver la sélection',
         'context' => 'Bulk action archiving the selected documents.',
     ],
     'documents.selection.delete' => [
-        'text' => 'Supprimer la selection',
+        'text' => 'Supprimer la sélection',
         'context' => 'Bulk action deleting the selected documents.',
     ],
     'documents.selection.move' => [
-        'text' => 'Deplacer la selection',
+        'text' => 'Déplacer la sélection',
         'context' => 'Bulk action moving the selected documents.',
     ],
     'documents.selection.confirm_archive' => [
-        'text' => 'Archiver les {count} documents selectionnes ? Ils ne seront plus visibles dans la liste.',
+        'text' => 'Archiver les {count} documents sélectionnés ? Ils ne seront plus visibles dans la liste.',
         'context' => 'Confirmation shown before bulk archiving documents.',
     ],
     'documents.selection.confirm_delete' => [
-        'text' => 'Supprimer definitivement les {count} documents selectionnes ?',
+        'text' => 'Supprimer définitivement les {count} documents sélectionnés ?',
         'context' => 'Confirmation shown before bulk deleting documents.',
     ],
     'documents.error.load_document' => [
@@ -4123,11 +4123,11 @@ if (!is_string($documentsPayload)) {
                 return window.omoOpenExternalPanelDrawer({
                     url: preparationUrl,
                     mode: 'fetch',
-                    title: title !== '' ? title : (hasUpcomingPvEvent ? 'Preparation du PV' : 'Edition du PV'),
+                    title: title !== '' ? title : (hasUpcomingPvEvent ? 'Préparation du PV' : 'Édition du PV'),
                     description: hasUpcomingPvEvent
                         ? (fullDate !== ''
-                            ? 'Preparation ouverte avant la reunion du ' + fullDate + '.'
-                            : 'Preparation du PV avant la reunion.')
+                            ? 'Préparation ouverte avant la réunion du ' + fullDate + '.'
+                            : 'Préparation du PV avant la réunion.')
                         : '',
                     variant: 'top-sheet',
                     persistKey: 'omo-pv-preparation-' + String(documentId),
@@ -4346,7 +4346,7 @@ if (!is_string($documentsPayload)) {
 
                 openEditorDrawer(
                     editUrl,
-                    <?= json_encode('Ã‰diter le document', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                    <?= json_encode('Éditer le document', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
                     <?= json_encode('Modification du document dans le contexte courant.', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
                 );
                 return true;
@@ -4436,7 +4436,7 @@ if (!is_string($documentsPayload)) {
                 }
 
                 if (canEdit && editUrl !== '') {
-                    fragment.appendChild(buildDocumentMenuItem('Editer', {
+                    fragment.appendChild(buildDocumentMenuItem('Éditer', {
                         'data-omo-document-menu-action': 'edit',
                         'data-omo-document-edit': '1',
                         'data-omo-document-edit-id': String(documentId),
@@ -4576,7 +4576,7 @@ if (!is_string($documentsPayload)) {
 
                 openEditorDrawer(
                     editUrl,
-                    <?= json_encode('Ã‰diter le document', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                    <?= json_encode('Éditer le document', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
                     <?= json_encode('Modification du document dans le contexte courant.', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
                 );
                 return true;
@@ -4890,55 +4890,12 @@ if (!is_string($documentsPayload)) {
     position: relative;
 }
 
-.omo-documents__list--compact {
-    gap: 0;
-    border: 1px solid color-mix(in srgb, var(--color-border) 82%, white 18%);
-    background: var(--color-surface);
-    overflow: visible;
-    position: relative;
-}
-
-.omo-documents__list-header {
-    display: grid;
-    grid-template-columns: var(--generic-file-list-columns);
-    gap: 16px;
-    align-items: center;
-    padding:
-        var(--generic-file-list-header-padding-block)
-        calc(var(--generic-file-list-padding-inline-end) + var(--generic-file-list-menu-space))
-        var(--generic-file-list-header-padding-block)
-        var(--generic-file-list-padding-inline-start);
-    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 82%, white 18%);
-    background: color-mix(in srgb, var(--color-surface-alt) 78%, white 22%);
-    color: var(--color-text-light);
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-}
-
-.omo-documents__list-header-cell {
-    min-width: 0;
-}
-
-.omo-documents__list-header-cell--date {
-    text-align: right;
-    white-space: nowrap;
-}
-
 .omo-documents__list--alphabetical {
     align-content: start;
 }
 
 .omo-documents__item-shell {
     position: relative;
-}
-
-.omo-documents__list--compact > .omo-documents__item-shell {
-    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 82%, white 18%);
-}
-
-.omo-documents__list--compact > .omo-documents__item-shell:last-of-type {
-    border-bottom: 0;
 }
 
 .omo-documents__item-shell--has-menu .omo-documents__item {
@@ -5387,88 +5344,6 @@ if (!is_string($documentsPayload)) {
     padding-right: 0;
 }
 
-.omo-documents__item--compact .omo-documents__item-frame--compact-list {
-    grid-template-columns: var(--generic-file-list-columns);
-    gap: 16px;
-    align-items: center;
-    padding:
-        var(--generic-file-list-row-padding-block)
-        calc(var(--generic-file-list-padding-inline-end) + var(--generic-file-list-menu-space))
-        var(--generic-file-list-row-padding-block)
-        var(--generic-file-list-padding-inline-start);
-}
-
-.omo-documents__item--compact .omo-documents__icon-box {
-    width: 34px;
-    height: 34px;
-    border-radius: var(--radius-md);
-}
-
-.omo-documents__item--compact .omo-documents__icon {
-    width: 20px;
-    height: 20px;
-}
-
-.omo-documents__item--compact .omo-documents__favicon-badge {
-    width: 18px;
-    height: 18px;
-    right: -3px;
-    bottom: -3px;
-}
-
-.omo-documents__item--compact .omo-documents__favicon-image {
-    width: 10px;
-    height: 10px;
-}
-
-.omo-documents__compact-cell {
-    min-width: 0;
-    min-height: 28px;
-    display: flex;
-    align-items: center;
-}
-
-.omo-documents__compact-cell.is-empty {
-    color: var(--color-text-light);
-}
-
-.omo-documents__compact-cell--date {
-    color: var(--color-text-light);
-    justify-content: flex-end;
-    text-align: right;
-    white-space: nowrap;
-}
-
-.omo-documents__compact-name-main {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    min-width: 0;
-}
-
-.omo-documents__compact-title-block {
-    display: grid;
-    gap: 6px;
-    min-width: 0;
-}
-
-.omo-documents__compact-title-stack {
-    display: flex;
-    align-items: center;
-    gap: 8px 10px;
-    min-width: 0;
-    flex-wrap: wrap;
-}
-
-.omo-documents__compact-title {
-    display: block;
-    min-width: 0;
-    font-size: 0.95rem;
-    line-height: 1.35;
-    color: var(--color-text);
-    word-break: break-word;
-}
-
 .omo-documents__item--compact .omo-documents__scope-capsule {
     min-height: 22px;
     padding: 0 7px;
@@ -5480,35 +5355,11 @@ if (!is_string($documentsPayload)) {
     height: 13px;
 }
 
-.omo-documents__compact-count {
-    display: inline-flex;
-    align-items: center;
-    min-height: 24px;
-    padding: 0 10px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-surface-alt) 78%, white 22%);
-    color: var(--color-text-light);
-    font-size: 0.76rem;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
 .omo-documents__compact-context-inline {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
     min-width: 0;
-}
-
-.omo-documents__compact-context-line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 6px;
-    max-width: 100%;
-    color: var(--color-text-light);
-    font-size: 0.78rem;
-    line-height: 1.35;
 }
 
 .omo-documents__compact-context-separator {
@@ -5524,87 +5375,8 @@ if (!is_string($documentsPayload)) {
     white-space: nowrap;
 }
 
-.omo-documents__compact-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
 .omo-documents__compact-tags--empty {
     color: var(--color-text-light);
-}
-
-.omo-documents__item--compact .omo-documents__keyword-tag {
-    min-height: 22px;
-    padding: 0 8px;
-    font-size: 0.72rem;
-}
-
-.omo-documents__item-shell--compact .omo-documents__folder-card {
-    padding-left: 42px;
-}
-
-.omo-documents__item-shell--compact .omo-documents__folder-chevron {
-    left: 8px;
-    right: auto;
-    top: 50%;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    font-size: 0;
-    color: transparent;
-    line-height: 1;
-    transform: translateY(-50%) !important;
-    background: transparent;
-    box-shadow: none;
-}
-
-.omo-documents__item-shell--compact .omo-documents__folder-chevron::before {
-    content: "▸";
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-text-light);
-    font-size: 18px;
-    line-height: 1;
-}
-
-.omo-documents__item-shell--compact.omo-documents__item-shell--has-menu .omo-documents__folder-chevron {
-    right: auto;
-}
-
-.omo-documents__item-shell--compact .generic-accordion--collapsible.is-collapsed .omo-documents__folder-chevron,
-.omo-documents__item-shell--compact .generic-accordion--collapsible:not(.is-collapsed) .omo-documents__folder-chevron,
-.omo-documents__item-shell--compact .omo-documents__folder:not(.is-collapsed) .omo-documents__folder-chevron {
-    transform: translateY(-50%) !important;
-    background: transparent;
-    color: transparent;
-}
-
-.omo-documents__item-shell--compact .omo-documents__folder:not(.is-collapsed) .omo-documents__folder-chevron::before {
-    content: "▾";
-    color: #b45309;
-}
-
-.omo-documents__item-shell--compact .omo-documents__folder-content {
-    margin-left: 18px;
-    padding: 0 0 0 20px;
-}
-
-.omo-documents__item-shell--compact .omo-documents__menu {
-    top: 50%;
-    right: 10px;
-    transform: translateY(-50%);
-}
-
-.omo-documents__item-shell--compact .omo-documents__menu-toggle {
-    min-width: 30px;
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    border-radius: var(--radius-md);
 }
 
 .omo-documents__item--compact .omo-documents__context,
@@ -5648,10 +5420,6 @@ if (!is_string($documentsPayload)) {
         width: 100%;
     }
 
-    .omo-documents__list-header {
-        display: none;
-    }
-
     .omo-documents__item {
         padding-right: 50px;
     }
@@ -5692,82 +5460,6 @@ if (!is_string($documentsPayload)) {
 
     .omo-documents__item-shell--has-menu .omo-documents__item--compact {
         padding-right: 0;
-    }
-
-    .omo-documents__item--compact .omo-documents__item-frame--compact-list {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 10px;
-        padding: 14px 14px 14px 12px;
-    }
-
-    .omo-documents__compact-cell {
-        display: grid;
-        gap: 4px;
-        align-items: start;
-        min-height: 0;
-    }
-
-    .omo-documents__compact-cell::before {
-        content: attr(data-label);
-        color: var(--color-text-light);
-        font-size: 0.72rem;
-        font-weight: 700;
-        letter-spacing: 0.02em;
-        text-transform: uppercase;
-    }
-
-    .omo-documents__compact-cell--name::before {
-        display: none;
-    }
-
-    .omo-documents__compact-cell--date {
-        justify-content: flex-start;
-        text-align: left;
-    }
-
-    .omo-documents__compact-name-main {
-        gap: 10px;
-    }
-
-    .omo-documents__compact-title-block {
-        gap: 5px;
-    }
-
-    .omo-documents__compact-title {
-        font-size: 0.92rem;
-    }
-
-    .omo-documents__item-shell--compact .omo-documents__folder-card {
-        padding-left: 36px;
-    }
-
-    .omo-documents__item-shell--compact .omo-documents__folder-chevron {
-        left: 6px;
-        width: 24px;
-        height: 24px;
-    }
-
-    .omo-documents__item-shell--compact .omo-documents__folder-chevron::before {
-        font-size: 16px;
-    }
-
-    .omo-documents__item-shell--compact.omo-documents__item-shell--folder .omo-documents__menu {
-        top: 12px;
-    }
-
-    .omo-documents__folder-card {
-        padding-right: 52px;
-    }
-
-    .omo-documents__folder-chevron {
-        top: 12px;
-        right: 12px;
-        width: 32px;
-        height: 32px;
-    }
-
-    .omo-documents__item-shell--has-menu .omo-documents__folder-chevron {
-        right: 50px;
     }
 
     .omo-documents__date {

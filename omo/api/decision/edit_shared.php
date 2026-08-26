@@ -7,27 +7,27 @@ $viewInput = isset($omoDecisionInput) && is_array($omoDecisionInput) ? $omoDecis
 
 $baseSourceLang = [
     'decisions.edit.create_title' => [
-        'text' => 'Nouvelle prise de decision',
+        'text' => 'Nouvelle prise de décision',
         'context' => 'Drawer title when creating a decision process.',
     ],
     'decisions.edit.edit_title' => [
-        'text' => 'Modifier la prise de decision',
+        'text' => 'Modifier la prise de décision',
         'context' => 'Drawer title when editing a decision process.',
     ],
     'decisions.edit.view_title' => [
-        'text' => 'Voir la prise de decision',
+        'text' => 'Voir la prise de décision',
         'context' => 'Drawer title when opening a decision in read-only mode.',
     ],
     'decisions.edit.description' => [
-        'text' => 'Choisissez une methode, puis configurez un premier scrutin dans une structure pensee pour accueillir d autres modules plus tard.',
+        'text' => 'Choisissez une méthode, puis configurez un premier scrutin dans une structure pensée pour accueillir d’autres modules plus tard.',
         'context' => 'Short description for the decision editor screen.',
     ],
     'decisions.edit.choose_title' => [
-        'text' => 'Choisir une methode',
+        'text' => 'Choisir une méthode',
         'context' => 'Title of the method selection step.',
     ],
     'decisions.edit.choose_text' => [
-        'text' => 'Commencez par selectionner la maniere d evaluer cette prise de decision. Le flux de creation detaille depend ensuite du module choisi.',
+        'text' => 'Commencez par sélectionner la manière d’évaluer cette prise de décision. Le parcours de création détaillé dépend ensuite du module choisi.',
         'context' => 'Description of the method selection step.',
     ],
     'decisions.edit.governance.label' => [
@@ -43,7 +43,7 @@ $baseSourceLang = [
         'context' => 'CTA of the deferred governance workflow card.',
     ],
     'decisions.edit.choose_later' => [
-        'text' => 'Bientot disponible',
+        'text' => 'Bientôt disponible',
         'context' => 'Badge for methods not implemented yet.',
     ],
     'decisions.edit.method.simple_vote.label' => [
@@ -59,7 +59,7 @@ $baseSourceLang = [
         'context' => 'Label of the majority judgment module card.',
     ],
     'decisions.edit.method.majority_judgment.description' => [
-        'text' => 'Chaque proposition recoit une mention sur une echelle commune.',
+        'text' => 'Chaque proposition reçoit une mention sur une échelle commune.',
         'context' => 'Description of the majority judgment module card.',
     ],
     'decisions.edit.method.consent.label' => [
@@ -67,7 +67,7 @@ $baseSourceLang = [
         'context' => 'Label of the consent module card.',
     ],
     'decisions.edit.method.consent.description' => [
-        'text' => 'Une proposition est retenue tant qu aucune objection bloquante n est posee.',
+        'text' => 'Une proposition est retenue tant qu’aucune objection bloquante n’est formulée.',
         'context' => 'Description of the consent module card.',
     ],
     'decisions.edit.method.consultation_only.label' => [
@@ -83,19 +83,19 @@ $baseSourceLang = [
         'context' => 'Label for the read-only evaluation method reminder in one question.',
     ],
     'decisions.edit.method.open' => [
-        'text' => 'Configurer cette methode',
+        'text' => 'Configurer cette méthode',
         'context' => 'CTA on an available method card.',
     ],
     'decisions.edit.method.locked' => [
-        'text' => 'Methode verrouillee',
+        'text' => 'Méthode verrouillée',
         'context' => 'Hint when editing an existing decision method.',
     ],
     'decisions.edit.unsupported_title' => [
-        'text' => 'Methode non encore disponible',
+        'text' => 'Méthode non encore disponible',
         'context' => 'Title shown when a method exists but its editor is not implemented.',
     ],
     'decisions.edit.unsupported_text' => [
-        'text' => 'Ce mode est bien prevu dans l architecture, mais son ecran de creation detaille n est pas encore branche.',
+        'text' => 'Ce mode est prévu dans l’architecture, mais son écran de création détaillé n’est pas encore disponible.',
         'context' => 'Body shown when a method exists but its editor is not implemented.',
     ],
     'decisions.edit.summary.organization' => [
@@ -111,7 +111,7 @@ $baseSourceLang = [
         'context' => 'Summary label for create or edit mode.',
     ],
     'decisions.edit.summary.method' => [
-        'text' => 'Methode',
+        'text' => 'Méthode',
         'context' => 'Summary label for the selected evaluation method.',
     ],
     'decisions.edit.summary.target' => [
@@ -119,15 +119,15 @@ $baseSourceLang = [
         'context' => 'Summary label for the edited decision title.',
     ],
     'decisions.edit.visibility.label' => [
-        'text' => 'Visibilite',
+        'text' => 'Visibilité',
         'context' => 'Label for the decision visibility field shared by all decision editors.',
     ],
     'decisions.edit.summary.mode_create' => [
-        'text' => 'Creation',
+        'text' => 'Création',
         'context' => 'Summary value when creating a decision.',
     ],
     'decisions.edit.summary.mode_edit' => [
-        'text' => 'Edition',
+        'text' => 'Édition',
         'context' => 'Summary value when editing a decision.',
     ],
     'decisions.edit.summary.no_holon' => [
@@ -143,11 +143,11 @@ $baseSourceLang = [
         'context' => 'Error when the organization cannot be loaded.',
     ],
     'decisions.edit.context.organization_denied' => [
-        'text' => 'Acces refuse a cette organisation.',
+        'text' => 'Accès refusé à cette organisation.',
         'context' => 'Error when the user cannot view the organization.',
     ],
     'decisions.edit.context.organization_manage_denied' => [
-        'text' => 'Vous n avez pas les droits necessaires pour creer une prise de decision dans cette organisation.',
+        'text' => 'Vous n’avez pas les droits nécessaires pour créer une prise de décision dans cette organisation.',
         'context' => 'Error when the user cannot create an organization-level decision.',
     ],
     'decisions.edit.context.holon_not_found' => [
@@ -155,23 +155,23 @@ $baseSourceLang = [
         'context' => 'Error when the requested holon is invalid.',
     ],
     'decisions.edit.context.holon_denied' => [
-        'text' => 'Acces refuse a ce holon.',
+        'text' => 'Accès refusé à ce holon.',
         'context' => 'Error when the user cannot view the requested holon.',
     ],
     'decisions.edit.context.holon_manage_denied' => [
-        'text' => 'Vous n avez pas les droits necessaires pour creer une prise de decision dans ce holon.',
+        'text' => 'Vous n’avez pas les droits nécessaires pour créer une prise de décision dans ce holon.',
         'context' => 'Error when the user cannot create a holon-level decision.',
     ],
     'decisions.edit.context.decision_not_found' => [
-        'text' => 'Prise de decision introuvable.',
+        'text' => 'Prise de décision introuvable.',
         'context' => 'Error when the requested decision cannot be loaded.',
     ],
     'decisions.edit.context.decision_mismatch' => [
-        'text' => 'Cette prise de decision n appartient pas a l organisation courante.',
+        'text' => 'Cette prise de décision n’appartient pas à l’organisation courante.',
         'context' => 'Error when the decision does not belong to the current organization.',
     ],
     'decisions.edit.context.decision_denied' => [
-        'text' => 'Vous n avez pas les droits necessaires pour modifier cette prise de decision.',
+        'text' => 'Vous n’avez pas les droits nécessaires pour modifier cette prise de décision.',
         'context' => 'Error when the user cannot manage the requested decision.',
     ],
     'decisions.edit.groups.title' => [
@@ -179,7 +179,7 @@ $baseSourceLang = [
         'context' => 'Section title for decision groups navigation.',
     ],
     'decisions.edit.groups.text' => [
-        'text' => 'Ajoutez plusieurs blocs de decision dans le meme processus, puis passez de l un a l autre.',
+        'text' => 'Ajoutez plusieurs blocs de décision au même processus, puis passez de l’un à l’autre.',
         'context' => 'Help text for decision groups navigation.',
     ],
     'decisions.edit.groups.add' => [
@@ -265,11 +265,11 @@ $baseSourceLang = [
         'context' => 'Title of the import panel on the decision creation screen.',
     ],
     'decisions.edit.import.text' => [
-        'text' => 'Chargez un fichier CSV, JSON ou XML exporte depuis les decisions pour recreer la structure du scrutin sans les reponses.',
+        'text' => 'Chargez un fichier CSV, JSON ou XML exporté depuis Décisions pour recréer la structure du scrutin sans les réponses.',
         'context' => 'Help text of the import panel on the decision creation screen.',
     ],
     'decisions.edit.import.file_label' => [
-        'text' => 'Fichier d import',
+        'text' => 'Fichier d’import',
         'context' => 'Label of the import file input on the decision creation screen.',
     ],
     'decisions.edit.import.button' => [
@@ -277,31 +277,31 @@ $baseSourceLang = [
         'context' => 'Submit button label for the decision import form.',
     ],
     'decisions.edit.import.loading' => [
-        'text' => 'Import en cours...',
+        'text' => 'Importation en cours…',
         'context' => 'Temporary label shown while the decision import is running.',
     ],
     'decisions.edit.import.error' => [
-        'text' => 'Impossible d importer ce fichier pour le moment.',
+        'text' => 'Impossible d’importer ce fichier pour le moment.',
         'context' => 'Fallback error message for the decision import form.',
     ],
     'decisions.edit.import.no_file' => [
-        'text' => 'Choisissez un fichier CSV, JSON ou XML a importer.',
+        'text' => 'Choisissez un fichier CSV, JSON ou XML à importer.',
         'context' => 'Validation message when no import file was selected.',
     ],
     'decisions.edit.block_settings.vote_weighting' => [
-        'text' => 'Ponderation des votes',
+        'text' => 'Pondération des votes',
         'context' => 'Shared label for the optional vote weighting setting on one decision block.',
     ],
     'decisions.edit.block_settings.vote_weighting_enable' => [
-        'text' => 'Activer la ponderation des votes',
+        'text' => 'Activer la pondération des votes',
         'context' => 'Shared label for enabling vote weighting on one decision block.',
     ],
     'decisions.edit.block_settings.vote_weighting_question' => [
-        'text' => 'Question de ponderation',
+        'text' => 'Question de pondération',
         'context' => 'Shared label for the question shown to participants before selecting a vote weight.',
     ],
     'decisions.edit.block_settings.vote_weighting_options' => [
-        'text' => 'Options de ponderation',
+        'text' => 'Options de pondération',
         'context' => 'Shared label for the weighting options editor on one decision block.',
     ],
     'decisions.edit.block_settings.vote_weighting_weight' => [
@@ -309,11 +309,11 @@ $baseSourceLang = [
         'context' => 'Shared label for a vote weighting coefficient field.',
     ],
     'decisions.edit.block_settings.vote_weighting_weight_base' => [
-        'text' => 'Reference',
+        'text' => 'Référence',
         'context' => 'Shared label for the fixed 1x vote weighting coefficient field.',
     ],
     'decisions.edit.block_settings.vote_weighting_label' => [
-        'text' => 'Libelle',
+        'text' => 'Libellé',
         'context' => 'Shared label for a vote weighting option label field.',
     ],
     'decisions.edit.block_settings.vote_weighting_add' => [
@@ -325,11 +325,11 @@ $baseSourceLang = [
         'context' => 'Shared button label used to remove a vote weighting row.',
     ],
     'decisions.edit.block_settings.vote_weighting_fixed_hint' => [
-        'text' => 'La ligne 1x reste toujours presente comme reference neutre.',
+        'text' => 'La ligne 1× reste toujours présente comme référence neutre.',
         'context' => 'Shared hint explaining that the 1x weighting row is always present.',
     ],
     'decisions.edit.block_settings.vote_weighting_options_help' => [
-        'text' => 'Une option par ligne au format poids | libelle.',
+        'text' => 'Une option par ligne, au format poids | libellé.',
         'context' => 'Shared help text for the weighting options multiline editor.',
     ],
     'decisions.edit.settings.behavior' => [
@@ -337,11 +337,11 @@ $baseSourceLang = [
         'context' => 'Heading for voting behavior settings in the compact settings summary.',
     ],
     'decisions.edit.settings.participation' => [
-        'text' => 'Participation et echanges',
+        'text' => 'Participation et échanges',
         'context' => 'Heading for proposal participation and discussion settings.',
     ],
     'decisions.edit.settings.presentation' => [
-        'text' => 'Presentation du vote',
+        'text' => 'Présentation du vote',
         'context' => 'Heading for proposal display settings during voting.',
     ],
     'decisions.edit.settings.privacy' => [
@@ -353,7 +353,7 @@ $baseSourceLang = [
         'context' => 'Section title for choosing which proposal fields are enabled.',
     ],
     'decisions.edit.proposal_content.hint' => [
-        'text' => 'Choisissez les champs presentes lors de la saisie des propositions.',
+        'text' => 'Choisissez les champs présentés lors de la saisie des propositions.',
         'context' => 'Help text for proposal content settings.',
     ],
     'decisions.edit.proposal_content.summary_label' => [
@@ -381,7 +381,7 @@ $baseSourceLang = [
         'context' => 'Shared no label for vote weighting summaries.',
     ],
     'decisions.edit.block_settings.vote_weighting_placeholder_question' => [
-        'text' => 'A quel point assister a cette rencontre ?',
+        'text' => 'À quel point assister à cette rencontre ?',
         'context' => 'Shared placeholder for the vote weighting question field.',
     ],
     'decisions.edit.block_settings.vote_weighting_placeholder_options' => [

@@ -15,23 +15,23 @@ function omoDecisionInvitationsPopupSourceLang()
 {
     return [
         'decisions.invitations_popup.denied' => [
-            'text' => 'Vous ne pouvez pas gerer les invitations de ce scrutin.',
+            'text' => 'Vous ne pouvez pas gérer les invitations de ce scrutin.',
             'context' => 'Message shown when the current user cannot manage invitations for the decision.',
         ],
         'decisions.invitations_popup.db_error' => [
-            'text' => 'Connexion a la base impossible.',
+            'text' => 'Connexion à la base impossible.',
             'context' => 'Error returned when the invitation popup cannot access the database.',
         ],
         'decisions.invitations_popup.save_error' => [
-            'text' => 'Impossible d enregistrer les invitations pour le moment.',
+            'text' => 'Impossible d’enregistrer les invitations pour le moment.',
             'context' => 'Generic error returned when invitation changes cannot be saved.',
         ],
         'decisions.invitations_popup.updated' => [
-            'text' => 'Invitations mises a jour.',
+            'text' => 'Invitations mises à jour.',
             'context' => 'Success message returned after saving invitation changes.',
         ],
         'decisions.invitations_popup.drawer_title' => [
-            'text' => 'Prises de decision',
+            'text' => 'Prises de décision',
             'context' => 'Drawer title used when reopening the decision editor after saving invitation changes.',
         ],
         'decisions.invitations_popup.current' => [
@@ -43,19 +43,19 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Suffix used in the intro when a current holon context exists.',
         ],
         'decisions.invitations_popup.context.organization' => [
-            'text' => 'de l organisation',
+            'text' => 'de l’organisation',
             'context' => 'Suffix used in the intro when the organization is the active context.',
         ],
         'decisions.invitations_popup.intro' => [
-            'text' => 'Definissez ici les participants explicites du scrutin. Si vous laissez tout vide, seuls les membres {context_label} restent autorises.',
+            'text' => 'Définissez ici les participants explicites du scrutin. Si vous laissez tout vide, seuls les membres {context_label} restent autorisés.',
             'context' => 'Introductory text displayed at the top of the invitation popup.',
         ],
         'decisions.invitations_popup.no_structure' => [
-            'text' => 'Cette organisation n a pas encore de structure. Vous pouvez inviter directement des membres de l organisation ou des adresses e-mail externes.',
+            'text' => 'Cette organisation n’a pas encore de structure. Vous pouvez inviter directement des membres de l’organisation ou des adresses e-mail externes.',
             'context' => 'Hint shown when the organization has no holon structure.',
         ],
         'decisions.invitations_popup.tabs_aria' => [
-            'text' => 'Categories d invitations',
+            'text' => 'Catégories d’invitations',
             'context' => 'Accessible label for the invitation popup tabs.',
         ],
         'decisions.invitations_popup.tab.holons' => [
@@ -67,7 +67,7 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Tab label for invited organization members.',
         ],
         'decisions.invitations_popup.tab.guests' => [
-            'text' => 'Invites',
+            'text' => 'Invités',
             'context' => 'Tab label for invited guest emails.',
         ],
         'decisions.invitations_popup.tab.public' => [
@@ -75,23 +75,23 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Tab label for public participation settings and public-link additions.',
         ],
         'decisions.invitations_popup.holons_title' => [
-            'text' => 'Holons invites',
+            'text' => 'Holons invités',
             'context' => 'Section title for invited holons in the invitation popup.',
         ],
         'decisions.invitations_popup.holons_hint' => [
-            'text' => 'Le holon courant apparait ici comme n importe quel autre. S il n est pas coche, ses membres ne seront pas inclus des qu une invitation explicite existe.',
+            'text' => 'Le holon courant apparaît ici comme n’importe quel autre. S’il n’est pas coché, ses membres ne seront plus inclus dès qu’une invitation explicite existe.',
             'context' => 'Hint shown under the invited holons section.',
         ],
         'decisions.invitations_popup.members_title' => [
-            'text' => 'Membres supplementaires de l organisation',
+            'text' => 'Membres supplémentaires de l’organisation',
             'context' => 'Section title for invited organization members.',
         ],
         'decisions.invitations_popup.members_hint_structure' => [
-            'text' => 'Cochez les membres a inviter individuellement, en plus des holons selectionnes.',
+            'text' => 'Cochez les membres à inviter individuellement, en plus des holons sélectionnés.',
             'context' => 'Hint shown below invited members when a holon structure exists.',
         ],
         'decisions.invitations_popup.members_hint_flat' => [
-            'text' => 'Cochez les membres a inviter individuellement. Sans structure, ils representent le contexte organisationnel.',
+            'text' => 'Cochez les membres à inviter individuellement. Sans structure, ils représentent le contexte organisationnel.',
             'context' => 'Hint shown below invited members when there is no holon structure.',
         ],
         'decisions.invitations_popup.guests_title' => [
@@ -103,7 +103,7 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Placeholder used in the external guest emails textarea.',
         ],
         'decisions.invitations_popup.guests_hint' => [
-            'text' => 'Une adresse par ligne. Les invitations seront envoyees plus tard.',
+            'text' => 'Une adresse par ligne. Les invitations seront envoyées plus tard.',
             'context' => 'Hint shown below the external guest emails textarea.',
         ],
         'decisions.invitations_popup.public_title' => [
@@ -111,27 +111,27 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Title of the checkbox enabling public self-registration.',
         ],
         'decisions.invitations_popup.public_hint' => [
-            'text' => 'Toute personne disposant du lien public peut demander un code par e-mail. Si son adresse n est pas encore associee a ce scrutin, un participant est cree automatiquement.',
+            'text' => 'Toute personne disposant du lien public peut demander un code par e-mail. Si son adresse n’est pas encore associée à ce scrutin, un participant est créé automatiquement.',
             'context' => 'Hint shown under the public self-registration checkbox.',
         ],
         'decisions.invitations_popup.public_people_title' => [
-            'text' => 'Personnes deja ajoutees via le lien public',
+            'text' => 'Personnes déjà ajoutées via le lien public',
             'context' => 'Title of the list showing people already added from the public link.',
         ],
         'decisions.invitations_popup.public_people_empty' => [
-            'text' => 'Personne ne s est encore ajoute via le lien public.',
+            'text' => 'Personne ne s’est encore ajouté via le lien public.',
             'context' => 'Empty-state text for the public-link participant list.',
         ],
         'decisions.invitations_popup.public_people_hint' => [
-            'text' => 'Ces personnes restent distinctes des invitations explicites, mais elles ont deja demande un acces.',
+            'text' => 'Ces personnes restent distinctes des invitations explicites, mais elles ont déjà demandé un accès.',
             'context' => 'Hint shown below the public-link participant list.',
         ],
         'decisions.invitations_popup.public_member_badge' => [
-            'text' => 'Ajoute via lien public',
+            'text' => 'Ajouté via le lien public',
             'context' => 'Tooltip shown on a disabled checked member checkbox when the person joined via the public link.',
         ],
         'decisions.invitations_popup.public_member_type' => [
-            'text' => 'Membre de l organisation',
+            'text' => 'Membre de l’organisation',
             'context' => 'Secondary label shown for a public-link participant tied to an existing organization member.',
         ],
         'decisions.invitations_popup.public_guest_type' => [
@@ -147,7 +147,7 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Fallback error message shown by the popup JavaScript when the server does not return a message.',
         ],
         'decisions.invitations_popup.js_request_error' => [
-            'text' => 'Impossible d enregistrer ces invitations pour le moment.',
+            'text' => 'Impossible d’enregistrer ces invitations pour le moment.',
             'context' => 'Network error message shown by the popup JavaScript when the request fails.',
         ],
     ];

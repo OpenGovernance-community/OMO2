@@ -277,7 +277,7 @@
         }
         var allPoints = measure.concat(reference, cumulative);
         if (!allPoints.length) {
-            return '<div class="omo-stats-chart-empty">Pas encore de donnees a representer.</div>';
+            return '<div class="omo-stats-chart-empty">' + escapeXml(data.emptyLabel || 'Pas encore de données à représenter.') + '</div>';
         }
         var ceilingValue = data.ceiling === null || data.ceiling === undefined || data.ceiling === ''
             ? null
@@ -391,7 +391,7 @@
         series.forEach(function (seriesItem) { allPoints = allPoints.concat(seriesItem.points); });
         allPoints = allPoints.concat(reference);
         if (!allPoints.length) {
-            return '<div class="omo-stats-chart-empty">Pas encore de donnees a representer.</div>';
+            return '<div class="omo-stats-chart-empty">' + escapeXml(data.emptyLabel || 'Pas encore de données à représenter.') + '</div>';
         }
         var ceilingValue = data.ceiling === null || data.ceiling === undefined || data.ceiling === ''
             ? null

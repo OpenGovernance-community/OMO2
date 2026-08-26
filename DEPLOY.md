@@ -157,3 +157,48 @@ Si vous avez fait des modifications locales non versionnees sur le serveur, evit
 - Si la base cible est vide, l'installation importe le seed de depart.
 - Si la base existe deja mais ne correspond pas au seed attendu, l'installation s'arrete pour eviter un ecrasement involontaire.
 - Composer doit etre disponible sur le serveur pour installer les dependances verrouillees par `composer.lock`.
+
+## 7. Diagnostiquer les requetes SQL lentes
+
+Le journal est desactive par defaut. Pour enregistrer les requetes dont la duree totale atteint 50 ms :
+
+```env
+DB_QUERY_LOG_ENABLED=true
+DB_QUERY_LOG_MIN_MS=50
+DB_QUERY_LOG_PATH=
+```
+
+Sans chemin explicite, les evenements JSONL sont ecrits dans `tmp/sql-performance/sql-performance-AAAA-MM-JJ.jsonl`. Un chemin relatif est resolu depuis la racine du projet.
+
+Chaque requete conserve sa duree, son type, son empreinte, son appelant et son nombre de lignes. Le journal ajoute aussi un resume par requete HTTP avec le temps SQL cumule. Les valeurs liees, les litteraux SQL, les messages d erreur et les parametres de l URL ne sont pas enregistres.
+
+## 8. Mesurer les appels de maintenance OMO
+
+La journalisation des appels de maintenance est activee par defaut. Elle peut etre configuree avec :
+
+```env
+OMO_CRON_LOG_ENABLED=true
+OMO_CRON_LOG_PATH=
+```
+
+Sans chemin explicite, tous les evenements JSONL sont ajoutes dans le fichier unique `tmp/omo-cron/omo-cron.jsonl`. Chaque ligne indique uniquement l heure, la source de l appel, son statut et sa duree totale. Les traitements en echec ne sont precises que lorsqu il y en a. Les appels provenant de la visite de `/omo/`, de l endpoint partiel, du cron HTTP, du cron CLI et d un import sont distingues.
+
+Les parametres de l URL et le jeton du cron ne sont jamais enregistres. Les tentatives refusees par le cron HTTP sont comptees avec le statut `rejected` sans conserver le jeton fourni.
+
+## 9. Reduire les anciennes images de profil
+
+Les nouvelles images redimensionnables sont automatiquement enregistrees en WebP. Les photos de profil sont plafonnees a 320 x 320 pixels.
+
+Pour examiner les gains possibles sur les anciennes photos sans modifier les fichiers :
+
+```bash
+php scripts/optimize-profile-images.php
+```
+
+Pour appliquer ensuite la reduction en conservant les noms de fichiers et les URL stockees en base :
+
+```bash
+php scripts/optimize-profile-images.php --apply
+```
+
+Une sauvegarde des fichiers concernes est recommandee avant l execution sur le serveur.

@@ -60,12 +60,12 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleGetSourceLang')) {
             'decisions.majority_judgment.field.allow_anonymous_votes_help' => ['text' => 'Les personnes qui souhaitent rester anonymes peuvent le choisir. Leur nom ne sera jamais affiché dans les résultats.', 'context' => 'Help for the individual anonymous vote option.'],
             'decisions.majority_judgment.field.allow_consultation_proposals' => ['text' => 'Autoriser les propositions pendant la consultation', 'context' => 'Label for allowing proposals during consultation.'],
             'decisions.majority_judgment.field.allow_proposal_discussions' => ['text' => 'Autoriser les discussions des propositions', 'context' => 'Label for allowing account users to discuss proposals.'],
-            'decisions.majority_judgment.field.live_results' => ['text' => 'Afficher les resultats pendant le scrutin', 'context' => 'Label for showing intermediate majority judgment results.'],
+            'decisions.majority_judgment.field.live_results' => ['text' => 'Afficher les résultats pendant le scrutin', 'context' => 'Label for showing intermediate majority judgment results.'],
             'decisions.majority_judgment.field.random_order' => ['text' => 'Ordre aléatoire des propositions', 'context' => 'Label for shuffling proposal order during voting.'],
-            'decisions.majority_judgment.field.one_proposal_at_a_time' => ['text' => 'Une proposition a la fois', 'context' => 'Label for displaying one proposal at a time during voting.'],
+            'decisions.majority_judgment.field.one_proposal_at_a_time' => ['text' => 'Une proposition à la fois', 'context' => 'Label for displaying one proposal at a time during voting.'],
             'decisions.majority_judgment.action.previous_proposal' => ['text' => 'Précédente', 'context' => 'Button to show the previous proposal in one-at-a-time voting.'],
             'decisions.majority_judgment.action.next_proposal' => ['text' => 'Suivante', 'context' => 'Button to show the next proposal in one-at-a-time voting.'],
-            'decisions.majority_judgment.field.live_results_summary' => ['text' => 'Resultats en cours', 'context' => 'Summary label for intermediate majority judgment results setting.'],
+            'decisions.majority_judgment.field.live_results_summary' => ['text' => 'Résultats en cours', 'context' => 'Summary label for intermediate majority judgment results setting.'],
             'decisions.majority_judgment.field.live_results_heading' => ['text' => 'Mentions en cours', 'context' => 'Heading for intermediate majority judgment results.'],
             'decisions.majority_judgment.option.live_results.named' => ['text' => 'Oui, nominatifs', 'context' => 'Summary for named intermediate majority judgment results.'],
             'decisions.majority_judgment.option.live_results.anonymous' => ['text' => 'Oui, anonymes', 'context' => 'Summary for anonymous intermediate majority judgment results.'],
@@ -1449,8 +1449,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             }
 
                             const modalTitle = settingsOpenButton
-                                ? String(settingsOpenButton.getAttribute('data-omo-decision-mj-settings-title') || settingsOpenButton.textContent || 'Parametres du scrutin')
-                                : 'Parametres du scrutin';
+                                ? String(settingsOpenButton.getAttribute('data-omo-decision-mj-settings-title') || settingsOpenButton.textContent || 'Paramètres du scrutin')
+                                : 'Paramètres du scrutin';
                             window.commonTopbarOpenModal(modalTitle, settingsTemplate.innerHTML, 'html');
                             const modalBody = document.getElementById('commonTopbarModalBody');
                             if (!modalBody) {
@@ -2225,7 +2225,6 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         .omo-decision-majority-judgment__head,
         .omo-decision-majority-judgment__copy,
         .omo-decision-majority-judgment__field,
-        .omo-decision-majority-judgment__settings-head,
         .omo-decision-majority-judgment__proposal-main,
         .omo-decision-majority-judgment__footer,
         .omo-decision-majority-judgment__result-head,

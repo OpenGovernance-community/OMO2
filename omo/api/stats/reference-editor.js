@@ -245,12 +245,12 @@
                 + '<label class="omo-stats-field generic-form-field"><span class="generic-form-label"></span><input type="number" class="generic-form-control" step="any" data-omo-stats-point-value required></label>'
                 + (isEndpoint ? '' : '<button type="button" class="generic-action-button generic-action-button--danger omo-stats-reference-point__remove" data-omo-stats-remove-reference-point></button>');
             var fields = row.querySelectorAll('.omo-stats-field span');
-            row.querySelector('.omo-stats-reference-point__badge').textContent = isEndpoint ? (labels.endpoint || 'Endpoint') : (labels.intermediate || 'Intermediate');
-            fields[0].textContent = labels.position || 'Position';
-            fields[1].textContent = isEndpoint ? (labels.date || 'Date') : (labels.dateAuto || 'Calculated date');
-            fields[2].textContent = labels.value || 'Value';
+            row.querySelector('.omo-stats-reference-point__badge').textContent = isEndpoint ? (labels.endpoint || 'Extrémité datée') : (labels.intermediate || 'Point intermédiaire');
+            fields[0].textContent = labels.position || 'Position (%)';
+            fields[1].textContent = isEndpoint ? (labels.date || 'Date') : (labels.dateAuto || 'Date calculée');
+            fields[2].textContent = labels.value || 'Valeur';
             if (!isEndpoint) {
-                row.querySelector('[data-omo-stats-remove-reference-point]').textContent = labels.remove || 'Remove';
+                row.querySelector('[data-omo-stats-remove-reference-point]').textContent = labels.remove || 'Retirer';
             }
             var positionField = row.querySelector('[data-omo-stats-point-position]');
             var dateField = row.querySelector('[data-omo-stats-point-date]');

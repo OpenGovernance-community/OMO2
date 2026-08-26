@@ -641,7 +641,7 @@ if (!function_exists('omoRenderOrganizationInfoPanel')) {
                             aria-label="<?= omoApiEscape($memberTooltip) ?>"
                         >
                                 <?php if (trim((string)($member['photoUrl'] ?? '')) !== ''): ?>
-                                    <img src="<?= omoApiEscape((string)$member['photoUrl']) ?>" alt="">
+                                    <img src="<?= omoApiEscape((string)$member['photoUrl']) ?>" alt="" width="36" height="36" decoding="async">
                                 <?php else: ?>
                                     <span class="omo-org-members__initials"><?= omoApiEscape((string)$member['initials']) ?></span>
                                 <?php endif; ?>

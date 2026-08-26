@@ -12,7 +12,7 @@ $jsonResponse = static function (array $payload, int $status = 200): void {
 };
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
-    $jsonResponse(['status' => false, 'message' => 'Requete invalide.'], 405);
+    $jsonResponse(['status' => false, 'message' => 'Requête invalide.'], 405);
 }
 
 $organizationId = isset($_POST['oid'])
@@ -27,11 +27,11 @@ if (
     || $currentUserId <= 0
     || !commonCurrentUserHasOrganizationAccess($organizationId)
 ) {
-    $jsonResponse(['status' => false, 'message' => 'Acces refuse.'], 403);
+    $jsonResponse(['status' => false, 'message' => 'Accès refusé.'], 403);
 }
 
 if (!patreonUserCanUseAi($currentUserId)) {
-    $jsonResponse(['status' => false, 'message' => 'Les fonctions IA sont reservees aux contributeurs Patreon actifs.'], 403);
+    $jsonResponse(['status' => false, 'message' => 'Les fonctions IA sont réservées aux contributeurs Patreon actifs.'], 403);
 }
 
 $document = new \dbObject\Document();
@@ -42,7 +42,7 @@ if (
     || $document->getPvStage() !== \dbObject\Document::PV_STAGE_REVIEW
     || !$document->canUserManagePvDocument($currentUserId)
 ) {
-    $jsonResponse(['status' => false, 'message' => 'Vous ne pouvez pas generer le resume de ce PV.'], 403);
+    $jsonResponse(['status' => false, 'message' => 'Vous ne pouvez pas générer le résumé de ce PV.'], 403);
 }
 
 $normalizeText = static function ($value): string {
@@ -58,13 +58,13 @@ $description = $normalizeText($document->get('description'));
 $stageLabel = trim((string)$document->getPvStageLabel());
 
 if ($title !== '') {
-    $sections[] = 'Titre du PV: ' . $title;
+    $sections[] = 'Titre du PV : ' . $title;
 }
 if ($description !== '') {
-    $sections[] = 'Description actuelle: ' . $description;
+    $sections[] = 'Description actuelle : ' . $description;
 }
 if ($stageLabel !== '') {
-    $sections[] = 'Etape: ' . $stageLabel;
+    $sections[] = 'Étape : ' . $stageLabel;
 }
 
 $event = $document->getAssociatedEvent();
@@ -94,7 +94,7 @@ if ($event instanceof \dbObject\Event) {
         }
     }
     if ($eventParts !== []) {
-        $sections[] = 'Evenement: ' . implode('; ', $eventParts);
+        $sections[] = 'Événement : ' . implode('; ', $eventParts);
     }
 }
 
@@ -114,7 +114,7 @@ if (is_array($attendanceEntries) && $attendanceEntries !== []) {
         $attendanceLines[] = $label . (!empty($entry['isPresent']) ? ' (present)' : ' (absent)');
     }
     if ($attendanceLines !== []) {
-        $sections[] = "Liste de presence:\n- " . implode("\n- ", $attendanceLines);
+        $sections[] = "Liste de présence :\n- " . implode("\n- ", $attendanceLines);
     }
 }
 
@@ -136,7 +136,7 @@ foreach ($document->getVisiblePvPointsForUser($currentUserId, true) as $point) {
         $line .= ' (type=' . $pointType . ')';
     }
     if ($duration > 0 && !$point->isGroup()) {
-        $line .= ' (duree=' . $duration . ' min)';
+    $line .= ' (durée=' . $duration . ' min)';
     }
     if ($content !== '') {
         $line .= ': ' . $content;
@@ -159,13 +159,13 @@ $result = commonOpenAiSummarizeSelectedDocumentText($fullText, $fullText, [
 if (empty($result['status'])) {
     $jsonResponse([
         'status' => false,
-        'message' => trim((string)($result['message'] ?? 'Impossible de generer le resume.')),
+        'message' => trim((string)($result['message'] ?? 'Impossible de générer le résumé.')),
     ], 422);
 }
 
 $summary = trim((string)($result['text'] ?? ''));
 if ($summary === '') {
-    $jsonResponse(['status' => false, 'message' => 'Le resume genere est vide.'], 422);
+    $jsonResponse(['status' => false, 'message' => 'Le résumé généré est vide.'], 422);
 }
 
 $jsonResponse([

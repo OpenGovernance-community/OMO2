@@ -10,7 +10,7 @@ if (!function_exists('omoDecisionConsultationOnlyModuleGetSourceLang')) {
     {
         $sourceLang = omoDecisionVoteModuleGetSourceLang();
         $sourceLang['decisions.vote.field.settings'] = [
-            'text' => 'Parametres de la phase d’élaboration',
+            'text' => 'Paramètres de la phase d’élaboration',
             'context' => 'Consultation only settings title.',
         ];
         $sourceLang['decisions.vote.field.evaluation_method'] = [
@@ -18,7 +18,7 @@ if (!function_exists('omoDecisionConsultationOnlyModuleGetSourceLang')) {
             'context' => 'Consultation only method label.',
         ];
         $sourceLang['decisions.vote.notice.consultation_only'] = [
-            'text' => 'Ce mode ne comporte aucune phase de vote. Une fois la phase d’élaboration terminee, vous pourrez choisir un mode de vote et le planifier.',
+            'text' => 'Ce mode ne comporte aucune phase de vote. Une fois la phase d’élaboration terminée, vous pourrez choisir un mode de vote et le planifier.',
             'context' => 'Consultation only manager notice.',
         ];
         $sourceLang['decisions.consultation_only.convert.title'] = [
@@ -26,7 +26,7 @@ if (!function_exists('omoDecisionConsultationOnlyModuleGetSourceLang')) {
             'context' => 'Consultation conversion panel title.',
         ];
         $sourceLang['decisions.consultation_only.convert.text'] = [
-            'text' => 'La phase d’élaboration est terminee. Vous pouvez maintenant choisir un scrutin et en definir les nouveaux parametres.',
+            'text' => 'La phase d’élaboration est terminée. Vous pouvez maintenant choisir un scrutin et en définir les nouveaux paramètres.',
             'context' => 'Consultation conversion panel description.',
         ];
         $sourceLang['decisions.consultation_only.convert.label'] = [

@@ -2210,7 +2210,7 @@ function omoTeamEnsureMapReady() {
 
             popupBits.push('<div class="omo-team__map-popup-head">');
             if (member.photoUrl) {
-                popupBits.push('<img class="omo-team__map-popup-photo" src="' + omoTeamEscapeHtml(member.photoUrl) + '" alt="' + omoTeamEscapeHtml(member.displayName || omoTeamFormatText(omoTeamText.userFallback, {userId: member.userId})) + '">');
+                popupBits.push('<img class="omo-team__map-popup-photo" src="' + omoTeamEscapeHtml(member.photoUrl) + '" alt="' + omoTeamEscapeHtml(member.displayName || omoTeamFormatText(omoTeamText.userFallback, {userId: member.userId})) + '" width="44" height="44" decoding="async">');
             } else {
                 popupBits.push('<div class="omo-team__map-popup-photo-placeholder">' + omoTeamEscapeHtml(member.initials || 'P') + '</div>');
             }
