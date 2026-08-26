@@ -141,7 +141,7 @@ if (empty($result['status']) || !($result['organization'] ?? null) instanceof \d
 }
 
 $organization = $result['organization'];
-$maintenance = omo_run_fake_cron_maintenance(50);
+$maintenance = omo_run_fake_cron_maintenance(50, false, 'organization_import');
 echo json_encode(array(
     'status' => true,
     'message' => (string)($result['message'] ?? 'La nouvelle organisation a ete importee.'),

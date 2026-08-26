@@ -7,5 +7,5 @@ if (PHP_SAPI !== 'cli') {
     exit;
 }
 
-$result = omo_run_fake_cron_maintenance(200, true);
+$result = omo_run_fake_cron_maintenance(200, true, 'server_cron_cli');
 fwrite(STDOUT, json_encode(array_merge(['status' => true], $result), JSON_UNESCAPED_SLASHES) . PHP_EOL);

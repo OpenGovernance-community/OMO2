@@ -451,8 +451,10 @@ $params = [
     var addButton = editor.querySelector('[data-omo-stats-add-reference-point]');
     var referencePositionStep = 0.2;
     var labels = <?= json_encode([
+        'endpoint' => omoStatsT('stats.form.endpoint'),
         'intermediate' => omoStatsT('stats.form.intermediate'),
         'position' => omoStatsT('stats.form.position'),
+        'date' => omoStatsT('stats.form.point_date'),
         'dateAuto' => omoStatsT('stats.form.point_date_auto'),
         'value' => omoStatsT('stats.form.point_value'),
         'remove' => omoStatsT('stats.form.remove_point'),

@@ -56,7 +56,7 @@ if (!function_exists('commonChoiceRenderDecisionCard')) {
         $titleIconLabel = trim((string)($titleIcon['label'] ?? ''));
 
         $ownerAvatarHtml = $ownerPhotoUrl !== ''
-            ? '<img src="' . $escape($ownerPhotoUrl) . '" alt="' . $escape($ownerName !== '' ? $ownerName : $ownerInitials) . '" class="omo-decisions-card__owner-photo">'
+            ? '<img src="' . $escape($ownerPhotoUrl) . '" alt="' . $escape($ownerName !== '' ? $ownerName : $ownerInitials) . '" class="omo-decisions-card__owner-photo" width="42" height="42" decoding="async">'
             : '<span class="omo-decisions-card__owner-placeholder">' . $escape($ownerInitials) . '</span>';
         $titleIconHtml = $titleIconUrl !== ''
             ? '<span class="omo-decisions-card__title-icon" role="img"'

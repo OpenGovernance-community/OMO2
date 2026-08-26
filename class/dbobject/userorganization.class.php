@@ -59,7 +59,7 @@
 		public static function attributeLength()
 		{
 			return [
-				'image' => [320, 320],
+				'image' => [[320, 320], [160, 160]],
 				'username' => 250,
 				'email' => 250,
 				'presentation' => 2000,

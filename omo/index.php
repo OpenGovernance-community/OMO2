@@ -7,7 +7,7 @@ require_once dirname(__DIR__) . '/common/patreon.php';
 require_once dirname(__DIR__) . '/common/translation_bundles.php';
 require_once __DIR__ . '/topbar.php';
 
-omo_run_fake_cron_maintenance(50);
+omo_run_fake_cron_maintenance(50, false, 'omo_index');
 
 $sourceLang = [
     'app.access_denied.message' => [

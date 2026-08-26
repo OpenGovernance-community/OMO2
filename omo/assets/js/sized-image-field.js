@@ -44,8 +44,8 @@
                 previewObjectUrl: '',
                 cropTimer: null,
                 currentValue: '',
-                preferredMimeType: 'image/jpeg',
-                preferredExtension: 'jpg'
+                preferredMimeType: 'image/webp',
+                preferredExtension: 'webp'
             };
         }
 
@@ -53,25 +53,9 @@
     }
 
     function resolveExportFormat(source) {
-        const normalized = String(source || '').toLowerCase();
-
-        if (normalized.indexOf('image/png') !== -1 || /\.png(?:$|\?)/.test(normalized)) {
-            return {
-                mime: 'image/png',
-                extension: 'png'
-            };
-        }
-
-        if (normalized.indexOf('image/webp') !== -1 || /\.webp(?:$|\?)/.test(normalized)) {
-            return {
-                mime: 'image/webp',
-                extension: 'webp'
-            };
-        }
-
         return {
-            mime: 'image/jpeg',
-            extension: 'jpg'
+            mime: 'image/webp',
+            extension: 'webp'
         };
     }
 
@@ -324,7 +308,7 @@
                     }
 
                     resolve(true);
-                }, store.preferredMimeType || 'image/jpeg', (store.preferredMimeType || 'image/jpeg') === 'image/png' ? undefined : 0.92);
+                }, store.preferredMimeType || 'image/webp', 0.84);
             });
         }
 

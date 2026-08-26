@@ -26,7 +26,7 @@ if (
     http_response_code(403);
     echo json_encode(array(
         'status' => false,
-        'message' => 'Acces refuse.',
+        'message' => 'Accès refusé.',
     ));
     exit;
 }
@@ -55,5 +55,5 @@ if (!is_array($result) || empty($result['status'])) {
 
 echo json_encode(array(
     'status' => true,
-    'message' => 'Lien supprime.',
+    'message' => 'Lien supprimé.',
 ));

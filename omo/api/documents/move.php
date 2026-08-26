@@ -10,13 +10,13 @@ $sourceLang = [
     'documents.move.error.organization_not_found' => ['text' => 'Organisation introuvable.', 'context' => 'Error shown when the document organization cannot be loaded.'],
     'documents.move.error.forbidden' => ['text' => 'Vous n’avez pas le droit de déplacer ce document.', 'context' => 'Error shown when the user cannot move the document.'],
     'documents.move.error.no_destination' => ['text' => 'Aucune destination compatible n’a été trouvée pour ce document.', 'context' => 'Error shown when no destination is available.'],
-    'documents.move.error.bulk_not_found' => ['text' => 'Un des documents selectionnes est introuvable.', 'context' => 'Error shown when a selected document cannot be loaded for a bulk move.'],
-    'documents.move.error.bulk_forbidden' => ['text' => 'Vous n avez pas le droit de deplacer tous les documents selectionnes.', 'context' => 'Error shown when the user cannot move every selected document.'],
-    'documents.move.selected_count' => ['text' => '{count} documents selectionnes', 'context' => 'Summary shown when several documents are selected for moving.'],
+    'documents.move.error.bulk_not_found' => ['text' => 'L’un des documents sélectionnés est introuvable.', 'context' => 'Error shown when a selected document cannot be loaded for a bulk move.'],
+    'documents.move.error.bulk_forbidden' => ['text' => 'Vous n’avez pas le droit de déplacer tous les documents sélectionnés.', 'context' => 'Error shown when the user cannot move every selected document.'],
+    'documents.move.selected_count' => ['text' => '{count} documents sélectionnés', 'context' => 'Summary shown when several documents are selected for moving.'],
     'documents.move.field.destination' => ['text' => 'Dossier de destination', 'context' => 'Label shown above the destination picker.'],
     'documents.move.field.search_placeholder' => ['text' => 'Rechercher une destination', 'context' => 'Search placeholder used in the move dialog.'],
     'documents.move.field.holon' => ['text' => 'Holon de destination', 'context' => 'Label shown above the visual holon picker in the move dialog.'],
-    'documents.move.destination.holon_root' => ['text' => 'A la racine du holon', 'context' => 'Destination choice placing a document at the root of the selected holon.'],
+    'documents.move.destination.holon_root' => ['text' => 'À la racine du holon', 'context' => 'Destination choice placing a document at the root of the selected holon.'],
     'documents.move.action.cancel' => ['text' => 'Annuler', 'context' => 'Button used to cancel document moving.'],
     'documents.move.action.submit' => ['text' => 'Déplacer', 'context' => 'Button used to submit document moving.'],
     'documents.move.status.invalid_destination' => ['text' => 'Choisissez une destination valide.', 'context' => 'Hint or error shown when no valid destination is selected.'],
@@ -110,11 +110,11 @@ if ($documentId <= 0) {
 }
 ?>
 <?php if ($errorMessage !== ''): ?>
-    <div class="omo-document-move__empty generic-description"><?= omoApiEscape($errorMessage) ?></div>
+    <div class="omo-document-move__empty generic-description generic-stack generic-stack--roomy"><?= omoApiEscape($errorMessage) ?></div>
 <?php else: ?>
     <form id="omo-document-move-form" class="omo-document-move generic-stack generic-stack--flush">
         <div class="omo-document-move__shell generic-drawer-content">
-        <div class="omo-document-move__intro generic-description">
+        <div class="omo-document-move__intro generic-title-row generic-title-row--center generic-description">
             <strong><?= omoApiEscape($isBulkMove
                 ? omoDocumentsMoveT('documents.move.selected_count', ['count' => count($documentIds)])
                 : (string)($moveData['document']['title'] ?? '')) ?></strong>
@@ -123,12 +123,12 @@ if ($documentId <= 0) {
         </div>
 
         <div class="omo-document-move__picker omo-resource-picker">
-            <aside class="omo-resource-picker__navigation omo-document-move__navigation">
+            <aside class="omo-resource-picker__navigation omo-document-move__navigation generic-stack">
                 <span class="generic-form-label"><?= omoApiEscape(omoDocumentsMoveT('documents.move.field.holon')) ?></span>
                 <div class="omo-document-move__holon-picker" data-omo-document-move-holon-picker></div>
             </aside>
 
-            <div class="omo-resource-picker__content omo-document-move__content">
+            <div class="omo-resource-picker__content omo-document-move__content generic-stack">
                 <label class="omo-document-move__field generic-stack generic-stack--compact">
                     <span class="generic-form-label"><?= omoApiEscape(omoDocumentsMoveT('documents.move.field.destination')) ?></span>
                     <span class="omo-resource-picker__quick-search">
@@ -138,7 +138,7 @@ if ($documentId <= 0) {
                 </label>
 
                 <div class="omo-document-move__field generic-stack generic-stack--compact">
-                    <div id="omo-document-move-destination" class="omo-document-move__destinations" aria-label="<?= omoApiEscape(omoDocumentsMoveT('documents.move.field.destination')) ?>"></div>
+                    <div id="omo-document-move-destination" class="omo-document-move__destinations generic-stack generic-stack--compact" aria-label="<?= omoApiEscape(omoDocumentsMoveT('documents.move.field.destination')) ?>"></div>
                 </div>
             </div>
         </div>
@@ -536,12 +536,6 @@ elements.cancel.addEventListener('click', closeMovePopup);
 
 <style>
 .omo-document-move__empty {
-    display: grid;
-    gap: 16px;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-document-move__empty {
     padding: 18px;
 }
 
@@ -554,20 +548,8 @@ elements.cancel.addEventListener('click', closeMovePopup);
     overflow-x: hidden;
 }
 
-.omo-document-move__intro {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
 .omo-document-move__picker {
     align-items: start;
-}
-
-.omo-document-move__navigation,
-.omo-document-move__content {
-    display: grid;
-    gap: 12px;
 }
 
 .omo-document-move__holon-picker .omo-holon-scope-picker__map {
@@ -578,9 +560,7 @@ elements.cancel.addEventListener('click', closeMovePopup);
 }
 
 .omo-document-move__destinations {
-    display: grid;
     align-content: start;
-    gap: 8px;
     min-height: 240px;
     max-height: 390px;
     overflow: auto;

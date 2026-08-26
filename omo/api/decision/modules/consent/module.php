@@ -52,12 +52,12 @@ if (!function_exists('omoDecisionConsentModuleGetSourceLang')) {
             'decisions.consent.field.allow_anonymous_votes_help' => ['text' => 'Les personnes qui souhaitent rester anonymes peuvent le choisir. Leur nom ne sera jamais affiché dans les résultats.', 'context' => 'Help for the individual anonymous vote option.'],
             'decisions.consent.field.allow_consultation_proposals' => ['text' => 'Autoriser les propositions pendant la consultation', 'context' => 'Label for allowing proposals during consultation.'],
             'decisions.consent.field.allow_proposal_discussions' => ['text' => 'Autoriser les discussions des propositions', 'context' => 'Label for allowing account users to discuss proposals.'],
-            'decisions.consent.field.live_results_enabled' => ['text' => 'Afficher les resultats pendant le scrutin', 'context' => 'Label for showing intermediate consent results.'],
+            'decisions.consent.field.live_results_enabled' => ['text' => 'Afficher les résultats pendant le scrutin', 'context' => 'Label for showing intermediate consent results.'],
             'decisions.consent.field.random_order' => ['text' => 'Ordre aléatoire des propositions', 'context' => 'Label for shuffling proposal order during voting.'],
-            'decisions.consent.field.one_proposal_at_a_time' => ['text' => 'Une proposition a la fois', 'context' => 'Label for displaying one proposal at a time during voting.'],
+            'decisions.consent.field.one_proposal_at_a_time' => ['text' => 'Une proposition à la fois', 'context' => 'Label for displaying one proposal at a time during voting.'],
             'decisions.consent.action.previous_proposal' => ['text' => 'Précédente', 'context' => 'Button to show the previous proposal in one-at-a-time voting.'],
             'decisions.consent.action.next_proposal' => ['text' => 'Suivante', 'context' => 'Button to show the next proposal in one-at-a-time voting.'],
-            'decisions.consent.field.live_results_summary' => ['text' => 'Resultats en cours', 'context' => 'Summary label for intermediate consent results setting.'],
+            'decisions.consent.field.live_results_summary' => ['text' => 'Résultats en cours', 'context' => 'Summary label for intermediate consent results setting.'],
             'decisions.consent.option.live_results.named' => ['text' => 'Oui, nominatifs', 'context' => 'Summary for named intermediate consent results.'],
             'decisions.consent.option.live_results.anonymous' => ['text' => 'Oui, anonymes', 'context' => 'Summary for anonymous intermediate consent results.'],
             'decisions.consent.field.your_choices' => ['text' => 'Vos positions', 'context' => 'Legend for the participant choice fieldset.'],
@@ -1426,8 +1426,8 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         }
 
                         const modalTitle = settingsOpenButton
-                            ? String(settingsOpenButton.getAttribute('data-omo-decision-consent-settings-title') || settingsOpenButton.textContent || 'Parametres du scrutin')
-                            : 'Parametres du scrutin';
+                            ? String(settingsOpenButton.getAttribute('data-omo-decision-consent-settings-title') || settingsOpenButton.textContent || 'Paramètres du scrutin')
+                            : 'Paramètres du scrutin';
                         window.commonTopbarOpenModal(modalTitle, settingsTemplate.innerHTML, 'html');
                         const modalBody = document.getElementById('commonTopbarModalBody');
                         if (!modalBody) {
@@ -1824,8 +1824,6 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
         .omo-decision-consent__head,
         .omo-decision-consent__field,
-        .omo-decision-consent__settings-summary,
-        .omo-decision-consent__settings-head,
         .omo-decision-consent__proposal-main,
         .omo-decision-consent__footer,
         .omo-decision-consent__result-head,
@@ -1844,12 +1842,6 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
 
         .omo-decision-consent__textarea {
             min-height: 110px;
-        }
-
-        .omo-decision-consent__settings-head {
-            grid-template-columns: minmax(0, 1fr) auto;
-            align-items: start;
-            gap: 12px;
         }
 
         .omo-decision-consent__readonly-stats--settings {

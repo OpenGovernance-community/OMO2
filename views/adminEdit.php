@@ -660,21 +660,12 @@ function displayField($object, $key, $default = null, $filter = null, ?array $tr
                     var zoomSlider_<?=$key?> = $('#zoomSlider_<?=$key?>');
                     var zoomValue_<?=$key?> = 1;
                     var oldZoomValue_<?=$key?> = 1;
-                    var exportMime_<?=$key?> = 'image/jpeg';
+                    var exportMime_<?=$key?> = 'image/webp';
 
                     function resolveExportFormat_<?=$key?>(source) {
-                        var normalized = String(source || '').toLowerCase();
-
-                        if (normalized.indexOf('image/png') !== -1 || normalized.match(/\.png(?:$|\?)/)) {
-                            return {
-                                mime: 'image/png',
-                                extension: 'png'
-                            };
-                        }
-
                         return {
-                            mime: 'image/jpeg',
-                            extension: 'jpg'
+                            mime: 'image/webp',
+                            extension: 'webp'
                         };
                     }
 
@@ -724,7 +715,7 @@ function displayField($object, $key, $default = null, $filter = null, ?array $tr
 
                             console.log("Blob prêt pour image :", blob);
 
-                        }, exportMime_<?=$key?>, exportMime_<?=$key?> === 'image/png' ? undefined : 0.9);
+                        }, exportMime_<?=$key?>, 0.84);
                     }
 
                     function updateImg_<?=$key?>() {
@@ -1774,6 +1765,8 @@ echo "</div>";
 
                         if (blob.type === 'image/png') {
                             extension = 'png';
+                        } else if (blob.type === 'image/webp') {
+                            extension = 'webp';
                         }
 
                         formData.append(key, blob, key + '.' + extension);
