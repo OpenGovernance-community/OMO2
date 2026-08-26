@@ -670,6 +670,389 @@
 			return $node;
 		}
 
+		public function toBulkStructureRepresentationArray(array $options = array())
+		{
+			$options = array_merge(array(
+				'representation' => 'circle',
+				'includeMemberUserIds' => false,
+				'organizationId' => 0,
+				'organizationRootHolonId' => 0,
+			), $options);
+
+			$navigationRootId = (int)$this->getId();
+			$organizationRootHolonId = (int)$options['organizationRootHolonId'];
+			if ($navigationRootId <= 0 || $organizationRootHolonId <= 0) {
+				return array();
+			}
+
+			$holonRows = \dbObject\ArrayHolon::fetchStructureRows($organizationRootHolonId);
+			$structureHolonIds = self::collectBulkStructureHolonIds($holonRows, $navigationRootId);
+			if (count($structureHolonIds) === 0) {
+				return array();
+			}
+
+			$propertyRowsByHolonId = \dbObject\ArrayHolonProperty::fetchAllValuesByHolonIds($structureHolonIds);
+			$memberRows = array();
+			$organizationMemberUserIds = array();
+			if (!empty($options['includeMemberUserIds'])) {
+				$memberRows = \dbObject\UserHolon::fetchStructureRowsForHolonIds(
+					(int)$options['organizationId'],
+					$structureHolonIds
+				);
+				$organizationMemberUserIds = \dbObject\UserOrganization::fetchStructureUserIds((int)$options['organizationId']);
+			}
+
+			return self::buildBulkStructureRepresentationFromRows(
+				$holonRows,
+				$navigationRootId,
+				$propertyRowsByHolonId,
+				$memberRows,
+				$organizationMemberUserIds,
+				$options
+			);
+		}
+
+		protected static function collectBulkStructureHolonIds(array $holonRows, $navigationRootId)
+		{
+			$navigationRootId = (int)$navigationRootId;
+			$rowsById = array();
+			$childrenByParentId = array();
+
+			foreach ($holonRows as $row) {
+				$holonId = (int)($row['id'] ?? 0);
+				if ($holonId <= 0) {
+					continue;
+				}
+
+				$rowsById[$holonId] = $row;
+				if (!(bool)($row['active'] ?? false) || !(bool)($row['visible'] ?? false)) {
+					continue;
+				}
+
+				$parentId = (int)($row['IDholon_parent'] ?? 0);
+				if (!isset($childrenByParentId[$parentId])) {
+					$childrenByParentId[$parentId] = array();
+				}
+				$childrenByParentId[$parentId][] = $holonId;
+			}
+
+			if (!isset($rowsById[$navigationRootId])) {
+				return array();
+			}
+
+			$ids = array();
+			$append = function ($holonId) use (&$append, &$ids, $rowsById, $childrenByParentId) {
+				$holonId = (int)$holonId;
+				if ($holonId <= 0 || isset($ids[$holonId]) || !isset($rowsById[$holonId])) {
+					return;
+				}
+
+				$ids[$holonId] = true;
+				if ((int)($rowsById[$holonId]['IDtypeholon'] ?? 0) <= 1) {
+					return;
+				}
+
+				foreach ($childrenByParentId[$holonId] ?? array() as $childId) {
+					$append($childId);
+				}
+			};
+			$append($navigationRootId);
+
+			return array_values(array_map('intval', array_keys($ids)));
+		}
+
+		public static function buildBulkStructureRepresentationFromRows(
+			array $holonRows,
+			$navigationRootId,
+			array $propertyRowsByHolonId = array(),
+			array $memberRows = array(),
+			array $organizationMemberUserIds = array(),
+			array $options = array()
+		) {
+			$options = array_merge(array(
+				'representation' => 'circle',
+				'includeMemberUserIds' => false,
+				'leafSize' => 10,
+				'containerSize' => 20,
+			), $options);
+
+			$navigationRootId = (int)$navigationRootId;
+			$rowsById = array();
+			$childrenByParentId = array();
+			foreach ($holonRows as $row) {
+				$holonId = (int)($row['id'] ?? 0);
+				if ($holonId <= 0) {
+					continue;
+				}
+
+				$rowsById[$holonId] = $row;
+				if (!(bool)($row['active'] ?? false) || !(bool)($row['visible'] ?? false)) {
+					continue;
+				}
+
+				$parentId = (int)($row['IDholon_parent'] ?? 0);
+				if (!isset($childrenByParentId[$parentId])) {
+					$childrenByParentId[$parentId] = array();
+				}
+				$childrenByParentId[$parentId][] = $holonId;
+			}
+
+			if (!isset($rowsById[$navigationRootId])) {
+				return array();
+			}
+
+			$effectiveStringCache = array();
+			$resolveEffectiveString = function ($holonId, $field) use (&$resolveEffectiveString, &$effectiveStringCache, $rowsById) {
+				$cacheKey = (int)$holonId . ':' . (string)$field;
+				if (array_key_exists($cacheKey, $effectiveStringCache)) {
+					return $effectiveStringCache[$cacheKey];
+				}
+
+				$currentId = (int)$holonId;
+				$visited = array();
+				for ($depth = 0; $depth < 20 && $currentId > 0 && isset($rowsById[$currentId]); $depth += 1) {
+					if (isset($visited[$currentId])) {
+						break;
+					}
+					$visited[$currentId] = true;
+					$value = trim((string)($rowsById[$currentId][$field] ?? ''));
+					if ($value !== '') {
+						$effectiveStringCache[$cacheKey] = $value;
+						return $value;
+					}
+					$currentId = (int)($rowsById[$currentId]['IDholon_template'] ?? 0);
+				}
+
+				$effectiveStringCache[$cacheKey] = '';
+				return '';
+			};
+
+			$effectiveBooleanCache = array();
+			$resolveEffectiveBoolean = function ($holonId, $field) use (&$resolveEffectiveBoolean, &$effectiveBooleanCache, $rowsById) {
+				$cacheKey = (int)$holonId . ':' . (string)$field;
+				if (array_key_exists($cacheKey, $effectiveBooleanCache)) {
+					return $effectiveBooleanCache[$cacheKey];
+				}
+
+				$currentId = (int)$holonId;
+				$visited = array();
+				for ($depth = 0; $depth < 20 && $currentId > 0 && isset($rowsById[$currentId]); $depth += 1) {
+					if (isset($visited[$currentId])) {
+						break;
+					}
+					$visited[$currentId] = true;
+					if ((bool)($rowsById[$currentId][$field] ?? false)) {
+						$effectiveBooleanCache[$cacheKey] = true;
+						return true;
+					}
+					$currentId = (int)($rowsById[$currentId]['IDholon_template'] ?? 0);
+				}
+
+				$effectiveBooleanCache[$cacheKey] = false;
+				return false;
+			};
+
+			$visibleTemplateAncestorCache = array();
+			$resolveVisibleTemplateAncestorId = function ($holonId) use (&$resolveVisibleTemplateAncestorId, &$visibleTemplateAncestorCache, $rowsById) {
+				$holonId = (int)$holonId;
+				if (array_key_exists($holonId, $visibleTemplateAncestorCache)) {
+					return $visibleTemplateAncestorCache[$holonId];
+				}
+
+				$currentId = isset($rowsById[$holonId]) ? (int)($rowsById[$holonId]['IDholon_template'] ?? 0) : 0;
+				$visited = array();
+				for ($depth = 0; $depth < 20 && $currentId > 0 && isset($rowsById[$currentId]); $depth += 1) {
+					if (isset($visited[$currentId])) {
+						break;
+					}
+					$visited[$currentId] = true;
+					$templateRow = $rowsById[$currentId];
+					if ((bool)($templateRow['visible'] ?? false) && trim((string)($templateRow['templatename'] ?? '')) !== '') {
+						$visibleTemplateAncestorCache[$holonId] = $currentId;
+						return $currentId;
+					}
+					$currentId = (int)($templateRow['IDholon_template'] ?? 0);
+				}
+
+				$visibleTemplateAncestorCache[$holonId] = 0;
+				return 0;
+			};
+
+			$memberUserIdsByHolonId = array();
+			if (!empty($options['includeMemberUserIds'])) {
+				foreach ($memberRows as $memberRow) {
+					$holonId = (int)($memberRow['IDholon'] ?? 0);
+					$userId = (int)($memberRow['IDuser'] ?? 0);
+					if ($holonId <= 0 || $userId <= 0) {
+						continue;
+					}
+
+					if (!isset($memberUserIdsByHolonId[$holonId])) {
+						$memberUserIdsByHolonId[$holonId] = array();
+					}
+					$memberUserIdsByHolonId[$holonId][$userId] = $userId;
+				}
+
+				$findContainingCircleId = static function ($holonId) use ($rowsById) {
+					$currentId = isset($rowsById[(int)$holonId])
+						? (int)($rowsById[(int)$holonId]['IDholon_parent'] ?? 0)
+						: 0;
+					$visited = array();
+					for ($depth = 0; $depth < 100 && $currentId > 0 && isset($rowsById[$currentId]); $depth += 1) {
+						if (isset($visited[$currentId])) {
+							break;
+						}
+						$visited[$currentId] = true;
+						if ((int)($rowsById[$currentId]['IDtypeholon'] ?? 0) === 2) {
+							return $currentId;
+						}
+						$currentId = (int)($rowsById[$currentId]['IDholon_parent'] ?? 0);
+					}
+					return 0;
+				};
+
+				foreach ($memberRows as $memberRow) {
+					$roleHolonId = (int)($memberRow['IDholon'] ?? 0);
+					$userId = (int)($memberRow['IDuser'] ?? 0);
+					if (
+						$roleHolonId <= 0
+						|| $userId <= 0
+						|| !(bool)($memberRow['active'] ?? false)
+						|| (int)($rowsById[$roleHolonId]['IDtypeholon'] ?? 0) !== 1
+						|| !$resolveEffectiveBoolean($roleHolonId, 'link')
+					) {
+						continue;
+					}
+
+					$parameters = json_decode((string)($memberRow['parameters'] ?? ''), true);
+					if (!is_array($parameters) || empty($parameters['isAdmin'])) {
+						continue;
+					}
+
+					$containingCircleId = $findContainingCircleId($roleHolonId);
+					$englobingCircleId = $findContainingCircleId($containingCircleId);
+					if ($englobingCircleId <= 0) {
+						continue;
+					}
+
+					if (!isset($memberUserIdsByHolonId[$englobingCircleId])) {
+						$memberUserIdsByHolonId[$englobingCircleId] = array();
+					}
+					$memberUserIdsByHolonId[$englobingCircleId][$userId] = $userId;
+				}
+
+				foreach ($rowsById as $holonId => $row) {
+					if ((int)($row['IDtypeholon'] ?? 0) === 4) {
+						$memberUserIdsByHolonId[$holonId] = array();
+						foreach ($organizationMemberUserIds as $userId) {
+							$userId = (int)$userId;
+							if ($userId > 0) {
+								$memberUserIdsByHolonId[$holonId][$userId] = $userId;
+							}
+						}
+					}
+				}
+			}
+
+			$buildNode = function ($holonId) use (
+				&$buildNode,
+				$rowsById,
+				$childrenByParentId,
+				$propertyRowsByHolonId,
+				$memberUserIdsByHolonId,
+				$resolveEffectiveString,
+				$resolveVisibleTemplateAncestorId,
+				$options
+			) {
+				$holonId = (int)$holonId;
+				if (!isset($rowsById[$holonId])) {
+					return null;
+				}
+
+				$row = $rowsById[$holonId];
+				$typeId = (int)($row['IDtypeholon'] ?? 0);
+				$node = array(
+					'name' => (string)($row['name'] ?? ''),
+					'ID' => (string)$holonId,
+					'type' => (string)$typeId,
+					'IDdb' => (string)$holonId,
+				);
+
+				$fullName = trim((string)($row['nomcomplet'] ?? ''));
+				if ($fullName !== '') {
+					$node['fullName'] = $fullName;
+				}
+
+				$color = $resolveEffectiveString($holonId, 'color');
+				if ($color !== '') {
+					$node['mycolor'] = $color;
+				}
+
+				$visibleTemplateAncestorId = $resolveVisibleTemplateAncestorId($holonId);
+				if ($visibleTemplateAncestorId > 0) {
+					$node['visibleTemplateAncestorId'] = (string)$visibleTemplateAncestorId;
+					$node['isVisibleTemplateInstance'] = true;
+				}
+
+				if (!empty($options['includeMemberUserIds']) && !empty($memberUserIdsByHolonId[$holonId])) {
+					$node['userIds'] = array_values(array_map('intval', $memberUserIdsByHolonId[$holonId]));
+				}
+
+				$data = array();
+				foreach ($propertyRowsByHolonId[$holonId] ?? array() as $propertyRow) {
+					$value = $propertyRow['value'] ?? null;
+					$ancestor = $propertyRow['value_parents'] ?? null;
+					if ($value === null && $ancestor === null) {
+						continue;
+					}
+
+					$propertyId = (int)($propertyRow['IDproperty'] ?? 0);
+					if ($propertyId <= 0) {
+						continue;
+					}
+
+					$data['d' . $propertyId] = array(
+						'name' => (string)($propertyRow['name'] ?? ''),
+						'shortname' => (string)($propertyRow['shortname'] ?? ''),
+						'position' => (int)($propertyRow['effective_position'] ?? 0),
+						'value' => $value !== null ? (string)$value : '',
+						'formatId' => (int)($propertyRow['IDpropertyformat'] ?? 0),
+						'formatName' => (string)($propertyRow['propertyformat_name'] ?? ''),
+						'listItemType' => (string)($propertyRow['listitemtype'] ?? ''),
+						'listHolonTypeIds' => \dbObject\Property::parseHolonTypeIds($propertyRow['listholontypeids'] ?? ''),
+						'mandatory' => (bool)($propertyRow['mandatory'] ?? false),
+						'locked' => (bool)($propertyRow['locked'] ?? false),
+						'ancestor' => $ancestor !== null ? (string)$ancestor : '',
+						'effectiveValue' => $value !== null && trim((string)$value) !== ''
+							? (string)$value
+							: ($ancestor !== null && trim((string)$ancestor) !== '' ? (string)$ancestor : ''),
+					);
+				}
+				if (count($data) > 0) {
+					$node['data'] = $data;
+				}
+
+				$shouldIncludeChildren = $typeId > 1;
+				if ($shouldIncludeChildren) {
+					$node['children'] = array();
+					foreach ($childrenByParentId[$holonId] ?? array() as $childId) {
+						$childNode = $buildNode($childId);
+						if (is_array($childNode)) {
+							$node['children'][] = $childNode;
+						}
+					}
+				}
+
+				$node['size'] = $shouldIncludeChildren
+					? (int)$options['containerSize']
+					: (int)$options['leafSize'];
+
+				return $node;
+			};
+
+			return $buildNode($navigationRootId) ?: array();
+		}
+
 		public function toRepresentationJson(array $options = array()) {
 			$jsonFlags = isset($options['jsonFlags'])
 				? (int)$options['jsonFlags']

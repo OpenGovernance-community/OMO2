@@ -7,6 +7,28 @@
 			return "\dbObject\Holon";
 		}
 
+		public static function fetchStructureRows($organizationRootHolonId)
+		{
+			$organizationRootHolonId = (int)$organizationRootHolonId;
+			if ($organizationRootHolonId <= 0) {
+				return array();
+			}
+
+			$rows = \dbObject\DbObject::fetchAll(
+				"SELECT h.*
+				FROM holon h
+				WHERE h.id = :root_holon_id
+				   OR h.IDholon_org = :organization_root_holon_id
+				ORDER BY h.name ASC, h.id ASC",
+				array(
+					'root_holon_id' => $organizationRootHolonId,
+					'organization_root_holon_id' => $organizationRootHolonId,
+				)
+			);
+
+			return is_array($rows) ? $rows : array();
+		}
+
 		public function loadVisibilityTargetsForOrganization($organizationId, array $typeIds = array(2, 1))
 		{
 			$organizationId = (int)$organizationId;

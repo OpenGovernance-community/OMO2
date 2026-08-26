@@ -920,6 +920,148 @@
 			return $event;
 		}
 
+		public function getPvEditorPollingRevision(int $organizationId = 0): string
+		{
+			$documentId = (int)$this->getId();
+			$organizationId = $organizationId > 0
+				? $organizationId
+				: (int)$this->get('IDorganization');
+			if ($documentId <= 0 || $organizationId <= 0 || !$this->isPvDocument()) {
+				return '';
+			}
+
+			$pointRows = self::fetchAll(
+				"SELECT
+					id,
+					SHA2(CONCAT_WS(CHAR(31),
+						COALESCE(item_type, ''),
+						COALESCE(IDparent, 0),
+						COALESCE(position, 0),
+						COALESCE(title, ''),
+						COALESCE(IDuser_author, 0),
+						COALESCE(author_email, ''),
+						COALESCE(IDholon_concerned, 0),
+						COALESCE(content, ''),
+						COALESCE(desired_duration_minutes, 0),
+						COALESCE(actual_duration_minutes, 0),
+						COALESCE(pointtype, ''),
+						COALESCE(is_handled, 0),
+						COALESCE(is_confidential, 0),
+						COALESCE(active, 1),
+						COALESCE(IDuser_modification, 0)
+					), 256) AS row_version,
+					COALESCE(IDuser_editing, 0) AS editing_user_id,
+					COALESCE(edit_lock_token, '') AS edit_lock_token,
+					dateedition
+				FROM document_pv_point
+				WHERE IDdocument = :document_id
+				ORDER BY id ASC",
+				['document_id' => $documentId]
+			);
+
+			$lockCutoff = time() - \dbObject\DocumentPvPoint::getEditLockTimeoutSeconds();
+			foreach (is_array($pointRows) ? $pointRows : [] as &$pointRow) {
+				$editingTimestamp = strtotime((string)($pointRow['dateedition'] ?? ''));
+				$lockActive = (int)($pointRow['editing_user_id'] ?? 0) > 0
+					&& trim((string)($pointRow['edit_lock_token'] ?? '')) !== ''
+					&& $editingTimestamp !== false
+					&& $editingTimestamp >= $lockCutoff;
+				$pointRow['lock_user_id'] = $lockActive ? (int)$pointRow['editing_user_id'] : 0;
+				$pointRow['lock_token'] = $lockActive
+					? hash('sha256', (string)$pointRow['edit_lock_token'])
+					: '';
+				unset($pointRow['editing_user_id'], $pointRow['edit_lock_token'], $pointRow['dateedition']);
+			}
+			unset($pointRow);
+
+			$linkRows = self::fetchAll(
+				"SELECT 'holon' AS link_type, link.IDdocument_pv_point AS point_id, link.IDholon AS target_id, COALESCE(link.position, 0) AS position
+				FROM document_pv_point_holon link
+				INNER JOIN document_pv_point point ON point.id = link.IDdocument_pv_point
+				WHERE point.IDdocument = :document_id_holon
+				UNION ALL
+				SELECT 'tension' AS link_type, link.IDdocument_pv_point AS point_id, link.IDtension AS target_id, COALESCE(link.position, 0) AS position
+				FROM document_pv_point_tension link
+				INNER JOIN document_pv_point point ON point.id = link.IDdocument_pv_point
+				WHERE point.IDdocument = :document_id_tension
+				ORDER BY link_type ASC, point_id ASC, position ASC, target_id ASC",
+				[
+					'document_id_holon' => $documentId,
+					'document_id_tension' => $documentId,
+				]
+			);
+
+			$resourceType = (int)$this->get('IDevent') > 0 ? 'event' : 'document';
+			$resourceId = (int)$this->get('IDevent') > 0 ? (int)$this->get('IDevent') : $documentId;
+			$attendanceRows = self::fetchAll(
+				"SELECT 'invitation' AS row_type, id,
+					SHA2(CONCAT_WS(CHAR(31), COALESCE(invitation_type, ''), COALESCE(IDholon, 0), COALESCE(IDuser, 0), COALESCE(email, ''), COALESCE(display_name, ''), COALESCE(status, ''), COALESCE(accepted, 0), COALESCE(parameters, ''), COALESCE(active, 1)), 256) AS row_version
+				FROM resource_invitation
+				WHERE resource_type = :invitation_resource_type
+				  AND resource_id = :invitation_resource_id
+				UNION ALL
+				SELECT 'attendance' AS row_type, id,
+					SHA2(CONCAT_WS(CHAR(31), COALESCE(IDuser, 0), COALESCE(email, ''), COALESCE(display_name, ''), COALESCE(is_present, 0), COALESCE(active, 1)), 256) AS row_version
+				FROM resource_attendance
+				WHERE resource_type = :attendance_resource_type
+				  AND resource_id = :attendance_resource_id
+				ORDER BY row_type ASC, id ASC",
+				[
+					'invitation_resource_type' => $resourceType,
+					'invitation_resource_id' => $resourceId,
+					'attendance_resource_type' => $resourceType,
+					'attendance_resource_id' => $resourceId,
+				]
+			);
+
+			$discussionRows = self::fetchAll(
+				"SELECT thread.subject_id,
+					COALESCE(thread.active, 1) AS active,
+					COUNT(message.id) AS message_count,
+					COALESCE(MAX(message.id), 0) AS last_message_id
+				FROM chat_thread thread
+				INNER JOIN document_pv_point point
+					ON point.id = thread.subject_id
+				LEFT JOIN chat_message message
+					ON message.IDchat_thread = thread.id
+				WHERE thread.IDorganization = :organization_id
+				  AND thread.subject_type = :subject_type
+				  AND point.IDdocument = :document_id
+				GROUP BY thread.id, thread.subject_id, thread.active
+				ORDER BY thread.subject_id ASC, thread.id ASC",
+				[
+					'organization_id' => $organizationId,
+					'subject_type' => \dbObject\ChatThread::SUBJECT_DOCUMENT_PV_POINT,
+					'document_id' => $documentId,
+				]
+			);
+
+			$modifiedAt = $this->get('datemodification');
+			$documentState = [
+				'id' => $documentId,
+				'event_id' => (int)$this->get('IDevent'),
+				'title' => trim((string)$this->get('title')),
+				'description' => trim((string)$this->get('description')),
+				'pv_stage' => $this->getPvStage(),
+				'pv_editor_user_id' => $this->getPvEditorUserId(),
+				'pv_editor_handover_open' => $this->isPvEditorHandoverOpen() ? 1 : 0,
+				'is_template' => $this->isPvTemplate() ? 1 : 0,
+				'active' => !empty($this->get('active')) ? 1 : 0,
+				'modified_at' => $modifiedAt instanceof \DateTimeInterface
+					? $modifiedAt->format('Y-m-d H:i:s.u')
+					: trim((string)$modifiedAt),
+			];
+
+			return hash('sha256', (string)json_encode([
+				'document' => $documentState,
+				'points' => is_array($pointRows) ? $pointRows : [],
+				'links' => is_array($linkRows) ? $linkRows : [],
+				'attendance' => is_array($attendanceRows) ? $attendanceRows : [],
+				'discussions' => is_array($discussionRows) ? $discussionRows : [],
+				'organization_history_id' => \dbObject\History::getLatestOrganizationEntryId($organizationId),
+			], JSON_UNESCAPED_SLASHES));
+		}
+
 		public function getPvEditorUserId(): int
 		{
 			return $this->isPvDocument() ? (int)$this->get('IDuser_pv_editor') : 0;

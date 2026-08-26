@@ -7,6 +7,77 @@ use dbObject\ArrayOrganization;
 use dbObject\ArrayProject;
 use dbObject\Authority;
 
+const OMO_STRUCTURE_CACHE_VERSION = 1;
+
+function omoStructureBuildCacheKey($organizationId, $navigationRootId, $includeMemberUserIds)
+{
+    $currentUserId = function_exists('commonGetCurrentUserId')
+        ? (int)commonGetCurrentUserId()
+        : (int)($_SESSION['currentUser'] ?? 0);
+    $shareToken = function_exists('commonGetCurrentShareToken')
+        ? trim((string)commonGetCurrentShareToken())
+        : '';
+
+    return hash('sha256', implode(':', array(
+        OMO_STRUCTURE_CACHE_VERSION,
+        (int)$organizationId,
+        (int)$navigationRootId,
+        $includeMemberUserIds ? 1 : 0,
+        $currentUserId,
+        $shareToken,
+    )));
+}
+
+function omoStructureReadSessionCache($cacheKey, $latestHistoryId)
+{
+    $entry = $_SESSION['omoStructureRepresentationCache'][$cacheKey] ?? null;
+    if (!is_array($entry)) {
+        return null;
+    }
+
+    if ((int)($entry['version'] ?? 0) !== OMO_STRUCTURE_CACHE_VERSION) {
+        return null;
+    }
+
+    if ((int)($entry['historyId'] ?? -1) !== (int)$latestHistoryId) {
+        return null;
+    }
+
+    return is_array($entry['representation'] ?? null) ? $entry['representation'] : null;
+}
+
+function omoStructureWriteSessionCache($cacheKey, $latestHistoryId, array $representation)
+{
+    if (session_status() !== PHP_SESSION_ACTIVE && !@session_start()) {
+        return;
+    }
+
+    if (!isset($_SESSION['omoStructureRepresentationCache']) || !is_array($_SESSION['omoStructureRepresentationCache'])) {
+        $_SESSION['omoStructureRepresentationCache'] = array();
+    }
+
+    $_SESSION['omoStructureRepresentationCache'][$cacheKey] = array(
+        'version' => OMO_STRUCTURE_CACHE_VERSION,
+        'historyId' => (int)$latestHistoryId,
+        'cachedAt' => time(),
+        'representation' => $representation,
+    );
+
+    if (count($_SESSION['omoStructureRepresentationCache']) > 8) {
+        uasort($_SESSION['omoStructureRepresentationCache'], static function ($left, $right) {
+            return (int)($left['cachedAt'] ?? 0) <=> (int)($right['cachedAt'] ?? 0);
+        });
+        $_SESSION['omoStructureRepresentationCache'] = array_slice(
+            $_SESSION['omoStructureRepresentationCache'],
+            -8,
+            null,
+            true
+        );
+    }
+
+    session_write_close();
+}
+
 function omoStructureCollectAuthorityIdsFromValue($rawValue, $formatId, array &$authorityIds)
 {
     $rawValue = trim((string)$rawValue);
@@ -155,22 +226,55 @@ if (!$navigationRoot->canViewDetail()) {
     exit;
 }
 
-$representation = $navigationRoot->toRepresentationArray(array(
+$includeMemberUserIds = !(
+    function_exists('commonGetCurrentShareToken')
+    && commonGetCurrentShareToken() !== ''
+    && !commonCurrentShareAllowsPeople()
+);
+$latestHistoryId = \dbObject\History::getLatestOrganizationEntryId($organizationId);
+$cacheKey = omoStructureBuildCacheKey(
+    $organizationId,
+    (int)$navigationRoot->getId(),
+    $includeMemberUserIds
+);
+$forceRefresh = (int)($_GET['structure_refresh'] ?? 0) === 1;
+$cachedRepresentation = $forceRefresh
+    ? null
+    : omoStructureReadSessionCache($cacheKey, $latestHistoryId);
+
+if (is_array($cachedRepresentation)) {
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+    header('X-OMO-Structure-Cache: hit');
+    echo json_encode($cachedRepresentation, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
+$representation = $navigationRoot->toBulkStructureRepresentationArray(array(
     'representation' => 'circle',
-    'includeMemberUserIds' => !(function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '' && !commonCurrentShareAllowsPeople()),
+    'includeMemberUserIds' => $includeMemberUserIds,
     'organizationId' => $organizationId,
+    'organizationRootHolonId' => (int)$root->getId(),
 ));
 
-$projectTitles = array();
-$projects = new ArrayProject();
-$projects->loadForOrganization($organizationId);
-foreach ($projects as $project) {
-    $projectId = (int)$project->getId();
-    if ($projectId > 0) {
-        $projectTitles[$projectId] = trim((string)$project->get('title'));
-    }
+if (count($representation) === 0) {
+    http_response_code(500);
+    echo json_encode(
+        array(
+            'error' => true,
+            'message' => "Structure indisponible.",
+        ),
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    exit;
 }
-$representation['projectTitles'] = $projectTitles;
+
+$representation['projectTitles'] = ArrayProject::fetchTitlesForOrganization($organizationId);
 
 $authorityIds = array();
 omoStructureCollectAuthorityIds($representation, $authorityIds);
@@ -189,4 +293,6 @@ if ((int)$navigationRoot->getId() !== (int)$root->getId() && (int)$navigationRoo
     }
 }
 
+omoStructureWriteSessionCache($cacheKey, $latestHistoryId, $representation);
+header('X-OMO-Structure-Cache: miss');
 echo json_encode($representation, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
