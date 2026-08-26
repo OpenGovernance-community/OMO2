@@ -1053,16 +1053,27 @@
 
       renderStaticState('Chargement de la structure...', true);
 
-      return ensureD3()
-        .then(function () {
-          return $.ajax({
-            url: buildStructureDataUrl(oid),
+      const url = buildStructureDataUrl(oid);
+      const structureRequest = typeof window.omoFetchStructureData === 'function'
+        ? window.omoFetchStructureData(url, {
+            forceRefresh: Boolean(settings.forceRefresh)
+          })
+        : fetch(url, {
             method: 'GET',
-            cache: false,
-            dataType: 'json'
+            credentials: 'same-origin',
+            headers: {
+              Accept: 'application/json'
+            }
+          }).then(function (response) {
+            if (!response.ok) {
+              throw new Error('Structure indisponible.');
+            }
+            return response.json();
           });
-        })
-        .then(function (response) {
+
+      return Promise.all([ensureD3(), structureRequest])
+        .then(function (results) {
+          const response = results[1];
           if (requestId !== state.requestId) {
             return null;
           }
@@ -1233,7 +1244,8 @@
       }
 
       loadStructureData(oid, cid, {
-        quickZoom: Boolean(detail.quickZoom)
+        quickZoom: Boolean(detail.quickZoom),
+        forceRefresh: true
       });
     }
 
@@ -1318,7 +1330,8 @@
             }
 
             return loadStructureData(oid, nodeId, {
-              quickZoom: true
+              quickZoom: true,
+              forceRefresh: true
             });
           },
           getCurrentHolonId: function () {

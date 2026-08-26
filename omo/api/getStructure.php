@@ -2265,7 +2265,7 @@ $(document)
         view: Array.isArray(vOld) ? vOld.slice() : null
       };
 
-      structureReloadPromise = loadStructureData()
+      structureReloadPromise = loadStructureData(true)
         .then(function() {
           if (nodeId) {
             currentnode = {
@@ -2442,62 +2442,47 @@ $(document)
       roleList.innerHTML = "";
     }
 
-    function getStructureErrorMessage(xhr) {
-      if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
-        return xhr.responseJSON.message;
-      }
+    function loadStructureData(forceRefresh) {
+      const resolvedStructureDataUrl = (typeof window.omoResolveAppUrl === "function")
+        ? window.omoResolveAppUrl(structureDataUrl)
+        : structureDataUrl;
+      const request = typeof window.omoFetchStructureData === "function"
+        ? window.omoFetchStructureData(resolvedStructureDataUrl, {
+            forceRefresh: Boolean(forceRefresh)
+          })
+        : fetch(resolvedStructureDataUrl, {
+            method: "GET",
+            credentials: "same-origin",
+            headers: {
+              Accept: "application/json"
+            }
+          }).then(function (response) {
+            if (!response.ok) {
+              throw new Error(structureTranslations.loadError);
+            }
+            return response.json();
+          });
 
-      if (xhr && xhr.responseText) {
-        try {
-          const response = JSON.parse(xhr.responseText);
-          if (response && response.message) {
-            return response.message;
-          }
-        } catch (error) {
+      return Promise.resolve(request).then(function (response) {
+        if (!response || response.error) {
+          throw new Error(response && response.message ? response.message : structureTranslations.invalidStructure);
         }
-      }
 
-      return structureTranslations.loadError;
-    }
+        structureProjectTitles = response && response.projectTitles && typeof response.projectTitles === "object"
+          ? response.projectTitles
+          : {};
+        structureAuthorityLabels = response && response.authorityLabels && typeof response.authorityLabels === "object"
+          ? response.authorityLabels
+          : {};
+        const normalizedRoot = normalizeStructureNode(response, 0);
 
-    function loadStructureData() {
-      return new Promise(function (resolve, reject) {
-        const resolvedStructureDataUrl = (typeof window.omoResolveAppUrl === "function")
-          ? window.omoResolveAppUrl(structureDataUrl)
-          : structureDataUrl;
+        if (!normalizedRoot) {
+          throw new Error(structureTranslations.invalidStructure);
+        }
 
-        $.ajax({
-          url: resolvedStructureDataUrl,
-          method: "GET",
-          cache: false,
-          dataType: "json",
-          success: function (response) {
-            if (!response || response.error) {
-              reject(new Error(response && response.message ? response.message : structureTranslations.invalidStructure));
-              return;
-            }
-
-            structureProjectTitles = response && response.projectTitles && typeof response.projectTitles === "object"
-              ? response.projectTitles
-              : {};
-            structureAuthorityLabels = response && response.authorityLabels && typeof response.authorityLabels === "object"
-              ? response.authorityLabels
-              : {};
-            const normalizedRoot = normalizeStructureNode(response, 0);
-
-            if (!normalizedRoot) {
-              reject(new Error(structureTranslations.invalidStructure));
-              return;
-            }
-
-            root = normalizedRoot;
-            currentnode = null;
-            resolve(root);
-          },
-          error: function (xhr) {
-            reject(new Error(getStructureErrorMessage(xhr)));
-          }
-        });
+        root = normalizedRoot;
+        currentnode = null;
+        return root;
       });
     }
 

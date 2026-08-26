@@ -7,6 +7,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Un journal SQL optionnel mesure maintenant la duree complete des requetes, y compris la lecture des resultats, et produit un resume par requete HTTP pour faciliter l identification des acces couteux sans enregistrer les valeurs sensibles.
 - Les appels de maintenance OMO sont maintenant consignes dans un journal unique et compact avec leur origine, leur statut et leur duree totale afin de mesurer leur frequence en utilisation reelle.
 - Les images statiques surdimensionnees ont ete allegees, les icones d interface sont ramenees a une definition adaptee a leur affichage et les nouvelles photos de profil sont stockees en WebP 320 x 320 sans apparition temporaire en plein ecran.
+- Le chargement de la structure OMO est maintenant asynchrone et partage entre la mini-carte, le panneau complet et les selecteurs de portee. La representation reste en cache pendant toute la session tant que l historique de l organisation ne change pas, et sa construction regroupe les holons, proprietes et membres en quelques requetes au lieu de les charger noeud par noeud.
 
 - Le module Indicateurs utilise maintenant des textes français corrigés, avec accents et ponctuation harmonisée dans les écrans, les erreurs API, les graphiques et les éditeurs.
 - Les nouveaux messages liés aux sources Framacalc et aux documents tableurs sont traduits en anglais dans le bundle de production.
