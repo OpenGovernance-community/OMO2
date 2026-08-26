@@ -265,6 +265,60 @@
 			return $rows;
 		}
 
+		public static function fetchStructureRowsForHolonIds($organizationId, array $holonIds)
+		{
+			$organizationId = (int)$organizationId;
+			$holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), static function ($holonId) {
+				return $holonId > 0;
+			})));
+
+			if ($organizationId <= 0 || count($holonIds) === 0) {
+				return array();
+			}
+
+			$params = array(
+				'organization_id' => $organizationId,
+				'invitation_organization_id' => $organizationId,
+			);
+			$placeholders = array();
+			foreach ($holonIds as $index => $holonId) {
+				$key = 'structure_holon_' . $index;
+				$params[$key] = $holonId;
+				$placeholders[] = ':' . $key;
+			}
+
+			$query = "SELECT DISTINCT
+					uh.IDholon,
+					uh.IDuser,
+					uh.active,
+					uh.parameters
+				FROM user_holon uh
+				INNER JOIN `user` u ON u.id = uh.IDuser
+				LEFT JOIN user_organization uo
+					ON uo.IDuser = uh.IDuser
+					AND uo.IDorganization = :organization_id
+				LEFT JOIN invitation inv
+					ON inv.IDorganization = :invitation_organization_id
+					AND inv.IDuser = uh.IDuser
+					AND inv.status = 'pending'
+					AND inv.active = 1
+					AND (inv.dateexpiration IS NULL OR inv.dateexpiration > NOW())
+				WHERE uh.IDholon IN (" . implode(', ', $placeholders) . ")
+				  AND (
+					uh.active = 1
+					OR inv.id IS NOT NULL
+					OR (uo.id IS NOT NULL AND uo.active = 0)
+				  )
+				ORDER BY
+					COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
+					COALESCE(NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
+					u.id ASC,
+					uh.IDholon ASC";
+
+			$rows = self::fetchAll($query, $params);
+			return is_array($rows) ? $rows : array();
+		}
+
 		public static function fetchRawRowsForUserAndHolonIds($userId, array $holonIds)
 		{
 			$userId = (int)$userId;

@@ -582,8 +582,13 @@
             }
         });
 
-        fetch('/omo/api/getStructureData.php?oid=' + encodeURIComponent(String(organizationId)), { credentials: 'same-origin' })
-            .then(function (response) { return response.ok ? response.json() : null; })
+        var structureDataUrl = '/omo/api/getStructureData.php?oid=' + encodeURIComponent(String(organizationId));
+        var structureRequest = typeof window.omoFetchStructureData === 'function'
+            ? window.omoFetchStructureData(structureDataUrl)
+            : fetch(structureDataUrl, { credentials: 'same-origin' })
+                .then(function (response) { return response.ok ? response.json() : null; });
+
+        structureRequest
             .then(function (data) {
                 if (selectedHolonId <= 0 && !allowEmptySelection) {
                     selectedHolonId = normalizeId(data && data.ID);
