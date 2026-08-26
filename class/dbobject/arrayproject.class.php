@@ -8,6 +8,41 @@ class ArrayProject extends ArrayDbObject
         return '\\dbObject\\Project';
     }
 
+    public static function fetchTitlesForOrganization($organizationId)
+    {
+        $organizationId = (int)$organizationId;
+        if ($organizationId <= 0) {
+            return [];
+        }
+
+        $rows = \dbObject\DbObject::fetchAll(
+            "SELECT id, title
+            FROM project
+            WHERE IDorganization = :organization_id
+              AND active = 1
+              AND project_kind = :project_kind
+            ORDER BY id ASC",
+            [
+                'organization_id' => $organizationId,
+                'project_kind' => Project::KIND_STANDARD,
+            ]
+        );
+
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        $titles = [];
+        foreach ($rows as $row) {
+            $projectId = (int)($row['id'] ?? 0);
+            if ($projectId > 0) {
+                $titles[$projectId] = trim((string)($row['title'] ?? ''));
+            }
+        }
+
+        return $titles;
+    }
+
     public function loadForOrganization($organizationId, $activeOnly = true, $projectKind = Project::KIND_STANDARD)
     {
         $this->exchangeArray([]);

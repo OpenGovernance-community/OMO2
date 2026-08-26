@@ -148,6 +148,7 @@ $documentSyncVersion = hash('sha256', implode('|', [
     $documentVisibilityType,
     $isPvTemplate ? '1' : '0',
 ]));
+$pollingRevision = $document->getPvEditorPollingRevision($organizationId);
 $eventTitle = $hasAssociatedEvent
     ? (trim((string)$event->get('title')) !== ''
         ? trim((string)$event->get('title'))
@@ -2681,6 +2682,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'canManagePvTemplate' => $canEditPvDocumentHeader,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const initialAttendancePayload = <?= json_encode($attendancePayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const initialPollingRevision = <?= json_encode($pollingRevision, JSON_UNESCAPED_SLASHES) ?>;
     const attendanceEnabled = <?= json_encode($hasTeamApplication) ?>;
     const eventStartAtIso = <?= json_encode($eventStartAtIso, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const eventEndAtIso = <?= json_encode($eventEndAtIso, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -2703,6 +2705,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     const groupPointsLabel = <?= json_encode((string)$uiText['groupPoints'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const groupMinutesLabel = <?= json_encode((string)$uiText['groupMinutes'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const autoSaveDelayMs = 10000;
+    const activeSyncPollDelayMs = 5000;
+    const idleSyncPollDelayMs = 15000;
     const autoSaveTimers = new Map();
     const pointChangeVersions = new Map();
     let documentMetadataAutoSaveTimer = null;
@@ -2875,8 +2879,12 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         ? initialAttendancePayload
         : null;
     let currentAttendanceSignature = '';
+    let knownPollingRevision = String(initialPollingRevision || '');
     let syncPollTimer = null;
+    let syncPollPending = null;
     let lockHeartbeatTimer = null;
+    let editorLifecycleObserver = null;
+    let editorWasPollingActive = false;
     let allowNextExternalClose = false;
 
     function escapeDocumentEmbedHtml(value) {
@@ -4581,12 +4589,17 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         clearDocumentMetadataAutoSave();
 
         if (syncPollTimer !== null) {
-            window.clearInterval(syncPollTimer);
+            window.clearTimeout(syncPollTimer);
             syncPollTimer = null;
         }
+        syncPollPending = null;
         if (lockHeartbeatTimer !== null) {
             window.clearInterval(lockHeartbeatTimer);
             lockHeartbeatTimer = null;
+        }
+        if (editorLifecycleObserver instanceof MutationObserver) {
+            editorLifecycleObserver.disconnect();
+            editorLifecycleObserver = null;
         }
 
         activeLockPointIds.clear();
@@ -4690,6 +4703,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 String(pointPayload.syncVersion || ''),
                 lock.isActive ? 1 : 0,
                 Number(lock.userId || 0),
+                lock.isOwnedByCurrentSession ? 1 : 0,
+                String(lock.token || ''),
                 Number(pointPayload.discussionMessageCount || 0)
             ].join('|');
         });
@@ -7449,30 +7464,107 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         });
     })();
 
-    function startSyncPolling() {
-        if (syncPollTimer !== null) {
-            window.clearInterval(syncPollTimer);
+    function isPvEditorSessionActive() {
+        if (!root.isConnected || document.hidden) {
+            return false;
         }
-        if (currentDocumentPayload.isPvValidated === true) {
+
+        const externalDrawer = root.closest('[data-omo-external-panel-drawer="1"]');
+        if (externalDrawer instanceof HTMLElement) {
+            return !externalDrawer.hidden && externalDrawer.classList.contains('is-open');
+        }
+
+        return root.getClientRects().length > 0;
+    }
+
+    function isPvEditorPollingActive() {
+        if (!isPvEditorSessionActive()) {
+            return false;
+        }
+
+        const externalDrawer = root.closest('[data-omo-external-panel-drawer="1"]');
+        return !(externalDrawer instanceof HTMLElement && externalDrawer.classList.contains('is-peek'));
+    }
+
+    function getNextSyncPollDelay() {
+        return String(currentDocumentPayload.pvStage || '') === 'meeting'
+            || activeLockPointIds.size > 0
+            || hasUnsavedPointChanges()
+            ? activeSyncPollDelayMs
+            : idleSyncPollDelayMs;
+    }
+
+    function scheduleNextSyncPoll(delayMs) {
+        if (syncPollTimer !== null) {
+            window.clearTimeout(syncPollTimer);
             syncPollTimer = null;
+        }
+        if (currentDocumentPayload.isPvValidated === true || !root.isConnected) {
             return;
         }
 
-        syncPollTimer = window.setInterval(function () {
+        const nextDelay = Number.isFinite(delayMs) ? Math.max(0, delayMs) : getNextSyncPollDelay();
+        syncPollTimer = window.setTimeout(function () {
+            syncPollTimer = null;
             renderTimingSummary();
-            if (!document.hidden) {
-                syncEditorFromServer();
+            if (!root.isConnected) {
+                stopPvEditorBackgroundWork();
+                return;
             }
-        }, 5000);
+            if (!isPvEditorPollingActive()) {
+                scheduleNextSyncPoll(idleSyncPollDelayMs);
+                return;
+            }
+
+            syncEditorFromServer().then(function () {
+                scheduleNextSyncPoll();
+            });
+        }, nextDelay);
+    }
+
+    function startSyncPolling() {
+        scheduleNextSyncPoll(activeSyncPollDelayMs);
+    }
+
+    function startEditorLifecycleObserver() {
+        const externalDrawer = root.closest('[data-omo-external-panel-drawer="1"]');
+        editorWasPollingActive = isPvEditorPollingActive();
+        if (!(externalDrawer instanceof HTMLElement) || typeof MutationObserver !== 'function') {
+            return;
+        }
+
+        editorLifecycleObserver = new MutationObserver(function () {
+            const pollingActive = isPvEditorPollingActive();
+            if (pollingActive && !editorWasPollingActive) {
+                scheduleNextSyncPoll(0);
+            }
+            editorWasPollingActive = pollingActive;
+        });
+        editorLifecycleObserver.observe(externalDrawer, {
+            attributes: true,
+            attributeFilter: ['class', 'hidden']
+        });
     }
 
     function syncEditorFromServer() {
         if (currentDocumentPayload.isPvValidated === true) {
             return Promise.resolve(null);
         }
+        if (syncPollPending instanceof Promise) {
+            return syncPollPending;
+        }
 
-        return postPointAction('poll_updates', 0)
+        syncPollPending = postPointAction('poll_updates', 0, {
+            poll_revision: knownPollingRevision
+        })
             .then(function (payload) {
+                if (payload && payload.pollRevision) {
+                    knownPollingRevision = String(payload.pollRevision);
+                }
+                if (payload && payload.unchanged === true) {
+                    return payload;
+                }
+
                 const remoteDocumentPayload = payload && payload.document ? payload.document : null;
                 if (documentPayloadHasRemoteChanges(remoteDocumentPayload)) {
                     mergeCurrentDocumentPayload(remoteDocumentPayload);
@@ -7488,7 +7580,11 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             .catch(function () {
                 // Silent polling failure: keep the editor usable locally.
                 return null;
+            })
+            .finally(function () {
+                syncPollPending = null;
             });
+        return syncPollPending;
     }
 
     function startLockHeartbeat() {
@@ -7501,7 +7597,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         }
 
         lockHeartbeatTimer = window.setInterval(function () {
-            if (currentDocumentPayload.isPvValidated === true || document.hidden || activeLockPointIds.size === 0) {
+            if (currentDocumentPayload.isPvValidated === true || !isPvEditorSessionActive() || activeLockPointIds.size === 0) {
                 return;
             }
 
@@ -7526,6 +7622,12 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     window.addEventListener('pagehide', function (event) {
         if (!event.persisted) {
             releaseActiveLocksWithBeacon();
+        }
+    });
+
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && isPvEditorPollingActive()) {
+            scheduleNextSyncPoll(0);
         }
     });
 
@@ -7590,6 +7692,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     renderNavTreeFromPayloads();
     applyPointOrderToCards(getOrderedPointIdsFromPayloads());
     renderTimingSummary();
+    startEditorLifecycleObserver();
     startSyncPolling();
     startLockHeartbeat();
 })();

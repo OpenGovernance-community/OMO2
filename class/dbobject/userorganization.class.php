@@ -3,6 +3,33 @@
 
 	class UserOrganization extends DbObject
 	{
+		public static function fetchStructureUserIds($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return array();
+			}
+
+			$rows = self::fetchAll(
+				"SELECT DISTINCT uo.IDuser
+				FROM user_organization uo
+				INNER JOIN `user` u ON u.id = uo.IDuser
+				WHERE uo.IDorganization = :organization_id
+				ORDER BY
+					COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
+					COALESCE(NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
+					u.id ASC",
+				array('organization_id' => $organizationId)
+			);
+
+			if (!is_array($rows)) {
+				return array();
+			}
+
+			return array_values(array_unique(array_filter(array_map(static function ($row) {
+				return (int)($row['IDuser'] ?? 0);
+			}, $rows))));
+		}
 	    public static function tableName()
 		{
 			return 'user_organization';

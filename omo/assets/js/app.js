@@ -4205,6 +4205,81 @@ let currentState = {
 };
 
 const omoStructureViewTargets = Object.create(null);
+const omoStructureDataRequestCache = new Map();
+
+function omoNormalizeStructureDataUrl(url) {
+    const resolvedUrl = new URL(String(url || ''), window.location.href);
+    resolvedUrl.searchParams.delete('structure_refresh');
+    return resolvedUrl;
+}
+
+window.omoFetchStructureData = function (url, options = {}) {
+    const forceRefresh = Boolean(options && options.forceRefresh);
+    const normalizedUrl = omoNormalizeStructureDataUrl(url);
+    const cacheKey = normalizedUrl.toString();
+    const cachedEntry = omoStructureDataRequestCache.get(cacheKey) || null;
+
+    if (cachedEntry && cachedEntry.promise && (!forceRefresh || cachedEntry.forceRefresh)) {
+        return cachedEntry.promise;
+    }
+
+    if (!forceRefresh && cachedEntry && cachedEntry.data) {
+        return Promise.resolve(cachedEntry.data);
+    }
+
+    const requestUrl = new URL(normalizedUrl.toString());
+    if (forceRefresh) {
+        requestUrl.searchParams.set('structure_refresh', '1');
+    }
+
+    const entry = {
+        data: forceRefresh ? null : (cachedEntry ? cachedEntry.data : null),
+        promise: null,
+        forceRefresh: forceRefresh
+    };
+
+    entry.promise = fetch(requestUrl.toString(), {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+            Accept: 'application/json'
+        }
+    }).then(function (response) {
+        return response.json().catch(function () {
+            return null;
+        }).then(function (payload) {
+            if (!response.ok || !payload || payload.error) {
+                const error = new Error(payload && payload.message ? payload.message : 'Structure indisponible.');
+                error.response = response;
+                error.payload = payload;
+                throw error;
+            }
+            return payload;
+        });
+    }).then(function (payload) {
+        entry.data = payload;
+        entry.promise = null;
+        entry.forceRefresh = false;
+        omoStructureDataRequestCache.set(cacheKey, entry);
+        return payload;
+    }).catch(function (error) {
+        if (omoStructureDataRequestCache.get(cacheKey) === entry) {
+            omoStructureDataRequestCache.delete(cacheKey);
+        }
+        throw error;
+    });
+
+    omoStructureDataRequestCache.set(cacheKey, entry);
+    return entry.promise;
+};
+
+window.omoInvalidateStructureDataCache = function (url) {
+    if (url) {
+        omoStructureDataRequestCache.delete(omoNormalizeStructureDataUrl(url).toString());
+        return;
+    }
+    omoStructureDataRequestCache.clear();
+};
 
 function omoFocusStructureNode(cid = null, options = {}) {
     window.dispatchEvent(new CustomEvent('omo-structure-focus', {
