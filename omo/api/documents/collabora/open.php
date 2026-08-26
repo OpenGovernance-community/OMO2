@@ -30,7 +30,7 @@ if (
     || !$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null, $userId)
 ) {
     http_response_code(403);
-    echo 'Acces refuse.';
+    echo 'Accès refusé.';
     exit;
 }
 
@@ -44,7 +44,7 @@ if (!$organization->load($organizationId)) {
 $config = omoCollaboraGetConfig($organization);
 if (!omoCollaboraHasConfig($organization) || !$organization->hasDocumentStorage()) {
     http_response_code(503);
-    echo 'Collabora ou le stockage de documents n est pas disponible.';
+    echo 'Collabora ou le stockage de documents n’est pas disponible.';
     exit;
 }
 
@@ -76,7 +76,7 @@ if (@$discoveryDocument->loadXML((string)$discoveryResult['xml'])) {
 
 if ($actionUrl === '') {
     http_response_code(503);
-    echo 'Le format de ce fichier n est pas disponible dans Collabora.';
+    echo 'Le format de ce fichier n’est pas disponible dans Collabora.';
     exit;
 }
 

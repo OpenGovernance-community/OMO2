@@ -1027,8 +1027,8 @@ function getMediaDisplayConfig(kind) {
     return {
         displayWidth: 160,
         displayHeight: 160,
-        targetWidth: 500,
-        targetHeight: 500,
+        targetWidth: 320,
+        targetHeight: 320,
         emptyText: 'Aucune icône définie pour ce holon.'
     };
 }

@@ -195,6 +195,9 @@
             var image = document.createElement('img');
             image.alt = '';
             image.src = String(message.photoUrl);
+            image.width = 34;
+            image.height = 34;
+            image.decoding = 'async';
             image.addEventListener('error', function () {
                 image.remove();
                 avatar.textContent = initials;

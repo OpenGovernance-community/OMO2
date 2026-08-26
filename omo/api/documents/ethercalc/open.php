@@ -29,14 +29,14 @@ if (
     || !$document->canViewInOrganizationContext($organizationId, $holonId > 0 ? $holonId : null)
 ) {
     http_response_code(403);
-    echo 'Acces refuse.';
+    echo 'Accès refusé.';
     exit;
 }
 
 $roomId = $document->getEthercalcRoomId();
 if ($roomId === '' || !omoEthercalcHasConfig()) {
     http_response_code(503);
-    echo 'EtherCalc n est pas disponible.';
+    echo 'EtherCalc n’est pas disponible.';
     exit;
 }
 

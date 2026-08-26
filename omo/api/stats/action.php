@@ -314,13 +314,13 @@ if ($action === 'save_indicator') {
             : 0;
         $document = omoStatsLoadVisibleEthercalcDocument($documentId, $organizationId);
         if (!($document instanceof Document)) {
-            omoStatsActionRespond(false, 'Le document EtherCalc choisi est introuvable ou non accessible.', [], 422);
+            omoStatsActionRespond(false, omoStatsT('stats.error.document_ethercalc'), [], 422);
         }
 
         if ($indicator->isEthercalcCellSource()) {
             $cell = StatIndicator::normalizeEthercalcCell($_POST['ethercalc_cell'] ?? '');
             if ($cell === '') {
-                omoStatsActionRespond(false, 'La cellule EtherCalc doit etre ecrite sous la forme A1.', [], 422);
+                omoStatsActionRespond(false, omoStatsT('stats.error.ethercalc_cell'), [], 422);
             }
             $ethercalcSourceUpdate = [
                 'IDdocument' => (int)$document->getId(),
@@ -340,7 +340,7 @@ if ($action === 'save_indicator') {
                 }
             }
             if ($range === '' || $dateColumn === '' || count($valueColumns) === 0) {
-                omoStatsActionRespond(false, 'La plage, la colonne de date et au moins une colonne de valeur sont requises.', [], 422);
+                omoStatsActionRespond(false, omoStatsT('stats.error.columns_required'), [], 422);
             }
             preg_match('/^([A-Z]+)[0-9]+:([A-Z]+)[0-9]+$/', $range, $rangeMatches);
             $rangeStartColumn = StatIndicator::ethercalcColumnToIndex($rangeMatches[1] ?? '');
@@ -348,7 +348,7 @@ if ($action === 'save_indicator') {
             foreach (array_merge([$dateColumn], array_values($valueColumns)) as $selectedColumn) {
                 $selectedColumnIndex = StatIndicator::ethercalcColumnToIndex($selectedColumn);
                 if ($selectedColumnIndex < $rangeStartColumn || $selectedColumnIndex > $rangeEndColumn) {
-                    omoStatsActionRespond(false, 'Les colonnes de date et de valeurs doivent etre incluses dans la plage.', [], 422);
+                    omoStatsActionRespond(false, omoStatsT('stats.error.columns_in_range'), [], 422);
                 }
             }
             $currentValueColumn = StatIndicator::normalizeEthercalcColumn($indicator->get('ethercalc_value_column'));
@@ -358,7 +358,7 @@ if ($action === 'save_indicator') {
             unset($valueColumns[$primaryValueColumn]);
             $ethercalcAdditionalValueColumns = array_values($valueColumns);
             if (count($ethercalcAdditionalValueColumns) > 0 && !omoStatsCanCreateContext($context)) {
-                omoStatsActionRespond(false, 'Le droit de creer des indicateurs est requis pour ajouter des courbes.', [], 403);
+                omoStatsActionRespond(false, omoStatsT('stats.error.create_permission'), [], 403);
             }
             $ethercalcSourceUpdate = [
                 'IDdocument' => (int)$document->getId(),
@@ -375,7 +375,7 @@ if ($action === 'save_indicator') {
             : 0;
         $document = omoStatsLoadVisibleSpreadsheetDocument($documentId, $organizationId);
         if (!($document instanceof Document)) {
-            omoStatsActionRespond(false, 'Le document tableur choisi est introuvable ou non accessible.', [], 422);
+            omoStatsActionRespond(false, omoStatsT('stats.error.document_spreadsheet'), [], 422);
         }
 
         $sheet = StatIndicator::normalizeSpreadsheetSheet($_POST['spreadsheet_sheet'] ?? '');
@@ -383,7 +383,7 @@ if ($action === 'save_indicator') {
         if ($indicator->isSpreadsheetCellSource()) {
             $cell = StatIndicator::normalizeEthercalcCell($_POST['spreadsheet_cell'] ?? '');
             if ($cell === '') {
-                omoStatsActionRespond(false, 'La cellule du tableur doit etre ecrite sous la forme A1.', [], 422);
+                omoStatsActionRespond(false, omoStatsT('stats.error.spreadsheet_cell'), [], 422);
             }
             $spreadsheetSourceUpdate = [
                 'IDdocument' => (int)$document->getId(),
@@ -404,7 +404,7 @@ if ($action === 'save_indicator') {
                 }
             }
             if ($range === '' || $dateColumn === '' || count($valueColumns) === 0) {
-                omoStatsActionRespond(false, 'La plage, la colonne de date et au moins une colonne de valeur sont requises.', [], 422);
+                omoStatsActionRespond(false, omoStatsT('stats.error.columns_required'), [], 422);
             }
             preg_match('/^([A-Z]+)[0-9]+:([A-Z]+)[0-9]+$/', $range, $rangeMatches);
             $rangeStartColumn = StatIndicator::ethercalcColumnToIndex($rangeMatches[1] ?? '');
@@ -412,7 +412,7 @@ if ($action === 'save_indicator') {
             foreach (array_merge([$dateColumn], array_values($valueColumns)) as $selectedColumn) {
                 $selectedColumnIndex = StatIndicator::ethercalcColumnToIndex($selectedColumn);
                 if ($selectedColumnIndex < $rangeStartColumn || $selectedColumnIndex > $rangeEndColumn) {
-                    omoStatsActionRespond(false, 'Les colonnes de date et de valeurs doivent etre incluses dans la plage.', [], 422);
+                    omoStatsActionRespond(false, omoStatsT('stats.error.columns_in_range'), [], 422);
                 }
             }
             $currentValueColumn = StatIndicator::normalizeEthercalcColumn($indicator->get('spreadsheet_value_column'));
@@ -420,7 +420,7 @@ if ($action === 'save_indicator') {
             unset($valueColumns[$primaryValueColumn]);
             $spreadsheetAdditionalValueColumns = array_values($valueColumns);
             if (count($spreadsheetAdditionalValueColumns) > 0 && !omoStatsCanCreateContext($context)) {
-                omoStatsActionRespond(false, 'Le droit de creer des indicateurs est requis pour ajouter des courbes.', [], 403);
+                omoStatsActionRespond(false, omoStatsT('stats.error.create_permission'), [], 403);
             }
             $spreadsheetSourceUpdate = [
                 'IDdocument' => (int)$document->getId(),
@@ -673,10 +673,10 @@ if ($action === 'add_value') {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
     if ($indicator->isEthercalcSource()) {
-        omoStatsActionRespond(false, 'Les valeurs de cet indicateur sont synchronisees depuis EtherCalc.', [], 403);
+        omoStatsActionRespond(false, omoStatsT('stats.error.ethercalc_synced'), [], 403);
     }
     if ($indicator->isSpreadsheetSource()) {
-        omoStatsActionRespond(false, 'Les valeurs de cet indicateur sont synchronisees depuis un document tableur.', [], 403);
+        omoStatsActionRespond(false, omoStatsT('stats.error.spreadsheet_synced'), [], 403);
     }
 
     $valueNumber = omoStatsActionParseDecimal($_POST['value'] ?? null);
@@ -721,7 +721,7 @@ if ($action === 'delete_value') {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
     if ($indicator->isEthercalcSource()) {
-        omoStatsActionRespond(false, 'Les valeurs de cet indicateur sont synchronisees depuis EtherCalc.', [], 403);
+        omoStatsActionRespond(false, omoStatsT('stats.error.ethercalc_synced'), [], 403);
     }
 
     if (!$value->delete()) {
@@ -758,12 +758,12 @@ if ($action === 'create_spreadsheet_indicator') {
         : 0;
     $document = omoStatsLoadVisibleSpreadsheetDocument($documentId, $organizationId);
     if (!($document instanceof Document)) {
-        omoStatsActionRespond(false, 'Le document tableur choisi est introuvable ou non accessible.', [], 422);
+        omoStatsActionRespond(false, omoStatsT('stats.error.document_spreadsheet'), [], 422);
     }
 
     $mode = trim((string)($_POST['spreadsheet_mode'] ?? ''));
     if (!in_array($mode, ['cell', 'table'], true)) {
-        omoStatsActionRespond(false, 'Mode de lecture du tableur invalide.', [], 422);
+        omoStatsActionRespond(false, omoStatsT('stats.error.spreadsheet_mode'), [], 422);
     }
 
     $baseName = trim((string)($_POST['spreadsheet_name'] ?? ''));
@@ -781,7 +781,7 @@ if ($action === 'create_spreadsheet_indicator') {
     if ($mode === 'cell') {
         $cell = StatIndicator::normalizeEthercalcCell($_POST['spreadsheet_cell'] ?? '');
         if ($cell === '') {
-            omoStatsActionRespond(false, 'La cellule du tableur doit etre ecrite sous la forme A1.', [], 422);
+            omoStatsActionRespond(false, omoStatsT('stats.error.spreadsheet_cell'), [], 422);
         }
         $sourceDefinitions[] = [
             'name' => $baseName,
@@ -802,7 +802,7 @@ if ($action === 'create_spreadsheet_indicator') {
             }
         }
         if ($range === '' || $dateColumn === '' || count($valueColumns) === 0) {
-            omoStatsActionRespond(false, 'La plage, la colonne de date et une colonne de valeur sont requises.', [], 422);
+            omoStatsActionRespond(false, omoStatsT('stats.error.single_value_column_required'), [], 422);
         }
         preg_match('/^([A-Z]+)[0-9]+:([A-Z]+)[0-9]+$/', $range, $rangeMatches);
         $rangeStartColumn = StatIndicator::ethercalcColumnToIndex($rangeMatches[1] ?? '');
@@ -810,7 +810,7 @@ if ($action === 'create_spreadsheet_indicator') {
         foreach (array_merge([$dateColumn], array_values($valueColumns)) as $selectedColumn) {
             $selectedColumnIndex = StatIndicator::ethercalcColumnToIndex($selectedColumn);
             if ($selectedColumnIndex < $rangeStartColumn || $selectedColumnIndex > $rangeEndColumn) {
-                omoStatsActionRespond(false, 'Les colonnes de date et de valeurs doivent etre incluses dans la plage.', [], 422);
+                omoStatsActionRespond(false, omoStatsT('stats.error.columns_in_range'), [], 422);
             }
         }
         foreach ($valueColumns as $column) {
@@ -844,7 +844,7 @@ if ($action === 'create_spreadsheet_indicator') {
             $indicator->set('IDuser', $currentUserId > 0 ? $currentUserId : null);
             $indicator->set('IDdocument', (int)$document->getId());
             $indicator->set('name', $definition['name']);
-            $indicator->set('description', 'Synchronise depuis le document tableur ' . trim((string)$document->get('title')));
+            $indicator->set('description', 'Synchronisé depuis le document tableur « ' . trim((string)$document->get('title')) . ' ».');
             $indicator->set('source_type', $definition['source_type']);
             foreach ($definition as $field => $value) {
                 if ($field !== 'name' && $field !== 'source_type') {
@@ -910,7 +910,7 @@ if ($action === 'create_ethercalc_indicator') {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
     if (!omoEthercalcHasConfig()) {
-        omoStatsActionRespond(false, 'EtherCalc n est pas configure.', [], 422);
+        omoStatsActionRespond(false, omoStatsT('stats.error.ethercalc_config'), [], 422);
     }
 
     $documentId = isset($_POST['ethercalc_document_id']) && is_numeric($_POST['ethercalc_document_id'])
@@ -918,12 +918,12 @@ if ($action === 'create_ethercalc_indicator') {
         : 0;
     $document = omoStatsLoadVisibleEthercalcDocument($documentId, $organizationId);
     if (!($document instanceof Document)) {
-        omoStatsActionRespond(false, 'Le document EtherCalc choisi est introuvable ou non accessible.', [], 422);
+        omoStatsActionRespond(false, omoStatsT('stats.error.document_ethercalc'), [], 422);
     }
 
     $mode = trim((string)($_POST['ethercalc_mode'] ?? ''));
     if (!in_array($mode, ['cell', 'table'], true)) {
-        omoStatsActionRespond(false, 'Mode de lecture EtherCalc invalide.', [], 422);
+        omoStatsActionRespond(false, omoStatsT('stats.error.ethercalc_mode'), [], 422);
     }
 
     $baseName = trim((string)($_POST['ethercalc_name'] ?? ''));
@@ -939,7 +939,7 @@ if ($action === 'create_ethercalc_indicator') {
     if ($mode === 'cell') {
         $cell = StatIndicator::normalizeEthercalcCell($_POST['ethercalc_cell'] ?? '');
         if ($cell === '') {
-            omoStatsActionRespond(false, 'La cellule EtherCalc doit etre ecrite sous la forme A1.', [], 422);
+            omoStatsActionRespond(false, omoStatsT('stats.error.ethercalc_cell'), [], 422);
         }
         $sourceDefinitions[] = [
             'name' => $baseName,
@@ -959,7 +959,7 @@ if ($action === 'create_ethercalc_indicator') {
             }
         }
         if ($range === '' || $dateColumn === '' || count($valueColumns) === 0) {
-            omoStatsActionRespond(false, 'La plage, la colonne de date et une colonne de valeur sont requises.', [], 422);
+            omoStatsActionRespond(false, omoStatsT('stats.error.single_value_column_required'), [], 422);
         }
         preg_match('/^([A-Z]+)[0-9]+:([A-Z]+)[0-9]+$/', $range, $rangeMatches);
         $rangeStartColumn = StatIndicator::ethercalcColumnToIndex($rangeMatches[1] ?? '');
@@ -968,7 +968,7 @@ if ($action === 'create_ethercalc_indicator') {
         foreach ($selectedColumns as $selectedColumn) {
             $selectedColumnIndex = StatIndicator::ethercalcColumnToIndex($selectedColumn);
             if ($selectedColumnIndex < $rangeStartColumn || $selectedColumnIndex > $rangeEndColumn) {
-                omoStatsActionRespond(false, 'Les colonnes de date et de valeurs doivent etre incluses dans la plage.', [], 422);
+                omoStatsActionRespond(false, omoStatsT('stats.error.columns_in_range'), [], 422);
             }
         }
         foreach ($valueColumns as $column) {
@@ -1001,7 +1001,7 @@ if ($action === 'create_ethercalc_indicator') {
             $indicator->set('IDuser', $currentUserId > 0 ? $currentUserId : null);
             $indicator->set('IDdocument', (int)$document->getId());
             $indicator->set('name', $definition['name']);
-            $indicator->set('description', 'Synchronise depuis le tableur collaboratif ' . trim((string)$document->get('title')) . '.');
+            $indicator->set('description', 'Synchronisé depuis le tableur collaboratif « ' . trim((string)$document->get('title')) . ' ».');
             $indicator->set('source_url', null);
             $indicator->set('source_type', $definition['source_type']);
             $indicator->set('ethercalc_cell', $definition['ethercalc_cell'] ?? null);

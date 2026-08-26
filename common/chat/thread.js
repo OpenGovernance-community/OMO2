@@ -46,6 +46,9 @@
             var image = document.createElement('img');
             image.src = photoUrl;
             image.alt = '';
+            image.width = 34;
+            image.height = 34;
+            image.decoding = 'async';
             avatar.appendChild(image);
         } else {
             avatar.textContent = String(message.initials || '?');

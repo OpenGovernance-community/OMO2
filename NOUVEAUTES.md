@@ -2,7 +2,20 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-26
+
+- Un journal SQL optionnel mesure maintenant la duree complete des requetes, y compris la lecture des resultats, et produit un resume par requete HTTP pour faciliter l identification des acces couteux sans enregistrer les valeurs sensibles.
+- Les appels de maintenance OMO sont maintenant consignes dans un journal unique et compact avec leur origine, leur statut et leur duree totale afin de mesurer leur frequence en utilisation reelle.
+- Les images statiques surdimensionnees ont ete allegees, les icones d interface sont ramenees a une definition adaptee a leur affichage et les nouvelles photos de profil sont stockees en WebP 320 x 320 sans apparition temporaire en plein ecran.
+
+- Le module Indicateurs utilise maintenant des textes français corrigés, avec accents et ponctuation harmonisée dans les écrans, les erreurs API, les graphiques et les éditeurs.
+- Les nouveaux messages liés aux sources Framacalc et aux documents tableurs sont traduits en anglais dans le bundle de production.
+
 ## 2026-08-25
+
+- Les textes de l’application Décisions ont été revus : libellés français corrigés, ponctuation harmonisée et éléments partagés des propositions raccordés aux traductions.
+
+- Les écrans de scrutin réutilisent davantage les composants CSS génériques pour les réglages, ce qui réduit les styles locaux redondants.
 
 - Les parametres des scrutins proposent maintenant un ordre aleatoire stable des propositions pour chaque participant pendant le vote, avec un resume dans la console de gestion. La Consultation seule affiche de nouveau son choix de participation anonyme ou nominative.
 
@@ -36,6 +49,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les images telechargees sont maintenant affichees directement dans la fiche Document, et les fichiers audio reconnus utilisent une icone dediee avec un lecteur integre.
 - La liste Documents reserve maintenant la largeur de la case de selection sur toutes les cartes, y compris lorsque le document ne peut pas etre selectionne, afin de garder les contenus alignes.
 - Les actions groupees de la liste Documents proposent maintenant le deplacement de plusieurs holons et/ou dossiers avec le meme selecteur de destination que le deplacement individuel.
+- Les textes de l’application Documents ont été relus et harmonisés : traductions complétées, accents, apostrophes et ponctuation corrigés dans les écrans, messages et éditeur de PV.
+- Les styles de l’application Documents réutilisent davantage les primitives génériques pour les listes, formulaires, panneaux et empilements, avec les règles locales limitées aux comportements réellement spécifiques.
 
 ## 2026-08-24
 

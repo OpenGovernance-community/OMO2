@@ -298,7 +298,7 @@ if ($action === 'set_pv_template') {
     if (!is_array($templateResult) || ($templateResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
-            'message' => trim((string)($templateResult['text'] ?? 'Impossible de modifier le modele de PV.')),
+            'message' => trim((string)($templateResult['text'] ?? 'Impossible de modifier le modèle de PV.')),
         ], 403);
     }
 
@@ -313,7 +313,7 @@ if ($action === 'claim_pv_editor') {
     if (!is_array($claimResult) || ($claimResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
-            'message' => trim((string)($claimResult['text'] ?? 'Impossible de devenir editeur du PV.')),
+            'message' => trim((string)($claimResult['text'] ?? 'Impossible de devenir éditeur du PV.')),
             'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
         ], 403);
     }
@@ -346,7 +346,7 @@ if ($action === 'replace_pv_editor') {
     if (!is_array($replaceResult) || ($replaceResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
-            'message' => trim((string)($replaceResult['text'] ?? 'Impossible de remplacer l editeur du PV.')),
+            'message' => trim((string)($replaceResult['text'] ?? 'Impossible de remplacer l’éditeur du PV.')),
             'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
         ], 403);
     }
@@ -552,7 +552,7 @@ if ($action === 'add_point') {
     if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
-            'message' => trim((string)($saveResult['text'] ?? 'Impossible de creer le point.')),
+            'message' => trim((string)($saveResult['text'] ?? 'Impossible de créer le point.')),
         ], 400);
     }
 
@@ -581,7 +581,7 @@ if ($action === 'add_group') {
     if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
-            'message' => trim((string)($saveResult['text'] ?? 'Impossible de creer le groupe.')),
+            'message' => trim((string)($saveResult['text'] ?? 'Impossible de créer le groupe.')),
         ], 400);
     }
 
@@ -642,7 +642,7 @@ if ($action === 'lock_point') {
     if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
-            'message' => trim((string)($lockResult['text'] ?? 'Point verrouille.')),
+            'message' => trim((string)($lockResult['text'] ?? 'Point verrouillé.')),
             'lock' => is_array($lockResult['lock'] ?? null) ? $lockResult['lock'] : null,
             'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
         ], 423);
@@ -737,7 +737,7 @@ if ($action === 'save_point') {
     if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
-            'message' => trim((string)($lockResult['text'] ?? 'Point verrouille.')),
+            'message' => trim((string)($lockResult['text'] ?? 'Point verrouillé.')),
             'lock' => is_array($lockResult['lock'] ?? null) ? $lockResult['lock'] : null,
             'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
         ], 423);
@@ -855,7 +855,7 @@ if ($action === 'delete_point') {
     if (!$point->delete()) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
-            'message' => 'Impossible de supprimer cet element.',
+            'message' => 'Impossible de supprimer cet élément.',
         ], 400);
     }
 
@@ -943,7 +943,7 @@ if ($action === 'update_stage') {
     if (!is_array($stageResult) || ($stageResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
-            'message' => trim((string)($stageResult['text'] ?? 'Impossible de changer l etape du PV.')),
+            'message' => trim((string)($stageResult['text'] ?? 'Impossible de changer l’étape du PV.')),
             'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
         ], 400);
     }
@@ -975,7 +975,7 @@ if ($action === 'toggle_attendance') {
     if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
-            'message' => trim((string)($saveResult['text'] ?? 'Impossible de sauver la presence.')),
+            'message' => trim((string)($saveResult['text'] ?? 'Impossible d’enregistrer la présence.')),
             'attendance' => omoDocumentsPvEditorBuildAttendancePayload($document, $organizationId),
         ], 400);
     }

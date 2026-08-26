@@ -30,7 +30,7 @@ if (
     || !$document->canViewInOrganizationContext($organizationId, $documentHolonId > 0 ? $documentHolonId : null)
 ) {
     http_response_code(403);
-    echo 'Acces refuse.';
+    echo 'Accès refusé.';
     exit;
 }
 
@@ -44,7 +44,7 @@ if (!$organization->load($organizationId)) {
 $padId = $document->getEtherpadPadId();
 if ($padId === '' || !omoEtherpadHasConfig($organization)) {
     http_response_code(503);
-    echo 'Etherpad n est pas disponible pour cette organisation.';
+    echo 'Etherpad n’est pas disponible pour cette organisation.';
     exit;
 }
 
@@ -79,7 +79,7 @@ if ($cookieDomain === null) {
 $user = new User();
 if (!$user->load($userId)) {
     http_response_code(503);
-    echo 'Identite OMO introuvable.';
+    echo 'Identité OMO introuvable.';
     exit;
 }
 
@@ -91,7 +91,7 @@ $authorResult = omoEtherpadApiRequest($organization, 'createAuthorIfNotExistsFor
 $authorId = trim((string)($authorResult['data']['authorID'] ?? ''));
 if (!($authorResult['status'] ?? false) || $authorId === '') {
     http_response_code(503);
-    echo 'Impossible de creer l identite Etherpad.';
+    echo 'Impossible de créer l’identité Etherpad.';
     exit;
 }
 
@@ -99,7 +99,7 @@ $groupId = trim((string)strtok($padId, '$'));
 $sessionResult = omoEtherpadGetOrCreateSession($organization, $groupId, $authorId);
 if (!($sessionResult['status'] ?? false)) {
     http_response_code(503);
-    echo 'Impossible de creer la session Etherpad.';
+    echo 'Impossible de créer la session Etherpad.';
     exit;
 }
 

@@ -174,6 +174,7 @@ class TranslationBundleRefreshJob extends DbObject
 
         $affectedRows = $statement->rowCount();
         $statement->closeCursor();
+        self::finishSqlPerformanceStatement($statement, 'execute', true, $affectedRows);
         if ($affectedRows < 1) {
             return null;
         }
