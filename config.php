@@ -38,6 +38,11 @@ $GLOBALS['ethercalcBaseUrl'] = envValue('ETHERCALC_URL', '');
 $GLOBALS['ethercalcInternalBaseUrl'] = envValue('ETHERCALC_INTERNAL_URL', '');
 $GLOBALS['ethercalcKey'] = envValue('ETHERCALC_KEY', '');
 
+// Configuration SpaceDeck partagee par les tableaux blancs collaboratifs.
+$GLOBALS['spaceDeckBaseUrl'] = envValue('SPACEDECK_URL', 'https://whiteboard.localtest.me');
+$GLOBALS['spaceDeckInternalUrl'] = envValue('SPACEDECK_INTERNAL_URL', '');
+$GLOBALS['spaceDeckProvisioningToken'] = envValue('SPACEDECK_PROVISIONING_TOKEN', '');
+
 // Config du mail
 $GLOBALS['mailHost'] = envValue('MAIL_HOST', 'mail.infomaniak.com');
 $GLOBALS['mailPort'] = envInt('MAIL_PORT', 587);

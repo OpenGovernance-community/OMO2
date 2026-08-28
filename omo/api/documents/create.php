@@ -3,6 +3,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/etherpad.php';
 require_once dirname(__DIR__, 3) . '/common/ethercalc.php';
 require_once dirname(__DIR__, 3) . '/common/collabora.php';
+require_once dirname(__DIR__, 3) . '/common/spacedeck.php';
 require_once dirname(__DIR__, 3) . '/common/patreon.php';
 require_once dirname(__DIR__, 3) . '/common/openai_text.php';
 require_once dirname(__DIR__, 3) . '/common/object_visibility_selector.php';
@@ -27,8 +28,10 @@ $sourceLang = [
     'documents.create.type.pv' => ['text' => 'PV', 'context' => 'Option label for PV documents.'],
     'documents.create.type.etherpad' => ['text' => 'Pad coopératif', 'context' => 'Option label for Etherpad documents.'],
     'documents.create.type.collabora' => ['text' => 'Document coopératif', 'context' => 'Option label for Collabora documents.'],
+    'documents.create.type.collabora_spreadsheet' => ['text' => 'Classeur collaboratif', 'context' => 'Option label for Collabora spreadsheet documents.'],
     'documents.create.type.collabora_presentation' => ['text' => 'Présentation collaborative', 'context' => 'Option label for collaborative presentation documents.'],
     'documents.create.type.collabora_drawing' => ['text' => 'Dessin collaboratif', 'context' => 'Option label for collaborative drawing documents.'],
+    'documents.create.type.whiteboard' => ['text' => 'Tableau blanc collaboratif', 'context' => 'Option label for SpaceDeck whiteboard documents.'],
     'documents.create.type.ethercalc' => ['text' => 'Tableur collaboratif', 'context' => 'Option label for EtherCalc documents.'],
     'documents.create.type.folder' => ['text' => 'Dossier', 'context' => 'Option label for folders.'],
     'documents.create.field.title' => ['text' => 'Titre', 'context' => 'Label of the document title field.'],
@@ -53,9 +56,12 @@ $sourceLang = [
     'documents.create.field.etherpad_hint' => ['text' => 'Un nouveau pad sera créé sur le serveur Etherpad de cette organisation.', 'context' => 'Hint shown when creating an Etherpad document.'],
     'documents.create.field.etherpad_missing' => ['text' => 'Aucun serveur Etherpad n’est configuré pour cette organisation.', 'context' => 'Hint shown when Etherpad is not configured.'],
     'documents.create.field.collabora_hint' => ['text' => 'Un nouveau fichier bureautique sera créé dans le stockage de documents choisi puis ouvert avec Collabora.', 'context' => 'Hint shown when creating a Collabora document.'],
+    'documents.create.field.collabora_spreadsheet_hint' => ['text' => 'Un nouveau classeur sera créé dans le stockage de documents choisi puis ouvert avec Collabora.', 'context' => 'Hint shown when creating a Collabora spreadsheet document.'],
     'documents.create.field.collabora_presentation_hint' => ['text' => 'Une nouvelle présentation sera créée dans le stockage de documents choisi puis ouverte avec Collabora.', 'context' => 'Hint shown when creating a collaborative presentation.'],
     'documents.create.field.collabora_drawing_hint' => ['text' => 'Un nouveau dessin sera créé dans le stockage de documents choisi puis ouvert avec Collabora.', 'context' => 'Hint shown when creating a collaborative drawing.'],
     'documents.create.field.collabora_missing' => ['text' => 'Configurez un stockage de documents et un serveur Collabora dans les paramètres Documents.', 'context' => 'Hint shown when Collabora is not configured.'],
+    'documents.create.field.whiteboard_hint' => ['text' => 'Un nouveau tableau blanc sera créé sur le serveur SpaceDeck puis ouvert dans OMO.', 'context' => 'Hint shown when creating a SpaceDeck whiteboard document.'],
+    'documents.create.field.whiteboard_missing' => ['text' => 'Configurez le serveur SpaceDeck dans la configuration du serveur avant de créer un whiteboard.', 'context' => 'Hint shown when SpaceDeck is not configured.'],
     'documents.create.field.ethercalc_hint' => ['text' => 'Un nouveau tableur sera créé sur le serveur EtherCalc configuré pour OMO.', 'context' => 'Hint shown when creating an EtherCalc document.'],
     'documents.create.field.ethercalc_missing' => ['text' => 'Aucun serveur EtherCalc n’est configuré.', 'context' => 'Hint shown when EtherCalc is not configured.'],
     'documents.create.field.pv_template' => ['text' => 'Modèle de base', 'context' => 'Label of the optional PV template selector.'],
@@ -184,7 +190,14 @@ $organizationLoaded = $organizationId > 0 && $organization->load($organizationId
 $nextcloudDocumentsAvailable = $organizationLoaded && $organization->hasDocumentStorage();
 $etherpadDocumentsAvailable = $organizationLoaded && omoEtherpadCanUseEditingSessions($organization);
 $collaboraDocumentsAvailable = $organizationLoaded && $nextcloudDocumentsAvailable && omoCollaboraHasConfig($organization);
+$whiteboardDocumentsAvailable = omoSpacedeckHasConfig();
 $ethercalcDocumentsAvailable = omoEthercalcHasConfig();
+$etherpadGroupAvailable = $etherpadDocumentsAvailable
+    || $ethercalcDocumentsAvailable
+    || in_array($documentType, [Document::TYPE_ETHERPAD, Document::TYPE_ETHERCALC], true);
+$collaboraGroupAvailable = $collaboraDocumentsAvailable
+    || in_array($documentType, [Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_SPREADSHEET, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true);
+$whiteboardGroupAvailable = $whiteboardDocumentsAvailable || $documentType === Document::TYPE_WHITEBOARD;
 
 if (!$isEditing && $organizationLoaded) {
     $pvTemplates = new \dbObject\ArrayDocument();
@@ -403,24 +416,38 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             data-omo-document-type
                             <?= $isEditing ? 'disabled' : '' ?>
                         >
-                            <option value="<?= $escape(Document::TYPE_HTML) ?>" <?= $documentType === Document::TYPE_HTML ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.html')) ?></option>
+                            <option value="<?= $escape(Document::TYPE_FOLDER) ?>" <?= $documentType === Document::TYPE_FOLDER ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.folder')) ?></option>
+                            <?php if ($etherpadGroupAvailable || $collaboraGroupAvailable || $whiteboardGroupAvailable): ?>
+                            <option disabled aria-hidden="true">--------------------</option>
+                            <?php endif; ?>
                             <option value="<?= $escape(Document::TYPE_EXTERNAL_LINK) ?>" <?= $documentType === Document::TYPE_EXTERNAL_LINK ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.external')) ?></option>
                             <?php if ($nextcloudDocumentsAvailable || $documentType === Document::TYPE_UPLOADED_FILE): ?>
                                 <option value="<?= $escape(Document::TYPE_UPLOADED_FILE) ?>" <?= $documentType === Document::TYPE_UPLOADED_FILE ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.uploaded')) ?></option>
                             <?php endif; ?>
+                            <option value="<?= $escape(Document::TYPE_HTML) ?>" <?= $documentType === Document::TYPE_HTML ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.html')) ?></option>
+                            <option value="<?= $escape(Document::TYPE_PV) ?>" <?= $documentType === Document::TYPE_PV ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.pv')) ?></option>
+                            <option disabled aria-hidden="true">--------------------</option>
                             <?php if ($etherpadDocumentsAvailable || $documentType === Document::TYPE_ETHERPAD): ?>
                                 <option value="<?= $escape(Document::TYPE_ETHERPAD) ?>" <?= $documentType === Document::TYPE_ETHERPAD ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.etherpad')) ?></option>
-                            <?php endif; ?>
-                            <?php if ($collaboraDocumentsAvailable || in_array($documentType, [Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true)): ?>
-                                <option value="<?= $escape(Document::TYPE_COLLABORA_DOCUMENT) ?>" <?= $documentType === Document::TYPE_COLLABORA_DOCUMENT ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.collabora')) ?></option>
-                                <option value="<?= $escape(Document::TYPE_COLLABORA_PRESENTATION) ?>" <?= $documentType === Document::TYPE_COLLABORA_PRESENTATION ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.collabora_presentation')) ?></option>
-                                <option value="<?= $escape(Document::TYPE_COLLABORA_DRAWING) ?>" <?= $documentType === Document::TYPE_COLLABORA_DRAWING ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.collabora_drawing')) ?></option>
                             <?php endif; ?>
                             <?php if ($ethercalcDocumentsAvailable || $documentType === Document::TYPE_ETHERCALC): ?>
                                 <option value="<?= $escape(Document::TYPE_ETHERCALC) ?>" <?= $documentType === Document::TYPE_ETHERCALC ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.ethercalc')) ?></option>
                             <?php endif; ?>
-                            <option value="<?= $escape(Document::TYPE_PV) ?>" <?= $documentType === Document::TYPE_PV ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.pv')) ?></option>
-                            <option value="<?= $escape(Document::TYPE_FOLDER) ?>" <?= $documentType === Document::TYPE_FOLDER ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.folder')) ?></option>
+                            <?php if ($etherpadGroupAvailable && ($collaboraGroupAvailable || $whiteboardGroupAvailable)): ?>
+                            <option disabled aria-hidden="true">--------------------</option>
+                            <?php endif; ?>
+                            <?php if ($collaboraGroupAvailable): ?>
+                                <option value="<?= $escape(Document::TYPE_COLLABORA_DOCUMENT) ?>" <?= $documentType === Document::TYPE_COLLABORA_DOCUMENT ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.collabora')) ?></option>
+                                <option value="<?= $escape(Document::TYPE_COLLABORA_SPREADSHEET) ?>" <?= $documentType === Document::TYPE_COLLABORA_SPREADSHEET ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.collabora_spreadsheet')) ?></option>
+                                <option value="<?= $escape(Document::TYPE_COLLABORA_PRESENTATION) ?>" <?= $documentType === Document::TYPE_COLLABORA_PRESENTATION ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.collabora_presentation')) ?></option>
+                                <option value="<?= $escape(Document::TYPE_COLLABORA_DRAWING) ?>" <?= $documentType === Document::TYPE_COLLABORA_DRAWING ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.collabora_drawing')) ?></option>
+                            <?php endif; ?>
+                            <?php if ($collaboraGroupAvailable && $whiteboardGroupAvailable): ?>
+                            <option disabled aria-hidden="true">--------------------</option>
+                            <?php endif; ?>
+                            <?php if ($whiteboardGroupAvailable): ?>
+                                <option value="<?= $escape(Document::TYPE_WHITEBOARD) ?>" <?= $documentType === Document::TYPE_WHITEBOARD ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.whiteboard')) ?></option>
+                            <?php endif; ?>
                         </select>
                         <?php if ($isEditing): ?>
                             <input type="hidden" name="document_type" value="<?= $escape($documentType) ?>">
@@ -552,16 +579,27 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                     </span>
                 </div>
 
-                <div class="omo-document-editor__field generic-form-field" data-omo-document-collabora-section<?= !in_array($documentType, [Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true) ? ' hidden' : '' ?>>
+                <div class="omo-document-editor__field generic-form-field" data-omo-document-collabora-section<?= !in_array($documentType, [Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_SPREADSHEET, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true) ? ' hidden' : '' ?>>
                     <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.type.collabora')) ?></span>
                     <span class="omo-document-editor__hint generic-help-text">
-                        <?= $escape($collaboraDocumentsAvailable || in_array($documentType, [Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true)
-                            ? ($documentType === Document::TYPE_COLLABORA_PRESENTATION
+                        <?= $escape($collaboraDocumentsAvailable || in_array($documentType, [Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_SPREADSHEET, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true)
+                            ? ($documentType === Document::TYPE_COLLABORA_SPREADSHEET
+                                ? omoDocumentsCreateT('documents.create.field.collabora_spreadsheet_hint')
+                                : ($documentType === Document::TYPE_COLLABORA_PRESENTATION
                                 ? omoDocumentsCreateT('documents.create.field.collabora_presentation_hint')
                                 : ($documentType === Document::TYPE_COLLABORA_DRAWING
                                     ? omoDocumentsCreateT('documents.create.field.collabora_drawing_hint')
-                                    : omoDocumentsCreateT('documents.create.field.collabora_hint')))
+                                    : omoDocumentsCreateT('documents.create.field.collabora_hint'))))
                             : omoDocumentsCreateT('documents.create.field.collabora_missing')) ?>
+                    </span>
+                </div>
+
+                <div class="omo-document-editor__field generic-form-field" data-omo-document-whiteboard-section<?= $documentType !== Document::TYPE_WHITEBOARD ? ' hidden' : '' ?>>
+                    <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.type.whiteboard')) ?></span>
+                    <span class="omo-document-editor__hint generic-help-text">
+                        <?= $escape($whiteboardDocumentsAvailable || $documentType === Document::TYPE_WHITEBOARD
+                            ? omoDocumentsCreateT('documents.create.field.whiteboard_hint')
+                            : omoDocumentsCreateT('documents.create.field.whiteboard_missing')) ?>
                     </span>
                 </div>
 
@@ -888,6 +926,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     const uploadSection = form.querySelector('[data-omo-document-upload-section]');
     const etherpadSection = form.querySelector('[data-omo-document-etherpad-section]');
     const collaboraSection = form.querySelector('[data-omo-document-collabora-section]');
+    const whiteboardSection = form.querySelector('[data-omo-document-whiteboard-section]');
     const ethercalcSection = form.querySelector('[data-omo-document-ethercalc-section]');
     const externalUrlField = form.querySelector('[data-omo-document-external-url]');
     const externalOpenInNewWindowField = form.querySelector('input[name="open_in_new_window"]');
@@ -968,7 +1007,8 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         const isExternalLink = getSelectedDocumentType() === 'external_link';
         const isUploadedFile = isUploadedFileTypeSelected();
         const isEtherpad = getSelectedDocumentType() === 'etherpad';
-        const isCollabora = ['collabora_document', 'collabora_presentation', 'collabora_drawing'].includes(getSelectedDocumentType());
+        const isCollabora = ['collabora_document', 'collabora_spreadsheet', 'collabora_presentation', 'collabora_drawing'].includes(getSelectedDocumentType());
+        const isWhiteboard = getSelectedDocumentType() === 'whiteboard';
         const isEthercalc = getSelectedDocumentType() === 'ethercalc';
 
         if (contentSection) {
@@ -997,6 +1037,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
         if (collaboraSection) {
             collaboraSection.hidden = !isCollabora;
+        }
+
+        if (whiteboardSection) {
+            whiteboardSection.hidden = !isWhiteboard;
         }
 
         if (ethercalcSection) {

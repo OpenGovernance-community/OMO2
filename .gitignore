@@ -7,12 +7,17 @@
 /docker/etherpad/.env.private
 /docker/ethercalc/.env.private
 /docker/collabora/.env.private
+/docker/spacedeck/.env.private
+/docker/spacedeck/fork/
 /docker/db/init/*.local.sql
 /docker/db/init/*.private.sql
 /docker/db/init/*.disabled
 /img/upload/**
 
 /test/**
+!/test/
+!/test/spacedeck.php
+!/test/spacedeck_access.php
 /*.htm
 /vendor/
 /dompdf/**

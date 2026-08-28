@@ -931,6 +931,7 @@ CREATE TABLE `document` (
   `storedfilesize` int(11) DEFAULT NULL,
   `etherpadpadid` varchar(255) DEFAULT NULL,
   `ethercalcroomid` varchar(255) DEFAULT NULL,
+  `spacedeckspaceid` varchar(255) DEFAULT NULL,
   `IDdocument_parent` int(11) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `datemodification` datetime DEFAULT NULL,
@@ -3786,6 +3787,10 @@ CREATE TABLE `user_holon` (
   `IDholon` int(11) NOT NULL,
   `parameters` mediumtext DEFAULT NULL,
   `focus` varchar(250) DEFAULT NULL,
+  `time_budget_hours` decimal(12,2) DEFAULT NULL,
+  `time_budget_recurrence` varchar(10) DEFAULT NULL,
+  `money_budget` decimal(12,2) DEFAULT NULL,
+  `money_budget_recurrence` varchar(10) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateconnexion` datetime DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT 0,
@@ -3802,13 +3807,13 @@ CREATE TABLE `user_holon` (
 LOCK TABLES `user_holon` WRITE;
 /*!40000 ALTER TABLE `user_holon` DISABLE KEYS */;
 INSERT INTO `user_holon` VALUES
-(1,1,1,NULL,NULL,'2024-03-05 16:43:15',NULL,1),
-(2,1,683,'[]',NULL,'2026-07-23 13:38:59',NULL,0),
-(3,1,693,NULL,NULL,'2026-07-23 13:48:17',NULL,1),
-(4,1,692,NULL,NULL,'2026-07-23 13:49:46',NULL,1),
-(5,1,682,NULL,NULL,'2026-07-23 13:50:25',NULL,1),
-(6,1,708,NULL,NULL,'2026-07-23 13:51:33',NULL,1),
-(7,1,833,'{\"isAdmin\":true}',NULL,'2026-07-28 09:08:57',NULL,1);
+(1,1,1,NULL,NULL,NULL,NULL,NULL,NULL,'2024-03-05 16:43:15',NULL,1),
+(2,1,683,'[]',NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:38:59',NULL,0),
+(3,1,693,NULL,NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:48:17',NULL,1),
+(4,1,692,NULL,NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:49:46',NULL,1),
+(5,1,682,NULL,NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:50:25',NULL,1),
+(6,1,708,NULL,NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:51:33',NULL,1),
+(7,1,833,'{\"isAdmin\":true}',NULL,NULL,NULL,NULL,NULL,'2026-07-28 09:08:57',NULL,1);
 /*!40000 ALTER TABLE `user_holon` ENABLE KEYS */;
 UNLOCK TABLES;
 

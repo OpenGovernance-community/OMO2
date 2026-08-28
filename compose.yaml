@@ -98,6 +98,27 @@ services:
       - "9980"
     privileged: true
 
+  spacedeck:
+    build:
+      context: ./docker/spacedeck
+      dockerfile: Dockerfile
+    image: omo-spacedeck:local
+    env_file:
+      - ./docker/spacedeck/.env.private
+    environment:
+      NODE_ENV: development
+    expose:
+      - "9666"
+    volumes:
+      - spacedeck_storage:/app/storage
+      - spacedeck_database:/app/database
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:9666/', function (response) { process.exit(response.statusCode < 500 ? 0 : 1); }).on('error', function () { process.exit(1); });\""]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 20s
+
   db:
     image: mariadb:11.4
     environment:
@@ -142,3 +163,5 @@ volumes:
   db_data:
   etherpad_data:
   ethercalc_data:
+  spacedeck_storage:
+  spacedeck_database:
