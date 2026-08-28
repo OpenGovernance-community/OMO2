@@ -11,8 +11,10 @@
 		public const TYPE_ETHERPAD = 'etherpad';
 		public const TYPE_ETHERCALC = 'ethercalc';
 		public const TYPE_COLLABORA_DOCUMENT = 'collabora_document';
+		public const TYPE_COLLABORA_SPREADSHEET = 'collabora_spreadsheet';
 		public const TYPE_COLLABORA_PRESENTATION = 'collabora_presentation';
 		public const TYPE_COLLABORA_DRAWING = 'collabora_drawing';
+		public const TYPE_WHITEBOARD = 'whiteboard';
 		public const PV_STAGE_PREPARATION = 'preparation';
 		public const PV_STAGE_MEETING = 'meeting';
 		public const PV_STAGE_REVIEW = 'review';
@@ -31,7 +33,7 @@
 			return [
 				[['title'], 'required'],						// Champs obligatoires
 				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'project_visible_in_holon', 'storedfilesize'], 'integer'],				// Nombres entiers
-				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'etherpadpadid', 'ethercalcroomid'], 'string'],	// Chaines de caractere
+				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'etherpadpadid', 'ethercalcroomid', 'spacedeckspaceid'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
 				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDuser_pv_editor', 'IDuser_pv_official_editor', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
@@ -81,6 +83,7 @@
 				'storedfilesize' => 'Taille du fichier',
 				'etherpadpadid' => 'Identifiant du pad Etherpad',
 				'ethercalcroomid' => 'Identifiant du tableur EtherCalc',
+				'spacedeckspaceid' => 'Identifiant du tableau SpaceDeck',
 			];
 		}
 
@@ -118,6 +121,7 @@
 				'storedfilesize' => 'Taille du fichier distant en octets',
 				'etherpadpadid' => 'Identifiant technique du pad associe a ce document',
 				'ethercalcroomid' => 'Identifiant technique du tableur associe a ce document',
+				'spacedeckspaceid' => 'Identifiant technique du tableau blanc SpaceDeck associe a ce document',
 			];
 		}
 
@@ -133,6 +137,7 @@
 				'storedfilemime' => 255,
 				'etherpadpadid' => 255,
 				'ethercalcroomid' => 255,
+				'spacedeckspaceid' => 255,
 			];
 		}
 
@@ -306,6 +311,14 @@
 					$ethercalcDeleteResult = omoEthercalcDeleteDocumentSheet($this->getEthercalcRoomId());
 					if (!is_array($ethercalcDeleteResult) || empty($ethercalcDeleteResult['status'])) {
 						throw new \RuntimeException('ethercalc_delete_failed');
+					}
+				}
+
+				if ($this->isWhiteboardDocument() && $this->getSpaceDeckSpaceId() !== '') {
+					require_once dirname(__DIR__, 2) . '/common/spacedeck.php';
+					$spaceDeckDeleteResult = omoSpacedeckDeleteSpace($this->getSpaceDeckSpaceId());
+					if (!is_array($spaceDeckDeleteResult) || empty($spaceDeckDeleteResult['status'])) {
+						throw new \RuntimeException('spacedeck_delete_failed');
 					}
 				}
 
@@ -1848,12 +1861,20 @@
 				return self::TYPE_COLLABORA_DOCUMENT;
 			}
 
+			if ($documentType === self::TYPE_COLLABORA_SPREADSHEET) {
+				return self::TYPE_COLLABORA_SPREADSHEET;
+			}
+
 			if ($documentType === self::TYPE_COLLABORA_PRESENTATION) {
 				return self::TYPE_COLLABORA_PRESENTATION;
 			}
 
 			if ($documentType === self::TYPE_COLLABORA_DRAWING) {
 				return self::TYPE_COLLABORA_DRAWING;
+			}
+
+			if ($documentType === self::TYPE_WHITEBOARD) {
+				return self::TYPE_WHITEBOARD;
 			}
 
 			return self::TYPE_HTML;
@@ -1972,8 +1993,10 @@
 				self::TYPE_ETHERPAD => 'Pad coopératif',
 				self::TYPE_ETHERCALC => 'Tableur collaboratif',
 				self::TYPE_COLLABORA_DOCUMENT => 'Document Coopératif',
+				self::TYPE_COLLABORA_SPREADSHEET => 'Classeur collaboratif',
 				self::TYPE_COLLABORA_PRESENTATION => 'Présentation collaborative',
 				self::TYPE_COLLABORA_DRAWING => 'Dessin collaboratif',
+				self::TYPE_WHITEBOARD => 'Tableau blanc collaboratif',
 			);
 		}
 
@@ -2022,6 +2045,29 @@
 		public function isEthercalcDocument(): bool
 		{
 			return $this->getDocumentType() === self::TYPE_ETHERCALC;
+		}
+
+		public function isWhiteboardDocument(): bool
+		{
+			return $this->getDocumentType() === self::TYPE_WHITEBOARD;
+		}
+
+		public function getSpaceDeckSpaceId(): string
+		{
+			return $this->isWhiteboardDocument() ? trim((string)$this->get('spacedeckspaceid')) : '';
+		}
+
+		public function buildSpaceDeckOpenUrl(int $userId = 0): string
+		{
+			if (!$this->isWhiteboardDocument()) {
+				return '';
+			}
+
+			require_once dirname(__DIR__, 2) . '/common/spacedeck.php';
+			$resolvedUserId = $userId > 0
+				? $userId
+				: (function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0);
+			return omoSpacedeckBuildDocumentOpenUrl($this, $resolvedUserId);
 		}
 
 		public function canOpenWithCollabora(): bool
@@ -2150,9 +2196,10 @@
 			return !$this->isFolder()
 				&& (
 					$this->supportsHtmlContent()
-					|| $this->isExternalLink()
+				|| $this->isExternalLink()
 				|| $this->isUploadedFile()
-				);
+				|| $this->isWhiteboardDocument()
+			);
 		}
 
 		public static function sanitizeExternalUrl($url): string
@@ -3023,6 +3070,15 @@
 			return '<div class="omo-document-ethercalc-snapshot">Tableur collaboratif a consulter dans OMO.</div>';
 		}
 
+		protected function renderSpaceDeckFrameForViewer(string $openUrl): string
+		{
+			return '<div class="omo-document-spacedeck">'
+				. '<iframe class="omo-document-spacedeck__frame" src="'
+				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+				. '" loading="lazy" allow="clipboard-read; clipboard-write; fullscreen" allowfullscreen referrerpolicy="same-origin"></iframe>'
+				. '</div>';
+		}
+
 		protected function renderCollaboraFrameForViewer(string $openUrl): string
 		{
 			return '<div class="omo-document-collabora">'
@@ -3337,6 +3393,13 @@
 				return $this->renderEthercalcForViewer();
 			}
 
+			if ($this->isWhiteboardDocument()) {
+				$openUrl = $this->buildSpaceDeckOpenUrl();
+				return $openUrl !== ''
+					? $this->renderSpaceDeckFrameForViewer($openUrl)
+					: '<div class="omo-document-spacedeck omo-document-spacedeck--empty">Le tableau blanc collaboratif n est pas disponible.</div>';
+			}
+
 			return $this->renderResolvedHtmlForViewer(
 				(string)$this->get('content'),
 				(int)$this->get('IDorganization')
@@ -3392,6 +3455,9 @@
 				$contentHashSource = $renderedContent;
 			} elseif ($this->isEthercalcDocument()) {
 				$renderedContent = $this->renderEthercalcSnapshotForViewer();
+				$contentHashSource = $renderedContent;
+			} elseif ($this->isWhiteboardDocument()) {
+					$renderedContent = '<div class="omo-document-spacedeck-snapshot">Tableau blanc collaboratif a consulter dans OMO.</div>';
 				$contentHashSource = $renderedContent;
 			} else {
 				$renderedContent = $this->renderResolvedHtmlForViewer($content, (int)$this->get('IDorganization'));
@@ -4583,10 +4649,13 @@
 			$requestedDocumentType = (string)($values['document_type'] ?? '');
 			$isFolder = !empty($values['is_folder']) || trim(mb_strtolower($requestedDocumentType, 'UTF-8')) === self::TYPE_FOLDER;
 			$normalizedRequestedDocumentType = self::normalizeDocumentType($requestedDocumentType, $isFolder);
-			$isCollaboraTemplate = in_array($normalizedRequestedDocumentType, [self::TYPE_COLLABORA_DOCUMENT, self::TYPE_COLLABORA_PRESENTATION, self::TYPE_COLLABORA_DRAWING], true);
-			$collaboraTemplateKind = $normalizedRequestedDocumentType === self::TYPE_COLLABORA_PRESENTATION
+			$isCollaboraTemplate = in_array($normalizedRequestedDocumentType, [self::TYPE_COLLABORA_DOCUMENT, self::TYPE_COLLABORA_SPREADSHEET, self::TYPE_COLLABORA_PRESENTATION, self::TYPE_COLLABORA_DRAWING], true);
+			$isWhiteboard = $normalizedRequestedDocumentType === self::TYPE_WHITEBOARD;
+			$collaboraTemplateKind = $normalizedRequestedDocumentType === self::TYPE_COLLABORA_SPREADSHEET
+				? 'spreadsheet'
+				: ($normalizedRequestedDocumentType === self::TYPE_COLLABORA_PRESENTATION
 				? 'presentation'
-				: ($normalizedRequestedDocumentType === self::TYPE_COLLABORA_DRAWING ? 'drawing' : 'document');
+				: ($normalizedRequestedDocumentType === self::TYPE_COLLABORA_DRAWING ? 'drawing' : 'document'));
 			$documentType = $isCollaboraTemplate ? self::TYPE_UPLOADED_FILE : $normalizedRequestedDocumentType;
 			$allowEmptyTypePayload = !empty($values['allow_empty_type_payload']);
 			$eventId = isset($values['event_id']) ? (int)$values['event_id'] : 0;
@@ -4664,10 +4733,18 @@
 			$createdEtherpadPadId = '';
 			$createdEthercalcRoomId = '';
 			$createdCollaboraPath = '';
+			$createdSpaceDeckSpaceId = '';
 			$cleanupCreatedCollaboraFile = static function () use (&$createdCollaboraPath, $organization): void {
 				if ($createdCollaboraPath !== '' && $organization instanceof \dbObject\Organization && (int)$organization->getId() > 0) {
 					$organization->deleteDocumentFileFromStorage($createdCollaboraPath);
 					$createdCollaboraPath = '';
+				}
+			};
+			$cleanupCreatedSpaceDeckSpace = static function () use (&$createdSpaceDeckSpaceId): void {
+				if ($createdSpaceDeckSpaceId !== '') {
+					require_once dirname(__DIR__, 2) . '/common/spacedeck.php';
+					omoSpacedeckDeleteSpace($createdSpaceDeckSpaceId);
+					$createdSpaceDeckSpaceId = '';
 				}
 			};
 			if ($documentType === self::TYPE_ETHERPAD) {
@@ -4678,6 +4755,9 @@
 			}
 			if ($isCollaboraTemplate) {
 				require_once dirname(__DIR__, 2) . '/common/collabora.php';
+			}
+			if ($isWhiteboard) {
+				require_once dirname(__DIR__, 2) . '/common/spacedeck.php';
 			}
 
 			try {
@@ -4741,6 +4821,14 @@
 
 						return array('status' => false, 'text' => 'Le serveur Collabora n est pas configure pour cette organisation.');
 					}
+				}
+
+				if ($isWhiteboard && !omoSpacedeckHasConfig()) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array('status' => false, 'text' => 'Le serveur SpaceDeck n est pas configure pour cette organisation.');
 				}
 
 				if ($documentType === self::TYPE_ETHERPAD && !omoEtherpadCanUseEditingSessions($organization)) {
@@ -4847,6 +4935,29 @@
 					}
 				}
 
+				if ($isWhiteboard) {
+					$spaceDeckResult = omoSpacedeckProvisionSpace($title);
+					$createdSpaceDeckSpaceId = trim((string)($spaceDeckResult['data']['id'] ?? ''));
+					if (!is_array($spaceDeckResult) || empty($spaceDeckResult['status']) || $createdSpaceDeckSpaceId === '') {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return array('status' => false, 'text' => 'Impossible de creer le tableau blanc SpaceDeck.');
+					}
+
+					$this->set('spacedeckspaceid', $createdSpaceDeckSpaceId);
+					$spaceDeckSaveResult = $this->save();
+					if (!is_array($spaceDeckSaveResult) || ($spaceDeckSaveResult['status'] ?? false) !== true) {
+						$cleanupCreatedSpaceDeckSpace();
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+
+						return $spaceDeckSaveResult;
+					}
+				}
+
 				$visibilityType = $this->normalizeScopeTypeForCurrentContext(
 					$visibilityType,
 					\dbObject\ObjectVisibility::TYPE_ORGANIZATION
@@ -4883,6 +4994,7 @@
 				$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);
 				if (!is_array($visibilitySaveResult) || ($visibilitySaveResult['status'] ?? false) !== true) {
 					$cleanupCreatedCollaboraFile();
+					$cleanupCreatedSpaceDeckSpace();
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
 					}
@@ -4893,6 +5005,7 @@
 				$editVisibilitySaveResult = $this->saveEditVisibilityRule($editVisibilityType);
 				if (!is_array($editVisibilitySaveResult) || ($editVisibilitySaveResult['status'] ?? false) !== true) {
 					$cleanupCreatedCollaboraFile();
+					$cleanupCreatedSpaceDeckSpace();
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
 					}
@@ -5009,6 +5122,9 @@
 				}
 				if ($createdCollaboraPath !== '' && $organization instanceof \dbObject\Organization && (int)$organization->getId() > 0) {
 					$organization->deleteDocumentFileFromStorage($createdCollaboraPath);
+				}
+				if ($createdSpaceDeckSpaceId !== '') {
+					omoSpacedeckDeleteSpace($createdSpaceDeckSpaceId);
 				}
 				if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
 					$pdo->rollBack();

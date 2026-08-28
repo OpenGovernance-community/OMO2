@@ -7,6 +7,7 @@ use dbObject\ArrayUserOrganization;
 use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\User;
+use dbObject\UserHolon;
 use dbObject\UserOrganization;
 
 function omoTeamHolonTypeLabel(Holon $holon, ?array $lang = null, ?array $sourceLang = null)
@@ -159,11 +160,13 @@ $teamScopeLabels = array(
 $rawMemberCards = array();
 $contextAdminUserIds = array();
 $removableContextMemberUserIds = array();
+$directContextMemberUserIds = array();
 
 if ($hasStructureContext) {
     $removableContextMemberUserIds = array_fill_keys($currentHolon->getAssociatedMemberUserIds(array(
         'organizationId' => $organizationId,
     )), true);
+    $directContextMemberUserIds = array_fill_keys($currentHolon->getDirectMemberUserIds($organizationId), true);
 
     if ($teamScope === 'contextual') {
         $rawMemberCards = $currentHolon->getAssociatedMemberCards(array(
@@ -222,6 +225,7 @@ if ($hasStructureContext) {
         }
 
         $removableContextMemberUserIds[$userId] = true;
+        $directContextMemberUserIds[$userId] = true;
 
         $rawMemberCards[] = array(
             'userId' => $userId,
@@ -239,6 +243,11 @@ if ($intlLocale === '') {
 $formatter = class_exists('IntlDateFormatter')
     ? new IntlDateFormatter($intlLocale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, null, null, 'dd MMMM yyyy')
     : null;
+$budgetFormatter = class_exists('NumberFormatter') ? new NumberFormatter($intlLocale, NumberFormatter::DECIMAL) : null;
+if ($budgetFormatter instanceof NumberFormatter) {
+    $budgetFormatter->setAttribute(NumberFormatter::MIN_FRACTION_DIGITS, 0);
+    $budgetFormatter->setAttribute(NumberFormatter::MAX_FRACTION_DIGITS, 2);
+}
 
 $formatDate = static function ($value) use ($formatter): string {
     if (!$value instanceof DateTimeInterface) {
@@ -254,6 +263,29 @@ $formatDate = static function ($value) use ($formatter): string {
 
     return $value->format('d.m.Y');
 };
+
+$formatBudgetAmount = static function ($value) use ($budgetFormatter): string {
+    if (!is_numeric($value) || (float)$value < 0) {
+        return '';
+    }
+
+    $amount = (float)$value;
+    if ($budgetFormatter instanceof NumberFormatter) {
+        $formatted = $budgetFormatter->format($amount);
+        if (is_string($formatted) && $formatted !== '') {
+            return $formatted;
+        }
+    }
+
+    return rtrim(rtrim(number_format($amount, 2, '.', ' '), '0'), '.');
+};
+
+$budgetRecurrenceLabels = array(
+    UserHolon::BUDGET_RECURRENCE_DAY => omoTeamT('team.assignment_popup.recurrence.day', [], $lang, $sourceLang),
+    UserHolon::BUDGET_RECURRENCE_WEEK => omoTeamT('team.assignment_popup.recurrence.week', [], $lang, $sourceLang),
+    UserHolon::BUDGET_RECURRENCE_MONTH => omoTeamT('team.assignment_popup.recurrence.month', [], $lang, $sourceLang),
+    UserHolon::BUDGET_RECURRENCE_YEAR => omoTeamT('team.assignment_popup.recurrence.year', [], $lang, $sourceLang),
+);
 
 $formatLastSeenLabel = static function ($organizationDate, $globalDate) use ($formatDate, $lang, $sourceLang): string {
     $organizationLabel = $organizationDate instanceof DateTimeInterface ? $formatDate($organizationDate) : '';
@@ -296,6 +328,7 @@ $parseAssignmentDate = static function ($value): ?DateTimeImmutable {
 $isOrganizationTeamContext = !$hasStructureContext || $currentHolon->isOrganizationHolon();
 $currentHolonTypeId = $hasStructureContext ? (int)$currentHolon->get('IDtypeholon') : 4;
 $currentHolonIdForAssignments = $hasStructureContext ? (int)$currentHolon->getId() : 0;
+$isRoleTeamContext = $currentHolonTypeId === 1;
 
 foreach ($rawMemberCards as $rawCard) {
     $userId = (int)($rawCard['userId'] ?? 0);
@@ -333,6 +366,10 @@ foreach ($rawMemberCards as $rawCard) {
         : array();
     $directAssignment = null;
     $contextFocus = '';
+    $contextTimeBudget = null;
+    $contextTimeBudgetRecurrence = '';
+    $contextMoneyBudget = null;
+    $contextMoneyBudgetRecurrence = '';
     $roleAssignments = array();
     $fallbackAssignments = array();
     foreach ($assignmentLinks as $assignmentLink) {
@@ -347,6 +384,10 @@ foreach ($rawMemberCards as $rawCard) {
         if ((int)($assignmentLink['holonId'] ?? 0) === $currentHolonIdForAssignments) {
             $directAssignment = $assignmentDate;
             $contextFocus = trim((string)($assignmentLink['focus'] ?? ''));
+            $contextTimeBudget = $assignmentLink['timeBudgetHours'] ?? null;
+            $contextTimeBudgetRecurrence = trim((string)($assignmentLink['timeBudgetRecurrence'] ?? ''));
+            $contextMoneyBudget = $assignmentLink['moneyBudget'] ?? null;
+            $contextMoneyBudgetRecurrence = trim((string)($assignmentLink['moneyBudgetRecurrence'] ?? ''));
         }
         if ((int)($assignmentLink['holonTypeId'] ?? 0) === 1 && $assignmentDate instanceof DateTimeImmutable) {
             $roleAssignments[] = $assignmentDate;
@@ -364,6 +405,16 @@ foreach ($rawMemberCards as $rawCard) {
         usort($fallbackAssignments, static fn (DateTimeImmutable $left, DateTimeImmutable $right): int => $left <=> $right);
         $contextAssignmentAt = $fallbackAssignments[0];
     }
+    $contextTimeBudgetAmount = $formatBudgetAmount($contextTimeBudget);
+    $contextMoneyBudgetAmount = $formatBudgetAmount($contextMoneyBudget);
+    $contextTimeBudgetRecurrenceLabel = $budgetRecurrenceLabels[$contextTimeBudgetRecurrence] ?? '';
+    $contextMoneyBudgetRecurrenceLabel = $budgetRecurrenceLabels[$contextMoneyBudgetRecurrence] ?? '';
+    $contextTimeBudgetLabel = $contextTimeBudgetAmount !== '' && $contextTimeBudgetRecurrenceLabel !== ''
+        ? omoTeamT('team.member.time_budget_value', array('amount' => $contextTimeBudgetAmount, 'recurrence' => $contextTimeBudgetRecurrenceLabel), $lang, $sourceLang)
+        : '';
+    $contextMoneyBudgetLabel = $contextMoneyBudgetAmount !== '' && $contextMoneyBudgetRecurrenceLabel !== ''
+        ? omoTeamT('team.member.money_budget_value', array('amount' => $contextMoneyBudgetAmount, 'recurrence' => $contextMoneyBudgetRecurrenceLabel), $lang, $sourceLang)
+        : '';
     $displayName = trim((string)($rawCard['displayName'] ?? ''));
     if ($displayName === '' && $hasMembership) {
         $displayName = $membership->getUserDisplayName();
@@ -425,6 +476,8 @@ foreach ($rawMemberCards as $rawCard) {
         $username,
         $secondary,
         $currentHolonTypeId === 1 ? $contextFocus : '',
+        $contextTimeBudgetLabel,
+        $contextMoneyBudgetLabel,
         $hasPendingInvitation
             ? omoTeamT('team.member.invitation_pending', [], $lang, $sourceLang)
             : ($isPending ? omoTeamT('team.member.to_invite', [], $lang, $sourceLang) : ''),
@@ -446,6 +499,7 @@ foreach ($rawMemberCards as $rawCard) {
         'isOrganizationAdmin' => $isOrganizationAdmin,
         'isContextAdmin' => $isContextAdmin,
         'isRemovableInContext' => isset($removableContextMemberUserIds[$userId]),
+        'isDirectContextMember' => isset($directContextMemberUserIds[$userId]),
         'isPending' => $isPending,
         'hasPendingInvitation' => $hasPendingInvitation,
         'joinedAtLabel' => $effectiveJoinedAt instanceof DateTimeInterface ? $formatDate($effectiveJoinedAt) : '',
@@ -456,6 +510,8 @@ foreach ($rawMemberCards as $rawCard) {
         'contextAssignmentLabel' => $contextAssignmentAt instanceof DateTimeImmutable ? $formatDate($contextAssignmentAt) : '',
         'contextAssignmentRoleCount' => $contextAssignmentRoleCount,
         'contextFocus' => $currentHolonTypeId === 1 ? $contextFocus : '',
+        'contextTimeBudgetLabel' => $contextTimeBudgetLabel,
+        'contextMoneyBudgetLabel' => $contextMoneyBudgetLabel,
         'canViewDetail' => $canViewUserDetail,
         'latlong' => $latlong,
         'searchText' => $memberSearchText,
@@ -497,6 +553,9 @@ $canAddCurrentHolonMembers = $hasStructureContext ? $currentHolon->isAllowed('CA
 $canRemoveCurrentHolonMembers = $hasStructureContext ? $currentHolon->canEdit() : false;
 $canGrantCurrentHolonAdmin = $hasStructureContext ? $currentHolon->isAllowed('CAN_ADD_ADMIN') : false;
 $canManageCurrentHolonMembers = $canRemoveCurrentHolonMembers || $canGrantCurrentHolonAdmin;
+$canEditCurrentMemberAssignments = $hasStructureContext
+    && !$currentHolon->isOrganizationHolon()
+    && $currentHolon->canEdit();
 $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
 $mapMembers = array_values(array_filter($memberCards, static function (array $card): bool {
     return is_array($card['latlong'] ?? null);
@@ -652,6 +711,14 @@ if ($leafletMapsEnabled) {
                                         aria-label="<?= omoApiEscape(omoTeamT('team.member.actions_for', ['name' => (string)$card['displayName']], $lang, $sourceLang)) ?>"
                                     >...</button>
                                     <div class="omo-team-card__menu-panel" data-team-member-menu-panel="1" hidden>
+                                        <?php if ($canEditCurrentMemberAssignments && !empty($card['isDirectContextMember'])): ?>
+                                            <button
+                                                type="button"
+                                                class="omo-team-card__menu-item"
+                                                data-team-edit-assignment="1"
+                                                data-user-id="<?= (int)$card['userId'] ?>"
+                                            ><?= omoApiEscape(omoTeamT('team.action.edit_assignment', [], $lang, $sourceLang)) ?></button>
+                                        <?php endif; ?>
                                         <?php if ($canRemoveCurrentHolonMembers): ?>
                                             <button
                                                 type="button"
@@ -716,20 +783,31 @@ if ($leafletMapsEnabled) {
 
                             <div class="omo-team-card__meta">
                                 <div class="omo-team-card__meta-row">
-                                    <span class="omo-team-card__meta-label generic-meta-label generic-meta-label--compact"><?= omoApiEscape(omoTeamT('team.member.email', [], $lang, $sourceLang)) ?></span>
-                                    <span class="omo-team-card__meta-value generic-meta-value generic-meta-value--compact<?= $card['email'] === '' ? ' omo-team-card__meta-value--muted' : '' ?>">
-                                        <?= omoApiEscape($card['email'] !== '' ? $card['email'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang)) ?>
+                                    <span class="omo-team-card__meta-label generic-meta-label generic-meta-label--compact"><?= omoApiEscape(omoTeamT($isRoleTeamContext ? 'team.member.focus' : 'team.member.email', [], $lang, $sourceLang)) ?></span>
+                                    <span class="omo-team-card__meta-value<?= $isRoleTeamContext ? ' omo-team-card__focus-value' : '' ?> generic-meta-value generic-meta-value--compact<?= ($isRoleTeamContext ? $card['contextFocus'] : $card['email']) === '' ? ' omo-team-card__meta-value--muted' : '' ?>">
+                                        <?= omoApiEscape($isRoleTeamContext
+                                            ? ($card['contextFocus'] !== '' ? $card['contextFocus'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang))
+                                            : ($card['email'] !== '' ? $card['email'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang))) ?>
                                     </span>
                                 </div>
-                                <?php if ($currentHolonTypeId === 1 && $card['contextFocus'] !== ''): ?>
-                                    <div class="omo-team-card__meta-row">
-                                        <span class="omo-team-card__meta-label generic-meta-label generic-meta-label--compact"><?= omoApiEscape(omoTeamT('team.member.focus', [], $lang, $sourceLang)) ?></span>
-                                        <span class="omo-team-card__meta-value omo-team-card__focus-value generic-meta-value generic-meta-value--compact">
-                                            <?= omoApiEscape($card['contextFocus']) ?>
-                                        </span>
-                                    </div>
-                                <?php endif; ?>
                             </div>
+
+                            <?php if ($card['contextTimeBudgetLabel'] !== '' || $card['contextMoneyBudgetLabel'] !== ''): ?>
+                                <div class="omo-team-card__budgets">
+                                    <?php if ($card['contextTimeBudgetLabel'] !== ''): ?>
+                                        <div class="omo-team-card__budget">
+                                            <span class="omo-team-card__meta-label generic-meta-label generic-meta-label--compact"><?= omoApiEscape(omoTeamT('team.assignment_popup.time_budget', [], $lang, $sourceLang)) ?></span>
+                                            <span class="omo-team-card__meta-value generic-meta-value generic-meta-value--compact"><?= omoApiEscape($card['contextTimeBudgetLabel']) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <?php if ($card['contextMoneyBudgetLabel'] !== ''): ?>
+                                        <div class="omo-team-card__budget">
+                                            <span class="omo-team-card__meta-label generic-meta-label generic-meta-label--compact"><?= omoApiEscape(omoTeamT('team.assignment_popup.money_budget', [], $lang, $sourceLang)) ?></span>
+                                            <span class="omo-team-card__meta-value generic-meta-value generic-meta-value--compact"><?= omoApiEscape($card['contextMoneyBudgetLabel']) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endif; ?>
 
                             <div class="omo-team-card__dates">
                                 <?php if ($isOrganizationTeamContext): ?>
@@ -788,7 +866,7 @@ if ($leafletMapsEnabled) {
                     <div class="omo-team__compact-list-header generic-file-list__header">
                         <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--name"><?= omoApiEscape(omoTeamT('team.column.name', [], $lang, $sourceLang)) ?></div>
                         <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--firstname"><?= omoApiEscape(omoTeamT('team.column.first_name', [], $lang, $sourceLang)) ?></div>
-                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--phone"><?= omoApiEscape(omoTeamT('team.column.phone', [], $lang, $sourceLang)) ?></div>
+                        <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--phone"><?= omoApiEscape(omoTeamT($isRoleTeamContext ? 'team.member.focus' : 'team.column.phone', [], $lang, $sourceLang)) ?></div>
                         <div class="omo-team__compact-list-header-cell generic-file-list__header-cell omo-team__compact-list-header-cell--email"><?= omoApiEscape(omoTeamT('team.member.email', [], $lang, $sourceLang)) ?></div>
                     </div>
                     <?php foreach ($memberCards as $card): ?>
@@ -893,8 +971,9 @@ if ($leafletMapsEnabled) {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="omo-team__compact-cell generic-file-list__cell" data-label="<?= omoApiEscape(omoTeamT('team.column.phone', [], $lang, $sourceLang)) ?>">
-                                    <span class="<?= $compactPhone === '' ? 'omo-team__compact-placeholder' : '' ?>"><?= omoApiEscape($compactPhone !== '' ? $compactPhone : '-') ?></span>
+                                <div class="omo-team__compact-cell generic-file-list__cell" data-label="<?= omoApiEscape(omoTeamT($isRoleTeamContext ? 'team.member.focus' : 'team.column.phone', [], $lang, $sourceLang)) ?>">
+                                    <?php $compactFocus = trim((string)($card['contextFocus'] ?? '')); ?>
+                                    <span class="<?= ($isRoleTeamContext ? $compactFocus : $compactPhone) === '' ? 'omo-team__compact-placeholder' : '' ?>"><?= omoApiEscape($isRoleTeamContext ? ($compactFocus !== '' ? $compactFocus : '-') : ($compactPhone !== '' ? $compactPhone : '-')) ?></span>
                                 </div>
                                 <div class="omo-team__compact-cell generic-file-list__cell" data-label="<?= omoApiEscape(omoTeamT('team.member.email', [], $lang, $sourceLang)) ?>">
                                     <span class="<?= $card['email'] === '' ? 'omo-team__compact-placeholder' : '' ?>"><?= omoApiEscape($card['email'] !== '' ? $card['email'] : '-') ?></span>
@@ -1470,6 +1549,18 @@ if ($leafletMapsEnabled) {
 
 .omo-team-card__focus-value {
     white-space: pre-line;
+}
+
+.omo-team-card__budgets {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.omo-team-card__budget {
+    display: grid;
+    gap: 1px;
+    min-width: 0;
 }
 
 .omo-team-card__meta-value--muted {
@@ -2482,6 +2573,34 @@ $(document)
     window.commonTopbarOpenModal(
         omoTeamText.addMemberTitle,
         'api/holons/member_popup.php?hid=' + holonId,
+        'fetch'
+    );
+  });
+
+$(document)
+  .off('click.omoTeamEditAssignment', '[data-team-edit-assignment="1"]')
+  .on('click.omoTeamEditAssignment', '[data-team-edit-assignment="1"]', function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const userId = Number($(this).data('user-id') || 0);
+    const root = document.getElementById('omo-team-root');
+    const holonId = Number(root ? root.getAttribute('data-team-cid') : 0);
+    if (!userId || !holonId || typeof window.commonTopbarOpenModal !== 'function') {
+        return;
+    }
+
+    const teamScope = root ? String(root.getAttribute('data-team-scope') || 'contextual') : 'contextual';
+    const teamQuery = root ? String(root.getAttribute('data-team-query') || '') : '';
+    const popupUrl = 'api/team/member_assignment_popup.php?hid=' + encodeURIComponent(String(holonId))
+        + '&user_id=' + encodeURIComponent(String(userId))
+        + '&team_scope=' + encodeURIComponent(teamScope)
+        + '&team_query=' + encodeURIComponent(teamQuery);
+
+    omoCloseTeamMemberMenus();
+    window.commonTopbarOpenModal(
+        <?= json_encode(omoTeamT('team.assignment_popup.title', [], $lang, $sourceLang), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+        popupUrl,
         'fetch'
     );
   });

@@ -225,7 +225,7 @@ $serverEnvClientTexts = [
                             <h4 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars((string)$section['title'], ENT_QUOTES, 'UTF-8') ?></h4>
                             <p class="omo-server-env-popup__section-intro generic-description"><?= htmlspecialchars((string)$section['intro'], ENT_QUOTES, 'UTF-8') ?></p>
                         </div>
-                        <?php if (in_array($sectionKey, ['etherpad', 'ethercalc'], true)): ?>
+                        <?php if (in_array($sectionKey, ['etherpad', 'ethercalc', 'spacedeck'], true)): ?>
                         <button
                             type="button"
                             class="generic-action-button generic-action-button--secondary"
@@ -283,7 +283,7 @@ $serverEnvClientTexts = [
                             </label>
                         <?php endforeach; ?>
                     </div>
-                    <?php if (in_array($sectionKey, ['etherpad', 'ethercalc'], true)): ?>
+                    <?php if (in_array($sectionKey, ['etherpad', 'ethercalc', 'spacedeck'], true)): ?>
                     <div
                         class="omo-server-env-popup__feedback generic-soft-panel generic-feedback"
                         data-server-env-test-feedback="<?= htmlspecialchars($sectionKey, ENT_QUOTES, 'UTF-8') ?>"

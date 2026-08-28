@@ -2,6 +2,13 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-28
+
+- Les popups reposent maintenant sur une zone interne bornee plutot que sur un calcul entre hauteur dynamique et marges. Une tolerance basse de deux pixels evite les arrondis qui declenchaient des barres de defilement pour quelques pixels de depassement, tandis que les tableaux larges peuvent garder leur propre zone horizontale.
+- Dans Team, le menu d un membre permet maintenant d editer son affectation : focus, budget temps et budget argent, avec une recurrence par jour, semaine, mois ou annee. Les deux budgets sont edites sur une ligne et affiches dans les fiches de membres. La popup reutilise directement le cadre de la modale pour eviter une bordure interne et un defilement superflu.
+- Dans Team, les membres d un role affichent leur focus a la place de l e-mail deja visible sous leur nom. La colonne Telephone de la vue compacte devient egalement Focus dans ce contexte.
+- Un prototype autonome de test de maturite organisationnelle est disponible dans `/survey/`. Il presente les 10 principes un par un, distingue l affinite, les perceptions d aujourd hui et les aspirations pour demain, puis les compare dans un radar interactif a 10 axes. La zone 5 signale le risque d aller trop loin et le parcours avance automatiquement. Apres un retour en arriere, le bouton Suivant reste disponible uniquement sur les etapes deja remplies, puis l automatisme reprend des la premiere etape incomplete. Les choix sont presentes directement par leur intitule, sans libelle Situation suivi d un numero.
+
 ## 2026-08-26
 
 - L editeur de PV suspend maintenant sa synchronisation lorsque son panneau est ferme, replie ou masque. Lorsqu il est visible, une empreinte legere evite de reconstruire les points, presences et discussions tant que leurs donnees n ont pas change, avec une frequence reduite hors edition active.
@@ -1868,4 +1875,18 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 ## 2026-08-19
 
 - Lorsqu un modele cible conserve les domaines d autorite sous forme de liste de textes, l import OMO 1 inscrit maintenant les libelles des domaines au lieu de leurs identifiants.
+
+## 2026-08-27
+
+- Un service Docker local SpaceDeck Open est disponible sur `https://whiteboard.localtest.me`, avec proxy HTTPS/WebSocket, stockage persistant et configuration prete pour un futur controle d acces OMO.
+- Une page de test locale ouvre maintenant un tableau blanc SpaceDeck dans une iframe avec un acces invite, sans creation prealable de compte.
+- Le fork local de SpaceDeck peut maintenant deleguer son controle d acces a OMO : chaque jeton court est lie au tableau, a l utilisateur et au droit lecture/ecriture. Le nom OMO verifie est utilise pour l interface, les curseurs et les metadonnees, sans faire confiance au nom envoye par le navigateur.
+- La page de test SpaceDeck utilise desormais l utilisateur OMO connecte et permet de verifier les modes edition, lecture seule et acces refuse.
+- Les Documents peuvent maintenant creer un type `Whiteboard collaboratif` : un tableau SpaceDeck est provisionne automatiquement, ouvert dans une iframe avec les droits OMO, puis supprime avec le document.
+- Le fork SpaceDeck propose maintenant un objet Post-it base sur une forme carree, avec ombre et reduction automatique de la taille du texte pour le maintenir dans ses limites.
+- Le Post-it est maintenant accessible comme outil autonome dans la barre d outils et se place au prochain clic dans le tableau blanc.
+- Le texte des Post-it ne se dedouble plus et sa taille se reduit desormais dans une zone de texte contrainte.
+- L ajustement de texte des Post-it est declenche pendant la saisie, le collage et la suppression, puis conserve la meme taille apres la fin de l edition.
 - Le calage d un import OMO 1 sur un modele propose maintenant de ne pas importer une propriete source, sans recreer sa valeur sur les instances associees.
+- La configuration globale de SpaceDeck est maintenant disponible dans Admin du serveur : URL publique, URL interne optionnelle, jeton de provisioning et cle de signature des acces, avec un test qui cree puis supprime un tableau temporaire.
+- Le menu de creation des Documents est maintenant groupe par familles, avec le dossier en tete, des separateurs visuels et le tableau blanc collaboratif a la fin. Un classeur collaboratif cree desormais un fichier ODS directement editable dans Collabora.
