@@ -26,6 +26,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Sous les groupes, le rapport fait emerger deux terrains communs distincts : les quatre constats d aujourd hui et les quatre destinations de demain les plus partages. Chaque liste possede son propre classement par un indice d alignement de 0 a 100 fonde sur la variance : 100 lorsque toutes les personnes choisissent le meme niveau, 0 pour une repartition uniforme entre les cinq niveaux ou une dispersion encore plus forte.
 - Les formulations courtes des situations dans le terrain commun et les fiches detaillees donnent acces au texte complet de la proposition dans une infobulle, au survol comme au focus clavier.
 - Lors du passage automatique d Aujourd hui a Demain, le defilement cible maintenant la barre des periodes elle-meme afin que sa marge sticky protege aussi la premiere proposition contre un masquage sous la barre.
+- Les infobulles des diagnostics d alignement, de dispersion et de polarisation indiquent maintenant la taille de l echantillon et l ecart type utilises pour la lecture. Le meme detail statistique est disponible sur les indices d alignement du terrain commun.
 
 ## 2026-08-26
 

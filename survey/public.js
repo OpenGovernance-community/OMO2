@@ -26,6 +26,14 @@
         return score % 1 === 0 ? String(score) : score.toFixed(1).replace('.', ',');
     }
 
+    function formatStatistic(value) {
+        var statistic = Number(value);
+        if (!Number.isFinite(statistic)) {
+            return '';
+        }
+        return statistic.toFixed(2).replace('.', ',');
+    }
+
     function interpolate(template, variables) {
         return String(template || '').replace(/\{([a-zA-Z]+)\}/g, function (match, key) {
             return Object.prototype.hasOwnProperty.call(variables, key) ? String(variables[key]) : match;
@@ -175,8 +183,15 @@
             dot.setAttribute('aria-hidden', 'true');
             copy.appendChild(element('strong', '', period.label));
             copy.appendChild(element('small', '', statusLabels.label));
-            signal.title = statusLabels.description || '';
-            signal.setAttribute('aria-label', period.label + ' : ' + statusLabels.label + '. ' + (statusLabels.description || ''));
+            var tooltip = statusLabels.description || '';
+            if (labels.agreementStats) {
+                tooltip += (tooltip ? ' ' : '') + interpolate(labels.agreementStats, {
+                    count: question.responseCount,
+                    stddev: formatStatistic(question[period.key + 'Stddev'])
+                });
+            }
+            signal.title = tooltip;
+            signal.setAttribute('aria-label', period.label + ' : ' + statusLabels.label + '. ' + tooltip);
             signal.append(dot, copy);
             signals.appendChild(signal);
             hasSignal = true;
@@ -233,8 +248,15 @@
                     var affinitySignal = element('span', 'survey-result-card__affinity-signal survey-result-card__affinity-signal--' + affinityStatus);
                     var affinityDot = element('i', 'organization-report__agreement-dot organization-report__agreement-dot--' + affinityStatus);
                     affinityDot.setAttribute('aria-hidden', 'true');
-                    affinitySignal.title = affinityStatusLabels.description || '';
-                    affinitySignal.setAttribute('aria-label', affinityStatusLabels.label + '. ' + (affinityStatusLabels.description || ''));
+                    var affinityTooltip = affinityStatusLabels.description || '';
+                    if (labels.agreementStats) {
+                        affinityTooltip += (affinityTooltip ? ' ' : '') + interpolate(labels.agreementStats, {
+                            count: question.responseCount,
+                            stddev: formatStatistic(question.affinityStddev)
+                        });
+                    }
+                    affinitySignal.title = affinityTooltip;
+                    affinitySignal.setAttribute('aria-label', affinityStatusLabels.label + '. ' + affinityTooltip);
                     affinitySignal.append(affinityDot, element('span', '', affinityStatusLabels.label));
                     affinity.appendChild(affinitySignal);
                 }
