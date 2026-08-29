@@ -329,6 +329,7 @@ $isOrganizationTeamContext = !$hasStructureContext || $currentHolon->isOrganizat
 $currentHolonTypeId = $hasStructureContext ? (int)$currentHolon->get('IDtypeholon') : 4;
 $currentHolonIdForAssignments = $hasStructureContext ? (int)$currentHolon->getId() : 0;
 $isRoleTeamContext = $currentHolonTypeId === 1;
+$assignmentReviewReferenceDate = new DateTimeImmutable('today');
 
 foreach ($rawMemberCards as $rawCard) {
     $userId = (int)($rawCard['userId'] ?? 0);
@@ -370,6 +371,7 @@ foreach ($rawMemberCards as $rawCard) {
     $contextTimeBudgetRecurrence = '';
     $contextMoneyBudget = null;
     $contextMoneyBudgetRecurrence = '';
+    $contextAssignmentReviewDate = null;
     $roleAssignments = array();
     $fallbackAssignments = array();
     foreach ($assignmentLinks as $assignmentLink) {
@@ -388,6 +390,7 @@ foreach ($rawMemberCards as $rawCard) {
             $contextTimeBudgetRecurrence = trim((string)($assignmentLink['timeBudgetRecurrence'] ?? ''));
             $contextMoneyBudget = $assignmentLink['moneyBudget'] ?? null;
             $contextMoneyBudgetRecurrence = trim((string)($assignmentLink['moneyBudgetRecurrence'] ?? ''));
+            $contextAssignmentReviewDate = $parseAssignmentDate($assignmentLink['assignmentReviewDate'] ?? null);
         }
         if ((int)($assignmentLink['holonTypeId'] ?? 0) === 1 && $assignmentDate instanceof DateTimeImmutable) {
             $roleAssignments[] = $assignmentDate;
@@ -415,6 +418,11 @@ foreach ($rawMemberCards as $rawCard) {
     $contextMoneyBudgetLabel = $contextMoneyBudgetAmount !== '' && $contextMoneyBudgetRecurrenceLabel !== ''
         ? omoTeamT('team.member.money_budget_value', array('amount' => $contextMoneyBudgetAmount, 'recurrence' => $contextMoneyBudgetRecurrenceLabel), $lang, $sourceLang)
         : '';
+    $contextAssignmentReviewDateLabel = $contextAssignmentReviewDate instanceof DateTimeImmutable
+        ? $formatDate($contextAssignmentReviewDate)
+        : '';
+    $isAssignmentReviewOverdue = $contextAssignmentReviewDate instanceof DateTimeImmutable
+        && $contextAssignmentReviewDate < $assignmentReviewReferenceDate;
     $displayName = trim((string)($rawCard['displayName'] ?? ''));
     if ($displayName === '' && $hasMembership) {
         $displayName = $membership->getUserDisplayName();
@@ -512,6 +520,8 @@ foreach ($rawMemberCards as $rawCard) {
         'contextFocus' => $currentHolonTypeId === 1 ? $contextFocus : '',
         'contextTimeBudgetLabel' => $contextTimeBudgetLabel,
         'contextMoneyBudgetLabel' => $contextMoneyBudgetLabel,
+        'contextAssignmentReviewDateLabel' => $contextAssignmentReviewDateLabel,
+        'isAssignmentReviewOverdue' => $isAssignmentReviewOverdue,
         'canViewDetail' => $canViewUserDetail,
         'latlong' => $latlong,
         'searchText' => $memberSearchText,
@@ -684,7 +694,7 @@ if ($leafletMapsEnabled) {
             <div class="omo-team__grid omo-card-grid omo-card-grid--fixed" data-team-items-container="cards">
                 <?php foreach ($memberCards as $card): ?>
                     <article
-                        class="omo-team-card omo-card<?= $card['canViewDetail'] ? ' omo-card--interactive' : '' ?><?= $card['isPending'] ? ' omo-team-card--pending' : '' ?>"
+                        class="omo-team-card omo-card<?= $card['canViewDetail'] ? ' omo-card--interactive' : '' ?><?= $card['isPending'] ? ' omo-team-card--pending' : '' ?><?= $card['isAssignmentReviewOverdue'] ? ' omo-team-card--assignment-overdue' : '' ?>"
                         <?php if ($card['canViewDetail']): ?>
                         data-open-user-context="1"
                         <?php endif; ?>
@@ -784,11 +794,9 @@ if ($leafletMapsEnabled) {
                             <div class="omo-team-card__meta">
                                 <div class="omo-team-card__meta-row">
                                     <span class="omo-team-card__meta-label generic-meta-label generic-meta-label--compact"><?= omoApiEscape(omoTeamT($isRoleTeamContext ? 'team.member.focus' : 'team.member.email', [], $lang, $sourceLang)) ?></span>
-                                    <span class="omo-team-card__meta-value<?= $isRoleTeamContext ? ' omo-team-card__focus-value' : '' ?> generic-meta-value generic-meta-value--compact<?= ($isRoleTeamContext ? $card['contextFocus'] : $card['email']) === '' ? ' omo-team-card__meta-value--muted' : '' ?>">
-                                        <?= omoApiEscape($isRoleTeamContext
-                                            ? ($card['contextFocus'] !== '' ? $card['contextFocus'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang))
-                                            : ($card['email'] !== '' ? $card['email'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang))) ?>
-                                    </span>
+                                    <span class="omo-team-card__meta-value<?= $isRoleTeamContext ? ' omo-team-card__focus-value' : '' ?> generic-meta-value generic-meta-value--compact<?= ($isRoleTeamContext ? $card['contextFocus'] : $card['email']) === '' ? ' omo-team-card__meta-value--muted' : '' ?>"><?= omoApiEscape($isRoleTeamContext
+                                        ? ($card['contextFocus'] !== '' ? $card['contextFocus'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang))
+                                        : ($card['email'] !== '' ? $card['email'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang))) ?></span>
                                 </div>
                             </div>
 
@@ -838,6 +846,13 @@ if ($leafletMapsEnabled) {
                                             <?= omoApiEscape($card['contextAssignmentLabel'] !== '' ? $card['contextAssignmentLabel'] : 'N/A') ?>
                                         </span>
                                     </div>
+
+                                    <?php if ($card['contextAssignmentReviewDateLabel'] !== ''): ?>
+                                        <div class="omo-team-card__date">
+                                            <span class="omo-team-card__date-label"><?= omoApiEscape(omoTeamT('team.member.assignment_review_date', [], $lang, $sourceLang)) ?></span>
+                                            <span class="omo-team-card__date-value"><?= omoApiEscape($card['contextAssignmentReviewDateLabel']) ?></span>
+                                        </div>
+                                    <?php endif; ?>
 
                                     <?php if ($card['contextAssignmentRoleCount'] > 0): ?>
                                         <div class="omo-team-card__date">
@@ -929,7 +944,7 @@ if ($leafletMapsEnabled) {
                         ?>
                         <article class="omo-team__compact-item-shell generic-file-list__item-shell" data-team-member-item data-team-member-search="<?= omoApiEscape((string)$card['searchText']) ?>">
                             <div
-                                class="omo-team__compact-row generic-file-list__row<?= $card['canViewDetail'] ? ' omo-team__compact-row--interactive' : '' ?><?= $card['isPending'] ? ' omo-team__compact-row--pending' : '' ?>"
+                                class="omo-team__compact-row generic-file-list__row<?= $card['canViewDetail'] ? ' omo-team__compact-row--interactive' : '' ?><?= $card['isPending'] ? ' omo-team__compact-row--pending' : '' ?><?= $card['isAssignmentReviewOverdue'] ? ' omo-team__compact-row--assignment-overdue' : '' ?>"
                                 <?php if ($card['canViewDetail']): ?>
                                 data-open-user-context="1"
                                 tabindex="0"
@@ -1078,6 +1093,16 @@ if ($leafletMapsEnabled) {
 
 .omo-team__compact-row--pending {
     opacity: 0.7;
+}
+
+.omo-team__compact-row--assignment-overdue {
+    background: color-mix(in srgb, var(--color-danger, #b91c1c) 9%, var(--color-surface, #ffffff));
+    box-shadow: inset 3px 0 0 var(--color-danger, #b91c1c);
+}
+
+.omo-team__compact-row--assignment-overdue:hover,
+.omo-team__compact-row--assignment-overdue:focus-visible {
+    background: color-mix(in srgb, var(--color-danger, #b91c1c) 14%, var(--color-surface, #ffffff));
 }
 
 .omo-team__compact-cell {
@@ -1348,6 +1373,12 @@ if ($leafletMapsEnabled) {
     opacity: 0.7;
 }
 
+.omo-team-card--assignment-overdue {
+    border-color: color-mix(in srgb, var(--color-danger, #b91c1c) 42%, var(--color-border));
+    background: color-mix(in srgb, var(--color-danger, #b91c1c) 5%, var(--color-surface, #ffffff));
+    box-shadow: inset 3px 0 0 var(--color-danger, #b91c1c), var(--shadow-sm);
+}
+
 .omo-team-card__banner {
     position: relative;
     display: flex;
@@ -1414,7 +1445,7 @@ if ($leafletMapsEnabled) {
 
 .omo-team-card__body {
     display: grid;
-    gap: 10px;
+    gap: 8px;
     padding: 8px 14px 12px;
 }
 
@@ -1538,9 +1569,17 @@ if ($leafletMapsEnabled) {
     display: block;
 }
 
+.omo-team-card__head + .omo-team-card__meta {
+    margin-top: -4px;
+}
+
 .omo-team-card__meta-row {
     display: grid;
-    gap: 1px;
+    gap: 0;
+}
+
+.omo-team-card__meta-row .omo-team-card__meta-label {
+    line-height: 1.1;
 }
 
 .omo-team-card__meta-value {
@@ -1553,8 +1592,8 @@ if ($leafletMapsEnabled) {
 
 .omo-team-card__budgets {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
 }
 
 .omo-team-card__budget {

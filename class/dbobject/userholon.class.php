@@ -25,6 +25,7 @@
 				[['focus'], 'string'],
 				[['time_budget_hours', 'money_budget'], 'float'],
 				[['time_budget_recurrence', 'money_budget_recurrence'], 'string'],
+				[['assignment_review_date'], 'date'],
 				[['parameters'], 'parameters'],
 				[['datecreation', 'dateconnexion'], 'datetime'],
 				[['active'], 'boolean'],
@@ -43,6 +44,7 @@
 				'time_budget_recurrence' => 'Recurrence du budget temps',
 				'money_budget' => 'Budget argent',
 				'money_budget_recurrence' => 'Recurrence du budget argent',
+				'assignment_review_date' => 'Date limite d affectation',
 				'parameters' => 'Paramètres',
 				'datecreation' => 'Création',
 				'dateconnexion' => 'Dernière connexion',
@@ -56,6 +58,7 @@
 				'focus' => 'Specificite de la participation de cette personne dans ce holon.',
 				'time_budget_hours' => 'Temps prevu pour cette affectation, exprime en heures.',
 				'money_budget' => 'Montant prevu pour cette affectation.',
+				'assignment_review_date' => 'Date a laquelle l affectation doit etre reconfirmee ou arretee.',
 			];
 		}
 
@@ -108,6 +111,26 @@
 			return array('valid' => true, 'value' => number_format($amount, 2, '.', ''));
 		}
 
+		public static function parseAssignmentReviewDate($value)
+		{
+			if (!is_scalar($value)) {
+				return array('valid' => false, 'value' => null);
+			}
+
+			$value = trim((string)$value);
+			if ($value === '') {
+				return array('valid' => true, 'value' => null);
+			}
+
+			$date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+			$errors = \DateTimeImmutable::getLastErrors();
+			if (!$date instanceof \DateTimeImmutable || (is_array($errors) && ($errors['warning_count'] > 0 || $errors['error_count'] > 0)) || $date->format('Y-m-d') !== $value) {
+				return array('valid' => false, 'value' => null);
+			}
+
+			return array('valid' => true, 'value' => $date->format('Y-m-d'));
+		}
+
 		public function updateAssignmentDetails(array $details)
 		{
 			$focus = trim((string)($details['focus'] ?? ''));
@@ -126,6 +149,11 @@
 				return array('status' => false, 'reason' => 'invalid_money_budget');
 			}
 
+			$assignmentReviewDate = self::parseAssignmentReviewDate($details['assignment_review_date'] ?? null);
+			if (!$assignmentReviewDate['valid']) {
+				return array('status' => false, 'reason' => 'invalid_assignment_review_date');
+			}
+
 			$timeRecurrence = self::normalizeBudgetRecurrence($details['time_budget_recurrence'] ?? '');
 			if ($timeBudget['value'] !== null && $timeRecurrence === '') {
 				return array('status' => false, 'reason' => 'invalid_time_recurrence');
@@ -141,6 +169,7 @@
 			$this->set('time_budget_recurrence', $timeBudget['value'] !== null ? $timeRecurrence : null);
 			$this->set('money_budget', $moneyBudget['value']);
 			$this->set('money_budget_recurrence', $moneyBudget['value'] !== null ? $moneyRecurrence : null);
+			$this->set('assignment_review_date', $assignmentReviewDate['value']);
 
 			return array('status' => $this->save(), 'reason' => 'save_failed');
 		}

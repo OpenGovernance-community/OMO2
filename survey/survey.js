@@ -3,10 +3,17 @@
 
     var config = window.SURVEY_PROTOTYPE || {};
     var questions = Array.isArray(config.questions) ? config.questions : [];
+    var omoPaths = config.omoPaths || {};
     var labels = config.labels || {};
-    var storageKey = 'survey-organizational-maturity-prototype-v2';
+    var persistence = config.persistence || {};
+    var invite = config.invite || {};
+    var privateToken = String(persistence.privateToken || '');
+    var invitationToken = String(persistence.invitationToken || '');
+    var isInvitation = persistence.isInvitation === true && invitationToken !== '';
+    var storageKey = 'survey-organizational-maturity-prototype-v2' + (privateToken ? '-' + privateToken : (invitationToken ? '-invite-' + invitationToken : ''));
     var periods = ['today', 'tomorrow'];
     var advanceTimer = null;
+    var automaticInvitationSaveAttempted = false;
 
     var elements = {
         welcome: document.getElementById('surveyWelcome'),
@@ -37,6 +44,24 @@
         radar: document.getElementById('surveyRadar'),
         resultsStats: document.getElementById('surveyResultsStats'),
         resultsList: document.getElementById('surveyResultsList'),
+        omoAction: document.getElementById('surveyOmoAction'),
+        omoDialog: document.getElementById('surveyOmoDialog'),
+        omoClose: document.getElementById('surveyOmoClose'),
+        omoContent: document.getElementById('surveyOmoContent'),
+        saveResult: document.getElementById('surveySaveResult'),
+        saveLinks: document.getElementById('surveySaveLinks'),
+        saveOmo: document.getElementById('surveySaveOmo'),
+        saveDialog: document.getElementById('surveySaveDialog'),
+        saveDialogEyebrow: document.getElementById('surveySaveDialogEyebrow'),
+        saveDialogTitle: document.getElementById('surveySaveDialogTitle'),
+        saveContent: document.getElementById('surveySaveContent'),
+        saveClose: document.getElementById('surveySaveClose'),
+        inviteAction: document.getElementById('surveyInviteAction'),
+        inviteDialog: document.getElementById('surveyInviteDialog'),
+        inviteDialogEyebrow: document.getElementById('surveyInviteDialogEyebrow'),
+        inviteDialogTitle: document.getElementById('surveyInviteDialogTitle'),
+        inviteContent: document.getElementById('surveyInviteContent'),
+        inviteClose: document.getElementById('surveyInviteClose'),
         review: document.getElementById('surveyReview'),
         resultsRestart: document.getElementById('surveyResultsRestart')
     };
@@ -98,12 +123,60 @@
 
     var state = loadState();
 
+    function hydratePersistedAnswers() {
+        var answers = Array.isArray(persistence.answers) ? persistence.answers : [];
+        if (answers.length !== questions.length || (privateToken === '' && invitationToken === '')) {
+            return false;
+        }
+
+        state = initialState();
+        answers.forEach(function (answer, index) {
+            state.answers[index].affinity = normalizeValue(answer && answer.affinity);
+            state.answers[index].situation.today = normalizeValue(answer && answer.situation && answer.situation.today);
+            state.answers[index].situation.tomorrow = normalizeValue(answer && answer.situation && answer.situation.tomorrow);
+        });
+        return state.answers.every(function (answer) {
+            return answer.affinity !== null
+                && answer.situation.today !== null
+                && answer.situation.tomorrow !== null;
+        });
+    }
+
+    var hasPersistedAnswers = hydratePersistedAnswers();
+    var savedAnswers = hasPersistedAnswers ? cloneAnswers(state.answers) : null;
+    var savedLinks = persistence.links && typeof persistence.links === 'object' ? persistence.links : null;
+
     function saveState() {
         try {
             window.localStorage.setItem(storageKey, JSON.stringify(state));
         } catch (error) {
             // Local persistence is a convenience; the prototype still works without it.
         }
+    }
+
+    function cloneAnswers(answers) {
+        return answers.map(function (answer) {
+            return {
+                affinity: normalizeValue(answer.affinity),
+                situation: {
+                    today: normalizeValue(answer.situation.today),
+                    tomorrow: normalizeValue(answer.situation.tomorrow)
+                }
+            };
+        });
+    }
+
+    function isSurveyDirty() {
+        if (!savedAnswers || savedAnswers.length !== state.answers.length) {
+            return true;
+        }
+
+        return state.answers.some(function (answer, index) {
+            var savedAnswer = savedAnswers[index];
+            return answer.affinity !== savedAnswer.affinity
+                || answer.situation.today !== savedAnswer.situation.today
+                || answer.situation.tomorrow !== savedAnswer.situation.tomorrow;
+        });
     }
 
     function clearState() {
@@ -322,14 +395,33 @@
         elements.response.replaceChildren(host);
     }
 
+    function revealActivePeriod() {
+        window.requestAnimationFrame(function () {
+            var activeTab = elements.response.querySelector('.survey-period-tab.is-active');
+            var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            if (activeTab) {
+                activeTab.scrollIntoView({
+                    behavior: reducedMotion ? 'auto' : 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    }
+
     function handleChoiceChange(period, value, question) {
+        var movesToTomorrow = period === 'today' && state.answers[state.questionIndex].situation.tomorrow === null;
+
         state.answers[state.questionIndex].situation[period] = normalizeValue(value);
-        if (period === 'today' && state.answers[state.questionIndex].situation.tomorrow === null) {
+        if (movesToTomorrow) {
             state.activePeriod = 'tomorrow';
         }
         saveState();
         renderChoiceResponse(question);
         updateNavigation();
+        if (movesToTomorrow) {
+            revealActivePeriod();
+        }
         if (answerComplete('situation')) {
             scheduleAdvance();
         }
@@ -413,6 +505,415 @@
         }
         var template = Math.abs(gap) === 1 ? labels.gapValue : labels.gapValuePlural;
         return interpolate(template, { gap: signedGap(gap) });
+    }
+
+    function omoRecommendations() {
+        return state.answers.map(function (answer, index) {
+            var today = normalizeValue(answer.situation.today) || 1;
+            var tomorrow = normalizeValue(answer.situation.tomorrow) || 1;
+            var affinity = normalizeValue(answer.affinity) || 1;
+            var target = Math.max(tomorrow, affinity);
+            var potential = (5 - today) * 6 + target * 5 + Math.max(0, target - today) * 2;
+
+            return {
+                index: index,
+                question: questions[index],
+                today: today,
+                tomorrow: tomorrow,
+                affinity: affinity,
+                target: target,
+                potential: potential
+            };
+        }).sort(function (first, second) {
+            return second.potential - first.potential || first.index - second.index;
+        }).slice(0, 3);
+    }
+
+    function createOmoStage(stage) {
+        var item = el('article', 'survey-omo-stage' + (stage.level === 5 ? ' survey-omo-stage--risk' : ''));
+        var copy = el('div', 'survey-omo-stage__copy');
+        var heading = el('h4');
+
+        item.appendChild(el('span', 'survey-omo-stage__number', stage.level));
+        heading.appendChild(el('span', 'survey-omo-stage__label', interpolate(labels.omoStage, { level: stage.level })));
+        heading.appendChild(document.createTextNode(' ' + stage.title));
+        copy.append(heading, el('p', '', stage.description));
+        item.appendChild(copy);
+        return item;
+    }
+
+    function renderOmoDialog() {
+        var fragment = document.createDocumentFragment();
+        var recommendations = omoRecommendations();
+
+        fragment.appendChild(el('p', 'survey-omo-intro', labels.omoIntro));
+
+        recommendations.forEach(function (recommendation) {
+            var path = omoPaths[recommendation.question.number];
+            if (!path || !Array.isArray(path.stages)) {
+                return;
+            }
+
+            var axis = el('article', 'survey-omo-axis');
+            var header = el('header', 'survey-omo-axis__header');
+            var copy = el('div', 'survey-omo-axis__copy');
+            var stages = el('div', 'survey-omo-stages');
+            var firstLevel = Math.min(recommendation.today, recommendation.target);
+            var lastLevel = recommendation.target;
+
+            copy.appendChild(el('p', 'survey-eyebrow', interpolate(labels.omoAxisLabel, {
+                number: recommendation.question.number
+            })));
+            copy.appendChild(el('h3', '', recommendation.question.title));
+            header.append(copy, el('p', 'survey-omo-axis__scores', interpolate(labels.omoScores, {
+                today: recommendation.today,
+                tomorrow: recommendation.tomorrow,
+                affinity: recommendation.affinity
+            })));
+            axis.appendChild(header);
+            axis.appendChild(el('p', 'survey-omo-path', interpolate(labels.omoPath, {
+                start: recommendation.today,
+                target: recommendation.target
+            })));
+
+            path.stages.forEach(function (stage) {
+                if (stage.level >= firstLevel && stage.level <= lastLevel) {
+                    stages.appendChild(createOmoStage(stage));
+                }
+            });
+            axis.appendChild(stages);
+
+            if (lastLevel === 5) {
+                axis.appendChild(el('p', 'survey-omo-risk', labels.omoRisk));
+            }
+            fragment.appendChild(axis);
+        });
+
+        elements.omoContent.replaceChildren(fragment);
+    }
+
+    function openOmoDialog() {
+        renderOmoDialog();
+        if (typeof elements.omoDialog.showModal === 'function') {
+            if (!elements.omoDialog.open) {
+                elements.omoDialog.showModal();
+            }
+            return;
+        }
+        elements.omoDialog.setAttribute('open', 'open');
+    }
+
+    function closeOmoDialog() {
+        if (typeof elements.omoDialog.close === 'function' && elements.omoDialog.open) {
+            elements.omoDialog.close();
+            return;
+        }
+        elements.omoDialog.removeAttribute('open');
+    }
+
+    function openSaveDialog() {
+        if (typeof elements.saveDialog.showModal === 'function') {
+            if (!elements.saveDialog.open) {
+                elements.saveDialog.showModal();
+            }
+            return;
+        }
+        elements.saveDialog.setAttribute('open', 'open');
+    }
+
+    function closeSaveDialog() {
+        if (typeof elements.saveDialog.close === 'function' && elements.saveDialog.open) {
+            elements.saveDialog.close();
+            return;
+        }
+        elements.saveDialog.removeAttribute('open');
+    }
+
+    function copySaveLink(input, button) {
+        var copied = function () {
+            button.textContent = labels.saveCopied;
+            window.setTimeout(function () {
+                button.textContent = labels.saveCopy;
+            }, 1500);
+        };
+
+        input.select();
+        input.setSelectionRange(0, input.value.length);
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            navigator.clipboard.writeText(input.value).then(copied).catch(function () {
+                document.execCommand('copy');
+                copied();
+            });
+            return;
+        }
+        document.execCommand('copy');
+        copied();
+    }
+
+    function createSavedLink(label, url, isPrivate) {
+        var block = el('section', 'survey-save-link');
+        var field = document.createElement('input');
+        var copy = el('button', 'generic-action-button generic-action-button--secondary', labels.saveCopy);
+
+        field.type = 'text';
+        field.className = 'generic-form-control';
+        field.value = url;
+        field.readOnly = true;
+        field.setAttribute('aria-label', label);
+        copy.type = 'button';
+        copy.addEventListener('click', function () {
+            copySaveLink(field, copy);
+        });
+
+        block.appendChild(el('strong', '', label));
+        block.append(field, copy);
+        if (isPrivate) {
+            block.appendChild(el('p', 'survey-save-link__help', labels.savePrivateHelp));
+        }
+        return block;
+    }
+
+    function renderSavedLinks(result) {
+        var fragment = document.createDocumentFragment();
+        var associate = el('button', 'generic-action-button generic-action-button--main', labels.saveAssociate);
+
+        elements.saveDialogEyebrow.textContent = labels.saveEyebrow;
+        elements.saveDialogTitle.textContent = labels.saveTitle;
+        fragment.appendChild(createSavedLink(labels.savePublicLabel, result.publicUrl, false));
+        fragment.appendChild(createSavedLink(labels.savePrivateLabel, result.privateUrl, true));
+        associate.type = 'button';
+        associate.addEventListener('click', function () {
+            window.location.assign(result.associateUrl);
+        });
+        fragment.appendChild(associate);
+        elements.saveContent.replaceChildren(fragment);
+    }
+
+    function renderSaveError() {
+        elements.saveDialogEyebrow.textContent = labels.saveEyebrow;
+        elements.saveDialogTitle.textContent = labels.saveTitle;
+        elements.saveContent.replaceChildren(el('p', 'survey-save-error', labels.saveError));
+        openSaveDialog();
+    }
+
+    function setSaveButtonsBusy(isBusy) {
+        [elements.saveResult, elements.saveLinks, elements.saveOmo].forEach(function (button) {
+            button.disabled = isBusy;
+        });
+        elements.saveResult.textContent = isBusy ? labels.saveSaving : elements.saveResult.textContent;
+        elements.saveLinks.textContent = labels.saveLinks;
+        elements.saveOmo.textContent = labels.saveOmo;
+    }
+
+    function updateSaveResultAction() {
+        var hasSavedResult = savedAnswers !== null && (isInvitation || savedLinks !== null);
+        var dirty = isSurveyDirty();
+
+        elements.saveResult.disabled = hasSavedResult && !dirty;
+        elements.saveResult.textContent = !hasSavedResult
+            ? labels.saveResult
+            : (dirty ? labels.saveChanges : labels.saveSaved);
+        elements.saveLinks.textContent = labels.saveLinks;
+        elements.saveOmo.textContent = labels.saveOmo;
+        elements.saveLinks.hidden = isInvitation;
+        elements.saveOmo.hidden = isInvitation;
+    }
+
+    function saveCurrentResult() {
+        if (savedAnswers !== null && (isInvitation || savedLinks !== null) && !isSurveyDirty()) {
+            return Promise.resolve(isInvitation ? { status: true, invitation: true } : savedLinks);
+        }
+
+        setSaveButtonsBusy(true);
+        return window.fetch(String(persistence.saveEndpoint || '/survey/api/save.php'), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                answers: state.answers,
+                privateToken: privateToken,
+                invitationToken: invitationToken
+            })
+        }).then(function (response) {
+            return response.json().catch(function () {
+                return { status: false };
+            });
+        }).then(function (result) {
+            if (!result || result.status !== true) {
+                throw new Error('save_failed');
+            }
+            if (isInvitation) {
+                if (result.invitation !== true) {
+                    throw new Error('save_failed');
+                }
+                savedAnswers = cloneAnswers(state.answers);
+                return result;
+            }
+            if (!result.privateToken || !result.publicUrl || !result.privateUrl || !result.associateUrl) {
+                throw new Error('save_failed');
+            }
+            privateToken = String(result.privateToken);
+            persistence.privateToken = privateToken;
+            savedAnswers = cloneAnswers(state.answers);
+            savedLinks = {
+                publicUrl: result.publicUrl,
+                privateUrl: result.privateUrl,
+                associateUrl: result.associateUrl
+            };
+            persistence.links = savedLinks;
+            if (window.history && typeof window.history.replaceState === 'function') {
+                window.history.replaceState({}, '', '/survey/?edit=' + encodeURIComponent(privateToken));
+            }
+            return result;
+        }).finally(function () {
+            setSaveButtonsBusy(false);
+            updateSaveResultAction();
+        });
+    }
+
+    function openInviteDialog() {
+        var organizations = Array.isArray(invite.organizations) ? invite.organizations : [];
+        if (organizations.length === 0) {
+            if (invite.authenticated === true) {
+                window.alert(labels.inviteEmpty);
+                return;
+            }
+            window.location.assign(String(invite.loginUrl || '/survey/invite.php'));
+            return;
+        }
+        renderInviteDialog(organizations[0].id);
+        if (typeof elements.inviteDialog.showModal === 'function') {
+            if (!elements.inviteDialog.open) {
+                elements.inviteDialog.showModal();
+            }
+            return;
+        }
+        elements.inviteDialog.setAttribute('open', 'open');
+    }
+
+    function closeInviteDialog() {
+        if (typeof elements.inviteDialog.close === 'function' && elements.inviteDialog.open) {
+            elements.inviteDialog.close();
+            return;
+        }
+        elements.inviteDialog.removeAttribute('open');
+    }
+
+    function getInviteOrganization(organizationId) {
+        return (Array.isArray(invite.organizations) ? invite.organizations : []).filter(function (organization) {
+            return Number(organization.id) === Number(organizationId);
+        })[0] || null;
+    }
+
+    function inviteCheckbox(kind, option) {
+        var label = el('label', 'survey-invite-dialog__check');
+        var input = document.createElement('input');
+        var copy = el('span', 'survey-invite-dialog__check-copy');
+        input.type = 'checkbox';
+        input.value = String(option.id);
+        input.setAttribute('data-invite-' + kind, '1');
+        copy.appendChild(el('strong', '', option.label || option.name || ''));
+        if (option.email) {
+            copy.appendChild(el('small', '', option.email));
+        }
+        label.append(input, copy);
+        return label;
+    }
+
+    function renderInviteDialog(organizationId) {
+        var organization = getInviteOrganization(organizationId);
+        if (!organization) {
+            return;
+        }
+        var fragment = document.createDocumentFragment();
+        var form = el('form', 'survey-invite-dialog__form');
+        var organizationLabel = el('label', 'survey-invite-dialog__organization');
+        var select = document.createElement('select');
+        var tabs = el('div', 'survey-invite-dialog__tabs');
+        var panels = el('div', 'survey-invite-dialog__panels');
+        var feedback = el('p', 'survey-invite-dialog__feedback');
+        var submit = el('button', 'generic-action-button generic-action-button--main', labels.inviteSend);
+
+        elements.inviteDialogEyebrow.textContent = labels.inviteEyebrow;
+        elements.inviteDialogTitle.textContent = labels.inviteTitle;
+        form.appendChild(el('p', 'survey-omo-intro', labels.inviteIntro));
+        organizationLabel.appendChild(el('span', '', labels.inviteOrganization));
+        select.className = 'generic-form-control';
+        (Array.isArray(invite.organizations) ? invite.organizations : []).forEach(function (item) {
+            var option = document.createElement('option');
+            option.value = String(item.id);
+            option.textContent = String(item.name);
+            option.selected = Number(item.id) === Number(organization.id);
+            select.appendChild(option);
+        });
+        select.addEventListener('change', function () { renderInviteDialog(select.value); });
+        organizationLabel.appendChild(select);
+        form.appendChild(organizationLabel);
+
+        [
+            { key: 'holons', label: labels.inviteHolons, options: organization.holons || [] },
+            { key: 'members', label: labels.inviteMembers, options: organization.members || [] },
+            { key: 'emails', label: labels.inviteEmails, options: [] }
+        ].forEach(function (definition, index) {
+            var tab = el('button', 'survey-invite-dialog__tab', definition.label);
+            var panel = el('section', 'survey-invite-dialog__panel');
+            tab.type = 'button';
+            tab.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
+            tab.addEventListener('click', function () {
+                tabs.querySelectorAll('button').forEach(function (button) { button.setAttribute('aria-selected', 'false'); });
+                panels.querySelectorAll('section').forEach(function (item) { item.hidden = true; });
+                tab.setAttribute('aria-selected', 'true');
+                panel.hidden = false;
+            });
+            if (definition.key === 'emails') {
+                var textarea = document.createElement('textarea');
+                textarea.className = 'generic-form-control';
+                textarea.rows = 5;
+                textarea.placeholder = labels.inviteEmailPlaceholder;
+                textarea.setAttribute('data-invite-emails', '1');
+                panel.append(textarea, el('p', 'survey-invite-dialog__help', labels.inviteEmailHelp));
+            } else {
+                var list = el('div', 'survey-invite-dialog__list');
+                definition.options.forEach(function (option) { list.appendChild(inviteCheckbox(definition.key, option)); });
+                panel.appendChild(list);
+            }
+            if (index !== 0) { panel.hidden = true; }
+            tabs.appendChild(tab);
+            panels.appendChild(panel);
+        });
+        form.append(tabs, panels);
+        feedback.hidden = true;
+        submit.type = 'submit';
+        form.append(feedback, submit);
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            submit.disabled = true;
+            submit.textContent = labels.inviteSending;
+            feedback.hidden = true;
+            var emailField = form.querySelector('[data-invite-emails]');
+            var emails = String(emailField ? emailField.value : '').split(/[\s,;]+/).filter(Boolean);
+            var values = function (selector) {
+                return Array.prototype.slice.call(form.querySelectorAll(selector + ':checked')).map(function (input) { return Number(input.value); });
+            };
+            window.fetch(String(invite.endpoint || '/survey/api/invitations.php'), {
+                method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ organizationId: Number(organization.id), holonIds: values('[data-invite-holons]'), userIds: values('[data-invite-members]'), emails: emails })
+            }).then(function (response) { return response.json().catch(function () { return { status: false }; }); }).then(function (result) {
+                if (!result || result.status !== true) { throw new Error('invite_failed'); }
+                feedback.textContent = interpolate(labels.inviteSent, { count: Array.isArray(result.emails) ? result.emails.length : 0 });
+                feedback.classList.remove('survey-invite-dialog__feedback--error');
+                feedback.hidden = false;
+            }).catch(function (error) {
+                feedback.textContent = (error && error.message === 'invite_failed') ? labels.inviteError : labels.inviteError;
+                feedback.classList.add('survey-invite-dialog__feedback--error');
+                feedback.hidden = false;
+            }).finally(function () {
+                submit.disabled = false;
+                submit.textContent = labels.inviteSend;
+            });
+        });
+        fragment.appendChild(form);
+        elements.inviteContent.replaceChildren(fragment);
     }
 
     function svgEl(tagName, attributes, text) {
@@ -551,6 +1052,8 @@
         elements.resultsEyebrow.textContent = labels.resultsEyebrow;
         elements.resultsTitle.textContent = labels.resultsTitle;
         elements.resultsIntro.textContent = labels.resultsIntro;
+        updateSaveResultAction();
+        elements.omoAction.textContent = labels.omoAction;
         elements.review.textContent = labels.review;
         elements.resultsRestart.textContent = labels.restart;
 
@@ -601,6 +1104,15 @@
         });
         elements.resultsList.replaceChildren(fragment);
         scrollToTop();
+
+        if (isInvitation && savedAnswers === null && !automaticInvitationSaveAttempted) {
+            automaticInvitationSaveAttempted = true;
+            window.setTimeout(function () {
+                saveCurrentResult().catch(function () {
+                    // The local answers remain available and the manual save button is re-enabled.
+                });
+            }, 0);
+        }
     }
 
     function createResultStat(label, value, wide) {
@@ -630,6 +1142,55 @@
     elements.resultsRestart.addEventListener('click', restartSurvey);
     elements.back.addEventListener('click', goBack);
     elements.next.addEventListener('click', goNext);
+    elements.omoAction.addEventListener('click', openOmoDialog);
+    elements.omoClose.addEventListener('click', closeOmoDialog);
+    elements.omoDialog.addEventListener('click', function (event) {
+        if (event.target === elements.omoDialog) {
+            closeOmoDialog();
+        }
+    });
+    elements.saveResult.addEventListener('click', function () {
+        saveCurrentResult().then(function (result) {
+            if (!isInvitation) {
+                savedLinks = result;
+            }
+        }).catch(renderSaveError);
+    });
+    elements.saveLinks.addEventListener('click', function () {
+        if (savedLinks !== null) {
+            renderSavedLinks(savedLinks);
+            openSaveDialog();
+            return;
+        }
+        saveCurrentResult().then(function (result) {
+            renderSavedLinks(result);
+            openSaveDialog();
+        }).catch(renderSaveError);
+    });
+    elements.saveOmo.addEventListener('click', function () {
+        if (savedLinks !== null && !isSurveyDirty()) {
+            window.location.assign(savedLinks.associateUrl);
+            return;
+        }
+        saveCurrentResult().then(function (result) {
+            window.location.assign(result.associateUrl);
+        }).catch(renderSaveError);
+    });
+    elements.saveClose.addEventListener('click', closeSaveDialog);
+    elements.saveDialog.addEventListener('click', function (event) {
+        if (event.target === elements.saveDialog) {
+            closeSaveDialog();
+        }
+    });
+    if (elements.inviteAction) {
+        elements.inviteAction.addEventListener('click', openInviteDialog);
+    }
+    elements.inviteClose.addEventListener('click', closeInviteDialog);
+    elements.inviteDialog.addEventListener('click', function (event) {
+        if (event.target === elements.inviteDialog) {
+            closeInviteDialog();
+        }
+    });
     elements.review.addEventListener('click', function () {
         state.completed = false;
         state.manualNavigation = true;
@@ -643,6 +1204,14 @@
         toggle.addEventListener('change', renderRadar);
     });
 
-    updateWelcome();
-    showWelcome();
+    if (hasPersistedAnswers) {
+        state.completed = true;
+        showResults();
+    } else {
+        updateWelcome();
+        showWelcome();
+    }
+    if (invite.openDialog === true) {
+        window.setTimeout(openInviteDialog, 0);
+    }
 }());
