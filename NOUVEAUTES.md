@@ -25,6 +25,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les fiches detaillees du rapport collectif indiquent maintenant, pour chaque principe, si les reponses sont alignees, dispersees ou polarisees pour Aujourd hui, Demain et l adhesion au principe. L adhesion reste affichee sur 5, mais son diagnostic de convergence remplace l ecart type. Une cartographie exploratoire rapproche aussi les profils complets selon leurs 30 reponses, retient de deux a cinq groupes selon leur separation statistique et resume les dimensions qui caracterisent chaque groupe avec leur score moyen, sans exposer l identite des participants.
 - Sous les groupes, le rapport fait emerger deux terrains communs distincts : les quatre constats d aujourd hui et les quatre destinations de demain les plus partages. Chaque liste possede son propre classement par un indice d alignement de 0 a 100 fonde sur la variance : 100 lorsque toutes les personnes choisissent le meme niveau, 0 pour une repartition uniforme entre les cinq niveaux ou une dispersion encore plus forte.
 - Les formulations courtes des situations dans le terrain commun et les fiches detaillees donnent acces au texte complet de la proposition dans une infobulle, au survol comme au focus clavier.
+- Lors du passage automatique d Aujourd hui a Demain, le defilement cible maintenant la barre des periodes elle-meme afin que sa marge sticky protege aussi la premiere proposition contre un masquage sous la barre.
 
 ## 2026-08-26
 

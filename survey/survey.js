@@ -397,11 +397,11 @@
 
     function revealActivePeriod() {
         window.requestAnimationFrame(function () {
-            var activeTab = elements.response.querySelector('.survey-period-tab.is-active');
+            var periodTabs = elements.response.querySelector('.survey-period-tabs');
             var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-            if (activeTab) {
-                activeTab.scrollIntoView({
+            if (periodTabs) {
+                periodTabs.scrollIntoView({
                     behavior: reducedMotion ? 'auto' : 'smooth',
                     block: 'start'
                 });
