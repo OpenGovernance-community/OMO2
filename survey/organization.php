@@ -25,6 +25,7 @@ $pageSourceLang = [
     'survey.organization.agreement.description.dispersed' => ['text' => 'Les réponses sont étalées, sans deux camps nettement séparés.', 'context' => 'Explanation of dispersed responses.'],
     'survey.organization.agreement.description.polarized' => ['text' => 'Deux pôles de réponses opposés sont représentés.', 'context' => 'Explanation of polarized responses.'],
     'survey.organization.agreement.description.insufficient' => ['text' => 'Il faut au moins trois réponses pour proposer cette lecture.', 'context' => 'Explanation of insufficient data for agreement status.'],
+    'survey.organization.agreement.stats' => ['text' => 'Échantillon : {count} · écart type : {stddev}', 'context' => 'Statistics shown in an agreement status tooltip.'],
     'survey.organization.groups.eyebrow' => ['text' => 'Cartographie des perceptions', 'context' => 'Eyebrow above respondent profile groups.'],
     'survey.organization.groups.title' => ['text' => 'Les profils qui se dessinent', 'context' => 'Title above respondent profile groups.'],
     'survey.organization.groups.intro' => ['text' => 'Cette lecture exploratoire rapproche les personnes dont les 30 réponses se ressemblent. Elle décrit des tendances, pas des catégories figées.', 'context' => 'Method introduction above respondent profile groups.'],
@@ -50,7 +51,7 @@ $pageSourceLang = [
     'survey.organization.common.tomorrow' => ['text' => 'Projection demain', 'context' => 'Tag for a desired situation common ground item.'],
     'survey.organization.common.level' => ['text' => 'Niveau moyen {value}/5', 'context' => 'Average situation level in a common ground item.'],
     'survey.organization.common.alignment' => ['text' => 'Alignement {value}/100', 'context' => 'Alignment index in a common ground item.'],
-    'survey.organization.common.alignment_help' => ['text' => '100 signifie que tout le monde a choisi la même valeur. 0 correspond à une dispersion uniforme entre les cinq niveaux, ou à une dispersion encore plus forte.', 'context' => 'Explanation of the common ground alignment index.'],
+    'survey.organization.common.alignment_help' => ['text' => '100 signifie que tout le monde a choisi la même valeur. 0 correspond à une dispersion uniforme entre les cinq niveaux, ou à une dispersion encore plus forte. Échantillon : {count} · écart type : {stddev}.', 'context' => 'Explanation and statistics of the common ground alignment index.'],
     'survey.organization.common.empty' => ['text' => 'Il faut au moins trois réponses pour faire émerger un terrain commun.', 'context' => 'Empty state when no common ground item is available.'],
     'survey.organization.summary_eyebrow' => ['text' => 'En synthèse', 'context' => 'Eyebrow above the aggregate survey summary.'],
     'survey.organization.summary' => ['text' => 'Les aspirations les plus marquées concernent {themes}.', 'context' => 'Dynamic aggregate summary below the radar.'],
@@ -108,6 +109,8 @@ foreach ($surveyQuestionDefinitions as $questionDefinition) {
         'title' => t('survey.question.' . $number . '.title', [], $surveyLang, $surveySourceLang),
         'today' => round($today, 2),
         'tomorrow' => round($tomorrow, 2),
+        'todayStddev' => round((float)$scores['todayStddev'], 2),
+        'tomorrowStddev' => round((float)$scores['tomorrowStddev'], 2),
         'todayAgreement' => (string)($scores['todayAgreement'] ?? 'insufficient'),
         'tomorrowAgreement' => (string)($scores['tomorrowAgreement'] ?? 'insufficient'),
         'situation' => t('survey.question.' . $number . '.option.' . (int)round($today) . '.title', [], $surveyLang, $surveySourceLang),
@@ -115,6 +118,7 @@ foreach ($surveyQuestionDefinitions as $questionDefinition) {
         'desiredSituation' => t('survey.question.' . $number . '.option.' . (int)round($tomorrow) . '.title', [], $surveyLang, $surveySourceLang),
         'desiredSituationDescription' => t('survey.question.' . $number . '.option.' . (int)round($tomorrow) . '.description', [], $surveyLang, $surveySourceLang),
         'affinity' => round((float)$scores['affinityAverage'], 2),
+        'affinityStddev' => round((float)$scores['affinityStddev'], 2),
         'affinityAgreement' => (string)($scores['affinityAgreement'] ?? 'insufficient'),
         'responseCount' => (int)$scores['responseCount'],
     ];
@@ -138,6 +142,8 @@ foreach (['today', 'tomorrow'] as $period) {
             'situation' => $period === 'tomorrow' ? $question['desiredSituation'] : $question['situation'],
             'situationDescription' => $period === 'tomorrow' ? $question['desiredSituationDescription'] : $question['situationDescription'],
             'average' => (float)($commonGround['average'] ?? 0),
+            'responseCount' => (int)($question['responseCount'] ?? 0),
+            'standardDeviation' => (float)($commonGround['standardDeviation'] ?? 0),
             'alignmentScore' => max(0, min(100, (int)($commonGround['alignmentScore'] ?? 0))),
         ];
     }
@@ -363,7 +369,7 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
                                                     </div>
                                                     <div class="organization-report__common-metrics">
                                                         <span><?= $escape(t('survey.organization.common.level', ['value' => number_format((float)$commonGround['average'], 1, ',', '')], $pageLang, $pageSourceLang)) ?></span>
-                                                        <span class="organization-report__common-alignment" style="--param-alignment-score: <?= (int)$commonGround['alignmentScore'] ?>" title="<?= $escape(t('survey.organization.common.alignment_help', [], $pageLang, $pageSourceLang)) ?>">
+                                                        <span class="organization-report__common-alignment" style="--param-alignment-score: <?= (int)$commonGround['alignmentScore'] ?>" title="<?= $escape(t('survey.organization.common.alignment_help', ['count' => (int)$commonGround['responseCount'], 'stddev' => number_format((float)$commonGround['standardDeviation'], 2, ',', '')], $pageLang, $pageSourceLang)) ?>">
                                                             <i aria-hidden="true"><i></i></i>
                                                             <?= $escape(t('survey.organization.common.alignment', ['value' => (int)$commonGround['alignmentScore']], $pageLang, $pageSourceLang)) ?>
                                                         </span>
@@ -390,6 +396,7 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
             'desired' => t('survey.organization.desired', [], $pageLang, $pageSourceLang),
             'affinity' => t('survey.organization.affinity', [], $pageLang, $pageSourceLang),
             'agreementTitle' => t('survey.organization.agreement_title', [], $pageLang, $pageSourceLang),
+            'agreementStats' => t('survey.organization.agreement.stats', [], $pageLang, $pageSourceLang),
             'agreementStatuses' => array_reduce($agreementStatuses, static function (array $labels, string $status) use ($agreementLabel, $agreementDescription): array {
                 $labels[$status] = [
                     'label' => $agreementLabel($status),
