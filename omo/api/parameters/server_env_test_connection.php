@@ -34,7 +34,7 @@ if (!serverEnvAdminIsUnlocked()) {
 }
 
 $service = trim((string)($_POST['service'] ?? ''));
-if (!in_array($service, ['etherpad', 'ethercalc'], true)) {
+if (!in_array($service, ['etherpad', 'ethercalc', 'spacedeck'], true)) {
     http_response_code(422);
     echo json_encode([
         'status' => false,

@@ -9,6 +9,7 @@ Cette configuration sert a lancer une version locale reproductible du projet ave
 - Etherpad local pour tester les documents collaboratifs
 - EtherCalc local pour tester les tableurs collaboratifs
 - Collabora CODE local pour preparer l edition de documents bureautiques
+- SpaceDeck Open local pour tester les tableaux blancs collaboratifs
 - prise en charge de `short_open_tag`
 - acceptation de `localhost`, `demo.localhost`, `org1.localhost`, `org2.localhost`
 - acceptation d'un domaine de dev partage recommande avec wildcard DNS : `localtest.me`, `demo.localtest.me`, `org1.localtest.me`
@@ -113,6 +114,7 @@ L'application sera disponible sur :
 - Etherpad : `https://doc.localtest.me`
 - EtherCalc : `https://calc.localtest.me`
 - Collabora CODE : `https://document.localtest.me`
+- SpaceDeck Open : `https://whiteboard.localtest.me`
 
 Adresses de demonstration utiles :
 
@@ -196,6 +198,10 @@ Le service Etherpad local est preconfigure pour OMO et passe par le certificat H
 EtherCalc est egalement disponible localement via `https://calc.localtest.me`. Copier les variables EtherCalc de `docker/app/.env.private.example` dans `docker/app/.env.private`, puis copier `docker/ethercalc/.env.private.example` vers `docker/ethercalc/.env.private`. OMO cree et supprime les feuilles depuis le reseau Docker interne; l URL publique ne permet que l affichage et les editions autorisees par les jetons signes par OMO.
 
 Collabora CODE est disponible localement via `https://document.localtest.me`. Copier `docker/collabora/.env.private.example` vers `docker/collabora/.env.private` avant de lancer Docker. Le conteneur est accessible uniquement depuis le reseau Docker et Apache fournit le proxy HTTPS, y compris les connexions WebSocket. L image locale charge un script de marque OMO versionne qui reapplique les variables de palette apres l initialisation de CODE; apres une modification de `docker/collabora/branding.js`, changer aussi le suffixe de version dans `docker/collabora/Dockerfile`, puis reconstruire avec `docker compose up -d --build collabora`.
+
+SpaceDeck Open est disponible localement via `https://whiteboard.localtest.me`. Copier `docker/spacedeck/.env.private.example` vers `docker/spacedeck/.env.private` avant de lancer Docker. Le service est construit depuis le fork local `docker/spacedeck/fork`, qui implemente un contrat generique de controle d acces externe et une API interne de creation/suppression de tableaux. Il conserve ses medias et sa base SQLite dans deux volumes Docker, et Apache transmet son WebSocket `/socket`. L image locale installe GraphicsMagick pour les images; FFmpeg, Ghostscript et Chromium pourront etre ajoutes lorsque les conversions multimedia et les exports seront integres.
+
+Une page locale de test est disponible sur `https://org1.localtest.me/test/spacedeck.php`. Elle ouvre dans une iframe le tableau blanc de demonstration cree automatiquement au demarrage du conteneur. Elle utilise l utilisateur OMO connecte, son nom affiche et un jeton signe de courte duree. Les liens `mode=edit`, `mode=read` et `mode=deny` permettent de verifier les trois niveaux de droit.
 
 `localtest.me` n'est pas "publie" par Docker sur Internet du projet : c'est simplement un domaine public qui renvoie automatiquement vers `127.0.0.1`, ce qui evite toute configuration DNS locale supplementaire.
 

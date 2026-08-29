@@ -1894,6 +1894,11 @@
 					uh.parameters AS holon_parameters,
 					uh.datecreation AS holon_assigned_at,
 					uh.focus AS holon_focus,
+					uh.time_budget_hours AS holon_time_budget_hours,
+					uh.time_budget_recurrence AS holon_time_budget_recurrence,
+					uh.money_budget AS holon_money_budget,
+					uh.money_budget_recurrence AS holon_money_budget_recurrence,
+					uh.assignment_review_date AS holon_assignment_review_date,
 					COALESCE(uo.active, 0) AS organization_active,
 					CASE
 						WHEN inv.id IS NULL THEN 0
@@ -1942,10 +1947,15 @@
 						h.IDtypeholon AS holon_type_id,
 						uh.active AS holon_active,
 						uh.active AS holon_effective_active,
-						uh.parameters AS holon_parameters,
-						uh.datecreation AS holon_assigned_at,
-						uh.focus AS holon_focus,
-						1 AS organization_active,
+					uh.parameters AS holon_parameters,
+					uh.datecreation AS holon_assigned_at,
+					uh.focus AS holon_focus,
+					uh.time_budget_hours AS holon_time_budget_hours,
+					uh.time_budget_recurrence AS holon_time_budget_recurrence,
+					uh.money_budget AS holon_money_budget,
+					uh.money_budget_recurrence AS holon_money_budget_recurrence,
+					uh.assignment_review_date AS holon_assignment_review_date,
+					1 AS organization_active,
 						0 AS has_pending_invitation,
 						0 AS has_pending_admin_invitation,
 						0 AS has_accepted_invitation
@@ -2052,6 +2062,11 @@
 						'holonTypeId' => (int)($row['holon_type_id'] ?? 0),
 						'assignedAt' => $row['holon_assigned_at'] ?? null,
 						'focus' => trim((string)($row['holon_focus'] ?? '')),
+						'timeBudgetHours' => $row['holon_time_budget_hours'] ?? null,
+						'timeBudgetRecurrence' => trim((string)($row['holon_time_budget_recurrence'] ?? '')),
+						'moneyBudget' => $row['holon_money_budget'] ?? null,
+						'moneyBudgetRecurrence' => trim((string)($row['holon_money_budget_recurrence'] ?? '')),
+						'assignmentReviewDate' => $row['holon_assignment_review_date'] ?? null,
 					);
 				}
 
