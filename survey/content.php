@@ -17,6 +17,22 @@ $sourceLang = [
         'text' => 'Explorez la maturité de votre organisation telle que vous la percevez aujourd’hui, puis dessinez celle que vous aimeriez voir émerger demain.',
         'context' => 'Introductory paragraph on the survey welcome screen.',
     ],
+    'survey.invitation.page_title' => [
+        'text' => 'Évaluer {organization}',
+        'context' => 'Browser title for a survey opened from an organization invitation.',
+    ],
+    'survey.invitation.hero_eyebrow' => [
+        'text' => 'Votre regard pour {organization}',
+        'context' => 'Welcome eyebrow for a survey opened from an organization invitation.',
+    ],
+    'survey.invitation.hero_title' => [
+        'text' => 'Comment percevez-vous {organization} ?',
+        'context' => 'Welcome title for a survey opened from an organization invitation.',
+    ],
+    'survey.invitation.fact' => [
+        'text' => 'Résultat associé à {organization}',
+        'context' => 'Welcome fact explaining where an invited survey result will be stored.',
+    ],
     'survey.intro.time' => [
         'text' => 'Environ 10 minutes',
         'context' => 'Estimated completion time shown on the welcome screen.',
@@ -52,6 +68,70 @@ $sourceLang = [
     'survey.action.restart' => [
         'text' => 'Recommencer',
         'context' => 'Button that clears the current local answers.',
+    ],
+    'survey.invite.action' => [
+        'text' => 'Évaluer mon orga par ses membres et parties prenantes',
+        'context' => 'Welcome button opening the organization survey invitation dialog.',
+    ],
+    'survey.invite.eyebrow' => [
+        'text' => 'Recueillir des regards',
+        'context' => 'Eyebrow in the survey invitation dialog.',
+    ],
+    'survey.invite.title' => [
+        'text' => 'Inviter à évaluer une organisation',
+        'context' => 'Title in the survey invitation dialog.',
+    ],
+    'survey.invite.intro' => [
+        'text' => 'Les réponses seront rattachées à cette organisation, sans donner aux personnes invitées le statut de membre.',
+        'context' => 'Explanation in the survey invitation dialog.',
+    ],
+    'survey.invite.organization' => [
+        'text' => 'Organisation',
+        'context' => 'Organization field label in the survey invitation dialog.',
+    ],
+    'survey.invite.holons' => [
+        'text' => 'Holons',
+        'context' => 'Holon selector tab in the survey invitation dialog.',
+    ],
+    'survey.invite.members' => [
+        'text' => 'Membres',
+        'context' => 'Member selector tab in the survey invitation dialog.',
+    ],
+    'survey.invite.emails' => [
+        'text' => 'E-mails',
+        'context' => 'Email selector tab in the survey invitation dialog.',
+    ],
+    'survey.invite.email_help' => [
+        'text' => 'Une adresse par ligne, ou plusieurs adresses séparées par des virgules.',
+        'context' => 'Help below external email textarea in the survey invitation dialog.',
+    ],
+    'survey.invite.email_placeholder' => [
+        'text' => 'partenaire@example.org',
+        'context' => 'Placeholder in external email textarea in the survey invitation dialog.',
+    ],
+    'survey.invite.send' => [
+        'text' => 'Envoyer les invitations',
+        'context' => 'Submit button in the survey invitation dialog.',
+    ],
+    'survey.invite.sending' => [
+        'text' => 'Envoi en cours…',
+        'context' => 'Busy label for the invitation dialog submit button.',
+    ],
+    'survey.invite.sent' => [
+        'text' => '{count} invitation(s) envoyée(s).',
+        'context' => 'Success message after sending survey invitations.',
+    ],
+    'survey.invite.error' => [
+        'text' => 'Les invitations n’ont pas pu être envoyées.',
+        'context' => 'Generic error message in the survey invitation dialog.',
+    ],
+    'survey.invite.empty' => [
+        'text' => 'Aucune organisation active n’est associée à votre compte.',
+        'context' => 'Message when an authenticated user has no organization available for survey invitations.',
+    ],
+    'survey.invite.close' => [
+        'text' => 'Fermer',
+        'context' => 'Close label for the survey invitation dialog.',
     ],
     'survey.action.back' => [
         'text' => 'Retour',
@@ -229,6 +309,154 @@ $sourceLang = [
         'text' => 'La couronne 5 est volontairement colorée en rouge pâle : elle signale le risque d’aller trop loin dans l’application d’un principe.',
         'context' => 'Explanatory note for the pale red outer risk band of the radar.',
     ],
+    'survey.omo.action' => [
+        'text' => 'Que peut faire OMO pour vous ?',
+        'context' => 'Button opening the OMO recommendation dialog from survey results.',
+    ],
+    'survey.omo.eyebrow' => [
+        'text' => 'Des pistes avec OMO',
+        'context' => 'Eyebrow in the OMO recommendation dialog.',
+    ],
+    'survey.omo.title' => [
+        'text' => 'Que peut faire OMO pour vous ?',
+        'context' => 'Heading of the OMO recommendation dialog.',
+    ],
+    'survey.omo.intro' => [
+        'text' => 'Voici les trois axes qui combinent le plus fort potentiel de progression : une situation actuelle basse et un élan marqué vers demain ou vers le principe lui-même.',
+        'context' => 'Explanation of the three selected recommendation axes.',
+    ],
+    'survey.omo.axis_label' => [
+        'text' => 'Axe à fort potentiel',
+        'context' => 'Eyebrow above each selected principle in the OMO recommendation dialog.',
+    ],
+    'survey.omo.scores' => [
+        'text' => 'Aujourd’hui {today}/5 · Demain {tomorrow}/5 · Affinité {affinity}/5',
+        'context' => 'Score summary for a selected OMO recommendation principle.',
+    ],
+    'survey.omo.path' => [
+        'text' => 'Parcours proposé : du niveau {start} au niveau {target}',
+        'context' => 'Displayed start and target levels of a tailored OMO recommendation.',
+    ],
+    'survey.omo.stage' => [
+        'text' => 'Étape {level}',
+        'context' => 'Label for one progressive OMO recommendation stage.',
+    ],
+    'survey.omo.risk' => [
+        'text' => 'Le niveau 5 est une zone d’exploration : OMO peut soutenir ce chemin, sans en faire une norme à appliquer partout.',
+        'context' => 'Caution shown when a recommended OMO path includes level 5.',
+    ],
+    'survey.omo.close' => [
+        'text' => 'Fermer',
+        'context' => 'Close button for the OMO recommendation dialog.',
+    ],
+    'survey.save.links' => [
+        'text' => 'Obtenir mes liens',
+        'context' => 'Button opening the permanent survey links dialog.',
+    ],
+    'survey.save.result' => [
+        'text' => 'Enregistrer le résultat',
+        'context' => 'Button saving a survey result for the first time.',
+    ],
+    'survey.save.changes' => [
+        'text' => 'Sauver les modifications',
+        'context' => 'Button saving changes made through a private survey link.',
+    ],
+    'survey.save.saved' => [
+        'text' => 'Aucune modification à sauvegarder',
+        'context' => 'Disabled save button label when the private survey result is unchanged.',
+    ],
+    'survey.save.omo' => [
+        'text' => 'Enregistrer dans OMO',
+        'context' => 'Button saving the survey before linking it to an OMO organization.',
+    ],
+    'survey.save.eyebrow' => [
+        'text' => 'Résultat enregistré',
+        'context' => 'Eyebrow in the permanent survey links dialog.',
+    ],
+    'survey.save.title' => [
+        'text' => 'Vos liens sont prêts',
+        'context' => 'Heading of the permanent survey links dialog.',
+    ],
+    'survey.save.public_label' => [
+        'text' => 'Lien public',
+        'context' => 'Label for the public read-only survey link.',
+    ],
+    'survey.save.private_label' => [
+        'text' => 'Lien privé',
+        'context' => 'Label for the private editable survey link.',
+    ],
+    'survey.save.private_help' => [
+        'text' => 'Gardez ce lien pour vous : il permet de modifier vos réponses et met à jour le lien public.',
+        'context' => 'Security notice below the private editable survey link.',
+    ],
+    'survey.save.copy' => [
+        'text' => 'Copier',
+        'context' => 'Button copying a permanent survey link.',
+    ],
+    'survey.save.copied' => [
+        'text' => 'Copié',
+        'context' => 'Temporary confirmation after a permanent survey link is copied.',
+    ],
+    'survey.save.saving' => [
+        'text' => 'Enregistrement…',
+        'context' => 'Temporary button label while saving survey answers.',
+    ],
+    'survey.save.error' => [
+        'text' => 'Impossible d’enregistrer le résultat pour le moment.',
+        'context' => 'Error shown when saving permanent survey links fails.',
+    ],
+    'survey.save.associate' => [
+        'text' => 'Associer à une organisation OMO',
+        'context' => 'Button opening the OMO organization association step.',
+    ],
+    'survey.save.close' => [
+        'text' => 'Fermer',
+        'context' => 'Close button for the permanent survey links dialog.',
+    ],
+    'survey.public.page_title' => [
+        'text' => 'Situation actuelle de l’organisation',
+        'context' => 'Browser title of a public organizational maturity result.',
+    ],
+    'survey.public.eyebrow' => [
+        'text' => 'Vue publique',
+        'context' => 'Eyebrow on a public organizational maturity result.',
+    ],
+    'survey.public.title' => [
+        'text' => 'Où en est cette organisation ?',
+        'context' => 'Heading on a public organizational maturity result.',
+    ],
+    'survey.public.intro' => [
+        'text' => 'Cette vue met en regard la perception actuelle et la situation souhaitée, principe par principe.',
+        'context' => 'Intro on a public organizational maturity result.',
+    ],
+    'survey.public.radar_title' => [
+        'text' => 'Radar de la situation actuelle et souhaitée',
+        'context' => 'Heading above the public current and desired situation radar.',
+    ],
+    'survey.public.comparison_label' => [
+        'text' => 'Aujourd’hui et demain',
+        'context' => 'Eyebrow above the public radar comparing current and desired situations.',
+    ],
+    'survey.public.radar_help' => [
+        'text' => 'Les dix axes correspondent aux principes du questionnaire. Aujourd’hui montre la perception actuelle ; Demain rend visible l’ambition. La couronne 5 signale une zone de vigilance.',
+        'context' => 'Help text for the public current and desired situation radar.',
+    ],
+    'survey.public.current_label' => [
+        'text' => 'Situation actuelle',
+        'context' => 'Label shown above each current situation in a public result.',
+    ],
+    'survey.public.desired_label' => [
+        'text' => 'Situation souhaitée',
+        'context' => 'Label shown above each desired situation in a public result.',
+    ],
+    'survey.public.not_found' => [
+        'text' => 'Résultat introuvable.',
+        'context' => 'Error shown when a public survey result link is invalid.',
+    ],
+    'survey.public.incomplete' => [
+        'text' => 'Résultat incomplet.',
+        'context' => 'Error shown when a public survey result has missing responses.',
+    ],
     'survey.dialog.restart' => [
         'text' => 'Effacer les réponses enregistrées sur cet appareil et recommencer ?',
         'context' => 'Confirmation shown before clearing all local survey answers.',
@@ -358,6 +586,99 @@ $surveyQuestionDefinitions = [
     ],
 ];
 
+$surveyOmoPathDefinitions = [
+    1 => [
+        'stages' => [
+            ['title' => 'Rendre la structure lisible', 'description' => 'Cartographiez l’organisation en cercles et rôles pour voir où les décisions remontent encore vers quelques positions centrales.'],
+            ['title' => 'Nommer les responsabilités', 'description' => 'Associez les personnes aux rôles et rendez les attentes de chacun visibles dans Team et dans la structure.'],
+            ['title' => 'Définir les domaines d’autorité', 'description' => 'Utilisez les autorités, propriétés et règles de holon pour expliciter ce qui peut être décidé dans chaque périmètre.'],
+            ['title' => 'Faire agir au bon endroit', 'description' => 'Ajustez les droits et les périmètres afin que les rôles disposent réellement de la latitude correspondant à leur responsabilité.'],
+            ['title' => 'Garder l’autorité vivante', 'description' => 'Révisez régulièrement la structure et les règles lorsque le terrain change, sans effacer la clarté des rôles.'],
+        ],
+    ],
+    2 => [
+        'stages' => [
+            ['title' => 'Créer un contexte partagé', 'description' => 'Rassemblez les personnes, documents et informations utiles dans le bon cercle avant de demander un avis ou une décision.'],
+            ['title' => 'Ouvrir des consultations simples', 'description' => 'Utilisez les consultations et les propositions pour recueillir des points de vue sans confondre écoute et décision.'],
+            ['title' => 'Organiser la contribution', 'description' => 'Invitez les personnes concernées, reliez les échanges aux propositions et gardez les discussions au bon niveau de contexte.'],
+            ['title' => 'Choisir une méthode de décision', 'description' => 'Configurez un vote simple, un jugement majoritaire ou un consentement selon le sujet, les participants et le degré d’engagement attendu.'],
+            ['title' => 'Préserver le discernement', 'description' => 'Gardez une participation proportionnée grâce aux périmètres, aux droits et aux consultations ciblées plutôt que de solliciter tout le monde par défaut.'],
+        ],
+    ],
+    3 => [
+        'stages' => [
+            ['title' => 'Rendre le cap visible', 'description' => 'Inscrivez la raison d’être et les attendus dans les organisations, cercles et modèles de structure concernés.'],
+            ['title' => 'Relier les travaux au cap', 'description' => 'Rattachez documents, projets et décisions au bon contexte afin que leur intention reste lisible.'],
+            ['title' => 'Préparer les arbitrages', 'description' => 'Utilisez les espaces de décision et les documents partagés pour exposer les options, les contraintes et le sens recherché.'],
+            ['title' => 'Piloter avec des repères communs', 'description' => 'Croisez les projets et les indicateurs dans le tableau de pilotage pour suivre ce qui sert réellement les attendus du collectif.'],
+            ['title' => 'Réinterroger sans se disperser', 'description' => 'Faites évoluer les attendus et la structure quand le contexte le justifie, en conservant une trace explicite des choix effectués.'],
+        ],
+    ],
+    4 => [
+        'stages' => [
+            ['title' => 'Voir où le pouvoir se concentre', 'description' => 'La carte des cercles et rôles aide à repérer les passages obligés, les responsabilités absentes et les zones trop dépendantes d’une personne.'],
+            ['title' => 'Poser des délégations concrètes', 'description' => 'Associez des rôles, des personnes et des périmètres de travail pour que les décisions locales puissent être assumées.'],
+            ['title' => 'Outiller les domaines d’action', 'description' => 'Définissez autorités, règles et droits contextuels afin que le pouvoir soit distribué là où les informations sont présentes.'],
+            ['title' => 'Rendre les décisions traçables', 'description' => 'Reliez les décisions, projets et documents à leurs cercles afin que chacun puisse comprendre qui agit, sur quoi et pourquoi.'],
+            ['title' => 'Ajuster les circulations', 'description' => 'Faites évoluer les périmètres et les règles lorsque les besoins changent, sans transformer la souplesse en flou permanent.'],
+        ],
+    ],
+    5 => [
+        'stages' => [
+            ['title' => 'Partager un socle fiable', 'description' => 'Donnez à chacun accès à la structure, aux membres et aux documents correspondant à son contexte de travail.'],
+            ['title' => 'Clarifier les accès', 'description' => 'Utilisez les droits par organisation, cercle, rôle et document pour rendre les règles du jeu compréhensibles plutôt qu’implicites.'],
+            ['title' => 'Rendre le travail visible', 'description' => 'Centralisez documents, projets, décisions, checklists et calendrier dans leurs contextes respectifs afin de réduire les informations cachées.'],
+            ['title' => 'Soutenir la régulation', 'description' => 'Le tableau de pilotage, les indicateurs et les échéances permettent de partager les faits et d’ajuster avant de multiplier les validations.'],
+            ['title' => 'Garder un cadre protecteur', 'description' => 'Conservez des droits, périmètres et traces adaptés aux sujets sensibles : la confiance gagne à être soutenue par des règles explicites.'],
+        ],
+    ],
+    6 => [
+        'stages' => [
+            ['title' => 'Rendre les structures observables', 'description' => 'Utilisez la carte de l’organisation pour rendre visibles les cercles, rôles, responsabilités et liens qui composent le fonctionnement actuel.'],
+            ['title' => 'Préparer des ajustements localisés', 'description' => 'Modifiez les propriétés, rôles ou règles du bon holon plutôt que de reconstruire toute l’organisation à chaque difficulté.'],
+            ['title' => 'Tester avec des modèles réutilisables', 'description' => 'Les modèles de holon permettent de faire évoluer une forme de gouvernance tout en distinguant les valeurs héritées des adaptations locales.'],
+            ['title' => 'Observer les effets', 'description' => 'Suivez projets, processus, décisions et indicateurs dans le tableau de pilotage pour voir ce que les changements produisent réellement.'],
+            ['title' => 'Évoluer sans agitation', 'description' => 'Gardez des repères stables dans les modèles, les droits et les attendus tout en laissant les règles et responsabilités apprendre du terrain.'],
+        ],
+    ],
+    7 => [
+        'stages' => [
+            ['title' => 'Rendre les rôles visibles', 'description' => 'La structure OMO distingue organisation, cercles, groupes et rôles afin que les responsabilités ne restent pas confondues avec les personnes.'],
+            ['title' => 'Associer sans figer', 'description' => 'Dans Team, reliez les personnes à leurs rôles et rendez visibles leur focus, leurs budgets et leurs affectations.'],
+            ['title' => 'Clarifier les responsabilités propres aux rôles', 'description' => 'Définissez les attendus, autorités et règles dans le bon contexte pour que l’autorité porte sur une fonction, pas sur la valeur d’une personne.'],
+            ['title' => 'Faciliter les passages et les ajustements', 'description' => 'Les affectations, groupes et périmètres permettent de faire évoluer une contribution sans devoir redessiner toute la relation hiérarchique.'],
+            ['title' => 'Préserver l’égalité de considération', 'description' => 'Gardez les rôles et leurs pouvoirs explicites, afin qu’ils puissent être questionnés et ajustés sans viser les personnes qui les exercent.'],
+        ],
+    ],
+    8 => [
+        'stages' => [
+            ['title' => 'Donner une place aux écarts', 'description' => 'Utilisez les documents, comptes rendus et discussions de propositions pour rendre les difficultés concrètes et partageables.'],
+            ['title' => 'Transformer un problème en sujet commun', 'description' => 'Ouvrez une consultation ou une discussion liée à une décision afin que les personnes concernées puissent formuler ce qui coince.'],
+            ['title' => 'Relier les échanges à une action', 'description' => 'Convertissez les points clarifiés en décisions, projets, checklists ou ajustements de rôles, dans le contexte où ils se posent.'],
+            ['title' => 'Suivre les ajustements', 'description' => 'Les projets, indicateurs et comptes rendus aident à vérifier si la réponse apportée résout réellement la tension observée.'],
+            ['title' => 'Éviter de tout dramatiser', 'description' => 'Réservez les espaces de discussion et de décision aux sujets qui appellent une élaboration, sans imposer un traitement lourd à chaque inconfort.'],
+        ],
+    ],
+    9 => [
+        'stages' => [
+            ['title' => 'Créer des points d’arrêt utiles', 'description' => 'Le calendrier, les ordres du jour et les documents de préparation donnent un cadre simple pour ne pas décider uniquement dans l’urgence.'],
+            ['title' => 'Préparer les informations pertinentes', 'description' => 'Rassemblez les documents, projets et indicateurs liés au contexte avant une réunion ou une décision importante.'],
+            ['title' => 'Consigner ce qui a été vu', 'description' => 'Les PV, discussions et décisions conservent les faits, les options et les engagements afin de limiter les réactions fondées sur des souvenirs partiels.'],
+            ['title' => 'Réguler le rythme de travail', 'description' => 'Suivez les échéances, projets et checklists pour rendre les urgences visibles et choisir collectivement ce qui mérite une attention immédiate.'],
+            ['title' => 'Garder la présence au service de l’action', 'description' => 'Utilisez ces repères pour ralentir juste assez et éclairer les choix, sans transformer chaque décision en processus excessivement long.'],
+        ],
+    ],
+    10 => [
+        'stages' => [
+            ['title' => 'Voir les interdépendances proches', 'description' => 'Situez les projets, documents, rôles et cercles dans leur contexte pour rendre visibles les personnes et ressources déjà impliquées.'],
+            ['title' => 'Partager les informations pertinentes', 'description' => 'Les documents, tableaux et calendriers collaboratifs permettent de travailler avec les bonnes personnes sans disperser les versions d’une même information.'],
+            ['title' => 'Associer les parties concernées', 'description' => 'Les consultations et les décisions peuvent inviter les personnes concernées dans un cadre et un périmètre explicites.'],
+            ['title' => 'Piloter les impacts dans la durée', 'description' => 'Reliez projets, indicateurs et documents au tableau de pilotage pour observer les effets au-delà d’un seul résultat interne.'],
+            ['title' => 'Arbitrer avec discernement', 'description' => 'OMO aide à rendre les contextes et les impacts discutables ; gardez toutefois la décision située, plutôt que de rechercher une neutralité impossible pour chaque partie prenante.'],
+        ],
+    ],
+];
+
 foreach ($surveyQuestionDefinitions as $questionDefinition) {
     $questionNumber = (int)$questionDefinition['number'];
     $questionPrefix = 'survey.question.' . $questionNumber;
@@ -380,6 +701,21 @@ foreach ($surveyQuestionDefinitions as $questionDefinition) {
         $sourceLang[$optionPrefix . '.description'] = [
             'text' => (string)$optionDefinition['description'],
             'context' => 'Description of situation ' . $optionNumber . ' for principle ' . $questionNumber . '.',
+        ];
+    }
+}
+
+foreach ($surveyOmoPathDefinitions as $questionNumber => $pathDefinition) {
+    foreach ($pathDefinition['stages'] as $stageIndex => $stageDefinition) {
+        $stageNumber = $stageIndex + 1;
+        $stagePrefix = 'survey.omo.path.' . (int)$questionNumber . '.stage.' . $stageNumber;
+        $sourceLang[$stagePrefix . '.title'] = [
+            'text' => (string)$stageDefinition['title'],
+            'context' => 'OMO recommendation stage ' . $stageNumber . ' for principle ' . (int)$questionNumber . '.',
+        ];
+        $sourceLang[$stagePrefix . '.description'] = [
+            'text' => (string)$stageDefinition['description'],
+            'context' => 'OMO recommendation description for stage ' . $stageNumber . ' and principle ' . (int)$questionNumber . '.',
         ];
     }
 }

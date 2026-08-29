@@ -50,6 +50,7 @@ $reasonMessages = array(
     'invalid_money_budget' => omoTeamT('team.assignment_popup.invalid_budget', [], $lang, $sourceLang),
     'invalid_time_recurrence' => omoTeamT('team.assignment_popup.invalid_recurrence', [], $lang, $sourceLang),
     'invalid_money_recurrence' => omoTeamT('team.assignment_popup.invalid_recurrence', [], $lang, $sourceLang),
+    'invalid_assignment_review_date' => omoTeamT('team.assignment_popup.invalid_review_date', [], $lang, $sourceLang),
     'save_failed' => omoTeamT('team.assignment_popup.save_failed', [], $lang, $sourceLang),
 );
 
@@ -61,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'time_budget_recurrence' => $_POST['time_budget_recurrence'] ?? '',
         'money_budget' => $_POST['money_budget'] ?? '',
         'money_budget_recurrence' => $_POST['money_budget_recurrence'] ?? '',
+        'assignment_review_date' => $_POST['assignment_review_date'] ?? '',
     ));
 
     $isSuccess = !empty($result['status']);
@@ -90,6 +92,14 @@ $formatBudget = static function ($value): string {
 
     return rtrim(rtrim(number_format((float)$value, 2, '.', ''), '0'), '.');
 };
+$formatDateInput = static function ($value): string {
+    if ($value instanceof DateTimeInterface) {
+        return $value->format('Y-m-d');
+    }
+
+    $value = trim((string)$value);
+    return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : '';
+};
 $teamScope = trim((string)($_GET['team_scope'] ?? 'contextual'));
 $teamScope = in_array($teamScope, array('contextual', 'children', 'descendants'), true) ? $teamScope : 'contextual';
 $teamQuery = trim((string)($_GET['team_query'] ?? ''));
@@ -103,11 +113,19 @@ $refreshUrl = '/omo/api/team/index.php?oid=' . $organizationId
         <span class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape(omoTeamT('team.assignment_popup.for_member', ['name' => $assignment->getUserDisplayName($organizationId)], $lang, $sourceLang)) ?></span>
     </div>
 
-    <label class="omo-team-assignment-editor__field generic-form-label">
-        <span><?= omoApiEscape(omoTeamT('team.member.focus', [], $lang, $sourceLang)) ?></span>
-        <input type="text" name="focus" class="generic-form-control" maxlength="<?= (int)(UserHolon::attributeLength()['focus'] ?? 250) ?>" value="<?= omoApiEscape((string)$assignment->get('focus')) ?>">
-        <small><?= omoApiEscape(omoTeamT('team.assignment_popup.focus.help', [], $lang, $sourceLang)) ?></small>
-    </label>
+    <div class="omo-team-assignment-editor__focus-deadline">
+        <label class="omo-team-assignment-editor__field generic-form-label">
+            <span><?= omoApiEscape(omoTeamT('team.member.focus', [], $lang, $sourceLang)) ?></span>
+            <input type="text" name="focus" class="generic-form-control" maxlength="<?= (int)(UserHolon::attributeLength()['focus'] ?? 250) ?>" value="<?= omoApiEscape((string)$assignment->get('focus')) ?>">
+            <small><?= omoApiEscape(omoTeamT('team.assignment_popup.focus.help', [], $lang, $sourceLang)) ?></small>
+        </label>
+
+        <label class="omo-team-assignment-editor__field generic-form-label">
+            <span><?= omoApiEscape(omoTeamT('team.assignment_popup.review_date', [], $lang, $sourceLang)) ?></span>
+            <input type="date" name="assignment_review_date" class="generic-form-control" value="<?= omoApiEscape($formatDateInput($assignment->get('assignment_review_date'))) ?>">
+            <small><?= omoApiEscape(omoTeamT('team.assignment_popup.review_date.help', [], $lang, $sourceLang)) ?></small>
+        </label>
+    </div>
 
     <div class="omo-team-assignment-editor__budget-grid">
         <label class="omo-team-assignment-editor__field generic-form-label">
@@ -147,10 +165,11 @@ $refreshUrl = '/omo/api/team/index.php?oid=' . $organizationId
 .omo-team-assignment-editor { display: grid; gap: var(--generic-space-3, 12px); }
 .omo-team-assignment-editor__heading, .omo-team-assignment-editor__field, .omo-team-assignment-editor__actions { display: grid; gap: var(--generic-space-1, 4px); }
 .omo-team-assignment-editor__field small, .omo-team-assignment-editor__feedback { color: var(--color-text-light); font-size: 0.82rem; }
+.omo-team-assignment-editor__focus-deadline { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 0.55fr); gap: var(--generic-space-3, 12px); }
 .omo-team-assignment-editor__budget-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 0.72fr) minmax(0, 1fr) minmax(130px, 0.72fr); gap: var(--generic-space-3, 12px); }
 .omo-team-assignment-editor__actions { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
 .omo-team-assignment-editor__feedback.is-error { color: #b91c1c; }
-@media (max-width: 560px) { .omo-team-assignment-editor__budget-grid, .omo-team-assignment-editor__actions { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .omo-team-assignment-editor__focus-deadline, .omo-team-assignment-editor__budget-grid, .omo-team-assignment-editor__actions { grid-template-columns: 1fr; } }
 </style>
 
 <script>

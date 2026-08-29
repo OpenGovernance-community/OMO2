@@ -3791,6 +3791,7 @@ CREATE TABLE `user_holon` (
   `time_budget_recurrence` varchar(10) DEFAULT NULL,
   `money_budget` decimal(12,2) DEFAULT NULL,
   `money_budget_recurrence` varchar(10) DEFAULT NULL,
+  `assignment_review_date` date DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateconnexion` datetime DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT 0,
@@ -3917,6 +3918,61 @@ UNLOCK TABLES;
 --
 -- Table structure for table `user_organization`
 --
+
+DROP TABLE IF EXISTS `organizational_maturity_assessment_response`;
+DROP TABLE IF EXISTS `organizational_maturity_assessment`;
+DROP TABLE IF EXISTS `organizational_maturity_invitation`;
+CREATE TABLE `organizational_maturity_invitation` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) NOT NULL,
+  `IDuser` int(11) DEFAULT NULL,
+  `email` varchar(250) NOT NULL,
+  `token` char(32) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `last_sent_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_organizational_maturity_invitation_org_email` (`IDorganization`,`email`),
+  UNIQUE KEY `uniq_organizational_maturity_invitation_token` (`token`),
+  CONSTRAINT `fk_organizational_maturity_invitation_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_organizational_maturity_invitation_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `organizational_maturity_assessment` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDuser` int(11) DEFAULT NULL,
+  `IDorganization` int(11) DEFAULT NULL,
+  `IDinvitation` int(11) DEFAULT NULL,
+  `public_token` char(48) NOT NULL,
+  `private_token_hash` char(64) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_organizational_maturity_assessment_public_token` (`public_token`),
+  UNIQUE KEY `uniq_organizational_maturity_assessment_private_token_hash` (`private_token_hash`),
+  KEY `idx_organizational_maturity_assessment_organization` (`IDorganization`,`updated_at`),
+  KEY `idx_organizational_maturity_assessment_user` (`IDuser`,`updated_at`),
+  UNIQUE KEY `uniq_organizational_maturity_assessment_invitation` (`IDinvitation`),
+  CONSTRAINT `fk_organizational_maturity_assessment_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_organizational_maturity_assessment_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_organizational_maturity_assessment_invitation` FOREIGN KEY (`IDinvitation`) REFERENCES `organizational_maturity_invitation` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+CREATE TABLE `organizational_maturity_assessment_response` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDassessment` int(11) NOT NULL,
+  `principle_number` tinyint(3) unsigned NOT NULL,
+  `affinity_score` tinyint(3) unsigned NOT NULL,
+  `today_score` tinyint(3) unsigned NOT NULL,
+  `tomorrow_score` tinyint(3) unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_organizational_maturity_assessment_response_principle` (`IDassessment`,`principle_number`),
+  KEY `idx_organizational_maturity_response_principle_today` (`principle_number`,`today_score`),
+  KEY `idx_organizational_maturity_response_principle_tomorrow` (`principle_number`,`tomorrow_score`),
+  CONSTRAINT `fk_organizational_maturity_assessment_response_assessment` FOREIGN KEY (`IDassessment`) REFERENCES `organizational_maturity_assessment` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `user_organization`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
