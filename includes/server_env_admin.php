@@ -167,6 +167,40 @@ function serverEnvAdminGetEditableSections()
                 ],
             ],
         ],
+        'spacedeck' => [
+            'title' => serverEnvAdminT('parameters.server_env.section.spacedeck.title', 'SpaceDeck'),
+            'intro' => serverEnvAdminT('parameters.server_env.section.spacedeck.intro', 'Connexion globale au serveur de tableaux blancs collaboratifs.'),
+            'fields' => [
+                [
+                    'key' => 'SPACEDECK_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_URL.label', 'URL publique SpaceDeck'),
+                    'type' => 'url',
+                    'placeholder' => 'https://board.opengov.tools',
+                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_URL.help', 'Adresse HTTPS ouverte dans les iframes OMO, sans le nom du tableau.'),
+                ],
+                [
+                    'key' => 'SPACEDECK_INTERNAL_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_INTERNAL_URL.label', 'URL interne SpaceDeck'),
+                    'type' => 'url',
+                    'placeholder' => 'https://board.opengov.tools',
+                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_INTERNAL_URL.help', 'Optionnel. Utilisee par OMO pour creer et supprimer les tableaux. Laissez vide pour utiliser l URL publique.'),
+                ],
+                [
+                    'key' => 'SPACEDECK_PROVISIONING_TOKEN',
+                    'label' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_PROVISIONING_TOKEN.label', 'Jeton de provisioning SpaceDeck'),
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDECK_PROVISIONING_TOKEN.help', 'Jeton prive configure sur le VPS. Il permet a OMO de creer et supprimer les tableaux.'),
+                ],
+                [
+                    'key' => 'SPACEDOCK_EXTERNAL_ACCESS_SECRET',
+                    'label' => serverEnvAdminT('parameters.server_env.field.SPACEDOCK_EXTERNAL_ACCESS_SECRET.label', 'Cle de signature des acces'),
+                    'type' => 'password',
+                    'secret' => true,
+                    'help' => serverEnvAdminT('parameters.server_env.field.SPACEDOCK_EXTERNAL_ACCESS_SECRET.help', 'Cle privee longue et aleatoire, utilisee par OMO pour signer les acces de lecture et d edition.'),
+                ],
+            ],
+        ],
         'mail' => [
             'title' => serverEnvAdminT('parameters.server_env.section.mail.title', 'E-mail'),
             'intro' => serverEnvAdminT('parameters.server_env.section.mail.intro', 'Configuration SMTP generale du serveur.'),
@@ -548,6 +582,14 @@ function serverEnvAdminValidateValues(array $values)
             'translationKey' => 'parameters.server_env.error.invalid_ethercalc_url',
             'fallback' => 'L URL EtherCalc doit etre une adresse http ou https valide.',
         ),
+        'SPACEDECK_URL' => array(
+            'translationKey' => 'parameters.server_env.error.invalid_spacedeck_url',
+            'fallback' => 'L URL SpaceDeck doit etre une adresse http ou https valide.',
+        ),
+        'SPACEDECK_INTERNAL_URL' => array(
+            'translationKey' => 'parameters.server_env.error.invalid_spacedeck_url',
+            'fallback' => 'L URL SpaceDeck doit etre une adresse http ou https valide.',
+        ),
     );
 
     foreach ($serverUrlFields as $serverUrlKey => $serverUrlError) {
@@ -589,7 +631,12 @@ function serverEnvAdminValidateValues(array $values)
 
 function serverEnvAdminConnectionTestError($service, $reason)
 {
-    $serviceLabel = $service === 'etherpad' ? 'Etherpad' : 'EtherCalc';
+    $serviceLabels = array(
+        'etherpad' => 'Etherpad',
+        'ethercalc' => 'EtherCalc',
+        'spacedeck' => 'SpaceDeck',
+    );
+    $serviceLabel = $serviceLabels[$service] ?? 'Service';
     $reason = trim((string)$reason);
 
     return serverEnvAdminT(
@@ -602,7 +649,7 @@ function serverEnvAdminConnectionTestError($service, $reason)
     );
 }
 
-function serverEnvAdminRequest($method, $url)
+function serverEnvAdminRequest($method, $url, array $options = array())
 {
     if (!function_exists('curl_init')) {
         return [
@@ -621,7 +668,11 @@ function serverEnvAdminRequest($method, $url)
     curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 5);
     curl_setopt($curl, CURLOPT_TIMEOUT, 15);
     curl_setopt($curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
-    curl_setopt($curl, CURLOPT_HTTPHEADER, ['Accept: application/json']);
+    $headers = array_merge(array('Accept: application/json'), (array)($options['headers'] ?? array()));
+    curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+    if (array_key_exists('body', $options)) {
+        curl_setopt($curl, CURLOPT_POSTFIELDS, (string)$options['body']);
+    }
 
     $host = strtolower(trim((string)parse_url((string)$url, PHP_URL_HOST)));
     $localDevelopmentCertificate = '/etc/apache2/ssl/dev-localhost.crt';
@@ -779,6 +830,79 @@ function serverEnvAdminTestEthercalcConnection(array $values)
     ];
 }
 
+function serverEnvAdminTestSpacedeckConnection(array $values)
+{
+    $publicBaseUrl = rtrim(trim((string)($values['SPACEDECK_URL'] ?? '')), '/');
+    $internalBaseUrl = rtrim(trim((string)($values['SPACEDECK_INTERNAL_URL'] ?? '')), '/');
+    $apiBaseUrl = $internalBaseUrl !== '' ? $internalBaseUrl : $publicBaseUrl;
+    $provisioningToken = trim((string)($values['SPACEDECK_PROVISIONING_TOKEN'] ?? ''));
+
+    if (!serverEnvAdminIsHttpUrl($publicBaseUrl) || ($internalBaseUrl !== '' && !serverEnvAdminIsHttpUrl($internalBaseUrl))) {
+        return array(
+            'status' => false,
+            'message' => serverEnvAdminT('parameters.server_env.error.invalid_spacedeck_url', 'L URL SpaceDeck doit etre une adresse http ou https valide.'),
+        );
+    }
+    if ($provisioningToken === '') {
+        return array(
+            'status' => false,
+            'message' => serverEnvAdminT(
+                'parameters.server_env.error.spacedeck_connection_incomplete',
+                'Renseignez l URL publique et le jeton de provisioning SpaceDeck avant le test.'
+            ),
+        );
+    }
+
+    $testName = 'OMO connection test ' . bin2hex(random_bytes(8));
+    $headers = array(
+        'Content-Type: application/json',
+        'X-Spacedeck-Provisioning-Token: ' . $provisioningToken,
+    );
+    $createResult = serverEnvAdminRequest('POST', $apiBaseUrl . '/api/external/spaces', array(
+        'headers' => $headers,
+        'body' => json_encode(array('name' => $testName), JSON_UNESCAPED_SLASHES),
+    ));
+    if (!($createResult['status'] ?? false)) {
+        $reason = isset($createResult['httpCode']) && (int)$createResult['httpCode'] > 0
+            ? 'HTTP ' . (int)$createResult['httpCode']
+            : (string)($createResult['text'] ?? '');
+        return array(
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('spacedeck', $reason),
+        );
+    }
+
+    $payload = json_decode((string)($createResult['body'] ?? ''), true);
+    $spaceId = is_array($payload) ? trim((string)($payload['id'] ?? '')) : '';
+    if ($spaceId === '') {
+        return array(
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('spacedeck', 'reponse de creation invalide'),
+        );
+    }
+
+    $deleteResult = serverEnvAdminRequest('DELETE', $apiBaseUrl . '/api/external/spaces/' . rawurlencode($spaceId), array(
+        'headers' => $headers,
+    ));
+    if (!($deleteResult['status'] ?? false)) {
+        $reason = isset($deleteResult['httpCode']) && (int)$deleteResult['httpCode'] > 0
+            ? 'HTTP ' . (int)$deleteResult['httpCode']
+            : (string)($deleteResult['text'] ?? '');
+        return array(
+            'status' => false,
+            'message' => serverEnvAdminConnectionTestError('spacedeck', $reason),
+        );
+    }
+
+    return array(
+        'status' => true,
+        'message' => serverEnvAdminT(
+            'parameters.server_env.status.spacedeck_connection_ok',
+            'Connexion SpaceDeck verifiee : URL et jeton de provisioning sont valides.'
+        ),
+    );
+}
+
 function serverEnvAdminTestConnection($service, array $values)
 {
     if ($service === 'etherpad') {
@@ -786,6 +910,9 @@ function serverEnvAdminTestConnection($service, array $values)
     }
     if ($service === 'ethercalc') {
         return serverEnvAdminTestEthercalcConnection($values);
+    }
+    if ($service === 'spacedeck') {
+        return serverEnvAdminTestSpacedeckConnection($values);
     }
 
     return [

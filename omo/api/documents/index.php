@@ -174,6 +174,10 @@ $sourceLang = [
         'text' => 'Tableur collaboratif',
         'context' => 'Alternative text for the EtherCalc document type icon.',
     ],
+    'documents.icon.whiteboard' => [
+        'text' => 'Tableau blanc collaboratif',
+        'context' => 'Alternative text for the SpaceDeck whiteboard document type icon.',
+    ],
     'documents.icon.image' => [
         'text' => 'Image',
         'context' => 'Alternative text for image file icons.',
@@ -615,7 +619,7 @@ foreach ($documents as $document) {
             ? $canOpenPvEditor
             : (
                 $document->canManageInOrganizationContext($documentOrganizationId)
-                || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && $document->canEditInOrganizationContext($documentOrganizationId))
+                 || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && !$document->isWhiteboardDocument() && $document->canEditInOrganizationContext($documentOrganizationId))
             ),
         'editUrl' => $document->isPvDocument()
             ? $pvPreparationUrl
@@ -701,8 +705,9 @@ if ($initialOpenDocumentId > 0) {
                     $requestedCanView
                     && (
                         $requestedOpenDocument->canManageInOrganizationContext($currentOrganizationId)
-                        || (!$requestedOpenDocument->isEtherpadDocument()
+                         || (!$requestedOpenDocument->isEtherpadDocument()
                             && !$requestedOpenDocument->isEthercalcDocument()
+                            && !$requestedOpenDocument->isWhiteboardDocument()
                             && $requestedOpenDocument->canEditInOrganizationContext($currentOrganizationId))
                     )
                 ),
@@ -1048,6 +1053,7 @@ if (!is_string($documentsPayload)) {
                 const omoDocumentsPvIconUrl = '/omo/assets/images/documents/pv.png';
                  const omoDocumentsEtherpadIconUrl = '/omo/assets/images/documents/collaborative.png';
                  const omoDocumentsEthercalcIconUrl = '/omo/assets/images/documents/spreadsheet.png';
+                 const omoDocumentsWhiteboardIconUrl = '/omo/assets/images/documents/whiteboard.png';
                 const omoDocumentsStoredKindIconUrls = {
                     image: '/omo/assets/images/documents/image.png',
                     video: '/omo/assets/images/documents/video.png',
@@ -1060,9 +1066,11 @@ if (!is_string($documentsPayload)) {
                 const omoDocumentsPvType = 'pv';
                  const omoDocumentsEtherpadType = 'etherpad';
                  const omoDocumentsEthercalcType = 'ethercalc';
+                 const omoDocumentsWhiteboardType = 'whiteboard';
                 const omoDocumentsMissingUploadedFileLabel = <?= json_encode(omoDocumentsScopeT('documents.upload_missing.badge'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                  const omoDocumentsEtherpadIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.etherpad'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                  const omoDocumentsEthercalcIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.ethercalc'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                 const omoDocumentsWhiteboardIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.whiteboard'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
                 const omoDocumentsGetIconUrl = function (documentItem) {
                     if (documentItem && documentItem.isFolder) {
@@ -1088,6 +1096,10 @@ if (!is_string($documentsPayload)) {
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEthercalcType) {
                         return omoDocumentsEthercalcIconUrl;
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsWhiteboardType) {
+                        return omoDocumentsWhiteboardIconUrl;
                     }
 
                     return omoDocumentsFileIconUrl;
@@ -1126,6 +1138,10 @@ if (!is_string($documentsPayload)) {
 
                     if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsEthercalcType) {
                         return omoDocumentsEthercalcIconLabel;
+                    }
+
+                    if (documentItem && String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsWhiteboardType) {
+                        return omoDocumentsWhiteboardIconLabel;
                     }
 
                     return 'Fichier';
@@ -2398,7 +2414,7 @@ if (!is_string($documentsPayload)) {
 
                                 const syncDocumentFullscreenButton = function () {
                                     const fullscreenButton = detailDrawer.querySelector('[data-omo-document-fullscreen]');
-                                    const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame, .omo-document-collabora__frame');
+                                     const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame, .omo-document-collabora__frame, .omo-document-spacedeck__frame');
                                     if (!(fullscreenButton instanceof HTMLButtonElement) || !(frame instanceof HTMLElement)) {
                                         return;
                                     }
@@ -2419,7 +2435,7 @@ if (!is_string($documentsPayload)) {
                                     const fullscreenButton = event.target.closest('[data-omo-document-fullscreen]');
                                     if (fullscreenButton) {
                                         event.preventDefault();
-                                        const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame, .omo-document-collabora__frame');
+                                         const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame, .omo-document-collabora__frame, .omo-document-spacedeck__frame');
                                         if (!(frame instanceof HTMLElement)) {
                                             return;
                                         }

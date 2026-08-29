@@ -30,6 +30,17 @@
 				return (int)($row['IDuser'] ?? 0);
 			}, $rows))));
 		}
+
+		public static function hasActiveMembership($userId, $organizationId)
+		{
+			return (int)self::fetchValue(
+				' SELECT COUNT(*) FROM user_organization WHERE IDuser = :user_id AND IDorganization = :organization_id AND active = 1 ',
+				array(
+					'user_id' => (int)$userId,
+					'organization_id' => (int)$organizationId,
+				)
+			) > 0;
+		}
 	    public static function tableName()
 		{
 			return 'user_organization';

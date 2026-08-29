@@ -331,12 +331,17 @@ if (!function_exists('omoCollaboraBuildBlankOpenDocumentFile')) {
     function omoCollaboraBuildBlankOpenDocumentFile(string $title, string $kind): array
     {
         $safeTitle = trim($title) !== '' ? trim($title) : 'Document';
-        $kind = in_array($kind, array('presentation', 'drawing'), true) ? $kind : 'document';
+        $kind = in_array($kind, array('spreadsheet', 'presentation', 'drawing'), true) ? $kind : 'document';
         $definitions = array(
             'document' => array(
                 'extension' => 'odt',
                 'mime' => 'application/vnd.oasis.opendocument.text',
                 'body' => '<office:text><text:p>' . htmlspecialchars($safeTitle, ENT_XML1 | ENT_QUOTES, 'UTF-8') . '</text:p></office:text>',
+            ),
+            'spreadsheet' => array(
+                'extension' => 'ods',
+                'mime' => 'application/vnd.oasis.opendocument.spreadsheet',
+                'body' => '<office:spreadsheet><table:table table:name="Feuille1"><table:table-row><table:table-cell office:value-type="string"><text:p>' . htmlspecialchars($safeTitle, ENT_XML1 | ENT_QUOTES, 'UTF-8') . '</text:p></table:table-cell></table:table-row></table:table></office:spreadsheet>',
             ),
             'presentation' => array(
                 'extension' => 'odp',
@@ -350,14 +355,14 @@ if (!function_exists('omoCollaboraBuildBlankOpenDocumentFile')) {
             ),
         );
         $definition = $definitions[$kind];
-        $namespace = 'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0"';
+        $namespace = 'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0"';
         $entries = array(
             'mimetype' => $definition['mime'],
             'content.xml' => '<?xml version="1.0" encoding="UTF-8"?><office:document-content ' . $namespace . ' office:version="1.3"><office:automatic-styles/><office:body>' . $definition['body'] . '</office:body></office:document-content>',
             'styles.xml' => '<?xml version="1.0" encoding="UTF-8"?><office:document-styles ' . $namespace . ' office:version="1.3"><office:styles><style:style style:name="Standard" style:family="paragraph"/></office:styles><office:automatic-styles/><office:master-styles/></office:document-styles>',
             'meta.xml' => '<?xml version="1.0" encoding="UTF-8"?><office:document-meta ' . $namespace . ' office:version="1.3"><office:meta><dc:title>' . htmlspecialchars($safeTitle, ENT_XML1 | ENT_QUOTES, 'UTF-8') . '</dc:title></office:meta></office:document-meta>',
             'settings.xml' => '<?xml version="1.0" encoding="UTF-8"?><office:document-settings ' . $namespace . ' office:version="1.3"><office:settings/></office:document-settings>',
-            'META-INF/manifest.xml' => '<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.3"><manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.' . ($kind === 'document' ? 'text' : ($kind === 'presentation' ? 'presentation' : 'graphics')) . '"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="settings.xml" manifest:media-type="text/xml"/></manifest:manifest>',
+            'META-INF/manifest.xml' => '<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.3"><manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.' . ($kind === 'document' ? 'text' : ($kind === 'spreadsheet' ? 'spreadsheet' : ($kind === 'presentation' ? 'presentation' : 'graphics'))) . '"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="settings.xml" manifest:media-type="text/xml"/></manifest:manifest>',
         );
         $tmpPath = tempnam(sys_get_temp_dir(), 'omo-collabora-');
         if (!is_string($tmpPath) || $tmpPath === '') {
@@ -411,7 +416,7 @@ if (!function_exists('omoCollaboraBuildBlankOpenDocumentFile')) {
 if (!function_exists('omoCollaboraBuildBlankDocumentFile')) {
     function omoCollaboraBuildBlankDocumentFile(string $title, string $kind = 'document'): array
     {
-        $normalizedKind = in_array($kind, array('presentation', 'drawing'), true) ? $kind : 'document';
+        $normalizedKind = in_array($kind, array('spreadsheet', 'presentation', 'drawing'), true) ? $kind : 'document';
         return omoCollaboraBuildBlankOpenDocumentFile($title, $normalizedKind);
     }
 }
