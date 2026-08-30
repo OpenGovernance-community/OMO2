@@ -2,6 +2,7 @@
     'use strict';
 
     var questions = Array.isArray(window.SURVEY_PUBLIC_RESULT) ? window.SURVEY_PUBLIC_RESULT : [];
+    var radarQuestions = questions;
     var labels = window.SURVEY_PUBLIC_LABELS || {};
     var options = window.SURVEY_PUBLIC_OPTIONS || {};
     var radar = document.getElementById('surveyPublicRadar');
@@ -51,8 +52,8 @@
         return node;
     }
 
-    function point(index, score, center, radius) {
-        var angle = -Math.PI / 2 + index * (Math.PI * 2 / questions.length);
+    function point(index, score, center, radius, questionCount) {
+        var angle = -Math.PI / 2 + index * (Math.PI * 2 / questionCount);
         var distance = radius * score / 5;
         return {
             x: center + Math.cos(angle) * distance,
@@ -61,6 +62,7 @@
     }
 
     function renderRadar() {
+        var radarData = radarQuestions;
         var size = 700;
         var center = size / 2;
         var radius = 270;
@@ -87,23 +89,23 @@
             }, level));
         }
 
-        questions.forEach(function (question, index) {
-            var outer = point(index, 5, center, radius);
-            var label = point(index, 5, center, radius + 27);
+        radarData.forEach(function (question, index) {
+            var outer = point(index, 5, center, radius, radarData.length);
+            var label = point(index, 5, center, radius + 27, radarData.length);
             svg.appendChild(svgElement('line', { x1: center, y1: center, x2: outer.x, y2: outer.y, class: 'survey-radar__axis' }));
             svg.appendChild(svgElement('circle', { cx: label.x, cy: label.y, r: 15, class: 'survey-radar__axis-label-bg' }));
             svg.appendChild(svgElement('text', { x: label.x, y: label.y + 4, class: 'survey-radar__axis-label' }, question.number));
         });
 
         ['tomorrow', 'today'].forEach(function (period) {
-            var points = questions.map(function (question, index) {
-                var scorePoint = point(index, Number(question[period]), center, radius);
+            var points = radarData.map(function (question, index) {
+                var scorePoint = point(index, Number(question[period]), center, radius, radarData.length);
                 return scorePoint.x + ',' + scorePoint.y;
             }).join(' ');
             svg.appendChild(svgElement('polygon', { points: points, class: 'survey-radar__series survey-radar__series--' + period }));
 
-            questions.forEach(function (question, index) {
-                var scorePoint = point(index, Number(question[period]), center, radius);
+            radarData.forEach(function (question, index) {
+                var scorePoint = point(index, Number(question[period]), center, radius, radarData.length);
                 svg.appendChild(svgElement('circle', {
                     cx: scorePoint.x,
                     cy: scorePoint.y,
@@ -155,6 +157,25 @@
             pointNode.classList.remove('is-highlighted');
             pointNode.setAttribute('r', '4');
         });
+    }
+
+    function setRadarQuestions(nextQuestions) {
+        if (!Array.isArray(nextQuestions) || nextQuestions.length !== questions.length) {
+            return false;
+        }
+        for (var index = 0; index < nextQuestions.length; index += 1) {
+            var question = nextQuestions[index] || {};
+            if (
+                !Number.isFinite(Number(question.number))
+                || !Number.isFinite(Number(question.today))
+                || !Number.isFinite(Number(question.tomorrow))
+            ) {
+                return false;
+            }
+        }
+        radarQuestions = nextQuestions;
+        renderRadar();
+        return true;
     }
 
     function renderAgreement(question) {
@@ -274,6 +295,9 @@
     if (questions.length === 10 && radar && list) {
         renderRadar();
         renderList();
+        window.SurveyPublicRadar = {
+            setQuestions: setRadarQuestions
+        };
         document.querySelectorAll('[data-survey-principle-link]').forEach(function (link) {
             var principleNumber = Number(link.getAttribute('data-survey-principle-link'));
             link.addEventListener('mouseenter', function () { highlightPrinciple(principleNumber); });
