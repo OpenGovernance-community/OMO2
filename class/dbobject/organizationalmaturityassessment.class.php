@@ -563,6 +563,7 @@ class OrganizationalMaturityAssessment extends DbObject
                 }
             }
             $memberCount = count($memberVectors);
+            $averages = ['today' => [], 'tomorrow' => [], 'affinity' => []];
             $features = [];
             for ($dimensionIndex = 0; $dimensionIndex < $dimensionCount; $dimensionIndex++) {
                 $values = array_column($memberVectors, $dimensionIndex);
@@ -573,11 +574,12 @@ class OrganizationalMaturityAssessment extends DbObject
                     $variance += $difference * $difference;
                 }
                 $standardDeviation = sqrt($variance / $memberCount);
+                [$dimension, $principle] = explode('_', $featureNames[$dimensionIndex], 2);
+                $averages[$dimension][(int)$principle] = round($mean, 2);
                 $difference = $mean - $overallMeans[$dimensionIndex];
                 if (abs($difference) < 0.35) {
                     continue;
                 }
-                [$dimension, $principle] = explode('_', $featureNames[$dimensionIndex], 2);
                 $features[] = [
                     'dimension' => $dimension,
                     'principle' => (int)$principle,
@@ -608,6 +610,7 @@ class OrganizationalMaturityAssessment extends DbObject
                 'size' => $memberCount,
                 'share' => round(($memberCount / $participantCount) * 100),
                 'features' => $selectedFeatures,
+                'averages' => $averages,
             ];
         }
         usort($groups, static function (array $first, array $second): int {
