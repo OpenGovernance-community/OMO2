@@ -143,6 +143,10 @@ function omoGetOrgPanelSourceLang(): array
             'text' => '{memberName} - invitation en attente',
             'context' => 'Tooltip shown for a pending invited member avatar in the left panel.',
         ],
+		'leftbar.members.role_focus_line' => [
+			'text' => 'Focus : {focus}',
+			'context' => 'Additional tooltip line showing a role assignment focus for a member avatar.',
+		],
 		'leftbar.members.admin_tooltip' => [
 			'text' => '{memberName} - {adminLabel}',
 			'context' => 'Tooltip shown for an administrator member avatar in the left panel.',
@@ -1055,6 +1059,7 @@ $selectedNodeClass = 'node_' . (int)$currentHolon->getId();
 $memberCards = $currentHolon->getAssociatedMemberCards(array(
     'organizationId' => $organizationId,
 ));
+$isRoleHolon = (int)$currentHolon->get('IDtypeholon') === 1;
 if (function_exists('commonGetCurrentShareToken') && commonGetCurrentShareToken() !== '' && !commonCurrentShareAllowsPeople()) {
     $memberCards = array();
 } else {
@@ -1236,12 +1241,28 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
             <div class="circle-members__row">
                 <div class="circle-members__list">
                     <?php foreach ($memberCards as $member): ?>
-						<?php $hasPendingInvitation = !empty($member['hasPendingInvitation']);
+						<?php
+						$hasPendingInvitation = !empty($member['hasPendingInvitation']);
 						$memberTooltip = $hasPendingInvitation
 							? t('leftbar.members.pending_tooltip', ['memberName' => $member['displayName']])
 							: (!empty($member['isAdmin'])
 								? t('leftbar.members.admin_tooltip', ['memberName' => $member['displayName'], 'adminLabel' => $adminLabel])
 								: (string)$member['displayName']); ?>
+						<?php
+						$memberFocus = '';
+						if ($isRoleHolon && is_array($member['assignmentLinks'] ?? null)) {
+							foreach ($member['assignmentLinks'] as $assignmentLink) {
+								if ((int)($assignmentLink['holonId'] ?? 0) !== (int)$currentHolon->getId()) {
+									continue;
+								}
+								$memberFocus = trim((string)($assignmentLink['focus'] ?? ''));
+								break;
+							}
+						}
+						if ($memberFocus !== '') {
+							$memberTooltip .= "\n" . t('leftbar.members.role_focus_line', ['focus' => $memberFocus]);
+						}
+						?>
                         <?php
                         $memberPhotoUrl = trim((string)($member['photoUrl'] ?? ''));
                         $memberInitials = trim((string)($member['initials'] ?? ''));

@@ -1285,7 +1285,7 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
     border-radius: var(--radius-md);
 
     pointer-events: none;
-    white-space: nowrap;
+    white-space: pre-line;
 
     opacity: 0;
     transform: translateY(4px);
