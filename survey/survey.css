@@ -1041,6 +1041,27 @@ input:focus-visible + label {
     border-color: #12999a;
 }
 
+.organization-report__radar-selection {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.organization-report__radar-scope {
+    margin: 0;
+    color: #587084;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.organization-report__radar-selection .generic-action-button {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 0.72rem;
+}
+
 .organization-report__radar-plot {
     min-height: 0;
 }
@@ -1245,6 +1266,24 @@ input:focus-visible + label {
     border: 1px solid rgba(18, 153, 154, 0.16);
     border-radius: 18px;
     background: linear-gradient(145deg, #f7fcfc, #fff);
+    cursor: pointer;
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.organization-report__group-card:hover,
+.organization-report__group-card.is-selected {
+    border-color: color-mix(in srgb, var(--param-organization-color) 54%, #72bfc5);
+    box-shadow: 0 12px 26px rgba(3, 74, 96, 0.12);
+    transform: translateY(-2px);
+}
+
+.organization-report__group-card.is-selected {
+    background: linear-gradient(145deg, #e9f8f8, #fff);
+}
+
+.organization-report__group-card:focus-visible {
+    outline: 3px solid rgba(7, 91, 134, 0.35);
+    outline-offset: 3px;
 }
 
 .organization-report__group-card > header {
@@ -1286,6 +1325,32 @@ input:focus-visible + label {
     font-size: 0.72rem;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+}
+
+.organization-report__group-card-action {
+    display: inline-flex;
+    gap: 7px;
+    align-items: center;
+    margin-top: auto;
+    color: #0b4a7c;
+    font-size: 0.76rem;
+    font-weight: 800;
+}
+
+.organization-report__group-card-action svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+    transition: transform 160ms ease;
+}
+
+.organization-report__group-card:hover .organization-report__group-card-action svg,
+.organization-report__group-card.is-selected .organization-report__group-card-action svg {
+    transform: translateX(2px);
 }
 
 .organization-report__group-card ul {
@@ -1488,6 +1553,26 @@ input:focus-visible + label {
 
 .organization-report__empty p {
     margin: 0;
+}
+
+.organization-report__print-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 4px;
+}
+
+.organization-report__print-actions .generic-action-button {
+    gap: 9px;
+}
+
+.organization-report__print-actions svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .survey-results__stats {
@@ -2591,6 +2676,17 @@ input:focus-visible + label {
 }
 
 @media (max-width: 600px) {
+    .organization-report > .survey-results {
+        --param-page-shell-padding-top: 0px;
+    }
+
+    .organization-report__identity {
+        margin-inline: calc(-1 * var(--param-page-shell-gutter));
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+
     .organization-report__brand {
         grid-template-columns: 1fr;
     }
@@ -2756,5 +2852,138 @@ input:focus-visible + label {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
+    }
+}
+
+@page {
+    size: A4;
+    margin: 12mm;
+}
+
+@media print {
+    html,
+    body {
+        background: #fff !important;
+        color: #102f46;
+        font-size: 10pt;
+    }
+
+    .survey-page {
+        min-height: 0;
+    }
+
+    .generic-page-shell {
+        max-width: none;
+        padding: 0;
+    }
+
+    .survey-results {
+        gap: 14pt;
+    }
+
+    .organization-report__identity,
+    .organization-report__radar-card,
+    .organization-report__dimensions,
+    .organization-report__groups,
+    .organization-report__group-card,
+    .organization-report__common-list li,
+    .survey-result-card {
+        box-shadow: none !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .organization-report__identity {
+        border: 0;
+        border-radius: 0;
+        background: #fff;
+    }
+
+    .organization-report__identity-header {
+        padding: 18pt 22pt;
+    }
+
+    .organization-report__dashboard {
+        gap: 14pt;
+        padding: 16pt 22pt 20pt;
+    }
+
+    .organization-report__radar-plot .survey-radar__svg {
+        display: block;
+        width: min(100%, 320pt);
+        max-height: 320pt;
+        margin-inline: auto;
+    }
+
+    .organization-report__radar-card,
+    .organization-report__dimensions {
+        border-color: #bdccd3;
+        background: #fff;
+    }
+
+    .organization-report__groups {
+        gap: 14pt;
+        break-inside: auto;
+        page-break-inside: auto;
+    }
+
+    .organization-report__group-grid,
+    .organization-report__common-columns {
+        gap: 10pt;
+    }
+
+    .organization-report__common-columns {
+        display: block;
+    }
+
+    .organization-report__common-period-list + .organization-report__common-period-list {
+        margin-top: 14pt;
+    }
+
+    .organization-report__common-list {
+        display: block;
+    }
+
+    .organization-report__common-list li {
+        margin-bottom: 10pt;
+    }
+
+    .organization-report__common-period-list > h4 {
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+
+    .organization-report__group-card,
+    .organization-report__common-list li {
+        border-color: #d0dce1;
+        background: #fff;
+    }
+
+    .organization-report__summary,
+    .organization-report__groups-empty,
+    .organization-report__common-empty,
+    .organization-report__common-metrics > span {
+        background: #fff;
+    }
+
+    .survey-situation-tooltip__content,
+    .organization-report__print-actions,
+    .organization-report__radar-selection .generic-action-button {
+        display: none !important;
+    }
+
+    .organization-report a {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .organization-report__identity,
+    .organization-report__identity-header,
+    .organization-report__radar-card,
+    .organization-report__dimensions,
+    .organization-report__group-card,
+    .organization-report__common-list li {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
     }
 }

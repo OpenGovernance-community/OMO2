@@ -12,9 +12,12 @@ $pageSourceLang = [
     'survey.organization.eyebrow' => ['text' => 'Maturité organisationnelle', 'context' => 'Eyebrow in the public organization maturity report.'],
     'survey.organization.title' => ['text' => 'Où en est {organization} ?', 'context' => 'Heading in the public organization maturity report.'],
     'survey.organization.intro' => ['text' => 'Cette lecture rassemble les perceptions des personnes ayant participé à l’évaluation.', 'context' => 'Introduction in the public organization maturity report.'],
+    'survey.organization.print' => ['text' => 'Imprimer le rapport', 'context' => 'Button that opens the browser print dialog for the organization maturity report.'],
     'survey.organization.radar_eyebrow' => ['text' => 'Lecture collective', 'context' => 'Eyebrow above the aggregate radar.'],
     'survey.organization.radar_title' => ['text' => 'Aujourd’hui et demain', 'context' => 'Title above the aggregate radar.'],
     'survey.organization.radar_help' => ['text' => 'Les deux zones montrent la moyenne de toutes les évaluations enregistrées pour cette organisation.', 'context' => 'Help above the aggregate radar.'],
+    'survey.organization.radar_all' => ['text' => 'Toutes les réponses de l’organisation', 'context' => 'Visible scope label when the organization radar shows every response.'],
+    'survey.organization.radar_group' => ['text' => 'Résultats du {group}', 'context' => 'Visible scope label when the organization radar is filtered to one profile group.'],
     'survey.organization.dimensions_title' => ['text' => 'Les 10 dimensions évaluées', 'context' => 'Heading above the dimensions list in the public organization report.'],
     'survey.organization.agreement_title' => ['text' => 'Convergence des perceptions', 'context' => 'Heading above the agreement status legend.'],
     'survey.organization.agreement.aligned' => ['text' => 'Alignement', 'context' => 'Agreement status for tightly grouped responses.'],
@@ -32,6 +35,8 @@ $pageSourceLang = [
     'survey.organization.groups.quality' => ['text' => '{count} profils complets · {groups} groupes · séparation {score}', 'context' => 'Technical summary for respondent profile clustering.'],
     'survey.organization.groups.group_title' => ['text' => 'Groupe {letter}', 'context' => 'Respondent profile group title.'],
     'survey.organization.groups.group_size' => ['text' => '{count} profils · {share} %', 'context' => 'Respondent profile group size.'],
+    'survey.organization.groups.view_radar' => ['text' => 'Voir ce groupe sur le graphique', 'context' => 'Action hint shown on a selectable profile group card.'],
+    'survey.organization.groups.reset_radar' => ['text' => 'Voir l’ensemble de l’organisation', 'context' => 'Action that restores the organization-wide radar after selecting a profile group.'],
     'survey.organization.groups.unites' => ['text' => 'Ce qui rapproche ce groupe', 'context' => 'Heading above features characterizing a profile group.'],
     'survey.organization.groups.no_feature' => ['text' => 'Des réponses proches dans leur ensemble, sans dimension isolée nettement distinctive.', 'context' => 'Fallback description for a group without a distinctive feature.'],
     'survey.organization.groups.insufficient' => ['text' => 'Le regroupement devient pertinent à partir de 4 profils complets.', 'context' => 'Profile grouping empty state for too few respondents.'],
@@ -127,6 +132,28 @@ $questionsByNumber = [];
 foreach ($questions as $question) {
     $questionsByNumber[(int)$question['number']] = $question;
 }
+$groupRadarResults = [];
+if (($profileAnalysis['status'] ?? '') === 'clustered') {
+    foreach ($profileAnalysis['groups'] as $group) {
+        $averages = is_array($group['averages'] ?? null) ? $group['averages'] : [];
+        $groupRadarQuestions = [];
+        foreach ($questions as $question) {
+            $principleNumber = (int)$question['number'];
+            $today = $averages['today'][$principleNumber] ?? null;
+            $tomorrow = $averages['tomorrow'][$principleNumber] ?? null;
+            if (!is_numeric($today) || !is_numeric($tomorrow)) {
+                $groupRadarQuestions = [];
+                break;
+            }
+            $groupRadarQuestions[] = [
+                'number' => $principleNumber,
+                'today' => round((float)$today, 2),
+                'tomorrow' => round((float)$tomorrow, 2),
+            ];
+        }
+        $groupRadarResults[] = $groupRadarQuestions;
+    }
+}
 $commonGroundItems = ['today' => [], 'tomorrow' => []];
 foreach (['today', 'tomorrow'] as $period) {
     foreach (($aggregate['commonGround'][$period] ?? []) as $commonGround) {
@@ -221,8 +248,8 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="<?= $escape($organizationColor) ?>">
     <title><?= $escape(t('survey.organization.page_title', ['organization' => $organizationName], $pageLang, $pageSourceLang)) ?></title>
-    <link rel="stylesheet" href="/common/assets/components.css?v=20260830-layout5">
-    <link rel="stylesheet" href="/survey/survey.css?v=20260830-layout5">
+    <link rel="stylesheet" href="/common/assets/components.css?v=20260830-layout16">
+    <link rel="stylesheet" href="/survey/survey.css?v=20260830-layout16">
 </head>
 <body>
     <main class="survey-page organization-report" style="--param-organization-color: <?= $escape($organizationColor) ?>;<?= $bannerUrl !== '' ? ' --param-organization-banner: url(' . $escape($bannerUrl) . ');' : '' ?>">
@@ -262,6 +289,12 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
                             <div class="organization-report__series" aria-label="<?= $escape(t('survey.organization.radar_title', [], $pageLang, $pageSourceLang)) ?>">
                                 <span class="organization-report__series-item organization-report__series-item--today"><i aria-hidden="true"></i><?= $escape(t('survey.organization.current', [], $pageLang, $pageSourceLang)) ?></span>
                                 <span class="organization-report__series-item organization-report__series-item--tomorrow"><i aria-hidden="true"></i><?= $escape(t('survey.organization.desired', [], $pageLang, $pageSourceLang)) ?></span>
+                            </div>
+                            <div class="organization-report__radar-selection">
+                                <p class="organization-report__radar-scope" data-organization-radar-scope aria-live="polite"><?= $escape(t('survey.organization.radar_all', [], $pageLang, $pageSourceLang)) ?></p>
+                                <button type="button" class="generic-action-button generic-action-button--secondary" data-reset-group-radar hidden>
+                                    <?= $escape(t('survey.organization.groups.reset_radar', [], $pageLang, $pageSourceLang)) ?>
+                                </button>
                             </div>
                             <div class="organization-report__radar-plot" id="surveyPublicRadar"></div>
                             <div class="organization-report__summary">
@@ -312,11 +345,20 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
                     <?php if (($profileAnalysis['status'] ?? '') === 'clustered'): ?>
                         <div class="organization-report__group-grid">
                             <?php foreach ($profileAnalysis['groups'] as $groupIndex => $group): ?>
-                                <article class="organization-report__group-card">
+                                <?php $groupLetter = chr(65 + $groupIndex); ?>
+                                <article
+                                    class="organization-report__group-card"
+                                    data-group-radar-index="<?= $groupIndex ?>"
+                                    role="button"
+                                    tabindex="0"
+                                    aria-controls="surveyPublicRadar"
+                                    aria-pressed="false"
+                                    aria-label="<?= $escape(t('survey.organization.groups.view_radar', [], $pageLang, $pageSourceLang) . ' : ' . t('survey.organization.groups.group_title', ['letter' => $groupLetter], $pageLang, $pageSourceLang)) ?>"
+                                >
                                     <header>
-                                        <span class="organization-report__group-letter"><?= chr(65 + $groupIndex) ?></span>
+                                        <span class="organization-report__group-letter"><?= $groupLetter ?></span>
                                         <div>
-                                            <h3><?= $escape(t('survey.organization.groups.group_title', ['letter' => chr(65 + $groupIndex)], $pageLang, $pageSourceLang)) ?></h3>
+                                            <h3><?= $escape(t('survey.organization.groups.group_title', ['letter' => $groupLetter], $pageLang, $pageSourceLang)) ?></h3>
                                             <p><?= $escape(t('survey.organization.groups.group_size', ['count' => (int)$group['size'], 'share' => (int)$group['share']], $pageLang, $pageSourceLang)) ?></p>
                                         </div>
                                     </header>
@@ -330,6 +372,10 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
                                     <?php else: ?>
                                         <p><?= $escape(t('survey.organization.groups.no_feature', [], $pageLang, $pageSourceLang)) ?></p>
                                     <?php endif; ?>
+                                    <span class="organization-report__group-card-action">
+                                        <?= $escape(t('survey.organization.groups.view_radar', [], $pageLang, $pageSourceLang)) ?>
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+                                    </span>
                                 </article>
                             <?php endforeach; ?>
                         </div>
@@ -387,6 +433,12 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
                 </section>
                 <section class="survey-results__list" id="surveyPublicList"></section>
             <?php endif; ?>
+            <footer class="organization-report__print-actions">
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-print-report>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v7H7zM17 12h.01"/></svg>
+                    <?= $escape(t('survey.organization.print', [], $pageLang, $pageSourceLang)) ?>
+                </button>
+            </footer>
         </section>
     </main>
     <script>
@@ -405,8 +457,82 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
                 return $labels;
             }, []),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+        window.SURVEY_ORGANIZATION_GROUP_RADARS = <?= json_encode($groupRadarResults, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+        window.SURVEY_ORGANIZATION_GROUP_LABELS = <?= json_encode([
+            'all' => t('survey.organization.radar_all', [], $pageLang, $pageSourceLang),
+            'group' => t('survey.organization.radar_group', ['group' => '{group}'], $pageLang, $pageSourceLang),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
         window.SURVEY_PUBLIC_OPTIONS = { separateDimensionList: true };
     </script>
-    <script src="/survey/public.js"></script>
+    <script src="/survey/public.js?v=20260830-group-radar1"></script>
+    <script>
+        (function () {
+            var groupRadars = Array.isArray(window.SURVEY_ORGANIZATION_GROUP_RADARS) ? window.SURVEY_ORGANIZATION_GROUP_RADARS : [];
+            var labels = window.SURVEY_ORGANIZATION_GROUP_LABELS || {};
+            var cards = Array.prototype.slice.call(document.querySelectorAll('[data-group-radar-index]'));
+            var scope = document.querySelector('[data-organization-radar-scope]');
+            var resetButton = document.querySelector('[data-reset-group-radar]');
+            var radarTitle = document.getElementById('surveyOrganizationRadarTitle');
+            var activeIndex = null;
+
+            function formatGroupLabel(index) {
+                return 'Groupe ' + String.fromCharCode(65 + index);
+            }
+
+            function updateSelection(index) {
+                var isGlobal = index === null;
+                var radarData = isGlobal ? window.SURVEY_PUBLIC_RESULT : groupRadars[index];
+                if (!window.SurveyPublicRadar || !window.SurveyPublicRadar.setQuestions(radarData)) {
+                    return;
+                }
+                activeIndex = isGlobal ? null : index;
+                cards.forEach(function (card) {
+                    var cardIndex = Number(card.getAttribute('data-group-radar-index'));
+                    var isActive = cardIndex === activeIndex;
+                    card.classList.toggle('is-selected', isActive);
+                    card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                });
+                if (scope) {
+                    scope.textContent = isGlobal
+                        ? String(labels.all || '')
+                        : String(labels.group || 'Résultats du {group}').replace('{group}', formatGroupLabel(index));
+                }
+                if (resetButton) {
+                    resetButton.hidden = isGlobal;
+                }
+                if (!isGlobal && radarTitle) {
+                    radarTitle.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+
+            cards.forEach(function (card) {
+                function toggleGroup() {
+                    var index = Number(card.getAttribute('data-group-radar-index'));
+                    if (!Number.isInteger(index) || !groupRadars[index]) {
+                        return;
+                    }
+                    updateSelection(index === activeIndex ? null : index);
+                }
+                card.addEventListener('click', toggleGroup);
+                card.addEventListener('keydown', function (event) {
+                    if (event.key !== 'Enter' && event.key !== ' ') {
+                        return;
+                    }
+                    event.preventDefault();
+                    toggleGroup();
+                });
+            });
+
+            if (resetButton) {
+                resetButton.addEventListener('click', function () {
+                    updateSelection(null);
+                });
+            }
+        }());
+
+        document.querySelector('[data-print-report]')?.addEventListener('click', function () {
+            window.print();
+        });
+    </script>
 </body>
 </html>
