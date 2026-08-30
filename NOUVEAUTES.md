@@ -2,6 +2,10 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-08-30
+
+- Le deploiement automatique de l environnement beta suit maintenant la branche `Beta` apres son renommage depuis `Test`.
+
 ## 2026-08-28
 
 - Les popups reposent maintenant sur une zone interne bornee plutot que sur un calcul entre hauteur dynamique et marges. Une tolerance basse de deux pixels evite les arrondis qui declenchaient des barres de defilement pour quelques pixels de depassement, tandis que les tableaux larges peuvent garder leur propre zone horizontale.
