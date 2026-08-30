@@ -5373,7 +5373,8 @@
 
 		protected static function omo1ImportRules(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $authorityIdMap, array $authorityIdsByHolonId, array &$stats, array &$warnings)
 		{
-			$validityWarningAdded = false;
+			$reviewStartDate = new \DateTimeImmutable('today');
+			$importedRuleIndex = 0;
 			foreach ($records as $record) {
 				if (!is_array($record) || (int)($record['sourceId'] ?? 0) <= 0) {
 					continue;
@@ -5419,8 +5420,9 @@
 				$rule->set('intention', $intention !== '' ? $intention : null);
 				$rule->set('description', $description);
 				$rule->set('scope', \dbObject\Rule::SCOPE_LOCAL);
-				$rule->set('review_date', (new \DateTimeImmutable('today'))->format('Y-m-d'));
-				$rule->set('expiration_date', '9999-12-31');
+				$reviewDate = $reviewStartDate->modify('+' . $importedRuleIndex . ' weeks');
+				$rule->set('review_date', $reviewDate->format('Y-m-d'));
+				$rule->set('expiration_date', $reviewDate->modify('+6 months')->format('Y-m-d'));
 
 				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
 				$updatedAt = self::omo1ImportDate($record['updatedAt'] ?? null);
@@ -5443,11 +5445,7 @@
 				$rule->preserveImportedAuditMetadata();
 				self::omo1ImportSave($rule, 'Une regle n a pas pu etre importee');
 				$stats['rules'] += 1;
-
-				if (!$validityWarningAdded) {
-					$warnings[] = 'Les regles OMO 1 n ayant pas de dates de validite, elles ont ete importees avec une revision a la date du jour et une echeance lointaine.';
-					$validityWarningAdded = true;
-				}
+				$importedRuleIndex += 1;
 			}
 		}
 
