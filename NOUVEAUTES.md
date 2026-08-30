@@ -27,6 +27,18 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les formulations courtes des situations dans le terrain commun et les fiches detaillees donnent acces au texte complet de la proposition dans une infobulle, au survol comme au focus clavier.
 - Lors du passage automatique d Aujourd hui a Demain, le defilement cible maintenant la barre des periodes elle-meme afin que sa marge sticky protege aussi la premiere proposition contre un masquage sous la barre.
 - Les infobulles des diagnostics d alignement, de dispersion et de polarisation indiquent maintenant la taille de l echantillon et l ecart type utilises pour la lecture. Le meme detail statistique est disponible sur les indices d alignement du terrain commun.
+- Dans le questionnaire, le resume de chaque principe propose maintenant un lien En savoir plus. Il ouvre un drawer depuis le bas de l ecran avec le texte complet du principe tel qu il figure dans le manifeste.
+- Le bouton de fermeture du drawer reste maintenant ancre en haut a droite sur les petits ecrans, meme lorsque le titre du principe se replie sur plusieurs lignes.
+- La note sous les reponses indique maintenant que le questionnaire est anonyme et donne acces directement a la politique de confidentialite d OMO.
+- La politique de confidentialite s ouvre maintenant dans un drawer depuis le bas de l ecran, avec sa version integree pour rester lisible sur mobile sans quitter le questionnaire.
+- La politique de confidentialite identifie maintenant OpenMyOrganization et sa gamme de logiciels derives (EasyPV, EasyCIRCLE, EasyMEMO et toute la gamme Easy). Elle precise aussi que des donnees peuvent etre anonymisees et agregees pour des statistiques et des etudes academiques sur l impact des modes de gouvernance, sans vente ni usage commercial.
+- Le layout du questionnaire utilise maintenant un shell responsive et des cartes de choix generiques partagees. La progression, les surfaces et les gouttieres mobiles ont ete retravaillees pour garder davantage de largeur utile sur telephone.
+- La progression du questionnaire propose maintenant vingt etapes visuelles. Les etapes deja remplies servent de raccourcis, tandis que les etapes non encore parcourues restent inactives.
+- Le pourcentage de progression commence maintenant a 0 % et reserve les derniers 5 % a l affichage du rapport final, au lieu d afficher 5 % avant toute reponse.
+- Le sous-titre d introduction du questionnaire parle maintenant de la culture de l organisation plutot que de sa maturite.
+- La duree indicative du questionnaire est maintenant estimee a environ 15 minutes.
+- La page de titre ne mentionne plus le stockage local des reponses et affiche son lien vers la politique de confidentialite en bas de page, avec ouverture dans le drawer.
+- Le titre du questionnaire est maintenant « Votre culture organisationnelle en perspective ». Lorsqu il est associe a une organisation, le sous-titre nomme cette organisation avec une formulation neutre qui evite les contractions variables de et du.
 
 ## 2026-08-26
 

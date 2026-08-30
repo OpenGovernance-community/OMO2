@@ -267,6 +267,13 @@ generic-card-title reste un alias compatible.</pre>
                     <div class="generic-card-title generic-card-title--small">Soft panel</div>
                     <div class="styleguide-note">Sous-bloc interieur ou zone de details.</div>
                 </div>
+                <label class="generic-choice-card">
+                    <input type="radio" name="styleguide-choice" checked>
+                    <span class="styleguide-stack">
+                        <strong>Carte de choix</strong>
+                        <span class="styleguide-note">Selection claire, tactile et reutilisable.</span>
+                    </span>
+                </label>
                 <div class="generic-hero-panel accent styleguide-surface">
                     <div class="styleguide-stack">
                         <div class="generic-card-title generic-card-title--eyebrow">Hero accent</div>
@@ -274,6 +281,8 @@ generic-card-title reste un alias compatible.</pre>
                     </div>
                 </div>
             </div>
+            <pre class="styleguide-code">generic-page-shell
+generic-choice-card</pre>
         </section>
 
         <section class="generic-section generic-section--stack">

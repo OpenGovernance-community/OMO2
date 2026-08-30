@@ -52,12 +52,12 @@ foreach ($surveyQuestionDefinitions as $questionIndex => $questionDefinition) {
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#073a59">
     <title><?= $escape(t('survey.public.page_title', [], $lang, $sourceLang)) ?></title>
-    <link rel="stylesheet" href="/common/assets/components.css">
-    <link rel="stylesheet" href="/survey/survey.css">
+    <link rel="stylesheet" href="/common/assets/components.css?v=20260830-layout5">
+    <link rel="stylesheet" href="/survey/survey.css?v=20260830-layout5">
 </head>
 <body>
     <main class="survey-page">
-        <section class="survey-results">
+        <section class="generic-page-shell survey-results">
             <header class="generic-hero-panel survey-results__hero">
                 <p class="survey-eyebrow"><?= $escape(t('survey.public.eyebrow', [], $lang, $sourceLang)) ?></p>
                 <h1><?= $escape(t('survey.public.title', [], $lang, $sourceLang)) ?></h1>
