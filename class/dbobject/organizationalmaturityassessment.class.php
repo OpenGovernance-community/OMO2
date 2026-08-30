@@ -4,6 +4,7 @@ namespace dbObject;
 class OrganizationalMaturityAssessment extends DbObject
 {
     public static function tableName()
+    
     {
         return 'organizational_maturity_assessment';
     }
