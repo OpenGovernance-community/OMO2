@@ -221,12 +221,12 @@ $groupFeatureText = static function (array $feature) use ($pageLang, $pageSource
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="<?= $escape($organizationColor) ?>">
     <title><?= $escape(t('survey.organization.page_title', ['organization' => $organizationName], $pageLang, $pageSourceLang)) ?></title>
-    <link rel="stylesheet" href="/common/assets/components.css">
-    <link rel="stylesheet" href="/survey/survey.css">
+    <link rel="stylesheet" href="/common/assets/components.css?v=20260830-layout5">
+    <link rel="stylesheet" href="/survey/survey.css?v=20260830-layout5">
 </head>
 <body>
     <main class="survey-page organization-report" style="--param-organization-color: <?= $escape($organizationColor) ?>;<?= $bannerUrl !== '' ? ' --param-organization-banner: url(' . $escape($bannerUrl) . ');' : '' ?>">
-        <section class="survey-results">
+        <section class="generic-page-shell survey-results">
             <section class="generic-hero-panel organization-report__identity" aria-labelledby="surveyOrganizationRadarTitle">
                 <header class="organization-report__identity-header">
                     <div class="organization-report__brand">

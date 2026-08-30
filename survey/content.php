@@ -10,12 +10,16 @@ $sourceLang = [
         'context' => 'Short label above the survey title.',
     ],
     'survey.hero.title' => [
-        'text' => 'Où en est votre organisation ?',
+        'text' => 'Votre culture organisationnelle en perspective',
         'context' => 'Main title on the survey introduction.',
     ],
     'survey.hero.intro' => [
-        'text' => 'Explorez la maturité de votre organisation telle que vous la percevez aujourd’hui, puis dessinez celle que vous aimeriez voir émerger demain.',
+        'text' => 'Explorez la culture de votre organisation telle que vous la percevez aujourd’hui, puis dessinez celle que vous aimeriez voir émerger demain.',
         'context' => 'Introductory paragraph on the survey welcome screen.',
+    ],
+    'survey.invitation.hero_intro' => [
+        'text' => 'Explorez la culture de l’organisation {organization} telle que vous la percevez aujourd’hui, puis dessinez celle que vous aimeriez voir émerger demain.',
+        'context' => 'Introductory paragraph on a survey welcome screen associated with an organization.',
     ],
     'survey.invitation.page_title' => [
         'text' => 'Évaluer {organization}',
@@ -26,7 +30,7 @@ $sourceLang = [
         'context' => 'Welcome eyebrow for a survey opened from an organization invitation.',
     ],
     'survey.invitation.hero_title' => [
-        'text' => 'Comment percevez-vous {organization} ?',
+        'text' => 'Votre culture organisationnelle en perspective',
         'context' => 'Welcome title for a survey opened from an organization invitation.',
     ],
     'survey.invitation.fact' => [
@@ -34,7 +38,7 @@ $sourceLang = [
         'context' => 'Welcome fact explaining where an invited survey result will be stored.',
     ],
     'survey.intro.time' => [
-        'text' => 'Environ 10 minutes',
+        'text' => 'Environ 15 minutes',
         'context' => 'Estimated completion time shown on the welcome screen.',
     ],
     'survey.intro.questions' => [
@@ -161,6 +165,18 @@ $sourceLang = [
         'text' => 'Le principe',
         'context' => 'Label introducing the current principle description.',
     ],
+    'survey.principle.learn_more' => [
+        'text' => 'En savoir plus',
+        'context' => 'Link opening the full manifesto text for the current principle.',
+    ],
+    'survey.principle.drawer_eyebrow' => [
+        'text' => 'Le principe en détail',
+        'context' => 'Eyebrow shown above the full manifesto text in the principle drawer.',
+    ],
+    'survey.principle.drawer_close' => [
+        'text' => 'Fermer',
+        'context' => 'Close button for the full principle manifesto drawer.',
+    ],
     'survey.phase.scale.label' => [
         'text' => '1 · Affinité',
         'context' => 'Label for the scale phase of a principle.',
@@ -205,6 +221,22 @@ $sourceLang = [
         'text' => 'Choisi',
         'context' => 'Small status shown when a period already has an answer.',
     ],
+    'survey.progress.navigation' => [
+        'text' => 'Navigation dans le questionnaire',
+        'context' => 'Accessible label for the progress-step navigation.',
+    ],
+    'survey.progress.step' => [
+        'text' => 'Principe {current} · {phase}',
+        'context' => 'Accessible label for one progress step. Phase is either affinity or situations.',
+    ],
+    'survey.progress.phase_affinity' => [
+        'text' => 'Affinité',
+        'context' => 'Short phase name in a progress-step accessible label.',
+    ],
+    'survey.progress.phase_situations' => [
+        'text' => 'Situations',
+        'context' => 'Short phase name in a progress-step accessible label.',
+    ],
     'survey.scale.1' => [
         'text' => 'Pas du tout',
         'context' => 'Label for scale value 1.',
@@ -226,8 +258,12 @@ $sourceLang = [
         'context' => 'Label for scale value 5.',
     ],
     'survey.save.status' => [
-        'text' => 'Vos réponses restent sur cet appareil. Le questionnaire avance automatiquement.',
-        'context' => 'Persistent local storage note under the survey navigation.',
+        'text' => 'Ce questionnaire est anonyme',
+        'context' => 'Anonymity note shown under the survey navigation.',
+    ],
+    'survey.privacy.policy' => [
+        'text' => 'Politique de confidentialité',
+        'context' => 'Link label to the OMO privacy policy shown under the survey navigation.',
     ],
     'survey.error.incomplete' => [
         'text' => 'Répondez aux deux temporalités pour continuer.',

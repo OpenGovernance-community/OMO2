@@ -115,8 +115,8 @@ foreach ($memberships as $membership) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title><?= $escape(t('survey.associate.page_title', [], $lang, $sourceLang)) ?></title>
-    <link rel="stylesheet" href="/common/assets/components.css">
-    <link rel="stylesheet" href="/survey/survey.css">
+    <link rel="stylesheet" href="/common/assets/components.css?v=20260830-layout5">
+    <link rel="stylesheet" href="/survey/survey.css?v=20260830-layout5">
 </head>
 <body>
     <main class="survey-page survey-associate-page">
@@ -138,7 +138,7 @@ foreach ($memberships as $membership) {
                     <input type="hidden" name="csrf" value="<?= $escape($_SESSION[$csrfKey]) ?>">
                     <div class="survey-associate__choices">
                         <?php foreach ($organizations as $organizationId => $organization): ?>
-                            <label class="survey-associate__choice">
+                            <label class="generic-choice-card survey-associate__choice">
                                 <input type="radio" name="organization_id" value="<?= (int)$organizationId ?>" required<?= (int)$organizationId === $selectedOrganizationId ? ' checked' : '' ?>>
                                 <span>
                                     <strong><?= $escape($organization->get('name')) ?></strong>

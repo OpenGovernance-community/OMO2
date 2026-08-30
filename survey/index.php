@@ -3,6 +3,7 @@
 require_once dirname(__DIR__) . '/common/translation_bundles.php';
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once __DIR__ . '/content.php';
+require_once __DIR__ . '/manifest.php';
 require_once __DIR__ . '/assessment.php';
 
 $lang = loadTranslationBundle('survey_prototype', 'fr', $sourceLang);
@@ -26,10 +27,21 @@ foreach ($surveyQuestionDefinitions as $questionDefinition) {
         ];
     }
 
+    $manifest = [];
+    foreach (($surveyPrincipleManifest[$questionNumber] ?? []) as $paragraphIndex => $paragraph) {
+        $manifest[] = t(
+            $questionPrefix . '.manifest.' . ((int)$paragraphIndex + 1),
+            [],
+            $lang,
+            $sourceLang
+        );
+    }
+
     $questions[] = [
         'number' => $questionNumber,
         'title' => t($questionPrefix . '.title', [], $lang, $sourceLang),
         'principle' => t($questionPrefix . '.principle', [], $lang, $sourceLang),
+        'manifest' => $manifest,
         'options' => $options,
     ];
 }
@@ -113,6 +125,9 @@ $heroEyebrow = $isInvitationSurvey
 $heroTitle = $isInvitationSurvey
     ? t('survey.invitation.hero_title', ['organization' => $invitationOrganizationName], $lang, $sourceLang)
     : t('survey.hero.title', [], $lang, $sourceLang);
+$heroIntro = $isInvitationSurvey
+    ? t('survey.invitation.hero_intro', ['organization' => $invitationOrganizationName], $lang, $sourceLang)
+    : t('survey.hero.intro', [], $lang, $sourceLang);
 $privacyFact = $isInvitationSurvey
     ? t('survey.invitation.fact', ['organization' => $invitationOrganizationName], $lang, $sourceLang)
     : t('survey.intro.private', [], $lang, $sourceLang);
@@ -161,7 +176,14 @@ $surveyConfig = [
         'review' => t('survey.action.review', [], $lang, $sourceLang),
         'progressPrinciple' => t('survey.progress.principle', [], $lang, $sourceLang),
         'progressComplete' => t('survey.progress.complete', [], $lang, $sourceLang),
+        'progressNavigation' => t('survey.progress.navigation', [], $lang, $sourceLang),
+        'progressStep' => t('survey.progress.step', [], $lang, $sourceLang),
+        'progressPhaseAffinity' => t('survey.progress.phase_affinity', [], $lang, $sourceLang),
+        'progressPhaseSituations' => t('survey.progress.phase_situations', [], $lang, $sourceLang),
         'principleLabel' => t('survey.principle.label', [], $lang, $sourceLang),
+        'principleLearnMore' => t('survey.principle.learn_more', [], $lang, $sourceLang),
+        'principleDrawerEyebrow' => t('survey.principle.drawer_eyebrow', [], $lang, $sourceLang),
+        'principleDrawerClose' => t('survey.principle.drawer_close', [], $lang, $sourceLang),
         'scalePhaseLabel' => t('survey.phase.scale.label', [], $lang, $sourceLang),
         'scaleTitle' => t('survey.phase.scale.title', [], $lang, $sourceLang),
         'scaleHelp' => t('survey.phase.scale.help', [], $lang, $sourceLang),
@@ -181,6 +203,7 @@ $surveyConfig = [
             5 => t('survey.scale.5', [], $lang, $sourceLang),
         ],
         'saveStatus' => t('survey.save.status', [], $lang, $sourceLang),
+        'privacyPolicy' => t('survey.privacy.policy', [], $lang, $sourceLang),
         'incomplete' => t('survey.error.incomplete', [], $lang, $sourceLang),
         'resultsEyebrow' => t('survey.results.eyebrow', [], $lang, $sourceLang),
         'resultsTitle' => t('survey.results.title', [], $lang, $sourceLang),
@@ -254,8 +277,8 @@ $surveyConfig = [
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#073a59">
     <title><?= $escape($pageTitle) ?></title>
-    <link rel="stylesheet" href="/common/assets/components.css">
-    <link rel="stylesheet" href="/survey/survey.css">
+    <link rel="stylesheet" href="/common/assets/components.css?v=20260830-layout7">
+    <link rel="stylesheet" href="/survey/survey.css?v=20260830-layout7">
 </head>
 <body>
     <main class="survey-page" id="surveyPage">
@@ -269,11 +292,13 @@ $surveyConfig = [
                 <div class="survey-welcome__copy">
                     <p class="survey-eyebrow"><?= $escape($heroEyebrow) ?></p>
                     <h1><?= $escape($heroTitle) ?></h1>
-                    <p class="survey-welcome__intro"><?= $escape(t('survey.hero.intro', [], $lang, $sourceLang)) ?></p>
+                    <p class="survey-welcome__intro"><?= $escape($heroIntro) ?></p>
                     <div class="survey-facts" aria-label="<?= $escape(t('survey.page.title', [], $lang, $sourceLang)) ?>">
                         <span><?= $escape(t('survey.intro.time', [], $lang, $sourceLang)) ?></span>
                         <span><?= $escape(t('survey.intro.questions', [], $lang, $sourceLang)) ?></span>
-                        <span><?= $escape($privacyFact) ?></span>
+                        <?php if ($isInvitationSurvey): ?>
+                            <span><?= $escape($privacyFact) ?></span>
+                        <?php endif; ?>
                     </div>
                     <div class="survey-welcome__actions">
                         <button class="generic-action-button generic-action-button--main survey-primary-action" type="button" id="surveyStart">
@@ -299,17 +324,18 @@ $surveyConfig = [
                     </ol>
                 </aside>
             </div>
+            <footer class="survey-welcome__footer">
+                <a id="surveyPrivacyFooterLink" href="/common/politique-confidentialite.php?embed=1&amp;survey=1" aria-controls="surveyPrivacyDrawer" aria-haspopup="dialog"><?= $escape(t('survey.privacy.policy', [], $lang, $sourceLang)) ?></a>
+            </footer>
         </section>
 
-        <section class="survey-workspace" id="surveyWorkspace" hidden>
+        <section class="generic-page-shell survey-workspace" id="surveyWorkspace" hidden>
             <header class="survey-progress">
                 <div class="survey-progress__labels">
                     <span id="surveyProgressPrinciple"></span>
                     <span id="surveyProgressPercent"></span>
                 </div>
-                <div class="survey-progress__track" aria-hidden="true">
-                    <span id="surveyProgressBar"></span>
-                </div>
+                <nav class="survey-progress__steps" id="surveyProgressSteps" aria-label="<?= $escape(t('survey.progress.navigation', [], $lang, $sourceLang)) ?>"></nav>
             </header>
 
             <article class="generic-section survey-question-card" id="surveyQuestionCard" aria-live="polite">
@@ -323,7 +349,8 @@ $surveyConfig = [
 
                 <div class="generic-soft-panel survey-principle">
                     <p class="generic-meta-label" id="surveyPrincipleLabel"></p>
-                    <p id="surveyPrincipleText"></p>
+                    <p class="survey-principle__text" id="surveyPrincipleText"></p>
+                    <button class="survey-principle__more" type="button" id="surveyPrincipleMore" aria-controls="surveyPrincipleDrawer" aria-haspopup="dialog" hidden></button>
                 </div>
 
                 <div class="survey-response-heading">
@@ -339,11 +366,15 @@ $surveyConfig = [
                     <button class="generic-action-button generic-action-button--secondary" type="button" id="surveyBack"></button>
                     <button class="generic-action-button generic-action-button--main" type="button" id="surveyNext"></button>
                 </footer>
-                <p class="survey-save-note" id="surveySaveNote"></p>
+                <p class="survey-save-note" id="surveySaveNote">
+                    <span id="surveySaveStatus"></span>
+                    <span aria-hidden="true"> - </span>
+                    <a id="surveyPrivacyLink" href="/common/politique-confidentialite.php?embed=1&amp;survey=1" aria-controls="surveyPrivacyDrawer" aria-haspopup="dialog"></a>
+                </p>
             </article>
         </section>
 
-        <section class="survey-results" id="surveyResults" hidden>
+        <section class="generic-page-shell survey-results" id="surveyResults" hidden>
             <div class="generic-hero-panel accent survey-results__hero">
                 <p class="survey-eyebrow" id="surveyResultsEyebrow"></p>
                 <h1 id="surveyResultsTitle"></h1>
@@ -432,9 +463,40 @@ $surveyConfig = [
         </div>
     </dialog>
 
+    <dialog class="survey-principle-drawer" id="surveyPrincipleDrawer" aria-labelledby="surveyPrincipleDrawerTitle">
+        <div class="survey-principle-drawer__surface">
+            <header class="generic-drawer-header">
+                <div class="generic-drawer-header__copy">
+                    <p class="survey-eyebrow" id="surveyPrincipleDrawerEyebrow"></p>
+                    <h2 id="surveyPrincipleDrawerTitle"></h2>
+                </div>
+                <div class="generic-drawer-header__actions">
+                    <button class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" type="button" id="surveyPrincipleDrawerClose" aria-label="<?= $escape(t('survey.principle.drawer_close', [], $lang, $sourceLang)) ?>" title="<?= $escape(t('survey.principle.drawer_close', [], $lang, $sourceLang)) ?>">×</button>
+                </div>
+            </header>
+            <div class="generic-drawer-content survey-principle-drawer__content" id="surveyPrincipleDrawerContent"></div>
+        </div>
+    </dialog>
+
+    <dialog class="survey-principle-drawer survey-privacy-drawer" id="surveyPrivacyDrawer" aria-labelledby="surveyPrivacyDrawerTitle">
+        <div class="survey-principle-drawer__surface">
+            <header class="generic-drawer-header">
+                <div class="generic-drawer-header__copy">
+                    <h2 id="surveyPrivacyDrawerTitle"></h2>
+                </div>
+                <div class="generic-drawer-header__actions">
+                    <button class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" type="button" id="surveyPrivacyDrawerClose" aria-label="<?= $escape(t('survey.principle.drawer_close', [], $lang, $sourceLang)) ?>" title="<?= $escape(t('survey.principle.drawer_close', [], $lang, $sourceLang)) ?>">×</button>
+                </div>
+            </header>
+            <div class="generic-drawer-content survey-privacy-drawer__content">
+                <iframe id="surveyPrivacyFrame" src="/common/politique-confidentialite.php?embed=1&amp;survey=1" title="<?= $escape(t('survey.privacy.policy', [], $lang, $sourceLang)) ?>" loading="lazy"></iframe>
+            </div>
+        </div>
+    </dialog>
+
     <script>
         window.SURVEY_PROTOTYPE = <?= json_encode($surveyConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
     </script>
-    <script src="/survey/survey.js"></script>
+    <script src="/survey/survey.js?v=20260830-layout7"></script>
 </body>
 </html>
