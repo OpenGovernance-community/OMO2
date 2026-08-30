@@ -24,20 +24,31 @@
         restart: document.getElementById('surveyRestart'),
         progressPrinciple: document.getElementById('surveyProgressPrinciple'),
         progressPercent: document.getElementById('surveyProgressPercent'),
-        progressBar: document.getElementById('surveyProgressBar'),
+        progressSteps: document.getElementById('surveyProgressSteps'),
         questionCard: document.getElementById('surveyQuestionCard'),
         questionNumber: document.getElementById('surveyQuestionNumber'),
         phaseLabel: document.getElementById('surveyPhaseLabel'),
         questionTitle: document.getElementById('surveyQuestionTitle'),
         principleLabel: document.getElementById('surveyPrincipleLabel'),
         principleText: document.getElementById('surveyPrincipleText'),
+        principleMore: document.getElementById('surveyPrincipleMore'),
+        principleDrawer: document.getElementById('surveyPrincipleDrawer'),
+        principleDrawerEyebrow: document.getElementById('surveyPrincipleDrawerEyebrow'),
+        principleDrawerTitle: document.getElementById('surveyPrincipleDrawerTitle'),
+        principleDrawerContent: document.getElementById('surveyPrincipleDrawerContent'),
+        principleDrawerClose: document.getElementById('surveyPrincipleDrawerClose'),
         responseTitle: document.getElementById('surveyResponseTitle'),
         responseHelp: document.getElementById('surveyResponseHelp'),
         response: document.getElementById('surveyResponse'),
         validation: document.getElementById('surveyValidation'),
         back: document.getElementById('surveyBack'),
         next: document.getElementById('surveyNext'),
-        saveNote: document.getElementById('surveySaveNote'),
+        saveStatus: document.getElementById('surveySaveStatus'),
+        privacyLink: document.getElementById('surveyPrivacyLink'),
+        privacyFooterLink: document.getElementById('surveyPrivacyFooterLink'),
+        privacyDrawer: document.getElementById('surveyPrivacyDrawer'),
+        privacyDrawerTitle: document.getElementById('surveyPrivacyDrawerTitle'),
+        privacyDrawerClose: document.getElementById('surveyPrivacyDrawerClose'),
         resultsEyebrow: document.getElementById('surveyResultsEyebrow'),
         resultsTitle: document.getElementById('surveyResultsTitle'),
         resultsIntro: document.getElementById('surveyResultsIntro'),
@@ -222,10 +233,72 @@
         return answer.today !== null && answer.tomorrow !== null;
     }
 
+    function progressStepComplete(questionIndex, phase) {
+        var answer = state.answers[questionIndex];
+        if (phase === 'scale') {
+            return answer.affinity !== null;
+        }
+        return answer.situation.today !== null && answer.situation.tomorrow !== null;
+    }
+
+    function navigateToProgressStep(questionIndex, phase) {
+        if (!progressStepComplete(questionIndex, phase)) {
+            return;
+        }
+
+        window.clearTimeout(advanceTimer);
+        advanceTimer = null;
+        state.manualNavigation = true;
+        state.questionIndex = questionIndex;
+        state.phase = phase;
+        state.activePeriod = 'today';
+        state.completed = false;
+        saveState();
+        showQuestion();
+    }
+
+    function renderProgressSteps() {
+        var fragment = document.createDocumentFragment();
+        var currentStep = state.questionIndex * 2 + (state.phase === 'choice' ? 1 : 0);
+
+        questions.forEach(function (question, questionIndex) {
+            ['scale', 'choice'].forEach(function (phase, phaseIndex) {
+                var stepNumber = questionIndex * 2 + phaseIndex + 1;
+                var complete = progressStepComplete(questionIndex, phase);
+                var current = stepNumber - 1 === currentStep;
+                var phaseLabel = phase === 'scale' ? labels.progressPhaseAffinity : labels.progressPhaseSituations;
+                var label = interpolate(labels.progressStep, {
+                    current: question.number,
+                    phase: phaseLabel
+                });
+                var step = el(
+                    'button',
+                    'survey-progress__step' + (complete ? ' is-complete' : '') + (current ? ' is-current' : '')
+                );
+
+                step.type = 'button';
+                step.disabled = !complete;
+                step.dataset.phase = phase;
+                step.setAttribute('aria-label', label);
+                step.title = label;
+                if (current) {
+                    step.setAttribute('aria-current', 'step');
+                }
+                step.addEventListener('click', function () {
+                    navigateToProgressStep(questionIndex, phase);
+                });
+                fragment.appendChild(step);
+            });
+        });
+
+        elements.progressSteps.replaceChildren(fragment);
+    }
+
     function updateWelcome() {
         var saved = hasAnyAnswer() || state.completed;
         elements.startLabel.textContent = saved ? labels.resume : labels.start;
         elements.restart.hidden = !saved;
+        elements.privacyFooterLink.textContent = labels.privacyPolicy;
     }
 
     function showOnly(section) {
@@ -262,25 +335,29 @@
         var question = questions[state.questionIndex];
         var stepIndex = state.questionIndex * 2 + (state.phase === 'choice' ? 2 : 1);
         var totalSteps = questions.length * 2;
-        var percent = Math.round(stepIndex / totalSteps * 100);
+        // Keep the first question at 0% and reserve the final 5% for the results page.
+        var percent = Math.round((stepIndex - 1) / totalSteps * 100);
 
         elements.progressPrinciple.textContent = interpolate(labels.progressPrinciple, {
             current: question.number,
             total: questions.length
         });
         elements.progressPercent.textContent = interpolate(labels.progressComplete, { percent: percent });
-        elements.progressBar.style.width = percent + '%';
+        renderProgressSteps();
         elements.questionNumber.textContent = question.number;
         elements.phaseLabel.textContent = state.phase === 'scale' ? labels.scalePhaseLabel : labels.choicePhaseLabel;
         elements.questionTitle.textContent = question.title;
         elements.principleLabel.textContent = labels.principleLabel;
         elements.principleText.textContent = question.principle;
+        elements.principleMore.textContent = labels.principleLearnMore;
+        elements.principleMore.hidden = !Array.isArray(question.manifest) || question.manifest.length === 0;
         elements.responseTitle.textContent = state.phase === 'scale' ? labels.scaleTitle : labels.choiceTitle;
         elements.responseHelp.textContent = state.phase === 'scale' ? labels.scaleHelp : labels.choiceHelp;
         elements.validation.textContent = labels.incomplete;
         elements.validation.hidden = true;
         elements.back.textContent = labels.back;
-        elements.saveNote.textContent = labels.saveStatus;
+        elements.saveStatus.textContent = labels.saveStatus;
+        elements.privacyLink.textContent = labels.privacyPolicy;
 
         if (state.phase === 'scale') {
             renderScaleResponse(question);
@@ -321,7 +398,7 @@
 
             label.htmlFor = inputId;
             label.appendChild(el('span', 'survey-scale__number', value));
-            label.appendChild(el('span', '', labels.scale[value]));
+            label.appendChild(el('span', 'survey-scale__caption', labels.scale[value]));
             wrapper.append(input, label);
             scale.appendChild(wrapper);
         }
@@ -383,6 +460,7 @@
             });
 
             label.htmlFor = inputId;
+            label.className = 'generic-choice-card';
             label.appendChild(el('span', 'survey-choice__number', option.value));
             copy.appendChild(el('strong', '', option.title));
             copy.appendChild(el('p', '', option.description));
@@ -611,6 +689,62 @@
         elements.omoDialog.removeAttribute('open');
     }
 
+    function openPrincipleDrawer() {
+        var question = questions[state.questionIndex];
+        var paragraphs = question && Array.isArray(question.manifest) ? question.manifest : [];
+        if (!paragraphs.length) {
+            return;
+        }
+
+        elements.principleDrawerEyebrow.textContent = labels.principleDrawerEyebrow;
+        elements.principleDrawerTitle.textContent = question.title;
+        var fragment = document.createDocumentFragment();
+        paragraphs.forEach(function (paragraph) {
+            fragment.appendChild(el('p', '', paragraph));
+        });
+        elements.principleDrawerContent.replaceChildren(fragment);
+
+        if (typeof elements.principleDrawer.showModal === 'function') {
+            if (!elements.principleDrawer.open) {
+                elements.principleDrawer.showModal();
+            }
+            return;
+        }
+        elements.principleDrawer.setAttribute('open', 'open');
+    }
+
+    function closePrincipleDrawer() {
+        if (typeof elements.principleDrawer.close === 'function' && elements.principleDrawer.open) {
+            elements.principleDrawer.close();
+            return;
+        }
+        elements.principleDrawer.removeAttribute('open');
+    }
+
+    function openPrivacyDrawer() {
+        elements.privacyDrawerTitle.textContent = labels.privacyPolicy;
+        if (typeof elements.privacyDrawer.showModal === 'function') {
+            if (!elements.privacyDrawer.open) {
+                elements.privacyDrawer.showModal();
+            }
+            return;
+        }
+        elements.privacyDrawer.setAttribute('open', 'open');
+    }
+
+    function closePrivacyDrawer() {
+        if (typeof elements.privacyDrawer.close === 'function' && elements.privacyDrawer.open) {
+            elements.privacyDrawer.close();
+            return;
+        }
+        elements.privacyDrawer.removeAttribute('open');
+    }
+
+    function handlePrivacyLinkClick(event) {
+        event.preventDefault();
+        openPrivacyDrawer();
+    }
+
     function openSaveDialog() {
         if (typeof elements.saveDialog.showModal === 'function') {
             if (!elements.saveDialog.open) {
@@ -806,7 +940,7 @@
     }
 
     function inviteCheckbox(kind, option) {
-        var label = el('label', 'survey-invite-dialog__check');
+        var label = el('label', 'generic-choice-card survey-invite-dialog__check');
         var input = document.createElement('input');
         var copy = el('span', 'survey-invite-dialog__check-copy');
         input.type = 'checkbox';
@@ -1147,6 +1281,21 @@
     elements.omoDialog.addEventListener('click', function (event) {
         if (event.target === elements.omoDialog) {
             closeOmoDialog();
+        }
+    });
+    elements.principleMore.addEventListener('click', openPrincipleDrawer);
+    elements.principleDrawerClose.addEventListener('click', closePrincipleDrawer);
+    elements.principleDrawer.addEventListener('click', function (event) {
+        if (event.target === elements.principleDrawer) {
+            closePrincipleDrawer();
+        }
+    });
+    elements.privacyLink.addEventListener('click', handlePrivacyLinkClick);
+    elements.privacyFooterLink.addEventListener('click', handlePrivacyLinkClick);
+    elements.privacyDrawerClose.addEventListener('click', closePrivacyDrawer);
+    elements.privacyDrawer.addEventListener('click', function (event) {
+        if (event.target === elements.privacyDrawer) {
+            closePrivacyDrawer();
         }
     });
     elements.saveResult.addEventListener('click', function () {
