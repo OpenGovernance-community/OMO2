@@ -3,7 +3,7 @@ name: Deploy Test Branch to Infomaniak
 on:
   push:
     branches:
-      - Test
+      - Beta
 
 jobs:
   deploy:
@@ -18,6 +18,6 @@ jobs:
           password: ${{ secrets.DEV_PASSWORD }}
           script: |
             cd ~/sites/beta.opengov.tools
-            git fetch origin Test
-            git reset --hard origin/Test
+            git fetch origin Beta
+            git reset --hard origin/Beta
             php scripts/run-migrations.php
