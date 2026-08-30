@@ -70,6 +70,22 @@
     display: none !important;
 }
 
+.generic-page-shell {
+    --param-page-shell-width: 1120px;
+    --param-page-shell-gutter: clamp(10px, 2.5vw, 24px);
+    --param-page-shell-padding-top: clamp(18px, 3vw, 36px);
+    --param-page-shell-padding-bottom: clamp(36px, 6vw, 72px);
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    max-width: calc(var(--param-page-shell-width) + var(--param-page-shell-gutter) + var(--param-page-shell-gutter));
+    margin-inline: auto;
+    padding:
+        var(--param-page-shell-padding-top)
+        var(--param-page-shell-gutter)
+        var(--param-page-shell-padding-bottom);
+}
+
 /* Summernote appends its link dialog outside the editor. Keep that dialog
  * consistent with the application dark theme instead of inheriting light
  * modal surfaces with dark-theme text. */
@@ -143,11 +159,13 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
     --generic-section-background: var(--generic-container-surface);
     --generic-section-shadow: none;
     display: block;
-    padding: var(--generic-section-padding-block) var(--generic-section-padding-inline);
-    border: 1px solid var(--generic-section-border);
-    border-radius: var(--generic-section-radius);
-    background: var(--generic-section-background);
-    box-shadow: var(--generic-section-shadow);
+    padding:
+        var(--param-section-padding-block, var(--generic-section-padding-block))
+        var(--param-section-padding-inline, var(--generic-section-padding-inline));
+    border: 1px solid var(--param-section-border, var(--generic-section-border));
+    border-radius: var(--param-section-radius, var(--generic-section-radius));
+    background: var(--param-section-background, var(--generic-section-background));
+    box-shadow: var(--param-section-shadow, var(--generic-section-shadow));
 }
 
 .generic-title-section {
@@ -213,6 +231,65 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
 
 .generic-stack--flush {
     --generic-stack-gap: 0px;
+}
+
+.generic-choice-card {
+    --param-choice-card-gap: var(--generic-space-3);
+    --param-choice-card-padding-block: 14px;
+    --param-choice-card-padding-inline: 14px;
+    --param-choice-card-radius: var(--radius-lg);
+    --param-choice-card-border: var(--color-border, #d1d5db);
+    --param-choice-card-border-hover: color-mix(in srgb, var(--color-primary, #2563eb) 42%, var(--param-choice-card-border));
+    --param-choice-card-border-selected: color-mix(in srgb, var(--color-primary, #2563eb) 78%, var(--param-choice-card-border));
+    --param-choice-card-background: var(--color-surface, #ffffff);
+    --param-choice-card-background-hover: color-mix(in srgb, var(--color-primary, #2563eb) 4%, var(--param-choice-card-background));
+    --param-choice-card-background-selected: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--param-choice-card-background));
+    --param-choice-card-shadow-hover: 0 10px 24px color-mix(in srgb, var(--color-primary, #2563eb) 10%, transparent);
+    --param-choice-card-shadow-selected:
+        0 12px 28px color-mix(in srgb, var(--color-primary, #2563eb) 13%, transparent),
+        inset 4px 0 0 var(--color-primary, #2563eb);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--param-choice-card-gap);
+    align-items: start;
+    min-width: 0;
+    padding:
+        var(--param-choice-card-padding-block)
+        var(--param-choice-card-padding-inline);
+    border: 1px solid var(--param-choice-card-border);
+    border-radius: var(--param-choice-card-radius);
+    background: var(--param-choice-card-background);
+    color: var(--color-text, #1f2937);
+    cursor: pointer;
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease,
+        box-shadow 150ms ease,
+        transform 150ms ease;
+}
+
+.generic-choice-card:hover {
+    border-color: var(--param-choice-card-border-hover);
+    background: var(--param-choice-card-background-hover);
+    box-shadow: var(--param-choice-card-shadow-hover);
+    transform: translateY(-1px);
+}
+
+input:checked + .generic-choice-card,
+.generic-choice-card:has(input:checked),
+.generic-choice-card.is-selected,
+.generic-choice-card[aria-selected="true"],
+.generic-choice-card[aria-pressed="true"] {
+    border-color: var(--param-choice-card-border-selected);
+    background: var(--param-choice-card-background-selected);
+    box-shadow: var(--param-choice-card-shadow-selected);
+}
+
+.generic-choice-card:focus-visible,
+input:focus-visible + .generic-choice-card,
+.generic-choice-card:has(input:focus-visible) {
+    outline: 3px solid color-mix(in srgb, var(--color-primary, #2563eb) 24%, transparent);
+    outline-offset: 2px;
 }
 
 .generic-soft-panel, .generic-soft-panel-square {

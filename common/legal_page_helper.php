@@ -76,6 +76,7 @@ function commonRenderLegalPage(array $config): void
     $sections = array_values($config['sections'] ?? []);
     $note = array_values($config['note'] ?? []);
     $embed = commonLegalPageIsEmbedded();
+    $forceLightEmbed = $embed && !empty($config['forceLightEmbed']);
 
     $accent = trim((string)($config['accent'] ?? '#2563eb'));
     $accentSoft = trim((string)($config['accentSoft'] ?? '#dbeafe'));
@@ -84,6 +85,19 @@ function commonRenderLegalPage(array $config): void
     $noteBackground = trim((string)($config['noteBackground'] ?? '#f8fbff'));
     $borderColor = trim((string)($config['borderColor'] ?? '#dbe4ee'));
     $locale = trim((string)($config['locale'] ?? 'fr'));
+    $embedStyle = $forceLightEmbed ? <<<CSS
+    .common-legal-page-content--embed {
+        --legal-bg: {$pageBackground};
+        --legal-surface: #ffffff;
+        --legal-text: #0f172a;
+        --legal-muted: #475569;
+        --legal-border: {$borderColor};
+        --legal-note-bg: {$noteBackground};
+        --legal-bg-start: {$backgroundStart};
+        color-scheme: light !important;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+CSS : '';
 
     $style = <<<CSS
 <style>
@@ -201,6 +215,8 @@ function commonRenderLegalPage(array $config): void
     .common-legal-page-content--embed .common-legal-page-note {
         margin-bottom: 0;
     }
+
+{$embedStyle}
 </style>
 CSS;
 

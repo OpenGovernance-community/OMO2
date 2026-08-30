@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../shared_functions.php';
 require_once __DIR__ . '/legal_page_helper.php';
 
-$siteTitle = trim((string)($GLOBALS['siteTitle'] ?? 'Le site'));
+$siteTitle = 'OpenMyOrganization';
 $locale = commonLegalResolveLocale();
 $policyDate = (new DateTimeImmutable('today'))->format('d.m.Y');
 $privacyContactEmail = trim((string)($GLOBALS['siteAdminEmail'] ?? ''));
@@ -30,11 +30,11 @@ $sourceLang = array_merge(commonGetLegalSharedSourceLang(), [
         'context' => 'Current version date displayed on the privacy policy page.',
     ],
     'legal.privacy.intro.1' => [
-        'text' => 'Cette politique explique de manière claire quelles données personnelles peuvent être traitées dans le cadre de <strong>{siteTitle}</strong>, pourquoi elles le sont, combien de temps elles sont conservées et quels sont vos droits.',
+        'text' => 'Cette politique explique de manière claire quelles données personnelles peuvent être traitées dans le cadre d’OpenMyOrganization et de ses logiciels dérivés (EasyPV, EasyCIRCLE, EasyMEMO et toute la gamme Easy), pourquoi elles le sont, combien de temps elles sont conservées et quels sont vos droits.',
         'context' => 'First introductory paragraph on the privacy policy page.',
     ],
     'legal.privacy.intro.2' => [
-        'text' => 'Le projet est un commun numérique à but non lucratif, organisé selon une gouvernance multi-organisations. Il ne repose pas sur la vente de données, la publicité ciblée ou la constitution de profils commerciaux.',
+        'text' => 'OpenMyOrganization et ses logiciels dérivés forment un commun numérique à but non lucratif, organisé selon une gouvernance multi-organisations. Le projet ne repose pas sur la vente de données, la publicité ciblée ou la constitution de profils commerciaux.',
         'context' => 'Second introductory paragraph describing the non-profit and common-good nature of the project.',
     ],
     'legal.privacy.section.1.title' => [
@@ -42,11 +42,11 @@ $sourceLang = array_merge(commonGetLegalSharedSourceLang(), [
         'context' => 'Section title identifying the data controller and policy scope.',
     ],
     'legal.privacy.section.1.body.1' => [
-        'text' => 'Le responsable du traitement est l’entité ou l’organisation qui exploite l’instance concernée de {siteTitle}. Pour les demandes relatives à la confidentialité, vous pouvez contacter {contact}.',
+        'text' => 'Le responsable du traitement est l’entité ou l’organisation qui exploite l’instance concernée d’OpenMyOrganization ou de l’un de ses logiciels dérivés. Pour les demandes relatives à la confidentialité, vous pouvez contacter {contact}.',
         'context' => 'First paragraph identifying the data controller and privacy contact.',
     ],
     'legal.privacy.section.1.body.2' => [
-        'text' => 'Cette politique concerne l’instance hébergée et administrée par le projet. Lorsqu’une organisation installe elle-même le logiciel, elle devient responsable de sa propre instance, de ses utilisateurs, de son hébergement, de ses sauvegardes et du respect des obligations qui lui sont applicables.',
+        'text' => 'Cette politique concerne l’instance hébergée et administrée par le projet OpenMyOrganization. Lorsqu’une organisation installe elle-même OpenMyOrganization ou l’un de ses logiciels dérivés, elle devient responsable de sa propre instance, de ses utilisateurs, de son hébergement, de ses sauvegardes et du respect des obligations qui lui sont applicables.',
         'context' => 'Second paragraph defining the scope of the hosted service and self-hosted installations.',
     ],
     'legal.privacy.section.2.title' => [
@@ -54,11 +54,11 @@ $sourceLang = array_merge(commonGetLegalSharedSourceLang(), [
         'context' => 'Section title describing the privacy principles of the project.',
     ],
     'legal.privacy.section.2.body.1' => [
-        'text' => 'Les données sont traitées conformément aux principes de licéité, de bonne foi, de proportionnalité et de finalité. Nous ne collectons et ne conservons que les informations utiles au fonctionnement du service, à la coopération entre les membres et à la sécurité de l’instance.',
+        'text' => 'Les données sont traitées conformément aux principes de licéité, de bonne foi, de proportionnalité et de finalité. Nous ne collectons et ne conservons que les informations utiles au fonctionnement d’OpenMyOrganization et de ses logiciels dérivés, à la coopération entre les membres et à la sécurité de l’instance.',
         'context' => 'First paragraph describing the core data protection principles.',
     ],
     'legal.privacy.section.2.body.2' => [
-        'text' => 'Les données ne sont ni vendues, ni louées, ni utilisées à des fins publicitaires. Elles ne servent pas à établir des profils commerciaux et ne sont pas réutilisées pour une finalité étrangère au fonctionnement du service, sauf obligation légale ou accord explicite concernant une intégration précise.',
+        'text' => 'Les données ne sont ni vendues, ni louées, ni utilisées à des fins publicitaires. Elles ne servent pas à établir des profils commerciaux et ne sont pas réutilisées pour une finalité étrangère au fonctionnement d’OpenMyOrganization et de ses logiciels dérivés, sauf obligation légale ou accord explicite concernant une intégration précise.',
         'context' => 'Second paragraph stating the no-sale, no-advertising and no-commercial-profiling commitments.',
     ],
     'legal.privacy.section.3.title' => [
@@ -89,6 +89,10 @@ $sourceLang = array_merge(commonGetLegalSharedSourceLang(), [
         'text' => 'données de communication lorsque vous nous contactez ou demandez un accès, ainsi que les informations nécessaires à l’envoi du message demandé.',
         'context' => 'Personal data category for communications and requested emails.',
     ],
+    'legal.privacy.section.3.list.6' => [
+        'text' => 'réponses à des questionnaires, évaluations ou consultations, lorsqu’une organisation active ces fonctionnalités ;',
+        'context' => 'Personal data category for survey and assessment responses.',
+    ],
     'legal.privacy.section.4.title' => [
         'text' => '4. Finalités et fondements du traitement',
         'context' => 'Section title describing processing purposes and legal grounds.',
@@ -117,17 +121,25 @@ $sourceLang = array_merge(commonGetLegalSharedSourceLang(), [
         'text' => 'respecter les obligations légales et répondre aux demandes légitimes des personnes concernées.',
         'context' => 'Processing purpose for legal obligations and data subject requests.',
     ],
+    'legal.privacy.section.4.list.6' => [
+        'text' => 'produire des statistiques et conduire des études scientifiques destinées à soutenir la recherche sur l’impact des modes de gouvernance, uniquement à partir de données anonymisées et dans le cadre de la recherche académique.',
+        'context' => 'Processing purpose for anonymized statistics and academic governance research.',
+    ],
     'legal.privacy.section.5.title' => [
         'text' => '5. Absence de revente et d’exploitation commerciale',
         'context' => 'Section title describing the project’s non-commercial data commitment.',
     ],
     'legal.privacy.section.5.body.1' => [
-        'text' => 'Nous ne vendons, ne louons et ne monétisons aucune donnée personnelle ni aucun contenu. Nous n’utilisons pas les informations saisies dans OMO pour de la publicité, du ciblage, de la prospection ou une analyse commerciale.',
+        'text' => 'Nous ne vendons, ne louons et ne monétisons aucune donnée personnelle ni aucun contenu. Nous n’utilisons pas les informations saisies dans OpenMyOrganization ou ses logiciels dérivés pour de la publicité, du ciblage, de la prospection ou une analyse commerciale.',
         'context' => 'First paragraph reaffirming the prohibition on commercial use of personal and content data.',
     ],
     'legal.privacy.section.5.body.2' => [
         'text' => 'Les statistiques techniques nécessaires à la disponibilité et à la sécurité du service ne sont pas utilisées pour suivre les personnes à des fins publicitaires. Aucun dispositif publicitaire ou outil de profilage commercial n’est intégré par défaut à l’instance.',
         'context' => 'Second paragraph explaining the absence of advertising and commercial tracking by default.',
+    ],
+    'legal.privacy.section.5.body.3' => [
+        'text' => 'Certaines données peuvent être agrégées et anonymisées à des fins statistiques pour conduire des études scientifiques destinées à soutenir la recherche sur l’impact des modes de gouvernance. Ces données restent anonymisées, ne sont en aucun cas vendues et leur utilisation est limitée à la recherche académique.',
+        'context' => 'Third paragraph defining the anonymized statistical use for academic governance research.',
     ],
     'legal.privacy.section.6.title' => [
         'text' => '6. Hébergement et destinataires',
@@ -150,7 +162,7 @@ $sourceLang = array_merge(commonGetLegalSharedSourceLang(), [
         'context' => 'Section title describing the open-source and self-hosting model.',
     ],
     'legal.privacy.section.7.body.1' => [
-        'text' => 'OpenMyOrganization est un logiciel open source. Toute organisation qui le souhaite peut installer et exploiter sa propre instance afin de conserver elle-même la maîtrise de son hébergement et de ses données.',
+        'text' => 'OpenMyOrganization et ses logiciels dérivés (EasyPV, EasyCIRCLE, EasyMEMO et toute la gamme Easy) sont des logiciels open source. Toute organisation qui le souhaite peut installer et exploiter sa propre instance afin de conserver elle-même la maîtrise de son hébergement et de ses données.',
         'context' => 'First paragraph describing the open-source and self-hosting option.',
     ],
     'legal.privacy.section.7.body.2' => [
@@ -210,6 +222,7 @@ $lang = commonLegalLoadBundle('common_legal_privacy_page', $sourceLang, $locale)
 
 commonRenderLegalPage([
     'siteTitle' => $siteTitle,
+    'forceLightEmbed' => !empty($_GET['survey']),
     'locale' => $locale,
     'pageTitle' => commonLegalT('legal.privacy.page_title', ['siteTitle' => $siteTitle], $lang, $sourceLang),
     'documentTitle' => commonLegalT('legal.privacy.document_title', [], $lang, $sourceLang),
@@ -250,6 +263,7 @@ commonRenderLegalPage([
                 commonLegalT('legal.privacy.section.3.list.3', [], $lang, $sourceLang),
                 commonLegalT('legal.privacy.section.3.list.4', [], $lang, $sourceLang),
                 commonLegalT('legal.privacy.section.3.list.5', [], $lang, $sourceLang),
+                commonLegalT('legal.privacy.section.3.list.6', [], $lang, $sourceLang),
             ],
         ],
         [
@@ -263,6 +277,7 @@ commonRenderLegalPage([
                 commonLegalT('legal.privacy.section.4.list.3', [], $lang, $sourceLang),
                 commonLegalT('legal.privacy.section.4.list.4', [], $lang, $sourceLang),
                 commonLegalT('legal.privacy.section.4.list.5', [], $lang, $sourceLang),
+                commonLegalT('legal.privacy.section.4.list.6', [], $lang, $sourceLang),
             ],
         ],
         [
@@ -270,6 +285,7 @@ commonRenderLegalPage([
             'paragraphs' => [
                 commonLegalT('legal.privacy.section.5.body.1', [], $lang, $sourceLang),
                 commonLegalT('legal.privacy.section.5.body.2', [], $lang, $sourceLang),
+                commonLegalT('legal.privacy.section.5.body.3', [], $lang, $sourceLang),
             ],
         ],
         [
