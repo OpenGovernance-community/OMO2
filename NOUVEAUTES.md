@@ -35,6 +35,9 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - La politique de confidentialite identifie maintenant OpenMyOrganization et sa gamme de logiciels derives (EasyPV, EasyCIRCLE, EasyMEMO et toute la gamme Easy). Elle precise aussi que des donnees peuvent etre anonymisees et agregees pour des statistiques et des etudes academiques sur l impact des modes de gouvernance, sans vente ni usage commercial.
 - Le layout du questionnaire utilise maintenant un shell responsive et des cartes de choix generiques partagees. La progression, les surfaces et les gouttieres mobiles ont ete retravaillees pour garder davantage de largeur utile sur telephone.
 - La progression du questionnaire propose maintenant vingt etapes visuelles. Les etapes deja remplies servent de raccourcis, tandis que les etapes non encore parcourues restent inactives.
+- Sur telephone, le rapport compile par organisation supprime le cadre exterieur de son en-tete afin de liberer davantage la largeur utile.
+- Le rapport compile par organisation propose maintenant un bouton d'impression avec une mise en page papier dediee, un graphique compact, des cartes de listes stables, des fonds sobres et sans cadre exterieur superflu.
+- Les groupes de perceptions du rapport d'organisation permettent maintenant de filtrer le radar et de revenir a la vue globale en cliquant une seconde fois sur le groupe actif.
 - Le pourcentage de progression commence maintenant a 0 % et reserve les derniers 5 % a l affichage du rapport final, au lieu d afficher 5 % avant toute reponse.
 - Le sous-titre d introduction du questionnaire parle maintenant de la culture de l organisation plutot que de sa maturite.
 - La duree indicative du questionnaire est maintenant estimee a environ 15 minutes.
