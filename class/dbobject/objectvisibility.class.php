@@ -442,6 +442,7 @@
 						ON h.`id` = uh.`IDholon`
 					WHERE uh.`IDuser` = :user_id
 					  AND uh.`active` = 1
+					  AND uh.`is_membership` = 1
 					  AND h.`active` = 1
 					  AND h.`visible` = 1
 					  AND " . $whereOrganization . "
