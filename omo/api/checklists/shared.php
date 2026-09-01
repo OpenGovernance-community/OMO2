@@ -36,6 +36,7 @@ if (!function_exists('omoControlListSourceLang')) {
             'control.frequency.quarterly' => ['text' => 'Chaque trimestre', 'context' => 'Quarterly recurrence.'],
             'control.frequency.semiannual' => ['text' => 'Chaque semestre', 'context' => 'Semiannual recurrence.'],
             'control.frequency.yearly' => ['text' => 'Chaque année', 'context' => 'Yearly recurrence.'],
+            'control.delay.hour' => ['text' => 'heure(s)', 'context' => 'Duration unit hour.'],
             'control.delay.day' => ['text' => 'jour(s)', 'context' => 'Duration unit day.'],
             'control.delay.week' => ['text' => 'semaine(s)', 'context' => 'Duration unit week.'],
             'control.delay.month' => ['text' => 'mois', 'context' => 'Duration unit month.'],

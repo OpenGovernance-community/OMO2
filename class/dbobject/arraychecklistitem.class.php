@@ -175,6 +175,9 @@ class ArrayChecklistItem extends ArrayDbObject
     {
         $value = (int)$value;
         $unit = ChecklistItem::normalizeDelayUnit($unit) ?: ChecklistItem::DELAY_DAY;
+        if ($unit === ChecklistItem::DELAY_HOUR) {
+            return $value * 3600;
+        }
         if ($unit === ChecklistItem::DELAY_WEEK) {
             return $value * 604800;
         }

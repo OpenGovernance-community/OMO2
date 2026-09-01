@@ -1099,4 +1099,4 @@ $projectTexts = [
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
 <script src="/common/calendar/event-editor.js?v=20260804-project-events"></script>
-<script src="/omo/api/projects/projects.js?v=20260824-project-document-actions"></script>
+<script src="/omo/api/projects/projects.js?v=20260901-drawer-app-cache"></script>
