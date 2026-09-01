@@ -2,6 +2,34 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-01
+
+- Le tableau de pilotage propose maintenant un module Activites. Ses compteurs filtrent les activites bientot a faire, a faire et en retard selon leur fenetre d anticipation et leur occurrence manquee, sans les confondre avec les processus qui creent des projets.
+- Une activite affichee en avance reste libellee `Bientot a faire` en bleu. Des son heure attendue, elle devient `A faire` avec la meme couleur, avant de passer au rouge uniquement lorsqu une occurrence complete est manquee.
+- Le resume d une activite conserve maintenant le resultat de sa derniere occurrence, faite dans les temps ou en retard. La frise de regularite ajoute separement la prochaine occurrence a venir, et une occurrence precedente sans validation bascule en manque des l ouverture de la fenetre d anticipation suivante.
+- L import OMO 1 convertit maintenant les anciennes listes recurrentes en activites directes sur leurs holons, sans creer de processus, de projet ni de conteneur intermediaire. L application Activites est activee automatiquement lors de cet import.
+
+- L état des activités récurrentes repose maintenant sur la date réelle du dernier contrôle et sur des fenêtres entre deux occurrences. Un contrôle tardif reste attribué à l occurrence précédente et apparaît en jaune; un intervalle complet sans contrôle apparaît en rouge. La période d anticipation permet de valider l occurrence suivante en avance, tandis que les activités bientôt attendues apparaissent en bleu et les suivantes en gris.
+- La date de création d une activité borne désormais son historique : aucune occurrence ni aucun état antérieur ne sont affichés, ce qui évite de présenter une nouvelle activité comme déjà en retard.
+- La frise de régularité s adapte maintenant à toute la largeur du sous-drawer, sans ascenseur horizontal lorsqu il y a peu d occurrences.
+
+## 2026-08-31
+
+- Une application Activités est disponible par holon. Ses activités récurrentes ne créent pas de projet et se valident par un clic directement dans la liste. La vue regroupe les activités par récurrence avec des titres collants, une recherche et des filtres de portée et d état; le retard est exprimé en jours. Chaque validation garde l occurrence attendue, l heure et la personne, avec une frise de régularité positionnée sur les dates réelles dans le détail de l activité.
+- L ancienne application de listes d actions est maintenant presentee comme Processus dans toute l interface. Ses composants sont nommes etapes lorsqu ils progressent autour d une date de reference, et activites lorsqu ils suivent une planification independante. Les nouvelles routes utilisent `#processus` et les anciens liens restent compatibles.
+- Le tableau de pilotage OMO devient configurable par utilisateur et par holon. Un editeur en sous-drawer permet de selectionner une ou deux cases voisines dans une grille a deux colonnes, puis d inserer, remplacer ou supprimer des modules simples, doubles horizontaux ou doubles verticaux.
+- Sept modules initiaux sont disponibles : regles a surveiller, projets et priorites, anniversaires Team, documents crees ou modifies sur sept jours, prochains evenements, historique de structure et indicateurs en retard. Les compteurs des regles, projets et documents filtrent leur liste au clic.
+- Les modules du tableau possedent maintenant un registre extensible, un chargeur de donnees et un gabarit propres sous `/omo/api/dashboard/modules/`. Cette structure prepare plusieurs variantes pour une meme application, notamment de futures fiches Decision.
+- La disposition est stockee dans les parametres de `user_holon`. Une ligne technique peut conserver ces preferences sans compter comme appartenance au holon, grace au nouveau marqueur `is_membership`.
+- Les fiches du tableau alignent maintenant leur contenu en haut, adaptent leur hauteur minimale aux listes disponibles et compactent leurs compteurs. Elles passent aussi sur une seule colonne selon la largeur reelle du panneau, meme sur un ecran large.
+- Les admins d organisation peuvent enregistrer une disposition comme defaut du holon courant ou de toute l organisation depuis la fleche du bouton Enregistrer. Lorsqu aucune preference personnelle n existe, le tableau applique successivement le defaut du holon, celui de l organisation, puis la disposition standard.
+- Le menu de sauvegarde distingue maintenant les droits d admin du holon, d organisation et de site. Le super admin active peut aussi definir une disposition globale, appliquee aux organisations qui n ont pas encore choisi leur propre defaut.
+- Une fiche de tableau de pilotage qui occupe deux lignes verticales attribue maintenant toute sa hauteur supplementaire a sa liste, pour les sept modules; sur une colonne, la hauteur compacte est conservee.
+- Les droits du tableau de pilotage suivent maintenant le niveau d interface : en Decouverte, seuls les admins d organisation ou de site definissent les modeles generiques; en Autonome, les admins de holon definissent leur vue par defaut; en Expert, chaque membre peut enregistrer ou reinitialiser sa vue personnelle.
+- En modes Autonome et Expert, un admin d organisation peut enregistrer un tableau de pilotage pour le modele dont herite le holon affiche, par exemple Cercle, Role ou Facilitation. Ces variantes sont resolues avant les defauts generiques de l organisation et du serveur; un super admin peut egalement definir leur equivalent global.
+- Apres une sauvegarde ou un retour aux valeurs par defaut du tableau de pilotage, le panneau est maintenant recharge de force afin d afficher immediatement la nouvelle disposition.
+- Le menu de sauvegarde etendu du tableau de pilotage occupe maintenant jusqu a 480 px et reste aligne a droite sur sa fleche, afin de se deployer vers la gauche.
+
 ## 2026-08-28
 
 - Les popups reposent maintenant sur une zone interne bornee plutot que sur un calcul entre hauteur dynamique et marges. Une tolerance basse de deux pixels evite les arrondis qui declenchaient des barres de defilement pour quelques pixels de depassement, tandis que les tableaux larges peuvent garder leur propre zone horizontale.

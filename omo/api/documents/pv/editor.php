@@ -290,7 +290,7 @@ usort($embeddableProjectsPayload, static function (array $left, array $right): i
     return strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
 });
 
-if ($hasOrganization && $organization->isApplicationEnabled('checklist', $currentUserId)) {
+if ($hasOrganization && ($organization->isApplicationEnabled('processus', $currentUserId) || $organization->isApplicationEnabled('checklist', $currentUserId))) {
     $embeddableChecklists = new \dbObject\ArrayChecklist();
     $embeddableChecklists->loadForOrganization($organizationId, true);
     foreach ($embeddableChecklists as $embeddableChecklist) {
@@ -2936,7 +2936,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 
     function openPvEmbeddedResourceByHash(resourceHash) {
         const normalizedHash = String(resourceHash || '').replace(/^#/, '');
-        if (!/^(?:(?:documents|decision|projects)-d\d+|checklist-c\d+|calendar-e\d+|stats(?:-(?:i|g)\d+)?)$/.test(normalizedHash)) {
+        if (!/^(?:(?:documents|decision|projects)-d\d+|(?:processus|checklist)-c\d+|calendar-e\d+|stats(?:-(?:i|g)\d+)?)$/.test(normalizedHash)) {
             return;
         }
 
@@ -3020,14 +3020,14 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const eventLink = targetNode ? targetNode.closest('.omo-event-embed a[href^="#calendar-e"]') : null;
             const indicatorLink = targetNode ? targetNode.closest('.omo-indicator-embed a[href^="#stats"]') : null;
             const projectLink = targetNode ? targetNode.closest('.omo-project-embed a[href^="#projects-d"], .omo-checklist-embed .omo-project-embed__child-title[href^="#projects-d"], .omo-checklist-embed .omo-checklist-embed__item-segment[href^="#projects-d"]') : null;
-            const checklistLink = targetNode ? targetNode.closest('.omo-checklist-embed a[href^="#checklist-c"]') : null;
+            const checklistLink = targetNode ? targetNode.closest('.omo-checklist-embed a[href^="#processus-c"], .omo-checklist-embed a[href^="#checklist-c"]') : null;
             const resourceLink = documentLink || decisionLink || eventLink || indicatorLink || projectLink || checklistLink;
             if (!resourceLink || resourceLink.matches('[data-omo-document-embed-external], .omo-document-embed__external, .omo-project-embed__external')) {
                 return;
             }
 
             const resourceHash = String(resourceLink.getAttribute('href') || '');
-            if (!/^#(?:(?:documents|decision|projects)-d\d+|checklist-c\d+|calendar-e\d+|stats(?:-(?:i|g)\d+)?)$/.test(resourceHash)) {
+            if (!/^#(?:(?:documents|decision|projects)-d\d+|(?:processus|checklist)-c\d+|calendar-e\d+|stats(?:-(?:i|g)\d+)?)$/.test(resourceHash)) {
                 return;
             }
 
@@ -3275,7 +3275,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         if (!Number.isInteger(checklistId) || checklistId <= 0) return '';
         const title = String(item.title || '').trim() || ('Processus #' + String(checklistId));
         const summary = String(item.contextLabel || '').trim();
-        return '<span class="omo-checklist-embed" contenteditable="false" data-omo-embed-type="checklist" data-omo-checklist-id="' + String(checklistId) + '" data-omo-checklist-title="' + escapeDocumentEmbedHtml(title) + '"><strong><a href="#checklist-c' + String(checklistId) + '">' + escapeDocumentEmbedHtml(title) + '</a></strong>' + (summary ? '<em>' + escapeDocumentEmbedHtml(summary) + '</em>' : '') + '</span>';
+        return '<span class="omo-checklist-embed" contenteditable="false" data-omo-embed-type="checklist" data-omo-checklist-id="' + String(checklistId) + '" data-omo-checklist-title="' + escapeDocumentEmbedHtml(title) + '"><strong><a href="#processus-c' + String(checklistId) + '">' + escapeDocumentEmbedHtml(title) + '</a></strong>' + (summary ? '<em>' + escapeDocumentEmbedHtml(summary) + '</em>' : '') + '</span>';
     }
 
     function openPvChecklistEmbedPicker(field, targetNode) {
@@ -4013,7 +4013,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 const runtime = document.createElement('span'); runtime.className = 'omo-checklist-embed__review' + (Number(payload.overdueCount || 0) > 0 ? ' is-overdue' : ''); runtime.setAttribute('contenteditable', 'false'); runtime.setAttribute('data-omo-checklist-embed-runtime', '1');
                 const entries = Array.isArray(payload.entries) ? payload.entries : [];
                 const hasNoRuns = !payload.isContainer && entries.length === 0;
-                const label = payload.isContainer ? 'Éléments récurrents' : 'Instances en cours';
+                const label = payload.isContainer ? 'Activités récurrentes' : 'Instances en cours';
                 let overview = '';
                 if (payload.isContainer) {
                     overview = '<button type="button" class="omo-checklist-embed__container-toggle" data-omo-checklist-container-toggle aria-expanded="false"><span class="omo-project-status-bar">';
@@ -4140,7 +4140,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         childrenHost.dataset.omoChecklistReviewType = 'container';
         childrenHost.className = 'omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children';
         if (items.length === 0) {
-            childrenHost.textContent = 'Aucun élément récurrent actif.';
+            childrenHost.textContent = 'Aucune activité récurrente active.';
         } else {
             childrenHost.innerHTML = buildPvChecklistItemsList(items);
             refreshPvChecklistRunItemSubprojectBars(childrenHost);

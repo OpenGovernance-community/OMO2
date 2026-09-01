@@ -1859,7 +1859,7 @@ function omoParseChecklistRouteToken(routeToken = null) {
         return null;
     }
 
-    const checklistMatch = normalizedRouteToken.match(/^checklist-c(\d+)$/i);
+    const checklistMatch = normalizedRouteToken.match(/^(?:processus|checklist)-c(\d+)$/i);
     if (!checklistMatch) {
         return null;
     }
@@ -2005,7 +2005,7 @@ function omoBuildStatsGroupRouteToken(groupId) {
 function omoBuildChecklistRouteToken(checklistId) {
     const resolvedChecklistId = Number(checklistId);
     return Number.isInteger(resolvedChecklistId) && resolvedChecklistId > 0
-        ? `checklist-c${resolvedChecklistId}`
+        ? `processus-c${resolvedChecklistId}`
         : null;
 }
 
@@ -2029,6 +2029,10 @@ function omoGetMenuHashForRouteToken(routeToken = null) {
         return null;
     }
 
+    if (normalizedRouteToken === 'checklist') {
+        return 'processus';
+    }
+
     if (omoParseDecisionRouteToken(normalizedRouteToken)) {
         return 'decision';
     }
@@ -2042,7 +2046,7 @@ function omoGetMenuHashForRouteToken(routeToken = null) {
     }
 
     if (omoParseChecklistRouteToken(normalizedRouteToken)) {
-        return 'checklist';
+        return 'processus';
     }
 
     if (omoParseDocumentRouteToken(normalizedRouteToken)) {
@@ -4389,6 +4393,21 @@ function handleRoute() {
     const popupKey = hashState.popupKey;
     const popupId = hashState.popupId;
     const previousState = currentState;
+    const canonicalProcessRoute = routeToken === 'checklist'
+        ? 'processus'
+        : (routeToken && /^checklist-c\d+$/i.test(routeToken)
+            ? routeToken.replace(/^checklist-/i, 'processus-')
+            : routeToken);
+
+    if (canonicalProcessRoute !== routeToken) {
+        history.replaceState({}, '', buildOmoUrl(
+            oid,
+            cid,
+            omoBuildHashFromState(canonicalProcessRoute, popupToken)
+        ));
+        handleRoute();
+        return;
+    }
 
     if (!Number.isInteger(Number(oid)) || Number(oid) <= 0) {
 
@@ -4485,7 +4504,7 @@ function handleRoute() {
             activeMenuHash === 'decision'
             || activeMenuHash === 'calendar'
             || activeMenuHash === 'stats'
-            || activeMenuHash === 'checklist'
+            || activeMenuHash === 'processus'
             || activeMenuHash === 'documents'
             || activeMenuHash === 'projects'
         );
@@ -4527,7 +4546,7 @@ function handleRoute() {
         }));
     }
 
-    if (isInSpecialDrawerOnlyRouteChange && activeMenuHash === 'checklist') {
+    if (isInSpecialDrawerOnlyRouteChange && activeMenuHash === 'processus') {
         window.dispatchEvent(new CustomEvent('omo-checklist-route-change', {
             detail: {
                 checklistId: checklistRoute ? Number(checklistRoute.checklistId) : 0,

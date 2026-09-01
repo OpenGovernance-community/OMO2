@@ -624,6 +624,7 @@
 				SELECT id
 				FROM user_holon
 				WHERE IDuser = :user_id
+				  AND is_membership = 1
 			";
 			$params = [
 				'user_id' => $userId,
