@@ -4,6 +4,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-01
 
+- La leftbar masque et rouvre maintenant un drawer d application avec son sous-drawer en un seul clic. Le repli decoche l application et restaure le tableau de pilotage, tandis que la derniere fiche projet, document ou autre vue detaillee reste disponible lors d un passage temporaire vers une autre application du meme holon. La reouverture reutilise le contenu deja charge lorsque l application et le holon sont identiques, sans nouvel appel inutile; le passage d une fiche a une autre recharge uniquement le sous-drawer concerne.
+- Les activites et les elements de processus acceptent maintenant les heures comme unite pour l affichage anticipe, le passage en retard et les autres delais relatifs.
 - Le tableau de pilotage propose maintenant un module Activites. Ses compteurs filtrent les activites bientot a faire, a faire et en retard selon leur fenetre d anticipation et leur occurrence manquee, sans les confondre avec les processus qui creent des projets.
 - Une activite affichee en avance reste libellee `Bientot a faire` en bleu. Des son heure attendue, elle devient `A faire` avec la meme couleur, avant de passer au rouge uniquement lorsqu une occurrence complete est manquee.
 - Le resume d une activite conserve maintenant le resultat de sa derniere occurrence, faite dans les temps ou en retard. La frise de regularite ajoute separement la prochaine occurrence a venir, et une occurrence precedente sans validation bascule en manque des l ouverture de la fenetre d anticipation suivante.
