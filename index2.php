@@ -439,11 +439,11 @@ $sourceLang = [
         'context' => 'Feature section title about quality and checklists.',
     ],
     'feature.quality.text' => [
-        'text' => 'Les checklists et processus rendent les pratiques transmissibles, observables et améliorables.',
+        'text' => 'Les processus et leurs activités rendent les pratiques transmissibles, observables et améliorables.',
         'context' => 'Feature section description about quality and checklists.',
     ],
     'feature.quality.1' => [
-        'text' => 'Créer des checklists et formaliser des processus.',
+        'text' => 'Créer et formaliser des processus réutilisables.',
         'context' => 'Quality feature.',
     ],
     'feature.quality.2' => [

@@ -364,7 +364,7 @@
         }
         var resolvedChecklistId = Number(checklistId || 0);
         return Number.isInteger(resolvedChecklistId) && resolvedChecklistId > 0
-            ? 'checklist-c' + String(resolvedChecklistId)
+            ? 'processus-c' + String(resolvedChecklistId)
             : '';
     }
 
@@ -377,7 +377,7 @@
     }
 
     function isChecklistDetailRoute(routeToken) {
-        return /^checklist-c\d+$/i.test(String(routeToken || ''));
+        return /^(?:processus|checklist)-c\d+$/i.test(String(routeToken || ''));
     }
 
     function buildDetailUrl(checklistId) {
@@ -1178,7 +1178,7 @@
     function maybeOpenInitialChecklist() {
         var checklistId = initialOpenChecklistId;
         var routeToken = getCurrentRouteToken();
-        var routeMatch = String(routeToken || '').match(/^checklist-c(\d+)$/i);
+        var routeMatch = String(routeToken || '').match(/^(?:processus|checklist)-c(\d+)$/i);
         if (routeMatch) {
             checklistId = Number(routeMatch[1]);
         }
@@ -1191,7 +1191,7 @@
         if (!root.isConnected) {
             return false;
         }
-        var routeMatch = String(routeToken || '').replace(/^#/, '').trim().match(/^checklist-c(\d+)$/i);
+        var routeMatch = String(routeToken || '').replace(/^#/, '').trim().match(/^(?:processus|checklist)-c(\d+)$/i);
         if (!routeMatch) {
             return false;
         }
@@ -1207,7 +1207,7 @@
     function handleChecklistRouteChange(event) {
         var route = event && event.detail ? event.detail : {};
         var checklistId = Number(route.checklistId || 0);
-        if (checklistId > 0 && window.omoOpenChecklistRoute('checklist-c' + String(checklistId))) {
+        if (checklistId > 0 && window.omoOpenChecklistRoute('processus-c' + String(checklistId))) {
             return;
         }
         closeDrawer();

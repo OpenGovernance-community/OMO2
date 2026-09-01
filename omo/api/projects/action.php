@@ -536,6 +536,7 @@ if ($responsibleId > 0 && (string)($_POST['enforce_holon_member'] ?? '') === '1'
         if (!$holonMembership->load([
             ['IDuser', $responsibleId],
             ['IDholon', (int)$projectHolon->getId()],
+            ['is_membership', 1],
         ]) || !(bool)$holonMembership->get('active')) {
             $responsibleId = 0;
         }
