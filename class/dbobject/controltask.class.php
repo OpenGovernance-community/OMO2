@@ -3,6 +3,7 @@ namespace dbObject;
 
 class ControlTask extends DbObject
 {
+    public const DELAY_HOUR = 'hour';
     public const DELAY_DAY = 'day';
     public const DELAY_WEEK = 'week';
     public const DELAY_MONTH = 'month';
@@ -64,7 +65,7 @@ class ControlTask extends DbObject
 
     public static function delayUnits()
     {
-        return [self::DELAY_DAY, self::DELAY_WEEK, self::DELAY_MONTH];
+        return [self::DELAY_HOUR, self::DELAY_DAY, self::DELAY_WEEK, self::DELAY_MONTH];
     }
 
     public static function normalizeDelayUnit($value)
@@ -80,7 +81,9 @@ class ControlTask extends DbObject
             return $reference;
         }
         $unit = self::normalizeDelayUnit($unit) ?: self::DELAY_DAY;
-        $modifier = $unit === self::DELAY_WEEK ? 'weeks' : ($unit === self::DELAY_MONTH ? 'months' : 'days');
+        $modifier = $unit === self::DELAY_HOUR
+            ? 'hours'
+            : ($unit === self::DELAY_WEEK ? 'weeks' : ($unit === self::DELAY_MONTH ? 'months' : 'days'));
         $shifted = $reference->modify(($value > 0 ? '+' : '') . $value . ' ' . $modifier);
         return $shifted instanceof \DateTimeImmutable ? $shifted : $reference;
     }

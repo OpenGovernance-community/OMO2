@@ -8,6 +8,7 @@ class ChecklistItem extends DbObject
     public const ACTIVATION_AFTER_COMPLETION = 'after_completion';
     public const ACTIVATION_MANUAL = 'manual';
 
+    public const DELAY_HOUR = 'hour';
     public const DELAY_DAY = 'day';
     public const DELAY_WEEK = 'week';
     public const DELAY_MONTH = 'month';
@@ -73,6 +74,7 @@ class ChecklistItem extends DbObject
             ],
             'delay_unit' => [
                 ['', 'Aucune'],
+                [self::DELAY_HOUR, 'Heure'],
                 [self::DELAY_DAY, 'Jour'],
                 [self::DELAY_WEEK, 'Semaine'],
                 [self::DELAY_MONTH, 'Mois'],
@@ -92,7 +94,7 @@ class ChecklistItem extends DbObject
 
     public static function delayUnits()
     {
-        return [self::DELAY_DAY, self::DELAY_WEEK, self::DELAY_MONTH];
+        return [self::DELAY_HOUR, self::DELAY_DAY, self::DELAY_WEEK, self::DELAY_MONTH];
     }
 
     public static function normalizeActivationType($value)
@@ -114,9 +116,9 @@ class ChecklistItem extends DbObject
             return $reference;
         }
         $unit = self::normalizeDelayUnit($unit) ?: self::DELAY_DAY;
-        $modifierUnit = $unit === self::DELAY_WEEK
-            ? 'weeks'
-            : ($unit === self::DELAY_MONTH ? 'months' : 'days');
+        $modifierUnit = $unit === self::DELAY_HOUR
+            ? 'hours'
+            : ($unit === self::DELAY_WEEK ? 'weeks' : ($unit === self::DELAY_MONTH ? 'months' : 'days'));
         $shifted = $reference->modify(($value > 0 ? '+' : '') . $value . ' ' . $modifierUnit);
         return $shifted instanceof \DateTimeImmutable ? $shifted : $reference;
     }

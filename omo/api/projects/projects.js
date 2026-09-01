@@ -2692,6 +2692,9 @@
             return false;
         }
 
+        initialOpenProjectId = projectId;
+        initialOpenProjectMode = mode;
+
         var targetUrl = mode === 'create'
             ? buildCreateUrl(pendingCreateStatus)
             : (mode === 'edit' ? buildEditUrl(projectId) : buildDetailUrl(projectId));
@@ -2728,6 +2731,8 @@
         if (routeToken !== '' && window.omoOpenProjectRoute(routeToken)) {
             return;
         }
+        initialOpenProjectId = 0;
+        initialOpenProjectMode = '';
         closeDrawer();
     }
 

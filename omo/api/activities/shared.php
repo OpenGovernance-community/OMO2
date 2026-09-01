@@ -80,6 +80,7 @@ function omoActivitySourceLang()
         'activity.frequency.quarterly' => ['text' => 'Chaque trimestre', 'context' => 'Quarterly frequency.'],
         'activity.frequency.semiannual' => ['text' => 'Chaque semestre', 'context' => 'Semiannual frequency.'],
         'activity.frequency.yearly' => ['text' => 'Chaque année', 'context' => 'Yearly frequency.'],
+        'activity.delay.hour' => ['text' => 'heure(s)', 'context' => 'Hour unit.'],
         'activity.delay.day' => ['text' => 'jour(s)', 'context' => 'Day unit.'],
         'activity.delay.week' => ['text' => 'semaine(s)', 'context' => 'Week unit.'],
         'activity.delay.month' => ['text' => 'mois', 'context' => 'Month unit.'],
