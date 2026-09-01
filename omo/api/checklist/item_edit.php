@@ -209,7 +209,7 @@ if ($currentHolonId > 0) {
                 <label class="omo-checklist-field" data-checklist-delay-field<?= $isContainerChecklist || $activationType === ChecklistItem::ACTIVATION_IMMEDIATE ? ' hidden' : '' ?>>
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.unit')) ?></span>
                     <select class="generic-form-control" name="delay_unit">
-                        <?php foreach ([ChecklistItem::DELAY_DAY, ChecklistItem::DELAY_WEEK, ChecklistItem::DELAY_MONTH] as $unit): ?>
+                        <?php foreach (ChecklistItem::delayUnits() as $unit): ?>
                             <option value="<?= omoApiEscape($unit) ?>"<?= $delayUnit === $unit ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.delay.' . $unit)) ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -229,7 +229,7 @@ if ($currentHolonId > 0) {
                         <label class="omo-checklist-field">
                             <span><?= omoApiEscape(omoChecklistT('checklist.form.display_lead_unit')) ?></span>
                             <select class="generic-form-control" name="display_lead_unit">
-                                <?php foreach ([ChecklistItem::DELAY_DAY, ChecklistItem::DELAY_WEEK, ChecklistItem::DELAY_MONTH] as $unit): ?>
+                                <?php foreach (ChecklistItem::delayUnits() as $unit): ?>
                                     <option value="<?= omoApiEscape($unit) ?>"<?= $displayLeadUnit === $unit ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.delay.' . $unit)) ?></option>
                                 <?php endforeach; ?>
                             </select>
@@ -241,7 +241,7 @@ if ($currentHolonId > 0) {
                         <label class="omo-checklist-field">
                             <span><?= omoApiEscape(omoChecklistT('checklist.form.execution_duration_unit')) ?></span>
                             <select class="generic-form-control" name="execution_duration_unit">
-                                <?php foreach ([ChecklistItem::DELAY_DAY, ChecklistItem::DELAY_WEEK, ChecklistItem::DELAY_MONTH] as $unit): ?>
+                                <?php foreach (ChecklistItem::delayUnits() as $unit): ?>
                                     <option value="<?= omoApiEscape($unit) ?>"<?= $executionDurationUnit === $unit ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.delay.' . $unit)) ?></option>
                                 <?php endforeach; ?>
                             </select>

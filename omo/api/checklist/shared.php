@@ -150,6 +150,7 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.activation.immediate' => ['text' => 'Visible immédiatement', 'context' => 'Immediate checklist item activation.'],
             'checklist.activation.after_start' => ['text' => 'Selon la date de référence', 'context' => 'Checklist item activation relative to the run reference date.'],
             'checklist.activation.after_completion' => ['text' => 'Visible après une autre étape', 'context' => 'Dependent process step activation.'],
+            'checklist.delay.hour' => ['text' => 'Heure(s)', 'context' => 'Hour delay unit.'],
             'checklist.delay.day' => ['text' => 'Jour(s)', 'context' => 'Day delay unit.'],
             'checklist.delay.week' => ['text' => 'Semaine(s)', 'context' => 'Week delay unit.'],
             'checklist.delay.month' => ['text' => 'Mois', 'context' => 'Month delay unit.'],
