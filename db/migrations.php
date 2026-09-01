@@ -233,6 +233,7 @@ function splitSqlStatements(string $sql): array
 
 function sqlMigrationExtractAlterTableName(string $statementSql): ?string
 {
+    $statementSql = preg_replace('/^\s*(?:(?:--|#)[^\r\n]*(?:\r?\n|$)|\/\*.*?\*\/\s*)+/s', '', $statementSql) ?? $statementSql;
     if (!preg_match('/^\s*ALTER\s+TABLE\s+`?([A-Za-z0-9_]+)`?/i', $statementSql, $matches)) {
         return null;
     }

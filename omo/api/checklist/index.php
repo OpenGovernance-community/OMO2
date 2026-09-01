@@ -90,6 +90,7 @@ foreach ($checklists as $checklist) {
         'itemCount' => $itemCount,
         'openRunCount' => $openRunCount,
         'recurringActiveCount' => $recurringActiveCount,
+        'isContainer' => $isContainerChecklist,
         'triggerLabel' => omoChecklistTriggerLabel(omoChecklistGetPrimaryTrigger($checklist)),
         'updated' => $updatedAt instanceof DateTimeInterface ? $updatedAt->format('d.m.Y') : '',
         'canDelete' => omoChecklistCanDelete($checklist),
@@ -216,7 +217,7 @@ $texts = [
                                                         <span class="omo-checklist-status omo-checklist-status--<?= omoApiEscape(Checklist::normalizeStatus($checklist->get('status'))) ?>"><?= omoApiEscape(omoChecklistStatusLabel($checklist->get('status'))) ?></span>
                                                     </span>
                                                     <?php if ((int)$row['recurringActiveCount'] > 0): ?><span class="omo-checklist-list__active-count"><?= omoApiEscape(omoChecklistT('checklist.detail.recurring_instance_count', ['count' => (int)$row['recurringActiveCount']])) ?></span><?php endif; ?>
-                                                <span class="generic-file-list__meta-line"><?= omoApiEscape(omoChecklistT('checklist.detail.item_count', ['count' => (int)$row['itemCount']])) ?> · <?= omoApiEscape(omoChecklistT('checklist.detail.open_run_count', ['count' => (int)$row['openRunCount']])) ?><?= $row['description'] !== '' ? ' · ' . omoApiEscape(mb_strimwidth((string)$row['description'], 0, 90, '…', 'UTF-8')) : '' ?></span>
+                                                <span class="generic-file-list__meta-line"><?= omoApiEscape(omoChecklistT(!empty($row['isContainer']) ? 'checklist.detail.activity_count' : 'checklist.detail.step_count', ['count' => (int)$row['itemCount']])) ?><?= empty($row['isContainer']) ? ' · ' . omoApiEscape(omoChecklistT('checklist.detail.open_run_count', ['count' => (int)$row['openRunCount']])) : '' ?><?= $row['description'] !== '' ? ' · ' . omoApiEscape(mb_strimwidth((string)$row['description'], 0, 90, '…', 'UTF-8')) : '' ?></span>
                                             </span>
                                         </div>
                                     </div>

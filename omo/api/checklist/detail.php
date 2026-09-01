@@ -42,6 +42,10 @@ foreach ($checklist->getItems(true) as $item) {
 $trigger = omoChecklistGetPrimaryTrigger($checklist);
 $isContainerChecklist = $trigger instanceof ChecklistTrigger
     && ChecklistTrigger::normalizeTriggerType($trigger->get('trigger_type')) === ChecklistTrigger::TYPE_CONTAINER;
+$itemKind = $isContainerChecklist ? 'activity' : 'step';
+$itemCountKey = $isContainerChecklist ? 'checklist.detail.activity_count' : 'checklist.detail.step_count';
+$itemSectionKey = $isContainerChecklist ? 'checklist.detail.activities' : 'checklist.detail.steps';
+$emptyItemsKey = $isContainerChecklist ? 'checklist.detail.empty_activities' : 'checklist.detail.empty_steps';
 $canEdit = omoChecklistCanManage($checklist);
 $canDelete = omoChecklistCanDelete($checklist);
 $checklistHolon = $checklist->getHolon();
@@ -74,8 +78,8 @@ if ($canEdit) {
     });
 }
 $moveUi = [
-    'title' => omoChecklistT('checklist.action.move_item_title'),
-    'help' => omoChecklistT('checklist.action.move_item_help'),
+    'title' => omoChecklistT('checklist.action.move_' . $itemKind . '_title'),
+    'help' => omoChecklistT('checklist.action.move_' . $itemKind . '_help'),
     'search' => omoChecklistT('checklist.search.placeholder'),
     'select' => omoChecklistT('checklist.action.select_checklist'),
     'empty' => omoChecklistT('checklist.action.no_target_checklist'),
@@ -84,7 +88,7 @@ $moveUi = [
     'local' => omoChecklistT('checklist.scope.local'),
     'children' => omoChecklistT('checklist.scope.direct_children'),
     'descendants' => omoChecklistT('checklist.scope.all_descendants'),
-    'deleteConfirm' => omoChecklistT('checklist.confirm.delete_item'),
+    'deleteConfirm' => omoChecklistT('checklist.confirm.delete_' . $itemKind),
     'extractConfirm' => omoChecklistT('checklist.confirm.extract_item'),
 ];
 $openRuns = [];
@@ -189,7 +193,7 @@ $formatDelay = static function ($value, $unit) {
         hidden
         data-omo-subdrawer-header
         data-omo-subdrawer-title="<?= omoApiEscape((string)$templateRoot->get('title')) ?>"
-        data-omo-subdrawer-description="<?= omoApiEscape(omoChecklistT('checklist.detail.item_count', ['count' => count($items)])) ?>"
+        data-omo-subdrawer-description="<?= omoApiEscape(omoChecklistT($itemCountKey, ['count' => count($items)])) ?>"
     >
         <?php if ($canActivate): ?>
             <button type="button" class="generic-action-button generic-action-button--main" data-omo-subdrawer-action data-checklist-open-activation data-url="<?= omoApiEscape($activationUrl) ?>"><?= omoApiEscape(omoChecklistT('checklist.action.activate')) ?></button>
@@ -257,7 +261,7 @@ $formatDelay = static function ($value, $unit) {
                             <dl>
                                 <div><dt><?= omoApiEscape(omoChecklistT('checklist.detail.reference_date')) ?></dt><dd><?= omoApiEscape($referenceAt instanceof DateTimeInterface ? $referenceAt->format('d.m.Y') : '') ?></dd></div>
                                 <div><dt><?= omoApiEscape(omoChecklistT('checklist.detail.activated_at')) ?></dt><dd><?= omoApiEscape($createdAt instanceof DateTimeInterface ? $createdAt->format('d.m.Y H:i') : '') ?></dd></div>
-                                <div><dt><?= omoApiEscape(omoChecklistT('checklist.detail.items')) ?></dt><dd><?= omoApiEscape(omoChecklistT('checklist.detail.run_item_count', ['count' => (int)$runRow['itemCount']])) ?></dd></div>
+                                <div><dt><?= omoApiEscape(omoChecklistT($itemSectionKey)) ?></dt><dd><?= omoApiEscape(omoChecklistT('checklist.detail.run_item_count', ['count' => (int)$runRow['itemCount']])) ?></dd></div>
                             </dl>
                         </article>
                     <?php endforeach; ?>
@@ -269,16 +273,16 @@ $formatDelay = static function ($value, $unit) {
     <section class="omo-checklist-detail__section">
         <div class="omo-checklist-detail__section-heading">
             <div>
-                <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoChecklistT('checklist.detail.items')) ?></h3>
-                <p><?= omoApiEscape(omoChecklistT('checklist.detail.item_count', ['count' => count($items)])) ?></p>
+                <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoChecklistT($itemSectionKey)) ?></h3>
+                <p><?= omoApiEscape(omoChecklistT($itemCountKey, ['count' => count($items)])) ?></p>
             </div>
             <?php if ($canEdit): ?>
-                <button type="button" class="generic-action-button generic-action-button--main" data-checklist-open-item-form data-url="<?= omoApiEscape($itemCreateUrl) ?>"><?= omoApiEscape(omoChecklistT('checklist.action.add_item')) ?></button>
+                <button type="button" class="generic-action-button generic-action-button--main" data-checklist-open-item-form data-url="<?= omoApiEscape($itemCreateUrl) ?>"><?= omoApiEscape(omoChecklistT('checklist.action.add_' . $itemKind)) ?></button>
             <?php endif; ?>
         </div>
         <div class="omo-checklist-flow">
             <?php if (count($items) === 0): ?>
-                <div class="omo-empty-state"><?= omoApiEscape(omoChecklistT('checklist.detail.empty_items')) ?></div>
+                <div class="omo-empty-state"><?= omoApiEscape(omoChecklistT($emptyItemsKey)) ?></div>
             <?php endif; ?>
             <?php foreach ($items as $position => $item): ?>
                 <?php
@@ -347,7 +351,7 @@ $formatDelay = static function ($value, $unit) {
                                 <?php if ($canEdit): ?>
                                     <button type="button" class="generic-action-button generic-action-button--secondary" data-checklist-open-item-form data-url="<?= omoApiEscape($itemEditUrl) ?>"><?= omoApiEscape(omoChecklistT('checklist.action.edit_item')) ?></button>
                                     <div class="generic-menu" data-checklist-item-menu>
-                                        <button type="button" class="generic-menu-toggle" data-checklist-item-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoChecklistT('checklist.action.item_more')) ?>">&#8942;</button>
+                                        <button type="button" class="generic-menu-toggle" data-checklist-item-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoChecklistT('checklist.action.' . $itemKind . '_more')) ?>">&#8942;</button>
                                         <div class="generic-menu-panel generic-menu-panel--wide" data-checklist-item-menu-panel role="menu" hidden>
                                             <button type="button" class="generic-menu-item" data-checklist-item-move data-checklist-id="<?= (int)$checklistId ?>" data-checklist-item-id="<?= (int)$item->getId() ?>" role="menuitem"><?= omoApiEscape(omoChecklistT('checklist.action.move_item')) ?></button>
                                             <?php if ($canCreate && $isContainerChecklist && $recurrence instanceof \dbObject\ChecklistItemRecurrence && (int)$recurrence->get('enabled') === 1): ?>

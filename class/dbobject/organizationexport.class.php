@@ -180,6 +180,7 @@ class OrganizationExport
         ]);
         $roleLinks = $holonIds === [] ? [] : self::loadCollection('\\dbObject\\ArrayUserHolon', [
             ['field' => 'IDholon', 'op' => 'in', 'value' => $holonIds],
+            ['field' => 'is_membership', 'value' => 1],
         ], [
             ['field' => 'id', 'dir' => 'ASC'],
         ]);

@@ -48,7 +48,7 @@ $sourceLang = [
     'tools.projects.title' => ['text' => 'Projets', 'context' => 'Tool card title.'],
     'tools.projects.text' => ['text' => 'Projets, evenements et documents relies pour garder le fil de l action.', 'context' => 'Tool card description.'],
     'tools.pilotage.title' => ['text' => 'Pilotage', 'context' => 'Tool card title.'],
-    'tools.pilotage.text' => ['text' => 'Indicateurs, checklists et processus pour apprendre de ce qui se passe.', 'context' => 'Tool card description.'],
+    'tools.pilotage.text' => ['text' => 'Indicateurs, processus et activités pour apprendre de ce qui se passe.', 'context' => 'Tool card description.'],
     'values.label' => ['text' => 'Les conditions de la cooperation', 'context' => 'Values section eyebrow.'],
     'values.title' => ['text' => 'La maturite ne se decrete pas. Elle se pratique.', 'context' => 'Values section title.'],
     'values.trust.title' => ['text' => 'Confiance', 'context' => 'Value card title.'],

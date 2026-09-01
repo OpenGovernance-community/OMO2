@@ -74,7 +74,7 @@ $sourceLang = array_merge(commonGetLegalSharedSourceLang(), [
         'context' => 'Personal data category for user accounts and identity.',
     ],
     'legal.privacy.section.3.list.2' => [
-        'text' => 'contenus saisis dans le logiciel : structure, rôles, cercles, responsabilités, projets, documents, procès-verbaux, calendriers, indicateurs, checklists, règles, décisions, propositions, votes et discussions ;',
+        'text' => 'contenus saisis dans le logiciel : structure, rôles, cercles, responsabilités, projets, documents, procès-verbaux, calendriers, indicateurs, processus, règles, décisions, propositions, votes et discussions ;',
         'context' => 'Personal data category for organization and collaboration content.',
     ],
     'legal.privacy.section.3.list.3' => [

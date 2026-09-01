@@ -99,7 +99,7 @@ CREATE TABLE `application` (
   `active` tinyint(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_application_hash` (`hash`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -112,13 +112,41 @@ INSERT INTO `application` VALUES
 (1,'Structure','structure',NULL,'images/tools/connection.png','drawer_structure','api/getStructure.php?drawer=1','drawer',10,0,1),
 (2,'Projets','projects','projects','images/tools/product.png','drawer_projects','api/projects/index.php','drawer',20,0,1),
 (3,'Reglement','policy','policy','images/tools/policy.png','drawer_policy','api/policy/index.php','drawer',30,1,1),
-(4,'Processus','checklist','checklist','images/tools/checklist.png','drawer_checklist','api/checklist/index.php','drawer',40,1,1),
+(4,'Processus','processus','checklist','images/tools/checklist.png','drawer_checklist','api/checklist/index.php','drawer',40,1,1),
 (5,'Indicateurs','stats','stats','images/tools/stats.png','drawer_stats','api/stats/index.php','drawer',50,0,1),
 (6,'Documents','documents','documents','images/tools/documents-folder.png','drawer_documents','api/documents/index.php','drawer',60,1,1),
 (7,'Team','team','team','images/tools/team.png','drawer_team','api/team/index.php','drawer',8,1,1),
 (8,'Calendrier','calendar','calendar','images/tools/calendar.png','drawer_calendar','api/calendar/index.php','drawer',9,1,1),
-(9,'Decisions','decision','decision','images/tools/decision.png','drawer_decisions','api/decision/index.php','drawer',65,1,1);
+(9,'Decisions','decision','decision','images/tools/decision.png','drawer_decisions','api/decision/index.php','drawer',65,1,1),
+(10,'Activites','activities','activities','images/tools/control-list.png','drawer_activities','api/activities/index.php','drawer',45,1,1);
 /*!40000 ALTER TABLE `application` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `application_setting`
+--
+
+DROP TABLE IF EXISTS `application_setting`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `application_setting` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `setting_key` varchar(120) NOT NULL,
+  `parameters` mediumtext DEFAULT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `datemodification` datetime DEFAULT NULL ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_application_setting_key` (`setting_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `application_setting`
+--
+
+LOCK TABLES `application_setting` WRITE;
+/*!40000 ALTER TABLE `application_setting` DISABLE KEYS */;
+/*!40000 ALTER TABLE `application_setting` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -480,6 +508,115 @@ INSERT INTO `checklist_trigger` VALUES
 (1,1,'primary','manual',NULL,NULL,NULL,'create_new',1,'2026-07-23 15:52:32','2026-07-24 09:32:36'),
 (2,2,'primary','container',NULL,NULL,NULL,'reuse_open',0,'2026-07-24 09:20:19','2026-07-24 09:22:38');
 /*!40000 ALTER TABLE `checklist_trigger` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `control_list`
+--
+
+DROP TABLE IF EXISTS `control_list`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `control_list` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) NOT NULL,
+  `IDholon` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` mediumtext DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_control_list_organization_holon` (`IDorganization`,`IDholon`),
+  KEY `idx_control_list_active` (`active`),
+  CONSTRAINT `fk_control_list_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_control_list_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `control_list`
+--
+
+LOCK TABLES `control_list` WRITE;
+/*!40000 ALTER TABLE `control_list` DISABLE KEYS */;
+/*!40000 ALTER TABLE `control_list` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `control_task`
+--
+
+DROP TABLE IF EXISTS `control_task`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `control_task` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDcontrollist` int(11) DEFAULT NULL,
+  `IDorganization` int(11) DEFAULT NULL,
+  `IDholon` int(11) DEFAULT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` mediumtext DEFAULT NULL,
+  `frequency` varchar(20) NOT NULL,
+  `schedule` varchar(20) NOT NULL,
+  `display_lead_value` int(11) NOT NULL DEFAULT 0,
+  `display_lead_unit` varchar(20) DEFAULT NULL,
+  `execution_duration_value` int(11) NOT NULL DEFAULT 1,
+  `execution_duration_unit` varchar(20) NOT NULL DEFAULT 'day',
+  `position` int(11) NOT NULL DEFAULT 0,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_control_task_list_position` (`IDcontrollist`,`position`),
+  KEY `idx_control_task_active` (`active`),
+  KEY `idx_control_task_context` (`IDorganization`,`IDholon`),
+  KEY `fk_control_task_holon` (`IDholon`),
+  CONSTRAINT `fk_control_task_list` FOREIGN KEY (`IDcontrollist`) REFERENCES `control_list` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_control_task_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_control_task_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `control_task`
+--
+
+LOCK TABLES `control_task` WRITE;
+/*!40000 ALTER TABLE `control_task` DISABLE KEYS */;
+/*!40000 ALTER TABLE `control_task` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `control_task_check`
+--
+
+DROP TABLE IF EXISTS `control_task_check`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `control_task_check` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDcontroltask` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `scheduled_for` datetime NOT NULL,
+  `checked_at` datetime NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_control_task_check_occurrence` (`IDcontroltask`,`scheduled_for`),
+  KEY `idx_control_task_check_user` (`IDuser`),
+  KEY `idx_control_task_check_checked_at` (`checked_at`),
+  CONSTRAINT `fk_control_task_check_task` FOREIGN KEY (`IDcontroltask`) REFERENCES `control_task` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_control_task_check_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `control_task_check`
+--
+
+LOCK TABLES `control_task_check` WRITE;
+/*!40000 ALTER TABLE `control_task_check` DISABLE KEYS */;
+/*!40000 ALTER TABLE `control_task_check` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -1059,7 +1196,7 @@ LOCK TABLES `document_pv_point` WRITE;
 /*!40000 ALTER TABLE `document_pv_point` DISABLE KEYS */;
 INSERT INTO `document_pv_point` (`id`, `IDdocument`, `item_type`, `IDparent`, `title`, `IDuser_author`, `IDuser_modification`, `IDuser_editing`, `edit_lock_token`, `author_email`, `IDholon_concerned`, `content`, `position`, `desired_duration_minutes`, `actual_duration_minutes`, `pointtype`, `is_handled`, `active`, `datecreation`, `datemodification`, `dateedition`) VALUES
 (2315,2305,'point',NULL,'Revue des indicateurs',1,1,NULL,NULL,NULL,NULL,'<h3>Indicateurs financiers</h3><p><span class=\"omo-indicator-embed omo-indicator-embed--current\" contenteditable=\"false\" data-omo-embed-type=\"indicator\" data-omo-indicator-id=\"1\" data-omo-indicator-kind=\"group\" data-omo-indicator-title=\"Liquidités\" data-omo-indicator-value=\"2 indicateurs\" data-omo-indicator-context=\"Groupe cumule\" data-omo-indicator-status=\"A jour\"><span class=\"omo-indicator-embed__main\"><span class=\"omo-indicator-embed__chart\"><span class=\"omo-indicator-embed__chart-plot\"><span class=\"omo-indicator-embed__chart-svg\"><svg class=\"omo-stats-chart omo-stats-chart--compact omo-stats-chart--group\" viewBox=\"0 0 180 54\" aria-hidden=\"true\"><polyline class=\"omo-stats-chart__line omo-stats-chart__line--sum\" points=\"3,11.07 91.43,10.76 94.28,10.78 177,11.22\" style=\"stroke:#2563eb\"></polyline><line class=\"omo-stats-chart__scale-line\" x1=\"21\" y1=\"3\" x2=\"177\" y2=\"3\"></line><line class=\"omo-stats-chart__scale-line\" x1=\"21\" y1=\"51\" x2=\"177\" y2=\"51\"></line><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"7\">100 000</text><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"51\">0</text></svg></span></span></span><span class=\"omo-indicator-embed__copy\"><strong><a class=\"omo-indicator-embed__title\" href=\"#stats\"><span class=\"omo-indicator-embed__status-dot omo-indicator-embed__status-dot--current\" aria-hidden=\"true\"></span><span>Liquidités</span></a></strong></span><span class=\"omo-indicator-embed__values\"><b>2 indicateurs</b><em>A jour</em></span></span></span><span class=\"omo-indicator-embed omo-indicator-embed--current\" contenteditable=\"false\" data-omo-embed-type=\"indicator\" data-omo-indicator-id=\"1\" data-omo-indicator-kind=\"indicator\" data-omo-indicator-title=\"Solde du compte bancaire\" data-omo-indicator-description=\"Cash disponible sur le compte bancaire\" data-omo-indicator-value=\"82 345\" data-omo-indicator-date=\"01.07.2026\" data-omo-indicator-context=\"Comptabilite et budget\" data-omo-indicator-chart-min=\"82 200\" data-omo-indicator-chart-max=\"83 600\" data-omo-indicator-status=\"A jour\"><span class=\"omo-indicator-embed__main\"><span class=\"omo-indicator-embed__chart\"><span class=\"omo-indicator-embed__chart-plot\"><span class=\"omo-indicator-embed__chart-svg\"><svg class=\"omo-stats-chart omo-stats-chart--compact\" viewBox=\"0 0 180 54\" aria-hidden=\"true\"><polyline class=\"omo-stats-chart__line\" points=\"2,6.62 91.44,5 178,7.31\"></polyline><circle class=\"omo-stats-chart__point\" cx=\"178\" cy=\"7.31\" r=\"2.5\"></circle><line class=\"omo-stats-chart__scale-line\" x1=\"20\" y1=\"2\" x2=\"178\" y2=\"2\"></line><line class=\"omo-stats-chart__scale-line\" x1=\"20\" y1=\"52\" x2=\"178\" y2=\"52\"></line><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"6\">85 000</text><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"52\">60 000</text></svg></span></span></span><span class=\"omo-indicator-embed__copy\"><strong><a class=\"omo-indicator-embed__title\" href=\"#stats-i1\"><span class=\"omo-indicator-embed__status-dot omo-indicator-embed__status-dot--current\" aria-hidden=\"true\"></span><span>Solde du compte bancaire</span></a></strong><span class=\"omo-indicator-embed__description\">Cash disponible sur le compte bancaire</span></span><span class=\"omo-indicator-embed__values\"><b>82 345</b><time>01.07.2026</time><em>A jour</em></span></span></span><span class=\"omo-indicator-embed omo-indicator-embed--current\" contenteditable=\"false\" data-omo-embed-type=\"indicator\" data-omo-indicator-id=\"2\" data-omo-indicator-kind=\"indicator\" data-omo-indicator-title=\"Solde en caisse\" data-omo-indicator-description=\"Montant disponible en liquide dans la caisse\" data-omo-indicator-value=\"536\" data-omo-indicator-date=\"01.07.2026\" data-omo-indicator-context=\"Comptabilite et budget\" data-omo-indicator-chart-min=\"300\" data-omo-indicator-chart-max=\"550\" data-omo-indicator-status=\"A jour\"><span class=\"omo-indicator-embed__main\"><span class=\"omo-indicator-embed__chart\"><span class=\"omo-indicator-embed__chart-plot\"><span class=\"omo-indicator-embed__chart-svg\"><svg class=\"omo-stats-chart omo-stats-chart--compact\" viewBox=\"0 0 180 54\" aria-hidden=\"true\"><polyline class=\"omo-stats-chart__line\" points=\"2,11.33 94.33,24.58 178,7.33\"></polyline><circle class=\"omo-stats-chart__point\" cx=\"178\" cy=\"7.33\" r=\"2.5\"></circle><line class=\"omo-stats-chart__scale-line\" x1=\"20\" y1=\"2\" x2=\"178\" y2=\"2\"></line><line class=\"omo-stats-chart__scale-line\" x1=\"20\" y1=\"52\" x2=\"178\" y2=\"52\"></line><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"6\">600</text><text class=\"omo-stats-chart__scale-label\" x=\"0\" y=\"52\">0</text></svg></span></span></span><span class=\"omo-indicator-embed__copy\"><strong><a class=\"omo-indicator-embed__title\" href=\"#stats-i2\"><span class=\"omo-indicator-embed__status-dot omo-indicator-embed__status-dot--current\" aria-hidden=\"true\"></span><span>Solde en caisse</span></a></strong><span class=\"omo-indicator-embed__description\">Montant disponible en liquide dans la caisse</span></span><span class=\"omo-indicator-embed__values\"><b>536</b><time>01.07.2026</time><em>A jour</em></span></span></span><br></p>',1,NULL,NULL,'information',0,1,'2026-07-24 08:37:33','2026-07-24 09:54:44',NULL),
-(2316,2305,'point',NULL,'Revue des checklists',1,1,NULL,NULL,NULL,682,'<p><span class=\"omo-checklist-embed\" contenteditable=\"false\" data-omo-embed-type=\"checklist\" data-omo-checklist-id=\"2\" data-omo-checklist-title=\"Factures récurrentes\"><strong><a href=\"#checklist-c2\">Factures récurrentes</a></strong><em>Gestion administrative</em></span><span class=\"omo-checklist-embed\" contenteditable=\"false\" data-omo-embed-type=\"checklist\" data-omo-checklist-id=\"1\" data-omo-checklist-title=\"Processus d\'accueil des nouveaux et nouvelles\"><strong><a href=\"#checklist-c1\">Processus d\'accueil des nouveaux et nouvelles</a></strong><em>Inclusion</em></span><br></p>',2,NULL,NULL,'information',0,1,'2026-07-24 08:57:32','2026-07-24 07:37:32',NULL),
+(2316,2305,'point',NULL,'Revue des processus',1,1,NULL,NULL,NULL,682,'<p><span class=\"omo-checklist-embed\" contenteditable=\"false\" data-omo-embed-type=\"checklist\" data-omo-checklist-id=\"2\" data-omo-checklist-title=\"Factures récurrentes\"><strong><a href=\"#processus-c2\">Factures récurrentes</a></strong><em>Gestion administrative</em></span><span class=\"omo-checklist-embed\" contenteditable=\"false\" data-omo-embed-type=\"checklist\" data-omo-checklist-id=\"1\" data-omo-checklist-title=\"Processus d\'accueil des nouveaux et nouvelles\"><strong><a href=\"#processus-c1\">Processus d\'accueil des nouveaux et nouvelles</a></strong><em>Inclusion</em></span><br></p>',2,NULL,NULL,'information',0,1,'2026-07-24 08:57:32','2026-07-24 07:37:32',NULL),
 (2317,2305,'point',NULL,'Revue des projets',1,1,NULL,NULL,NULL,NULL,'<h3>Projets stratégiques:</h3><p><span class=\"omo-project-embed\" contenteditable=\"false\" data-omo-embed-type=\"project\" data-omo-project-id=\"9\" data-omo-project-title=\"Consolider nos pratiques administratives\"><strong><a href=\"#projects-d9\">Consolider nos pratiques administratives</a><a href=\"/omo/c/678#projects-d9\" target=\"_blank\" rel=\"noopener noreferrer\">↗</a><em>En cours</em><em>En cours</em><em>En cours</em><em>P2</em><em>M</em></strong><em>Ancrage · Admin · Planifie 01.01.2026 · Fin 31.12.2026</em></span><span class=\"omo-project-embed\" contenteditable=\"false\" data-omo-embed-type=\"project\" data-omo-project-id=\"8\" data-omo-project-title=\"Elargir notre réseau professionnel\"><strong><a href=\"#projects-d8\">Elargir notre réseau professionnel</a><a href=\"/omo/c/678#projects-d8\" target=\"_blank\" rel=\"noopener noreferrer\">↗</a><em>En cours</em><em>En cours</em><em>En cours</em><em>P2</em><em>M</em></strong><em>Ancrage · Admin · Planifie 01.01.2026 · Fin 31.12.2026</em></span><span class=\"omo-project-embed\" contenteditable=\"false\" data-omo-embed-type=\"project\" data-omo-project-id=\"7\" data-omo-project-title=\"Refondre notre communication et notre marketing\"><strong><a href=\"#projects-d7\">Refondre notre communication et notre marketing</a><a href=\"/omo/c/678#projects-d7\" target=\"_blank\" rel=\"noopener noreferrer\">↗</a><em>En cours</em><em>En cours</em><em>En cours</em><em>P3</em><em>M</em></strong><em>Ancrage · Admin · Planifie 01.01.2026 · Fin 31.12.2026</em></span><br></p>',3,NULL,NULL,'information',0,1,'2026-07-24 09:00:17','2026-07-24 09:54:44',NULL);
 /*!40000 ALTER TABLE `document_pv_point` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -1480,6 +1617,7 @@ CREATE TABLE `holon` (
   `IDholon_parent` int(11) DEFAULT NULL,
   `IDholon_template` int(11) DEFAULT NULL,
   `accesskey` varchar(200) DEFAULT NULL,
+  `parameters` mediumtext DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_holon_organization` (`IDorganization`),
   KEY `idx_holon_root` (`IDholon_org`),
@@ -1498,7 +1636,7 @@ CREATE TABLE `holon` (
 
 LOCK TABLES `holon` WRITE;
 /*!40000 ALTER TABLE `holon` DISABLE KEYS */;
-INSERT INTO `holon` VALUES
+INSERT INTO `holon` (`id`,`IDorganization`,`name`,`nomcomplet`,`color`,`icon`,`banner`,`IDholon_org`,`IDuser`,`datecreation`,`datemodification`,`active`,`visible`,`mandatory`,`lockedname`,`lockedicon`,`lockedbanner`,`unique`,`link`,`adminparent`,`admin_min`,`lockedadminmin`,`adminminoverride`,`admin_max`,`lockedadminmax`,`adminmaxoverride`,`templatename`,`IDtypeholon`,`IDholon_parent`,`IDholon_template`,`accesskey`) VALUES
 (1,NULL,'OpenMyOrganization',NULL,NULL,NULL,NULL,NULL,1,'2024-11-30 09:50:26',NULL,1,1,0,0,0,0,0,0,0,0,0,0,NULL,0,0,'Organisation basique',4,NULL,NULL,NULL),
 (2,NULL,NULL,NULL,NULL,NULL,NULL,1,1,'2024-11-30 09:50:26',NULL,1,0,0,0,0,0,0,0,0,0,0,0,NULL,0,0,'Rôle',1,1,NULL,NULL),
 (3,NULL,NULL,NULL,NULL,NULL,NULL,1,1,'2024-11-30 09:51:41',NULL,1,0,0,0,0,0,0,0,0,0,0,0,NULL,0,0,'Cercle',2,1,NULL,NULL),
@@ -2192,7 +2330,9 @@ INSERT INTO `organization_application` VALUES
 (18,1,9,9,1,NULL),
 (19,2,9,65,1,NULL),
 (20,2,7,8,1,NULL),
-(21,2,8,9,1,NULL);
+(21,2,8,9,1,NULL),
+(22,1,10,45,1,NULL),
+(23,2,10,45,1,NULL);
 /*!40000 ALTER TABLE `organization_application` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2363,7 +2503,7 @@ CREATE TABLE `permission` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_permission_key` (`permission_key`),
   KEY `idx_permission_title` (`title`)
-) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2390,7 +2530,13 @@ INSERT INTO `permission` VALUES
 (15,'CAN_EDIT_HOLON_PROPERTIES','Modifier les proprietes de holons','Autorise la modification des proprietes ajoutees directement a un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05'),
 (16,'CAN_ADD_HOLON_PROPERTIES','Ajouter des proprietes de holons','Autorise l ajout de proprietes directement sur un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05'),
 (17,'CAN_DELETE_HOLON_PROPERTIES','Supprimer les proprietes de holons','Autorise le retrait des proprietes ajoutees directement a un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05'),
-(24,'CAN_DELETE_PROJECT','Supprimer des projets','Autorise la suppression de projets dans le contexte cible.',1,'2026-08-07 00:00:00','2026-08-07 00:00:00');
+(24,'CAN_DELETE_PROJECT','Supprimer des projets','Autorise la suppression de projets dans le contexte cible.',1,'2026-08-07 00:00:00','2026-08-07 00:00:00'),
+(25,'CAN_CREATE_CONTROL_LIST','Creer des activites recurrentes','Autorise la creation d activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
+(26,'CAN_EDIT_CONTROL_LIST','Modifier des activites recurrentes','Autorise la modification des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
+(27,'CAN_DELETE_CONTROL_LIST','Supprimer des activites recurrentes','Autorise la suppression des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
+(28,'CAN_CREATE_CONTROL_ACTIVITY','Creer des activites recurrentes','Autorise la creation d activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
+(29,'CAN_EDIT_CONTROL_ACTIVITY','Modifier des activites recurrentes','Autorise la modification des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
+(30,'CAN_DELETE_CONTROL_ACTIVITY','Supprimer des activites recurrentes','Autorise la suppression des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00');
 /*!40000 ALTER TABLE `permission` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2458,7 +2604,7 @@ INSERT INTO `project` VALUES
 (8,1,678,1,NULL,NULL,'standard',NULL,'Elargir notre réseau professionnel',NULL,'in_progress','2026-01-01','2026-12-31',2,5,0.86070798,'M','multiple_documents',1,'2026-07-24 07:20:48','2026-07-24 10:45:47'),
 (9,1,678,1,NULL,NULL,'standard',NULL,'Consolider nos pratiques administratives',NULL,'in_progress','2026-01-01','2026-12-31',2,5,0.86070798,'M','multiple_documents',1,'2026-07-24 07:21:59','2026-07-24 10:53:06'),
 (10,1,693,NULL,9,NULL,'standard',NULL,'Identifier un logiciel de compta professionnel',NULL,'ready',NULL,NULL,3,3,0.81520577,'M','multiple_documents',1,'2026-07-24 07:30:44','2026-07-24 12:22:08'),
-(11,1,692,1,NULL,NULL,'standard',NULL,'Créer une checklist avec les charges administratives récurrentes',NULL,'review',NULL,'2026-06-30',3,2,0.15940704,'M','multiple_documents',1,'2026-07-24 07:32:37','2026-07-24 10:45:47'),
+(11,1,692,1,NULL,NULL,'standard',NULL,'Créer un processus avec les activités administratives récurrentes',NULL,'review',NULL,'2026-06-30',3,2,0.15940704,'M','multiple_documents',1,'2026-07-24 07:32:37','2026-07-24 10:45:47'),
 (12,1,687,NULL,7,NULL,'standard',NULL,'Refondre notre site Internet',NULL,'in_progress',NULL,NULL,5,5,0.86070798,'M','multiple_documents',1,'2026-07-24 07:34:36','2026-07-24 12:22:08'),
 (13,1,699,NULL,12,NULL,'standard',NULL,'Les maquettes du nouveau site sont évaluées par un panel représentatif de nos utilisateurs.',NULL,'ready',NULL,NULL,NULL,NULL,0.86070798,'M','multiple_documents',1,'2026-07-24 07:35:38','2026-07-24 12:22:08'),
 (14,1,699,NULL,12,NULL,'standard',NULL,'La refonte du nouveau site est confiée à un prestataire.',NULL,'blocked',NULL,NULL,NULL,NULL,0.86070798,'M','multiple_documents',1,'2026-07-24 07:36:41','2026-07-24 12:22:08'),
@@ -3795,6 +3941,7 @@ CREATE TABLE `user_holon` (
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateconnexion` datetime DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT 0,
+  `is_membership` tinyint(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
   KEY `idx_user_holon_holon_user` (`IDholon`,`IDuser`),
   CONSTRAINT `fk_user_holon_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE
@@ -3808,13 +3955,13 @@ CREATE TABLE `user_holon` (
 LOCK TABLES `user_holon` WRITE;
 /*!40000 ALTER TABLE `user_holon` DISABLE KEYS */;
 INSERT INTO `user_holon` VALUES
-(1,1,1,NULL,NULL,NULL,NULL,NULL,NULL,'2024-03-05 16:43:15',NULL,1),
-(2,1,683,'[]',NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:38:59',NULL,0),
-(3,1,693,NULL,NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:48:17',NULL,1),
-(4,1,692,NULL,NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:49:46',NULL,1),
-(5,1,682,NULL,NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:50:25',NULL,1),
-(6,1,708,NULL,NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:51:33',NULL,1),
-(7,1,833,'{\"isAdmin\":true}',NULL,NULL,NULL,NULL,NULL,'2026-07-28 09:08:57',NULL,1);
+(1,1,1,NULL,NULL,NULL,NULL,NULL,NULL,'2024-03-05 16:43:15',NULL,1,1),
+(2,1,683,'[]',NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:38:59',NULL,0,1),
+(3,1,693,NULL,NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:48:17',NULL,1,1),
+(4,1,692,NULL,NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:49:46',NULL,1,1),
+(5,1,682,NULL,NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:50:25',NULL,1,1),
+(6,1,708,NULL,NULL,NULL,NULL,NULL,NULL,'2026-07-23 13:51:33',NULL,1,1),
+(7,1,833,'{\"isAdmin\":true}',NULL,NULL,NULL,NULL,NULL,'2026-07-28 09:08:57',NULL,1,1);
 /*!40000 ALTER TABLE `user_holon` ENABLE KEYS */;
 UNLOCK TABLES;
 
