@@ -3713,8 +3713,12 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     submitButton = drawer.querySelector('[data-omo-calendar-create-submit][form="' + form.id + '"]');
                 }
                 var formData = new FormData(form);
+                var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
 
-                if (submitButton) {
+                if (usesSharedPendingState && !window.omoBeginPendingAction(form)) {
+                    return;
+                }
+                if (!usesSharedPendingState && submitButton) {
                     submitButton.disabled = true;
                 }
 
@@ -3767,7 +3771,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     feedback.textContent = message;
                     feedback.className = 'omo-calendar-create__feedback is-error';
                 }).finally(function () {
-                    if (submitButton) {
+                    if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {
+                        window.omoEndPendingAction(form);
+                    } else if (submitButton) {
                         submitButton.disabled = false;
                     }
                 });

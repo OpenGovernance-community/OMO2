@@ -554,9 +554,18 @@
             return;
         }
         var feedback = form.querySelector('[data-activity-feedback]');
+        var formData = new FormData(form);
+        var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
+        var submitButton = form.querySelector('[type="submit"]');
+        if (usesSharedPendingState && !window.omoBeginPendingAction(form)) {
+            return;
+        }
+        if (!usesSharedPendingState && submitButton) {
+            submitButton.disabled = true;
+        }
         fetch(form.action, {
             method: 'POST',
-            body: new FormData(form),
+            body: formData,
             credentials: 'same-origin'
         }).then(function (response) {
             return response.json();
@@ -573,6 +582,12 @@
             if (feedback) {
                 feedback.textContent = texts.actionError;
                 feedback.classList.add('is-error');
+            }
+        }).finally(function () {
+            if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {
+                window.omoEndPendingAction(form);
+            } else if (submitButton) {
+                submitButton.disabled = false;
             }
         });
     });

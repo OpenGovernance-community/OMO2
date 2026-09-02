@@ -270,23 +270,6 @@
 			return true;
 		}
 
-		public function getDashboardDefaultLayout(): ?array
-		{
-			$parameters = $this->getParametersArray();
-			if (!array_key_exists(UserHolon::DASHBOARD_DEFAULT_LAYOUT_PARAMETER, $parameters)) {
-				return null;
-			}
-
-			return UserHolon::normalizeDashboardLayout($parameters[UserHolon::DASHBOARD_DEFAULT_LAYOUT_PARAMETER]);
-		}
-
-		public function setDashboardDefaultLayout(array $layout): void
-		{
-			$parameters = $this->getParametersArray();
-			$parameters[UserHolon::DASHBOARD_DEFAULT_LAYOUT_PARAMETER] = UserHolon::normalizeDashboardLayout($layout);
-			$this->setParametersArray($parameters);
-		}
-
 		public function getDashboardTemplateDefaultLayout($templateKey): ?array
 		{
 			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);

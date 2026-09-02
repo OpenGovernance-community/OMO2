@@ -430,13 +430,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     form.addEventListener('submit', function (event) {
         event.preventDefault();
+        var formData = new FormData(form);
+        var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
+
+        if (usesSharedPendingState && !window.omoBeginPendingAction(form)) {
+            return;
+        }
         feedback.textContent = '';
         feedback.classList.remove('is-success');
-        submitButton.disabled = true;
+        if (!usesSharedPendingState) {
+            submitButton.disabled = true;
+        }
 
         fetch(form.getAttribute('action'), {
             method: 'POST',
-            body: new FormData(form),
+            body: formData,
             credentials: 'same-origin',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
@@ -453,7 +461,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .then(function (result) {
                 if (!result.ok || !result.data || !result.data.status) {
                     feedback.textContent = result.data && result.data.message ? result.data.message : <?= json_encode(omoCalendarInvitationsPopupT('calendar.invitations.js_error')) ?>;
-                    submitButton.disabled = false;
                     return;
                 }
 
@@ -481,7 +488,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             })
             .catch(function () {
                 feedback.textContent = <?= json_encode(omoCalendarInvitationsPopupT('calendar.invitations.js_request_error')) ?>;
-                submitButton.disabled = false;
+            })
+            .finally(function () {
+                if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {
+                    window.omoEndPendingAction(form);
+                } else {
+                    submitButton.disabled = false;
+                }
             });
     });
 })();

@@ -110,9 +110,14 @@ if (!function_exists('omoDecisionConsultationOnlyModuleRender')) {
                     form.dataset.omoDecisionConsultationConvertBound = '1';
                     form.addEventListener('submit', async function (event) {
                         event.preventDefault();
+                        var formData = new FormData(form);
+                        var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
+                        var submitButton = form.querySelector('[type="submit"]');
+                        if (usesSharedPendingState && !window.omoBeginPendingAction(form)) return;
+                        if (!usesSharedPendingState && submitButton) submitButton.disabled = true;
                         var response;
                         try {
-                            response = await fetch(form.action, { method: 'POST', body: new FormData(form), credentials: 'same-origin' });
+                            response = await fetch(form.action, { method: 'POST', body: formData, credentials: 'same-origin' });
                             var payload = await response.json();
                             if (!response.ok || !payload.status) throw new Error(payload.message || '<?= $escape(t('decisions.consultation_only.convert.error', [], $lang, $sourceLang)) ?>');
                             if (typeof window.omoDecisionOpenNestedDrawer === 'function') {
@@ -124,6 +129,9 @@ if (!function_exists('omoDecisionConsultationOnlyModuleRender')) {
                             }
                         } catch (error) {
                             if (window.omoDecisionNotify) window.omoDecisionNotify(error.message || '<?= $escape(t('decisions.consultation_only.convert.error', [], $lang, $sourceLang)) ?>', 'error');
+                        } finally {
+                            if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') window.omoEndPendingAction(form);
+                            else if (submitButton) submitButton.disabled = false;
                         }
                     });
                 }());

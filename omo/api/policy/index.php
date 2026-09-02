@@ -825,7 +825,34 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
     root.querySelectorAll('[data-policy-close]').forEach(function (button) { button.addEventListener('click', close); });
     var create = root.querySelector('[data-policy-new]');
     if (create) create.addEventListener('click', function () { openPolicyDrawer(root.dataset.policyCreateUrl || ''); });
-    body.addEventListener('submit', function (event) { var form = event.target.closest('[data-policy-form]'); if (!form) return; event.preventDefault(); if (!form.reportValidity()) return; var feedback = form.querySelector('[data-policy-feedback]'); fetch(form.action, {method: 'POST', credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: new FormData(form)}).then(function (response) { return response.json().then(function (payload) { return {ok: response.ok, payload: payload}; }); }).then(function (result) { if (!result.ok || !result.payload.success) throw new Error(result.payload.message || root.dataset.policySaveError); feedback.hidden = false; feedback.textContent = result.payload.message; window.omoPolicyAfterSave(); }).catch(function (error) { feedback.hidden = false; feedback.textContent = error.message || root.dataset.policySaveError; }); });
+    body.addEventListener('submit', function (event) {
+        var form = event.target.closest('[data-policy-form]');
+        if (!form) return;
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        var feedback = form.querySelector('[data-policy-feedback]');
+        var formData = new FormData(form);
+        var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
+        var submitButton = form.querySelector('[type="submit"]');
+        if (usesSharedPendingState && !window.omoBeginPendingAction(form)) return;
+        if (!usesSharedPendingState && submitButton) submitButton.disabled = true;
+        fetch(form.action, {method: 'POST', credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: formData})
+            .then(function (response) { return response.json().then(function (payload) { return {ok: response.ok, payload: payload}; }); })
+            .then(function (result) {
+                if (!result.ok || !result.payload.success) throw new Error(result.payload.message || root.dataset.policySaveError);
+                feedback.hidden = false;
+                feedback.textContent = result.payload.message;
+                window.omoPolicyAfterSave();
+            })
+            .catch(function (error) {
+                feedback.hidden = false;
+                feedback.textContent = error.message || root.dataset.policySaveError;
+            })
+            .finally(function () {
+                if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') window.omoEndPendingAction(form);
+                else if (submitButton) submitButton.disabled = false;
+            });
+    });
     window.omoPolicyAfterSave = function () { window.location.reload(); };
 })();
 </script>

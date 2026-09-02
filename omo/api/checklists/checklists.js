@@ -118,13 +118,22 @@
         event.preventDefault();
         if (!form.reportValidity()) { return; }
         var feedback = form.querySelector('[data-control-feedback]');
-        fetch(form.action, {method: 'POST', body: new FormData(form), credentials: 'same-origin'})
+        var formData = new FormData(form);
+        var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
+        var submitButton = form.querySelector('[type="submit"]');
+        if (usesSharedPendingState && !window.omoBeginPendingAction(form)) { return; }
+        if (!usesSharedPendingState && submitButton) { submitButton.disabled = true; }
+        fetch(form.action, {method: 'POST', body: formData, credentials: 'same-origin'})
             .then(function (response) { return response.json(); })
             .then(function (result) {
                 if (feedback) { feedback.textContent = result.message || ''; feedback.classList.toggle('is-error', !result.status); }
                 if (result.status && result.detailUrl) { openDrawer(result.detailUrl); }
             })
-            .catch(function () { if (feedback) { feedback.textContent = 'Enregistrement impossible.'; feedback.classList.add('is-error'); } });
+            .catch(function () { if (feedback) { feedback.textContent = 'Enregistrement impossible.'; feedback.classList.add('is-error'); } })
+            .finally(function () {
+                if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') { window.omoEndPendingAction(form); }
+                else if (submitButton) { submitButton.disabled = false; }
+            });
     });
 
     root.addEventListener('keydown', function (event) {
