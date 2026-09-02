@@ -614,8 +614,7 @@ class DecisionProcess extends DbObject
             }
 
             $decision = new self();
-            $decision->loadFromArray($row);
-            $decision->setId((int)$row['id']);
+            $decision->hydrateFromDatabaseRow($row, true);
 
             if ($decision->syncLifecycleStatus($referenceDateTime)) {
                 $updatedCount++;
@@ -645,8 +644,7 @@ class DecisionProcess extends DbObject
                 continue;
             }
             $item = new self();
-            $item->loadFromArray($row);
-            $item->setId((int)$row['id']);
+            $item->hydrateFromDatabaseRow($row, true);
             $items[] = $item;
         }
         return $items;
@@ -2956,8 +2954,7 @@ class DecisionProcess extends DbObject
             }
 
             $decision = new self();
-            $decision->loadFromArray($row);
-            $decision->setId((int)$row['id']);
+            $decision->hydrateFromDatabaseRow($row, true);
             $decision->syncLifecycleStatus();
 
             $rows[$index]['status'] = (string)$decision->get('status');

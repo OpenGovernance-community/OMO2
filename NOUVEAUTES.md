@@ -4,6 +4,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-02
 
+- Les collections dbObject peuvent maintenant hydrater directement tous les objets, ou seulement les champs demandes. La lecture ulterieure d un champ absent recharge uniquement l objet concerne, ce qui evite le schema une requete pour les IDs puis une requete par element dans les ecrans qui parcourent une collection complete.
+- Les listes Calendrier, CalDAV, Documents, Projets, PV, Checklists, Indicateurs et Decisions utilisent cette hydratation lorsqu elles parcourent tous leurs elements. Les documents evitent en plus de transferer leurs contenus HTML et brouillons pour une simple liste, tout en les rechargeant seulement a l ouverture d un document.
 - Les calendriers CalDAV contextuels utilisent maintenant un cache fichier par organisation, revision, utilisateur et requete. Toute sauvegarde ou suppression d evenement ou d invitation change immediatement de revision; les anciennes revisions deviennent inaccessibles sans attendre, puis le cron les supprime apres une heure. Un verrou evite aussi plusieurs reconstructions simultanees du meme calendrier.
 - Les verrous de l editeur de PV sont maintenant renouveles en une seule requete legere pour tous les points detenus par la session, sans reconstruire le document, ses auteurs, sa structure et ses discussions. La fermeture libere egalement tous les verrous en un seul appel, et une acquisition reussie ne regenere plus le contenu complet du point.
 - Les boutons de sauvegarde des evenements, documents, indicateurs, activites, processus, anciennes checklists, regles et editeurs de gouvernance sont maintenant grises pendant toute la requete. Une seconde soumission est ignoree jusqu au retour du serveur, puis les actions sont reactivees si la sauvegarde echoue. Les formulaires Calendrier et Projets utilisent aussi des identifiants distincts et un verrou de soumission local pour eviter qu un drawer cache ou un second gestionnaire ne cree un doublon.
@@ -23,7 +25,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - La limite de hauteur des listes du tableau est maintenant de 40 % de la fenetre pour une fiche simple et de 80 % pour une fiche double, tout en restant plafonnee par deux fois la largeur du module.
 - Les listes filtrees du tableau de pilotage affichent maintenant les 20 premiers elements du filtre selectionne et recalculent le nombre restant. Les projets indiquent aussi leur statut par une barre laterale coloree et affichent le responsable a cote du holon lorsqu il est defini.
 - Les lignes des listes du tableau de pilotage conservent maintenant leur hauteur naturelle, avec le defilement interne qui prend le relais lorsque la fiche atteint sa limite.
-- Le module Evenements distingue maintenant aussi les evenements crees par l utilisateur dans le filtre Pour moi. Le lieu est affiche avec son mode (virtuel, presentiel ou mixte) et ses details lorsqu ils sont disponibles.
+- Le filtre Pour moi du module Evenements applique maintenant exactement la meme pertinence personnelle que le calendrier, afin de ne pas inclure les reunions grisées. Le lieu est affiche avec son mode (virtuel, presentiel ou mixte) et ses details lorsqu ils sont disponibles.
 - L editeur des holons masque la couleur hors mode Expert et retire l edition des droits en mode Decouverte, sans effacer les valeurs deja enregistrees.
 
 ## 2026-09-01

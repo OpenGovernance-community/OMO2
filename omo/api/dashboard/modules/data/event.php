@@ -31,10 +31,7 @@ if (!empty($enabledAppHashes['calendar'])) {
         }
 
         $isMine = $currentUserId > 0
-            && (
-                (int)$event->get('IDuser') === $currentUserId
-                || $event->isVisibleToInvitationViewer($currentUserId, $currentOrganizationId)
-            );
+            && $event->isPersonallyRelevantToViewer($currentUserId, $currentOrganizationId);
         $dashboardEventCounts['all']++;
         if ($isMine) {
             $dashboardEventCounts['mine']++;

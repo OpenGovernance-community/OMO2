@@ -23,7 +23,7 @@ class ArrayStatIndicatorGroup extends ArrayDbObject
                 ? ['field' => 'IDholon', 'value' => (int)$holonId]
                 : ['field' => 'IDholon', 'op' => 'is null'];
         }
-        $this->load(['where' => $where, 'orderBy' => [['field' => 'name', 'dir' => 'ASC']]]);
+        $this->load(['where' => $where, 'hydrate' => true, 'orderBy' => [['field' => 'name', 'dir' => 'ASC']]]);
     }
 
     public function loadForOrganization($organizationId)
@@ -39,6 +39,7 @@ class ArrayStatIndicatorGroup extends ArrayDbObject
                 ['field' => 'IDorganization', 'value' => $organizationId],
                 ['field' => 'active', 'value' => 1],
             ],
+            'hydrate' => true,
             'orderBy' => [['field' => 'name', 'dir' => 'ASC']],
         ]);
     }

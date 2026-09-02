@@ -370,8 +370,7 @@ foreach ($rows as $row) {
     }
 
     $decision = new DecisionProcess();
-    $decision->loadFromArray($row);
-    $decision->setId((int)$row['id']);
+    $decision->hydrateFromDatabaseRow($row, true);
 
     $organizationId = (int)($row['IDorganization'] ?? 0);
     $holonId = (int)($row['IDholon'] ?? 0);
