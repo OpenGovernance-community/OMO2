@@ -15,7 +15,7 @@ $formatActivityDate = static function ($value) use ($lang, $sourceLang): string 
     <?php endforeach; ?>
 </div>
 <div class="omo-personal-space__item-list omo-dashboard-module__list">
-    <?php foreach (array_slice($dashboardActivityItems, 0, 20) as $activityItem): ?>
+    <?php foreach ($dashboardActivityItems as $activityItem): ?>
         <?php
         $date = $activityItem['metric'] === 'overdue'
             ? ($activityItem['deadlineAt'] ?? null)
@@ -33,5 +33,5 @@ $formatActivityDate = static function ($value) use ($lang, $sourceLang): string 
         </button>
     <?php endforeach; ?>
     <?php if ($dashboardActivityItems === array()): ?><p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.module.empty', [], $lang, $sourceLang)) ?></p><?php endif; ?>
-    <?php if (count($dashboardActivityItems) > 20): ?><p class="omo-dashboard-module__more"><?= omoApiEscape(t('personal_space.module.more', ['count' => count($dashboardActivityItems) - 20], $lang, $sourceLang)) ?></p><?php endif; ?>
+    <p class="omo-dashboard-module__more" data-omo-dashboard-more data-omo-dashboard-more-template="<?= omoApiEscape(t('personal_space.module.more_template', [], $lang, $sourceLang)) ?>"<?= count($dashboardActivityItems) > 20 ? '' : ' hidden' ?>><?= count($dashboardActivityItems) > 20 ? omoApiEscape(t('personal_space.module.more', ['count' => count($dashboardActivityItems) - 20], $lang, $sourceLang)) : '' ?></p>
 </div>

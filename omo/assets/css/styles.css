@@ -876,6 +876,7 @@ body {
 }
 
 .omo-dashboard-module__list {
+    grid-auto-rows: max-content;
     min-height: 0;
     max-height: 40vh;
     max-height: min(40dvh, 200cqw);
@@ -1290,6 +1291,34 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
 .omo-dashboard-module .omo-personal-space__item-card {
     gap: 4px;
     padding: 10px 12px;
+}
+
+.omo-dashboard-project-item {
+    position: relative;
+    overflow: hidden;
+    padding-inline-start: 16px !important;
+}
+
+.omo-dashboard-project-item__status-bar {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 4px;
+    background: var(--omo-dashboard-project-status-color, var(--color-border, #e5e7eb));
+}
+
+.omo-dashboard-project-item--someday { --omo-dashboard-project-status-color: var(--project-status-someday, #8993a3); }
+.omo-dashboard-project-item--ready { --omo-dashboard-project-status-color: var(--project-status-ready, #5b7ea6); }
+.omo-dashboard-project-item--in_progress { --omo-dashboard-project-status-color: var(--project-status-in-progress, #c69a4b); }
+.omo-dashboard-project-item--blocked { --omo-dashboard-project-status-color: var(--project-status-blocked, #c47777); }
+.omo-dashboard-project-item--review { --omo-dashboard-project-status-color: var(--project-status-review, #8d78a8); }
+.omo-dashboard-project-item--done { --omo-dashboard-project-status-color: var(--project-status-done, #6b9b7f); }
+
+.omo-dashboard-event__location {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .omo-personal-space__item-topline {
