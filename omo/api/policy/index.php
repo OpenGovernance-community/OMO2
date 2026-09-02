@@ -357,7 +357,15 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         window.omoReplaceFetchedPanelRoot({
             rootSelector: '#omo-policy-root',
             currentRoot: root,
-            url: url
+            url: url,
+            setLoadingState: function (isLoading) {
+                root.classList.toggle('is-loading', Boolean(isLoading));
+                if (typeof window.omoSetPanelResultsLoadingSkeleton === 'function') {
+                    window.omoSetPanelResultsLoadingSkeleton(root, isLoading, {
+                        contentSelector: '.omo-policy__body'
+                    });
+                }
+            }
         });
     };
     var policyViewUrl = function (view) {

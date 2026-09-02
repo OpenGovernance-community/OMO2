@@ -826,6 +826,46 @@ function getSkeleton(type) {
     }
 }
 
+function omoSetPanelResultsLoadingSkeleton(root, isLoading, options = {}) {
+    if (!(root instanceof Element)) {
+        return;
+    }
+
+    const settings = options && typeof options === 'object' ? options : {};
+    const contentSelector = String(settings.contentSelector || '[data-omo-panel-loading-content]').trim();
+    const content = contentSelector !== '' ? root.querySelector(contentSelector) : null;
+    if (!(content instanceof Element)) {
+        return;
+    }
+
+    const stateProperty = '__omoPanelResultsLoadingSkeleton';
+    if (isLoading) {
+        if (!Object.prototype.hasOwnProperty.call(root, stateProperty)) {
+            root[stateProperty] = {
+                markup: content.innerHTML,
+                hidden: content.hidden
+            };
+        }
+
+        content.innerHTML = getSkeleton(settings.skeletonType || 'panel') || '';
+        if (settings.reveal === true) {
+            content.hidden = false;
+        }
+        content.setAttribute('data-omo-panel-loading-skeleton', 'true');
+        return;
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(root, stateProperty)) {
+        return;
+    }
+
+    const previousState = root[stateProperty];
+    content.innerHTML = previousState.markup;
+    content.hidden = previousState.hidden === true;
+    content.removeAttribute('data-omo-panel-loading-skeleton');
+    delete root[stateProperty];
+}
+
 function syncOmoPanelLayout() {}
 
 function omoIsDecisionIndexUrl(url = '') {
@@ -5671,6 +5711,7 @@ window.omoOpenSearchRulesResult = omoOpenSearchRulesResult;
 window.omoRegisterSearchPopupJobState = omoRegisterSearchPopupJobState;
 window.omoOpenUserContextPopup = omoOpenUserContextPopup;
 window.omoReplaceFetchedPanelRoot = omoReplaceFetchedPanelRoot;
+window.omoSetPanelResultsLoadingSkeleton = omoSetPanelResultsLoadingSkeleton;
 window.omoRunRuntimeMaintenance = omoRunRuntimeMaintenance;
 window.omoResolveAppUrl = omoResolveAppUrl;
 window.omoIsShareMode = omoIsShareMode;

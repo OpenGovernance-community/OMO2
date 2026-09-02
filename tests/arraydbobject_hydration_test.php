@@ -156,8 +156,28 @@ assertArrayDbObjectHydration(
 );
 assertArrayDbObjectHydration(
     strpos($documentsIndexSource, 'data-omo-documents-loading-indicator') !== false
-        && strpos($documentsIndexSource, 'omoSetDocumentsPanelLoadingState') !== false,
-    'Changing a documents view must expose a visible loading state.'
+        && strpos($documentsIndexSource, 'omoSetDocumentsPanelLoadingState') !== false
+        && strpos($documentsIndexSource, 'omoSetPanelResultsLoadingSkeleton') !== false
+        && strpos($documentsIndexSource, "showResultsPlaceholder: true") !== false,
+    'Changing a documents view must expose a visible loading state and replace the list with a skeleton.'
+);
+
+$omoAppSource = (string)file_get_contents(dirname(__DIR__) . '/omo/assets/js/app.js');
+assertArrayDbObjectHydration(
+    strpos($omoAppSource, 'function omoSetPanelResultsLoadingSkeleton') !== false,
+    'OMO must expose one shared skeleton helper for reloaded result panels.'
+);
+foreach (array('calendar', 'decision', 'policy', 'stats', 'team') as $applicationName) {
+    $applicationSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/' . $applicationName . '/index.php');
+    assertArrayDbObjectHydration(
+        strpos($applicationSource, 'omoSetPanelResultsLoadingSkeleton') !== false,
+        ucfirst($applicationName) . ' filters must use the shared loading skeleton while reloading.'
+    );
+}
+$projectsScriptSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/projects/projects.js');
+assertArrayDbObjectHydration(
+    strpos($projectsScriptSource, 'omoSetPanelResultsLoadingSkeleton') !== false,
+    'Project filters must use the shared loading skeleton while reloading.'
 );
 
 echo "arraydbobject_hydration_test: OK\n";
