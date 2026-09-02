@@ -12,6 +12,8 @@ $editorData = null;
 $errorMessage = '';
 $adminLabel = 'Admin';
 $adminLabelLower = 'admin';
+$canEditHolonColor = false;
+$canEditHolonPermissions = false;
 
 if ($organizationId <= 0) {
     $errorMessage = "Aucune organisation n'est actuellement sélectionnée.";
@@ -23,6 +25,9 @@ if ($organizationId <= 0) {
 	$adminLabelLower = function_exists('mb_strtolower')
 		? mb_strtolower($adminLabel, 'UTF-8')
 		: strtolower($adminLabel);
+    $organizationInterfaceLevel = $organization->getInterfaceLevel();
+    $canEditHolonColor = $organizationInterfaceLevel >= Organization::INTERFACE_LEVEL_EXPERT;
+    $canEditHolonPermissions = $organizationInterfaceLevel >= Organization::INTERFACE_LEVEL_AUTONOMOUS;
     $editorData = $organization->getHolonCreationEditorData($contextHolonId, $holonId, $governanceCapture);
     if ($holonId > 0 && (($editorData['mode'] ?? 'create') !== 'edit')) {
         $errorMessage = "Le holon demandé est introuvable.";
@@ -144,6 +149,7 @@ if ($organizationId <= 0) {
                                         Ce holon peut aussi porter des droits directs pour ses membres, ses admins ou le collectif.
                                     </p>
                                 </div>
+                                <?php if ($canEditHolonPermissions): ?>
                                 <button
                                     type="button"
                                     class="generic-action-button generic-action-button--secondary"
@@ -151,6 +157,7 @@ if ($organizationId <= 0) {
                                     aria-expanded="false"
                                     aria-controls="omo-holon-create-permissions-editor"
                                 >Editer</button>
+                                <?php endif; ?>
                             </div>
 
                             <div class="omo-holon-create__permission-summary generic-soft-panel" id="omo-holon-create-permissions-summary">
@@ -177,6 +184,7 @@ if ($organizationId <= 0) {
                             </div>
 
                             <div class="omo-holon-create__grid generic-form-grid">
+                                <?php if ($canEditHolonColor): ?>
                                 <label class="omo-holon-create__field generic-form-field" id="omo-holon-create-color-field">
                                     <div class="omo-holon-create__color-head">
                                         <span>Couleur</span>
@@ -190,6 +198,7 @@ if ($organizationId <= 0) {
                                         <small class="generic-help-text">Sinon la couleur reste vide et l'heritage s'applique.</small>
                                     </div>
                                 </label>
+                                <?php endif; ?>
 
                                 <div class="omo-holon-create__field omo-holon-create__field--full generic-form-field generic-form-field--full">
                                     <span class="generic-form-label">Illustrations</span>
@@ -232,6 +241,7 @@ const state = {
     statusTimer: null
 };
 const adminLexiconLabel = <?= json_encode($adminLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const canEditHolonColor = <?= $canEditHolonColor ? 'true' : 'false' ?>;
 const governanceCapture = <?= $governanceCapture ? 'true' : 'false' ?>;
 const governanceInitialPayload = governanceCapture && window.omoHolonGovernanceInitialPayload && typeof window.omoHolonGovernanceInitialPayload === 'object'
     ? window.omoHolonGovernanceInitialPayload
@@ -2407,9 +2417,11 @@ function saveHolon(event) {
                 templateId: Number(elements.template.value || 0),
                 name: String(elements.name.value || '').trim(),
                 fullName: String(elements.fullName && elements.fullName.value ? elements.fullName.value : '').trim(),
-                color: Boolean(elements.colorEnabled && elements.colorEnabled.checked)
-                    ? String(elements.color && elements.color.value ? elements.color.value : '')
-                    : '',
+                color: canEditHolonColor
+                    ? (Boolean(elements.colorEnabled && elements.colorEnabled.checked)
+                        ? String(elements.color && elements.color.value ? elements.color.value : '')
+                        : '')
+                    : String((getEditingHolon() || {}).color || ''),
                 icon: mediaFields.icon ? mediaFields.icon.getValue() : '',
                 banner: mediaFields.banner ? mediaFields.banner.getValue() : '',
 				adminMin: normalizeAdminBound(elements.adminMin && elements.adminMin.value, false),

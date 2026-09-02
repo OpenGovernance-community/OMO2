@@ -463,7 +463,9 @@ if (!function_exists('commonCardDavSendOptions')) {
 if (!function_exists('commonCardDavReadXmlBody')) {
     function commonCardDavReadXmlBody()
     {
-        $raw = file_get_contents('php://input');
+        $raw = array_key_exists('commonCardDavRawInput', $GLOBALS)
+            ? $GLOBALS['commonCardDavRawInput']
+            : file_get_contents('php://input');
         if (!is_string($raw)) {
             return array('raw' => '', 'xml' => null);
         }

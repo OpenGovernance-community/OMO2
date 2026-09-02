@@ -40,6 +40,7 @@ $assignment = new UserHolon();
 if (!$assignment->load(array(
     array('IDuser', $userId),
     array('IDholon', $holonId),
+    array('is_membership', 1),
 ))) {
     $renderError(404, omoTeamT('team.assignment_popup.invalid_assignment', [], $lang, $sourceLang));
 }

@@ -532,6 +532,7 @@
 						WHERE `IDuser` = :user_id
 						  AND `IDholon` = :holon_id
 						  AND `active` = 1
+						  AND `is_membership` = 1
 					",
 					array(
 						'user_id' => $ownerUserId,
@@ -2820,8 +2821,8 @@
 			$total = (int)($summary['total'] ?? 0);
 			$counts = (array)($summary['counts'] ?? []);
 			$html = '<div class="omo-checklist-embed omo-checklist-embed--resolved" data-omo-embed-type="checklist" data-omo-checklist-id="' . $checklistId . '">';
-			$html .= '<div class="omo-project-embed__head"><a class="omo-project-embed__title" href="#checklist-c' . $checklistId . '">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</a></div>';
-			$html .= '<span class="omo-checklist-embed__review-label">' . (!empty($summary['isContainer']) ? 'Elements recurrents' : 'Instances en cours') . ((int)($summary['overdueCount'] ?? 0) > 0 ? ' &#9888;' : '') . '</span>';
+			$html .= '<div class="omo-project-embed__head"><a class="omo-project-embed__title" href="#processus-c' . $checklistId . '">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</a></div>';
+			$html .= '<span class="omo-checklist-embed__review-label">' . (!empty($summary['isContainer']) ? 'Activites recurrentes' : 'Instances en cours') . ((int)($summary['overdueCount'] ?? 0) > 0 ? ' &#9888;' : '') . '</span>';
 			if ($total > 0) {
 				$html .= '<span class="omo-project-status-bar">';
 				foreach (self::getProjectStatusDisplayOrder() as $status) { $count = (int)($counts[$status] ?? 0); if ($count > 0) { $width = ($count / $total) * 100; $html .= '<span class="omo-project-status-bar__segment omo-project-status-bar__segment--' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '" style="flex-basis:' . number_format($width, 4, '.', '') . '%"></span>'; } }

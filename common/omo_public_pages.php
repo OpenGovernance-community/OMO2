@@ -55,7 +55,7 @@ if (!function_exists('commonOmoPublicPagesGetSourceLang')) {
                 'context' => 'First paragraph explaining the purpose and organizational structure of OpenMyOrganization.',
             ],
             'common.public_help.omo.paragraph_2' => [
-                'text' => 'Selon les applications activées, OMO accompagne les prises de décision, les projets, les documents et procès-verbaux, le calendrier, les indicateurs, les checklists ainsi que les règles et autorités. Les droits d’accès dépendent du contexte et des responsabilités de chacun.',
+                'text' => 'Selon les applications activées, OMO accompagne les prises de décision, les projets, les documents et procès-verbaux, le calendrier, les indicateurs, les processus ainsi que les règles et autorités. Les droits d’accès dépendent du contexte et des responsabilités de chacun.',
                 'context' => 'Second paragraph listing the main OpenMyOrganization applications and access model.',
             ],
             'common.public_help.omo.paragraph_3' => [

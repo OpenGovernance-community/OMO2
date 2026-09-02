@@ -385,6 +385,20 @@ $scopeHolonIds = $documentScope === 'children'
     ? omoApiGetDirectChildScopeHolonIds($currentContextHolon)
     : omoApiGetDescendantHolonIds($currentContextHolon);
 $currentUserId = (int)commonGetCurrentUserId();
+$applicationViewPreferences = omoApplicationViewPreferencesGetContext(
+    'documents',
+    $organization,
+    $currentContextHolon instanceof Holon ? $currentContextHolon : null,
+    $currentUserId
+);
+$documentScope = omoApiNormalizeContextScope(
+    omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'document_scope', 'scope', 'contextual'),
+    $availableDocumentScopes
+);
+$documentScopeActiveIndex = omoApiResolveContextScopeIndex($documentScope, $availableDocumentScopes);
+$scopeHolonIds = $documentScope === 'children'
+    ? omoApiGetDirectChildScopeHolonIds($currentContextHolon)
+    : omoApiGetDescendantHolonIds($currentContextHolon);
 $canCreateDocument = $organization->getId() > 0
     && Document::canCreateInOrganizationContext(
         $currentOrganizationId,
@@ -764,13 +778,14 @@ if (!is_string($documentsPayload)) {
     $documentsPayload = '{"documents":[],"openDocumentId":0,"openDocumentMode":"detail","requestedDocument":null,"groups":[]}';
 }
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <div
     class="omo-documents omo-panel-view"
     id="omo-documents-root"
     data-omo-document-scope="<?= $escape($documentScope) ?>"
     data-omo-document-oid="<?= (int)$currentOrganizationId ?>"
     data-omo-document-cid="<?= (int)$effectiveCurrentHolonId ?>"
+    data-omo-app-view-preferences="<?= $escape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     data-omo-document-open-id="<?= (int)$initialOpenDocumentId ?>"
     data-omo-document-sort="updated"
     data-omo-document-density="detail"
@@ -860,15 +875,12 @@ if (!is_string($documentsPayload)) {
                     </div>
                     <div class="omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-omo-documents-filter-apply><?= $escape(omoDocumentsScopeT('documents.filters.apply')) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-documents-filter-save><?= $escape(omoDocumentsScopeT('documents.filters.save_view')) ?></button>
-                        <div class="generic-menu omo-view-filter__actions-more" data-omo-documents-filter-more-menu>
-                            <button type="button" class="generic-menu-toggle" data-omo-documents-filter-more-toggle aria-expanded="false" aria-label="<?= $escape(omoDocumentsScopeT('documents.filters.more_actions')) ?>">&#8942;</button>
-                            <div class="generic-menu-panel" data-omo-documents-filter-more-panel role="menu" hidden>
-                                <button type="button" class="generic-menu-item" data-omo-documents-filter-more-action="apply-everywhere" role="menuitem"><?= $escape(omoDocumentsScopeT('documents.filters.apply_everywhere')) ?></button>
-                                <button type="button" class="generic-menu-item" data-omo-documents-filter-more-action="set-default" role="menuitem"><?= $escape(omoDocumentsScopeT('documents.filters.set_default')) ?></button>
-                                <button type="button" class="generic-menu-item" data-omo-documents-filter-more-action="restore-default" role="menuitem"><?= $escape(omoDocumentsScopeT('documents.filters.restore_default')) ?></button>
-                            </div>
-                        </div>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-documents-filter-save data-omo-app-view-save-scope="personal"><?= $escape(omoDocumentsScopeT('documents.filters.save_view')) ?></button>
+                        <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= $escape($applicationViewPreferences['primarySaveScope']) ?>"><?= $escape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                        <?php endif; ?>
+                        <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
                 </section>
             </div>
@@ -1040,6 +1052,7 @@ if (!is_string($documentsPayload)) {
 
             <script type="application/json" data-omo-documents-data><?= $documentsPayload ?></script>
             <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
+            <script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
             <script>
             (function () {
                 const omoDocumentsSavedViewsStorageKey = 'omo.documents.saved-views.v2';
@@ -1327,7 +1340,13 @@ if (!is_string($documentsPayload)) {
                     );
                     const saved = omoDocumentsGetStoredPreferences(panel);
                     const defaultView = omoDocumentsGetDefaultPreferences();
-                    const preferences = temporary || saved || defaultView || {};
+                    const serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+                        ? window.omoApplicationViewPreferencesGetDefault(panel)
+                        : null;
+                    const personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
+                        ? window.omoApplicationViewPreferencesGetPersonal(panel)
+                        : null;
+                    const preferences = temporary || personalView || serverDefault || saved || defaultView || {};
 
                     return {
                         scope: omoDocumentsNormalizeScope(
@@ -3041,7 +3060,13 @@ if (!is_string($documentsPayload)) {
                                 if (action === 'restore-default') {
                                     omoDocumentsClearStoredPreferences(panel);
                                     omoDocumentsClearTemporaryPreferences(panel);
-                                    applyDisplayFilters(omoDocumentsGetDefaultPreferences() || {
+                                    const store = omoDocumentsGetSavedViewsStore();
+                                    store.defaultView = null;
+                                    omoDocumentsSaveViewsStore(store);
+                                    const serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+                                        ? window.omoApplicationViewPreferencesGetDefault(root)
+                                        : null;
+                                    applyDisplayFilters(serverDefault || {
                                         scope: 'contextual',
                                         sort: 'updated',
                                         density: 'detail'

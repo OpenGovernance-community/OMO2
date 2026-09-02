@@ -10,6 +10,7 @@ use dbObject\Event;
 use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\User;
+use dbObject\UserOrganization;
 
 if (!function_exists('commonCalDavServicePath')) {
     function commonCalDavServicePath()
@@ -34,6 +35,72 @@ if (!function_exists('commonCalDavAuthRealm')) {
     function commonCalDavAuthRealm()
     {
         return 'OpenMyOrganization CalDAV';
+    }
+}
+
+if (!function_exists('commonCalDavParseScopedRoute')) {
+    function commonCalDavParseScopedRoute($routePath)
+    {
+        $routePath = '/' . trim((string)$routePath, '/');
+        if (!preg_match(
+            '#^/scoped/(\d+)/(\d+)/(contextual|children|descendants)/([0-9a-fA-F]{6})(?:/(editable|readonly)(?:/[^/]+\.ics)?)?$#',
+            $routePath,
+            $matches
+        )) {
+            return null;
+        }
+
+        return array(
+            'organizationId' => (int)$matches[1],
+            'holonId' => (int)$matches[2],
+            'range' => (string)$matches[3],
+            'color' => strtolower((string)$matches[4]),
+        );
+    }
+}
+
+if (!function_exists('commonCalDavCanUseScopedResponseCache')) {
+    function commonCalDavCanUseScopedResponseCache(User $viewer, array $scope)
+    {
+        static $cache = array();
+
+        $viewerUserId = (int)$viewer->getId();
+        $organizationId = (int)($scope['organizationId'] ?? 0);
+        $holonId = (int)($scope['holonId'] ?? 0);
+        $range = commonCalDavNormalizeScopedRange($scope['range'] ?? '');
+        $cacheKey = implode(':', array($viewerUserId, $organizationId, $holonId, $range));
+        if (array_key_exists($cacheKey, $cache)) {
+            return $cache[$cacheKey];
+        }
+
+        if ($viewerUserId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+            return $cache[$cacheKey] = false;
+        }
+
+        if (!UserOrganization::hasActiveMembership($viewerUserId, $organizationId)) {
+            return $cache[$cacheKey] = false;
+        }
+
+        $organization = new Organization();
+        if (!$organization->load($organizationId) || !$organization->isApplicationEnabled('calendar', $viewerUserId)) {
+            return $cache[$cacheKey] = false;
+        }
+
+        $rootHolon = $organization->getEnabledStructuralRootHolon();
+        $holon = new Holon();
+        if (
+            !($rootHolon instanceof Holon)
+            || !$holon->load($holonId)
+            || !$holon->isDescendantOf((int)$rootHolon->getId(), true)
+        ) {
+            return $cache[$cacheKey] = false;
+        }
+
+        return $cache[$cacheKey] = in_array(
+            $range,
+            omoApiGetAvailableContextScopes(true, $holon, $rootHolon),
+            true
+        );
     }
 }
 
@@ -761,14 +828,21 @@ if (!function_exists('commonCalDavBuildCalendarSyncToken')) {
 if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
     function commonCalDavLoadScopedCalendarForViewer(User $viewer, $organizationId, $holonId, $range, $color)
     {
+        static $cache = array();
+
         $viewerUserId = (int)$viewer->getId();
         $organizationId = (int)$organizationId;
         $holonId = (int)$holonId;
         $range = commonCalDavNormalizeScopedRange($range);
         $color = commonCalDavNormalizeScopedColor($color);
+        $cacheKey = implode(':', array($viewerUserId, $organizationId, $holonId, $range, $color));
+
+        if (array_key_exists($cacheKey, $cache)) {
+            return $cache[$cacheKey];
+        }
 
         if ($viewerUserId <= 0 || $organizationId <= 0 || $holonId <= 0) {
-            return null;
+            return $cache[$cacheKey] = null;
         }
 
         $memberships = new ArrayUserOrganization();
@@ -782,12 +856,12 @@ if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
         }
 
         if (!$hasOrganizationAccess) {
-            return null;
+            return $cache[$cacheKey] = null;
         }
 
         $organization = new Organization();
         if (!$organization->load($organizationId) || !$organization->isApplicationEnabled('calendar', $viewerUserId)) {
-            return null;
+            return $cache[$cacheKey] = null;
         }
 
         $rootHolon = $organization->getEnabledStructuralRootHolon();
@@ -797,12 +871,12 @@ if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
             || !$holon->load($holonId)
             || !$holon->isDescendantOf((int)$rootHolon->getId(), true)
         ) {
-            return null;
+            return $cache[$cacheKey] = null;
         }
 
         $availableRanges = omoApiGetAvailableContextScopes(true, $holon, $rootHolon);
         if (!in_array($range, $availableRanges, true)) {
-            return null;
+            return $cache[$cacheKey] = null;
         }
 
         $visibleHolonIds = array((int)$holon->getId() => true);
@@ -848,7 +922,7 @@ if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
         $displayName = trim($organizationName . ' - ' . ($holonLabel !== '' ? $holonLabel : 'Calendar'));
         $syncToken = commonCalDavBuildCalendarSyncToken($organizationId, array_values($eventResources), $calendarSlug);
 
-        return array(
+        return $cache[$cacheKey] = array(
             'type' => 'calendar',
             'href' => $calendarHref,
             'isScopedCalendar' => true,
@@ -874,19 +948,32 @@ if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
 if (!function_exists('commonCalDavLoadScopedCalendarGroupsForViewer')) {
     function commonCalDavLoadScopedCalendarGroupsForViewer(User $viewer, $organizationId, $holonId, $range, $color)
     {
+        static $cache = array();
+
+        $cacheKey = implode(':', array(
+            (int)$viewer->getId(),
+            (int)$organizationId,
+            (int)$holonId,
+            commonCalDavNormalizeScopedRange($range),
+            commonCalDavNormalizeScopedColor($color),
+        ));
+        if (array_key_exists($cacheKey, $cache)) {
+            return $cache[$cacheKey];
+        }
+
         $baseCalendar = commonCalDavLoadScopedCalendarForViewer($viewer, $organizationId, $holonId, $range, $color);
         if (!is_array($baseCalendar)) {
-            return array();
+            return $cache[$cacheKey] = array();
         }
 
         $organization = $baseCalendar['organization'] ?? null;
         if (!($organization instanceof Organization)) {
-            return array();
+            return $cache[$cacheKey] = array();
         }
 
         $rootHolon = $organization->getEnabledStructuralRootHolon((int)$viewer->getId());
         if (!($rootHolon instanceof Holon)) {
-            return array();
+            return $cache[$cacheKey] = array();
         }
 
         $organizationId = (int)$baseCalendar['organizationId'];
@@ -960,7 +1047,7 @@ if (!function_exists('commonCalDavLoadScopedCalendarGroupsForViewer')) {
             ));
         }
 
-        return $groupMap;
+        return $cache[$cacheKey] = $groupMap;
     }
 }
 
@@ -1175,7 +1262,6 @@ if (!function_exists('commonCalDavListChildResources')) {
     function commonCalDavListChildResources(array $resource, User $viewer)
     {
         $viewerUserId = (int)$viewer->getId();
-        $calendarMap = commonCalDavLoadCalendarsForViewer($viewer);
 
         switch ((string)($resource['type'] ?? '')) {
             case 'root':
@@ -1207,7 +1293,7 @@ if (!function_exists('commonCalDavListChildResources')) {
                 );
 
             case 'calendar-home':
-                return array_values($calendarMap);
+                return array_values(commonCalDavLoadCalendarsForViewer($viewer));
 
             case 'scoped-principal':
                 $calendar = $resource['calendar'] ?? null;

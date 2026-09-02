@@ -44,6 +44,7 @@ $templateRoot = $checklist->getTemplateRoot();
 $primaryTrigger = omoChecklistGetPrimaryTrigger($checklist);
 $isContainerChecklist = $primaryTrigger instanceof ChecklistTrigger
     && ChecklistTrigger::normalizeTriggerType($primaryTrigger->get('trigger_type')) === ChecklistTrigger::TYPE_CONTAINER;
+$itemKind = $isContainerChecklist ? 'activity' : 'step';
 $recurrence = $isEdit ? $item->getRecurrence() : null;
 $recurrenceFrequency = $recurrence instanceof ChecklistItemRecurrence
     ? RecurrenceSchedule::normalizeFrequency($recurrence->get('frequency'))
@@ -137,10 +138,10 @@ if ($currentHolonId > 0) {
     <div
         hidden
         data-omo-subdrawer-header
-        data-omo-subdrawer-title="<?= omoApiEscape(omoChecklistT($isEdit ? 'checklist.form.edit_item_title' : 'checklist.form.create_item_title')) ?>"
+        data-omo-subdrawer-title="<?= omoApiEscape(omoChecklistT('checklist.form.' . ($isEdit ? 'edit_' : 'create_') . $itemKind . '_title')) ?>"
         data-omo-subdrawer-description="<?= omoApiEscape((string)$templateRoot->get('title')) ?>"
     >
-        <button type="submit" form="omo-checklist-item-form" class="generic-action-button generic-action-button--main" data-omo-subdrawer-action><?= omoApiEscape(omoChecklistT('checklist.action.save_item')) ?></button>
+        <button type="submit" form="omo-checklist-item-form" class="generic-action-button generic-action-button--main" data-omo-subdrawer-action><?= omoApiEscape(omoChecklistT('checklist.action.save_' . $itemKind)) ?></button>
         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-checklist-back-detail data-url="<?= omoApiEscape($detailUrl) ?>"><?= omoApiEscape(omoChecklistT('checklist.action.cancel')) ?></button>
     </div>
     <form id="omo-checklist-item-form" class="generic-form-stack" action="/omo/api/checklist/action.php" method="post" data-checklist-item-form data-checklist-container="<?= $isContainerChecklist ? '1' : '0' ?>" data-item-schedule-options="<?= omoApiEscape(json_encode($recurrenceScheduleOptions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>">
@@ -153,7 +154,7 @@ if ($currentHolonId > 0) {
         <section class="generic-section generic-section--stack generic-form-section omo-checklist-item-editor" data-checklist-item-row>
             <div class="omo-checklist-form-grid generic-form-grid">
                 <label class="omo-checklist-field omo-checklist-field--wide">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.item_title')) ?></span>
+                    <span><?= omoApiEscape(omoChecklistT('checklist.form.' . $itemKind . '_title')) ?></span>
                     <input class="generic-form-control" type="text" name="title" value="<?= omoApiEscape((string)$project->get('title')) ?>" maxlength="255" required autofocus>
                 </label>
                 <div class="omo-checklist-field omo-checklist-field--wide">
@@ -162,7 +163,7 @@ if ($currentHolonId > 0) {
                         <div
                             class="omo-checklist-html-editor"
                             data-checklist-html-editor
-                            data-checklist-html-editor-placeholder="<?= omoApiEscape(omoChecklistT('checklist.form.item_description_placeholder')) ?>"
+                            data-checklist-html-editor-placeholder="<?= omoApiEscape(omoChecklistT('checklist.form.' . $itemKind . '_description_placeholder')) ?>"
                         ></div>
                         <textarea name="description" hidden aria-hidden="true" data-checklist-html-value><?= omoApiEscape((string)$project->get('description')) ?></textarea>
                     </div>
@@ -208,7 +209,7 @@ if ($currentHolonId > 0) {
                 <label class="omo-checklist-field" data-checklist-delay-field<?= $isContainerChecklist || $activationType === ChecklistItem::ACTIVATION_IMMEDIATE ? ' hidden' : '' ?>>
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.unit')) ?></span>
                     <select class="generic-form-control" name="delay_unit">
-                        <?php foreach ([ChecklistItem::DELAY_DAY, ChecklistItem::DELAY_WEEK, ChecklistItem::DELAY_MONTH] as $unit): ?>
+                        <?php foreach (ChecklistItem::delayUnits() as $unit): ?>
                             <option value="<?= omoApiEscape($unit) ?>"<?= $delayUnit === $unit ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.delay.' . $unit)) ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -228,7 +229,7 @@ if ($currentHolonId > 0) {
                         <label class="omo-checklist-field">
                             <span><?= omoApiEscape(omoChecklistT('checklist.form.display_lead_unit')) ?></span>
                             <select class="generic-form-control" name="display_lead_unit">
-                                <?php foreach ([ChecklistItem::DELAY_DAY, ChecklistItem::DELAY_WEEK, ChecklistItem::DELAY_MONTH] as $unit): ?>
+                                <?php foreach (ChecklistItem::delayUnits() as $unit): ?>
                                     <option value="<?= omoApiEscape($unit) ?>"<?= $displayLeadUnit === $unit ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.delay.' . $unit)) ?></option>
                                 <?php endforeach; ?>
                             </select>
@@ -240,7 +241,7 @@ if ($currentHolonId > 0) {
                         <label class="omo-checklist-field">
                             <span><?= omoApiEscape(omoChecklistT('checklist.form.execution_duration_unit')) ?></span>
                             <select class="generic-form-control" name="execution_duration_unit">
-                                <?php foreach ([ChecklistItem::DELAY_DAY, ChecklistItem::DELAY_WEEK, ChecklistItem::DELAY_MONTH] as $unit): ?>
+                                <?php foreach (ChecklistItem::delayUnits() as $unit): ?>
                                     <option value="<?= omoApiEscape($unit) ?>"<?= $executionDurationUnit === $unit ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.delay.' . $unit)) ?></option>
                                 <?php endforeach; ?>
                             </select>

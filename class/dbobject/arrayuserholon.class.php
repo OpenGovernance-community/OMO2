@@ -33,6 +33,7 @@
 				FROM user_holon uh
 				INNER JOIN `user` u ON u.id = uh.IDuser
 				WHERE uh.active = 1
+				  AND uh.is_membership = 1
 				  AND uh.IDholon IN (" . implode(', ', $placeholders) . ")
 				ORDER BY
 				  COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,

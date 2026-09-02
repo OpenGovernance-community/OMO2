@@ -208,13 +208,13 @@ class ChecklistRunItem extends DbObject
                 $templateItem->getDeadlineAt($plannedStartAt)
             );
             if (!($project instanceof Project)) {
-                throw new \RuntimeException('Unable to instantiate checklist project.');
+                throw new \RuntimeException('Unable to instantiate process project.');
             }
             $this->set('IDproject', (int)$project->getId());
             $this->set('state', self::STATE_CREATED);
             $result = $this->save();
             if (!is_array($result) || empty($result['status'])) {
-                throw new \RuntimeException('Unable to activate checklist run item.');
+                throw new \RuntimeException('Unable to activate process step.');
             }
             if ($startedTransaction && $pdo && $pdo->inTransaction()) {
                 $pdo->commit();

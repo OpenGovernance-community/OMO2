@@ -147,8 +147,13 @@ if ($hasStructureContext && $currentHolonId > 0 && (int)$currentHolon->getId() !
 }
 
 $canToggleTeamScope = $hasStructureContext && $currentHolon instanceof Holon;
+$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+$applicationViewPreferences = omoApplicationViewPreferencesGetContext('team', $organization, $currentHolon, $currentUserId);
 $availableTeamScopes = omoApiGetAvailableContextScopes($canToggleTeamScope, $currentHolon, $rootHolon);
-$teamScope = omoApiNormalizeContextScope($_GET['team_scope'] ?? 'contextual', $availableTeamScopes);
+$teamScope = omoApiNormalizeContextScope(
+    omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'team_scope', 'scope', 'contextual'),
+    $availableTeamScopes
+);
 $teamQuickSearch = trim((string)($_GET['team_query'] ?? ''));
 $teamScopeActiveIndex = omoApiResolveContextScopeIndex($teamScope, $availableTeamScopes);
 $teamScopeLabels = array(
@@ -598,12 +603,13 @@ if ($leafletMapsEnabled) {
 }
 ?>
 <?= $leafletAssetsHtml ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <div
     class="omo-team omo-panel-view"
     id="omo-team-root"
     data-team-oid="<?= (int)$organizationId ?>"
     data-team-cid="<?= $hasStructureContext ? (int)$currentHolon->getId() : 0 ?>"
+    data-omo-app-view-preferences="<?= omoApiEscape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     data-team-root-hid="<?= $hasStructureContext ? (int)$rootHolon->getId() : 0 ?>"
     data-team-scope="<?= omoApiEscape($teamScope) ?>"
     data-team-view="cards"
@@ -669,15 +675,12 @@ if ($leafletMapsEnabled) {
                     </div>
                     <div class="omo-team__filter-actions omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-team-filter-apply><?= omoApiEscape(omoTeamT('team.filters.apply', [], $lang, $sourceLang)) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-team-filter-save><?= omoApiEscape(omoTeamT('team.filters.save_view', [], $lang, $sourceLang)) ?></button>
-                        <div class="generic-menu omo-view-filter__actions-more" data-team-filter-more-menu>
-                            <button type="button" class="generic-menu-toggle" data-team-filter-more-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoTeamT('team.filters.more_actions', [], $lang, $sourceLang)) ?>">&#8942;</button>
-                            <div class="generic-menu-panel" data-team-filter-more-panel role="menu" hidden>
-                                <button type="button" class="generic-menu-item" data-team-filter-more-action="apply-everywhere" role="menuitem"><?= omoApiEscape(omoTeamT('team.filters.apply_everywhere', [], $lang, $sourceLang)) ?></button>
-                                <button type="button" class="generic-menu-item" data-team-filter-more-action="set-default" role="menuitem"><?= omoApiEscape(omoTeamT('team.filters.set_default', [], $lang, $sourceLang)) ?></button>
-                                <button type="button" class="generic-menu-item" data-team-filter-more-action="restore-default" role="menuitem"><?= omoApiEscape(omoTeamT('team.filters.restore_default', [], $lang, $sourceLang)) ?></button>
-                            </div>
-                        </div>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-team-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoTeamT('team.filters.save_view', [], $lang, $sourceLang)) ?></button>
+                        <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                        <?php endif; ?>
+                        <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
                 </section>
             </div>
@@ -1705,6 +1708,7 @@ $teamJsTranslations = [
     'mapSummaryOther' => omoTeamT('team.map.summary_other', ['count' => '{count}'], $lang, $sourceLang),
 ];
 ?>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
 <script>
 var omoTeamSavedViewsStorageKey = 'omo.team.saved-views.v2';
 var omoTeamLegacySavedViewsStorageKey = 'omo.team.saved-views.v1';
@@ -2252,7 +2256,13 @@ function omoTeamApplyFilterMoreAction(action) {
     if (action === 'restore-default') {
         omoTeamClearStoredViewPreferences();
         omoTeamClearSessionViewPreferences();
-        omoTeamApplyFilters(omoTeamGetDefaultViewPreferences() || {
+        const store = omoTeamGetSavedViewsStore();
+        store.defaultView = null;
+        omoTeamSaveViewsStore(store);
+        const serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+            ? window.omoApplicationViewPreferencesGetDefault(root)
+            : null;
+        omoTeamApplyFilters(serverDefault || {
             scope: 'contextual',
             view: 'cards'
         }, active);
@@ -2276,7 +2286,13 @@ function omoTeamInitializeFilters() {
     const temporary = omoTeamReadViewPreferences(window.sessionStorage, omoTeamSessionViewsStorageKey);
     const saved = omoTeamGetStoredViewPreferences();
     const defaultView = omoTeamGetDefaultViewPreferences();
-    const preferences = omoTeamNormalizeFilters(temporary || saved || defaultView || {
+    const serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+        ? window.omoApplicationViewPreferencesGetDefault(root)
+        : null;
+    const personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
+        ? window.omoApplicationViewPreferencesGetPersonal(root)
+        : null;
+    const preferences = omoTeamNormalizeFilters(temporary || personalView || serverDefault || saved || defaultView || {
         scope: root.getAttribute('data-team-scope') || omoTeamInitialScope,
         view: 'cards'
     });

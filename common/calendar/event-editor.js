@@ -235,7 +235,13 @@
         form.addEventListener('submit', function (event) {
             event.preventDefault();
             var submitButton = findSubmitButton(form);
-            if (submitButton) {
+            var formData = new FormData(form);
+            var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
+
+            if (usesSharedPendingState && !window.omoBeginPendingAction(form)) {
+                return;
+            }
+            if (!usesSharedPendingState && submitButton) {
                 submitButton.disabled = true;
             }
             setFeedback(form, 'Enregistrement…', false);
@@ -247,7 +253,7 @@
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: new FormData(form)
+                body: formData
             }).then(function (response) {
                 return response.json().catch(function () {
                     return {status: false, message: 'Réponse invalide du serveur.'};
@@ -268,7 +274,9 @@
             }).catch(function (error) {
                 setFeedback(form, error.message || "Impossible d'enregistrer cet événement.", true);
             }).finally(function () {
-                if (submitButton) {
+                if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {
+                    window.omoEndPendingAction(form);
+                } else if (submitButton) {
                     submitButton.disabled = false;
                 }
             });

@@ -3,6 +3,16 @@
 
 	class UserHolon extends DbObject
 	{
+		public const DASHBOARD_LAYOUT_PARAMETER = 'dashboardLayoutV1';
+		public const DASHBOARD_DEFAULT_LAYOUT_PARAMETER = 'dashboardDefaultLayoutV1';
+		public const DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER = 'dashboardTemplateLayoutsV1';
+		public const DASHBOARD_BASE_TYPE_LAYOUTS_PARAMETER = 'dashboardBaseTypeLayoutsV1';
+		public const APPLICATION_VIEW_DEFAULTS_PARAMETER = 'applicationViewDefaultsV1';
+		public const APPLICATION_VIEW_BASE_TYPE_DEFAULTS_PARAMETER = 'applicationViewBaseTypeDefaultsV1';
+		public const APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER = 'applicationViewTemplateDefaultsV1';
+		public const APPLICATION_VIEW_PERSONAL_PARAMETER = 'applicationViewPersonalV1';
+		public const DASHBOARD_MAX_MODULES = 40;
+		public const DASHBOARD_MAX_ROWS = 100;
 		public const BUDGET_RECURRENCE_DAY = 'day';
 		public const BUDGET_RECURRENCE_WEEK = 'week';
 		public const BUDGET_RECURRENCE_MONTH = 'month';
@@ -28,7 +38,7 @@
 				[['assignment_review_date'], 'date'],
 				[['parameters'], 'parameters'],
 				[['datecreation', 'dateconnexion'], 'datetime'],
-				[['active'], 'boolean'],
+				[['active', 'is_membership'], 'boolean'],
 				[['id'], 'safe'],
 			];
 		}
@@ -49,6 +59,7 @@
 				'datecreation' => 'Création',
 				'dateconnexion' => 'Dernière connexion',
 				'active' => 'Actif',
+				'is_membership' => 'Lien d appartenance',
 			];
 		}
 
@@ -59,6 +70,7 @@
 				'time_budget_hours' => 'Temps prevu pour cette affectation, exprime en heures.',
 				'money_budget' => 'Montant prevu pour cette affectation.',
 				'assignment_review_date' => 'Date a laquelle l affectation doit etre reconfirmee ou arretee.',
+				'is_membership' => 'Distingue une affectation au holon d une ligne technique utilisee uniquement pour stocker des preferences.',
 			];
 		}
 
@@ -79,6 +91,468 @@
 				self::BUDGET_RECURRENCE_MONTH,
 				self::BUDGET_RECURRENCE_YEAR,
 			);
+		}
+
+		public static function getDashboardModuleCatalog()
+		{
+			return array(
+				'rules' => array('app' => 'policy', 'settings' => array('scope' => true)),
+				'projects' => array('app' => 'projects', 'settings' => array('scope' => true)),
+				'team' => array('app' => 'team', 'settings' => array('scope' => true)),
+				'documents' => array('app' => 'documents', 'settings' => array('scope' => true)),
+				'event' => array('app' => 'calendar', 'settings' => array('scope' => true)),
+				'structure' => array('app' => 'structure', 'settings' => array('scope' => true)),
+				'stats' => array('app' => 'stats', 'settings' => array('scope' => true)),
+				'activities' => array('app' => 'activities', 'settings' => array('scope' => true)),
+			);
+		}
+
+		public static function getApplicationViewKeys(): array
+		{
+			return array('activities', 'calendar', 'checklist', 'decision', 'documents', 'policy', 'projects', 'stats', 'team');
+		}
+
+		public static function normalizeApplicationViewKey($value): string
+		{
+			$value = trim(mb_strtolower((string)$value, 'UTF-8'));
+			return in_array($value, self::getApplicationViewKeys(), true) ? $value : '';
+		}
+
+		public static function normalizeApplicationView($view): array
+		{
+			if (!is_array($view)) {
+				return array();
+			}
+
+			$normalize = null;
+			$normalize = static function ($value, $depth = 0) use (&$normalize) {
+				if ($depth > 2) {
+					return null;
+				}
+				if (is_bool($value) || is_int($value) || is_float($value) || $value === null) {
+					return $value;
+				}
+				if (is_string($value)) {
+					return mb_substr(trim($value), 0, 160, 'UTF-8');
+				}
+				if (!is_array($value)) {
+					return null;
+				}
+
+				$result = array();
+				foreach (array_slice($value, 0, 32, true) as $key => $child) {
+					$key = is_int($key) ? (string)$key : trim((string)$key);
+					if ($key === '' || !preg_match('/^[a-zA-Z0-9_-]{1,48}$/', $key)) {
+						continue;
+					}
+					$normalized = $normalize($child, $depth + 1);
+					if ($normalized !== null) {
+						$result[$key] = $normalized;
+					}
+				}
+				return $result;
+			};
+
+			return $normalize($view);
+		}
+
+		public static function normalizeApplicationViewDefaults($views): array
+		{
+			if (!is_array($views)) {
+				return array();
+			}
+			$normalized = array();
+			foreach ($views as $applicationKey => $view) {
+				$applicationKey = self::normalizeApplicationViewKey($applicationKey);
+				if ($applicationKey !== '') {
+					$normalized[$applicationKey] = self::normalizeApplicationView($view);
+				}
+			}
+			return $normalized;
+		}
+
+		public static function normalizeApplicationViewBaseTypeDefaults($views): array
+		{
+			if (!is_array($views)) {
+				return array();
+			}
+			$normalized = array();
+			foreach ($views as $typeKey => $applicationViews) {
+				$typeKey = self::makeDashboardBaseTypeKey((int)str_replace('type:', '', (string)$typeKey));
+				if ($typeKey !== '') {
+					$normalized[$typeKey] = self::normalizeApplicationViewDefaults($applicationViews);
+				}
+			}
+			return $normalized;
+		}
+
+		public static function normalizeApplicationViewTemplateDefaults($views): array
+		{
+			if (!is_array($views)) {
+				return array();
+			}
+			$normalized = array();
+			foreach ($views as $templateKey => $applicationViews) {
+				$templateKey = self::normalizeDashboardTemplateKey($templateKey);
+				if ($templateKey !== '') {
+					$normalized[$templateKey] = self::normalizeApplicationViewDefaults($applicationViews);
+				}
+			}
+			return $normalized;
+		}
+
+		public static function getDefaultDashboardLayout()
+		{
+			return array(
+				array('id' => 'rules-1', 'type' => 'rules', 'row' => 0, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'projects-1', 'type' => 'projects', 'row' => 0, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'team-1', 'type' => 'team', 'row' => 1, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'documents-1', 'type' => 'documents', 'row' => 1, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'event-1', 'type' => 'event', 'row' => 2, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'structure-1', 'type' => 'structure', 'row' => 2, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'stats-1', 'type' => 'stats', 'row' => 3, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 2, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'activities-1', 'type' => 'activities', 'row' => 4, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 2, 'settings' => array('scope' => 'contextual')),
+			);
+		}
+
+		public static function normalizeDashboardModuleSettings($type, $settings): array
+		{
+			$catalog = self::getDashboardModuleCatalog();
+			$type = trim((string)$type);
+			$settings = is_array($settings) ? $settings : array();
+			$configuration = is_array($catalog[$type]['settings'] ?? null)
+				? $catalog[$type]['settings']
+				: array();
+			$normalized = array();
+
+			if (!empty($configuration['scope'])) {
+				$scope = trim(mb_strtolower((string)($settings['scope'] ?? 'contextual'), 'UTF-8'));
+				$normalized['scope'] = in_array($scope, array('contextual', 'children', 'descendants'), true)
+					? $scope
+					: 'contextual';
+			}
+
+			return $normalized;
+		}
+
+		public static function normalizeDashboardLayout($layout)
+		{
+			if (!is_array($layout)) {
+				return self::getDefaultDashboardLayout();
+			}
+
+			$catalog = self::getDashboardModuleCatalog();
+			$normalized = array();
+			$occupied = array();
+			$usedIds = array();
+
+			foreach (array_slice(array_values($layout), 0, self::DASHBOARD_MAX_MODULES) as $index => $module) {
+				if (!is_array($module)) {
+					continue;
+				}
+
+				$type = trim((string)($module['type'] ?? ''));
+				$row = (int)($module['row'] ?? -1);
+				$column = (int)($module['column'] ?? -1);
+				$rowSpan = (int)($module['rowSpan'] ?? 1);
+				$columnSpan = (int)($module['columnSpan'] ?? 1);
+
+				if (
+					!isset($catalog[$type])
+					|| $row < 0
+					|| $row >= self::DASHBOARD_MAX_ROWS
+					|| $column < 0
+					|| $column > 1
+					|| !in_array($rowSpan, array(1, 2), true)
+					|| !in_array($columnSpan, array(1, 2), true)
+					|| ($rowSpan > 1 && $columnSpan > 1)
+					|| $column + $columnSpan > 2
+					|| $row + $rowSpan > self::DASHBOARD_MAX_ROWS
+				) {
+					continue;
+				}
+
+				$moduleCells = array();
+				$hasCollision = false;
+				for ($rowOffset = 0; $rowOffset < $rowSpan; $rowOffset++) {
+					for ($columnOffset = 0; $columnOffset < $columnSpan; $columnOffset++) {
+						$cellKey = ($row + $rowOffset) . ':' . ($column + $columnOffset);
+						if (isset($occupied[$cellKey])) {
+							$hasCollision = true;
+							break 2;
+						}
+						$moduleCells[] = $cellKey;
+					}
+				}
+				if ($hasCollision) {
+					continue;
+				}
+
+				$id = preg_replace('/[^a-zA-Z0-9_-]+/', '-', trim((string)($module['id'] ?? '')));
+				if ($id === '' || isset($usedIds[$id])) {
+					$id = $type . '-' . ($index + 1);
+					while (isset($usedIds[$id])) {
+						$id .= '-1';
+					}
+				}
+
+				foreach ($moduleCells as $cellKey) {
+					$occupied[$cellKey] = true;
+				}
+				$usedIds[$id] = true;
+				$normalized[] = array(
+					'id' => $id,
+					'type' => $type,
+					'row' => $row,
+					'column' => $column,
+					'rowSpan' => $rowSpan,
+					'columnSpan' => $columnSpan,
+					'settings' => self::normalizeDashboardModuleSettings($type, $module['settings'] ?? array()),
+				);
+			}
+
+			usort($normalized, static function (array $left, array $right): int {
+				return ((int)$left['row'] <=> (int)$right['row'])
+					?: ((int)$left['column'] <=> (int)$right['column']);
+			});
+
+			return $normalized;
+		}
+
+		public static function makeDashboardTemplateKey($typeId, $templateName = ''): string
+		{
+			$typeId = max(1, min(4, (int)$typeId));
+			$templateName = trim((string)$templateName);
+			if ($templateName === '') {
+				return 'type:' . $typeId;
+			}
+
+			$templateName = function_exists('mb_strtolower')
+				? mb_strtolower($templateName, 'UTF-8')
+				: strtolower($templateName);
+			$templateName = preg_replace('/\s+/u', ' ', $templateName);
+			return 'template:' . $typeId . ':' . substr(hash('sha256', (string)$templateName), 0, 24);
+		}
+
+		public static function makeDashboardBaseTypeKey($typeId): string
+		{
+			$typeId = (int)$typeId;
+			return in_array($typeId, array(1, 2, 3, 4), true)
+				? 'type:' . $typeId
+				: '';
+		}
+
+		public static function normalizeDashboardTemplateKey($templateKey): string
+		{
+			$templateKey = trim((string)$templateKey);
+			if (preg_match('/^type:([1-4])$/', $templateKey, $matches)) {
+				return 'type:' . (int)$matches[1];
+			}
+			if (preg_match('/^template:([1-4]):([a-f0-9]{24})$/', $templateKey, $matches)) {
+				return 'template:' . (int)$matches[1] . ':' . $matches[2];
+			}
+
+			return '';
+		}
+
+		public static function normalizeDashboardTemplateLayouts($layouts): array
+		{
+			if (!is_array($layouts)) {
+				return array();
+			}
+
+			$normalized = array();
+			foreach ($layouts as $templateKey => $layout) {
+				$templateKey = self::normalizeDashboardTemplateKey($templateKey);
+				if ($templateKey === '') {
+					continue;
+				}
+				$normalized[$templateKey] = self::normalizeDashboardLayout($layout);
+			}
+
+			return $normalized;
+		}
+
+		protected function getParametersArray()
+		{
+			$parameters = $this->get('parameters');
+			if (is_array($parameters)) {
+				return $parameters;
+			}
+			$decoded = json_decode((string)$parameters, true);
+			return is_array($decoded) ? $decoded : array();
+		}
+
+		public function getDashboardLayout()
+		{
+			$layout = $this->getDashboardLayoutPreference();
+			return $layout === null ? self::getDefaultDashboardLayout() : $layout;
+		}
+
+		public function getDashboardLayoutPreference()
+		{
+			$parameters = $this->getParametersArray();
+			if (!array_key_exists(self::DASHBOARD_LAYOUT_PARAMETER, $parameters)) {
+				return null;
+			}
+
+			return self::normalizeDashboardLayout($parameters[self::DASHBOARD_LAYOUT_PARAMETER]);
+		}
+
+		public function hasDashboardLayoutPreference()
+		{
+			$parameters = $this->getParametersArray();
+			return array_key_exists(self::DASHBOARD_LAYOUT_PARAMETER, $parameters);
+		}
+
+		public static function loadDashboardSettings($userId, $holonId)
+		{
+			$row = self::fetchRow(
+				'SELECT id FROM user_holon WHERE IDuser = :user_id AND IDholon = :holon_id ORDER BY is_membership DESC, active DESC, id ASC LIMIT 1',
+				array('user_id' => (int)$userId, 'holon_id' => (int)$holonId)
+			);
+			if (!is_array($row) || (int)($row['id'] ?? 0) <= 0) {
+				return null;
+			}
+
+			$item = new self();
+			return $item->load((int)$row['id']) ? $item : null;
+		}
+
+		public static function isUserHolonAdmin($userId, $holonId): bool
+		{
+			$rows = self::fetchAll(
+				'SELECT parameters FROM user_holon WHERE IDuser = :user_id AND IDholon = :holon_id AND active = 1 ORDER BY id ASC',
+				array('user_id' => (int)$userId, 'holon_id' => (int)$holonId)
+			);
+			if (!is_array($rows)) {
+				return false;
+			}
+
+			foreach ($rows as $row) {
+				$parameters = json_decode((string)($row['parameters'] ?? ''), true);
+				if (is_array($parameters) && !empty($parameters['isAdmin'])) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		public static function canUserManageDashboardHolonDefault($userId, $organizationId, $holonId): bool
+		{
+			$userId = (int)$userId;
+			$organizationId = (int)$organizationId;
+			$holonId = (int)$holonId;
+			if ($userId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+				return false;
+			}
+
+			$organization = new Organization();
+			$holon = new Holon();
+			if (!$organization->load($organizationId) || !$holon->load($holonId)) {
+				return false;
+			}
+
+			$rootHolon = $organization->getEnabledStructuralRootHolon();
+			if (!$rootHolon instanceof Holon || !$holon->isDescendantOf((int)$rootHolon->getId(), true)) {
+				return false;
+			}
+
+			// Keep the dashboard rule identical to the administration marker in getOrg.php.
+			// This includes an administrator assigned to a child role which pilots its parent holon.
+			return in_array($userId, $holon->getDirectContextAdminUserIds($organizationId), true);
+		}
+
+		public static function saveDashboardLayoutForUser($userId, $holonId, $layout)
+		{
+			$userId = (int)$userId;
+			$holonId = (int)$holonId;
+			if ($userId <= 0 || $holonId <= 0) {
+				return array('status' => false, 'text' => 'Contexte du tableau invalide.');
+			}
+
+			$item = self::loadDashboardSettings($userId, $holonId);
+			if (!$item) {
+				$item = new self();
+				$item->set('IDuser', $userId);
+				$item->set('IDholon', $holonId);
+				$item->set('active', false);
+				$item->set('is_membership', false);
+			}
+
+			$parameters = $item->getParametersArray();
+			$parameters[self::DASHBOARD_LAYOUT_PARAMETER] = self::normalizeDashboardLayout($layout);
+			$item->set('parameters', $parameters);
+			return $item->save();
+		}
+
+		public static function clearDashboardLayoutForUser($userId, $holonId)
+		{
+			$item = self::loadDashboardSettings($userId, $holonId);
+			if (!$item) {
+				return array('status' => true);
+			}
+
+			$parameters = $item->getParametersArray();
+			unset($parameters[self::DASHBOARD_LAYOUT_PARAMETER]);
+			$item->set('parameters', $parameters);
+			return $item->save();
+		}
+
+		public static function getApplicationViewForUser($userId, $holonId, $applicationKey): ?array
+		{
+			$applicationKey = self::normalizeApplicationViewKey($applicationKey);
+			$item = self::loadDashboardSettings($userId, $holonId);
+			if ($applicationKey === '' || !$item) {
+				return null;
+			}
+			$parameters = $item->getParametersArray();
+			$views = self::normalizeApplicationViewDefaults($parameters[self::APPLICATION_VIEW_PERSONAL_PARAMETER] ?? array());
+			return $views[$applicationKey] ?? null;
+		}
+
+		public static function saveApplicationViewForUser($userId, $holonId, $applicationKey, array $view)
+		{
+			$userId = (int)$userId;
+			$holonId = (int)$holonId;
+			$applicationKey = self::normalizeApplicationViewKey($applicationKey);
+			if ($userId <= 0 || $holonId <= 0 || $applicationKey === '') {
+				return array('status' => false);
+			}
+			$item = self::loadDashboardSettings($userId, $holonId);
+			if (!$item) {
+				$item = new self();
+				$item->set('IDuser', $userId);
+				$item->set('IDholon', $holonId);
+				$item->set('active', false);
+				$item->set('is_membership', false);
+			}
+			$parameters = $item->getParametersArray();
+			$views = self::normalizeApplicationViewDefaults($parameters[self::APPLICATION_VIEW_PERSONAL_PARAMETER] ?? array());
+			$views[$applicationKey] = self::normalizeApplicationView($view);
+			$parameters[self::APPLICATION_VIEW_PERSONAL_PARAMETER] = $views;
+			$item->set('parameters', $parameters);
+			return $item->save();
+		}
+
+		public static function clearApplicationViewForUser($userId, $holonId, $applicationKey)
+		{
+			$applicationKey = self::normalizeApplicationViewKey($applicationKey);
+			$item = self::loadDashboardSettings($userId, $holonId);
+			if ($applicationKey === '' || !$item) {
+				return array('status' => true);
+			}
+			$parameters = $item->getParametersArray();
+			$views = self::normalizeApplicationViewDefaults($parameters[self::APPLICATION_VIEW_PERSONAL_PARAMETER] ?? array());
+			unset($views[$applicationKey]);
+			if ($views === array()) {
+				unset($parameters[self::APPLICATION_VIEW_PERSONAL_PARAMETER]);
+			} else {
+				$parameters[self::APPLICATION_VIEW_PERSONAL_PARAMETER] = $views;
+			}
+			$item->set('parameters', $parameters);
+			return $item->save();
 		}
 
 		public static function normalizeBudgetRecurrence($value)
@@ -129,6 +603,15 @@
 			}
 
 			return array('valid' => true, 'value' => $date->format('Y-m-d'));
+		}
+
+		public function save()
+		{
+			if ((bool)$this->get('active')) {
+				$this->set('is_membership', true);
+			}
+
+			return parent::save();
 		}
 
 		public function updateAssignmentDetails(array $details)
@@ -368,6 +851,7 @@
 				WHERE uh.IDuser = :user_id
 				  AND uh.IDholon IN (" . implode(', ', $placeholders) . ")
 				  AND uh.active = 1
+				  AND uh.is_membership = 1
 				ORDER BY uh.IDholon ASC
 			";
 
@@ -425,6 +909,7 @@
 					AND inv.active = 1
 					AND (inv.dateexpiration IS NULL OR inv.dateexpiration > NOW())
 				WHERE uh.IDholon IN (" . implode(', ', $placeholders) . ")
+				  AND uh.is_membership = 1
 				  AND (
 					uh.active = 1
 					OR inv.id IS NOT NULL
@@ -472,6 +957,7 @@
 				FROM user_holon
 				WHERE IDuser = :user_id
 				  AND IDholon IN (" . implode(', ', $placeholders) . ")
+				  AND is_membership = 1
 				ORDER BY IDholon ASC, id ASC
 			";
 

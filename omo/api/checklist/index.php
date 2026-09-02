@@ -27,8 +27,14 @@ if (empty($context['status'])) {
 
 $rootHolon = $context['rootHolon'];
 $currentHolon = $context['currentHolon'];
+$organization = $context['organization'];
+$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+$applicationViewPreferences = omoApplicationViewPreferencesGetContext('checklist', $organization, $currentHolon, $currentUserId);
 $availableScopes = omoApiGetAvailableContextScopes($currentHolon instanceof Holon, $currentHolon, $rootHolon);
-$checklistScope = omoApiNormalizeContextScope($_GET['checklist_scope'] ?? 'contextual', $availableScopes);
+$checklistScope = omoApiNormalizeContextScope(
+    omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'checklist_scope', 'scope', 'contextual'),
+    $availableScopes
+);
 $scopeActiveIndex = omoApiResolveContextScopeIndex($checklistScope, $availableScopes);
 $scopeHolonIds = $checklistScope === 'children'
     ? omoApiGetDirectChildScopeHolonIds($currentHolon)
@@ -90,6 +96,7 @@ foreach ($checklists as $checklist) {
         'itemCount' => $itemCount,
         'openRunCount' => $openRunCount,
         'recurringActiveCount' => $recurringActiveCount,
+        'isContainer' => $isContainerChecklist,
         'triggerLabel' => omoChecklistTriggerLabel(omoChecklistGetPrimaryTrigger($checklist)),
         'updated' => $updatedAt instanceof DateTimeInterface ? $updatedAt->format('d.m.Y') : '',
         'canDelete' => omoChecklistCanDelete($checklist),
@@ -120,7 +127,7 @@ $texts = [
     'loadingError' => omoChecklistT('checklist.error.load'),
 ];
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <link rel="stylesheet" href="/omo/api/checklist/checklist.css?v=20260805-checklist-list-menu">
 <div
     class="omo-checklist omo-panel-view"
@@ -133,6 +140,7 @@ $texts = [
     data-checklist-detail-url="<?= omoApiEscape($detailUrl) ?>"
     data-checklist-open-checklist-id="<?= (int)$openChecklistId ?>"
     data-checklist-texts="<?= omoApiEscape(json_encode($texts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+    data-omo-app-view-preferences="<?= omoApiEscape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     data-omo-view-filter-pending="1"
     aria-busy="true"
 >
@@ -176,7 +184,12 @@ $texts = [
                     </div>
                     <div class="omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--secondary" data-checklist-filter-apply><?= omoApiEscape(omoChecklistT('checklist.filters.apply')) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--main" data-checklist-filter-save><?= omoApiEscape(omoChecklistT('checklist.filters.save_view')) ?></button>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--main" data-checklist-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoChecklistT('checklist.filters.save_view')) ?></button>
+                        <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
+                            <button type="button" class="generic-action-button generic-action-button--main" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                        <?php endif; ?>
+                        <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
                 </section>
             </div>
@@ -216,7 +229,7 @@ $texts = [
                                                         <span class="omo-checklist-status omo-checklist-status--<?= omoApiEscape(Checklist::normalizeStatus($checklist->get('status'))) ?>"><?= omoApiEscape(omoChecklistStatusLabel($checklist->get('status'))) ?></span>
                                                     </span>
                                                     <?php if ((int)$row['recurringActiveCount'] > 0): ?><span class="omo-checklist-list__active-count"><?= omoApiEscape(omoChecklistT('checklist.detail.recurring_instance_count', ['count' => (int)$row['recurringActiveCount']])) ?></span><?php endif; ?>
-                                                <span class="generic-file-list__meta-line"><?= omoApiEscape(omoChecklistT('checklist.detail.item_count', ['count' => (int)$row['itemCount']])) ?> · <?= omoApiEscape(omoChecklistT('checklist.detail.open_run_count', ['count' => (int)$row['openRunCount']])) ?><?= $row['description'] !== '' ? ' · ' . omoApiEscape(mb_strimwidth((string)$row['description'], 0, 90, '…', 'UTF-8')) : '' ?></span>
+                                                <span class="generic-file-list__meta-line"><?= omoApiEscape(omoChecklistT(!empty($row['isContainer']) ? 'checklist.detail.activity_count' : 'checklist.detail.step_count', ['count' => (int)$row['itemCount']])) ?><?= empty($row['isContainer']) ? ' · ' . omoApiEscape(omoChecklistT('checklist.detail.open_run_count', ['count' => (int)$row['openRunCount']])) : '' ?><?= $row['description'] !== '' ? ' · ' . omoApiEscape(mb_strimwidth((string)$row['description'], 0, 90, '…', 'UTF-8')) : '' ?></span>
                                             </span>
                                         </div>
                                     </div>
@@ -267,4 +280,5 @@ $texts = [
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260804-indicator-group-route"></script>
-<script src="/omo/api/checklist/checklist.js?v=20260805-checklist-list-menu"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
+<script src="/omo/api/checklist/checklist.js?v=20260902-restore-default"></script>

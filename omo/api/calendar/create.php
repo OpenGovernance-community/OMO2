@@ -840,6 +840,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
             $pdo->commit();
         }
+        \dbObject\CalDavCache::invalidateOrganization($organizationId);
         $createdEtherpadPadId = '';
     } catch (\Throwable $exception) {
         if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {

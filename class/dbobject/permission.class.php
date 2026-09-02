@@ -157,7 +157,7 @@ class Permission extends DbObject
             ],
             'CAN_EDIT_CHECKLIST' => [
                 'title' => 'Modifier des processus',
-                'description' => 'Autorise l ajout, la modification et la suppression des elements de processus dans le contexte cible.',
+                'description' => 'Autorise l ajout, la modification et la suppression des etapes et activites de processus dans le contexte cible.',
                 'iscontextual' => true,
                 'group' => 'checklists',
             ],
@@ -166,6 +166,24 @@ class Permission extends DbObject
                 'description' => 'Autorise la suppression de processus dans le contexte cible.',
                 'iscontextual' => true,
                 'group' => 'checklists',
+            ],
+            'CAN_CREATE_CONTROL_ACTIVITY' => [
+                'title' => 'Creer des activites recurrentes',
+                'description' => 'Autorise la creation d activites recurrentes dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'control_lists',
+            ],
+            'CAN_EDIT_CONTROL_ACTIVITY' => [
+                'title' => 'Modifier des activites recurrentes',
+                'description' => 'Autorise la modification des activites recurrentes dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'control_lists',
+            ],
+            'CAN_DELETE_CONTROL_ACTIVITY' => [
+                'title' => 'Supprimer des activites recurrentes',
+                'description' => 'Autorise la suppression des activites recurrentes dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'control_lists',
             ],
             'CAN_CREATE_PROJECT' => [
                 'title' => 'Creer des projets',
@@ -249,6 +267,7 @@ class Permission extends DbObject
             'members' => ['title' => 'Membres et roles', 'order' => 10],
             'content' => ['title' => 'Contenus et reunions', 'order' => 20],
             'checklists' => ['title' => 'Processus', 'order' => 25],
+            'control_lists' => ['title' => 'Activites recurrentes', 'order' => 26],
             'steering' => ['title' => 'Pilotage', 'order' => 30],
             'properties' => ['title' => 'Proprietes', 'order' => 40],
             'organization' => ['title' => 'Organisation', 'order' => 50],

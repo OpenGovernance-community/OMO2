@@ -20,15 +20,25 @@ if (empty($context['status'])) {
 
 $currentHolon = $context['currentHolon'];
 $rootHolon = $context['rootHolon'] ?? null;
+$organization = $context['organization'];
+$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+$applicationViewPreferences = omoApplicationViewPreferencesGetContext('policy', $organization, $currentHolon, $currentUserId);
 $availableScopes = omoApiGetAvailableContextScopes($currentHolon instanceof \dbObject\Holon, $currentHolon, $rootHolon);
-$policyScope = omoApiNormalizeContextScope($_GET['policy_scope'] ?? 'contextual', $availableScopes);
+$policyScope = omoApiNormalizeContextScope(
+    omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'policy_scope', 'scope', 'contextual'),
+    $availableScopes
+);
 $scopeHolonIds = $policyScope === 'children'
     ? omoApiGetDirectChildScopeHolonIds($currentHolon)
     : ($policyScope === 'descendants' ? omoApiGetDescendantHolonIds($currentHolon) : [(int)$currentHolon->getId()]);
 $rules = new ArrayRule();
 $rules->loadForPolicyContexts($organizationId, $scopeHolonIds);
-$policySort = omoPolicyNormalizeSort($_GET['policy_sort'] ?? 'alpha');
-$policyGroup = omoPolicyNormalizeGroup($_GET['policy_group'] ?? 'holon');
+$policySort = omoPolicyNormalizeSort(
+    omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'policy_sort', 'sort', 'alpha')
+);
+$policyGroup = omoPolicyNormalizeGroup(
+    omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'policy_group', 'group', 'holon')
+);
 $policyRuleEntries = [];
 foreach ($rules as $rule) {
     if (!($rule instanceof Rule)) {
@@ -158,8 +168,8 @@ $canCreate = omoPolicyCanCreateLocalRule($context);
 $createUrl = '/omo/api/policy/edit.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . rawurlencode((string)$currentHolon->getId());
 $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . rawurlencode((string)$currentHolon->getId());
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
-<div class="omo-policy omo-panel-view" id="omo-policy-root" data-policy-oid="<?= (int)$organizationId ?>" data-policy-cid="<?= (int)$currentHolon->getId() ?>" data-policy-index-url="<?= omoApiEscape($indexUrl) ?>" data-policy-scope="<?= omoApiEscape($policyScope) ?>" data-policy-sort="<?= omoApiEscape($policySort) ?>" data-policy-group="<?= omoApiEscape($policyGroup) ?>" data-policy-create-url="<?= omoApiEscape($createUrl) ?>" data-policy-load-error="<?= omoApiEscape(omoPolicyT('policy.error.load')) ?>" data-policy-save-error="<?= omoApiEscape(omoPolicyT('policy.error.save')) ?>" data-policy-delete-confirm="<?= omoApiEscape(omoPolicyT('policy.delete.confirm')) ?>" data-policy-delete-error="<?= omoApiEscape(omoPolicyT('policy.error.delete')) ?>">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
+<div class="omo-policy omo-panel-view" id="omo-policy-root" data-policy-oid="<?= (int)$organizationId ?>" data-policy-cid="<?= (int)$currentHolon->getId() ?>" data-omo-app-view-preferences="<?= omoApiEscape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>" data-policy-index-url="<?= omoApiEscape($indexUrl) ?>" data-policy-scope="<?= omoApiEscape($policyScope) ?>" data-policy-sort="<?= omoApiEscape($policySort) ?>" data-policy-group="<?= omoApiEscape($policyGroup) ?>" data-policy-create-url="<?= omoApiEscape($createUrl) ?>" data-policy-load-error="<?= omoApiEscape(omoPolicyT('policy.error.load')) ?>" data-policy-save-error="<?= omoApiEscape(omoPolicyT('policy.error.save')) ?>" data-policy-delete-confirm="<?= omoApiEscape(omoPolicyT('policy.delete.confirm')) ?>" data-policy-delete-error="<?= omoApiEscape(omoPolicyT('policy.error.delete')) ?>">
     <header class="omo-panel-view__header omo-panel-view__header--stacked">
         <div class="omo-panel-view__header-main">
             <div class="omo-panel-view__title-cluster">
@@ -209,15 +219,12 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
                     </div>
                     <div class="omo-context-filter__actions omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-policy-filter-apply><?= omoApiEscape(omoPolicyT('policy.filters.apply')) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-policy-filter-save><?= omoApiEscape(omoPolicyT('policy.filters.save_view')) ?></button>
-                        <div class="generic-menu omo-view-filter__actions-more" data-policy-filter-more-menu>
-                            <button type="button" class="generic-menu-toggle" data-policy-filter-more-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoPolicyT('policy.filters.more_actions')) ?>">&#8942;</button>
-                            <div class="generic-menu-panel" data-policy-filter-more-panel role="menu" hidden>
-                                <button type="button" class="generic-menu-item" data-policy-filter-more-action="apply-everywhere" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.filters.apply_everywhere')) ?></button>
-                                <button type="button" class="generic-menu-item" data-policy-filter-more-action="set-default" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.filters.set_default')) ?></button>
-                                <button type="button" class="generic-menu-item" data-policy-filter-more-action="restore-default" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.filters.restore_default')) ?></button>
-                            </div>
-                        </div>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-policy-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoPolicyT('policy.filters.save_view')) ?></button>
+                        <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                        <?php endif; ?>
+                        <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
                 </section>
             </div>
@@ -322,6 +329,7 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         <div class="omo-overlay-drawer__panel"><div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky"><div class="generic-drawer-header__copy"><h3 class="omo-overlay-drawer__title"><?= omoApiEscape(omoPolicyT('policy.drawer.title')) ?></h3><p class="omo-overlay-drawer__description"><?= omoApiEscape(omoPolicyT('policy.drawer.description')) ?></p></div><div class="generic-drawer-header__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-policy-close><?= omoApiEscape(omoPolicyT('policy.close')) ?></button></div></div><div class="omo-overlay-drawer__body" data-policy-drawer-body></div></div>
     </div>
 </div>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
 <script>
 (function () {
     var root = document.getElementById('omo-policy-root');
@@ -577,7 +585,13 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         if (action === 'restore-default') {
             clearStoredPreference();
             clearTemporaryPreference();
-            applyView(getDefaultPreference() || {
+            var store = getSavedViewsStore();
+            store.defaultView = null;
+            saveSavedViewsStore(store);
+            var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+                ? window.omoApplicationViewPreferencesGetDefault(root)
+                : null;
+            applyView(serverDefault || {
                 scope: 'contextual',
                 sort: 'alpha',
                 group: 'holon'
@@ -671,7 +685,13 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
                 syncViewChoices();
             }
         });
-        var preferredView = readPreference(window.sessionStorage) || getStoredPreference() || getDefaultPreference();
+        var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+            ? window.omoApplicationViewPreferencesGetDefault(root)
+            : null;
+        var personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
+            ? window.omoApplicationViewPreferencesGetPersonal(root)
+            : null;
+        var preferredView = readPreference(window.sessionStorage) || personalView || serverDefault || getStoredPreference() || getDefaultPreference();
         if (preferredView && !viewsMatch(normalizeView(preferredView), currentView())) {
             refreshRoot(policyViewUrl(normalizeView(preferredView)));
         }
@@ -805,7 +825,34 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
     root.querySelectorAll('[data-policy-close]').forEach(function (button) { button.addEventListener('click', close); });
     var create = root.querySelector('[data-policy-new]');
     if (create) create.addEventListener('click', function () { openPolicyDrawer(root.dataset.policyCreateUrl || ''); });
-    body.addEventListener('submit', function (event) { var form = event.target.closest('[data-policy-form]'); if (!form) return; event.preventDefault(); if (!form.reportValidity()) return; var feedback = form.querySelector('[data-policy-feedback]'); fetch(form.action, {method: 'POST', credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: new FormData(form)}).then(function (response) { return response.json().then(function (payload) { return {ok: response.ok, payload: payload}; }); }).then(function (result) { if (!result.ok || !result.payload.success) throw new Error(result.payload.message || root.dataset.policySaveError); feedback.hidden = false; feedback.textContent = result.payload.message; window.omoPolicyAfterSave(); }).catch(function (error) { feedback.hidden = false; feedback.textContent = error.message || root.dataset.policySaveError; }); });
+    body.addEventListener('submit', function (event) {
+        var form = event.target.closest('[data-policy-form]');
+        if (!form) return;
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        var feedback = form.querySelector('[data-policy-feedback]');
+        var formData = new FormData(form);
+        var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
+        var submitButton = form.querySelector('[type="submit"]');
+        if (usesSharedPendingState && !window.omoBeginPendingAction(form)) return;
+        if (!usesSharedPendingState && submitButton) submitButton.disabled = true;
+        fetch(form.action, {method: 'POST', credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: formData})
+            .then(function (response) { return response.json().then(function (payload) { return {ok: response.ok, payload: payload}; }); })
+            .then(function (result) {
+                if (!result.ok || !result.payload.success) throw new Error(result.payload.message || root.dataset.policySaveError);
+                feedback.hidden = false;
+                feedback.textContent = result.payload.message;
+                window.omoPolicyAfterSave();
+            })
+            .catch(function (error) {
+                feedback.hidden = false;
+                feedback.textContent = error.message || root.dataset.policySaveError;
+            })
+            .finally(function () {
+                if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') window.omoEndPendingAction(form);
+                else if (submitButton) submitButton.disabled = false;
+            });
+    });
     window.omoPolicyAfterSave = function () { window.location.reload(); };
 })();
 </script>

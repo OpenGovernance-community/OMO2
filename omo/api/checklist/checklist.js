@@ -206,13 +206,17 @@
     }
 
     function clearTemporaryFilters() {
+        clearStoredValue(window.sessionStorage, checklistSessionViewsStorageKey);
+    }
+
+    function clearStoredValue(storage, storageKey) {
         try {
-            var values = JSON.parse(window.sessionStorage.getItem(checklistSessionViewsStorageKey) || '{}');
+            var values = JSON.parse(storage.getItem(storageKey) || '{}');
             if (!values || typeof values !== 'object') {
                 return;
             }
             delete values[getPreferencesContextKey()];
-            window.sessionStorage.setItem(checklistSessionViewsStorageKey, JSON.stringify(values));
+            storage.setItem(storageKey, JSON.stringify(values));
         } catch (error) {
         }
     }
@@ -338,9 +342,15 @@
         }
         var temporary = readStoredValue(window.sessionStorage, checklistSessionViewsStorageKey);
         var saved = readStoredValue(window.localStorage, checklistSavedViewsStorageKey);
+        var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+            ? window.omoApplicationViewPreferencesGetDefault(root)
+            : null;
+        var personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
+            ? window.omoApplicationViewPreferencesGetPersonal(root)
+            : null;
         var preferredScope = normalizeScope(initialOpenChecklistId > 0
             ? currentScope
-            : (temporary && temporary.scope) || (saved && saved.scope) || currentScope);
+            : (temporary && temporary.scope) || (personalView && personalView.scope) || (serverDefault && serverDefault.scope) || (saved && saved.scope) || currentScope);
         if (!root.querySelector('[data-checklist-scope-option="' + preferredScope + '"]')) {
             preferredScope = currentScope;
         }
@@ -364,7 +374,7 @@
         }
         var resolvedChecklistId = Number(checklistId || 0);
         return Number.isInteger(resolvedChecklistId) && resolvedChecklistId > 0
-            ? 'checklist-c' + String(resolvedChecklistId)
+            ? 'processus-c' + String(resolvedChecklistId)
             : '';
     }
 
@@ -377,7 +387,7 @@
     }
 
     function isChecklistDetailRoute(routeToken) {
-        return /^checklist-c\d+$/i.test(String(routeToken || ''));
+        return /^(?:processus|checklist)-c\d+$/i.test(String(routeToken || ''));
     }
 
     function buildDetailUrl(checklistId) {
@@ -978,6 +988,28 @@
                 closeFilterPanel(true, true);
                 return;
             }
+            if (event.target.closest('[data-checklist-filter-restore]')) {
+                event.preventDefault();
+                closeFilterPanel(false, false);
+                clearStoredValue(window.localStorage, checklistSavedViewsStorageKey);
+                clearTemporaryFilters();
+                var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+                    ? window.omoApplicationViewPreferencesGetDefault(root)
+                    : null;
+                var nextScope = normalizeScope((serverDefault && serverDefault.scope) || currentScope);
+                if (!root.querySelector('[data-checklist-scope-option="' + nextScope + '"]')) {
+                    nextScope = currentScope;
+                }
+                if (nextScope !== currentScope) {
+                    currentScope = nextScope;
+                    refreshRoot(buildScopeUrl(nextScope)).catch(function () {
+                        root.removeAttribute('data-omo-view-filter-pending');
+                        root.removeAttribute('aria-busy');
+                    });
+                    return;
+                }
+                syncFilterChip();
+            }
             var scopeButton = event.target.closest('[data-checklist-scope-option]');
             if (scopeButton && pendingFilters) {
                 pendingFilters.scope = normalizeScope(scopeButton.getAttribute('data-checklist-scope-option'));
@@ -1178,7 +1210,7 @@
     function maybeOpenInitialChecklist() {
         var checklistId = initialOpenChecklistId;
         var routeToken = getCurrentRouteToken();
-        var routeMatch = String(routeToken || '').match(/^checklist-c(\d+)$/i);
+        var routeMatch = String(routeToken || '').match(/^(?:processus|checklist)-c(\d+)$/i);
         if (routeMatch) {
             checklistId = Number(routeMatch[1]);
         }
@@ -1191,7 +1223,7 @@
         if (!root.isConnected) {
             return false;
         }
-        var routeMatch = String(routeToken || '').replace(/^#/, '').trim().match(/^checklist-c(\d+)$/i);
+        var routeMatch = String(routeToken || '').replace(/^#/, '').trim().match(/^(?:processus|checklist)-c(\d+)$/i);
         if (!routeMatch) {
             return false;
         }
@@ -1207,7 +1239,7 @@
     function handleChecklistRouteChange(event) {
         var route = event && event.detail ? event.detail : {};
         var checklistId = Number(route.checklistId || 0);
-        if (checklistId > 0 && window.omoOpenChecklistRoute('checklist-c' + String(checklistId))) {
+        if (checklistId > 0 && window.omoOpenChecklistRoute('processus-c' + String(checklistId))) {
             return;
         }
         closeDrawer();

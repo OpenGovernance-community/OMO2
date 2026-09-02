@@ -11,6 +11,7 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
         $logContext = omoCronStartMaintenanceLog($source);
         $failedTasks = array();
         $result = [
+            'calDavCacheEntriesDeleted' => 0,
             'faqProcessed' => 0,
             'checklistProjectsCreated' => 0,
             'checklistRecurringProjectsCreated' => 0,
@@ -30,6 +31,14 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
                 return 0;
             }
         };
+
+        $result['calDavCacheEntriesDeleted'] = $runTask(
+            'caldav_cache_cleanup',
+            'OMO fake cron CalDAV cache cleanup failed: ',
+            static function () {
+                return \dbObject\CalDavCache::cleanup();
+            }
+        );
 
         $result['faqProcessed'] = $runTask(
             'faq_reliability',
