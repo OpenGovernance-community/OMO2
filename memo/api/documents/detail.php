@@ -31,4 +31,5 @@ if (
 }
 
 $_SESSION['doc_' . $document->getId()] = true;
+$document->markConsulted();
 memoRenderDocumentDetail($document);

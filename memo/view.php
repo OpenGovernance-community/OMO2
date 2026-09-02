@@ -35,6 +35,7 @@ if (!$hasAccess) {
 
 if ($hasAccess) {
     $_SESSION['doc_' . $document->getId()] = true;
+    $document->markConsulted();
 }
 ?>
 <!DOCTYPE html>
