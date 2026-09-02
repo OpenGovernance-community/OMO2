@@ -143,7 +143,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.checklist.modal_title' => ['text' => 'Insérer un processus', 'context' => 'Title of the process picker opened from a PV point editor.'],
         'documents.pv_editor.checklist.visible' => ['text' => 'Processus visibles', 'context' => 'Label for the visible processes list in the PV point picker.'],
         'documents.pv_editor.checklist.insert' => ['text' => 'Insérer le processus', 'context' => 'Button confirming insertion of a process in a PV point.'],
-        'documents.pv_editor.checklist.review_container' => ['text' => 'Éléments récurrents', 'context' => 'Review label for a container checklist embedded in a PV.'],
+        'documents.pv_editor.checklist.review_container' => ['text' => 'Activités récurrentes', 'context' => 'Review label for an independently scheduled process embedded in a PV.'],
         'documents.pv_editor.checklist.review_runs' => ['text' => 'Instances en cours', 'context' => 'Review label for a process checklist embedded in a PV.'],
         'documents.pv_editor.checklist.empty_runs' => ['text' => 'Aucune instance en cours.', 'context' => 'Empty state shown in a process checklist embedded in a PV.'],
         'documents.pv_editor.checklist.complete_archive' => ['text' => 'Valider et archiver', 'context' => 'Action available only to the PV editor for completing and archiving a checklist project.'],

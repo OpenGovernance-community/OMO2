@@ -21,6 +21,7 @@
 				[['IDuser','IDtypeholon','IDholon_parent','IDholon_template','IDorganization','IDholon_org'], 'fk'],				// Cle etrangeres
 				[['lockedname','lockedicon','lockedbanner','lockedadminmin','lockedadminmax','adminminoverride','adminmaxoverride','active','visible','mandatory','unique','link','adminparent'], 'boolean'],				// Cle etrangeres
 				[['color'], 'color'],				// Couleur au format hexadecimal
+				[['parameters'], 'parameters'],
 				[['id'], 'safe'],								// Champs proteges (n'apparaissent pas dans les formulaires)
 			];
 		}
@@ -47,6 +48,7 @@
 				'icon' => 'Icône',
 				'banner' => 'Bannière',
 				'accesskey' => 'Cle acces',
+				'parameters' => 'Parametres',
 				'mandatory' => 'Obligatoire ?',
 				'lockedname' => 'Nom verrouille ?',
 				'lockedicon' => 'Icône verrouillée ?',
@@ -66,6 +68,7 @@
 			return [
 				'name' => 'Nom court utilise dans la representation graphique, les chemins et les choix de contexte.',
 				'nomcomplet' => 'Nom complet facultatif utilise dans les vues textuelles.',
+				'parameters' => 'Parametres techniques du holon.',
 			];
 		}
 
@@ -81,6 +84,91 @@
 		// Retourne la valeur de base pour le tri
 		public static function getOrder() {
 			return "name";
+		}
+
+		public function getParametersArray(): array
+		{
+			$parameters = json_decode((string)$this->get('parameters'), true);
+			return is_array($parameters) ? $parameters : array();
+		}
+
+		public function setParametersArray(array $parameters): void
+		{
+			$this->set('parameters', $parameters);
+		}
+
+		public function getDashboardDefaultLayout(): ?array
+		{
+			$parameters = $this->getParametersArray();
+			if (!array_key_exists(UserHolon::DASHBOARD_DEFAULT_LAYOUT_PARAMETER, $parameters)) {
+				return null;
+			}
+
+			return UserHolon::normalizeDashboardLayout($parameters[UserHolon::DASHBOARD_DEFAULT_LAYOUT_PARAMETER]);
+		}
+
+		public function setDashboardDefaultLayout(array $layout): void
+		{
+			$parameters = $this->getParametersArray();
+			$parameters[UserHolon::DASHBOARD_DEFAULT_LAYOUT_PARAMETER] = UserHolon::normalizeDashboardLayout($layout);
+			$this->setParametersArray($parameters);
+		}
+
+		public function clearDashboardDefaultLayout(): void
+		{
+			$parameters = $this->getParametersArray();
+			unset($parameters[UserHolon::DASHBOARD_DEFAULT_LAYOUT_PARAMETER]);
+			$this->setParametersArray($parameters);
+		}
+
+		public function getDashboardTemplateLayoutKeys(): array
+		{
+			$keys = array();
+			foreach ($this->getTemplateLineageHolons() as $template) {
+				if (!$template instanceof self) {
+					continue;
+				}
+				$key = UserHolon::makeDashboardTemplateKey(
+					(int)$template->get('IDtypeholon'),
+					(string)$template->get('templatename')
+				);
+				$keys[$key] = $key;
+			}
+
+			$typeKey = UserHolon::makeDashboardTemplateKey((int)$this->get('IDtypeholon'));
+			$keys[$typeKey] = $typeKey;
+			return array_values($keys);
+		}
+
+		public function getDashboardDirectTemplateLayoutKey(): string
+		{
+			$template = $this->getTemplateHolon();
+			if (!$template instanceof self) {
+				return '';
+			}
+
+			return UserHolon::makeDashboardTemplateKey(
+				(int)$template->get('IDtypeholon'),
+				(string)$template->get('templatename')
+			);
+		}
+
+		public function getDashboardBaseTypeLayoutKey(): string
+		{
+			return UserHolon::makeDashboardBaseTypeKey((int)$this->get('IDtypeholon'));
+		}
+
+		public function getDashboardTemplateLayoutLabel(): string
+		{
+			$template = $this->getTemplateHolon();
+			if ($template instanceof self) {
+				$templateName = trim((string)$template->get('templatename'));
+				if ($templateName !== '') {
+					return $templateName;
+				}
+			}
+
+			return $this->getTypeLabel();
 		}
 		
 		// Resout organisation liee
@@ -1922,6 +2010,7 @@
 					AND inv.active = 1
 					AND (inv.dateexpiration IS NULL OR inv.dateexpiration > NOW())
 				WHERE uh.IDholon IN (" . implode(', ', $placeholders) . ")
+				  AND uh.is_membership = 1
 				  AND (
 					uh.active = 1
 					OR inv.id IS NOT NULL
@@ -1964,6 +2053,7 @@
 					INNER JOIN holon h ON h.id = uh.IDholon
 					WHERE uh.IDholon IN (" . implode(', ', $placeholders) . ")
 					  AND uh.active = 1
+					  AND uh.is_membership = 1
 					ORDER BY
 						COALESCE(NULLIF(u.lastname, ''), NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
 						COALESCE(NULLIF(u.firstname, ''), NULLIF(u.username, ''), u.email) ASC,
@@ -2229,7 +2319,8 @@
 				 FROM user_holon uh
      INNER JOIN holon h ON h.id = uh.IDholon
 				 WHERE uh.IDuser = :user_id
-				   AND uh.IDholon IN (" . implode(', ', $placeholders) . ")",
+				   AND uh.IDholon IN (" . implode(', ', $placeholders) . ")
+				   AND uh.is_membership = 1",
 				$params
 			);
 
@@ -2500,7 +2591,7 @@
 			}
 
 			$rows = self::fetchAll(
-				'SELECT DISTINCT `IDuser` FROM `user_holon` WHERE `IDholon` = :holon_id AND `active` = 1',
+				'SELECT DISTINCT `IDuser` FROM `user_holon` WHERE `IDholon` = :holon_id AND `active` = 1 AND `is_membership` = 1',
 				array('holon_id' => (int)$this->getId())
 			);
 			if ($rows === false) {
@@ -2841,7 +2932,7 @@
 					}
 
 					$linkRows = \dbObject\DbObject::fetchAll(
-						"SELECT id FROM user_holon WHERE IDuser = :user_id AND IDholon IN (" . implode(', ', $placeholders) . ")",
+						"SELECT id FROM user_holon WHERE IDuser = :user_id AND is_membership = 1 AND IDholon IN (" . implode(', ', $placeholders) . ")",
 						$params
 					);
 
@@ -2892,6 +2983,7 @@
 						 FROM user_holon uh
          INNER JOIN holon h ON h.id = uh.IDholon
 						 WHERE uh.IDuser = :user_id
+						   AND uh.is_membership = 1
 						   AND h.IDorganization = :organization_id",
 						array(
 							'user_id' => $userId,

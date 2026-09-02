@@ -91,7 +91,12 @@
 			$entry->set('datecreation', new \DateTimeImmutable('now', new \DateTimeZone('UTC')));
 			$entry->set('active', true);
 
-			return $entry->save();
+			$result = $entry->save();
+			if (is_array($result) && ($result['status'] ?? false) === true) {
+				CalDavCache::invalidateOrganization((int)$organizationId);
+			}
+
+			return $result;
 		}
 
 		public static function buildHolonSearchNeedle($holonId)

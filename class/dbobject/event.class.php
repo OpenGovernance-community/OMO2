@@ -90,7 +90,13 @@ class Event extends DbObject
 
     public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
     {
-        return self::execute("UPDATE event SET IDuser = CASE WHEN end_at < NOW() THEN :ghost_user_id ELSE NULL END WHERE IDorganization = :organization_id AND IDuser = :user_id", array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId));
+        $organizationId = (int)$organizationId;
+        $result = self::execute("UPDATE event SET IDuser = CASE WHEN end_at < NOW() THEN :ghost_user_id ELSE NULL END WHERE IDorganization = :organization_id AND IDuser = :user_id", array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => $organizationId, 'user_id' => (int)$userId));
+        if ($result) {
+            CalDavCache::invalidateOrganization($organizationId);
+        }
+
+        return $result;
     }
 
     public static function getStatusCatalog()
@@ -1012,6 +1018,19 @@ class Event extends DbObject
         return (int)$rootHolon->get('IDorganization');
     }
 
+    public static function getOrganizationIdByEventId($eventId)
+    {
+        $eventId = (int)$eventId;
+        if ($eventId <= 0) {
+            return 0;
+        }
+
+        return (int)self::fetchValue(
+            'SELECT `IDorganization` FROM `event` WHERE `id` = :event_id LIMIT 1',
+            array('event_id' => $eventId)
+        );
+    }
+
     public function save()
     {
         $this->set('status', self::normalizeStatus($this->get('status')));
@@ -1090,12 +1109,25 @@ class Event extends DbObject
             return $saveResult;
         }
 
+        CalDavCache::invalidateOrganization((int)$this->get('IDorganization'));
+
         $syncResult = $this->syncAssociatedDocumentEventDate();
         if (!is_array($syncResult) || ($syncResult['status'] ?? false) !== true) {
             return $syncResult;
         }
 
         return $saveResult;
+    }
+
+    public function delete()
+    {
+        $organizationId = (int)$this->get('IDorganization');
+        $deleted = parent::delete();
+        if ($deleted) {
+            CalDavCache::invalidateOrganization($organizationId);
+        }
+
+        return $deleted;
     }
 }
 

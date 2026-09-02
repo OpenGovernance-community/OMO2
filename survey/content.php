@@ -663,7 +663,7 @@ $surveyOmoPathDefinitions = [
         'stages' => [
             ['title' => 'Partager un socle fiable', 'description' => 'Donnez à chacun accès à la structure, aux membres et aux documents correspondant à son contexte de travail.'],
             ['title' => 'Clarifier les accès', 'description' => 'Utilisez les droits par organisation, cercle, rôle et document pour rendre les règles du jeu compréhensibles plutôt qu’implicites.'],
-            ['title' => 'Rendre le travail visible', 'description' => 'Centralisez documents, projets, décisions, checklists et calendrier dans leurs contextes respectifs afin de réduire les informations cachées.'],
+            ['title' => 'Rendre le travail visible', 'description' => 'Centralisez documents, projets, décisions, processus et calendrier dans leurs contextes respectifs afin de réduire les informations cachées.'],
             ['title' => 'Soutenir la régulation', 'description' => 'Le tableau de pilotage, les indicateurs et les échéances permettent de partager les faits et d’ajuster avant de multiplier les validations.'],
             ['title' => 'Garder un cadre protecteur', 'description' => 'Conservez des droits, périmètres et traces adaptés aux sujets sensibles : la confiance gagne à être soutenue par des règles explicites.'],
         ],
@@ -690,7 +690,7 @@ $surveyOmoPathDefinitions = [
         'stages' => [
             ['title' => 'Donner une place aux écarts', 'description' => 'Utilisez les documents, comptes rendus et discussions de propositions pour rendre les difficultés concrètes et partageables.'],
             ['title' => 'Transformer un problème en sujet commun', 'description' => 'Ouvrez une consultation ou une discussion liée à une décision afin que les personnes concernées puissent formuler ce qui coince.'],
-            ['title' => 'Relier les échanges à une action', 'description' => 'Convertissez les points clarifiés en décisions, projets, checklists ou ajustements de rôles, dans le contexte où ils se posent.'],
+            ['title' => 'Relier les échanges à une action', 'description' => 'Convertissez les points clarifiés en décisions, projets, processus ou ajustements de rôles, dans le contexte où ils se posent.'],
             ['title' => 'Suivre les ajustements', 'description' => 'Les projets, indicateurs et comptes rendus aident à vérifier si la réponse apportée résout réellement la tension observée.'],
             ['title' => 'Éviter de tout dramatiser', 'description' => 'Réservez les espaces de discussion et de décision aux sujets qui appellent une élaboration, sans imposer un traitement lourd à chaque inconfort.'],
         ],
@@ -700,7 +700,7 @@ $surveyOmoPathDefinitions = [
             ['title' => 'Créer des points d’arrêt utiles', 'description' => 'Le calendrier, les ordres du jour et les documents de préparation donnent un cadre simple pour ne pas décider uniquement dans l’urgence.'],
             ['title' => 'Préparer les informations pertinentes', 'description' => 'Rassemblez les documents, projets et indicateurs liés au contexte avant une réunion ou une décision importante.'],
             ['title' => 'Consigner ce qui a été vu', 'description' => 'Les PV, discussions et décisions conservent les faits, les options et les engagements afin de limiter les réactions fondées sur des souvenirs partiels.'],
-            ['title' => 'Réguler le rythme de travail', 'description' => 'Suivez les échéances, projets et checklists pour rendre les urgences visibles et choisir collectivement ce qui mérite une attention immédiate.'],
+            ['title' => 'Réguler le rythme de travail', 'description' => 'Suivez les échéances, projets et processus pour rendre les urgences visibles et choisir collectivement ce qui mérite une attention immédiate.'],
             ['title' => 'Garder la présence au service de l’action', 'description' => 'Utilisez ces repères pour ralentir juste assez et éclairer les choix, sans transformer chaque décision en processus excessivement long.'],
         ],
     ],

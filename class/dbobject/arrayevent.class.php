@@ -339,7 +339,9 @@ class ArrayEvent extends ArrayDbObject
         if (!$includeInactive) {
             $query .= "
               AND e.active = 1
+              AND e.status <> :cancelled_status
             ";
+            $params['cancelled_status'] = \dbObject\Event::STATUS_CANCELLED;
         }
 
         $query .= "

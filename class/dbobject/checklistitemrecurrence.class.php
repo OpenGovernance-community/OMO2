@@ -25,7 +25,7 @@ class ChecklistItemRecurrence extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDchecklistitem' => 'Element de checklist',
+            'IDchecklistitem' => 'Activite de processus',
             'frequency' => 'Frequence',
             'schedule' => 'Moment attendu',
             'display_lead_value' => 'Affichage en avance',
@@ -42,7 +42,7 @@ class ChecklistItemRecurrence extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'display_lead_value' => 'Nombre de jours, semaines ou mois avant la date attendue pour afficher le projet.',
+            'display_lead_value' => 'Nombre d heures, jours, semaines ou mois avant la date attendue pour afficher le projet.',
             'display_lead_unit' => 'Unite utilisee pour l anticipation d affichage.',
             'execution_duration_value' => 'Duree accordee pour realiser le projet a partir de sa date attendue.',
             'execution_duration_unit' => 'Unite utilisee pour le delai de realisation.',
@@ -251,7 +251,7 @@ class ChecklistItemRecurrence extends DbObject
                     $this->getDeadlineAt($occurrenceAt)
                 );
                 if (!($project instanceof Project)) {
-                    throw new \RuntimeException('Unable to create recurring checklist project.');
+                    throw new \RuntimeException('Unable to create recurring process activity project.');
                 }
                 $occurrence = new ChecklistItemOccurrence();
                 $occurrence->set('IDchecklistitem', (int)$item->getId());
@@ -259,13 +259,13 @@ class ChecklistItemRecurrence extends DbObject
                 $occurrence->set('IDproject', (int)$project->getId());
                 $occurrenceResult = $occurrence->save();
                 if (!is_array($occurrenceResult) || empty($occurrenceResult['status'])) {
-                    throw new \RuntimeException('Unable to save recurring checklist occurrence.');
+                    throw new \RuntimeException('Unable to save recurring process activity occurrence.');
                 }
             }
             $this->set('next_trigger_at', $nextTriggerAt);
             $result = $this->save();
             if (!is_array($result) || empty($result['status'])) {
-                throw new \RuntimeException('Unable to update recurring checklist schedule.');
+                throw new \RuntimeException('Unable to update recurring process activity schedule.');
             }
             if ($startedTransaction && $pdo && $pdo->inTransaction()) {
                 $pdo->commit();

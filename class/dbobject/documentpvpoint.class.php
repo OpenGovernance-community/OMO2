@@ -487,6 +487,98 @@ class DocumentPvPoint extends DbObject
         return self::EDIT_LOCK_TIMEOUT_SECONDS;
     }
 
+    public static function refreshEditLocksForSession(
+        int $documentId,
+        int $organizationId,
+        int $userId,
+        string $lockToken,
+        array $pointIds
+    ): bool {
+        $lockToken = trim($lockToken);
+        $pointIds = array_values(array_unique(array_filter(array_map('intval', $pointIds), static function ($pointId) {
+            return $pointId > 0;
+        })));
+        $pointIds = array_slice($pointIds, 0, 200);
+        if ($documentId <= 0 || $organizationId <= 0 || $userId <= 0 || $lockToken === '' || count($pointIds) === 0) {
+            return false;
+        }
+
+        $params = [
+            'document_id' => $documentId,
+            'organization_id' => $organizationId,
+            'user_id' => $userId,
+            'lock_token' => $lockToken,
+            'editing_date' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
+            'document_type' => \dbObject\Document::TYPE_PV,
+            'validated_stage' => \dbObject\Document::PV_STAGE_VALIDATED,
+        ];
+        $pointPlaceholders = [];
+        foreach ($pointIds as $index => $pointId) {
+            $parameterName = 'point_id_' . $index;
+            $pointPlaceholders[] = ':' . $parameterName;
+            $params[$parameterName] = $pointId;
+        }
+
+        return self::execute(
+            "UPDATE document_pv_point point
+            INNER JOIN document document_record ON document_record.id = point.IDdocument
+            SET point.dateedition = :editing_date
+            WHERE point.IDdocument = :document_id
+              AND document_record.IDorganization = :organization_id
+              AND document_record.documenttype = :document_type
+              AND COALESCE(document_record.pvstage, '') <> :validated_stage
+              AND document_record.active = 1
+              AND point.IDuser_editing = :user_id
+              AND point.edit_lock_token = :lock_token
+              AND point.id IN (" . implode(', ', $pointPlaceholders) . ")",
+            $params
+        );
+    }
+
+    public static function releaseEditLocksForSession(
+        int $documentId,
+        int $organizationId,
+        int $userId,
+        string $lockToken,
+        array $pointIds
+    ): bool {
+        $lockToken = trim($lockToken);
+        $pointIds = array_values(array_unique(array_filter(array_map('intval', $pointIds), static function ($pointId) {
+            return $pointId > 0;
+        })));
+        $pointIds = array_slice($pointIds, 0, 200);
+        if ($documentId <= 0 || $organizationId <= 0 || $userId <= 0 || $lockToken === '' || count($pointIds) === 0) {
+            return false;
+        }
+
+        $params = [
+            'document_id' => $documentId,
+            'organization_id' => $organizationId,
+            'user_id' => $userId,
+            'lock_token' => $lockToken,
+        ];
+        $pointPlaceholders = [];
+        foreach ($pointIds as $index => $pointId) {
+            $parameterName = 'point_id_' . $index;
+            $pointPlaceholders[] = ':' . $parameterName;
+            $params[$parameterName] = $pointId;
+        }
+
+        return self::execute(
+            "UPDATE document_pv_point point
+            INNER JOIN document document_record ON document_record.id = point.IDdocument
+            SET point.IDuser_editing = NULL,
+                point.edit_lock_token = NULL,
+                point.dateedition = NULL
+            WHERE point.IDdocument = :document_id
+              AND document_record.IDorganization = :organization_id
+              AND point.IDuser_editing = :user_id
+              AND point.edit_lock_token = :lock_token
+              AND point.id IN (" . implode(', ', $pointPlaceholders) . ")",
+            $params
+        );
+    }
+
     public function getEditingUserId(): int
     {
         return (int)$this->get('IDuser_editing');
@@ -630,12 +722,15 @@ class DocumentPvPoint extends DbObject
                 'point_id' => (int)$this->getId(),
             ]
         );
-        if (!$result || !$this->load((int)$this->getId())) {
+        if (!$result) {
             return [
                 'status' => false,
                 'text' => 'Impossible de verrouiller ce point.',
             ];
         }
+        $this->set('IDuser_editing', $userId);
+        $this->set('edit_lock_token', $lockToken);
+        $this->set('dateedition', $now);
 
         return [
             'status' => true,
@@ -692,12 +787,15 @@ class DocumentPvPoint extends DbObject
                 'point_id' => (int)$this->getId(),
             ]
         );
-        if (!$result || !$this->load((int)$this->getId())) {
+        if (!$result) {
             return [
                 'status' => false,
                 'text' => 'Impossible de reprendre le verrou d edition.',
             ];
         }
+        $this->set('IDuser_editing', $userId);
+        $this->set('edit_lock_token', $lockToken);
+        $this->set('dateedition', $now);
 
         return [
             'status' => true,
@@ -753,12 +851,15 @@ class DocumentPvPoint extends DbObject
             WHERE id = :point_id",
             ['point_id' => (int)$this->getId()]
         );
-        if (!$result || !$this->load((int)$this->getId())) {
+        if (!$result) {
             return [
                 'status' => false,
                 'text' => 'Impossible de liberer le verrou d edition.',
             ];
         }
+        $this->set('IDuser_editing', null);
+        $this->set('edit_lock_token', null);
+        $this->set('dateedition', null);
 
         return [
             'status' => true,

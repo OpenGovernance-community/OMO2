@@ -78,7 +78,7 @@ class Project extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'description' => 'Description HTML simple avec paragraphes, listes et mise en forme, y compris pour les modeles de checklist.',
+            'description' => 'Description HTML simple avec paragraphes, listes et mise en forme, y compris pour les modeles de processus.',
             'status' => 'Etat du projet pour une future vue kanban.',
             'planned_start_date' => 'Date a laquelle le projet devrait commencer.',
             'planned_end_date' => 'Date a laquelle le projet devrait etre termine.',
@@ -89,7 +89,7 @@ class Project extends DbObject
             'calculated_importance' => 'Score calcule automatiquement a partir de l importance strategique declaree, de la chaine de projets et de la position holarchique.',
             'capture_mode' => 'Indique si les captures Telegram doivent creer plusieurs documents ou alimenter un journal unique.',
             'project_size' => 'Taille relative du projet, utilisee pour ponderer sa place dans les barres de synthese.',
-            'project_kind' => 'Distingue un projet operationnel d un projet utilise comme modele de checklist.',
+            'project_kind' => 'Distingue un projet operationnel d un projet utilise comme modele de processus.',
             'IDproject_template' => 'Projet modele a l origine de cette instance.',
         ];
     }
@@ -139,7 +139,7 @@ class Project extends DbObject
             ],
             'project_kind' => [
                 [self::KIND_STANDARD, 'Projet'],
-                [self::KIND_CHECKLIST_TEMPLATE, 'Modele de checklist'],
+                [self::KIND_CHECKLIST_TEMPLATE, 'Modele de processus'],
             ],
         ];
     }

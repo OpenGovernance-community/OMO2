@@ -787,6 +787,18 @@ if (empty($holonContext['status'])) {
 
 $currentContextHolon = $holonContext['holon'] ?? null;
 $rootHolon = $organization->getEnabledStructuralRootHolon();
+$applicationViewPreferences = omoApplicationViewPreferencesGetContext(
+    'decision',
+    $organization,
+    $currentContextHolon instanceof Holon ? $currentContextHolon : null,
+    $currentUserId
+);
+$requestedDecisionScope = omoApplicationViewPreferencesGetInitialValue(
+    $applicationViewPreferences,
+    'decision_scope',
+    'scope',
+    'contextual'
+);
 $allowedContextHolonIds = $currentContextHolon
     ? [(int)$currentContextHolon->getId() => true]
     : [];
@@ -1361,7 +1373,7 @@ if (!is_string($payloadJson)) {
     $payloadJson = '{"items":[],"openDecisionId":0,"openDecisionMode":"default","groups":[],"statusFilters":[],"statusCounts":{},"typeOptions":[],"methodOptions":[],"holonOptions":[],"text":{},"newUrl":"","refreshUrl":""}';
 }
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <div
     class="omo-decisions omo-panel-view"
     id="omo-decisions-root"
@@ -1369,6 +1381,7 @@ if (!is_string($payloadJson)) {
     data-omo-decision-scope="<?= $escape($decisionScope) ?>"
     data-omo-decision-oid="<?= (int)$currentOrganizationId ?>"
     data-omo-decision-cid="<?= (int)$normalizedCurrentHolonId ?>"
+    data-omo-app-view-preferences="<?= $escape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     data-omo-view-filter-pending="1"
     aria-busy="true"
 >
@@ -1443,15 +1456,12 @@ if (!is_string($payloadJson)) {
                     </div>
                     <div class="omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-omo-decisions-filter-apply><?= $escape(t('decisions.index.view_filter.apply', [], $lang, $sourceLang)) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decisions-filter-save><?= $escape(t('decisions.index.view_filter.save', [], $lang, $sourceLang)) ?></button>
-                        <div class="generic-menu omo-view-filter__actions-more" data-omo-decisions-filter-more-menu>
-                            <button type="button" class="generic-menu-toggle" data-omo-decisions-filter-more-toggle aria-expanded="false" aria-label="<?= $escape(t('decisions.index.view_filter.more_actions', [], $lang, $sourceLang)) ?>">&#8942;</button>
-                            <div class="generic-menu-panel" data-omo-decisions-filter-more-panel role="menu" hidden>
-                                <button type="button" class="generic-menu-item" data-omo-decisions-filter-more-action="apply-everywhere" role="menuitem"><?= $escape(t('decisions.index.view_filter.apply_everywhere', [], $lang, $sourceLang)) ?></button>
-                                <button type="button" class="generic-menu-item" data-omo-decisions-filter-more-action="set-default" role="menuitem"><?= $escape(t('decisions.index.view_filter.set_default', [], $lang, $sourceLang)) ?></button>
-                                <button type="button" class="generic-menu-item" data-omo-decisions-filter-more-action="restore-default" role="menuitem"><?= $escape(t('decisions.index.view_filter.restore_default', [], $lang, $sourceLang)) ?></button>
-                            </div>
-                        </div>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decisions-filter-save data-omo-app-view-save-scope="personal"><?= $escape(t('decisions.index.view_filter.save', [], $lang, $sourceLang)) ?></button>
+                        <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= $escape($applicationViewPreferences['primarySaveScope']) ?>"><?= $escape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                        <?php endif; ?>
+                        <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
                 </section>
             </div>
@@ -1495,6 +1505,7 @@ if (!is_string($payloadJson)) {
 </div>
 
 <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
 <link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260813-decision-uniformity">
 <script src="/common/choice/decision_cards.js"></script>
 
@@ -2215,7 +2226,13 @@ function omoDecisionsReadViewPreferences() {
     const temporary = omoDecisionsReadStoredValue(window.sessionStorage, omoDecisionsSessionViewsStorageKey);
     const saved = omoDecisionsGetStoredViewPreferences();
     const defaultView = omoDecisionsGetDefaultViewPreferences();
-    return omoDecisionsNormalizeViewPreferences(temporary || saved || defaultView);
+    const serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+        ? window.omoApplicationViewPreferencesGetDefault(root)
+        : null;
+    const personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
+        ? window.omoApplicationViewPreferencesGetPersonal(root)
+        : null;
+    return omoDecisionsNormalizeViewPreferences(temporary || personalView || serverDefault || saved || defaultView);
 }
 
 function omoDecisionsReadSearch() {
@@ -2513,7 +2530,13 @@ function omoDecisionsApplyFilterMoreAction(action) {
     if (action === 'restore-default') {
         omoDecisionsClearStoredViewPreferences();
         omoDecisionsClearTemporaryViewPreferences();
-        omoDecisionsApplyViewFilters(omoDecisionsGetDefaultViewPreferences() || {
+        const store = omoDecisionsGetSavedViewsStore();
+        store.defaultView = null;
+        omoDecisionsSaveViewsStore(store);
+        const serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+            ? window.omoApplicationViewPreferencesGetDefault(root)
+            : null;
+        omoDecisionsApplyViewFilters(serverDefault || {
             scope: 'contextual',
             status: 'active',
             type: 'all',

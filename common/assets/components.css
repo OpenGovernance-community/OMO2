@@ -882,6 +882,13 @@ html[data-theme="dark"] .black-icon,
     border-color: var(--color-border, #e5e7eb);
 }
 
+.generic-action-button--compact {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    line-height: 1.2;
+}
+
 .generic-action-button--danger {
     background: color-mix(in srgb, #dc2626 12%, var(--color-surface, #ffffff));
     color: #dc2626;

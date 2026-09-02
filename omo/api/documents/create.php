@@ -2621,7 +2621,11 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         const shouldCloseDocumentDrawerAfterSave = editingDocumentId > 0
             && getSelectedDocumentType() === 'external_link'
             && !!(externalOpenInNewWindowField && externalOpenInNewWindowField.checked);
+        const usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
 
+        if (usesSharedPendingState && !window.omoBeginPendingAction(form)) {
+            return;
+        }
         setSavingState(true);
 
         fetch(form.action, {
@@ -2691,6 +2695,9 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             })
             .finally(function () {
                 setSavingState(false);
+                if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {
+                    window.omoEndPendingAction(form);
+                }
                 syncDictationToolbarButtons();
             });
     });

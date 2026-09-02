@@ -205,6 +205,130 @@
 			$this->set('parameters', $parameters);
 		}
 
+		public function getApplicationViewTemplateDefault($applicationKey, $templateKey): ?array
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($applicationKey === '' || $templateKey === '') {
+				return null;
+			}
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewTemplateDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] ?? array()
+			);
+			return $views[$templateKey][$applicationKey] ?? null;
+		}
+
+		public function getApplicationViewTemplateDefaultForHolon(\dbObject\Holon $holon, $applicationKey): ?array
+		{
+			return $this->getApplicationViewTemplateDefault($applicationKey, $holon->getDashboardDirectTemplateLayoutKey());
+		}
+
+		public function setApplicationViewTemplateDefault($applicationKey, $templateKey, array $view): bool
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($applicationKey === '' || $templateKey === '') {
+				return false;
+			}
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewTemplateDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] ?? array()
+			);
+			if (!isset($views[$templateKey]) || !is_array($views[$templateKey])) {
+				$views[$templateKey] = array();
+			}
+			$views[$templateKey][$applicationKey] = UserHolon::normalizeApplicationView($view);
+			$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] = $views;
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function clearApplicationViewTemplateDefault($applicationKey, $templateKey): bool
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($applicationKey === '' || $templateKey === '') {
+				return false;
+			}
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewTemplateDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] ?? array()
+			);
+			if (isset($views[$templateKey])) {
+				unset($views[$templateKey][$applicationKey]);
+				if ($views[$templateKey] === array()) {
+					unset($views[$templateKey]);
+				}
+			}
+			if ($views === array()) {
+				unset($parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER]);
+			} else {
+				$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] = $views;
+			}
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function getDashboardTemplateDefaultLayout($templateKey): ?array
+		{
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($templateKey === '') {
+				return null;
+			}
+
+			$parameters = $this->getParametersArray();
+			$templateLayouts = UserHolon::normalizeDashboardTemplateLayouts(
+				$parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER] ?? array()
+			);
+			return array_key_exists($templateKey, $templateLayouts) ? $templateLayouts[$templateKey] : null;
+		}
+
+		public function getDashboardTemplateDefaultLayoutForHolon(\dbObject\Holon $holon): ?array
+		{
+			$templateKey = $holon->getDashboardDirectTemplateLayoutKey();
+			return $templateKey === '' ? null : $this->getDashboardTemplateDefaultLayout($templateKey);
+		}
+
+		public function setDashboardTemplateDefaultLayout($templateKey, array $layout): bool
+		{
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($templateKey === '') {
+				return false;
+			}
+
+			$parameters = $this->getParametersArray();
+			$templateLayouts = UserHolon::normalizeDashboardTemplateLayouts(
+				$parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER] ?? array()
+			);
+			$templateLayouts[$templateKey] = UserHolon::normalizeDashboardLayout($layout);
+			$parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER] = $templateLayouts;
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function clearDashboardTemplateDefaultLayout($templateKey): bool
+		{
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($templateKey === '') {
+				return false;
+			}
+
+			$parameters = $this->getParametersArray();
+			$layouts = UserHolon::normalizeDashboardTemplateLayouts(
+				$parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER] ?? array()
+			);
+			unset($layouts[$templateKey]);
+			if ($layouts === array()) {
+				unset($parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER]);
+			} else {
+				$parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER] = $layouts;
+			}
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+
 		public static function getDefaultLexicon(): array
 		{
 			return array(
@@ -1298,7 +1422,7 @@
 				'documents' => array('documents'),
 				'projects' => array('projects'),
 				'tasks' => array('projects'),
-				'checklists' => array('checklist'),
+				'checklists' => array('activities'),
 				'indicators' => array('stats'),
 				'calendar' => array('calendar'),
 				'pv' => array('calendar'),
@@ -1475,6 +1599,7 @@
 				"SELECT id
 				FROM user_holon
 				WHERE IDuser = :user_id
+				  AND is_membership = 1
 				  AND IDholon IN (" . implode(', ', $placeholders) . ")",
 				$params
 			);
@@ -2033,7 +2158,7 @@
 				}
 
 				if (!$this->deleteOrganizationChecklists()) {
-					throw new \RuntimeException("Les checklists de l'organisation n'ont pas pu etre supprimees.");
+					throw new \RuntimeException("Les processus de l'organisation n'ont pas pu etre supprimes.");
 				}
 
 				if (!self::execute(
@@ -5820,31 +5945,16 @@
 			}
 		}
 
-		protected static function omo1ImportChecklistRecurrence(array $record)
+		protected static function omo1ImportActivityRecurrence(array $record)
 		{
 			$frequency = \dbObject\RecurrenceSchedule::normalizeFrequency($record['frequency'] ?? null);
 			$schedule = \dbObject\RecurrenceSchedule::normalizeSchedule($frequency, $record['schedule'] ?? null);
 			return array($frequency, $schedule);
 		}
 
-		protected static function omo1ImportChecklistTemplateProject(\dbObject\Organization $organization, $holonId, $userId, $title, $description, $isActive)
+		protected static function omo1ImportActivities(\dbObject\Organization $organization, array $records, array $holonIdMap, array &$stats)
 		{
-			$template = new \dbObject\Project();
-			$template->set('IDorganization', (int)$organization->getId());
-			$template->set('IDholon', (int)$holonId > 0 ? (int)$holonId : null);
-			$template->set('IDuser', (int)$userId > 0 ? (int)$userId : null);
-			$template->set('title', self::omo1ImportLimitText($title, 255));
-			$template->set('description', $description ?: null);
-			$template->set('status', \dbObject\Project::STATUS_READY);
-			$template->set('project_size', \dbObject\Project::SIZE_S);
-			$template->set('project_kind', \dbObject\Project::KIND_CHECKLIST_TEMPLATE);
-			$template->set('active', (bool)$isActive);
-			self::omo1ImportSave($template, 'Un projet modele de checklist n a pas pu etre cree');
-			return $template;
-		}
-
-		protected static function omo1ImportChecklists(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array &$stats)
-		{
+			$positionsByHolonId = array();
 			foreach ($records as $recordIndex => $record) {
 				if (!is_array($record)) {
 					continue;
@@ -5854,97 +5964,40 @@
 				if ($targetHolonId <= 0) {
 					continue;
 				}
-				$triggerData = isset($record['trigger']) && is_array($record['trigger']) ? $record['trigger'] : array();
-				$triggerType = \dbObject\ChecklistTrigger::normalizeTriggerType($triggerData['type'] ?? \dbObject\ChecklistTrigger::TYPE_CONTAINER);
-				$isStandalone = ($record['kind'] ?? '') === 'standalone' || $triggerType === \dbObject\ChecklistTrigger::TYPE_MANUAL;
-				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
-				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId;
-				$title = self::omo1ImportLimitText($record['title'] ?? '', 255);
-				if ($title === '') {
-					$title = $isStandalone ? 'Checklist OMO 1 #' . (int)($record['sourceId'] ?? ($recordIndex + 1)) : 'Checklists OMO 1';
-				}
-				$rootTemplate = self::omo1ImportChecklistTemplateProject(
-					$organization,
-					$targetHolonId,
-					$targetUserId,
-					$title,
-					$record['description'] ?? null,
-					!array_key_exists('active', $record) || (bool)$record['active']
-				);
-				$checklist = new \dbObject\Checklist();
-				$checklist->set('IDorganization', (int)$organization->getId());
-				$checklist->set('IDproject_template_root', (int)$rootTemplate->getId());
-				$checklist->set('IDchecklist_previous', null);
-				$checklist->set('IDdocument', null);
-				$checklist->set('status', \dbObject\Checklist::normalizeStatus($record['status'] ?? \dbObject\Checklist::STATUS_PUBLISHED));
-				$checklist->set('revision_note', $record['revisionNote'] ?? null);
-				$checklist->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
-				self::omo1ImportSave($checklist, 'Une checklist n a pas pu etre creee');
-
-				$trigger = new \dbObject\ChecklistTrigger();
-				$trigger->set('IDchecklist', (int)$checklist->getId());
-				$trigger->set('stable_key', self::omo1ImportLimitText($triggerData['stableKey'] ?? 'primary', 64));
-				$trigger->set('trigger_type', $isStandalone ? \dbObject\ChecklistTrigger::TYPE_MANUAL : \dbObject\ChecklistTrigger::TYPE_CONTAINER);
-				$trigger->set('overlap_policy', \dbObject\ChecklistTrigger::normalizeOverlapPolicy($triggerData['overlapPolicy'] ?? \dbObject\ChecklistTrigger::OVERLAP_REUSE_OPEN));
-				$trigger->set('enabled', $isStandalone && (!array_key_exists('enabled', $triggerData) || (bool)$triggerData['enabled']));
-				self::omo1ImportSave($trigger, 'Le declencheur de checklist n a pas pu etre cree');
-				$stats['checklists'] += 1;
-
-				if ($isStandalone) {
-					continue;
-				}
+				$recordActive = !array_key_exists('active', $record) || (bool)$record['active'];
 				$items = isset($record['items']) && is_array($record['items']) ? $record['items'] : array();
 				foreach ($items as $itemIndex => $itemRecord) {
 					if (!is_array($itemRecord)) {
 						continue;
 					}
-					$itemSourceUserId = (int)($itemRecord['sourceUserId'] ?? 0);
-					$itemUserId = isset($userIdMap[$itemSourceUserId]) ? (int)$userIdMap[$itemSourceUserId] : (int)$actorUserId;
 					$itemTitle = self::omo1ImportLimitText($itemRecord['title'] ?? '', 255);
 					if ($itemTitle === '') {
-						$itemTitle = 'Checklist OMO 1 #' . (int)($itemRecord['sourceId'] ?? ($itemIndex + 1));
+						$itemTitle = 'Activite OMO 1 #' . (int)($itemRecord['sourceId'] ?? ($itemIndex + 1));
 					}
-					$itemActive = !array_key_exists('active', $itemRecord) || (bool)$itemRecord['active'];
-					$itemTemplate = self::omo1ImportChecklistTemplateProject(
-						$organization,
-						$targetHolonId,
-						$itemUserId,
-						$itemTitle,
-						$itemRecord['description'] ?? null,
-						$itemActive
-					);
-					$item = new \dbObject\ChecklistItem();
-					$item->set('IDchecklist', (int)$checklist->getId());
-					$item->set('IDproject_template', (int)$itemTemplate->getId());
-					$item->set('stable_key', self::omo1ImportLimitText($itemRecord['stableKey'] ?? ('item_' . ($itemIndex + 1)), 64));
-					$activationData = isset($itemRecord['activation']) && is_array($itemRecord['activation']) ? $itemRecord['activation'] : array();
-					$activationType = \dbObject\ChecklistItem::normalizeActivationType($activationData['type'] ?? \dbObject\ChecklistItem::ACTIVATION_IMMEDIATE);
-					$item->set('activation_type', $activationType);
-					$item->set('delay_value', $activationType === \dbObject\ChecklistItem::ACTIVATION_AFTER_START ? (int)($activationData['delayValue'] ?? 0) : 0);
-					$item->set('delay_unit', $activationType === \dbObject\ChecklistItem::ACTIVATION_AFTER_START ? \dbObject\ChecklistItem::normalizeDelayUnit($activationData['delayUnit'] ?? null) : null);
-					$item->set('display_lead_value', max(0, (int)($activationData['displayLeadValue'] ?? 0)));
-					$item->set('display_lead_unit', \dbObject\ChecklistItem::normalizeDelayUnit($activationData['displayLeadUnit'] ?? null));
-					$item->set('execution_duration_value', max(0, (int)($activationData['executionDurationValue'] ?? 0)));
-					$item->set('execution_duration_unit', \dbObject\ChecklistItem::normalizeDelayUnit($activationData['executionDurationUnit'] ?? null));
-					$item->set('position', max(1, (int)($itemRecord['position'] ?? ($itemIndex + 1))));
-					$item->set('active', $itemActive);
-					self::omo1ImportSave($item, 'Un element de checklist n a pas pu etre cree');
-					list($frequency, $schedule) = self::omo1ImportChecklistRecurrence(isset($itemRecord['recurrence']) && is_array($itemRecord['recurrence']) ? $itemRecord['recurrence'] : array());
-					if ($frequency !== null && $schedule !== null) {
-						$recurrence = new \dbObject\ChecklistItemRecurrence();
-						$recurrence->set('IDchecklistitem', (int)$item->getId());
-						$recurrence->set('frequency', $frequency);
-						$recurrence->set('schedule', $schedule);
-						$recurrence->set('display_lead_value', max(0, (int)($itemRecord['recurrence']['displayLeadValue'] ?? 0)));
-						$recurrence->set('display_lead_unit', \dbObject\ChecklistItem::normalizeDelayUnit($itemRecord['recurrence']['displayLeadUnit'] ?? null));
-						$recurrence->set('execution_duration_value', max(0, (int)($itemRecord['recurrence']['executionDurationValue'] ?? 0)));
-						$recurrence->set('execution_duration_unit', \dbObject\ChecklistItem::normalizeDelayUnit($itemRecord['recurrence']['executionDurationUnit'] ?? null));
-						$recurrence->set('enabled', $itemActive);
-						$nextTriggerAt = \dbObject\RecurrenceSchedule::getNextOccurrence($frequency, $schedule, new \DateTimeImmutable());
-						$recurrence->set('next_trigger_at', $nextTriggerAt);
-						self::omo1ImportSave($recurrence, 'La recurrence de checklist n a pas pu etre creee');
+					$itemActive = $recordActive && (!array_key_exists('active', $itemRecord) || (bool)$itemRecord['active']);
+					$recurrenceData = isset($itemRecord['recurrence']) && is_array($itemRecord['recurrence']) ? $itemRecord['recurrence'] : array();
+					list($frequency, $schedule) = self::omo1ImportActivityRecurrence($recurrenceData);
+					if ($frequency === null || $schedule === null) {
+						$stats['skippedActivities'] += 1;
+						continue;
 					}
-					$stats['checklistItems'] += 1;
+
+					$positionsByHolonId[$targetHolonId] = (int)($positionsByHolonId[$targetHolonId] ?? 0) + 1;
+					$activity = new \dbObject\ControlActivity();
+					$activity->set('IDorganization', (int)$organization->getId());
+					$activity->set('IDholon', $targetHolonId);
+					$activity->set('title', $itemTitle);
+					$activity->set('description', $itemRecord['description'] ?? null);
+					$activity->set('frequency', $frequency);
+					$activity->set('schedule', $schedule);
+					$activity->set('display_lead_value', max(0, (int)($recurrenceData['displayLeadValue'] ?? 0)));
+					$activity->set('display_lead_unit', \dbObject\ControlActivity::normalizeDelayUnit($recurrenceData['displayLeadUnit'] ?? null));
+					$activity->set('execution_duration_value', max(1, (int)($recurrenceData['executionDurationValue'] ?? 1)));
+					$activity->set('execution_duration_unit', \dbObject\ControlActivity::normalizeDelayUnit($recurrenceData['executionDurationUnit'] ?? null));
+					$activity->set('position', $positionsByHolonId[$targetHolonId]);
+					$activity->set('active', $itemActive);
+					self::omo1ImportSave($activity, 'Une activite recurrente n a pas pu etre creee');
+					$stats['activities'] += 1;
 				}
 			}
 		}
@@ -6618,7 +6671,7 @@
 				$eventIdMap = array();
 				$pendingUserIds = array();
 				$pendingInvitations = array();
-				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'authorities' => 0, 'rules' => 0, 'documents' => 0, 'projects' => 0, 'tasks' => 0, 'checklists' => 0, 'checklistItems' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
+				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'authorities' => 0, 'rules' => 0, 'documents' => 0, 'projects' => 0, 'tasks' => 0, 'activities' => 0, 'skippedActivities' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
 				$warnings = array_merge(
 					$mediaWarnings,
 					isset($structureResult['warnings']) && is_array($structureResult['warnings'])
@@ -6699,11 +6752,11 @@
 				}
 				$organization->remapImportedProjectPropertyValues($projectIdMap, $taskIdMap);
 				if ($selectedModules['checklists']) {
-					self::omo1ImportJournalWrite('module_checklists_started');
-					self::omo1ImportChecklists($organization, self::omo1ImportModuleRecords($payload, 'checklists'), $actorUserId, $userIdMap, $holonIdMap, $stats);
-					self::omo1ImportJournalWrite('module_checklists_completed', array(
-						'checklists' => (int)$stats['checklists'],
-						'checklistItems' => (int)$stats['checklistItems'],
+					self::omo1ImportJournalWrite('module_activities_started');
+					self::omo1ImportActivities($organization, self::omo1ImportModuleRecords($payload, 'checklists'), $holonIdMap, $stats);
+					self::omo1ImportJournalWrite('module_activities_completed', array(
+						'activities' => (int)$stats['activities'],
+						'skippedActivities' => (int)$stats['skippedActivities'],
 					));
 				}
 				if ($selectedModules['indicators']) {

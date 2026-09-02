@@ -586,7 +586,7 @@ window.initGenericTabs(container);</pre>
                                                                 <span class="generic-file-list__icon-box"><span class="generic-file-list__icon-symbol">F</span></span>
                                                                 <div class="generic-file-list__title-block">
                                                                     <div class="generic-file-list__title-row">
-                                                                        <strong class="generic-file-list__title">Checklist budget</strong>
+                                                                        <strong class="generic-file-list__title">Processus budget</strong>
                                                                     </div>
                                                                     <div class="generic-file-list__meta-line">Organisation &gt; Equipe produit</div>
                                                                 </div>
