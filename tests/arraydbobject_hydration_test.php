@@ -126,4 +126,38 @@ assertArrayDbObjectHydration(
     'Decision collections must use the rows already returned by their list query.'
 );
 
+$projectsIndexSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/projects/index.php');
+assertArrayDbObjectHydration(
+    strpos($projectsIndexSource, '$projectHolons->load([') !== false
+        && strpos($projectsIndexSource, "'hydrate' => true") !== false
+        && strpos($projectsIndexSource, '$projectHolonsById') !== false,
+    'Project lists must batch-load their distinct holons before rendering.'
+);
+assertArrayDbObjectHydration(
+    strpos($projectsIndexSource, '$projectResponsibles->load([') !== false
+        && strpos($projectsIndexSource, "'hydrate' => ['firstname', 'lastname', 'username', 'email']") !== false
+        && strpos($projectsIndexSource, '$projectResponsiblesById') !== false,
+    'Project lists must batch-load only the responsible user fields they render.'
+);
+
+$documentCollectionSource = (string)file_get_contents(dirname(__DIR__) . '/class/dbobject/arraydocument.class.php');
+assertArrayDbObjectHydration(
+    strpos($documentCollectionSource, 'function loadListMetadataForOrganization') !== false
+        && strpos($documentCollectionSource, "'documentsWithChildren'") !== false,
+    'Document lists must compute folder activity and child existence from one metadata collection.'
+);
+
+$documentsIndexSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/index.php');
+assertArrayDbObjectHydration(
+    strpos($documentsIndexSource, 'ArrayDocument::loadListMetadataForOrganization') !== false
+        && strpos($documentsIndexSource, "'canDelete' => \$canManageLifecycle") !== false
+        && strpos($documentsIndexSource, 'canManageInOrganizationContextWithVisibilityRule') !== false,
+    'The documents page must use the batched metadata instead of querying children per item.'
+);
+assertArrayDbObjectHydration(
+    strpos($documentsIndexSource, 'data-omo-documents-loading-indicator') !== false
+        && strpos($documentsIndexSource, 'omoSetDocumentsPanelLoadingState') !== false,
+    'Changing a documents view must expose a visible loading state.'
+);
+
 echo "arraydbobject_hydration_test: OK\n";

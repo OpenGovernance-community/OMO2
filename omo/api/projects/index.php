@@ -3,6 +3,8 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 
 use dbObject\ArrayProject;
+use dbObject\ArrayHolon;
+use dbObject\ArrayUser;
 use dbObject\Holon;
 use dbObject\Project;
 
@@ -76,6 +78,56 @@ $scopeHolonIds = $projectScope === 'children'
 
 $allProjects = new ArrayProject();
 $allProjects->loadForOrganization($organizationId, true, Project::KIND_STANDARD, true);
+$projectHolonIds = [];
+$projectResponsibleIds = [];
+foreach ($allProjects as $allProject) {
+    if (!($allProject instanceof Project)) {
+        continue;
+    }
+
+    $projectHolonId = (int)$allProject->get('IDholon');
+    if ($projectHolonId > 0) {
+        $projectHolonIds[$projectHolonId] = $projectHolonId;
+    }
+
+    $projectResponsibleId = (int)$allProject->get('IDuser');
+    if ($projectResponsibleId > 0) {
+        $projectResponsibleIds[$projectResponsibleId] = $projectResponsibleId;
+    }
+}
+
+$projectHolonsById = [];
+if (count($projectHolonIds) > 0) {
+    $projectHolons = new ArrayHolon();
+    $projectHolons->load([
+        'where' => [
+            ['field' => 'id', 'op' => 'in', 'value' => array_values($projectHolonIds)],
+        ],
+        'hydrate' => true,
+    ]);
+    foreach ($projectHolons as $projectHolon) {
+        if ($projectHolon instanceof Holon && (int)$projectHolon->getId() > 0) {
+            $projectHolonsById[(int)$projectHolon->getId()] = $projectHolon;
+        }
+    }
+}
+
+$projectResponsiblesById = [];
+if (count($projectResponsibleIds) > 0) {
+    $projectResponsibles = new ArrayUser();
+    $projectResponsibles->load([
+        'where' => [
+            ['field' => 'id', 'op' => 'in', 'value' => array_values($projectResponsibleIds)],
+        ],
+        'hydrate' => ['firstname', 'lastname', 'username', 'email'],
+    ]);
+    foreach ($projectResponsibles as $projectResponsible) {
+        if ($projectResponsible instanceof \dbObject\User && (int)$projectResponsible->getId() > 0) {
+            $projectResponsiblesById[(int)$projectResponsible->getId()] = $projectResponsible;
+        }
+    }
+}
+
 $projects = new ArrayProject();
 $scopeCurrentHolonId = $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0;
 foreach ($allProjects as $allProject) {
@@ -132,8 +184,8 @@ foreach ($projects as $project) {
         $status = Project::STATUS_SOMEDAY;
     }
 
-    $projectHolon = $project->getHolon();
-    $responsible = $project->getResponsible();
+    $projectHolon = $projectHolonsById[(int)$project->get('IDholon')] ?? null;
+    $responsible = $projectResponsiblesById[(int)$project->get('IDuser')] ?? null;
     $contextLabel = $projectHolon instanceof Holon
         ? trim((string)$projectHolon->getDisplayName())
         : trim((string)$organization->get('name'));
@@ -167,14 +219,14 @@ foreach ($projects as $project) {
         continue;
     }
 
-    $projectHolon = $project->getHolon();
+    $projectHolon = $projectHolonsById[(int)$project->get('IDholon')] ?? null;
     $listProjectItems[] = [
         'project' => $project,
         'holonLabel' => $projectHolon instanceof Holon
             ? trim((string)$projectHolon->getDisplayName())
             : trim((string)$organization->get('name')),
         'holonId' => $projectHolon instanceof Holon ? (int)$projectHolon->getId() : 0,
-        'responsibleLabel' => omoProjectsGetUserLabel($project->getResponsible()),
+        'responsibleLabel' => omoProjectsGetUserLabel($projectResponsiblesById[(int)$project->get('IDuser')] ?? null),
         'status' => Project::normalizeStatus($project->get('status')),
         'startDate' => omoProjectsFormatDate($project->get('planned_start_date')),
         'endDate' => omoProjectsFormatDate($project->get('planned_end_date')),
@@ -486,14 +538,14 @@ foreach ($projects as $project) {
     if ($effectiveStart instanceof \DateTimeImmutable && $effectiveEnd instanceof \DateTimeImmutable && $effectiveEnd < $effectiveStart) {
         $effectiveEnd = $effectiveStart;
     }
-    $projectHolon = $project->getHolon();
+    $projectHolon = $projectHolonsById[(int)$project->get('IDholon')] ?? null;
     $ganttItemsById[$projectId] = [
         'project' => $project,
         'status' => Project::normalizeStatus($project->get('status')),
         'holonLabel' => $projectHolon instanceof Holon
             ? trim((string)$projectHolon->getDisplayName())
             : trim((string)$organization->get('name')),
-        'responsibleLabel' => omoProjectsGetUserLabel($project->getResponsible()),
+        'responsibleLabel' => omoProjectsGetUserLabel($projectResponsiblesById[(int)$project->get('IDuser')] ?? null),
         'priority' => Project::normalizeLevel($project->get('priority')),
         'calculatedImportance' => max(0.0, min(1.0, (float)$project->get('calculated_importance'))),
         'plannedEnd' => $resolvedDates['end'] instanceof \DateTimeImmutable ? $resolvedDates['end'] : null,

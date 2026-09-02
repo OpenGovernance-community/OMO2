@@ -107,6 +107,7 @@ if (
 }
 
 $_SESSION['doc_' . $document->getId()] = true;
+$document->markConsulted();
 
 $altTexts = $document->getAltText();
 $medias = $document->getMedias();

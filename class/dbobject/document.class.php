@@ -35,7 +35,7 @@
 				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'project_visible_in_holon', 'storedfilesize'], 'integer'],				// Nombres entiers
 				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'etherpadpadid', 'ethercalcroomid', 'spacedeckspaceid'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
-				[['datecreation', 'datemodification', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
+				[['datecreation', 'datemodification', 'dateconsultation', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
 				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDuser_pv_editor', 'IDuser_pv_official_editor', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
 				[['id'], 'safe'],								// Champs proteges
 			];
@@ -66,6 +66,7 @@
 				'IDdocument_parent' => 'Dossier parent',
 				'datecreation' => 'Date de creation',
 				'datemodification' => 'Date de modification',
+				'dateconsultation' => 'Date de consultation',
 				'dateedition' => 'Date d edition en cours',
 				'datecontentedition' => 'Date du brouillon en edition',
 				'version' => 'Version',
@@ -104,6 +105,7 @@
 				'IDevent' => 'Evenement auquel ce document est rattache si le fichier provient de l agenda',
 				'estDossier' => 'Permet de traiter cette entree comme un dossier',
 				'IDdocument_parent' => 'Dossier qui contient ce document',
+				'dateconsultation' => 'Derniere fois que le document a ete affiche dans son detail',
 				'dateedition' => 'Date du dernier signal de presence pendant l edition',
 				'datecontentedition' => 'Date de mise a jour du brouillon temporaire',
 				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes, les telechargements, les documents collaboratifs, les tableurs collaboratifs, les PV et les dossiers',
@@ -147,6 +149,26 @@
 			return "datecreation";
 		}
 
+		public function markConsulted(): bool
+		{
+			$documentId = (int)$this->getId();
+			if ($documentId <= 0) {
+				return false;
+			}
+
+			$consultedAt = new \DateTimeImmutable('now');
+			$saved = self::execute(
+				"UPDATE `document` SET `dateconsultation` = CURRENT_TIMESTAMP() WHERE `id` = :document_id",
+				array('document_id' => $documentId)
+			);
+
+			if ($saved) {
+				$this->set('dateconsultation', $consultedAt);
+			}
+
+			return $saved;
+		}
+
 		public static function getCollectionHydrationFields(): array
 		{
 			return array(
@@ -181,6 +203,7 @@
 				'spacedeckspaceid',
 				'datecreation',
 				'datemodification',
+				'dateconsultation',
 				'dateedition',
 				'datecontentedition',
 				'version',
@@ -897,6 +920,62 @@
 				$userId,
 				(int)$this->get('IDdocument_parent'),
 				$useSessionCache
+			);
+		}
+
+		public function canManageInOrganizationContextWithVisibilityRule(int $organizationId, int $userId, ?array $visibilityRule, array &$viewerContext, bool $useSessionCache = true): bool
+		{
+			$documentOrganizationId = (int)$this->get('IDorganization');
+			if (
+				$userId <= 0
+				|| $organizationId !== $documentOrganizationId
+				|| (function_exists('commonUserHasOrganizationAccess') && !\commonUserHasOrganizationAccess($userId, $documentOrganizationId))
+				|| !\dbObject\ObjectVisibility::viewerCanAccessRule(
+					$visibilityRule,
+					$viewerContext,
+					array(
+						'organizationId' => $documentOrganizationId,
+						'ownerUserId' => (int)$this->get('IDuser'),
+					)
+				)
+			) {
+				return false;
+			}
+
+			return self::canCreateInOrganizationContext(
+				$documentOrganizationId,
+				(int)$this->get('IDholon') > 0 ? (int)$this->get('IDholon') : null,
+				$userId,
+				(int)$this->get('IDdocument_parent'),
+				$useSessionCache
+			);
+		}
+
+		public function canEditInOrganizationContextWithVisibilityRules(int $organizationId, int $userId, ?array $visibilityRule, ?array $editVisibilityRule, array &$viewerContext): bool
+		{
+			$documentOrganizationId = (int)$this->get('IDorganization');
+			if (
+				$userId <= 0
+				|| (function_exists('commonUserHasOrganizationAccess') && !\commonUserHasOrganizationAccess($userId, $documentOrganizationId))
+				|| !\dbObject\ObjectVisibility::viewerCanAccessRule(
+					$visibilityRule,
+					$viewerContext,
+					array(
+						'organizationId' => $documentOrganizationId,
+						'ownerUserId' => (int)$this->get('IDuser'),
+					)
+				)
+			) {
+				return false;
+			}
+
+			return \dbObject\ObjectVisibility::viewerCanAccessRule(
+				$editVisibilityRule,
+				$viewerContext,
+				array(
+					'organizationId' => $organizationId > 0 ? $organizationId : $documentOrganizationId,
+					'ownerUserId' => (int)$this->get('IDuser'),
+				)
 			);
 		}
 

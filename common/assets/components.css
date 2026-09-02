@@ -2090,3 +2090,43 @@ textarea.generic-form-control {
 .common-password-policy__status.is-invalid {
     color: #8a1c14;
 }
+
+.generic-loading-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--color-text-light, #64748b);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.generic-loading-indicator[hidden] {
+    display: none;
+}
+
+.generic-loading-indicator__spinner {
+    width: 16px;
+    height: 16px;
+    animation: generic-loading-indicator-spin 0.8s linear infinite;
+    color: var(--color-primary, #2563eb);
+}
+
+.generic-loading-indicator__track {
+    opacity: 0.22;
+}
+
+.generic-loading-indicator__arc {
+    stroke-linecap: round;
+}
+
+@keyframes generic-loading-indicator-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .generic-loading-indicator__spinner {
+        animation-duration: 1.8s;
+    }
+}
