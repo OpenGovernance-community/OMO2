@@ -887,6 +887,11 @@ body {
     max-height: none;
 }
 
+.omo-dashboard-module--event.omo-dashboard-module--tall .omo-dashboard-module__list {
+    height: auto;
+    max-height: clamp(220px, 46vh, 460px);
+}
+
 .omo-dashboard-module__list:has(> :nth-child(2)) {
     min-height: 150px;
 }
@@ -950,9 +955,19 @@ body {
     align-items: stretch;
 }
 
-.omo-dashboard-save-actions > [data-omo-dashboard-editor-save] {
+.omo-dashboard-save-actions > [data-omo-dashboard-editor-save]:has(+ .omo-dashboard-save-menu) {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
+}
+
+.omo-dashboard-editor .generic-drawer-header__actions {
+    gap: var(--generic-space-2);
+}
+
+.omo-dashboard-editor .omo-dashboard-save-actions > .generic-action-button--compact {
+    max-inline-size: 154px;
+    text-align: center;
+    white-space: normal;
 }
 
 .omo-dashboard-save-menu {
@@ -975,6 +990,12 @@ body {
     width: min(480px, 92vw);
     max-height: min(70vh, 560px);
     overflow-y: auto;
+}
+
+.omo-dashboard-save-menu__separator {
+    height: 1px;
+    margin: var(--generic-space-1, 4px) 0;
+    background: var(--generic-menu-border, var(--color-border, #d1d5db));
 }
 
 .omo-dashboard-editor__body {
@@ -1199,6 +1220,10 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
 .omo-dashboard-module .omo-personal-space__section-action {
     margin: 0;
     padding: 5px 10px;
+}
+
+.omo-dashboard-module__scope {
+    margin-left: auto;
 }
 
 .omo-personal-space__section-action:hover,

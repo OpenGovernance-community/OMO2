@@ -1063,7 +1063,13 @@
     }
 
     function applyStoredDisplayPreferences() {
-        var preferences = getTemporaryDisplayPreferences() || getStoredDisplayPreferences() || getDefaultDisplayPreferences();
+        var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+            ? window.omoApplicationViewPreferencesGetDefault(root)
+            : null;
+        var personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
+            ? window.omoApplicationViewPreferencesGetPersonal(root)
+            : null;
+        var preferences = getTemporaryDisplayPreferences() || personalView || serverDefault || getStoredDisplayPreferences() || getDefaultDisplayPreferences();
         if (!preferences) {
             return false;
         }
@@ -1390,7 +1396,13 @@
         if (action === 'restore-default') {
             clearCurrentDisplayPreferences();
             clearTemporaryDisplayPreferences();
-            var defaultView = getDefaultDisplayPreferences() || {
+            var store = getDisplayPreferencesStore();
+            store.defaultView = null;
+            saveDisplayPreferencesStore(store);
+            var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+                ? window.omoApplicationViewPreferencesGetDefault(root)
+                : null;
+            var defaultView = serverDefault || {
                 scope: 'contextual',
                 view: 'kanban',
                 sort: 'importance',

@@ -26,7 +26,7 @@ $formatActivityDate = static function ($value) use ($lang, $sourceLang): string 
                 ? 'personal_space.activities.overdue_for'
                 : 'personal_space.activities.due_for');
         ?>
-        <button type="button" class="omo-personal-space__item-button" data-omo-dashboard-filter-item="<?= omoApiEscape((string)$activityItem['metric']) ?>" data-omo-personal-space-route-token="activities"<?= !empty($personalSpaceForcedOpenScope) ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($personalSpaceForcedOpenScope) . '"' : '' ?>>
+        <button type="button" class="omo-personal-space__item-button" data-omo-dashboard-filter-item="<?= omoApiEscape((string)$activityItem['metric']) ?>" data-omo-personal-space-route-token="activities"<?= $dashboardModuleForcedOpenScope !== '' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($dashboardModuleForcedOpenScope) . '"' : '' ?>>
             <span class="omo-personal-space__item-title"><?= omoApiEscape($activityItem['title']) ?></span>
             <span class="omo-personal-space__item-meta"><?= omoApiEscape($activityItem['holonLabel']) ?></span>
             <span class="omo-personal-space__item-meta"><?= omoApiEscape(t($dateTextKey, array('date' => $formatActivityDate($date)), $lang, $sourceLang)) ?></span>

@@ -3,17 +3,17 @@ use dbObject\History;
 
 $structureHistory = array('items' => array());
 if (!empty($enabledAppHashes['structure'])) {
-    if ($personalSpaceScope === 'contextual') {
+    if ($dashboardModuleScope === 'contextual') {
         $structureHistory = History::fetchHolonFeedPage(
             $currentOrganizationId,
-            $currentHolonId,
+            $dashboardModuleContextHolonId,
             5,
             0,
-            $currentHolonId <= 0
+            $dashboardModuleContextHolonId <= 0
         );
     } else {
         $historyById = [];
-        foreach ($personalSpaceScopeHolonIds as $scopeHolonId) {
+        foreach ($dashboardModuleScopeHolonIds as $scopeHolonId) {
             $scopeHistory = History::fetchHolonFeedPage(
                 $currentOrganizationId,
                 (int)$scopeHolonId,

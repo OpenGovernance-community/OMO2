@@ -697,6 +697,20 @@ if (!($currentHolon instanceof Holon) && $rootHolon instanceof Holon) {
     $currentHolonId = (int)$rootHolon->getId();
 }
 
+$applicationViewPreferences = omoApplicationViewPreferencesGetContext('calendar', $organization, $currentHolon, $currentUserId);
+
+if ($openEventId <= 0) {
+    $viewMode = omoCalendarParseView(
+        omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'view', 'view', 'month')
+    );
+    $requestedScopeRaw = trim((string)omoApplicationViewPreferencesGetInitialValue(
+        $applicationViewPreferences,
+        'scope',
+        'scope',
+        ''
+    ));
+}
+
 $canToggleScope = $organization->getId() > 0 && $rootHolon instanceof Holon;
 $calendarScopes = omoApiGetAvailableContextScopes($canToggleScope, $currentHolon, $rootHolon);
 $calendarScope = omoCalendarParseScope($requestedScopeRaw, $calendarScopes);
@@ -1232,7 +1246,7 @@ foreach ($calendarScopes as $scopeKey) {
 $headerCount = (int)($viewCountsByScope[$calendarScope][$viewMode] ?? 0);
 $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? '');
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <div
     class="omo-calendar omo-panel-view"
     id="omo-calendar-root"
@@ -1245,6 +1259,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     data-omo-calendar-scope="<?= omoApiEscape($calendarScope) ?>"
     data-omo-calendar-oid="<?= (int)$organizationId ?>"
     data-omo-calendar-cid="<?= $currentHolon ? (int)$currentHolon->getId() : 0 ?>"
+    data-omo-app-view-preferences="<?= omoApiEscape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     data-omo-view-filter-pending="1"
     aria-busy="true"
     data-omo-calendar-open-event-id="<?= (int)$openEventTargetId ?>"
@@ -1402,15 +1417,12 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     </div>
                     <div class="omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-omo-calendar-filter-apply><?= omoApiEscape(omoCalendarT('calendar.filters.apply')) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-calendar-filter-save><?= omoApiEscape(omoCalendarT('calendar.filters.save_view')) ?></button>
-                        <div class="generic-menu omo-view-filter__actions-more" data-omo-calendar-filter-more-menu>
-                            <button type="button" class="generic-menu-toggle" data-omo-calendar-filter-more-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoCalendarT('calendar.filters.more_actions')) ?>">&#8942;</button>
-                            <div class="generic-menu-panel" data-omo-calendar-filter-more-panel role="menu" hidden>
-                                <button type="button" class="generic-menu-item" data-omo-calendar-filter-more-action="apply-everywhere" role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.filters.apply_everywhere')) ?></button>
-                                <button type="button" class="generic-menu-item" data-omo-calendar-filter-more-action="set-default" role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.filters.set_default')) ?></button>
-                                <button type="button" class="generic-menu-item" data-omo-calendar-filter-more-action="restore-default" role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.filters.restore_default')) ?></button>
-                            </div>
-                        </div>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-calendar-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoCalendarT('calendar.filters.save_view')) ?></button>
+                        <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                        <?php endif; ?>
+                        <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
                 </section>
             </div>
@@ -1710,6 +1722,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             <div class="omo-overlay-drawer__body" data-omo-calendar-editor-body></div>
         </div>
     </div>
+    <script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
     <script>
     (function () {
         var root = document.getElementById('omo-calendar-root');
@@ -3200,7 +3213,13 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             if (action === 'restore-default') {
                 clearCalendarStoredPreferences();
                 clearCalendarTemporaryPreferences();
-                applyCalendarFilters(getCalendarDefaultPreferences() || {scope: 'contextual', view: 'month'});
+                var store = getCalendarPreferencesStore();
+                store.defaultView = null;
+                saveCalendarPreferencesStore(store);
+                var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+                    ? window.omoApplicationViewPreferencesGetDefault(root)
+                    : null;
+                applyCalendarFilters(serverDefault || {scope: 'contextual', view: 'month'});
             }
         }
 
@@ -3218,7 +3237,13 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             var temporary = readCalendarStoredValue(window.sessionStorage, calendarSessionViewsStorageKey);
             var saved = getCalendarStoredPreferences();
             var defaultView = getCalendarDefaultPreferences();
-            var preferences = normalizeCalendarFilters(temporary || saved || defaultView || getActiveCalendarFilters());
+            var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+                ? window.omoApplicationViewPreferencesGetDefault(root)
+                : null;
+            var personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
+                ? window.omoApplicationViewPreferencesGetPersonal(root)
+                : null;
+            var preferences = normalizeCalendarFilters(temporary || personalView || serverDefault || saved || defaultView || getActiveCalendarFilters());
             if (initialOpenEventId > 0) {
                 preferences = getActiveCalendarFilters();
             }

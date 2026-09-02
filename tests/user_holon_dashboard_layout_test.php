@@ -5,6 +5,7 @@ require_once dirname(__DIR__) . '/class/dbobject/dbobject.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/holon.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/userholon.class.php';
 require_once dirname(__DIR__) . '/omo/api/dashboard/modules/registry.php';
+require_once dirname(__DIR__) . '/common/application_view_preferences.php';
 
 use dbObject\UserHolon;
 use dbObject\Holon;
@@ -27,6 +28,14 @@ $layout = UserHolon::normalizeDashboardLayout(array(
 assertDashboardLayout(count($layout) === 2, 'Only valid, non-overlapping modules must remain.');
 assertDashboardLayout($layout[0]['id'] === 'wide' && $layout[0]['columnSpan'] === 2, 'A horizontal double module must be preserved.');
 assertDashboardLayout($layout[1]['id'] === 'vertical' && $layout[1]['rowSpan'] === 2, 'A vertical double module must be preserved.');
+assertDashboardLayout($layout[0]['settings']['scope'] === 'contextual', 'Legacy dashboard modules must receive the local scope by default.');
+
+$scopedLayout = UserHolon::normalizeDashboardLayout(array(
+    array('id' => 'descendants', 'type' => 'projects', 'row' => 0, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'descendants')),
+    array('id' => 'invalid-scope', 'type' => 'rules', 'row' => 0, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'unsupported')),
+));
+assertDashboardLayout($scopedLayout[0]['settings']['scope'] === 'descendants', 'A valid module scope must be stored in the layout.');
+assertDashboardLayout($scopedLayout[1]['settings']['scope'] === 'contextual', 'An invalid module scope must fall back to the local scope.');
 assertDashboardLayout(count(UserHolon::getDefaultDashboardLayout()) === 8, 'The default layout must expose the eight initial modules.');
 assertDashboardLayout(array_keys(UserHolon::getDashboardModuleCatalog()) === array_keys(omoDashboardGetModuleDefinitions()), 'The persistence catalog and UI registry must expose the same module identifiers.');
 
@@ -37,6 +46,21 @@ $templateLayouts = UserHolon::normalizeDashboardTemplateLayouts(array(
 ));
 assertDashboardLayout(UserHolon::normalizeDashboardTemplateKey($templateKey) === $templateKey, 'A template dashboard key must remain stable.');
 assertDashboardLayout($templateLayouts === array($templateKey => array()), 'An explicit empty template layout must be preserved.');
+assertDashboardLayout(UserHolon::makeDashboardBaseTypeKey(2) === 'type:2', 'A circle base type dashboard key must be stable.');
+assertDashboardLayout(UserHolon::makeDashboardBaseTypeKey(9) === '', 'Unsupported holon types must not receive a dashboard base type key.');
+
+$applicationViews = UserHolon::normalizeApplicationViewDefaults(array(
+    'projects' => array('scope' => 'descendants', 'view' => 'kanban', 'sort' => 'importance'),
+    'invalid' => array('scope' => 'children'),
+));
+assertDashboardLayout(isset($applicationViews['projects']), 'A known application view must be retained.');
+assertDashboardLayout(!isset($applicationViews['invalid']), 'Unknown application views must not be persisted.');
+$applicationViewsByType = UserHolon::normalizeApplicationViewBaseTypeDefaults(array(
+    'type:2' => $applicationViews,
+    'type:9' => $applicationViews,
+));
+assertDashboardLayout(isset($applicationViewsByType['type:2']['projects']), 'A base holon type application view must be retained.');
+assertDashboardLayout(!isset($applicationViewsByType['type:9']), 'An unsupported base holon type application view must not be persisted.');
 
 $preference = new UserHolon();
 assertDashboardLayout($preference->getDashboardLayoutPreference() === null, 'An absent personal layout must leave room for default fallbacks.');
@@ -44,5 +68,22 @@ $holon = new Holon();
 assertDashboardLayout($holon->getDashboardDefaultLayout() === null, 'A holon without a configured layout must not override fallbacks.');
 $holon->setDashboardDefaultLayout(array());
 assertDashboardLayout($holon->getDashboardDefaultLayout() === array(), 'An empty holon default layout must be preserved as an explicit preference.');
+$holon->clearDashboardDefaultLayout();
+assertDashboardLayout($holon->getDashboardDefaultLayout() === null, 'Clearing a holon dashboard default must restore fallback resolution.');
+assertDashboardLayout($holon->getDashboardDirectTemplateLayoutKey() === '', 'A holon without a direct template must not receive a template layout key.');
+
+$applicationViewContext = array(
+    'personalView' => array('scope' => 'children'),
+    'defaultView' => array('scope' => 'descendants', 'sort' => 'alpha'),
+);
+assertDashboardLayout(
+    omoApplicationViewPreferencesGetEffectiveView($applicationViewContext) === array('scope' => 'children'),
+    'A personal application view must take precedence over its default.'
+);
+$applicationViewContext['personalView'] = null;
+assertDashboardLayout(
+    omoApplicationViewPreferencesGetEffectiveView($applicationViewContext) === array('scope' => 'descendants', 'sort' => 'alpha'),
+    'An application default must be used when no personal view exists.'
+);
 
 echo "user_holon_dashboard_layout_test: OK\n";

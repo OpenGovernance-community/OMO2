@@ -23,16 +23,35 @@ if (empty($context['status'])) {
 $organization = $context['organization'];
 $rootHolon = $context['rootHolon'];
 $currentHolon = $context['currentHolon'];
+$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+$applicationViewPreferences = omoApplicationViewPreferencesGetContext('projects', $organization, $currentHolon, $currentUserId);
 $canToggleScope = $currentHolon instanceof Holon;
 $availableScopes = omoApiGetAvailableContextScopes($canToggleScope, $currentHolon, $rootHolon);
-$projectScope = omoApiNormalizeContextScope($_GET['project_scope'] ?? 'contextual', $availableScopes);
-$projectAssignment = strtolower(trim((string)($_GET['project_assignment'] ?? 'all')));
+$projectScope = omoApiNormalizeContextScope(
+    omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'project_scope', 'scope', 'contextual'),
+    $availableScopes
+);
+$projectAssignment = strtolower(trim((string)omoApplicationViewPreferencesGetInitialValue(
+    $applicationViewPreferences,
+    'project_assignment',
+    'assignment',
+    'all'
+)));
 $projectAssignment = $projectAssignment === 'mine' ? 'mine' : 'all';
-$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
 $projectQuickSearch = trim((string)($_GET['project_query'] ?? ''));
-$projectView = strtolower(trim((string)($_GET['project_view'] ?? 'kanban')));
+$projectView = strtolower(trim((string)omoApplicationViewPreferencesGetInitialValue(
+    $applicationViewPreferences,
+    'project_view',
+    'view',
+    'kanban'
+)));
 $projectView = in_array($projectView, ['list', 'gantt'], true) ? $projectView : 'kanban';
-$projectListSort = strtolower(trim((string)($_GET['project_sort'] ?? 'importance')));
+$projectListSort = strtolower(trim((string)omoApplicationViewPreferencesGetInitialValue(
+    $applicationViewPreferences,
+    'project_sort',
+    'sort',
+    'importance'
+)));
 $projectListSort = in_array($projectListSort, ['planned', 'priority', 'importance', 'holon'], true) ? $projectListSort : 'importance';
 if ($projectListSort === 'holon' && !in_array($projectScope, ['children', 'descendants'], true)) {
     $projectListSort = 'importance';
@@ -668,13 +687,14 @@ $projectTexts = [
     'archivesTitle' => omoProjectsT('projects.archives.title'),
 ];
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260824-project-document-actions">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
     data-omo-projects-oid="<?= (int)$organizationId ?>"
     data-omo-projects-cid="<?= $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0 ?>"
+    data-omo-app-view-preferences="<?= omoApiEscape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     data-omo-projects-scope="<?= omoApiEscape($projectScope) ?>"
     data-omo-projects-assignment="<?= omoApiEscape($projectAssignment) ?>"
     data-omo-projects-query="<?= omoApiEscape($projectQuickSearch) ?>"
@@ -784,15 +804,12 @@ $projectTexts = [
                     </div>
                     <div class="omo-projects__filter-panel-actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-omo-projects-filter-apply><?= omoApiEscape(omoProjectsT('projects.filters.apply')) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-filter-save><?= omoApiEscape(omoProjectsT('projects.filters.save_view')) ?></button>
-                        <div class="generic-menu omo-projects__filter-panel-actions-more" data-omo-projects-filter-more-menu>
-                            <button type="button" class="generic-menu-toggle" data-omo-projects-filter-more-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoProjectsT('projects.filters.more_actions')) ?>">&#8942;</button>
-                            <div class="generic-menu-panel" data-omo-projects-filter-more-panel role="menu" hidden>
-                                <button type="button" class="generic-menu-item" data-omo-projects-filter-more-action="apply-everywhere" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.filters.apply_everywhere')) ?></button>
-                                <button type="button" class="generic-menu-item" data-omo-projects-filter-more-action="set-default" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.filters.set_default')) ?></button>
-                                <button type="button" class="generic-menu-item" data-omo-projects-filter-more-action="restore-default" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.filters.restore_default')) ?></button>
-                            </div>
-                        </div>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoProjectsT('projects.filters.save_view')) ?></button>
+                        <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                        <?php endif; ?>
+                        <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
                 </section>
             </div>
@@ -1099,4 +1116,5 @@ $projectTexts = [
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
 <script src="/common/calendar/event-editor.js?v=20260804-project-events"></script>
-<script src="/omo/api/projects/projects.js?v=20260901-drawer-app-cache"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
+<script src="/omo/api/projects/projects.js?v=20260902-restore-default"></script>

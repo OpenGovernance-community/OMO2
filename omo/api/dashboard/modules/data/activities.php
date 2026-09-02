@@ -7,9 +7,9 @@ $dashboardActivityItems = array();
 $dashboardActivityCounts = array('soon' => 0, 'due' => 0, 'overdue' => 0);
 
 if (!empty($enabledAppHashes['activities']) && $scopeReferenceHolon instanceof Holon) {
-    $activityScopeHolonIds = $personalSpaceScope === 'contextual'
+    $activityScopeHolonIds = $dashboardModuleScope === 'contextual'
         ? array((int)$scopeReferenceHolon->getId())
-        : $personalSpaceScopeHolonIds;
+        : $dashboardModuleScopeHolonIds;
     $activities = new ArrayControlActivity();
     $activities->loadForContext($currentOrganizationId, $activityScopeHolonIds);
     $now = new DateTimeImmutable('now');

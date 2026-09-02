@@ -5,14 +5,14 @@ $documents = new ArrayDocument();
 $recentDocuments = array();
 $dashboardDocumentCounts = array('created' => 0, 'modified' => 0);
 if (!empty($enabledAppHashes['documents'])) {
-    $documentScopeHolonIds = $personalSpaceScope === 'contextual'
+    $documentScopeHolonIds = $dashboardModuleScope === 'contextual'
         ? []
-        : $personalSpaceScopeHolonIds;
+        : $dashboardModuleScopeHolonIds;
     $documents->loadRecentForOrganizationContext(
         $currentOrganizationId,
-        $currentHolonId,
+        $dashboardModuleContextHolonId,
         500,
-        $personalSpaceScope,
+        $dashboardModuleScope,
         $documentScopeHolonIds
     );
     $recentDocuments = $documents->buildPersonalSpaceItems($currentOrganizationId);

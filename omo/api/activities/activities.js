@@ -85,13 +85,17 @@
     }
 
     function clearTemporaryFilters() {
+        clearStoredValue(window.sessionStorage, sessionViewsStorageKey);
+    }
+
+    function clearStoredValue(storage, storageKey) {
         try {
-            var values = JSON.parse(window.sessionStorage.getItem(sessionViewsStorageKey) || '{}');
+            var values = JSON.parse(storage.getItem(storageKey) || '{}');
             if (!values || typeof values !== 'object') {
                 return;
             }
             delete values[getPreferencesContextKey()];
-            window.sessionStorage.setItem(sessionViewsStorageKey, JSON.stringify(values));
+            storage.setItem(storageKey, JSON.stringify(values));
         } catch (error) {
             // Storage can be disabled without blocking the application.
         }
@@ -416,7 +420,13 @@
     function initializeViewFilter() {
         var temporary = readStoredValue(window.sessionStorage, sessionViewsStorageKey);
         var saved = readStoredValue(window.localStorage, savedViewsStorageKey);
-        var preferences = temporary || saved || {};
+        var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+            ? window.omoApplicationViewPreferencesGetDefault(root)
+            : null;
+        var personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
+            ? window.omoApplicationViewPreferencesGetPersonal(root)
+            : null;
+        var preferences = temporary || personalView || serverDefault || saved || {};
         var preferredScope = normalizeScope(preferences.scope || currentScope);
         currentState = normalizeState(preferences.state || 'all');
         currentSearch = String(readStoredValue(window.sessionStorage, searchStorageKey) || '');
@@ -494,6 +504,28 @@
         if (event.target.closest('[data-activity-filter-save]')) {
             event.preventDefault();
             closeFilterPanel(true, true);
+            return;
+        }
+        if (event.target.closest('[data-activity-filter-restore]')) {
+            event.preventDefault();
+            closeFilterPanel(false, false);
+            clearStoredValue(window.localStorage, savedViewsStorageKey);
+            clearTemporaryFilters();
+            var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+                ? window.omoApplicationViewPreferencesGetDefault(root)
+                : null;
+            var nextScope = normalizeScope((serverDefault && serverDefault.scope) || currentScope);
+            currentState = normalizeState((serverDefault && serverDefault.state) || 'all');
+            if (!root.querySelector('[data-activity-scope-option="' + nextScope + '"]')) {
+                nextScope = currentScope;
+            }
+            if (nextScope !== currentScope) {
+                currentScope = nextScope;
+                refreshRoot(buildScopeUrl(nextScope));
+                return;
+            }
+            syncFilterChips();
+            applyListFilters();
         }
     });
 

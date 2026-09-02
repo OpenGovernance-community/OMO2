@@ -4317,7 +4317,7 @@ $(document).on('click', '[data-omo-personal-space-project-id]', function (e) {
     }
 
     const dashboardRoot = $(this).closest('#omo-personal-space-root');
-    const dashboardScope = String(dashboardRoot.attr('data-omo-personal-space-scope') || '').trim();
+    const dashboardScope = String($(this).attr('data-omo-personal-space-project-scope') || dashboardRoot.attr('data-omo-personal-space-scope') || '').trim();
     if (dashboardScope && typeof window.omoOpenDrawerHashState === 'function' && typeof window.omoBuildProjectRouteToken === 'function') {
         window.omoOpenDrawerHashState(window.omoBuildProjectRouteToken(projectId), {
             forcedScope: dashboardScope
@@ -4338,7 +4338,7 @@ $(document).on('click', '[data-omo-personal-space-indicator-id]', function (e) {
     }
 
     const dashboardRoot = $(this).closest('#omo-personal-space-root');
-    const dashboardScope = String(dashboardRoot.attr('data-omo-personal-space-scope') || '').trim();
+    const dashboardScope = String($(this).attr('data-omo-personal-space-indicator-scope') || dashboardRoot.attr('data-omo-personal-space-scope') || '').trim();
     if (dashboardScope && typeof window.omoOpenDrawerHashState === 'function' && typeof window.omoBuildStatsIndicatorRouteToken === 'function') {
         window.omoOpenDrawerHashState(window.omoBuildStatsIndicatorRouteToken(indicatorId), {
             forcedScope: dashboardScope
