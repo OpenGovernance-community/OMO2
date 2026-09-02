@@ -195,9 +195,20 @@
 
     function findSubmitButton(form) {
         var localButton = form.querySelector('[data-omo-calendar-create-submit]');
+        var ownerDrawer;
+
         if (localButton) {
             return localButton;
         }
+
+        ownerDrawer = form.closest('.omo-overlay-drawer');
+        if (ownerDrawer && form.id) {
+            localButton = ownerDrawer.querySelector('[data-omo-calendar-create-submit][form="' + form.id + '"]');
+            if (localButton) {
+                return localButton;
+            }
+        }
+
         return form.id ? document.querySelector('[data-omo-calendar-create-submit][form="' + form.id + '"]') : null;
     }
 
@@ -234,6 +245,10 @@
 
         form.addEventListener('submit', function (event) {
             event.preventDefault();
+            if (form.dataset.omoCalendarSubmitPending === '1') {
+                return;
+            }
+            form.dataset.omoCalendarSubmitPending = '1';
             var submitButton = findSubmitButton(form);
             var formData = new FormData(form);
             var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
@@ -274,6 +289,7 @@
             }).catch(function (error) {
                 setFeedback(form, error.message || "Impossible d'enregistrer cet événement.", true);
             }).finally(function () {
+                delete form.dataset.omoCalendarSubmitPending;
                 if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {
                     window.omoEndPendingAction(form);
                 } else if (submitButton) {

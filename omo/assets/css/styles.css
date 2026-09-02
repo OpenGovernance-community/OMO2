@@ -864,6 +864,7 @@ body {
     align-content: start;
     gap: var(--generic-space-3);
     overflow: hidden;
+    container-type: inline-size;
 }
 
 .omo-dashboard-module--tall {
@@ -876,24 +877,36 @@ body {
 
 .omo-dashboard-module__list {
     min-height: 0;
-    max-height: clamp(160px, 24vh, 250px);
+    max-height: 40vh;
+    max-height: min(40dvh, 200cqw);
     align-content: start;
     overflow-y: auto;
     padding-right: 3px;
 }
 
 .omo-dashboard-module--tall .omo-dashboard-module__list {
-    height: 100%;
-    max-height: none;
+    height: auto;
+    max-height: 80vh;
+    max-height: min(80dvh, 200cqw);
 }
 
 .omo-dashboard-module--event.omo-dashboard-module--tall .omo-dashboard-module__list {
     height: auto;
-    max-height: clamp(220px, 46vh, 460px);
+    max-height: 80vh;
+    max-height: min(80dvh, 200cqw);
 }
 
 .omo-dashboard-module__list:has(> :nth-child(2)) {
     min-height: 150px;
+}
+
+.omo-dashboard-module__more {
+    margin: 0;
+    padding: 2px 4px;
+    color: var(--color-text-soft, #64748b);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: center;
 }
 
 .omo-dashboard-metrics {
@@ -1118,7 +1131,8 @@ body {
 
     .omo-dashboard-module--tall .omo-dashboard-module__list {
         height: auto;
-        max-height: clamp(160px, 24vh, 250px);
+        max-height: 80vh;
+        max-height: min(80dvh, 200cqw);
     }
 }
 
@@ -1140,7 +1154,8 @@ body {
 
     .omo-dashboard-module--tall .omo-dashboard-module__list {
         height: auto;
-        max-height: clamp(160px, 24vh, 250px);
+        max-height: 80vh;
+        max-height: min(80dvh, 200cqw);
     }
 
     .omo-dashboard-picker__list {
