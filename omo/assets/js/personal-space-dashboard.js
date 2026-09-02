@@ -365,6 +365,34 @@
         });
     }
 
+    function updateModuleList(module, filter) {
+        if (!module) {
+            return;
+        }
+        var items = Array.prototype.slice.call(module.querySelectorAll('[data-omo-dashboard-filter-item]'));
+        var more = module.querySelector('[data-omo-dashboard-more]');
+        var matchingItems = items.filter(function (item) {
+            if (!filter) {
+                return true;
+            }
+            var filters = (item.getAttribute('data-omo-dashboard-filter-item') || '').split(/\s+/);
+            return filters.indexOf(filter) !== -1;
+        });
+        items.forEach(function (item) {
+            var matchingIndex = matchingItems.indexOf(item);
+            item.hidden = matchingIndex === -1 || (more && matchingIndex >= 20);
+        });
+        if (!more) {
+            return;
+        }
+        var remaining = Math.max(0, matchingItems.length - 20);
+        more.hidden = remaining === 0;
+        if (remaining > 0) {
+            var template = more.getAttribute('data-omo-dashboard-more-template') || 'Et {count} de plus';
+            more.textContent = template.replace('{count}', String(remaining));
+        }
+    }
+
     root.addEventListener('click', function (event) {
         var metric = event.target.closest('[data-omo-dashboard-filter]');
         var module;
@@ -383,10 +411,7 @@
                 button.classList.toggle('is-active', button === metric && !metric.classList.contains('is-active'));
             });
             filter = metric.classList.contains('is-active') ? filter : '';
-            module.querySelectorAll('[data-omo-dashboard-filter-item]').forEach(function (item) {
-                var filters = (item.getAttribute('data-omo-dashboard-filter-item') || '').split(/\s+/);
-                item.hidden = filter !== '' && filters.indexOf(filter) === -1;
-            });
+            updateModuleList(module, filter);
             return;
         }
         if (event.target.closest('[data-omo-dashboard-edit]')) {
@@ -476,6 +501,10 @@
         if (moduleButton) {
             chooseModule(moduleButton.getAttribute('data-module-type') || '');
         }
+    });
+
+    root.querySelectorAll('[data-omo-dashboard-module]').forEach(function (module) {
+        updateModuleList(module, '');
     });
 
     function closeSaveMenuOnOutsideClick(event) {

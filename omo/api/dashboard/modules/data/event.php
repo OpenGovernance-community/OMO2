@@ -30,7 +30,11 @@ if (!empty($enabledAppHashes['calendar'])) {
             continue;
         }
 
-        $isMine = $currentUserId > 0 && $event->isVisibleToInvitationViewer($currentUserId, $currentOrganizationId);
+        $isMine = $currentUserId > 0
+            && (
+                (int)$event->get('IDuser') === $currentUserId
+                || $event->isVisibleToInvitationViewer($currentUserId, $currentOrganizationId)
+            );
         $dashboardEventCounts['all']++;
         if ($isMine) {
             $dashboardEventCounts['mine']++;
@@ -51,6 +55,13 @@ if (!empty($enabledAppHashes['calendar'])) {
             }
         }
 
+        $locationData = $event->getLocationDisplayData();
+        $locationParts = array_values(array_filter(array(
+            trim((string)($locationData['modeLabel'] ?? '')),
+            trim((string)($locationData['address'] ?? '')),
+            trim((string)($locationData['videoUrl'] ?? '')),
+        )));
+
         $calendarEvents[] = array(
             'id' => (int)$event->getId(),
             'holonId' => $eventHolonId,
@@ -59,6 +70,7 @@ if (!empty($enabledAppHashes['calendar'])) {
                 : 'Evenement #' . (int)$event->getId(),
             'description' => trim((string)$event->get('description')),
             'contextLabel' => $contextLabel,
+            'locationLabel' => implode(' · ', $locationParts),
             'filters' => $isMine ? array('all', 'mine') : array('all'),
             'rangeLabel' => $formatCalendarRange(
                 $event->get('start_at'),

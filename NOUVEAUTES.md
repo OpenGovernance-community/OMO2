@@ -21,6 +21,9 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les droits du tableau de pilotage sont calcules par un helper partage entre son rendu et son API. Les anciens niveaux de defauts globaux par organisation et templates globaux, devenus inaccessibles, ont ete retires du code tout en laissant les anciennes clefs JSON sans effet.
 - Les modules de listes du tableau plafonnent maintenant leur hauteur a deux fois leur largeur ou 80 % de la fenetre, avec un defilement interne. Les listes tronquees indiquent aussi combien d elements restent a consulter.
 - La limite de hauteur des listes du tableau est maintenant de 40 % de la fenetre pour une fiche simple et de 80 % pour une fiche double, tout en restant plafonnee par deux fois la largeur du module.
+- Les listes filtrees du tableau de pilotage affichent maintenant les 20 premiers elements du filtre selectionne et recalculent le nombre restant. Les projets indiquent aussi leur statut par une barre laterale coloree et affichent le responsable a cote du holon lorsqu il est defini.
+- Les lignes des listes du tableau de pilotage conservent maintenant leur hauteur naturelle, avec le defilement interne qui prend le relais lorsque la fiche atteint sa limite.
+- Le module Evenements distingue maintenant aussi les evenements crees par l utilisateur dans le filtre Pour moi. Le lieu est affiche avec son mode (virtuel, presentiel ou mixte) et ses details lorsqu ils sont disponibles.
 - L editeur des holons masque la couleur hors mode Expert et retire l edition des droits en mode Decouverte, sans effacer les valeurs deja enregistrees.
 
 ## 2026-09-01

@@ -31,6 +31,8 @@ if (!empty($enabledAppHashes['projects'])) {
             : null;
         $isLate = $plannedEndDate instanceof DateTimeImmutable && $plannedEndDate < $today;
         $projectHolon = $project->getHolon();
+        $responsible = $project->getResponsible();
+        $responsibleLabel = is_object($responsible) ? omoProjectsGetUserLabel($responsible) : '';
         $projectItem = [
             'id' => (int)$project->getId(),
             'title' => trim((string)$project->get('title')) !== ''
@@ -40,6 +42,7 @@ if (!empty($enabledAppHashes['projects'])) {
             'holonLabel' => $projectHolon instanceof Holon
                 ? trim((string)$projectHolon->getDisplayName())
                 : trim((string)$organization->get('name')),
+            'responsibleLabel' => $responsibleLabel,
             'plannedEnd' => $plannedEndDate,
             'overdueDays' => $isLate ? max(1, (int)$today->diff($plannedEndDate)->days) : 0,
             'priority' => Project::normalizeLevel($project->get('priority')),
