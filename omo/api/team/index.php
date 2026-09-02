@@ -1925,6 +1925,11 @@ function omoTeamSetScopeLoadingState(targetScope, isLoading) {
 
     root.classList.toggle('is-loading', Boolean(isLoading));
     root.setAttribute('data-team-scope', resolvedScope);
+    if (typeof window.omoSetPanelResultsLoadingSkeleton === 'function') {
+        window.omoSetPanelResultsLoadingSkeleton(root, isLoading, {
+            contentSelector: '.omo-panel-view__body_content'
+        });
+    }
 
     root.querySelectorAll('[data-team-scope-toggle]').forEach(function (scopeButton) {
         const buttonScope = omoTeamNormalizeScope(scopeButton.getAttribute('data-team-scope-toggle') || '');

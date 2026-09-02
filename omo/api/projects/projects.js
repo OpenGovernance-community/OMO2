@@ -124,6 +124,11 @@
 
     function setLoading(isLoading) {
         root.classList.toggle('is-loading', Boolean(isLoading));
+        if (typeof window.omoSetPanelResultsLoadingSkeleton === 'function') {
+            window.omoSetPanelResultsLoadingSkeleton(root, isLoading, {
+                contentSelector: '.omo-projects__body'
+            });
+        }
         root.querySelectorAll('button, select, input').forEach(function (element) {
             if (element.hasAttribute('data-omo-projects-drawer-close')) {
                 return;

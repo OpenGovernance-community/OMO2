@@ -1123,6 +1123,11 @@ $displayItemCount = count($statsEntries);
 
     function setLoading(isLoading) {
         root.classList.toggle('is-loading', Boolean(isLoading));
+        if (typeof window.omoSetPanelResultsLoadingSkeleton === 'function') {
+            window.omoSetPanelResultsLoadingSkeleton(root, isLoading, {
+                contentSelector: '.omo-stats__body'
+            });
+        }
         Array.prototype.forEach.call(root.querySelectorAll(
             '[data-omo-stats-filter-toggle], [data-omo-stats-scope], [data-omo-stats-sort], '
             + '[data-omo-stats-view], [data-omo-stats-filter-apply], [data-omo-stats-filter-save], '

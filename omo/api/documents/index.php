@@ -2911,10 +2911,20 @@ if (!is_string($documentsPayload)) {
                                     currentRoot: panel,
                                     url: targetUrl,
                                     setLoadingState: function (isLoading) {
-                                        panel.classList.toggle('is-loading', !!isLoading);
+                                        if (typeof window.omoSetDocumentsPanelLoadingState === 'function') {
+                                            window.omoSetDocumentsPanelLoadingState(panel, isLoading, {
+                                                showResultsPlaceholder: true
+                                            });
+                                        } else {
+                                            panel.classList.toggle('is-loading', !!isLoading);
+                                        }
                                     }
                                 }).catch(function () {
-                                    panel.classList.remove('is-loading');
+                                    if (typeof window.omoSetDocumentsPanelLoadingState === 'function') {
+                                        window.omoSetDocumentsPanelLoadingState(panel, false);
+                                    } else {
+                                        panel.classList.remove('is-loading');
+                                    }
                                 });
 
                                 return true;
@@ -3581,16 +3591,23 @@ if (!is_string($documentsPayload)) {
                 return normalizeDocumentScope(panel && panel.getAttribute('data-omo-document-scope') || 'contextual');
             };
 
-            window.omoSetDocumentsPanelLoadingState = function (panel, isLoading) {
+            window.omoSetDocumentsPanelLoadingState = function (panel, isLoading, options = {}) {
                 if (!(panel instanceof Element)) {
                     return;
                 }
 
                 const loading = Boolean(isLoading);
+                const showResultsPlaceholder = options && options.showResultsPlaceholder === true;
                 panel.classList.toggle('is-loading', loading);
                 const indicator = panel.querySelector('[data-omo-documents-loading-indicator]');
                 if (indicator) {
                     indicator.hidden = !loading;
+                }
+
+                if (showResultsPlaceholder && typeof window.omoSetPanelResultsLoadingSkeleton === 'function') {
+                    window.omoSetPanelResultsLoadingSkeleton(panel, loading, {
+                        contentSelector: '[data-omo-documents-results]'
+                    });
                 }
 
                 if (loading) {
@@ -3630,7 +3647,9 @@ if (!is_string($documentsPayload)) {
                     return;
                 }
 
-                window.omoSetDocumentsPanelLoadingState(panel, isLoading);
+                window.omoSetDocumentsPanelLoadingState(panel, isLoading, {
+                    showResultsPlaceholder: true
+                });
                 let activeScopeIndex = 0;
 
                 panel.querySelectorAll('[data-omo-document-scope-toggle]').forEach(function (button) {

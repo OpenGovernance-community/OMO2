@@ -2793,7 +2793,15 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             return window.omoReplaceFetchedPanelRoot({
                 rootSelector: '#omo-calendar-root',
                 currentRoot: root,
-                url: resolveUrl(targetUrl)
+                url: resolveUrl(targetUrl),
+                setLoadingState: function (isLoading) {
+                    root.classList.toggle('is-loading', Boolean(isLoading));
+                    if (typeof window.omoSetPanelResultsLoadingSkeleton === 'function') {
+                        window.omoSetPanelResultsLoadingSkeleton(root, isLoading, {
+                            contentSelector: '.omo-panel-view__body'
+                        });
+                    }
+                }
             });
         }
 
