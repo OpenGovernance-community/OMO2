@@ -166,6 +166,7 @@
 					array('field' => 'IDorganization', 'value' => $organizationId),
 					array('field' => 'active', 'value' => 1),
 				),
+				'hydrate' => \dbObject\Document::getCollectionHydrationFields(),
 				'orderBy' => array(
 					array('field' => 'datecreation', 'dir' => 'DESC'),
 					array('field' => 'id', 'dir' => 'DESC'),
@@ -262,6 +263,7 @@
 					array('field' => 'IDorganization', 'value' => $organizationId),
 					array('field' => 'active', 'value' => 1),
 				),
+				'hydrate' => \dbObject\Document::getCollectionHydrationFields(),
 				'orderBy' => array(
 					array('field' => 'datecreation', 'dir' => 'DESC'),
 					array('field' => 'id', 'dir' => 'DESC'),
@@ -285,6 +287,7 @@
 					array('field' => 'documenttype', 'value' => \dbObject\Document::TYPE_PV),
 					array('field' => 'is_template', 'value' => 1),
 				),
+				'hydrate' => \dbObject\Document::getCollectionHydrationFields(),
 				'orderBy' => array(
 					array('field' => 'title', 'dir' => 'ASC'),
 					array('field' => 'id', 'dir' => 'ASC'),

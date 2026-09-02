@@ -756,7 +756,20 @@ $todayStart = new \DateTimeImmutable('today 00:00:00');
 $todayDayKey = $todayStart->format('Y-m-d');
 
 $events = new ArrayEvent();
-$events->loadForCalendarContext($organizationId, 0, false);
+$calendarEarliestEventEndAt = $gridStart <= $todayStart ? $gridStart : $todayStart;
+$events->loadForOrganizationDateRange($organizationId, $calendarEarliestEventEndAt, null, false, [
+    'IDorganization',
+    'IDholon',
+    'IDproject',
+    'IDuser',
+    'title',
+    'description',
+    'status',
+    'start_at',
+    'end_at',
+    'is_all_day',
+    'active',
+]);
 $openEventTargetId = $openedEvent instanceof Event ? (int)$openedEvent->getId() : 0;
 
 $holonLabelsById = [];
@@ -786,44 +799,6 @@ $resolveHolonLabel = static function ($eventHolonId) use (&$holonLabelsById) {
     }
 
     return (string)$holonLabelsById[$eventHolonId];
-};
-
-$eventAudienceMatchByHolonId = [];
-$eventPersonallyRelevantForViewer = static function (Event $event) use ($organizationId, $currentUserId, &$eventAudienceMatchByHolonId) {
-    if ($currentUserId <= 0) {
-        return true;
-    }
-
-    if ((int)$event->get('IDorganization') !== $organizationId) {
-        return false;
-    }
-
-    $eventHolonId = (int)$event->get('IDholon');
-    if ($eventHolonId <= 0) {
-        return true;
-    }
-
-    if (!array_key_exists($eventHolonId, $eventAudienceMatchByHolonId)) {
-        $eventAudienceMatchByHolonId[$eventHolonId] = false;
-
-        $eventHolon = new Holon();
-        if (
-            $eventHolon->load($eventHolonId)
-            && (bool)$eventHolon->get('active')
-            && (bool)$eventHolon->get('visible')
-        ) {
-            $eventAudienceMatchByHolonId[$eventHolonId] = in_array(
-                $currentUserId,
-                $eventHolon->getAssociatedMemberUserIds([
-                    'organizationId' => $organizationId,
-                    'skipPermissionFilter' => true,
-                ]),
-                true
-            );
-        }
-    }
-
-    return $eventAudienceMatchByHolonId[$eventHolonId];
 };
 
 $buildTimelineDays = static function (\DateTimeImmutable $rangeStart, int $dayCount) use ($todayDayKey) {
@@ -884,16 +859,7 @@ foreach ($events as $event) {
     $isInCurrentContext = !$canToggleScope || $eventHolonId === 0 || $eventHolonId === $currentHolonId;
     $isInDirectChildContext = $isInCurrentContext || ($eventHolonId > 0 && isset($directChildHolonIdMap[$eventHolonId]));
     $isInDescendantContext = $isInCurrentContext || ($eventHolonId > 0 && isset($descendantHolonIdMap[$eventHolonId]));
-    $isProjectEvent = (int)$event->get('IDproject') > 0;
-    $isPersonallyRelevant = $isProjectEvent
-        ? (
-            $currentUserId <= 0
-            || (
-                ($event->hasExplicitInvitations() || $eventHolonId > 0)
-                && $event->isVisibleToInvitationViewer($currentUserId, $organizationId)
-            )
-        )
-        : $eventPersonallyRelevantForViewer($event);
+    $isPersonallyRelevant = $event->isPersonallyRelevantToViewer($currentUserId, $organizationId);
     $canEditEvent = omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false);
     $deletePermissionHolon = $rootHolon;
     if ($eventHolonId > 0) {

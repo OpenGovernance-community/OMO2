@@ -8,7 +8,7 @@ class ArrayDocumentPvPoint extends ArrayDbObject
         return '\dbObject\DocumentPvPoint';
     }
 
-    public function loadForDocument($documentId, $activeOnly = true)
+    public function loadForDocument($documentId, $activeOnly = true, $hydrate = false)
     {
         $documentId = (int)$documentId;
         $activeOnly = (bool)$activeOnly;
@@ -27,13 +27,18 @@ class ArrayDocumentPvPoint extends ArrayDbObject
             $where[] = ['field' => 'active', 'value' => 1];
         }
 
-        $this->load([
+        $params = [
             'where' => $where,
             'orderBy' => [
                 ['field' => 'position', 'dir' => 'ASC'],
                 ['field' => 'id', 'dir' => 'ASC'],
             ],
-        ]);
+        ];
+        if ($hydrate !== false) {
+            $params['hydrate'] = $hydrate;
+        }
+
+        $this->load($params);
     }
 }
 

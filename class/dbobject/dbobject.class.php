@@ -97,6 +97,8 @@
 		protected $_fieldVisibilityCanViewCache = null;
 		protected $_id; // Id de l'enregistrement
 		protected $_loaded=false; // Id de l'enregistrement
+		protected $_partiallyLoaded=false;
+		protected $_loadedFieldNames=array();
 		protected $_fields; // Espace de chargement de tous les champs
 		protected $_parameters; // Espace de chargement des paramètres
 		
@@ -750,8 +752,54 @@
 		// Fonctions de base pour l'accès à la base de données
 		// *****************************************
 		
+		protected function needsFullLoadForField($field) {
+			if ($this->getId()<=0) {
+				return false;
+			}
+
+			if (!$this->_loaded) {
+				return true;
+			}
+
+			return $this->_partiallyLoaded && !isset($this->_loadedFieldNames[(string)$field]);
+		}
+
+		protected function needsFullLoad() {
+			return $this->getId()>0 && (!$this->_loaded || $this->_partiallyLoaded);
+		}
+
+		public function isFieldLoaded($field) {
+			$field = (string)$field;
+			return $this->getId()>0
+				&& $this->_loaded
+				&& (!$this->_partiallyLoaded || isset($this->_loadedFieldNames[$field]));
+		}
+
+		public function hydrateFromDatabaseRow(array $row, $isComplete = false) {
+			if (!array_key_exists('id', $row) || (int)$row['id']<=0) {
+				return false;
+			}
+
+			$this->_id = null;
+			$this->_fields = array();
+			$this->_parameters = null;
+			$this->_fieldVisibilityCanViewCache = null;
+			$this->_loaded = true;
+			$this->_partiallyLoaded = false;
+			$this->_loadedFieldNames = array_fill_keys(array_map('strval', array_keys($row)), true);
+			$this->loadFromArray($row);
+			$this->_id = (int)$row['id'];
+			$this->_partiallyLoaded = !$isComplete;
+
+			if ($isComplete) {
+				self::$preload[$this->tableName()."_".$this->_id] = $this;
+			}
+
+			return true;
+		}
+
 		function get($field) {
-			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+			if ($this->needsFullLoadForField($field)) $this->load($this->getId());
 
 			if (!$this->canReadField($field)) {
 				return "";
@@ -813,6 +861,7 @@
 		}
 
 		function clear($field) {
+			if ($this->needsFullLoad()) $this->load($this->getId());
 			unset($this->_fields[$field]);
 		}
 
@@ -895,7 +944,7 @@
 				$this->_id=$value; // Spécifique pour réinitialiser des noeuds
 				$this->_fieldVisibilityCanViewCache = null;
 			}
-			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+			if ($this->needsFullLoad()) $this->load($this->getId());
 
 			if (is_null($value) || (is_string($value) && trim($value)==""))
 				$this->_fields[$field]=null;
@@ -1225,7 +1274,7 @@
 		}
 
 		function checkField($key, $value) {
-			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+			if ($this->needsFullLoad()) $this->load($this->getId());
 
 			if (is_string($value) && trim($value)=="" && $this->isRequired($key)) return "The field [".$this->attributeLabels()[$key]."] can't be empty.";
 			
@@ -1304,7 +1353,7 @@
 		// Retourne le champ sous forme de chaîne de caractère
 		// Particulièrement intéressant pour afficher la valeur texte d'un ID
 		function getString($field, $format=NULL)  {
-			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+			if ($this->needsFullLoadForField($field)) $this->load($this->getId());
 			
 			$type=$this->getFieldType($field);
 			switch ($type) {
@@ -1583,7 +1632,7 @@
 		}
 
 		function backup() {
-			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+			if ($this->needsFullLoad()) $this->load($this->getId());
 
 			$tableName = $this->getQuotedTableName("_historique");
 			$fields = $this->getPersistableFields();
@@ -1613,6 +1662,7 @@
 			
 		function save() {
 			if ($this->getId()>0 && !$this->_loaded) return;
+			if ($this->_partiallyLoaded) $this->load($this->getId());
 
 			$tableName = $this->getQuotedTableName();
 			$fields = $this->getPersistableFields();
@@ -1719,7 +1769,7 @@
 		}
 		
 		function loadFromArray($array) {
-			if ($this->getId()>0 && !$this->_loaded) $this->load($this->getId());
+			if ($this->needsFullLoad()) $this->load($this->getId());
 
 			// Met à jour toutes les valeurs présentes dans le tableau
 			foreach ($array as $key => $value) {
@@ -1835,11 +1885,7 @@
 			if (count($rows)<1) return false;
 			if (count($rows)>1) return false;
 
-			$row=$rows[0];
-			$this->loadFromArray($row);
-			$this->_id=$row["id"];
-			self::$preload[$this->tableName()."_".$row["id"]] = $this;
-			return true;
+			return $this->hydrateFromDatabaseRow($rows[0], true);
 			
 			/*
 			 * Collé ici pour évolution futur: création de table automatique
