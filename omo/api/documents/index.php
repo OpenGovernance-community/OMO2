@@ -412,6 +412,12 @@ $newDocumentUrl = '/omo/api/documents/create.php?oid=' . $currentOrganizationId 
 $documents = new \dbObject\ArrayDocument();
 $documentVisibilityRuleMap = array();
 $documentEditVisibilityRuleMap = array();
+$documentListMetadata = array(
+    'activityByDocumentId' => array(),
+    'documentsWithChildren' => array(),
+);
+$pvEventsById = array();
+$documentViewerContext = ObjectVisibility::buildCurrentViewerContext($currentOrganizationId, $currentUserId);
 $visibleDocumentsCount = 0;
 $totalDocumentsCount = 0;
 $hiddenDocumentsCount = 0;
@@ -440,6 +446,35 @@ if ($currentOrganizationId > 0) {
             $documentIds,
             $currentOrganizationId
         );
+
+        $documentListMetadata = \dbObject\ArrayDocument::loadListMetadataForOrganization($currentOrganizationId);
+
+        $pvEventIds = array();
+        foreach ($documents as $documentItem) {
+            if (!($documentItem instanceof \dbObject\Document) || !$documentItem->isPvDocument()) {
+                continue;
+            }
+
+            $eventId = (int)$documentItem->get('IDevent');
+            if ($eventId > 0) {
+                $pvEventIds[$eventId] = $eventId;
+            }
+        }
+
+        if (count($pvEventIds) > 0) {
+            $pvEvents = new \dbObject\ArrayEvent();
+            $pvEvents->load(array(
+                'where' => array(
+                    array('field' => 'id', 'op' => 'in', 'value' => array_values($pvEventIds)),
+                ),
+                'hydrate' => true,
+            ));
+            foreach ($pvEvents as $pvEvent) {
+                if ($pvEvent instanceof \dbObject\Event && (int)$pvEvent->getId() > 0) {
+                    $pvEventsById[(int)$pvEvent->getId()] = $pvEvent;
+                }
+            }
+        }
     }
 }
 
@@ -543,15 +578,15 @@ $documentEntries = [];
 
 foreach ($documents as $document) {
     $createdAt = $document->get('datecreation');
-    $documentActivityVisited = [];
-    $updatedAt = $document->getActivityDate($documentActivityVisited);
+    $documentId = (int)$document->getId();
+    $activityMetadata = $documentListMetadata['activityByDocumentId'][$documentId] ?? array();
+    $updatedAt = $activityMetadata['date'] ?? $document->get('datemodification');
     $resolvedCreatedAt = $createdAt instanceof DateTimeInterface
         ? $createdAt
         : ($updatedAt instanceof DateTimeInterface ? $updatedAt : null);
     $resolvedUpdatedAt = $updatedAt instanceof DateTimeInterface
         ? $updatedAt
         : $resolvedCreatedAt;
-    $documentId = (int)$document->getId();
     $documentOrganizationId = (int)$document->get('IDorganization');
     $documentHolonId = (int)$document->get('IDholon');
     $parentDocumentId = (int)$document->get('IDdocument_parent');
@@ -563,10 +598,25 @@ foreach ($documents as $document) {
         $currentOrganizationId,
         $documentEditVisibilityRuleMap[$documentId] ?? null
     );
+    $visibilityRule = $documentVisibilityRuleMap[$documentId] ?? null;
+    $editVisibilityRule = $documentEditVisibilityRuleMap[$documentId] ?? null;
     $canOpenPvEditor = $document->canUserOpenPvEditor($currentUserId, $currentOrganizationId);
-    $canMoveDocument = $document->canMoveInOrganizationContext($documentOrganizationId, $currentUserId);
-    $canManageLifecycle = $document->canManageLifecycle($documentOrganizationId, $currentUserId);
-    $hasUpcomingPvEvent = $document->hasUpcomingAssociatedEvent();
+    $canManageDocument = $document->canManageInOrganizationContextWithVisibilityRule(
+        $documentOrganizationId,
+        $currentUserId,
+        $visibilityRule,
+        $documentViewerContext,
+        true
+    );
+    $canMoveDocument = ($document->isPvDocument() && $document->canUserManagePvDocument($currentUserId))
+        || $canManageDocument;
+    $canManageLifecycle = $document->isPvDocument()
+        ? $document->isPvCreatorOrEditor($currentUserId)
+        : $canManageDocument;
+    $associatedEvent = $pvEventsById[(int)$document->get('IDevent')] ?? null;
+    $hasUpcomingPvEvent = $document->isPvDocument()
+        && $associatedEvent instanceof \dbObject\Event
+        && $associatedEvent->isUpcoming();
     $pvPreparationUrl = $canOpenPvEditor
         ? $document->buildPvEditorUrl($currentOrganizationId)
         : '';
@@ -628,12 +678,14 @@ foreach ($documents as $document) {
         'hasUpcomingPvEvent' => $hasUpcomingPvEvent,
         'canMove' => $canMoveDocument,
         'canArchive' => $canManageLifecycle && !$document->isArchived(),
-        'canDelete' => $canManageLifecycle && $document->canDeleteDocument(),
+        'canDelete' => $canManageLifecycle
+            && (int)$document->get('IDevent') <= 0
+            && !isset($documentListMetadata['documentsWithChildren'][$documentId]),
         'canEdit' => $document->isPvDocument()
             ? $canOpenPvEditor
             : (
-                $document->canManageInOrganizationContext($documentOrganizationId)
-                 || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && !$document->isWhiteboardDocument() && $document->canEditInOrganizationContext($documentOrganizationId))
+                $canManageDocument
+                 || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && !$document->isWhiteboardDocument() && $document->canEditInOrganizationContextWithVisibilityRules($documentOrganizationId, $currentUserId, $visibilityRule, $editVisibilityRule, $documentViewerContext))
             ),
         'editUrl' => $document->isPvDocument()
             ? $pvPreparationUrl
@@ -806,6 +858,13 @@ if (!is_string($documentsPayload)) {
                             <?php if ($totalDocumentsCount > $visibleDocumentsCount): ?>
                                 (<?= $escape($totalDocumentsCount) ?>)
                             <?php endif; ?>
+                        </span>
+                        <span class="generic-loading-indicator" data-omo-documents-loading-indicator role="status" hidden>
+                            <svg class="generic-loading-indicator__spinner" viewBox="0 0 20 20" aria-hidden="true">
+                                <circle class="generic-loading-indicator__track" cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"></circle>
+                                <path class="generic-loading-indicator__arc" d="M10 3a7 7 0 0 1 6.7 5" fill="none" stroke="currentColor" stroke-width="2"></path>
+                            </svg>
+                            <span><?= $escape(omoDocumentsScopeT('documents.action.loading')) ?></span>
                         </span>
                     </div>
                 </div>
@@ -2962,6 +3021,23 @@ if (!is_string($documentsPayload)) {
                                     window.omoSetDocumentsScope(next.scope, {panel: panel});
                                     return;
                                 }
+
+                                const completeRender = function () {
+                                    render();
+                                    if (typeof window.omoSetDocumentsPanelLoadingState === 'function') {
+                                        window.omoSetDocumentsPanelLoadingState(panel, false);
+                                    }
+                                };
+                                if (typeof window.omoSetDocumentsPanelLoadingState === 'function') {
+                                    window.omoSetDocumentsPanelLoadingState(panel, true);
+                                    if (typeof window.requestAnimationFrame === 'function') {
+                                        window.requestAnimationFrame(completeRender);
+                                    } else {
+                                        window.setTimeout(completeRender, 0);
+                                    }
+                                    return;
+                                }
+
                                 render();
                             };
 
@@ -3505,6 +3581,29 @@ if (!is_string($documentsPayload)) {
                 return normalizeDocumentScope(panel && panel.getAttribute('data-omo-document-scope') || 'contextual');
             };
 
+            window.omoSetDocumentsPanelLoadingState = function (panel, isLoading) {
+                if (!(panel instanceof Element)) {
+                    return;
+                }
+
+                const loading = Boolean(isLoading);
+                panel.classList.toggle('is-loading', loading);
+                const indicator = panel.querySelector('[data-omo-documents-loading-indicator]');
+                if (indicator) {
+                    indicator.hidden = !loading;
+                }
+
+                if (loading) {
+                    panel.setAttribute('aria-busy', 'true');
+                } else {
+                    panel.removeAttribute('aria-busy');
+                }
+
+                panel.querySelectorAll('[data-omo-documents-filter-toggle], [data-omo-documents-filter-apply], [data-omo-documents-filter-save], [data-omo-document-scope-toggle], [data-omo-documents-sort], [data-omo-documents-density]').forEach(function (button) {
+                    button.disabled = loading;
+                });
+            };
+
             const buildDocumentsScopeUrl = function (panel, scopeValue) {
                 const resolvedScope = normalizeDocumentScope(scopeValue);
                 const organizationId = Number(panel && panel.getAttribute('data-omo-document-oid') || 0);
@@ -3531,7 +3630,7 @@ if (!is_string($documentsPayload)) {
                     return;
                 }
 
-                panel.classList.toggle('is-loading', Boolean(isLoading));
+                window.omoSetDocumentsPanelLoadingState(panel, isLoading);
                 let activeScopeIndex = 0;
 
                 panel.querySelectorAll('[data-omo-document-scope-toggle]').forEach(function (button) {
