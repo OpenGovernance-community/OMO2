@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-02
 
+- Les boutons de sauvegarde des evenements, documents, indicateurs, activites, processus, anciennes checklists, regles et editeurs de gouvernance sont maintenant grises pendant toute la requete. Une seconde soumission est ignoree jusqu au retour du serveur, puis les actions sont reactivees si la sauvegarde echoue.
 - Les en-tetes des applications Activites, Checklists, Calendrier, Documents, Regles, Projets, Team, Indicateurs et Decisions proposent maintenant une fleche accolee a Enregistrer pour les admins. Les vues de portee, tri et presentation peuvent etre sauvegardees en base pour l organisation ou son type de holon; le super admin peut aussi definir les memes defauts pour toutes les organisations. Les vues personnelles locales restent prioritaires.
 - En mode Decouverte, les utilisateurs non administrateurs ne voient plus Enregistrer la vue dans les applications : Appliquer conserve uniquement un changement temporaire, tandis que les admins enregistrent toujours les valeurs par defaut collectives.
 - En modes Autonome et Expert, Restaurer la vue par defaut efface la preference locale de l utilisateur et reapplique immediatement le defaut enregistre pour l organisation, le type de holon ou l application.
@@ -13,6 +14,9 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les droits et les defauts du tableau de pilotage sont simplifies : le super admin agit par type de holon, l admin d organisation par modele directement herite, l admin de holon par holon en Autonome et Expert, et chaque membre conserve sa propre vue en Expert. Chaque niveau peut effacer sa valeur pour laisser reprendre le niveau suivant.
 - La detection des admins de holon s appuie sur leur affectation active et son marqueur admin, sans dependre du marqueur technique d appartenance, afin que leurs defauts de tableau restent modifiables en Autonome et Expert.
 - La sauvegarde des defauts de tableau utilise maintenant exactement le meme calcul d admin de contexte que le panneau de structure : un membre admin d un role de pilotage est reconnu administrateur de son holon parent.
+- Les vues sauvegardees des applications sont maintenant relues par toutes les applications a leur ouverture. Les changements temporaires de session restent prioritaires, puis viennent la vue personnelle en base et les defauts serveur; les anciennes vues du navigateur ne masquent plus ces defauts.
+- Le stockage des vues valide maintenant les champs propres a chaque application, y compris les filtres Type et Methode de Decisions. Les acces personnels sont reserves aux membres actifs de l organisation ou au super admin.
+- Les droits du tableau de pilotage sont calcules par un helper partage entre son rendu et son API. Les anciens niveaux de defauts globaux par organisation et templates globaux, devenus inaccessibles, ont ete retires du code tout en laissant les anciennes clefs JSON sans effet.
 - L editeur des holons masque la couleur hors mode Expert et retire l edition des droits en mode Decouverte, sans effacer les valeurs deja enregistrees.
 
 ## 2026-09-01

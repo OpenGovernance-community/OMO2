@@ -70,4 +70,4 @@ $canCreate = omoControlListCanUsePermission($currentHolon, 'CAN_CREATE_CONTROL_L
         <div class="omo-overlay-drawer__panel"><div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky"><div class="generic-drawer-header__copy"><h3 data-control-drawer-title><?= omoApiEscape(omoControlListT('control.title')) ?></h3><p data-control-drawer-description><?= omoApiEscape(omoControlListT('control.drawer.description')) ?></p></div><div class="generic-drawer-header__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-control-close><?= omoApiEscape(omoControlListT('control.action.close')) ?></button></div></div><div class="omo-overlay-drawer__body" data-control-drawer-body></div></div>
     </div>
 </div>
-<script src="/omo/api/checklists/checklists.js?v=20260831-control-lists"></script>
+<script src="/omo/api/checklists/checklists.js?v=20260902-submit-lock"></script>

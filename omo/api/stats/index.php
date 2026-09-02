@@ -1849,8 +1849,14 @@ $displayItemCount = count($statsEntries);
                 formData.append('indicator_ids[]', id);
             });
 
-            saveButton.disabled = true;
-            cancelButton.disabled = true;
+            var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
+            if (usesSharedPendingState && !window.omoBeginPendingAction(form)) {
+                return;
+            }
+            if (!usesSharedPendingState) {
+                saveButton.disabled = true;
+                cancelButton.disabled = true;
+            }
             if (feedback) {
                 feedback.textContent = '';
                 feedback.className = 'omo-stats-feedback';
@@ -1869,8 +1875,13 @@ $displayItemCount = count($statsEntries);
                     feedback.textContent = error.message || texts.loadError;
                     feedback.className = 'omo-stats-feedback is-error';
                 }
-                saveButton.disabled = false;
-                cancelButton.disabled = false;
+            }).finally(function () {
+                if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {
+                    window.omoEndPendingAction(form);
+                } else {
+                    saveButton.disabled = false;
+                    cancelButton.disabled = false;
+                }
             });
         });
     }
@@ -2593,14 +2604,19 @@ $displayItemCount = count($statsEntries);
             event.preventDefault();
             var submitButton = form.querySelector('button[type="submit"]');
             var feedback = form.querySelector('[data-omo-stats-value-feedback]');
-            if (submitButton) {
+            var formData = new FormData(form);
+            var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
+            if (usesSharedPendingState && !window.omoBeginPendingAction(form)) {
+                return;
+            }
+            if (!usesSharedPendingState && submitButton) {
                 submitButton.disabled = true;
             }
             if (feedback) {
                 feedback.textContent = '';
                 feedback.className = 'omo-stats-feedback';
             }
-            postFormData(new FormData(form)).then(function () {
+            postFormData(formData).then(function () {
                 var detail = form.closest('[data-omo-stats-detail]');
                 listNeedsRefresh = true;
                 return openDrawerWithUrl(detail ? detail.getAttribute('data-detail-url') : '');
@@ -2610,7 +2626,9 @@ $displayItemCount = count($statsEntries);
                     feedback.className = 'omo-stats-feedback is-error';
                 }
             }).finally(function () {
-                if (submitButton) {
+                if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {
+                    window.omoEndPendingAction(form);
+                } else if (submitButton) {
                     submitButton.disabled = false;
                 }
             });

@@ -92,41 +92,6 @@ class ApplicationSetting extends DbObject
         );
     }
 
-    public static function getApplicationViewDefault($applicationKey): ?array
-    {
-        $defaults = self::getApplicationViewDefaultsForType($applicationKey, 0);
-        return $defaults['global'];
-    }
-
-    public static function getApplicationViewBaseTypeDefault($applicationKey, $typeId): ?array
-    {
-        $defaults = self::getApplicationViewDefaultsForType($applicationKey, $typeId);
-        return $defaults['baseType'];
-    }
-
-    public static function saveApplicationViewDefault($applicationKey, array $view)
-    {
-        $applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
-        if ($applicationKey === '') {
-            return array('status' => false);
-        }
-        $setting = self::loadApplicationViewSetting();
-        if (!$setting) {
-            $setting = new self();
-            $setting->set('setting_key', self::APPLICATION_VIEW_SETTING_KEY);
-            self::$applicationViewSettingCache = $setting;
-            self::$applicationViewSettingLoaded = true;
-        }
-        $parameters = $setting->getParametersArray();
-        $views = UserHolon::normalizeApplicationViewDefaults(
-            $parameters[UserHolon::APPLICATION_VIEW_DEFAULTS_PARAMETER] ?? array()
-        );
-        $views[$applicationKey] = UserHolon::normalizeApplicationView($view);
-        $parameters[UserHolon::APPLICATION_VIEW_DEFAULTS_PARAMETER] = $views;
-        $setting->set('parameters', $parameters);
-        return $setting->save();
-    }
-
     public static function saveApplicationViewBaseTypeDefault($applicationKey, $typeId, array $view)
     {
         $applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);

@@ -375,19 +375,9 @@ $dashboardLayout = $dashboardPersonalLayout !== null
             : ($dashboardApplicationBaseTypeLayout !== null
                 ? $dashboardApplicationBaseTypeLayout
                 : UserHolon::getDefaultDashboardLayout())));
-$dashboardOrganizationMembership = $currentUserId > 0
-    ? $organization->getMembership($currentUserId, true)
-    : null;
-$isDashboardMember = $dashboardOrganizationMembership !== null;
-$isDashboardOrganizationAdmin = $isDashboardMember
-    && $dashboardOrganizationMembership->isOrganizationAdmin()
-    && function_exists('commonCurrentUserIsAdminModeEnabled')
-    && commonCurrentUserIsAdminModeEnabled($currentOrganizationId);
-$isDashboardHolonAdmin = $currentUserId > 0 && $dashboardHolonId > 0
-    && UserHolon::canUserManageDashboardHolonDefault($currentUserId, $currentOrganizationId, $dashboardHolonId);
-$isDashboardSiteAdmin = $currentUserId > 0 && function_exists('commonUserHasSiteAdminOverride')
-    && commonUserHasSiteAdminOverride($currentUserId);
-$canEditDashboard = false;
+$dashboardAccess = omoDashboardViewPreferencesGetAccess($currentUserId, $organization, $scopeReferenceHolon);
+$dashboardInterfaceLevel = (int)$dashboardAccess['interfaceLevel'];
+$canEditDashboard = !empty($dashboardAccess['canEdit']);
 $dashboardPrimarySaveScope = '';
 $dashboardPrimarySaveTextKey = 'personal_space.editor.save';
 $canResetDashboardPersonalLayout = false;
@@ -397,24 +387,16 @@ $canResetDashboardApplicationBaseTypeDefault = false;
 $dashboardPrimaryResetScope = '';
 $dashboardPrimaryResetTextKey = 'personal_space.editor.reset_default';
 $dashboardPrimaryResetKey = '';
-$canSaveDashboardHolonDefault = false;
-$canSaveDashboardOrganizationTemplateDefault = false;
-$canSaveDashboardApplicationBaseTypeDefault = false;
+$canSaveDashboardHolonDefault = !empty($dashboardAccess['canSaveHolon']);
+$canSaveDashboardOrganizationTemplateDefault = !empty($dashboardAccess['canSaveOrganizationTemplate']);
+$canSaveDashboardApplicationBaseTypeDefault = !empty($dashboardAccess['canSaveApplicationType']);
 
 if ($dashboardInterfaceLevel === Organization::INTERFACE_LEVEL_DISCOVERY) {
-    $canSaveDashboardOrganizationTemplateDefault = ($isDashboardOrganizationAdmin || $isDashboardSiteAdmin) && $dashboardTemplateKey !== '';
-    $canSaveDashboardApplicationBaseTypeDefault = $isDashboardSiteAdmin && $dashboardBaseTypeKey !== '';
-    $canEditDashboard = $canSaveDashboardOrganizationTemplateDefault || $canSaveDashboardApplicationBaseTypeDefault;
     $dashboardPrimarySaveScope = $canSaveDashboardOrganizationTemplateDefault ? 'organization_template' : 'application_type';
     $dashboardPrimarySaveTextKey = $canSaveDashboardOrganizationTemplateDefault
         ? 'personal_space.editor.save_organization_template_default'
         : 'personal_space.editor.save_application_type_default';
 } elseif ($dashboardInterfaceLevel === Organization::INTERFACE_LEVEL_AUTONOMOUS) {
-    $canSaveDashboardHolonDefault = $isDashboardHolonAdmin || $isDashboardOrganizationAdmin || $isDashboardSiteAdmin;
-    $canSaveDashboardOrganizationTemplateDefault = ($isDashboardOrganizationAdmin || $isDashboardSiteAdmin)
-        && $dashboardTemplateKey !== '';
-    $canSaveDashboardApplicationBaseTypeDefault = $isDashboardSiteAdmin && $dashboardBaseTypeKey !== '';
-    $canEditDashboard = $canSaveDashboardHolonDefault || $canSaveDashboardOrganizationTemplateDefault || $canSaveDashboardApplicationBaseTypeDefault;
     $dashboardPrimarySaveScope = $canSaveDashboardHolonDefault ? 'holon' : ($canSaveDashboardOrganizationTemplateDefault ? 'organization_template' : 'application_type');
     $dashboardPrimarySaveTextKey = $dashboardPrimarySaveScope === 'holon'
         ? 'personal_space.editor.save_holon_default'
@@ -422,16 +404,11 @@ if ($dashboardInterfaceLevel === Organization::INTERFACE_LEVEL_DISCOVERY) {
             ? 'personal_space.editor.save_organization_template_default'
             : 'personal_space.editor.save_application_type_default');
 } else {
-    $canEditDashboard = $isDashboardMember || $isDashboardSiteAdmin;
     $dashboardPrimarySaveScope = 'personal';
     $dashboardPrimarySaveTextKey = 'personal_space.editor.save_personal';
-    $canSaveDashboardHolonDefault = $isDashboardHolonAdmin || $isDashboardOrganizationAdmin || $isDashboardSiteAdmin;
-    $canSaveDashboardOrganizationTemplateDefault = ($isDashboardOrganizationAdmin || $isDashboardSiteAdmin)
-        && $dashboardTemplateKey !== '';
-    $canSaveDashboardApplicationBaseTypeDefault = $isDashboardSiteAdmin && $dashboardBaseTypeKey !== '';
 }
 $canResetDashboardPersonalLayout = $dashboardInterfaceLevel === Organization::INTERFACE_LEVEL_EXPERT
-    && $canEditDashboard
+    && !empty($dashboardAccess['canSavePersonal'])
     && $dashboardPersonalLayout !== null;
 $canResetDashboardHolonDefault = $canSaveDashboardHolonDefault && $dashboardHolonDefaultLayout !== null;
 $canResetDashboardOrganizationTemplateDefault = $canSaveDashboardOrganizationTemplateDefault

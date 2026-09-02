@@ -113,7 +113,36 @@
             });
             var addProposalButton = root.querySelector('[data-governance-proposal-add]');
             if (addProposalButton) addProposalButton.addEventListener('click', function () { blueprint.push({id:0,title:(texts.proposalDefault || 'Proposition __INDEX__').replace('__INDEX__', blueprint.length + 1),description:'',actions:[]}); render(); });
-            form.addEventListener('submit', function (event) { event.preventDefault(); if (!form.reportValidity()) return; sync(); if (!blueprint.length || blueprint.some(function (p) { return !p.actions.length; })) { feedback.hidden = false; feedback.textContent = texts.genericError || 'Ajoutez une proposition et une modification.'; return; } fetch(form.action, {method:'POST', credentials:'same-origin', headers:{'X-Requested-With':'XMLHttpRequest'}, body:new FormData(form)}).then(function (r) { return r.json().then(function (j) { return {ok:r.ok, json:j}; }); }).then(function (r) { if (!r.ok || !r.json.status) throw new Error(r.json.message); if (typeof window.omoDecisionOpenNestedDrawer === 'function') window.omoDecisionOpenNestedDrawer(r.json.drawerTitle || 'Prises de decision', r.json.redirectUrl, ''); else window.location.href = r.json.redirectUrl; }).catch(function (error) { feedback.hidden=false; feedback.textContent=error.message || texts.genericError; }); });
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                if (!form.reportValidity()) return;
+                sync();
+                if (!blueprint.length || blueprint.some(function (p) { return !p.actions.length; })) {
+                    feedback.hidden = false;
+                    feedback.textContent = texts.genericError || 'Ajoutez une proposition et une modification.';
+                    return;
+                }
+                var formData = new FormData(form);
+                var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
+                var submitButton = form.querySelector('[type="submit"]');
+                if (usesSharedPendingState && !window.omoBeginPendingAction(form)) return;
+                if (!usesSharedPendingState && submitButton) submitButton.disabled = true;
+                fetch(form.action, {method:'POST', credentials:'same-origin', headers:{'X-Requested-With':'XMLHttpRequest'}, body:formData})
+                    .then(function (r) { return r.json().then(function (j) { return {ok:r.ok, json:j}; }); })
+                    .then(function (r) {
+                        if (!r.ok || !r.json.status) throw new Error(r.json.message);
+                        if (typeof window.omoDecisionOpenNestedDrawer === 'function') window.omoDecisionOpenNestedDrawer(r.json.drawerTitle || 'Prises de decision', r.json.redirectUrl, '');
+                        else window.location.href = r.json.redirectUrl;
+                    })
+                    .catch(function (error) {
+                        feedback.hidden = false;
+                        feedback.textContent = error.message || texts.genericError;
+                    })
+                    .finally(function () {
+                        if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') window.omoEndPendingAction(form);
+                        else if (submitButton) submitButton.disabled = false;
+                    });
+            });
             if (!blueprint.length && editable) blueprint.push({id:0,title:(texts.proposalDefault || 'Proposition __INDEX__').replace('__INDEX__', '1'),description:'',actions:[]}); render();
         });
     }
