@@ -6,14 +6,12 @@ use dbObject\StatIndicator;
 $overdueIndicators = [];
 if (!empty($enabledAppHashes['stats'])) {
     $statsIndicators = new ArrayStatIndicator();
-    $statsContextHolonId = $personalSpaceScope === 'contextual'
-        ? $currentHolonId
-        : ($scopeReferenceHolon instanceof Holon ? (int)$scopeReferenceHolon->getId() : 0);
+    $statsContextHolonId = $dashboardModuleContextHolonId;
     $statsIndicators->loadForContext(
         $currentOrganizationId,
         $statsContextHolonId,
-        $personalSpaceScope,
-        $personalSpaceScopeHolonIds
+        $dashboardModuleScope,
+        $dashboardModuleScopeHolonIds
     );
     $indicatorById = [];
     foreach ($statsIndicators as $indicator) {
@@ -26,8 +24,8 @@ if (!empty($enabledAppHashes['stats'])) {
     $indicatorImports->loadForContext(
         $currentOrganizationId,
         $statsContextHolonId,
-        $personalSpaceScope,
-        $personalSpaceScopeHolonIds
+        $dashboardModuleScope,
+        $dashboardModuleScopeHolonIds
     );
     foreach ($indicatorImports as $indicatorImport) {
         $indicator = $indicatorImport->getIndicator();
@@ -63,4 +61,3 @@ if (!empty($enabledAppHashes['stats'])) {
             : strcasecmp((string)$left['title'], (string)$right['title']);
     });
 }
-

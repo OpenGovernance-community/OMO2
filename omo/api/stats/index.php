@@ -34,11 +34,21 @@ if (empty($context['status'])) {
 $organization = $context['organization'];
 $rootHolon = $context['rootHolon'];
 $currentHolon = $context['currentHolon'];
+$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+$applicationViewPreferences = omoApplicationViewPreferencesGetContext('stats', $organization, $currentHolon, $currentUserId);
 $canToggleScope = $currentHolon instanceof Holon;
 $availableScopes = omoApiGetAvailableContextScopes($canToggleScope, $currentHolon, $rootHolon);
-$statsScope = omoApiNormalizeContextScope($_GET['stats_scope'] ?? 'contextual', $availableScopes);
+$statsScope = omoApiNormalizeContextScope(
+    omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'stats_scope', 'scope', 'contextual'),
+    $availableScopes
+);
 $scopeActiveIndex = omoApiResolveContextScopeIndex($statsScope, $availableScopes);
-$requestedStatsSort = (string)($_GET['stats_sort'] ?? 'temporal');
+$requestedStatsSort = (string)omoApplicationViewPreferencesGetInitialValue(
+    $applicationViewPreferences,
+    'stats_sort',
+    'sort',
+    'temporal'
+);
 $statsSort = in_array($requestedStatsSort, ['temporal', 'alpha'], true)
     ? $requestedStatsSort
     : 'temporal';
@@ -299,13 +309,14 @@ $ethercalcPickerAvailable = omoEthercalcHasConfig();
 $spreadsheetPickerAvailable = count($spreadsheetPickerData) > 0;
 $displayItemCount = count($statsEntries);
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260801-view-preferences-actions-height">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260824-source-fields">
 <div
     class="omo-stats omo-panel-view"
     id="omo-stats-root"
     data-omo-stats-oid="<?= (int)$organizationId ?>"
     data-omo-stats-cid="<?= $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0 ?>"
+    data-omo-app-view-preferences="<?= omoApiEscape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     data-omo-stats-route-cid="<?= (int)$currentHolonId ?>"
     data-omo-stats-root-hid="<?= $rootHolon instanceof Holon ? (int)$rootHolon->getId() : 0 ?>"
     data-omo-stats-current-scope="<?= omoApiEscape($statsScope) ?>"
@@ -394,15 +405,12 @@ $displayItemCount = count($statsEntries);
                     </div>
                     <div class="omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-omo-stats-filter-apply><?= omoApiEscape(omoStatsT('stats.filters.apply')) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-filter-save><?= omoApiEscape(omoStatsT('stats.filters.save_view')) ?></button>
-                        <div class="generic-menu omo-view-filter__actions-more" data-omo-stats-filter-more-menu>
-                            <button type="button" class="generic-menu-toggle" data-omo-stats-filter-more-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoStatsT('stats.filters.more_actions')) ?>">&#8942;</button>
-                            <div class="generic-menu-panel" data-omo-stats-filter-more-panel role="menu" hidden>
-                                <button type="button" class="generic-menu-item" data-omo-stats-filter-more-action="apply-everywhere" role="menuitem"><?= omoApiEscape(omoStatsT('stats.filters.apply_everywhere')) ?></button>
-                                <button type="button" class="generic-menu-item" data-omo-stats-filter-more-action="set-default" role="menuitem"><?= omoApiEscape(omoStatsT('stats.filters.set_default')) ?></button>
-                                <button type="button" class="generic-menu-item" data-omo-stats-filter-more-action="restore-default" role="menuitem"><?= omoApiEscape(omoStatsT('stats.filters.restore_default')) ?></button>
-                            </div>
-                        </div>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoStatsT('stats.filters.save_view')) ?></button>
+                        <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                        <?php endif; ?>
+                        <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
                 </section>
             </div>
@@ -720,6 +728,7 @@ $displayItemCount = count($statsEntries);
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
 <script src="/omo/api/stats/reference-editor.js?v=20260724-ceiling"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
 <script>
 (function () {
     var root = document.getElementById('omo-stats-root');
@@ -1381,7 +1390,13 @@ $displayItemCount = count($statsEntries);
         if (action === 'restore-default') {
             clearStoredFilters();
             clearTemporaryFilters();
-            applyFilters(getDefaultStoredFilters() || {
+            var store = getStoredFiltersStore();
+            store.defaultView = null;
+            saveStoredFiltersStore(store);
+            var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+                ? window.omoApplicationViewPreferencesGetDefault(root)
+                : null;
+            applyFilters(serverDefault || {
                 scope: 'contextual',
                 sort: 'temporal',
                 view: 'cards'
@@ -1412,7 +1427,13 @@ $displayItemCount = count($statsEntries);
         var temporary = readStoredValue(window.sessionStorage, sessionViewsStorageKey);
         var saved = getStoredFilters();
         var defaultFilters = getDefaultStoredFilters();
-        var preferences = normalizeFilters(temporary || saved || defaultFilters || getActiveFilters());
+        var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+            ? window.omoApplicationViewPreferencesGetDefault(root)
+            : null;
+        var personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
+            ? window.omoApplicationViewPreferencesGetPersonal(root)
+            : null;
+        var preferences = normalizeFilters(temporary || personalView || serverDefault || saved || defaultFilters || getActiveFilters());
         if ((Number.isInteger(initialIndicatorId) && initialIndicatorId > 0) || (Number.isInteger(initialGroupId) && initialGroupId > 0)) {
             preferences.scope = currentScope;
             preferences.sort = currentSort;

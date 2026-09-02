@@ -11,16 +11,26 @@
     var editorGrid = root.querySelector('[data-omo-dashboard-editor-grid]');
     var picker = root.querySelector('[data-omo-dashboard-picker]');
     var pickerList = root.querySelector('[data-omo-dashboard-picker-list]');
+    var configurator = root.querySelector('[data-omo-dashboard-configurator]');
+    var configuratorTitle = root.querySelector('[data-omo-dashboard-configurator-title]');
+    var configuratorScopes = root.querySelector('[data-omo-dashboard-configurator-scopes]');
     var saveMenu = root.querySelector('[data-omo-dashboard-save-menu]');
     var saveMenuToggle = root.querySelector('[data-omo-dashboard-save-menu-toggle]');
     var saveMenuPanel = root.querySelector('[data-omo-dashboard-save-menu-panel]');
     var layout = parseJson(root.getAttribute('data-omo-dashboard-layout'), []);
     var catalog = parseJson(root.getAttribute('data-omo-dashboard-catalog'), []);
     var texts = parseJson(root.getAttribute('data-omo-dashboard-texts'), {});
+    var availableScopes = parseJson(root.getAttribute('data-omo-dashboard-available-scopes'), ['contextual']);
     var workingLayout = [];
     var selectedCells = [];
     var rowCount = 4;
     var pickerMode = null;
+    var configuredModuleId = null;
+    var pendingScope = 'contextual';
+
+    if (!Array.isArray(availableScopes) || availableScopes.length === 0) {
+        availableScopes = ['contextual'];
+    }
 
     function parseJson(value, fallback) {
         try {
@@ -40,6 +50,35 @@
     function moduleLabel(type) {
         var item = catalog.find(function (candidate) { return candidate.type === type; });
         return item ? item.label : type;
+    }
+
+    function moduleCatalogItem(type) {
+        return catalog.find(function (candidate) { return candidate.type === type; }) || null;
+    }
+
+    function moduleHasScopeSetting(type) {
+        var item = moduleCatalogItem(type);
+        return Boolean(item && item.settings && item.settings.scope);
+    }
+
+    function normalizeScope(scope) {
+        return availableScopes.indexOf(scope) !== -1 ? scope : 'contextual';
+    }
+
+    function defaultModuleSettings(type) {
+        return moduleHasScopeSetting(type) ? {scope: 'contextual'} : {};
+    }
+
+    function moduleScope(module) {
+        if (!moduleHasScopeSetting(module.type)) {
+            return 'contextual';
+        }
+        return normalizeScope(module.settings && module.settings.scope);
+    }
+
+    function scopeLabel(scope) {
+        var labels = texts.scopeLabels || {};
+        return labels[scope] || scope;
     }
 
     function moduleAt(row, column) {
@@ -124,9 +163,12 @@
             card.style.gridRow = String(module.row + 1) + ' / span ' + String(module.rowSpan);
             card.style.gridColumn = String(module.column + 1) + ' / span ' + String(module.columnSpan);
             card.innerHTML = '<strong>' + escapeHtml(moduleLabel(module.type)) + '</strong>'
-                + '<span>' + String(module.columnSpan) + ' × ' + String(module.rowSpan) + '</span>'
+                + '<span>' + String(module.columnSpan) + ' × ' + String(module.rowSpan) + ' · ' + escapeHtml(scopeLabel(moduleScope(module))) + '</span>'
                 + '<div class="omo-dashboard-editor__module-actions">'
                 + '<button type="button" class="generic-action-button generic-action-button--secondary" data-replace-module="' + escapeHtml(module.id) + '">' + escapeHtml(texts.replace || 'Remplacer') + '</button>'
+                + (moduleHasScopeSetting(module.type)
+                    ? '<button type="button" class="generic-action-button generic-action-button--secondary" data-configure-module="' + escapeHtml(module.id) + '">' + escapeHtml(texts.configure || 'Configurer') + '</button>'
+                    : '')
                 + '<button type="button" class="generic-action-button generic-action-button--danger" data-delete-module="' + escapeHtml(module.id) + '">' + escapeHtml(texts.delete || 'Supprimer') + '</button>'
                 + '</div>';
             editorGrid.appendChild(card);
@@ -167,6 +209,61 @@
         pickerMode = null;
     }
 
+    function closeConfigurator() {
+        if (configurator) {
+            configurator.hidden = true;
+        }
+        configuredModuleId = null;
+    }
+
+    function openConfigurator(moduleId) {
+        var module = workingLayout.find(function (candidate) { return candidate.id === moduleId; });
+        if (!module || !configurator || !configuratorScopes || !moduleHasScopeSetting(module.type)) {
+            return;
+        }
+        configuredModuleId = module.id;
+        pendingScope = moduleScope(module);
+        if (configuratorTitle) {
+            configuratorTitle.textContent = String(texts.configureTitle || 'Configurer {module}').replace('{module}', moduleLabel(module.type));
+        }
+        configuratorScopes.innerHTML = '';
+        availableScopes.forEach(function (scope) {
+            var button = document.createElement('button');
+            var active = scope === pendingScope;
+            button.type = 'button';
+            button.className = 'omo-segmented__button' + (active ? ' is-active' : '');
+            button.setAttribute('data-omo-dashboard-configure-scope', scope);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+            button.textContent = scopeLabel(scope);
+            configuratorScopes.appendChild(button);
+        });
+        configurator.hidden = false;
+    }
+
+    function selectConfiguratorScope(scope) {
+        pendingScope = normalizeScope(scope);
+        if (!configuratorScopes) {
+            return;
+        }
+        configuratorScopes.querySelectorAll('[data-omo-dashboard-configure-scope]').forEach(function (button) {
+            var active = button.getAttribute('data-omo-dashboard-configure-scope') === pendingScope;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+    }
+
+    function applyConfigurator() {
+        var module = workingLayout.find(function (candidate) { return candidate.id === configuredModuleId; });
+        if (!module || !moduleHasScopeSetting(module.type)) {
+            closeConfigurator();
+            return;
+        }
+        module.settings = module.settings && typeof module.settings === 'object' ? module.settings : {};
+        module.settings.scope = normalizeScope(pendingScope);
+        closeConfigurator();
+        renderEditor();
+    }
+
     function setSaveMenuOpen(isOpen) {
         if (!saveMenu || !saveMenuToggle || !saveMenuPanel) {
             return;
@@ -183,6 +280,7 @@
             module = workingLayout.find(function (candidate) { return candidate.id === pickerMode.id; });
             if (module) {
                 module.type = type;
+                module.settings = defaultModuleSettings(type);
             }
         } else {
             geometry = selectionGeometry();
@@ -195,11 +293,13 @@
                 row: geometry.row,
                 column: geometry.column,
                 rowSpan: geometry.rowSpan,
-                columnSpan: geometry.columnSpan
+                columnSpan: geometry.columnSpan,
+                settings: defaultModuleSettings(type)
             });
             selectedCells = [];
         }
         closePicker();
+        closeConfigurator();
         renderEditor();
     }
 
@@ -217,13 +317,14 @@
     function closeEditor() {
         editor.classList.remove('is-open');
         closePicker();
+        closeConfigurator();
         setSaveMenuOpen(false);
         window.setTimeout(function () { editor.hidden = true; }, 220);
     }
 
     function saveLayout(scope, templateKey) {
         var saveButtons = root.querySelectorAll('[data-omo-dashboard-editor-save], [data-omo-dashboard-editor-reset], [data-omo-dashboard-save-scope], [data-omo-dashboard-save-menu-toggle]');
-        scope = scope === 'holon' || scope === 'organization' || scope === 'application' || scope === 'organization_template' || scope === 'application_template' || scope === 'personal_reset'
+        scope = scope === 'holon' || scope === 'organization_template' || scope === 'application_type' || scope === 'personal_reset' || scope === 'holon_reset' || scope === 'organization_template_reset' || scope === 'application_type_reset'
             ? scope
             : 'personal';
         saveButtons.forEach(function (button) { button.disabled = true; });
@@ -270,6 +371,7 @@
         var filter;
         var cell;
         var replaceButton;
+        var configureButton;
         var deleteButton;
         var moduleButton;
         var saveScopeButton;
@@ -303,7 +405,10 @@
             return;
         }
         if (event.target.closest('[data-omo-dashboard-editor-reset]')) {
-            saveLayout('personal_reset');
+            saveLayout(
+                event.target.closest('[data-omo-dashboard-editor-reset]').getAttribute('data-omo-dashboard-editor-reset'),
+                event.target.closest('[data-omo-dashboard-editor-reset]').getAttribute('data-omo-dashboard-template-key')
+            );
             return;
         }
         if (event.target.closest('[data-omo-dashboard-save-menu-toggle]')) {
@@ -337,6 +442,11 @@
             openPicker({kind: 'replace', id: replaceButton.getAttribute('data-replace-module')});
             return;
         }
+        configureButton = event.target.closest('[data-configure-module]');
+        if (configureButton) {
+            openConfigurator(configureButton.getAttribute('data-configure-module'));
+            return;
+        }
         deleteButton = event.target.closest('[data-delete-module]');
         if (deleteButton) {
             workingLayout = workingLayout.filter(function (candidate) {
@@ -348,6 +458,18 @@
         }
         if (event.target.closest('[data-omo-dashboard-picker-close]')) {
             closePicker();
+            return;
+        }
+        if (event.target.closest('[data-omo-dashboard-configurator-close]')) {
+            closeConfigurator();
+            return;
+        }
+        if (event.target.closest('[data-omo-dashboard-configurator-apply]')) {
+            applyConfigurator();
+            return;
+        }
+        if (event.target.closest('[data-omo-dashboard-configure-scope]')) {
+            selectConfiguratorScope(event.target.closest('[data-omo-dashboard-configure-scope]').getAttribute('data-omo-dashboard-configure-scope'));
             return;
         }
         moduleButton = event.target.closest('[data-module-type]');

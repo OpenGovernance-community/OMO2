@@ -114,6 +114,13 @@
 			$this->setParametersArray($parameters);
 		}
 
+		public function clearDashboardDefaultLayout(): void
+		{
+			$parameters = $this->getParametersArray();
+			unset($parameters[UserHolon::DASHBOARD_DEFAULT_LAYOUT_PARAMETER]);
+			$this->setParametersArray($parameters);
+		}
+
 		public function getDashboardTemplateLayoutKeys(): array
 		{
 			$keys = array();
@@ -131,6 +138,24 @@
 			$typeKey = UserHolon::makeDashboardTemplateKey((int)$this->get('IDtypeholon'));
 			$keys[$typeKey] = $typeKey;
 			return array_values($keys);
+		}
+
+		public function getDashboardDirectTemplateLayoutKey(): string
+		{
+			$template = $this->getTemplateHolon();
+			if (!$template instanceof self) {
+				return '';
+			}
+
+			return UserHolon::makeDashboardTemplateKey(
+				(int)$template->get('IDtypeholon'),
+				(string)$template->get('templatename')
+			);
+		}
+
+		public function getDashboardBaseTypeLayoutKey(): string
+		{
+			return UserHolon::makeDashboardBaseTypeKey((int)$this->get('IDtypeholon'));
 		}
 
 		public function getDashboardTemplateLayoutLabel(): string

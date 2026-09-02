@@ -206,13 +206,17 @@
     }
 
     function clearTemporaryFilters() {
+        clearStoredValue(window.sessionStorage, checklistSessionViewsStorageKey);
+    }
+
+    function clearStoredValue(storage, storageKey) {
         try {
-            var values = JSON.parse(window.sessionStorage.getItem(checklistSessionViewsStorageKey) || '{}');
+            var values = JSON.parse(storage.getItem(storageKey) || '{}');
             if (!values || typeof values !== 'object') {
                 return;
             }
             delete values[getPreferencesContextKey()];
-            window.sessionStorage.setItem(checklistSessionViewsStorageKey, JSON.stringify(values));
+            storage.setItem(storageKey, JSON.stringify(values));
         } catch (error) {
         }
     }
@@ -338,9 +342,15 @@
         }
         var temporary = readStoredValue(window.sessionStorage, checklistSessionViewsStorageKey);
         var saved = readStoredValue(window.localStorage, checklistSavedViewsStorageKey);
+        var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+            ? window.omoApplicationViewPreferencesGetDefault(root)
+            : null;
+        var personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
+            ? window.omoApplicationViewPreferencesGetPersonal(root)
+            : null;
         var preferredScope = normalizeScope(initialOpenChecklistId > 0
             ? currentScope
-            : (temporary && temporary.scope) || (saved && saved.scope) || currentScope);
+            : (temporary && temporary.scope) || (personalView && personalView.scope) || (serverDefault && serverDefault.scope) || (saved && saved.scope) || currentScope);
         if (!root.querySelector('[data-checklist-scope-option="' + preferredScope + '"]')) {
             preferredScope = currentScope;
         }
@@ -977,6 +987,28 @@
                 event.preventDefault();
                 closeFilterPanel(true, true);
                 return;
+            }
+            if (event.target.closest('[data-checklist-filter-restore]')) {
+                event.preventDefault();
+                closeFilterPanel(false, false);
+                clearStoredValue(window.localStorage, checklistSavedViewsStorageKey);
+                clearTemporaryFilters();
+                var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
+                    ? window.omoApplicationViewPreferencesGetDefault(root)
+                    : null;
+                var nextScope = normalizeScope((serverDefault && serverDefault.scope) || currentScope);
+                if (!root.querySelector('[data-checklist-scope-option="' + nextScope + '"]')) {
+                    nextScope = currentScope;
+                }
+                if (nextScope !== currentScope) {
+                    currentScope = nextScope;
+                    refreshRoot(buildScopeUrl(nextScope)).catch(function () {
+                        root.removeAttribute('data-omo-view-filter-pending');
+                        root.removeAttribute('aria-busy');
+                    });
+                    return;
+                }
+                syncFilterChip();
             }
             var scopeButton = event.target.closest('[data-checklist-scope-option]');
             if (scopeButton && pendingFilters) {

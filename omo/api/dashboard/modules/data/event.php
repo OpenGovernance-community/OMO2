@@ -3,17 +3,22 @@ use dbObject\ArrayEvent;
 use dbObject\Holon;
 
 $calendarEvents = array();
-if (!empty($enabledAppHashes['calendar']) && $currentUserId > 0) {
+$dashboardEventCounts = array('all' => 0, 'mine' => 0);
+if (!empty($enabledAppHashes['calendar'])) {
     $events = new ArrayEvent();
-    $events->loadUpcomingForPersonalSpace($currentOrganizationId, $currentUserId, 5);
+    $dashboardEventWindowStart = new DateTimeImmutable('now');
+    $dashboardEventWindowEnd = $dashboardEventWindowStart->modify('+30 days');
+    $events->loadForOrganizationDateRange(
+        $currentOrganizationId,
+        $dashboardEventWindowStart,
+        $dashboardEventWindowEnd,
+        false
+    );
     $holonNameCache = array();
     $organizationContextLabel = t('personal_space.calendar.context.organization', [], $lang, $sourceLang);
-    $limitCalendarToScope = $personalSpaceScope !== 'contextual'
-        ? count($personalSpaceScopeHolonIdMap) > 0
-        : $currentHolonId > 0;
-    $calendarScopeHolonIdMap = $personalSpaceScope === 'contextual'
-        ? ($currentHolonId > 0 ? [$currentHolonId => true] : [])
-        : $personalSpaceScopeHolonIdMap;
+    $calendarScopeHolonIdMap = $dashboardModuleScope === 'contextual'
+        ? ($dashboardModuleContextHolonId > 0 ? [$dashboardModuleContextHolonId => true] : [])
+        : $dashboardModuleScopeHolonIdMap;
 
     foreach ($events as $event) {
         if (!($event instanceof \dbObject\Event) || (int)$event->getId() <= 0) {
@@ -21,13 +26,14 @@ if (!empty($enabledAppHashes['calendar']) && $currentUserId > 0) {
         }
 
         $eventHolonId = (int)$event->get('IDholon');
-        $eventHasExplicitInvitations = $event->hasExplicitInvitations();
-        if (
-            $limitCalendarToScope
-            && ($eventHolonId <= 0 || !isset($calendarScopeHolonIdMap[$eventHolonId]))
-            && !$eventHasExplicitInvitations
-        ) {
+        if ($eventHolonId > 0 && !isset($calendarScopeHolonIdMap[$eventHolonId])) {
             continue;
+        }
+
+        $isMine = $currentUserId > 0 && $event->isVisibleToInvitationViewer($currentUserId, $currentOrganizationId);
+        $dashboardEventCounts['all']++;
+        if ($isMine) {
+            $dashboardEventCounts['mine']++;
         }
 
         $contextLabel = $organizationContextLabel;
@@ -53,6 +59,7 @@ if (!empty($enabledAppHashes['calendar']) && $currentUserId > 0) {
                 : 'Evenement #' . (int)$event->getId(),
             'description' => trim((string)$event->get('description')),
             'contextLabel' => $contextLabel,
+            'filters' => $isMine ? array('all', 'mine') : array('all'),
             'rangeLabel' => $formatCalendarRange(
                 $event->get('start_at'),
                 $event->get('end_at'),

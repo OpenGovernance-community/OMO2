@@ -205,6 +205,71 @@
 			$this->set('parameters', $parameters);
 		}
 
+		public function getApplicationViewTemplateDefault($applicationKey, $templateKey): ?array
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($applicationKey === '' || $templateKey === '') {
+				return null;
+			}
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewTemplateDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] ?? array()
+			);
+			return $views[$templateKey][$applicationKey] ?? null;
+		}
+
+		public function getApplicationViewTemplateDefaultForHolon(\dbObject\Holon $holon, $applicationKey): ?array
+		{
+			return $this->getApplicationViewTemplateDefault($applicationKey, $holon->getDashboardDirectTemplateLayoutKey());
+		}
+
+		public function setApplicationViewTemplateDefault($applicationKey, $templateKey, array $view): bool
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($applicationKey === '' || $templateKey === '') {
+				return false;
+			}
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewTemplateDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] ?? array()
+			);
+			if (!isset($views[$templateKey]) || !is_array($views[$templateKey])) {
+				$views[$templateKey] = array();
+			}
+			$views[$templateKey][$applicationKey] = UserHolon::normalizeApplicationView($view);
+			$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] = $views;
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function clearApplicationViewTemplateDefault($applicationKey, $templateKey): bool
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($applicationKey === '' || $templateKey === '') {
+				return false;
+			}
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewTemplateDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] ?? array()
+			);
+			if (isset($views[$templateKey])) {
+				unset($views[$templateKey][$applicationKey]);
+				if ($views[$templateKey] === array()) {
+					unset($views[$templateKey]);
+				}
+			}
+			if ($views === array()) {
+				unset($parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER]);
+			} else {
+				$parameters[UserHolon::APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER] = $views;
+			}
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
 		public function getDashboardDefaultLayout(): ?array
 		{
 			$parameters = $this->getParametersArray();
@@ -238,14 +303,8 @@
 
 		public function getDashboardTemplateDefaultLayoutForHolon(\dbObject\Holon $holon): ?array
 		{
-			foreach ($holon->getDashboardTemplateLayoutKeys() as $templateKey) {
-				$layout = $this->getDashboardTemplateDefaultLayout($templateKey);
-				if ($layout !== null) {
-					return $layout;
-				}
-			}
-
-			return null;
+			$templateKey = $holon->getDashboardDirectTemplateLayoutKey();
+			return $templateKey === '' ? null : $this->getDashboardTemplateDefaultLayout($templateKey);
 		}
 
 		public function setDashboardTemplateDefaultLayout($templateKey, array $layout): bool
@@ -261,6 +320,27 @@
 			);
 			$templateLayouts[$templateKey] = UserHolon::normalizeDashboardLayout($layout);
 			$parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER] = $templateLayouts;
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function clearDashboardTemplateDefaultLayout($templateKey): bool
+		{
+			$templateKey = UserHolon::normalizeDashboardTemplateKey($templateKey);
+			if ($templateKey === '') {
+				return false;
+			}
+
+			$parameters = $this->getParametersArray();
+			$layouts = UserHolon::normalizeDashboardTemplateLayouts(
+				$parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER] ?? array()
+			);
+			unset($layouts[$templateKey]);
+			if ($layouts === array()) {
+				unset($parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER]);
+			} else {
+				$parameters[UserHolon::DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER] = $layouts;
+			}
 			$this->setParametersArray($parameters);
 			return true;
 		}

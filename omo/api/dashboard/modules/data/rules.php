@@ -6,9 +6,7 @@ use dbObject\Rule;
 $dashboardRuleItems = array();
 $dashboardRuleCounts = array('modified' => 0, 'review' => 0, 'obsolete' => 0);
 if (!empty($enabledAppHashes['policy']) && $scopeReferenceHolon instanceof Holon) {
-    $ruleContextHolonIds = $personalSpaceScope === 'contextual'
-        ? array((int)$scopeReferenceHolon->getId())
-        : $personalSpaceScopeHolonIds;
+    $ruleContextHolonIds = $dashboardModuleScopeHolonIds;
     $dashboardRules = new ArrayRule();
     $dashboardRules->loadForPolicyContexts($currentOrganizationId, $ruleContextHolonIds);
     $today = new DateTimeImmutable('today');
@@ -47,4 +45,3 @@ if (!empty($enabledAppHashes['policy']) && $scopeReferenceHolon instanceof Holon
         );
     }
 }
-

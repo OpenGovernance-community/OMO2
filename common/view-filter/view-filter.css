@@ -111,6 +111,42 @@
     padding-block: 4px;
 }
 
+.omo-view-filter__actions > .generic-action-button + .omo-app-view-save-menu,
+.omo-projects__filter-panel-actions > .generic-action-button + .omo-app-view-save-menu {
+    margin-left: calc((var(--generic-space-2, 8px) * -1) - 1px);
+}
+
+.omo-view-filter__actions > .generic-action-button:has(+ .omo-app-view-save-menu),
+.omo-projects__filter-panel-actions > .generic-action-button:has(+ .omo-app-view-save-menu) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.omo-app-view-save-menu {
+    position: relative;
+}
+
+.omo-app-view-save-menu .generic-menu-toggle {
+    min-width: 30px;
+    height: 34px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.omo-app-view-save-menu__panel {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + var(--generic-space-2, 8px));
+    z-index: 21;
+    min-width: min(390px, calc(100vw - 32px));
+}
+
+.omo-app-view-save-menu__separator {
+    height: 1px;
+    margin: var(--generic-space-1, 4px) 0;
+    background: var(--generic-menu-border, var(--color-border, #d1d5db));
+}
+
 .omo-view-filter__actions-more,
 .omo-projects__filter-panel-actions-more {
     position: relative;

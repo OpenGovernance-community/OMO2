@@ -19,8 +19,14 @@ if (empty($context['status'])) {
 
 $currentHolon = $context['currentHolon'];
 $rootHolon = $context['rootHolon'];
+$organization = $context['organization'];
+$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+$applicationViewPreferences = omoApplicationViewPreferencesGetContext('activities', $organization, $currentHolon, $currentUserId);
 $scopes = omoApiGetAvailableContextScopes(true, $currentHolon, $rootHolon);
-$scope = omoApiNormalizeContextScope($_GET['activity_scope'] ?? 'contextual', $scopes);
+$scope = omoApiNormalizeContextScope(
+    omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'activity_scope', 'scope', 'contextual'),
+    $scopes
+);
 $holonIds = $scope === 'children'
     ? omoApiGetDirectChildScopeHolonIds($currentHolon)
     : ($scope === 'descendants' ? omoApiGetDescendantHolonIds($currentHolon) : [(int)$currentHolon->getId()]);
@@ -97,7 +103,7 @@ $texts = [
     'actionError' => omoActivityT('activity.error.action'),
 ];
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260729-compact-2">
+<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260901-timeline-fluid-4">
 <div
     class="omo-activities omo-panel-view"
@@ -108,6 +114,7 @@ $texts = [
     data-activity-current-url="<?= omoApiEscape($currentUrl) ?>"
     data-activity-base-url="<?= omoApiEscape($baseUrl) ?>"
     data-activity-texts="<?= omoApiEscape(json_encode($texts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
+    data-omo-app-view-preferences="<?= omoApiEscape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     data-omo-view-filter-pending="1"
     aria-busy="true"
 >
@@ -160,7 +167,12 @@ $texts = [
                     </div>
                     <div class="omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--secondary" data-activity-filter-apply><?= omoApiEscape(omoActivityT('activity.filters.apply')) ?></button>
-                        <button type="button" class="generic-action-button generic-action-button--main" data-activity-filter-save><?= omoApiEscape(omoActivityT('activity.filters.save_view')) ?></button>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--main" data-activity-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoActivityT('activity.filters.save_view')) ?></button>
+                        <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
+                            <button type="button" class="generic-action-button generic-action-button--main" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                        <?php endif; ?>
+                        <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
                 </section>
             </div>
@@ -253,4 +265,5 @@ $texts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
-<script src="/omo/api/activities/activities.js?v=20260901-recurrence-colors-3"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
+<script src="/omo/api/activities/activities.js?v=20260902-restore-default"></script>

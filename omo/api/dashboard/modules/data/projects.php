@@ -16,9 +16,9 @@ if (!empty($enabledAppHashes['projects'])) {
             || Project::normalizeStatus($project->get('status')) === Project::STATUS_DONE
             || !omoProjectsScopeContainsProject(
                 $project,
-                $personalSpaceScope,
-                $currentHolonId,
-                $personalSpaceScopeHolonIds
+                $dashboardModuleScope,
+                $dashboardModuleContextHolonId,
+                $dashboardModuleScopeHolonIds
             )
         ) {
             continue;
@@ -74,4 +74,3 @@ if (!empty($enabledAppHashes['projects'])) {
             ?: strcasecmp((string)$left['title'], (string)$right['title']);
     });
 }
-

@@ -6,6 +6,11 @@
 		public const DASHBOARD_LAYOUT_PARAMETER = 'dashboardLayoutV1';
 		public const DASHBOARD_DEFAULT_LAYOUT_PARAMETER = 'dashboardDefaultLayoutV1';
 		public const DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER = 'dashboardTemplateLayoutsV1';
+		public const DASHBOARD_BASE_TYPE_LAYOUTS_PARAMETER = 'dashboardBaseTypeLayoutsV1';
+		public const APPLICATION_VIEW_DEFAULTS_PARAMETER = 'applicationViewDefaultsV1';
+		public const APPLICATION_VIEW_BASE_TYPE_DEFAULTS_PARAMETER = 'applicationViewBaseTypeDefaultsV1';
+		public const APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER = 'applicationViewTemplateDefaultsV1';
+		public const APPLICATION_VIEW_PERSONAL_PARAMETER = 'applicationViewPersonalV1';
 		public const DASHBOARD_MAX_MODULES = 40;
 		public const DASHBOARD_MAX_ROWS = 100;
 		public const BUDGET_RECURRENCE_DAY = 'day';
@@ -91,29 +96,143 @@
 		public static function getDashboardModuleCatalog()
 		{
 			return array(
-				'rules' => array('app' => 'policy'),
-				'projects' => array('app' => 'projects'),
-				'team' => array('app' => 'team'),
-				'documents' => array('app' => 'documents'),
-				'event' => array('app' => 'calendar'),
-				'structure' => array('app' => 'structure'),
-				'stats' => array('app' => 'stats'),
-				'activities' => array('app' => 'activities'),
+				'rules' => array('app' => 'policy', 'settings' => array('scope' => true)),
+				'projects' => array('app' => 'projects', 'settings' => array('scope' => true)),
+				'team' => array('app' => 'team', 'settings' => array('scope' => true)),
+				'documents' => array('app' => 'documents', 'settings' => array('scope' => true)),
+				'event' => array('app' => 'calendar', 'settings' => array('scope' => true)),
+				'structure' => array('app' => 'structure', 'settings' => array('scope' => true)),
+				'stats' => array('app' => 'stats', 'settings' => array('scope' => true)),
+				'activities' => array('app' => 'activities', 'settings' => array('scope' => true)),
 			);
+		}
+
+		public static function getApplicationViewKeys(): array
+		{
+			return array('activities', 'calendar', 'checklist', 'decision', 'documents', 'policy', 'projects', 'stats', 'team');
+		}
+
+		public static function normalizeApplicationViewKey($value): string
+		{
+			$value = trim(mb_strtolower((string)$value, 'UTF-8'));
+			return in_array($value, self::getApplicationViewKeys(), true) ? $value : '';
+		}
+
+		public static function normalizeApplicationView($view): array
+		{
+			if (!is_array($view)) {
+				return array();
+			}
+
+			$normalize = null;
+			$normalize = static function ($value, $depth = 0) use (&$normalize) {
+				if ($depth > 2) {
+					return null;
+				}
+				if (is_bool($value) || is_int($value) || is_float($value) || $value === null) {
+					return $value;
+				}
+				if (is_string($value)) {
+					return mb_substr(trim($value), 0, 160, 'UTF-8');
+				}
+				if (!is_array($value)) {
+					return null;
+				}
+
+				$result = array();
+				foreach (array_slice($value, 0, 32, true) as $key => $child) {
+					$key = is_int($key) ? (string)$key : trim((string)$key);
+					if ($key === '' || !preg_match('/^[a-zA-Z0-9_-]{1,48}$/', $key)) {
+						continue;
+					}
+					$normalized = $normalize($child, $depth + 1);
+					if ($normalized !== null) {
+						$result[$key] = $normalized;
+					}
+				}
+				return $result;
+			};
+
+			return $normalize($view);
+		}
+
+		public static function normalizeApplicationViewDefaults($views): array
+		{
+			if (!is_array($views)) {
+				return array();
+			}
+			$normalized = array();
+			foreach ($views as $applicationKey => $view) {
+				$applicationKey = self::normalizeApplicationViewKey($applicationKey);
+				if ($applicationKey !== '') {
+					$normalized[$applicationKey] = self::normalizeApplicationView($view);
+				}
+			}
+			return $normalized;
+		}
+
+		public static function normalizeApplicationViewBaseTypeDefaults($views): array
+		{
+			if (!is_array($views)) {
+				return array();
+			}
+			$normalized = array();
+			foreach ($views as $typeKey => $applicationViews) {
+				$typeKey = self::makeDashboardBaseTypeKey((int)str_replace('type:', '', (string)$typeKey));
+				if ($typeKey !== '') {
+					$normalized[$typeKey] = self::normalizeApplicationViewDefaults($applicationViews);
+				}
+			}
+			return $normalized;
+		}
+
+		public static function normalizeApplicationViewTemplateDefaults($views): array
+		{
+			if (!is_array($views)) {
+				return array();
+			}
+			$normalized = array();
+			foreach ($views as $templateKey => $applicationViews) {
+				$templateKey = self::normalizeDashboardTemplateKey($templateKey);
+				if ($templateKey !== '') {
+					$normalized[$templateKey] = self::normalizeApplicationViewDefaults($applicationViews);
+				}
+			}
+			return $normalized;
 		}
 
 		public static function getDefaultDashboardLayout()
 		{
 			return array(
-				array('id' => 'rules-1', 'type' => 'rules', 'row' => 0, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1),
-				array('id' => 'projects-1', 'type' => 'projects', 'row' => 0, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1),
-				array('id' => 'team-1', 'type' => 'team', 'row' => 1, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1),
-				array('id' => 'documents-1', 'type' => 'documents', 'row' => 1, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1),
-				array('id' => 'event-1', 'type' => 'event', 'row' => 2, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1),
-				array('id' => 'structure-1', 'type' => 'structure', 'row' => 2, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1),
-				array('id' => 'stats-1', 'type' => 'stats', 'row' => 3, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 2),
-				array('id' => 'activities-1', 'type' => 'activities', 'row' => 4, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 2),
+				array('id' => 'rules-1', 'type' => 'rules', 'row' => 0, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'projects-1', 'type' => 'projects', 'row' => 0, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'team-1', 'type' => 'team', 'row' => 1, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'documents-1', 'type' => 'documents', 'row' => 1, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'event-1', 'type' => 'event', 'row' => 2, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'structure-1', 'type' => 'structure', 'row' => 2, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'stats-1', 'type' => 'stats', 'row' => 3, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 2, 'settings' => array('scope' => 'contextual')),
+				array('id' => 'activities-1', 'type' => 'activities', 'row' => 4, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 2, 'settings' => array('scope' => 'contextual')),
 			);
+		}
+
+		public static function normalizeDashboardModuleSettings($type, $settings): array
+		{
+			$catalog = self::getDashboardModuleCatalog();
+			$type = trim((string)$type);
+			$settings = is_array($settings) ? $settings : array();
+			$configuration = is_array($catalog[$type]['settings'] ?? null)
+				? $catalog[$type]['settings']
+				: array();
+			$normalized = array();
+
+			if (!empty($configuration['scope'])) {
+				$scope = trim(mb_strtolower((string)($settings['scope'] ?? 'contextual'), 'UTF-8'));
+				$normalized['scope'] = in_array($scope, array('contextual', 'children', 'descendants'), true)
+					? $scope
+					: 'contextual';
+			}
+
+			return $normalized;
 		}
 
 		public static function normalizeDashboardLayout($layout)
@@ -188,6 +307,7 @@
 					'column' => $column,
 					'rowSpan' => $rowSpan,
 					'columnSpan' => $columnSpan,
+					'settings' => self::normalizeDashboardModuleSettings($type, $module['settings'] ?? array()),
 				);
 			}
 
@@ -212,6 +332,14 @@
 				: strtolower($templateName);
 			$templateName = preg_replace('/\s+/u', ' ', $templateName);
 			return 'template:' . $typeId . ':' . substr(hash('sha256', (string)$templateName), 0, 24);
+		}
+
+		public static function makeDashboardBaseTypeKey($typeId): string
+		{
+			$typeId = (int)$typeId;
+			return in_array($typeId, array(1, 2, 3, 4), true)
+				? 'type:' . $typeId
+				: '';
 		}
 
 		public static function normalizeDashboardTemplateKey($templateKey): string
@@ -294,7 +422,7 @@
 		public static function isUserHolonAdmin($userId, $holonId): bool
 		{
 			$rows = self::fetchAll(
-				'SELECT parameters FROM user_holon WHERE IDuser = :user_id AND IDholon = :holon_id AND active = 1 AND is_membership = 1 ORDER BY id ASC',
+				'SELECT parameters FROM user_holon WHERE IDuser = :user_id AND IDholon = :holon_id AND active = 1 ORDER BY id ASC',
 				array('user_id' => (int)$userId, 'holon_id' => (int)$holonId)
 			);
 			if (!is_array($rows)) {
@@ -309,6 +437,31 @@
 			}
 
 			return false;
+		}
+
+		public static function canUserManageDashboardHolonDefault($userId, $organizationId, $holonId): bool
+		{
+			$userId = (int)$userId;
+			$organizationId = (int)$organizationId;
+			$holonId = (int)$holonId;
+			if ($userId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+				return false;
+			}
+
+			$organization = new Organization();
+			$holon = new Holon();
+			if (!$organization->load($organizationId) || !$holon->load($holonId)) {
+				return false;
+			}
+
+			$rootHolon = $organization->getEnabledStructuralRootHolon();
+			if (!$rootHolon instanceof Holon || !$holon->isDescendantOf((int)$rootHolon->getId(), true)) {
+				return false;
+			}
+
+			// Keep the dashboard rule identical to the administration marker in getOrg.php.
+			// This includes an administrator assigned to a child role which pilots its parent holon.
+			return in_array($userId, $holon->getDirectContextAdminUserIds($organizationId), true);
 		}
 
 		public static function saveDashboardLayoutForUser($userId, $holonId, $layout)
@@ -343,6 +496,61 @@
 
 			$parameters = $item->getParametersArray();
 			unset($parameters[self::DASHBOARD_LAYOUT_PARAMETER]);
+			$item->set('parameters', $parameters);
+			return $item->save();
+		}
+
+		public static function getApplicationViewForUser($userId, $holonId, $applicationKey): ?array
+		{
+			$applicationKey = self::normalizeApplicationViewKey($applicationKey);
+			$item = self::loadDashboardSettings($userId, $holonId);
+			if ($applicationKey === '' || !$item) {
+				return null;
+			}
+			$parameters = $item->getParametersArray();
+			$views = self::normalizeApplicationViewDefaults($parameters[self::APPLICATION_VIEW_PERSONAL_PARAMETER] ?? array());
+			return $views[$applicationKey] ?? null;
+		}
+
+		public static function saveApplicationViewForUser($userId, $holonId, $applicationKey, array $view)
+		{
+			$userId = (int)$userId;
+			$holonId = (int)$holonId;
+			$applicationKey = self::normalizeApplicationViewKey($applicationKey);
+			if ($userId <= 0 || $holonId <= 0 || $applicationKey === '') {
+				return array('status' => false);
+			}
+			$item = self::loadDashboardSettings($userId, $holonId);
+			if (!$item) {
+				$item = new self();
+				$item->set('IDuser', $userId);
+				$item->set('IDholon', $holonId);
+				$item->set('active', false);
+				$item->set('is_membership', false);
+			}
+			$parameters = $item->getParametersArray();
+			$views = self::normalizeApplicationViewDefaults($parameters[self::APPLICATION_VIEW_PERSONAL_PARAMETER] ?? array());
+			$views[$applicationKey] = self::normalizeApplicationView($view);
+			$parameters[self::APPLICATION_VIEW_PERSONAL_PARAMETER] = $views;
+			$item->set('parameters', $parameters);
+			return $item->save();
+		}
+
+		public static function clearApplicationViewForUser($userId, $holonId, $applicationKey)
+		{
+			$applicationKey = self::normalizeApplicationViewKey($applicationKey);
+			$item = self::loadDashboardSettings($userId, $holonId);
+			if ($applicationKey === '' || !$item) {
+				return array('status' => true);
+			}
+			$parameters = $item->getParametersArray();
+			$views = self::normalizeApplicationViewDefaults($parameters[self::APPLICATION_VIEW_PERSONAL_PARAMETER] ?? array());
+			unset($views[$applicationKey]);
+			if ($views === array()) {
+				unset($parameters[self::APPLICATION_VIEW_PERSONAL_PARAMETER]);
+			} else {
+				$parameters[self::APPLICATION_VIEW_PERSONAL_PARAMETER] = $views;
+			}
 			$item->set('parameters', $parameters);
 			return $item->save();
 		}
