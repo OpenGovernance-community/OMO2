@@ -257,7 +257,7 @@ if ($hasDecisionApplication) {
 }
 
 $embeddableProjects = new \dbObject\ArrayProject();
-$embeddableProjects->loadForOrganization($organizationId);
+$embeddableProjects->loadForOrganization($organizationId, true, \dbObject\Project::KIND_STANDARD, true);
 foreach ($embeddableProjects as $embeddableProject) {
     if (!($embeddableProject instanceof \dbObject\Project) || (int)$embeddableProject->getId() <= 0) {
         continue;
@@ -292,7 +292,7 @@ usort($embeddableProjectsPayload, static function (array $left, array $right): i
 
 if ($hasOrganization && ($organization->isApplicationEnabled('processus', $currentUserId) || $organization->isApplicationEnabled('checklist', $currentUserId))) {
     $embeddableChecklists = new \dbObject\ArrayChecklist();
-    $embeddableChecklists->loadForOrganization($organizationId, true);
+    $embeddableChecklists->loadForOrganization($organizationId, true, true);
     foreach ($embeddableChecklists as $embeddableChecklist) {
         if (!($embeddableChecklist instanceof \dbObject\Checklist) || \dbObject\Checklist::normalizeStatus($embeddableChecklist->get('status')) === \dbObject\Checklist::STATUS_RETIRED) { continue; }
         $checklistRoot = $embeddableChecklist->getTemplateRoot();

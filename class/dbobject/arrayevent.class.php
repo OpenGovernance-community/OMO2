@@ -8,7 +8,7 @@ class ArrayEvent extends ArrayDbObject
         return '\dbObject\Event';
     }
 
-    public function loadForOrganization($organizationId, $includeInactive = false)
+    public function loadForOrganization($organizationId, $includeInactive = false, $hydrate = false)
     {
         $organizationId = (int)$organizationId;
         $this->exchangeArray([]);
@@ -17,35 +17,25 @@ class ArrayEvent extends ArrayDbObject
             return;
         }
 
-        $query = "
-            SELECT e.id
-            FROM `event` e
-            WHERE e.IDorganization = :organization_id
-        ";
+        $params = [
+            'where' => [
+                ['field' => 'IDorganization', 'value' => $organizationId],
+            ],
+            'orderBy' => [
+                ['field' => 'start_at', 'dir' => 'ASC'],
+                ['field' => 'id', 'dir' => 'ASC'],
+            ],
+        ];
 
         if (!$includeInactive) {
-            $query .= "
-              AND e.active = 1
-            ";
+            $params['where'][] = ['field' => 'active', 'value' => 1];
         }
 
-        $query .= "
-            ORDER BY e.start_at ASC, e.id ASC
-        ";
-
-        $rows = \dbObject\DbObject::fetchAll($query, [
-            'organization_id' => $organizationId,
-        ]);
-
-        if ($rows === false) {
-            return;
+        if ($hydrate !== false) {
+            $params['hydrate'] = $hydrate;
         }
 
-        foreach ($rows as $row) {
-            $item = new Event();
-            $item->setId((int)($row['id'] ?? 0));
-            $this[] = $item;
-        }
+        $this->load($params);
     }
 
     public function loadVisibleForOrganization($organizationId, $userId, $includeInactive = false)
@@ -59,7 +49,7 @@ class ArrayEvent extends ArrayDbObject
         }
 
         $allEvents = new self();
-        $allEvents->loadForOrganization($organizationId, $includeInactive);
+        $allEvents->loadForOrganization($organizationId, $includeInactive, true);
 
         foreach ($allEvents as $event) {
             if (!($event instanceof Event)) {
@@ -303,7 +293,7 @@ class ArrayEvent extends ArrayDbObject
         }
     }
 
-    public function loadForOrganizationDateRange($organizationId, $rangeStart = null, $rangeEnd = null, $includeInactive = false)
+    public function loadForOrganizationDateRange($organizationId, $rangeStart = null, $rangeEnd = null, $includeInactive = false, $hydrate = false)
     {
         $organizationId = (int)$organizationId;
         $this->exchangeArray([]);
@@ -312,52 +302,47 @@ class ArrayEvent extends ArrayDbObject
             return;
         }
 
-        $query = "
-            SELECT e.id
-            FROM `event` e
-            WHERE e.IDorganization = :organization_id
-        ";
-
         $params = [
-            'organization_id' => $organizationId,
+            'where' => [
+                ['field' => 'IDorganization', 'value' => $organizationId],
+            ],
+            'orderBy' => [
+                ['field' => 'start_at', 'dir' => 'ASC'],
+                ['field' => 'end_at', 'dir' => 'ASC'],
+                ['field' => 'id', 'dir' => 'ASC'],
+            ],
         ];
 
         if ($rangeStart instanceof \DateTimeInterface) {
-            $query .= "
-              AND e.end_at >= :range_start
-            ";
-            $params['range_start'] = $rangeStart->format('Y-m-d H:i:s');
+            $params['where'][] = [
+                'field' => 'end_at',
+                'op' => '>=',
+                'value' => $rangeStart->format('Y-m-d H:i:s'),
+            ];
         }
 
         if ($rangeEnd instanceof \DateTimeInterface) {
-            $query .= "
-              AND e.start_at <= :range_end
-            ";
-            $params['range_end'] = $rangeEnd->format('Y-m-d H:i:s');
+            $params['where'][] = [
+                'field' => 'start_at',
+                'op' => '<=',
+                'value' => $rangeEnd->format('Y-m-d H:i:s'),
+            ];
         }
 
         if (!$includeInactive) {
-            $query .= "
-              AND e.active = 1
-              AND e.status <> :cancelled_status
-            ";
-            $params['cancelled_status'] = \dbObject\Event::STATUS_CANCELLED;
+            $params['where'][] = ['field' => 'active', 'value' => 1];
+            $params['where'][] = [
+                'field' => 'status',
+                'op' => '<>',
+                'value' => \dbObject\Event::STATUS_CANCELLED,
+            ];
         }
 
-        $query .= "
-            ORDER BY e.start_at ASC, e.end_at ASC, e.id ASC
-        ";
-
-        $rows = \dbObject\DbObject::fetchAll($query, $params);
-        if ($rows === false) {
-            return;
+        if ($hydrate !== false) {
+            $params['hydrate'] = $hydrate;
         }
 
-        foreach ($rows as $row) {
-            $item = new Event();
-            $item->setId((int)($row['id'] ?? 0));
-            $this[] = $item;
-        }
+        $this->load($params);
     }
 
     public function loadUpcomingForCalendarList($organizationId, $referenceStart, $holonId = 0, $includeInactive = false)

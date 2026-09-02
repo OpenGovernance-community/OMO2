@@ -75,7 +75,7 @@ $scopeHolonIds = $projectScope === 'children'
     : $descendantHolonIds;
 
 $allProjects = new ArrayProject();
-$allProjects->loadForOrganization($organizationId);
+$allProjects->loadForOrganization($organizationId, true, Project::KIND_STANDARD, true);
 $projects = new ArrayProject();
 $scopeCurrentHolonId = $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0;
 foreach ($allProjects as $allProject) {

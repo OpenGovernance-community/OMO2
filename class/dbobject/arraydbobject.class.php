@@ -27,6 +27,7 @@
 	 * - joins: liste des tables à joindre automatiquement
 	 * - orderBy: liste de tris sécurisés
 	 * - limit / offset: entiers
+	 * - hydrate: true pour hydrater toutes les colonnes, ou une liste de champs a hydrater
 	 *
 	 * Format d'un critère:
 	 * - ["field" => "IDdocument", "value" => 12]
@@ -77,6 +78,61 @@
 
 		private function getBaseTableName() {
 			return $this->objectName()::tableName();
+		}
+
+		private function getHydratableFieldNames() {
+			$fields = array('id' => true);
+			$objectName = $this::objectName();
+			foreach ($objectName::rules() as $rule) {
+				if (!isset($rule[0]) || !is_array($rule[0])) {
+					continue;
+				}
+
+				foreach ($rule[0] as $field) {
+					if (self::isValidIdentifier($field)) {
+						$fields[$field] = true;
+					}
+				}
+			}
+
+			return $fields;
+		}
+
+		private function normalizeHydration($hydrate) {
+			if ($hydrate === true) {
+				return true;
+			}
+
+			if (!is_array($hydrate)) {
+				return false;
+			}
+
+			$allowedFields = $this->getHydratableFieldNames();
+			$fields = array();
+			foreach ($hydrate as $field) {
+				$field = trim((string)$field);
+				if ($field === '' || $field === 'id') {
+					continue;
+				}
+				if (!isset($allowedFields[$field])) {
+					Die ("Invalid hydration field: ".$field);
+				}
+				$fields[$field] = $field;
+			}
+
+			return array_values($fields);
+		}
+
+		public function loadHydrated($params = array(), $fields = true) {
+			if (is_null($params)) {
+				$params = array();
+			}
+			if (!is_array($params)) {
+				Die ("Invalid collection load parameters");
+			}
+
+			$params['hydrate'] = $fields;
+			$this->load($params);
 		}
 
 		private function getQualifiedField($field, $allowedTables) {
@@ -318,6 +374,12 @@
 			if (is_null($params)) {
 				$params = array();
 			}
+			if (!is_array($params)) {
+				Die ("Invalid collection load parameters");
+			}
+
+			$hydrate = $this->normalizeHydration($params['hydrate'] ?? false);
+			unset($params['hydrate']);
 
 			$baseTable = $this->getBaseTableName();
 			if (!self::isValidIdentifier($baseTable)) {
@@ -327,7 +389,19 @@
 			$joins = $this->normalizeJoinTables($params);
 			$allowedTables = array_merge(array($baseTable), $joins);
 
-			$query = "select ".self::quoteIdentifier($baseTable).".`id` from ".self::quoteIdentifier($baseTable);
+			if ($hydrate === true) {
+				$selectSql = self::quoteIdentifier($baseTable).".*";
+			} else if (is_array($hydrate)) {
+				$selectedFields = array(self::quoteIdentifier($baseTable).".`id`");
+				foreach ($hydrate as $field) {
+					$selectedFields[] = self::quoteIdentifier($baseTable).".".self::quoteIdentifier($field);
+				}
+				$selectSql = implode(", ", $selectedFields);
+			} else {
+				$selectSql = self::quoteIdentifier($baseTable).".`id`";
+			}
+
+			$query = "select ".$selectSql." from ".self::quoteIdentifier($baseTable);
 			$query .= $this->buildJoinClause($joins);
 
 			$bindings = array();
@@ -374,7 +448,11 @@
 				foreach ($rows as $row){
 					$name=$this::objectName();
 					$object=new $name();
-					$object->setId($row["id"]);
+					if ($hydrate === false) {
+						$object->setId($row["id"]);
+					} else {
+						$object->hydrateFromDatabaseRow($row, $hydrate === true);
+					}
 					$this[]=$object;
 				}
 			} else {
