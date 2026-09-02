@@ -19,6 +19,113 @@
 			return $this->lastVisibilityStats;
 		}
 
+		public static function loadListMetadataForOrganization(int $organizationId): array
+		{
+			$metadata = array(
+				'activityByDocumentId' => array(),
+				'documentsWithChildren' => array(),
+			);
+			if ($organizationId <= 0) {
+				return $metadata;
+			}
+
+			$documents = new self();
+			$documents->load(array(
+				'where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+				),
+				'orderBy' => array(
+					array('field' => 'datemodification', 'dir' => 'DESC'),
+					array('field' => 'id', 'dir' => 'DESC'),
+				),
+				'hydrate' => array(
+					'IDdocument_parent',
+					'IDuser',
+					'IDusercreation',
+					'IDusermodification',
+					'estDossier',
+					'datecreation',
+					'datemodification',
+				),
+			));
+
+			$documentsById = array();
+			$childrenByParentId = array();
+			foreach ($documents as $document) {
+				if (!($document instanceof \dbObject\Document) || (int)$document->getId() <= 0) {
+					continue;
+				}
+
+				$documentId = (int)$document->getId();
+				$documentsById[$documentId] = $document;
+				$parentDocumentId = (int)$document->get('IDdocument_parent');
+				if ($parentDocumentId > 0) {
+					$childrenByParentId[$parentDocumentId][] = $documentId;
+					$metadata['documentsWithChildren'][$parentDocumentId] = true;
+				}
+			}
+
+			$resolved = array();
+			$resolving = array();
+			$resolveActivity = static function (int $documentId) use (&$resolveActivity, &$resolved, &$resolving, $documentsById, $childrenByParentId): array {
+				if (isset($resolved[$documentId])) {
+					return $resolved[$documentId];
+				}
+
+				$document = $documentsById[$documentId] ?? null;
+				if (!($document instanceof \dbObject\Document)) {
+					return array('date' => null, 'userId' => 0);
+				}
+
+				$ownDate = $document->get('datemodification');
+				if (!($ownDate instanceof \DateTimeInterface)) {
+					$ownDate = $document->get('datecreation');
+				}
+				$ownUserId = (int)$document->get('IDusermodification');
+				if ($ownUserId <= 0) {
+					$ownUserId = (int)$document->get('IDusercreation');
+				}
+				if ($ownUserId <= 0) {
+					$ownUserId = (int)$document->get('IDuser');
+				}
+
+				if (isset($resolving[$documentId])) {
+					return array('date' => $ownDate, 'userId' => $ownUserId);
+				}
+
+				$resolving[$documentId] = true;
+				$latestDate = (int)$document->get('estDossier') === 1 ? null : $ownDate;
+				$latestUserId = $ownUserId;
+				if ((int)$document->get('estDossier') === 1) {
+					foreach ($childrenByParentId[$documentId] ?? array() as $childDocumentId) {
+						$childActivity = $resolveActivity((int)$childDocumentId);
+						$childDate = $childActivity['date'] ?? null;
+						if (
+							$childDate instanceof \DateTimeInterface
+							&& (!($latestDate instanceof \DateTimeInterface) || $childDate->getTimestamp() > $latestDate->getTimestamp())
+						) {
+							$latestDate = $childDate;
+							$latestUserId = (int)($childActivity['userId'] ?? 0);
+						}
+					}
+					if (!($latestDate instanceof \DateTimeInterface)) {
+						$latestDate = $ownDate;
+						$latestUserId = $ownUserId;
+					}
+				}
+
+				unset($resolving[$documentId]);
+				$resolved[$documentId] = array('date' => $latestDate, 'userId' => $latestUserId);
+				return $resolved[$documentId];
+			};
+
+			foreach (array_keys($documentsById) as $documentId) {
+				$metadata['activityByDocumentId'][(int)$documentId] = $resolveActivity((int)$documentId);
+			}
+
+			return $metadata;
+		}
+
 		protected function getVisibilityRuleMap($organizationId = 0): array
 		{
 			$organizationId = (int)$organizationId;
