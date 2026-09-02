@@ -125,6 +125,7 @@ try {
     if ($startedTransaction && $pdo->inTransaction()) {
         $pdo->commit();
     }
+    \dbObject\CalDavCache::invalidateOrganization($organizationId);
 } catch (\Throwable $exception) {
     if ($startedTransaction && $pdo->inTransaction()) {
         $pdo->rollBack();

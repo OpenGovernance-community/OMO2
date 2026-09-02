@@ -206,6 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $pdo->commit();
+        \dbObject\CalDavCache::invalidateOrganization($organizationId);
     } catch (InvalidArgumentException $exception) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
