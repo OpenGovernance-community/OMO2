@@ -526,7 +526,7 @@ class DocumentPvPoint extends DbObject
             WHERE point.IDdocument = :document_id
               AND document_record.IDorganization = :organization_id
               AND document_record.documenttype = :document_type
-              AND document_record.pvstage <> :validated_stage
+              AND COALESCE(document_record.pvstage, '') <> :validated_stage
               AND document_record.active = 1
               AND point.IDuser_editing = :user_id
               AND point.edit_lock_token = :lock_token
