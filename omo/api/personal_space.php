@@ -220,6 +220,7 @@ $sourceLang = [
     'personal_space.module.empty' => ['text' => 'Aucun élément à afficher.', 'context' => 'Empty dashboard module fallback.'],
     'personal_space.module.unavailable' => ['text' => 'Cette application n’est pas active dans ce contexte.', 'context' => 'Unavailable dashboard module message.'],
     'personal_space.module.more' => ['one' => 'Et {count} de plus', 'other' => 'Et {count} de plus', 'context' => 'Summary shown below a dashboard module when more items exist than are displayed.'],
+    'personal_space.module.more_template' => ['text' => 'Et {count} de plus', 'context' => 'Template used by the dashboard client when recalculating the number of hidden items after a filter.'],
 ];
 
 $lang = omoLoadTranslationBundle('omo_personal_space_panel', $sourceLang);
@@ -689,4 +690,4 @@ $dashboardMetricLabels = array(
     </div>
     <?php endif; ?>
 </div>
-<script src="/omo/assets/js/personal-space-dashboard.js?v=20260902-simple-hierarchy"></script>
+<script src="/omo/assets/js/personal-space-dashboard.js?v=20260902-filtered-lists"></script>
