@@ -892,7 +892,7 @@ if (!function_exists('commonCalDavLoadScopedCalendarForViewer')) {
         $calendarSlug = 'scoped-' . $organizationId . '-' . $holonId . '-' . $range . '-' . $color;
         $viewerScopedEmail = trim(mb_strtolower((string)$viewer->getScopedEmail($organizationId), 'UTF-8'));
         $events = new ArrayEvent();
-        $events->loadForOrganization($organizationId, false);
+        $events->loadForOrganization($organizationId, false, true);
         $eventResources = array();
 
         foreach ($events as $event) {
@@ -1088,7 +1088,7 @@ if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
             }
 
             $events = new ArrayEvent();
-            $events->loadForOrganization($organizationId, false);
+            $events->loadForOrganization($organizationId, false, true);
             $viewerScopedEmail = trim(mb_strtolower((string)$viewer->getScopedEmail($organizationId), 'UTF-8'));
 
             $eventResources = array();

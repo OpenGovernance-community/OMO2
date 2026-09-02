@@ -42,6 +42,7 @@ class ArrayStatIndicator extends ArrayDbObject
         }
 
         $loaded = new self();
+        $params['hydrate'] = true;
         $loaded->load($params);
 
         foreach ($loaded as $indicator) {
@@ -65,6 +66,7 @@ class ArrayStatIndicator extends ArrayDbObject
                 ['field' => 'IDorganization', 'value' => $organizationId],
                 ['field' => 'active', 'value' => 1],
             ],
+            'hydrate' => true,
             'orderBy' => [
                 ['field' => 'name', 'dir' => 'ASC'],
                 ['field' => 'id', 'dir' => 'ASC'],

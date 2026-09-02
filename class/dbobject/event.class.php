@@ -817,6 +817,57 @@ class Event extends DbObject
         return $saveResult;
     }
 
+    public function isPersonallyRelevantToViewer($userId, $organizationId = 0): bool
+    {
+        static $memberMatchCache = [];
+
+        $userId = (int)$userId;
+        $organizationId = (int)$organizationId;
+        if ($userId <= 0) {
+            return true;
+        }
+
+        if ($organizationId <= 0) {
+            $organizationId = (int)$this->get('IDorganization');
+        }
+
+        if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+            return false;
+        }
+
+        $eventHolonId = (int)$this->get('IDholon');
+        if ((int)$this->get('IDproject') > 0) {
+            return ($this->hasExplicitInvitations() || $eventHolonId > 0)
+                && $this->isVisibleToInvitationViewer($userId, $organizationId);
+        }
+
+        if ($eventHolonId <= 0) {
+            return true;
+        }
+
+        $cacheKey = $organizationId . ':' . $userId . ':' . $eventHolonId;
+        if (!array_key_exists($cacheKey, $memberMatchCache)) {
+            $memberMatchCache[$cacheKey] = false;
+            $eventHolon = new \dbObject\Holon();
+            if (
+                $eventHolon->load($eventHolonId)
+                && (bool)$eventHolon->get('active')
+                && (bool)$eventHolon->get('visible')
+            ) {
+                $memberMatchCache[$cacheKey] = in_array(
+                    $userId,
+                    $eventHolon->getAssociatedMemberUserIds([
+                        'organizationId' => $organizationId,
+                        'skipPermissionFilter' => true,
+                    ]),
+                    true
+                );
+            }
+        }
+
+        return $memberMatchCache[$cacheKey];
+    }
+
     public function isVisibleToInvitationViewer($userId, $organizationId = 0, $viewerEmail = ''): bool
     {
         $userId = (int)$userId;

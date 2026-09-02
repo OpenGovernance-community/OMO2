@@ -147,6 +147,48 @@
 			return "datecreation";
 		}
 
+		public static function getCollectionHydrationFields(): array
+		{
+			return array(
+				'title',
+				'description',
+				'keywords',
+				'IDuser',
+				'IDusercreation',
+				'IDusermodification',
+				'IDuseredition',
+				'IDuser_pv_editor',
+				'IDuser_pv_official_editor',
+				'IDorganization',
+				'IDholon',
+				'IDdocument_parent',
+				'IDevent',
+				'estDossier',
+				'active',
+				'documenttype',
+				'pvstage',
+				'is_template',
+				'pv_editor_handover_open',
+				'externalurl',
+				'openinnewwindow',
+				'project_visible_in_holon',
+				'storedfilepath',
+				'storedfilename',
+				'storedfilemime',
+				'storedfilesize',
+				'etherpadpadid',
+				'ethercalcroomid',
+				'spacedeckspaceid',
+				'datecreation',
+				'datemodification',
+				'dateedition',
+				'datecontentedition',
+				'version',
+				'codeview',
+				'codeedit',
+			);
+		}
+
 		public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
 		{
 			$params = array('organization_id' => (int)$organizationId, 'source_creation' => (int)$userId, 'source_owner' => (int)$userId, 'source_modification' => (int)$userId, 'source_edition' => (int)$userId, 'source_pv_editor' => (int)$userId, 'ghost_creation' => (int)$ghostUserId, 'ghost_owner' => (int)$ghostUserId, 'ghost_modification' => (int)$ghostUserId);
@@ -3483,7 +3525,7 @@
 		public function getPvPoints(bool $activeOnly = true)
 		{
 			$points = new \dbObject\ArrayDocumentPvPoint();
-			$points->loadForDocument((int)$this->getId(), $activeOnly);
+			$points->loadForDocument((int)$this->getId(), $activeOnly, true);
 			return $points;
 		}
 

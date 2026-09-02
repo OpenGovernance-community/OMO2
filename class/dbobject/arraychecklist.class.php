@@ -8,7 +8,7 @@ class ArrayChecklist extends ArrayDbObject
         return '\\dbObject\\Checklist';
     }
 
-    public function loadForOrganization($organizationId, $activeOnly = true)
+    public function loadForOrganization($organizationId, $activeOnly = true, $hydrate = false)
     {
         $this->exchangeArray([]);
         $organizationId = (int)$organizationId;
@@ -20,18 +20,23 @@ class ArrayChecklist extends ArrayDbObject
         if ($activeOnly) {
             $where[] = ['field' => 'active', 'value' => 1];
         }
-        $this->load([
+        $params = [
             'where' => $where,
             'orderBy' => [
                 ['field' => 'updated_at', 'dir' => 'DESC'],
                 ['field' => 'id', 'dir' => 'DESC'],
             ],
-        ]);
+        ];
+        if ($hydrate !== false) {
+            $params['hydrate'] = $hydrate;
+        }
+
+        $this->load($params);
     }
 
     public function loadForContext($organizationId, $holonId, $scope = 'contextual', array $scopeHolonIds = [])
     {
-        $this->loadForOrganization((int)$organizationId, true);
+        $this->loadForOrganization((int)$organizationId, true, true);
 
         $holonId = (int)$holonId;
         $scope = trim(mb_strtolower((string)$scope, 'UTF-8'));

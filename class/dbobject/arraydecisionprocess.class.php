@@ -135,6 +135,7 @@ class ArrayDecisionProcess extends ArrayDbObject
             'where' => array(
                 array('field' => 'IDorganization', 'value' => $organizationId),
             ),
+            'hydrate' => true,
             'orderBy' => array(
                 array('field' => 'updated_at', 'dir' => 'DESC'),
                 array('field' => 'created_at', 'dir' => 'DESC'),
@@ -169,8 +170,7 @@ class ArrayDecisionProcess extends ArrayDbObject
             }
 
             $decision = new \dbObject\DecisionProcess();
-            $decision->loadFromArray($row);
-            $decision->setId((int)($row['id'] ?? 0));
+            $decision->hydrateFromDatabaseRow($row, true);
             if ((int)$decision->getId() <= 0) {
                 continue;
             }

@@ -43,7 +43,7 @@ class ArrayProject extends ArrayDbObject
         return $titles;
     }
 
-    public function loadForOrganization($organizationId, $activeOnly = true, $projectKind = Project::KIND_STANDARD)
+    public function loadForOrganization($organizationId, $activeOnly = true, $projectKind = Project::KIND_STANDARD, $hydrate = false)
     {
         $this->exchangeArray([]);
         $organizationId = (int)$organizationId;
@@ -59,14 +59,19 @@ class ArrayProject extends ArrayDbObject
             $where[] = ['field' => 'active', 'value' => 1];
         }
 
-        $this->load([
+        $params = [
             'where' => $where,
             'orderBy' => [
                 ['field' => 'calculated_importance', 'dir' => 'DESC'],
                 ['field' => 'created_at', 'dir' => 'DESC'],
                 ['field' => 'id', 'dir' => 'DESC'],
             ],
-        ]);
+        ];
+        if ($hydrate !== false) {
+            $params['hydrate'] = $hydrate;
+        }
+
+        $this->load($params);
     }
 
     public function loadArchivedForOrganization($organizationId, $projectKind = Project::KIND_STANDARD)

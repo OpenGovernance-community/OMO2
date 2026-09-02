@@ -885,8 +885,7 @@ $statusCounts = [
 
 foreach ($decisionRows as $row) {
     $decision = new DecisionProcess();
-    $decision->loadFromArray($row);
-    $decision->setId((int)($row['id'] ?? 0));
+    $decision->hydrateFromDatabaseRow($row, true);
 
     $decisionId = (int)$decision->getId();
     if ($decisionId <= 0) {
