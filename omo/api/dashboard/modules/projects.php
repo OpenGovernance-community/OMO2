@@ -16,4 +16,5 @@ if (!isset($dashboardProjectItems, $dashboardProjectCounts, $dashboardMetricLabe
         </button>
     <?php endforeach; ?>
     <?php if ($dashboardProjectItems === array()): ?><p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.module.empty', [], $lang, $sourceLang)) ?></p><?php endif; ?>
+    <?php if (count($dashboardProjectItems) > 20): ?><p class="omo-dashboard-module__more"><?= omoApiEscape(t('personal_space.module.more', ['count' => count($dashboardProjectItems) - 20], $lang, $sourceLang)) ?></p><?php endif; ?>
 </div>

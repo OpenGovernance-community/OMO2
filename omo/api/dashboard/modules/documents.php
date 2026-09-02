@@ -15,4 +15,5 @@ if (!isset($recentDocuments, $dashboardDocumentCounts, $dashboardMetricLabels, $
         </button>
     <?php endforeach; ?>
     <?php if ($recentDocuments === array()): ?><p class="omo-personal-space__empty"><?= omoApiEscape(t('personal_space.module.empty', [], $lang, $sourceLang)) ?></p><?php endif; ?>
+    <?php if (count($recentDocuments) > 20): ?><p class="omo-dashboard-module__more"><?= omoApiEscape(t('personal_space.module.more', ['count' => count($recentDocuments) - 20], $lang, $sourceLang)) ?></p><?php endif; ?>
 </div>

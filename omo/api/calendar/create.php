@@ -950,7 +950,7 @@ $locationModeOptions = array_merge(
         return (string)($definition['label'] ?? '');
     }, Event::getLocationModeCatalog())
 );
-$calendarFormId = 'omoCalendarCreateForm';
+$calendarFormId = 'omoCalendarCreateForm' . ucfirst($editorHost);
 $drawerTitle = omoCalendarCreateT($isEditMode ? 'calendar.edit.title' : 'calendar.create.title');
 $drawerDescription = omoCalendarCreateT($isEditMode ? 'calendar.edit.description' : 'calendar.create.description');
 $drawerSubmitLabel = omoCalendarCreateT($isEditMode ? 'calendar.edit.submit' : 'calendar.create.submit');
