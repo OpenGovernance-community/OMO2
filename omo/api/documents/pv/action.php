@@ -67,6 +67,36 @@ function omoDocumentsPvEditorHasValidSessionToken(int $organizationId, int $docu
     return $storedToken !== '' && hash_equals($storedToken, $token);
 }
 
+function omoDocumentsPvEditorParsePointIds($rawValue): array
+{
+    $parts = is_array($rawValue)
+        ? $rawValue
+        : preg_split('/[^0-9]+/', trim((string)$rawValue));
+    $pointIds = array_values(array_unique(array_filter(array_map('intval', is_array($parts) ? $parts : []), static function ($pointId) {
+        return $pointId > 0;
+    })));
+
+    return array_slice($pointIds, 0, 200);
+}
+
+function omoDocumentsPvEditorBuildLockPayload(array $lockResult, string $lockToken): array
+{
+    $lock = is_array($lockResult['lock'] ?? null) ? $lockResult['lock'] : [];
+    $lockDate = $lock['date'] ?? null;
+
+    return [
+        'isActive' => true,
+        'isLockedByOther' => false,
+        'isOwnedByCurrentUser' => !empty($lock['isOwnedByCurrentUser']),
+        'isOwnedByCurrentSession' => !empty($lock['isOwnedByCurrentSession']),
+        'userId' => (int)($lock['userId'] ?? 0),
+        'userLabel' => trim((string)($lock['userName'] ?? '')),
+        'token' => trim($lockToken),
+        'dateIso' => $lockDate instanceof \DateTimeInterface ? $lockDate->format(DATE_ATOM) : '',
+        'timestamp' => $lockDate instanceof \DateTimeInterface ? (int)$lockDate->getTimestamp() : 0,
+    ];
+}
+
 function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint $point, int $organizationId, int $currentUserId): array
 {
     $uiText = omoDocumentsPvEditorBuildUiText('omoDocumentsPvEditorActionT');
@@ -260,6 +290,56 @@ $organizationId = isset($_POST['oid']) ? (int)$_POST['oid'] : (int)($_SESSION['c
 $currentUserId = (int)commonGetCurrentUserId();
 $editorToken = trim((string)($_POST['editor_token'] ?? ''));
 
+if ($action === 'heartbeat_locks' || $action === 'release_locks') {
+    $pointIds = omoDocumentsPvEditorParsePointIds($_POST['point_ids'] ?? '');
+    if (
+        $documentId <= 0
+        || $organizationId <= 0
+        || $currentUserId <= 0
+        || $editorToken === ''
+        || count($pointIds) === 0
+        || ($action === 'heartbeat_locks' && !omoDocumentsPvEditorHasValidSessionToken(
+            $organizationId,
+            $documentId,
+            $currentUserId,
+            $editorToken
+        ))
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $updated = $action === 'heartbeat_locks'
+        ? \dbObject\DocumentPvPoint::refreshEditLocksForSession(
+            $documentId,
+            $organizationId,
+            $currentUserId,
+            $editorToken,
+            $pointIds
+        )
+        : \dbObject\DocumentPvPoint::releaseEditLocksForSession(
+            $documentId,
+            $organizationId,
+            $currentUserId,
+            $editorToken,
+            $pointIds
+        );
+    if (!$updated) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.invalid_request'),
+        ], 400);
+    }
+
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'pointIds' => $pointIds,
+        'serverTime' => date(DATE_ATOM),
+    ]);
+}
+
 $document = omoDocumentsPvEditorLoadDocumentOrFail($documentId, $organizationId, $currentUserId);
 if ($document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW) {
     $reviewAllowedActions = ['lock_point', 'unlock_point', 'take_over_point_lock', 'save_point', 'update_stage', 'poll_updates'];
@@ -299,12 +379,19 @@ if ($action === 'poll_updates') {
     ]);
 }
 
-$hasTeamApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'team');
-$hasStructureApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'structure');
-$hasCalendarApplication = omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'calendar');
+$isLightweightLockAction = $action === 'lock_point';
+$hasTeamApplication = $isLightweightLockAction
+    ? false
+    : omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'team');
+$hasStructureApplication = $isLightweightLockAction
+    ? false
+    : omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'structure');
+$hasCalendarApplication = $isLightweightLockAction
+    ? false
+    : omoDocumentsPvEditorOrganizationHasApplication($organizationId, $currentUserId, 'calendar');
 
 $requestedPointId = isset($_POST['point_id']) ? (int)$_POST['point_id'] : 0;
-if ($requestedPointId > 0) {
+if ($requestedPointId > 0 && !$isLightweightLockAction) {
     $requestedPoint = new \dbObject\DocumentPvPoint();
     if (
         !$requestedPoint->load($requestedPointId)
@@ -679,7 +766,8 @@ if ($action === 'lock_point') {
 
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
-        'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
+        'pointId' => $pointId,
+        'lock' => omoDocumentsPvEditorBuildLockPayload($lockResult, $editorToken),
     ]);
 }
 

@@ -5525,27 +5525,28 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             return;
         }
 
-        Array.from(activeLockPointIds).forEach(function (pointId) {
-            const formData = new FormData();
-            formData.append('action', 'unlock_point');
-            formData.append('document_id', String(documentId));
-            formData.append('oid', String(organizationId));
-            formData.append('editor_token', editorToken);
-            formData.append('point_id', String(pointId));
-
-            const beaconSent = typeof navigator.sendBeacon === 'function'
-                && navigator.sendBeacon(actionUrl, formData);
-            if (!beaconSent && typeof window.fetch === 'function') {
-                window.fetch(actionUrl, {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'same-origin',
-                    keepalive: true
-                }).catch(function () {
-                    // A stale lock will still expire server-side after the timeout.
-                });
-            }
+        const pointIds = Array.from(activeLockPointIds).filter(function (pointId) {
+            return Number.isInteger(pointId) && pointId > 0;
         });
+        const formData = new FormData();
+        formData.append('action', 'release_locks');
+        formData.append('document_id', String(documentId));
+        formData.append('oid', String(organizationId));
+        formData.append('editor_token', editorToken);
+        formData.append('point_ids', pointIds.join(','));
+
+        const beaconSent = typeof navigator.sendBeacon === 'function'
+            && navigator.sendBeacon(actionUrl, formData);
+        if (!beaconSent && typeof window.fetch === 'function') {
+            window.fetch(actionUrl, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                keepalive: true
+            }).catch(function () {
+                // A stale lock will still expire server-side after the timeout.
+            });
+        }
         activeLockPointIds.clear();
         pendingLockPointIds.clear();
         pendingUnlockPointIds.clear();
@@ -6459,6 +6460,11 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 activeLockPointIds.add(pointId);
                 if (payload && payload.point) {
                     mergeKnownPointSignature(payload.point);
+                } else if (payload && payload.lock && currentPointPayloads[String(pointId)]) {
+                    const pointPayload = Object.assign({}, currentPointPayloads[String(pointId)], {
+                        lock: Object.assign({}, currentPointPayloads[String(pointId)].lock || {}, payload.lock)
+                    });
+                    mergeKnownPointSignature(pointPayload);
                 }
                 if (!pointWantsLock(pointId)) {
                     return releasePointLock(pointId);
@@ -7601,10 +7607,17 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 return;
             }
 
-            Array.from(activeLockPointIds).forEach(function (pointId) {
-                postPointAction('lock_point', pointId).catch(function () {
-                    // Polling will reconcile visible lock state if needed.
-                });
+            const pointIds = Array.from(activeLockPointIds).filter(function (pointId) {
+                return Number.isInteger(pointId) && pointId > 0;
+            });
+            if (pointIds.length === 0) {
+                return;
+            }
+
+            postPointAction('heartbeat_locks', 0, {
+                point_ids: pointIds.join(',')
+            }).catch(function () {
+                // Polling will reconcile visible lock state if needed.
             });
         }, 30000);
     }
