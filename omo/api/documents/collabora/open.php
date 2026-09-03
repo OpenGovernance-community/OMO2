@@ -82,7 +82,7 @@ if ($actionUrl === '') {
 
 $publicUrl = rtrim((string)$config['baseUrl'], '/');
 $actionUrl = preg_replace('#^https?://[^/]+#i', $publicUrl, $actionUrl);
-$tokenExpiresAt = time() + 3600;
+$tokenExpiresAt = time() + omoCollaboraGetWopiTokenLifetimeSeconds();
 $accessToken = omoCollaboraBuildWopiToken($document, $userId, $tokenExpiresAt);
 $wopiSource = omoCollaboraBuildWopiSource($documentId);
 $uiDefaults = 'UIMode=tabbed;SavedUIState=false;';

@@ -183,6 +183,33 @@ class ArrayProject extends ArrayDbObject
         ]);
     }
 
+    public function loadForWorkTimeHolon($organizationId, $holonId, $status = Project::STATUS_IN_PROGRESS)
+    {
+        $this->exchangeArray([]);
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holonId;
+        $status = Project::normalizeStatus($status);
+        if ($organizationId <= 0 || $holonId <= 0 || !in_array($status, Project::getWorkTimeStatuses(), true)) {
+            return;
+        }
+
+        $this->load([
+            'hydrate' => ['title'],
+            'where' => [
+                ['field' => 'IDorganization', 'value' => $organizationId],
+                ['field' => 'IDholon', 'value' => $holonId],
+                ['field' => 'status', 'value' => $status],
+                ['field' => 'active', 'value' => 1],
+                ['field' => 'project_kind', 'value' => Project::KIND_STANDARD],
+            ],
+            'orderBy' => [
+                ['field' => 'calculated_importance', 'dir' => 'DESC'],
+                ['field' => 'created_at', 'dir' => 'DESC'],
+                ['field' => 'id', 'dir' => 'DESC'],
+            ],
+        ]);
+    }
+
     public function loadTemplatesForOrganization($organizationId, $activeOnly = true)
     {
         $this->loadForOrganization($organizationId, $activeOnly, Project::KIND_CHECKLIST_TEMPLATE);

@@ -20,7 +20,14 @@ if ($userName === '') {
 $mode = strtolower(trim((string)($_GET['mode'] ?? 'edit')));
 $accessLevels = array('deny' => 0, 'read' => 1, 'edit' => 2);
 $accessLevel = $accessLevels[$mode] ?? 2;
-$externalToken = omoSpacedeckBuildExternalAccessToken($spaceId, $userId, $userName, $accessLevel);
+$externalToken = omoSpacedeckBuildExternalAccessToken(
+    $spaceId,
+    $userId,
+    $userName,
+    $accessLevel,
+    0,
+    omoSpacedeckGetCurrentLanguage()
+);
 if ($externalToken === '') {
     http_response_code(503);
     echo 'La cle de controle d acces SpaceDeck n est pas configuree.';

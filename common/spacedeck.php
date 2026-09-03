@@ -189,7 +189,14 @@ if (!function_exists('omoSpacedeckBuildDocumentOpenUrl')) {
         }
 
         $accessLevel = $document->canEditInOrganizationContext($organizationId, $userId, false) ? 2 : 1;
-        $token = omoSpacedeckBuildExternalAccessToken($spaceId, $userId, $displayName, $accessLevel);
+        $token = omoSpacedeckBuildExternalAccessToken(
+            $spaceId,
+            $userId,
+            $displayName,
+            $accessLevel,
+            0,
+            omoSpacedeckGetCurrentLanguage()
+        );
         if ($token === '') {
             return '';
         }
@@ -207,13 +214,41 @@ if (!function_exists('omoSpacedeckNormalizeAccessLevel')) {
     }
 }
 
+if (!function_exists('omoSpacedeckNormalizeLanguage')) {
+    function omoSpacedeckNormalizeLanguage(string $language): string
+    {
+        $language = strtolower(trim($language));
+        $language = str_replace('_', '-', $language);
+        $language = explode('-', $language, 2)[0];
+        $supportedLanguages = array('en', 'de', 'fr', 'oc', 'es', 'hu', 'cs');
+
+        return in_array($language, $supportedLanguages, true) ? $language : 'en';
+    }
+}
+
+if (!function_exists('omoSpacedeckGetCurrentLanguage')) {
+    function omoSpacedeckGetCurrentLanguage(): string
+    {
+        if (function_exists('omoGetTranslationLocale')) {
+            return omoSpacedeckNormalizeLanguage((string)omoGetTranslationLocale());
+        }
+
+        if (function_exists('commonAuthGetTranslationLocale')) {
+            return omoSpacedeckNormalizeLanguage((string)commonAuthGetTranslationLocale());
+        }
+
+        return 'en';
+    }
+}
+
 if (!function_exists('omoSpacedeckBuildExternalAccessToken')) {
     function omoSpacedeckBuildExternalAccessToken(
         string $spaceId,
         int $userId,
         string $displayName,
         int $accessLevel,
-        int $validUntil = 0
+        int $validUntil = 0,
+        string $language = ''
     ): string {
         $secret = omoSpacedeckGetExternalAccessSecret();
         $spaceId = trim($spaceId);
@@ -228,6 +263,7 @@ if (!function_exists('omoSpacedeckBuildExternalAccessToken')) {
             'spaceId' => $spaceId,
             'userId' => $userId,
             'name' => mb_substr($displayName, 0, 120, 'UTF-8'),
+            'language' => omoSpacedeckNormalizeLanguage($language),
             'accessLevel' => omoSpacedeckNormalizeAccessLevel($accessLevel),
             'expiresAt' => $validUntil,
             'nonce' => bin2hex(random_bytes(12)),
@@ -278,6 +314,7 @@ if (!function_exists('omoSpacedeckVerifyExternalAccessToken')) {
         $payload['spaceId'] = $spaceId;
         $payload['userId'] = $userId;
         $payload['name'] = mb_substr($displayName, 0, 120, 'UTF-8');
+        $payload['language'] = omoSpacedeckNormalizeLanguage((string)($payload['language'] ?? ''));
         $payload['accessLevel'] = omoSpacedeckNormalizeAccessLevel((int)($payload['accessLevel'] ?? 0));
         return $payload;
     }
@@ -318,6 +355,7 @@ if (!function_exists('omoSpacedeckBuildExternalAccessResponse')) {
             $response['user'] = array(
                 'id' => 'omo-user-' . (int)$payload['userId'],
                 'name' => (string)$payload['name'],
+                'language' => (string)$payload['language'],
             );
         }
 

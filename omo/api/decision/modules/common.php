@@ -1513,7 +1513,7 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
             . '<script src="/common/choice/word-diff.js?v=20260815" defer></script>'
             . '<script src="/common/choice/change-details.js?v=20260816-governance-details" defer></script>'
             . '<script src="/common/choice/highlight-palette.js" defer></script>'
-            . '<script src="/omo/assets/js/simple-html-field.js" defer></script>'
+            . '<script src="/omo/assets/js/simple-html-field.js?v=20260903-toolbar-insert-focus" defer></script>'
             . '<script src="/common/choice/decision-anonymity.js?v=20260825-named-vote" defer></script>'
             . '<script src="/common/choice/decision-notifications.js?v=20260825-topbar-errors" defer></script>'
             . '<script src="/common/choice/proposal-html.js?v=20260824-proposal-content-refresh" defer></script>'
