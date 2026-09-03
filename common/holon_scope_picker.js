@@ -273,7 +273,27 @@
         return getCircleAncestor(node && node.parent ? node.parent : null);
     }
 
-    function createStructureCanvas(map, data, getSelectedId, onSelect, isSelectable, ignoreAssignmentColor) {
+    function shouldDrawContentNodeLabel(node, currentNode, isHovered, screenRadius) {
+        if (!node || !currentNode || screenRadius < 18) {
+            return false;
+        }
+        if (String(node.ID || '') === String(currentNode.ID || '')) {
+            return String(currentNode.type || '') === '1';
+        }
+        if (isHovered) {
+            return true;
+        }
+        if (String(currentNode.type || '') === '1') {
+            return Boolean(node.parent && currentNode.parent && node.parent.ID && currentNode.parent.ID)
+                && String(node.parent.ID) === String(currentNode.parent.ID)
+                && screenRadius >= 22;
+        }
+        return Boolean(node.parent && node.parent.ID)
+            && String(node.parent.ID) === String(currentNode.ID)
+            && screenRadius >= 22;
+    }
+
+    function createStructureCanvas(map, data, getSelectedId, onSelect, isSelectable, ignoreAssignmentColor, labelMode) {
         map.innerHTML = '<canvas class="omo-holon-scope-picker__canvas"></canvas><div class="omo-holon-scope-picker__tooltip" hidden></div>';
         var canvas = map.querySelector('.omo-holon-scope-picker__canvas');
         var tooltip = map.querySelector('.omo-holon-scope-picker__tooltip');
@@ -416,22 +436,28 @@
                     context.strokeStyle = isActive ? 'rgba(255, 255, 255, 0.92)' : 'rgba(255, 255, 255, 0.72)';
                     context.stroke();
                 }
-                var selectedType = String(currentNode && currentNode.type || '');
-                var selectedCircle = selectedType === '2' ? currentNode : getCircleAncestor(currentNode);
-                var nodeCircle = getCircleAncestor(node);
-                var nodeParentCircle = getParentCircle(node);
-                var isRoleNeighbor = selectedType === '1'
-                    && String(node.type || '') === '1'
-                    && selectedCircle
-                    && nodeCircle
-                    && String(nodeCircle.ID) === String(selectedCircle.ID);
-                var isCircleContent = selectedType === '2'
-                    && nodeId !== selectedId
-                    && (String(node.type || '') === '1' || String(node.type || '') === '2')
-                    && nodeParentCircle
-                    && String(nodeParentCircle.ID) === String(currentNode.ID);
+                var shouldLabel = false;
+                if (labelMode === 'children') {
+                    shouldLabel = shouldDrawContentNodeLabel(node, currentNode, isHovered, node.r);
+                } else {
+                    var selectedType = String(currentNode && currentNode.type || '');
+                    var selectedCircle = selectedType === '2' ? currentNode : getCircleAncestor(currentNode);
+                    var nodeCircle = getCircleAncestor(node);
+                    var nodeParentCircle = getParentCircle(node);
+                    var isRoleNeighbor = selectedType === '1'
+                        && String(node.type || '') === '1'
+                        && selectedCircle
+                        && nodeCircle
+                        && String(nodeCircle.ID) === String(selectedCircle.ID);
+                    var isCircleContent = selectedType === '2'
+                        && nodeId !== selectedId
+                        && (String(node.type || '') === '1' || String(node.type || '') === '2')
+                        && nodeParentCircle
+                        && String(nodeParentCircle.ID) === String(currentNode.ID);
+                    shouldLabel = node.r >= 22 && (isHovered || isRoleNeighbor || isCircleContent);
+                }
 
-                if (node.r >= 22 && (isHovered || isRoleNeighbor || isCircleContent)) {
+                if (shouldLabel) {
                     addLabel(node);
                 }
             });
@@ -513,6 +539,7 @@
         var selectedHolonId = normalizeId(settings.initialHolonId);
         var allowEmptySelection = settings.allowEmptySelection === true;
         var ignoreHolonAssignments = settings.ignoreHolonAssignments === true;
+        var labelMode = settings.labelMode === 'context' ? 'context' : 'children';
         var selectableHolonIds = Array.isArray(settings.selectableHolonIds)
             ? settings.selectableHolonIds.map(normalizeId).filter(function (id) { return id > 0; })
             : null;
@@ -604,7 +631,7 @@
                     redrawMap = createStructureCanvas(map, data, function () { return selectedHolonId; }, function (nodeId) {
                         selectedHolonId = normalizeId(nodeId);
                         notify();
-                    }, isSelectableHolon, ignoreHolonAssignments);
+                    }, isSelectableHolon, ignoreHolonAssignments, labelMode);
                     notify();
                     if (typeof settings.onReady === 'function') {
                         settings.onReady(selectedHolonId);
