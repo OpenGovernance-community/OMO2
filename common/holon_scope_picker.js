@@ -521,6 +521,7 @@
             ? settings.initialScope
             : 'descendants';
         var scopeIndex = scope === 'local' ? 0 : (scope === 'children' ? 1 : 2);
+        var suppressInitialChange = settings.suppressInitialChange === true;
         var nodes = [];
         var descendants = Object.create(null);
         var directChildren = Object.create(null);
@@ -567,9 +568,10 @@
                 button.classList.toggle('is-active', isActive);
                 button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
             });
-            if (typeof settings.onChange === 'function') {
+            if (typeof settings.onChange === 'function' && !suppressInitialChange) {
                 settings.onChange(selectedHolonId);
             }
+            suppressInitialChange = false;
             redrawMap();
         }
 
@@ -604,6 +606,9 @@
                         notify();
                     }, isSelectableHolon, ignoreHolonAssignments);
                     notify();
+                    if (typeof settings.onReady === 'function') {
+                        settings.onReady(selectedHolonId);
+                    }
                 });
             })
             .catch(function () {});

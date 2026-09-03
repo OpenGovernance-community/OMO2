@@ -2453,11 +2453,159 @@ if (!is_string($documentsPayload)) {
                                 });
                             };
 
+                            const clearCollaboraTokenRefresh = function () {
+                                if (!detailDrawer || typeof detailDrawer.__omoCollaboraTokenRefreshCleanup !== 'function') {
+                                    return;
+                                }
+
+                                detailDrawer.__omoCollaboraTokenRefreshCleanup();
+                                delete detailDrawer.__omoCollaboraTokenRefreshCleanup;
+                            };
+
+                            const setupCollaboraTokenRefresh = function () {
+                                clearCollaboraTokenRefresh();
+                                if (!detailDrawer || !detailBody) {
+                                    return;
+                                }
+
+                                const frame = detailBody.querySelector('.omo-document-collabora__frame');
+                                const detail = detailBody.querySelector('[data-omo-collabora-origin]');
+                                const documentId = frame instanceof HTMLIFrameElement
+                                    ? Number(frame.getAttribute('data-omo-collabora-document-id') || 0)
+                                    : 0;
+                                const collaboraOrigin = detail instanceof HTMLElement
+                                    ? String(detail.getAttribute('data-omo-collabora-origin') || '').trim()
+                                    : '';
+
+                                if (!(frame instanceof HTMLIFrameElement) || !Number.isInteger(documentId) || documentId <= 0 || collaboraOrigin === '') {
+                                    return;
+                                }
+
+                                let refreshTimer = 0;
+                                let refreshInFlight = false;
+                                let editorReady = false;
+
+                                const clearRefreshTimer = function () {
+                                    if (refreshTimer) {
+                                        window.clearTimeout(refreshTimer);
+                                        refreshTimer = 0;
+                                    }
+                                };
+
+                                const postToCollabora = function (messageId, values) {
+                                    if (!frame.contentWindow || !document.body.contains(frame)) {
+                                        return false;
+                                    }
+
+                                    frame.contentWindow.postMessage(JSON.stringify({
+                                        MessageId: messageId,
+                                        SendTime: Date.now(),
+                                        Values: values || {},
+                                    }), collaboraOrigin);
+                                    return true;
+                                };
+
+                                const scheduleRefresh = function (delay) {
+                                    clearRefreshTimer();
+                                    refreshTimer = window.setTimeout(function () {
+                                        refreshWopiToken();
+                                    }, Math.max(60000, Number(delay) || 0));
+                                };
+
+                                const refreshWopiToken = function () {
+                                    if (refreshInFlight || !editorReady || !document.body.contains(frame)) {
+                                        return;
+                                    }
+
+                                    refreshInFlight = true;
+                                    const body = new URLSearchParams();
+                                    body.set('id', String(documentId));
+
+                                    fetch('/omo/api/documents/collabora/token.php', {
+                                        method: 'POST',
+                                        credentials: 'same-origin',
+                                        headers: {
+                                            'Accept': 'application/json',
+                                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                                        },
+                                        body: body.toString(),
+                                    })
+                                        .then(function (response) {
+                                            if (!response.ok) {
+                                                throw new Error('Unable to renew the Collabora token.');
+                                            }
+                                            return response.json();
+                                        })
+                                        .then(function (payload) {
+                                            const accessToken = payload && typeof payload.accessToken === 'string'
+                                                ? payload.accessToken.trim()
+                                                : '';
+                                            if (!payload || payload.status !== true || accessToken === '' || !postToCollabora('Reset_Access_Token', {token: accessToken})) {
+                                                throw new Error('Invalid Collabora token renewal response.');
+                                            }
+
+                                            const expiresAt = Number(payload.expiresAt || 0) * 1000;
+                                            const refreshDelay = Number.isFinite(expiresAt)
+                                                ? expiresAt - Date.now() - (15 * 60 * 1000)
+                                                : 30 * 60 * 1000;
+                                            scheduleRefresh(refreshDelay);
+                                        })
+                                        .catch(function () {
+                                            if (document.body.contains(frame)) {
+                                                scheduleRefresh(60 * 1000);
+                                            }
+                                        })
+                                        .finally(function () {
+                                            refreshInFlight = false;
+                                        });
+                                };
+
+                                const onCollaboraMessage = function (event) {
+                                    if (event.origin !== collaboraOrigin || event.source !== frame.contentWindow) {
+                                        return;
+                                    }
+
+                                    let message = event.data;
+                                    if (typeof message === 'string') {
+                                        try {
+                                            message = JSON.parse(message);
+                                        } catch (error) {
+                                            return;
+                                        }
+                                    }
+
+                                    if (!message || typeof message !== 'object') {
+                                        return;
+                                    }
+
+                                    const messageId = String(message.MessageId || '').trim();
+                                    const values = message.Values && typeof message.Values === 'object' ? message.Values : {};
+                                    if (messageId === 'App_LoadingStatus' && values.Status === 'Document_Loaded') {
+                                        editorReady = postToCollabora('Host_PostmessageReady');
+                                        if (editorReady) {
+                                            scheduleRefresh(20 * 60 * 1000);
+                                        }
+                                        return;
+                                    }
+
+                                    if (messageId === 'App_TokenExpired') {
+                                        refreshWopiToken();
+                                    }
+                                };
+
+                                window.addEventListener('message', onCollaboraMessage);
+                                detailDrawer.__omoCollaboraTokenRefreshCleanup = function () {
+                                    clearRefreshTimer();
+                                    window.removeEventListener('message', onCollaboraMessage);
+                                };
+                            };
+
                             const closeDetailDrawer = function () {
                                 if (!detailDrawer) {
                                     return;
                                 }
 
+                                clearCollaboraTokenRefresh();
                                 detailDrawer.classList.remove('is-open');
                                 detailDrawer.dataset.omoDocumentActiveId = '';
                                 state.activeDocumentId = null;
@@ -2544,6 +2692,7 @@ if (!is_string($documentsPayload)) {
                             }
 
                             const renderDetailLoading = function () {
+                                clearCollaboraTokenRefresh();
                                 if (!detailBody) {
                                     return;
                                 }
@@ -2554,6 +2703,7 @@ if (!is_string($documentsPayload)) {
                             };
 
                             const renderDetailError = function () {
+                                clearCollaboraTokenRefresh();
                                 if (!detailBody) {
                                     return;
                                 }
@@ -2622,6 +2772,7 @@ if (!is_string($documentsPayload)) {
                                         }
 
                                         detailBody.innerHTML = data;
+                                        setupCollaboraTokenRefresh();
                                         const temp = document.createElement('div');
                                         temp.innerHTML = data;
                                         syncDocumentDetailDrawerMetadata(temp, detailDrawer, documentItem.title || '', detailDescription ? detailDescription.textContent : '');
@@ -2642,6 +2793,7 @@ if (!is_string($documentsPayload)) {
 
                                         if (responseHtml !== '') {
                                             detailBody.innerHTML = responseHtml;
+                                            setupCollaboraTokenRefresh();
                                             return;
                                         }
 

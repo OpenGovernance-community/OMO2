@@ -1,0 +1,274 @@
+.timer-page {
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--color-bg);
+}
+
+.timer-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    max-width: none;
+    height: calc(100dvh - var(--topbar-height, 48px));
+    min-height: 0;
+    padding: 6px 8px 8px;
+}
+
+.timer-control,
+.timer-empty,
+.timer-selector {
+    min-width: 0;
+}
+
+.timer-selector {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+}
+
+.timer-selector__tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-bottom: 1px solid var(--color-border, #d1d5db);
+}
+
+.timer-selector__tab {
+    min-width: 0;
+    min-height: 40px;
+    padding: 6px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: var(--color-text-light, #64748b);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--generic-type-size-sm, .84rem);
+    font-weight: 700;
+}
+
+.timer-selector__tab.is-active {
+    border-bottom-color: var(--color-primary, #2563eb);
+    color: var(--color-primary, #2563eb);
+}
+
+.timer-selector__viewport {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    touch-action: pan-y;
+}
+
+.timer-selector__track {
+    display: flex;
+    width: 300%;
+    height: 100%;
+    min-width: 0;
+    transform: translateX(0);
+    transition: transform .24s ease;
+}
+
+.timer-selector__pane {
+    flex: 0 0 33.333333%;
+    height: 100%;
+    min-width: 0;
+    padding: 8px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.timer-selector__pane--holons {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow: hidden;
+}
+
+.timer-organization-list {
+    display: grid;
+    gap: 6px;
+}
+
+.timer-project-list {
+    display: grid;
+    gap: 6px;
+}
+
+.timer-project-filter {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 6px;
+    color: var(--color-text, #111827);
+    font-size: var(--generic-type-size-sm, .84rem);
+    font-weight: 700;
+}
+
+.timer-project-choice {
+    width: 100%;
+    min-height: 42px;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text, #111827);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    text-align: left;
+    transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+
+.timer-project-choice.is-selected {
+    border-color: var(--color-primary, #2563eb);
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #fff));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 15%, transparent);
+}
+
+.timer-project-message {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    font-size: var(--generic-type-size-sm, .84rem);
+    line-height: 1.45;
+}
+
+.timer-organization-choice {
+    display: flex;
+    align-items: center;
+    gap: var(--generic-space-2, 8px);
+    width: 100%;
+    min-height: 42px;
+    padding: 7px 10px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text, #111827);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+
+.timer-organization-choice:hover {
+    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--timer-organization-accent, #2563eb) 6%, transparent);
+}
+
+.timer-organization-choice.is-selected {
+    border-color: var(--timer-organization-accent, var(--color-primary, #2563eb));
+    background: color-mix(in srgb, var(--timer-organization-accent, #2563eb) 12%, transparent);
+}
+
+.timer-organization-choice img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.timer-organization-choice span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.timer-selected-holon,
+.timer-current-target {
+    margin: 0;
+    color: var(--color-text-light, #64748b);
+    font-size: var(--generic-type-size-sm, .84rem);
+}
+
+.timer-selected-holon {
+    color: var(--color-text, #111827);
+    font-weight: 700;
+}
+
+.timer-current-target {
+    max-width: 100%;
+    color: var(--color-text, #111827);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+    text-align: center;
+}
+
+.timer-holon-picker {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+}
+
+.timer-holon-picker .omo-holon-scope-picker__map {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 0;
+    margin-top: 0;
+}
+
+.timer-control {
+    flex: 0 0 auto;
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    padding: 6px 0 0;
+    border-top: 1px solid var(--color-border, #d1d5db);
+}
+
+.timer-status-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-text, #111827);
+}
+
+.timer-status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--color-text-light, #94a3b8);
+}
+
+.timer-status-dot.is-active {
+    background: #16a34a;
+    box-shadow: 0 0 0 5px color-mix(in srgb, #16a34a 18%, transparent);
+}
+
+.timer-clock {
+    color: var(--color-text, #111827);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: clamp(1.8rem, 10vw, 2.6rem);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    letter-spacing: .04em;
+}
+
+.timer-toggle {
+    width: min(100%, 280px);
+    min-height: 44px;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.timer-toggle--stop {
+    background: var(--generic-action-button-danger-background, #b91c1c);
+}
+
+.timer-toggle-icon {
+    font-size: .85em;
+}
+
+.timer-feedback {
+    margin: 0;
+    min-height: 0;
+    font-size: var(--generic-type-size-sm, .84rem);
+    text-align: center;
+}
+
+@media (min-width: 769px) {
+    .timer-layout {
+        padding-inline: 16px;
+    }
+}

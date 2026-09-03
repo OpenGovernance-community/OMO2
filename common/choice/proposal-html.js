@@ -101,7 +101,7 @@
             }
 
             var script = document.createElement('script');
-            script.src = '/omo/assets/js/simple-html-field.js';
+            script.src = '/omo/assets/js/simple-html-field.js?v=20260903-toolbar-insert-focus';
             script.defer = true;
             script.setAttribute('data-omo-simple-html-field-loader', '1');
             script.addEventListener('load', start, {once: true});

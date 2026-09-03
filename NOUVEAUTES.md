@@ -2,8 +2,15 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-03
+
+- Un timer mobile, concu comme une app plein ecran compacte, permet maintenant de choisir une organisation dans une liste verticale, puis un holon et un projet par trois vues navigables au swipe tactile, directement attachees a chaque panneau, y compris depuis la carte des holons. Un selecteur affiche par defaut les projets en cours, avec les statuts Pret, Bloque et A verifier disponibles. Il lance ou arrete le suivi du temps, change de cible sans perdre la ligne precedente, sauvegarde son avancement toutes les 30 secondes et reprend un suivi encore ouvert apres une interruption du telephone ou du navigateur.
+
 ## 2026-09-02
 
+- Les documents ouverts dans Collabora renouvellent maintenant leur jeton WOPI automatiquement vingt minutes apres leur chargement, puis quinze minutes avant chaque nouvelle echeance. Le renouvellement est signe, respecte les droits actuels et ne recharge pas l editeur.
+- Les tableaux blancs collaboratifs reprennent maintenant la langue choisie dans OMO par chaque utilisateur a leur ouverture. La langue reste incluse dans le jeton d acces signe et ne peut donc pas etre modifiee par le navigateur.
+- Les boutons d insertion de blocs placent maintenant automatiquement le focus et le curseur dans leur editeur Summernote avant d ouvrir le selecteur.
 - Les documents enregistrent maintenant la derniere date a laquelle leur detail a ete affiche, sans considerer les listes comme une consultation. Cette information pourra servir a reperer les documents inutilises lors d un futur archivage.
 - Les collections dbObject peuvent maintenant hydrater directement tous les objets, ou seulement les champs demandes. La lecture ulterieure d un champ absent recharge uniquement l objet concerne, ce qui evite le schema une requete pour les IDs puis une requete par element dans les ecrans qui parcourent une collection complete.
 - Les listes Calendrier, CalDAV, Documents, Projets, PV, Checklists, Indicateurs et Decisions utilisent cette hydratation lorsqu elles parcourent tous leurs elements. Les documents evitent en plus de transferer leurs contenus HTML et brouillons pour une simple liste, tout en les rechargeant seulement a l ouverture d un document.
@@ -209,6 +216,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - La modification d un evenement depend maintenant toujours de `CAN_EDIT_EVENT` ; son createur ne conserve plus automatiquement ce droit s il perd le role ou la permission correspondante.
 - Le formulaire d evenement ne propose maintenant la creation d un document lie que si `CAN_CREATE_DOCUMENT` est autorise dans le contexte selectionne ; la verification serveur reste active a l enregistrement.
 - Les PV en preparation ou en reunion ne contournent plus la barriere des invites via leur visibilite documentaire : ils restent absents des listes et inaccessibles en construction pour les personnes non invitees.
+- L insertion d un bloc dans un Summernote vide cree maintenant sa premiere ligne et sa selection avant insertion, afin qu un document, evenement ou projet soit ajoute des le premier clic.
+- La nouvelle version du composant Summernote est maintenant chargee dans tous les editeurs qui l utilisent, et pas seulement dans les PV.
 - La base visuelle de la popup de discussion est maintenant partagee avec le chat des decisions : avatars et messages recus a gauche, messages personnels a droite, meme zone de saisie et bouton Envoyer.
 - L ordre du jour des PV affiche maintenant l icone Information, Consultation ou Decision devant chaque point et la met a jour immediatement lors du changement de type.
 - Les points de PV sont maintenant verrouilles des leur prise de focus, restent verrouilles tant que des modifications ne sont pas sauvees, puis sont liberes juste apres la sauvegarde lorsque le focus a quitte le point.
