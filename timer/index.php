@@ -366,6 +366,6 @@ window.timerConfig = <?= json_encode([
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/timer/assets/timer.js?v=20260903-swipe-panels-fix" defer></script>
+<script src="/timer/assets/timer.js?v=20260903-swipe-tolerance-fix" defer></script>
 </body>
 </html>

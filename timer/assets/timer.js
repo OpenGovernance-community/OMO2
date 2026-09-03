@@ -535,7 +535,7 @@
                 }
                 var deltaX = clientX - swipeStart.x;
                 var deltaY = clientY - swipeStart.y;
-                if (Math.abs(deltaX) < 42 || Math.abs(deltaX) <= Math.abs(deltaY)) {
+                if (Math.abs(deltaX) < 24 || Math.abs(deltaX) < Math.abs(deltaY) * 0.6) {
                     return false;
                 }
                 swipeStart = null;
