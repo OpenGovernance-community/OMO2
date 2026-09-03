@@ -178,6 +178,23 @@
             });
         }
 
+        function updateTopbarBrand() {
+            var organization = findOrganization(state.organizationId);
+            if (!organization) {
+                return;
+            }
+            var organizationName = String(organization.name || 'Organisation');
+            var logoUrl = String(organization.logo || '/img/logo-OGC.png');
+            document.querySelectorAll('[data-common-topbar-brand-logo]').forEach(function (logo) {
+                logo.src = logoUrl;
+                logo.alt = organizationName;
+            });
+            document.querySelectorAll('[data-common-topbar-brand-link]').forEach(function (link) {
+                link.title = organizationName;
+                link.setAttribute('aria-label', organizationName);
+            });
+        }
+
         function canOpenPane(pane) {
             if (pane <= 0) {
                 return true;
@@ -431,6 +448,7 @@
             state.selectedProjectId = keepHolon ? state.selectedProjectId : 0;
             state.selectedProjectName = '';
             updateOrganizationButtons();
+            updateTopbarBrand();
             renderTarget();
             mountPicker(initialHolonId);
             var url = new URL(window.location.href);
