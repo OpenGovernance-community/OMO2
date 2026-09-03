@@ -7,12 +7,12 @@
 .timer-layout {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 0;
     width: 100%;
     max-width: none;
     height: calc(100dvh - var(--topbar-height, 48px));
     min-height: 0;
-    padding: 6px 8px 8px;
+    padding: 0;
 }
 
 .timer-control,
@@ -76,6 +76,7 @@
     height: 100%;
     min-width: 0;
     padding: 8px;
+    overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
 }
@@ -83,13 +84,16 @@
 .timer-selector__pane--holons {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    padding: 0;
     overflow: hidden;
 }
 
 .timer-organization-list {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
     gap: 6px;
+    overflow: hidden;
 }
 
 .timer-project-list {
@@ -139,6 +143,8 @@
     align-items: center;
     gap: var(--generic-space-2, 8px);
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     min-height: 42px;
     padding: 7px 10px;
     border: 1px solid transparent;
@@ -148,6 +154,7 @@
     cursor: pointer;
     font: inherit;
     font-weight: 700;
+    overflow: hidden;
     transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease, transform .16s ease;
 }
 
@@ -169,21 +176,17 @@
 }
 
 .timer-organization-choice span {
+    flex: 1 1 auto;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.timer-selected-holon,
 .timer-current-target {
     margin: 0;
     color: var(--color-text-light, #64748b);
     font-size: var(--generic-type-size-sm, .84rem);
-}
-
-.timer-selected-holon {
-    color: var(--color-text, #111827);
-    font-weight: 700;
 }
 
 .timer-current-target {
@@ -206,6 +209,11 @@
     height: 100%;
     min-height: 0;
     margin-top: 0;
+}
+
+.timer-selector__pane--holons .omo-holon-scope-picker__map {
+    border: 0;
+    border-radius: 0;
 }
 
 .timer-control {
@@ -269,6 +277,6 @@
 
 @media (min-width: 769px) {
     .timer-layout {
-        padding-inline: 16px;
+        padding: 0;
     }
 }

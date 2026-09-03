@@ -412,9 +412,10 @@ function commonRenderTopbar(array $options = [])
             class="common-topbar__brand-link common-topbar__brand-link--logo"
             title="<?= htmlspecialchars($config['brandAlt']) ?>"
             aria-label="<?= htmlspecialchars($config['brandAlt']) ?>"
+            data-common-topbar-brand-link
         >
             <span class="common-topbar__brand">
-                <img src="<?= htmlspecialchars($brandLogo) ?>" alt="<?= htmlspecialchars($config['brandAlt']) ?>" class="common-topbar__brand-logo">
+                <img src="<?= htmlspecialchars($brandLogo) ?>" alt="<?= htmlspecialchars($config['brandAlt']) ?>" class="common-topbar__brand-logo" data-common-topbar-brand-logo>
             </span>
         </a>
         <?php if ($config['brandLabel'] !== ''): ?>

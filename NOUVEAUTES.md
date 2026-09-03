@@ -4,7 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-03
 
-- Un timer mobile, concu comme une app plein ecran compacte, permet maintenant de choisir une organisation dans une liste verticale, puis un holon et un projet par trois vues navigables au swipe tactile, directement attachees a chaque panneau et tolerantes aux gestes diagonaux courts, y compris depuis la carte des holons. Un selecteur affiche par defaut les projets en cours, avec les statuts Pret, Bloque et A verifier disponibles. Il lance ou arrete le suivi du temps, change de cible sans perdre la ligne precedente, sauvegarde son avancement toutes les 30 secondes et reprend un suivi encore ouvert apres une interruption du telephone ou du navigateur.
+- Un timer mobile, concu comme une app plein ecran compacte, permet maintenant de choisir une organisation dans une liste verticale, puis un holon et un projet par trois vues navigables au swipe tactile, directement attachees a chaque panneau et tolerantes aux gestes diagonaux courts, y compris depuis la carte des holons. Son conteneur principal, ainsi que la carte des holons, sont bord a bord et sans libelle redondant ; les noms d organisations trop longs sont tronques sans defilement horizontal et la marque de la topbar suit l organisation choisie. Un selecteur affiche par defaut les projets en cours, avec les statuts Pret, Bloque et A verifier disponibles. Il lance ou arrete le suivi du temps, change de cible sans perdre la ligne precedente, sauvegarde son avancement toutes les 30 secondes et reprend un suivi encore ouvert apres une interruption du telephone ou du navigateur.
 
 ## 2026-09-02
 

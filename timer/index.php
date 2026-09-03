@@ -250,7 +250,7 @@ $profileData = commonResolveTopbarProfileData($organizationContext, []);
     <title><?= htmlspecialchars(t('timer.page.title'), ENT_QUOTES, 'UTF-8') ?></title>
     <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="/common/assets/topbar.css">
-    <link rel="stylesheet" href="/timer/assets/timer.css?v=20260903-compact-swipe-fix">
+    <link rel="stylesheet" href="/timer/assets/timer.css?v=20260903-edge-main-layout">
 </head>
 <body class="timer-page">
 <?php
@@ -264,7 +264,7 @@ commonRenderTopbar([
     'profile' => ['data' => $profileData],
 ]);
 ?>
-<main class="timer-layout generic-page-shell">
+<main class="timer-layout">
     <?php if (count($organizationData) === 0): ?>
     <section class="timer-empty">
         <p><?= htmlspecialchars(t('timer.organization.empty')) ?></p>
@@ -298,7 +298,6 @@ commonRenderTopbar([
                     </div>
                 </section>
                 <section class="timer-selector__pane timer-selector__pane--holons" data-timer-pane-content="1" aria-label="<?= htmlspecialchars(t('timer.structure.heading'), ENT_QUOTES, 'UTF-8') ?>">
-                    <p class="timer-selected-holon" data-timer-selected-holon><?= htmlspecialchars(t('timer.structure.loading')) ?></p>
                     <div id="timer-holon-picker" class="timer-holon-picker" data-timer-holon-picker></div>
                 </section>
                 <section class="timer-selector__pane" data-timer-pane-content="2" aria-label="<?= htmlspecialchars(t('timer.project.heading'), ENT_QUOTES, 'UTF-8') ?>">
@@ -366,6 +365,6 @@ window.timerConfig = <?= json_encode([
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/timer/assets/timer.js?v=20260903-swipe-tolerance-fix" defer></script>
+<script src="/timer/assets/timer.js?v=20260903-topbar-organization-logo" defer></script>
 </body>
 </html>
