@@ -273,8 +273,17 @@
         return getCircleAncestor(node && node.parent ? node.parent : null);
     }
 
+    function getContentLabelThresholds() {
+        var isNarrowScreen = typeof window.matchMedia === 'function'
+            && window.matchMedia('(max-width: 768px)').matches;
+        return isNarrowScreen
+            ? { minimum: 12, nearby: 16 }
+            : { minimum: 18, nearby: 22 };
+    }
+
     function shouldDrawContentNodeLabel(node, currentNode, isHovered, screenRadius) {
-        if (!node || !currentNode || screenRadius < 18) {
+        var thresholds = getContentLabelThresholds();
+        if (!node || !currentNode || screenRadius < thresholds.minimum) {
             return false;
         }
         if (String(node.ID || '') === String(currentNode.ID || '')) {
@@ -286,11 +295,11 @@
         if (String(currentNode.type || '') === '1') {
             return Boolean(node.parent && currentNode.parent && node.parent.ID && currentNode.parent.ID)
                 && String(node.parent.ID) === String(currentNode.parent.ID)
-                && screenRadius >= 22;
+                && screenRadius >= thresholds.nearby;
         }
         return Boolean(node.parent && node.parent.ID)
             && String(node.parent.ID) === String(currentNode.ID)
-            && screenRadius >= 22;
+            && screenRadius >= thresholds.nearby;
     }
 
     function createStructureCanvas(map, data, getSelectedId, onSelect, isSelectable, ignoreAssignmentColor, labelMode) {
