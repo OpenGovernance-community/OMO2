@@ -398,6 +398,7 @@
                 organizationId: state.organizationId,
                 initialHolonId: state.selectedHolonId,
                 allowEmptySelection: true,
+                labelMode: 'children',
                 showModes: false,
                 suppressInitialChange: true,
                 labels: {},
