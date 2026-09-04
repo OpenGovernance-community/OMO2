@@ -2,6 +2,7 @@
     const config = window.commonLoginConfig || {};
     const input = document.getElementById('authEmailInput');
     const domain = document.getElementById('authEmailDomain');
+    const firstFactorFields = document.getElementById('authFirstFactorFields');
     const toggle = document.getElementById('authToggleMode');
     const passwordBox = document.getElementById('authPasswordBox');
     const passwordInput = document.getElementById('authPasswordInput');
@@ -18,6 +19,7 @@
     const codeInput = document.getElementById('authCodeInput');
     const codeSubmit = document.getElementById('authCodeSubmit');
     const totpBox = document.getElementById('authTotpBox');
+    const totpTitle = totpBox ? totpBox.querySelector('h3') : null;
     const totpIntro = totpBox ? totpBox.querySelector('p') : null;
     const totpInput = document.getElementById('authTotpInput');
     const totpSubmit = document.getElementById('authTotpSubmit');
@@ -27,6 +29,7 @@
     const resendLink = document.getElementById('authResendLink');
     const status = document.getElementById('authStatus');
     const copy = document.querySelector('.auth-copy');
+    const loginLinks = document.querySelector('.auth-login-links');
     const languageSelect = document.querySelector('[data-auth-language-select]');
 
     if (!input || !submit) {
@@ -41,9 +44,13 @@
         'auth.button.validate': 'Valider',
         'auth.button.validate_and_send_code': 'Valider et envoyer le code',
         'auth.button.validate_code': 'Valider le code',
+        'auth.button.validate_mfa': 'Valider',
         'auth.challenge.answer_placeholder': 'Votre reponse',
         'auth.code.instructions': 'Entrez le code recu par e-mail sur cet appareil.',
         'auth.code.placeholder': 'ABC123',
+        'auth.totp.title': 'Double authentification',
+        'auth.totp.instructions': 'Ouvrez votre application de validation et saisissez le code a 6 chiffres.',
+        'auth.totp.placeholder': 'Code à 6 chiffres',
         'auth.copy.login_code': 'Un code de connexion vous sera envoye par e-mail. Il reste valable 5 minutes.',
         'auth.copy.login_password': 'Utilisez votre mot de passe pour vous connecter directement sur cet appareil.',
         'auth.error.ask_new_code_first': "Demandez d'abord un nouveau code.",
@@ -94,11 +101,15 @@
     let loginMethod = 'code';
     let pendingToken = '';
     let pendingTotpToken = '';
+    let pendingTokenExpiresAt = 0;
+    let pendingTotpTokenExpiresAt = 0;
+    let pendingTokenExpiryTimer = null;
     let loginRequestInFlight = false;
     let challengeVisible = false;
     let passwordLoginAvailable = true;
     const storageKey = 'commonLoginPendingToken';
     const totpStorageKey = 'commonLoginPendingTotpToken';
+    const pendingTokenLifetimeMs = 5 * 60 * 1000;
     const translationsPath = config.authTranslationsPath || '/common/jstranslation/auth_js.php';
 
     function interpolate(text, variables) {
@@ -230,17 +241,52 @@
         return value;
     }
 
-    function storePendingToken(token) {
-        pendingToken = token || '';
+    function loadStoredPendingToken(key) {
         if (!window.sessionStorage) {
+            return { token: '', expiresAt: 0 };
+        }
+
+        const rawValue = window.sessionStorage.getItem(key);
+        if (!rawValue) {
+            return { token: '', expiresAt: 0 };
+        }
+
+        try {
+            const storedValue = JSON.parse(rawValue);
+            const token = typeof storedValue.token === 'string' ? storedValue.token : '';
+            const expiresAt = Number(storedValue.expiresAt) || 0;
+            if (!token || !expiresAt || expiresAt <= Date.now()) {
+                window.sessionStorage.removeItem(key);
+                return { token: '', expiresAt: 0 };
+            }
+
+            return { token: token, expiresAt: expiresAt };
+        } catch (error) {
+            // Tokens stored by older versions had no expiry and must not revive a login later.
+            window.sessionStorage.removeItem(key);
+            return { token: '', expiresAt: 0 };
+        }
+    }
+
+    function storePendingToken(token, expiresAt) {
+        pendingToken = token || '';
+        pendingTokenExpiresAt = pendingToken
+            ? (Number(expiresAt) || (Date.now() + pendingTokenLifetimeMs))
+            : 0;
+        if (!window.sessionStorage) {
+            schedulePendingTokenExpiry();
             return;
         }
 
         if (pendingToken) {
-            window.sessionStorage.setItem(storageKey, pendingToken);
+            window.sessionStorage.setItem(storageKey, JSON.stringify({
+                token: pendingToken,
+                expiresAt: pendingTokenExpiresAt
+            }));
         } else {
             window.sessionStorage.removeItem(storageKey);
         }
+        schedulePendingTokenExpiry();
     }
 
     function loadPendingToken() {
@@ -248,27 +294,102 @@
             return '';
         }
 
-        return window.sessionStorage.getItem(storageKey) || '';
+        const storedValue = loadStoredPendingToken(storageKey);
+        pendingTokenExpiresAt = storedValue.expiresAt;
+        return storedValue.token;
     }
 
-    function storePendingTotpToken(token) {
+    function storePendingTotpToken(token, expiresAt) {
         pendingTotpToken = token || '';
-        if (!window.sessionStorage) return;
-        if (pendingTotpToken) window.sessionStorage.setItem(totpStorageKey, pendingTotpToken);
-        else window.sessionStorage.removeItem(totpStorageKey);
+        pendingTotpTokenExpiresAt = pendingTotpToken
+            ? (Number(expiresAt) || (Date.now() + pendingTokenLifetimeMs))
+            : 0;
+        if (!window.sessionStorage) {
+            schedulePendingTokenExpiry();
+            return;
+        }
+        if (pendingTotpToken) {
+            window.sessionStorage.setItem(totpStorageKey, JSON.stringify({
+                token: pendingTotpToken,
+                expiresAt: pendingTotpTokenExpiresAt
+            }));
+        } else {
+            window.sessionStorage.removeItem(totpStorageKey);
+        }
+        schedulePendingTokenExpiry();
     }
 
     function loadPendingTotpToken() {
-        return window.sessionStorage ? (window.sessionStorage.getItem(totpStorageKey) || '') : '';
+        const storedValue = loadStoredPendingToken(totpStorageKey);
+        pendingTotpTokenExpiresAt = storedValue.expiresAt;
+        return storedValue.token;
+    }
+
+    function expirePendingTokens() {
+        const now = Date.now();
+        let hasExpiredToken = false;
+
+        if (pendingToken && pendingTokenExpiresAt > 0 && pendingTokenExpiresAt <= now) {
+            storePendingToken('');
+            hasExpiredToken = true;
+        }
+        if (pendingTotpToken && pendingTotpTokenExpiresAt > 0 && pendingTotpTokenExpiresAt <= now) {
+            storePendingTotpToken('');
+            hasExpiredToken = true;
+        }
+
+        if (hasExpiredToken) {
+            hideChallengeBox();
+            if (totpInput) {
+                totpInput.value = '';
+            }
+            refreshLoginMethodUI();
+            setStatus(t('auth.error.expired'), 'error');
+        }
+
+        return hasExpiredToken;
+    }
+
+    function schedulePendingTokenExpiry() {
+        if (pendingTokenExpiryTimer !== null) {
+            window.clearTimeout(pendingTokenExpiryTimer);
+            pendingTokenExpiryTimer = null;
+        }
+
+        const now = Date.now();
+        const expiries = [pendingTokenExpiresAt, pendingTotpTokenExpiresAt]
+            .filter(function (expiresAt) { return expiresAt > now; });
+        if (!expiries.length) {
+            return;
+        }
+
+        pendingTokenExpiryTimer = window.setTimeout(function () {
+            pendingTokenExpiryTimer = null;
+            expirePendingTokens();
+            schedulePendingTokenExpiry();
+        }, Math.max(1, Math.min.apply(null, expiries) - now + 25));
     }
 
     function showTotpBox() {
+        setFirstFactorVisible(false);
         if (totpBox) totpBox.style.display = 'flex';
         if (codeBox) codeBox.style.display = 'none';
         if (passwordBox) passwordBox.style.display = 'none';
         if (totpInput) totpInput.focus();
         if (submit) submit.style.display = 'none';
         if (resendLink) resendLink.style.display = 'none';
+    }
+
+    function setFirstFactorVisible(visible) {
+        if (firstFactorFields) {
+            firstFactorFields.style.display = visible ? 'flex' : 'none';
+        }
+        if (copy) {
+            copy.style.display = visible ? '' : 'none';
+        }
+        if (loginLinks) {
+            loginLinks.style.display = visible ? 'flex' : 'none';
+        }
     }
 
     function startTotpVerification(token) {
@@ -337,6 +458,7 @@
 
     function refreshLoginMethodUI() {
         const isPasswordMode = loginMethod === 'password';
+        setFirstFactorVisible(!pendingTotpToken);
 
         if (passwordBox) {
             passwordBox.style.display = isPasswordMode ? 'flex' : 'none';
@@ -408,6 +530,7 @@
         if (codeSubmit) {
             codeSubmit.textContent = t('auth.button.validate_code');
         }
+        if (totpTitle) totpTitle.textContent = t('auth.totp.title');
         if (totpIntro) totpIntro.textContent = t('auth.totp.instructions');
         if (totpInput) totpInput.placeholder = t('auth.totp.placeholder');
         if (totpSubmit) totpSubmit.textContent = t('auth.button.validate_mfa');
@@ -713,6 +836,7 @@
     }
 
     function verifyCode() {
+        expirePendingTokens();
         const token = pendingToken || loadPendingToken();
         const code = codeInput ? codeInput.value.trim().toUpperCase() : '';
 
@@ -825,6 +949,7 @@
     }
 
     function verifyTotp() {
+        expirePendingTokens();
         const token = pendingTotpToken || loadPendingTotpToken();
         const code = totpInput ? totpInput.value.replace(/\s+/g, '') : '';
         if (!token) { setStatus(t('auth.error.expired'), 'error'); return; }
