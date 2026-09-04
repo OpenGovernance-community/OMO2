@@ -55,6 +55,7 @@ if ($currentOrganizationId > 0) {
 $canLimitCompetenceToOrganization = $currentOrganizationId > 0;
 $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
 $userHasPassword = trim((string)$user->get('password')) !== '';
+$userAllowsPasswordLogin = commonUserAllowsPasswordLogin($user);
 
 function profilScopeFormatDateTime($value)
 {
@@ -71,7 +72,7 @@ function profilScopeFormatAmountCents($value)
     return number_format($amount, 2, '.', "'");
 }
 
-function profilBuildPasswordSectionHtml($userHasPassword)
+function profilBuildPasswordSectionHtml($userHasPassword, $userAllowsPasswordLogin)
 {
     $passwordPolicyStatusEmpty = htmlspecialchars(profilPopupT('profile.popup.password.policy.status.empty'), ENT_QUOTES, 'UTF-8');
     $passwordPolicyStatusValid = htmlspecialchars(profilPopupT('profile.popup.password.policy.status.valid'), ENT_QUOTES, 'UTF-8');
@@ -83,6 +84,14 @@ function profilBuildPasswordSectionHtml($userHasPassword)
     $sectionHelp = htmlspecialchars(profilPopupT('profile.popup.password.section.help'), ENT_QUOTES, 'UTF-8');
     $toggleLabel = htmlspecialchars(profilPopupT('profile.popup.password.toggle.label'), ENT_QUOTES, 'UTF-8');
     $toggleHelp = htmlspecialchars(profilPopupT('profile.popup.password.toggle.help'), ENT_QUOTES, 'UTF-8');
+    $loginPermissionLabel = htmlspecialchars(profilPopupT('profile.popup.password.login_permission.label'), ENT_QUOTES, 'UTF-8');
+    $loginPermissionHelp = htmlspecialchars(
+        profilPopupT($userHasPassword
+            ? 'profile.popup.password.login_permission.help'
+            : 'profile.popup.password.login_permission.unavailable'),
+        ENT_QUOTES,
+        'UTF-8'
+    );
     $statusText = htmlspecialchars(
         $userHasPassword
             ? profilPopupT('profile.popup.password.status.defined')
@@ -110,6 +119,14 @@ function profilBuildPasswordSectionHtml($userHasPassword)
     }
 
     return '
+        <section class="profile-panel__password-toggle generic-soft-panel generic-soft-panel--stack">
+            <input type="hidden" name="allow_password_login" value="0">
+            <label class="profile-panel__password-toggle-label">
+                <input type="checkbox" name="allow_password_login" value="1"' . ($userAllowsPasswordLogin ? ' checked' : '') . ($userHasPassword ? '' : ' disabled') . '>
+                <span>' . $loginPermissionLabel . '</span>
+            </label>
+            <div class="profile-panel__scope-help">' . $loginPermissionHelp . '</div>
+        </section>
         <div class="profile-panel__password-toggle generic-soft-panel generic-soft-panel--stack">
             <label class="profile-panel__password-toggle-label">
                 <input type="checkbox" id="profile_password_toggle" data-profile-password-toggle="1">
@@ -181,7 +198,122 @@ function profilBuildPasswordSectionHtml($userHasPassword)
     ';
 }
 
-function profilRenderProfileFragment($scope, \dbObject\User $user, $organizationMembership, $userHasPassword, $leafletMapsEnabled)
+function profilBuildTotpSectionHtml($totpEnabled)
+{
+    $label = htmlspecialchars(profilPopupT('profile.popup.totp.label'), ENT_QUOTES, 'UTF-8');
+    $help = htmlspecialchars(profilPopupT($totpEnabled ? 'profile.popup.totp.help.enabled' : 'profile.popup.totp.help.disabled'), ENT_QUOTES, 'UTF-8');
+    $setupTitle = htmlspecialchars(profilPopupT('profile.popup.totp.setup.title'), ENT_QUOTES, 'UTF-8');
+    $setupInstructions = htmlspecialchars(profilPopupT('profile.popup.totp.setup.instructions'), ENT_QUOTES, 'UTF-8');
+    $manualLabel = htmlspecialchars(profilPopupT('profile.popup.totp.setup.manual_label'), ENT_QUOTES, 'UTF-8');
+    $codePlaceholder = htmlspecialchars(profilPopupT('profile.popup.totp.setup.code_placeholder'), ENT_QUOTES, 'UTF-8');
+    $confirmLabel = htmlspecialchars(profilPopupT('profile.popup.totp.setup.confirm'), ENT_QUOTES, 'UTF-8');
+    $disableConfirm = json_encode(
+        profilPopupT('profile.popup.totp.disable.confirm'),
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP
+    );
+
+    return '
+        <section class="profile-panel__password-toggle generic-soft-panel generic-soft-panel--stack" data-profile-totp-section="1">
+            <label class="profile-panel__password-toggle-label">
+                <input type="checkbox" data-profile-totp-toggle="1"' . ($totpEnabled ? ' checked' : '') . '>
+                <span>' . $label . '</span>
+            </label>
+            <div class="profile-panel__scope-help" data-profile-totp-help="1">' . $help . '</div>
+            <div data-profile-totp-setup="1"></div>
+        </section>
+        <script>
+        (function () {
+            var script = document.currentScript;
+            var section = script ? script.previousElementSibling : null;
+            if (!section || section.getAttribute("data-profile-totp-section") !== "1") return;
+            var toggle = section.querySelector("[data-profile-totp-toggle]");
+            var setup = section.querySelector("[data-profile-totp-setup]");
+            var endpoint = "/ajax/totp_setup.php";
+            var disableConfirm = ' . $disableConfirm . ';
+
+            function request(action, extra) {
+                var body = new URLSearchParams();
+                body.set("action", action);
+                Object.keys(extra || {}).forEach(function (key) { body.set(key, extra[key]); });
+                return fetch(endpoint, {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Requested-With": "XMLHttpRequest" },
+                    body: body.toString()
+                }).then(function (response) { return response.json(); });
+            }
+
+            function setMessage(message, error) {
+                setup.textContent = message || "";
+                setup.className = error ? "profile-panel__feedback profile-panel__feedback--error" : "profile-panel__scope-help";
+            }
+
+            function renderSetup(data) {
+                setup.innerHTML = "";
+                var title = document.createElement("strong");
+                title.className = "generic-card-title generic-card-title--small";
+                title.textContent = "' . $setupTitle . '";
+                var instructions = document.createElement("p");
+                instructions.className = "profile-panel__scope-help";
+                instructions.textContent = "' . $setupInstructions . '";
+                setup.appendChild(title);
+                setup.appendChild(instructions);
+                if (data.qr_url) {
+                    var image = document.createElement("img");
+                    image.src = data.qr_url;
+                    image.alt = "QR code TOTP";
+                    image.width = 220;
+                    image.height = 220;
+                    setup.appendChild(image);
+                }
+                var manual = document.createElement("p");
+                manual.className = "profile-panel__scope-help";
+                manual.textContent = "' . $manualLabel . ': " + (data.manual_secret || "");
+                setup.appendChild(manual);
+                var code = document.createElement("input");
+                code.type = "text";
+                code.inputMode = "numeric";
+                code.autocomplete = "one-time-code";
+                code.maxLength = 6;
+                code.placeholder = "' . $codePlaceholder . '";
+                var button = document.createElement("button");
+                button.type = "button";
+                button.className = "generic-action-button generic-action-button--main";
+                button.textContent = "' . $confirmLabel . '";
+                button.addEventListener("click", function () {
+                    button.disabled = true;
+                    request("confirm", { code: code.value }).then(function (result) {
+                        button.disabled = false;
+                        if (!result.status) { setMessage(result.message || "Erreur.", true); return; }
+                        toggle.checked = true;
+                        setMessage(result.message || "", false);
+                    }).catch(function () { button.disabled = false; setMessage("Erreur.", true); });
+                });
+                setup.appendChild(code);
+                setup.appendChild(button);
+                code.focus();
+            }
+
+            toggle.addEventListener("change", function () {
+                if (!toggle.checked) {
+                    if (!window.confirm(disableConfirm)) { toggle.checked = true; return; }
+                    request("disable", {}).then(function (result) {
+                        if (!result.status) { toggle.checked = true; setMessage(result.message || "Erreur.", true); return; }
+                        setMessage(result.message || "", false);
+                    }).catch(function () { toggle.checked = true; setMessage("Erreur.", true); });
+                    return;
+                }
+                request("start", {}).then(function (result) {
+                    if (!result.status) { toggle.checked = false; setMessage(result.message || "Erreur.", true); return; }
+                    renderSetup(result);
+                }).catch(function () { toggle.checked = false; setMessage("Erreur.", true); });
+            });
+        })();
+        </script>
+    ';
+}
+
+function profilRenderProfileFragment($scope, \dbObject\User $user, $organizationMembership, $userHasPassword, $userAllowsPasswordLogin, $leafletMapsEnabled)
 {
     $fragmentUrl = '/popup/profil_scope.php?section=profile&scope=' . rawurlencode($scope);
     ob_start();
@@ -224,7 +356,8 @@ function profilRenderProfileFragment($scope, \dbObject\User $user, $organization
         "action" => "/ajax/saveaccount.php?origin=profil&scope=general",
         "success" => "profileHandleGeneralSaved()",
         "allowProtectedFields" => true,
-        "afterTableHtml" => profilBuildPasswordSectionHtml($userHasPassword),
+        "afterTableHtml" => profilBuildPasswordSectionHtml($userHasPassword, $userAllowsPasswordLogin)
+            . profilBuildTotpSectionHtml(commonUserHasTotpEnabled($user)),
         "fields" => array(
             "image",
             "username",
@@ -981,7 +1114,7 @@ function profilRenderPatreonFragment(\dbObject\User $user)
 
 
 if ($requestedSection === 'profile') {
-    echo profilRenderProfileFragment($scope, $user, $organizationMembership, $userHasPassword, $leafletMapsEnabled);
+    echo profilRenderProfileFragment($scope, $user, $organizationMembership, $userHasPassword, $userAllowsPasswordLogin, $leafletMapsEnabled);
     return;
 }
 
@@ -1007,5 +1140,5 @@ if ($requestedSection === 'patreon') {
     return;
 }
 
-echo profilRenderProfileFragment($scope, $user, $organizationMembership, $userHasPassword, $leafletMapsEnabled);
+echo profilRenderProfileFragment($scope, $user, $organizationMembership, $userHasPassword, $userAllowsPasswordLogin, $leafletMapsEnabled);
 echo profilRenderCompetenceFragment(array($scope), $user, $currentOrganizationId, $currentUserId, $canLimitCompetenceToOrganization);

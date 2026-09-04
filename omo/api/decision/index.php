@@ -2436,6 +2436,12 @@ function omoDecisionsRefreshScope(scope) {
         url: omoDecisionsBuildScopeUrl(scope),
         setLoadingState: function (loading) {
             root.classList.toggle('is-loading', !!loading);
+            if (typeof window.omoSetPanelResultsLoadingSkeleton === 'function') {
+                window.omoSetPanelResultsLoadingSkeleton(root, loading, {
+                    contentSelector: '[data-omo-decisions-list]',
+                    reveal: true
+                });
+            }
         }
     }).catch(function () {
         root.classList.remove('is-loading');
@@ -2661,6 +2667,12 @@ window.omoToggleDecisionsScope = function (button, event) {
         url: targetUrl,
         setLoadingState: function (isLoading) {
             panel.classList.toggle('is-loading', !!isLoading);
+            if (typeof window.omoSetPanelResultsLoadingSkeleton === 'function') {
+                window.omoSetPanelResultsLoadingSkeleton(panel, isLoading, {
+                    contentSelector: '[data-omo-decisions-list]',
+                    reveal: true
+                });
+            }
         }
     }).catch(function () {
         panel.classList.remove('is-loading');

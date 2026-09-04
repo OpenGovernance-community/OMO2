@@ -169,6 +169,16 @@ class Project extends DbObject
         ];
     }
 
+    public static function getWorkTimeStatuses()
+    {
+        return [
+            self::STATUS_READY,
+            self::STATUS_IN_PROGRESS,
+            self::STATUS_BLOCKED,
+            self::STATUS_REVIEW,
+        ];
+    }
+
     public static function getStatusCatalog()
     {
         return [

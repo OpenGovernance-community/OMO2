@@ -396,7 +396,7 @@ function commonRenderTopbar(array $options = [])
         commonRenderTopbarJqueryAssets();
         echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260901-dashboard-compact-actions">' . PHP_EOL;
         echo '<script src="/common/assets/components.js?v=20260814-context-help-bounds" defer></script>' . PHP_EOL;
-        echo '<script src="/common/holon_scope_picker.js?v=20260826-structure-data-cache" defer></script>' . PHP_EOL;
+        echo '<script src="/common/holon_scope_picker.js?v=20260903-mobile-label-threshold-9" defer></script>' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/assets/topbar.css?v=20260821-notification-mark-all-read">' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/notifications/notifications.css">' . PHP_EOL;
         echo '<script src="/common/notifications/notifications.js" defer></script>' . PHP_EOL;
@@ -412,9 +412,10 @@ function commonRenderTopbar(array $options = [])
             class="common-topbar__brand-link common-topbar__brand-link--logo"
             title="<?= htmlspecialchars($config['brandAlt']) ?>"
             aria-label="<?= htmlspecialchars($config['brandAlt']) ?>"
+            data-common-topbar-brand-link
         >
             <span class="common-topbar__brand">
-                <img src="<?= htmlspecialchars($brandLogo) ?>" alt="<?= htmlspecialchars($config['brandAlt']) ?>" class="common-topbar__brand-logo">
+                <img src="<?= htmlspecialchars($brandLogo) ?>" alt="<?= htmlspecialchars($config['brandAlt']) ?>" class="common-topbar__brand-logo" data-common-topbar-brand-logo>
             </span>
         </a>
         <?php if ($config['brandLabel'] !== ''): ?>

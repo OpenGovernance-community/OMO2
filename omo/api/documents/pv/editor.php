@@ -4408,7 +4408,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     })();
 
     function ensureHtmlFieldLibrary(callback) {
-        const htmlFieldVersion = '20260821-pv-review-access-2';
+        const htmlFieldVersion = '20260903-toolbar-insert-focus';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -5286,6 +5286,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                         label: 'Document',
                         title: documentEmbedUi.buttonTitle || 'Insérer un document',
                         className: 'note-btn-light omo-pv-editor__document-embed-button',
+                        focusForInsertion: true,
                         onClick: function (context) {
                             openPvDocumentEmbedPicker(context && context.api ? context.api : field);
                         }
@@ -5298,6 +5299,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                         label: 'Décision',
                         title: decisionEmbedUi.buttonTitle || 'Insérer une décision',
                         className: 'note-btn-light omo-pv-editor__decision-embed-button',
+                        focusForInsertion: true,
                         onClick: function (context) {
                             openPvDecisionEmbedPicker(context && context.api ? context.api : field);
                         }
@@ -5305,12 +5307,12 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 }
                 if (canEmbedProjects) {
                     customButtons.push({
-                        name: 'omoPvProjectEmbed', group: 'omo-pv-project-embed', label: 'Projet', title: projectEmbedUi.buttonTitle || 'Insérer un projet', className: 'note-btn-light omo-pv-editor__project-embed-button',
+                        name: 'omoPvProjectEmbed', group: 'omo-pv-project-embed', label: 'Projet', title: projectEmbedUi.buttonTitle || 'Insérer un projet', className: 'note-btn-light omo-pv-editor__project-embed-button', focusForInsertion: true,
                         onClick: function (context) { openPvProjectEmbedPicker(context && context.api ? context.api : field); }
                     });
                 }
                 if (canEmbedChecklists) {
-                    customButtons.push({ name: 'omoPvChecklistEmbed', group: 'omo-pv-checklist-embed', label: 'Processus', title: checklistEmbedUi.buttonTitle || 'Insérer un processus', className: 'note-btn-light omo-pv-editor__checklist-embed-button', onClick: function (context) { openPvChecklistEmbedPicker(context && context.api ? context.api : field); } });
+                    customButtons.push({ name: 'omoPvChecklistEmbed', group: 'omo-pv-checklist-embed', label: 'Processus', title: checklistEmbedUi.buttonTitle || 'Insérer un processus', className: 'note-btn-light omo-pv-editor__checklist-embed-button', focusForInsertion: true, onClick: function (context) { openPvChecklistEmbedPicker(context && context.api ? context.api : field); } });
                 }
                 if (canEmbedEvents) {
                     customButtons.push({
@@ -5319,6 +5321,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                         label: 'Date',
                         title: eventEmbedUi.buttonTitle || 'Insérer une date',
                         className: 'note-btn-light omo-pv-editor__event-embed-button',
+                        focusForInsertion: true,
                         onClick: function (context) {
                             openPvEventEmbedPicker(context && context.api ? context.api : field);
                         }
@@ -5331,6 +5334,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                         label: 'Indicateur',
                         title: indicatorEmbedUi.buttonTitle || 'Insérer un indicateur',
                         className: 'note-btn-light omo-pv-editor__indicator-embed-button',
+                        focusForInsertion: true,
                         onClick: function (context) {
                             openPvIndicatorEmbedPicker(context && context.api ? context.api : field);
                         }

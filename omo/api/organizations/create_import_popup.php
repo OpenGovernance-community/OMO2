@@ -6,6 +6,7 @@ $sourceLang = array(
     'organization_import.action.submit' => array('text' => 'Creer et importer', 'context' => 'Submit button in the organization import popup.'),
     'organization_import.error.auth' => array('text' => 'Connexion requise.', 'context' => 'Authentication message in the organization import popup.'),
     'organization_import.error.file' => array('text' => 'Choisissez un fichier JSON avant de continuer.', 'context' => 'Validation message when no import file is selected.'),
+    'organization_import.error.member_invitation_email_choice' => array('text' => 'Choisissez explicitement le traitement des e-mails d invitation aux membres.', 'context' => 'Validation message when the member invitation email choice is not selected.'),
     'organization_import.error.generic' => array('text' => 'Impossible d importer la nouvelle organisation.', 'context' => 'Fallback error message for the organization import popup.'),
     'organization_import.field.file' => array('text' => 'Export JSON OMO 1', 'context' => 'File input label in the organization import popup.'),
     'organization_import.field.name' => array('text' => 'Nom de la nouvelle organisation', 'context' => 'Organization name label in the organization import popup.'),
@@ -26,8 +27,11 @@ $sourceLang = array(
     'organization_import.property_mapping.none' => array('text' => 'Aucune propriete a faire correspondre pour les templates selectionnes.', 'context' => 'Empty property mapping state.'),
     'organization_import.property_mapping.title' => array('text' => 'Correspondance des proprietes', 'context' => 'Title of property mapping section.'),
     'organization_import.field.sections' => array('text' => 'Contenu a importer', 'context' => 'Section picker legend in the organization import popup.'),
-    'organization_import.field.send_invitations' => array('text' => "Envoyer les e-mails d'invitation aux membres", 'context' => 'Checkbox controlling whether imported members immediately receive invitation emails.'),
-    'organization_import.field.send_invitations_hint' => array('text' => "Décochez cette option pour importer les membres sans créer leurs invitations. Elles pourront être envoyées plus tard depuis la fiche de chaque membre.", 'context' => 'Help text for importing members without creating invitations.'),
+    'organization_import.field.member_invitation_email_choice' => array('text' => 'E-mails d invitation aux membres importes', 'context' => 'Required selector controlling whether imported members receive invitation emails.'),
+    'organization_import.field.member_invitation_email_choice_empty' => array('text' => 'Choisissez...', 'context' => 'Empty option in the required member invitation email selector.'),
+    'organization_import.field.member_invitation_email_choice_send' => array('text' => 'Envoyer maintenant les e-mails d invitation', 'context' => 'Option sending invitation emails to imported members.'),
+    'organization_import.field.member_invitation_email_choice_skip' => array('text' => 'Ne pas envoyer les e-mails d invitation', 'context' => 'Option not sending invitation emails to imported members.'),
+    'organization_import.field.member_invitation_email_choice_hint' => array('text' => 'Ce choix est obligatoire afin de confirmer le traitement des invitations des membres importes.', 'context' => 'Help text for the required member invitation email selector.'),
     'organization_import.help' => array('text' => 'Cette action cree une nouvelle organisation. La structure est toujours importee. Les taches OMO 1 deviennent des projets enfants et les anciennes listes recurrentes deviennent des activites directes de leurs holons.', 'context' => 'Help text in the organization import popup.'),
     'organization_import.module.checklists' => array('text' => 'Activites recurrentes', 'context' => 'Recurring activities module label in the organization import popup.'),
     'organization_import.loading' => array('text' => 'Import en cours...', 'context' => 'Loading label shown during organization import.'),
@@ -126,10 +130,14 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             <?php endforeach; ?>
         </fieldset>
 
-        <label class="omo-create-import__invitation-option generic-soft-panel" data-omo-create-import-invitation-option="1">
-            <input type="checkbox" name="send_member_invitations" value="1" checked data-omo-create-import-send-invitations="1">
-            <span><?= htmlspecialchars(t('organization_import.field.send_invitations', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
-            <small><?= htmlspecialchars(t('organization_import.field.send_invitations_hint', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></small>
+        <label class="omo-create-import__field generic-soft-panel omo-create-import__invitation-option">
+            <span><?= htmlspecialchars(t('organization_import.field.member_invitation_email_choice', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
+            <select name="member_invitation_email_choice" class="generic-form-control" required data-omo-create-import-member-invitation-email-choice="1">
+                <option value="" selected disabled><?= htmlspecialchars(t('organization_import.field.member_invitation_email_choice_empty', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></option>
+                <option value="send"><?= htmlspecialchars(t('organization_import.field.member_invitation_email_choice_send', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></option>
+                <option value="skip"><?= htmlspecialchars(t('organization_import.field.member_invitation_email_choice_skip', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></option>
+            </select>
+            <small><?= htmlspecialchars(t('organization_import.field.member_invitation_email_choice_hint', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></small>
         </label>
 
         <div class="omo-create-import__actions">
@@ -163,10 +171,8 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
 .omo-create-import__module { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; padding: 7px; border-radius: 8px; }
 .omo-create-import__module input { grid-row: 1 / span 2; }
 .omo-create-import__module.is-unavailable { opacity: 0.5; }
-.omo-create-import__invitation-option { display: grid; grid-template-columns: auto 1fr; column-gap: 9px; align-items: center; font-weight: 600; }
-.omo-create-import__invitation-option input { grid-row: 1 / span 2; }
+.omo-create-import__invitation-option { gap: 7px; font-weight: 600; }
 .omo-create-import__invitation-option small { color: var(--color-text-light, #64748b); font-size: 12px; font-weight: 400; }
-.omo-create-import__invitation-option.is-unavailable { opacity: 0.5; }
 .omo-create-import__actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .omo-create-import__feedback { line-height: 1.45; }
 .omo-create-import__feedback.is-error { color: #b91c1c; border-color: rgba(220, 38, 38, 0.25); background: rgba(220, 38, 38, 0.06); }
@@ -203,8 +209,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     var mappingsList = root.querySelector('[data-omo-create-import-mapping-list="1"]');
     var mappingsValue = form ? form.querySelector('[data-omo-create-import-mapping-value="1"]') : null;
     var propertyMappingsValue = form ? form.querySelector('[data-omo-create-import-property-mapping-value="1"]') : null;
-    var invitationOption = root.querySelector('[data-omo-create-import-invitation-option="1"]');
-    var sendInvitationsInput = form ? form.querySelector('[data-omo-create-import-send-invitations="1"]') : null;
+    var memberInvitationEmailChoice = form ? form.querySelector('[data-omo-create-import-member-invitation-email-choice="1"]') : null;
     var submitButton = root.querySelector('[data-omo-create-import-submit="1"]');
     var feedback = root.querySelector('[data-omo-create-import-feedback="1"]');
     var cancelButton = root.querySelector('[data-omo-create-import-cancel="1"]');
@@ -219,6 +224,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     var isImporting = false;
     var ui = <?= json_encode(array(
         'fileError' => t('organization_import.error.file', array(), $lang, $sourceLang),
+        'memberInvitationEmailChoiceError' => t('organization_import.error.member_invitation_email_choice', array(), $lang, $sourceLang),
         'genericError' => t('organization_import.error.generic', array(), $lang, $sourceLang),
         'loading' => t('organization_import.loading', array(), $lang, $sourceLang),
         'mappingDuplicate' => t('organization_import.mapping.duplicate', array(), $lang, $sourceLang),
@@ -294,14 +300,6 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         if (nameInput && !nameInput.value && payload && payload.organization && payload.organization.name) {
             nameInput.value = String(payload.organization.name);
         }
-        syncInvitationOptionAvailability();
-    }
-
-    function syncInvitationOptionAvailability() {
-        var membersInput = root.querySelector('[data-omo-create-import-module-input="members"]');
-        var available = !!membersInput && !membersInput.disabled && membersInput.checked;
-        if (sendInvitationsInput) { sendInvitationsInput.disabled = !available; }
-        if (invitationOption) { invitationOption.classList.toggle('is-unavailable', !available); }
     }
 
     function flattenHolons(nodes, output) {
@@ -773,9 +771,6 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
             return;
         }
         var module = event.target.getAttribute('data-omo-create-import-module-input');
-        if (module === 'members') {
-            syncInvitationOptionAvailability();
-        }
         if (module === 'tasks' && event.target.checked) {
             var projects = root.querySelector('[data-omo-create-import-module-input="projects"]');
             if (projects && !projects.disabled) { projects.checked = true; }
@@ -795,6 +790,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     form.addEventListener('submit', function (event) {
         event.preventDefault();
         if (!fileInput || !fileInput.files || !fileInput.files[0]) { showError(ui.fileError); return; }
+        if (!memberInvitationEmailChoice || ['send', 'skip'].indexOf(memberInvitationEmailChoice.value) === -1) { showError(ui.memberInvitationEmailChoiceError); return; }
         if (hasDuplicateTemplateMappings()) { showError(ui.mappingDuplicate); return; }
         if (hasDuplicatePropertyMappings()) { showError(ui.propertyMappingDuplicate); return; }
         submitButton.disabled = true;

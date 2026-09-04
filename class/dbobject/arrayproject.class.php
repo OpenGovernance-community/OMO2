@@ -94,6 +94,7 @@ class ArrayProject extends ArrayDbObject
                 ['field' => 'id', 'dir' => 'DESC'],
             ],
         ]);
+
     }
 
     public function loadForParent($parentId, $activeOnly = true, $projectKind = Project::KIND_STANDARD)
@@ -120,6 +121,7 @@ class ArrayProject extends ArrayDbObject
                 ['field' => 'id', 'dir' => 'DESC'],
             ],
         ]);
+
     }
 
     public function loadForContext($organizationId, $holonId = 0, $scope = 'contextual', array $descendantHolonIds = [])
@@ -181,6 +183,45 @@ class ArrayProject extends ArrayDbObject
                 ['field' => 'id', 'dir' => 'DESC'],
             ],
         ]);
+    }
+
+    public function loadForWorkTimeHolon($organizationId, $holonId, $status = Project::STATUS_IN_PROGRESS)
+    {
+        $this->exchangeArray([]);
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holonId;
+        $status = Project::normalizeStatus($status);
+        if ($organizationId <= 0 || $holonId <= 0 || !in_array($status, Project::getWorkTimeStatuses(), true)) {
+            return;
+        }
+
+        $this->load([
+            'hydrate' => ['title', 'priority'],
+            'where' => [
+                ['field' => 'IDorganization', 'value' => $organizationId],
+                ['field' => 'IDholon', 'value' => $holonId],
+                ['field' => 'status', 'value' => $status],
+                ['field' => 'active', 'value' => 1],
+                ['field' => 'project_kind', 'value' => Project::KIND_STANDARD],
+            ],
+            'orderBy' => [
+                ['field' => 'calculated_importance', 'dir' => 'DESC'],
+                ['field' => 'created_at', 'dir' => 'DESC'],
+                ['field' => 'id', 'dir' => 'DESC'],
+            ],
+        ]);
+
+        $this->uasort(static function (Project $left, Project $right): int {
+            $leftPriority = (int)$left->get('priority');
+            $rightPriority = (int)$right->get('priority');
+            $leftRank = $leftPriority > 0 ? $leftPriority : PHP_INT_MAX;
+            $rightRank = $rightPriority > 0 ? $rightPriority : PHP_INT_MAX;
+            if ($leftRank !== $rightRank) {
+                return $leftRank <=> $rightRank;
+            }
+
+            return (int)$left->getId() <=> (int)$right->getId();
+        });
     }
 
     public function loadTemplatesForOrganization($organizationId, $activeOnly = true)

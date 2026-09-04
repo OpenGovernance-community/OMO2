@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260821-pv-review-access-2';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260903-toolbar-insert-focus';
 
     if (
         window.omoSimpleHtmlField
@@ -1412,6 +1412,60 @@
             selection.addRange(range);
         }
 
+        function ensureEditableCaret(editable) {
+            if (!editable || String(editable.textContent || '').trim() !== '' || editable.querySelector('[data-omo-embed-type]')) {
+                return false;
+            }
+
+            let paragraph = Array.from(editable.children || []).find(function (child) {
+                return isParagraphEmpty(child);
+            });
+            if (!(paragraph instanceof HTMLParagraphElement)) {
+                paragraph = createNormalParagraph();
+                editable.appendChild(paragraph);
+            }
+
+            setCursorInParagraph(paragraph);
+            saveRange();
+            return true;
+        }
+
+        function focusForInsertion() {
+            const editable = getEditableElement();
+            if (!editable) {
+                return false;
+            }
+
+            if (initialized && $editor) {
+                try {
+                    $editor.summernote('focus');
+                } catch (error) {
+                    // The native selection fallback below is sufficient.
+                }
+            }
+
+            let range = captureCurrentSelectionRange();
+            if (!range && restoreNativeSavedRange()) {
+                range = captureCurrentSelectionRange();
+            }
+
+            if (!range && ensureEditableCaret(editable)) {
+                return true;
+            }
+
+            if (!range && window.getSelection) {
+                const selection = window.getSelection();
+                const fallbackRange = document.createRange();
+                fallbackRange.selectNodeContents(editable);
+                fallbackRange.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(fallbackRange);
+            }
+
+            saveRange();
+            return !!captureCurrentSelectionRange();
+        }
+
         function insertResourceEmbedAtMarker(markerNode, embedNode) {
             const editable = getEditableElement();
             if (!editable || !markerNode || !editable.contains(markerNode) || !embedNode) {
@@ -1651,7 +1705,13 @@
                     $editor.summernote('focus');
                     restoreRange();
 
-                    const selectionRange = getSelectionRange();
+                    let selectionRange = getSelectionRange();
+                    if (!selectionRange) {
+                        const editable = getEditableElement();
+                        if (ensureEditableCaret(editable)) {
+                            selectionRange = getSelectionRange();
+                        }
+                    }
                     if (resourceEmbed && selectionRange) {
                         const markerNode = buildCursorMarkerNode();
                         selectionRange.deleteContents();
@@ -2058,11 +2118,20 @@
                             tooltip: buttonConfig.title,
                             className: buttonConfig.className,
                             click: function (event) {
+                                const fieldApi = container.__omoSimpleHtmlField || null;
+                                if (
+                                    buttonConfig.focusForInsertion
+                                    && fieldApi
+                                    && typeof fieldApi.focusForInsertion === 'function'
+                                ) {
+                                    fieldApi.focusForInsertion();
+                                }
+
                                 if (typeof buttonConfig.onClick === 'function') {
                                     buttonConfig.onClick({
                                         event: event,
                                         name: buttonConfig.name,
-                                        api: container.__omoSimpleHtmlField || null
+                                        api: fieldApi
                                     });
                                 }
                             }
@@ -2222,6 +2291,7 @@
                     $editor.summernote('focus');
                 }
             },
+            focusForInsertion: focusForInsertion,
             saveRange: saveRange,
             restoreRange: restoreRange,
             insertHtmlAtCursor: insertHtmlAtCursor,
