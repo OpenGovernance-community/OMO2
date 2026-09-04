@@ -4,6 +4,11 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-04
 
+- Le bouton `Inviter` de l editeur de PV devient un bouton avec menu : sa fleche ouvre l envoi des invitations. Les membres et adresses e-mail externes invites recoivent un lien public unique qui affiche le PV et suit automatiquement les mises a jour tant que la reunion est en cours.
+- L envoi d invitations de PV distingue maintenant un echec de creation du lien public d un rejet SMTP et affiche le detail SMTP au responsable qui lance l envoi.
+- Le seed de la base Docker inclut maintenant la table `document_share_link`, deja declaree comme migree dans son historique SQL.
+- Les editeurs Summernote du PV, des discussions et des formulaires partages proposent maintenant le meme surligneur a palette predeterminee. La palette permet aussi d effacer le surlignage de la selection.
+- Dans l editeur de PV, les roles proposes pour la personne en charge sont maintenant tries alphabetiquement en placant d abord ceux du cercle du document ou de son evenement. Les autres roles apparaissent apres une separation et precisent leur cercle entre parentheses.
 - La navigation depuis un projet vers un document resynchronise maintenant toujours le sous-drawer Documents avec le hash, meme lorsque le drawer principal avait deja ete affiche. Une ouverture locale qui echoue retombe aussi sur le rechargement cible du document au lieu de considerer silencieusement la route comme traitee.
 - L ancien endpoint IA experimental a ete retire avec sa cle tierce codee en dur. Le proxy d images historique ne transmet plus les cookies des visiteurs, refuse par defaut les sources distantes, bloque les adresses privees et reservees, limite les formats, tailles et delais, et n autorise une source HTTPS distante que si son domaine figure explicitement dans `GETIMG_ALLOWED_HOSTS`.
 - Les sessions PHP imposent maintenant des cookies Secure, HttpOnly et SameSite Lax, refusent les identifiants de session non initialises par le serveur et utilisent uniquement les cookies. Les erreurs PHP restent journalisees mais ne sont plus affichees aux visiteurs, y compris pendant le demarrage. Le fichier de configuration correspondant est explicitement inaccessible par HTTP.

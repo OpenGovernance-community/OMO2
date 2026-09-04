@@ -58,6 +58,8 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.state.pv_editor_handover_waiting' => ['text' => 'En attente d’un remplaçant', 'context' => 'State shown while the current PV editor has opened the handover for an invited member.'],
         'documents.pv_editor.warning.unsaved_handover' => ['text' => 'Enregistrez toutes les modifications avant de passer la main.', 'context' => 'Warning shown when the PV editor tries to hand over while local changes are not saved.'],
         'documents.pv_editor.action.invite' => ['text' => 'Inviter', 'context' => 'Button used by the PV secretary to edit the event invitation list during preparation.'],
+        'documents.pv_editor.action.send_invitations' => ['text' => 'Envoyer les invitations', 'context' => 'Menu action used to open the PV invitation email popup.'],
+        'documents.pv_editor.action.invitation_options' => ['text' => 'Options des invitations', 'context' => 'Accessible label of the menu attached to the PV invitation button.'],
         'documents.pv_editor.action.more' => ['text' => 'Plus d’actions', 'context' => 'Accessible label of the compact PV editor actions menu.'],
         'documents.pv_editor.action.mark_template' => ['text' => 'Enregistrer comme modèle', 'context' => 'Action used to make the current PV available as a reusable template.'],
         'documents.pv_editor.action.unmark_template' => ['text' => 'Retirer des modèles', 'context' => 'Action used to stop exposing the current PV as a reusable template.'],
@@ -317,6 +319,8 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null): array
         'pvEditorHandoverWaiting' => $resolve('documents.pv_editor.state.pv_editor_handover_waiting', 'En attente d’un remplaçant'),
         'unsavedHandover' => $resolve('documents.pv_editor.warning.unsaved_handover', 'Enregistrez toutes les modifications avant de passer la main.'),
         'invite' => $resolve('documents.pv_editor.action.invite', 'Inviter'),
+        'sendInvitations' => $resolve('documents.pv_editor.action.send_invitations', 'Envoyer les invitations'),
+        'invitationOptions' => $resolve('documents.pv_editor.action.invitation_options', 'Options des invitations'),
         'moreActions' => $resolve('documents.pv_editor.action.more', 'Plus d’actions'),
         'markTemplate' => $resolve('documents.pv_editor.action.mark_template', 'Enregistrer comme modèle'),
         'unmarkTemplate' => $resolve('documents.pv_editor.action.unmark_template', 'Retirer des modèles'),
@@ -401,6 +405,7 @@ function omoDocumentsPvEditorAttachConcernedHolonOptions(array $pointData, array
         $optionsById[$optionId] = [
             'id' => $optionId,
             'label' => $optionLabel,
+            'isLocal' => !empty($option['isLocal']),
         ];
     }
 
@@ -410,6 +415,7 @@ function omoDocumentsPvEditorAttachConcernedHolonOptions(array $pointData, array
         $optionsById[$currentHolonId] = [
             'id' => $currentHolonId,
             'label' => $currentHolonLabel,
+            'isLocal' => false,
         ];
     }
 
@@ -900,11 +906,21 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '          <span class="omo-pv-editor__point-concerned-label">' . omoDocumentsPvEditorEscape((string)$uiText['concernedHolon']) . '</span>';
         $html .= '          <select class="omo-pv-editor__point-concerned-select" data-omo-pv-point-concerned-holon="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['concernedHolon']) . '">';
         $html .= '              <option value="0">' . omoDocumentsPvEditorEscape((string)($uiText['concernedHolonEmpty'] ?? 'Sans rôle')) . '</option>';
+        $localConcernedHolonCount = count(array_filter($concernedHolonOptions, static function (array $option): bool {
+            return !empty($option['isLocal']);
+        }));
+        $hasLocalConcernedHolon = $localConcernedHolonCount > 0;
+        $hasExternalConcernedHolon = count($concernedHolonOptions) > $localConcernedHolonCount;
+        $externalSeparatorRendered = false;
         foreach ($concernedHolonOptions as $option) {
             $optionId = (int)($option['id'] ?? 0);
             $optionLabel = trim((string)($option['label'] ?? ''));
             if ($optionId <= 0 || $optionLabel === '') {
                 continue;
+            }
+            if ($hasLocalConcernedHolon && $hasExternalConcernedHolon && empty($option['isLocal']) && !$externalSeparatorRendered) {
+                $html .= '<option disabled aria-hidden="true">----------</option>';
+                $externalSeparatorRendered = true;
             }
             $html .= '<option value="' . $optionId . '"' . ($optionId === $concernedHolonId ? ' selected' : '') . '>' . omoDocumentsPvEditorEscape($optionLabel) . '</option>';
         }

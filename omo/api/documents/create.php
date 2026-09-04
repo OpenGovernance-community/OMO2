@@ -2155,7 +2155,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             return;
         }
 
-        const htmlFieldVersion = '20260903-toolbar-insert-focus';
+        const htmlFieldVersion = '20260904-highlight-clear';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'

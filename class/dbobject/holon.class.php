@@ -2389,6 +2389,7 @@
 				}
 
 				$pathLabels = array();
+				$containingCircle = null;
 				foreach ($roleHolon->getPathHolons() as $pathHolon) {
 					$pathLabel = trim((string)$pathHolon->getDisplayName());
 					if ($pathLabel === '') {
@@ -2396,6 +2397,9 @@
 					}
 
 					$pathLabels[] = $pathLabel;
+					if ((int)$pathHolon->get('IDtypeholon') === 2) {
+						$containingCircle = $pathHolon;
+					}
 				}
 
 				$parentHolon = $roleHolon->getParentHolon();
@@ -2403,6 +2407,8 @@
 					'holonId' => $roleHolonId,
 					'name' => trim((string)$roleHolon->getDisplayName()),
 					'parentLabel' => $parentHolon ? trim((string)$parentHolon->getDisplayName()) : '',
+					'circleId' => $containingCircle ? (int)$containingCircle->getId() : 0,
+					'circleLabel' => $containingCircle ? trim((string)$containingCircle->getDisplayName()) : '',
 					'pathLabel' => implode(' > ', $pathLabels),
 					'isPending' => (
 						!(bool)($row['holon_effective_active'] ?? ($row['holon_active'] ?? false))

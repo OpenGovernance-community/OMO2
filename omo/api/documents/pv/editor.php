@@ -182,6 +182,8 @@ $pvInvitationPopupUrl = '/omo/api/calendar/invitations_popup.php?oid=' . rawurle
         ? '&id=' . rawurlencode((string)(int)$event->getId())
         : '&document_id=' . rawurlencode((string)(int)$document->getId()))
     . '&pv_editor=1';
+$pvInvitationSendPopupUrl = '/omo/api/documents/pv/send_invitations_popup.php?oid=' . rawurlencode((string)$organizationId)
+    . '&id=' . rawurlencode((string)(int)$document->getId());
 
 $points = new \dbObject\ArrayDocumentPvPoint();
 $points = $document->getVisiblePvPointsForUser($currentUserId, true);
@@ -2533,7 +2535,13 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 <div class="omo-pv-editor__secretary-actions">
                     <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__secretary-claim<?= $isPvEditor && $pvEditorHandoverOpen ? ' is-waiting' : '' ?>" data-omo-pv-claim-secretary data-omo-pv-secretary-action="<?= $escape($isPvEditor ? 'pass_pv_editor' : ($canClaimPvEditor ? 'claim_pv_editor' : 'replace_pv_editor')) ?>"<?= (!$isPvReview && ($canPassPvEditor || $canClaimPvEditor || $canReplacePvEditor)) ? '' : ' hidden' ?><?= $isPvEditor && $pvEditorHandoverOpen ? ' disabled' : '' ?>><?php if ($isPvEditor && $pvEditorHandoverOpen): ?><svg class="omo-pv-editor__secretary-claim-spinner" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="32 18"></circle></svg><span><?= $escape((string)$uiText['pvEditorHandoverWaiting']) ?></span><?php else: ?><?= $escape($isPvEditor ? (string)$uiText['passPvEditor'] : ($canClaimPvEditor && $pvEditorUserId > 0 ? (string)$uiText['reclaimPvEditor'] : ($canReplacePvEditor ? (string)$uiText['replacePvEditor'] : (string)$uiText['claimPvEditor']))) ?><?php endif; ?></button>
                     <?php if ($pvInvitationPopupUrl !== ''): ?>
-                        <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-invitations-url="<?= $escape($pvInvitationPopupUrl) ?>" data-omo-pv-invitations-title="<?= $escape((string)$uiText['inviteTitle']) ?>"<?= $canManagePvInvitations ? '' : ' hidden' ?>><?= $escape((string)$uiText['invite']) ?></button>
+                        <div class="generic-menu generic-menu--split" data-omo-pv-invitations-menu<?= $canManagePvInvitations ? '' : ' hidden' ?>>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-invitations-url="<?= $escape($pvInvitationPopupUrl) ?>" data-omo-pv-invitations-title="<?= $escape((string)$uiText['inviteTitle']) ?>"<?= $canManagePvInvitations ? '' : ' disabled' ?>><?= $escape((string)$uiText['invite']) ?></button>
+                            <button type="button" class="generic-menu-toggle" data-omo-pv-invitations-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-controls="omoPvInvitationsMenu" aria-label="<?= $escape((string)$uiText['invitationOptions']) ?>" title="<?= $escape((string)$uiText['invitationOptions']) ?>"<?= $canManagePvInvitations ? '' : ' disabled' ?>>&#9662;</button>
+                            <div id="omoPvInvitationsMenu" class="generic-menu-panel generic-menu-panel--wide" data-omo-pv-invitations-menu-panel role="menu" hidden>
+                                <button type="button" class="generic-menu-item" data-omo-pv-invitations-send-url="<?= $escape($pvInvitationSendPopupUrl) ?>" data-omo-pv-invitations-send-title="<?= $escape((string)$uiText['sendInvitations']) ?>" role="menuitem"><?= $escape((string)$uiText['sendInvitations']) ?></button>
+                            </div>
+                        </div>
                     <?php endif; ?>
                     <details class="omo-pv-editor__more-actions" data-omo-pv-more-actions>
                         <summary aria-label="<?= $escape((string)$uiText['moreActions']) ?>" title="<?= $escape((string)$uiText['moreActions']) ?>">...</summary>
@@ -2650,7 +2658,11 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     const secretaryState = root.querySelector('[data-omo-pv-secretary-state]');
     const claimSecretaryButton = root.querySelector('[data-omo-pv-claim-secretary]');
     const templateToggleButton = root.querySelector('[data-omo-pv-template-toggle]');
+    const invitationsMenu = root.querySelector('[data-omo-pv-invitations-menu]');
     const invitationsButton = root.querySelector('[data-omo-pv-invitations-url]');
+    const invitationsMenuToggle = root.querySelector('[data-omo-pv-invitations-menu-toggle]');
+    const invitationsMenuPanel = root.querySelector('[data-omo-pv-invitations-menu-panel]');
+    const invitationsSendButton = root.querySelector('[data-omo-pv-invitations-send-url]');
     const documentTitleInput = root.querySelector('[data-omo-pv-document-title]');
     const documentDescriptionInput = root.querySelector('[data-omo-pv-document-description]');
     const documentVisibilitySelect = root.querySelector('[data-omo-pv-document-visibility]');
@@ -4408,13 +4420,43 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     })();
 
     function ensureHtmlFieldLibrary(callback) {
-        const htmlFieldVersion = '20260903-toolbar-insert-focus';
+        const ensureHighlightPalette = function (next) {
+            if (window.omoHighlightPalette) {
+                next();
+                return;
+            }
+
+            const selector = 'script[data-omo-highlight-palette-script="1"]';
+            const existing = document.querySelector(selector);
+            if (existing) {
+                if (existing.getAttribute('data-loaded') === '1') {
+                    next();
+                } else {
+                    existing.addEventListener('load', next, { once: true });
+                }
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = '/common/choice/highlight-palette.js?v=20260904-highlight-clear';
+            script.async = false;
+            script.setAttribute('data-omo-highlight-palette-script', '1');
+            script.onload = function () {
+                script.setAttribute('data-loaded', '1');
+                next();
+            };
+            document.head.appendChild(script);
+        };
+        const onReady = function () {
+            ensureHighlightPalette(callback);
+        };
+        const htmlFieldVersion = '20260904-highlight-clear';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
             && String(window.omoSimpleHtmlField.version || '') === htmlFieldVersion
         ) {
-            callback();
+            onReady();
             return;
         }
 
@@ -4422,9 +4464,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         const existing = document.querySelector(selector);
         if (existing) {
             if (existing.getAttribute('data-loaded') === '1') {
-                callback();
+                onReady();
             } else {
-                existing.addEventListener('load', callback, { once: true });
+                existing.addEventListener('load', onReady, { once: true });
             }
             return;
         }
@@ -4436,7 +4478,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         script.setAttribute('data-omo-simple-html-field-version', htmlFieldVersion);
         script.onload = function () {
             script.setAttribute('data-loaded', '1');
-            callback();
+            onReady();
         };
         document.head.appendChild(script);
     }
@@ -4857,11 +4899,21 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             }
         }
 
+        const canManageInvitations = documentPayload.canManagePvDocument === true
+            && String(documentPayload.pvStage || '') === 'preparation';
+        if (invitationsMenu instanceof HTMLElement) {
+            invitationsMenu.hidden = !canManageInvitations;
+            if (!canManageInvitations && invitationsMenuPanel instanceof HTMLElement && invitationsMenuToggle instanceof HTMLButtonElement) {
+                invitationsMenuPanel.hidden = true;
+                invitationsMenuToggle.setAttribute('aria-expanded', 'false');
+            }
+        }
         if (invitationsButton instanceof HTMLButtonElement) {
-            const canManageInvitations = documentPayload.canManagePvDocument === true
-                && String(documentPayload.pvStage || '') === 'preparation';
             invitationsButton.hidden = !canManageInvitations;
             invitationsButton.disabled = !canManageInvitations;
+        }
+        if (invitationsMenuToggle instanceof HTMLButtonElement) {
+            invitationsMenuToggle.disabled = !canManageInvitations;
         }
 
         if (addButton instanceof HTMLButtonElement) {
@@ -5279,6 +5331,30 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             let field = null;
             suppressPointDirtyDuring(pointId, function () {
                 const customButtons = [];
+                customButtons.push({
+                    name: 'omoPvHighlight',
+                    group: 'color',
+                    label: 'Surlignage',
+                    contents: '<img src="/omo/images/tools/surligneur.png" alt="" class="omo-simple-html-highlight-icon">',
+                    title: 'Modifier le surlignage',
+                    onClick: function (context) {
+                        const api = context && context.api ? context.api : field;
+                        if (!api || typeof api.applyBackgroundColor !== 'function' || !window.omoHighlightPalette) {
+                            return;
+                        }
+
+                        if (typeof api.saveRange === 'function') {
+                            api.saveRange();
+                        }
+
+                        window.omoHighlightPalette.open({
+                            anchor: context && context.event ? context.event.currentTarget : null,
+                            onSelect: function (color) {
+                                api.applyBackgroundColor(color);
+                            }
+                        });
+                    }
+                });
                 if (canEmbedDocuments) {
                     customButtons.push({
                         name: 'omoPvDocumentEmbed',
@@ -5461,9 +5537,24 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                         emptyOption.value = '0';
                         emptyOption.textContent = <?= json_encode((string)$uiText['concernedHolonEmpty'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                         concernedHolonField.appendChild(emptyOption);
+                        const hasLocalOptions = nextOptions.some(function (option) {
+                            return option && option.isLocal === true;
+                        });
+                        const hasExternalOptions = nextOptions.some(function (option) {
+                            return option && option.isLocal !== true;
+                        });
+                        let externalSeparatorRendered = false;
                         nextOptions.forEach(function (option) {
                             if (!option || !option.id || !option.label) {
                                 return;
+                            }
+                            if (hasLocalOptions && hasExternalOptions && option.isLocal !== true && !externalSeparatorRendered) {
+                                const separatorNode = document.createElement('option');
+                                separatorNode.disabled = true;
+                                separatorNode.setAttribute('aria-hidden', 'true');
+                                separatorNode.textContent = '----------';
+                                concernedHolonField.appendChild(separatorNode);
+                                externalSeparatorRendered = true;
                             }
                             const optionNode = document.createElement('option');
                             optionNode.value = String(option.id);
@@ -7689,6 +7780,41 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const invitationTitle = String(invitationsButton.getAttribute('data-omo-pv-invitations-title') || '').trim();
             if (invitationUrl && typeof window.commonTopbarOpenModal === 'function') {
                 window.commonTopbarOpenModal(invitationTitle || 'Invités', invitationUrl, 'fetch');
+            }
+        });
+    }
+    function closeInvitationsMenu() {
+        if (invitationsMenuPanel instanceof HTMLElement) {
+            invitationsMenuPanel.hidden = true;
+        }
+        if (invitationsMenuToggle instanceof HTMLButtonElement) {
+            invitationsMenuToggle.setAttribute('aria-expanded', 'false');
+        }
+    }
+    if (invitationsMenuToggle instanceof HTMLButtonElement && invitationsMenuPanel instanceof HTMLElement) {
+        invitationsMenuToggle.addEventListener('click', function () {
+            const willOpen = invitationsMenuPanel.hidden;
+            invitationsMenuPanel.hidden = !willOpen;
+            invitationsMenuToggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        });
+        document.addEventListener('pointerdown', function (event) {
+            if (invitationsMenu instanceof HTMLElement && !invitationsMenu.contains(event.target)) {
+                closeInvitationsMenu();
+            }
+        }, true);
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeInvitationsMenu();
+            }
+        });
+    }
+    if (invitationsSendButton instanceof HTMLButtonElement) {
+        invitationsSendButton.addEventListener('click', function () {
+            const invitationUrl = String(invitationsSendButton.getAttribute('data-omo-pv-invitations-send-url') || '').trim();
+            const invitationTitle = String(invitationsSendButton.getAttribute('data-omo-pv-invitations-send-title') || '').trim();
+            closeInvitationsMenu();
+            if (invitationUrl && typeof window.commonTopbarOpenModal === 'function') {
+                window.commonTopbarOpenModal(invitationTitle || 'Envoyer les invitations', invitationUrl, 'fetch');
             }
         });
     }

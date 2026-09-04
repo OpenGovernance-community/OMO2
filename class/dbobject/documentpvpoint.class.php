@@ -285,6 +285,17 @@ class DocumentPvPoint extends DbObject
         return $circle instanceof \dbObject\Holon ? (int)$circle->getId() : 0;
     }
 
+    protected static function buildConcernedHolonSortKey(string $value): string
+    {
+        $value = trim(mb_strtolower($value, 'UTF-8'));
+        $transliterated = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+        if (is_string($transliterated) && $transliterated !== '') {
+            $value = $transliterated;
+        }
+
+        return preg_replace('/[^a-z0-9]+/', ' ', $value) ?? '';
+    }
+
     public static function buildConcernedHolonOptionsForDocument(\dbObject\Document $document, int $userId): array
     {
         $userId = (int)$userId;
@@ -319,6 +330,7 @@ class DocumentPvPoint extends DbObject
             }
         }
 
+        $contextCircleId = self::resolveDocumentContextCircleId($document);
         $options = [];
         foreach ($assignments as $assignment) {
             $holonId = (int)($assignment['holonId'] ?? 0);
@@ -334,13 +346,57 @@ class DocumentPvPoint extends DbObject
                 $label = 'Role #' . $holonId;
             }
 
+            $circleId = (int)($assignment['circleId'] ?? 0);
+            $circleLabel = trim((string)($assignment['circleLabel'] ?? ''));
+            $isLocal = $contextCircleId > 0 && $circleId === $contextCircleId;
+            $displayLabel = $label;
+            if (!$isLocal && $circleLabel !== '') {
+                $displayLabel .= ' (' . $circleLabel . ')';
+            }
+
             $options[$holonId] = [
                 'id' => $holonId,
-                'label' => $label,
+                'label' => $displayLabel,
+                'isLocal' => $isLocal,
+                'circleId' => $circleId,
+                'circleLabel' => $circleLabel,
+                'sortLabel' => $label,
             ];
         }
 
-        return array_values($options);
+        $options = array_values($options);
+        usort($options, static function (array $left, array $right): int {
+            $leftIsLocal = !empty($left['isLocal']);
+            $rightIsLocal = !empty($right['isLocal']);
+            if ($leftIsLocal !== $rightIsLocal) {
+                return $leftIsLocal ? -1 : 1;
+            }
+
+            $comparison = strnatcasecmp(
+                self::buildConcernedHolonSortKey((string)($left['sortLabel'] ?? $left['label'] ?? '')),
+                self::buildConcernedHolonSortKey((string)($right['sortLabel'] ?? $right['label'] ?? ''))
+            );
+            if ($comparison !== 0) {
+                return $comparison;
+            }
+
+            $comparison = strnatcasecmp(
+                self::buildConcernedHolonSortKey((string)($left['circleLabel'] ?? '')),
+                self::buildConcernedHolonSortKey((string)($right['circleLabel'] ?? ''))
+            );
+            if ($comparison !== 0) {
+                return $comparison;
+            }
+
+            return (int)($left['id'] ?? 0) <=> (int)($right['id'] ?? 0);
+        });
+
+        foreach ($options as &$option) {
+            unset($option['circleId'], $option['circleLabel'], $option['sortLabel']);
+        }
+        unset($option);
+
+        return $options;
     }
 
     public static function concernedHolonIsAllowedForDocument(\dbObject\Document $document, int $userId, int $holonId): bool

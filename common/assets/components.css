@@ -1793,6 +1793,30 @@ textarea.generic-form-control {
     color: var(--generic-menu-accent, var(--color-primary, #2563eb));
 }
 
+.generic-menu--split {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+}
+
+.generic-menu--split > .generic-action-button {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.generic-menu--split > .generic-menu-toggle {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: 0;
+}
+
+.generic-menu--split > .generic-menu-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 100;
+}
+
 .generic-menu-panel {
     min-width: 140px;
     max-width: calc(100vw - 24px);

@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260903-toolbar-insert-focus';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260904-highlight-clear';
 
     if (
         window.omoSimpleHtmlField
@@ -1250,13 +1250,13 @@
 
         function applyBackgroundColor(color) {
             color = String(color || '').trim();
-            if (!/^#[0-9a-f]{6}$/i.test(color) || !initialized || !$editor) {
+            if ((color !== '' && !/^#[0-9a-f]{6}$/i.test(color)) || !initialized || !$editor) {
                 return false;
             }
 
             restoreRange();
             try {
-                $editor.summernote('backColor', color);
+                $editor.summernote('backColor', color || 'transparent');
                 setRawValue($editor.summernote('code'));
                 emitChange();
                 return true;

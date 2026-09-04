@@ -1296,6 +1296,46 @@ LOCK TABLES `document_pv_point_tension` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `document_share_link`
+--
+
+DROP TABLE IF EXISTS `document_share_link`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `document_share_link` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `version` int(11) NOT NULL DEFAULT 1,
+  `IDorganization` int(11) NOT NULL,
+  `IDdocument` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `label` varchar(150) DEFAULT NULL,
+  `token` varchar(80) NOT NULL,
+  `password_hash` varchar(255) DEFAULT NULL,
+  `allow_live_follow` tinyint(1) NOT NULL DEFAULT 0,
+  `datecreation` datetime DEFAULT NULL,
+  `dateexpiration` datetime DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_document_share_link_token` (`token`),
+  KEY `idx_document_share_link_document` (`IDdocument`,`active`),
+  KEY `idx_document_share_link_organization` (`IDorganization`,`active`),
+  KEY `idx_document_share_link_user` (`IDuser`),
+  CONSTRAINT `fk_document_share_link_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_document_share_link_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_document_share_link_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `document_share_link`
+--
+
+LOCK TABLES `document_share_link` WRITE;
+/*!40000 ALTER TABLE `document_share_link` DISABLE KEYS */;
+/*!40000 ALTER TABLE `document_share_link` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `event`
 --
 

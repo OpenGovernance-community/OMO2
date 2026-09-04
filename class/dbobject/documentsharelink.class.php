@@ -229,6 +229,59 @@
 			return $items;
 		}
 
+		public static function findActiveLiveFollowForDocumentByLabel($documentId, $label)
+		{
+			$documentId = (int)$documentId;
+			$label = trim((string)$label);
+			if ($documentId <= 0 || $label === '') {
+				return false;
+			}
+
+			$row = self::fetchRow(
+				"SELECT *
+				FROM document_share_link
+				WHERE IDdocument = :document_id
+				  AND label = :label
+				  AND allow_live_follow = 1
+				  AND active = 1
+				  AND (dateexpiration IS NULL OR dateexpiration > NOW())
+				ORDER BY datecreation DESC, id DESC
+				LIMIT 1",
+				array(
+					'document_id' => $documentId,
+					'label' => $label,
+				)
+			);
+
+			if ($row === false) {
+				return false;
+			}
+
+			$item = new self();
+			$item->loadFromArray($row);
+			$item->setId((int)$row['id']);
+			return $item;
+		}
+
+		public static function getOrCreateLiveFollowForDocument(Document $document, $userId, $label)
+		{
+			$documentId = (int)$document->getId();
+			$label = trim((string)$label);
+			if ($documentId <= 0 || $label === '') {
+				return false;
+			}
+
+			$existing = self::findActiveLiveFollowForDocumentByLabel($documentId, $label);
+			if ($existing instanceof self) {
+				return $existing;
+			}
+
+			return self::createForDocument($document, (int)$userId, array(
+				'label' => $label,
+				'allow_live_follow' => true,
+			));
+		}
+
 		public static function createForDocument(Document $document, $userId, array $options = array())
 		{
 			$userId = (int)$userId;

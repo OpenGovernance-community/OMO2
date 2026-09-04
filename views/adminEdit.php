@@ -16,7 +16,7 @@ require_once dirname(__DIR__) . '/common/admin_edit_translation.php';
 <?php if (!isset($params['includeComponentAssets']) || $params['includeComponentAssets'] !== false) { ?>
 <link rel="stylesheet" href="/common/assets/components.css">
 <?php } ?>
-<script src="/common/choice/highlight-palette.js"></script>
+<script src="/common/choice/highlight-palette.js?v=20260904-highlight-clear"></script>
 <style>
     .admin-edit .navTab a {
         border: 1px solid var(--admin-edit-border-strong, #cbd5e1);
@@ -1607,7 +1607,7 @@ echo "</div>";
                                     anchor: event && event.currentTarget,
                                     onSelect: function (color) {
                                         field.summernote('restoreRange');
-                                        field.summernote('backColor', color);
+                                        field.summernote('backColor', color || 'transparent');
                                     }
                                 });
                             }
