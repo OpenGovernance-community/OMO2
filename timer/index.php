@@ -250,7 +250,7 @@ $profileData = commonResolveTopbarProfileData($organizationContext, []);
     <title><?= htmlspecialchars(t('timer.page.title'), ENT_QUOTES, 'UTF-8') ?></title>
     <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="/common/assets/topbar.css">
-    <link rel="stylesheet" href="/timer/assets/timer.css?v=20260903-edge-main-layout">
+    <link rel="stylesheet" href="/timer/assets/timer.css?v=20260903-project-priority-sort">
 </head>
 <body class="timer-page">
 <?php
@@ -310,9 +310,7 @@ commonRenderTopbar([
                             <option value="review"><?= htmlspecialchars(t('timer.project.status.review')) ?></option>
                         </select>
                     </label>
-                    <div class="timer-project-list" data-timer-project-list aria-live="polite">
-                        <p class="timer-project-message"><?= htmlspecialchars(t('timer.navigation.need_holon')) ?></p>
-                    </div>
+                    <div class="timer-project-list" data-timer-project-list aria-live="polite"></div>
                 </section>
             </div>
         </div>
@@ -365,6 +363,6 @@ window.timerConfig = <?= json_encode([
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/timer/assets/timer.js?v=20260903-holon-content-labels" defer></script>
+<script src="/timer/assets/timer.js?v=20260903-feedback-auto-clear" defer></script>
 </body>
 </html>

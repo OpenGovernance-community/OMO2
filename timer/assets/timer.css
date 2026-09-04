@@ -111,6 +111,9 @@
 }
 
 .timer-project-choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
     width: 100%;
     min-height: 42px;
     padding: 8px 10px;
@@ -123,6 +126,17 @@
     font-weight: 700;
     text-align: left;
     transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+
+.timer-project-choice__title {
+    display: -webkit-box;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    line-height: 1.25;
 }
 
 .timer-project-choice.is-selected {

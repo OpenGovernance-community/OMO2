@@ -277,7 +277,7 @@
         var isNarrowScreen = typeof window.matchMedia === 'function'
             && window.matchMedia('(max-width: 768px)').matches;
         return isNarrowScreen
-            ? { minimum: 12, nearby: 16 }
+            ? { minimum: 9, nearby: 13 }
             : { minimum: 18, nearby: 22 };
     }
 
