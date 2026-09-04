@@ -1044,6 +1044,10 @@
 					}
 					$this->_parameters = null;
 				} else
+
+				if (false !== array_search("html", array_column($param, 1))) {
+					$this->_fields[$field] = PropertyFormat::sanitizeHtml($value);
+				} else
 					
 				if (false !== array_search("sizedimage", array_column($param, 1))) {
 					$target_dir="/img/upload/".$this->tableName();

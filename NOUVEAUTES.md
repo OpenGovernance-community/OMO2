@@ -7,6 +7,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - L ancien endpoint IA experimental a ete retire avec sa cle tierce codee en dur. Le proxy d images historique ne transmet plus les cookies des visiteurs, refuse par defaut les sources distantes, bloque les adresses privees et reservees, limite les formats, tailles et delais, et n autorise une source HTTPS distante que si son domaine figure explicitement dans `GETIMG_ALLOWED_HOSTS`.
 - Les sessions PHP imposent maintenant des cookies Secure, HttpOnly et SameSite Lax, refusent les identifiants de session non initialises par le serveur et utilisent uniquement les cookies. Les erreurs PHP restent journalisees mais ne sont plus affichees aux visiteurs, y compris pendant le demarrage. Le fichier de configuration correspondant est explicitement inaccessible par HTTP.
 - Les journaux PHP et applicatifs sont maintenant ecrits par defaut dans `../log/`, hors de la racine publique. Les anciens emplacements `tmp/` et `telegram/data/` sont aussi bloques par Apache, et la redirection HTTPS tient compte du proxy d Infomaniak sans produire d URL mal formee.
+- Tous les champs declares comme HTML dans les objets metier sont maintenant nettoyes automatiquement a l ecriture et au chargement. Les titres, paragraphes, emphases, listes, tableaux, liens et couleurs de fond simples sont conserves, tandis que les scripts, contenus actifs, attributs evenementiels, protocoles dangereux et styles non autorises sont retires.
 
 ## 2026-09-03
 
