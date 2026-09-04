@@ -150,6 +150,38 @@ LOCK TABLES `application_setting` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `auth_rate_limit`
+--
+
+DROP TABLE IF EXISTS `auth_rate_limit`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `auth_rate_limit` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `scope` varchar(64) NOT NULL,
+  `key_hash` char(64) NOT NULL,
+  `window_started_at` datetime NOT NULL,
+  `attempt_count` int(10) unsigned NOT NULL DEFAULT 0,
+  `blocked_until` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_auth_rate_limit_scope_key` (`scope`,`key_hash`),
+  KEY `idx_auth_rate_limit_updated` (`updated_at`),
+  KEY `idx_auth_rate_limit_blocked` (`blocked_until`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `auth_rate_limit`
+--
+
+LOCK TABLES `auth_rate_limit` WRITE;
+/*!40000 ALTER TABLE `auth_rate_limit` DISABLE KEYS */;
+/*!40000 ALTER TABLE `auth_rate_limit` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `authority`
 --
 
