@@ -3753,6 +3753,9 @@ CREATE TABLE `user` (
   `username` varchar(100) DEFAULT NULL,
   `image` varchar(100) DEFAULT NULL,
   `password` varchar(80) DEFAULT NULL,
+  `allow_password_login` tinyint(1) NOT NULL DEFAULT 0,
+  `totp_enabled` tinyint(1) NOT NULL DEFAULT 0,
+  `totp_secret` varchar(255) DEFAULT NULL,
   `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
   `dateconnexion` datetime DEFAULT NULL,
   `active` tinyint(1) NOT NULL DEFAULT 0,
@@ -3775,7 +3778,7 @@ CREATE TABLE `user` (
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
 INSERT INTO `user` VALUES
-(1,'admin@omo.test',NULL,NULL,NULL,NULL,NULL,'Admin',NULL,'$2y$10$ES6a68iJbT4z8MxzjNBMoOEtBAn7HJCEqdUnTdBNXQGSerKh.ZQC6','2026-04-21 09:01:00','2026-07-24 18:09:07',1,1,NULL,NULL,'{\"lang\":\"fr\"}',NULL,NULL,NULL,NULL);
+(1,'admin@omo.test',NULL,NULL,NULL,NULL,NULL,'Admin',NULL,'$2y$10$ES6a68iJbT4z8MxzjNBMoOEtBAn7HJCEqdUnTdBNXQGSerKh.ZQC6',0,0,NULL,'2026-04-21 09:01:00','2026-07-24 18:09:07',1,1,NULL,NULL,'{\"lang\":\"fr\"}',NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4051,6 +4054,8 @@ CREATE TABLE `user_login_token` (
   `attempt_count` int(11) NOT NULL DEFAULT 0,
   `used` tinyint(4) DEFAULT 0,
   `remember` tinyint(1) DEFAULT 0,
+  `mfa_pending` tinyint(1) NOT NULL DEFAULT 0,
+  `mfa_attempt_count` int(11) NOT NULL DEFAULT 0,
   `created_at` datetime DEFAULT NULL,
   `last_attempt_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -4064,9 +4069,9 @@ CREATE TABLE `user_login_token` (
 LOCK TABLES `user_login_token` WRITE;
 /*!40000 ALTER TABLE `user_login_token` DISABLE KEYS */;
 INSERT INTO `user_login_token` VALUES
-(2,1,'ff435c87e6488009a8455830caa4201a015879417cc8ff1de7025f7b33fb765c','$2y$10$to/GR1O/6J98g1PRCSsZDOkmV2f5ds2.6I0NNdISYVoZ9He0NAA6O','2026-04-23 14:14:34','172.19.0.1',0,1,1,'2026-04-23 14:09:34',NULL),
-(3,1,'0459f3a0a75fe29f4fa153e50ae9ea30c4ae5fe44f24ba91e49d1faae6eaf365','$2y$10$qKXEYX/UrDiLQTEuQotP/uyyX7lfUkI4f8nj7q5n7mkkDPLA61O8K','2026-07-23 13:58:27','172.18.0.1',0,1,0,'2026-07-23 13:53:27',NULL),
-(4,1,'78e6e9f3d2b696fa274de5f329c077cefce68cb7beae1466e2b28bdcffd7e20b','$2y$10$LeJo8.3KF6tdJG/Fz.SPE./VdYyHWJBHb1OUU55mAv1QBDyC0PwIi','2026-07-23 14:03:59','172.18.0.1',0,1,0,'2026-07-23 13:58:59',NULL);
+(2,1,'ff435c87e6488009a8455830caa4201a015879417cc8ff1de7025f7b33fb765c','$2y$10$to/GR1O/6J98g1PRCSsZDOkmV2f5ds2.6I0NNdISYVoZ9He0NAA6O','2026-04-23 14:14:34','172.19.0.1',0,1,1,0,0,'2026-04-23 14:09:34',NULL),
+(3,1,'0459f3a0a75fe29f4fa153e50ae9ea30c4ae5fe44f24ba91e49d1faae6eaf365','$2y$10$qKXEYX/UrDiLQTEuQotP/uyyX7lfUkI4f8nj7q5n7mkkDPLA61O8K','2026-07-23 13:58:27','172.18.0.1',0,1,0,0,0,'2026-07-23 13:53:27',NULL),
+(4,1,'78e6e9f3d2b696fa274de5f329c077cefce68cb7beae1466e2b28bdcffd7e20b','$2y$10$LeJo8.3KF6tdJG/Fz.SPE./VdYyHWJBHb1OUU55mAv1QBDyC0PwIi','2026-07-23 14:03:59','172.18.0.1',0,1,0,0,0,'2026-07-23 13:58:59',NULL);
 /*!40000 ALTER TABLE `user_login_token` ENABLE KEYS */;
 UNLOCK TABLES;
 

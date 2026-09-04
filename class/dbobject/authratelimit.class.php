@@ -77,7 +77,7 @@ class AuthRateLimit extends DbObject
         );
     }
 
-    public static function clear($scope, $keyHash)
+    public static function clearBucket($scope, $keyHash)
     {
         $scope = self::normalizeScope($scope);
         $keyHash = self::normalizeKeyHash($keyHash);

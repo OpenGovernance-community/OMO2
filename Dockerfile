@@ -24,7 +24,8 @@ RUN apt-get update \
         mysqli \
         pdo_mysql \
         zip \
-    && mkdir -p /etc/apache2/ssl \
+    && mkdir -p /etc/apache2/ssl /var/www/log \
+    && chown www-data:www-data /var/www/log \
     && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
         -keyout /etc/apache2/ssl/dev-localhost.key \
         -out /etc/apache2/ssl/dev-localhost.crt \

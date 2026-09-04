@@ -21,8 +21,8 @@
 				[['parameters', 'param_easypv', 'param_easymemo', 'param_easycircle'], 'parameters'],
 				[['datecreation', 'dateconnexion', 'codeexpiration'], 'datetime'],
 				[['birthdate'], 'date'],
-				[['active', 'siteadmin'], 'boolean'],
-				[['id', 'password', 'email', 'code', 'datecreation', 'dateconnexion', 'codeexpiration', 'telegramID'], 'safe'],
+				[['active', 'siteadmin', 'allow_password_login', 'totp_enabled'], 'boolean'],
+				[['id', 'password', 'email', 'code', 'datecreation', 'dateconnexion', 'codeexpiration', 'telegramID', 'allow_password_login', 'totp_enabled', 'totp_secret'], 'safe'],
 			];
 		}
 
@@ -39,6 +39,7 @@
 				'image' => 'Image de profil',
 				'telegramID' => 'ID Telegram',
 				'password' => 'Mot de passe',
+				'allow_password_login' => 'Autoriser le login avec mot de passe',
 				'siteadmin' => 'Admin du site',
 				'code' => 'Code',
 				'parameters' => 'Parametres',
@@ -139,6 +140,18 @@
 			}
 
 			return (bool)$this->getParameter('isSiteAdmin');
+		}
+
+		public function allowsPasswordLogin()
+		{
+			return trim((string)$this->get('password')) !== ''
+				&& (bool)$this->get('allow_password_login');
+		}
+
+		public function hasTotpEnabled()
+		{
+			return (bool)$this->get('totp_enabled')
+				&& trim((string)$this->get('totp_secret')) !== '';
 		}
 
 		public function setSiteAdmin($isSiteAdmin)
