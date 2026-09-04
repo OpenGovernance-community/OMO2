@@ -195,7 +195,9 @@
 			$logPath = self::getDbErrorLogPath();
 			$logDir = dirname($logPath);
 			if (!is_dir($logDir)) {
-				@mkdir($logDir, 0770, true);
+				if (!@mkdir($logDir, 0770, true) && !is_dir($logDir)) {
+					return;
+				}
 			}
 
 			$line = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

@@ -9,6 +9,10 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les journaux PHP et applicatifs sont maintenant ecrits par defaut dans `../log/`, hors de la racine publique. Les anciens emplacements `tmp/` et `telegram/data/` sont aussi bloques par Apache, et la redirection HTTPS tient compte du proxy d Infomaniak sans produire d URL mal formee.
 - Tous les champs declares comme HTML dans les objets metier sont maintenant nettoyes automatiquement a l ecriture et au chargement. Les titres, paragraphes, emphases, listes, tableaux, liens et couleurs de fond simples sont conserves, tandis que les scripts, contenus actifs, attributs evenementiels, protocoles dangereux et styles non autorises sont retires.
 - Les connexions par mot de passe, codes e-mail et demandes de reinitialisation sont maintenant limitees par compte et par adresse reseau avec des blocages temporaires persistants. Les anciens cookies contenant le hash du mot de passe ne sont plus acceptes. Les succes, echecs et limitations sont journalises sous `../log/auth/authentication.jsonl`, avec les adresses e-mail et IP remplacees par des empreintes HMAC.
+- Lorsqu une limite de connexion est atteinte, une alerte peut maintenant etre envoyee a l adresse d administration configuree. Elle est regroupee par evenement pendant une heure par defaut, afin de signaler une activite anormale sans notifier chaque demande normale de mot de passe oublie.
+- Un mot de passe peut maintenant etre reserve a CalDAV et CardDAV. La connexion web par mot de passe doit etre autorisee explicitement dans le profil ; sans cette autorisation, le code recu par e-mail reste le seul moyen de connexion au site.
+- La double authentification TOTP peut etre activee depuis le profil avec une application de validation et un QR code. Elle est requise pour chaque nouvelle connexion web, sauf sur les appareils explicitement memorises.
+- L image Docker prepare maintenant le repertoire prive `../log/` avec les droits du processus PHP, afin que les journaux d erreurs SQL et d authentification restent disponibles hors de la racine publique.
 
 ## 2026-09-03
 

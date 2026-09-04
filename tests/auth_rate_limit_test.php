@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 
 function assertAuthRateLimitTest(bool $condition, string $message): void
@@ -15,6 +16,11 @@ putenv('AUTH_TRUSTED_PROXY_IPS=');
 $_SERVER['HTTP_HOST'] = 'example.test';
 $_SERVER['REMOTE_ADDR'] = '203.0.113.20';
 $_SERVER['HTTP_X_FORWARDED_FOR'] = '198.51.100.9';
+
+assertAuthRateLimitTest(
+    class_exists('dbObject\\AuthRateLimit'),
+    'The authentication rate limit dbObject class must be loadable.'
+);
 
 assertAuthRateLimitTest(
     commonGetRequestIp() === '203.0.113.20',
@@ -96,6 +102,20 @@ assertAuthRateLimitTest(
     'The log must contain correlatable anonymized account and IP identifiers.'
 );
 
+putenv('AUTH_SECURITY_ALERT_COOLDOWN_SECONDS=3600');
+assertAuthRateLimitTest(
+    commonAuthAcquireSecurityAlertSlot('password_login.rate_limited.all'),
+    'The first security alert in a group must be allowed.'
+);
+assertAuthRateLimitTest(
+    !commonAuthAcquireSecurityAlertSlot('password_login.rate_limited.all'),
+    'Repeated security alerts in the cooldown window must be suppressed.'
+);
+assertAuthRateLimitTest(
+    commonAuthGetSecurityAlertCooldownSeconds() === 3600,
+    'The configured security alert cooldown must be honored.'
+);
+
 $sharedFunctionsSource = file_get_contents(dirname(__DIR__) . '/shared_functions.php');
 $legacyLoginSource = file_get_contents(dirname(__DIR__) . '/ajax/login.php');
 assertAuthRateLimitTest(
@@ -114,6 +134,7 @@ assertAuthRateLimitTest(
 );
 
 unlink($logPath);
+unlink(commonRuntimeLogPath('auth/security-alert-throttle.json'));
 rmdir(dirname($logPath));
 rmdir($temporaryRoot);
 

@@ -43,6 +43,13 @@
 				]);
 				exit;
 			}
+			if (($loginResult['error'] ?? '') === 'password_login_disabled') {
+				echo json_encode([
+					'status' => false,
+					'message' => 'La connexion avec mot de passe n est pas autorisee pour ce compte. Utilisez le code recu par e-mail.',
+				]);
+				exit;
+			}
 
 			echo '{"status":false, "message":"Utilisateur inconnu","script":"$(\'#password\').focus()"} ';
 			exit;
