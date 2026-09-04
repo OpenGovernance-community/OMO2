@@ -1,6 +1,7 @@
 <?
 	require_once __DIR__ . '/shared/date_groups.php';
 	require_once __DIR__ . '/common/environment_subdomains.php';
+	require_once __DIR__ . '/common/runtime_log.php';
 
 	function appGetReservedEnvironmentSubdomains() {
 		return commonGetConfiguredEnvironmentSubdomains();

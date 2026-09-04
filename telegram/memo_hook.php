@@ -1130,7 +1130,7 @@
 						'roleId' => (int)$role->getId(),
 						'error' => $destinationSave['dbError'] ?? $destinationSave['message'] ?? '',
 					), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-					editMessageText($chatId, (int)$message['message_id'], "Impossible d'enregistrer la destination. Le detail est dans le journal PHP et dans tmp/dbobject-sql-errors.log.", null, $threadId);
+					editMessageText($chatId, (int)$message['message_id'], "Impossible d'enregistrer la destination. Le detail est dans les journaux du serveur.", null, $threadId);
 					answerCallbackQuery($callbackId, "Impossible d'enregistrer la destination.");
 					return;
 				}
@@ -1182,7 +1182,7 @@
 						'projectId' => (int)$project->getId(),
 						'error' => $destinationSave['dbError'] ?? $destinationSave['message'] ?? '',
 					), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-					editMessageText($chatId, (int)$message['message_id'], "Impossible d'enregistrer la destination. Le detail est dans le journal PHP et dans tmp/dbobject-sql-errors.log.", null, $threadId);
+					editMessageText($chatId, (int)$message['message_id'], "Impossible d'enregistrer la destination. Le detail est dans les journaux du serveur.", null, $threadId);
 					answerCallbackQuery($callbackId, "Impossible d'enregistrer la destination.");
 					return;
 				}

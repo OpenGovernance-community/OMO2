@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/runtime_log.php';
+
 if (!function_exists('omoCronLogReadEnvValue')) {
     function omoCronLogReadEnvValue($key, $default = null)
     {
@@ -50,10 +52,7 @@ if (!function_exists('omoCronLogGetPath')) {
     {
         $path = trim((string)omoCronLogReadEnvValue('OMO_CRON_LOG_PATH', ''));
         if ($path === '') {
-            return dirname(__DIR__)
-                . DIRECTORY_SEPARATOR . 'tmp'
-                . DIRECTORY_SEPARATOR . 'omo-cron'
-                . DIRECTORY_SEPARATOR . 'omo-cron.jsonl';
+            return commonRuntimeLogPath('omo-cron/omo-cron.jsonl');
         }
         if (!omoCronLogIsAbsolutePath($path)) {
             $path = dirname(__DIR__) . DIRECTORY_SEPARATOR . str_replace(array('/', '\\'), DIRECTORY_SEPARATOR, $path);
@@ -72,7 +71,7 @@ if (!function_exists('omoCronLogWrite')) {
 
         $path = omoCronLogGetPath();
         $directory = dirname($path);
-        if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) {
+        if (!is_dir($directory) && !@mkdir($directory, 0770, true) && !is_dir($directory)) {
             error_log('Unable to create OMO cron log directory: ' . $directory);
             return false;
         }

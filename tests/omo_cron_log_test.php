@@ -12,7 +12,12 @@ function assertOmoCronLogTest(bool $condition, string $message): void
 
 putenv('OMO_CRON_LOG_PATH=');
 unset($_ENV['OMO_CRON_LOG_PATH'], $_SERVER['OMO_CRON_LOG_PATH']);
-assertOmoCronLogTest(basename(omoCronLogGetPath()) === 'omo-cron.jsonl', 'The default log must use one stable file.');
+$defaultLogPath = omoCronLogGetPath();
+assertOmoCronLogTest(basename($defaultLogPath) === 'omo-cron.jsonl', 'The default log must use one stable file.');
+assertOmoCronLogTest(
+    str_starts_with($defaultLogPath, dirname(dirname(__DIR__)) . DIRECTORY_SEPARATOR . 'log' . DIRECTORY_SEPARATOR),
+    'The default cron log must be outside the public project root.'
+);
 
 $logPath = tempnam(sys_get_temp_dir(), 'omo-cron-');
 if ($logPath === false) {
