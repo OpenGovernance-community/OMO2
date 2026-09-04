@@ -143,7 +143,7 @@ function omoStructureCollectAuthorityIds(array $node, array &$authorityIds)
     }
 }
 
-$organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
+$organizationId = (int)($_GET['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
 if ($organizationId <= 0) {
     http_response_code(400);
     echo json_encode(

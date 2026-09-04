@@ -279,6 +279,6 @@ $texts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
-<script src="/omo/assets/js/simple-html-field.js?v=20260804-indicator-group-route"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20260903-toolbar-insert-focus"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
 <script src="/omo/api/checklist/checklist.js?v=20260902-restore-default"></script>

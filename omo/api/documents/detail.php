@@ -141,12 +141,18 @@ $renderedContent = $document->getRenderedContentForCurrentViewer([
     ],
 ]);
 $uploadedFileCollaboraAvailable = false;
+$collaboraPostMessageOrigin = '';
 if ($document->isUploadedFile() && $document->canOpenWithCollabora()) {
     require_once dirname(__DIR__, 3) . '/common/collabora.php';
     $detailOrganization = new \dbObject\Organization();
     $uploadedFileCollaboraAvailable = $detailOrganization->load($organizationId)
         && $detailOrganization->hasDocumentStorage()
         && omoCollaboraHasConfig($detailOrganization);
+    if ($uploadedFileCollaboraAvailable) {
+        $collaboraPostMessageOrigin = omoCollaboraBuildPostMessageOrigin(
+            (string)(omoCollaboraGetConfig($detailOrganization)['baseUrl'] ?? '')
+        );
+    }
 }
 $spaceDeckOpenUrl = $document->isWhiteboardDocument()
     ? $document->buildSpaceDeckOpenUrl($currentUserId)
@@ -214,6 +220,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
     class="omo-document-detail"
     data-omo-document-drawer-title="<?= $escape($drawerTitle) ?>"
     data-omo-document-drawer-description="<?= $escape($drawerDescription) ?>"
+    data-omo-collabora-origin="<?= $escape($collaboraPostMessageOrigin) ?>"
 >
     <div
         hidden

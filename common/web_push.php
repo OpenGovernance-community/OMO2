@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/runtime_log.php';
+
 if (!function_exists('webPushBase64UrlEncode')) {
     function webPushBase64UrlEncode($value)
     {
@@ -319,7 +321,7 @@ if (!function_exists('notificationPushGetWorkerLogPath')) {
     function notificationPushGetWorkerLogPath()
     {
         $configuredPath = function_exists('envValue') ? trim((string)envValue('NOTIFICATION_PUSH_WORKER_LOG', '')) : '';
-        return $configuredPath !== '' ? $configuredPath : dirname(__DIR__) . '/tmp/notification-push-worker.log';
+        return $configuredPath !== '' ? $configuredPath : commonRuntimeLogPath('notification-push-worker.log');
     }
 }
 
@@ -330,7 +332,7 @@ if (!function_exists('notificationPushWriteWorkerLog')) {
         $logPath = notificationPushGetWorkerLogPath();
         $logDirectory = dirname($logPath);
         if (!is_dir($logDirectory)) {
-            @mkdir($logDirectory, 0777, true);
+            @mkdir($logDirectory, 0770, true);
         }
         if (@file_put_contents($logPath, $line, FILE_APPEND | LOCK_EX) === false) {
             error_log(trim($line));

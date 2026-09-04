@@ -157,6 +157,7 @@ Si vous avez fait des modifications locales non versionnees sur le serveur, evit
 - Si la base cible est vide, l'installation importe le seed de depart.
 - Si la base existe deja mais ne correspond pas au seed attendu, l'installation s'arrete pour eviter un ecrasement involontaire.
 - Composer doit etre disponible sur le serveur pour installer les dependances verrouillees par `composer.lock`.
+- Le processus PHP doit pouvoir creer et ecrire dans `../log/`. Il est preferable de creer ce repertoire avant la premiere requete afin que les erreurs de demarrage puissent aussi y etre journalisees.
 
 ## 7. Diagnostiquer les requetes SQL lentes
 
@@ -166,9 +167,10 @@ Le journal est desactive par defaut. Pour enregistrer les requetes dont la duree
 DB_QUERY_LOG_ENABLED=true
 DB_QUERY_LOG_MIN_MS=50
 DB_QUERY_LOG_PATH=
+RUNTIME_LOG_DIR=
 ```
 
-Sans chemin explicite, les evenements JSONL sont ecrits dans `tmp/sql-performance/sql-performance-AAAA-MM-JJ.jsonl`. Un chemin relatif est resolu depuis la racine du projet.
+Sans chemin explicite, les evenements JSONL sont ecrits dans `../log/sql-performance/sql-performance-AAAA-MM-JJ.jsonl`, hors de la racine publique. Un chemin relatif est resolu depuis la racine du projet. `RUNTIME_LOG_DIR` permet de changer le repertoire commun utilise par les journaux qui n ont pas de chemin specifique.
 
 Chaque requete conserve sa duree, son type, son empreinte, son appelant et son nombre de lignes. Le journal ajoute aussi un resume par requete HTTP avec le temps SQL cumule. Les valeurs liees, les litteraux SQL, les messages d erreur et les parametres de l URL ne sont pas enregistres.
 
@@ -181,7 +183,7 @@ OMO_CRON_LOG_ENABLED=true
 OMO_CRON_LOG_PATH=
 ```
 
-Sans chemin explicite, tous les evenements JSONL sont ajoutes dans le fichier unique `tmp/omo-cron/omo-cron.jsonl`. Chaque ligne indique uniquement l heure, la source de l appel, son statut et sa duree totale. Les traitements en echec ne sont precises que lorsqu il y en a. Les appels provenant de la visite de `/omo/`, de l endpoint partiel, du cron HTTP, du cron CLI et d un import sont distingues.
+Sans chemin explicite, tous les evenements JSONL sont ajoutes dans le fichier unique `../log/omo-cron/omo-cron.jsonl`, hors de la racine publique. Chaque ligne indique uniquement l heure, la source de l appel, son statut et sa duree totale. Les traitements en echec ne sont precises que lorsqu il y en a. Les appels provenant de la visite de `/omo/`, de l endpoint partiel, du cron HTTP, du cron CLI et d un import sont distingues.
 
 Les parametres de l URL et le jeton du cron ne sont jamais enregistres. Les tentatives refusees par le cron HTTP sont comptees avec le statut `rejected` sans conserver le jeton fourni.
 

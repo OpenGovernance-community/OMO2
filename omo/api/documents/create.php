@@ -2022,6 +2022,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             label: 'Document',
             title: 'Insérer un document',
             className: 'note-btn-light',
+            focusForInsertion: true,
             onClick: function () {
                 openDocumentEmbedPicker();
             }
@@ -2154,7 +2155,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             return;
         }
 
-        const htmlFieldVersion = '20260804-indicator-group-route';
+        const htmlFieldVersion = '20260903-toolbar-insert-focus';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'

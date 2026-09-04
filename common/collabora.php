@@ -184,12 +184,45 @@ if (!function_exists('omoCollaboraBase64UrlDecode')) {
     }
 }
 
+if (!function_exists('omoCollaboraGetWopiTokenLifetimeSeconds')) {
+    function omoCollaboraGetWopiTokenLifetimeSeconds(): int
+    {
+        $configuredLifetime = (int)(getenv('COLLABORA_WOPI_TOKEN_TTL_SECONDS') ?: 0);
+        if ($configuredLifetime <= 0) {
+            return 3600;
+        }
+
+        return max(900, min(86400, $configuredLifetime));
+    }
+}
+
+if (!function_exists('omoCollaboraBuildPostMessageOrigin')) {
+    function omoCollaboraBuildPostMessageOrigin(string $baseUrl): string
+    {
+        $baseUrl = omoCollaboraNormalizeBaseUrl($baseUrl);
+        $parsedUrl = parse_url($baseUrl);
+        if (!is_array($parsedUrl) || empty($parsedUrl['scheme']) || empty($parsedUrl['host'])) {
+            return '';
+        }
+
+        $scheme = strtolower((string)$parsedUrl['scheme']);
+        $host = strtolower((string)$parsedUrl['host']);
+        $origin = $scheme . '://' . (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) ? '[' . $host . ']' : $host);
+        $port = (int)($parsedUrl['port'] ?? 0);
+        if ($port > 0 && !(($scheme === 'https' && $port === 443) || ($scheme === 'http' && $port === 80))) {
+            $origin .= ':' . $port;
+        }
+
+        return $origin;
+    }
+}
+
 if (!function_exists('omoCollaboraBuildWopiToken')) {
     function omoCollaboraBuildWopiToken(\dbObject\Document $document, int $userId, int $validUntil = 0): string
     {
         $documentId = (int)$document->getId();
         $userId = (int)$userId;
-        $validUntil = $validUntil > 0 ? $validUntil : time() + 3600;
+        $validUntil = $validUntil > 0 ? $validUntil : time() + omoCollaboraGetWopiTokenLifetimeSeconds();
         $payload = array(
             'documentId' => $documentId,
             'userId' => $userId,

@@ -215,8 +215,56 @@ function profilPopupGetSourceLang(): array
             'context' => 'Section title shown above the password block inside the general profile editor.',
         ],
         'profile.popup.password.section.help' => [
-            'text' => "Ajoutez un mot de passe pour utiliser la connexion classique et CardDAV. Lors d'une modification, l'ancien mot de passe est requis.",
+            'text' => "Ajoutez un mot de passe pour utiliser CalDAV et CardDAV. L autorisation de connexion web se choisit separement. Lors d'une modification, l'ancien mot de passe est requis.",
             'context' => 'Help text shown above the password fields in the general profile editor.',
+        ],
+        'profile.popup.password.login_permission.label' => [
+            'text' => 'Autoriser le login avec mot de passe',
+            'context' => 'Checkbox label allowing the account password to be used for interactive website login.',
+        ],
+        'profile.popup.password.login_permission.help' => [
+            'text' => 'Laissez cette case decochee si ce mot de passe doit servir uniquement a CalDAV et CardDAV.',
+            'context' => 'Help text explaining that a password can be reserved for DAV access.',
+        ],
+        'profile.popup.password.login_permission.unavailable' => [
+            'text' => 'Definissez d abord un mot de passe pour pouvoir choisir cet acces.',
+            'context' => 'Help text shown when password login permission cannot be changed because no password exists.',
+        ],
+        'profile.popup.totp.label' => [
+            'text' => 'Activer la double authentification',
+            'context' => 'Checkbox label enabling TOTP two factor authentication for website logins.',
+        ],
+        'profile.popup.totp.help.disabled' => [
+            'text' => 'Utilisez une application de validation comme Aegis, FreeOTP ou Google Authenticator. La double authentification est demandee pour chaque nouvelle connexion au site.',
+            'context' => 'Help shown before TOTP activation.',
+        ],
+        'profile.popup.totp.help.enabled' => [
+            'text' => 'La double authentification est activee pour les nouvelles connexions au site. Les appareils coches comme memorises restent reconnus.',
+            'context' => 'Help shown after TOTP activation.',
+        ],
+        'profile.popup.totp.setup.title' => [
+            'text' => 'Configurer votre application de validation',
+            'context' => 'Title displayed during TOTP enrollment.',
+        ],
+        'profile.popup.totp.setup.instructions' => [
+            'text' => 'Installez une application de validation, ajoutez un compte puis scannez ce QR code. Saisissez ensuite le code affiche pour terminer.',
+            'context' => 'TOTP enrollment instructions.',
+        ],
+        'profile.popup.totp.setup.manual_label' => [
+            'text' => 'Cle manuelle',
+            'context' => 'Label for the manual TOTP secret shown during enrollment.',
+        ],
+        'profile.popup.totp.setup.code_placeholder' => [
+            'text' => 'Code a 6 chiffres',
+            'context' => 'TOTP enrollment verification input placeholder.',
+        ],
+        'profile.popup.totp.setup.confirm' => [
+            'text' => 'Verifier et activer',
+            'context' => 'Button used to confirm TOTP enrollment.',
+        ],
+        'profile.popup.totp.disable.confirm' => [
+            'text' => 'Desactiver la double authentification pour ce compte ?',
+            'context' => 'Confirmation before disabling TOTP.',
         ],
         'profile.popup.password.toggle.label' => [
             'text' => 'Modifier le mot de passe',

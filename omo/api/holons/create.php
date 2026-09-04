@@ -232,7 +232,7 @@ if ($organizationId <= 0) {
 
 <?php if ($editorData !== null && $errorMessage === ''): ?>
 <script src="/omo/assets/js/sized-image-field.js"></script>
-<script src="/omo/assets/js/simple-html-field.js?v=20260804-indicator-group-route"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20260903-toolbar-insert-focus"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
 <script>
 (() => {

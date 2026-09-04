@@ -3206,6 +3206,7 @@
 			return '<div class="omo-document-collabora">'
 				. '<iframe class="omo-document-collabora__frame" src="'
 				. htmlspecialchars($openUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+				. '" data-omo-collabora-document-id="' . (int)$this->getId()
 				. '" loading="lazy" allow="clipboard-read; clipboard-write; fullscreen" allowfullscreen referrerpolicy="same-origin"></iframe>'
 				. '</div>';
 		}
