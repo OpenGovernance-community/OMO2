@@ -46,6 +46,7 @@ assertTotpAuthenticationTest(
 
 $authSource = file_get_contents(dirname(__DIR__) . '/common/auth.php');
 $cardDavSource = file_get_contents(dirname(__DIR__) . '/common/carddav.php');
+$authJavaScript = file_get_contents(dirname(__DIR__) . '/common/assets/auth.js');
 $migration = file_get_contents(dirname(__DIR__) . '/sql/2026-09-04-03-user-totp-authentication.sql');
 $qrEndpoint = file_get_contents(dirname(__DIR__) . '/ajax/totp_qr.php');
 assertTotpAuthenticationTest(
@@ -60,6 +61,15 @@ assertTotpAuthenticationTest(
         && str_contains($qrEndpoint, "\$_SESSION['pending_totp_setup']")
         && str_contains($qrEndpoint, 'hash_equals'),
     'The TOTP QR endpoint must require the authenticated pending setup session.'
+);
+assertTotpAuthenticationTest(
+    is_string($authJavaScript)
+        && str_contains($authJavaScript, 'const pendingTokenLifetimeMs = 5 * 60 * 1000;')
+        && str_contains($authJavaScript, 'Tokens stored by older versions had no expiry')
+        && str_contains($authJavaScript, 'function expirePendingTokens()')
+        && str_contains($authJavaScript, 'function setFirstFactorVisible(visible)')
+        && str_contains($authJavaScript, "'auth.totp.title': 'Double authentification'"),
+    'Browser-stored login steps must expire and first-factor fields must not be shown blank during TOTP.'
 );
 assertTotpAuthenticationTest(
     is_string($cardDavSource) && !str_contains($cardDavSource, 'totp_'),

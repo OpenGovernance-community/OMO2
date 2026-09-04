@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-04
 
+- La navigation depuis un projet vers un document resynchronise maintenant toujours le sous-drawer Documents avec le hash, meme lorsque le drawer principal avait deja ete affiche. Une ouverture locale qui echoue retombe aussi sur le rechargement cible du document au lieu de considerer silencieusement la route comme traitee.
 - L ancien endpoint IA experimental a ete retire avec sa cle tierce codee en dur. Le proxy d images historique ne transmet plus les cookies des visiteurs, refuse par defaut les sources distantes, bloque les adresses privees et reservees, limite les formats, tailles et delais, et n autorise une source HTTPS distante que si son domaine figure explicitement dans `GETIMG_ALLOWED_HOSTS`.
 - Les sessions PHP imposent maintenant des cookies Secure, HttpOnly et SameSite Lax, refusent les identifiants de session non initialises par le serveur et utilisent uniquement les cookies. Les erreurs PHP restent journalisees mais ne sont plus affichees aux visiteurs, y compris pendant le demarrage. Le fichier de configuration correspondant est explicitement inaccessible par HTTP.
 - Les journaux PHP et applicatifs sont maintenant ecrits par defaut dans `../log/`, hors de la racine publique. Les anciens emplacements `tmp/` et `telegram/data/` sont aussi bloques par Apache, et la redirection HTTPS tient compte du proxy d Infomaniak sans produire d URL mal formee.
@@ -12,6 +13,10 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Lorsqu une limite de connexion est atteinte, une alerte peut maintenant etre envoyee a l adresse d administration configuree. Elle est regroupee par evenement pendant une heure par defaut, afin de signaler une activite anormale sans notifier chaque demande normale de mot de passe oublie.
 - Un mot de passe peut maintenant etre reserve a CalDAV et CardDAV. La connexion web par mot de passe doit etre autorisee explicitement dans le profil ; sans cette autorisation, le code recu par e-mail reste le seul moyen de connexion au site.
 - La double authentification TOTP peut etre activee depuis le profil avec une application de validation et un QR code. Elle est requise pour chaque nouvelle connexion web, sauf sur les appareils explicitement memorises.
+- Pendant la validation TOTP, les champs de connexion de premiere etape sont maintenant masques : l ecran ne montre que le code de l application de validation et ne suggere plus, apres une redirection, que l adresse ou le choix de memorisation ont ete reinitialises.
+- La case Se souvenir de moi est placee directement sous le champ d identifiant, avant le choix d utiliser une autre adresse de l organisation.
+- L etape de double authentification porte un titre explicite, utilise le champ Code à 6 chiffres et un bouton Valider plus compact.
+- Les etapes de connexion par code e-mail et par double authentification expirent aussi dans le navigateur apres cinq minutes. Un ancien onglet restaure donc l ecran de connexion normal au lieu de demander un code TOTP deja invalide.
 - L image Docker prepare maintenant le repertoire prive `../log/` avec les droits du processus PHP, afin que les journaux d erreurs SQL et d authentification restent disponibles hors de la racine publique.
 
 ## 2026-09-03
