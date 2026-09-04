@@ -94,6 +94,7 @@ class ArrayProject extends ArrayDbObject
                 ['field' => 'id', 'dir' => 'DESC'],
             ],
         ]);
+
     }
 
     public function loadForParent($parentId, $activeOnly = true, $projectKind = Project::KIND_STANDARD)
@@ -120,6 +121,7 @@ class ArrayProject extends ArrayDbObject
                 ['field' => 'id', 'dir' => 'DESC'],
             ],
         ]);
+
     }
 
     public function loadForContext($organizationId, $holonId = 0, $scope = 'contextual', array $descendantHolonIds = [])
@@ -194,7 +196,7 @@ class ArrayProject extends ArrayDbObject
         }
 
         $this->load([
-            'hydrate' => ['title'],
+            'hydrate' => ['title', 'priority'],
             'where' => [
                 ['field' => 'IDorganization', 'value' => $organizationId],
                 ['field' => 'IDholon', 'value' => $holonId],
@@ -208,6 +210,18 @@ class ArrayProject extends ArrayDbObject
                 ['field' => 'id', 'dir' => 'DESC'],
             ],
         ]);
+
+        $this->uasort(static function (Project $left, Project $right): int {
+            $leftPriority = (int)$left->get('priority');
+            $rightPriority = (int)$right->get('priority');
+            $leftRank = $leftPriority > 0 ? $leftPriority : PHP_INT_MAX;
+            $rightRank = $rightPriority > 0 ? $rightPriority : PHP_INT_MAX;
+            if ($leftRank !== $rightRank) {
+                return $leftRank <=> $rightRank;
+            }
+
+            return (int)$left->getId() <=> (int)$right->getId();
+        });
     }
 
     public function loadTemplatesForOrganization($organizationId, $activeOnly = true)

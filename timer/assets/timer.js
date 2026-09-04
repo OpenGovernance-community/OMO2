@@ -20,6 +20,7 @@
         var organizations = Array.isArray(config.organizations) ? config.organizations : [];
         var translations = config.translations || {};
         var activeEntry = config.activeEntry || null;
+        var feedbackTimeoutId = 0;
         var state = {
             organizationId: normalizeId(config.selectedOrganizationId),
             selectedHolonId: activeEntry ? normalizeId(activeEntry.holonId) : 0,
@@ -71,9 +72,20 @@
             if (!feedback) {
                 return;
             }
+            if (feedbackTimeoutId) {
+                window.clearTimeout(feedbackTimeoutId);
+                feedbackTimeoutId = 0;
+            }
             feedback.textContent = String(message || '');
             feedback.classList.toggle('is-success', Boolean(isSuccess));
             feedback.classList.toggle('is-error', !isSuccess && Boolean(message));
+            if (message && !isSuccess) {
+                feedbackTimeoutId = window.setTimeout(function () {
+                    feedback.textContent = '';
+                    feedback.classList.remove('is-success', 'is-error');
+                    feedbackTimeoutId = 0;
+                }, 10 * 1000);
+            }
         }
 
         function formatDuration(totalSeconds) {
@@ -314,9 +326,13 @@
                         return;
                     }
                     var isSelected = projectId === state.selectedProjectId;
+                    var priority = normalizeId(project.priority);
+                    var priorityLabel = priority >= 1 && priority <= 5 ? 'P' + String(priority) : '';
                     content += '<button type="button" class="timer-project-choice' + (isSelected ? ' is-selected' : '')
                         + '" data-timer-project-id="' + projectId + '" aria-pressed="' + (isSelected ? 'true' : 'false') + '">'
-                        + escapeHtml(project.title || '') + '</button>';
+                        + (priorityLabel ? '<span class="generic-project-priority generic-project-priority--p' + priority + '">' + escapeHtml(priorityLabel) + '</span>' : '')
+                        + '<span class="timer-project-choice__title">' + escapeHtml(project.title || '') + '</span>'
+                        + '</button>';
                 });
             }
             projectList.innerHTML = content;
@@ -429,6 +445,7 @@
                     state.selectedProjectName = '';
                     updateSelectedLabel();
                     renderTarget();
+                    showFeedback('', true);
                     switchTarget();
                     if (state.activePane === 2) {
                         loadProjects();

@@ -140,6 +140,7 @@ if ($action === 'projects') {
         $projectData[] = array(
             'id' => (int)$project->getId(),
             'title' => trim((string)$project->get('title')),
+            'priority' => (int)$project->get('priority'),
         );
     }
 
