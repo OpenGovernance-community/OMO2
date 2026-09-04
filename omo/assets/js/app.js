@@ -2264,6 +2264,13 @@ function omoRestoreCachedDrawerRoute(routeToken = null, previousRouteToken = nul
         return false;
     }
 
+    // A cached Documents panel may keep a detail drawer marked as open while its
+    // body has already been cleared or while another application is displayed.
+    // Always replay the document route so the visible detail matches the hash.
+    if (omoGetMenuHashForRouteToken(normalizedRouteToken) === 'documents') {
+        return omoDispatchSpecialDrawerRouteChange(normalizedRouteToken, normalizedPreviousRouteToken);
+    }
+
     const route = typeof parseUrl === 'function'
         ? parseUrl()
         : {oid: null, cid: null};
