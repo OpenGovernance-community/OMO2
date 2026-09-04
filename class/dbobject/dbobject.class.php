@@ -2,6 +2,7 @@
 	namespace dbObject;
 
 	require_once dirname(__DIR__, 2) . '/common/avatar.php';
+	require_once dirname(__DIR__, 2) . '/common/runtime_log.php';
 
 	class PdoResultCompat
 	{
@@ -187,18 +188,14 @@
 		}
 
 		protected static function getDbErrorLogPath() {
-			$baseDir = isset($_SERVER["DOCUMENT_ROOT"]) && is_string($_SERVER["DOCUMENT_ROOT"]) && trim($_SERVER["DOCUMENT_ROOT"]) !== ""
-				? rtrim($_SERVER["DOCUMENT_ROOT"], "/\\")
-				: dirname(dirname(__DIR__));
-
-			return $baseDir . DIRECTORY_SEPARATOR . "tmp" . DIRECTORY_SEPARATOR . "dbobject-sql-errors.log";
+			return \commonRuntimeLogPath("dbobject-sql-errors.log");
 		}
 
 		protected static function writeDbErrorLog(array $payload) {
 			$logPath = self::getDbErrorLogPath();
 			$logDir = dirname($logPath);
 			if (!is_dir($logDir)) {
-				@mkdir($logDir, 0777, true);
+				@mkdir($logDir, 0770, true);
 			}
 
 			$line = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -371,13 +368,12 @@
 			$config = self::getSqlPerformanceConfig();
 			$logPath = $config["logPath"];
 			if ($logPath === "") {
-				$logPath = dirname(__DIR__, 2)
-					. DIRECTORY_SEPARATOR . "tmp"
-					. DIRECTORY_SEPARATOR . "sql-performance"
-					. DIRECTORY_SEPARATOR . "sql-performance-" . date("Y-m-d") . ".jsonl";
+				$logPath = \commonRuntimeLogPath(
+					"sql-performance/sql-performance-" . date("Y-m-d") . ".jsonl"
+				);
 			}
 			$logDir = dirname($logPath);
-			if (!is_dir($logDir) && !@mkdir($logDir, 0777, true) && !is_dir($logDir)) {
+			if (!is_dir($logDir) && !@mkdir($logDir, 0770, true) && !is_dir($logDir)) {
 				if (!self::$_sqlPerformanceWriteFailureReported) {
 					self::$_sqlPerformanceWriteFailureReported = true;
 					error_log("Unable to create SQL performance log directory: " . $logDir);

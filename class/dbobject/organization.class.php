@@ -6464,7 +6464,7 @@
 				$randomPart = str_replace('.', '', uniqid('', true));
 			}
 			$reference = 'omo1-' . date('Ymd-His') . '-' . $randomPart;
-			$directory = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . 'omo1-import-failures';
+			$directory = \commonRuntimeLogPath('omo1-import-failures');
 			if (!is_dir($directory) && !@mkdir($directory, 0770, true)) {
 				error_log('OMO1 import journal directory could not be created for ' . $reference);
 				return '';
