@@ -238,8 +238,7 @@
 			}
 
 			if (!class_exists('\DOMDocument')) {
-				$fallback = strip_tags($html, '<p><br><strong><b><em><i><u><span><ul><ol><li><a><h1><h2><h3><blockquote><table><thead><tbody><tr><th><td>');
-				return self::isEmptyValue(self::FORMAT_TEXT, $fallback) ? '' : trim($fallback);
+				return self::sanitizeHtmlWithoutDom($html);
 			}
 
 			$document = new \DOMDocument('1.0', 'UTF-8');
@@ -810,20 +809,39 @@
 
 		protected static function sanitizeHtmlLink($url)
 		{
-			$url = trim((string)$url);
+			$url = trim(html_entity_decode((string)$url, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 			if ($url === '') {
 				return '';
+			}
+			if (preg_match('/[\x00-\x1F\x7F]/', $url)) {
+				return '';
+			}
+
+			$schemeProbe = preg_replace('/[\x00-\x20\x7F]+/', '', $url);
+			if (preg_match('/^[a-z][a-z0-9+.-]*:/i', (string)$schemeProbe)) {
+				return preg_match('/^(https?:|mailto:|tel:)/i', (string)$schemeProbe) ? $url : '';
 			}
 
 			if (preg_match('/^(#|\/)/', $url)) {
 				return $url;
 			}
 
-			if (!preg_match('/^[a-z][a-z0-9+.-]*:/i', $url)) {
-				return $url;
+			$colonPosition = strpos($url, ':');
+			$firstPathDelimiterPosition = strcspn($url, '/?#');
+			return $colonPosition === false || $colonPosition > $firstPathDelimiterPosition ? $url : '';
+		}
+
+		protected static function sanitizeHtmlWithoutDom($html)
+		{
+			$plainText = preg_replace('/<\s*br\s*\/?\s*>/i', "\n", (string)$html);
+			$plainText = preg_replace('/<\s*\/\s*(?:p|h[1-6]|blockquote|li|tr)\s*>/i', "\n", (string)$plainText);
+			$plainText = html_entity_decode(strip_tags((string)$plainText), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+			$plainText = trim((string)preg_replace('/[\t ]+/', ' ', (string)$plainText));
+			if ($plainText === '') {
+				return '';
 			}
 
-			return preg_match('/^(https?:|mailto:|tel:)/i', $url) ? $url : '';
+			return nl2br(htmlspecialchars($plainText, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'), false);
 		}
 
 		public static function sanitizeBackgroundColorStyle($style)
