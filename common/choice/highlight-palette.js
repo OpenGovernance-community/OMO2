@@ -27,6 +27,8 @@
             + '.omo-highlight-palette__color{display:grid;justify-items:center;gap:3px;min-width:48px;padding:4px;border:0;border-radius:6px;background:transparent;color:var(--color-text,#1f2937);font:inherit;font-size:10px;cursor:pointer;}'
             + '.omo-highlight-palette__color:hover,.omo-highlight-palette__color:focus-visible{background:var(--color-surface-alt,#f1f5f9);outline:none;}'
             + '.omo-highlight-palette__swatch{display:block;width:24px;height:20px;border:1px solid rgba(15,23,42,.18);border-radius:4px;box-shadow:inset 0 1px 1px rgba(255,255,255,.45);}'
+            + '.omo-highlight-palette__clear{grid-column:1 / -1;min-height:28px;padding:4px 8px;border:1px solid var(--color-border,#d1d5db);border-radius:6px;background:var(--color-surface,#fff);color:var(--color-text,#1f2937);font:inherit;font-size:11px;cursor:pointer;}'
+            + '.omo-highlight-palette__clear:hover,.omo-highlight-palette__clear:focus-visible{background:var(--color-surface-alt,#f1f5f9);outline:none;}'
             + '@media (max-width:420px){.omo-highlight-palette{grid-template-columns:repeat(3,1fr);}.omo-highlight-palette__color{min-width:42px;}}';
         document.head.appendChild(style);
     }
@@ -56,6 +58,20 @@
         palette.setAttribute('role', 'menu');
         palette.setAttribute('aria-label', 'Couleur de surlignage');
         var colors = Array.isArray(options.colors) && options.colors.length ? options.colors : defaultColors;
+
+        var clearButton = document.createElement('button');
+        clearButton.type = 'button';
+        clearButton.className = 'omo-highlight-palette__clear';
+        clearButton.setAttribute('role', 'menuitem');
+        clearButton.setAttribute('aria-label', 'Effacer le surlignage');
+        clearButton.textContent = 'Effacer le surlignage';
+        clearButton.addEventListener('click', function () {
+            if (typeof options.onSelect === 'function') {
+                options.onSelect('');
+            }
+            close();
+        });
+        palette.appendChild(clearButton);
 
         colors.forEach(function (color) {
             if (!color || !/^#[0-9a-f]{6}$/i.test(String(color.value || ''))) {

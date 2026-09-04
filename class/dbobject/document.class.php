@@ -1635,6 +1635,34 @@
 			return array_values($entries);
 		}
 
+		public function getInvitationEmailRecipients(int $organizationId = 0): array
+		{
+			$organizationId = $organizationId > 0 ? $organizationId : (int)$this->get('IDorganization');
+			$recipients = array();
+			foreach ($this->getInvitationEntries($organizationId) as $entry) {
+				$userId = (int)($entry['userId'] ?? 0);
+				$email = trim(mb_strtolower((string)($entry['email'] ?? ''), 'UTF-8'));
+				if ($userId > 0) {
+					$user = new \dbObject\User();
+					if ($user->load($userId)) {
+						$email = trim(mb_strtolower((string)$user->getScopedEmail($organizationId), 'UTF-8'));
+					}
+				}
+
+				if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+					continue;
+				}
+
+				$recipients[$email] = array(
+					'email' => $email,
+					'display_name' => trim((string)($entry['displayLabel'] ?? '')),
+					'user_id' => $userId,
+				);
+			}
+
+			return array_values($recipients);
+		}
+
 		public function hasExplicitInvitations(): bool
 		{
 			foreach ($this->getInvitations(true) as $invitation) {

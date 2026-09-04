@@ -8,6 +8,7 @@
 <html>
 	<head>
 		<?=writeHeadContent("Facilitez-vous la prise de PV !");?>
+		<script src="/common/choice/highlight-palette.js?v=20260904-highlight-clear"></script>
 <style>
   .sector-1 { fill: #FFFFFF; }
   .sector-2 { fill: #22AA22; }
@@ -155,7 +156,7 @@ function drawPieChart(data) {
 						//$(".note-editor").focus();
 					} 
 					
-					$(this).find(".content").summernote({focus: true, toolbar: mytoolbar, styleTags: mystyles, fontSizes:myfontsize, lang:"fr-FR"});
+					$(this).find(".content").summernote({focus: true, toolbar: mytoolbar, styleTags: mystyles, fontSizes:myfontsize, buttons: mybuttons, lang:"fr-FR"});
 					// Cache le bouton edit et affiche le bouton sauver
 					$(this).find("button.save").css("display","");
 					$(this).find("button.cancel").css("display","");
@@ -187,7 +188,7 @@ function drawPieChart(data) {
 						//$(".note-editor").focus();
 					} 
 
-						$(this).parent().next().summernote({ focus: true, toolbar: mytoolbar, styleTags: mystyles, fontSizes:myfontsize, lang: "fr-FR"});
+						$(this).parent().next().summernote({ focus: true, toolbar: mytoolbar, styleTags: mystyles, fontSizes:myfontsize, buttons: mybuttons, lang: "fr-FR"});
 						// Cache le bouton edit et affiche le bouton sauver
 						$(this).parent().find("button.save").css("display","");
 						$(this).parent().find("button.cancel").css("display","");
@@ -341,7 +342,7 @@ function drawPieChart(data) {
 					['style', ['style']],
 					['font', ['bold', 'italic', 'underline', 'clear']],
 					['fontsize', ['fontsize']],
-					['color', ['color']],
+					['color', ['omoPvHighlight']],
 					['para', ['ul', 'ol', 'paragraph']],
 					 ['insert', ['link', 'picture', 'video']],
 					  ['view', ['fullscreen', 'help']],
@@ -358,6 +359,29 @@ function drawPieChart(data) {
 				];
 				
 				var myfontsize = ['8', '9', '10', '11', '12', '13', '14', '15', '16', '18', '20', '22' , '24', '28', '32', '36', '40', '48'];
+
+				var mybuttons = {
+					omoPvHighlight: function (context) {
+						return $.summernote.ui.button({
+							contents: '<img src="/omo/images/tools/surligneur.png" alt="" style="display:block;width:18px;height:18px;object-fit:contain;">',
+							tooltip: 'Modifier le surlignage',
+							click: function (event) {
+								if (!window.omoHighlightPalette) {
+									return;
+								}
+
+								context.invoke('editor.saveRange');
+								window.omoHighlightPalette.open({
+									anchor: event && event.currentTarget,
+									onSelect: function (color) {
+										context.invoke('editor.restoreRange');
+										context.invoke('editor.backColor', color || 'transparent');
+									}
+								});
+							}
+						}).render();
+					}
+				};
 
 
 					
