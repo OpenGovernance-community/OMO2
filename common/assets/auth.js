@@ -54,6 +54,7 @@
         'auth.error.missing_code': 'Veuillez saisir le code recu par e-mail.',
         'auth.error.missing_password': 'Veuillez saisir votre mot de passe.',
         'auth.error.request_failed': "Impossible d'envoyer la demande.",
+        'auth.error.rate_limited': 'Trop de tentatives. Veuillez patienter avant de reessayer.',
         'auth.error.reset_send_failed': "Impossible d'envoyer l'e-mail de réinitialisation.",
         'auth.error.restart_login': 'Merci de relancer la connexion.',
         'auth.error.send_failed': "Impossible d'envoyer le code par e-mail.",
@@ -125,6 +126,13 @@
         if (config.initialError === 'locked') {
             return {
                 message: t('auth.error.locked'),
+                type: 'error'
+            };
+        }
+
+        if (config.initialError === 'rate_limited') {
+            return {
+                message: t('auth.error.rate_limited'),
                 type: 'error'
             };
         }
@@ -618,6 +626,8 @@
                     setStatus(t('auth.error.invalid_email'), 'error');
                 } else if (data.error === 'wrong_answer') {
                     setStatus(t('auth.error.wrong_answer'), 'error');
+                } else if (data.error === 'rate_limited') {
+                    setStatus(data.message || t('auth.error.rate_limited'), 'error');
                 } else if (data.error === 'expired') {
                     setStatus(t('auth.error.challenge_expired'), 'error');
                 } else if (data.error === 'no_challenge') {
@@ -723,6 +733,11 @@
 
                 if (data.error === 'missing_code') {
                     setStatus(t('auth.error.missing_code'), 'error');
+                    return;
+                }
+
+                if (data.error === 'rate_limited') {
+                    setStatus(data.message || t('auth.error.rate_limited'), 'error');
                     return;
                 }
 

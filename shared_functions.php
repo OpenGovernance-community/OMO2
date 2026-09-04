@@ -556,44 +556,19 @@
 	function checkLogin() {
 		require_once __DIR__ . '/common/auth.php';
 		commonRestoreRememberedUser();
+		$hadLegacyAuthCookies = commonHasLegacyAuthCookies();
+		if ($hadLegacyAuthCookies) {
+			commonExpireLegacyAuthCookies();
+			commonAuthSecurityLog('legacy_auth_cookie', 'rejected', ['legacy' => true]);
+		}
 
 		if (isset($_SESSION["currentUser"])) {
 			$_SESSION["userRef"]=new \dbObject\User();
 			$_SESSION["userRef"]->load($_SESSION["currentUser"]);
 			return true;
 		}
-		// Pas loggé, est-ce que les cookie permettent de retrouver l'utilisateur?
-		$currentUserCookieName = appGetCurrentUserCookieName();
-		$currentCodeCookieName = appGetCurrentCodeCookieName();
-		$currentUserCookieValue = $_COOKIE[$currentUserCookieName] ?? ($_COOKIE["currentUser"] ?? null);
-		$currentCodeCookieValue = $_COOKIE[$currentCodeCookieName] ?? ($_COOKIE["currentCode"] ?? null);
-		if ($currentUserCookieValue !== null && $currentCodeCookieValue !== null) {
-			// Charge l'utilisateur corrspondant
-			$user=new \dbObject\User();
-			$user->load([["id",$currentUserCookieValue],["password",$currentCodeCookieValue]]);
-			if ($user->get("id")>0) {
-				// Redéfini les cookie pour 30 jours supplémentaires
-				appSetCookie($currentUserCookieName, (string)$user->get("id"), time()+60*60*24*30, false);
-				appSetCookie($currentCodeCookieName, (string)$user->get("password"), time()+60*60*24*30, false);
-				appExpireCookieAcrossDomains('currentUser', false);
-				appExpireCookieAcrossDomains('currentCode', false);
-				
-				// Initialise la variable de session
-				$_SESSION["currentUser"]=$user->get("id");
-				commonUpdateGlobalLastConnection((int)$user->get("id"));
-				$_SESSION["userRef"]=$user;
-				
-				// Confirme que l'utilisateur a bien été trouvé
-				return true;
-			} else {
-				// Pas trouvé de correspondance
-				appExpireCookieAcrossDomains($currentUserCookieName, false);
-				appExpireCookieAcrossDomains($currentCodeCookieName, false);
-				appExpireCookieAcrossDomains('currentUser', false);
-				appExpireCookieAcrossDomains('currentCode', false);
-				return false;
-			}
-		}
+
+		return false;
 	}
 	
 	

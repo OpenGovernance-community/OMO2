@@ -12,6 +12,13 @@ if ($currentUserId <= 0) {
     exit;
 }
 
+$memberInvitationEmailChoice = trim((string)($_POST['member_invitation_email_choice'] ?? ''));
+if (!in_array($memberInvitationEmailChoice, array('send', 'skip'), true)) {
+    http_response_code(422);
+    echo json_encode(array('status' => false, 'message' => 'Choisissez explicitement si les e-mails d invitation aux membres doivent etre envoyes.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 if (!isset($_FILES['omo1_export_file']) || !is_array($_FILES['omo1_export_file'])) {
     http_response_code(400);
     echo json_encode(array('status' => false, 'message' => 'Aucun fichier JSON n a ete transmis.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -48,7 +55,7 @@ foreach ($availableModules as $module) {
 
 $organizationName = trim((string)($_POST['organization_name'] ?? ''));
 $importOptions = array(
-    'sendMemberInvitationEmails' => !empty($_POST['send_member_invitations']),
+    'sendMemberInvitationEmails' => $memberInvitationEmailChoice === 'send',
 );
 $templateCalibration = array(
     'templateRootHolonId' => (int)($_POST['organization_template_id'] ?? 0),

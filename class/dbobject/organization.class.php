@@ -6560,11 +6560,13 @@
 		public static function importOmo1ExportAsNewOrganization(array $payload, array $requestedModules, $actorUserId, $organizationName = '', array $templateCalibration = array(), array $importOptions = array())
 		{
 			$actorUserId = (int)$actorUserId;
-			$sendMemberInvitationEmails = !array_key_exists('sendMemberInvitationEmails', $importOptions)
-				|| !empty($importOptions['sendMemberInvitationEmails']);
 			if ($actorUserId <= 0) {
 				return array('status' => false, 'message' => 'Connexion requise.');
 			}
+			if (!array_key_exists('sendMemberInvitationEmails', $importOptions) || !is_bool($importOptions['sendMemberInvitationEmails'])) {
+				return array('status' => false, 'message' => 'Choisissez explicitement si les e-mails d invitation aux membres doivent etre envoyes.');
+			}
+			$sendMemberInvitationEmails = $importOptions['sendMemberInvitationEmails'];
 			if ((string)($payload['format'] ?? '') !== 'openmyorganization-structure-export' || (int)($payload['version'] ?? 0) !== 4) {
 				return array('status' => false, 'message' => 'Le fichier doit etre un export OMO compact version 4.');
 			}

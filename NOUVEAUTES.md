@@ -8,6 +8,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les sessions PHP imposent maintenant des cookies Secure, HttpOnly et SameSite Lax, refusent les identifiants de session non initialises par le serveur et utilisent uniquement les cookies. Les erreurs PHP restent journalisees mais ne sont plus affichees aux visiteurs, y compris pendant le demarrage. Le fichier de configuration correspondant est explicitement inaccessible par HTTP.
 - Les journaux PHP et applicatifs sont maintenant ecrits par defaut dans `../log/`, hors de la racine publique. Les anciens emplacements `tmp/` et `telegram/data/` sont aussi bloques par Apache, et la redirection HTTPS tient compte du proxy d Infomaniak sans produire d URL mal formee.
 - Tous les champs declares comme HTML dans les objets metier sont maintenant nettoyes automatiquement a l ecriture et au chargement. Les titres, paragraphes, emphases, listes, tableaux, liens et couleurs de fond simples sont conserves, tandis que les scripts, contenus actifs, attributs evenementiels, protocoles dangereux et styles non autorises sont retires.
+- Les connexions par mot de passe, codes e-mail et demandes de reinitialisation sont maintenant limitees par compte et par adresse reseau avec des blocages temporaires persistants. Les anciens cookies contenant le hash du mot de passe ne sont plus acceptes. Les succes, echecs et limitations sont journalises sous `../log/auth/authentication.jsonl`, avec les adresses e-mail et IP remplacees par des empreintes HMAC.
 
 ## 2026-09-03
 
@@ -1987,6 +1988,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Les indicateurs exportes depuis OMO 1 conservent les indicateurs des roles actifs, mais ecarte les residus attaches directement a un cercle sans contexte d affichage dans OMO 1.
 - L export OMO 1 ecarte maintenant les anciennes actions terminees sans projet parent, masquees par l interface OMO 1 et sans emplacement historique coherent dans OMO 2.
 - Les regles importees depuis OMO 1 sont maintenant reparties a raison d une revision hebdomadaire, avec une echeance fixee six mois apres chaque date de revision.
+- L import OMO 1 demande maintenant un choix explicite avant d envoyer ou non les e-mails d invitation aux membres importes.
 
 ## 2026-08-19
 
