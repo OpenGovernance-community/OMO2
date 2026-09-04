@@ -15,6 +15,9 @@ const source = fs.readFileSync(sourcePath, 'utf8');
 const cacheStart = source.indexOf('function omoCanReuseStoredDrawerRoute');
 const cacheEnd = source.indexOf('function omoResolveDrawerContentRouteToken', cacheStart);
 assert(cacheStart >= 0 && cacheEnd > cacheStart, 'Unable to locate the drawer route cache implementation.');
+const restoreStart = source.indexOf('function omoRestoreCachedDrawerRoute');
+const restoreEnd = source.indexOf('function omoGetMenuHashForRouteToken', restoreStart);
+assert(restoreStart >= 0 && restoreEnd > restoreStart, 'Unable to locate the cached drawer route restoration implementation.');
 const start = source.indexOf('let omoRememberedDrawerRoutes');
 const end = source.indexOf('let omoPendingDrawerRouteOptions', start);
 assert(start >= 0 && end > start, 'Unable to locate the drawer route memory implementation.');
@@ -38,6 +41,7 @@ const context = {
 
 vm.createContext(context);
 vm.runInContext(source.slice(cacheStart, cacheEnd), context);
+vm.runInContext(source.slice(restoreStart, restoreEnd), context);
 vm.runInContext(source.slice(start, end), context);
 
 assert(
@@ -59,6 +63,19 @@ assert(
 assert(
   vm.runInContext("omoCanReuseStoredDrawerRoute(true, 'projects-d1286', '19:516', 'projects-d1286', '19:516', true)", context) === false,
   'An explicit refresh must bypass the drawer route cache.'
+);
+
+let restoredRoute = null;
+context.omoDispatchSpecialDrawerRouteChange = function (routeToken, previousRouteToken) {
+  restoredRoute = {routeToken, previousRouteToken};
+  return true;
+};
+assert(
+  vm.runInContext("omoRestoreCachedDrawerRoute('documents-d7662', 'documents-d7662')", context) === true
+    && restoredRoute
+    && restoredRoute.routeToken === 'documents-d7662'
+    && restoredRoute.previousRouteToken === 'documents-d7662',
+  'A cached Documents drawer must replay its detail route even when the same subdrawer was already visible.'
 );
 
 vm.runInContext("omoRememberDrawerRoute('projects-d1286')", context);

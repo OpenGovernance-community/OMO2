@@ -3648,8 +3648,9 @@ if (!is_string($documentsPayload)) {
 
                                         if (targetMode !== 'edit' && documentItem && typeof window.omoOpenDocumentDetailByPayload === 'function') {
                                             window.omoCloseDocumentEditorDrawer({ force: true, preserveDrawer: true });
-                                            window.omoOpenDocumentDetailByPayload(documentItem, panel);
-                                            return true;
+                                            if (window.omoOpenDocumentDetailByPayload(documentItem, panel) === true) {
+                                                return true;
+                                            }
                                         }
 
                                         if (targetMode !== 'edit') {
@@ -3660,8 +3661,10 @@ if (!is_string($documentsPayload)) {
 
                                             if (typeof window.omoOpenDocumentDetailByPayload === 'function') {
                                                 const directDocumentPayload = buildDirectDocumentPayload(targetDocumentId);
-                                                if (directDocumentPayload) {
-                                                    window.omoOpenDocumentDetailByPayload(directDocumentPayload, panel);
+                                                if (
+                                                    directDocumentPayload
+                                                    && window.omoOpenDocumentDetailByPayload(directDocumentPayload, panel) === true
+                                                ) {
                                                     return true;
                                                 }
                                             }

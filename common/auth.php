@@ -803,15 +803,19 @@ function commonGetAuthJsSourceLang(): array
             'context' => 'Error shown in the shared authentication JavaScript component when the verification code is wrong and the remaining attempts count is displayed.'
         ],
         'auth.button.validate_mfa' => [
-            'text' => 'Valider la double authentification',
+            'text' => 'Valider',
             'context' => 'Button used to submit the TOTP second factor during login.'
+        ],
+        'auth.totp.title' => [
+            'text' => 'Double authentification',
+            'context' => 'Title displayed above the TOTP second-factor instructions during login.'
         ],
         'auth.totp.instructions' => [
             'text' => 'Ouvrez votre application de validation et saisissez le code a 6 chiffres.',
             'context' => 'Instruction displayed while a TOTP second factor is required.'
         ],
         'auth.totp.placeholder' => [
-            'text' => 'Code de validation',
+            'text' => 'Code à 6 chiffres',
             'context' => 'Placeholder for the TOTP second factor input.'
         ],
         'auth.status.answer_verification' => [
@@ -3584,25 +3588,27 @@ function commonRenderMagicLoginPage(array $options = [])
                 </select>
             </label>
 
-            <div class="auth-email-row" id="authEmailRow">
-                <input type="text" id="authEmailInput" placeholder="<?= htmlspecialchars(!empty($organizationContext['domain']) ? commonAuthT('auth.placeholder.username', [], $lang, $sourceLang) : commonAuthT('auth.placeholder.full_email', [], $lang, $sourceLang)) ?>" autofocus>
+            <div id="authFirstFactorFields" class="auth-first-factor-fields">
+                <div class="auth-email-row" id="authEmailRow">
+                    <input type="text" id="authEmailInput" placeholder="<?= htmlspecialchars(!empty($organizationContext['domain']) ? commonAuthT('auth.placeholder.username', [], $lang, $sourceLang) : commonAuthT('auth.placeholder.full_email', [], $lang, $sourceLang)) ?>" autofocus>
+                    <?php if (!empty($organizationContext['domain'])): ?>
+                        <div class="auth-email-domain" id="authEmailDomain">@<?= htmlspecialchars($organizationContext['domain']) ?></div>
+                    <?php endif; ?>
+                </div>
+
+                <div id="authPasswordBox" class="auth-password-box" style="display:none;">
+                    <input type="password" id="authPasswordInput" autocomplete="current-password" placeholder="<?= htmlspecialchars(commonAuthT('auth.placeholder.password', [], $lang, $sourceLang)) ?>">
+                    <a href="#" class="auth-link-btn auth-reset-link" id="authResetPasswordLink"><?= htmlspecialchars(commonAuthT('auth.link.reset_password', [], $lang, $sourceLang)) ?></a>
+                </div>
+
+                <label class="auth-remember">
+                    <input type="checkbox" id="authRememberMe"> <?= htmlspecialchars(commonAuthT('auth.remember_me', [], $lang, $sourceLang)) ?>
+                </label>
+
                 <?php if (!empty($organizationContext['domain'])): ?>
-                    <div class="auth-email-domain" id="authEmailDomain">@<?= htmlspecialchars($organizationContext['domain']) ?></div>
+                    <button type="button" class="auth-link-btn" id="authToggleMode"><?= htmlspecialchars(commonAuthT('auth.toggle.use_other_email', [], $lang, $sourceLang)) ?></button>
                 <?php endif; ?>
             </div>
-
-            <div id="authPasswordBox" class="auth-password-box" style="display:none;">
-                <input type="password" id="authPasswordInput" autocomplete="current-password" placeholder="<?= htmlspecialchars(commonAuthT('auth.placeholder.password', [], $lang, $sourceLang)) ?>">
-                <a href="#" class="auth-link-btn auth-reset-link" id="authResetPasswordLink"><?= htmlspecialchars(commonAuthT('auth.link.reset_password', [], $lang, $sourceLang)) ?></a>
-            </div>
-
-            <?php if (!empty($organizationContext['domain'])): ?>
-                <button type="button" class="auth-link-btn" id="authToggleMode"><?= htmlspecialchars(commonAuthT('auth.toggle.use_other_email', [], $lang, $sourceLang)) ?></button>
-            <?php endif; ?>
-
-            <label class="auth-remember">
-                <input type="checkbox" id="authRememberMe"> <?= htmlspecialchars(commonAuthT('auth.remember_me', [], $lang, $sourceLang)) ?>
-            </label>
 
             <div id="authChallengeBox" class="auth-challenge" style="display:none;">
                 <p id="authChallengeQuestion"></p>
@@ -3616,9 +3622,10 @@ function commonRenderMagicLoginPage(array $options = [])
                 <button type="button" id="authCodeSubmit"><?= htmlspecialchars(commonAuthT('auth.button.validate_code', [], $lang, $sourceLang)) ?></button>
             </div>
             <div id="authTotpBox" class="auth-code-box" style="display:none;">
-                <p>Ouvrez votre application de validation et saisissez le code a 6 chiffres.</p>
-                <input type="text" id="authTotpInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Code de validation">
-                <button type="button" id="authTotpSubmit">Valider la double authentification</button>
+                <h3><?= htmlspecialchars(commonAuthT('auth.totp.title', [], $lang, $sourceLang)) ?></h3>
+                <p><?= htmlspecialchars(commonAuthT('auth.totp.instructions', [], $lang, $sourceLang)) ?></p>
+                <input type="text" id="authTotpInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="<?= htmlspecialchars(commonAuthT('auth.totp.placeholder', [], $lang, $sourceLang)) ?>">
+                <button type="button" id="authTotpSubmit"><?= htmlspecialchars(commonAuthT('auth.button.validate_mfa', [], $lang, $sourceLang)) ?></button>
             </div>
             <form id="authVerifyForm" method="post" action="/common/login_verify.php" style="display:none;">
                 <input type="hidden" name="token" id="authVerifyToken" value="">
