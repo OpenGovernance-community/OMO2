@@ -3,6 +3,35 @@
 function omoDocumentsPvEditorSourceLang(): array
 {
     return [
+        'documents.pv_editor.notice.review_readonly' => ['text' => 'Ce point est verrouillé pendant la relecture. Utilisez la discussion pour signaler une correction.', 'context' => 'Helper text shown on PV points while the document is in review.'],
+        'documents.pv_editor.error.operation_failed' => ['text' => 'L’opération n’a pas pu être effectuée.', 'context' => 'Generic fallback error returned by a PV editor action.'],
+        'documents.pv_editor.error.generic' => ['text' => 'Une erreur est survenue.', 'context' => 'Generic fallback error shown in the PV editor.'],
+        'documents.pv_editor.error.document_save' => ['text' => 'Impossible d’enregistrer le PV.', 'context' => 'Fallback error shown when saving PV metadata fails.'],
+        'documents.pv_editor.error.auto_summary' => ['text' => 'Impossible de générer le résumé.', 'context' => 'Fallback error shown when generating a PV summary fails.'],
+        'documents.pv_editor.error.auto_summary_empty' => ['text' => 'Le résumé généré est vide.', 'context' => 'Error shown when automatic PV summary generation returns no content.'],
+        'documents.pv_editor.embed.document_fallback' => ['text' => 'Document n°{id}', 'context' => 'Fallback title for an embedded document without a title.'],
+        'documents.pv_editor.decision.fallback' => ['text' => 'Décision n°{id}', 'context' => 'Fallback title for an embedded decision without a title.'],
+        'documents.pv_editor.project.fallback' => ['text' => 'Projet n°{id}', 'context' => 'Fallback title for an embedded project without a title.'],
+        'documents.pv_editor.event.fallback' => ['text' => 'Événement n°{id}', 'context' => 'Fallback title for an embedded event without a title.'],
+        'documents.pv_editor.indicator.fallback' => ['text' => 'Indicateur n°{id}', 'context' => 'Fallback title for an embedded indicator without a title.'],
+        'documents.pv_editor.project.review_load_error' => ['text' => 'Impossible de charger la relecture du projet.', 'context' => 'Error shown when an embedded project review cannot be loaded.'],
+        'documents.pv_editor.checklist.run_invalid' => ['text' => 'Instance de processus invalide.', 'context' => 'Error shown for an invalid embedded process run.'],
+        'documents.pv_editor.checklist.run_load_error' => ['text' => 'Impossible de charger l’instance du processus.', 'context' => 'Error shown when an embedded process run cannot be loaded.'],
+        'documents.pv_editor.checklist.items_loading' => ['text' => 'Chargement des éléments…', 'context' => 'Temporary text while loading items from an embedded process run.'],
+        'documents.pv_editor.checklist.items_empty' => ['text' => 'Aucun élément dans cette instance.', 'context' => 'Empty state for an embedded process run.'],
+        'documents.pv_editor.checklist.items_load_error' => ['text' => 'Impossible de charger les éléments de cette instance.', 'context' => 'Error shown when loading items from an embedded process run fails.'],
+        'documents.pv_editor.checklist.activities_empty' => ['text' => 'Aucune activité récurrente active.', 'context' => 'Empty state for an embedded recurring process.'],
+        'documents.pv_editor.checklist.item_fallback' => ['text' => 'Élément', 'context' => 'Fallback title for an item in an embedded process run.'],
+        'documents.pv_editor.checklist.status_pending' => ['text' => 'En attente', 'context' => 'Fallback status for an item in an embedded process run.'],
+        'documents.pv_editor.checklist.run_fallback' => ['text' => 'Instance', 'context' => 'Fallback title for an embedded process run.'],
+        'documents.pv_editor.toolbar.highlight' => ['text' => 'Surlignage', 'context' => 'Label of the Summernote highlight color button in the PV editor.'],
+        'documents.pv_editor.toolbar.highlight_title' => ['text' => 'Modifier le surlignage', 'context' => 'Tooltip of the Summernote highlight color button in the PV editor.'],
+        'documents.pv_editor.toolbar.document' => ['text' => 'Document', 'context' => 'Label of the Summernote document insertion button in the PV editor.'],
+        'documents.pv_editor.toolbar.decision' => ['text' => 'Décision', 'context' => 'Label of the Summernote decision insertion button in the PV editor.'],
+        'documents.pv_editor.toolbar.project' => ['text' => 'Projet', 'context' => 'Label of the Summernote project insertion button in the PV editor.'],
+        'documents.pv_editor.toolbar.process' => ['text' => 'Processus', 'context' => 'Label of the Summernote process insertion button in the PV editor.'],
+        'documents.pv_editor.toolbar.event' => ['text' => 'Date', 'context' => 'Label of the Summernote event insertion button in the PV editor.'],
+        'documents.pv_editor.toolbar.indicator' => ['text' => 'Indicateur', 'context' => 'Label of the Summernote indicator insertion button in the PV editor.'],
         'documents.pv_editor.page.title' => ['text' => 'Préparation du PV', 'context' => 'Title shown for the upcoming PV editor.'],
         'documents.pv_editor.page.description' => ['text' => 'Le PV suit plusieurs étapes, et chaque personne édite uniquement les points qu’elle a créés lorsque cela est autorisé.', 'context' => 'Description shown in the PV editor header.'],
         'documents.pv_editor.error.unavailable' => ['text' => 'Cet éditeur de PV n’est pas disponible pour ce document.', 'context' => 'Error shown when the PV editor cannot be used.'],
@@ -280,6 +309,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null): array
     };
 
     return [
+        'reviewReadonly' => $resolve('documents.pv_editor.notice.review_readonly', 'Ce point est verrouillé pendant la relecture. Utilisez la discussion pour signaler une correction.'),
         'save' => $resolve('documents.pv_editor.action.save', 'Enregistrer'),
         'takeOverLock' => $resolve('documents.pv_editor.action.take_over_lock', 'Reprendre l’édition'),
         'deletePoint' => $resolve('documents.pv_editor.action.delete_point', 'Supprimer le point'),
@@ -448,7 +478,7 @@ function omoDocumentsPvEditorBuildAuthorHolonOptions(
     return $optionsByAuthor;
 }
 
-function omoDocumentsPvEditorBuildPointDiscussionSummaryMap($organizationId, $points, $currentUserId): array
+function omoDocumentsPvEditorBuildPointDiscussionSummaryMap($organizationId, $points, $currentUserId, $documentShareLinkId = 0): array
 {
     $pointIds = [];
     foreach ($points as $point) {
@@ -461,7 +491,9 @@ function omoDocumentsPvEditorBuildPointDiscussionSummaryMap($organizationId, $po
         (int)$organizationId,
         \dbObject\ChatThread::SUBJECT_DOCUMENT_PV_POINT,
         $pointIds,
-        (int)$currentUserId
+        (int)$currentUserId,
+        0,
+        (int)$documentShareLinkId
     );
 }
 
@@ -477,7 +509,8 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     array $authorHolonOptions,
     string $positionLabel,
     array $groupSummary = [],
-    array $discussionSummary = []
+    array $discussionSummary = [],
+    ?\dbObject\DocumentShareLink $publicParticipationLink = null
 ): array {
     $pointData = $point->buildEditorData($organizationId, $currentUserId, $lockToken);
     $pointData['positionLabel'] = $positionLabel !== '' ? $positionLabel : '--';
@@ -503,6 +536,32 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     $pointData['hasStructureApplication'] = $hasStructureApplication;
     $pointData['authorOptions'] = $authorOptions;
     $pointData['authorHolonOptions'] = $authorHolonOptions;
+
+    if ($publicParticipationLink instanceof \dbObject\DocumentShareLink) {
+        $canEditOwnPoint = commonPvParticipationCanEditPoint($document, $point, $publicParticipationLink);
+        $publicParticipantCanUseStructure = commonPvParticipationRecipientCanUseStructure($publicParticipationLink, $organizationId);
+        $pointData['isEditable'] = $canEditOwnPoint;
+        $pointData['canEditNow'] = $canEditOwnPoint && empty($pointData['lock']['isLockedByOther']);
+        $pointData['canReorder'] = false;
+        $pointData['canEditGroup'] = false;
+        $pointData['canDelete'] = !$pointData['isReview'] && !$pointData['isHandled'] && $pointData['canEditNow'];
+        $pointData['isPvEditor'] = false;
+        $pointData['canTakeOverLock'] = false;
+        $pointData['canToggleHandled'] = false;
+        $pointData['canAssignAuthor'] = false;
+        $pointData['hasStructureApplication'] = $publicParticipantCanUseStructure && $hasStructureApplication;
+        $pointData['authorOptions'] = [[
+            'value' => $publicParticipationLink->getRecipientUserId() > 0
+                ? 'user:' . $publicParticipationLink->getRecipientUserId()
+                : 'email:' . $publicParticipationLink->getRecipientEmail(),
+            'userId' => $publicParticipationLink->getRecipientUserId(),
+            'email' => $publicParticipationLink->getRecipientEmail(),
+            'label' => $publicParticipationLink->getRecipientUserId() > 0
+                ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($publicParticipationLink->getRecipientUserId(), $organizationId)
+                : $publicParticipationLink->getRecipientEmail(),
+        ]];
+        $pointData['authorHolonOptions'] = $publicParticipantCanUseStructure ? $authorHolonOptions : [];
+    }
     if ($point->isGroup()) {
         $pointData['groupPointCount'] = (int)($groupSummary['pointCount'] ?? 0);
         $pointData['groupDurationMinutes'] = (int)($groupSummary['durationMinutes'] ?? 0);
@@ -557,6 +616,42 @@ function omoDocumentsPvEditorBuildAttendancePayloadFromDocument(\dbObject\Docume
             ];
         }, $entries)),
     ];
+}
+
+function omoDocumentsPvEditorBuildPublicAttendancePayloadFromDocument(\dbObject\Document $document, int $organizationId): ?array
+{
+    $payload = omoDocumentsPvEditorBuildAttendancePayloadFromDocument($document, $organizationId);
+    if (!is_array($payload)) {
+        return null;
+    }
+
+    $publicEntries = [];
+    foreach ((array)($payload['entries'] ?? []) as $index => $entry) {
+        if (!is_array($entry)) {
+            continue;
+        }
+        $displayLabel = trim((string)($entry['displayLabel'] ?? ''));
+        if ($displayLabel === '') {
+            $displayLabel = trim((string)($entry['secondaryLabel'] ?? ''));
+        }
+        if ($displayLabel === '') {
+            continue;
+        }
+
+        $publicEntries[] = [
+            'identityKey' => 'public-' . (int)$index,
+            'displayLabel' => $displayLabel,
+            'secondaryLabel' => '',
+            'isPresent' => !empty($entry['isPresent']),
+        ];
+    }
+    $payload['entries'] = $publicEntries;
+    $payload['totalCount'] = count($publicEntries);
+    $payload['presentCount'] = count(array_filter($publicEntries, static function (array $entry): bool {
+        return !empty($entry['isPresent']);
+    }));
+
+    return $payload;
 }
 
 function omoDocumentsPvEditorRenderChipGroup(string $label, array $items, string $modifier = ''): string
@@ -966,8 +1061,11 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '  </div>';
         $html .= '</div>';
     } else {
+        $html .= '<div class="omo-document-pv__point-content prose omo-simple-html-render">' . (string)($pointData['contentHtml'] ?? '') . '</div>';
         $html .= '<div class="omo-pv-editor__point-footer omo-pv-editor__point-footer--readonly">';
-        if (!empty($pointData['isHandled'])) {
+        if (!empty($pointData['isReview'])) {
+            $readonlyNote = (string)$uiText['reviewReadonly'];
+        } elseif (!empty($pointData['isHandled'])) {
             $readonlyNote = (string)$uiText['handledState'];
         } elseif (!empty($pointData['lock']['isLockedByOther'])) {
             $readonlyNote = str_replace(
@@ -987,7 +1085,6 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         }
         $html .= omoDocumentsPvEditorRenderPointDiscussionTrigger($pointData, $uiText, $title);
         $html .= '</div>';
-        $html .= '<div class="omo-document-pv__point-content prose omo-simple-html-render">' . (string)($pointData['contentHtml'] ?? '') . '</div>';
     }
 
     $html .= '</article>';

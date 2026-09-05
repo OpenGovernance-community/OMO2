@@ -101,6 +101,11 @@ if ($shareLink->requiresPassword() && !commonIsSharePasswordVerified($token)) {
     exit;
 }
 
+if ($shareLink->allowsPvContribution()) {
+    header('Location: ' . $shareLink->buildPvParticipationUrl());
+    exit;
+}
+
 $livePayload = $document->buildLiveSharePayload($shareLink->allowsLiveFollow());
 $updatedAtToken = trim((string)($livePayload['updatedAt'] ?? ''));
 $updatedAt = $updatedAtToken !== '' ? date_create_immutable($updatedAtToken) : null;

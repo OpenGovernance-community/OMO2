@@ -13,9 +13,10 @@
 			return [
 				[['IDorganization', 'IDdocument', 'IDuser'], 'required'],
 				[['id', 'IDorganization', 'IDdocument', 'IDuser'], 'integer'],
-				[['label', 'token', 'password_hash'], 'string'],
+				[['recipient_user_id'], 'fk'],
+				[['label', 'token', 'password_hash', 'recipient_email'], 'string'],
 				[['datecreation', 'dateexpiration'], 'datetime'],
-				[['allow_live_follow', 'active'], 'boolean'],
+				[['allow_live_follow', 'allow_pv_contribution', 'active'], 'boolean'],
 				[['id'], 'safe'],
 			];
 		}
@@ -31,6 +32,9 @@
 				'token' => 'Token',
 				'password_hash' => 'Mot de passe',
 				'allow_live_follow' => 'Suivi temps reel',
+				'allow_pv_contribution' => 'Contribution au PV',
+				'recipient_email' => 'E-mail du participant',
+				'recipient_user_id' => 'Utilisateur participant',
 				'datecreation' => 'Date creation',
 				'dateexpiration' => 'Date expiration',
 				'active' => 'Actif',
@@ -47,6 +51,9 @@
 				'token' => 'Token unique partageable.',
 				'password_hash' => 'Hash du mot de passe optionnel.',
 				'allow_live_follow' => 'Autorise l affichage du brouillon temporaire pendant l edition.',
+				'allow_pv_contribution' => 'Autorise le participant invite a ajouter et modifier ses propres points avant la validation.',
+				'recipient_email' => 'Adresse e-mail a laquelle est attribue le lien de participation.',
+				'recipient_user_id' => 'Utilisateur deja connu correspondant au participant invite.',
 				'dateexpiration' => 'Date de fin de validite du lien.',
 			];
 		}
@@ -57,6 +64,7 @@
 				'label' => 150,
 				'token' => 80,
 				'password_hash' => 255,
+				'recipient_email' => 250,
 			];
 		}
 
@@ -282,6 +290,49 @@
 			));
 		}
 
+		public static function getOrCreatePvParticipantLink(Document $document, $userId, $recipientEmail, $recipientUserId = 0)
+		{
+			$documentId = (int)$document->getId();
+			$recipientEmail = trim(mb_strtolower((string)$recipientEmail, 'UTF-8'));
+			if ($documentId <= 0 || !filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
+				return false;
+			}
+
+			$row = self::fetchRow(
+				"SELECT *
+				FROM document_share_link
+				WHERE IDdocument = :document_id
+				  AND recipient_email = :recipient_email
+				  AND allow_pv_contribution = 1
+				  AND active = 1
+				  AND (dateexpiration IS NULL OR dateexpiration > NOW())
+				ORDER BY datecreation DESC, id DESC
+				LIMIT 1",
+				[
+					'document_id' => $documentId,
+					'recipient_email' => $recipientEmail,
+				]
+			);
+			if (is_array($row)) {
+				$item = new self();
+				$item->loadFromArray($row);
+				$item->setId((int)$row['id']);
+				if ((int)$recipientUserId > 0 && (int)$item->get('recipient_user_id') !== (int)$recipientUserId) {
+					$item->set('recipient_user_id', (int)$recipientUserId);
+					$item->save();
+				}
+				return $item;
+			}
+
+			return self::createForDocument($document, (int)$userId, [
+				'label' => 'PV participant access',
+				'recipient_email' => $recipientEmail,
+				'recipient_user_id' => max(0, (int)$recipientUserId),
+				'allow_live_follow' => true,
+				'allow_pv_contribution' => true,
+			]);
+		}
+
 		public static function createForDocument(Document $document, $userId, array $options = array())
 		{
 			$userId = (int)$userId;
@@ -303,7 +354,10 @@
 			$item->set('label', trim((string)($options['label'] ?? '')));
 			$item->set('token', self::generateUniqueToken());
 			$item->set('password_hash', trim((string)($options['password_hash'] ?? '')) ?: null);
+			$item->set('recipient_email', trim(mb_strtolower((string)($options['recipient_email'] ?? ''), 'UTF-8')) ?: null);
+			$item->set('recipient_user_id', (int)($options['recipient_user_id'] ?? 0) ?: null);
 			$item->set('allow_live_follow', !empty($options['allow_live_follow']) ? 1 : 0);
+			$item->set('allow_pv_contribution', !empty($options['allow_pv_contribution']) ? 1 : 0);
 			$item->set('datecreation', new \DateTime());
 			$item->set('dateexpiration', $options['dateexpiration'] ?? null);
 			$item->set('active', 1);
@@ -355,6 +409,22 @@
 			return (bool)$this->get('allow_live_follow');
 		}
 
+		public function allowsPvContribution(): bool
+		{
+			return (bool)$this->get('allow_pv_contribution')
+				&& filter_var(trim((string)$this->get('recipient_email')), FILTER_VALIDATE_EMAIL) !== false;
+		}
+
+		public function getRecipientEmail(): string
+		{
+			return trim(mb_strtolower((string)$this->get('recipient_email'), 'UTF-8'));
+		}
+
+		public function getRecipientUserId(): int
+		{
+			return (int)$this->get('recipient_user_id');
+		}
+
 		public function getDocument()
 		{
 			$documentId = (int)$this->get('IDdocument');
@@ -369,6 +439,11 @@
 		public function buildShareUrl()
 		{
 			return '/omo/document_share.php?token=' . rawurlencode((string)$this->get('token'));
+		}
+
+		public function buildPvParticipationUrl()
+		{
+			return '/omo/pv_participation.php?token=' . rawurlencode((string)$this->get('token'));
 		}
 	}
 

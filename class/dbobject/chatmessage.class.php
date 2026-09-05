@@ -16,7 +16,7 @@ class ChatMessage extends DbObject
         return [
             [['IDchat_thread', 'IDorganization', 'message_type', 'content'], 'required'],
             [['id'], 'integer'],
-            [['IDchat_thread', 'IDorganization', 'IDuser', 'IDdecision_participant'], 'fk'],
+            [['IDchat_thread', 'IDorganization', 'IDuser', 'IDdecision_participant', 'IDdocument_share_link'], 'fk'],
             [['message_type', 'author_name'], 'string'],
             [['content'], 'text'],
             [['parameters'], 'parameters'],
@@ -33,6 +33,7 @@ class ChatMessage extends DbObject
             'IDorganization' => 'Organisation',
             'IDuser' => 'Auteur',
             'IDdecision_participant' => 'Participant au scrutin',
+            'IDdocument_share_link' => 'Lien de participation au PV',
             'message_type' => 'Type',
             'content' => 'Message',
             'author_name' => 'Nom de l auteur',
@@ -138,13 +139,14 @@ class ChatMessage extends DbObject
         })));
     }
 
-    public static function createUserMessage(ChatThread $thread, $userId, $content, $isAnonymous = false, $anonymousByAuthor = false, $participantId = 0)
+    public static function createUserMessage(ChatThread $thread, $userId, $content, $isAnonymous = false, $anonymousByAuthor = false, $participantId = 0, $documentShareLinkId = 0)
     {
         $message = new self();
         $message->set('IDchat_thread', (int)$thread->getId());
         $message->set('IDorganization', (int)$thread->get('IDorganization'));
         $message->set('IDuser', (int)$userId > 0 ? (int)$userId : null);
         $message->set('IDdecision_participant', (int)$participantId > 0 ? (int)$participantId : null);
+        $message->set('IDdocument_share_link', (int)$documentShareLinkId > 0 ? (int)$documentShareLinkId : null);
         $message->set('message_type', self::TYPE_USER);
         $message->set('content', trim((string)$content));
         $message->set('parameters', [
@@ -185,6 +187,7 @@ class ChatMessage extends DbObject
         $content = trim((string)$this->get('content'));
         $userId = (int)$this->get('IDuser');
         $participantId = (int)$this->get('IDdecision_participant');
+        $documentShareLinkId = (int)$this->get('IDdocument_share_link');
 
         $thread = new ChatThread();
         if ($threadId <= 0 || !$thread->load($threadId) || (int)$thread->get('IDorganization') !== $organizationId) {
@@ -199,10 +202,10 @@ class ChatMessage extends DbObject
                 'text' => 'A chat message must contain between 1 and 4000 characters.',
             ];
         }
-        if ($messageType === self::TYPE_USER && $userId <= 0 && $participantId <= 0) {
+        if ($messageType === self::TYPE_USER && $userId <= 0 && $participantId <= 0 && $documentShareLinkId <= 0) {
             return [
                 'status' => false,
-                'text' => 'A user chat message needs an account or a decision participant.',
+                'text' => 'A user chat message needs an account, a decision participant, or a PV participation link.',
             ];
         }
 
@@ -248,6 +251,34 @@ class ChatMessage extends DbObject
             }
         } else {
             $this->set('IDdecision_participant', null);
+        }
+        if ($documentShareLinkId > 0) {
+            $shareLink = new DocumentShareLink();
+            if (
+                !$shareLink->load($documentShareLinkId)
+                || (int)$shareLink->get('IDorganization') !== $organizationId
+            ) {
+                return [
+                    'status' => false,
+                    'text' => 'The PV participation link does not match the message organization.',
+                ];
+            }
+            if (trim((string)$this->get('author_name')) === '') {
+                $authorName = '';
+                $recipientUserId = $shareLink->getRecipientUserId();
+                if ($recipientUserId > 0) {
+                    $recipient = new User();
+                    if ($recipient->load($recipientUserId)) {
+                        $authorName = trim((string)$recipient->getScopedDisplayName($organizationId));
+                    }
+                }
+                if ($authorName === '') {
+                    $authorName = trim((string)$shareLink->getRecipientEmail());
+                }
+                $this->set('author_name', $authorName);
+            }
+        } else {
+            $this->set('IDdocument_share_link', null);
         }
 
         return parent::save();
@@ -423,11 +454,12 @@ class ChatMessage extends DbObject
         return $changes;
     }
 
-    public function toClientArray($viewerUserId, $viewerParticipantId = 0)
+    public function toClientArray($viewerUserId, $viewerParticipantId = 0, $viewerDocumentShareLinkId = 0)
     {
         $organizationId = (int)$this->get('IDorganization');
         $authorUserId = (int)$this->get('IDuser');
         $authorParticipantId = (int)$this->get('IDdecision_participant');
+        $authorDocumentShareLinkId = (int)$this->get('IDdocument_share_link');
         $authorName = trim((string)$this->get('author_name'));
         $photoUrl = '';
         $initials = '';
@@ -466,11 +498,13 @@ class ChatMessage extends DbObject
             'content' => (string)$this->get('content'),
             'authorUserId' => $authorUserId,
             'authorParticipantId' => $authorParticipantId,
+            'authorDocumentShareLinkId' => $authorDocumentShareLinkId,
             'authorName' => $authorName,
             'photoUrl' => $photoUrl,
             'initials' => $initials,
             'isOwn' => ($authorUserId > 0 && $authorUserId === (int)$viewerUserId)
-                || ($authorParticipantId > 0 && $authorParticipantId === (int)$viewerParticipantId),
+                || ($authorParticipantId > 0 && $authorParticipantId === (int)$viewerParticipantId)
+                || ($authorDocumentShareLinkId > 0 && $authorDocumentShareLinkId === (int)$viewerDocumentShareLinkId),
             'createdAt' => $createdAt,
             'createdAtLabel' => $createdAtLabel,
             'changes' => array_merge($this->getProposalUpdateChanges(), $this->getPvPointUpdateChanges()),
