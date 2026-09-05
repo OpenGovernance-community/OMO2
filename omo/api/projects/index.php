@@ -1168,5 +1168,5 @@ $projectTexts = [
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
 <script src="/common/calendar/event-editor.js?v=20260902-submit-lock"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
 <script src="/omo/api/projects/projects.js?v=20260902-restore-default"></script>

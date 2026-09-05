@@ -1504,7 +1504,7 @@ if (!is_string($payloadJson)) {
 </div>
 
 <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
 <link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260813-decision-uniformity">
 <script src="/common/choice/decision_cards.js"></script>
 
@@ -1976,7 +1976,9 @@ if (!is_string($payloadJson)) {
 
 <script>
 (() => {
-const root = document.getElementById('omo-decisions-root');
+const root = typeof window.omoFindApplicationRoot === 'function'
+    ? window.omoFindApplicationRoot('omo-decisions-root')
+    : document.getElementById('omo-decisions-root');
 if (!root) {
     return;
 }
@@ -2123,8 +2125,11 @@ function omoDecisionsNormalizeScopePreference(value) {
 }
 
 function omoDecisionsGetPreferencesContextKey() {
-    return String(root.getAttribute('data-omo-decision-oid') || '0')
+    const regularKey = String(root.getAttribute('data-omo-decision-oid') || '0')
         + ':' + String(root.getAttribute('data-omo-decision-cid') || '0');
+    return typeof window.omoApplicationViewPreferencesGetStorageContextKey === 'function'
+        ? window.omoApplicationViewPreferencesGetStorageContextKey(root, regularKey)
+        : regularKey;
 }
 
 function omoDecisionsGetSavedViewsStore() {

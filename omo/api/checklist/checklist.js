@@ -1,7 +1,9 @@
 (function (window, document) {
     'use strict';
 
-    var root = document.getElementById('omo-checklist-root');
+    var root = typeof window.omoFindApplicationRoot === 'function'
+        ? window.omoFindApplicationRoot('omo-checklist-root')
+        : document.getElementById('omo-checklist-root');
     if (!root || root.dataset.checklistReady === '1') {
         return;
     }
@@ -180,8 +182,11 @@
     }
 
     function getPreferencesContextKey() {
-        return String(root.getAttribute('data-checklist-oid') || '0')
+        var regularKey = String(root.getAttribute('data-checklist-oid') || '0')
             + ':' + String(root.getAttribute('data-checklist-route-cid') || '0');
+        return typeof window.omoApplicationViewPreferencesGetStorageContextKey === 'function'
+            ? window.omoApplicationViewPreferencesGetStorageContextKey(root, regularKey)
+            : regularKey;
     }
 
     function readStoredValue(storage, storageKey) {

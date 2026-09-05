@@ -2,6 +2,14 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-05
+
+- L editeur de PV propose maintenant des onglets d applications pour consulter Projets, Indicateurs, Processus et les autres apps actives sans quitter la reunion. Le bouton `+` permet d en ajouter plusieurs dans le contexte du holon associe au PV, chaque vue conserve en base sa propre portee, son tri et son mode d affichage, et les modeles de PV recopient ces onglets avec leur configuration. Ces vues restent absentes des invitations publiques, impressions et exports PDF.
+- La popup des applications de reunion affiche maintenant toute la selection courante : cocher ajoute un onglet et decocher le retire lors de l enregistrement. Les croix de suppression directe ont ete retirees pour eviter une suppression accidentelle.
+- Les onglets de reunion sont maintenant davantage espaces et separes verticalement pour mieux distinguer le PV, chaque application et le bouton de gestion, avec un defilement horizontal lorsque la place manque. L onglet PV reprend son icone Documents et les zones reagissent plus clairement au survol et a la selection grace a un fond colore et un contour renforce.
+- Le drawer plein ecran de l editeur de PV n affiche plus l en-tete superieur qui repetait le nom du document et l action Fermer deja disponibles dans son contenu.
+- Les groupes vides de l ordre du jour restent visibles lors des mises a jour automatiques, y compris pour les autres participants afin qu ils puissent y classer leurs points.
+
 ## 2026-09-04
 
 - Le bouton `Inviter` de l editeur de PV devient un bouton avec menu : sa fleche ouvre l envoi des invitations. Les membres et adresses e-mail externes invites recoivent un lien public unique qui affiche le PV et suit automatiquement les mises a jour tant que la reunion est en cours.

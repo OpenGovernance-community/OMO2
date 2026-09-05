@@ -1111,9 +1111,14 @@ if (!is_string($documentsPayload)) {
 
             <script type="application/json" data-omo-documents-data><?= $documentsPayload ?></script>
             <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
-            <script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
+            <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
             <script>
             (function () {
+                window.omoDocumentsFindRoot = function () {
+                    return typeof window.omoFindApplicationRoot === 'function'
+                        ? window.omoFindApplicationRoot('omo-documents-root')
+                        : document.getElementById('omo-documents-root');
+                };
                 const omoDocumentsSavedViewsStorageKey = 'omo.documents.saved-views.v2';
                 const omoDocumentsLegacySavedViewsStorageKey = 'omo.documents.saved-views.v1';
                 const omoDocumentsSessionViewsStorageKey = 'omo.documents.session-views.v1';
@@ -1302,8 +1307,11 @@ if (!is_string($documentsPayload)) {
                 };
 
                 const omoDocumentsGetPreferencesContextKey = function (panel) {
-                    return String(panel && panel.getAttribute('data-omo-document-oid') || '0')
+                    const regularKey = String(panel && panel.getAttribute('data-omo-document-oid') || '0')
                         + ':' + String(panel && panel.getAttribute('data-omo-document-cid') || '0');
+                    return typeof window.omoApplicationViewPreferencesGetStorageContextKey === 'function'
+                        ? window.omoApplicationViewPreferencesGetStorageContextKey(panel, regularKey)
+                        : regularKey;
                 };
 
                 const omoDocumentsCreatePreferences = function (preferences) {
@@ -3695,7 +3703,7 @@ if (!is_string($documentsPayload)) {
                             }
 
                             window.omoHandleDocumentsRouteChange = function (detail) {
-                                const activePanel = document.getElementById('omo-documents-root');
+                                const activePanel = window.omoDocumentsFindRoot();
                                 if (!(activePanel instanceof Element) || !document.body.contains(activePanel)) {
                                     return false;
                                 }
@@ -3739,7 +3747,7 @@ if (!is_string($documentsPayload)) {
                     return panelCandidate.closest('.omo-documents') || panelCandidate;
                 }
 
-                return document.getElementById('omo-documents-root');
+                return window.omoDocumentsFindRoot();
             };
 
             const getCurrentDocumentsScope = function (panel) {
@@ -3913,7 +3921,7 @@ if (!is_string($documentsPayload)) {
                 };
 
             window.omoInitDocumentsScopePanels();
-            const activeDocumentsPanel = document.getElementById('omo-documents-root');
+            const activeDocumentsPanel = window.omoDocumentsFindRoot();
             if (activeDocumentsPanel) {
                 const initialPreferences = typeof window.omoDocumentsReadViewPreferences === 'function'
                     ? window.omoDocumentsReadViewPreferences(activeDocumentsPanel)
@@ -3941,7 +3949,7 @@ if (!is_string($documentsPayload)) {
         <script>
         (function () {
             function getDocumentsRoot() {
-                return document.getElementById('omo-documents-root');
+                return window.omoDocumentsFindRoot();
             }
 
             function buildDocumentsPanelUrl(root) {
@@ -4444,6 +4452,7 @@ if (!is_string($documentsPayload)) {
                             : 'Préparation du PV avant la réunion.')
                         : '',
                     variant: 'top-sheet',
+                    hideHeader: true,
                     persistKey: 'omo-pv-preparation-' + String(documentId),
                     keepMountedOnClose: true
                 }) === true;

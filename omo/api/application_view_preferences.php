@@ -2,6 +2,8 @@
 require_once __DIR__ . '/bootstrap.php';
 
 use dbObject\ApplicationSetting;
+use dbObject\Document;
+use dbObject\DocumentApplicationTab;
 use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\UserHolon;
@@ -27,6 +29,7 @@ $currentUserId = (int)commonGetCurrentUserId();
 $applicationKey = UserHolon::normalizeApplicationViewKey($payload['application'] ?? '');
 $organizationId = (int)($payload['organizationId'] ?? 0);
 $holonId = (int)($payload['holonId'] ?? 0);
+$pvApplicationTabId = (int)($payload['pvApplicationTabId'] ?? 0);
 $scope = trim((string)($payload['scope'] ?? ''));
 $operation = trim((string)($payload['operation'] ?? 'save'));
 $csrfToken = trim((string)($payload['csrfToken'] ?? ''));
@@ -71,6 +74,33 @@ $isSiteAdmin = function_exists('commonUserHasSiteAdminOverride') && commonUserHa
 $typeId = $holon instanceof Holon ? (int)$holon->get('IDtypeholon') : 0;
 $templateKey = $holon instanceof Holon ? $holon->getDashboardDirectTemplateLayoutKey() : '';
 $view = UserHolon::normalizeApplicationView($payload['view'] ?? array());
+
+if ($pvApplicationTabId > 0) {
+    $tab = new DocumentApplicationTab();
+    $document = new Document();
+    if (
+        $scope !== 'personal'
+        || !$tab->load($pvApplicationTabId)
+        || !$tab->matchesApplicationKey($applicationKey)
+        || !$document->load((int)$tab->get('IDdocument'))
+        || (int)$document->get('IDorganization') !== $organizationId
+        || !$document->canUserManagePvDocument($currentUserId)
+    ) {
+        $respond(false, 'Configuration de reunion indisponible.', array(), 403);
+    }
+
+    $result = $tab->saveView($operation === 'clear' ? array() : $view);
+    if (!is_array($result) || empty($result['status'])) {
+        $respond(false, 'Impossible d enregistrer cette vue de reunion.', array(), 422);
+    }
+
+    $respond(true, '', array(
+        'scope' => $scope,
+        'operation' => $operation,
+        'view' => $operation === 'clear' ? array() : $view,
+        'pvApplicationTabId' => $pvApplicationTabId,
+    ));
+}
 
 if (
     $scope === 'personal'

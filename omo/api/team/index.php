@@ -1708,7 +1708,7 @@ $teamJsTranslations = [
     'mapSummaryOther' => omoTeamT('team.map.summary_other', ['count' => '{count}'], $lang, $sourceLang),
 ];
 ?>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
 <script>
 var omoTeamSavedViewsStorageKey = 'omo.team.saved-views.v2';
 var omoTeamLegacySavedViewsStorageKey = 'omo.team.saved-views.v1';
@@ -1724,6 +1724,12 @@ var omoTeamCurrentView = 'cards';
 var omoTeamCurrentSearch = '';
 var omoTeamPendingFilters = null;
 var omoTeamFilterPanelOpen = false;
+
+function omoTeamGetRoot() {
+    return typeof window.omoFindApplicationRoot === 'function'
+        ? window.omoFindApplicationRoot('omo-team-root')
+        : document.getElementById('omo-team-root');
+}
 
 function omoTeamEscapeHtml(value) {
     return String(value == null ? '' : value)
@@ -1765,9 +1771,12 @@ function omoTeamNormalizeView(viewValue) {
 }
 
 function omoTeamGetContextKey() {
-    const root = document.getElementById('omo-team-root');
-    return String(root ? (root.getAttribute('data-team-oid') || '0') : '0')
+    const root = omoTeamGetRoot();
+    const regularKey = String(root ? (root.getAttribute('data-team-oid') || '0') : '0')
         + ':' + String(root ? (root.getAttribute('data-team-cid') || '0') : '0');
+    return typeof window.omoApplicationViewPreferencesGetStorageContextKey === 'function'
+        ? window.omoApplicationViewPreferencesGetStorageContextKey(root, regularKey)
+        : regularKey;
 }
 
 function omoTeamCreateViewPreferences(filters) {
@@ -1888,7 +1897,7 @@ function omoTeamClearAllSessionViewPreferences() {
 }
 
 function omoTeamBuildScopeUrl(scopeValue) {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     const organizationId = Number(root ? (root.getAttribute('data-team-oid') || 0) : 0);
     const holonId = Number(root ? (root.getAttribute('data-team-cid') || 0) : 0);
     const rootHolonId = Number(root ? (root.getAttribute('data-team-root-hid') || 0) : 0);
@@ -1915,7 +1924,7 @@ function omoTeamBuildScopeUrl(scopeValue) {
 }
 
 function omoTeamSetScopeLoadingState(targetScope, isLoading) {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     if (!root) {
         return;
     }
@@ -1951,7 +1960,7 @@ function omoTeamSetScopeLoadingState(targetScope, isLoading) {
 }
 
 function omoTeamChangeScope(scopeValue) {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     const currentScope = omoTeamNormalizeScope(root ? root.getAttribute('data-team-scope') : omoTeamInitialScope);
     const targetScope = omoTeamNormalizeScope(scopeValue);
 
@@ -2005,7 +2014,7 @@ window.omoToggleTeamScope = function (button, event) {
 
 function omoTeamApplyView(viewName) {
     const normalizedView = omoTeamNormalizeView(viewName);
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     omoTeamCurrentView = normalizedView;
     if (root) {
         root.setAttribute('data-team-view', normalizedView);
@@ -2050,7 +2059,7 @@ function omoTeamMemberMatchesSearch(member, query) {
 }
 
 function omoTeamUpdateMapSummary(count) {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     const summary = root ? root.querySelector('[data-team-map-summary]') : null;
     if (!summary) {
         return;
@@ -2060,7 +2069,7 @@ function omoTeamUpdateMapSummary(count) {
 }
 
 function omoTeamApplyQuickSearch() {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     if (!root) {
         return;
     }
@@ -2104,7 +2113,7 @@ function omoTeamApplyQuickSearch() {
 }
 
 function omoTeamGetActiveFilters() {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     return {
         scope: omoTeamNormalizeScope(root ? root.getAttribute('data-team-scope') : omoTeamInitialScope),
         view: omoTeamNormalizeView(omoTeamCurrentView)
@@ -2112,7 +2121,7 @@ function omoTeamGetActiveFilters() {
 }
 
 function omoTeamNormalizeFilters(filters) {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     const active = omoTeamGetActiveFilters();
     let scope = omoTeamNormalizeScope(filters && filters.scope);
     if (!root || !root.querySelector('[data-team-filter-scope="' + scope + '"]')) {
@@ -2125,7 +2134,7 @@ function omoTeamNormalizeFilters(filters) {
 }
 
 function omoTeamSyncFilterChoices() {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     const panel = root ? root.querySelector('[data-team-filter-panel]') : null;
     if (!panel || !omoTeamPendingFilters) {
         return;
@@ -2144,7 +2153,7 @@ function omoTeamSyncFilterChoices() {
 }
 
 function omoTeamHandleFilterOutsidePointerDown(event) {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     const control = root ? root.querySelector('[data-team-filter-control]') : null;
     if (control && control.contains(event.target)) {
         return;
@@ -2163,7 +2172,7 @@ function omoTeamApplyFilters(filters, active) {
 }
 
 function omoTeamCloseFilterMoreMenu() {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     if (!root) {
         return;
     }
@@ -2181,7 +2190,7 @@ function omoTeamCloseFilterMoreMenu() {
 }
 
 function omoTeamOpenFilterPanel() {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     const panel = root ? root.querySelector('[data-team-filter-panel]') : null;
     if (!root || !panel || omoTeamFilterPanelOpen) {
         return;
@@ -2198,7 +2207,7 @@ function omoTeamOpenFilterPanel() {
 }
 
 function omoTeamCloseFilterPanel(applyChanges, saveView) {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     const panel = root ? root.querySelector('[data-team-filter-panel]') : null;
     if (!root || !omoTeamFilterPanelOpen) {
         return;
@@ -2275,7 +2284,7 @@ function omoTeamApplyFilterMoreAction(action) {
 }
 
 function omoTeamRevealRoot() {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     if (!root) {
         return;
     }
@@ -2284,7 +2293,7 @@ function omoTeamRevealRoot() {
 }
 
 function omoTeamInitializeFilters() {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     if (!root) {
         return;
     }
@@ -2442,7 +2451,7 @@ function omoTeamEnsureMapReady() {
 }
 
 $(function () {
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     if (!root) {
         return;
     }
@@ -2644,7 +2653,7 @@ $(document)
     event.stopPropagation();
 
     const userId = Number($(this).data('user-id') || 0);
-    const root = document.getElementById('omo-team-root');
+    const root = omoTeamGetRoot();
     const holonId = Number(root ? root.getAttribute('data-team-cid') : 0);
     if (!userId || !holonId || typeof window.commonTopbarOpenModal !== 'function') {
         return;
@@ -2678,7 +2687,7 @@ $(document)
     const organizationId = <?= (int)$organizationId ?>;
     const currentHolonId = <?= $hasStructureContext ? (int)$currentHolon->getId() : 0 ?>;
     const rootHolonId = <?= $hasStructureContext ? (int)$rootHolon->getId() : 0 ?>;
-    const teamRoot = document.getElementById('omo-team-root');
+    const teamRoot = omoTeamGetRoot();
     const currentTeamScope = omoTeamNormalizeScope(teamRoot ? teamRoot.getAttribute('data-team-scope') : omoTeamInitialScope);
     const contextLabel = <?= json_encode($currentHolonTemplateLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const displayName = $.trim(card.find('.omo-team-card__identity h3').first().text()) || omoTeamText.thisMember;

@@ -1688,10 +1688,12 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             <div class="omo-overlay-drawer__body" data-omo-calendar-editor-body></div>
         </div>
     </div>
-    <script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
+    <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
     <script>
     (function () {
-        var root = document.getElementById('omo-calendar-root');
+        var root = typeof window.omoFindApplicationRoot === 'function'
+            ? window.omoFindApplicationRoot('omo-calendar-root')
+            : document.getElementById('omo-calendar-root');
         if (!root || root.dataset.omoCalendarReady === '1') {
             return;
         }
@@ -1980,8 +1982,11 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         }
 
         function getCalendarPreferencesContextKey() {
-            return String(root.getAttribute('data-omo-calendar-oid') || '0')
+            var regularKey = String(root.getAttribute('data-omo-calendar-oid') || '0')
                 + ':' + String(root.getAttribute('data-omo-calendar-cid') || '0');
+            return typeof window.omoApplicationViewPreferencesGetStorageContextKey === 'function'
+                ? window.omoApplicationViewPreferencesGetStorageContextKey(root, regularKey)
+                : regularKey;
         }
 
         function createCalendarPreferences(preferences) {
@@ -3621,6 +3626,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                             title: targetTitle,
                             description: 'Edition du PV.',
                             variant: 'top-sheet',
+                            hideHeader: true,
                             persistKey: 'omo-pv-preparation-calendar-' + targetPvEditorUrl,
                             keepMountedOnClose: true
                         });

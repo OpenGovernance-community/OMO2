@@ -79,6 +79,7 @@ if (!$accessGranted) {
 
 $event = $document->getAssociatedEvent();
 $hasAssociatedEvent = $event instanceof \dbObject\Event;
+$pvApplicationContextHolonId = $document->getPvContextHolonId();
 $resourcePickerInitialHolonId = (int)$document->get('IDholon');
 if ($resourcePickerInitialHolonId <= 0 && $hasAssociatedEvent) {
     $resourcePickerInitialHolonId = (int)$event->get('IDholon');
@@ -124,6 +125,13 @@ $pvCreatorLabel = $pvCreatorUserId > 0
     : '';
 $isPvEditor = !$isPublicParticipation && $document->isPvEditor($currentUserId);
 $canManagePvDocument = !$isPublicParticipation && $document->canUserManagePvDocument($currentUserId);
+$pvApplicationTabsCsrf = '';
+if (!$isPublicParticipation) {
+    if (empty($_SESSION['omo_pv_application_tabs_csrf'])) {
+        $_SESSION['omo_pv_application_tabs_csrf'] = bin2hex(random_bytes(32));
+    }
+    $pvApplicationTabsCsrf = (string)$_SESSION['omo_pv_application_tabs_csrf'];
+}
 $isPvReview = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
 $canEditPvDocumentHeader = $canManagePvDocument && !$isPvReview;
 $canPassPvEditor = $isPvEditor && !$isPvReview;
@@ -229,6 +237,51 @@ $attendancePayload = $showAttendance
         ? omoDocumentsPvEditorBuildPublicAttendancePayloadFromDocument($document, $organizationId)
         : omoDocumentsPvEditorBuildAttendancePayloadFromDocument($document, $organizationId))
     : null;
+
+$pvApplicationCatalog = [];
+$pvApplicationTabsPayload = [];
+if (!$isPublicParticipation && $hasOrganization) {
+    foreach ($organization->getApplications($currentUserId) as $application) {
+        if (!($application instanceof \dbObject\Application) || (int)$application->getId() <= 0) {
+            continue;
+        }
+
+        $applicationUrl = trim((string)$application->getResolvedUrl());
+        if ($applicationUrl === '') {
+            continue;
+        }
+
+        $applicationIcon = trim((string)$application->get('icon'));
+        if ($applicationIcon !== '' && $applicationIcon[0] !== '/' && preg_match('/^[a-z][a-z0-9+.-]*:/i', $applicationIcon) !== 1) {
+            $applicationIcon = '/omo/' . ltrim($applicationIcon, '/');
+        }
+
+        $pvApplicationCatalog[(int)$application->getId()] = [
+            'applicationId' => (int)$application->getId(),
+            'label' => trim((string)$application->get('label')),
+            'icon' => $applicationIcon,
+            'url' => $applicationUrl,
+        ];
+    }
+
+    foreach ($document->getPvApplicationTabs(true) as $applicationTab) {
+        if (!($applicationTab instanceof \dbObject\DocumentApplicationTab)) {
+            continue;
+        }
+        $applicationId = (int)$applicationTab->get('IDapplication');
+        if (!isset($pvApplicationCatalog[$applicationId])) {
+            continue;
+        }
+
+        $pvApplicationTabsPayload[] = array_merge(
+            $pvApplicationCatalog[$applicationId],
+            ['tabId' => (int)$applicationTab->getId()]
+        );
+    }
+}
+$pvApplicationCatalog = array_values($pvApplicationCatalog);
+$showPvApplicationTabs = !$isPublicParticipation
+    && ($canManagePvDocument || count($pvApplicationTabsPayload) > 0);
 
 if ($hasDocumentsApplication) {
     $embeddableDocuments = new \dbObject\ArrayDocument();
@@ -472,13 +525,17 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 <link rel="stylesheet" href="/common/choice/change-details.css?v=20260821-pv-review-access-2">
 <?php endif; ?>
 <div
-    class="omo-pv-editor"
+    class="omo-pv-editor<?= $showPvApplicationTabs ? ' omo-pv-editor--has-application-tabs' : '' ?>"
     data-omo-pv-editor-root="1"
     data-omo-pv-editor-document-id="<?= (int)$document->getId() ?>"
     data-omo-pv-editor-oid="<?= (int)$organizationId ?>"
     data-omo-pv-editor-user-id="<?= (int)$currentUserId ?>"
     data-omo-pv-editor-token="<?= $escape($editorToken) ?>"
     data-omo-pv-editor-action-url="<?= $escape('/omo/api/documents/pv/action.php') ?>"
+    data-omo-pv-application-tabs-action-url="<?= $escape('/omo/api/documents/pv/application_tabs.php') ?>"
+    data-omo-pv-application-tabs-csrf="<?= $escape($pvApplicationTabsCsrf) ?>"
+    data-omo-pv-application-tabs-manage="<?= $canManagePvDocument ? '1' : '0' ?>"
+    data-omo-pv-application-tabs-cid="<?= (int)$pvApplicationContextHolonId ?>"
 >
     <style>
     .omo-pv-editor {
@@ -491,6 +548,170 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         max-height: 100%;
           background: linear-gradient(180deg, color-mix(in srgb, var(--color-surface-alt, #f8fafc) 84%, white) 0%, var(--color-bg, #eef2ff) 100%);
         overflow: hidden;
+    }
+
+    .omo-pv-editor--has-application-tabs {
+        grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .omo-pv-editor__application-tabs {
+        --param-tabs-tab-gap: 18px;
+        --param-tabs-tab-color: var(--color-text-light, #64748b);
+        --param-tabs-tab-background: color-mix(in srgb, var(--color-surface, #fff) 94%, var(--color-primary, #2563eb) 6%);
+        --param-tabs-tab-border: color-mix(in srgb, var(--color-border, #d1d5db) 72%, transparent);
+        --param-tabs-tab-background-hover: color-mix(in srgb, var(--color-surface, #fff) 82%, var(--color-primary, #2563eb) 18%);
+        --param-tabs-tab-border-hover: color-mix(in srgb, var(--color-primary, #2563eb) 54%, var(--color-border, #d1d5db));
+        --param-tabs-tab-background-active: color-mix(in srgb, var(--color-surface, #fff) 72%, var(--color-primary, #2563eb) 28%);
+        --param-tabs-tab-border-active: color-mix(in srgb, var(--color-primary, #2563eb) 68%, var(--color-border, #d1d5db));
+        --param-tabs-tab-color-active: var(--color-text, #1f2937);
+        grid-column: 1 / -1;
+        grid-row: 1;
+        z-index: 5;
+        flex-wrap: nowrap;
+        min-width: 0;
+        padding-top: 7px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        background: color-mix(in srgb, var(--color-surface, #fff) 92%, var(--color-bg, #eef2ff));
+    }
+
+    .omo-pv-editor__application-tabs > :first-child {
+        margin-left: auto;
+    }
+
+    .omo-pv-editor__application-tabs > * {
+        flex: 0 0 auto;
+    }
+
+    .omo-pv-editor__application-tabs > * + *::before {
+        content: '';
+        position: absolute;
+        top: 8px;
+        bottom: 8px;
+        left: -10px;
+        width: 1px;
+        background: color-mix(in srgb, var(--color-border, #d1d5db) 78%, transparent);
+        pointer-events: none;
+    }
+
+    .omo-pv-editor__application-tab-item {
+        position: relative;
+        display: inline-flex;
+        min-width: 0;
+    }
+
+    .omo-pv-editor__application-tab {
+        gap: 7px;
+        max-width: 210px;
+        box-shadow: 0 3px 10px -9px color-mix(in srgb, var(--color-primary, #2563eb) 65%, transparent);
+    }
+
+    .omo-pv-editor__application-tab:hover {
+        box-shadow: 0 6px 16px -10px color-mix(in srgb, var(--color-primary, #2563eb) 76%, transparent);
+    }
+
+    .omo-pv-editor__application-tab.is-active {
+        box-shadow:
+            inset 0 3px 0 var(--color-primary, #2563eb),
+            0 7px 18px -12px color-mix(in srgb, var(--color-primary, #2563eb) 85%, transparent);
+    }
+
+    .omo-pv-editor__application-tab-icon {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 20px;
+        object-fit: contain;
+    }
+
+    .omo-pv-editor__application-tab-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .omo-pv-editor__application-tab-add {
+        position: relative;
+        align-self: center;
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        min-height: 36px;
+        margin: 0 8px 4px 0;
+        padding: 0;
+        border-radius: 999px;
+        font-size: 1.35rem;
+        line-height: 1;
+    }
+
+    .omo-pv-editor--has-application-tabs > .omo-pv-editor__sidebar,
+    .omo-pv-editor--has-application-tabs > .omo-pv-editor__resizer,
+    .omo-pv-editor--has-application-tabs > .omo-pv-editor__main,
+    .omo-pv-editor--has-application-tabs > .omo-pv-editor__application-workspace {
+        grid-row: 2;
+    }
+
+    .omo-pv-editor__application-workspace {
+        grid-column: 1 / -1;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .omo-pv-editor__application-workspace[hidden],
+    .omo-pv-editor__application-panel[hidden] {
+        display: none !important;
+    }
+
+    .omo-pv-editor__application-panel,
+    .omo-pv-editor__application-panel > .omo-panel-view {
+        width: 100%;
+        min-width: 0;
+        min-height: 0;
+        height: 100%;
+    }
+
+    .omo-pv-editor__application-panel {
+        overflow: hidden;
+    }
+
+    .omo-pv-editor__application-picker {
+        display: grid;
+        gap: 16px;
+    }
+
+    .omo-pv-editor__application-picker-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 10px;
+        max-height: min(52vh, 520px);
+        overflow: auto;
+    }
+
+    .omo-pv-editor__application-picker-item {
+        display: grid;
+        grid-template-columns: auto 34px minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+        padding: 12px;
+        cursor: pointer;
+    }
+
+    .omo-pv-editor__application-picker-item:has(input:checked) {
+        border-color: color-mix(in srgb, var(--color-primary, #2563eb) 54%, var(--color-border, #d1d5db));
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface, #fff));
+    }
+
+    .omo-pv-editor__application-picker-icon {
+        width: 30px;
+        height: 30px;
+        object-fit: contain;
+    }
+
+    .omo-pv-editor__application-picker-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
     }
 
     .omo-pv-editor__page-head {
@@ -2167,6 +2388,22 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             display: none;
         }
 
+        .omo-pv-editor--has-application-tabs {
+            grid-template-rows: auto auto auto;
+        }
+
+        .omo-pv-editor--has-application-tabs > .omo-pv-editor__sidebar {
+            grid-row: 2;
+        }
+
+        .omo-pv-editor--has-application-tabs > .omo-pv-editor__main {
+            grid-row: 3;
+        }
+
+        .omo-pv-editor--has-application-tabs > .omo-pv-editor__application-workspace {
+            grid-row: 2 / 4;
+        }
+
         .omo-pv-editor__editable-grid {
             grid-template-columns: 1fr;
         }
@@ -2392,6 +2629,26 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         font-size: 0.78rem;
     }
     </style>
+
+    <?php if ($showPvApplicationTabs): ?>
+    <nav class="generic-tabs generic-tabs__list omo-pv-editor__application-tabs" data-omo-pv-application-tabs role="tablist" aria-label="<?= $escape((string)$uiText['applicationPickerTitle']) ?>">
+        <button type="button" class="generic-tabs__tab omo-pv-editor__application-tab is-active" data-omo-pv-application-tab="0" role="tab" aria-selected="true">
+            <img class="omo-pv-editor__application-tab-icon black-icon" src="/omo/assets/images/documents/pv.png" alt="" aria-hidden="true">
+            <span class="omo-pv-editor__application-tab-label"><?= $escape((string)$uiText['applicationEditorTab']) ?></span>
+        </button>
+        <?php foreach ($pvApplicationTabsPayload as $applicationTabPayload): ?>
+            <span class="omo-pv-editor__application-tab-item" data-omo-pv-application-tab-item="<?= (int)$applicationTabPayload['tabId'] ?>">
+                <button type="button" class="generic-tabs__tab omo-pv-editor__application-tab" data-omo-pv-application-tab="<?= (int)$applicationTabPayload['tabId'] ?>" role="tab" aria-selected="false">
+                    <?php if ((string)$applicationTabPayload['icon'] !== ''): ?><img class="omo-pv-editor__application-tab-icon black-icon" src="<?= $escape((string)$applicationTabPayload['icon']) ?>" alt="" aria-hidden="true"><?php endif; ?>
+                    <span class="omo-pv-editor__application-tab-label"><?= $escape((string)$applicationTabPayload['label']) ?></span>
+                </button>
+            </span>
+        <?php endforeach; ?>
+        <?php if ($canManagePvDocument): ?>
+            <button type="button" class="generic-action-button generic-action-button--main generic-action-button--icon-only omo-pv-editor__application-tab-add" data-omo-pv-application-tab-add aria-label="<?= $escape((string)$uiText['applicationAdd']) ?>" title="<?= $escape((string)$uiText['applicationAdd']) ?>">+</button>
+        <?php endif; ?>
+    </nav>
+    <?php endif; ?>
 
     <aside class="omo-pv-editor__sidebar">
         <section class="omo-pv-editor__panel generic-section omo-pv-editor__agenda-panel">
@@ -2653,6 +2910,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             <?= count($pointCards) > 0 ? implode('', $pointCards) : '' ?>
         </div>
     </section>
+    <?php if ($showPvApplicationTabs): ?>
+        <section class="omo-pv-editor__application-workspace" data-omo-pv-application-workspace hidden></section>
+    <?php endif; ?>
 </div>
 
 <?php if ($isPvReviewDiscussion): ?>
@@ -2704,6 +2964,23 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     const documentMetaStatus = root.querySelector('[data-omo-pv-document-meta-status]');
     const documentTitleDisplay = root.querySelector('[data-omo-pv-document-title-display]');
     const documentDescriptionDisplay = root.querySelector('[data-omo-pv-document-description-display]');
+    const applicationTabsNav = root.querySelector('[data-omo-pv-application-tabs]');
+    const applicationWorkspace = root.querySelector('[data-omo-pv-application-workspace]');
+    const applicationTabsActionUrl = String(root.getAttribute('data-omo-pv-application-tabs-action-url') || '').trim();
+    const applicationTabsCsrf = String(root.getAttribute('data-omo-pv-application-tabs-csrf') || '').trim();
+    const canManageApplicationTabs = root.getAttribute('data-omo-pv-application-tabs-manage') === '1';
+    const applicationContextHolonId = Number(root.getAttribute('data-omo-pv-application-tabs-cid') || 0);
+    const pvEditorSurfaces = [root.querySelector('.omo-pv-editor__sidebar'), root.querySelector('.omo-pv-editor__resizer'), mainPanel].filter(Boolean);
+    const initialApplicationCatalog = <?= json_encode($pvApplicationCatalog, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const initialApplicationTabs = <?= json_encode($pvApplicationTabsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    const applicationTabsUi = <?= json_encode([
+        'pickerTitle' => (string)$uiText['applicationPickerTitle'],
+        'pickerDescription' => (string)$uiText['applicationPickerDescription'],
+        'pickerEmpty' => (string)$uiText['applicationPickerEmpty'],
+        'pickerSubmit' => (string)$uiText['applicationPickerSubmit'],
+        'pickerCancel' => (string)$uiText['applicationPickerCancel'],
+        'error' => (string)$uiText['applicationError'],
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const initialPointPayloads = <?= json_encode($pointPayloads, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const initialDocumentPayload = <?= json_encode([
         'pvStage' => $pvStage,
@@ -2970,6 +3247,326 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    }
+
+    const applicationCatalogById = new Map(initialApplicationCatalog.map(function (application) {
+        return [Number(application.applicationId || 0), application];
+    }));
+    const applicationTabsById = new Map(initialApplicationTabs.map(function (applicationTab) {
+        return [Number(applicationTab.tabId || 0), applicationTab];
+    }));
+    let activeApplicationTabId = 0;
+
+    function buildPvApplicationUrl(applicationTab) {
+        const sourceUrl = String(applicationTab && applicationTab.url || '').trim();
+        if (sourceUrl === '') {
+            return '';
+        }
+
+        const resolvedUrl = typeof window.omoResolveAppUrl === 'function'
+            ? window.omoResolveAppUrl(sourceUrl)
+            : sourceUrl;
+        const url = new URL(resolvedUrl, window.location.origin);
+        url.searchParams.set('oid', String(organizationId));
+        if (applicationContextHolonId > 0) {
+            url.searchParams.set('cid', String(applicationContextHolonId));
+        }
+        url.searchParams.set('pv_application_tab_id', String(Number(applicationTab.tabId || 0)));
+        return url.origin === window.location.origin
+            ? url.pathname + url.search + url.hash
+            : url.toString();
+    }
+
+    function setActiveApplicationTab(tabId) {
+        const normalizedTabId = Number(tabId || 0);
+        const applicationTab = applicationTabsById.get(normalizedTabId) || null;
+        if (normalizedTabId > 0 && !applicationTab) {
+            return;
+        }
+
+        activeApplicationTabId = normalizedTabId;
+        if (applicationTabsNav) {
+            applicationTabsNav.querySelectorAll('[data-omo-pv-application-tab]').forEach(function (button) {
+                const isActive = Number(button.getAttribute('data-omo-pv-application-tab') || 0) === normalizedTabId;
+                button.classList.toggle('is-active', isActive);
+                button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+        }
+
+        pvEditorSurfaces.forEach(function (surface) {
+            surface.hidden = normalizedTabId > 0;
+        });
+        if (!applicationWorkspace) {
+            return;
+        }
+
+        applicationWorkspace.hidden = normalizedTabId === 0;
+        applicationWorkspace.querySelectorAll('[data-omo-pv-application-panel]').forEach(function (panel) {
+            panel.hidden = Number(panel.getAttribute('data-omo-pv-application-panel') || 0) !== normalizedTabId;
+        });
+        if (normalizedTabId === 0) {
+            return;
+        }
+
+        let panel = applicationWorkspace.querySelector('[data-omo-pv-application-panel="' + normalizedTabId + '"]');
+        if (!panel) {
+            panel = document.createElement('section');
+            panel.className = 'omo-pv-editor__application-panel';
+            panel.setAttribute('data-omo-pv-application-panel', String(normalizedTabId));
+            applicationWorkspace.appendChild(panel);
+        }
+        panel.hidden = false;
+        if (panel.getAttribute('data-omo-pv-application-loaded') === '1') {
+            return;
+        }
+
+        const applicationUrl = buildPvApplicationUrl(applicationTab);
+        if (applicationUrl === '' || typeof window.omoLoadContent !== 'function') {
+            panel.innerHTML = '<div class="omo-empty-state">' + escapeDocumentEmbedHtml(applicationTabsUi.error || '') + '</div>';
+            return;
+        }
+        panel.setAttribute('data-omo-pv-application-loaded', '1');
+        window.omoLoadContent(panel, applicationUrl, 'panel');
+    }
+
+    function renderPvApplicationTab(applicationTab) {
+        if (!applicationTabsNav) {
+            return;
+        }
+        const tabId = Number(applicationTab && applicationTab.tabId || 0);
+        if (tabId <= 0 || applicationTabsNav.querySelector('[data-omo-pv-application-tab="' + tabId + '"]')) {
+            return;
+        }
+
+        const item = document.createElement('span');
+        item.className = 'omo-pv-editor__application-tab-item';
+        item.setAttribute('data-omo-pv-application-tab-item', String(tabId));
+
+        const tabButton = document.createElement('button');
+        tabButton.type = 'button';
+        tabButton.className = 'generic-tabs__tab omo-pv-editor__application-tab';
+        tabButton.setAttribute('data-omo-pv-application-tab', String(tabId));
+        tabButton.setAttribute('role', 'tab');
+        tabButton.setAttribute('aria-selected', 'false');
+        if (String(applicationTab.icon || '').trim() !== '') {
+            const icon = document.createElement('img');
+            icon.className = 'omo-pv-editor__application-tab-icon black-icon';
+            icon.src = String(applicationTab.icon);
+            icon.alt = '';
+            icon.setAttribute('aria-hidden', 'true');
+            tabButton.appendChild(icon);
+        }
+        const label = document.createElement('span');
+        label.className = 'omo-pv-editor__application-tab-label';
+        label.textContent = String(applicationTab.label || '');
+        tabButton.appendChild(label);
+        item.appendChild(tabButton);
+
+        const addButtonNode = applicationTabsNav.querySelector('[data-omo-pv-application-tab-add]');
+        applicationTabsNav.insertBefore(item, addButtonNode || null);
+    }
+
+    function postPvApplicationTabAction(action, values) {
+        if (applicationTabsActionUrl === '' || applicationTabsCsrf === '') {
+            return Promise.reject(new Error(applicationTabsUi.error || 'application_tabs_unavailable'));
+        }
+        return window.fetch(applicationTabsActionUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+            body: JSON.stringify(Object.assign({
+                action: action,
+                documentId: documentId,
+                organizationId: organizationId,
+                csrfToken: applicationTabsCsrf
+            }, values || {}))
+        }).then(function (response) {
+            return response.json().catch(function () { return {}; }).then(function (payload) {
+                if (!response.ok || !payload.status) {
+                    throw new Error(payload.message || applicationTabsUi.error || 'application_tab_action_failed');
+                }
+                return payload;
+            });
+        });
+    }
+
+    function openPvApplicationPicker() {
+        if (!canManageApplicationTabs || typeof window.commonTopbarOpenModal !== 'function') {
+            return;
+        }
+
+        const existingApplicationIds = new Set(Array.from(applicationTabsById.values()).map(function (tab) {
+            return Number(tab.applicationId || 0);
+        }));
+        let itemsHtml = '';
+        initialApplicationCatalog.forEach(function (application) {
+            const applicationId = Number(application.applicationId || 0);
+            const iconHtml = String(application.icon || '').trim() !== ''
+                ? '<img class="omo-pv-editor__application-picker-icon black-icon" src="' + escapeDocumentEmbedHtml(application.icon) + '" alt="" aria-hidden="true">'
+                : '<span class="omo-pv-editor__application-picker-icon" aria-hidden="true"></span>';
+            itemsHtml += '<label class="generic-soft-panel omo-pv-editor__application-picker-item">'
+                + '<input type="checkbox" value="' + applicationId + '" data-omo-pv-application-picker-choice'
+                + (existingApplicationIds.has(applicationId) ? ' checked' : '') + '>'
+                + iconHtml
+                + '<strong>' + escapeDocumentEmbedHtml(application.label || '') + '</strong>'
+                + '</label>';
+        });
+
+        const pickerHtml = '<form class="omo-pv-editor__application-picker" data-omo-pv-application-picker>'
+            + '<p>' + escapeDocumentEmbedHtml(applicationTabsUi.pickerDescription || '') + '</p>'
+            + (itemsHtml !== ''
+                ? '<div class="omo-pv-editor__application-picker-list">' + itemsHtml + '</div>'
+                : '<div class="omo-empty-state">' + escapeDocumentEmbedHtml(applicationTabsUi.pickerEmpty || '') + '</div>')
+            + '<div class="omo-pv-editor__application-picker-actions">'
+            + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-application-picker-cancel>' + escapeDocumentEmbedHtml(applicationTabsUi.pickerCancel || '') + '</button>'
+            + (itemsHtml !== '' ? '<button type="submit" class="generic-action-button generic-action-button--main" data-omo-pv-application-picker-submit disabled>' + escapeDocumentEmbedHtml(applicationTabsUi.pickerSubmit || '') + '</button>' : '')
+            + '</div></form>';
+
+        window.commonTopbarOpenModal(applicationTabsUi.pickerTitle || '', pickerHtml, 'html');
+        const modalBody = document.getElementById('commonTopbarModalBody');
+        const form = modalBody ? modalBody.querySelector('[data-omo-pv-application-picker]') : null;
+        if (!form) {
+            return;
+        }
+        const submitButton = form.querySelector('[data-omo-pv-application-picker-submit]');
+        const getSelectedApplicationIds = function () {
+            return new Set(Array.from(form.querySelectorAll('[data-omo-pv-application-picker-choice]:checked')).map(function (input) {
+                return Number(input.value || 0);
+            }).filter(function (applicationId) {
+                return applicationId > 0;
+            }));
+        };
+        const updateSubmitState = function () {
+            if (!submitButton) {
+                return;
+            }
+            const selectedApplicationIds = getSelectedApplicationIds();
+            const currentApplicationIds = new Set(Array.from(applicationTabsById.values()).map(function (tab) {
+                return Number(tab.applicationId || 0);
+            }));
+            submitButton.disabled = selectedApplicationIds.size === currentApplicationIds.size
+                && Array.from(selectedApplicationIds).every(function (applicationId) {
+                    return currentApplicationIds.has(applicationId);
+                });
+        };
+        form.addEventListener('change', updateSubmitState);
+        const cancelButton = form.querySelector('[data-omo-pv-application-picker-cancel]');
+        if (cancelButton) {
+            cancelButton.addEventListener('click', function () {
+                window.commonTopbarCloseModal();
+            });
+        }
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const selectedApplicationIds = getSelectedApplicationIds();
+            const currentTabsByApplicationId = new Map(Array.from(applicationTabsById.values()).map(function (tab) {
+                return [Number(tab.applicationId || 0), tab];
+            }));
+            const applicationIdsToAdd = Array.from(selectedApplicationIds).filter(function (applicationId) {
+                return !currentTabsByApplicationId.has(applicationId);
+            });
+            const tabsToRemove = Array.from(currentTabsByApplicationId.values()).filter(function (tab) {
+                return !selectedApplicationIds.has(Number(tab.applicationId || 0));
+            });
+            if (applicationIdsToAdd.length === 0 && tabsToRemove.length === 0) {
+                updateSubmitState();
+                return;
+            }
+            if (submitButton) {
+                submitButton.disabled = true;
+            }
+            form.querySelectorAll('[data-omo-pv-application-picker-choice]').forEach(function (input) {
+                input.disabled = true;
+            });
+
+            const operations = applicationIdsToAdd.map(function (applicationId) {
+                return postPvApplicationTabAction('add', {applicationId: applicationId}).then(function (result) {
+                    return {type: 'add', applicationId: applicationId, result: result};
+                });
+            }).concat(tabsToRemove.map(function (applicationTab) {
+                const tabId = Number(applicationTab.tabId || 0);
+                return postPvApplicationTabAction('remove', {tabId: tabId}).then(function (result) {
+                    return {type: 'remove', applicationId: Number(applicationTab.applicationId || 0), tabId: tabId, result: result};
+                });
+            }));
+
+            Promise.allSettled(operations).then(function (results) {
+                let firstAddedTabId = 0;
+                let firstError = null;
+                results.forEach(function (operationResult) {
+                    if (operationResult.status !== 'fulfilled') {
+                        firstError = firstError || operationResult.reason;
+                        return;
+                    }
+
+                    const operation = operationResult.value;
+                    if (operation.type === 'add') {
+                        const application = applicationCatalogById.get(operation.applicationId);
+                        const tabId = Number(operation.result && operation.result.tabId || 0);
+                        if (!application || tabId <= 0) {
+                            return;
+                        }
+                        const applicationTab = Object.assign({}, application, {tabId: tabId});
+                        applicationTabsById.set(tabId, applicationTab);
+                        renderPvApplicationTab(applicationTab);
+                        if (firstAddedTabId === 0) {
+                            firstAddedTabId = tabId;
+                        }
+                        return;
+                    }
+
+                    const tabId = Number(operation.tabId || 0);
+                    if (activeApplicationTabId === tabId) {
+                        setActiveApplicationTab(0);
+                    }
+                    applicationTabsById.delete(tabId);
+                    const item = applicationTabsNav.querySelector('[data-omo-pv-application-tab-item="' + tabId + '"]');
+                    const panel = applicationWorkspace ? applicationWorkspace.querySelector('[data-omo-pv-application-panel="' + tabId + '"]') : null;
+                    if (panel && window.jQuery) {
+                        const request = window.jQuery(panel).data('omoXhr');
+                        if (request && request.readyState !== 4) {
+                            request.abort();
+                        }
+                    }
+                    if (item) item.remove();
+                    if (panel) panel.remove();
+                });
+
+                if (firstError) {
+                    form.querySelectorAll('[data-omo-pv-application-picker-choice]').forEach(function (input) {
+                        const applicationId = Number(input.value || 0);
+                        input.disabled = false;
+                        input.checked = Array.from(applicationTabsById.values()).some(function (tab) {
+                            return Number(tab.applicationId || 0) === applicationId;
+                        });
+                    });
+                    updateSubmitState();
+                    window.alert(firstError && firstError.message ? firstError.message : applicationTabsUi.error || '');
+                    return;
+                }
+
+                window.commonTopbarCloseModal();
+                if (firstAddedTabId > 0) {
+                    setActiveApplicationTab(firstAddedTabId);
+                }
+            });
+        });
+    }
+
+    if (applicationTabsNav) {
+        applicationTabsNav.addEventListener('click', function (event) {
+            if (event.target.closest('[data-omo-pv-application-tab-add]')) {
+                event.preventDefault();
+                openPvApplicationPicker();
+                return;
+            }
+
+            const tabButton = event.target.closest('[data-omo-pv-application-tab]');
+            if (tabButton) {
+                event.preventDefault();
+                setActiveApplicationTab(Number(tabButton.getAttribute('data-omo-pv-application-tab') || 0));
+            }
+        });
     }
 
     function truncateDocumentEmbedSummary(value, maximumLength, maximumSentences) {

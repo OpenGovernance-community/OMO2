@@ -1036,7 +1036,7 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
 
             $target.html(temp.innerHTML);
             omoInitMobileHeaderMenus($target.get(0));
-            omoExecuteFetchedScripts(scriptSource);
+            omoExecuteFetchedScripts(scriptSource, $target.get(0));
             omoInitMobileHeaderMenus($target.get(0));
 
             if (shouldTraceDecisionLoad || containsDecisionRoot) {
@@ -3230,6 +3230,7 @@ function omoOpenExternalPanelDrawer(options = {}) {
     const title = String(options.title || 'Edition').trim() || 'Edition';
     const description = String(options.description || '').trim();
     const variant = String(options.variant || '').trim().toLowerCase();
+    const hideHeader = options.hideHeader === true;
     const persistKey = String(options.persistKey || '').trim();
     const keepMounted = options.keepMountedOnClose === true;
     const closeRouteToken = omoNormalizeHashToken(options.closeRouteToken || '');
@@ -3264,6 +3265,7 @@ function omoOpenExternalPanelDrawer(options = {}) {
     drawer.dataset.omoExternalContentUrl = url;
     drawer.dataset.omoCloseRouteToken = closeRouteToken || '';
     drawer.classList.toggle('omo-external-panel-drawer--top-sheet', variant === 'top-sheet');
+    drawer.classList.toggle('omo-external-panel-drawer--headerless', hideHeader);
     drawer.classList.remove('is-peek');
     drawer.dataset.omoPeekState = '0';
 
@@ -5496,7 +5498,40 @@ function omoOpenSearchStatIndicatorResult(indicatorId, holonId) {
     return true;
 }
 
-function omoExecuteFetchedScripts(container) {
+function omoFindApplicationRoot(rootId) {
+    const normalizedRootId = String(rootId || '').trim();
+    if (normalizedRootId === '') {
+        return null;
+    }
+
+    const currentScript = document.currentScript;
+    const loadTarget = currentScript && currentScript.__omoLoadTarget instanceof Element
+        ? currentScript.__omoLoadTarget
+        : null;
+    if (loadTarget) {
+        if (loadTarget.id === normalizedRootId) {
+            return loadTarget;
+        }
+        const scopedRoot = loadTarget.querySelector('[id="' + CSS.escape(normalizedRootId) + '"]');
+        if (scopedRoot) {
+            return scopedRoot;
+        }
+    }
+
+    const activePvApplicationPanel = document.querySelector(
+        '[data-omo-pv-application-panel]:not([hidden])'
+    );
+    if (activePvApplicationPanel) {
+        const pvRoot = activePvApplicationPanel.querySelector('[id="' + CSS.escape(normalizedRootId) + '"]');
+        if (pvRoot) {
+            return pvRoot;
+        }
+    }
+
+    return document.getElementById(normalizedRootId);
+}
+
+function omoExecuteFetchedScripts(container, loadTarget = null) {
     if (!container) {
         return;
     }
@@ -5535,6 +5570,9 @@ function omoExecuteFetchedScripts(container) {
         if (sourceUrl !== '') {
             executableScript.async = false;
         }
+        if (loadTarget instanceof Element) {
+            executableScript.__omoLoadTarget = loadTarget;
+        }
         executableScript.text = script.textContent || '';
         document.body.appendChild(executableScript);
         document.body.removeChild(executableScript);
@@ -5560,9 +5598,26 @@ function omoReplaceFetchedPanelRoot(options = {}) {
         setLoadingState(true);
     }
 
+    let contextualUrl = url;
+    const viewPreferencesRoot = currentRoot.matches && currentRoot.matches('[data-omo-app-view-preferences]')
+        ? currentRoot
+        : (currentRoot.querySelector ? currentRoot.querySelector('[data-omo-app-view-preferences]') : null);
+    if (viewPreferencesRoot) {
+        try {
+            const viewContext = JSON.parse(viewPreferencesRoot.getAttribute('data-omo-app-view-preferences') || '{}');
+            const pvApplicationTabId = Number(viewContext && viewContext.pvApplicationTabId || 0);
+            if (Number.isInteger(pvApplicationTabId) && pvApplicationTabId > 0) {
+                const contextualUrlObject = new URL(contextualUrl, window.location.origin);
+                contextualUrlObject.searchParams.set('pv_application_tab_id', String(pvApplicationTabId));
+                contextualUrl = contextualUrlObject.pathname + contextualUrlObject.search + contextualUrlObject.hash;
+            }
+        } catch (error) {
+        }
+    }
+
     const resolvedUrl = typeof window.omoResolveAppUrl === 'function'
-        ? window.omoResolveAppUrl(url)
-        : url;
+        ? window.omoResolveAppUrl(contextualUrl)
+        : contextualUrl;
 
     return fetch(resolvedUrl, {
         credentials: 'same-origin',
@@ -5597,7 +5652,7 @@ function omoReplaceFetchedPanelRoot(options = {}) {
 
             currentRoot.parentNode.replaceChild(nextRoot, currentRoot);
             omoInitMobileHeaderMenus(nextRoot);
-            omoExecuteFetchedScripts(scriptSource);
+            omoExecuteFetchedScripts(scriptSource, nextRoot);
             omoInitMobileHeaderMenus(nextRoot);
             return nextRoot;
         })
@@ -5719,6 +5774,8 @@ window.omoOpenSearchRulesResult = omoOpenSearchRulesResult;
 window.omoRegisterSearchPopupJobState = omoRegisterSearchPopupJobState;
 window.omoOpenUserContextPopup = omoOpenUserContextPopup;
 window.omoReplaceFetchedPanelRoot = omoReplaceFetchedPanelRoot;
+window.omoFindApplicationRoot = omoFindApplicationRoot;
+window.omoLoadContent = loadContent;
 window.omoSetPanelResultsLoadingSkeleton = omoSetPanelResultsLoadingSkeleton;
 window.omoRunRuntimeMaintenance = omoRunRuntimeMaintenance;
 window.omoResolveAppUrl = omoResolveAppUrl;

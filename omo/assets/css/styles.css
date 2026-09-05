@@ -3011,6 +3011,10 @@ html[data-theme] .common-help-card p {
     max-width: none;
 }
 
+.omo-external-panel-drawer--headerless .omo-overlay-drawer__header {
+    display: none;
+}
+
 .omo-external-panel-drawer--top-sheet {
     --omo-external-panel-peek-height: 44px;
     --omo-external-panel-peek-gap: 0px;
