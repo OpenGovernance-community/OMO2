@@ -1,7 +1,9 @@
 (function (window, document) {
     'use strict';
 
-    var root = document.getElementById('omo-projects-root');
+    var root = typeof window.omoFindApplicationRoot === 'function'
+        ? window.omoFindApplicationRoot('omo-projects-root')
+        : document.getElementById('omo-projects-root');
     if (!root || root.dataset.omoProjectsReady === '1') {
         return;
     }
@@ -937,8 +939,11 @@
     }
 
     function getDisplayPreferencesContextKey() {
-        return String(root.getAttribute('data-omo-projects-oid') || '0')
+        var regularKey = String(root.getAttribute('data-omo-projects-oid') || '0')
             + ':' + String(root.getAttribute('data-omo-projects-cid') || '0');
+        return typeof window.omoApplicationViewPreferencesGetStorageContextKey === 'function'
+            ? window.omoApplicationViewPreferencesGetStorageContextKey(root, regularKey)
+            : regularKey;
     }
 
     function getDisplayPreferencesStore() {

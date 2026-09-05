@@ -89,6 +89,7 @@
                 application: context.application,
                 organizationId: context.organizationId || 0,
                 holonId: context.holonId || 0,
+                pvApplicationTabId: context.pvApplicationTabId || 0,
                 scope: scope,
                 operation: operation || 'save',
                 csrfToken: context.csrfToken,
@@ -109,6 +110,19 @@
     window.omoApplicationViewPreferencesGetPersonal = function (root) {
         var context = readContext(root);
         return context && context.personalView && typeof context.personalView === 'object' ? context.personalView : null;
+    };
+    window.omoApplicationViewPreferencesGetStorageContextKey = function (root, regularKey) {
+        var contextRoot = root;
+        if (contextRoot && !contextRoot.hasAttribute('data-omo-app-view-preferences')) {
+            contextRoot = contextRoot.closest('[data-omo-app-view-preferences]')
+                || contextRoot.querySelector('[data-omo-app-view-preferences]');
+        }
+        var context = readContext(contextRoot);
+        var tabId = Number(context && context.pvApplicationTabId || 0);
+        var revision = String(context && context.pvApplicationViewRevision || '').trim();
+        return Number.isInteger(tabId) && tabId > 0
+            ? String(regularKey || '') + ':pv:' + String(tabId) + ':' + revision
+            : String(regularKey || '');
     };
     window.omoApplicationViewPreferencesSave = save;
 

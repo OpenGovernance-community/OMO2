@@ -295,7 +295,7 @@ window.omoConfig = <?= json_encode(array(
     'shareAllowsPeopleDetail' => $shareLink->allowsPeopleDetail(),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/omo/assets/js/app.js?v=20260901-drawer-app-cache"></script>
+<script src="/omo/assets/js/app.js?v=20260905-pv-headerless"></script>
 <script src="/omo/assets/js/structure-mini-map.js"></script>
 <script>
 $(document).ready(function () {

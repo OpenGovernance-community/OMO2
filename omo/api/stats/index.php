@@ -728,10 +728,12 @@ $displayItemCount = count($statsEntries);
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
 <script src="/omo/api/stats/reference-editor.js?v=20260724-ceiling"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
 <script>
 (function () {
-    var root = document.getElementById('omo-stats-root');
+    var root = typeof window.omoFindApplicationRoot === 'function'
+        ? window.omoFindApplicationRoot('omo-stats-root')
+        : document.getElementById('omo-stats-root');
     if (!root || root.dataset.omoStatsReady === '1') {
         return;
     }
@@ -972,8 +974,11 @@ $displayItemCount = count($statsEntries);
     }
 
     function getPreferencesContextKey() {
-        return String(root.getAttribute('data-omo-stats-oid') || '0')
+        var regularKey = String(root.getAttribute('data-omo-stats-oid') || '0')
             + ':' + String(root.getAttribute('data-omo-stats-cid') || '0');
+        return typeof window.omoApplicationViewPreferencesGetStorageContextKey === 'function'
+            ? window.omoApplicationViewPreferencesGetStorageContextKey(root, regularKey)
+            : regularKey;
     }
 
     function createStoredFilters(filters) {
