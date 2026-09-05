@@ -9,21 +9,23 @@ use dbObject\Organization;
 $sourceLang = [
     'documents.pv_invitations.denied' => ['text' => 'Vous ne pouvez pas envoyer les invitations de ce PV.', 'context' => 'Error shown when the current user cannot send PV invitations.'],
     'documents.pv_invitations.title' => ['text' => 'Envoyer les invitations', 'context' => 'Title of the PV invitation sending popup.'],
-    'documents.pv_invitations.intro' => ['text' => 'Le lien permet de suivre le contenu de la reunion, y compris les mises a jour des points tant que le PV n est pas valide.', 'context' => 'Explanation shown above the PV invitation email editor.'],
-    'documents.pv_invitations.no_recipient' => ['text' => 'Aucun invite ne possede une adresse e-mail valide.', 'context' => 'Empty state when no PV invitation email recipient can be found.'],
-    'documents.pv_invitations.recipient_count' => ['text' => '{count} destinataire(s) recevront un lien public vers la reunion.', 'context' => 'Recipient count shown in the PV invitation email editor.'],
+    'documents.pv_invitations.intro' => ['text' => 'Le lien ouvre le PV en direct. Chaque invité peut ajouter et modifier ses propres points tant que le PV n’est pas validé.', 'context' => 'Explanation shown above the PV invitation email editor.'],
+    'documents.pv_invitations.no_recipient' => ['text' => 'Aucun invité ne possède une adresse e-mail valide.', 'context' => 'Empty state when no PV invitation email recipient can be found.'],
+    'documents.pv_invitations.recipient_count' => ['one' => '{count} destinataire recevra un lien individuel vers la réunion.', 'other' => '{count} destinataires recevront un lien individuel vers la réunion.', 'context' => 'Recipient count shown in the PV invitation email editor.'],
     'documents.pv_invitations.message' => ['text' => 'Texte du message', 'context' => 'Label for the customizable PV invitation email message.'],
     'documents.pv_invitations.send' => ['text' => 'Envoyer les invitations', 'context' => 'Submit button for sending PV invitation emails.'],
     'documents.pv_invitations.message_required' => ['text' => 'Le texte du message est obligatoire.', 'context' => 'Error returned when the PV invitation email message is empty.'],
-    'documents.pv_invitations.share_error' => ['text' => 'Le lien public de la reunion n a pas pu etre cree. Aucun e-mail n a ete envoye.', 'context' => 'Error returned when the public PV share link cannot be created before invitation emails are sent.'],
-    'documents.pv_invitations.send_error' => ['text' => 'Aucune invitation n a pu etre envoyee.', 'context' => 'Error returned when every PV invitation email failed.'],
-    'documents.pv_invitations.send_result' => ['text' => '{count} invitation(s) envoyee(s).', 'context' => 'Success message after sending one or more PV invitation emails.'],
-    'documents.pv_invitations.send_partial' => ['text' => '{count} envoi(s) ont echoue.', 'context' => 'Partial failure message after sending PV invitation emails.'],
-    'documents.pv_invitations.default_message' => ['text' => "Bonjour,\n\nVous etes invite a participer a la reunion \"{title}\".\n\nUtilisez le lien ci-dessous pour suivre le PV en direct.\n\nA bientot,\n{organization}", 'context' => 'Default body of the PV invitation email.'],
-    'documents.pv_invitations.subject' => ['text' => 'Invitation a la reunion : {title}', 'context' => 'Subject of the PV invitation email.'],
-    'documents.pv_invitations.open' => ['text' => 'Ouvrir la reunion', 'context' => 'Call to action in the PV invitation email.'],
-    'documents.pv_invitations.footer' => ['text' => 'Cette invitation a ete envoyee depuis {organization}.', 'context' => 'Footer of the PV invitation email.'],
-    'documents.pv_invitations.network_error' => ['text' => 'Impossible d envoyer les invitations pour le moment.', 'context' => 'Browser error shown when sending PV invitation emails fails.'],
+    'documents.pv_invitations.share_error' => ['text' => 'Le lien public de la réunion n’a pas pu être créé. Aucun e-mail n’a été envoyé.', 'context' => 'Error returned when the public PV share link cannot be created before invitation emails are sent.'],
+    'documents.pv_invitations.send_error' => ['text' => 'Aucune invitation n’a pu être envoyée.', 'context' => 'Error returned when every PV invitation email failed.'],
+    'documents.pv_invitations.send_result' => ['one' => '{count} invitation envoyée.', 'other' => '{count} invitations envoyées.', 'context' => 'Success message after sending one or more PV invitation emails.'],
+    'documents.pv_invitations.send_partial' => ['one' => '{count} envoi a échoué.', 'other' => '{count} envois ont échoué.', 'context' => 'Partial failure message after sending PV invitation emails.'],
+    'documents.pv_invitations.default_message' => ['text' => "Bonjour,\n\nVous êtes invité à participer à la réunion « {title} ».\n\nUtilisez le lien ci-dessous pour consulter le PV en direct et ajouter vos propres points.\n\nÀ bientôt,\n{organization}", 'context' => 'Default body of the PV invitation email.'],
+    'documents.pv_invitations.subject' => ['text' => 'Invitation à la réunion : {title}', 'context' => 'Subject of the PV invitation email.'],
+    'documents.pv_invitations.open' => ['text' => 'Ouvrir la réunion', 'context' => 'Call to action in the PV invitation email.'],
+    'documents.pv_invitations.footer' => ['text' => 'Cette invitation a été envoyée depuis {organization}.', 'context' => 'Footer of the PV invitation email.'],
+    'documents.pv_invitations.network_error' => ['text' => 'Impossible d’envoyer les invitations pour le moment.', 'context' => 'Browser error shown when sending PV invitation emails fails.'],
+    'documents.pv_invitations.fallback_title' => ['text' => 'Réunion', 'context' => 'Fallback title of a PV invitation when the PV has no title.'],
+    'documents.pv_invitations.fallback_organization' => ['text' => 'Organisation', 'context' => 'Fallback organization name in a PV invitation.'],
 ];
 $lang = omoLoadTranslationBundle('omo_documents_pv_send_invitations', $sourceLang);
 
@@ -56,10 +58,10 @@ function omoDocumentsPvSendInvitationEmail(Document $document, Organization $org
     $organizationName = trim((string)$organization->get('name'));
     $documentTitle = trim((string)$document->get('title'));
     if ($documentTitle === '') {
-        $documentTitle = 'Reunion';
+        $documentTitle = omoDocumentsPvSendInvitationT('documents.pv_invitations.fallback_title');
     }
     if ($organizationName === '') {
-        $organizationName = 'Organisation';
+        $organizationName = omoDocumentsPvSendInvitationT('documents.pv_invitations.fallback_organization');
     }
 
     $fromAddress = trim((string)($GLOBALS['mailUser'] ?? ''));
@@ -120,11 +122,11 @@ $recipients = $event instanceof Event
     : $document->getInvitationEmailRecipients($organizationId);
 $documentTitle = trim((string)$document->get('title'));
 if ($documentTitle === '') {
-    $documentTitle = 'Reunion';
+    $documentTitle = omoDocumentsPvSendInvitationT('documents.pv_invitations.fallback_title');
 }
 $organizationName = trim((string)$organization->get('name'));
 if ($organizationName === '') {
-    $organizationName = 'Organisation';
+    $organizationName = omoDocumentsPvSendInvitationT('documents.pv_invitations.fallback_organization');
 }
 $defaultMessage = omoDocumentsPvSendInvitationT('documents.pv_invitations.default_message', [
     'title' => $documentTitle,
@@ -141,25 +143,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         omoDocumentsPvSendInvitationJson(422, ['status' => false, 'message' => omoDocumentsPvSendInvitationT('documents.pv_invitations.no_recipient')]);
     }
 
-    $shareLink = DocumentShareLink::getOrCreateLiveFollowForDocument($document, $currentUserId, 'PV participant access');
-    if (!($shareLink instanceof DocumentShareLink)) {
-        $response = [
-            'status' => false,
-            'message' => omoDocumentsPvSendInvitationT('documents.pv_invitations.share_error'),
-        ];
-        $dbError = \dbObject\DbObject::getLastDbError();
-        $dbMessage = trim((string)($dbError['message'] ?? ''));
-        if ($dbMessage !== '') {
-            $response['diagnostic'] = $dbMessage;
-        }
-        omoDocumentsPvSendInvitationJson(500, $response);
-    }
-
-    $accessUrl = commonBuildUrl($shareLink->buildShareUrl(), commonGetRequestHost());
     $sentCount = 0;
     $failedCount = 0;
     $lastMailError = '';
+    $lastShareError = '';
     foreach ($recipients as $recipient) {
+        $shareLink = DocumentShareLink::getOrCreatePvParticipantLink(
+            $document,
+            $currentUserId,
+            (string)($recipient['email'] ?? ''),
+            (int)($recipient['user_id'] ?? 0)
+        );
+        if (!($shareLink instanceof DocumentShareLink)) {
+            $dbError = \dbObject\DbObject::getLastDbError();
+            $lastShareError = trim((string)($dbError['message'] ?? '')) ?: $lastShareError;
+            $failedCount++;
+            continue;
+        }
+
+        $accessUrl = commonBuildUrl($shareLink->buildPvParticipationUrl(), commonGetRequestHost());
         $sendResult = omoDocumentsPvSendInvitationEmail($document, $organization, $recipient, $accessUrl, $message);
         if (!empty($sendResult['status'])) {
             $sentCount++;
@@ -172,10 +174,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($sentCount === 0) {
         $response = [
             'status' => false,
-            'message' => omoDocumentsPvSendInvitationT('documents.pv_invitations.send_error'),
+            'message' => $lastShareError !== ''
+                ? omoDocumentsPvSendInvitationT('documents.pv_invitations.share_error')
+                : omoDocumentsPvSendInvitationT('documents.pv_invitations.send_error'),
         ];
-        if ($lastMailError !== '') {
-            $response['diagnostic'] = $lastMailError;
+        $diagnostic = $lastShareError !== '' ? $lastShareError : $lastMailError;
+        if ($diagnostic !== '') {
+            $response['diagnostic'] = $diagnostic;
         }
         omoDocumentsPvSendInvitationJson(500, $response);
     }
@@ -188,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     omoDocumentsPvSendInvitationJson(200, [
         'status' => true,
         'message' => $resultMessage,
-        'shareUrl' => $accessUrl,
+        'shareUrl' => '',
     ]);
 }
 ?>

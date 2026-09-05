@@ -3240,7 +3240,8 @@ function omoOpenExternalPanelDrawer(options = {}) {
     const peekLabelNode = drawer.querySelector('[data-omo-external-panel-drawer-peek-label]');
     const currentPersistKey = String(drawer.dataset.omoPersistKey || '').trim();
     const currentContentUrl = String(drawer.dataset.omoExternalContentUrl || '').trim();
-    const canReuseMountedContent = keepMounted
+    const canReuseMountedContent = options.forceReload !== true
+        && keepMounted
         && persistKey !== ''
         && currentPersistKey === persistKey
         && currentContentUrl === url

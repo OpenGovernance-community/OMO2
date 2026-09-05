@@ -18,7 +18,12 @@ function omoDocumentsPvEditorT($key, array $replace = [])
 $documentId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $organizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $currentUserId = (int)commonGetCurrentUserId();
-$tokenSessionKey = $organizationId . ':' . $documentId . ':' . $currentUserId;
+$publicParticipationLink = commonGetPublicPvParticipationLink();
+$isPublicParticipation = $publicParticipationLink instanceof \dbObject\DocumentShareLink
+    && (int)$publicParticipationLink->get('IDdocument') === $documentId
+    && (int)$publicParticipationLink->get('IDorganization') === $organizationId;
+$editorActorKey = $isPublicParticipation ? 'share:' . (int)$publicParticipationLink->getId() : 'user:' . $currentUserId;
+$tokenSessionKey = $organizationId . ':' . $documentId . ':' . $editorActorKey;
 if (!isset($_SESSION['omo_pv_editor_tokens']) || !is_array($_SESSION['omo_pv_editor_tokens'])) {
     $_SESSION['omo_pv_editor_tokens'] = [];
 }
@@ -35,9 +40,8 @@ if ($editorToken === '') {
 $document = new \dbObject\Document();
 $accessGranted = $documentId > 0
     && $organizationId > 0
-    && $currentUserId > 0
     && $document->load($documentId)
-    && $document->canUserOpenPvEditor($currentUserId, $organizationId);
+    && ($isPublicParticipation || ($currentUserId > 0 && $document->canUserOpenPvEditor($currentUserId, $organizationId)));
 
 $escape = 'omoApiEscape';
 $uiText = omoDocumentsPvEditorBuildUiText('omoDocumentsPvEditorT');
@@ -90,16 +94,26 @@ $projectEmbedCreateHolonLabel = $projectEmbedCreateHolon instanceof \dbObject\Ho
 $projectEmbedCreateResponsibleLabel = $currentUserId > 0
     ? trim((string)\dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($currentUserId, $organizationId))
     : '';
-$hasTeamApplication = $hasOrganization && $organization->isApplicationEnabled('team', $currentUserId);
-$hasStructureApplication = $hasOrganization && $organization->isStructureApplicationEnabled($currentUserId);
-$hasDocumentsApplication = $hasOrganization && $organization->isApplicationEnabled('documents', $currentUserId);
-$hasDecisionApplication = $hasOrganization && $organization->isApplicationEnabled('decision', $currentUserId);
-$hasCalendarApplication = $hasOrganization && $organization->isApplicationEnabled('calendar', $currentUserId);
-$hasStatsApplication = $hasOrganization && $organization->isApplicationEnabled('stats', $currentUserId);
+$publicParticipationCanUseStructure = $isPublicParticipation
+    && commonPvParticipationRecipientCanUseStructure($publicParticipationLink, $organizationId);
+$hasTeamApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('team', $currentUserId);
+$hasStructureApplication = $isPublicParticipation
+    ? $publicParticipationCanUseStructure
+    : ($hasOrganization && $organization->isStructureApplicationEnabled($currentUserId));
+$hasDocumentsApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('documents', $currentUserId);
+$hasDecisionApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('decision', $currentUserId);
+$hasCalendarApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('calendar', $currentUserId);
+$hasStatsApplication = !$isPublicParticipation && $hasOrganization && $organization->isApplicationEnabled('stats', $currentUserId);
 $openAiAvailable = commonOpenAiGetApiKey() !== '';
 $canUseAiTools = $openAiAvailable && patreonUserCanUseAi($currentUserId);
 $hasUpcomingAssociatedEvent = $hasAssociatedEvent && $event->isUpcoming();
-$canManagePvStage = $document->canManagePvStage($organizationId, $currentUserId);
+$publicParticipationUserId = $isPublicParticipation
+    ? commonPvParticipationRecipientOrganizationUserId($publicParticipationLink, $organizationId)
+    : 0;
+$canManagePvStage = $document->canManagePvStage(
+    $organizationId,
+    $isPublicParticipation ? $publicParticipationUserId : $currentUserId
+);
 $pvEditorUserId = $document->getPvEditorUserId();
 $pvEditorLabel = $pvEditorUserId > 0
     ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($pvEditorUserId, $organizationId)
@@ -108,15 +122,15 @@ $pvCreatorUserId = $document->getCreatedByUserId();
 $pvCreatorLabel = $pvCreatorUserId > 0
     ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($pvCreatorUserId, $organizationId)
     : '';
-$isPvEditor = $document->isPvEditor($currentUserId);
-$canManagePvDocument = $document->canUserManagePvDocument($currentUserId);
+$isPvEditor = !$isPublicParticipation && $document->isPvEditor($currentUserId);
+$canManagePvDocument = !$isPublicParticipation && $document->canUserManagePvDocument($currentUserId);
 $isPvReview = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
 $canEditPvDocumentHeader = $canManagePvDocument && !$isPvReview;
 $canPassPvEditor = $isPvEditor && !$isPvReview;
 $isPvTemplate = $document->isPvTemplate();
-$canCreatePvGroups = $document->canUserCreatePvGroups($currentUserId);
-$canClaimPvEditor = $document->canUserClaimPvEditor($organizationId, $currentUserId);
-$canReplacePvEditor = $document->canUserReplacePvEditor($organizationId, $currentUserId);
+$canCreatePvGroups = !$isPublicParticipation && $document->canUserCreatePvGroups($currentUserId);
+$canClaimPvEditor = !$isPublicParticipation && $document->canUserClaimPvEditor($organizationId, $currentUserId);
+$canReplacePvEditor = !$isPublicParticipation && $document->canUserReplacePvEditor($organizationId, $currentUserId);
 $pvEditorHandoverOpen = $document->isPvEditorHandoverOpen();
 $isPvValidated = $document->isPvValidated();
 $locationData = $hasAssociatedEvent ? $event->getLocationDisplayData() : [];
@@ -152,7 +166,7 @@ $pollingRevision = $document->getPvEditorPollingRevision($organizationId);
 $eventTitle = $hasAssociatedEvent
     ? (trim((string)$event->get('title')) !== ''
         ? trim((string)$event->get('title'))
-        : ('Événement n°' . (int)$event->getId()))
+        : omoDocumentsPvEditorT('documents.pv_editor.event.fallback', ['id' => (int)$event->getId()]))
     : '';
 $eventSchedule = '';
 if ($eventStartAt instanceof DateTimeInterface) {
@@ -189,7 +203,16 @@ $points = new \dbObject\ArrayDocumentPvPoint();
 $points = $document->getVisiblePvPointsForUser($currentUserId, true);
 $groupSummaryMap = omoDocumentsPvEditorBuildGroupSummaryMap($points);
 $pointPositionLabels = \dbObject\DocumentPvPoint::buildHierarchyPositionLabels($points);
-$authorOptions = $document->getPvPointAuthorOptions($organizationId);
+$authorOptions = $isPublicParticipation ? [[
+    'value' => $publicParticipationLink->getRecipientUserId() > 0
+        ? 'user:' . $publicParticipationLink->getRecipientUserId()
+        : 'email:' . $publicParticipationLink->getRecipientEmail(),
+    'userId' => $publicParticipationLink->getRecipientUserId(),
+    'email' => $publicParticipationLink->getRecipientEmail(),
+    'label' => $publicParticipationLink->getRecipientUserId() > 0
+        ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($publicParticipationLink->getRecipientUserId(), $organizationId)
+        : $publicParticipationLink->getRecipientEmail(),
+]] : $document->getPvPointAuthorOptions($organizationId);
 $pointCards = [];
 $pointNavItems = [];
 $pointPayloads = [];
@@ -199,8 +222,12 @@ $embeddableEventsPayload = [];
 $embeddableIndicatorsPayload = [];
 $embeddableProjectsPayload = [];
 $embeddableChecklistsPayload = [];
-$attendancePayload = $hasTeamApplication
-    ? omoDocumentsPvEditorBuildAttendancePayloadFromDocument($document, $organizationId)
+$showPublicAttendance = $isPublicParticipation;
+$showAttendance = $hasTeamApplication || $showPublicAttendance;
+$attendancePayload = $showAttendance
+    ? ($showPublicAttendance
+        ? omoDocumentsPvEditorBuildPublicAttendancePayloadFromDocument($document, $organizationId)
+        : omoDocumentsPvEditorBuildAttendancePayloadFromDocument($document, $organizationId))
     : null;
 
 if ($hasDocumentsApplication) {
@@ -404,7 +431,12 @@ $authorHolonOptions = omoDocumentsPvEditorBuildAuthorHolonOptions(
     $hasStructureApplication
 );
 $pointDiscussionSummaryMap = $pvStage === \dbObject\Document::PV_STAGE_REVIEW
-    ? omoDocumentsPvEditorBuildPointDiscussionSummaryMap($organizationId, $points, $currentUserId)
+    ? omoDocumentsPvEditorBuildPointDiscussionSummaryMap(
+        $organizationId,
+        $points,
+        $isPublicParticipation ? $publicParticipationUserId : $currentUserId,
+        $isPublicParticipation ? (int)$publicParticipationLink->getId() : 0
+    )
     : [];
 
 foreach ($points as $point) {
@@ -424,7 +456,8 @@ foreach ($points as $point) {
         $authorHolonOptions,
         (string)($pointPositionLabels[(int)$point->getId()] ?? '--'),
         $groupSummaryMap[(int)$point->getId()] ?? [],
-        $pointDiscussionSummaryMap[(int)$point->getId()] ?? []
+        $pointDiscussionSummaryMap[(int)$point->getId()] ?? [],
+        $isPublicParticipation ? $publicParticipationLink : null
     );
     if (!$point->isGroup()) {
         $pointCards[] = $payload['cardHtml'];
@@ -1876,7 +1909,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     .omo-pv-editor__point-footer--readonly {
-        margin-bottom: 10px;
+        margin-bottom: 0;
     }
 
     .omo-pv-editor__point-note,
@@ -2572,7 +2605,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 </div>
             </div>
             </div>
-            <?php if ($hasTeamApplication): ?>
+            <?php if ($showAttendance): ?>
             <div class="omo-pv-editor__attendance" data-omo-pv-attendance-root<?= is_array($attendancePayload) ? '' : ' hidden' ?>>
                 <div class="omo-pv-editor__attendance-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="M16 20v-1.5a4.5 4.5 0 0 0-4.5-4.5h-4A4.5 4.5 0 0 0 3 18.5V20"></path><circle cx="9.5" cy="7" r="3.5"></circle><path d="M17 10a3 3 0 1 0 0-6M18 14c2.2.7 3 2.2 3 4.5V20"></path></svg>
@@ -2695,7 +2728,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const initialAttendancePayload = <?= json_encode($attendancePayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const initialPollingRevision = <?= json_encode($pollingRevision, JSON_UNESCAPED_SLASHES) ?>;
-    const attendanceEnabled = <?= json_encode($hasTeamApplication) ?>;
+    const attendanceEnabled = <?= json_encode($showAttendance) ?>;
     const eventStartAtIso = <?= json_encode($eventStartAtIso, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const eventEndAtIso = <?= json_encode($eventEndAtIso, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const saveLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.action.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -2746,6 +2779,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'remove' => omoDocumentsPvEditorT('documents.pv_editor.action.remove_embed'),
         'linkedLabel' => omoDocumentsPvEditorT('documents.pv_editor.embed.linked_label'),
         'openExternal' => omoDocumentsPvEditorT('documents.pv_editor.embed.open_external'),
+        'fallbackTitle' => omoDocumentsPvEditorT('documents.pv_editor.embed.document_fallback', ['id' => '{id}']),
+        'toolbarLabel' => omoDocumentsPvEditorT('documents.pv_editor.toolbar.document'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const canEmbedDecisions = <?= $hasDecisionApplication ? 'true' : 'false' ?>;
     const embeddableDecisions = <?= json_encode($embeddableDecisionsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -2761,6 +2796,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'),
         'remove' => omoDocumentsPvEditorT('documents.pv_editor.action.remove_embed'),
         'linkedLabel' => omoDocumentsPvEditorT('documents.pv_editor.decision.linked_label'),
+        'fallbackTitle' => omoDocumentsPvEditorT('documents.pv_editor.decision.fallback', ['id' => '{id}']),
+        'toolbarLabel' => omoDocumentsPvEditorT('documents.pv_editor.toolbar.decision'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const canEmbedProjects = true;
     const embeddableProjects = <?= json_encode($embeddableProjectsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -2799,6 +2836,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'childrenLoading' => omoDocumentsPvEditorT('documents.pv_editor.project.children_loading'),
         'childrenEmpty' => omoDocumentsPvEditorT('documents.pv_editor.project.children_empty'),
         'childrenError' => omoDocumentsPvEditorT('documents.pv_editor.project.children_error'),
+        'fallbackTitle' => omoDocumentsPvEditorT('documents.pv_editor.project.fallback', ['id' => '{id}']),
+        'toolbarLabel' => omoDocumentsPvEditorT('documents.pv_editor.toolbar.project'),
+        'reviewLoadError' => omoDocumentsPvEditorT('documents.pv_editor.project.review_load_error'),
         'statusOptions' => array_map(static fn ($status, $definition) => ['value' => $status, 'label' => (string)($definition['label'] ?? $status)], array_keys(\dbObject\Project::getStatusCatalog()), \dbObject\Project::getStatusCatalog()),
         'sizeOptions' => \dbObject\Project::sizes(),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -2825,6 +2865,18 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'completeArchiving' => omoDocumentsPvEditorT('documents.pv_editor.checklist.complete_archiving'),
         'completeArchiveError' => omoDocumentsPvEditorT('documents.pv_editor.checklist.complete_archive_error'),
         'emptyRuns' => omoDocumentsPvEditorT('documents.pv_editor.checklist.empty_runs'),
+        'reviewContainer' => omoDocumentsPvEditorT('documents.pv_editor.checklist.review_container'),
+        'reviewRuns' => omoDocumentsPvEditorT('documents.pv_editor.checklist.review_runs'),
+        'runInvalid' => omoDocumentsPvEditorT('documents.pv_editor.checklist.run_invalid'),
+        'runLoadError' => omoDocumentsPvEditorT('documents.pv_editor.checklist.run_load_error'),
+        'itemsLoading' => omoDocumentsPvEditorT('documents.pv_editor.checklist.items_loading'),
+        'itemsEmpty' => omoDocumentsPvEditorT('documents.pv_editor.checklist.items_empty'),
+        'itemsLoadError' => omoDocumentsPvEditorT('documents.pv_editor.checklist.items_load_error'),
+        'activitiesEmpty' => omoDocumentsPvEditorT('documents.pv_editor.checklist.activities_empty'),
+        'itemFallback' => omoDocumentsPvEditorT('documents.pv_editor.checklist.item_fallback'),
+        'statusPending' => omoDocumentsPvEditorT('documents.pv_editor.checklist.status_pending'),
+        'runFallback' => omoDocumentsPvEditorT('documents.pv_editor.checklist.run_fallback'),
+        'toolbarLabel' => omoDocumentsPvEditorT('documents.pv_editor.toolbar.process'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const checklistRunReviewCache = new Map();
     const canEmbedEvents = <?= $hasCalendarApplication ? 'true' : 'false' ?>;
@@ -2850,6 +2902,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'createInsert' => omoDocumentsPvEditorT('documents.pv_editor.event.create_insert'),
         'createError' => omoDocumentsPvEditorT('documents.pv_editor.event.create_error'),
         'endAfterStart' => omoDocumentsPvEditorT('documents.pv_editor.event.end_after_start'),
+        'fallbackTitle' => omoDocumentsPvEditorT('documents.pv_editor.event.fallback', ['id' => '{id}']),
+        'toolbarLabel' => omoDocumentsPvEditorT('documents.pv_editor.toolbar.event'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const eventEmbedCreateContext = <?= json_encode([
         'organizationId' => $organizationId,
@@ -2868,6 +2922,16 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'insert' => omoDocumentsPvEditorT('documents.pv_editor.indicator.insert'),
         'cancel' => omoDocumentsPvEditorT('documents.pv_editor.action.cancel'),
         'remove' => omoDocumentsPvEditorT('documents.pv_editor.action.remove_embed'),
+        'fallbackTitle' => omoDocumentsPvEditorT('documents.pv_editor.indicator.fallback', ['id' => '{id}']),
+        'toolbarLabel' => omoDocumentsPvEditorT('documents.pv_editor.toolbar.indicator'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const editorClientUi = <?= json_encode([
+        'genericError' => omoDocumentsPvEditorT('documents.pv_editor.error.generic'),
+        'documentSaveError' => omoDocumentsPvEditorT('documents.pv_editor.error.document_save'),
+        'autoSummaryError' => omoDocumentsPvEditorT('documents.pv_editor.error.auto_summary'),
+        'autoSummaryEmpty' => omoDocumentsPvEditorT('documents.pv_editor.error.auto_summary_empty'),
+        'highlightLabel' => omoDocumentsPvEditorT('documents.pv_editor.toolbar.highlight'),
+        'highlightTitle' => omoDocumentsPvEditorT('documents.pv_editor.toolbar.highlight_title'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const indicatorValueUi = {
         enabled: true,
@@ -3055,7 +3119,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             return '';
         }
 
-        const title = String(documentItem.title || '').trim() || ('Document #' + String(documentId));
+        const title = String(documentItem.title || '').trim() || String(documentEmbedUi.fallbackTitle || '').replace('{id}', String(documentId));
         const description = truncateDocumentEmbedSummary(documentItem.description || '');
         const documentHash = '#documents-d' + String(documentId);
         const externalUrl = String(window.location.pathname || '/omo/') + documentHash;
@@ -3138,7 +3202,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 matches.forEach(function (item) {
                     const option = document.createElement('option');
                     option.value = String(item.id || '');
-                    option.textContent = String(item.title || '').trim() || ('Document #' + String(item.id || ''));
+                    option.textContent = String(item.title || '').trim() || String(documentEmbedUi.fallbackTitle || '').replace('{id}', String(item.id || ''));
                     selectNode.appendChild(option);
                 });
                 selectNode.disabled = matches.length === 0;
@@ -3151,7 +3215,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             if (selectNode && selectNode.value !== '') {
                 selectedItem = embeddableDocuments.find(function (item) { return String(item.id || '') === String(selectNode.value); }) || null;
             }
-            const title = selectedItem ? (String(selectedItem.title || '').trim() || ('Document #' + String(selectedItem.id || ''))) : String(documentEmbedUi.none || '');
+            const title = selectedItem ? (String(selectedItem.title || '').trim() || String(documentEmbedUi.fallbackTitle || '').replace('{id}', String(selectedItem.id || ''))) : String(documentEmbedUi.none || '');
             if (titleNode) titleNode.textContent = title;
             if (descriptionNode) {
                 descriptionNode.textContent = selectedItem ? String(selectedItem.description || '') : '';
@@ -3201,7 +3265,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             return '';
         }
 
-        const title = String(decisionItem.title || '').trim() || ('Décision n°' + String(decisionId));
+        const title = String(decisionItem.title || '').trim() || String(decisionEmbedUi.fallbackTitle || '').replace('{id}', String(decisionId));
         const typeLabel = String(decisionItem.typeLabel || '').trim();
         const summary = String(decisionItem.summary || '').trim();
         const displaySummary = [typeLabel, summary].filter(function (value) { return value !== ''; }).join(' - ');
@@ -3255,7 +3319,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
         const updatePreview = function () {
             if (selectNode && selectNode.value !== '') selectedItem = embeddableDecisions.find(function (item) { return String(item.id) === String(selectNode.value); }) || null;
-            if (titleNode) titleNode.textContent = selectedItem ? (String(selectedItem.title || '').trim() || ('Décision n°' + String(selectedItem.id))) : String(decisionEmbedUi.none || '');
+            if (titleNode) titleNode.textContent = selectedItem ? (String(selectedItem.title || '').trim() || String(decisionEmbedUi.fallbackTitle || '').replace('{id}', String(selectedItem.id))) : String(decisionEmbedUi.none || '');
             if (typeNode) { typeNode.textContent = selectedItem ? String(selectedItem.typeLabel || '') : ''; typeNode.hidden = typeNode.textContent === ''; }
             if (summaryNode) { summaryNode.textContent = selectedItem ? String(selectedItem.summary || '') : ''; summaryNode.hidden = summaryNode.textContent === ''; }
             if (insertButton) insertButton.disabled = !selectedItem;
@@ -3265,7 +3329,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const matches = embeddableDecisions.filter(function (item) { return (!scopePicker || scopePicker.matches(item.contextHolonId)) && (query === '' || [item.title, item.typeLabel, item.summary].join(' ').toLowerCase().indexOf(query) >= 0); });
             if (selectNode) {
                 selectNode.innerHTML = '';
-                matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Décision n°' + String(item.id))) + (item.typeLabel ? ' - ' + String(item.typeLabel) : ''); selectNode.appendChild(option); });
+                matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || String(decisionEmbedUi.fallbackTitle || '').replace('{id}', String(item.id))) + (item.typeLabel ? ' - ' + String(item.typeLabel) : ''); selectNode.appendChild(option); });
                 selectNode.disabled = matches.length === 0;
             }
             selectedItem = matches.find(function (item) { return Number(item.id) === currentDecisionId; }) || matches[0] || null;
@@ -3312,7 +3376,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     function buildPvProjectEmbedHtml(projectItem) {
         const projectId = Number.parseInt(String(projectItem && projectItem.id || ''), 10);
         if (!Number.isInteger(projectId) || projectId <= 0) return '';
-        const title = String(projectItem.title || '').trim() || ('Projet #' + String(projectId));
+        const title = String(projectItem.title || '').trim() || String(projectEmbedUi.fallbackTitle || '').replace('{id}', String(projectId));
         const contextLabel = String(projectItem.contextLabel || '').trim();
         const responsibleLabel = String(projectItem.responsibleLabel || '').trim();
         const status = String(projectItem.status || '').trim();
@@ -3415,7 +3479,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
         const insertProject = function (project) { const embed = buildPvProjectEmbedHtml(project); if (!embed) return false; if (targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embed); } else if (marker && typeof field.replaceMarkerWithHtml === 'function') { resolved = true; field.replaceMarkerWithHtml(marker, embed); marker = null; } else return false; window.setTimeout(function () { refreshPvProjectEmbedReviews(field); }, 0); window.commonTopbarCloseModal(); return true; };
         const update = function () { if (select && select.value) selected = embeddableProjects.find(function (item) { return String(item.id) === String(select.value); }) || null; if (preview) preview.innerHTML = selected ? buildPvProjectEmbedHtml(selected) : escapeDocumentEmbedHtml(projectEmbedUi.none || ''); if (insert) insert.disabled = !selected; };
-        const render = function () { const query = String(search && search.value || '').trim().toLowerCase(), selectedHolonId = scopePicker && typeof scopePicker.getSelectedHolonId === 'function' ? Number(scopePicker.getSelectedHolonId() || 0) : 0, matches = embeddableProjects.filter(function (item) { const itemHolonId = Number(item.contextHolonId || 0); const matchesScope = !scopePicker || scopePicker.matches(itemHolonId) || (selectedHolonId > 0 && itemHolonId === selectedHolonId); return matchesScope && (query === '' || [item.title, item.contextLabel, item.summary].join(' ').toLowerCase().indexOf(query) >= 0); }); if (select) { select.innerHTML = ''; matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = String(item.title || '').trim() || ('Projet #' + String(item.id)); select.appendChild(option); }); } selected = matches.find(function (item) { return Number(item.id) === currentProjectId; }) || matches[0] || null; if (select && selected) select.value = String(selected.id); update(); };
+        const render = function () { const query = String(search && search.value || '').trim().toLowerCase(), selectedHolonId = scopePicker && typeof scopePicker.getSelectedHolonId === 'function' ? Number(scopePicker.getSelectedHolonId() || 0) : 0, matches = embeddableProjects.filter(function (item) { const itemHolonId = Number(item.contextHolonId || 0); const matchesScope = !scopePicker || scopePicker.matches(itemHolonId) || (selectedHolonId > 0 && itemHolonId === selectedHolonId); return matchesScope && (query === '' || [item.title, item.contextLabel, item.summary].join(' ').toLowerCase().indexOf(query) >= 0); }); if (select) { select.innerHTML = ''; matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = String(item.title || '').trim() || String(projectEmbedUi.fallbackTitle || '').replace('{id}', String(item.id)); select.appendChild(option); }); } selected = matches.find(function (item) { return Number(item.id) === currentProjectId; }) || matches[0] || null; if (select && selected) select.value = String(selected.id); update(); };
         if (projectScopeHost instanceof Element && typeof window.omoMountHolonScopePicker === 'function') {
             scopePicker = window.omoMountHolonScopePicker({host: projectScopeHost, organizationId: resourcePickerOrganizationId, initialHolonId: Number(projectEmbedCreateContext.holonId || resourcePickerInitialHolonId || 0), initialScope: 'local', labels: resourcePickerScopeUi, onChange: function (holonId) { render(); if (createForm && typeof createForm.__omoPvProjectLoadMembers === 'function') createForm.__omoPvProjectLoadMembers(holonId); }});
         } else {
@@ -3433,7 +3497,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             return '';
         }
 
-        const title = String(eventItem.title || '').trim() || ('Événement n°' + String(eventId));
+        const title = String(eventItem.title || '').trim() || String(eventEmbedUi.fallbackTitle || '').replace('{id}', String(eventId));
         const scheduleLabel = String(eventItem.scheduleLabel || '').trim();
         const locationLabel = truncateDocumentEmbedSummary(eventItem.locationLabel || '', 420, 1);
         const summary = [scheduleLabel, locationLabel].filter(function (value) { return value !== ''; }).join(' - ');
@@ -3530,7 +3594,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         };
         const updatePreview = function () {
             if (selectNode && selectNode.value !== '') selectedItem = embeddableEvents.find(function (item) { return String(item.id) === String(selectNode.value); }) || null;
-            if (titleNode) titleNode.textContent = selectedItem ? (String(selectedItem.title || '').trim() || ('Événement n°' + String(selectedItem.id))) : String(eventEmbedUi.none || '');
+            if (titleNode) titleNode.textContent = selectedItem ? (String(selectedItem.title || '').trim() || String(eventEmbedUi.fallbackTitle || '').replace('{id}', String(selectedItem.id))) : String(eventEmbedUi.none || '');
             if (scheduleNode) { scheduleNode.textContent = selectedItem ? String(selectedItem.scheduleLabel || '') : ''; scheduleNode.hidden = scheduleNode.textContent === ''; }
             if (descriptionNode) { descriptionNode.textContent = selectedItem ? String(selectedItem.locationLabel || '') : ''; descriptionNode.hidden = descriptionNode.textContent === ''; }
             if (insertButton) insertButton.disabled = !selectedItem;
@@ -3540,7 +3604,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const matches = embeddableEvents.filter(function (item) { return (!scopePicker || scopePicker.matches(item.contextHolonId)) && (query === '' || [item.title, item.scheduleLabel, item.locationLabel].join(' ').toLowerCase().indexOf(query) >= 0); });
             if (selectNode) {
                 selectNode.innerHTML = '';
-                matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || ('Événement n°' + String(item.id))) + (item.scheduleLabel ? ' - ' + String(item.scheduleLabel) : ''); selectNode.appendChild(option); });
+                matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = (String(item.title || '').trim() || String(eventEmbedUi.fallbackTitle || '').replace('{id}', String(item.id))) + (item.scheduleLabel ? ' - ' + String(item.scheduleLabel) : ''); selectNode.appendChild(option); });
                 selectNode.disabled = matches.length === 0;
             }
             selectedItem = matches.find(function (item) { return Number(item.id) === currentEventId; }) || matches[0] || null;
@@ -3680,7 +3744,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             return '';
         }
 
-        const title = String(indicatorItem.title || '').trim() || ('Indicateur #' + String(indicatorId));
+        const title = String(indicatorItem.title || '').trim() || String(indicatorEmbedUi.fallbackTitle || '').replace('{id}', String(indicatorId));
         const description = String(indicatorItem.description || '').trim();
         const indicatorKind = String(indicatorItem && indicatorItem.kind || '').trim() === 'group' ? 'group' : 'indicator';
         const routeHash = indicatorKind === 'group' ? ('stats-g' + String(indicatorId)) : ('stats-i' + String(indicatorId));
@@ -3828,7 +3892,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 cache: 'no-store'
             }).then(function (response) {
                 if (!response.ok) {
-                    throw new Error('Impossible de charger la relecture du projet.');
+                    throw new Error(String(projectEmbedUi.reviewLoadError || ''));
                 }
                 return response.json();
             }).then(function (payload) {
@@ -3909,7 +3973,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     function getPvChecklistRunReview(runId) {
         const normalizedRunId = Number(runId || 0);
         if (!Number.isInteger(normalizedRunId) || normalizedRunId <= 0) {
-            return Promise.reject(new Error('Instance de processus invalide.'));
+            return Promise.reject(new Error(String(checklistEmbedUi.runInvalid || '')));
         }
         if (checklistRunReviewCache.has(normalizedRunId)) {
             return checklistRunReviewCache.get(normalizedRunId);
@@ -3919,12 +3983,12 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             cache: 'no-store'
         }).then(function (response) {
             if (!response.ok) {
-                throw new Error('Impossible de charger l’instance du processus.');
+                throw new Error(String(checklistEmbedUi.runLoadError || ''));
             }
             return response.json();
         }).then(function (payload) {
             if (!payload || !payload.success) {
-                throw new Error('Impossible de charger l’instance du processus.');
+                throw new Error(String(checklistEmbedUi.runLoadError || ''));
             }
             return payload;
         }).catch(function (error) {
@@ -3941,8 +4005,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const projectId = Number(item && item.projectId || 0);
             const status = String(item && item.status || 'someday');
             const statusClass = /^(?:someday|ready|in_progress|blocked|review|done)$/.test(status) ? status : 'someday';
-            const title = escapeDocumentEmbedHtml(String(item && item.title || 'Element'));
-            const statusLabel = escapeDocumentEmbedHtml(String(item && item.statusLabel || 'En attente'));
+            const title = escapeDocumentEmbedHtml(String(item && item.title || checklistEmbedUi.itemFallback || ''));
+            const statusLabel = escapeDocumentEmbedHtml(String(item && item.statusLabel || checklistEmbedUi.statusPending || ''));
             const size = escapeDocumentEmbedHtml(String(item && item.size || 'M'));
             const weight = Math.max(1, Number(item && item.weight || 1));
             const tooltip = title + ' - ' + statusLabel + ' - ' + size;
@@ -3960,8 +4024,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const projectId = Number(item && item.projectId || 0);
             const status = String(item && item.status || 'someday');
             const statusClass = /^(?:someday|ready|in_progress|blocked|review|done)$/.test(status) ? status : 'someday';
-            const title = escapeDocumentEmbedHtml(String(item && item.title || 'Element'));
-            const statusLabel = escapeDocumentEmbedHtml(String(item && item.statusLabel || 'En attente'));
+            const title = escapeDocumentEmbedHtml(String(item && item.title || checklistEmbedUi.itemFallback || ''));
+            const statusLabel = escapeDocumentEmbedHtml(String(item && item.statusLabel || checklistEmbedUi.statusPending || ''));
             const roleLabel = String(item && item.holonLabel || '').trim();
             const responsibleLabel = String(item && item.responsibleLabel || '').trim();
             const metadata = [roleLabel, responsibleLabel].filter(function (label) { return label !== ''; });
@@ -3986,7 +4050,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 credentials: 'same-origin',
                 cache: 'no-store'
             }).then(function (response) {
-                if (!response.ok) throw new Error('Impossible de charger la relecture du projet.');
+                if (!response.ok) throw new Error(String(projectEmbedUi.reviewLoadError || ''));
                 return response.json();
             }).then(function (payload) {
                 if (!payload || !payload.success || !payload.hasChildren || !payload.statusBarHtml || !summaryNode.isConnected) return;
@@ -4025,7 +4089,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 const runtime = document.createElement('span'); runtime.className = 'omo-checklist-embed__review' + (Number(payload.overdueCount || 0) > 0 ? ' is-overdue' : ''); runtime.setAttribute('contenteditable', 'false'); runtime.setAttribute('data-omo-checklist-embed-runtime', '1');
                 const entries = Array.isArray(payload.entries) ? payload.entries : [];
                 const hasNoRuns = !payload.isContainer && entries.length === 0;
-                const label = payload.isContainer ? 'Activités récurrentes' : 'Instances en cours';
+                const label = payload.isContainer
+                    ? String(checklistEmbedUi.reviewContainer || '')
+                    : String(checklistEmbedUi.reviewRuns || '');
                 let overview = '';
                 if (payload.isContainer) {
                     overview = '<button type="button" class="omo-checklist-embed__container-toggle" data-omo-checklist-container-toggle aria-expanded="false"><span class="omo-project-status-bar">';
@@ -4045,7 +4111,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                             if (runId <= 0) return;
                             const statusClass = /^(?:someday|ready|in_progress|blocked|review|done)$/.test(status) ? status : 'someday';
                             overview += '<span class="omo-checklist-embed__instance"><button type="button" class="omo-checklist-embed__instance-toggle" data-omo-checklist-run-toggle data-omo-checklist-run-id="' + String(runId) + '" aria-expanded="false">'
-                                + '<span class="omo-checklist-embed__instance-title">' + escapeDocumentEmbedHtml(String(entry.title || 'Instance')) + '</span>'
+                                + '<span class="omo-checklist-embed__instance-title">' + escapeDocumentEmbedHtml(String(entry.title || checklistEmbedUi.runFallback || '')) + '</span>'
                                 + '<span class="omo-project-embed__status omo-project-embed__status--' + statusClass + '">' + escapeDocumentEmbedHtml(String(entry.statusLabel || status)) + '</span></button>'
                                 + '<span class="omo-checklist-embed__instance-bar" data-omo-checklist-run-bar="' + String(runId) + '"></span></span>';
                         });
@@ -4053,7 +4119,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     overview += '</span>';
                 }
                 const labelHtml = hasNoRuns
-                    ? '<em class="omo-checklist-embed__empty-runs">' + escapeDocumentEmbedHtml(String(checklistEmbedUi.emptyRuns || 'Aucune instance en cours.')) + '</em>'
+                    ? '<em class="omo-checklist-embed__empty-runs">' + escapeDocumentEmbedHtml(String(checklistEmbedUi.emptyRuns || '')) + '</em>'
                     : escapeDocumentEmbedHtml(label) + (Number(payload.overdueCount || 0) > 0 ? ' &#9888;' : '');
                 runtime.innerHTML = '<span class="omo-checklist-embed__review-label">' + labelHtml + '</span>' + overview
                     + '<span class="omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children" data-omo-checklist-run-children hidden></span>';
@@ -4105,19 +4171,19 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             button.classList.remove('is-expanded');
         });
         childrenHost.hidden = false;
-        childrenHost.textContent = 'Chargement des éléments…';
+        childrenHost.textContent = String(checklistEmbedUi.itemsLoading || '');
         childrenHost.className = 'omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children omo-project-embed__children-loading';
         toggle.disabled = true;
 
         getPvChecklistRunReview(runId).then(function (payload) {
             if (!runtime.isConnected) {
-                throw new Error('Impossible de charger l’instance du processus.');
+                throw new Error(String(checklistEmbedUi.runLoadError || ''));
             }
             const items = Array.isArray(payload.items) ? payload.items : [];
             childrenHost.dataset.omoChecklistRunId = String(runId);
             childrenHost.className = 'omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children';
             if (items.length === 0) {
-                childrenHost.textContent = 'Aucun élément dans cette instance.';
+                childrenHost.textContent = String(checklistEmbedUi.itemsEmpty || '');
             } else {
                 childrenHost.innerHTML = buildPvChecklistItemsList(items);
                 refreshPvChecklistRunItemSubprojectBars(childrenHost);
@@ -4126,7 +4192,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             toggle.classList.add('is-expanded');
         }).catch(function () {
             childrenHost.className = 'omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children omo-project-embed__children-error';
-            childrenHost.textContent = 'Impossible de charger les éléments de cette instance.';
+            childrenHost.textContent = String(checklistEmbedUi.itemsLoadError || '');
             childrenHost.hidden = false;
             toggle.setAttribute('aria-expanded', 'false');
         }).finally(function () {
@@ -4152,7 +4218,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         childrenHost.dataset.omoChecklistReviewType = 'container';
         childrenHost.className = 'omo-pv-editor__project-review-children omo-project-embed__children omo-checklist-embed__children';
         if (items.length === 0) {
-            childrenHost.textContent = 'Aucune activité récurrente active.';
+            childrenHost.textContent = String(checklistEmbedUi.activitiesEmpty || '');
         } else {
             childrenHost.innerHTML = buildPvChecklistItemsList(items);
             refreshPvChecklistRunItemSubprojectBars(childrenHost);
@@ -4264,7 +4330,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const matches = embeddableIndicators.filter(function (item) { return (!scopePicker || scopePicker.matches(item.contextHolonId)) && (query === '' || [item.title, item.contextLabel, item.valueLabel, item.statusLabel].join(' ').toLowerCase().indexOf(query) >= 0); });
             if (selectNode) {
                 selectNode.innerHTML = '';
-                matches.forEach(function (item) { const option = document.createElement('option'); option.value = getPvIndicatorEmbedItemKey(item); option.textContent = (String(item.title || '').trim() || ('Indicateur #' + String(item.id))) + (item.valueLabel ? ' - ' + String(item.valueLabel) : ''); selectNode.appendChild(option); });
+                matches.forEach(function (item) { const option = document.createElement('option'); option.value = getPvIndicatorEmbedItemKey(item); option.textContent = (String(item.title || '').trim() || String(indicatorEmbedUi.fallbackTitle || '').replace('{id}', String(item.id))) + (item.valueLabel ? ' - ' + String(item.valueLabel) : ''); selectNode.appendChild(option); });
                 selectNode.disabled = matches.length === 0;
             }
             selectedItem = matches.find(function (item) { return Number(item.id) === currentIndicatorId && String(item.kind || 'indicator') === currentIndicatorKind; }) || matches[0] || null;
@@ -4838,6 +4904,29 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         }
     }
 
+    function refreshPvEditorAfterReview() {
+        const drawer = root.closest('[data-omo-external-panel-drawer="1"]');
+        const contentUrl = drawer instanceof Element
+            ? String(drawer.dataset.omoExternalContentUrl || '').trim()
+            : '';
+        if (!(drawer instanceof Element) || contentUrl === '' || typeof window.omoOpenExternalPanelDrawer !== 'function') {
+            return false;
+        }
+
+        const titleNode = drawer.querySelector('[data-omo-external-panel-drawer-title]');
+        const descriptionNode = drawer.querySelector('[data-omo-external-panel-drawer-description]');
+        return window.omoOpenExternalPanelDrawer({
+            url: contentUrl,
+            mode: 'fetch',
+            title: titleNode instanceof Element ? String(titleNode.textContent || '').trim() : '',
+            description: descriptionNode instanceof Element ? String(descriptionNode.textContent || '').trim() : '',
+            variant: drawer.classList.contains('omo-external-panel-drawer--top-sheet') ? 'top-sheet' : '',
+            persistKey: String(drawer.dataset.omoPersistKey || '').trim(),
+            keepMountedOnClose: drawer.dataset.omoKeepMounted === '1',
+            forceReload: true
+        }) === true;
+    }
+
     function syncPvEditorUi(documentPayload) {
         if (!documentPayload || typeof documentPayload !== 'object') {
             return;
@@ -5334,9 +5423,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 customButtons.push({
                     name: 'omoPvHighlight',
                     group: 'color',
-                    label: 'Surlignage',
+                    label: String(editorClientUi.highlightLabel || ''),
                     contents: '<img src="/omo/images/tools/surligneur.png" alt="" class="omo-simple-html-highlight-icon">',
-                    title: 'Modifier le surlignage',
+                    title: String(editorClientUi.highlightTitle || ''),
                     onClick: function (context) {
                         const api = context && context.api ? context.api : field;
                         if (!api || typeof api.applyBackgroundColor !== 'function' || !window.omoHighlightPalette) {
@@ -5359,8 +5448,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     customButtons.push({
                         name: 'omoPvDocumentEmbed',
                         group: 'omo-pv-document-embed',
-                        label: 'Document',
-                        title: documentEmbedUi.buttonTitle || 'Insérer un document',
+                        label: String(documentEmbedUi.toolbarLabel || ''),
+                        title: String(documentEmbedUi.buttonTitle || ''),
                         className: 'note-btn-light omo-pv-editor__document-embed-button',
                         focusForInsertion: true,
                         onClick: function (context) {
@@ -5372,8 +5461,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     customButtons.push({
                         name: 'omoPvDecisionEmbed',
                         group: 'omo-pv-decision-embed',
-                        label: 'Décision',
-                        title: decisionEmbedUi.buttonTitle || 'Insérer une décision',
+                        label: String(decisionEmbedUi.toolbarLabel || ''),
+                        title: String(decisionEmbedUi.buttonTitle || ''),
                         className: 'note-btn-light omo-pv-editor__decision-embed-button',
                         focusForInsertion: true,
                         onClick: function (context) {
@@ -5383,19 +5472,19 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 }
                 if (canEmbedProjects) {
                     customButtons.push({
-                        name: 'omoPvProjectEmbed', group: 'omo-pv-project-embed', label: 'Projet', title: projectEmbedUi.buttonTitle || 'Insérer un projet', className: 'note-btn-light omo-pv-editor__project-embed-button', focusForInsertion: true,
+                        name: 'omoPvProjectEmbed', group: 'omo-pv-project-embed', label: String(projectEmbedUi.toolbarLabel || ''), title: String(projectEmbedUi.buttonTitle || ''), className: 'note-btn-light omo-pv-editor__project-embed-button', focusForInsertion: true,
                         onClick: function (context) { openPvProjectEmbedPicker(context && context.api ? context.api : field); }
                     });
                 }
                 if (canEmbedChecklists) {
-                    customButtons.push({ name: 'omoPvChecklistEmbed', group: 'omo-pv-checklist-embed', label: 'Processus', title: checklistEmbedUi.buttonTitle || 'Insérer un processus', className: 'note-btn-light omo-pv-editor__checklist-embed-button', focusForInsertion: true, onClick: function (context) { openPvChecklistEmbedPicker(context && context.api ? context.api : field); } });
+                    customButtons.push({ name: 'omoPvChecklistEmbed', group: 'omo-pv-checklist-embed', label: String(checklistEmbedUi.toolbarLabel || ''), title: String(checklistEmbedUi.buttonTitle || ''), className: 'note-btn-light omo-pv-editor__checklist-embed-button', focusForInsertion: true, onClick: function (context) { openPvChecklistEmbedPicker(context && context.api ? context.api : field); } });
                 }
                 if (canEmbedEvents) {
                     customButtons.push({
                         name: 'omoPvEventEmbed',
                         group: 'omo-pv-event-embed',
-                        label: 'Date',
-                        title: eventEmbedUi.buttonTitle || 'Insérer une date',
+                        label: String(eventEmbedUi.toolbarLabel || ''),
+                        title: String(eventEmbedUi.buttonTitle || ''),
                         className: 'note-btn-light omo-pv-editor__event-embed-button',
                         focusForInsertion: true,
                         onClick: function (context) {
@@ -5407,8 +5496,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     customButtons.push({
                         name: 'omoPvIndicatorEmbed',
                         group: 'omo-pv-indicator-embed',
-                        label: 'Indicateur',
-                        title: indicatorEmbedUi.buttonTitle || 'Insérer un indicateur',
+                        label: String(indicatorEmbedUi.toolbarLabel || ''),
+                        title: String(indicatorEmbedUi.buttonTitle || ''),
                         className: 'note-btn-light omo-pv-editor__indicator-embed-button',
                         focusForInsertion: true,
                         onClick: function (context) {
@@ -6633,7 +6722,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 if (error && error.point) {
                     replacePointHtml(error.point);
                 }
-                const message = String(error && (error.message || error.text) || 'Impossible de reprendre le verrou.');
+                const message = String(error && (error.message || error.text) || editorClientUi.genericError || '');
                 window.alert(message);
             })
             .finally(function () {
@@ -6744,7 +6833,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 }
                 markPointDirty(pointId, true, false);
                 if (statusNode) {
-                    statusNode.textContent = error && error.message ? String(error.message) : (error && error.text ? String(error.text) : 'Erreur');
+                    statusNode.textContent = error && error.message ? String(error.message) : (error && error.text ? String(error.text) : String(editorClientUi.genericError || ''));
                 }
             })
             .finally(function () {
@@ -6801,7 +6890,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
                 const status = card ? card.querySelector('[data-omo-pv-point-status="' + pointId + '"]') : null;
                 if (status) {
-                    status.textContent = error && (error.message || error.text) ? String(error.message || error.text) : 'Erreur';
+                    status.textContent = error && (error.message || error.text) ? String(error.message || error.text) : String(editorClientUi.genericError || '');
                 }
             });
     }
@@ -7006,7 +7095,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             })
             .catch(function (payload) {
                 if (documentMetaStatus instanceof Element) {
-                    documentMetaStatus.textContent = String(payload && payload.message ? payload.message : 'Impossible d’enregistrer le PV.');
+                    documentMetaStatus.textContent = String(payload && payload.message ? payload.message : editorClientUi.documentSaveError || '');
                 }
             })
             .finally(function () {
@@ -7046,7 +7135,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             .then(function (response) {
                 return response.json().catch(function () { return null; }).then(function (payload) {
                     if (!response.ok || !payload || payload.status !== true) {
-                        throw new Error(payload && payload.message ? payload.message : 'Impossible de générer le résumé.');
+                        throw new Error(payload && payload.message ? payload.message : String(editorClientUi.autoSummaryError || ''));
                     }
                     return payload;
                 });
@@ -7054,7 +7143,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             .then(function (payload) {
                 const summary = String(payload.text || '').trim();
                 if (summary === '') {
-                    throw new Error('Le résumé généré est vide.');
+                    throw new Error(String(editorClientUi.autoSummaryEmpty || ''));
                 }
                 documentDescriptionInput.value = summary;
                 resizeDocumentDescriptionInput();
@@ -7065,7 +7154,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             })
             .catch(function (error) {
                 if (documentMetaStatus instanceof Element) {
-                    documentMetaStatus.textContent = error && error.message ? error.message : 'Impossible de générer le résumé.';
+                    documentMetaStatus.textContent = error && error.message ? error.message : String(editorClientUi.autoSummaryError || '');
                 }
             })
             .finally(function () {
@@ -7157,7 +7246,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     const nextDocumentPayload = payload && payload.document ? payload.document : { pvStage: nextStage };
                     mergeCurrentDocumentPayload(nextDocumentPayload);
                     if (nextStage === 'review') {
-                        window.location.reload();
+                        if (!refreshPvEditorAfterReview()) {
+                            window.location.reload();
+                        }
                         return;
                     }
                     if (nextStage === 'validated' && currentDocumentPayload.isPvValidated === true) {
