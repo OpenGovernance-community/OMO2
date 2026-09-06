@@ -1503,7 +1503,7 @@ if (!is_string($payloadJson)) {
 </div>
 </div>
 
-<script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
+<script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
 <link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260813-decision-uniformity">
 <script src="/common/choice/decision_cards.js"></script>
@@ -2056,6 +2056,8 @@ if (decisionDrawerController) {
     elements.editorDrawer.__omoSubdrawerController = decisionDrawerController;
     window.omoDecisionDrawer = decisionDrawerController;
 }
+const useLocalDrawerNavigation = typeof window.omoIsPvApplicationTabContext === 'function'
+    && window.omoIsPvApplicationTabContext(root);
 const collator = typeof Intl !== 'undefined' && typeof Intl.Collator === 'function'
     ? new Intl.Collator('fr', { sensitivity: 'base', numeric: true })
     : null;
@@ -2906,6 +2908,7 @@ function omoDecisionCloseNestedEditorDrawer(options) {
 
     if (
         settings.force !== true
+        && !useLocalDrawerNavigation
         && /^decision-(?:(?:d)?\d+|[vgp]\d+)$/i.test(currentRouteToken)
         && typeof window.omoOpenDrawerHashState === 'function'
     ) {
@@ -3083,6 +3086,9 @@ function findDecisionItemById(decisionId) {
 }
 
 function getCurrentDecisionRouteToken() {
+    if (useLocalDrawerNavigation) {
+        return '';
+    }
     if (typeof window.omoParsePopupHashState !== 'function') {
         return '';
     }
@@ -3202,7 +3208,7 @@ function openDecisionFromInteraction(decisionId, targetUrl, title, description, 
     const routeToken = buildDecisionRouteToken(resolvedDecisionId, normalizedMode);
     const currentRouteToken = getCurrentDecisionRouteToken();
 
-    if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
+    if (!useLocalDrawerNavigation && routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
         window.omoOpenDrawerHashState(routeToken);
         return true;
     }

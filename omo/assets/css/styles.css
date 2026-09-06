@@ -3006,12 +3006,12 @@ html[data-theme] .common-help-card p {
     z-index: calc(var(--omo-overlay-drawer-z-index) + 10);
 }
 
-.omo-external-panel-drawer .omo-overlay-drawer__panel {
+.omo-external-panel-drawer > .omo-overlay-drawer__panel {
     width: 100%;
     max-width: none;
 }
 
-.omo-external-panel-drawer--headerless .omo-overlay-drawer__header {
+.omo-external-panel-drawer--headerless > .omo-overlay-drawer__panel > .omo-overlay-drawer__header {
     display: none;
 }
 
@@ -3025,7 +3025,7 @@ html[data-theme] .common-help-card p {
     pointer-events: none;
 }
 
-.omo-external-panel-drawer--top-sheet .omo-overlay-drawer__panel {
+.omo-external-panel-drawer--top-sheet > .omo-overlay-drawer__panel {
     top: 0;
     right: 0;
     left: 0;
@@ -3136,24 +3136,31 @@ html[data-theme] .common-help-card p {
     pointer-events: auto;
 }
 
-.omo-overlay-drawer.is-open .omo-overlay-drawer__backdrop,
-.omo-overlay-drawer.is-open .omo-overlay-drawer__panel {
+.omo-overlay-drawer.is-open > .omo-overlay-drawer__backdrop,
+.omo-overlay-drawer.is-open > .omo-overlay-drawer__panel {
     opacity: 1;
 }
 
-.omo-overlay-drawer.is-open .omo-overlay-drawer__panel {
+.omo-overlay-drawer.is-open > .omo-overlay-drawer__panel {
     transform: translateX(0);
+}
+
+.omo-overlay-drawer--detail-panel > .omo-overlay-drawer__panel {
+    width: min(880px, 94vw);
+    transform: translateX(100%);
+    transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform, opacity;
 }
 
 .omo-external-panel-drawer--top-sheet.is-open {
     pointer-events: none;
 }
 
-.omo-external-panel-drawer--top-sheet .omo-overlay-drawer__backdrop {
+.omo-external-panel-drawer--top-sheet > .omo-overlay-drawer__backdrop {
     pointer-events: none;
 }
 
-.omo-external-panel-drawer--top-sheet.is-open .omo-overlay-drawer__panel {
+.omo-external-panel-drawer--top-sheet.is-open > .omo-overlay-drawer__panel {
     transform: translateY(0);
 }
 
@@ -3162,12 +3169,12 @@ html[data-theme] .common-help-card p {
     pointer-events: auto;
 }
 
-.omo-external-panel-drawer--top-sheet.is-peek .omo-overlay-drawer__backdrop {
+.omo-external-panel-drawer--top-sheet.is-peek > .omo-overlay-drawer__backdrop {
     opacity: 0;
     pointer-events: none;
 }
 
-.omo-external-panel-drawer--top-sheet.is-peek .omo-overlay-drawer__panel {
+.omo-external-panel-drawer--top-sheet.is-peek > .omo-overlay-drawer__panel {
     transform: translateY(calc(-100% - var(--omo-external-panel-peek-offset)));
     pointer-events: none;
 }
@@ -3360,7 +3367,7 @@ button.omo-card {
         width: 100%;
     }
 
-    .omo-external-panel-drawer--top-sheet .omo-overlay-drawer__panel {
+    .omo-external-panel-drawer--top-sheet > .omo-overlay-drawer__panel {
         left: 0;
         right: 0;
         width: 100vw;

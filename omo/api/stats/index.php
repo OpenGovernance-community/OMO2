@@ -709,7 +709,7 @@ $displayItemCount = count($statsEntries);
         </div>
     </div>
 
-    <div class="omo-overlay-drawer omo-stats__detail-drawer" data-omo-stats-drawer hidden>
+    <div class="omo-overlay-drawer omo-overlay-drawer--detail-panel omo-stats__detail-drawer" data-omo-stats-drawer hidden>
         <div class="omo-overlay-drawer__backdrop" data-omo-stats-drawer-close></div>
         <div class="omo-overlay-drawer__panel">
             <div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky">
@@ -726,7 +726,7 @@ $displayItemCount = count($statsEntries);
         </div>
     </div>
 </div>
-<script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
+<script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/api/stats/reference-editor.js?v=20260724-ceiling"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
 <script>
@@ -738,6 +738,9 @@ $displayItemCount = count($statsEntries);
         return;
     }
     root.dataset.omoStatsReady = '1';
+
+    var useLocalDrawerNavigation = typeof window.omoIsPvApplicationTabContext === 'function'
+        && window.omoIsPvApplicationTabContext(root);
 
     var drawer = root.querySelector('[data-omo-stats-drawer]');
     var drawerBody = root.querySelector('[data-omo-stats-drawer-body]');
@@ -1520,10 +1523,15 @@ $displayItemCount = count($statsEntries);
             return Promise.resolve(false);
         }
         setDrawerMessage(texts.loading, false);
-        drawer.hidden = false;
-        window.requestAnimationFrame(function () {
-            drawer.classList.add('is-open');
-        });
+        if (drawerController && typeof drawerController.open === 'function') {
+            drawerController.open();
+        } else {
+            drawer.hidden = false;
+            void drawer.offsetWidth;
+            window.requestAnimationFrame(function () {
+                drawer.classList.add('is-open');
+            });
+        }
         var localToken = ++requestToken;
         return fetch(resolveUrl(url), {
             credentials: 'same-origin',
@@ -1563,6 +1571,9 @@ $displayItemCount = count($statsEntries);
     }
 
     function getCurrentRouteToken() {
+        if (useLocalDrawerNavigation) {
+            return '';
+        }
         if (typeof window.omoParsePopupHashState !== 'function') {
             return '';
         }
@@ -1606,7 +1617,7 @@ $displayItemCount = count($statsEntries);
         var routeToken = typeof window.omoBuildStatsIndicatorRouteToken === 'function'
             ? window.omoBuildStatsIndicatorRouteToken(resolvedId)
             : 'stats-i' + String(resolvedId);
-        if (typeof window.omoOpenDrawerHashState === 'function' && routeToken !== getCurrentRouteToken()) {
+        if (!useLocalDrawerNavigation && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== getCurrentRouteToken()) {
             window.omoOpenDrawerHashState(routeToken);
             return;
         }
@@ -1621,7 +1632,7 @@ $displayItemCount = count($statsEntries);
         var routeToken = typeof window.omoBuildStatsGroupRouteToken === 'function'
             ? window.omoBuildStatsGroupRouteToken(resolvedId)
             : 'stats-g' + String(resolvedId);
-        if (typeof window.omoOpenDrawerHashState === 'function' && routeToken !== getCurrentRouteToken()) {
+        if (!useLocalDrawerNavigation && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== getCurrentRouteToken()) {
             window.omoOpenDrawerHashState(routeToken);
             return;
         }
@@ -1714,10 +1725,15 @@ $displayItemCount = count($statsEntries);
             + '</form>';
 
         drawerBody.innerHTML = formHtml;
-        drawer.hidden = false;
-        window.requestAnimationFrame(function () {
-            drawer.classList.add('is-open');
-        });
+        if (drawerController && typeof drawerController.open === 'function') {
+            drawerController.open();
+        } else {
+            drawer.hidden = false;
+            void drawer.offsetWidth;
+            window.requestAnimationFrame(function () {
+                drawer.classList.add('is-open');
+            });
+        }
 
         var form = drawerBody.querySelector('[data-omo-stats-group-editor-form]');
         var nameInput = drawerBody.querySelector('[data-omo-stats-group-editor-name]');

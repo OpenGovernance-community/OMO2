@@ -278,7 +278,7 @@ $texts = [
         </div>
     </div>
 </div>
-<script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
+<script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
-<script src="/omo/api/checklist/checklist.js?v=20260902-restore-default"></script>
+<script src="/omo/api/checklist/checklist.js?v=20260906-pv-local-subdrawers"></script>
