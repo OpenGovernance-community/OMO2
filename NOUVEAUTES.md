@@ -4,7 +4,9 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-06
 
-- Depuis les onglets d applications d un PV, les fiches de detail s ouvrent maintenant dans les sous-drawers internes de l editeur sans modifier le hash global. Leur entete et leur bouton Fermer restent disponibles, un clic sur l arriere-plan les referme, et les panneaux Projet et Indicateur ont la meme largeur limitee avec une ouverture animee depuis la droite.
+- Dans l editeur de PV, un bouton `+` a cote de l horaire permet aux personnes autorisees a modifier l evenement de prolonger la reunion de 5, 10, 15 ou 30 minutes. La nouvelle heure de fin et le minuteur sont mis a jour immediatement, les autres editeurs se resynchronisent, et les notifications de changement d horaire habituelles sont envoyees.
+- Depuis les onglets d applications d un PV, les fiches de detail s ouvrent maintenant dans les sous-drawers internes de l editeur sans modifier le hash global. Les applications remplacent uniquement la partie droite de l editeur afin de garder l ordre du jour, le minuteur et la barre de redimensionnement visibles. Tous les drawers internes des applications, notamment Documents, utilisent automatiquement une largeur limitee et une ouverture animee depuis la droite ; leur entete et leur bouton Fermer restent disponibles et un clic sur l arriere-plan les referme.
+- Dans l onglet Documents d une reunion, seuls les PV valides peuvent maintenant etre ouverts comme des documents ordinaires. Les PV en preparation, en cours ou en validation restent visibles pour le classement, mais leurs cartes ne declenchent plus l editeur d un second PV et ne peuvent donc plus remplacer ou fermer le drawer de la reunion courante.
 
 ## 2026-09-05
 
