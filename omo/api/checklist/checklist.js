@@ -880,7 +880,7 @@
         var sourceButton = button;
         var sourceHolonId = Number(root.getAttribute('data-checklist-route-cid') || 0);
         var organizationId = Number(root.getAttribute('data-checklist-oid') || 0);
-        var html = '<div class="omo-checklist-item-move-dialog omo-resource-picker">'
+        var html = '<div class="omo-checklist-item-move-dialog omo-resource-picker generic-drawer-content">'
             + '<aside class="omo-resource-picker__navigation" data-checklist-item-move-scope></aside>'
             + '<div class="omo-resource-picker__content">'
             + '<p class="generic-help-text">' + escapeHtml(ui.help || '') + '</p>'

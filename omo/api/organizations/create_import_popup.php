@@ -83,6 +83,7 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
         </div>
     </header>
 
+    <div class="omo-create-import__content generic-drawer-content">
     <form class="omo-create-import__form generic-section generic-section--stack" data-omo-create-import-form="1" enctype="multipart/form-data">
         <label class="omo-create-import__field">
             <span><?= htmlspecialchars(t('organization_import.field.file', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
@@ -157,10 +158,11 @@ $templateCatalog = (new \dbObject\Organization())->getStructuralImportTemplateCa
     </section>
 
     <div class="omo-create-import__feedback generic-soft-panel" data-omo-create-import-feedback="1" hidden></div>
+    </div>
 </div>
 
 <style>
-.omo-create-import { display: flex; flex-direction: column; gap: 16px; color: var(--color-text, #1f2937); }
+.omo-create-import { display: flex; flex-direction: column; gap: 0; color: var(--color-text, #1f2937); }
 .omo-create-import .generic-drawer-header p { margin: 8px 0 0; color: var(--color-text-light, #64748b); line-height: 1.45; }
 .omo-create-import__form { --generic-section-padding-block: 18px; --generic-section-padding-inline: 18px; }
 .omo-create-import__form[hidden], .omo-create-import__waiting[hidden] { display: none !important; }

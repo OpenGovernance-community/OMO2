@@ -63,9 +63,30 @@
     var currentView = declaredView === 'list' || declaredView === 'gantt' ? declaredView : 'kanban';
     var currentAssignment = root.getAttribute('data-omo-projects-assignment') === 'mine' ? 'mine' : 'all';
     var currentQuickSearch = root.getAttribute('data-omo-projects-query') || '';
-    var currentListSort = ['planned', 'priority', 'importance', 'holon'].indexOf(root.getAttribute('data-omo-projects-list-sort')) !== -1
-        ? root.getAttribute('data-omo-projects-list-sort')
-        : 'importance';
+    var availableListSorts = ['planned', 'priority', 'importance', 'holon'];
+    var defaultListSort = root.getAttribute('data-omo-projects-default-sort') || 'importance';
+    try {
+        var declaredListSorts = JSON.parse(root.getAttribute('data-omo-projects-sort-options') || '[]');
+        if (Array.isArray(declaredListSorts) && declaredListSorts.length) {
+            availableListSorts = declaredListSorts;
+        }
+    } catch (error) {
+        // Keep the legacy set of sort options when the server payload is unavailable.
+    }
+    if (availableListSorts.indexOf(defaultListSort) === -1) {
+        defaultListSort = availableListSorts[0] || 'planned';
+    }
+    function normalizeProjectSort(sort, scope) {
+        var normalizedSort = String(sort || '');
+        if (availableListSorts.indexOf(normalizedSort) === -1) {
+            return defaultListSort;
+        }
+        if (normalizedSort === 'holon' && scope !== 'children' && scope !== 'descendants') {
+            return defaultListSort;
+        }
+        return normalizedSort;
+    }
+    var currentListSort = normalizeProjectSort(root.getAttribute('data-omo-projects-list-sort'), root.getAttribute('data-omo-projects-scope'));
     var displayPreferencesStorageKey = 'omo.projects.saved-views.v2';
     var legacyDisplayPreferencesStorageKey = 'omo.projects.saved-views.v1';
     var temporaryDisplayPreferencesStorageKey = 'omo.projects.session-views.v1';
@@ -681,7 +702,7 @@
 
             var existingTabId = 'omo-project-document-picker-existing-' + String(Date.now());
             var newTabId = 'omo-project-document-picker-new-' + String(Date.now() + 1);
-            var html = '<div class="generic-tabs omo-document-embed-picker omo-project-document-picker" data-generic-tabs>'
+            var html = '<div class="generic-tabs omo-document-embed-picker omo-project-document-picker generic-drawer-content" data-generic-tabs>'
                 + '<div class="generic-tabs__list" aria-label="' + escapeHtml(texts.documentsPickerTabs || 'Choix du document') + '">'
                 + '<button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="' + existingTabId + '">' + escapeHtml(texts.documentsPickerExisting || 'Document existant') + '</button>'
                 + '<button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="' + newTabId + '">' + escapeHtml(texts.documentsPickerNew || 'Nouveau document') + '</button>'
@@ -916,7 +937,7 @@
         var query = ['oid=' + encodeURIComponent(String(organizationId))];
         var nextScope = scope === 'global' ? 'descendants' : (scope === 'descendants' || scope === 'children' ? scope : 'contextual');
         var nextView = view === 'list' || view === 'gantt' ? view : 'kanban';
-        var nextListSort = listSort === 'planned' || listSort === 'priority' || listSort === 'importance' || listSort === 'holon' ? listSort : 'importance';
+        var nextListSort = normalizeProjectSort(listSort, nextScope);
         var nextAssignment = assignment === 'mine' ? 'mine' : 'all';
         var nextQuickSearch = String(quickSearch || '').trim();
         if (routeCid > 0) {
@@ -1004,7 +1025,7 @@
         return {
             scope: scope === 'global' ? 'descendants' : (scope === 'descendants' || scope === 'children' ? scope : 'contextual'),
             view: view === 'list' || view === 'gantt' ? view : 'kanban',
-            sort: listSort === 'planned' || listSort === 'priority' || listSort === 'importance' || listSort === 'holon' ? listSort : 'importance',
+            sort: normalizeProjectSort(listSort, scope),
             assignment: assignment === 'mine' ? 'mine' : 'all'
         };
     }
@@ -1126,9 +1147,10 @@
             : currentAssignment;
         var preferredSort = String(preferences.sort || '');
         var canUseHolonSort = nextScope === 'descendants' || nextScope === 'children';
-        var nextSort = preferredSort === 'priority' || preferredSort === 'importance' || preferredSort === 'planned'
-            ? preferredSort
-            : (preferredSort === 'holon' && canUseHolonSort ? 'holon' : currentListSort);
+        var nextSort = normalizeProjectSort(preferredSort, nextScope);
+        if (nextSort === 'holon' && !canUseHolonSort) {
+            nextSort = defaultListSort;
+        }
 
         if (nextScope === currentScope && nextView === currentView && nextSort === currentListSort && nextAssignment === currentAssignment) {
             return false;
@@ -1304,10 +1326,7 @@
         }
         var assignment = next.assignment === 'mine' ? 'mine' : 'all';
         var view = next.view === 'list' || next.view === 'gantt' ? next.view : 'kanban';
-        var sort = next.sort === 'planned' || next.sort === 'priority' || next.sort === 'importance' || next.sort === 'holon' ? next.sort : 'importance';
-        if (sort === 'holon' && (scope !== 'children' && scope !== 'descendants')) {
-            sort = 'importance';
-        }
+        var sort = normalizeProjectSort(next.sort, scope);
         return {scope: scope, assignment: assignment, sort: sort, view: view};
     }
 
@@ -1439,7 +1458,7 @@
             var defaultView = serverDefault || {
                 scope: 'contextual',
                 view: 'kanban',
-                sort: 'importance',
+                sort: defaultListSort,
                 assignment: 'all'
             };
             applyDisplayPreferences(normalizeDisplayFilters(defaultView), active);
@@ -1768,7 +1787,7 @@
         var projectId = Number(card.getAttribute('data-project-id') || 0);
         var currentHolonId = Number(card.getAttribute('data-project-holon-id') || 0);
         var organizationId = Number(root.getAttribute('data-omo-projects-oid') || 0);
-        var html = '<div class="omo-project-move-dialog">'
+        var html = '<div class="omo-project-move-dialog generic-drawer-content">'
             + '<p class="omo-project-move-dialog__hint generic-help-text">' + escapeHtml(texts.moveHint) + '</p>'
             + '<div data-omo-project-move-picker></div>'
             + '<p class="omo-project-move-dialog__error" data-omo-project-move-error hidden></p>'
@@ -1848,7 +1867,7 @@
             return;
         }
 
-        var html = '<div class="omo-project-attach-dialog omo-resource-picker">'
+        var html = '<div class="omo-project-attach-dialog omo-resource-picker generic-drawer-content">'
             + '<aside class="omo-resource-picker__navigation" data-omo-project-attach-scope></aside>'
             + '<div class="omo-resource-picker__content">'
             + '<p class="omo-project-move-dialog__hint generic-help-text">' + escapeHtml(texts.attachHint) + '</p>'

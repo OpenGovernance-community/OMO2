@@ -9,7 +9,7 @@ $faqContext = \dbObject\FAQ::resolvePopupRequestContext($_GET);
 if ($faqContext === false) {
 	http_response_code(403);
 	?>
-	<div class="faq-popup__empty">Contexte FAQ invalide.</div>
+	<div class="faq-popup__empty generic-drawer-content">Contexte FAQ invalide.</div>
 	<?php
 	return;
 }

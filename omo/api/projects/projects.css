@@ -162,8 +162,8 @@
 .omo-projects__kanban-grid-header,
 .omo-projects__kanban-row-grid {
     display: grid;
-    grid-template-columns: repeat(6, minmax(270px, 1fr));
-    min-width: 1620px;
+    grid-template-columns: repeat(var(--param-kanban-columns, 6), minmax(270px, 1fr));
+    min-width: calc(var(--param-kanban-columns, 6) * 270px);
 }
 
 .omo-projects__kanban-grid-header {
@@ -203,7 +203,7 @@
 
 .omo-projects__kanban-rows {
     display: grid;
-    min-width: 1620px;
+    min-width: calc(var(--param-kanban-columns, 6) * 270px);
 }
 
 .omo-projects__kanban-row {
@@ -386,6 +386,12 @@
     border-left: 4px solid var(--omo-project-status-color, var(--color-border, #e5e7eb));
     cursor: pointer;
     transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.generic-section.omo-project-card--standalone,
+.omo-project-list-item--standalone,
+.omo-project-gantt-row--standalone .omo-project-gantt-row__project {
+    border-left-width: 8px;
 }
 
 .omo-project-card[draggable="true"] {
