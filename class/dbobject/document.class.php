@@ -1635,6 +1635,34 @@
 			return array_values($entries);
 		}
 
+		public function getInvitationEmailRecipients(int $organizationId = 0): array
+		{
+			$organizationId = $organizationId > 0 ? $organizationId : (int)$this->get('IDorganization');
+			$recipients = array();
+			foreach ($this->getInvitationEntries($organizationId) as $entry) {
+				$userId = (int)($entry['userId'] ?? 0);
+				$email = trim(mb_strtolower((string)($entry['email'] ?? ''), 'UTF-8'));
+				if ($userId > 0) {
+					$user = new \dbObject\User();
+					if ($user->load($userId)) {
+						$email = trim(mb_strtolower((string)$user->getScopedEmail($organizationId), 'UTF-8'));
+					}
+				}
+
+				if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+					continue;
+				}
+
+				$recipients[$email] = array(
+					'email' => $email,
+					'display_name' => trim((string)($entry['displayLabel'] ?? '')),
+					'user_id' => $userId,
+				);
+			}
+
+			return array_values($recipients);
+		}
+
 		public function hasExplicitInvitations(): bool
 		{
 			foreach ($this->getInvitations(true) as $invitation) {
@@ -3655,7 +3683,11 @@
 					continue;
 				}
 				$itemsById[(int)$point->getId()] = $point;
-				if (!$point->isGroup() && (!$point->isConfidential() || $isUserPresent)) {
+				if ($point->isGroup()) {
+					$visibleIds[(int)$point->getId()] = true;
+					continue;
+				}
+				if (!$point->isConfidential() || $isUserPresent) {
 					$visibleIds[(int)$point->getId()] = true;
 				}
 			}
@@ -3678,6 +3710,49 @@
 				return $point instanceof \dbObject\DocumentPvPoint && isset($visibleIds[(int)$point->getId()]);
 			})));
 			return $points;
+		}
+
+		public function getPvApplicationTabs(bool $hydrate = false)
+		{
+			$tabs = new \dbObject\ArrayDocumentApplicationTab();
+			$tabs->loadForDocument((int)$this->getId(), $hydrate);
+			return $tabs;
+		}
+
+		public function copyPvApplicationTabsFromTemplate(\dbObject\Document $template): array
+		{
+			if (
+				(int)$this->getId() <= 0
+				|| !$this->isPvDocument()
+				|| !$template->isPvTemplate()
+				|| (int)$this->get('IDorganization') !== (int)$template->get('IDorganization')
+			) {
+				return array('status' => false, 'text' => 'Modele de PV invalide pour les applications de reunion.');
+			}
+
+			$copiedCount = 0;
+			foreach ($template->getPvApplicationTabs(true) as $sourceTab) {
+				if (!($sourceTab instanceof \dbObject\DocumentApplicationTab)) {
+					continue;
+				}
+
+				$targetTab = new \dbObject\DocumentApplicationTab();
+				$targetTab->set('IDdocument', (int)$this->getId());
+				$targetTab->set('IDapplication', (int)$sourceTab->get('IDapplication'));
+				$targetTab->set('position', (int)$sourceTab->get('position'));
+				$targetTab->setViewParametersArray($sourceTab->getViewParametersArray());
+				$targetTab->set('datecreation', new \DateTimeImmutable());
+
+				$saveResult = $targetTab->save();
+				if (!is_array($saveResult) || empty($saveResult['status'])) {
+					return is_array($saveResult)
+						? $saveResult
+						: array('status' => false, 'text' => 'Impossible de copier une application du modele de PV.');
+				}
+				$copiedCount++;
+			}
+
+			return array('status' => true, 'copiedCount' => $copiedCount);
 		}
 
 		public function copyPvAgendaFromTemplate(\dbObject\Document $template, int $organizationId, int $userId): array
@@ -3777,7 +3852,16 @@
 				}
 			}
 
-			return array('status' => true, 'copiedCount' => count($copiedIds));
+			$applicationTabsResult = $this->copyPvApplicationTabsFromTemplate($template);
+			if (($applicationTabsResult['status'] ?? false) !== true) {
+				return $applicationTabsResult;
+			}
+
+			return array(
+				'status' => true,
+				'copiedCount' => count($copiedIds),
+				'copiedApplicationTabCount' => (int)($applicationTabsResult['copiedCount'] ?? 0),
+			);
 		}
 
 		protected static function escapeViewerText($value): string

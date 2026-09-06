@@ -2155,7 +2155,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             return;
         }
 
-        const htmlFieldVersion = '20260903-toolbar-insert-focus';
+        const htmlFieldVersion = '20260904-highlight-clear';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -2681,7 +2681,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             force: true
                         });
 
-                        if (typeof window.omoOpenDrawerHashState === 'function') {
+                        if (
+                            !(typeof window.omoIsPvApplicationTabContext === 'function' && window.omoIsPvApplicationTabContext(form))
+                            && typeof window.omoOpenDrawerHashState === 'function'
+                        ) {
                             window.omoOpenDrawerHashState('documents-d' + String(savedDocumentId));
                         }
                     } else {

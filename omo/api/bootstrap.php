@@ -4,6 +4,7 @@ require_once dirname(__DIR__, 2) . '/common/auth.php';
 require_once dirname(__DIR__, 2) . '/common/omo_context_scope.php';
 require_once dirname(__DIR__, 2) . '/common/application_view_preferences.php';
 require_once dirname(__DIR__, 2) . '/common/dashboard_view_preferences.php';
+require_once dirname(__DIR__, 2) . '/common/pv_participation.php';
 require_once dirname(__DIR__, 2) . '/common/translation_bundles.php';
 require_once dirname(__DIR__) . '/translations.php';
 
@@ -96,6 +97,7 @@ $shareLink = function_exists('commonGetCurrentShareLink')
     ? commonGetCurrentShareLink()
     : null;
 $publicDecisionTokenAccess = false;
+$publicPvParticipationLink = null;
 $collaboraWopiTokenAccess = defined('OMO_COLLABORA_WOPI_TOKEN_ACCESS')
     && OMO_COLLABORA_WOPI_TOKEN_ACCESS === true;
 
@@ -115,6 +117,14 @@ if (!$shareLink) {
     }
 }
 
+if (!$shareLink && !$publicDecisionTokenAccess) {
+    $publicPvParticipationLink = commonResolvePublicPvParticipationLink();
+    if ($publicPvParticipationLink instanceof \dbObject\DocumentShareLink) {
+        $_SESSION['currentOrganization'] = (int)$publicPvParticipationLink->get('IDorganization');
+        $GLOBALS['omoPublicPvParticipationLink'] = $publicPvParticipationLink;
+    }
+}
+
 if ($shareLink) {
     $_SESSION['currentOrganization'] = (int)$shareLink->get('IDorganization');
 } else {
@@ -123,7 +133,7 @@ if ($shareLink) {
 
 commonRestoreRememberedUser();
 
-if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin() && !$shareLink && !$publicDecisionTokenAccess && !$collaboraWopiTokenAccess && !omoApiCanUsePublicBasicLmsAccess()) {
+if (!commonGetCurrentUserId() && !commonCanAccessWithoutLogin() && !$shareLink && !$publicDecisionTokenAccess && !($publicPvParticipationLink instanceof \dbObject\DocumentShareLink) && !$collaboraWopiTokenAccess && !omoApiCanUsePublicBasicLmsAccess()) {
     http_response_code(401);
     echo "Unauthorized";
     exit;
@@ -133,6 +143,7 @@ if (
     !commonCanAccessWithoutLogin()
     && !$shareLink
     && !$publicDecisionTokenAccess
+    && !($publicPvParticipationLink instanceof \dbObject\DocumentShareLink)
     && !$collaboraWopiTokenAccess
     && !omoApiCanUsePublicBasicLmsAccess()
     && !omoApiCanBypassOrganizationAccessCheck()

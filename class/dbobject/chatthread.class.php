@@ -131,12 +131,13 @@ class ChatThread extends DbObject
         return self::findBySubject($organizationId, $subjectType, $subjectId);
     }
 
-    public static function getSubjectDiscussionSummaries($organizationId, $subjectType, array $subjectIds, $viewerUserId = 0, $viewerParticipantId = 0)
+    public static function getSubjectDiscussionSummaries($organizationId, $subjectType, array $subjectIds, $viewerUserId = 0, $viewerParticipantId = 0, $viewerDocumentShareLinkId = 0)
     {
         $organizationId = (int)$organizationId;
         $subjectType = self::normalizeSubjectType($subjectType);
         $viewerUserId = max(0, (int)$viewerUserId);
         $viewerParticipantId = max(0, (int)$viewerParticipantId);
+        $viewerDocumentShareLinkId = max(0, (int)$viewerDocumentShareLinkId);
         $subjectIds = array_values(array_unique(array_filter(array_map('intval', $subjectIds), function ($subjectId) {
             return $subjectId > 0;
         })));
@@ -151,6 +152,8 @@ class ChatThread extends DbObject
             'viewer_user_id_subquery' => $viewerUserId,
             'viewer_participant_id_case' => $viewerParticipantId,
             'viewer_participant_id_subquery' => $viewerParticipantId,
+            'viewer_document_share_link_id_case' => $viewerDocumentShareLinkId,
+            'viewer_document_share_link_id_subquery' => $viewerDocumentShareLinkId,
         ];
         $subjectPlaceholders = [];
         foreach ($subjectIds as $index => $subjectId) {
@@ -167,6 +170,7 @@ class ChatThread extends DbObject
                         WHEN (
                             message.`IDuser` = :viewer_user_id_case
                             OR message.`IDdecision_participant` = :viewer_participant_id_case
+                            OR message.`IDdocument_share_link` = :viewer_document_share_link_id_case
                         ) AND message.`message_type` = \'user\'
                         THEN message.`id`
                         ELSE 0
@@ -179,6 +183,7 @@ class ChatThread extends DbObject
                               AND (
                                   viewer_message.`IDuser` = :viewer_user_id_subquery
                                   OR viewer_message.`IDdecision_participant` = :viewer_participant_id_subquery
+                                  OR viewer_message.`IDdocument_share_link` = :viewer_document_share_link_id_subquery
                               )
                               AND viewer_message.`message_type` = \'user\'
                         ), 0)
@@ -214,6 +219,7 @@ class ChatThread extends DbObject
                 'messages_since_viewer' => $lastViewerMessageId > 0 ? (int)($row['messages_since_viewer'] ?? 0) : null,
                 'last_message_user_id' => 0,
                 'last_message_participant_id' => 0,
+                'last_message_document_share_link_id' => 0,
                 'last_message_author_name' => '',
                 'last_message_type' => '',
                 'last_message_at' => '',
@@ -235,7 +241,7 @@ class ChatThread extends DbObject
             $lastParameters[$placeholder] = $messageId;
         }
         $lastRows = self::fetchAll(
-            'SELECT `id`, `IDuser`, `IDdecision_participant`, `author_name`, `message_type`, `created_at`
+            'SELECT `id`, `IDuser`, `IDdecision_participant`, `IDdocument_share_link`, `author_name`, `message_type`, `created_at`
              FROM `chat_message`
              WHERE `id` IN (' . implode(', ', $lastPlaceholders) . ')',
             $lastParameters
@@ -251,6 +257,7 @@ class ChatThread extends DbObject
             }
             $summary['last_message_user_id'] = (int)($lastRow['IDuser'] ?? 0);
             $summary['last_message_participant_id'] = (int)($lastRow['IDdecision_participant'] ?? 0);
+            $summary['last_message_document_share_link_id'] = (int)($lastRow['IDdocument_share_link'] ?? 0);
             $summary['last_message_author_name'] = trim((string)($lastRow['author_name'] ?? ''));
             $summary['last_message_type'] = trim((string)($lastRow['message_type'] ?? ''));
             $summary['last_message_at'] = trim((string)($lastRow['created_at'] ?? ''));

@@ -522,6 +522,42 @@ class Event extends DbObject
         })));
     }
 
+		public function getInvitationEmailRecipients(int $organizationId = 0): array
+		{
+			$organizationId = $organizationId > 0 ? $organizationId : (int)$this->get('IDorganization');
+			$targets = $this->getEffectiveInvitationTargets($organizationId);
+			$recipients = array();
+
+			foreach ((array)($targets['userIds'] ?? array()) as $userId) {
+				$userId = (int)$userId;
+				$email = $this->getViewerScopedEmail($userId, $organizationId);
+				if ($email === '') {
+					continue;
+				}
+
+				$recipients[$email] = array(
+					'email' => $email,
+					'display_name' => $this->getViewerDisplayName($userId, $organizationId),
+					'user_id' => $userId,
+				);
+			}
+
+			foreach ((array)($targets['emails'] ?? array()) as $email) {
+				$email = self::normalizeInvitationEmail($email);
+				if ($email === '' || isset($recipients[$email])) {
+					continue;
+				}
+
+				$recipients[$email] = array(
+					'email' => $email,
+					'display_name' => '',
+					'user_id' => 0,
+				);
+			}
+
+			return array_values($recipients);
+		}
+
     public static function getNotificationLifecycleCandidates($limit = 200, $referenceDateTime = null): array
     {
         $referenceDateTime = $referenceDateTime instanceof \DateTimeInterface

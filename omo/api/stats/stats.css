@@ -655,10 +655,6 @@ button.omo-stats-group-detail__legend-item:focus-visible {
     font-size: 0.75rem;
 }
 
-.omo-stats__detail-drawer .omo-overlay-drawer__panel {
-    width: min(880px, 94vw);
-}
-
 .omo-stats__detail-drawer .omo-overlay-drawer__body {
     padding: 18px;
 }

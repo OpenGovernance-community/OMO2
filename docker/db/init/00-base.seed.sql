@@ -972,6 +972,7 @@ CREATE TABLE `chat_message` (
   `IDorganization` int(11) NOT NULL,
   `IDuser` int(11) DEFAULT NULL,
   `IDdecision_participant` int(11) DEFAULT NULL,
+  `IDdocument_share_link` int(11) DEFAULT NULL,
   `message_type` varchar(20) NOT NULL DEFAULT 'user',
   `content` mediumtext NOT NULL,
   `author_name` varchar(190) DEFAULT NULL,
@@ -983,6 +984,7 @@ CREATE TABLE `chat_message` (
   KEY `idx_chat_message_organization` (`IDorganization`),
   KEY `idx_chat_message_user` (`IDuser`),
   KEY `idx_chat_message_decision_participant` (`IDdecision_participant`),
+  KEY `idx_chat_message_document_share_link` (`IDdocument_share_link`),
   KEY `idx_chat_message_type` (`message_type`),
   CONSTRAINT `fk_chat_message_thread` FOREIGN KEY (`IDchat_thread`) REFERENCES `chat_thread` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_chat_message_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
@@ -1293,6 +1295,53 @@ CREATE TABLE `document_pv_point_tension` (
 LOCK TABLES `document_pv_point_tension` WRITE;
 /*!40000 ALTER TABLE `document_pv_point_tension` DISABLE KEYS */;
 /*!40000 ALTER TABLE `document_pv_point_tension` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `document_share_link`
+--
+
+DROP TABLE IF EXISTS `document_share_link`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `document_share_link` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `version` int(11) NOT NULL DEFAULT 1,
+  `IDorganization` int(11) NOT NULL,
+  `IDdocument` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `label` varchar(150) DEFAULT NULL,
+  `token` varchar(80) NOT NULL,
+  `password_hash` varchar(255) DEFAULT NULL,
+  `allow_live_follow` tinyint(1) NOT NULL DEFAULT 0,
+  `allow_pv_contribution` tinyint(1) NOT NULL DEFAULT 0,
+  `recipient_email` varchar(250) DEFAULT NULL,
+  `recipient_user_id` int(11) DEFAULT NULL,
+  `datecreation` datetime DEFAULT NULL,
+  `dateexpiration` datetime DEFAULT NULL,
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_document_share_link_token` (`token`),
+  KEY `idx_document_share_link_document` (`IDdocument`,`active`),
+  KEY `idx_document_share_link_organization` (`IDorganization`,`active`),
+  KEY `idx_document_share_link_user` (`IDuser`),
+  KEY `idx_document_share_link_pv_recipient` (`IDdocument`,`recipient_email`,`active`),
+  CONSTRAINT `fk_document_share_link_document` FOREIGN KEY (`IDdocument`) REFERENCES `document` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_document_share_link_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_document_share_link_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+ALTER TABLE `chat_message`
+  ADD CONSTRAINT `fk_chat_message_document_share_link` FOREIGN KEY (`IDdocument_share_link`) REFERENCES `document_share_link` (`id`) ON DELETE SET NULL;
+
+--
+-- Dumping data for table `document_share_link`
+--
+
+LOCK TABLES `document_share_link` WRITE;
+/*!40000 ALTER TABLE `document_share_link` DISABLE KEYS */;
+/*!40000 ALTER TABLE `document_share_link` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --

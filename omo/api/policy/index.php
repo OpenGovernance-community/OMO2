@@ -329,10 +329,12 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         <div class="omo-overlay-drawer__panel"><div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky"><div class="generic-drawer-header__copy"><h3 class="omo-overlay-drawer__title"><?= omoApiEscape(omoPolicyT('policy.drawer.title')) ?></h3><p class="omo-overlay-drawer__description"><?= omoApiEscape(omoPolicyT('policy.drawer.description')) ?></p></div><div class="generic-drawer-header__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-policy-close><?= omoApiEscape(omoPolicyT('policy.close')) ?></button></div></div><div class="omo-overlay-drawer__body" data-policy-drawer-body></div></div>
     </div>
 </div>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
 <script>
 (function () {
-    var root = document.getElementById('omo-policy-root');
+    var root = typeof window.omoFindApplicationRoot === 'function'
+        ? window.omoFindApplicationRoot('omo-policy-root')
+        : document.getElementById('omo-policy-root');
     if (!root || root.dataset.ready === '1') return;
     root.dataset.ready = '1';
     var drawer = root.querySelector('[data-policy-drawer]');
@@ -376,7 +378,10 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         return url;
     };
     var policyPreferenceKey = function () {
-        return String(root.dataset.policyOid || '0') + ':' + String(root.dataset.policyCid || '0');
+        var regularKey = String(root.dataset.policyOid || '0') + ':' + String(root.dataset.policyCid || '0');
+        return typeof window.omoApplicationViewPreferencesGetStorageContextKey === 'function'
+            ? window.omoApplicationViewPreferencesGetStorageContextKey(root, regularKey)
+            : regularKey;
     };
     var normalizeView = function (view) {
         view = view && typeof view === 'object' ? view : {};
