@@ -121,7 +121,7 @@ $documentDescription = trim((string)($livePayload['description'] ?? ''));
     <script src="/shared_functions.js"></script>
     <script>sharedApplyDocumentTheme();</script>
     <link rel="stylesheet" href="/common/assets/components.css">
-    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260816-calendar-notifications">
+    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260906-pv-subdrawer-slide">
     <style>
     body {
         margin: 0;

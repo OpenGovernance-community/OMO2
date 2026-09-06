@@ -1133,7 +1133,7 @@ $projectTexts = [
         </div>
     </div>
 
-    <div class="omo-overlay-drawer omo-projects__drawer" data-omo-projects-drawer hidden>
+    <div class="omo-overlay-drawer omo-overlay-drawer--detail-panel omo-projects__drawer" data-omo-projects-drawer hidden>
         <div class="omo-overlay-drawer__backdrop" data-omo-projects-drawer-close></div>
         <div class="omo-overlay-drawer__panel">
             <div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky">
@@ -1166,7 +1166,7 @@ $projectTexts = [
         </div>
     </div>
 </div>
-<script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
+<script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/common/calendar/event-editor.js?v=20260902-submit-lock"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
-<script src="/omo/api/projects/projects.js?v=20260902-restore-default"></script>
+<script src="/omo/api/projects/projects.js?v=20260906-pv-subdrawer-slide"></script>

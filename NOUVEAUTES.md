@@ -2,6 +2,10 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-06
+
+- Depuis les onglets d applications d un PV, les fiches de detail s ouvrent maintenant dans les sous-drawers internes de l editeur sans modifier le hash global. Leur entete et leur bouton Fermer restent disponibles, un clic sur l arriere-plan les referme, et les panneaux Projet et Indicateur ont la meme largeur limitee avec une ouverture animee depuis la droite.
+
 ## 2026-09-05
 
 - L editeur de PV propose maintenant des onglets d applications pour consulter Projets, Indicateurs, Processus et les autres apps actives sans quitter la reunion. Le bouton `+` permet d en ajouter plusieurs dans le contexte du holon associe au PV, chaque vue conserve en base sa propre portee, son tri et son mode d affichage, et les modeles de PV recopient ces onglets avec leur configuration. Ces vues restent absentes des invitations publiques, impressions et exports PDF.

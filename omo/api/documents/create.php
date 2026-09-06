@@ -2681,7 +2681,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             force: true
                         });
 
-                        if (typeof window.omoOpenDrawerHashState === 'function') {
+                        if (
+                            !(typeof window.omoIsPvApplicationTabContext === 'function' && window.omoIsPvApplicationTabContext(form))
+                            && typeof window.omoOpenDrawerHashState === 'function'
+                        ) {
                             window.omoOpenDrawerHashState('documents-d' + String(savedDocumentId));
                         }
                     } else {

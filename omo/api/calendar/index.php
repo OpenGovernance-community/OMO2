@@ -1700,6 +1700,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
         root.dataset.omoCalendarReady = '1';
 
+        var useLocalDrawerNavigation = typeof window.omoIsPvApplicationTabContext === 'function'
+            && window.omoIsPvApplicationTabContext(root);
+
         var drawer = root.querySelector('[data-omo-calendar-editor-drawer]');
         var drawerBody = root.querySelector('[data-omo-calendar-editor-body]');
         var drawerTitle = root.querySelector('[data-omo-calendar-editor-title]');
@@ -1951,6 +1954,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         });
 
         function getCurrentRouteToken() {
+            if (useLocalDrawerNavigation) {
+                return '';
+            }
             if (typeof window.omoParsePopupHashState !== 'function') {
                 return '';
             }
@@ -3559,7 +3565,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 var routeToken = buildEventRouteToken(eventId);
                 var currentRouteToken = getCurrentRouteToken();
 
-                if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
+                if (!useLocalDrawerNavigation && routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
                     window.omoOpenDrawerHashState(routeToken);
                     return;
                 }

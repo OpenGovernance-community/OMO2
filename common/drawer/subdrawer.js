@@ -164,8 +164,22 @@
             return true;
         }
 
+        function open() {
+            if (!drawer || (!drawer.hidden && drawer.classList.contains('is-open'))) {
+                return;
+            }
+
+            drawer.classList.remove('is-open');
+            drawer.hidden = false;
+            void drawer.offsetWidth;
+            window.requestAnimationFrame(function () {
+                drawer.classList.add('is-open');
+            });
+        }
+
         return {
             drawer: drawer,
+            open: open,
             setHeader: setHeader,
             setTitle: function (nextTitle) {
                 setHeader({ title: nextTitle });

@@ -72,7 +72,7 @@ require_once __DIR__ . '/api/bootstrap.php';
     <script>sharedApplyDocumentTheme();</script>
     <link rel="stylesheet" href="/common/assets/components.css">
     <link rel="stylesheet" href="/common/assets/topbar.css">
-    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260904-pv-participation">
+    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260906-pv-subdrawer-slide">
     <style>
     html, body { height: 100%; margin: 0; }
     body { background: var(--color-bg, #f8fafc); color: var(--color-text, #1f2937); }

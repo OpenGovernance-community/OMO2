@@ -9,6 +9,9 @@
     }
     root.dataset.checklistReady = '1';
 
+    var useLocalDrawerNavigation = typeof window.omoIsPvApplicationTabContext === 'function'
+        && window.omoIsPvApplicationTabContext(root);
+
     var drawer = root.querySelector('[data-checklist-drawer]');
     var drawerBody = root.querySelector('[data-checklist-drawer-body]');
     var drawerController = drawer && typeof window.omoCreateSubdrawerController === 'function'
@@ -384,6 +387,9 @@
     }
 
     function getCurrentRouteToken() {
+        if (useLocalDrawerNavigation) {
+            return '';
+        }
         if (typeof window.omoParsePopupHashState !== 'function') {
             return '';
         }
@@ -405,7 +411,7 @@
 
     function navigateChecklistDetail(checklistId, fallbackUrl) {
         var routeToken = buildChecklistRouteToken(checklistId);
-        if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== getCurrentRouteToken()) {
+        if (!useLocalDrawerNavigation && routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== getCurrentRouteToken()) {
             window.omoOpenDrawerHashState(routeToken);
             return;
         }

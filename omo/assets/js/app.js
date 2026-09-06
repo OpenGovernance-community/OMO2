@@ -5531,6 +5531,15 @@ function omoFindApplicationRoot(rootId) {
     return document.getElementById(normalizedRootId);
 }
 
+function omoIsPvApplicationTabContext(element = null) {
+    const candidate = element && element.jquery
+        ? element.get(0)
+        : element;
+
+    return candidate instanceof Element
+        && candidate.closest('[data-omo-pv-application-panel]') !== null;
+}
+
 function omoExecuteFetchedScripts(container, loadTarget = null) {
     if (!container) {
         return;
@@ -5775,6 +5784,7 @@ window.omoRegisterSearchPopupJobState = omoRegisterSearchPopupJobState;
 window.omoOpenUserContextPopup = omoOpenUserContextPopup;
 window.omoReplaceFetchedPanelRoot = omoReplaceFetchedPanelRoot;
 window.omoFindApplicationRoot = omoFindApplicationRoot;
+window.omoIsPvApplicationTabContext = omoIsPvApplicationTabContext;
 window.omoLoadContent = loadContent;
 window.omoSetPanelResultsLoadingSkeleton = omoSetPanelResultsLoadingSkeleton;
 window.omoRunRuntimeMaintenance = omoRunRuntimeMaintenance;
