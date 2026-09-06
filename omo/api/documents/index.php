@@ -391,6 +391,7 @@ $applicationViewPreferences = omoApplicationViewPreferencesGetContext(
     $currentContextHolon instanceof Holon ? $currentContextHolon : null,
     $currentUserId
 );
+$isPvApplicationTab = !empty($applicationViewPreferences['isPvApplicationTab']);
 $documentScope = omoApiNormalizeContextScope(
     omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'document_scope', 'scope', 'contextual'),
     $availableDocumentScopes
@@ -620,6 +621,10 @@ foreach ($documents as $document) {
     $pvPreparationUrl = $canOpenPvEditor
         ? $document->buildPvEditorUrl($currentOrganizationId)
         : '';
+    $isPvDocument = $document->isPvDocument();
+    $isPvValidated = $isPvDocument && $document->isPvValidated();
+    $canOpenInPvApplicationTab = !$isPvDocument || $isPvValidated;
+    $canOpenInCurrentView = !$isPvApplicationTab || $canOpenInPvApplicationTab;
     $isFolder = $document->isFolder();
     $isExternalLink = $document->isExternalLink();
     $canShareDocument = !$isFolder && $document->supportsHtmlContent();
@@ -641,6 +646,8 @@ foreach ($documents as $document) {
         'title' => $documentTitle,
         'listTitle' => $listTitle,
         'documentType' => $document->getDocumentType(),
+        'isPvValidated' => $isPvValidated,
+        'canOpenInPvApplicationTab' => $canOpenInPvApplicationTab,
         'storedFileKind' => $document->isUploadedFile() ? $document->getStoredFileKind() : '',
         'isMissingUploadedFile' => $document->hasMissingUploadedFile(),
         'canExportPdf' => $document->isPvDocument(),
@@ -682,13 +689,13 @@ foreach ($documents as $document) {
             && (int)$document->get('IDevent') <= 0
             && !isset($documentListMetadata['documentsWithChildren'][$documentId]),
         'canEdit' => $document->isPvDocument()
-            ? $canOpenPvEditor
+            ? ($canOpenInCurrentView && $canOpenPvEditor)
             : (
                 $canManageDocument
                  || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && !$document->isWhiteboardDocument() && $document->canEditInOrganizationContextWithVisibilityRules($documentOrganizationId, $currentUserId, $visibilityRule, $editVisibilityRule, $documentViewerContext))
             ),
         'editUrl' => $document->isPvDocument()
-            ? $pvPreparationUrl
+            ? ($canOpenInCurrentView ? $pvPreparationUrl : '')
             : ('/omo/api/documents/create.php?id=' . $documentId
                 . ($documentOrganizationId > 0 ? '&oid=' . $documentOrganizationId : '')
                 . ($documentHolonId > 0 ? '&cid=' . $documentHolonId : '')),
@@ -758,6 +765,11 @@ if ($initialOpenDocumentId > 0) {
             'title' => $requestedCanOpenDirectly ? (string)$requestedOpenDocument->get('title') : '',
             'fullDateLabel' => $requestedCanOpenDirectly ? $formatDate($requestedResolvedCreatedAt, true) : '',
             'documentType' => $requestedCanOpenDirectly ? $requestedOpenDocument->getDocumentType() : '',
+            'isPvValidated' => $requestedCanOpenDirectly
+                && $requestedOpenDocument->isPvDocument()
+                && $requestedOpenDocument->isPvValidated(),
+            'canOpenInPvApplicationTab' => !$requestedOpenDocument->isPvDocument()
+                || ($requestedCanOpenDirectly && $requestedOpenDocument->isPvValidated()),
             'isFolder' => $requestedOpenDocument->isFolder(),
             'openInNewWindow' => false,
             'externalUrl' => '',
@@ -766,7 +778,10 @@ if ($initialOpenDocumentId > 0) {
                 : '',
             'hasUpcomingPvEvent' => $requestedCanOpenDirectly ? $requestedOpenDocument->hasUpcomingAssociatedEvent() : false,
             'canEdit' => $requestedOpenDocument->isPvDocument()
-                ? $requestedCanOpenPvEditor
+                ? (
+                    (!$isPvApplicationTab || $requestedOpenDocument->isPvValidated())
+                    && $requestedCanOpenPvEditor
+                )
                 : (
                     $requestedCanView
                     && (
@@ -778,7 +793,11 @@ if ($initialOpenDocumentId > 0) {
                     )
                 ),
             'editUrl' => $requestedOpenDocument->isPvDocument()
-                ? ($requestedCanOpenPvEditor ? $requestedOpenDocument->buildPvEditorUrl($currentOrganizationId) : '')
+                ? (
+                    (!$isPvApplicationTab || $requestedOpenDocument->isPvValidated()) && $requestedCanOpenPvEditor
+                        ? $requestedOpenDocument->buildPvEditorUrl($currentOrganizationId)
+                        : ''
+                )
                 : ($requestedCanView
                     ? '/omo/api/documents/create.php?id=' . $requestedDocumentId
                         . '&oid=' . $currentOrganizationId
@@ -796,6 +815,8 @@ if ($initialOpenDocumentId > 0) {
             'title' => '',
             'fullDateLabel' => '',
             'documentType' => '',
+            'isPvValidated' => false,
+            'canOpenInPvApplicationTab' => false,
             'isFolder' => false,
             'openInNewWindow' => false,
             'externalUrl' => '',
@@ -974,11 +995,11 @@ if (!is_string($documentsPayload)) {
                         <h3 class="omo-panel-group__title generic-file-list__group-title"><?= $escape($entry['groupLabel']) ?></h3>
                         <div class="omo-documents__list omo-panel-view__body_content">
                 <?php endif; ?>
+                            <?php $entryCanOpen = !$isPvApplicationTab || !empty($entry['canOpenInPvApplicationTab']); ?>
                             <article class="omo-documents__item-shell generic-file-list__item-shell<?= !empty($entry['isMissingUploadedFile']) ? ' omo-documents__item-shell--missing-upload' : '' ?>">
                                 <div
-                                    class="omo-documents__item omo-card omo-card--interactive"
-                                    role="button"
-                                    tabindex="0"
+                                    class="omo-documents__item omo-card<?= $entryCanOpen ? ' omo-card--interactive' : ' omo-documents__item--unavailable' ?>"
+                                    <?= $entryCanOpen ? 'role="button" tabindex="0"' : 'aria-disabled="true"' ?>
                                     data-omo-document-id="<?= $escape($entry['id']) ?>"
                                     data-omo-document-href="<?= $escape($entry['href']) ?>"
                                     data-omo-document-context-url="<?= $escape($entry['contextUrl']) ?>"
@@ -986,6 +1007,7 @@ if (!is_string($documentsPayload)) {
                                     data-omo-document-open-in-new-window="<?= !empty($entry['openInNewWindow']) ? '1' : '0' ?>"
                                     data-omo-document-type="<?= $escape($entry['documentType']) ?>"
                                     data-omo-document-pv-editor-url="<?= $escape($entry['pvPreparationUrl'] ?? '') ?>"
+                                    data-omo-document-can-open-in-pv-tab="<?= !empty($entry['canOpenInPvApplicationTab']) ? '1' : '0' ?>"
                                     data-omo-document-title="<?= $escape($entry['title']) ?>"
                                     data-omo-document-full-date="<?= $escape($entry['fullDateLabel']) ?>"
                                 >
@@ -1092,7 +1114,7 @@ if (!is_string($documentsPayload)) {
             <?php endif; ?>
         </div>
 
-            <div class="omo-overlay-drawer omo-documents__detail-drawer" data-omo-document-detail-drawer hidden>
+            <div class="omo-overlay-drawer<?= !empty($applicationViewPreferences['isPvApplicationTab']) ? ' omo-overlay-drawer--detail-panel' : '' ?> omo-documents__detail-drawer" data-omo-document-detail-drawer hidden>
                 <div class="omo-overlay-drawer__backdrop" data-omo-document-detail-close></div>
                 <div class="omo-overlay-drawer__panel">
                     <div class="omo-overlay-drawer__header generic-drawer-header">
@@ -1525,6 +1547,11 @@ if (!is_string($documentsPayload)) {
                             }
 
                             const documents = Array.isArray(payload.documents) ? payload.documents.slice() : [];
+                            const isPvApplicationTab = <?= $isPvApplicationTab ? 'true' : 'false' ?>
+                                || (
+                                    typeof window.omoIsPvApplicationTabContext === 'function'
+                                    && window.omoIsPvApplicationTabContext(panel)
+                                );
                             const requestedDocument = payload && payload.requestedDocument && typeof payload.requestedDocument === 'object'
                                 ? payload.requestedDocument
                                 : null;
@@ -1949,6 +1976,7 @@ if (!is_string($documentsPayload)) {
                                     container.setAttribute('data-omo-document-open-in-new-window', documentItem.openInNewWindow ? '1' : '0');
                                     container.setAttribute('data-omo-document-type', documentItem.documentType || '');
                                     container.setAttribute('data-omo-document-pv-editor-url', documentItem.pvPreparationUrl || '');
+                                    container.setAttribute('data-omo-document-can-open-in-pv-tab', documentItem.canOpenInPvApplicationTab ? '1' : '0');
                                     container.setAttribute('data-omo-document-title', documentItem.title || '');
                                     container.setAttribute('data-omo-document-full-date', documentItem.fullDateLabel || '');
                                 }
@@ -2378,7 +2406,12 @@ if (!is_string($documentsPayload)) {
                                 } else {
                                     const link = document.createElement('div');
                                     link.className = 'omo-documents__item omo-card';
-                                    appendDocumentCardContent(link, documentItem, { interactive: true });
+                                    const canOpenDocument = !isPvApplicationTab || documentItem.canOpenInPvApplicationTab === true;
+                                    appendDocumentCardContent(link, documentItem, { interactive: canOpenDocument });
+                                    if (!canOpenDocument) {
+                                        link.classList.add('omo-documents__item--unavailable');
+                                        link.setAttribute('aria-disabled', 'true');
+                                    }
                                     shell.appendChild(link);
                                 }
 
@@ -2454,8 +2487,13 @@ if (!is_string($documentsPayload)) {
                                     return;
                                 }
 
-                                detailDrawer.hidden = false;
+                                if (detailDrawerController && typeof detailDrawerController.open === 'function') {
+                                    detailDrawerController.open();
+                                    return;
+                                }
 
+                                detailDrawer.hidden = false;
+                                void detailDrawer.offsetWidth;
                                 requestAnimationFrame(function () {
                                     detailDrawer.classList.add('is-open');
                                 });
@@ -2742,6 +2780,14 @@ if (!is_string($documentsPayload)) {
 
                             const openDocumentDetail = function (documentItem) {
                                 if (!detailDrawer || !detailBody || !documentItem || !documentItem.id || documentItem.isFolder) {
+                                    return;
+                                }
+
+                                if (
+                                    isPvApplicationTab
+                                    && String(documentItem.documentType || '').trim().toLowerCase() === 'pv'
+                                    && documentItem.canOpenInPvApplicationTab !== true
+                                ) {
                                     return;
                                 }
 
@@ -3635,8 +3681,11 @@ if (!is_string($documentsPayload)) {
 
                                         if (targetMode === 'edit') {
                                             if (
-                                                typeof window.omoPreserveDocumentPvPreparationDrawer !== 'function'
-                                                || !window.omoPreserveDocumentPvPreparationDrawer()
+                                                !isPvApplicationTab
+                                                && (
+                                                    typeof window.omoPreserveDocumentPvPreparationDrawer !== 'function'
+                                                    || !window.omoPreserveDocumentPvPreparationDrawer()
+                                                )
                                             ) {
                                                 if (typeof window.omoCloseDocumentPvPreparationDrawer === 'function') {
                                                     window.omoCloseDocumentPvPreparationDrawer({ force: true });
@@ -3690,8 +3739,11 @@ if (!is_string($documentsPayload)) {
 
                                     window.omoCloseDocumentEditorDrawer({ force: true });
                                     if (
-                                        typeof window.omoPreserveDocumentPvPreparationDrawer !== 'function'
-                                        || !window.omoPreserveDocumentPvPreparationDrawer()
+                                        !isPvApplicationTab
+                                        && (
+                                            typeof window.omoPreserveDocumentPvPreparationDrawer !== 'function'
+                                            || !window.omoPreserveDocumentPvPreparationDrawer()
+                                        )
                                     ) {
                                         if (typeof window.omoCloseDocumentPvPreparationDrawer === 'function') {
                                             window.omoCloseDocumentPvPreparationDrawer({ force: true });
@@ -3960,6 +4012,12 @@ if (!is_string($documentsPayload)) {
                     && window.omoIsPvApplicationTabContext(root);
             }
 
+            function isPvDocumentBlockedInLocalNavigation(documentItem, rootOverride) {
+                return useLocalDrawerNavigation(rootOverride)
+                    && String(documentItem && documentItem.documentType ? documentItem.documentType : '').trim().toLowerCase() === 'pv'
+                    && documentItem.canOpenInPvApplicationTab !== true;
+            }
+
             function buildDocumentsPanelUrl(root) {
                 if (!root) {
                     return '/omo/api/documents/index.php';
@@ -4093,10 +4151,15 @@ if (!is_string($documentsPayload)) {
                     ? getSkeleton('panel')
                     : '<div class="loading"><?= $escape(omoDocumentsScopeT('documents.action.loading')) ?></div>';
 
-                drawer.hidden = false;
-                requestAnimationFrame(function () {
-                    drawer.classList.add('is-open');
-                });
+                if (drawerController && typeof drawerController.open === 'function') {
+                    drawerController.open();
+                } else {
+                    drawer.hidden = false;
+                    void drawer.offsetWidth;
+                    requestAnimationFrame(function () {
+                        drawer.classList.add('is-open');
+                    });
+                }
 
                 fetch(targetUrl, {
                     credentials: 'same-origin',
@@ -4431,12 +4494,17 @@ if (!is_string($documentsPayload)) {
                 }
             };
 
-            window.omoOpenDocumentPvPreparationByPayload = function (documentItem) {
+            window.omoOpenDocumentPvPreparationByPayload = function (documentItem, rootOverride) {
                 const preparationUrl = String(documentItem && documentItem.pvPreparationUrl ? documentItem.pvPreparationUrl : '').trim();
                 const documentId = Number(documentItem && documentItem.id ? documentItem.id : 0);
                 const title = String(documentItem && documentItem.title ? documentItem.title : '').trim();
                 const fullDate = String(documentItem && documentItem.fullDateLabel ? documentItem.fullDateLabel : '').trim();
                 const hasUpcomingPvEvent = !!(documentItem && documentItem.hasUpcomingPvEvent);
+                const documentsRoot = rootOverride instanceof Element ? rootOverride : getDocumentsRoot();
+
+                if (useLocalDrawerNavigation(documentsRoot)) {
+                    return false;
+                }
 
                 if (
                     preparationUrl === ''
@@ -4467,15 +4535,20 @@ if (!is_string($documentsPayload)) {
             };
 
             window.omoOpenDocumentDetailByPayload = function (documentItem, rootOverride) {
+                const root = rootOverride instanceof Element
+                    ? rootOverride
+                    : getDocumentsRoot();
+
+                if (isPvDocumentBlockedInLocalNavigation(documentItem, root)) {
+                    return false;
+                }
+
                 if (documentItem && documentItem.openInNewWindow && documentItem.externalUrl) {
                     if (openExternalDocumentWindow(documentItem)) {
                         return true;
                     }
                 }
 
-                const root = rootOverride instanceof Element
-                    ? rootOverride
-                    : getDocumentsRoot();
                 const drawer = root ? root.querySelector('[data-omo-document-detail-drawer]') : null;
                 const body = drawer ? drawer.querySelector('[data-omo-document-detail-body]') : null;
                 const titleNode = drawer ? drawer.querySelector('[data-omo-document-detail-title]') : null;
@@ -4488,7 +4561,7 @@ if (!is_string($documentsPayload)) {
                     return false;
                 }
 
-                if (!window.omoPreserveDocumentPvPreparationDrawer()) {
+                if (!useLocalDrawerNavigation(root) && !window.omoPreserveDocumentPvPreparationDrawer()) {
                     window.omoCloseDocumentPvPreparationDrawer({ force: true });
                 }
 
@@ -4557,20 +4630,24 @@ if (!is_string($documentsPayload)) {
                 return true;
             };
 
-            window.omoOpenDocumentEditorByPayload = function (documentItem) {
-                if (!documentItem || !documentItem.canEdit) {
+            window.omoOpenDocumentEditorByPayload = function (documentItem, rootOverride) {
+                const root = rootOverride instanceof Element
+                    ? rootOverride
+                    : getDocumentsRoot();
+
+                if (!documentItem || !documentItem.canEdit || isPvDocumentBlockedInLocalNavigation(documentItem, root)) {
                     return false;
                 }
 
                 if (String(documentItem.documentType || '').trim().toLowerCase() === 'pv') {
-                    return window.omoOpenDocumentPvPreparationByPayload(documentItem);
+                    return window.omoOpenDocumentPvPreparationByPayload(documentItem, root);
                 }
 
                 if (!documentItem.editUrl) {
                     return false;
                 }
 
-                if (!window.omoPreserveDocumentPvPreparationDrawer()) {
+                if (!useLocalDrawerNavigation(root) && !window.omoPreserveDocumentPvPreparationDrawer()) {
                     window.omoCloseDocumentPvPreparationDrawer({ force: true });
                 }
 
@@ -4595,6 +4672,7 @@ if (!is_string($documentsPayload)) {
                     openInNewWindow: String(trigger.getAttribute('data-omo-document-open-in-new-window') || '').trim() === '1',
                     documentType: String(trigger.getAttribute('data-omo-document-type') || '').trim(),
                     pvPreparationUrl: String(trigger.getAttribute('data-omo-document-pv-editor-url') || '').trim(),
+                    canOpenInPvApplicationTab: String(trigger.getAttribute('data-omo-document-can-open-in-pv-tab') || '').trim() === '1',
                     title: String(trigger.getAttribute('data-omo-document-title') || '').trim(),
                     fullDateLabel: String(trigger.getAttribute('data-omo-document-full-date') || '').trim()
                 };
@@ -4604,6 +4682,11 @@ if (!is_string($documentsPayload)) {
                         return true;
                     }
                     event.preventDefault();
+                }
+
+                const root = trigger.closest('#omo-documents-root') || getDocumentsRoot();
+                if (isPvDocumentBlockedInLocalNavigation(documentPayload, root)) {
+                    return false;
                 }
 
                 if (documentPayload.openInNewWindow && documentPayload.externalUrl !== '') {
@@ -4618,7 +4701,6 @@ if (!is_string($documentsPayload)) {
                     return false;
                 }
 
-                const root = trigger.closest('#omo-documents-root') || getDocumentsRoot();
                 const routeToken = buildDocumentRouteToken(documentId, 'detail');
                 const hashState = typeof window.omoParsePopupHashState === 'function'
                     ? window.omoParsePopupHashState()
@@ -4647,10 +4729,13 @@ if (!is_string($documentsPayload)) {
 
                 const root = getDocumentsRoot();
                 const documentItem = findDocumentPayloadItemById(resolvedDocumentId, root);
+                if (documentItem && isPvDocumentBlockedInLocalNavigation(documentItem, root)) {
+                    return false;
+                }
                 if (
                     documentItem
                     && String(documentItem.documentType || '').trim().toLowerCase() === 'pv'
-                    && window.omoOpenDocumentEditorByPayload(documentItem)
+                    && window.omoOpenDocumentEditorByPayload(documentItem, root)
                 ) {
                     return true;
                 }
@@ -4666,7 +4751,7 @@ if (!is_string($documentsPayload)) {
                     return true;
                 }
 
-                if (documentItem && window.omoOpenDocumentEditorByPayload(documentItem)) {
+                if (documentItem && window.omoOpenDocumentEditorByPayload(documentItem, root)) {
                     return true;
                 }
 
@@ -4896,7 +4981,7 @@ if (!is_string($documentsPayload)) {
                 }
 
                 const documentItem = findDocumentPayloadItemById(documentId);
-                if (documentItem && window.omoOpenDocumentEditorByPayload(documentItem)) {
+                if (documentItem && window.omoOpenDocumentEditorByPayload(documentItem, root)) {
                     return true;
                 }
 

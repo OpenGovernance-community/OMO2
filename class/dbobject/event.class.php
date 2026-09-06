@@ -1061,6 +1061,7 @@ class Event extends DbObject
             }
 
             $document->set('datecreation', \DateTimeImmutable::createFromInterface($endAt));
+            $document->set('datemodification', new \DateTimeImmutable());
             $saveResult = $document->save();
             if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
                 return [

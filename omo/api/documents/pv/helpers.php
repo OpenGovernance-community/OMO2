@@ -236,6 +236,10 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.notice.schedule' => ['text' => 'Réunion prévue le {date}.', 'context' => 'Schedule sentence shown in the PV editor header.'],
         'documents.pv_editor.notice.event' => ['text' => 'Événement associé', 'context' => 'Label used in the PV editor header for the linked event.'],
         'documents.pv_editor.notice.location' => ['text' => 'Lieu', 'context' => 'Label used in the PV editor header for the event location.'],
+        'documents.pv_editor.event.extend.button_title' => ['text' => 'Prolonger la réunion', 'context' => 'Tooltip for the button that extends the associated meeting schedule from the PV editor.'],
+        'documents.pv_editor.event.extend.menu_aria' => ['text' => 'Options de prolongation de la réunion', 'context' => 'Accessible label for the menu that extends the associated meeting schedule from the PV editor.'],
+        'documents.pv_editor.event.extend.option' => ['text' => 'Ajouter {minutes} minutes', 'context' => 'Menu option that extends the associated meeting end time by a number of minutes.'],
+        'documents.pv_editor.event.extend.saving' => ['text' => 'Prolongation…', 'context' => 'Temporary menu option label while the associated meeting is being extended.'],
         'documents.pv_editor.notice.reorder' => ['text' => 'Reordonner les points', 'context' => 'Title for the PV point reorder handle.'],
         'documents.pv_editor.notice.move_up' => ['text' => 'Monter', 'context' => 'Title for the touch-friendly move up button.'],
         'documents.pv_editor.notice.move_down' => ['text' => 'Descendre', 'context' => 'Title for the touch-friendly move down button.'],
@@ -256,6 +260,25 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.summary.overrun' => ['text' => 'Dépassement', 'context' => 'Legend label for overrun beyond meeting duration in the PV editor chart.'],
         'documents.pv_editor.summary.not_started' => ['text' => '--', 'context' => 'Fallback value for remaining time when the meeting is not in progress.'],
     ];
+}
+
+function omoDocumentsPvEditorFormatDateTime($value): string
+{
+    if (!$value instanceof \DateTimeInterface) {
+        return '';
+    }
+
+    $formatter = class_exists('IntlDateFormatter')
+        ? new \IntlDateFormatter('fr_FR', \IntlDateFormatter::MEDIUM, \IntlDateFormatter::SHORT)
+        : null;
+    if ($formatter instanceof \IntlDateFormatter) {
+        $formatted = $formatter->format($value);
+        if (is_string($formatted) && $formatted !== '') {
+            return $formatted;
+        }
+    }
+
+    return $value->format('d.m.Y H:i');
 }
 
 function omoDocumentsPvEditorBuildIndicatorEmbedPayload(\dbObject\StatIndicator $indicator, bool $isPvEditor = false, ?callable $translate = null): array

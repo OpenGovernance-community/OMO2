@@ -2,6 +2,7 @@
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once __DIR__ . '/helpers.php';
 require_once dirname(__DIR__, 2) . '/stats/shared.php';
+require_once dirname(__DIR__, 4) . '/common/notification_center.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -257,6 +258,7 @@ function omoDocumentsPvEditorBuildDocumentPayload(\dbObject\Document $document, 
         'isPvTemplate' => $document->isPvTemplate(),
         'canManagePvTemplate' => $document->canUserManagePvDocument($currentUserId)
             && $document->getPvStage() !== \dbObject\Document::PV_STAGE_REVIEW,
+        'associatedEvent' => omoDocumentsPvEditorBuildAssociatedEventPayload($document->getAssociatedEvent()),
     ];
 }
 
@@ -307,6 +309,32 @@ function omoDocumentsPvEditorBuildEventEmbedPayload(\dbObject\Event $event): arr
             trim((string)($locationData['videoUrl'] ?? '')),
         ]))),
         'startAt' => $startAt instanceof \DateTimeInterface ? $startAt->format(DATE_ATOM) : '',
+    ];
+}
+
+function omoDocumentsPvEditorBuildAssociatedEventPayload(?\dbObject\Event $event): ?array
+{
+    if (!($event instanceof \dbObject\Event) || (int)$event->getId() <= 0) {
+        return null;
+    }
+
+    $startAt = $event->get('start_at');
+    $endAt = $event->get('end_at');
+    $scheduleLabel = '';
+    if ($startAt instanceof \DateTimeInterface) {
+        $scheduleLabel = omoDocumentsPvEditorFormatDateTime($startAt);
+        if ($endAt instanceof \DateTimeInterface) {
+            $scheduleLabel .= $startAt->format('Y-m-d') === $endAt->format('Y-m-d')
+                ? ' - ' . $endAt->format('H:i')
+                : ' - ' . omoDocumentsPvEditorFormatDateTime($endAt);
+        }
+    }
+
+    return [
+        'id' => (int)$event->getId(),
+        'scheduleLabel' => $scheduleLabel,
+        'startAt' => $startAt instanceof \DateTimeInterface ? $startAt->format(DATE_ATOM) : '',
+        'endAt' => $endAt instanceof \DateTimeInterface ? $endAt->format(DATE_ATOM) : '',
     ];
 }
 
@@ -580,6 +608,68 @@ if ($action === 'update_document_metadata') {
     $document->load((int)$document->getId());
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
+        'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
+    ]);
+}
+
+if ($action === 'extend_associated_event') {
+    if (
+        $document->getPvStage() !== \dbObject\Document::PV_STAGE_MEETING
+        || !$document->canUserManagePvDocument($currentUserId)
+        || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $minutes = isset($_POST['minutes']) ? (int)$_POST['minutes'] : 0;
+    if (!in_array($minutes, [5, 10, 15, 30], true)) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.invalid_request'),
+        ], 400);
+    }
+
+    $event = $document->getAssociatedEvent();
+    if (
+        !($event instanceof \dbObject\Event)
+        || (int)$event->get('IDorganization') !== $organizationId
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $endAt = $event->get('end_at');
+    if (!($endAt instanceof \DateTimeInterface)) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.invalid_request'),
+        ], 400);
+    }
+
+    $event->set('end_at', \DateTimeImmutable::createFromInterface($endAt)->modify('+' . $minutes . ' minutes'));
+    $saveResult = $event->save();
+    if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => trim((string)($saveResult['text'] ?? omoDocumentsPvEditorActionT('documents.pv_editor.error.operation_failed'))),
+        ], 400);
+    }
+
+    try {
+        notificationCenterDispatchEventChange($event, 'schedule', $currentUserId);
+    } catch (\Throwable $exception) {
+        error_log('OMO PV meeting extension notification dispatch failed: ' . $exception->getMessage());
+    }
+
+    $document->load((int)$document->getId());
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'event' => omoDocumentsPvEditorBuildAssociatedEventPayload($event),
         'document' => omoDocumentsPvEditorBuildDocumentPayload($document, $organizationId, $currentUserId),
     ]);
 }

@@ -1035,6 +1035,7 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
             });
 
             $target.html(temp.innerHTML);
+            omoPreparePvApplicationSubdrawers($target.get(0));
             omoInitMobileHeaderMenus($target.get(0));
             omoExecuteFetchedScripts(scriptSource, $target.get(0));
             omoInitMobileHeaderMenus($target.get(0));
@@ -5540,6 +5541,20 @@ function omoIsPvApplicationTabContext(element = null) {
         && candidate.closest('[data-omo-pv-application-panel]') !== null;
 }
 
+function omoPreparePvApplicationSubdrawers(scope) {
+    const container = scope && scope.jquery ? scope.get(0) : scope;
+    if (!(container instanceof Element) || !omoIsPvApplicationTabContext(container)) {
+        return;
+    }
+
+    const drawers = container.matches('.omo-overlay-drawer')
+        ? [container]
+        : Array.from(container.querySelectorAll('.omo-overlay-drawer'));
+    drawers.forEach(function (drawer) {
+        drawer.classList.add('omo-overlay-drawer--detail-panel');
+    });
+}
+
 function omoExecuteFetchedScripts(container, loadTarget = null) {
     if (!container) {
         return;
@@ -5660,6 +5675,7 @@ function omoReplaceFetchedPanelRoot(options = {}) {
             }
 
             currentRoot.parentNode.replaceChild(nextRoot, currentRoot);
+            omoPreparePvApplicationSubdrawers(nextRoot);
             omoInitMobileHeaderMenus(nextRoot);
             omoExecuteFetchedScripts(scriptSource, nextRoot);
             omoInitMobileHeaderMenus(nextRoot);
@@ -5785,6 +5801,7 @@ window.omoOpenUserContextPopup = omoOpenUserContextPopup;
 window.omoReplaceFetchedPanelRoot = omoReplaceFetchedPanelRoot;
 window.omoFindApplicationRoot = omoFindApplicationRoot;
 window.omoIsPvApplicationTabContext = omoIsPvApplicationTabContext;
+window.omoPreparePvApplicationSubdrawers = omoPreparePvApplicationSubdrawers;
 window.omoLoadContent = loadContent;
 window.omoSetPanelResultsLoadingSkeleton = omoSetPanelResultsLoadingSkeleton;
 window.omoRunRuntimeMaintenance = omoRunRuntimeMaintenance;
