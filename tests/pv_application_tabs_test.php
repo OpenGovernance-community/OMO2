@@ -53,6 +53,9 @@ assertPvApplicationTabs(strpos($editorSource, 'data-omo-pv-application-tab-remov
 assertPvApplicationTabs(strpos($editorSource, 'Promise.allSettled(operations)') !== false, 'The application picker must reconcile additions and removals safely.');
 assertPvApplicationTabs(strpos($editorSource, '/omo/assets/images/documents/pv.png') !== false, 'The PV tab must display the document PV icon.');
 assertPvApplicationTabs(strpos($editorSource, '--param-tabs-tab-background-active') !== false, 'Active application tabs must have a visible colored state.');
+assertPvApplicationTabs(strpos($editorSource, ".omo-pv-editor__application-workspace {\n        grid-column: 3;") !== false, 'Application tabs must render in the right-hand editor column.');
+assertPvApplicationTabs(strpos($editorSource, 'const pvEditorSwitchableSurfaces = [mainPanel].filter(Boolean);') !== false, 'Application tabs must only replace the main PV panel.');
+assertPvApplicationTabs(strpos($editorSource, "root.querySelector('.omo-pv-editor__sidebar'), root.querySelector('.omo-pv-editor__resizer'), mainPanel") === false, 'Application tabs must keep the agenda, timer, and resizer visible.');
 
 $viewPreferencesSource = (string)file_get_contents(dirname(__DIR__) . '/common/application_view_preferences.php');
 assertPvApplicationTabs(strpos($viewPreferencesSource, "\$_GET['pv_application_tab_id']") !== false, 'Application pages must resolve their PV-specific database view.');

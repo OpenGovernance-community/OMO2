@@ -3146,7 +3146,7 @@ html[data-theme] .common-help-card p {
 }
 
 .omo-overlay-drawer--detail-panel > .omo-overlay-drawer__panel {
-    width: min(880px, 94vw);
+    width: min(880px, 94vw, 100%);
     transform: translateX(100%);
     transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
     will-change: transform, opacity;

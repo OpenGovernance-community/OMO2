@@ -46,25 +46,6 @@ $accessGranted = $documentId > 0
 $escape = 'omoApiEscape';
 $uiText = omoDocumentsPvEditorBuildUiText('omoDocumentsPvEditorT');
 
-$formatter = class_exists('IntlDateFormatter')
-    ? new IntlDateFormatter('fr_FR', IntlDateFormatter::MEDIUM, IntlDateFormatter::SHORT)
-    : null;
-
-$formatDateTime = static function ($value) use ($formatter): string {
-    if (!$value instanceof DateTimeInterface) {
-        return '';
-    }
-
-    if ($formatter instanceof IntlDateFormatter) {
-        $formatted = $formatter->format($value);
-        if (is_string($formatted) && $formatted !== '') {
-            return $formatted;
-        }
-    }
-
-    return $value->format('d.m.Y H:i');
-};
-
 $formatProjectDate = static function ($value): string {
     return $value instanceof DateTimeInterface ? $value->format('d.m.Y') : '';
 };
@@ -134,6 +115,9 @@ if (!$isPublicParticipation) {
 }
 $isPvReview = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
 $canEditPvDocumentHeader = $canManagePvDocument && !$isPvReview;
+$canExtendAssociatedEvent = !$isPublicParticipation
+    && $hasAssociatedEvent
+    && $document->getPvStage() === \dbObject\Document::PV_STAGE_MEETING;
 $canPassPvEditor = $isPvEditor && !$isPvReview;
 $isPvTemplate = $document->isPvTemplate();
 $canCreatePvGroups = !$isPublicParticipation && $document->canUserCreatePvGroups($currentUserId);
@@ -178,11 +162,11 @@ $eventTitle = $hasAssociatedEvent
     : '';
 $eventSchedule = '';
 if ($eventStartAt instanceof DateTimeInterface) {
-    $eventSchedule = $formatDateTime($eventStartAt);
+    $eventSchedule = omoDocumentsPvEditorFormatDateTime($eventStartAt);
     if ($eventEndAt instanceof DateTimeInterface) {
         $eventSchedule .= $eventStartAt->format('Y-m-d') === $eventEndAt->format('Y-m-d')
             ? ' - ' . $eventEndAt->format('H:i')
-            : ' - ' . $formatDateTime($eventEndAt);
+            : ' - ' . omoDocumentsPvEditorFormatDateTime($eventEndAt);
     }
 }
 $eventLocation = implode(' | ', $locationParts);
@@ -404,8 +388,8 @@ if ($hasCalendarApplication) {
         $startAt = $embeddableEvent->get('start_at');
         $endAt = $embeddableEvent->get('end_at');
         $scheduleLabel = trim(
-            ($startAt instanceof DateTimeInterface ? $formatDateTime($startAt) : '')
-            . ($endAt instanceof DateTimeInterface ? ' - ' . $formatDateTime($endAt) : '')
+            ($startAt instanceof DateTimeInterface ? omoDocumentsPvEditorFormatDateTime($startAt) : '')
+            . ($endAt instanceof DateTimeInterface ? ' - ' . omoDocumentsPvEditorFormatDateTime($endAt) : '')
         );
         $locationData = $embeddableEvent->getLocationDisplayData();
         $locationLabel = trim(implode(' | ', array_filter([
@@ -651,7 +635,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     .omo-pv-editor__application-workspace {
-        grid-column: 1 / -1;
+        grid-column: 3;
         min-width: 0;
         min-height: 0;
         overflow: hidden;
@@ -920,6 +904,29 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     .omo-pv-editor__event-info-item--location .omo-pv-editor__event-info-value {
         color: var(--color-text, #10253a);
         font-weight: 750;
+    }
+
+    .omo-pv-editor__event-extension-menu {
+        position: relative;
+        display: inline-flex;
+        flex: 0 0 auto;
+    }
+
+    .omo-pv-editor__event-extension-toggle {
+        min-width: 26px;
+        width: 26px;
+        height: 26px;
+        padding: 0;
+        border-radius: 999px;
+        font-size: 1.1rem;
+        font-weight: 800;
+    }
+
+    .omo-pv-editor__event-extension-panel {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        z-index: 100;
     }
 
     .omo-pv-editor__page-side {
@@ -2401,7 +2408,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         }
 
         .omo-pv-editor--has-application-tabs > .omo-pv-editor__application-workspace {
-            grid-row: 2 / 4;
+            grid-column: 1;
+            grid-row: 3;
         }
 
         .omo-pv-editor__editable-grid {
@@ -2793,7 +2801,17 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     <?php if ($eventSchedule !== ''): ?>
                         <div class="omo-pv-editor__event-info-item omo-pv-editor__event-info-item--schedule">
                             <span class="omo-pv-editor__event-info-icon" aria-hidden="true"><img src="/omo/assets/images/documents/event-schedule.png" alt="" class="black-icon"></span>
-                            <span class="omo-pv-editor__event-info-value"><?= $escape($eventSchedule) ?></span>
+                            <span class="omo-pv-editor__event-info-value" data-omo-pv-event-schedule><?= $escape($eventSchedule) ?></span>
+                            <?php if ($canExtendAssociatedEvent): ?>
+                                <div class="generic-menu omo-pv-editor__event-extension-menu" data-omo-pv-event-extension-menu>
+                                    <button type="button" class="generic-menu-toggle omo-pv-editor__event-extension-toggle" data-omo-pv-event-extension-toggle aria-haspopup="menu" aria-expanded="false" aria-controls="omoPvEventExtensionMenu" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.event.extend.button_title')) ?>" title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.event.extend.button_title')) ?>">+</button>
+                                    <div id="omoPvEventExtensionMenu" class="generic-menu-panel generic-menu-panel--wide omo-pv-editor__event-extension-panel" data-omo-pv-event-extension-panel role="menu" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.event.extend.menu_aria')) ?>" hidden>
+                                        <?php foreach ([5, 10, 15, 30] as $extensionMinutes): ?>
+                                            <button type="button" class="generic-menu-item" data-omo-pv-event-extension-minutes="<?= $extensionMinutes ?>" role="menuitem"><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.event.extend.option', ['minutes' => $extensionMinutes])) ?></button>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                     <?php if ($eventLocation !== ''): ?>
@@ -2956,6 +2974,10 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     const invitationsMenuToggle = root.querySelector('[data-omo-pv-invitations-menu-toggle]');
     const invitationsMenuPanel = root.querySelector('[data-omo-pv-invitations-menu-panel]');
     const invitationsSendButton = root.querySelector('[data-omo-pv-invitations-send-url]');
+    const eventScheduleValue = root.querySelector('[data-omo-pv-event-schedule]');
+    const eventExtensionMenu = root.querySelector('[data-omo-pv-event-extension-menu]');
+    const eventExtensionToggle = root.querySelector('[data-omo-pv-event-extension-toggle]');
+    const eventExtensionPanel = root.querySelector('[data-omo-pv-event-extension-panel]');
     const documentTitleInput = root.querySelector('[data-omo-pv-document-title]');
     const documentDescriptionInput = root.querySelector('[data-omo-pv-document-description]');
     const documentVisibilitySelect = root.querySelector('[data-omo-pv-document-visibility]');
@@ -2970,7 +2992,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     const applicationTabsCsrf = String(root.getAttribute('data-omo-pv-application-tabs-csrf') || '').trim();
     const canManageApplicationTabs = root.getAttribute('data-omo-pv-application-tabs-manage') === '1';
     const applicationContextHolonId = Number(root.getAttribute('data-omo-pv-application-tabs-cid') || 0);
-    const pvEditorSurfaces = [root.querySelector('.omo-pv-editor__sidebar'), root.querySelector('.omo-pv-editor__resizer'), mainPanel].filter(Boolean);
+    const pvEditorSwitchableSurfaces = [mainPanel].filter(Boolean);
     const initialApplicationCatalog = <?= json_encode($pvApplicationCatalog, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const initialApplicationTabs = <?= json_encode($pvApplicationTabsPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     const applicationTabsUi = <?= json_encode([
@@ -3006,8 +3028,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     const initialAttendancePayload = <?= json_encode($attendancePayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const initialPollingRevision = <?= json_encode($pollingRevision, JSON_UNESCAPED_SLASHES) ?>;
     const attendanceEnabled = <?= json_encode($showAttendance) ?>;
-    const eventStartAtIso = <?= json_encode($eventStartAtIso, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-    const eventEndAtIso = <?= json_encode($eventEndAtIso, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    let eventStartAtIso = <?= json_encode($eventStartAtIso, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    let eventEndAtIso = <?= json_encode($eventEndAtIso, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const saveLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.action.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const savingLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.action.saving'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const savedLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.state.saved'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -3207,6 +3229,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'documentSaveError' => omoDocumentsPvEditorT('documents.pv_editor.error.document_save'),
         'autoSummaryError' => omoDocumentsPvEditorT('documents.pv_editor.error.auto_summary'),
         'autoSummaryEmpty' => omoDocumentsPvEditorT('documents.pv_editor.error.auto_summary_empty'),
+        'eventExtensionSaving' => omoDocumentsPvEditorT('documents.pv_editor.event.extend.saving'),
         'highlightLabel' => omoDocumentsPvEditorT('documents.pv_editor.toolbar.highlight'),
         'highlightTitle' => omoDocumentsPvEditorT('documents.pv_editor.toolbar.highlight_title'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -3293,7 +3316,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             });
         }
 
-        pvEditorSurfaces.forEach(function (surface) {
+        pvEditorSwitchableSurfaces.forEach(function (surface) {
             surface.hidden = normalizedTabId > 0;
         });
         if (!applicationWorkspace) {
@@ -5655,6 +5678,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         }
 
         currentDocumentPayload = Object.assign({}, currentDocumentPayload, documentPayload);
+        applyAssociatedEventSchedule(currentDocumentPayload.associatedEvent);
         knownDocumentSyncVersion = String(currentDocumentPayload.syncVersion || knownDocumentSyncVersion || '');
         if (currentDocumentPayload.isPvValidated === true) {
             stopPvEditorBackgroundWork();
@@ -5773,6 +5797,26 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         }
 
         return Math.max(0, Math.round(numericMinutes)) + "'";
+    }
+
+    function applyAssociatedEventSchedule(eventPayload) {
+        if (!eventPayload || typeof eventPayload !== 'object') {
+            return;
+        }
+
+        const startAt = String(eventPayload.startAt || '').trim();
+        const endAt = String(eventPayload.endAt || '').trim();
+        if (startAt !== '') {
+            eventStartAtIso = startAt;
+        }
+        if (endAt !== '') {
+            eventEndAtIso = endAt;
+        }
+
+        const scheduleLabel = String(eventPayload.scheduleLabel || '').trim();
+        if (eventScheduleValue instanceof Element && scheduleLabel !== '') {
+            eventScheduleValue.textContent = scheduleLabel;
+        }
     }
 
     function getMeetingDurationMinutes() {
@@ -8460,6 +8504,63 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     if (documentVisibilitySelect instanceof Element) {
         documentVisibilitySelect.addEventListener('change', function () {
             markDocumentMetadataDirty();
+        });
+    }
+    function closeEventExtensionMenu() {
+        if (eventExtensionPanel instanceof HTMLElement) {
+            eventExtensionPanel.hidden = true;
+        }
+        if (eventExtensionToggle instanceof HTMLButtonElement) {
+            eventExtensionToggle.setAttribute('aria-expanded', 'false');
+        }
+    }
+    if (eventExtensionToggle instanceof HTMLButtonElement && eventExtensionPanel instanceof HTMLElement) {
+        eventExtensionToggle.addEventListener('click', function () {
+            const willOpen = eventExtensionPanel.hidden;
+            eventExtensionPanel.hidden = !willOpen;
+            eventExtensionToggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        });
+        document.addEventListener('pointerdown', function (event) {
+            if (eventExtensionMenu instanceof HTMLElement && !eventExtensionMenu.contains(event.target)) {
+                closeEventExtensionMenu();
+            }
+        }, true);
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeEventExtensionMenu();
+            }
+        });
+        eventExtensionPanel.querySelectorAll('[data-omo-pv-event-extension-minutes]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                const minutes = Number(button.getAttribute('data-omo-pv-event-extension-minutes') || 0);
+                if (![5, 10, 15, 30].includes(minutes)) {
+                    return;
+                }
+
+                const menuButtons = Array.from(eventExtensionPanel.querySelectorAll('[data-omo-pv-event-extension-minutes]'));
+                const originalLabel = button.textContent;
+                menuButtons.forEach(function (menuButton) { menuButton.disabled = true; });
+                button.textContent = editorClientUi.eventExtensionSaving || originalLabel;
+                closeEventExtensionMenu();
+
+                postPointAction('extend_associated_event', 0, {minutes: minutes})
+                    .then(function (payload) {
+                        applyAssociatedEventSchedule(payload && payload.event ? payload.event : null);
+                        if (payload && payload.document) {
+                            mergeCurrentDocumentPayload(payload.document);
+                        }
+                        renderTimingSummary();
+                    })
+                    .catch(function (error) {
+                        if (window.alert) {
+                            window.alert(String(error && error.message || editorClientUi.genericError || ''));
+                        }
+                    })
+                    .finally(function () {
+                        button.textContent = originalLabel;
+                        menuButtons.forEach(function (menuButton) { menuButton.disabled = false; });
+                    });
+            });
         });
     }
     if (invitationsButton instanceof HTMLButtonElement) {
