@@ -5075,7 +5075,7 @@ function omoShowTourMessage(title, message) {
     if (typeof window.commonTopbarOpenModal === 'function') {
         window.commonTopbarOpenModal(
             title,
-            '<div class="common-help-list"><div class="common-help-card"><p>' + message + '</p></div></div>',
+            '<div class="common-help-list generic-drawer-content"><div class="common-help-card"><p>' + message + '</p></div></div>',
             'html'
         );
         return;
@@ -5291,7 +5291,7 @@ function omoHandleTopbarSearch(query, config, searchState) {
         if (typeof window.commonTopbarOpenModal === 'function') {
             window.commonTopbarOpenModal(
                 'Recherche',
-                '<div class="common-help-list"><div class="common-help-card"><p>Saisissez au moins 2 caracteres pour lancer la recherche.</p></div></div>',
+                '<div class="common-help-list generic-drawer-content"><div class="common-help-card"><p>Saisissez au moins 2 caracteres pour lancer la recherche.</p></div></div>',
                 'html'
             );
         }
@@ -5302,7 +5302,7 @@ function omoHandleTopbarSearch(query, config, searchState) {
         if (typeof window.commonTopbarOpenModal === 'function') {
             window.commonTopbarOpenModal(
                 'Recherche',
-                '<div class="common-help-list"><div class="common-help-card"><p>Choisissez au moins un module de recherche.</p></div></div>',
+                '<div class="common-help-list generic-drawer-content"><div class="common-help-card"><p>Choisissez au moins un module de recherche.</p></div></div>',
                 'html'
             );
         }

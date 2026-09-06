@@ -10,7 +10,7 @@ $currentUserId = (int)commonGetCurrentUserId();
 if ($organizationId <= 0 || $currentUserId <= 0) {
     http_response_code(403);
     ?>
-    <div class="omo-access-request-popup__empty generic-description">Vous devez etre connecte pour envoyer une demande d acces.</div>
+    <div class="omo-access-request-popup__empty generic-description generic-drawer-content">Vous devez etre connecte pour envoyer une demande d acces.</div>
     <?php
     exit;
 }
@@ -19,7 +19,7 @@ $organization = new Organization();
 if (!$organization->load($organizationId)) {
     http_response_code(404);
     ?>
-    <div class="omo-access-request-popup__empty generic-description">L organisation demandee est introuvable.</div>
+    <div class="omo-access-request-popup__empty generic-description generic-drawer-content">L organisation demandee est introuvable.</div>
     <?php
     exit;
 }
@@ -27,7 +27,7 @@ if (!$organization->load($organizationId)) {
 if (commonUserHasOrganizationAccess($currentUserId, $organizationId)) {
     http_response_code(409);
     ?>
-    <div class="omo-access-request-popup__empty generic-description">Votre compte a deja acces a cette organisation.</div>
+    <div class="omo-access-request-popup__empty generic-description generic-drawer-content">Votre compte a deja acces a cette organisation.</div>
     <?php
     exit;
 }

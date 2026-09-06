@@ -157,6 +157,65 @@ class Project extends DbObject
         );
     }
 
+    public static function getIdsReferencedByProjectProperties(int $organizationId): array
+    {
+        if ($organizationId <= 0) {
+            return [];
+        }
+
+        $rows = self::fetchAll(
+            'SELECT hp.value
+             FROM holonproperty hp
+             INNER JOIN holon h ON h.id = hp.IDholon
+             INNER JOIN property p ON p.id = hp.IDproperty
+             WHERE h.IDorganization = :organization_id
+               AND hp.active = 1
+               AND p.active = 1
+               AND p.listitemtype = :list_item_type',
+            [
+                'organization_id' => $organizationId,
+                'list_item_type' => Property::LIST_ITEM_PROJECT,
+            ]
+        );
+        if (!is_array($rows)) {
+            return [];
+        }
+        $projectIds = [];
+        $collectIds = static function ($value) use (&$collectIds, &$projectIds): void {
+            if (is_array($value)) {
+                if (array_key_exists('id', $value)) {
+                    $projectId = (int)$value['id'];
+                    if ($projectId > 0) {
+                        $projectIds[$projectId] = true;
+                    }
+                    return;
+                }
+                foreach ($value as $item) {
+                    $collectIds($item);
+                }
+                return;
+            }
+
+            if (is_scalar($value) && ctype_digit(trim((string)$value))) {
+                $projectId = (int)$value;
+                if ($projectId > 0) {
+                    $projectIds[$projectId] = true;
+                }
+            }
+        };
+
+        foreach ($rows as $row) {
+            $rawValue = trim((string)($row['value'] ?? ''));
+            if ($rawValue === '') {
+                continue;
+            }
+            $decodedValue = json_decode($rawValue, true);
+            $collectIds(json_last_error() === JSON_ERROR_NONE ? $decodedValue : $rawValue);
+        }
+
+        return array_map('intval', array_keys($projectIds));
+    }
+
     public static function statuses()
     {
         return [

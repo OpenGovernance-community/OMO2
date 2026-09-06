@@ -9,6 +9,7 @@ $organizationLoaded = $organizationId > 0 && $organization->load($organizationId
 $applicationLink = $organizationLoaded ? omoProjectsParamsGetApplicationLink($organizationId, false) : null;
 $canManage = $organizationLoaded && omoProjectsParamsCanManage($organizationId, $userId);
 $config = $organizationLoaded ? omoProjectsParamsGetConfig($organization) : \dbObject\ProjectImportanceCalculator::getDefaultConfig();
+$displayConfig = $organizationLoaded ? omoProjectsParamsGetDisplayConfig($organization) : omoProjectsDefaultDisplayConfig();
 ?>
 <div class="omo-projects-params" data-omo-projects-params-root>
     <section class="generic-section generic-section--stack generic-section--roomy">
@@ -26,6 +27,33 @@ $config = $organizationLoaded ? omoProjectsParamsGetConfig($organization) : \dbO
         <?php elseif (!$canManage): ?>
             <div class="omo-empty-state"><?= htmlspecialchars(omoProjectsParamsT('projects.params.error.forbidden'), ENT_QUOTES, 'UTF-8') ?></div>
         <?php else: ?>
+            <section class="generic-section generic-section--stack">
+                <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoProjectsParamsT('projects.params.display_title'), ENT_QUOTES, 'UTF-8') ?></h3>
+                <form class="generic-form-stack" action="/omo/api/projects/params/save.php" method="post" data-omo-projects-params-form>
+                    <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
+                    <input type="hidden" name="save_display" value="1">
+                    <input type="hidden" name="parent_weight" value="<?= htmlspecialchars((string)$config['parentWeight'], ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="depth_penalty" value="<?= htmlspecialchars((string)$config['depthPenalty'], ENT_QUOTES, 'UTF-8') ?>">
+                    <div class="omo-projects-params__grid generic-form-grid">
+                        <fieldset class="generic-form-field">
+                            <legend class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoProjectsParamsT('projects.params.columns'), ENT_QUOTES, 'UTF-8') ?></legend>
+                            <?php foreach (omoProjectsStatusDisplayOrder() as $status): ?>
+                                <label class="generic-checkbox"><input type="checkbox" name="enabled_statuses[]" value="<?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?>"<?= in_array($status, $displayConfig['enabledStatuses'], true) ? ' checked' : '' ?>> <span><?= htmlspecialchars(omoProjectsStatusLabel($status), ENT_QUOTES, 'UTF-8') ?></span></label>
+                            <?php endforeach; ?>
+                        </fieldset>
+                        <fieldset class="generic-form-field">
+                            <legend class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoProjectsParamsT('projects.params.classification'), ENT_QUOTES, 'UTF-8') ?></legend>
+                            <label class="generic-checkbox"><input type="checkbox" name="use_priority" value="1"<?= !empty($displayConfig['usePriority']) ? ' checked' : '' ?>> <span><?= htmlspecialchars(omoProjectsParamsT('projects.params.use_priority'), ENT_QUOTES, 'UTF-8') ?></span></label>
+                            <label class="generic-checkbox"><input type="checkbox" name="use_importance" value="1"<?= !empty($displayConfig['useImportance']) ? ' checked' : '' ?>> <span><?= htmlspecialchars(omoProjectsParamsT('projects.params.use_importance'), ENT_QUOTES, 'UTF-8') ?></span></label>
+                            <label class="generic-checkbox"><input type="checkbox" name="use_size" value="1"<?= !empty($displayConfig['useSize']) ? ' checked' : '' ?>> <span><?= htmlspecialchars(omoProjectsParamsT('projects.params.use_size'), ENT_QUOTES, 'UTF-8') ?></span></label>
+                        </fieldset>
+                    </div>
+                    <div class="omo-projects-params__actions generic-form-actions">
+                        <button class="generic-action-button generic-action-button--main" type="submit" data-omo-projects-params-submit><?= htmlspecialchars(omoProjectsParamsT('projects.params.save'), ENT_QUOTES, 'UTF-8') ?></button>
+                    </div>
+                    <div class="omo-projects-params__feedback generic-soft-panel generic-feedback" data-omo-projects-params-feedback hidden></div>
+                </form>
+            </section>
             <p class="omo-projects-params__hint generic-description"><?= htmlspecialchars(omoProjectsParamsT('projects.params.formula'), ENT_QUOTES, 'UTF-8') ?></p>
             <form class="generic-form-stack" action="/omo/api/projects/params/save.php" method="post" data-omo-projects-params-form>
                 <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
