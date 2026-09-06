@@ -1,11 +1,16 @@
 (function (window, document) {
     'use strict';
 
-    var root = document.getElementById('omo-checklist-root');
+    var root = typeof window.omoFindApplicationRoot === 'function'
+        ? window.omoFindApplicationRoot('omo-checklist-root')
+        : document.getElementById('omo-checklist-root');
     if (!root || root.dataset.checklistReady === '1') {
         return;
     }
     root.dataset.checklistReady = '1';
+
+    var useLocalDrawerNavigation = typeof window.omoIsPvApplicationTabContext === 'function'
+        && window.omoIsPvApplicationTabContext(root);
 
     var drawer = root.querySelector('[data-checklist-drawer]');
     var drawerBody = root.querySelector('[data-checklist-drawer-body]');
@@ -180,8 +185,11 @@
     }
 
     function getPreferencesContextKey() {
-        return String(root.getAttribute('data-checklist-oid') || '0')
+        var regularKey = String(root.getAttribute('data-checklist-oid') || '0')
             + ':' + String(root.getAttribute('data-checklist-route-cid') || '0');
+        return typeof window.omoApplicationViewPreferencesGetStorageContextKey === 'function'
+            ? window.omoApplicationViewPreferencesGetStorageContextKey(root, regularKey)
+            : regularKey;
     }
 
     function readStoredValue(storage, storageKey) {
@@ -379,6 +387,9 @@
     }
 
     function getCurrentRouteToken() {
+        if (useLocalDrawerNavigation) {
+            return '';
+        }
         if (typeof window.omoParsePopupHashState !== 'function') {
             return '';
         }
@@ -400,7 +411,7 @@
 
     function navigateChecklistDetail(checklistId, fallbackUrl) {
         var routeToken = buildChecklistRouteToken(checklistId);
-        if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== getCurrentRouteToken()) {
+        if (!useLocalDrawerNavigation && routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== getCurrentRouteToken()) {
             window.omoOpenDrawerHashState(routeToken);
             return;
         }

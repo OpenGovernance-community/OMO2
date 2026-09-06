@@ -26,6 +26,16 @@ $contextHolonId = max(0, (int)($input['cid'] ?? 0));
 $documentId = (int)($input['document_id'] ?? 0);
 $pointId = (int)($input['point_id'] ?? 0);
 $userId = (int)commonGetCurrentUserId();
+$publicParticipationLink = function_exists('commonGetPublicPvParticipationLink')
+    ? commonGetPublicPvParticipationLink()
+    : null;
+$isPublicParticipation = $publicParticipationLink instanceof \dbObject\DocumentShareLink
+    && $publicParticipationLink->allowsPvContribution();
+$publicParticipationUserId = $isPublicParticipation
+    ? commonPvParticipationRecipientOrganizationUserId($publicParticipationLink, $organizationId)
+    : 0;
+$viewerUserId = $isPublicParticipation ? $publicParticipationUserId : $userId;
+$viewerDocumentShareLinkId = $isPublicParticipation ? (int)$publicParticipationLink->getId() : 0;
 $document = new \dbObject\Document();
 $point = new \dbObject\DocumentPvPoint();
 
@@ -33,37 +43,40 @@ if (
     $organizationId <= 0
     || $documentId <= 0
     || $pointId <= 0
-    || $userId <= 0
+    || (!$isPublicParticipation && $userId <= 0)
     || !$document->load($documentId)
     || !$document->isPvDocument()
     || !$point->load($pointId)
     || $point->isGroup()
     || (int)$point->get('IDdocument') !== $documentId
     || (int)$document->get('IDorganization') !== $organizationId
+    || ($isPublicParticipation && (int)$publicParticipationLink->get('IDdocument') !== $documentId)
 ) {
     omoDocumentsPvDiscussionRespond(['status' => false, 'message' => $translate('documents.pv_editor.error.forbidden')], 403);
 }
 
-$canAccess = $document->isPvValidated()
-    ? $document->canUserPassPvMeetingVisibilityGate($userId, $organizationId)
+$canAccess = $isPublicParticipation
+    ? $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW
+    : ($document->isPvValidated()
+    ? $document->canUserPassPvMeetingVisibilityGate($viewerUserId, $organizationId)
         && (
             $document->canViewInOrganizationContext($organizationId, $contextHolonId > 0 ? $contextHolonId : null)
             || $document->canViewDirectlyInOrganization($organizationId)
-    )
+        )
     : $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW
-        && $document->canUserAccessPvReview($userId, $organizationId);
+        && $document->canUserAccessPvReview($viewerUserId, $organizationId));
 if (!$canAccess) {
     omoDocumentsPvDiscussionRespond(['status' => false, 'message' => $translate('documents.pv_editor.error.forbidden')], 403);
 }
 
-if (!$document->canUserViewPvPoint($point, $userId)) {
+if (!$document->canUserViewPvPoint($point, $viewerUserId)) {
     omoDocumentsPvDiscussionRespond(['status' => false, 'message' => $translate('documents.pv_editor.error.forbidden')], 403);
 }
 
 $thread = ChatThread::findBySubject($organizationId, ChatThread::SUBJECT_DOCUMENT_PV_POINT, $pointId);
 $canPost = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW
     && !$document->isPvValidated()
-    && $document->canUserAccessPvReview($userId, $organizationId);
+    && ($isPublicParticipation || $document->canUserAccessPvReview($viewerUserId, $organizationId));
 if ($requestMethod === 'POST') {
     if (!$canPost) {
         omoDocumentsPvDiscussionRespond(['status' => false, 'message' => $translate('documents.pv_editor.chat.readonly')], 403);
@@ -72,8 +85,10 @@ if ($requestMethod === 'POST') {
     if ($content === '' || mb_strlen($content, 'UTF-8') > 4000) {
         omoDocumentsPvDiscussionRespond(['status' => false, 'message' => $translate('documents.pv_editor.chat.invalid_message')], 422);
     }
-    $thread = ChatThread::getOrCreateForSubject($organizationId, ChatThread::SUBJECT_DOCUMENT_PV_POINT, $pointId, $userId, trim((string)$point->get('title')));
-    $message = $thread instanceof ChatThread ? ChatMessage::createUserMessage($thread, $userId, $content) : null;
+    $thread = ChatThread::getOrCreateForSubject($organizationId, ChatThread::SUBJECT_DOCUMENT_PV_POINT, $pointId, $viewerUserId, trim((string)$point->get('title')));
+    $message = $thread instanceof ChatThread
+        ? ChatMessage::createUserMessage($thread, $viewerUserId, $content, false, false, 0, $viewerDocumentShareLinkId)
+        : null;
     if (!$message instanceof ChatMessage) {
         omoDocumentsPvDiscussionRespond(['status' => false, 'message' => $translate('documents.pv_editor.chat.send_error')], 500);
     }
@@ -84,7 +99,7 @@ $messages = [];
 if ($thread instanceof ChatThread) {
     foreach ($thread->getMessages(300, $afterId) as $message) {
         if ($message instanceof ChatMessage) {
-            $messages[] = $message->toClientArray($userId, 0);
+            $messages[] = $message->toClientArray($viewerUserId, 0, $viewerDocumentShareLinkId);
         }
     }
 }
@@ -92,7 +107,9 @@ $discussionSummary = ChatThread::getSubjectDiscussionSummaries(
     $organizationId,
     ChatThread::SUBJECT_DOCUMENT_PV_POINT,
     [$pointId],
-    $userId
+    $viewerUserId,
+    0,
+    $viewerDocumentShareLinkId
 );
 $messageCount = max(0, (int)($discussionSummary[$pointId]['total_messages'] ?? 0));
 

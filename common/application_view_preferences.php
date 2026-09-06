@@ -1,6 +1,7 @@
 <?php
 
 use dbObject\ApplicationSetting;
+use dbObject\DocumentApplicationTab;
 use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\UserHolon;
@@ -134,7 +135,7 @@ if (!function_exists('omoApplicationViewPreferencesGetContext')) {
             $_SESSION['omo_application_view_preferences_csrf'] = bin2hex(random_bytes(32));
         }
 
-        return array(
+        $context = array(
             'application' => $applicationKey,
             'organizationId' => $organizationId,
             'holonId' => $holon instanceof Holon ? (int)$holon->getId() : 0,
@@ -154,6 +155,37 @@ if (!function_exists('omoApplicationViewPreferencesGetContext')) {
             'canSaveOrganizationTemplate' => ($isOrganizationAdmin || $isSiteAdmin) && $templateKey !== '',
             'canSaveApplicationType' => $isSiteAdmin && $typeId > 0,
         );
+
+        $pvApplicationTabId = isset($_GET['pv_application_tab_id'])
+            ? max(0, (int)$_GET['pv_application_tab_id'])
+            : 0;
+        if ($pvApplicationTabId <= 0 || $applicationKey === '') {
+            return $context;
+        }
+
+        $pvApplicationTab = new DocumentApplicationTab();
+        $pvDocument = new \dbObject\Document();
+        if (
+            !$pvApplicationTab->load($pvApplicationTabId)
+            || !$pvApplicationTab->matchesApplicationKey($applicationKey)
+            || !$pvDocument->load((int)$pvApplicationTab->get('IDdocument'))
+            || (int)$pvDocument->get('IDorganization') !== $organizationId
+            || !$pvDocument->canUserOpenPvEditor($currentUserId, $organizationId)
+        ) {
+            return $context;
+        }
+
+        $pvApplicationView = $pvApplicationTab->getViewParametersArray();
+        $context['pvApplicationTabId'] = $pvApplicationTabId;
+        $context['pvApplicationViewRevision'] = substr(hash('sha256', (string)json_encode($pvApplicationView)), 0, 16);
+        $context['isPvApplicationTab'] = true;
+        $context['personalView'] = $pvApplicationView;
+        $context['defaultView'] = array();
+        $context['canSavePersonal'] = $pvDocument->canUserManagePvDocument($currentUserId);
+        $context['primarySaveScope'] = '';
+        $context['canSaveOrganizationTemplate'] = false;
+        $context['canSaveApplicationType'] = false;
+        return $context;
     }
 }
 

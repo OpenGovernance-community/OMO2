@@ -1,7 +1,9 @@
 (function (window, document) {
     'use strict';
 
-    var root = document.getElementById('omo-activities-root');
+    var root = typeof window.omoFindApplicationRoot === 'function'
+        ? window.omoFindApplicationRoot('omo-activities-root')
+        : document.getElementById('omo-activities-root');
     if (!root || root.dataset.activitiesReady === '1') {
         return;
     }
@@ -58,8 +60,11 @@
     }
 
     function getPreferencesContextKey() {
-        return String(root.getAttribute('data-activity-oid') || '0')
+        var regularKey = String(root.getAttribute('data-activity-oid') || '0')
             + ':' + String(root.getAttribute('data-activity-cid') || '0');
+        return typeof window.omoApplicationViewPreferencesGetStorageContextKey === 'function'
+            ? window.omoApplicationViewPreferencesGetStorageContextKey(root, regularKey)
+            : regularKey;
     }
 
     function readStoredValue(storage, storageKey) {

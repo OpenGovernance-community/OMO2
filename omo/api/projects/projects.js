@@ -1,11 +1,16 @@
 (function (window, document) {
     'use strict';
 
-    var root = document.getElementById('omo-projects-root');
+    var root = typeof window.omoFindApplicationRoot === 'function'
+        ? window.omoFindApplicationRoot('omo-projects-root')
+        : document.getElementById('omo-projects-root');
     if (!root || root.dataset.omoProjectsReady === '1') {
         return;
     }
     root.dataset.omoProjectsReady = '1';
+
+    var useLocalDrawerNavigation = typeof window.omoIsPvApplicationTabContext === 'function'
+        && window.omoIsPvApplicationTabContext(root);
 
     if (!window.omoProjectArchiveLinksBound) {
         document.addEventListener('click', function (event) {
@@ -20,6 +25,14 @@
             event.stopPropagation();
             projectId = Number(archiveLink.getAttribute('data-project-id') || 0);
             if (!Number.isInteger(projectId) || projectId <= 0) {
+                return;
+            }
+            if (
+                typeof window.omoIsPvApplicationTabContext === 'function'
+                && window.omoIsPvApplicationTabContext(archiveLink.closest('#omo-projects-root'))
+                && typeof window.omoOpenProjectRoute === 'function'
+            ) {
+                window.omoOpenProjectRoute('projects-d' + String(projectId));
                 return;
             }
             if (typeof window.omoOpenDrawerHashState === 'function') {
@@ -510,10 +523,15 @@
 
         currentDrawerUrl = url;
         setDrawerMessage(texts.loading, false);
-        drawer.hidden = false;
-        window.requestAnimationFrame(function () {
-            drawer.classList.add('is-open');
-        });
+        if (drawerController && typeof drawerController.open === 'function') {
+            drawerController.open();
+        } else {
+            drawer.hidden = false;
+            void drawer.offsetWidth;
+            window.requestAnimationFrame(function () {
+                drawer.classList.add('is-open');
+            });
+        }
 
         var localToken = ++requestToken;
         return fetch(resolveUrl(url), {
@@ -568,10 +586,15 @@
 
         setDocumentDrawerMessage(texts.loading, false);
         documentDrawer.classList.remove('is-calendar-event-editor');
-        documentDrawer.hidden = false;
-        window.requestAnimationFrame(function () {
-            documentDrawer.classList.add('is-open');
-        });
+        if (documentDrawerController && typeof documentDrawerController.open === 'function') {
+            documentDrawerController.open();
+        } else {
+            documentDrawer.hidden = false;
+            void documentDrawer.offsetWidth;
+            window.requestAnimationFrame(function () {
+                documentDrawer.classList.add('is-open');
+            });
+        }
 
         var localToken = ++documentDrawerRequestToken;
         return fetch(resolveUrl(url), {
@@ -937,8 +960,11 @@
     }
 
     function getDisplayPreferencesContextKey() {
-        return String(root.getAttribute('data-omo-projects-oid') || '0')
+        var regularKey = String(root.getAttribute('data-omo-projects-oid') || '0')
             + ':' + String(root.getAttribute('data-omo-projects-cid') || '0');
+        return typeof window.omoApplicationViewPreferencesGetStorageContextKey === 'function'
+            ? window.omoApplicationViewPreferencesGetStorageContextKey(root, regularKey)
+            : regularKey;
     }
 
     function getDisplayPreferencesStore() {
@@ -1138,6 +1164,9 @@
     }
 
     function getCurrentRouteToken() {
+        if (useLocalDrawerNavigation) {
+            return '';
+        }
         if (typeof window.omoParsePopupHashState !== 'function') {
             return '';
         }
@@ -1170,7 +1199,7 @@
 
     function navigateProject(projectId, mode, fallbackUrl) {
         var routeToken = buildProjectRouteToken(projectId, mode);
-        if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== getCurrentRouteToken()) {
+        if (!useLocalDrawerNavigation && routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== getCurrentRouteToken()) {
             window.omoOpenDrawerHashState(routeToken);
             return;
         }
@@ -2181,7 +2210,11 @@
             event.preventDefault();
             event.stopPropagation();
             var documentId = Number(documentLink.getAttribute('data-document-id') || 0);
-            if (documentId > 0 && typeof window.omoOpenDrawerHashState === 'function') {
+            if (documentId > 0 && useLocalDrawerNavigation) {
+                openProjectDocumentDrawer('/omo/api/documents/detail.php?oid=' + encodeURIComponent(String(root.getAttribute('data-omo-projects-oid') || ''))
+                    + '&cid=' + encodeURIComponent(String(routeCid || ''))
+                    + '&id=' + encodeURIComponent(String(documentId)));
+            } else if (documentId > 0 && typeof window.omoOpenDrawerHashState === 'function') {
                 window.omoOpenDrawerHashState('documents-d' + documentId);
             } else if (documentId > 0) {
                 window.location.hash = 'documents-d' + documentId;
@@ -2194,7 +2227,11 @@
             event.preventDefault();
             event.stopPropagation();
             var calendarEventId = Number(eventLink.getAttribute('data-event-id') || 0);
-            if (calendarEventId > 0 && typeof window.omoOpenDrawerHashState === 'function') {
+            if (calendarEventId > 0 && useLocalDrawerNavigation) {
+                openProjectDocumentDrawer('/omo/api/calendar/detail.php?oid=' + encodeURIComponent(String(root.getAttribute('data-omo-projects-oid') || ''))
+                    + '&cid=' + encodeURIComponent(String(routeCid || ''))
+                    + '&id=' + encodeURIComponent(String(calendarEventId)));
+            } else if (calendarEventId > 0 && typeof window.omoOpenDrawerHashState === 'function') {
                 window.omoOpenDrawerHashState('calendar-e' + String(calendarEventId));
             } else if (calendarEventId > 0) {
                 window.location.hash = 'calendar-e' + String(calendarEventId);
@@ -2585,7 +2622,7 @@
     });
 
     window.omoProjectsAfterSave = function () {
-        var hashState = typeof window.omoParsePopupHashState === 'function'
+        var hashState = !useLocalDrawerNavigation && typeof window.omoParsePopupHashState === 'function'
             ? window.omoParsePopupHashState()
             : null;
         var routeToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';

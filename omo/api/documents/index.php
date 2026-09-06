@@ -1110,10 +1110,15 @@ if (!is_string($documentsPayload)) {
             </div>
 
             <script type="application/json" data-omo-documents-data><?= $documentsPayload ?></script>
-            <script src="/common/drawer/subdrawer.js?v=20260816-header-help"></script>
-            <script src="/omo/assets/js/application-view-preferences.js?v=20260902-view-cleanup"></script>
+            <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
+            <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
             <script>
             (function () {
+                window.omoDocumentsFindRoot = function () {
+                    return typeof window.omoFindApplicationRoot === 'function'
+                        ? window.omoFindApplicationRoot('omo-documents-root')
+                        : document.getElementById('omo-documents-root');
+                };
                 const omoDocumentsSavedViewsStorageKey = 'omo.documents.saved-views.v2';
                 const omoDocumentsLegacySavedViewsStorageKey = 'omo.documents.saved-views.v1';
                 const omoDocumentsSessionViewsStorageKey = 'omo.documents.session-views.v1';
@@ -1302,8 +1307,11 @@ if (!is_string($documentsPayload)) {
                 };
 
                 const omoDocumentsGetPreferencesContextKey = function (panel) {
-                    return String(panel && panel.getAttribute('data-omo-document-oid') || '0')
+                    const regularKey = String(panel && panel.getAttribute('data-omo-document-oid') || '0')
                         + ':' + String(panel && panel.getAttribute('data-omo-document-cid') || '0');
+                    return typeof window.omoApplicationViewPreferencesGetStorageContextKey === 'function'
+                        ? window.omoApplicationViewPreferencesGetStorageContextKey(panel, regularKey)
+                        : regularKey;
                 };
 
                 const omoDocumentsCreatePreferences = function (preferences) {
@@ -3695,7 +3703,7 @@ if (!is_string($documentsPayload)) {
                             }
 
                             window.omoHandleDocumentsRouteChange = function (detail) {
-                                const activePanel = document.getElementById('omo-documents-root');
+                                const activePanel = window.omoDocumentsFindRoot();
                                 if (!(activePanel instanceof Element) || !document.body.contains(activePanel)) {
                                     return false;
                                 }
@@ -3739,7 +3747,7 @@ if (!is_string($documentsPayload)) {
                     return panelCandidate.closest('.omo-documents') || panelCandidate;
                 }
 
-                return document.getElementById('omo-documents-root');
+                return window.omoDocumentsFindRoot();
             };
 
             const getCurrentDocumentsScope = function (panel) {
@@ -3913,7 +3921,7 @@ if (!is_string($documentsPayload)) {
                 };
 
             window.omoInitDocumentsScopePanels();
-            const activeDocumentsPanel = document.getElementById('omo-documents-root');
+            const activeDocumentsPanel = window.omoDocumentsFindRoot();
             if (activeDocumentsPanel) {
                 const initialPreferences = typeof window.omoDocumentsReadViewPreferences === 'function'
                     ? window.omoDocumentsReadViewPreferences(activeDocumentsPanel)
@@ -3941,7 +3949,15 @@ if (!is_string($documentsPayload)) {
         <script>
         (function () {
             function getDocumentsRoot() {
-                return document.getElementById('omo-documents-root');
+                return window.omoDocumentsFindRoot();
+            }
+
+            function useLocalDrawerNavigation(rootOverride) {
+                const root = rootOverride instanceof Element
+                    ? rootOverride
+                    : getDocumentsRoot();
+                return typeof window.omoIsPvApplicationTabContext === 'function'
+                    && window.omoIsPvApplicationTabContext(root);
             }
 
             function buildDocumentsPanelUrl(root) {
@@ -4284,7 +4300,7 @@ if (!is_string($documentsPayload)) {
                 cleanupDocumentEditorDrawer(drawer);
 
                 if (settings.returnToDetail === true && Number.isInteger(documentId) && documentId > 0) {
-                    if (editingDocumentMatch && settings.force !== true && typeof window.omoOpenDrawerHashState === 'function') {
+                    if (!useLocalDrawerNavigation(root) && editingDocumentMatch && settings.force !== true && typeof window.omoOpenDrawerHashState === 'function') {
                         window.omoOpenDrawerHashState('documents-d' + editingDocumentMatch[1]);
                         return;
                     }
@@ -4302,7 +4318,7 @@ if (!is_string($documentsPayload)) {
                     return;
                 }
 
-                if (settings.force !== true && editingDocumentMatch && typeof window.omoOpenDrawerHashState === 'function') {
+                if (!useLocalDrawerNavigation(root) && settings.force !== true && editingDocumentMatch && typeof window.omoOpenDrawerHashState === 'function') {
                     window.omoOpenDrawerHashState('documents');
                 }
 
@@ -4358,7 +4374,7 @@ if (!is_string($documentsPayload)) {
                     ? window.omoParsePopupHashState()
                     : null;
                 const routeToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
-                if (settings.force !== true && /^(?:documents|document)-(?:d(?:e)?)?\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
+                if (!useLocalDrawerNavigation() && settings.force !== true && /^(?:documents|document)-(?:d(?:e)?)?\d+$/i.test(routeToken) && typeof window.omoOpenDrawerHashState === 'function') {
                     window.omoOpenDrawerHashState('documents');
                 }
 
@@ -4444,6 +4460,7 @@ if (!is_string($documentsPayload)) {
                             : 'Préparation du PV avant la réunion.')
                         : '',
                     variant: 'top-sheet',
+                    hideHeader: true,
                     persistKey: 'omo-pv-preparation-' + String(documentId),
                     keepMountedOnClose: true
                 }) === true;
@@ -4601,18 +4618,18 @@ if (!is_string($documentsPayload)) {
                     return false;
                 }
 
+                const root = trigger.closest('#omo-documents-root') || getDocumentsRoot();
                 const routeToken = buildDocumentRouteToken(documentId, 'detail');
                 const hashState = typeof window.omoParsePopupHashState === 'function'
                     ? window.omoParsePopupHashState()
                     : null;
                 const currentRouteToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
 
-                if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
+                if (!useLocalDrawerNavigation(root) && routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
                     window.omoOpenDrawerHashState(routeToken);
                     return false;
                 }
 
-                const root = trigger.closest('#omo-documents-root') || getDocumentsRoot();
                 const opened = window.omoOpenDocumentDetailByPayload(documentPayload, root);
 
                 if (!opened) {
@@ -4644,7 +4661,7 @@ if (!is_string($documentsPayload)) {
                     : null;
                 const currentRouteToken = hashState && hashState.routeToken ? String(hashState.routeToken) : '';
 
-                if (routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
+                if (!useLocalDrawerNavigation(root) && routeToken && typeof window.omoOpenDrawerHashState === 'function' && routeToken !== currentRouteToken) {
                     window.omoOpenDrawerHashState(routeToken);
                     return true;
                 }

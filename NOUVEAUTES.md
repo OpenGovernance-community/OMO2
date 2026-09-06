@@ -2,8 +2,33 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-06
+
+- Depuis les onglets d applications d un PV, les fiches de detail s ouvrent maintenant dans les sous-drawers internes de l editeur sans modifier le hash global. Leur entete et leur bouton Fermer restent disponibles, un clic sur l arriere-plan les referme, et les panneaux Projet et Indicateur ont la meme largeur limitee avec une ouverture animee depuis la droite.
+
+## 2026-09-05
+
+- L editeur de PV propose maintenant des onglets d applications pour consulter Projets, Indicateurs, Processus et les autres apps actives sans quitter la reunion. Le bouton `+` permet d en ajouter plusieurs dans le contexte du holon associe au PV, chaque vue conserve en base sa propre portee, son tri et son mode d affichage, et les modeles de PV recopient ces onglets avec leur configuration. Ces vues restent absentes des invitations publiques, impressions et exports PDF.
+- La popup des applications de reunion affiche maintenant toute la selection courante : cocher ajoute un onglet et decocher le retire lors de l enregistrement. Les croix de suppression directe ont ete retirees pour eviter une suppression accidentelle.
+- Les onglets de reunion sont maintenant davantage espaces et separes verticalement pour mieux distinguer le PV, chaque application et le bouton de gestion, avec un defilement horizontal lorsque la place manque. L onglet PV reprend son icone Documents et les zones reagissent plus clairement au survol et a la selection grace a un fond colore et un contour renforce.
+- Le drawer plein ecran de l editeur de PV n affiche plus l en-tete superieur qui repetait le nom du document et l action Fermer deja disponibles dans son contenu.
+- Les groupes vides de l ordre du jour restent visibles lors des mises a jour automatiques, y compris pour les autres participants afin qu ils puissent y classer leurs points.
+
 ## 2026-09-04
 
+- Le bouton `Inviter` de l editeur de PV devient un bouton avec menu : sa fleche ouvre l envoi des invitations. Les membres et adresses e-mail externes invites recoivent un lien public unique qui affiche le PV et suit automatiquement les mises a jour tant que la reunion est en cours.
+- L envoi d invitations de PV distingue maintenant un echec de creation du lien public d un rejet SMTP et affiche le detail SMTP au responsable qui lance l envoi.
+- Le seed de la base Docker inclut maintenant la table `document_share_link`, deja declaree comme migree dans son historique SQL.
+- Les invitations de reunion utilisent maintenant un lien individuel qui ouvre le meme editeur de PV que l application, avec toutes ses dependances. Les invites, y compris externes, peuvent ajouter, modifier ou supprimer leurs propres points avant la validation, avec synchronisation et verrous partages.
+- Les informations de lecture seule et de derniere mise a jour d un point de PV sont maintenant affichees apres son contenu.
+- Les liens publics de reunion affichent maintenant la liste de presence avec les seuls noms des invites, ou leur e-mail lorsqu aucun nom n est disponible.
+- Lorsqu un lien public identifie un membre actif de l organisation, ce membre peut choisir le role concerne par ses propres points de PV. Les invites externes ne voient pas ce selecteur.
+- Les droits de changement d etape sont aussi reconnus sur un lien de reunion lorsqu il identifie le createur ou une personne autorisee du PV.
+- En relecture, les points de PV indiquent maintenant qu ils sont verrouilles et orientent les participants vers la discussion. Le chat de chaque point fonctionne aussi depuis un lien public de reunion, avec une attribution fiable aux invites externes comme aux membres.
+- Le passage d un PV en relecture conserve maintenant le drawer de preparation ouvert et recharge son contenu verrouille. Seule la validation ferme cet editeur pour ouvrir la vue normale du PV.
+- Les libelles, messages, invitations et dialogues de l editeur de PV et de sa page publique sont maintenant relus en francais et centralises dans leurs bundles de traduction, avec les accents, contractions et pluriels corrects.
+- Les editeurs Summernote du PV, des discussions et des formulaires partages proposent maintenant le meme surligneur a palette predeterminee. La palette permet aussi d effacer le surlignage de la selection.
+- Dans l editeur de PV, les roles proposes pour la personne en charge sont maintenant tries alphabetiquement en placant d abord ceux du cercle du document ou de son evenement. Les autres roles apparaissent apres une separation et precisent leur cercle entre parentheses.
 - La navigation depuis un projet vers un document resynchronise maintenant toujours le sous-drawer Documents avec le hash, meme lorsque le drawer principal avait deja ete affiche. Une ouverture locale qui echoue retombe aussi sur le rechargement cible du document au lieu de considerer silencieusement la route comme traitee.
 - L ancien endpoint IA experimental a ete retire avec sa cle tierce codee en dur. Le proxy d images historique ne transmet plus les cookies des visiteurs, refuse par defaut les sources distantes, bloque les adresses privees et reservees, limite les formats, tailles et delais, et n autorise une source HTTPS distante que si son domaine figure explicitement dans `GETIMG_ALLOWED_HOSTS`.
 - Les sessions PHP imposent maintenant des cookies Secure, HttpOnly et SameSite Lax, refusent les identifiants de session non initialises par le serveur et utilisent uniquement les cookies. Les erreurs PHP restent journalisees mais ne sont plus affichees aux visiteurs, y compris pendant le demarrage. Le fichier de configuration correspondant est explicitement inaccessible par HTTP.
