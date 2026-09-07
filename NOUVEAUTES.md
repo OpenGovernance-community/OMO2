@@ -5,6 +5,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 ## 2026-09-07
 
 - Les droits contextuels `CAN_EDIT_HOLON_BUDGET` et `CAN_EDIT_AFFECTATION_BUDGET` permettent maintenant de distinguer l edition des budgets propres aux holons de celle des budgets de leurs affectations. Ils sont regroupes dans la rubrique Budget de l editeur de droits et respectent les portees existantes, par exemple les elements directs d un cercle.
+- La nouvelle application Budget rejoint maintenant simplement le catalogue des applications disponibles : elle n est plus activee automatiquement dans chaque organisation et peut etre ajoutee explicitement depuis le selecteur d applications.
 
 - Le segment de phase d elaboration du graphique de scrutin utilise maintenant le meme libelle Elaboration que le reste de l interface.
 - Les participants identifies par un lien public utilisent maintenant un pseudonyme stable dans les propositions anonymes et leurs discussions, meme lorsqu ils disposent aussi d un compte.

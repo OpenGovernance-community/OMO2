@@ -2420,9 +2420,7 @@ INSERT INTO `organization_application` VALUES
 (20,2,7,8,1,NULL),
 (21,2,8,9,1,NULL),
 (22,1,10,45,1,NULL),
-(23,2,10,45,1,NULL),
-(24,1,11,55,1,NULL),
-(25,2,11,55,1,NULL);
+(23,2,10,45,1,NULL);
 /*!40000 ALTER TABLE `organization_application` ENABLE KEYS */;
 UNLOCK TABLES;
 

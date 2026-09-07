@@ -11,8 +11,3 @@ ON DUPLICATE KEY UPDATE
     `position` = VALUES(`position`),
     `requires_login` = VALUES(`requires_login`),
     `active` = VALUES(`active`);
-
-INSERT IGNORE INTO `organization_application` (`IDorganization`, `IDapplication`, `position`, `active`)
-SELECT `o`.`id`, `a`.`id`, `a`.`position`, 1
-FROM `organization` `o`
-INNER JOIN `application` `a` ON `a`.`hash` = 'budget';
