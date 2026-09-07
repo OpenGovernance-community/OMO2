@@ -111,7 +111,7 @@ $urlPrefix = commonCalDavBuildAbsoluteHref(commonCalDavBuildScopedCalendarHref($
 $calDavUrl = $urlPrefix . $initialColor . '/';
 ?>
 <div
-    class="omo-calendar-connect"
+    class="omo-calendar-connect generic-drawer-content"
     data-omo-calendar-connect-popup
     data-omo-calendar-connect-title="<?= omoApiEscape(omoCalendarConnectT('calendar.connect.popup.title')) ?>"
 >

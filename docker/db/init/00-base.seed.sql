@@ -99,7 +99,7 @@ CREATE TABLE `application` (
   `active` tinyint(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_application_hash` (`hash`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -118,7 +118,8 @@ INSERT INTO `application` VALUES
 (7,'Team','team','team','images/tools/team.png','drawer_team','api/team/index.php','drawer',8,1,1),
 (8,'Calendrier','calendar','calendar','images/tools/calendar.png','drawer_calendar','api/calendar/index.php','drawer',9,1,1),
 (9,'Decisions','decision','decision','images/tools/decision.png','drawer_decisions','api/decision/index.php','drawer',65,1,1),
-(10,'Activites','activities','activities','images/tools/control-list.png','drawer_activities','api/activities/index.php','drawer',45,1,1);
+(10,'Activites','activities','activities','images/tools/control-list.png','drawer_activities','api/activities/index.php','drawer',45,1,1),
+(11,'Budget','budget','budget','images/tools/budget.png','drawer_budget','api/budget/index.php','drawer',55,1,1);
 /*!40000 ALTER TABLE `application` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -863,7 +864,7 @@ CREATE TABLE `decision_proposal` (
   `IDdecision_process` int(11) NOT NULL,
   `IDdecision_group` int(11) NOT NULL,
   `IDuser_author` int(11) DEFAULT NULL,
-  `title` varchar(190) NOT NULL,
+  `title` varchar(190) DEFAULT NULL,
   `description` mediumtext DEFAULT NULL,
   `info_url` varchar(500) DEFAULT NULL,
   `position` int(11) NOT NULL DEFAULT 0,
@@ -1700,6 +1701,10 @@ CREATE TABLE `holon` (
   `IDholon_parent` int(11) DEFAULT NULL,
   `IDholon_template` int(11) DEFAULT NULL,
   `accesskey` varchar(200) DEFAULT NULL,
+  `time_budget_hours` decimal(12,2) DEFAULT NULL,
+  `time_budget_recurrence` varchar(10) DEFAULT NULL,
+  `money_budget` decimal(12,2) DEFAULT NULL,
+  `money_budget_recurrence` varchar(10) DEFAULT NULL,
   `parameters` mediumtext DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_holon_organization` (`IDorganization`),
@@ -2586,7 +2591,7 @@ CREATE TABLE `permission` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_permission_key` (`permission_key`),
   KEY `idx_permission_title` (`title`)
-) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2619,7 +2624,9 @@ INSERT INTO `permission` VALUES
 (27,'CAN_DELETE_CONTROL_LIST','Supprimer des activites recurrentes','Autorise la suppression des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
 (28,'CAN_CREATE_CONTROL_ACTIVITY','Creer des activites recurrentes','Autorise la creation d activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
 (29,'CAN_EDIT_CONTROL_ACTIVITY','Modifier des activites recurrentes','Autorise la modification des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
-(30,'CAN_DELETE_CONTROL_ACTIVITY','Supprimer des activites recurrentes','Autorise la suppression des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00');
+(30,'CAN_DELETE_CONTROL_ACTIVITY','Supprimer des activites recurrentes','Autorise la suppression des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
+(31,'CAN_EDIT_HOLON_BUDGET','Modifier les budgets de holons','Autorise la modification des budgets temps et argent des holons dans le contexte cible.',1,'2026-09-07 00:00:00','2026-09-07 00:00:00'),
+(32,'CAN_EDIT_AFFECTATION_BUDGET','Modifier les budgets des affectations','Autorise la modification des budgets temps et argent des affectations dans le contexte cible.',1,'2026-09-07 00:00:00','2026-09-07 00:00:00');
 /*!40000 ALTER TABLE `permission` ENABLE KEYS */;
 UNLOCK TABLES;
 

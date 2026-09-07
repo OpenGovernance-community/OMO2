@@ -2860,7 +2860,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
                 window.commonTopbarOpenModal(
                     title,
-                    '<div class="omo-calendar__delete-documents-dialog">'
+                    '<div class="omo-calendar__delete-documents-dialog generic-drawer-content">'
                         + '<p data-omo-calendar-delete-documents-question></p>'
                         + '<div class="omo-calendar__delete-documents-actions">'
                         + '<button type="button" class="generic-action-button generic-action-button--main" data-omo-calendar-delete-documents-choice="yes">' + escapeCalendarHtml(yesLabel) + '</button>'

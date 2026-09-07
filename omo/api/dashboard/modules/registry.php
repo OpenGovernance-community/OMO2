@@ -17,3 +17,31 @@ if (!function_exists('omoDashboardGetModuleDefinitions')) {
         );
     }
 }
+
+if (!function_exists('omoDashboardUserIsAssociatedWithHolon')) {
+    function omoDashboardUserIsAssociatedWithHolon($userId, $organizationId, \dbObject\Holon $holon): bool
+    {
+        static $cache = array();
+
+        $userId = (int)$userId;
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holon->getId();
+        if ($userId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+            return false;
+        }
+
+        $cacheKey = $organizationId . ':' . $userId . ':' . $holonId;
+        if (!array_key_exists($cacheKey, $cache)) {
+            $cache[$cacheKey] = in_array(
+                $userId,
+                $holon->getAssociatedMemberUserIds(array(
+                    'organizationId' => $organizationId,
+                    'skipPermissionFilter' => true,
+                )),
+                true
+            );
+        }
+
+        return $cache[$cacheKey];
+    }
+}

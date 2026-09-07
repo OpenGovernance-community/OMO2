@@ -4,6 +4,7 @@ use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\ArrayProjectDocument;
 use dbObject\Document;
+use dbObject\OrganizationApplication;
 use dbObject\Project;
 
 if (!function_exists('omoProjectsSourceLang')) {
@@ -746,6 +747,63 @@ if (!function_exists('omoProjectsStatusDisplayOrder')) {
             Project::STATUS_DONE,
             Project::STATUS_SOMEDAY,
         ];
+    }
+}
+
+if (!function_exists('omoProjectsDefaultDisplayConfig')) {
+    function omoProjectsDefaultDisplayConfig(): array
+    {
+        return [
+            'enabledStatuses' => omoProjectsStatusDisplayOrder(),
+            'usePriority' => true,
+            'useImportance' => true,
+            'useSize' => true,
+        ];
+    }
+}
+
+if (!function_exists('omoProjectsNormalizeDisplayConfig')) {
+    function omoProjectsNormalizeDisplayConfig($value): array
+    {
+        $default = omoProjectsDefaultDisplayConfig();
+        if (!is_array($value)) {
+            return $default;
+        }
+
+        $allowedStatuses = omoProjectsStatusDisplayOrder();
+        $configuredStatuses = $value['enabledStatuses'] ?? null;
+        if (!is_array($configuredStatuses)) {
+            $enabledStatuses = $default['enabledStatuses'];
+        } else {
+            $enabledStatuses = array_values(array_filter(
+                $allowedStatuses,
+                static fn (string $status): bool => in_array($status, $configuredStatuses, true)
+            ));
+        }
+
+        return [
+            'enabledStatuses' => $enabledStatuses,
+            'usePriority' => array_key_exists('usePriority', $value) ? !empty($value['usePriority']) : true,
+            'useImportance' => array_key_exists('useImportance', $value) ? !empty($value['useImportance']) : true,
+            'useSize' => array_key_exists('useSize', $value) ? !empty($value['useSize']) : true,
+        ];
+    }
+}
+
+if (!function_exists('omoProjectsGetDisplayConfig')) {
+    function omoProjectsGetDisplayConfig(int $organizationId): array
+    {
+        if ($organizationId <= 0) {
+            return omoProjectsDefaultDisplayConfig();
+        }
+
+        $applicationLink = OrganizationApplication::loadByOrganizationAndDirectory($organizationId, 'projects', false);
+        if (!($applicationLink instanceof OrganizationApplication)) {
+            return omoProjectsDefaultDisplayConfig();
+        }
+
+        $parameters = $applicationLink->getParametersArray();
+        return omoProjectsNormalizeDisplayConfig($parameters['display'] ?? null);
     }
 }
 

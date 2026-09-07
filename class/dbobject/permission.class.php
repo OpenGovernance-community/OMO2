@@ -95,6 +95,18 @@ class Permission extends DbObject
                 'iscontextual' => true,
                 'group' => 'holons',
             ],
+            'CAN_EDIT_HOLON_BUDGET' => [
+                'title' => 'Modifier les budgets de holons',
+                'description' => 'Autorise la modification des budgets temps et argent des holons dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'budget',
+            ],
+            'CAN_EDIT_AFFECTATION_BUDGET' => [
+                'title' => 'Modifier les budgets des affectations',
+                'description' => 'Autorise la modification des budgets temps et argent des affectations dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'budget',
+            ],
             'CAN_ADD_MEMBER' => [
                 'title' => 'Ajouter un membre',
                 'description' => 'Autorise l ajout d un membre dans le contexte cible.',
@@ -269,6 +281,7 @@ class Permission extends DbObject
             'checklists' => ['title' => 'Processus', 'order' => 25],
             'control_lists' => ['title' => 'Activites recurrentes', 'order' => 26],
             'steering' => ['title' => 'Pilotage', 'order' => 30],
+            'budget' => ['title' => 'Budget', 'order' => 35],
             'properties' => ['title' => 'Proprietes', 'order' => 40],
             'organization' => ['title' => 'Organisation', 'order' => 50],
             'other' => ['title' => 'Autres droits', 'order' => 999],

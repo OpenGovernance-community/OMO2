@@ -3435,7 +3435,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 + '</label>';
         });
 
-        const pickerHtml = '<form class="omo-pv-editor__application-picker" data-omo-pv-application-picker>'
+        const pickerHtml = '<form class="omo-pv-editor__application-picker generic-drawer-content" data-omo-pv-application-picker>'
             + '<p>' + escapeDocumentEmbedHtml(applicationTabsUi.pickerDescription || '') + '</p>'
             + (itemsHtml !== ''
                 ? '<div class="omo-pv-editor__application-picker-list">' + itemsHtml + '</div>'
@@ -3776,7 +3776,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         let marker = targetNode ? null : field.createTemporaryCursorMarker();
         let resolved = false;
         const modalHtml = ''
-            + '<div class="omo-document-embed-picker omo-resource-picker">'
+            + '<div class="omo-document-embed-picker omo-resource-picker generic-drawer-content">'
             + '<aside class="omo-resource-picker__navigation" data-omo-pv-document-embed-scope></aside>'
             + '<div class="omo-resource-picker__content">'
             + '<label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-omo-pv-document-embed-search aria-label="' + escapeDocumentEmbedHtml(documentEmbedUi.search || '') + '" placeholder="' + escapeDocumentEmbedHtml(documentEmbedUi.quickSearchPlaceholder || '') + '"></label>'
@@ -3909,7 +3909,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             : 0;
         let marker = targetNode ? null : field.createTemporaryCursorMarker();
         let resolved = false;
-        const modalHtml = '<div class="omo-document-embed-picker omo-resource-picker">'
+        const modalHtml = '<div class="omo-document-embed-picker omo-resource-picker generic-drawer-content">'
             + '<aside class="omo-resource-picker__navigation" data-omo-pv-decision-embed-scope></aside>'
             + '<div class="omo-resource-picker__content">'
             + '<label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-omo-pv-decision-embed-search aria-label="' + escapeDocumentEmbedHtml(decisionEmbedUi.search || '') + '" placeholder="' + escapeDocumentEmbedHtml(decisionEmbedUi.quickSearchPlaceholder || '') + '"></label>'
@@ -3981,6 +3981,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         const html = '<div class="omo-document-embed-picker omo-resource-picker"><aside class="omo-resource-picker__navigation" data-omo-pv-checklist-scope></aside><div class="omo-resource-picker__content"><label class="omo-resource-picker__quick-search"><input type="search" class="generic-form-control" data-omo-pv-checklist-search placeholder="' + escapeDocumentEmbedHtml(checklistEmbedUi.quickSearchPlaceholder || '') + '"></label><div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select" data-omo-pv-checklist-select size="10" aria-label="' + escapeDocumentEmbedHtml(checklistEmbedUi.visible || '') + '"></select></div><div class="omo-document-embed-picker__preview" data-omo-pv-checklist-preview></div><div class="omo-document-embed-picker__actions">' + (targetNode ? '<button type="button" class="generic-action-button generic-action-button--danger" data-omo-pv-checklist-remove>' + escapeDocumentEmbedHtml(checklistEmbedUi.remove || '') + '</button>' : '') + '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-checklist-cancel>' + escapeDocumentEmbedHtml(checklistEmbedUi.cancel || '') + '</button><button type="button" class="generic-action-button generic-action-button--main" data-omo-pv-checklist-insert disabled>' + escapeDocumentEmbedHtml(checklistEmbedUi.insert || '') + '</button></div></div></div>';
         window.commonTopbarOpenModal(checklistEmbedUi.modalTitle || '', html, 'html');
         const body = document.getElementById('commonTopbarModalBody'); if (!(body instanceof Element)) { if (marker) field.removeTemporaryMarker(marker); return; }
+        const checklistPicker = body.querySelector('.omo-document-embed-picker');
+        if (checklistPicker) checklistPicker.classList.add('generic-drawer-content');
         const search = body.querySelector('[data-omo-pv-checklist-search]'), select = body.querySelector('[data-omo-pv-checklist-select]'), preview = body.querySelector('[data-omo-pv-checklist-preview]'), insert = body.querySelector('[data-omo-pv-checklist-insert]');
         let scopePicker = null;
         const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
@@ -4030,6 +4032,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         window.commonTopbarOpenModal(projectEmbedUi.modalTitle || '', html, 'html');
         const body = document.getElementById('commonTopbarModalBody'); if (!(body instanceof Element)) { if (marker) field.removeTemporaryMarker(marker); return; }
         const projectPickerTabs = body.querySelector('.generic-tabs.omo-document-embed-picker');
+        if (projectPickerTabs) projectPickerTabs.classList.add('generic-drawer-content');
         const projectScopeHost = body.querySelector('[data-omo-pv-project-embed-scope]');
         const projectScopeNavigation = projectScopeHost ? projectScopeHost.closest('.omo-resource-picker__navigation') : null;
         if (projectPickerTabs instanceof Element && projectScopeNavigation instanceof Element) {
@@ -4144,7 +4147,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         const tabPrefix = 'omo-pv-event-picker-' + Math.random().toString(36).slice(2, 10);
         const existingTabId = tabPrefix + '-existing';
         const newTabId = tabPrefix + '-new';
-        const modalHtml = '<div class="generic-tabs omo-document-embed-picker" data-generic-tabs>'
+        const modalHtml = '<div class="generic-tabs omo-document-embed-picker generic-drawer-content" data-generic-tabs>'
             + '<div class="generic-tabs__list" aria-label="' + escapeDocumentEmbedHtml(eventEmbedUi.tabsAria || '') + '">'
             + '<button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="' + existingTabId + '">' + escapeDocumentEmbedHtml(eventEmbedUi.tabExisting || '') + '</button>'
             + '<button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="' + newTabId + '">' + escapeDocumentEmbedHtml(eventEmbedUi.tabNew || '') + '</button></div>'
@@ -4914,7 +4917,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             : 'indicator';
         let marker = targetNode ? null : field.createTemporaryCursorMarker();
         let resolved = false;
-        const modalHtml = '<div class="omo-document-embed-picker omo-resource-picker">'
+        const modalHtml = '<div class="omo-document-embed-picker omo-resource-picker generic-drawer-content">'
             + '<aside class="omo-resource-picker__navigation" data-omo-pv-indicator-embed-scope></aside>'
             + '<div class="omo-resource-picker__content">'
             + '<label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-omo-pv-indicator-embed-search aria-label="' + escapeDocumentEmbedHtml(indicatorEmbedUi.search || '') + '" placeholder="' + escapeDocumentEmbedHtml(indicatorEmbedUi.quickSearchPlaceholder || '') + '"></label>'
