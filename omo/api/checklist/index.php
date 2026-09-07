@@ -57,11 +57,18 @@ foreach ($checklists as $checklist) {
         continue;
     }
     $itemCount = 0;
+    $convertibleItemCount = 0;
+    $canConvert = omoChecklistCanManage($checklist);
     foreach ($checklist->getItems(true) as $item) {
         if ($item instanceof ChecklistItem) {
             $itemCount++;
+            if (omoChecklistGetTemporalItemRecurrence($item) instanceof \dbObject\ChecklistItemRecurrence) {
+                $convertibleItemCount++;
+                $canConvert = $canConvert && omoChecklistCanConvertItemToActivity($checklist, $item);
+            }
         }
     }
+    $canConvert = $canConvert && $convertibleItemCount > 0;
     $holon = $templateRoot->getHolon();
     $updatedAt = $checklist->get('updated_at');
     $openRunCount = count($checklist->getOpenRuns());
@@ -100,6 +107,7 @@ foreach ($checklists as $checklist) {
         'triggerLabel' => omoChecklistTriggerLabel(omoChecklistGetPrimaryTrigger($checklist)),
         'updated' => $updatedAt instanceof DateTimeInterface ? $updatedAt->format('d.m.Y') : '',
         'canDelete' => omoChecklistCanDelete($checklist),
+        'canConvert' => $canConvert,
     ];
 }
 usort($checklistRows, static function (array $left, array $right) {
@@ -236,13 +244,17 @@ $texts = [
                                     <div class="generic-file-list__cell" data-label="<?= omoApiEscape(omoChecklistT('checklist.detail.context')) ?>"><?= omoApiEscape((string)$row['holon']) ?></div>
                                     <div class="generic-file-list__cell" data-label="<?= omoApiEscape(omoChecklistT('checklist.detail.trigger')) ?>"><?= omoApiEscape((string)$row['triggerLabel']) ?></div>
                                     <div class="generic-file-list__cell generic-file-list__cell--date" data-label="<?= omoApiEscape(omoChecklistT('checklist.detail.updated')) ?>"><?= omoApiEscape((string)$row['updated']) ?></div>
-                                    <?php if (!empty($row['canDelete'])): ?>
+                                    <?php if (!empty($row['canDelete']) || !empty($row['canConvert'])): ?>
                                         <div class="generic-file-list__menu generic-menu" data-checklist-list-menu>
                                             <button
                                                 type="button"
                                                 class="generic-file-list__menu-toggle generic-menu-toggle"
                                                 data-checklist-list-menu-toggle
                                                 data-checklist-id="<?= (int)$checklist->getId() ?>"
+                                                data-checklist-convert-confirm="<?= omoApiEscape(omoChecklistT('checklist.confirm.convert_checklist')) ?>"
+                                                data-checklist-convert-label="<?= omoApiEscape(omoChecklistT('checklist.action.convert_to_activity')) ?>"
+                                                data-checklist-can-convert="<?= !empty($row['canConvert']) ? '1' : '0' ?>"
+                                                data-checklist-can-delete="<?= !empty($row['canDelete']) ? '1' : '0' ?>"
                                                 data-checklist-delete-confirm="<?= omoApiEscape(omoChecklistT('checklist.confirm.delete_checklist')) ?>"
                                                 data-checklist-delete-label="<?= omoApiEscape(omoChecklistT('checklist.action.delete')) ?>"
                                                 aria-haspopup="menu"
@@ -281,4 +293,4 @@ $texts = [
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
-<script src="/omo/api/checklist/checklist.js?v=20260906-pv-local-subdrawers"></script>
+<script src="/omo/api/checklist/checklist.js?v=20260907-process-project-link"></script>

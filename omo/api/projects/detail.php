@@ -37,6 +37,11 @@ if (
 $isArchivedProject = (int)$project->get('active') !== 1;
 
 $organization = $context['organization'];
+$projectDisplayConfig = omoProjectsGetDisplayConfig($organizationId);
+$enabledStatuses = $projectDisplayConfig['enabledStatuses'];
+$usesPriority = !empty($projectDisplayConfig['usePriority']);
+$usesImportance = !empty($projectDisplayConfig['useImportance']);
+$usesSize = !empty($projectDisplayConfig['useSize']);
 $projectHolon = $project->getHolon();
 $rootHolon = $context['rootHolon'];
 if (
@@ -153,14 +158,7 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
 }
 $statusSummaryMemo = [];
 $projectStatusSummary = omoProjectsBuildStatusBar($project, $projectsByParent, $statusSummaryMemo);
-$detailStatusOptions = [
-    Project::STATUS_READY,
-    Project::STATUS_IN_PROGRESS,
-    Project::STATUS_BLOCKED,
-    Project::STATUS_REVIEW,
-    Project::STATUS_DONE,
-    Project::STATUS_SOMEDAY,
-];
+$detailStatusOptions = $enabledStatuses;
 $documentsUrl = '/omo/api/projects/documents.php?oid=' . rawurlencode((string)$organizationId)
     . '&id=' . rawurlencode((string)$projectId);
 $eventsUrl = '/omo/api/projects/events.php?oid=' . rawurlencode((string)$organizationId)
@@ -284,12 +282,12 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                                 <span><?= omoApiEscape($subprojectHolonLabel) ?></span>
                                 <span><?= omoApiEscape($subprojectResponsible) ?></span>
                                 <span class="omo-project-status omo-project-status--<?= omoApiEscape($subprojectStatus) ?>"><?= omoApiEscape(omoProjectsStatusLabel($subprojectStatus)) ?></span>
-                                <span class="omo-project-detail__subproject-size"><?= omoApiEscape(Project::normalizeSize($subproject->get('project_size'))) ?></span>
+                                <?php if ($usesSize): ?><span class="omo-project-detail__subproject-size"><?= omoApiEscape(Project::normalizeSize($subproject->get('project_size'))) ?></span><?php endif; ?>
                             </div>
                         </div>
                         <?php if ($subprojectIsProject): ?>
                             <?= omoProjectsRenderStatusBar($subprojectSummary, 'omo-project-detail__subproject-bar') ?>
-                        <?php elseif ($subprojectCanEdit): ?>
+                        <?php elseif ($subprojectCanEdit && in_array($subprojectStatus, $detailStatusOptions, true)): ?>
                             <select class="generic-form-control omo-project-detail__subproject-status-select" data-omo-project-detail-status-select data-project-id="<?= (int)$subproject->getId() ?>" data-previous-status="<?= omoApiEscape($subprojectStatus) ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.status_move')) ?>">
                                 <?php foreach ($detailStatusOptions as $statusOption): ?>
                                     <option value="<?= omoApiEscape($statusOption) ?>"<?= $statusOption === $subprojectStatus ? ' selected' : '' ?>><?= omoApiEscape(omoProjectsStatusLabel($statusOption)) ?></option>
@@ -337,10 +335,12 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
         <section class="generic-soft-panel omo-project-detail__section">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoProjectsT('projects.detail.status')) ?></h3>
             <dl class="omo-project-detail__facts">
-                <div><dt><?= omoApiEscape(omoProjectsT('projects.detail.priority')) ?></dt><dd><?= $project->get('priority') !== null && $project->get('priority') !== '' ? omoApiEscape('P' . (string)$project->get('priority')) : omoApiEscape(omoProjectsT('projects.detail.none')) ?></dd></div>
-                <div><dt><?= omoApiEscape(omoProjectsT('projects.detail.importance')) ?></dt><dd><?= $project->get('importance') !== null && $project->get('importance') !== '' ? omoApiEscape((string)$project->get('importance') . '/5') : omoApiEscape(omoProjectsT('projects.detail.none')) ?></dd></div>
-                <div title="<?= omoApiEscape(omoProjectsT('projects.detail.calculated_importance_help')) ?>"><dt><?= omoApiEscape(omoProjectsT('projects.detail.calculated_importance')) ?></dt><dd><?= omoApiEscape(number_format($calculatedImportance, 2, '.', '')) ?>/5</dd></div>
-                <div><dt><?= omoApiEscape(omoProjectsT('projects.detail.size')) ?></dt><dd><?= omoApiEscape($projectSize) ?></dd></div>
+                <?php if ($usesPriority): ?><div><dt><?= omoApiEscape(omoProjectsT('projects.detail.priority')) ?></dt><dd><?= $project->get('priority') !== null && $project->get('priority') !== '' ? omoApiEscape('P' . (string)$project->get('priority')) : omoApiEscape(omoProjectsT('projects.detail.none')) ?></dd></div><?php endif; ?>
+                <?php if ($usesImportance): ?>
+                    <div><dt><?= omoApiEscape(omoProjectsT('projects.detail.importance')) ?></dt><dd><?= $project->get('importance') !== null && $project->get('importance') !== '' ? omoApiEscape((string)$project->get('importance') . '/5') : omoApiEscape(omoProjectsT('projects.detail.none')) ?></dd></div>
+                    <div title="<?= omoApiEscape(omoProjectsT('projects.detail.calculated_importance_help')) ?>"><dt><?= omoApiEscape(omoProjectsT('projects.detail.calculated_importance')) ?></dt><dd><?= omoApiEscape(number_format($calculatedImportance, 2, '.', '')) ?>/5</dd></div>
+                <?php endif; ?>
+                <?php if ($usesSize): ?><div><dt><?= omoApiEscape(omoProjectsT('projects.detail.size')) ?></dt><dd><?= omoApiEscape($projectSize) ?></dd></div><?php endif; ?>
             </dl>
         </section>
         <section class="generic-soft-panel omo-project-detail__section">

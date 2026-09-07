@@ -20,7 +20,7 @@ $lang = omoTeamLoadTranslationBundle();
 if ($organizationId <= 0 || $userId <= 0) {
     http_response_code(400);
     ?>
-    <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.invalid_member_context', [], $lang, $sourceLang)) ?></div>
+    <div class="omo-member-actions omo-member-actions--error generic-drawer-content"><?= htmlspecialchars(omoTeamT('team.popup.invalid_member_context', [], $lang, $sourceLang)) ?></div>
     <?php
     exit;
 }
@@ -29,7 +29,7 @@ $organization = new Organization();
 if (!$organization->load($organizationId)) {
     http_response_code(404);
     ?>
-    <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.organization_not_found', [], $lang, $sourceLang)) ?></div>
+    <div class="omo-member-actions omo-member-actions--error generic-drawer-content"><?= htmlspecialchars(omoTeamT('team.popup.organization_not_found', [], $lang, $sourceLang)) ?></div>
     <?php
     exit;
 }
@@ -37,7 +37,7 @@ if (!$organization->load($organizationId)) {
 if (!$organization->canViewDetail()) {
     http_response_code(403);
     ?>
-    <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.organization_forbidden', [], $lang, $sourceLang)) ?></div>
+    <div class="omo-member-actions omo-member-actions--error generic-drawer-content"><?= htmlspecialchars(omoTeamT('team.popup.organization_forbidden', [], $lang, $sourceLang)) ?></div>
     <?php
     exit;
 }
@@ -46,7 +46,7 @@ $rootHolon = $organization->getEnabledStructuralRootHolon();
 if ($rootHolon === null) {
     http_response_code(404);
     ?>
-    <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.organization_context_missing', [], $lang, $sourceLang)) ?></div>
+    <div class="omo-member-actions omo-member-actions--error generic-drawer-content"><?= htmlspecialchars(omoTeamT('team.popup.organization_context_missing', [], $lang, $sourceLang)) ?></div>
     <?php
     exit;
 }
@@ -57,7 +57,7 @@ if ($currentHolonId > 0 && (int)$rootHolon->getId() !== $currentHolonId) {
     if (!$candidate->load($currentHolonId) || !$candidate->isDescendantOf($rootHolon->getId())) {
         http_response_code(404);
         ?>
-        <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.context_not_found', [], $lang, $sourceLang)) ?></div>
+        <div class="omo-member-actions omo-member-actions--error generic-drawer-content"><?= htmlspecialchars(omoTeamT('team.popup.context_not_found', [], $lang, $sourceLang)) ?></div>
         <?php
         exit;
     }
@@ -65,7 +65,7 @@ if ($currentHolonId > 0 && (int)$rootHolon->getId() !== $currentHolonId) {
     if (!$candidate->canViewDetail()) {
         http_response_code(403);
         ?>
-        <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.context_forbidden', [], $lang, $sourceLang)) ?></div>
+        <div class="omo-member-actions omo-member-actions--error generic-drawer-content"><?= htmlspecialchars(omoTeamT('team.popup.context_forbidden', [], $lang, $sourceLang)) ?></div>
         <?php
         exit;
     }
@@ -77,7 +77,7 @@ $user = new User();
 if (!$user->load($userId)) {
     http_response_code(404);
     ?>
-    <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.user_not_found', [], $lang, $sourceLang)) ?></div>
+    <div class="omo-member-actions omo-member-actions--error generic-drawer-content"><?= htmlspecialchars(omoTeamT('team.popup.user_not_found', [], $lang, $sourceLang)) ?></div>
     <?php
     exit;
 }
@@ -85,7 +85,7 @@ if (!$user->load($userId)) {
 if (!$user->canViewDetail()) {
     http_response_code(403);
     ?>
-    <div class="omo-member-actions omo-member-actions--error"><?= htmlspecialchars(omoTeamT('team.popup.user_forbidden', [], $lang, $sourceLang)) ?></div>
+    <div class="omo-member-actions omo-member-actions--error generic-drawer-content"><?= htmlspecialchars(omoTeamT('team.popup.user_forbidden', [], $lang, $sourceLang)) ?></div>
     <?php
     exit;
 }
@@ -110,7 +110,7 @@ $currentHolonName = trim((string)$currentHolon->getDisplayName());
 $canManageCurrentHolonMembers = $currentHolon->canEdit();
 ?>
 <div
-    class="omo-member-actions"
+    class="omo-member-actions generic-drawer-content"
     id="omoMemberActionsPopup"
     data-user-id="<?= (int)$userId ?>"
     data-oid="<?= (int)$organizationId ?>"

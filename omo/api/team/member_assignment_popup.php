@@ -32,6 +32,10 @@ if (!$holon->canViewDetail() || !$holon->canEdit()) {
     $renderError(403, omoTeamT('team.api.no_right_modify_context', [], $lang, $sourceLang));
 }
 
+$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+$hasBudgetApplication = $organization->isApplicationEnabled('budget', $currentUserId);
+$canEditAssignmentBudget = $hasBudgetApplication && $holon->isAllowed('CAN_EDIT_AFFECTATION_BUDGET');
+
 if ($holon->isOrganizationHolon()) {
     $renderError(400, omoTeamT('team.assignment_popup.invalid_assignment', [], $lang, $sourceLang));
 }
@@ -57,14 +61,15 @@ $reasonMessages = array(
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=UTF-8');
-    $result = $assignment->updateAssignmentDetails(array(
+    $assignmentDetails = array(
         'focus' => $_POST['focus'] ?? '',
-        'time_budget_hours' => $_POST['time_budget_hours'] ?? '',
-        'time_budget_recurrence' => $_POST['time_budget_recurrence'] ?? '',
-        'money_budget' => $_POST['money_budget'] ?? '',
-        'money_budget_recurrence' => $_POST['money_budget_recurrence'] ?? '',
         'assignment_review_date' => $_POST['assignment_review_date'] ?? '',
-    ));
+        'time_budget_hours' => $canEditAssignmentBudget ? ($_POST['time_budget_hours'] ?? '') : $assignment->get('time_budget_hours'),
+        'time_budget_recurrence' => $canEditAssignmentBudget ? ($_POST['time_budget_recurrence'] ?? '') : $assignment->get('time_budget_recurrence'),
+        'money_budget' => $canEditAssignmentBudget ? ($_POST['money_budget'] ?? '') : $assignment->get('money_budget'),
+        'money_budget_recurrence' => $canEditAssignmentBudget ? ($_POST['money_budget_recurrence'] ?? '') : $assignment->get('money_budget_recurrence'),
+    );
+    $result = $assignment->updateAssignmentDetails($assignmentDetails);
 
     $isSuccess = !empty($result['status']);
     if (!$isSuccess) {
@@ -128,6 +133,7 @@ $refreshUrl = '/omo/api/team/index.php?oid=' . $organizationId
         </label>
     </div>
 
+    <?php if ($canEditAssignmentBudget): ?>
     <div class="omo-team-assignment-editor__budget-grid">
         <label class="omo-team-assignment-editor__field generic-form-label">
             <span><?= omoApiEscape(omoTeamT('team.assignment_popup.time_budget', [], $lang, $sourceLang)) ?></span>
@@ -155,6 +161,7 @@ $refreshUrl = '/omo/api/team/index.php?oid=' . $organizationId
             </select>
         </label>
     </div>
+    <?php endif; ?>
 
     <div class="omo-team-assignment-editor__actions">
         <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape(omoTeamT('team.assignment_popup.save', [], $lang, $sourceLang)) ?></button>

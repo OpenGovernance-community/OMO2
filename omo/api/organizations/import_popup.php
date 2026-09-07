@@ -12,12 +12,12 @@ if (
 ) {
     http_response_code(403);
     ?>
-    <div class="omo-import-popup__feedback omo-import-popup__feedback--error generic-soft-panel">Acces refuse.</div>
+    <div class="omo-import-popup__feedback omo-import-popup__feedback--error generic-drawer-content">Acces refuse.</div>
     <?php
     exit;
 }
 ?>
-<div class="omo-import-popup" data-omo-org-import-popup="1" data-organization-id="<?= (int)$organizationId ?>">
+<div class="omo-import-popup generic-drawer-content" data-omo-org-import-popup="1" data-organization-id="<?= (int)$organizationId ?>">
     <div class="omo-import-popup__hero generic-hero-panel accent">
         <div class="omo-import-popup__kicker generic-card-title generic-card-title--eyebrow">Import JSON</div>
         <h3 class="omo-import-popup__title generic-card-title generic-card-title--large">Importer une organisation</h3>

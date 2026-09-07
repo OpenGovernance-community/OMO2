@@ -93,17 +93,67 @@
 			);
 		}
 
+		public static function getActiveTimeBudgetsForHolons(array $holonIds)
+		{
+			$holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), static function ($holonId) {
+				return $holonId > 0;
+			})));
+			if (count($holonIds) === 0) {
+				return array();
+			}
+
+			$params = array();
+			$placeholders = array();
+			foreach ($holonIds as $index => $holonId) {
+				$parameterName = 'holon_' . $index;
+				$placeholders[] = ':' . $parameterName;
+				$params[$parameterName] = $holonId;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT `IDuser`, `IDholon`, `time_budget_hours`, `time_budget_recurrence`
+				 FROM `user_holon`
+				 WHERE `active` = 1
+				   AND `is_membership` = 1
+				   AND `time_budget_hours` IS NOT NULL
+				   AND `time_budget_hours` > 0
+				   AND `IDholon` IN (" . implode(', ', $placeholders) . ")
+				 ORDER BY `IDholon` ASC, `IDuser` ASC, `id` ASC",
+				$params
+			);
+
+			$budgets = array();
+			foreach (is_array($rows) ? $rows : array() as $row) {
+				$recurrence = self::normalizeBudgetRecurrence($row['time_budget_recurrence'] ?? '');
+				$hours = is_numeric($row['time_budget_hours'] ?? null)
+					? max(0.0, (float)$row['time_budget_hours'])
+					: 0.0;
+				if ($recurrence === '' || $hours <= 0) {
+					continue;
+				}
+
+				$budgets[] = array(
+					'userId' => (int)($row['IDuser'] ?? 0),
+					'holonId' => (int)($row['IDholon'] ?? 0),
+					'hours' => $hours,
+					'recurrence' => $recurrence,
+				);
+			}
+
+			return $budgets;
+		}
+
 		public static function getDashboardModuleCatalog()
 		{
 			return array(
 				'rules' => array('app' => 'policy', 'settings' => array('scope' => true)),
-				'projects' => array('app' => 'projects', 'settings' => array('scope' => true)),
+				'projects' => array('app' => 'projects', 'settings' => array('scope' => true, 'audience' => true)),
 				'team' => array('app' => 'team', 'settings' => array('scope' => true)),
 				'documents' => array('app' => 'documents', 'settings' => array('scope' => true)),
 				'event' => array('app' => 'calendar', 'settings' => array('scope' => true)),
 				'structure' => array('app' => 'structure', 'settings' => array('scope' => true)),
-				'stats' => array('app' => 'stats', 'settings' => array('scope' => true)),
-				'activities' => array('app' => 'activities', 'settings' => array('scope' => true)),
+				'stats' => array('app' => 'stats', 'settings' => array('scope' => true, 'audience' => true)),
+				'activities' => array('app' => 'activities', 'settings' => array('scope' => true, 'audience' => true)),
 			);
 		}
 
@@ -232,7 +282,17 @@
 					: 'contextual';
 			}
 
+			if (!empty($configuration['audience'])) {
+				$normalized['audience'] = self::normalizeDashboardModuleAudience($settings['audience'] ?? 'all');
+			}
+
 			return $normalized;
+		}
+
+		public static function normalizeDashboardModuleAudience($value): string
+		{
+			$value = trim(mb_strtolower((string)$value, 'UTF-8'));
+			return in_array($value, array('all', 'mine'), true) ? $value : 'all';
 		}
 
 		public static function normalizeDashboardLayout($layout)

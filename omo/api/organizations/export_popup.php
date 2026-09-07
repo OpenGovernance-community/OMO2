@@ -43,6 +43,7 @@ $modules = [
             <p><?= htmlspecialchars(t('organization_export.help', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
     </header>
+    <div class="omo-organization-export__content generic-drawer-content">
     <form class="omo-organization-export__form generic-section generic-section--stack" data-omo-organization-export-form="1" method="get" action="/omo/api/organizations/export.php" target="_blank">
         <fieldset class="omo-organization-export__modules">
             <legend><?= htmlspecialchars(t('organization_export.structure', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></legend>
@@ -63,9 +64,10 @@ $modules = [
             <button type="submit" class="generic-action-button generic-action-button--main"><?= htmlspecialchars(t('organization_export.action.download', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
         </div>
     </form>
+    </div>
 </div>
 <style>
-.omo-organization-export { display: flex; flex-direction: column; gap: 16px; color: var(--color-text, #1f2937); }
+.omo-organization-export { display: flex; flex-direction: column; gap: 0; color: var(--color-text, #1f2937); }
 .omo-organization-export .generic-drawer-header p { margin: 8px 0 0; color: var(--color-text-light, #64748b); line-height: 1.45; }
 .omo-organization-export__form { --generic-section-padding-block: 18px; --generic-section-padding-inline: 18px; }
 .omo-organization-export__modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 9px; margin: 0; padding: 14px; border: 1px solid var(--color-border, #d1d5db); border-radius: var(--radius-md); }

@@ -184,7 +184,7 @@ $proposal = new DecisionProposal();
 $proposal->set('IDdecision_process', (int)$decision->getId());
 $proposal->set('IDdecision_group', (int)$decisionGroup->getId());
 $proposal->set('IDuser_author', $authorUserId > 0 ? $authorUserId : null);
-$proposal->set('title', $proposalTitle);
+$proposal->set('title', $proposalTitle !== '' ? $proposalTitle : null);
 $proposal->set('description', $proposalDescription !== '' ? $proposalDescription : null);
 $proposal->set('info_url', $proposalInfoUrl);
 $proposal->set('position', $maxPosition);

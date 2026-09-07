@@ -6,10 +6,13 @@ use dbObject\Checklist;
 use dbObject\ChecklistItem;
 use dbObject\ChecklistItemDependency;
 use dbObject\ChecklistItemRecurrence;
+use dbObject\ArrayChecklistItem;
+use dbObject\ArrayControlActivity;
 use dbObject\ArrayChecklistItemDependency;
 use dbObject\ChecklistRun;
 use dbObject\ChecklistRunItem;
 use dbObject\ChecklistTrigger;
+use dbObject\ControlActivity;
 use dbObject\DbObject;
 use dbObject\Holon;
 use dbObject\Project;
@@ -108,6 +111,92 @@ function omoChecklistActionNextItemPosition(Checklist $checklist)
         }
     }
     return $position;
+}
+
+function omoChecklistActionNextActivityPosition($organizationId, $holonId, array &$positions)
+{
+    $key = (int)$organizationId . ':' . (int)$holonId;
+    if (isset($positions[$key])) {
+        $positions[$key] += 1;
+        return $positions[$key];
+    }
+
+    $activities = new ArrayControlActivity();
+    $activities->loadForContext((int)$organizationId, [(int)$holonId], false);
+    $position = 0;
+    foreach ($activities as $activity) {
+        if ($activity instanceof ControlActivity) {
+            $position = max($position, (int)$activity->get('position'));
+        }
+    }
+    $positions[$key] = $position + 1;
+    return $positions[$key];
+}
+
+function omoChecklistActionConvertItemToActivity(Checklist $checklist, ChecklistItem $item, $organizationId, array &$activityPositions)
+{
+    $recurrence = omoChecklistGetTemporalItemRecurrence($item);
+    $project = $item->getProjectTemplate();
+    $holon = omoChecklistGetItemActivityHolon($checklist, $item);
+    if (!($recurrence instanceof ChecklistItemRecurrence) || !($project instanceof Project) || !($holon instanceof Holon)) {
+        throw new InvalidArgumentException(omoChecklistT('checklist.error.item_convert_recurrence'));
+    }
+
+    $frequency = RecurrenceSchedule::normalizeFrequency($recurrence->get('frequency'));
+    $schedule = RecurrenceSchedule::normalizeSchedule($frequency, $recurrence->get('schedule'));
+    if ($frequency === null || $schedule === null) {
+        throw new InvalidArgumentException(omoChecklistT('checklist.error.item_convert_recurrence'));
+    }
+
+    $activity = new ControlActivity();
+    $activity->set('IDorganization', (int)$organizationId);
+    $activity->set('IDholon', (int)$holon->getId());
+    $activity->set('title', mb_substr(trim((string)$project->get('title')) ?: ('Activite de processus #' . (int)$item->getId()), 0, 255, 'UTF-8'));
+    $activity->set('description', trim(strip_tags((string)$project->get('description'))) ?: null);
+    $activity->set('frequency', $frequency);
+    $activity->set('schedule', $schedule);
+    $activity->set('display_lead_value', $recurrence->getDisplayLeadValue());
+    $activity->set('display_lead_unit', $recurrence->getDisplayLeadUnit());
+    $activity->set('execution_duration_value', max(1, $recurrence->getExecutionDurationValue()));
+    $activity->set('execution_duration_unit', $recurrence->getExecutionDurationUnit());
+    $activity->set('position', omoChecklistActionNextActivityPosition($organizationId, (int)$holon->getId(), $activityPositions));
+    $activity->set('active', 1);
+    omoChecklistActionSaveObject($activity);
+
+    omoChecklistActionRemoveItemDependencies($item);
+    if (!$recurrence->delete()) {
+        throw new RuntimeException(omoChecklistT('checklist.error.save'));
+    }
+    $item->set('active', 0);
+    omoChecklistActionSaveObject($item);
+    $project->set('active', 0);
+    omoChecklistActionSaveObject($project);
+
+    return $activity;
+}
+
+function omoChecklistActionRetireEmptyChecklist(Checklist $checklist)
+{
+    $items = new ArrayChecklistItem();
+    $items->loadForChecklist((int)$checklist->getId(), true);
+    if (count($items) > 0) {
+        return false;
+    }
+
+    foreach ($checklist->getTriggers(false) as $trigger) {
+        if ($trigger instanceof ChecklistTrigger && (int)$trigger->get('enabled') !== 0) {
+            $trigger->set('enabled', 0);
+            omoChecklistActionSaveObject($trigger);
+        }
+    }
+    $root = $checklist->getTemplateRoot();
+    if ($root instanceof Project && (int)$root->get('active') !== 0) {
+        $root->set('active', 0);
+        omoChecklistActionSaveObject($root);
+    }
+    $checklist->set('active', 0);
+    omoChecklistActionSaveObject($checklist);
+    return true;
 }
 
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
@@ -445,6 +534,80 @@ if ($action === 'activate_checklist') {
         'runId' => (int)$run->getId(),
         'detailUrl' => omoChecklistActionDetailUrl($organizationId, $checklistId, $currentHolonId),
     ]);
+}
+
+if (in_array($action, ['convert_item_to_activity', 'convert_checklist_to_activities'], true)) {
+    $checklistId = $action === 'convert_item_to_activity'
+        ? (isset($_POST['checklist_id']) && is_numeric($_POST['checklist_id']) ? (int)$_POST['checklist_id'] : 0)
+        : (isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : 0);
+    $checklist = omoChecklistLoad($checklistId, $organizationId);
+    if (!($checklist instanceof Checklist)) {
+        omoChecklistActionRespond(false, omoChecklistT('checklist.error.not_found'), [], 404);
+    }
+    if (!omoChecklistCanManage($checklist)) {
+        omoChecklistActionRespond(false, omoChecklistT('checklist.error.forbidden'), [], 403);
+    }
+
+    $itemsToConvert = [];
+    if ($action === 'convert_item_to_activity') {
+        $itemId = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : 0;
+        $item = new ChecklistItem();
+        if ($itemId <= 0 || !$item->load($itemId) || (int)$item->get('IDchecklist') !== $checklistId || (int)$item->get('active') !== 1) {
+            omoChecklistActionRespond(false, omoChecklistT('checklist.error.item_not_found'), [], 404);
+        }
+        $itemsToConvert[] = $item;
+    } else {
+        foreach ($checklist->getItems(true) as $item) {
+            if (omoChecklistGetTemporalItemRecurrence($item) instanceof ChecklistItemRecurrence) {
+                $itemsToConvert[] = $item;
+            }
+        }
+    }
+
+    if (count($itemsToConvert) === 0) {
+        omoChecklistActionRespond(false, omoChecklistT('checklist.error.item_convert_recurrence'), [], 422);
+    }
+    foreach ($itemsToConvert as $item) {
+        if (!($item instanceof ChecklistItem) || !omoChecklistCanConvertItemToActivity($checklist, $item)) {
+            omoChecklistActionRespond(false, omoChecklistT('checklist.error.forbidden'), [], 403);
+        }
+    }
+
+    $pdo = DbObject::getPdo();
+    $startedTransaction = false;
+    try {
+        if ($pdo && !$pdo->inTransaction()) {
+            $pdo->beginTransaction();
+            $startedTransaction = true;
+        }
+        $activityPositions = [];
+        $convertedActivityIds = [];
+        foreach ($itemsToConvert as $item) {
+            $activity = omoChecklistActionConvertItemToActivity($checklist, $item, $organizationId, $activityPositions);
+            $convertedActivityIds[] = (int)$activity->getId();
+        }
+        $retired = omoChecklistActionRetireEmptyChecklist($checklist);
+        if (!$retired) {
+            omoChecklistActionSaveObject($checklist);
+        }
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+            $pdo->commit();
+        }
+    } catch (Throwable $exception) {
+        if ($startedTransaction && $pdo && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        omoChecklistActionRespond(false, omoChecklistT('checklist.error.save'), [], 500);
+    }
+
+    omoChecklistActionRespond(true, $action === 'convert_item_to_activity'
+        ? omoChecklistT('checklist.success.item_converted')
+        : omoChecklistT('checklist.success.converted', ['count' => count($convertedActivityIds)]), [
+            'id' => (int)$checklistId,
+            'activityIds' => $convertedActivityIds,
+            'retired' => !empty($retired),
+            'detailUrl' => !empty($retired) ? '' : omoChecklistActionDetailUrl($organizationId, $checklistId, $currentHolonId),
+        ]);
 }
 
 if (in_array($action, ['delete_item', 'move_item', 'extract_item'], true)) {

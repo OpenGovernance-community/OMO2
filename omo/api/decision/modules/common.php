@@ -1282,13 +1282,19 @@ if (!function_exists('omoDecisionResolveExternalParticipantName')) {
 }
 
 if (!function_exists('omoDecisionResolveProposalParticipantName')) {
-    function omoDecisionResolveProposalParticipantName(DecisionProcess $decision, $userId, $fallbackName = '', $anonymous = false)
+    function omoDecisionResolveProposalParticipantName(DecisionProcess $decision, $userId, $fallbackName = '', $anonymous = false, $participantId = 0)
     {
         $userId = (int)$userId;
+        $participantId = (int)$participantId;
         $fallbackName = trim((string)$fallbackName);
         $isAdministrator = $userId > 0 && $userId === (int)$decision->get('IDuser');
-        if ($userId > 0 && !empty($anonymous) && !$isAdministrator) {
-            return $decision->getAnonymousPseudonymForUser($userId);
+        if (!empty($anonymous) && !$isAdministrator) {
+            if ($participantId > 0) {
+                return $decision->getAnonymousPseudonymForParticipant($participantId);
+            }
+            if ($userId > 0) {
+                return $decision->getAnonymousPseudonymForUser($userId);
+            }
         }
 
         if ($userId > 0) {
@@ -1372,6 +1378,7 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
 
         $isAnonymous = $proposal->isAnonymous();
         $authorUserId = $proposal->getAuthorUserId();
+        $authorParticipantId = $proposal->getAuthorParticipantId();
         $authorFallbackName = '';
         if (!$isAnonymous && method_exists($proposal, 'getAuthorParticipant')) {
             $authorParticipant = $proposal->getAuthorParticipant();
@@ -1379,7 +1386,13 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
                 $authorFallbackName = omoDecisionResolveExternalParticipantName($authorParticipant);
             }
         }
-        $authorName = omoDecisionResolveProposalParticipantName($decision, $authorUserId, $authorFallbackName, $isAnonymous);
+        $authorName = omoDecisionResolveProposalParticipantName(
+            $decision,
+            $authorUserId,
+            $authorFallbackName,
+            $isAnonymous,
+            $authorParticipantId
+        );
         if ($authorName === '') {
             $authorName = $isAnonymous
                 ? omoDecisionProposalT('decisions.proposals.metadata.anonymous_author')
@@ -1439,7 +1452,8 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
                         $decision,
                         $lastMessageUserId,
                         trim((string)($summary['last_message_author_name'] ?? '')),
-                        $isAnonymous
+                        $isAnonymous,
+                        $lastMessageParticipantId
                     );
                 }
                 if ($lastAuthor === '') {
@@ -1508,7 +1522,7 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
 
         $alreadyRendered = true;
         return '<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-unified-chat-errors">'
-            . '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260821-unified-chat">'
+            . '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260907-proposal-meta-actions">'
             . '<link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">'
             . '<script src="/common/choice/word-diff.js?v=20260815" defer></script>'
             . '<script src="/common/choice/change-details.js?v=20260816-governance-details" defer></script>'
@@ -1583,7 +1597,15 @@ if (!function_exists('omoDecisionRenderProposalDiscussionActions')) {
             $html .= '</div>';
         }
 
-        return $html . omoDecisionRenderProposalMetadata($proposal, $context, $escape);
+        $metadata = omoDecisionRenderProposalMetadata($proposal, $context, $escape);
+        if ($html === '') {
+            return $metadata;
+        }
+
+        return '<div class="omo-proposal-actions-and-meta">'
+            . $metadata
+            . $html
+        . '</div>';
     }
 }
 
@@ -1690,10 +1712,6 @@ if (!function_exists('omoDecisionProposalGetSourceLang')) {
             'decisions.proposals.open_intro' => [
                 'text' => 'La consultation est ouverte. Vous pouvez proposer une nouvelle option avec son contexte et un lien d’information.',
                 'context' => 'Introduction shown above the public consultation proposal form.',
-            ],
-            'decisions.proposals.order_hint' => [
-                'text' => 'La proposition sera ajoutée à la fin de la liste. Son ordre détaillé reste gérable ensuite dans l’interface principale.',
-                'context' => 'Helper text explaining how a public consultation proposal is initially ordered.',
             ],
             'decisions.proposals.feedback_success_one' => [
                 'text' => 'Proposition ajoutée à la consultation.',
@@ -2136,7 +2154,6 @@ if (!function_exists('omoDecisionRenderConsultationProposalPublicPanel')) {
             . '<div style="display:grid;gap:6px;">'
                 . '<h2 class="generic-card-title generic-card-title--section" style="margin:0;">' . $escape(omoDecisionProposalT('decisions.proposals.add_title')) . '</h2>'
                 . '<p style="margin:0;color:var(--color-text-light,#475569);line-height:1.6;">' . $escape(omoDecisionProposalT('decisions.proposals.open_intro')) . '</p>'
-                . '<p style="margin:0;color:var(--color-text-light,#64748b);font-size:13px;line-height:1.5;">' . $escape(omoDecisionProposalT('decisions.proposals.order_hint')) . '</p>'
             . '</div>';
 
         if ($feedbackMessage !== '') {

@@ -2,8 +2,34 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-07
+
+- Les droits contextuels `CAN_EDIT_HOLON_BUDGET` et `CAN_EDIT_AFFECTATION_BUDGET` permettent maintenant de distinguer l edition des budgets propres aux holons de celle des budgets de leurs affectations. Ils sont regroupes dans la rubrique Budget de l editeur de droits et respectent les portees existantes, par exemple les elements directs d un cercle.
+- La nouvelle application Budget rejoint maintenant simplement le catalogue des applications disponibles : elle n est plus activee automatiquement dans chaque organisation et peut etre ajoutee explicitement depuis le selecteur d applications.
+
+- Le segment de phase d elaboration du graphique de scrutin utilise maintenant le meme libelle Elaboration que le reste de l interface.
+- Les participants identifies par un lien public utilisent maintenant un pseudonyme stable dans les propositions anonymes et leurs discussions, meme lorsqu ils disposent aussi d un compte.
+- La signature d une proposition est alignee a gauche des actions de discussion et de modification, sur la meme ligne lorsque l espace le permet.
+- Les propositions d une consultation seule sont maintenant affichees sur le fond de page, separees par des traits gris clairs, tandis que leur formulaire d ajout reste dans son propre panneau.
+- Les propositions de scrutin peuvent maintenant ne comporter qu un descriptif, sans titre enregistre artificiellement.
+- Les informations publiques d une consultation seule indiquent maintenant que le mode de scrutin sera defini apres la consultation, sans afficher de messages sur des reponses ou resultats qui n existent pas encore.
+- La nouvelle application Budget, identifiee par une icone tirelire, affiche dans le contexte OMO courant le temps mesure par le timer sur les 30 derniers jours. Un role montre son temps direct, tandis qu un cercle, un groupe ou la racine cumule son sous-arbre. Le graphique horizontal reprend la representation des indicateurs cumules, avec les temps quotidiens en barres, la progression du cumul en courbe et leurs deux echelles. Les budgets temps des affectations actives ayant la meme recurrence sont additionnes dans une trajectoire de reference grise commune, qui repart de zero au debut de chaque jour, semaine, mois ou annee. Seules les durees effectivement confirmees par le timer sont comptees.
+- Les graduations temporelles du graphique Budget utilisent maintenant des pas lisibles et reguliers, par exemple 30 min, 1 h ou 1 h 30, sur quatre intervalles communs aux deux axes.
+- Chaque holon peut maintenant porter directement un budget temps et un budget argent, chacun avec sa propre recurrence journaliere, hebdomadaire, mensuelle ou annuelle. Ces valeurs sont stockees dans des colonnes SQL dediees afin de permettre leur aggregation future par cercle ou organisation, sans les confondre avec les budgets des affectations.
+- Le budget temps direct du holon apparait comme une reference distincte sur le graphique Budget. Lorsqu il existe, sa recurrence pilote les remises a zero du temps cumule ; le premier segment visible inclut aussi le temps mesure depuis le debut reel de la periode.
+- Les budgets temps et argent des affectations sont masques dans les formulaires et les cartes Team lorsque l application Budget n est pas active dans l organisation. Les valeurs stockees restent conservees et accessibles aux objets ou a une future API, tandis que le Timer demeure independant.
+- Les menus des processus et de leurs activites recurrentes permettent maintenant de les passer en checklist directe. La conversion conserve leur holon, titre, description, recurrence et delais, arrete la creation de nouveaux projets et conserve les projets deja generes comme historique.
+- L ouverture d un projet depuis une activite de processus bascule maintenant directement dans le holon rattache au projet.
+- Les modules Projets, Activites et Indicateurs du tableau de pilotage peuvent maintenant afficher Tous les elements ou seulement Moi. Cette preference est enregistree avec la portee du module, apparait dans une capsule sur la fiche et filtre les elements selon leur responsable ou leur holon d attribution.
+- Les capsules de portee et d audience des modules du tableau de pilotage sont plus compactes.
+
 ## 2026-09-06
 
+- Les paramètres de l application Projets permettent maintenant de choisir les colonnes Kanban visibles et d activer ou masquer la priorité et l importance stratégique. Les valeurs masquées restent conservées afin de réapparaître si l option est réactivée.
+- La largeur du Kanban Projets suit maintenant le nombre de colonnes activées.
+- Les projets sans parent et sans rattachement à une propriété de type Projet sont maintenant signalés par une bordure gauche renforcée dans les vues Kanban, Liste et Gantt.
+- La taille des projets rejoint les classifications activables dans les paramètres de l application Projets, sans modifier les valeurs déjà enregistrées.
+- Les contenus de popup de la topbar qui n avaient pas leur propre espacement utilisent maintenant le conteneur sans bord partage, y compris les selecteurs et dialogues internes des editeurs de PV, Projets, Processus et Calendrier. Les entetes sticky et les contenus a defilement restent affleurants, tandis que les formulaires et retours simples gagnent un retrait interieur lisible.
 - Dans l editeur de PV, un bouton `+` a cote de l horaire permet aux personnes autorisees a modifier l evenement de prolonger la reunion de 5, 10, 15 ou 30 minutes. La nouvelle heure de fin et le minuteur sont mis a jour immediatement, les autres editeurs se resynchronisent, et les notifications de changement d horaire habituelles sont envoyees.
 - Depuis les onglets d applications d un PV, les fiches de detail s ouvrent maintenant dans les sous-drawers internes de l editeur sans modifier le hash global. Les applications remplacent uniquement la partie droite de l editeur afin de garder l ordre du jour, le minuteur et la barre de redimensionnement visibles. Tous les drawers internes des applications, notamment Documents, utilisent automatiquement une largeur limitee et une ouverture animee depuis la droite ; leur entete et leur bouton Fermer restent disponibles et un clic sur l arriere-plan les referme.
 - Dans l onglet Documents d une reunion, seuls les PV valides peuvent maintenant etre ouverts comme des documents ordinaires. Les PV en preparation, en cours ou en validation restent visibles pour le classement, mais leurs cartes ne declenchent plus l editeur d un second PV et ne peuvent donc plus remplacer ou fermer le drawer de la reunion courante.
