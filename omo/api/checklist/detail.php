@@ -14,6 +14,8 @@ use dbObject\Project;
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $checklistId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : 0;
+$organizationRouteContext = commonResolveOrganizationContext($organizationId);
+$organizationRouteMode = (string)($organizationRouteContext['routeMode'] ?? 'host');
 $context = omoChecklistResolveContext($organizationId, $currentHolonId);
 $checklist = !empty($context['status']) ? omoChecklistLoad($checklistId, $organizationId) : null;
 if (!($checklist instanceof Checklist) || !omoChecklistCanView($checklist)) {
@@ -353,6 +355,9 @@ $formatDelay = static function ($value, $unit) {
                                     <div class="generic-menu" data-checklist-item-menu>
                                         <button type="button" class="generic-menu-toggle" data-checklist-item-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoChecklistT('checklist.action.' . $itemKind . '_more')) ?>">&#8942;</button>
                                         <div class="generic-menu-panel generic-menu-panel--wide" data-checklist-item-menu-panel role="menu" hidden>
+                                            <?php if (omoChecklistCanConvertItemToActivity($checklist, $item)): ?>
+                                                <button type="button" class="generic-menu-item" data-checklist-item-convert data-checklist-id="<?= (int)$checklistId ?>" data-checklist-item-id="<?= (int)$item->getId() ?>" data-checklist-convert-confirm="<?= omoApiEscape(omoChecklistT('checklist.confirm.convert_item')) ?>" role="menuitem"><?= omoApiEscape(omoChecklistT('checklist.action.convert_to_activity')) ?></button>
+                                            <?php endif; ?>
                                             <button type="button" class="generic-menu-item" data-checklist-item-move data-checklist-id="<?= (int)$checklistId ?>" data-checklist-item-id="<?= (int)$item->getId() ?>" role="menuitem"><?= omoApiEscape(omoChecklistT('checklist.action.move_item')) ?></button>
                                             <?php if ($canCreate && $isContainerChecklist && $recurrence instanceof \dbObject\ChecklistItemRecurrence && (int)$recurrence->get('enabled') === 1): ?>
                                                 <button type="button" class="generic-menu-item" data-checklist-item-extract data-checklist-id="<?= (int)$checklistId ?>" data-checklist-item-id="<?= (int)$item->getId() ?>" role="menuitem"><?= omoApiEscape(omoChecklistT('checklist.action.extract_item')) ?></button>
@@ -370,6 +375,17 @@ $formatDelay = static function ($value, $unit) {
                                 <?php foreach ($itemProjectInstances as $instance): ?>
                                     <?php
                                     $instanceProject = $instance['project'];
+                                    $instanceProjectHolon = $instanceProject->getHolon();
+                                    $instanceProjectHash = '#projects-d' . (int)$instanceProject->getId();
+                                    $instanceProjectHref = $instanceProjectHash;
+                                    if ($instanceProjectHolon instanceof Holon && (int)$instanceProjectHolon->getId() > 0) {
+                                        $instanceProjectPath = $organizationRouteMode === 'path'
+                                            ? '/omo/o/' . (int)$organizationId
+                                            : '/omo';
+                                        $instanceProjectHref = $instanceProjectPath
+                                            . '/c/' . (int)$instanceProjectHolon->getId()
+                                            . $instanceProjectHash;
+                                    }
                                     $plannedStart = $instanceProject->get('planned_start_date');
                                     $plannedEnd = $instanceProject->get('planned_end_date');
                                     $tooltipParts = [
@@ -392,7 +408,7 @@ $formatDelay = static function ($value, $unit) {
                                     ?>
                                     <a
                                         class="omo-checklist-flow__instance omo-checklist-flow__instance--<?= omoApiEscape($instance['status']) ?><?= !empty($instance['overdue']) ? ' omo-checklist-flow__instance--overdue' : '' ?>"
-                                        href="#projects-d<?= (int)$instanceProject->getId() ?>"
+                                        href="<?= omoApiEscape($instanceProjectHref) ?>"
                                         title="<?= omoApiEscape(implode(' - ', $tooltipParts)) ?>"
                                         aria-label="<?= omoApiEscape(implode(' - ', $tooltipParts)) ?>"
                                     ></a>

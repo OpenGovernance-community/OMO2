@@ -162,6 +162,100 @@ class WorkTime extends DbObject
         return is_array($result) && !empty($result['status']) ? $workTime : null;
     }
 
+    public static function getDailyMeasuredSecondsForHolons($organizationId, array $holonIds, \DateTimeInterface $rangeStart, \DateTimeInterface $rangeEnd)
+    {
+        $organizationId = (int)$organizationId;
+        $holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), static function ($holonId) {
+            return $holonId > 0;
+        })));
+        $start = \DateTimeImmutable::createFromInterface($rangeStart);
+        $end = \DateTimeImmutable::createFromInterface($rangeEnd);
+
+        if ($organizationId <= 0 || count($holonIds) === 0 || $end <= $start) {
+            return self::aggregateMeasuredIntervalsByDay([], $start, $end);
+        }
+
+        $params = [
+            'organization_id' => $organizationId,
+            'range_start' => $start->format('Y-m-d H:i:s'),
+            'range_end' => $end->format('Y-m-d H:i:s'),
+        ];
+        $holonPlaceholders = [];
+        foreach ($holonIds as $index => $holonId) {
+            $parameterName = 'holon_' . $index;
+            $holonPlaceholders[] = ':' . $parameterName;
+            $params[$parameterName] = $holonId;
+        }
+
+        $rows = self::fetchAll(
+            'SELECT `started_at`, `ended_at`
+             FROM `work_time`
+             WHERE `IDorganization` = :organization_id
+               AND `IDholon` IN (' . implode(', ', $holonPlaceholders) . ')
+               AND `ended_at` IS NOT NULL
+               AND `ended_at` > `started_at`
+               AND `started_at` < :range_end
+               AND `ended_at` > :range_start
+             ORDER BY `started_at` ASC, `id` ASC',
+            $params
+        );
+
+        return self::aggregateMeasuredIntervalsByDay(is_array($rows) ? $rows : [], $start, $end);
+    }
+
+    public static function aggregateMeasuredIntervalsByDay(array $intervals, \DateTimeInterface $rangeStart, \DateTimeInterface $rangeEnd)
+    {
+        $start = \DateTimeImmutable::createFromInterface($rangeStart);
+        $end = \DateTimeImmutable::createFromInterface($rangeEnd);
+        $timezone = $start->getTimezone();
+        $dailySeconds = [];
+
+        if ($end <= $start) {
+            return $dailySeconds;
+        }
+
+        $day = $start->setTime(0, 0, 0);
+        while ($day < $end) {
+            $dailySeconds[$day->format('Y-m-d')] = 0;
+            $day = $day->modify('+1 day');
+        }
+
+        foreach ($intervals as $interval) {
+            if (!is_array($interval)) {
+                continue;
+            }
+
+            $intervalStart = self::normalizeDateTime($interval['started_at'] ?? null, $timezone);
+            $intervalEnd = self::normalizeDateTime($interval['ended_at'] ?? null, $timezone);
+            if (!($intervalStart instanceof \DateTimeImmutable) || !($intervalEnd instanceof \DateTimeImmutable)) {
+                continue;
+            }
+
+            if ($intervalStart < $start) {
+                $intervalStart = $start;
+            }
+            if ($intervalEnd > $end) {
+                $intervalEnd = $end;
+            }
+            if ($intervalEnd <= $intervalStart) {
+                continue;
+            }
+
+            $cursor = $intervalStart;
+            while ($cursor < $intervalEnd) {
+                $nextDay = $cursor->setTime(0, 0, 0)->modify('+1 day');
+                $segmentEnd = $intervalEnd < $nextDay ? $intervalEnd : $nextDay;
+                $dateKey = $cursor->format('Y-m-d');
+                if (array_key_exists($dateKey, $dailySeconds)) {
+                    $dailySeconds[$dateKey] += max(0, $segmentEnd->getTimestamp() - $cursor->getTimestamp());
+                }
+                $cursor = $segmentEnd;
+            }
+        }
+
+        return $dailySeconds;
+    }
+
     public function isOpen()
     {
         return trim((string)$this->get('end_reason')) === '';
@@ -244,5 +338,23 @@ class WorkTime extends DbObject
 
         $timestamp = strtotime((string)$value);
         return $timestamp === false ? 0 : $timestamp;
+    }
+
+    private static function normalizeDateTime($value, \DateTimeZone $timezone)
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return \DateTimeImmutable::createFromInterface($value)->setTimezone($timezone);
+        }
+
+        $value = trim((string)$value);
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable($value, $timezone);
+        } catch (\Throwable $exception) {
+            return null;
+        }
     }
 }

@@ -188,6 +188,7 @@ $sourceLang = [
     'personal_space.editor.configure' => ['text' => 'Configurer', 'context' => 'Open the dashboard module configuration dialog.'],
     'personal_space.editor.configure_title' => ['text' => 'Configurer {module}', 'context' => 'Dashboard module configuration dialog title.'],
     'personal_space.editor.configure_scope' => ['text' => 'Portée', 'context' => 'Label for the dashboard module scope setting.'],
+    'personal_space.editor.configure_audience' => ['text' => 'Affichage', 'context' => 'Label for the audience setting in a dashboard module configuration dialog.'],
     'personal_space.editor.configure_apply' => ['text' => 'Appliquer', 'context' => 'Apply dashboard module configuration changes.'],
     'personal_space.editor.delete' => ['text' => 'Supprimer', 'context' => 'Delete a dashboard module action.'],
     'personal_space.editor.catalog' => ['text' => 'Modules disponibles', 'context' => 'Dashboard module picker title.'],
@@ -217,6 +218,8 @@ $sourceLang = [
     'personal_space.activities.soon_for' => ['text' => 'Bientôt à faire le {date}', 'context' => 'Date shown for an activity displayed before its planned time.'],
     'personal_space.activities.due_for' => ['text' => 'À faire depuis le {date}', 'context' => 'Date shown for an activity currently due.'],
     'personal_space.activities.overdue_for' => ['text' => 'En retard depuis le {date}', 'context' => 'Date shown for an overdue recurring activity.'],
+    'personal_space.audience.all' => ['text' => 'Tous', 'context' => 'Dashboard module audience showing items for everyone.'],
+    'personal_space.audience.mine' => ['text' => 'Moi', 'context' => 'Dashboard module audience showing items assigned to the current member.'],
     'personal_space.module.empty' => ['text' => 'Aucun élément à afficher.', 'context' => 'Empty dashboard module fallback.'],
     'personal_space.module.unavailable' => ['text' => 'Cette application n’est pas active dans ce contexte.', 'context' => 'Unavailable dashboard module message.'],
     'personal_space.module.more' => ['one' => 'Et {count} de plus', 'other' => 'Et {count} de plus', 'context' => 'Summary shown below a dashboard module when more items exist than are displayed.'],
@@ -509,12 +512,17 @@ $dashboardMetricLabels = array(
         'configure' => t('personal_space.editor.configure', [], $lang, $sourceLang),
         'configureTitle' => t('personal_space.editor.configure_title', array('module' => '{module}'), $lang, $sourceLang),
         'configureScope' => t('personal_space.editor.configure_scope', [], $lang, $sourceLang),
+        'configureAudience' => t('personal_space.editor.configure_audience', [], $lang, $sourceLang),
         'configureApply' => t('personal_space.editor.configure_apply', [], $lang, $sourceLang),
         'cancel' => t('personal_space.editor.cancel', [], $lang, $sourceLang),
         'scopeLabels' => array(
             'contextual' => t('personal_space.scope.contextual', [], $lang, $sourceLang),
             'children' => t('personal_space.scope.children', [], $lang, $sourceLang),
             'descendants' => t('personal_space.scope.descendants', [], $lang, $sourceLang),
+        ),
+        'audienceLabels' => array(
+            'all' => t('personal_space.audience.all', [], $lang, $sourceLang),
+            'mine' => t('personal_space.audience.mine', [], $lang, $sourceLang),
         ),
         'saveError' => t('personal_space.editor.save_error', [], $lang, $sourceLang),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
@@ -568,6 +576,9 @@ $dashboardMetricLabels = array(
                     $dashboardModuleScope = !empty($dashboardModuleCatalog[$dashboardModuleType]['settings']['scope'])
                         ? omoApiNormalizeContextScope($dashboardModuleSettings['scope'] ?? 'contextual', $dashboardAvailableScopes)
                         : 'contextual';
+                    $dashboardModuleAudience = !empty($dashboardModuleCatalog[$dashboardModuleType]['settings']['audience'])
+                        ? UserHolon::normalizeDashboardModuleAudience($dashboardModuleSettings['audience'] ?? 'all')
+                        : '';
                     $dashboardModuleScopeHolonIds = $dashboardModuleScope === 'children'
                         ? omoApiGetDirectChildScopeHolonIds($scopeReferenceHolon)
                         : ($dashboardModuleScope === 'descendants'
@@ -579,6 +590,9 @@ $dashboardMetricLabels = array(
                     $dashboardModuleContextHolonId = $dashboardHolonId;
                     $dashboardModuleForcedOpenScope = $dashboardModuleScope === 'contextual' ? '' : $dashboardModuleScope;
                     $dashboardModuleScopeLabel = t('personal_space.scope.' . $dashboardModuleScope, [], $lang, $sourceLang);
+                    $dashboardModuleAudienceLabel = $dashboardModuleAudience !== ''
+                        ? t('personal_space.audience.' . $dashboardModuleAudience, [], $lang, $sourceLang)
+                        : '';
                     $dashboardModuleEnabled = !empty($enabledAppHashes[$dashboardModuleDefinition['app'] ?? '']);
                     $dashboardModuleRouteToken = (string)($dashboardRouteTokens[$dashboardModuleType] ?? '');
                     $dashboardModuleIsTall = (int)($dashboardModule['rowSpan'] ?? 1) > 1;
@@ -591,6 +605,7 @@ $dashboardMetricLabels = array(
                         <div class="omo-personal-space__section-head">
                             <span class="generic-card-title generic-card-title--small"><?= omoApiEscape($dashboardModuleLabels[$dashboardModuleType] ?? $dashboardModuleType) ?></span>
                             <span class="omo-personal-space__tag omo-dashboard-module__scope"><?= omoApiEscape($dashboardModuleScopeLabel) ?></span>
+                            <?php if ($dashboardModuleAudienceLabel !== ''): ?><span class="omo-personal-space__tag omo-dashboard-module__audience"><?= omoApiEscape($dashboardModuleAudienceLabel) ?></span><?php endif; ?>
                             <?php if ($dashboardModuleEnabled && $dashboardModuleRouteToken !== ''): ?>
                                 <button type="button" class="omo-personal-space__section-action" data-omo-personal-space-route-token="<?= omoApiEscape($dashboardModuleRouteToken) ?>"<?= $dashboardModuleForcedOpenScope !== '' && $dashboardModuleType !== 'structure' ? ' data-omo-personal-space-forced-scope="' . omoApiEscape($dashboardModuleForcedOpenScope) . '"' : '' ?>><?= omoApiEscape(t('personal_space.open_app', [], $lang, $sourceLang)) ?></button>
                             <?php endif; ?>
@@ -677,9 +692,13 @@ $dashboardMetricLabels = array(
         <div class="omo-dashboard-picker" data-omo-dashboard-configurator hidden>
             <div class="omo-dashboard-picker__panel generic-soft-panel generic-soft-panel--stack" role="dialog" aria-modal="true">
                 <h4 class="generic-card-title" data-omo-dashboard-configurator-title></h4>
-                <div class="generic-form-field">
+                <div class="generic-form-field" data-omo-dashboard-configurator-scope-field>
                     <span class="generic-form-label"><?= omoApiEscape(t('personal_space.editor.configure_scope', [], $lang, $sourceLang)) ?></span>
                     <div class="omo-segmented" data-omo-dashboard-configurator-scopes></div>
+                </div>
+                <div class="generic-form-field" data-omo-dashboard-configurator-audience-field>
+                    <span class="generic-form-label"><?= omoApiEscape(t('personal_space.editor.configure_audience', [], $lang, $sourceLang)) ?></span>
+                    <div class="omo-segmented" data-omo-dashboard-configurator-audiences></div>
                 </div>
                 <div class="generic-form-actions">
                     <button type="button" class="generic-action-button generic-action-button--main" data-omo-dashboard-configurator-apply><?= omoApiEscape(t('personal_space.editor.configure_apply', [], $lang, $sourceLang)) ?></button>
@@ -690,4 +709,4 @@ $dashboardMetricLabels = array(
     </div>
     <?php endif; ?>
 </div>
-<script src="/omo/assets/js/personal-space-dashboard.js?v=20260902-filtered-lists"></script>
+<script src="/omo/assets/js/personal-space-dashboard.js?v=20260907-module-audience"></script>

@@ -23,6 +23,12 @@ if (!empty($enabledAppHashes['activities']) && $scopeReferenceHolon instanceof H
         if (!($activityHolon instanceof Holon) || !$activityHolon->canViewDetail()) {
             continue;
         }
+        if (
+            $dashboardModuleAudience === 'mine'
+            && !omoDashboardUserIsAssociatedWithHolon($currentUserId, $currentOrganizationId, $activityHolon)
+        ) {
+            continue;
+        }
 
         $state = $activity->getOccurrenceState($now);
         $stateKey = (string)($state['state'] ?? 'invalid');

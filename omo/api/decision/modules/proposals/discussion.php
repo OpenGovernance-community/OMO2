@@ -138,9 +138,9 @@ if ($thread) {
             $hideMessageAuthor = $messageIsAnonymous
                 && ($messageAuthorUserId !== $decisionAdministratorUserId || $message->isAnonymousByAuthor());
             if ($hideMessageAuthor && $decision instanceof \dbObject\DecisionProcess) {
-                $anonymousName = $messageAuthorUserId > 0
-                    ? $decision->getAnonymousPseudonymForUser($messageAuthorUserId)
-                    : $decision->getAnonymousPseudonymForParticipant($messageAuthorParticipantId);
+                $anonymousName = $messageAuthorParticipantId > 0
+                    ? $decision->getAnonymousPseudonymForParticipant($messageAuthorParticipantId)
+                    : $decision->getAnonymousPseudonymForUser($messageAuthorUserId);
                 $messageData['authorUserId'] = 0;
                 $messageData['authorParticipantId'] = 0;
                 $messageData['authorName'] = $anonymousName;

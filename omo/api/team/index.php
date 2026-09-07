@@ -148,6 +148,7 @@ if ($hasStructureContext && $currentHolonId > 0 && (int)$currentHolon->getId() !
 
 $canToggleTeamScope = $hasStructureContext && $currentHolon instanceof Holon;
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+$hasBudgetApplication = $organization->isApplicationEnabled('budget', $currentUserId);
 $applicationViewPreferences = omoApplicationViewPreferencesGetContext('team', $organization, $currentHolon, $currentUserId);
 $availableTeamScopes = omoApiGetAvailableContextScopes($canToggleTeamScope, $currentHolon, $rootHolon);
 $teamScope = omoApiNormalizeContextScope(
@@ -417,10 +418,10 @@ foreach ($rawMemberCards as $rawCard) {
     $contextMoneyBudgetAmount = $formatBudgetAmount($contextMoneyBudget);
     $contextTimeBudgetRecurrenceLabel = $budgetRecurrenceLabels[$contextTimeBudgetRecurrence] ?? '';
     $contextMoneyBudgetRecurrenceLabel = $budgetRecurrenceLabels[$contextMoneyBudgetRecurrence] ?? '';
-    $contextTimeBudgetLabel = $contextTimeBudgetAmount !== '' && $contextTimeBudgetRecurrenceLabel !== ''
+    $contextTimeBudgetLabel = $hasBudgetApplication && $contextTimeBudgetAmount !== '' && $contextTimeBudgetRecurrenceLabel !== ''
         ? omoTeamT('team.member.time_budget_value', array('amount' => $contextTimeBudgetAmount, 'recurrence' => $contextTimeBudgetRecurrenceLabel), $lang, $sourceLang)
         : '';
-    $contextMoneyBudgetLabel = $contextMoneyBudgetAmount !== '' && $contextMoneyBudgetRecurrenceLabel !== ''
+    $contextMoneyBudgetLabel = $hasBudgetApplication && $contextMoneyBudgetAmount !== '' && $contextMoneyBudgetRecurrenceLabel !== ''
         ? omoTeamT('team.member.money_budget_value', array('amount' => $contextMoneyBudgetAmount, 'recurrence' => $contextMoneyBudgetRecurrenceLabel), $lang, $sourceLang)
         : '';
     $contextAssignmentReviewDateLabel = $contextAssignmentReviewDate instanceof DateTimeImmutable
@@ -570,7 +571,7 @@ $canGrantCurrentHolonAdmin = $hasStructureContext ? $currentHolon->isAllowed('CA
 $canManageCurrentHolonMembers = $canRemoveCurrentHolonMembers || $canGrantCurrentHolonAdmin;
 $canEditCurrentMemberAssignments = $hasStructureContext
     && !$currentHolon->isOrganizationHolon()
-    && $currentHolon->canEdit();
+    && ($currentHolon->canEdit() || $currentHolon->isAllowed('CAN_EDIT_AFFECTATION_BUDGET'));
 $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
 $mapMembers = array_values(array_filter($memberCards, static function (array $card): bool {
     return is_array($card['latlong'] ?? null);

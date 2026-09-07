@@ -14,6 +14,7 @@ if (!empty($enabledAppHashes['projects'])) {
         if (
             !($project instanceof Project)
             || Project::normalizeStatus($project->get('status')) === Project::STATUS_DONE
+            || ($dashboardModuleAudience === 'mine' && (int)$project->get('IDuser') !== $currentUserId)
             || !omoProjectsScopeContainsProject(
                 $project,
                 $dashboardModuleScope,
