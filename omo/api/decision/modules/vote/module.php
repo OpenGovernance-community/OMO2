@@ -1315,7 +1315,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                 </section>
                 <?php endif; ?>
                 <?php else: ?>
-                <div class="generic-soft-panel generic-soft-panel--stack">
+                <?php $publicConsultationOnly = $publicLayout && $consultationOnly; ?>
+                <div class="<?= $publicConsultationOnly ? 'omo-decision-vote__consultation-proposals' : 'generic-soft-panel generic-soft-panel--stack' ?>">
                     <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.proposals', [], $lang, $sourceLang)) ?></span>
                     <?php if (count($proposalObjects) === 0): ?>
                     <p class="omo-decision-vote__text"><?= $escape(t('decisions.vote.empty_proposals', [], $lang, $sourceLang)) ?></p>
@@ -1486,10 +1487,15 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     </div>
                     </div>
                     <?php endif; ?>
+                    <?php if ($publicConsultationOnly): ?>
+                </div>
+                    <?php endif; ?>
                     <?php if ($consultationProposalPanel !== ''): ?>
                     <?= $consultationProposalPanel ?>
                     <?php endif; ?>
+                    <?php if (!$publicConsultationOnly): ?>
                 </div>
+                    <?php endif; ?>
                 <?php endif; ?>
             <?php endif; ?>
         </section>
@@ -2654,6 +2660,27 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         .omo-decision-vote__readonly-list {
             display: grid;
             gap: 10px;
+        }
+
+        .omo-decision-vote__consultation-proposals {
+            display: grid;
+            gap: var(--generic-space-2);
+            margin-block-end: var(--generic-space-3);
+        }
+
+        .omo-decision-vote__consultation-proposals .omo-decision-vote__readonly-list {
+            gap: 0;
+        }
+
+        .omo-decision-vote__consultation-proposals .omo-decision-vote__readonly-item {
+            padding: var(--generic-space-3) 0;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+        }
+
+        .omo-decision-vote__consultation-proposals .omo-decision-vote__readonly-item + .omo-decision-vote__readonly-item {
+            border-top: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 72%, var(--color-surface, #ffffff));
         }
 
         .omo-decision-vote__results-panel {

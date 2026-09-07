@@ -15,7 +15,8 @@
 			return [
 				[['id'], 'required'],				// Champs obligatoires
 				[['id', 'admin_min', 'admin_max'], 'integer'],
-				[['name','nomcomplet','templatename','accesskey'], 'string'],			// Texte libre
+				[['name','nomcomplet','templatename','accesskey','time_budget_recurrence','money_budget_recurrence'], 'string'],			// Texte libre
+				[['time_budget_hours','money_budget'], 'float'],
 				[['icon','banner'], 'sizedimage'],			// Images illustratives
 				[['datecreation','datemodification'], 'datetime'],	// Date avec precision des heures
 				[['IDuser','IDtypeholon','IDholon_parent','IDholon_template','IDorganization','IDholon_org'], 'fk'],				// Cle etrangeres
@@ -48,6 +49,10 @@
 				'icon' => 'Icône',
 				'banner' => 'Bannière',
 				'accesskey' => 'Cle acces',
+				'time_budget_hours' => 'Budget temps',
+				'time_budget_recurrence' => 'Recurrence du budget temps',
+				'money_budget' => 'Budget argent',
+				'money_budget_recurrence' => 'Recurrence du budget argent',
 				'parameters' => 'Parametres',
 				'mandatory' => 'Obligatoire ?',
 				'lockedname' => 'Nom verrouille ?',
@@ -68,6 +73,8 @@
 			return [
 				'name' => 'Nom court utilise dans la representation graphique, les chemins et les choix de contexte.',
 				'nomcomplet' => 'Nom complet facultatif utilise dans les vues textuelles.',
+				'time_budget_hours' => 'Temps prevu directement pour ce holon, exprime en heures.',
+				'money_budget' => 'Montant prevu directement pour ce holon.',
 				'parameters' => 'Parametres techniques du holon.',
 			];
 		}
@@ -76,6 +83,8 @@
 		{
 			return [
 				'nomcomplet' => 255,
+				'time_budget_recurrence' => 10,
+				'money_budget_recurrence' => 10,
 				'icon' => [[320, 320], [160, 160]],
 				'banner' => [[960, 540], [480, 270]],
 			];
@@ -84,6 +93,106 @@
 		// Retourne la valeur de base pour le tri
 		public static function getOrder() {
 			return "name";
+		}
+
+		public static function normalizeBudgetDetails(array $details): array
+		{
+			$timeBudget = UserHolon::parseBudgetAmount($details['time_budget_hours'] ?? '');
+			if (!$timeBudget['valid']) {
+				return array('status' => false, 'reason' => 'invalid_time_budget');
+			}
+
+			$moneyBudget = UserHolon::parseBudgetAmount($details['money_budget'] ?? '');
+			if (!$moneyBudget['valid']) {
+				return array('status' => false, 'reason' => 'invalid_money_budget');
+			}
+
+			$timeRecurrence = UserHolon::normalizeBudgetRecurrence($details['time_budget_recurrence'] ?? '');
+			if ($timeBudget['value'] !== null && $timeRecurrence === '') {
+				return array('status' => false, 'reason' => 'invalid_time_recurrence');
+			}
+
+			$moneyRecurrence = UserHolon::normalizeBudgetRecurrence($details['money_budget_recurrence'] ?? '');
+			if ($moneyBudget['value'] !== null && $moneyRecurrence === '') {
+				return array('status' => false, 'reason' => 'invalid_money_recurrence');
+			}
+
+			return array(
+				'status' => true,
+				'values' => array(
+					'time_budget_hours' => $timeBudget['value'],
+					'time_budget_recurrence' => $timeBudget['value'] !== null ? $timeRecurrence : null,
+					'money_budget' => $moneyBudget['value'],
+					'money_budget_recurrence' => $moneyBudget['value'] !== null ? $moneyRecurrence : null,
+				),
+			);
+		}
+
+		public function updateBudgetDetails(array $details): array
+		{
+			$normalized = self::normalizeBudgetDetails($details);
+			if (empty($normalized['status'])) {
+				return $normalized;
+			}
+
+			foreach ($normalized['values'] as $field => $value) {
+				$this->set($field, $value);
+			}
+
+			$saveResult = $this->save();
+			if (!is_array($saveResult) || empty($saveResult['status'])) {
+				return array('status' => false, 'reason' => 'save_failed');
+			}
+
+			return array('status' => true, 'values' => $normalized['values']);
+		}
+
+		public static function getActiveTimeBudgetsForHolons(array $holonIds): array
+		{
+			$holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), static function ($holonId) {
+				return $holonId > 0;
+			})));
+			if (count($holonIds) === 0) {
+				return array();
+			}
+
+			$params = array();
+			$placeholders = array();
+			foreach ($holonIds as $index => $holonId) {
+				$parameterName = 'budget_holon_' . $index;
+				$placeholders[] = ':' . $parameterName;
+				$params[$parameterName] = $holonId;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT `id`, `time_budget_hours`, `time_budget_recurrence`
+				 FROM `holon`
+				 WHERE `active` = 1
+				   AND `time_budget_hours` IS NOT NULL
+				   AND `time_budget_hours` > 0
+				   AND `id` IN (" . implode(', ', $placeholders) . ")
+				 ORDER BY `id` ASC",
+				$params
+			);
+
+			$budgets = array();
+			foreach (is_array($rows) ? $rows : array() as $row) {
+				$recurrence = UserHolon::normalizeBudgetRecurrence($row['time_budget_recurrence'] ?? '');
+				$hours = is_numeric($row['time_budget_hours'] ?? null)
+					? max(0.0, (float)$row['time_budget_hours'])
+					: 0.0;
+				if ($recurrence === '' || $hours <= 0) {
+					continue;
+				}
+
+				$budgets[] = array(
+					'holonId' => (int)($row['id'] ?? 0),
+					'hours' => $hours,
+					'recurrence' => $recurrence,
+				);
+			}
+
+			return $budgets;
 		}
 
 		public function getParametersArray(): array

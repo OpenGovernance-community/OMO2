@@ -2,6 +2,26 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-07
+
+- Les droits contextuels `CAN_EDIT_HOLON_BUDGET` et `CAN_EDIT_AFFECTATION_BUDGET` permettent maintenant de distinguer l edition des budgets propres aux holons de celle des budgets de leurs affectations. Ils sont regroupes dans la rubrique Budget de l editeur de droits et respectent les portees existantes, par exemple les elements directs d un cercle.
+
+- Le segment de phase d elaboration du graphique de scrutin utilise maintenant le meme libelle Elaboration que le reste de l interface.
+- Les participants identifies par un lien public utilisent maintenant un pseudonyme stable dans les propositions anonymes et leurs discussions, meme lorsqu ils disposent aussi d un compte.
+- La signature d une proposition est alignee a gauche des actions de discussion et de modification, sur la meme ligne lorsque l espace le permet.
+- Les propositions d une consultation seule sont maintenant affichees sur le fond de page, separees par des traits gris clairs, tandis que leur formulaire d ajout reste dans son propre panneau.
+- Les propositions de scrutin peuvent maintenant ne comporter qu un descriptif, sans titre enregistre artificiellement.
+- Les informations publiques d une consultation seule indiquent maintenant que le mode de scrutin sera defini apres la consultation, sans afficher de messages sur des reponses ou resultats qui n existent pas encore.
+- La nouvelle application Budget, identifiee par une icone tirelire, affiche dans le contexte OMO courant le temps mesure par le timer sur les 30 derniers jours. Un role montre son temps direct, tandis qu un cercle, un groupe ou la racine cumule son sous-arbre. Le graphique horizontal reprend la representation des indicateurs cumules, avec les temps quotidiens en barres, la progression du cumul en courbe et leurs deux echelles. Les budgets temps des affectations actives ayant la meme recurrence sont additionnes dans une trajectoire de reference grise commune, qui repart de zero au debut de chaque jour, semaine, mois ou annee. Seules les durees effectivement confirmees par le timer sont comptees.
+- Les graduations temporelles du graphique Budget utilisent maintenant des pas lisibles et reguliers, par exemple 30 min, 1 h ou 1 h 30, sur quatre intervalles communs aux deux axes.
+- Chaque holon peut maintenant porter directement un budget temps et un budget argent, chacun avec sa propre recurrence journaliere, hebdomadaire, mensuelle ou annuelle. Ces valeurs sont stockees dans des colonnes SQL dediees afin de permettre leur aggregation future par cercle ou organisation, sans les confondre avec les budgets des affectations.
+- Le budget temps direct du holon apparait comme une reference distincte sur le graphique Budget. Lorsqu il existe, sa recurrence pilote les remises a zero du temps cumule ; le premier segment visible inclut aussi le temps mesure depuis le debut reel de la periode.
+- Les budgets temps et argent des affectations sont masques dans les formulaires et les cartes Team lorsque l application Budget n est pas active dans l organisation. Les valeurs stockees restent conservees et accessibles aux objets ou a une future API, tandis que le Timer demeure independant.
+- Les menus des processus et de leurs activites recurrentes permettent maintenant de les passer en checklist directe. La conversion conserve leur holon, titre, description, recurrence et delais, arrete la creation de nouveaux projets et conserve les projets deja generes comme historique.
+- L ouverture d un projet depuis une activite de processus bascule maintenant directement dans le holon rattache au projet.
+- Les modules Projets, Activites et Indicateurs du tableau de pilotage peuvent maintenant afficher Tous les elements ou seulement Moi. Cette preference est enregistree avec la portee du module, apparait dans une capsule sur la fiche et filtre les elements selon leur responsable ou leur holon d attribution.
+- Les capsules de portee et d audience des modules du tableau de pilotage sont plus compactes.
+
 ## 2026-09-06
 
 - Les paramètres de l application Projets permettent maintenant de choisir les colonnes Kanban visibles et d activer ou masquer la priorité et l importance stratégique. Les valeurs masquées restent conservées afin de réapparaître si l option est réactivée.

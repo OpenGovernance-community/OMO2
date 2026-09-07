@@ -104,4 +104,13 @@ assertDecisionParams(count($emptyProposalItems) === 0, 'An empty proposal must n
 $newDecision = new DecisionProcess();
 assertDecisionParams($newDecision->canEnableNamedVote(), 'A new decision must allow a named vote configuration.');
 
+$anonymousDecision = new DecisionProcess();
+$anonymousDecision->hydrateFromDatabaseRow(['id' => 7, 'IDuser' => 0]);
+$publicParticipantPseudonym = $anonymousDecision->getAnonymousPseudonymForParticipant(12);
+assertDecisionParams($publicParticipantPseudonym !== 'Participant anonyme', 'A public participant must receive a stable pseudonym.');
+assertDecisionParams(
+    omoDecisionResolveProposalParticipantName($anonymousDecision, 77, '', true, 12) === $publicParticipantPseudonym,
+    'Anonymous public proposals must use the participant pseudonym, even when the participant has an account.'
+);
+
 echo "Decision parameter tests passed.\n";

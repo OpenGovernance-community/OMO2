@@ -54,13 +54,14 @@ if (!function_exists('commonDecisionParticipationGetSourceLang')) {
             'decisions.public.timeline.vote_until' => ['text' => 'Vote ouvert jusqu’au {date}', 'context' => 'Timeline summary while voting is open with an end date.'],
             'decisions.public.timeline.vote_open' => ['text' => 'Vote ouvert', 'context' => 'Timeline summary while voting is open without an end date.'],
             'decisions.public.timeline.finished' => ['text' => 'Terminé', 'context' => 'Timeline summary after the decision is finished.'],
-            'decisions.public.timeline.segment_consultation' => ['text' => 'Consultation', 'context' => 'Timeline segment label for consultation.'],
+            'decisions.public.timeline.segment_consultation' => ['text' => 'Élaboration', 'context' => 'Timeline segment label for the elaboration phase.'],
             'decisions.public.timeline.segment_vote' => ['text' => 'Vote', 'context' => 'Timeline segment label for evaluation.'],
             'decisions.public.timeline.segment_results' => ['text' => 'Résultats', 'context' => 'Timeline segment label for results.'],
             'decisions.public.options.responses_editable' => ['text' => 'Vos réponses sont modifiables.', 'context' => 'Public option indicating that responses can still be changed.'],
             'decisions.public.options.responses_locked' => ['text' => 'Vos réponses ne sont plus modifiables.', 'context' => 'Public option indicating that responses can no longer be changed.'],
             'decisions.public.options.results_hidden' => ['text' => 'Les résultats ne sont pas visibles avant la fin du vote.', 'context' => 'Public option indicating that results are hidden.'],
             'decisions.public.options.results_visible' => ['text' => 'Les résultats sont visibles.', 'context' => 'Public option indicating that results are visible.'],
+            'decisions.public.options.consultation_only_method_pending' => ['text' => 'Le mode de scrutin sera défini, si nécessaire, à l’issue de la consultation.', 'context' => 'Public option explaining that a consultation-only process has no vote method yet.'],
             'decisions.public.options.anonymous' => ['text' => 'Ce scrutin est anonyme.', 'context' => 'Public option indicating that the decision is anonymous.'],
             'decisions.public.options.not_anonymous' => ['text' => 'Ce scrutin n’est pas anonyme.', 'context' => 'Public option indicating that the decision is not anonymous.'],
             'decisions.public.options.mixed_anonymity' => ['text' => 'Le caractère anonyme peut varier selon les blocs.', 'context' => 'Public option indicating mixed anonymity settings.'],
@@ -558,17 +559,28 @@ function commonDecisionParticipationBuildOptionLines($decision, array $context)
     $groups = commonDecisionParticipationGetRenderableGroups($decision);
     $lines = [];
     $status = DecisionProcess::normalizeStatus($decision->get('status'));
-
-    if ($status === DecisionProcess::STATUS_RESULTS || $status === DecisionProcess::STATUS_ARCHIVED) {
-        $lines[] = commonDecisionParticipationT('decisions.public.options.responses_locked');
-    } else {
-        $lines[] = commonDecisionParticipationT('decisions.public.options.responses_editable');
+    $consultationOnly = count($groups) > 0;
+    foreach ($groups as $group) {
+        if (DecisionProcess::normalizeEvaluationMethod($group->get('evaluation_method')) !== DecisionProcess::METHOD_CONSULTATION_ONLY) {
+            $consultationOnly = false;
+            break;
+        }
     }
 
-    if (DecisionProcess::getStatusRank($status) < DecisionProcess::getStatusRank(DecisionProcess::STATUS_RESULTS)) {
-        $lines[] = commonDecisionParticipationT('decisions.public.options.results_hidden');
+    if ($consultationOnly) {
+        $lines[] = commonDecisionParticipationT('decisions.public.options.consultation_only_method_pending');
     } else {
-        $lines[] = commonDecisionParticipationT('decisions.public.options.results_visible');
+        if ($status === DecisionProcess::STATUS_RESULTS || $status === DecisionProcess::STATUS_ARCHIVED) {
+            $lines[] = commonDecisionParticipationT('decisions.public.options.responses_locked');
+        } else {
+            $lines[] = commonDecisionParticipationT('decisions.public.options.responses_editable');
+        }
+
+        if (DecisionProcess::getStatusRank($status) < DecisionProcess::getStatusRank(DecisionProcess::STATUS_RESULTS)) {
+            $lines[] = commonDecisionParticipationT('decisions.public.options.results_hidden');
+        } else {
+            $lines[] = commonDecisionParticipationT('decisions.public.options.results_visible');
+        }
     }
 
     $anonymousFlags = [];

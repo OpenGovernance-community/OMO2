@@ -7,6 +7,25 @@
     margin-top: 10px;
 }
 
+.omo-proposal-actions-and-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--generic-space-3, 12px);
+}
+
+.omo-proposal-actions-and-meta .omo-proposal-meta {
+    flex: 1 1 auto;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.omo-proposal-actions-and-meta .omo-proposal-discussion-actions {
+    flex: 0 0 auto;
+    margin-top: 0;
+}
+
 .omo-proposal-discussion-button {
     position: relative;
     z-index: 2;
@@ -375,6 +394,17 @@
     .omo-proposal-action-menu__toggle {
         width: 30px;
         font-size: 1rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .omo-proposal-actions-and-meta {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .omo-proposal-actions-and-meta .omo-proposal-discussion-actions {
+        margin-left: auto;
     }
 }
 

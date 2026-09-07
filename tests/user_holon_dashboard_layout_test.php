@@ -29,13 +29,16 @@ assertDashboardLayout(count($layout) === 2, 'Only valid, non-overlapping modules
 assertDashboardLayout($layout[0]['id'] === 'wide' && $layout[0]['columnSpan'] === 2, 'A horizontal double module must be preserved.');
 assertDashboardLayout($layout[1]['id'] === 'vertical' && $layout[1]['rowSpan'] === 2, 'A vertical double module must be preserved.');
 assertDashboardLayout($layout[0]['settings']['scope'] === 'contextual', 'Legacy dashboard modules must receive the local scope by default.');
+assertDashboardLayout($layout[0]['settings']['audience'] === 'all', 'Legacy audience-aware modules must receive the all-items audience by default.');
 
 $scopedLayout = UserHolon::normalizeDashboardLayout(array(
-    array('id' => 'descendants', 'type' => 'projects', 'row' => 0, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'descendants')),
+    array('id' => 'descendants', 'type' => 'projects', 'row' => 0, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'descendants', 'audience' => 'mine')),
     array('id' => 'invalid-scope', 'type' => 'rules', 'row' => 0, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'unsupported')),
 ));
 assertDashboardLayout($scopedLayout[0]['settings']['scope'] === 'descendants', 'A valid module scope must be stored in the layout.');
+assertDashboardLayout($scopedLayout[0]['settings']['audience'] === 'mine', 'A valid module audience must be stored in the layout.');
 assertDashboardLayout($scopedLayout[1]['settings']['scope'] === 'contextual', 'An invalid module scope must fall back to the local scope.');
+assertDashboardLayout(UserHolon::normalizeDashboardModuleSettings('stats', array('audience' => 'unsupported'))['audience'] === 'all', 'An invalid module audience must fall back to all items.');
 assertDashboardLayout(count(UserHolon::getDefaultDashboardLayout()) === 8, 'The default layout must expose the eight initial modules.');
 assertDashboardLayout(array_keys(UserHolon::getDashboardModuleCatalog()) === array_keys(omoDashboardGetModuleDefinitions()), 'The persistence catalog and UI registry must expose the same module identifiers.');
 

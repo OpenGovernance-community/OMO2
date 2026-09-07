@@ -29,6 +29,7 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.action.extract_item' => ['text' => 'Extraire du groupe', 'context' => 'Button extracting a recurring item into its own checklist.'],
             'checklist.action.move_item' => ['text' => 'Déplacer', 'context' => 'Button moving a checklist item to another checklist.'],
             'checklist.action.move_item_submit' => ['text' => 'Déplacer ici', 'context' => 'Button confirming a checklist item move.'],
+            'checklist.action.convert_to_activity' => ['text' => 'Passer en checklist', 'context' => 'Convert a temporal process item into a direct recurring activity.'],
             'checklist.action.select_checklist' => ['text' => 'Choisir un processus...', 'context' => 'Empty option in the process item move picker.'],
             'checklist.action.no_target_checklist' => ['text' => 'Aucun autre processus disponible dans ce contexte.', 'context' => 'Empty state in the process item move picker.'],
             'checklist.action.move_step_title' => ['text' => 'Déplacer l étape', 'context' => 'Title of the process step move dialog.'],
@@ -75,6 +76,7 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.error.item_relation' => ['text' => 'Une relation entre les étapes est invalide ou forme une boucle.', 'context' => 'Invalid process step relationship error.'],
             'checklist.error.item_recurrence_structure' => ['text' => 'Une activité récurrente doit être indépendante et visible immédiatement.', 'context' => 'Recurring process activity cannot have a parent or dependency.'],
             'checklist.error.item_extract_recurrence' => ['text' => 'Seule une activité récurrente peut être extraite.', 'context' => 'Process activity cannot be extracted without a recurrence.'],
+            'checklist.error.item_convert_recurrence' => ['text' => 'Seule une activité temporelle récurrente peut passer en checklist.', 'context' => 'Process item cannot convert to a direct activity without a valid recurrence.'],
             'checklist.error.item_target' => ['text' => 'Le processus cible est invalide ou inaccessible.', 'context' => 'Invalid destination process for an item move.'],
             'checklist.error.schedule' => ['text' => 'La récurrence choisie est incomplète ou invalide.', 'context' => 'Invalid checklist recurrence error.'],
             'checklist.error.activation_unavailable' => ['text' => 'Ce processus ne peut pas être activé à la demande.', 'context' => 'Process cannot be manually activated.'],
@@ -89,10 +91,14 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.success.item_deleted' => ['text' => 'Étape ou activité supprimée.', 'context' => 'Process item was deleted.'],
             'checklist.success.item_moved' => ['text' => 'Étape ou activité déplacée.', 'context' => 'Process item was moved.'],
             'checklist.success.item_extracted' => ['text' => 'Activité extraite dans un nouveau processus.', 'context' => 'Process activity was extracted into a new independent process.'],
+            'checklist.success.item_converted' => ['text' => 'Activité transférée dans les checklists.', 'context' => 'Process item converted to a direct recurring activity.'],
+            'checklist.success.converted' => ['text' => '{count} activité(s) transférée(s) dans les checklists.', 'context' => 'Process temporal items converted to direct recurring activities.'],
             'checklist.confirm.delete_step' => ['text' => 'Supprimer cette étape du processus ?', 'context' => 'Confirmation before deleting a process step.'],
             'checklist.confirm.delete_activity' => ['text' => 'Supprimer cette activité du processus ?', 'context' => 'Confirmation before deleting a process activity.'],
             'checklist.confirm.delete_checklist' => ['text' => 'Supprimer ce processus et ses étapes ou activités ?', 'context' => 'Confirmation before deleting a process.'],
             'checklist.confirm.extract_item' => ['text' => 'Extraire cette activité dans un nouveau processus récurrent ?', 'context' => 'Confirmation before extracting a recurring activity.'],
+            'checklist.confirm.convert_item' => ['text' => 'Passer cette activité en checklist ? Elle ne créera plus de projet.', 'context' => 'Confirmation before converting one temporal process item to a direct activity.'],
+            'checklist.confirm.convert_checklist' => ['text' => 'Passer les activités temporelles de ce processus en checklists ? Elles ne créeront plus de projets. Les projets déjà générés sont conservés.', 'context' => 'Confirmation before converting temporal process items to direct activities.'],
             'checklist.form.create_title' => ['text' => 'Nouveau processus', 'context' => 'Process creation drawer title.'],
             'checklist.form.edit_title' => ['text' => 'Modifier le processus', 'context' => 'Process edition drawer title.'],
             'checklist.form.intro' => ['text' => 'Définissez le modèle, ses étapes ou activités et leur planification.', 'context' => 'Process editor introduction.'],
@@ -359,6 +365,38 @@ if (!function_exists('omoChecklistCanActivate')) {
         }
         $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
         return $holon->isAllowed('CAN_CREATE_PROJECT', $useSessionCache, $currentUserId);
+    }
+}
+
+if (!function_exists('omoChecklistGetTemporalItemRecurrence')) {
+    function omoChecklistGetTemporalItemRecurrence(ChecklistItem $item)
+    {
+        $recurrence = $item->getRecurrence();
+        if (!($recurrence instanceof \dbObject\ChecklistItemRecurrence) || (int)$recurrence->get('enabled') !== 1) {
+            return null;
+        }
+        $frequency = RecurrenceSchedule::normalizeFrequency($recurrence->get('frequency'));
+        $schedule = RecurrenceSchedule::normalizeSchedule($frequency, $recurrence->get('schedule'));
+        return $frequency !== null && $schedule !== null ? $recurrence : null;
+    }
+}
+
+if (!function_exists('omoChecklistGetItemActivityHolon')) {
+    function omoChecklistGetItemActivityHolon(Checklist $checklist, ChecklistItem $item)
+    {
+        $project = $item->getProjectTemplate();
+        $holon = $project instanceof Project ? $project->getHolon() : null;
+        return $holon instanceof Holon ? $holon : $checklist->getHolon();
+    }
+}
+
+if (!function_exists('omoChecklistCanConvertItemToActivity')) {
+    function omoChecklistCanConvertItemToActivity(Checklist $checklist, ChecklistItem $item)
+    {
+        $holon = omoChecklistGetItemActivityHolon($checklist, $item);
+        return omoChecklistGetTemporalItemRecurrence($item) instanceof \dbObject\ChecklistItemRecurrence
+            && $holon instanceof Holon
+            && omoChecklistCanUsePermission($holon, 'CAN_CREATE_CONTROL_ACTIVITY');
     }
 }
 

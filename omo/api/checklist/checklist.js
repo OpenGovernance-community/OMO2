@@ -738,10 +738,25 @@
         document.body.appendChild(checklistListFloatingMenu);
         checklistListFloatingMenu.addEventListener('click', function (event) {
             var deleteButton = event.target.closest('[data-checklist-list-delete]');
-            if (!deleteButton) {
+            var convertButton = event.target.closest('[data-checklist-list-convert]');
+            if (!deleteButton && !convertButton) {
                 return;
             }
             event.preventDefault();
+            if (convertButton) {
+                var convertConfirm = convertButton.getAttribute('data-checklist-convert-confirm') || 'Passer les activites temporelles de ce processus en checklists ?';
+                if (!window.confirm(convertConfirm)) {
+                    return;
+                }
+                closeChecklistListMenus();
+                postChecklistConversion(convertButton, 'convert_checklist_to_activities').then(function (payload) {
+                    window.omoNotify(payload.message || '', 'success');
+                    refreshRoot(currentUrl);
+                }).catch(function (actionError) {
+                    window.omoNotify(actionError && actionError.message ? actionError.message : texts.loadingError, 'error');
+                });
+                return;
+            }
             var deleteConfirm = deleteButton.getAttribute('data-checklist-delete-confirm') || 'Supprimer cette checklist et ses elements ?';
             if (!window.confirm(deleteConfirm)) {
                 return;
@@ -778,15 +793,30 @@
         }
         closeChecklistListMenus();
         var panel = ensureChecklistListFloatingMenu();
-        var deleteButton = document.createElement('button');
-        deleteButton.type = 'button';
-        deleteButton.className = 'generic-menu-item generic-menu-item--danger';
-        deleteButton.setAttribute('data-checklist-list-delete', '1');
-        deleteButton.setAttribute('data-checklist-id', String(checklistId));
-        deleteButton.setAttribute('data-checklist-delete-confirm', menuToggle.getAttribute('data-checklist-delete-confirm') || '');
-        deleteButton.setAttribute('role', 'menuitem');
-        deleteButton.textContent = menuToggle.getAttribute('data-checklist-delete-label') || 'Supprimer';
-        panel.replaceChildren(deleteButton);
+        var menuItems = [];
+        if (menuToggle.getAttribute('data-checklist-can-convert') === '1') {
+            var convertButton = document.createElement('button');
+            convertButton.type = 'button';
+            convertButton.className = 'generic-menu-item';
+            convertButton.setAttribute('data-checklist-list-convert', '1');
+            convertButton.setAttribute('data-checklist-id', String(checklistId));
+            convertButton.setAttribute('data-checklist-convert-confirm', menuToggle.getAttribute('data-checklist-convert-confirm') || '');
+            convertButton.setAttribute('role', 'menuitem');
+            convertButton.textContent = menuToggle.getAttribute('data-checklist-convert-label') || 'Passer en checklist';
+            menuItems.push(convertButton);
+        }
+        if (menuToggle.getAttribute('data-checklist-can-delete') === '1') {
+            var deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'generic-menu-item generic-menu-item--danger';
+            deleteButton.setAttribute('data-checklist-list-delete', '1');
+            deleteButton.setAttribute('data-checklist-id', String(checklistId));
+            deleteButton.setAttribute('data-checklist-delete-confirm', menuToggle.getAttribute('data-checklist-delete-confirm') || '');
+            deleteButton.setAttribute('role', 'menuitem');
+            deleteButton.textContent = menuToggle.getAttribute('data-checklist-delete-label') || 'Supprimer';
+            menuItems.push(deleteButton);
+        }
+        panel.replaceChildren.apply(panel, menuItems);
         panel.hidden = false;
         activeChecklistListMenuToggle = menuToggle;
         menuToggle.setAttribute('aria-expanded', 'true');
@@ -837,6 +867,35 @@
         button.disabled = true;
         var formData = new FormData();
         formData.append('checklist_action', 'delete_checklist');
+        formData.append('id', String(checklistId));
+        formData.append('oid', String(root.getAttribute('data-checklist-oid') || 0));
+        formData.append('cid', String(root.getAttribute('data-checklist-route-cid') || 0));
+        return fetch(resolveUrl('/omo/api/checklist/action.php'), {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            cache: 'no-store'
+        }).then(function (response) {
+            return response.json().catch(function () { return {}; }).then(function (payload) {
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.message || texts.loadingError);
+                }
+                return payload;
+            });
+        }).finally(function () {
+            button.disabled = false;
+        });
+    }
+
+    function postChecklistConversion(button, action) {
+        var checklistId = Number(button.getAttribute('data-checklist-id') || 0);
+        if (checklistId <= 0 || button.disabled) {
+            return Promise.reject(new Error(texts.loadingError));
+        }
+        button.disabled = true;
+        var formData = new FormData();
+        formData.append('checklist_action', action);
         formData.append('id', String(checklistId));
         formData.append('oid', String(root.getAttribute('data-checklist-oid') || 0));
         formData.append('cid', String(root.getAttribute('data-checklist-route-cid') || 0));
@@ -1113,6 +1172,31 @@
             if (itemMenuToggle) {
                 event.preventDefault();
                 toggleChecklistItemMenu(itemMenuToggle);
+                return;
+            }
+            var convertItemButton = event.target.closest('[data-checklist-item-convert]');
+            if (convertItemButton) {
+                event.preventDefault();
+                closeChecklistItemMenus();
+                var convertItemConfirm = convertItemButton.getAttribute('data-checklist-convert-confirm') || 'Passer cette activite en checklist ?';
+                if (!window.confirm(convertItemConfirm)) {
+                    return;
+                }
+                postChecklistItemAction(convertItemButton, 'convert_item_to_activity').then(function (payload) {
+                    window.omoNotify(payload.message || '', 'success');
+                    rootNeedsRefresh = true;
+                    if (payload.retired) {
+                        if (isChecklistDetailRoute(getCurrentRouteToken()) && typeof window.omoOpenDrawerHashState === 'function') {
+                            window.omoOpenDrawerHashState('checklist');
+                        } else {
+                            closeDrawer();
+                        }
+                        return;
+                    }
+                    openDrawerWithUrl(payload.detailUrl || buildDetailUrl(Number(payload.id || 0)));
+                }).catch(function (actionError) {
+                    window.omoNotify(actionError && actionError.message ? actionError.message : texts.loadingError, 'error');
+                });
                 return;
             }
             var moveItemButton = event.target.closest('[data-checklist-item-move]');
