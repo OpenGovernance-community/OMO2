@@ -2706,7 +2706,8 @@
 					'IDorganization' => $organizationId,
 					'authorUserId' => $authorUserId,
 				),
-				0
+				'organization',
+				$organizationId
 			);
 
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
@@ -10783,7 +10784,8 @@
 					'after' => $afterSnapshot,
 					'changes' => $diff['changes'],
 				),
-				(int)$holon->getContainingCircleId(false)
+				'holon',
+				(int)$holon->getId()
 			);
 		}
 
@@ -10800,7 +10802,8 @@
 					'IDholon' => (int)$holon->getId(),
 					'after' => $afterSnapshot,
 				),
-				(int)$holon->getContainingCircleId(false)
+				'holon',
+				(int)$holon->getId()
 			);
 		}
 
@@ -10824,7 +10827,8 @@
 				(string)$action,
 				(string)$content,
 				$parameters,
-				(int)$holon->getContainingCircleId(false)
+				'holon',
+				$holonId
 			);
 		}
 

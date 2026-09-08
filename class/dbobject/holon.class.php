@@ -3413,7 +3413,8 @@
 					'IDholon' => (int)$this->getId(),
 					'authorUserId' => $authorUserId,
 				),
-				(int)$this->getContainingCircleId(false)
+				'holon',
+				(int)$this->getId()
 			);
 
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
@@ -3466,7 +3467,8 @@
 					'removedHolonIds' => array_values(array_map('intval', $removedHolonIds)),
 					'membershipUpdated' => !empty($membershipUpdated),
 				),
-				(int)$this->getContainingCircleId(false)
+				'holon',
+				(int)$this->getId()
 			);
 
 			if (!is_array($saveResult) || empty($saveResult['status'])) {

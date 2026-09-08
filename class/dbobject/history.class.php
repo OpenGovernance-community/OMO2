@@ -12,13 +12,14 @@
 		{
 			return [
 				[['id'], 'integer'],
-				[['IDorganization', 'IDuser', 'IDholon_circle'], 'fk'],
-				[['action'], 'string'],
+				[['IDorganization', 'IDuser'], 'fk'],
+				[['target_id'], 'integer'],
+				[['action', 'target_type'], 'string'],
 				[['content'], 'text'],
 				[['parameters'], 'parameters'],
 				[['datecreation'], 'datetime'],
 				[['active'], 'boolean'],
-				[['id', 'datecreation'], 'safe'],
+				[['id', 'datecreation', 'target_id'], 'safe'],
 			];
 		}
 
@@ -28,7 +29,8 @@
 				'id' => 'ID',
 				'IDorganization' => 'Organisation',
 				'IDuser' => 'Auteur',
-				'IDholon_circle' => 'Cercle rattache',
+				'target_type' => 'Type de cible',
+				'target_id' => 'Cible',
 				'action' => 'Action',
 				'content' => 'Contenu',
 				'parameters' => 'Paramètres',
@@ -48,6 +50,7 @@
 		{
 			return [
 				'action' => 100,
+				'target_type' => 50,
 			];
 		}
 
@@ -79,12 +82,15 @@
 			return '[' . $type . '|' . $id . '|' . $label . ']';
 		}
 
-		public static function createEntry($organizationId, $authorUserId, $action, $content, array $parameters = array(), $circleHolonId = 0)
+		public static function createEntry($organizationId, $authorUserId, $action, $content, array $parameters = array(), $targetType = '', $targetId = 0)
 		{
+			$targetType = trim(mb_strtolower((string)$targetType, 'UTF-8'));
+			$targetId = (int)$targetId;
 			$entry = new self();
 			$entry->set('IDorganization', (int)$organizationId > 0 ? (int)$organizationId : null);
 			$entry->set('IDuser', (int)$authorUserId > 0 ? (int)$authorUserId : null);
-			$entry->set('IDholon_circle', (int)$circleHolonId > 0 ? (int)$circleHolonId : null);
+			$entry->set('target_type', $targetType !== '' && $targetId > 0 ? $targetType : null);
+			$entry->set('target_id', $targetType !== '' && $targetId > 0 ? $targetId : null);
 			$entry->set('action', trim((string)$action));
 			$entry->set('content', trim((string)$content));
 			$entry->set('parameters', count($parameters) > 0 ? $parameters : null);
@@ -102,6 +108,61 @@
 		public static function buildHolonSearchNeedle($holonId)
 		{
 			return '[holon|' . (int)$holonId . '|';
+		}
+
+		public static function fetchTargetFeedPage($organizationId, $targetType, $targetId, $limit = 100, $offset = 0)
+		{
+			$organizationId = (int)$organizationId;
+			$targetType = trim(mb_strtolower((string)$targetType, 'UTF-8'));
+			$targetId = (int)$targetId;
+			$limit = max(1, min(100, (int)$limit));
+			$offset = max(0, (int)$offset);
+			if ($organizationId <= 0 || $targetType === '' || $targetId <= 0) {
+				return array(
+					'items' => array(),
+					'hasMore' => false,
+					'nextOffset' => $offset,
+				);
+			}
+
+			$rows = self::fetchAll(
+				"SELECT id, IDorganization, IDuser, target_type, target_id, action, content, parameters, datecreation, active
+				FROM history
+				WHERE active = 1
+				  AND IDorganization = :organization_id
+				  AND target_type = :target_type
+				  AND target_id = :target_id
+				ORDER BY datecreation DESC, id DESC
+				LIMIT " . $offset . ", " . ($limit + 1),
+				array(
+					'organization_id' => $organizationId,
+					'target_type' => $targetType,
+					'target_id' => $targetId,
+				)
+			);
+			if (!is_array($rows) || count($rows) === 0) {
+				return array(
+					'items' => array(),
+					'hasMore' => false,
+					'nextOffset' => $offset,
+				);
+			}
+
+			$hasMore = count($rows) > $limit;
+			if ($hasMore) {
+				$rows = array_slice($rows, 0, $limit);
+			}
+
+			return array(
+				'items' => self::mapHistoryRows($rows, $organizationId),
+				'hasMore' => $hasMore,
+				'nextOffset' => $offset + count($rows),
+			);
+		}
+
+		public static function fetchProjectFeedPage($organizationId, $projectId, $limit = 100, $offset = 0)
+		{
+			return self::fetchTargetFeedPage($organizationId, 'project', $projectId, $limit, $offset);
 		}
 
 		public static function renderReferenceText($content, $organizationId = 0)
@@ -504,6 +565,14 @@
 				'authority_deleted' => 'Suppression d autorite',
 				'authority_reassigned' => 'Remontee d autorite',
 				'authority_complete_delegated' => 'Delegation complete d autorite',
+				'project_created' => 'Creation du projet',
+				'project_updated' => 'Modification du projet',
+				'project_status_updated' => 'Changement de statut',
+				'project_title_updated' => 'Changement d intitule',
+				'project_schedule_updated' => 'Changement de planification',
+				'project_block_details_updated' => 'Modification du blocage',
+				'project_blocked' => 'Blocage du projet',
+				'project_auto_reactivated' => 'Reactivation automatique du projet',
 			);
 
 			if (isset($labels[$action])) {
@@ -526,7 +595,8 @@
 					'id' => (int)($row['id'] ?? 0),
 					'IDorganization' => (int)($row['IDorganization'] ?? 0),
 					'IDuser' => (int)($row['IDuser'] ?? 0),
-					'IDholon_circle' => (int)($row['IDholon_circle'] ?? 0),
+					'targetType' => trim((string)($row['target_type'] ?? '')),
+					'targetId' => (int)($row['target_id'] ?? 0),
 					'action' => $action,
 					'actionLabel' => self::formatActionLabel($action),
 					'content' => $rawContent,
@@ -560,7 +630,7 @@
 			}
 
 			if ($includeOrganizationScope) {
-				$query = "SELECT id, IDorganization, IDuser, IDholon_circle, action, content, parameters, datecreation, active
+				$query = "SELECT id, IDorganization, IDuser, target_type, target_id, action, content, parameters, datecreation, active
 					FROM history
 					WHERE active = 1
 					  AND IDorganization = :organization_id
@@ -570,20 +640,32 @@
 					'organization_id' => $organizationId,
 				));
 			} else {
-				$query = "SELECT id, IDorganization, IDuser, IDholon_circle, action, content, parameters, datecreation, active
+				$scopeHolon = new Holon();
+				$targetHolonIds = $scopeHolon->load($holonId)
+					? $scopeHolon->getVisibleDescendantIds(true)
+					: array($holonId);
+				$targetHolonIds = array_values(array_unique(array_filter(array_map('intval', $targetHolonIds), static function ($targetHolonId) {
+					return $targetHolonId > 0;
+				})));
+				if (count($targetHolonIds) === 0) {
+					return array(
+						'items' => array(),
+						'hasMore' => false,
+						'nextOffset' => $offset,
+					);
+				}
+
+				$query = "SELECT id, IDorganization, IDuser, target_type, target_id, action, content, parameters, datecreation, active
 					FROM history
 					WHERE active = 1
 					  AND IDorganization = :organization_id
-					  AND (
-						content LIKE :content_needle
-						OR IDholon_circle = :circle_holon_id
-					  )
+					  AND target_type = :target_type
+					  AND target_id IN (" . implode(', ', $targetHolonIds) . ")
 					ORDER BY datecreation DESC, id DESC
 					LIMIT " . $offset . ", " . ($limit + 1);
 				$rows = self::fetchAll($query, array(
 					'organization_id' => $organizationId,
-					'content_needle' => '%' . self::buildHolonSearchNeedle($holonId) . '%',
-					'circle_holon_id' => $holonId,
+					'target_type' => 'holon',
 				));
 			}
 			if (!is_array($rows) || count($rows) === 0) {
@@ -627,6 +709,26 @@
 				  AND IDorganization = :organization_id",
 				array(
 					'organization_id' => $organizationId,
+				)
+			);
+		}
+
+		public static function getLatestHolonEntryId($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return 0;
+			}
+
+			return (int)self::fetchValue(
+				"SELECT MAX(id)
+				FROM history
+				WHERE active = 1
+				  AND IDorganization = :organization_id
+				  AND target_type = :target_type",
+				array(
+					'organization_id' => $organizationId,
+					'target_type' => 'holon',
 				)
 			);
 		}

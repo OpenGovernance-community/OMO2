@@ -131,6 +131,9 @@ $statuses = array_filter(
 );
 $selectedStatus = Project::normalizeStatus($project->get('status'));
 $statusIsConfigurable = in_array($selectedStatus, $enabledStatuses, true);
+$selectedBlockedUntil = $formatDateValue($project->get('blocked_until'));
+$selectedBlockedAutoReactivate = (int)$project->get('blocked_auto_reactivate') === 1;
+$selectedBlockedReactivateStatus = Project::normalizeBlockedReactivateStatus($project->get('blocked_reactivate_status'));
 $selectedPriority = Project::normalizeLevel($project->get('priority')) ?? 0;
 $selectedImportance = Project::normalizeLevel($project->get('importance')) ?? 0;
 $selectedSize = Project::normalizeSize($project->get('project_size'));
@@ -262,6 +265,34 @@ $formTexts = [
             </div>
         </section>
 
+        <section class="generic-section generic-section--stack generic-form-section omo-project-form__section omo-project-form__blocked-section" data-omo-project-blocked-section<?= $selectedStatus === Project::STATUS_BLOCKED ? '' : ' hidden' ?>>
+            <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoProjectsT('projects.form.blocked')) ?></h3>
+            <div class="omo-project-form__grid generic-form-grid">
+                <div class="omo-project-form__field generic-form-field">
+                    <label class="generic-form-label" for="omo-project-blocked-reason"><?= omoApiEscape(omoProjectsT('projects.blocked.reason')) ?></label>
+                    <textarea id="omo-project-blocked-reason" class="generic-form-control" name="blocked_reason" rows="3" maxlength="4000" data-omo-project-blocked-reason><?= omoApiEscape((string)$project->get('blocked_reason')) ?></textarea>
+                </div>
+                <div class="omo-project-form__field generic-form-field">
+                    <label class="generic-form-label" for="omo-project-blocked-until"><?= omoApiEscape(omoProjectsT('projects.blocked.until')) ?></label>
+                    <input id="omo-project-blocked-until" class="generic-form-control" type="date" name="blocked_until" value="<?= omoApiEscape($selectedBlockedUntil) ?>" data-omo-project-blocked-until>
+                </div>
+                <div class="omo-project-form__field generic-form-field omo-project-form__blocked-auto-field">
+                    <label class="generic-form-checkbox" for="omo-project-blocked-auto">
+                        <input id="omo-project-blocked-auto" type="checkbox" name="blocked_auto_reactivate" value="1"<?= $selectedBlockedAutoReactivate ? ' checked' : '' ?> data-omo-project-blocked-auto>
+                        <span><?= omoApiEscape(omoProjectsT('projects.blocked.auto_reactivate')) ?></span>
+                    </label>
+                </div>
+                <div class="omo-project-form__field generic-form-field" data-omo-project-blocked-target-field>
+                    <label class="generic-form-label" for="omo-project-blocked-target"><?= omoApiEscape(omoProjectsT('projects.blocked.reactivate_status')) ?></label>
+                    <select id="omo-project-blocked-target" class="generic-form-control" name="blocked_reactivate_status" data-omo-project-blocked-target>
+                        <option value="ready"<?= $selectedBlockedReactivateStatus === Project::STATUS_READY ? ' selected' : '' ?>><?= omoApiEscape(omoProjectsT('projects.blocked.reactivate_ready')) ?></option>
+                        <option value="in_progress"<?= $selectedBlockedReactivateStatus === Project::STATUS_IN_PROGRESS ? ' selected' : '' ?>><?= omoApiEscape(omoProjectsT('projects.blocked.reactivate_in_progress')) ?></option>
+                    </select>
+                </div>
+            </div>
+            <p class="generic-help-text"><?= omoApiEscape(omoProjectsT('projects.blocked.dialog.hint')) ?></p>
+        </section>
+
         <?php if ($usesPriority || $usesImportance): ?>
         <section class="generic-section generic-section--stack generic-form-section omo-project-form__section">
             <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoProjectsT('projects.form.attention')) ?></h3>
@@ -325,6 +356,13 @@ $formTexts = [
     var holonId = form.querySelector('[data-omo-project-holon-id]');
     var holonLabel = document.getElementById('omo-project-holon-label');
     var feedback = form.querySelector('[data-omo-project-form-feedback]');
+    var statusControl = form.querySelector('[name="status"]');
+    var blockedSection = form.querySelector('[data-omo-project-blocked-section]');
+    var blockedReason = form.querySelector('[data-omo-project-blocked-reason]');
+    var blockedUntil = form.querySelector('[data-omo-project-blocked-until]');
+    var blockedAuto = form.querySelector('[data-omo-project-blocked-auto]');
+    var blockedTarget = form.querySelector('[data-omo-project-blocked-target]');
+    var blockedTargetField = form.querySelector('[data-omo-project-blocked-target-field]');
 
     function escapeHtml(value) {
         return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -471,6 +509,18 @@ $formTexts = [
     if (startDate) startDate.addEventListener('change', syncDateConstraint);
     if (endDate) endDate.addEventListener('change', syncDateConstraint);
     syncDateConstraint();
+
+    var syncBlockedFields = function () {
+        var isBlocked = statusControl && String(statusControl.value || '') === 'blocked';
+        if (blockedSection) blockedSection.hidden = !isBlocked;
+        if (blockedReason) blockedReason.required = isBlocked;
+        if (blockedUntil) blockedUntil.required = isBlocked;
+        if (blockedTargetField) blockedTargetField.hidden = !isBlocked || !(blockedAuto && blockedAuto.checked);
+        if (blockedTarget) blockedTarget.disabled = !isBlocked || !(blockedAuto && blockedAuto.checked);
+    };
+    if (statusControl) statusControl.addEventListener('change', syncBlockedFields);
+    if (blockedAuto) blockedAuto.addEventListener('change', syncBlockedFields);
+    syncBlockedFields();
 
     form.addEventListener('submit', function (event) {
         event.preventDefault();
