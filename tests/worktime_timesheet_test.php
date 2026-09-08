@@ -34,9 +34,11 @@ assertWorkTimeTimesheet(
     str_contains($timerIndex, 'data-timer-timesheet')
         && str_contains($timerScript, 'setTimesheetOpen')
         && str_contains($timerScript, 'bindTimesheetSwipe')
+        && str_contains($timerScript, 'bindTimesheetRefresh')
+        && str_contains($timerScript, 'recentRequestId')
         && str_contains($timerScript, "postAction('update'")
         && str_contains($timerScript, "postAction('delete'"),
-    'The Timer must provide the vertical timesheet sheet and its edit actions.'
+    'The Timer must provide the vertical timesheet sheet, its refresh gestures and its edit actions.'
 );
 
 echo "worktime_timesheet_test: OK\n";
