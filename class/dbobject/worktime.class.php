@@ -134,6 +134,11 @@ class WorkTime extends DbObject
         return $entries;
     }
 
+    public static function findClosedForUser($userId, $entryId)
+    {
+        return self::loadClosedRow((int)$userId, (int)$entryId);
+    }
+
     public static function updateClosedForUser($userId, $entryId, $startedAt, $endedAt, $label)
     {
         $normalizedLabel = self::normalizeLabel($label);
@@ -645,12 +650,16 @@ class WorkTime extends DbObject
         }
 
         $value = trim($value);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/D', $value)) {
+            return null;
+        }
         $timezone = new \DateTimeZone(date_default_timezone_get());
-        $date = \DateTimeImmutable::createFromFormat('!Y-m-d\\TH:i', $value, $timezone);
+        $format = strlen($value) === 19 ? '!Y-m-d\\TH:i:s' : '!Y-m-d\\TH:i';
+        $date = \DateTimeImmutable::createFromFormat($format, $value, $timezone);
         $errors = \DateTimeImmutable::getLastErrors();
         if (!($date instanceof \DateTimeImmutable)
             || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))
-            || $date->format('Y-m-d\\TH:i') !== $value) {
+            || $date->format(strlen($value) === 19 ? 'Y-m-d\\TH:i:s' : 'Y-m-d\\TH:i') !== $value) {
             return null;
         }
 

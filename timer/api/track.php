@@ -285,6 +285,9 @@ if ($action === 'update') {
     if (empty($label['status'])) {
         timerApiReply(array('error' => true, 'message' => 'La legende est trop longue.'), 422);
     }
+    if (!(\dbObject\WorkTime::findClosedForUser($userId, $entryId) instanceof \dbObject\WorkTime)) {
+        timerApiReply(array('error' => true, 'message' => 'Ce pointage n est plus disponible. Actualisez la liste.'), 404);
+    }
 
     $updated = \dbObject\WorkTime::updateClosedForUser(
         $userId,
