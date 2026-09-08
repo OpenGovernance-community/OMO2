@@ -15,6 +15,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Le retour du Timer sous la legende ne reserve plus de ligne vide. La timesheet est rechargee a chaque ouverture et accepte un geste de tirage vers le bas, depuis le haut de la liste, pour actualiser les pointages.
 - La timesheet affiche le chemin organisation, holon et projet une seule fois sur les pointages normaux; le rappel distinct reste disponible pendant leur modification.
 - Les modifications de pointage acceptent maintenant les valeurs `datetime-local` des navigateurs avec ou sans secondes. Une entree devenue indisponible est signalee comme telle au lieu d etre confondue avec une erreur de date.
+- Le Timer appelle maintenant son API par l URL neutre `/timer/api/worktime.php`, ce qui evite que les bloqueurs de suivi assimilent son demarrage a un traceur publicitaire.
 
 - Le segment de phase d elaboration du graphique de scrutin utilise maintenant le meme libelle Elaboration que le reste de l interface.
 - Les participants identifies par un lien public utilisent maintenant un pseudonyme stable dans les propositions anonymes et leurs discussions, meme lorsqu ils disposent aussi d un compte.
@@ -2080,3 +2081,8 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Le calage d un import OMO 1 sur un modele propose maintenant de ne pas importer une propriete source, sans recreer sa valeur sur les instances associees.
 - La configuration globale de SpaceDeck est maintenant disponible dans Admin du serveur : URL publique, URL interne optionnelle, jeton de provisioning et cle de signature des acces, avec un test qui cree puis supprime un tableau temporaire.
 - Le menu de creation des Documents est maintenant groupe par familles, avec le dossier en tete, des separateurs visuels et le tableau blanc collaboratif a la fin. Un classeur collaboratif cree desormais un fichier ODS directement editable dans Collabora.
+
+# 2026-09-08
+
+- Le bouton Fermer et le clic sur le fond du sous-drawer des Activites ferment a nouveau le detail, y compris dans le contexte des onglets PV.
+- L editeur de PV rafraichit maintenant la liste de presence apres une reprise de main ou un changement d etape, afin que ses cases refletent immediatement le droit d edition courant.
