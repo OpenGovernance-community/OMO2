@@ -5,6 +5,10 @@ class WorkTime extends DbObject
 {
     public const END_REASON_STOP = 'stop';
     public const END_REASON_SWITCH = 'switch';
+    public const END_REASON_INTERRUPTED = 'interrupted';
+    public const SHORT_SWITCH_MAXIMUM_SECONDS = 10;
+    public const SHORT_SWITCH_CONTINUITY_MAXIMUM_SECONDS = 300;
+    public const MAX_RESUMABLE_HEARTBEAT_AGE_SECONDS = 28800;
 
     public static function tableName()
     {
@@ -18,7 +22,7 @@ class WorkTime extends DbObject
             [['id'], 'integer'],
             [['IDuser', 'IDorganization', 'IDholon', 'IDproject'], 'fk'],
             [['started_at', 'ended_at', 'last_heartbeat_at'], 'datetime'],
-            [['end_reason'], 'string'],
+            [['end_reason', 'label'], 'string'],
             [['id'], 'safe'],
         ];
     }
@@ -31,6 +35,7 @@ class WorkTime extends DbObject
             'IDorganization' => 'Organisation',
             'IDholon' => 'Holon',
             'IDproject' => 'Projet',
+            'label' => 'Legende',
             'started_at' => 'Debut',
             'ended_at' => 'Fin',
             'last_heartbeat_at' => 'Dernier signal',
@@ -42,6 +47,7 @@ class WorkTime extends DbObject
     {
         return [
             'end_reason' => 20,
+            'label' => 1000,
         ];
     }
 
@@ -55,7 +61,115 @@ class WorkTime extends DbObject
         return self::loadOpenRow((int)$userId, 0, false);
     }
 
-    public static function startOrSwitch($userId, $organizationId, $holonId, $projectId = 0)
+    public static function closeStaleOpenForUser($userId)
+    {
+        $userId = (int)$userId;
+        if ($userId <= 0) {
+            return null;
+        }
+
+        $pdo = self::getPdo();
+        if (!$pdo) {
+            return null;
+        }
+
+        $ownsTransaction = !$pdo->inTransaction();
+        if ($ownsTransaction) {
+            $pdo->beginTransaction();
+        }
+
+        try {
+            $current = self::loadOpenRow($userId, 0, true);
+            $now = new \DateTimeImmutable('now');
+            if (!($current instanceof self) || !self::isStaleOpen($current, $now)) {
+                if ($ownsTransaction) {
+                    $pdo->commit();
+                }
+                return null;
+            }
+
+            if (!self::markInterrupted($current, $now)) {
+                throw new \RuntimeException('Unable to close interrupted work time.');
+            }
+
+            if ($ownsTransaction) {
+                $pdo->commit();
+            }
+            return $current;
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return null;
+        }
+    }
+
+    public static function findRecentClosedForUser($userId, $limit = 30)
+    {
+        $userId = (int)$userId;
+        $limit = max(1, min(100, (int)$limit));
+        if ($userId <= 0) {
+            return [];
+        }
+
+        $rows = self::fetchAll(
+            'SELECT * FROM `work_time`
+             WHERE `IDuser` = :user_id
+               AND `end_reason` IS NOT NULL
+             ORDER BY `ended_at` DESC, `id` DESC
+             LIMIT ' . $limit,
+            ['user_id' => $userId]
+        );
+        if (!is_array($rows)) {
+            return [];
+        }
+
+        $entries = [];
+        foreach ($rows as $row) {
+            $entry = new self();
+            if (is_array($row) && $entry->hydrateFromDatabaseRow($row, true)) {
+                $entries[] = $entry;
+            }
+        }
+        return $entries;
+    }
+
+    public static function findClosedForUser($userId, $entryId)
+    {
+        return self::loadClosedRow((int)$userId, (int)$entryId);
+    }
+
+    public static function updateClosedForUser($userId, $entryId, $startedAt, $endedAt, $label)
+    {
+        $normalizedLabel = self::normalizeLabel($label);
+        $start = self::parseManualDateTime($startedAt);
+        $end = self::parseManualDateTime($endedAt);
+        if (empty($normalizedLabel['status'])
+            || !($start instanceof \DateTimeImmutable)
+            || !($end instanceof \DateTimeImmutable)
+            || $end <= $start) {
+            return null;
+        }
+
+        $workTime = self::loadClosedRow((int)$userId, (int)$entryId);
+        if (!($workTime instanceof self)) {
+            return null;
+        }
+
+        $workTime->set('started_at', $start);
+        $workTime->set('ended_at', $end);
+        $workTime->set('label', $normalizedLabel['value']);
+        $result = $workTime->save();
+        return is_array($result) && !empty($result['status']) ? $workTime : null;
+    }
+
+    public static function deleteClosedForUser($userId, $entryId)
+    {
+        $workTime = self::loadClosedRow((int)$userId, (int)$entryId);
+        return $workTime instanceof self && $workTime->delete();
+    }
+
+    public static function startOrSwitch($userId, $organizationId, $holonId, $projectId = 0, $label = '')
     {
         $userId = (int)$userId;
         $organizationId = (int)$organizationId;
@@ -63,6 +177,11 @@ class WorkTime extends DbObject
         $projectId = (int)$projectId;
 
         if ($userId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+            return null;
+        }
+
+        $normalizedLabel = self::normalizeLabel($label);
+        if (empty($normalizedLabel['status'])) {
             return null;
         }
 
@@ -80,6 +199,13 @@ class WorkTime extends DbObject
             $current = self::loadOpenRow($userId, 0, true);
             $now = new \DateTimeImmutable('now');
 
+            if ($current instanceof self && self::isStaleOpen($current, $now)) {
+                if (!self::markInterrupted($current, $now)) {
+                    throw new \RuntimeException('Unable to close interrupted work time.');
+                }
+                $current = null;
+            }
+
             if ($current instanceof self && self::sameTarget($current, $organizationId, $holonId, $projectId)) {
                 $current->set('ended_at', $now);
                 $current->set('last_heartbeat_at', $now);
@@ -95,12 +221,18 @@ class WorkTime extends DbObject
             }
 
             if ($current instanceof self) {
-                $current->set('ended_at', $now);
-                $current->set('last_heartbeat_at', $now);
-                $current->set('end_reason', self::END_REASON_SWITCH);
-                $result = $current->save();
-                if (!is_array($result) || empty($result['status'])) {
-                    throw new \RuntimeException('Unable to close previous work time.');
+                if (self::isShortSwitch($current, $now)) {
+                    if (!self::mergeShortSwitchIntoPrevious($current, $now) && !$current->delete()) {
+                        throw new \RuntimeException('Unable to discard short switched work time.');
+                    }
+                } else {
+                    $current->set('ended_at', $now);
+                    $current->set('last_heartbeat_at', $now);
+                    $current->set('end_reason', self::END_REASON_SWITCH);
+                    $result = $current->save();
+                    if (!is_array($result) || empty($result['status'])) {
+                        throw new \RuntimeException('Unable to close previous work time.');
+                    }
                 }
             }
 
@@ -109,6 +241,7 @@ class WorkTime extends DbObject
             $workTime->set('IDorganization', $organizationId);
             $workTime->set('IDholon', $holonId);
             $workTime->set('IDproject', $projectId > 0 ? $projectId : null);
+            $workTime->set('label', $normalizedLabel['value']);
             $workTime->set('started_at', $now);
             $workTime->set('ended_at', $now);
             $workTime->set('last_heartbeat_at', $now);
@@ -138,8 +271,35 @@ class WorkTime extends DbObject
         }
 
         $now = new \DateTimeImmutable('now');
+        if (self::isStaleOpen($workTime, $now)) {
+            self::markInterrupted($workTime, $now);
+            return null;
+        }
         $workTime->set('ended_at', $now);
         $workTime->set('last_heartbeat_at', $now);
+        $result = $workTime->save();
+        return is_array($result) && !empty($result['status']) ? $workTime : null;
+    }
+
+    public static function updateOpenLabelForUser($userId, $entryId = 0, $label = '')
+    {
+        $normalizedLabel = self::normalizeLabel($label);
+        if (empty($normalizedLabel['status'])) {
+            return null;
+        }
+
+        $workTime = self::loadOpenRow((int)$userId, (int)$entryId, false);
+        if (!($workTime instanceof self)) {
+            return null;
+        }
+
+        $now = new \DateTimeImmutable('now');
+        if (self::isStaleOpen($workTime, $now)) {
+            self::markInterrupted($workTime, $now);
+            return null;
+        }
+
+        $workTime->set('label', $normalizedLabel['value']);
         $result = $workTime->save();
         return is_array($result) && !empty($result['status']) ? $workTime : null;
     }
@@ -155,6 +315,10 @@ class WorkTime extends DbObject
         }
 
         $now = new \DateTimeImmutable('now');
+        if (self::isStaleOpen($workTime, $now)) {
+            self::markInterrupted($workTime, $now);
+            return null;
+        }
         $workTime->set('ended_at', $now);
         $workTime->set('last_heartbeat_at', $now);
         $workTime->set('end_reason', $reason);
@@ -277,6 +441,7 @@ class WorkTime extends DbObject
             'organizationId' => (int)$this->get('IDorganization'),
             'holonId' => (int)$this->get('IDholon'),
             'projectId' => (int)$this->get('IDproject'),
+            'label' => (string)$this->get('label'),
             'startedAt' => self::formatDate($startedAt),
             'startedAtUnix' => self::dateToUnix($startedAt),
             'endedAt' => self::formatDate($endedAt),
@@ -293,6 +458,22 @@ class WorkTime extends DbObject
         return (int)$workTime->get('IDorganization') === (int)$organizationId
             && (int)$workTime->get('IDholon') === (int)$holonId
             && (int)$workTime->get('IDproject') === (int)$projectId;
+    }
+
+    public static function normalizeLabel($value)
+    {
+        if (is_array($value) || is_object($value)) {
+            return ['status' => false, 'value' => null];
+        }
+
+        $label = str_replace(["\r\n", "\r"], "\n", (string)$value);
+        $label = trim($label);
+        $maximumLength = (int)(self::attributeLength()['label'] ?? 1000);
+        if (mb_strlen($label, 'UTF-8') > $maximumLength) {
+            return ['status' => false, 'value' => null];
+        }
+
+        return ['status' => true, 'value' => $label === '' ? null : $label];
     }
 
     private static function loadOpenRow($userId, $entryId = 0, $forUpdate = false)
@@ -321,6 +502,168 @@ class WorkTime extends DbObject
 
         $workTime = new self();
         return $workTime->hydrateFromDatabaseRow($row, true) ? $workTime : null;
+    }
+
+    private static function loadClosedRow($userId, $entryId)
+    {
+        $userId = (int)$userId;
+        $entryId = (int)$entryId;
+        if ($userId <= 0 || $entryId <= 0) {
+            return null;
+        }
+
+        $row = self::fetchRow(
+            'SELECT * FROM `work_time`
+             WHERE `id` = :entry_id
+               AND `IDuser` = :user_id
+               AND `end_reason` IS NOT NULL
+             LIMIT 1',
+            ['entry_id' => $entryId, 'user_id' => $userId]
+        );
+        if (!is_array($row)) {
+            return null;
+        }
+
+        $workTime = new self();
+        return $workTime->hydrateFromDatabaseRow($row, true) ? $workTime : null;
+    }
+
+    private static function mergeShortSwitchIntoPrevious(self $current, \DateTimeImmutable $now)
+    {
+        $startedAt = self::normalizeDateTime($current->get('started_at'), $now->getTimezone());
+        if (!($startedAt instanceof \DateTimeImmutable) || !self::isShortSwitch($current, $now)) {
+            return false;
+        }
+        $elapsedSeconds = $now->getTimestamp() - $startedAt->getTimestamp();
+
+        $previous = self::loadPreviousClosedRow(
+            (int)$current->get('IDuser'),
+            (int)$current->getId(),
+            true
+        );
+        if (!($previous instanceof self)) {
+            return false;
+        }
+
+        $previousEnd = self::normalizeDateTime($previous->get('ended_at'), $now->getTimezone());
+        $gapSeconds = $previousEnd instanceof \DateTimeImmutable
+            ? $startedAt->getTimestamp() - $previousEnd->getTimestamp()
+            : -1;
+        if (trim((string)$previous->get('end_reason')) !== self::END_REASON_SWITCH
+            || $gapSeconds < 0
+            || $gapSeconds > self::SHORT_SWITCH_CONTINUITY_MAXIMUM_SECONDS) {
+            return false;
+        }
+
+        $mergedEnd = $previousEnd->modify('+' . $elapsedSeconds . ' seconds');
+        $previous->set('ended_at', $mergedEnd);
+        $previous->set('last_heartbeat_at', $mergedEnd);
+        $result = $previous->save();
+        if (!is_array($result) || empty($result['status']) || !$current->delete()) {
+            throw new \RuntimeException('Unable to merge short switched work time.');
+        }
+
+        return true;
+    }
+
+    private static function isShortSwitch(self $workTime, \DateTimeImmutable $now)
+    {
+        $startedAt = self::normalizeDateTime($workTime->get('started_at'), $now->getTimezone());
+        if (!($startedAt instanceof \DateTimeImmutable)) {
+            return false;
+        }
+
+        $elapsedSeconds = $now->getTimestamp() - $startedAt->getTimestamp();
+        return $elapsedSeconds >= 0 && $elapsedSeconds < self::SHORT_SWITCH_MAXIMUM_SECONDS;
+    }
+
+    private static function isStaleOpen(self $workTime, \DateTimeImmutable $now)
+    {
+        $timezone = $now->getTimezone();
+        $lastSignal = self::normalizeDateTime($workTime->get('last_heartbeat_at'), $timezone)
+            ?: self::normalizeDateTime($workTime->get('ended_at'), $timezone)
+            ?: self::normalizeDateTime($workTime->get('started_at'), $timezone);
+        if (!($lastSignal instanceof \DateTimeImmutable)) {
+            return true;
+        }
+
+        return ($now->getTimestamp() - $lastSignal->getTimestamp()) > self::MAX_RESUMABLE_HEARTBEAT_AGE_SECONDS;
+    }
+
+    private static function markInterrupted(self $workTime, \DateTimeImmutable $now)
+    {
+        $timezone = $now->getTimezone();
+        $startedAt = self::normalizeDateTime($workTime->get('started_at'), $timezone);
+        $endedAt = self::normalizeDateTime($workTime->get('ended_at'), $timezone);
+        $lastSignal = self::normalizeDateTime($workTime->get('last_heartbeat_at'), $timezone);
+        $confirmedEnd = $startedAt;
+        foreach ([$endedAt, $lastSignal] as $candidate) {
+            if ($candidate instanceof \DateTimeImmutable
+                && (!($confirmedEnd instanceof \DateTimeImmutable) || $candidate > $confirmedEnd)) {
+                $confirmedEnd = $candidate;
+            }
+        }
+        if (!($confirmedEnd instanceof \DateTimeImmutable)) {
+            return false;
+        }
+
+        $workTime->set('ended_at', $confirmedEnd);
+        $workTime->set('last_heartbeat_at', $confirmedEnd);
+        $workTime->set('end_reason', self::END_REASON_INTERRUPTED);
+        $result = $workTime->save();
+        return is_array($result) && !empty($result['status']);
+    }
+
+    private static function loadPreviousClosedRow($userId, $currentEntryId, $forUpdate = false)
+    {
+        $userId = (int)$userId;
+        $currentEntryId = (int)$currentEntryId;
+        if ($userId <= 0 || $currentEntryId <= 0) {
+            return null;
+        }
+
+        $query = 'SELECT * FROM `work_time`
+            WHERE `IDuser` = :user_id
+              AND `id` < :current_entry_id
+              AND `end_reason` IS NOT NULL
+            ORDER BY `id` DESC
+            LIMIT 1';
+        if ($forUpdate) {
+            $query .= ' FOR UPDATE';
+        }
+        $row = self::fetchRow($query, [
+            'user_id' => $userId,
+            'current_entry_id' => $currentEntryId,
+        ]);
+        if (!is_array($row)) {
+            return null;
+        }
+
+        $workTime = new self();
+        return $workTime->hydrateFromDatabaseRow($row, true) ? $workTime : null;
+    }
+
+    private static function parseManualDateTime($value)
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/D', $value)) {
+            return null;
+        }
+        $timezone = new \DateTimeZone(date_default_timezone_get());
+        $format = strlen($value) === 19 ? '!Y-m-d\\TH:i:s' : '!Y-m-d\\TH:i';
+        $date = \DateTimeImmutable::createFromFormat($format, $value, $timezone);
+        $errors = \DateTimeImmutable::getLastErrors();
+        if (!($date instanceof \DateTimeImmutable)
+            || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))
+            || $date->format(strlen($value) === 19 ? 'Y-m-d\\TH:i:s' : 'Y-m-d\\TH:i') !== $value) {
+            return null;
+        }
+
+        return $date;
     }
 
     private static function formatDate($value)

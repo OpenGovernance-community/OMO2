@@ -524,6 +524,10 @@ input:focus-visible + .generic-choice-card,
     font-weight: 600;
 }
 
+.generic-feedback.generic-feedback--collapse-empty {
+    min-height: 0;
+}
+
 .generic-feedback.is-success {
     color: var(--generic-feedback-success);
 }
@@ -1019,6 +1023,12 @@ textarea.generic-form-control {
     --generic-form-control-textarea-min-height: 110px;
     min-height: var(--generic-form-control-textarea-min-height);
     resize: vertical;
+}
+
+textarea.generic-form-control--single-line {
+    min-height: 36px;
+    padding: 6px 9px;
+    resize: none;
 }
 
 .generic-filter-chips,

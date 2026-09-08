@@ -4420,6 +4420,7 @@ CREATE TABLE IF NOT EXISTS `work_time` (
   `IDorganization` int(11) NOT NULL,
   `IDholon` int(11) NOT NULL,
   `IDproject` int(11) DEFAULT NULL,
+  `label` varchar(1000) DEFAULT NULL,
   `started_at` datetime NOT NULL,
   `ended_at` datetime DEFAULT NULL,
   `last_heartbeat_at` datetime DEFAULT NULL,
