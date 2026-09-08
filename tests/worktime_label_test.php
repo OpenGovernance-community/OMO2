@@ -34,16 +34,16 @@ $tooLong = WorkTime::normalizeLabel(str_repeat('a', 1001));
 assertWorkTimeLabel(empty($tooLong['status']), 'An overlong work time label must be rejected.');
 
 $root = dirname(__DIR__);
-$trackApi = (string)file_get_contents($root . '/timer/api/track.php');
+$workTimeApi = (string)file_get_contents($root . '/timer/api/worktime.php');
 $timerIndex = (string)file_get_contents($root . '/timer/index.php');
 $timerScript = (string)file_get_contents($root . '/timer/assets/timer.js');
 $migration = (string)file_get_contents($root . '/sql/2026-09-08-01-work-time-label.sql');
 $seed = (string)file_get_contents($root . '/docker/db/init/00-base.seed.sql');
 
 assertWorkTimeLabel(
-    str_contains($trackApi, "if (\$action === 'label')")
-        && str_contains($trackApi, 'updateOpenLabelForUser')
-        && str_contains($trackApi, "startOrSwitch(\$userId, \$organizationId, \$holonId, \$projectId, \$label['value'])"),
+    str_contains($workTimeApi, "if (\$action === 'label')")
+        && str_contains($workTimeApi, 'updateOpenLabelForUser')
+        && str_contains($workTimeApi, "startOrSwitch(\$userId, \$organizationId, \$holonId, \$projectId, \$label['value'])"),
     'The timer API must save changed labels and include the current label when starting or switching.'
 );
 assertWorkTimeLabel(
