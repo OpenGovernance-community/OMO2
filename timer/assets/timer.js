@@ -443,11 +443,11 @@
                 var content = '<article class="timer-timesheet-entry" data-timer-timesheet-entry="' + entryId + '">'
                     + '<div class="timer-timesheet-entry__meta"><strong class="timer-timesheet-entry__duration">'
                     + escapeHtml(formatDuration(Number(entry.endedAtUnix || 0) - Number(entry.startedAtUnix || 0)))
-                    + '</strong><span class="timer-timesheet-entry__date">' + escapeHtml(formatEntryDateRange(entry)) + '</span></div>'
-                    + (target ? '<p class="timer-timesheet-entry__target">' + escapeHtml(target) + '</p>' : '');
+                    + '</strong><span class="timer-timesheet-entry__date">' + escapeHtml(formatEntryDateRange(entry)) + '</span></div>';
 
                 if (isEditing) {
-                    content += '<form class="timer-timesheet-entry__form" data-timer-timesheet-edit-form>'
+                    content += (target ? '<p class="timer-timesheet-entry__target">' + escapeHtml(target) + '</p>' : '')
+                        + '<form class="timer-timesheet-entry__form" data-timer-timesheet-edit-form>'
                         + '<div class="timer-timesheet-entry__dates">'
                         + '<label class="timer-timesheet-entry__field"><span>' + escapeHtml(translations.historyStart || '') + '</span>'
                         + '<input required class="generic-form-control" name="started_at" type="datetime-local" value="' + escapeHtml(formatLocalDateTimeValue(entry.startedAtUnix)) + '"></label>'

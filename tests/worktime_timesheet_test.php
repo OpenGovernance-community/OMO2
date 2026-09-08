@@ -17,6 +17,8 @@ $root = dirname(__DIR__);
 $trackApi = (string)file_get_contents($root . '/timer/api/track.php');
 $timerIndex = (string)file_get_contents($root . '/timer/index.php');
 $timerScript = (string)file_get_contents($root . '/timer/assets/timer.js');
+$parseManualDateTime = new ReflectionMethod(WorkTime::class, 'parseManualDateTime');
+$parseManualDateTime->setAccessible(true);
 
 assertWorkTimeTimesheet(
     str_contains($trackApi, "if (\$action === 'recent')")
@@ -39,6 +41,11 @@ assertWorkTimeTimesheet(
         && str_contains($timerScript, "postAction('update'")
         && str_contains($timerScript, "postAction('delete'"),
     'The Timer must provide the vertical timesheet sheet, its refresh gestures and its edit actions.'
+);
+assertWorkTimeTimesheet(
+    $parseManualDateTime->invoke(null, '2026-09-08T14:30') instanceof DateTimeImmutable
+        && $parseManualDateTime->invoke(null, '2026-09-08T14:30:00') instanceof DateTimeImmutable,
+    'Manual time edits must accept browser datetime-local values with or without seconds.'
 );
 
 echo "worktime_timesheet_test: OK\n";

@@ -315,7 +315,7 @@ $profileData = commonResolveTopbarProfileData($organizationContext, []);
     <title><?= htmlspecialchars(t('timer.page.title'), ENT_QUOTES, 'UTF-8') ?></title>
     <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="/common/assets/topbar.css">
-    <link rel="stylesheet" href="/timer/assets/timer.css?v=20260908-timesheet-refresh">
+    <link rel="stylesheet" href="/timer/assets/timer.css?v=20260908-timesheet-path-once">
 </head>
 <body class="timer-page">
 <?php
@@ -459,6 +459,6 @@ window.timerConfig = <?= json_encode([
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/timer/assets/timer.js?v=20260908-timesheet-refresh" defer></script>
+<script src="/timer/assets/timer.js?v=20260908-timesheet-path-once" defer></script>
 </body>
 </html>

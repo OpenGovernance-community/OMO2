@@ -13,6 +13,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Un suivi encore ouvert mais sans signal depuis plus de huit heures est clos automatiquement sans ajouter de temps, avec la raison Interrompu. Le Timer revient pret a demarrer et la timesheet signale cette ligne afin qu elle puisse etre verifiee.
 - Les pointages recents du Timer regroupent maintenant sur une seule ligne leur organisation, holon, projet eventuel et legende. Le holon est mis en gras pour rester rapidement identifiable.
 - Le retour du Timer sous la legende ne reserve plus de ligne vide. La timesheet est rechargee a chaque ouverture et accepte un geste de tirage vers le bas, depuis le haut de la liste, pour actualiser les pointages.
+- La timesheet affiche le chemin organisation, holon et projet une seule fois sur les pointages normaux; le rappel distinct reste disponible pendant leur modification.
+- Les modifications de pointage acceptent maintenant les valeurs `datetime-local` des navigateurs avec ou sans secondes. Une entree devenue indisponible est signalee comme telle au lieu d etre confondue avec une erreur de date.
 
 - Le segment de phase d elaboration du graphique de scrutin utilise maintenant le meme libelle Elaboration que le reste de l interface.
 - Les participants identifies par un lien public utilisent maintenant un pseudonyme stable dans les propositions anonymes et leurs discussions, meme lorsqu ils disposent aussi d un compte.
