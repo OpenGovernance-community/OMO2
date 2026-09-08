@@ -6,6 +6,12 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 - Les droits contextuels `CAN_EDIT_HOLON_BUDGET` et `CAN_EDIT_AFFECTATION_BUDGET` permettent maintenant de distinguer l edition des budgets propres aux holons de celle des budgets de leurs affectations. Ils sont regroupes dans la rubrique Budget de l editeur de droits et respectent les portees existantes, par exemple les elements directs d un cercle.
 - La nouvelle application Budget rejoint maintenant simplement le catalogue des applications disponibles : elle n est plus activee automatiquement dans chaque organisation et peut etre ajoutee explicitement depuis le selecteur d applications.
+- Le Timer propose maintenant sous son bouton une legende de travail sur une a trois lignes. Elle est enregistree uniquement apres modification sur la ligne active, puis conservee lors d un changement de holon ou de projet afin de nommer directement la nouvelle ligne.
+- La carte des holons du Timer recalcule maintenant son canvas apres chaque changement de place disponible, notamment lorsque la legende de travail s agrandit, afin de conserver des cercles ronds et centres.
+- Un glissement vertical du controle du Timer ouvre maintenant une feuille de pointages recents. Le compteur rejoint le haut de l ecran et les entrees terminees de la personne connectee peuvent etre consultees, corrigees (dates et legende) ou supprimees.
+- Lors d un switch, une ligne de moins de dix secondes est absorbee par la ligne precedente uniquement si celle-ci se terminait aussi par un switch et que les deux lignes sont separees de moins de cinq minutes. Sinon, la micro-ligne est retiree sans modifier l historique precedent.
+- Un suivi encore ouvert mais sans signal depuis plus de huit heures est clos automatiquement sans ajouter de temps, avec la raison Interrompu. Le Timer revient pret a demarrer et la timesheet signale cette ligne afin qu elle puisse etre verifiee.
+- Les pointages recents du Timer regroupent maintenant sur une seule ligne leur organisation, holon, projet eventuel et legende. Le holon est mis en gras pour rester rapidement identifiable.
 
 - Le segment de phase d elaboration du graphique de scrutin utilise maintenant le meme libelle Elaboration que le reste de l interface.
 - Les participants identifies par un lien public utilisent maintenant un pseudonyme stable dans les propositions anonymes et leurs discussions, meme lorsqu ils disposent aussi d un compte.
@@ -20,6 +26,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les budgets temps et argent des affectations sont masques dans les formulaires et les cartes Team lorsque l application Budget n est pas active dans l organisation. Les valeurs stockees restent conservees et accessibles aux objets ou a une future API, tandis que le Timer demeure independant.
 - Les menus des processus et de leurs activites recurrentes permettent maintenant de les passer en checklist directe. La conversion conserve leur holon, titre, description, recurrence et delais, arrete la creation de nouveaux projets et conserve les projets deja generes comme historique.
 - L ouverture d un projet depuis une activite de processus bascule maintenant directement dans le holon rattache au projet.
+- Les elements ouverts directement depuis le tableau de pilotage basculent maintenant dans leur holon, notamment les projets, activites et indicateurs.
 - Les modules Projets, Activites et Indicateurs du tableau de pilotage peuvent maintenant afficher Tous les elements ou seulement Moi. Cette preference est enregistree avec la portee du module, apparait dans une capsule sur la fiche et filtre les elements selon leur responsable ou leur holon d attribution.
 - Les capsules de portee et d audience des modules du tableau de pilotage sont plus compactes.
 

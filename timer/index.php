@@ -118,6 +118,66 @@ $sourceLang = [
         'text' => 'Arreter',
         'context' => 'Button label used to stop the work timer.',
     ],
+    'timer.control.label_placeholder' => [
+        'text' => 'Decrivez ce que vous faites',
+        'context' => 'Placeholder for the current work time label.',
+    ],
+    'timer.control.label_aria' => [
+        'text' => 'Legende du travail en cours',
+        'context' => 'Accessible label for the current work time label field.',
+    ],
+    'timer.history.open' => [
+        'text' => 'Afficher les pointages recents',
+        'context' => 'Accessible label for the timer gesture handle that opens the recent work time sheet.',
+    ],
+    'timer.history.close' => [
+        'text' => 'Revenir au choix du travail',
+        'context' => 'Accessible label for the timer gesture handle that closes the recent work time sheet.',
+    ],
+    'timer.history.heading' => [
+        'text' => 'Pointages recents',
+        'context' => 'Heading for the recent work time sheet.',
+    ],
+    'timer.history.loading' => [
+        'text' => 'Chargement des pointages...',
+        'context' => 'Loading message for the recent work time sheet.',
+    ],
+    'timer.history.empty' => [
+        'text' => 'Aucun pointage termine pour le moment.',
+        'context' => 'Empty message for the recent work time sheet.',
+    ],
+    'timer.history.edit' => [
+        'text' => 'Modifier',
+        'context' => 'Button label to edit a recent work time entry.',
+    ],
+    'timer.history.delete' => [
+        'text' => 'Supprimer',
+        'context' => 'Button label to delete a recent work time entry.',
+    ],
+    'timer.history.save' => [
+        'text' => 'Enregistrer',
+        'context' => 'Button label to save a work time entry edit.',
+    ],
+    'timer.history.cancel' => [
+        'text' => 'Annuler',
+        'context' => 'Button label to cancel a work time entry edit.',
+    ],
+    'timer.history.start' => [
+        'text' => 'Debut',
+        'context' => 'Label for a work time entry start date field.',
+    ],
+    'timer.history.end' => [
+        'text' => 'Fin',
+        'context' => 'Label for a work time entry end date field.',
+    ],
+    'timer.history.label' => [
+        'text' => 'Legende',
+        'context' => 'Label for a work time entry legend field.',
+    ],
+    'timer.history.delete_confirm' => [
+        'text' => 'Supprimer ce pointage ? Cette action est definitive.',
+        'context' => 'Confirmation before deleting a work time entry.',
+    ],
     'timer.control.no_holon' => [
         'text' => 'Choisissez d abord un holon.',
         'context' => 'Message shown when the user tries to start without a holon.',
@@ -133,6 +193,10 @@ $sourceLang = [
     'timer.status.recovered' => [
         'text' => 'Suivi repris apres interruption',
         'context' => 'Notice shown when an open timer is recovered after a page or phone interruption.',
+    ],
+    'timer.status.interrupted' => [
+        'text' => 'Le suivi precedent a ete clos apres une longue interruption.',
+        'context' => 'Notice shown when an open timer is automatically closed after more than eight hours without a signal.',
     ],
     'timer.status.last_signal' => [
         'text' => 'Dernier enregistrement : {date}',
@@ -207,6 +271,7 @@ foreach ($accessibleOrganizations as $organization) {
     $organizationById[$organizationId] = $organization;
 }
 
+$interruptedEntry = \dbObject\WorkTime::closeStaleOpenForUser($currentUserId);
 $activeEntry = \dbObject\WorkTime::findOpenForUser($currentUserId);
 $requestedOrganizationId = (int)($_GET['oid'] ?? 0);
 $selectedOrganizationId = $requestedOrganizationId > 0 && isset($organizationById[$requestedOrganizationId])
@@ -250,7 +315,7 @@ $profileData = commonResolveTopbarProfileData($organizationContext, []);
     <title><?= htmlspecialchars(t('timer.page.title'), ENT_QUOTES, 'UTF-8') ?></title>
     <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="/common/assets/topbar.css">
-    <link rel="stylesheet" href="/timer/assets/timer.css?v=20260903-project-priority-sort">
+    <link rel="stylesheet" href="/timer/assets/timer.css?v=20260908-timesheet-summary">
 </head>
 <body class="timer-page">
 <?php
@@ -264,7 +329,7 @@ commonRenderTopbar([
     'profile' => ['data' => $profileData],
 ]);
 ?>
-<main class="timer-layout">
+<main class="timer-layout" data-timer-layout>
     <?php if (count($organizationData) === 0): ?>
     <section class="timer-empty">
         <p><?= htmlspecialchars(t('timer.organization.empty')) ?></p>
@@ -317,6 +382,9 @@ commonRenderTopbar([
     </section>
 
     <section class="timer-control" aria-live="polite">
+        <button type="button" class="timer-sheet-handle" data-timer-timesheet-toggle aria-controls="timer-timesheet" aria-expanded="false" aria-label="<?= htmlspecialchars(t('timer.history.open'), ENT_QUOTES, 'UTF-8') ?>">
+            <span aria-hidden="true"></span>
+        </button>
         <div class="timer-status-line">
             <span class="timer-status-dot" data-timer-status-dot></span>
             <strong data-timer-status><?= htmlspecialchars($activeEntry ? t('timer.status.active') : t('timer.status.ready')) ?></strong>
@@ -327,7 +395,21 @@ commonRenderTopbar([
             <span class="timer-toggle-icon" aria-hidden="true">▶</span>
             <span data-timer-toggle-label><?= htmlspecialchars($activeEntry ? t('timer.control.stop') : t('timer.control.start')) ?></span>
         </button>
+        <textarea
+            class="timer-work-label generic-form-control generic-form-control--single-line"
+            data-timer-work-label
+            rows="1"
+            maxlength="<?= (int)(\dbObject\WorkTime::attributeLength()['label'] ?? 1000) ?>"
+            placeholder="<?= htmlspecialchars(t('timer.control.label_placeholder'), ENT_QUOTES, 'UTF-8') ?>"
+            aria-label="<?= htmlspecialchars(t('timer.control.label_aria'), ENT_QUOTES, 'UTF-8') ?>"
+        ></textarea>
         <p class="timer-feedback generic-feedback" data-timer-feedback aria-live="polite"></p>
+    </section>
+    <section id="timer-timesheet" class="timer-timesheet" data-timer-timesheet aria-hidden="true" aria-label="<?= htmlspecialchars(t('timer.history.heading'), ENT_QUOTES, 'UTF-8') ?>">
+        <header class="timer-timesheet__header">
+            <h2><?= htmlspecialchars(t('timer.history.heading')) ?></h2>
+        </header>
+        <div class="timer-timesheet__list" data-timer-timesheet-list aria-live="polite"></div>
     </section>
     <?php endif; ?>
 </main>
@@ -339,10 +421,12 @@ window.timerConfig = <?= json_encode([
     'selectedOrganizationId' => $selectedOrganizationId,
     'organizations' => $organizationData,
     'activeEntry' => $activeEntryData,
+    'interruptedEntry' => $interruptedEntry instanceof \dbObject\WorkTime ? $interruptedEntry->toTimerArray() : null,
     'translations' => [
         'active' => t('timer.status.active'),
         'ready' => t('timer.status.ready'),
         'recovered' => t('timer.status.recovered'),
+        'interrupted' => t('timer.status.interrupted'),
         'start' => t('timer.control.start'),
         'stop' => t('timer.control.stop'),
         'noHolon' => t('timer.control.no_holon'),
@@ -360,9 +444,21 @@ window.timerConfig = <?= json_encode([
         'selectionProject' => t('timer.selection.project', ['organizationName' => '{organizationName}', 'holonName' => '{holonName}', 'projectName' => '{projectName}']),
         'needOrganization' => t('timer.navigation.need_organization'),
         'needHolon' => t('timer.navigation.need_holon'),
+        'historyOpen' => t('timer.history.open'),
+        'historyClose' => t('timer.history.close'),
+        'historyLoading' => t('timer.history.loading'),
+        'historyEmpty' => t('timer.history.empty'),
+        'historyEdit' => t('timer.history.edit'),
+        'historyDelete' => t('timer.history.delete'),
+        'historySave' => t('timer.history.save'),
+        'historyCancel' => t('timer.history.cancel'),
+        'historyStart' => t('timer.history.start'),
+        'historyEnd' => t('timer.history.end'),
+        'historyLabel' => t('timer.history.label'),
+        'historyDeleteConfirm' => t('timer.history.delete_confirm'),
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/timer/assets/timer.js?v=20260903-feedback-auto-clear" defer></script>
+<script src="/timer/assets/timer.js?v=20260908-timesheet-summary" defer></script>
 </body>
 </html>

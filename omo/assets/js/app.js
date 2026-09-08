@@ -2102,6 +2102,25 @@ function omoBuildProjectRouteToken(projectId, mode = 'detail') {
         : `projects-d${resolvedProjectId}`;
 }
 
+function omoParseActivityRouteToken(routeToken = null) {
+    const normalizedRouteToken = omoNormalizeHashToken(routeToken);
+    const activityMatch = normalizedRouteToken
+        ? normalizedRouteToken.match(/^activities-d(\d+)$/i)
+        : null;
+    const activityId = activityMatch ? Number(activityMatch[1]) : 0;
+
+    return Number.isInteger(activityId) && activityId > 0
+        ? {activityId: activityId}
+        : null;
+}
+
+function omoBuildActivityRouteToken(activityId) {
+    const resolvedActivityId = Number(activityId);
+    return Number.isInteger(resolvedActivityId) && resolvedActivityId > 0
+        ? `activities-d${resolvedActivityId}`
+        : null;
+}
+
 function omoBuildDecisionRouteToken(decisionId, mode = 'default') {
     const resolvedDecisionId = Number(decisionId);
     if (!Number.isInteger(resolvedDecisionId) || resolvedDecisionId <= 0) {
@@ -2236,6 +2255,14 @@ function omoDispatchSpecialDrawerRouteChange(routeToken, previousRouteToken = nu
             previousProjectId: previous ? Number(previous.projectId) : 0,
             previousMode: previous && previous.mode ? String(previous.mode) : 'detail'
         };
+    } else if (menuHash === 'activities') {
+        const current = omoParseActivityRouteToken(normalizedRouteToken);
+        const previous = omoParseActivityRouteToken(normalizedPreviousRouteToken);
+        eventName = 'omo-activities-route-change';
+        detail = {
+            activityId: current ? Number(current.activityId) : 0,
+            previousActivityId: previous ? Number(previous.activityId) : 0
+        };
     }
 
     if (!eventName || !detail) {
@@ -2324,6 +2351,10 @@ function omoGetMenuHashForRouteToken(routeToken = null) {
 
     if (omoParseProjectRouteToken(normalizedRouteToken)) {
         return 'projects';
+    }
+
+    if (omoParseActivityRouteToken(normalizedRouteToken)) {
+        return 'activities';
     }
 
     return normalizedRouteToken;
@@ -2567,6 +2598,15 @@ function omoResolveSpecialDrawerRoute(routeToken, oid = null, cid = null, option
         return {
             drawer: 'drawer_projects',
             url: url,
+            navigationMode: 'drawer'
+        };
+    }
+
+    const activityRoute = omoParseActivityRouteToken(normalizedRouteToken);
+    if (activityRoute) {
+        return {
+            drawer: 'drawer_activities',
+            url: 'api/activities/index.php?open_activity_id=' + encodeURIComponent(activityRoute.activityId),
             navigationMode: 'drawer'
         };
     }
@@ -4367,16 +4407,19 @@ $(document).on('click', '[data-omo-personal-space-project-id]', function (e) {
         return;
     }
 
-    const dashboardRoot = $(this).closest('#omo-personal-space-root');
-    const dashboardScope = String($(this).attr('data-omo-personal-space-project-scope') || dashboardRoot.attr('data-omo-personal-space-scope') || '').trim();
-    if (dashboardScope && typeof window.omoOpenDrawerHashState === 'function' && typeof window.omoBuildProjectRouteToken === 'function') {
-        window.omoOpenDrawerHashState(window.omoBuildProjectRouteToken(projectId), {
-            forcedScope: dashboardScope
-        });
+    window.omoOpenSearchProjectResult(projectId, holonId);
+});
+
+$(document).on('click', '[data-omo-personal-space-activity-id]', function (e) {
+    e.preventDefault();
+
+    const activityId = Number($(this).attr('data-omo-personal-space-activity-id') || 0);
+    const holonId = Number($(this).attr('data-omo-personal-space-activity-holon-id') || 0);
+    if (!Number.isInteger(activityId) || activityId <= 0 || typeof window.omoOpenSearchActivityResult !== 'function') {
         return;
     }
 
-    window.omoOpenSearchProjectResult(projectId, holonId);
+    window.omoOpenSearchActivityResult(activityId, holonId);
 });
 
 $(document).on('click', '[data-omo-personal-space-indicator-id]', function (e) {
@@ -4385,15 +4428,6 @@ $(document).on('click', '[data-omo-personal-space-indicator-id]', function (e) {
     const indicatorId = Number($(this).attr('data-omo-personal-space-indicator-id') || 0);
     const holonId = Number($(this).attr('data-omo-personal-space-indicator-holon-id') || 0);
     if (!Number.isInteger(indicatorId) || indicatorId <= 0 || typeof window.omoOpenSearchStatIndicatorResult !== 'function') {
-        return;
-    }
-
-    const dashboardRoot = $(this).closest('#omo-personal-space-root');
-    const dashboardScope = String($(this).attr('data-omo-personal-space-indicator-scope') || dashboardRoot.attr('data-omo-personal-space-scope') || '').trim();
-    if (dashboardScope && typeof window.omoOpenDrawerHashState === 'function' && typeof window.omoBuildStatsIndicatorRouteToken === 'function') {
-        window.omoOpenDrawerHashState(window.omoBuildStatsIndicatorRouteToken(indicatorId), {
-            forcedScope: dashboardScope
-        });
         return;
     }
 
@@ -5477,6 +5511,28 @@ function omoOpenSearchProjectResult(projectId, holonId) {
     return true;
 }
 
+function omoOpenSearchActivityResult(activityId, holonId) {
+    const activityRouteToken = omoBuildActivityRouteToken(activityId);
+    if (!activityRouteToken) {
+        return false;
+    }
+
+    omoClosePopupModalFromRoute();
+
+    const route = parseUrl();
+    if (!Number.isInteger(Number(route.oid)) || Number(route.oid) <= 0) {
+        return false;
+    }
+
+    const resolvedHolonId = Number(holonId);
+    const targetCid = Number.isInteger(resolvedHolonId) && resolvedHolonId > 0
+        ? resolvedHolonId
+        : null;
+
+    navigate(route.oid, targetCid, activityRouteToken);
+    return true;
+}
+
 function omoOpenSearchStatIndicatorResult(indicatorId, holonId) {
     const indicatorRouteToken = omoBuildStatsIndicatorRouteToken(indicatorId);
     if (!indicatorRouteToken) {
@@ -5784,9 +5840,11 @@ window.omoBuildStatsIndicatorRouteToken = omoBuildStatsIndicatorRouteToken;
 window.omoBuildStatsGroupRouteToken = omoBuildStatsGroupRouteToken;
 window.omoBuildChecklistRouteToken = omoBuildChecklistRouteToken;
 window.omoBuildProjectRouteToken = omoBuildProjectRouteToken;
+window.omoBuildActivityRouteToken = omoBuildActivityRouteToken;
 window.omoOpenSearchCalendarEventResult = omoOpenSearchCalendarEventResult;
 window.omoOpenSearchDecisionResult = omoOpenSearchDecisionResult;
 window.omoOpenSearchProjectResult = omoOpenSearchProjectResult;
+window.omoOpenSearchActivityResult = omoOpenSearchActivityResult;
 window.omoOpenSearchStatIndicatorResult = omoOpenSearchStatIndicatorResult;
 window.omoBuildDocumentRouteToken = omoBuildDocumentRouteToken;
 window.omoOpenSearchDocumentResult = omoOpenSearchDocumentResult;

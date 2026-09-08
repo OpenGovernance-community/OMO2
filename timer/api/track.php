@@ -101,6 +101,50 @@ function timerApiValidateTarget($userId, $organizationId, $holonId, $projectId =
     return array('organization' => $organization, 'holon' => $holon);
 }
 
+function timerApiRecentEntryData($userId, array $entries)
+{
+    $organizationCache = array();
+    $items = array();
+    foreach ($entries as $entry) {
+        if (!($entry instanceof \dbObject\WorkTime)) {
+            continue;
+        }
+
+        $organizationId = (int)$entry->get('IDorganization');
+        if (!array_key_exists($organizationId, $organizationCache)) {
+            $organizationCache[$organizationId] = timerApiLoadOrganization($userId, $organizationId);
+        }
+        $organization = $organizationCache[$organizationId];
+        if (!($organization instanceof \dbObject\Organization)) {
+            continue;
+        }
+
+        $holon = timerApiLoadHolon($organization, $userId, (int)$entry->get('IDholon'));
+        if (!($holon instanceof \dbObject\Holon)) {
+            continue;
+        }
+
+        $projectName = '';
+        $projectId = (int)$entry->get('IDproject');
+        if ($projectId > 0) {
+            $project = new \dbObject\Project();
+            if ($project->load($projectId)
+                && (int)$project->get('IDorganization') === $organizationId
+                && (int)$project->get('IDholon') === (int)$holon->getId()) {
+                $projectName = trim((string)$project->get('title'));
+            }
+        }
+
+        $item = $entry->toTimerArray();
+        $item['organizationName'] = trim((string)$organization->get('name'));
+        $item['holonName'] = trim((string)$holon->getDisplayName());
+        $item['projectName'] = $projectName;
+        $items[] = $item;
+    }
+
+    return $items;
+}
+
 $userId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
 if ($userId <= 0) {
     timerApiReply(array('error' => true, 'message' => 'Connexion requise.'), 401);
@@ -110,11 +154,13 @@ $action = trim((string)($_GET['action'] ?? $_POST['action'] ?? 'state'));
 $input = timerApiInput();
 
 if ($action === 'state') {
+    $interrupted = \dbObject\WorkTime::closeStaleOpenForUser($userId);
     $active = \dbObject\WorkTime::findOpenForUser($userId);
     timerApiReply(array(
         'error' => false,
         'active' => $active instanceof \dbObject\WorkTime,
         'entry' => $active instanceof \dbObject\WorkTime ? $active->toTimerArray() : null,
+        'interruptedEntry' => $interrupted instanceof \dbObject\WorkTime ? $interrupted->toTimerArray() : null,
         'serverNow' => time(),
     ));
 }
@@ -151,17 +197,29 @@ if ($action === 'projects') {
     ));
 }
 
+if ($action === 'recent') {
+    timerApiReply(array(
+        'error' => false,
+        'entries' => timerApiRecentEntryData($userId, \dbObject\WorkTime::findRecentClosedForUser($userId)),
+        'serverNow' => time(),
+    ));
+}
+
 timerApiRequireCsrf($input);
 
 if (in_array($action, array('start', 'switch'), true)) {
     $organizationId = (int)($input['organization_id'] ?? 0);
     $holonId = (int)($input['holon_id'] ?? 0);
     $projectId = (int)($input['project_id'] ?? 0);
+    $label = \dbObject\WorkTime::normalizeLabel($input['label'] ?? '');
+    if (empty($label['status'])) {
+        timerApiReply(array('error' => true, 'message' => 'La legende est trop longue.'), 422);
+    }
     if (!timerApiValidateTarget($userId, $organizationId, $holonId, $projectId)) {
         timerApiReply(array('error' => true, 'message' => 'Le holon choisi n est pas accessible.'), 422);
     }
 
-    $active = \dbObject\WorkTime::startOrSwitch($userId, $organizationId, $holonId, $projectId);
+    $active = \dbObject\WorkTime::startOrSwitch($userId, $organizationId, $holonId, $projectId, $label['value']);
     if (!($active instanceof \dbObject\WorkTime)) {
         timerApiReply(array('error' => true, 'message' => 'Impossible d enregistrer le temps de travail.'), 500);
     }
@@ -175,6 +233,25 @@ if (in_array($action, array('start', 'switch'), true)) {
 }
 
 $entryId = (int)($input['entry_id'] ?? 0);
+if ($action === 'label') {
+    $label = \dbObject\WorkTime::normalizeLabel($input['label'] ?? '');
+    if (empty($label['status'])) {
+        timerApiReply(array('error' => true, 'message' => 'La legende est trop longue.'), 422);
+    }
+
+    $active = \dbObject\WorkTime::updateOpenLabelForUser($userId, $entryId, $label['value']);
+    if (!($active instanceof \dbObject\WorkTime)) {
+        timerApiReply(array('error' => true, 'message' => 'Aucun suivi actif n a ete trouve.'), 409);
+    }
+
+    timerApiReply(array(
+        'error' => false,
+        'active' => true,
+        'entry' => $active->toTimerArray(),
+        'serverNow' => time(),
+    ));
+}
+
 if ($action === 'heartbeat') {
     $active = \dbObject\WorkTime::touchOpenForUser($userId, $entryId);
     if (!($active instanceof \dbObject\WorkTime)) {
@@ -199,6 +276,41 @@ if ($action === 'stop') {
         'error' => false,
         'active' => false,
         'entry' => $closed->toTimerArray(),
+        'serverNow' => time(),
+    ));
+}
+
+if ($action === 'update') {
+    $label = \dbObject\WorkTime::normalizeLabel($input['label'] ?? '');
+    if (empty($label['status'])) {
+        timerApiReply(array('error' => true, 'message' => 'La legende est trop longue.'), 422);
+    }
+
+    $updated = \dbObject\WorkTime::updateClosedForUser(
+        $userId,
+        $entryId,
+        $input['started_at'] ?? '',
+        $input['ended_at'] ?? '',
+        $label['value']
+    );
+    if (!($updated instanceof \dbObject\WorkTime)) {
+        timerApiReply(array('error' => true, 'message' => 'Les dates du pointage ne sont pas valides.'), 422);
+    }
+
+    timerApiReply(array(
+        'error' => false,
+        'entry' => $updated->toTimerArray(),
+        'serverNow' => time(),
+    ));
+}
+
+if ($action === 'delete') {
+    if (!\dbObject\WorkTime::deleteClosedForUser($userId, $entryId)) {
+        timerApiReply(array('error' => true, 'message' => 'Le pointage ne peut pas etre supprime.'), 422);
+    }
+
+    timerApiReply(array(
+        'error' => false,
         'serverNow' => time(),
     ));
 }

@@ -57,6 +57,7 @@ if (!empty($enabledAppHashes['activities']) && $scopeReferenceHolon instanceof H
             'title' => trim((string)$activity->get('title')) !== ''
                 ? trim((string)$activity->get('title'))
                 : 'Activité #' . (int)$activity->getId(),
+            'holonId' => (int)$activityHolon->getId(),
             'holonLabel' => trim((string)$activityHolon->getDisplayName()),
             'metric' => $metricKey,
             'occurrenceAt' => $effectiveOccurrenceAt,
