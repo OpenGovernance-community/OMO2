@@ -474,10 +474,11 @@ $renderKanbanCard = static function (array $item, string $status) use ($context,
     $canManageProject = omoProjectsCanManageProject($project, $context);
     $canDeleteProject = omoProjectsCanDeleteProject($project, $context);
     $subprojectCount = omoProjectsCountDescendants((int)$project->getId(), $projectsByParent);
+    $blockedOverdue = omoProjectsIsBlockedOverdue($project);
     ob_start();
     ?>
     <article
-        class="omo-project-card omo-project-card--<?= omoApiEscape($status) ?><?= !empty($item['isStandalone']) ? ' omo-project-card--standalone' : '' ?> generic-section generic-section--stack"
+        class="omo-project-card omo-project-card--<?= omoApiEscape($status) ?><?= !empty($item['isStandalone']) ? ' omo-project-card--standalone' : '' ?><?= $blockedOverdue ? ' omo-project-card--blocked-overdue' : '' ?> generic-section generic-section--stack"
         draggable="<?= $canManageProject ? 'true' : 'false' ?>"
         data-omo-project-card
         data-project-id="<?= (int)$project->getId() ?>"
@@ -487,6 +488,10 @@ $renderKanbanCard = static function (array $item, string $status) use ($context,
         data-project-search="<?= omoApiEscape(trim($projectTitle . ' ' . $item['contextLabel'] . ' ' . $responsibleLabel . ' ' . omoProjectsStatusLabel($status))) ?>"
         data-project-holon-id="<?= (int)$project->get('IDholon') ?>"
         data-project-subproject-count="<?= (int)$subprojectCount ?>"
+        data-project-blocked-reason="<?= omoApiEscape((string)$project->get('blocked_reason')) ?>"
+        data-project-blocked-until="<?= omoApiEscape($project->get('blocked_until') instanceof \DateTimeInterface ? $project->get('blocked_until')->format('Y-m-d') : '') ?>"
+        data-project-blocked-auto-reactivate="<?= (int)$project->get('blocked_auto_reactivate') === 1 ? '1' : '0' ?>"
+        data-project-blocked-reactivate-status="<?= omoApiEscape(Project::normalizeBlockedReactivateStatus($project->get('blocked_reactivate_status'))) ?>"
         tabindex="0"
         role="button"
         aria-label="<?= omoApiEscape($projectTitle) ?>"
@@ -519,6 +524,7 @@ $renderKanbanCard = static function (array $item, string $status) use ($context,
             <span><?= omoApiEscape($responsibleLabel) ?></span>
             <?php if ($plannedEnd !== ''): ?><time datetime="<?= omoApiEscape((string)$plannedEnd) ?>"><?= omoApiEscape($plannedEnd) ?></time><?php endif; ?>
         </div>
+        <?= omoProjectsRenderBlockedInfo($project, 'omo-project-card__blocked-info') ?>
         <?= omoProjectsRenderStatusBar($subprojectSummary, 'omo-project-card__subprojects') ?>
         <?php if ($canManageProject): ?>
             <label class="omo-project-card__status-control">
@@ -713,6 +719,15 @@ $projectTexts = [
     'loadingError' => omoProjectsT('projects.loading_error'),
     'emptyColumn' => omoProjectsT('projects.empty.column'),
     'statusUpdateError' => omoProjectsT('projects.status_update_error'),
+    'blockedDialogTitle' => omoProjectsT('projects.blocked.dialog.title'),
+    'blockedDialogHint' => omoProjectsT('projects.blocked.dialog.hint'),
+    'blockedReason' => omoProjectsT('projects.blocked.reason'),
+    'blockedUntil' => omoProjectsT('projects.blocked.until'),
+    'blockedAutoReactivate' => omoProjectsT('projects.blocked.auto_reactivate'),
+    'blockedReactivateStatus' => omoProjectsT('projects.blocked.reactivate_status'),
+    'blockedReady' => omoProjectsT('projects.blocked.reactivate_ready'),
+    'blockedInProgress' => omoProjectsT('projects.blocked.reactivate_in_progress'),
+    'blockedSave' => omoProjectsT('projects.blocked.save'),
     'actionError' => omoProjectsT('projects.action_error'),
     'deleteConfirm' => omoProjectsT('projects.delete.confirm'),
     'archiveConfirm' => omoProjectsT('projects.archive.confirm'),
@@ -734,6 +749,8 @@ $projectTexts = [
     'documentsError' => omoProjectsT('projects.detail.documents.error'),
     'eventsLoading' => omoProjectsT('projects.detail.events.loading'),
     'eventsError' => omoProjectsT('projects.detail.events.error'),
+    'historyLoading' => omoProjectsT('projects.history.loading'),
+    'historyError' => omoProjectsT('projects.history.error'),
     'documentsAdd' => omoProjectsT('projects.detail.documents.add'),
     'documentsPickerTitle' => omoProjectsT('projects.detail.documents.picker_title'),
     'documentsPickerTabs' => omoProjectsT('projects.detail.documents.picker_tabs'),
@@ -753,7 +770,8 @@ $projectTexts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260906-project-standalone">
+<link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260908-project-history-project-name">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
@@ -976,9 +994,10 @@ $projectTexts = [
                                 $canManageProject = omoProjectsCanManageProject($project, $context);
                                 $canDeleteProject = omoProjectsCanDeleteProject($project, $context);
                                 $subprojectCount = omoProjectsCountDescendants((int)$project->getId(), $projectsByParent);
+                                $blockedOverdue = omoProjectsIsBlockedOverdue($project);
                                 ?>
                                 <article
-                                    class="omo-project-card omo-project-card--<?= omoApiEscape($status) ?><?= !empty($item['isStandalone']) ? ' omo-project-card--standalone' : '' ?> generic-section generic-section--stack"
+                                    class="omo-project-card omo-project-card--<?= omoApiEscape($status) ?><?= !empty($item['isStandalone']) ? ' omo-project-card--standalone' : '' ?><?= $blockedOverdue ? ' omo-project-card--blocked-overdue' : '' ?> generic-section generic-section--stack"
                                     draggable="<?= $canManageProject ? 'true' : 'false' ?>"
                                     data-omo-project-card
                                     data-project-id="<?= (int)$project->getId() ?>"
@@ -988,6 +1007,10 @@ $projectTexts = [
                                     data-project-search="<?= omoApiEscape(trim($projectTitle . ' ' . $item['contextLabel'] . ' ' . $responsibleLabel . ' ' . omoProjectsStatusLabel($status))) ?>"
                                     data-project-holon-id="<?= (int)$project->get('IDholon') ?>"
                                     data-project-subproject-count="<?= (int)$subprojectCount ?>"
+                                    data-project-blocked-reason="<?= omoApiEscape((string)$project->get('blocked_reason')) ?>"
+                                    data-project-blocked-until="<?= omoApiEscape($project->get('blocked_until') instanceof \DateTimeInterface ? $project->get('blocked_until')->format('Y-m-d') : '') ?>"
+                                    data-project-blocked-auto-reactivate="<?= (int)$project->get('blocked_auto_reactivate') === 1 ? '1' : '0' ?>"
+                                    data-project-blocked-reactivate-status="<?= omoApiEscape(Project::normalizeBlockedReactivateStatus($project->get('blocked_reactivate_status'))) ?>"
                                     tabindex="0"
                                     role="button"
                                     aria-label="<?= omoApiEscape($projectTitle) ?>"
@@ -1020,6 +1043,7 @@ $projectTexts = [
                                         <span><?= omoApiEscape($responsibleLabel) ?></span>
                                         <?php if ($plannedEnd !== ''): ?><time datetime="<?= omoApiEscape((string)$plannedEnd) ?>"><?= omoApiEscape($plannedEnd) ?></time><?php endif; ?>
                                     </div>
+                                    <?= omoProjectsRenderBlockedInfo($project, 'omo-project-card__blocked-info') ?>
                                     <?= omoProjectsRenderStatusBar($subprojectSummary, 'omo-project-card__subprojects') ?>
                                     <?php if ($canManageProject): ?>
                                         <label class="omo-project-card__status-control">
@@ -1062,8 +1086,9 @@ $projectTexts = [
                                         $project = $item['project'];
                                         $canManageProject = omoProjectsCanManageProject($project, $context);
                                         $canDeleteProject = omoProjectsCanDeleteProject($project, $context);
+                                        $blockedOverdue = omoProjectsIsBlockedOverdue($project);
                                         ?>
-                                        <article class="omo-project-list-item omo-project-list-item--<?= omoApiEscape($item['status']) ?><?= !empty($item['isStandalone']) ? ' omo-project-list-item--standalone' : '' ?>" data-omo-project-list-item data-project-id="<?= (int)$project->getId() ?>" data-project-parent-id="<?= (int)$project->get('IDproject_parent') ?>" data-project-search="<?= omoApiEscape(trim((string)$project->get('title') . ' ' . $item['holonLabel'] . ' ' . $item['responsibleLabel'] . ' ' . omoProjectsStatusLabel($item['status']))) ?>" tabindex="0" role="button" aria-label="<?= omoApiEscape((string)$project->get('title')) ?>">
+                                        <article class="omo-project-list-item omo-project-list-item--<?= omoApiEscape($item['status']) ?><?= !empty($item['isStandalone']) ? ' omo-project-list-item--standalone' : '' ?><?= $blockedOverdue ? ' omo-project-list-item--blocked-overdue' : '' ?>" data-omo-project-list-item data-project-id="<?= (int)$project->getId() ?>" data-project-parent-id="<?= (int)$project->get('IDproject_parent') ?>" data-project-search="<?= omoApiEscape(trim((string)$project->get('title') . ' ' . $item['holonLabel'] . ' ' . $item['responsibleLabel'] . ' ' . omoProjectsStatusLabel($item['status']))) ?>" tabindex="0" role="button" aria-label="<?= omoApiEscape((string)$project->get('title')) ?>">
                                             <?php if ($canManageProject): ?><label class="omo-project-selection-control"><input type="checkbox" data-omo-project-select data-project-can-delete="<?= $canDeleteProject ? '1' : '0' ?>" value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>"></label><?php endif; ?>
                                             <div class="omo-project-list-item__main">
                                                 <strong><?= omoApiEscape((string)$project->get('title')) ?></strong>
@@ -1074,6 +1099,7 @@ $projectTexts = [
                                                     <?php if ($usesSize): ?><span class="omo-project-detail__subproject-size"><?= omoApiEscape($item['projectSize']) ?></span><?php endif; ?>
                                                     <?php if ($usesPriority && $item['priority'] !== null): ?><span class="generic-project-priority generic-project-priority--p<?= (int)$item['priority'] ?>" title="<?= omoApiEscape(omoProjectsT('projects.detail.priority')) ?>">P<?= (int)$item['priority'] ?></span><?php endif; ?>
                                                 </div>
+                                                <?= omoProjectsRenderBlockedInfo($project, 'omo-project-list-item__blocked-info') ?>
                                             </div>
                                             <div class="omo-project-list-item__planning">
                                                 <?php if ($item['startDate'] !== '' || $item['endDate'] !== ''): ?>
@@ -1121,13 +1147,15 @@ $projectTexts = [
                                     $isOverdue = $item['status'] !== Project::STATUS_DONE
                                         && $item['plannedEnd'] instanceof \DateTimeImmutable
                                         && $item['plannedEnd'] < $ganttToday;
+                                    $blockedOverdue = omoProjectsIsBlockedOverdue($project);
                                     $projectAriaLabel = trim($projectTitle . ' ' . $dateLabel . ($isOverdue ? ' ' . omoProjectsT('projects.gantt.overdue') : ''));
                                     ?>
-                                    <article class="omo-project-gantt-row omo-project-gantt-row--<?= omoApiEscape($item['status']) ?><?= !empty($item['isStandalone']) ? ' omo-project-gantt-row--standalone' : '' ?><?= $isOverdue ? ' omo-project-gantt-row--overdue' : '' ?>" data-omo-project-gantt-item data-project-id="<?= (int)$project->getId() ?>" data-project-parent-id="<?= (int)$project->get('IDproject_parent') ?>" data-project-search="<?= omoApiEscape(trim($projectTitle . ' ' . $item['holonLabel'] . ' ' . $item['responsibleLabel'] . ' ' . omoProjectsStatusLabel($item['status']) . ($isOverdue ? ' ' . omoProjectsT('projects.gantt.overdue') : ''))) ?>" style="--omo-project-gantt-depth: <?= (int)$item['depth'] ?>;" tabindex="0" role="button" aria-label="<?= omoApiEscape($projectAriaLabel) ?>">
+                                    <article class="omo-project-gantt-row omo-project-gantt-row--<?= omoApiEscape($item['status']) ?><?= !empty($item['isStandalone']) ? ' omo-project-gantt-row--standalone' : '' ?><?= $isOverdue ? ' omo-project-gantt-row--overdue' : '' ?><?= $blockedOverdue ? ' omo-project-gantt-row--blocked-overdue' : '' ?>" data-omo-project-gantt-item data-project-id="<?= (int)$project->getId() ?>" data-project-parent-id="<?= (int)$project->get('IDproject_parent') ?>" data-project-search="<?= omoApiEscape(trim($projectTitle . ' ' . $item['holonLabel'] . ' ' . $item['responsibleLabel'] . ' ' . omoProjectsStatusLabel($item['status']) . ($isOverdue ? ' ' . omoProjectsT('projects.gantt.overdue') : ''))) ?>" style="--omo-project-gantt-depth: <?= (int)$item['depth'] ?>;" tabindex="0" role="button" aria-label="<?= omoApiEscape($projectAriaLabel) ?>">
                                     <div class="omo-project-gantt-row__project" data-omo-project-gantt-project<?= $isOverdue ? ' title="' . omoApiEscape(omoProjectsT('projects.gantt.overdue')) . '"' : '' ?>>
                                         <?php if ($canManageProject): ?><label class="omo-project-selection-control"><input type="checkbox" data-omo-project-select data-project-can-delete="<?= $canDeleteProject ? '1' : '0' ?>" value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>"></label><?php endif; ?>
                                             <strong><?= omoApiEscape($projectTitle) ?></strong>
                                             <span><?= omoApiEscape($item['holonLabel']) ?> · <?= omoApiEscape($item['responsibleLabel']) ?></span>
+                                            <?= omoProjectsRenderBlockedInfo($project, 'omo-project-gantt-row__blocked-info') ?>
                                         </div>
                                         <div class="omo-projects__gantt-timeline omo-project-gantt-row__timeline" data-omo-project-gantt-timeline>
                                             <?php if ($ganttTodayOffset !== null): ?><span class="omo-projects__gantt-today" style="--omo-project-gantt-left: <?= number_format($ganttTodayOffset, 4, '.', '') ?>%;" aria-hidden="true"></span><?php endif; ?>
@@ -1184,4 +1212,6 @@ $projectTexts = [
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/common/calendar/event-editor.js?v=20260902-submit-lock"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
-<script src="/omo/api/projects/projects.js?v=20260906-pv-subdrawer-slide"></script>
+<script src="/common/choice/word-diff.js?v=20260816"></script>
+<script src="/common/choice/change-details.js?v=20260816-governance-details"></script>
+<script src="/omo/api/projects/projects.js?v=20260908-project-history"></script>

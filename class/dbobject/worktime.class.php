@@ -6,6 +6,7 @@ class WorkTime extends DbObject
     public const END_REASON_STOP = 'stop';
     public const END_REASON_SWITCH = 'switch';
     public const END_REASON_INTERRUPTED = 'interrupted';
+    public const END_REASON_MANUAL = 'manual';
     public const SHORT_SWITCH_MAXIMUM_SECONDS = 10;
     public const SHORT_SWITCH_CONTINUITY_MAXIMUM_SECONDS = 300;
     public const MAX_RESUMABLE_HEARTBEAT_AGE_SECONDS = 28800;
@@ -159,6 +160,37 @@ class WorkTime extends DbObject
         $workTime->set('started_at', $start);
         $workTime->set('ended_at', $end);
         $workTime->set('label', $normalizedLabel['value']);
+        $result = $workTime->save();
+        return is_array($result) && !empty($result['status']) ? $workTime : null;
+    }
+
+    public static function createClosedForUser($userId, $organizationId, $holonId, $projectId, $startedAt, $endedAt, $label)
+    {
+        $userId = (int)$userId;
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holonId;
+        $projectId = (int)$projectId;
+        $normalizedLabel = self::normalizeLabel($label);
+        $start = self::parseManualDateTime($startedAt);
+        $end = self::parseManualDateTime($endedAt);
+        if ($userId <= 0 || $organizationId <= 0 || $holonId <= 0
+            || empty($normalizedLabel['status'])
+            || !($start instanceof \DateTimeImmutable)
+            || !($end instanceof \DateTimeImmutable)
+            || $end <= $start) {
+            return null;
+        }
+
+        $workTime = new self();
+        $workTime->set('IDuser', $userId);
+        $workTime->set('IDorganization', $organizationId);
+        $workTime->set('IDholon', $holonId);
+        $workTime->set('IDproject', $projectId > 0 ? $projectId : null);
+        $workTime->set('label', $normalizedLabel['value']);
+        $workTime->set('started_at', $start);
+        $workTime->set('ended_at', $end);
+        $workTime->set('last_heartbeat_at', $end);
+        $workTime->set('end_reason', self::END_REASON_MANUAL);
         $result = $workTime->save();
         return is_array($result) && !empty($result['status']) ? $workTime : null;
     }
@@ -367,6 +399,53 @@ class WorkTime extends DbObject
         return self::aggregateMeasuredIntervalsByDay(is_array($rows) ? $rows : [], $start, $end);
     }
 
+    public static function getDailyMeasuredSecondsByCategoryForHolons($organizationId, array $holonIds, \DateTimeInterface $rangeStart, \DateTimeInterface $rangeEnd)
+    {
+        $organizationId = (int)$organizationId;
+        $holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), static function ($holonId) {
+            return $holonId > 0;
+        })));
+        $start = \DateTimeImmutable::createFromInterface($rangeStart);
+        $end = \DateTimeImmutable::createFromInterface($rangeEnd);
+
+        if ($organizationId <= 0 || count($holonIds) === 0 || $end <= $start) {
+            return self::aggregateMeasuredIntervalsByDayAndCategory([], $start, $end);
+        }
+
+        $params = [
+            'organization_id' => $organizationId,
+            'range_start' => $start->format('Y-m-d H:i:s'),
+            'range_end' => $end->format('Y-m-d H:i:s'),
+        ];
+        $holonPlaceholders = [];
+        foreach ($holonIds as $index => $holonId) {
+            $parameterName = 'holon_' . $index;
+            $holonPlaceholders[] = ':' . $parameterName;
+            $params[$parameterName] = $holonId;
+        }
+
+        $rows = self::fetchAll(
+            'SELECT wt.`started_at`, wt.`ended_at`,
+                    CASE
+                        WHEN wt.`IDproject` IS NOT NULL THEN \'project\'
+                        WHEN h.`IDtypeholon` = 1 THEN \'role\'
+                        ELSE \'circle\'
+                    END AS `category`
+             FROM `work_time` wt
+             INNER JOIN `holon` h ON h.`id` = wt.`IDholon`
+             WHERE wt.`IDorganization` = :organization_id
+               AND wt.`IDholon` IN (' . implode(', ', $holonPlaceholders) . ')
+               AND wt.`ended_at` IS NOT NULL
+               AND wt.`ended_at` > wt.`started_at`
+               AND wt.`started_at` < :range_end
+               AND wt.`ended_at` > :range_start
+             ORDER BY wt.`started_at` ASC, wt.`id` ASC',
+            $params
+        );
+
+        return self::aggregateMeasuredIntervalsByDayAndCategory(is_array($rows) ? $rows : [], $start, $end);
+    }
+
     public static function aggregateMeasuredIntervalsByDay(array $intervals, \DateTimeInterface $rangeStart, \DateTimeInterface $rangeEnd)
     {
         $start = \DateTimeImmutable::createFromInterface($rangeStart);
@@ -418,6 +497,35 @@ class WorkTime extends DbObject
         }
 
         return $dailySeconds;
+    }
+
+    public static function aggregateMeasuredIntervalsByDayAndCategory(array $intervals, \DateTimeInterface $rangeStart, \DateTimeInterface $rangeEnd)
+    {
+        $categories = ['project', 'role', 'circle'];
+        $intervalsByCategory = array_fill_keys($categories, []);
+
+        foreach ($intervals as $interval) {
+            if (!is_array($interval)) {
+                continue;
+            }
+
+            $category = (string)($interval['category'] ?? 'circle');
+            if (!array_key_exists($category, $intervalsByCategory)) {
+                $category = 'circle';
+            }
+            $intervalsByCategory[$category][] = $interval;
+        }
+
+        $dailySecondsByCategory = [];
+        foreach ($categories as $category) {
+            $dailySecondsByCategory[$category] = self::aggregateMeasuredIntervalsByDay(
+                $intervalsByCategory[$category],
+                $rangeStart,
+                $rangeEnd
+            );
+        }
+
+        return $dailySecondsByCategory;
     }
 
     public function isOpen()

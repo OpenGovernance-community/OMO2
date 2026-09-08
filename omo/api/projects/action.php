@@ -33,8 +33,23 @@ function omoProjectsSaveFailureMessage($saveResult)
     if ($errorCode === Project::SAVE_ERROR_PARENT_END_DATE) {
         return omoProjectsT('projects.error.parent_end_date');
     }
+    if ($errorCode === Project::SAVE_ERROR_BLOCKED_DETAILS) {
+        return omoProjectsT('projects.error.blocked_details');
+    }
 
     return omoProjectsT('projects.error.save');
+}
+
+function omoProjectsApplyBlockedFields(Project $project, $status, array $input)
+{
+    if (Project::normalizeStatus($status) !== Project::STATUS_BLOCKED) {
+        return;
+    }
+
+    $project->set('blocked_reason', trim((string)($input['blocked_reason'] ?? '')));
+    $project->set('blocked_until', trim((string)($input['blocked_until'] ?? '')));
+    $project->set('blocked_auto_reactivate', (string)($input['blocked_auto_reactivate'] ?? '') === '1');
+    $project->set('blocked_reactivate_status', Project::normalizeBlockedReactivateStatus($input['blocked_reactivate_status'] ?? Project::STATUS_READY));
 }
 
 function omoProjectsGetProjectTree(Project $project, $organizationId, $includeInactive = false)
@@ -307,6 +322,7 @@ if ($action === 'update_kanban_position') {
     }
 
     $existingProject->set('status', $status);
+    omoProjectsApplyBlockedFields($existingProject, $status, $_POST);
     $saveResult = $existingProject->save();
     if (!is_array($saveResult) || empty($saveResult['status'])) {
         omoProjectsActionRespond(false, omoProjectsSaveFailureMessage($saveResult), [], 422);
@@ -333,6 +349,7 @@ if ($action === 'update_status') {
     }
 
     $project->set('status', $status);
+    omoProjectsApplyBlockedFields($project, $status, $_POST);
     $saveResult = $project->save();
     if (!is_array($saveResult) || empty($saveResult['status'])) {
         omoProjectsActionRespond(false, omoProjectsSaveFailureMessage($saveResult), [], 422);
@@ -490,6 +507,8 @@ $project->set('IDholon', $targetHolonId);
 $project->set('title', mb_substr($title, 0, 255, 'UTF-8'));
 $project->set('description', PropertyFormat::sanitizeHtml((string)($_POST['description'] ?? '')));
 $project->set('status', Project::normalizeStatus($_POST['status'] ?? Project::STATUS_SOMEDAY));
+$projectStatus = Project::normalizeStatus($project->get('status'));
+omoProjectsApplyBlockedFields($project, $projectStatus, $_POST);
 $project->set('capture_mode', Project::normalizeCaptureMode($_POST['capture_mode'] ?? Project::CAPTURE_MULTIPLE_DOCUMENTS));
 $project->set('project_size', Project::normalizeSize($_POST['project_size'] ?? Project::SIZE_M));
 $project->set('priority', Project::normalizeLevel($_POST['priority'] ?? null));

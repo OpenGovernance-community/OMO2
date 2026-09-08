@@ -280,6 +280,38 @@ if ($action === 'stop') {
     ));
 }
 
+if ($action === 'create') {
+    $organizationId = (int)($input['organization_id'] ?? 0);
+    $holonId = (int)($input['holon_id'] ?? 0);
+    $projectId = (int)($input['project_id'] ?? 0);
+    $label = \dbObject\WorkTime::normalizeLabel($input['label'] ?? '');
+    if (empty($label['status'])) {
+        timerApiReply(array('error' => true, 'message' => 'La legende est trop longue.'), 422);
+    }
+    if (!timerApiValidateTarget($userId, $organizationId, $holonId, $projectId)) {
+        timerApiReply(array('error' => true, 'message' => 'Le holon choisi n est pas accessible.'), 422);
+    }
+
+    $created = \dbObject\WorkTime::createClosedForUser(
+        $userId,
+        $organizationId,
+        $holonId,
+        $projectId,
+        $input['started_at'] ?? '',
+        $input['ended_at'] ?? '',
+        $label['value']
+    );
+    if (!($created instanceof \dbObject\WorkTime)) {
+        timerApiReply(array('error' => true, 'message' => 'Les dates du pointage ne sont pas valides.'), 422);
+    }
+
+    timerApiReply(array(
+        'error' => false,
+        'entry' => $created->toTimerArray(),
+        'serverNow' => time(),
+    ));
+}
+
 if ($action === 'update') {
     $label = \dbObject\WorkTime::normalizeLabel($input['label'] ?? '');
     if (empty($label['status'])) {

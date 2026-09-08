@@ -2,6 +2,19 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-08
+
+- Le graphique Budget distingue maintenant, dans chaque barre quotidienne, le temps pointe sur un projet, directement sur un role, ou directement sur un cercle, groupe ou organisation. La courbe de cumul et les references de budget continuent de porter sur le total.
+- Le libelle des projets bloques avec reactivation automatique indique maintenant directement la date et l etat de reactivation.
+- Un blocage manuel dont la date est depassee est maintenant signale visuellement comme un retard d attention, sans le confondre avec le retard de fin de projet.
+- Les projets disposent maintenant d un onglet Historique. Il retrace les changements d intitule, de statut, de dates et de blocage, y compris les reactivations automatiques et leur motif. L historique generique est desormais rattache a une cible de type et d identifiant indexes.
+- L historique de structure est maintenant lui aussi cible directement par type et identifiant. Les anciennes entrees ont ete rattachees a leur holon et le champ de cercle devenu redondant a ete retire.
+- Les messages d historique des projets precisent maintenant le statut, l intitule ou la date effectivement modifies, et l onglet Historique conserve une liste compacte.
+- Le nom du projet est maintenant mis en evidence dans chaque message de son historique.
+- Le cache de la representation de structure ne se reconstruit desormais que lorsqu une entree d historique cible un holon.
+
+- Les projets bloques enregistrent maintenant le motif d attente, une date de reexamen, et peuvent se reactiver automatiquement a cette date dans l etat Pret ou En cours. Le Kanban ouvre une popup pour ces informations, le formulaire de projet affiche un bloc conditionnel, et le motif apparait dans les vues Kanban, Liste et Gantt.
+
 ## 2026-09-07
 
 - Les droits contextuels `CAN_EDIT_HOLON_BUDGET` et `CAN_EDIT_AFFECTATION_BUDGET` permettent maintenant de distinguer l edition des budgets propres aux holons de celle des budgets de leurs affectations. Ils sont regroupes dans la rubrique Budget de l editeur de droits et respectent les portees existantes, par exemple les elements directs d un cercle.
@@ -16,6 +29,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - La timesheet affiche le chemin organisation, holon et projet une seule fois sur les pointages normaux; le rappel distinct reste disponible pendant leur modification.
 - Les modifications de pointage acceptent maintenant les valeurs `datetime-local` des navigateurs avec ou sans secondes. Une entree devenue indisponible est signalee comme telle au lieu d etre confondue avec une erreur de date.
 - Le Timer appelle maintenant son API par l URL neutre `/timer/api/worktime.php`, ce qui evite que les bloqueurs de suivi assimilent son demarrage a un traceur publicitaire.
+- La timesheet du Timer propose un bouton `+` pour ajouter manuellement un pointage oublie sur le holon actuellement selectionne, avec le projet courant lorsqu il est choisi. Le formulaire propose une heure de fin courante et un debut une heure plus tot, qui restent entierement modifiables.
 
 - Le segment de phase d elaboration du graphique de scrutin utilise maintenant le meme libelle Elaboration que le reste de l interface.
 - Les participants identifies par un lien public utilisent maintenant un pseudonyme stable dans les propositions anonymes et leurs discussions, meme lorsqu ils disposent aussi d un compte.

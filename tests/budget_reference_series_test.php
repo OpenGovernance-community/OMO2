@@ -1,6 +1,34 @@
 <?php
 declare(strict_types=1);
 
+if (!function_exists('omoApiEscape')) {
+    function omoApiEscape($value): string
+    {
+        return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+    }
+}
+
+if (!function_exists('omoLoadTranslationBundle')) {
+    function omoLoadTranslationBundle(string $domain, array $sourceLang): array
+    {
+        return $sourceLang;
+    }
+}
+
+if (!function_exists('t')) {
+    function t(string $key, array $replace, array $lang, array $sourceLang): string
+    {
+        $entry = $lang[$key] ?? $sourceLang[$key] ?? array('text' => $key);
+        $text = is_array($entry) ? (string)($entry['text'] ?? $key) : (string)$entry;
+
+        foreach ($replace as $name => $value) {
+            $text = str_replace('{' . $name . '}', (string)$value, $text);
+        }
+
+        return $text;
+    }
+}
+
 require_once dirname(__DIR__) . '/omo/api/budget/shared.php';
 
 function assertBudgetReferenceSeries(bool $condition, string $message): void
@@ -97,5 +125,17 @@ $uninterruptedCumulative = omoBudgetBuildCumulativeTimeSeries(
     $timezone
 );
 assertBudgetReferenceSeries((int)$uninterruptedCumulative[count($uninterruptedCumulative) - 1]['value'] === 5400, 'The cumulative curve must remain uninterrupted without a direct holon budget.');
+
+$categorizedChart = omoBudgetRenderMeasuredTimeChart(
+    ['2026-09-01' => 7200],
+    $timezone,
+    [
+        'project' => ['2026-09-01' => 3600],
+        'role' => ['2026-09-01' => 1800],
+        'circle' => ['2026-09-01' => 1800],
+    ]
+);
+assertBudgetReferenceSeries(substr_count($categorizedChart, 'omo-budget__daily-bar--') === 3, 'The chart must render one segment for every daily time category.');
+assertBudgetReferenceSeries(str_contains($categorizedChart, 'omo-budget__legend-item--project'), 'The chart must render the project time legend.');
 
 echo "budget_reference_series_test: OK\n";

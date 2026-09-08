@@ -15,6 +15,8 @@ class Project extends DbObject
 
     public const SAVE_ERROR_PARENT_SOMEDAY = 'parent_someday';
     public const SAVE_ERROR_PARENT_END_DATE = 'parent_end_date';
+    public const SAVE_ERROR_BLOCKED_DETAILS = 'blocked_details';
+    public const HISTORY_ACTION_AUTO_REACTIVATED = 'project_auto_reactivated';
 
     public const CAPTURE_MULTIPLE_DOCUMENTS = 'multiple_documents';
     public const CAPTURE_SINGLE_JOURNAL = 'single_journal';
@@ -24,6 +26,8 @@ class Project extends DbObject
     public const SIZE_L = 'L';
     public const SIZE_XL = 'XL';
     public const SIZE_XXL = 'XXL';
+
+    private $historyActionOverride = '';
 
     public static function tableName()
     {
@@ -37,11 +41,13 @@ class Project extends DbObject
             [['id', 'priority', 'importance'], 'integer'],
             [['calculated_importance'], 'float'],
             [['IDorganization', 'IDholon', 'IDuser', 'IDproject_parent', 'IDdocument_journal', 'IDproject_template'], 'fk'],
-            [['title', 'status', 'capture_mode', 'project_size', 'project_kind'], 'string'],
+            [['title', 'status', 'capture_mode', 'project_size', 'project_kind', 'blocked_reactivate_status'], 'string'],
+            [['blocked_reason'], 'text'],
             [['description'], 'html'],
-            [['planned_start_date', 'planned_end_date'], 'date'],
+            [['planned_start_date', 'planned_end_date', 'blocked_until'], 'date'],
             [['created_at', 'updated_at', 'closed_at', 'archived_at'], 'datetime'],
             [['active'], 'boolean'],
+            [['blocked_auto_reactivate'], 'boolean'],
             [['id'], 'safe'],
         ];
     }
@@ -60,6 +66,10 @@ class Project extends DbObject
             'title' => 'Titre',
             'description' => 'Description',
             'status' => 'Statut',
+            'blocked_reason' => 'Motif du blocage',
+            'blocked_until' => 'Date de relance',
+            'blocked_auto_reactivate' => 'Réactiver automatiquement',
+            'blocked_reactivate_status' => 'Statut de réactivation',
             'planned_start_date' => 'Debut planifie',
             'planned_end_date' => 'Fin planifiee',
             'priority' => 'Priorite',
@@ -80,6 +90,10 @@ class Project extends DbObject
         return [
             'description' => 'Description HTML simple avec paragraphes, listes et mise en forme, y compris pour les modeles de processus.',
             'status' => 'Etat du projet pour une future vue kanban.',
+            'blocked_reason' => 'Ce qui empêche actuellement le projet d avancer.',
+            'blocked_until' => 'Date à partir de laquelle le blocage doit être réévalué.',
+            'blocked_auto_reactivate' => 'Réactive automatiquement le projet à la date de relance.',
+            'blocked_reactivate_status' => 'Etat appliqué lors de la réactivation automatique.',
             'planned_start_date' => 'Date a laquelle le projet devrait commencer.',
             'planned_end_date' => 'Date a laquelle le projet devrait etre termine.',
             'closed_at' => 'Date a laquelle le projet est passe a l etat termine.',
@@ -99,6 +113,7 @@ class Project extends DbObject
         return [
             'title' => 255,
             'status' => 20,
+            'blocked_reactivate_status' => 20,
             'capture_mode' => 30,
             'project_size' => 3,
             'project_kind' => 30,
@@ -290,6 +305,33 @@ class Project extends DbObject
             : self::STATUS_SOMEDAY;
     }
 
+    public static function normalizeBlockedReactivateStatus($value)
+    {
+        $value = trim(mb_strtolower((string)$value, 'UTF-8'));
+        return in_array($value, [self::STATUS_READY, self::STATUS_IN_PROGRESS], true)
+            ? $value
+            : self::STATUS_READY;
+    }
+
+    public static function normalizeBlockedUntil($value)
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return new \DateTime($value->format('Y-m-d'));
+        }
+
+        $value = trim((string)$value);
+        if ($value === '') {
+            return null;
+        }
+
+        $date = \DateTime::createFromFormat('!Y-m-d', $value);
+        $errors = \DateTime::getLastErrors();
+        return $date instanceof \DateTime
+            && ($errors === false || ((int)$errors['warning_count'] === 0 && (int)$errors['error_count'] === 0))
+            ? $date
+            : null;
+    }
+
     public static function kinds()
     {
         return [self::KIND_STANDARD, self::KIND_CHECKLIST_TEMPLATE];
@@ -465,8 +507,269 @@ class Project extends DbObject
         return $value >= 1 && $value <= 5 ? $value : null;
     }
 
+    public function saveWithHistoryAction($action)
+    {
+        $previousAction = $this->historyActionOverride;
+        $this->historyActionOverride = trim((string)$action);
+        try {
+            return $this->save();
+        } finally {
+            $this->historyActionOverride = $previousAction;
+        }
+    }
+
+    private static function formatHistoryDate($value)
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('d.m.Y');
+        }
+
+        $value = trim((string)$value);
+        if ($value === '') {
+            return '';
+        }
+
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        return $date instanceof \DateTimeInterface ? $date->format('d.m.Y') : $value;
+    }
+
+    private static function getHistoryStatusLabel($status)
+    {
+        $status = self::normalizeStatus($status);
+        $catalog = self::getStatusCatalog();
+        return (string)($catalog[$status]['label'] ?? $status);
+    }
+
+    private static function buildHistoryState(array $values)
+    {
+        return [
+            'title' => trim((string)($values['title'] ?? '')),
+            'status' => self::getHistoryStatusLabel($values['status'] ?? self::STATUS_SOMEDAY),
+            'planned_start_date' => self::formatHistoryDate($values['planned_start_date'] ?? null),
+            'planned_end_date' => self::formatHistoryDate($values['planned_end_date'] ?? null),
+            'blocked_reason' => trim((string)($values['blocked_reason'] ?? '')),
+            'blocked_until' => self::formatHistoryDate($values['blocked_until'] ?? null),
+            'blocked_auto_reactivate' => (int)($values['blocked_auto_reactivate'] ?? 0) === 1 ? 'Oui' : 'Non',
+            'blocked_reactivate_status' => self::getHistoryStatusLabel($values['blocked_reactivate_status'] ?? self::STATUS_READY),
+            '_status' => self::normalizeStatus($values['status'] ?? self::STATUS_SOMEDAY),
+        ];
+    }
+
+    private static function getStoredHistoryState($projectId)
+    {
+        $row = self::fetchRow(
+            'SELECT title, status, planned_start_date, planned_end_date, blocked_reason, blocked_until, blocked_auto_reactivate, blocked_reactivate_status
+             FROM project
+             WHERE id = :id
+             LIMIT 1',
+            ['id' => (int)$projectId]
+        );
+        return is_array($row) ? self::buildHistoryState($row) : null;
+    }
+
+    private function getCurrentHistoryState()
+    {
+        return self::buildHistoryState([
+            'title' => $this->get('title'),
+            'status' => $this->get('status'),
+            'planned_start_date' => $this->get('planned_start_date'),
+            'planned_end_date' => $this->get('planned_end_date'),
+            'blocked_reason' => $this->get('blocked_reason'),
+            'blocked_until' => $this->get('blocked_until'),
+            'blocked_auto_reactivate' => $this->get('blocked_auto_reactivate'),
+            'blocked_reactivate_status' => $this->get('blocked_reactivate_status'),
+        ]);
+    }
+
+    private static function buildHistoryChanges(array $before, array $after)
+    {
+        $labels = [
+            'title' => 'Intitulé',
+            'status' => 'Statut',
+            'planned_start_date' => 'Début planifié',
+            'planned_end_date' => 'Fin planifiée',
+            'blocked_reason' => 'Motif du blocage',
+            'blocked_until' => 'Date de réexamen',
+            'blocked_auto_reactivate' => 'Réactivation automatique',
+            'blocked_reactivate_status' => 'État après réactivation',
+        ];
+        $changes = [];
+        $isOrWasBlocked = (string)($before['_status'] ?? '') === self::STATUS_BLOCKED
+            || (string)($after['_status'] ?? '') === self::STATUS_BLOCKED;
+        foreach ($labels as $field => $label) {
+            if (str_starts_with($field, 'blocked_') && !$isOrWasBlocked) {
+                continue;
+            }
+            $beforeValue = (string)($before[$field] ?? '');
+            $afterValue = (string)($after[$field] ?? '');
+            if ($beforeValue === $afterValue) {
+                continue;
+            }
+
+            $changes[] = [
+                'field' => $field,
+                'label' => $label,
+                'before' => $beforeValue,
+                'after' => $afterValue,
+                'status' => $beforeValue === '' ? 'added' : ($afterValue === '' ? 'removed' : 'changed'),
+            ];
+        }
+        return $changes;
+    }
+
+    private static function getHistoryActionForChanges(array $changes)
+    {
+        $fields = array_values(array_unique(array_filter(array_map(static function (array $change) {
+            return trim((string)($change['field'] ?? ''));
+        }, $changes))));
+        if (in_array('status', $fields, true)) {
+            return 'project_status_updated';
+        }
+        if (count($fields) === 1 && $fields[0] === 'title') {
+            return 'project_title_updated';
+        }
+        if (count($fields) > 0 && count(array_diff($fields, ['planned_start_date', 'planned_end_date'])) === 0) {
+            return 'project_schedule_updated';
+        }
+        if (count($fields) > 0 && count(array_diff($fields, [
+            'blocked_reason',
+            'blocked_until',
+            'blocked_auto_reactivate',
+            'blocked_reactivate_status',
+        ])) === 0) {
+            return 'project_block_details_updated';
+        }
+        return 'project_updated';
+    }
+
+    private static function buildHistoryChangeMessage(array $change, $projectToken)
+    {
+        $field = trim((string)($change['field'] ?? ''));
+        $before = trim((string)($change['before'] ?? ''));
+        $after = trim((string)($change['after'] ?? ''));
+        $label = trim((string)($change['label'] ?? 'Cette information'));
+        $transition = static function ($subject) use ($before, $after) {
+            if ($before === '') {
+                return $subject . ' a été défini à ' . $after . '.';
+            }
+            if ($after === '') {
+                return $subject . ' a été retiré.';
+            }
+            return $subject . ' est passé de ' . $before . ' à ' . $after . '.';
+        };
+
+        switch ($field) {
+            case 'status':
+                return $transition('Le statut du projet ' . $projectToken);
+            case 'title':
+                return $transition('L’intitulé du projet ' . $projectToken);
+            case 'planned_start_date':
+                return $transition('La date de début planifiée du projet ' . $projectToken);
+            case 'planned_end_date':
+                return $transition('La date de fin planifiée du projet ' . $projectToken);
+            case 'blocked_reason':
+                return $transition('Le motif du blocage du projet ' . $projectToken);
+            case 'blocked_until':
+                return $transition('La date de réexamen du projet ' . $projectToken);
+            case 'blocked_auto_reactivate':
+                return $transition('La réactivation automatique du projet ' . $projectToken);
+            case 'blocked_reactivate_status':
+                return $transition('L’état après réactivation du projet ' . $projectToken);
+            default:
+                return $transition($label . ' du projet ' . $projectToken);
+        }
+    }
+
+    private static function buildHistoryChangeContent(array $changes, $projectToken)
+    {
+        $messages = [];
+        foreach ($changes as $change) {
+            $message = trim(self::buildHistoryChangeMessage($change, $projectToken));
+            if ($message !== '') {
+                $messages[] = $message;
+            }
+        }
+        return implode("\n", $messages);
+    }
+
+    private static function getHistoryStateWithoutMetadata(array $state)
+    {
+        unset($state['_status']);
+        return $state;
+    }
+
+    private function recordHistory($beforeState, $historyActionOverride = '')
+    {
+        $afterState = $this->getCurrentHistoryState();
+        $isNew = !is_array($beforeState);
+        $changes = self::buildHistoryChanges($isNew ? [] : $beforeState, $afterState);
+        if (!$isNew && count($changes) === 0) {
+            return;
+        }
+
+        $projectId = (int)$this->getId();
+        $organizationId = (int)$this->get('IDorganization');
+        if ($projectId <= 0 || $organizationId <= 0) {
+            return;
+        }
+
+        $projectToken = History::buildReferenceToken('project', $projectId, (string)$afterState['title']);
+        $beforeStatus = is_array($beforeState) ? (string)($beforeState['_status'] ?? '') : '';
+        $afterStatus = (string)($afterState['_status'] ?? '');
+        $historyActionOverride = trim((string)$historyActionOverride);
+        $action = self::getHistoryActionForChanges($changes);
+        $content = self::buildHistoryChangeContent($changes, $projectToken);
+
+        if ($isNew) {
+            $action = 'project_created';
+            $content = 'Création du projet ' . $projectToken . '.';
+        } elseif ($historyActionOverride === self::HISTORY_ACTION_AUTO_REACTIVATED) {
+            $action = self::HISTORY_ACTION_AUTO_REACTIVATED;
+            $content = 'Réactivation automatique du projet ' . $projectToken
+                . ' à l état ' . (string)$afterState['status'] . '.';
+            $blockedReason = trim((string)($beforeState['blocked_reason'] ?? ''));
+            if ($blockedReason !== '') {
+                $content .= ' Motif du blocage : ' . $blockedReason . '.';
+            }
+        } elseif ($beforeStatus !== self::STATUS_BLOCKED && $afterStatus === self::STATUS_BLOCKED) {
+            $action = 'project_blocked';
+            $content = 'Blocage du projet ' . $projectToken . '.';
+            $blockedReason = trim((string)($afterState['blocked_reason'] ?? ''));
+            if ($blockedReason !== '') {
+                $content .= ' Motif du blocage : ' . $blockedReason . '.';
+            }
+        }
+
+        $authorUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+
+        try {
+            $result = History::createEntry(
+                $organizationId,
+                $authorUserId,
+                $action,
+                $content,
+                [
+                    'targetType' => 'project',
+                    'targetId' => $projectId,
+                    'before' => $isNew ? [] : self::getHistoryStateWithoutMetadata($beforeState),
+                    'after' => self::getHistoryStateWithoutMetadata($afterState),
+                    'changes' => $changes,
+                ],
+                'project',
+                $projectId
+            );
+            if (!is_array($result) || empty($result['status'])) {
+                error_log('Project history entry could not be saved for project ' . $projectId . '.');
+            }
+        } catch (\Throwable $exception) {
+            error_log('Project history entry failed for project ' . $projectId . ': ' . $exception->getMessage());
+        }
+    }
+
     public function save()
     {
+        $historyBeforeState = (int)$this->getId() > 0 ? self::getStoredHistoryState((int)$this->getId()) : null;
+        $historyActionOverride = $this->historyActionOverride;
         $storedInputs = (int)$this->getId() > 0 ? self::getStoredImportanceInputs((int)$this->getId()) : null;
         if (is_array($storedInputs) && array_key_exists('calculated_importance', $storedInputs)) {
             // This field is server-owned. A value posted by a client must never replace it.
@@ -480,6 +783,24 @@ class Project extends DbObject
         $this->set('project_size', self::normalizeSize($this->get('project_size')));
         $this->set('priority', self::normalizeLevel($this->get('priority')));
         $this->set('importance', self::normalizeLevel($this->get('importance')));
+
+        $status = self::normalizeStatus($this->get('status'));
+        if ($status === self::STATUS_BLOCKED) {
+            $blockedReason = trim((string)$this->get('blocked_reason'));
+            $blockedUntil = self::normalizeBlockedUntil($this->get('blocked_until'));
+            if ($blockedReason === '' || !($blockedUntil instanceof \DateTimeInterface)) {
+                return ['status' => false, 'errorCode' => self::SAVE_ERROR_BLOCKED_DETAILS];
+            }
+            $this->set('blocked_reason', mb_substr($blockedReason, 0, 4000, 'UTF-8'));
+            $this->set('blocked_until', $blockedUntil);
+            $this->set('blocked_auto_reactivate', (int)(bool)$this->get('blocked_auto_reactivate'));
+            $this->set('blocked_reactivate_status', self::normalizeBlockedReactivateStatus($this->get('blocked_reactivate_status')));
+        } else {
+            $this->set('blocked_reason', null);
+            $this->set('blocked_until', null);
+            $this->set('blocked_auto_reactivate', 0);
+            $this->set('blocked_reactivate_status', self::STATUS_READY);
+        }
 
         $parentId = (int)$this->get('IDproject_parent');
         $parent = null;
@@ -546,7 +867,48 @@ class Project extends DbObject
             }
         }
 
+        $this->recordHistory($historyBeforeState, $historyActionOverride);
         return $result;
+    }
+
+    public static function reactivateDueBlockedBatch($limit = 100)
+    {
+        $limit = max(1, min(500, (int)$limit));
+        $rows = self::fetchAll(
+            'SELECT id
+             FROM project
+             WHERE active = 1
+               AND status = :status
+               AND blocked_auto_reactivate = 1
+               AND blocked_until IS NOT NULL
+               AND blocked_until <= CURRENT_DATE
+             ORDER BY blocked_until ASC, id ASC
+             LIMIT ' . $limit,
+            ['status' => self::STATUS_BLOCKED]
+        );
+        if (!is_array($rows)) {
+            return 0;
+        }
+
+        $reactivated = 0;
+        foreach ($rows as $row) {
+            $project = new self();
+            $projectId = (int)($row['id'] ?? 0);
+            if ($projectId <= 0 || !$project->load($projectId) || (int)$project->get('active') !== 1) {
+                continue;
+            }
+            if (self::normalizeStatus($project->get('status')) !== self::STATUS_BLOCKED) {
+                continue;
+            }
+
+            $project->set('status', self::normalizeBlockedReactivateStatus($project->get('blocked_reactivate_status')));
+            $saveResult = $project->saveWithHistoryAction(self::HISTORY_ACTION_AUTO_REACTIVATED);
+            if (is_array($saveResult) && !empty($saveResult['status'])) {
+                $reactivated++;
+            }
+        }
+
+        return $reactivated;
     }
 
     private static function getStoredImportanceInputs($projectId): ?array
