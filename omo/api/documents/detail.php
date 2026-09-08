@@ -19,6 +19,9 @@ $sourceLang = [
     'documents.detail.action.export_pdf_notice' => ['text' => 'Génération du PDF en préparation.', 'context' => 'Topbar notification shown when a PV PDF export starts.'],
     'documents.detail.action.export_pdf_error' => ['text' => 'Impossible de générer le PDF.', 'context' => 'Notification shown when a PV PDF export fails.'],
     'documents.detail.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening the document editor from the document detail drawer.'],
+    'documents.detail.action.delete' => ['text' => 'Effacer', 'context' => 'Icon-only button permanently deleting a document from the document detail drawer.'],
+    'documents.detail.confirm_delete' => ['text' => 'Effacer définitivement ce document ?', 'context' => 'Confirmation shown before permanently deleting a document from its detail drawer.'],
+    'documents.detail.delete_error' => ['text' => 'Impossible d effacer le document.', 'context' => 'Error shown when permanent document deletion fails from its detail drawer.'],
     'documents.detail.action.fullscreen' => ['text' => 'Plein écran', 'context' => 'Button used to show a collaborative document iframe in fullscreen.'],
     'documents.detail.action.exit_fullscreen' => ['text' => 'Quitter le plein écran', 'context' => 'Button used to leave the collaborative document fullscreen mode.'],
     'documents.detail.alt_texts.title' => ['text' => 'Versions texte', 'context' => 'Section title listing alternate text versions.'],
@@ -178,6 +181,8 @@ $canEditDocumentContent = !$document->isPvDocument()
     && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
 $canEditDocument = !$document->isPvDocument()
     && ($canManageDocument || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && !$document->isWhiteboardDocument() && $canEditDocumentContent));
+$canDeleteDocument = $document->canManageLifecycle($organizationId, $currentUserId)
+    && $document->canDeleteDocument();
 $editUrl = $canEditDocument
     ? '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)
         . ($holonId > 0 ? '&cid=' . rawurlencode((string)$holonId) : '')
@@ -235,6 +240,22 @@ if ($associatedEvent instanceof \dbObject\Event) {
                 data-omo-subdrawer-action
                 data-omo-document-open-editor-url="<?= $escape($editUrl) ?>"
             ><?= $escape(omoDocumentsDetailT('documents.detail.action.edit')) ?></button>
+        <?php endif; ?>
+        <?php if ($canDeleteDocument): ?>
+            <button
+                type="button"
+                class="generic-action-button generic-action-button--danger generic-action-button--icon-only"
+                data-omo-subdrawer-action
+                data-omo-document-delete-id="<?= (int)$document->getId() ?>"
+                data-omo-document-delete-confirm="<?= $escape(omoDocumentsDetailT('documents.detail.confirm_delete')) ?>"
+                data-omo-document-delete-error="<?= $escape(omoDocumentsDetailT('documents.detail.delete_error')) ?>"
+                title="<?= $escape(omoDocumentsDetailT('documents.detail.action.delete')) ?>"
+                aria-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.delete')) ?>"
+            >
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2m-9 0 1 13h10l1-13"></path>
+                </svg>
+            </button>
         <?php endif; ?>
     </div>
 
