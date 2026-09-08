@@ -20,6 +20,7 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             'spreadsheetIndicatorsSynced' => 0,
             'decisionNotificationsProcessed' => 0,
             'eventNotificationsProcessed' => 0,
+            'projectsReactivated' => 0,
         ];
 
         $runTask = static function ($name, $errorPrefix, callable $callback) use (&$failedTasks) {
@@ -95,6 +96,13 @@ if (!function_exists('omo_run_fake_cron_maintenance')) {
             'OMO fake cron event notification maintenance failed: ',
             static function () use ($force) {
                 return notificationCenterMaybeProcessEventLifecycle(200, $force);
+            }
+        );
+        $result['projectsReactivated'] = $runTask(
+            'project_blocked_reactivation',
+            'OMO fake cron blocked project reactivation failed: ',
+            static function () {
+                return \dbObject\Project::reactivateDueBlockedBatch(200);
             }
         );
 

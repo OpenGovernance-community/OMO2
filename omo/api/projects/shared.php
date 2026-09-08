@@ -77,6 +77,20 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.loading' => ['text' => 'Chargement du projet…', 'context' => 'Loading message shown inside the project subdrawer.'],
             'projects.loading_error' => ['text' => 'Impossible de charger ce projet.', 'context' => 'Error shown when a project drawer cannot be loaded.'],
             'projects.status_update_error' => ['text' => 'Impossible de changer le statut.', 'context' => 'Fallback error shown when a project status cannot be changed.'],
+            'projects.blocked.dialog.title' => ['text' => 'Projet bloqué', 'context' => 'Title of the dialog shown when a project is moved to the blocked status.'],
+            'projects.blocked.dialog.hint' => ['text' => 'Indiquez ce qui bloque le projet et la date à laquelle il devra être réexaminé.', 'context' => 'Instruction shown in the blocked project dialog.'],
+            'projects.blocked.reason' => ['text' => 'Sur quoi est-ce que j’attends ?', 'context' => 'Blocked project reason field label.'],
+            'projects.blocked.until' => ['text' => 'Réexaminer à partir du', 'context' => 'Blocked project review date field label.'],
+            'projects.blocked.auto_reactivate' => ['text' => 'Réactiver automatiquement après cette date', 'context' => 'Checkbox enabling automatic blocked project reactivation.'],
+            'projects.blocked.reactivate_status' => ['text' => 'État après la réactivation', 'context' => 'Status selected after automatic blocked project reactivation.'],
+            'projects.blocked.reactivate_ready' => ['text' => 'Prêt', 'context' => 'Status option after automatic blocked project reactivation.'],
+            'projects.blocked.reactivate_in_progress' => ['text' => 'En cours', 'context' => 'Status option after automatic blocked project reactivation.'],
+            'projects.blocked.save' => ['text' => 'Enregistrer le blocage', 'context' => 'Submit button in the blocked project dialog.'],
+            'projects.blocked.display_reason' => ['text' => 'Blocage', 'context' => 'Label shown before the blocked project reason.'],
+            'projects.blocked.display_until' => ['text' => 'Réexamen le {date}', 'context' => 'Date shown on a blocked project.'],
+            'projects.blocked.display_due' => ['text' => 'Blocage en retard depuis le {date}', 'context' => 'Past blocked review date shown on a project that is not set to reactivate automatically.'],
+            'projects.blocked.display_auto' => ['text' => 'Réactivation automatique le {date} à {status}', 'context' => 'Automatic reactivation information shown on a blocked project.'],
+            'projects.blocked.display_manual' => ['text' => 'À réexaminer', 'context' => 'Manual review information shown on a blocked project.'],
             'projects.action_error' => ['text' => 'Impossible de mettre à jour le projet.', 'context' => 'Fallback error shown for a project context action.'],
             'projects.delete.confirm' => ['text' => 'Supprimer définitivement ce projet et ses {count} sous-projets ? Cette action est irréversible.', 'context' => 'Confirmation before permanent project deletion.'],
             'projects.archive.confirm' => ['text' => "Ce projet n'est pas terminé. L'archiver quand même ?", 'context' => 'Confirmation before archiving an unfinished project.'],
@@ -96,6 +110,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.error.action' => ['text' => 'Action inconnue.', 'context' => 'Error for an unsupported project action.'],
             'projects.error.title' => ['text' => 'Le titre est obligatoire.', 'context' => 'Validation error for a missing project title.'],
             'projects.error.status' => ['text' => 'Le statut du projet est invalide.', 'context' => 'Validation error for an invalid project status.'],
+            'projects.error.blocked_details' => ['text' => 'Le motif et la date de réexamen sont obligatoires pour un projet bloqué.', 'context' => 'Validation error for missing blocked project details.'],
             'projects.error.dates' => ['text' => 'La date de fin doit être postérieure ou égale à la date de début.', 'context' => 'Validation error when the planned end date precedes the planned start date.'],
             'projects.error.parent_someday' => ['text' => 'Un sous-projet dont le parent a une date de fin ne peut pas être placé dans « Un jour peut-être ».', 'context' => 'Validation error when a dated parent project has a someday subproject.'],
             'projects.error.parent_end_date' => ['text' => 'La date de fin du sous-projet ne peut pas dépasser celle du projet parent.', 'context' => 'Validation error when a subproject end date exceeds its parent end date.'],
@@ -126,6 +141,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.tabs.label' => ['text' => 'Sections du projet', 'context' => 'Accessible label for the project detail tabs.'],
             'projects.detail.tabs.information' => ['text' => 'Informations', 'context' => 'Project detail tab containing the project information.'],
             'projects.detail.tabs.events' => ['text' => 'Événements associés', 'context' => 'Project detail tab reserved for events associated with the project.'],
+            'projects.detail.tabs.history' => ['text' => 'Historique', 'context' => 'Project detail tab containing the project change history.'],
             'projects.detail.events.empty' => ['text' => 'Aucun événement planifié', 'context' => 'Empty state for a project without associated events.'],
             'projects.detail.events.empty_hint' => ['text' => 'Planifiez une séance de travail, un atelier ou un brainstorming pour ce projet.', 'context' => 'Explanation shown in the empty project events tab.'],
             'projects.detail.events.new' => ['text' => 'Créer un événement', 'context' => 'Action opening the event editor for a project.'],
@@ -160,6 +176,11 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.documents.added' => ['text' => 'Ajouté le {date}', 'context' => 'Date label shown for a document attached to a project.'],
             'projects.detail.documents.loading' => ['text' => 'Chargement des documents…', 'context' => 'Loading state for lazy project documents.'],
             'projects.detail.documents.error' => ['text' => 'Impossible de charger les documents du projet.', 'context' => 'Error state for lazy project documents.'],
+            'projects.history.loading' => ['text' => 'Chargement de l’historique...', 'context' => 'History tab loading message.'],
+            'projects.history.error' => ['text' => 'Impossible de charger l’historique.', 'context' => 'History tab loading error.'],
+            'projects.history.empty' => ['text' => 'Aucune modification n’a encore été enregistrée pour ce projet.', 'context' => 'Empty project history state.'],
+            'projects.history.detail' => ['text' => 'Détail', 'context' => 'Summary opening the detailed field changes of a project history entry.'],
+            'projects.history.system' => ['text' => 'Système', 'context' => 'Author label for an automatic project history action.'],
             'projects.detail.documents.menu' => ['text' => 'Options du document', 'context' => 'Accessible label for the project document actions menu.'],
             'projects.detail.documents.open_new_window' => ['text' => 'Ouvrir dans un nouvel onglet', 'context' => 'Menu action opening a project document in a new browser tab.'],
             'projects.detail.documents.detach' => ['text' => 'Détacher du projet', 'context' => 'Menu action removing only the project-document association.'],
@@ -216,6 +237,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.form.description_field' => ['text' => 'Description HTML simple', 'context' => 'Label for the project HTML description editor.'],
             'projects.form.assignment' => ['text' => 'Responsabilité et hiérarchie', 'context' => 'Section title grouping the responsible person and parent project in the project form.'],
             'projects.form.planning' => ['text' => 'Planification', 'context' => 'Section title grouping status and planned dates in the project form.'],
+            'projects.form.blocked' => ['text' => 'Détails du blocage', 'context' => 'Project form section shown when the status is blocked.'],
             'projects.form.attention' => ['text' => "Niveau d'attention", 'context' => 'Section title grouping priority and importance controls in the project form.'],
             'projects.form.more_options' => ['text' => 'Options supplémentaires', 'context' => 'Collapsed project form section title for secondary settings.'],
             'projects.form.more_options_toggle' => ['text' => 'Afficher ou masquer les options supplémentaires', 'context' => 'Accessible label for the secondary project form options accordion.'],
@@ -686,6 +708,57 @@ if (!function_exists('omoProjectsStatusLabel')) {
     {
         $status = Project::normalizeStatus($status);
         return omoProjectsT('projects.status.' . $status);
+    }
+}
+
+if (!function_exists('omoProjectsIsBlockedOverdue')) {
+    function omoProjectsIsBlockedOverdue(Project $project)
+    {
+        if (Project::normalizeStatus($project->get('status')) !== Project::STATUS_BLOCKED
+            || (int)$project->get('blocked_auto_reactivate') === 1) {
+            return false;
+        }
+
+        $blockedUntil = $project->get('blocked_until');
+        return $blockedUntil instanceof \DateTimeInterface
+            && $blockedUntil < new \DateTimeImmutable('today');
+    }
+}
+
+if (!function_exists('omoProjectsRenderBlockedInfo')) {
+    function omoProjectsRenderBlockedInfo(Project $project, $extraClass = '')
+    {
+        if (Project::normalizeStatus($project->get('status')) !== Project::STATUS_BLOCKED) {
+            return '';
+        }
+
+        $reason = trim((string)$project->get('blocked_reason'));
+        $blockedUntil = $project->get('blocked_until');
+        $dateLabel = $blockedUntil instanceof \DateTimeInterface
+            ? $blockedUntil->format('d.m.Y')
+            : '';
+        $isDue = $blockedUntil instanceof \DateTimeInterface
+            && $blockedUntil < new \DateTimeImmutable('today');
+        $reactivateStatus = Project::normalizeBlockedReactivateStatus($project->get('blocked_reactivate_status'));
+        $isAutomatic = (int)$project->get('blocked_auto_reactivate') === 1 && $dateLabel !== '';
+        $metaLabel = $isAutomatic
+            ? omoProjectsT('projects.blocked.display_auto', [
+                'date' => $dateLabel,
+                'status' => omoProjectsStatusLabel($reactivateStatus),
+            ])
+            : ($dateLabel !== ''
+                ? omoProjectsT($isDue ? 'projects.blocked.display_due' : 'projects.blocked.display_until', ['date' => $dateLabel])
+                : omoProjectsT('projects.blocked.display_manual'));
+
+        $className = trim('omo-project-blocked-info'
+            . (omoProjectsIsBlockedOverdue($project) ? ' omo-project-blocked-info--overdue' : '')
+            . ' ' . (string)$extraClass);
+        $html = '<div class="' . omoApiEscape($className) . '">';
+        $html .= '<span class="omo-project-blocked-info__reason"><strong>'
+            . omoApiEscape(omoProjectsT('projects.blocked.display_reason'))
+            . '</strong> ' . omoApiEscape($reason !== '' ? $reason : omoProjectsT('projects.detail.none')) . '</span>';
+        $html .= '<span class="omo-project-blocked-info__meta">' . omoApiEscape($metaLabel) . '</span>';
+        return $html . '</div>';
     }
 }
 

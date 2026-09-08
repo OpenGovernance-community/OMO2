@@ -96,6 +96,15 @@
         loadingError: 'Impossible de charger ce projet.',
         emptyColumn: 'Aucun projet dans cette colonne.',
         statusUpdateError: 'Impossible de changer le statut.',
+        blockedDialogTitle: 'Projet bloqué',
+        blockedDialogHint: 'Indiquez ce qui bloque le projet et la date à laquelle il devra être réexaminé.',
+        blockedReason: 'Sur quoi est-ce que j’attends ?',
+        blockedUntil: 'Réexaminer à partir du',
+        blockedAutoReactivate: 'Réactiver automatiquement après cette date',
+        blockedReactivateStatus: 'État après la réactivation',
+        blockedReady: 'Prêt',
+        blockedInProgress: 'En cours',
+        blockedSave: 'Enregistrer le blocage',
         actionError: 'Impossible de mettre à jour le projet.',
         deleteConfirm: 'Supprimer définitivement ce projet et ses {count} sous-projets ? Cette action est irréversible.',
         archiveConfirm: "Ce projet n'est pas terminé. L'archiver quand même ?",
@@ -171,74 +180,84 @@
         });
     }
 
-    function loadProjectDocuments(tab) {
+    function loadProjectDetailTab(tab, options) {
         if (!tab) {
             return;
         }
         var targetId = tab.getAttribute('data-generic-tab-target') || '';
         var panel = targetId ? document.getElementById(targetId) : null;
-        var content = panel ? panel.querySelector('[data-omo-project-detail-documents-content]') : null;
-        if (!panel || !content || panel.getAttribute('data-omo-project-detail-documents-loaded') === '1' || panel.getAttribute('data-omo-project-detail-documents-loading') === '1') {
+        var content = panel ? panel.querySelector(options.contentSelector) : null;
+        if (!panel || !content || panel.getAttribute(options.loadedAttribute) === '1' || panel.getAttribute(options.loadingAttribute) === '1') {
             return;
         }
 
-        var url = panel.getAttribute('data-omo-project-detail-documents-url') || '';
+        var url = panel.getAttribute(options.urlAttribute) || '';
         if (!url) {
             return;
         }
-        panel.setAttribute('data-omo-project-detail-documents-loading', '1');
-        content.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts.documentsLoading || 'Chargement...') + '</p>';
+        panel.setAttribute(options.loadingAttribute, '1');
+        content.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts[options.loadingTextKey] || options.loadingFallback) + '</p>';
         fetch(resolveUrl(url), {credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}})
             .then(function (response) {
                 if (!response.ok) {
-                    throw new Error('documents');
+                    throw new Error(options.name);
                 }
                 return response.text();
             })
             .then(function (html) {
                 content.innerHTML = html;
-                panel.setAttribute('data-omo-project-detail-documents-loaded', '1');
-                panel.removeAttribute('data-omo-project-detail-documents-loading');
+                panel.setAttribute(options.loadedAttribute, '1');
+                panel.removeAttribute(options.loadingAttribute);
+                if (window.omoChoiceChangeDetails && typeof window.omoChoiceChangeDetails.hydrate === 'function') {
+                    window.omoChoiceChangeDetails.hydrate(content);
+                }
             })
             .catch(function () {
-                content.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts.documentsError || 'Impossible de charger les documents.') + '</p>';
-                panel.removeAttribute('data-omo-project-detail-documents-loading');
+                content.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts[options.errorTextKey] || options.errorFallback) + '</p>';
+                panel.removeAttribute(options.loadingAttribute);
             });
     }
 
-    function loadProjectEvents(tab) {
-        if (!tab) {
-            return;
-        }
-        var targetId = tab.getAttribute('data-generic-tab-target') || '';
-        var panel = targetId ? document.getElementById(targetId) : null;
-        var content = panel ? panel.querySelector('[data-omo-project-detail-events-content]') : null;
-        if (!panel || !content || panel.getAttribute('data-omo-project-detail-events-loaded') === '1' || panel.getAttribute('data-omo-project-detail-events-loading') === '1') {
-            return;
-        }
+    function loadProjectDocuments(tab) {
+        loadProjectDetailTab(tab, {
+            name: 'documents',
+            contentSelector: '[data-omo-project-detail-documents-content]',
+            urlAttribute: 'data-omo-project-detail-documents-url',
+            loadedAttribute: 'data-omo-project-detail-documents-loaded',
+            loadingAttribute: 'data-omo-project-detail-documents-loading',
+            loadingTextKey: 'documentsLoading',
+            loadingFallback: 'Chargement...',
+            errorTextKey: 'documentsError',
+            errorFallback: 'Impossible de charger les documents.'
+        });
+    }
 
-        var url = panel.getAttribute('data-omo-project-detail-events-url') || '';
-        if (!url) {
-            return;
-        }
-        panel.setAttribute('data-omo-project-detail-events-loading', '1');
-        content.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts.eventsLoading || 'Chargement...') + '</p>';
-        fetch(resolveUrl(url), {credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}})
-            .then(function (response) {
-                if (!response.ok) {
-                    throw new Error('events');
-                }
-                return response.text();
-            })
-            .then(function (html) {
-                content.innerHTML = html;
-                panel.setAttribute('data-omo-project-detail-events-loaded', '1');
-                panel.removeAttribute('data-omo-project-detail-events-loading');
-            })
-            .catch(function () {
-                content.innerHTML = '<p class="omo-project-detail__muted generic-description generic-description--small">' + escapeHtml(texts.eventsError || 'Impossible de charger les événements.') + '</p>';
-                panel.removeAttribute('data-omo-project-detail-events-loading');
-            });
+    function loadProjectEvents(tab) {
+        loadProjectDetailTab(tab, {
+            name: 'events',
+            contentSelector: '[data-omo-project-detail-events-content]',
+            urlAttribute: 'data-omo-project-detail-events-url',
+            loadedAttribute: 'data-omo-project-detail-events-loaded',
+            loadingAttribute: 'data-omo-project-detail-events-loading',
+            loadingTextKey: 'eventsLoading',
+            loadingFallback: 'Chargement...',
+            errorTextKey: 'eventsError',
+            errorFallback: 'Impossible de charger les événements.'
+        });
+    }
+
+    function loadProjectHistory(tab) {
+        loadProjectDetailTab(tab, {
+            name: 'history',
+            contentSelector: '[data-omo-project-detail-history-content]',
+            urlAttribute: 'data-omo-project-detail-history-url',
+            loadedAttribute: 'data-omo-project-detail-history-loaded',
+            loadingAttribute: 'data-omo-project-detail-history-loading',
+            loadingTextKey: 'historyLoading',
+            loadingFallback: 'Chargement...',
+            errorTextKey: 'historyError',
+            errorFallback: 'Impossible de charger l’historique.'
+        });
     }
 
     function revealRoot() {
@@ -1592,6 +1611,7 @@
             return;
         }
         var currentStatus = card.getAttribute('data-project-status') || '';
+        var needsBlockedDialog = nextStatus === 'blocked' && currentStatus !== 'blocked';
         var mutation = getKanbanDropMutation(card, target);
         if (!mutation.allowed) {
             return;
@@ -1602,9 +1622,15 @@
         }
         var statusSelect = card.querySelector('[data-omo-project-status-select]');
         card.classList.add('is-pending-status');
-        var request = mutation.fields
-            ? postProjectAction(card.getAttribute('data-project-id'), 'update_kanban_position', Object.assign({status: nextStatus}, mutation.fields))
-            : postStatus(card.getAttribute('data-project-id'), nextStatus);
+        var sendStatus = function (blockedFields) {
+            var fields = Object.assign({status: nextStatus}, mutation.fields || {}, blockedFields || {});
+            return mutation.fields
+                ? postProjectAction(card.getAttribute('data-project-id'), 'update_kanban_position', fields)
+                : postProjectAction(card.getAttribute('data-project-id'), 'update_status', fields);
+        };
+        var request = needsBlockedDialog
+            ? openBlockedStatusDialog(card).then(sendStatus)
+            : sendStatus(null);
         request.then(function () {
             refreshRoot(currentUrl, {
                 preserveScroll: true,
@@ -1615,7 +1641,9 @@
             if (statusSelect) {
                 statusSelect.value = currentStatus;
             }
-            window.omoNotify(error.message || texts.statusUpdateError, 'error');
+            if (!error || error.cancelled !== true) {
+                window.omoNotify(error.message || texts.statusUpdateError, 'error');
+            }
         });
     }
 
@@ -1651,6 +1679,84 @@
 
     function postStatus(projectId, status) {
         return postProjectAction(projectId, 'update_status', {status: status});
+    }
+
+    function getBlockedStatusFields(projectNode) {
+        return {
+            reason: projectNode ? String(projectNode.getAttribute('data-project-blocked-reason') || '') : '',
+            until: projectNode ? String(projectNode.getAttribute('data-project-blocked-until') || '') : '',
+            autoReactivate: projectNode ? projectNode.getAttribute('data-project-blocked-auto-reactivate') === '1' : false,
+            reactivateStatus: projectNode ? String(projectNode.getAttribute('data-project-blocked-reactivate-status') || 'ready') : 'ready'
+        };
+    }
+
+    function openBlockedStatusDialog(projectNode) {
+        return new Promise(function (resolve, reject) {
+            if (typeof window.commonTopbarOpenModal !== 'function') {
+                reject(new Error(texts.actionError));
+                return;
+            }
+
+            var initial = getBlockedStatusFields(projectNode);
+            var html = '<form class="omo-project-blocked-dialog generic-drawer-content" data-omo-project-blocked-dialog>'
+                + '<p class="omo-project-blocked-dialog__hint generic-help-text">' + escapeHtml(texts.blockedDialogHint) + '</p>'
+                + '<label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.blockedReason) + '</span><textarea class="generic-form-control" rows="4" maxlength="4000" required data-omo-project-blocked-reason>' + escapeHtml(initial.reason) + '</textarea></label>'
+                + '<label class="generic-form-field"><span class="generic-form-label">' + escapeHtml(texts.blockedUntil) + '</span><input class="generic-form-control" type="date" required value="' + escapeHtml(initial.until) + '" data-omo-project-blocked-until></label>'
+                + '<label class="generic-form-checkbox"><input type="checkbox" data-omo-project-blocked-auto' + (initial.autoReactivate ? ' checked' : '') + '><span>' + escapeHtml(texts.blockedAutoReactivate) + '</span></label>'
+                + '<label class="generic-form-field" data-omo-project-blocked-target-field><span class="generic-form-label">' + escapeHtml(texts.blockedReactivateStatus) + '</span><select class="generic-form-control" data-omo-project-blocked-target><option value="ready"' + (initial.reactivateStatus === 'ready' ? ' selected' : '') + '>' + escapeHtml(texts.blockedReady) + '</option><option value="in_progress"' + (initial.reactivateStatus === 'in_progress' ? ' selected' : '') + '>' + escapeHtml(texts.blockedInProgress) + '</option></select></label>'
+                + '<p class="omo-project-blocked-dialog__error" data-omo-project-blocked-error hidden></p>'
+                + '<div class="omo-project-blocked-dialog__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-blocked-cancel>' + escapeHtml(texts.cancel) + '</button><button type="submit" class="generic-action-button generic-action-button--main">' + escapeHtml(texts.blockedSave) + '</button></div>'
+                + '</form>';
+            window.commonTopbarOpenModal(texts.blockedDialogTitle, html, 'html');
+            window.setTimeout(function () {
+                var modal = document.getElementById('commonTopbarModalBody');
+                var dialog = modal ? modal.querySelector('[data-omo-project-blocked-dialog]') : null;
+                if (!(dialog instanceof HTMLFormElement)) {
+                    reject(new Error(texts.actionError));
+                    return;
+                }
+
+                var reason = dialog.querySelector('[data-omo-project-blocked-reason]');
+                var until = dialog.querySelector('[data-omo-project-blocked-until]');
+                var autoReactivate = dialog.querySelector('[data-omo-project-blocked-auto]');
+                var target = dialog.querySelector('[data-omo-project-blocked-target]');
+                var targetField = dialog.querySelector('[data-omo-project-blocked-target-field]');
+                var errorNode = dialog.querySelector('[data-omo-project-blocked-error]');
+                var settled = false;
+                var finish = function (value, cancelled) {
+                    if (settled) return;
+                    settled = true;
+                    window.removeEventListener('common-topbar-modal-close', onClose);
+                    if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
+                    if (cancelled) reject({cancelled: true});
+                    else resolve(value);
+                };
+                var onClose = function () { finish(null, true); };
+                var syncTarget = function () {
+                    var visible = !!(autoReactivate && autoReactivate.checked);
+                    if (targetField) targetField.hidden = !visible;
+                    if (target) target.disabled = !visible;
+                };
+                window.addEventListener('common-topbar-modal-close', onClose);
+                if (autoReactivate) autoReactivate.addEventListener('change', syncTarget);
+                dialog.addEventListener('click', function (event) {
+                    if (event.target.closest('[data-omo-project-blocked-cancel]')) finish(null, true);
+                });
+                dialog.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    if (!dialog.reportValidity()) return;
+                    if (errorNode) errorNode.hidden = true;
+                    finish({
+                        blocked_reason: String(reason && reason.value || '').trim(),
+                        blocked_until: String(until && until.value || ''),
+                        blocked_auto_reactivate: autoReactivate && autoReactivate.checked ? '1' : '',
+                        blocked_reactivate_status: String(target && target.value || 'ready')
+                    }, false);
+                });
+                syncTarget();
+                if (reason) reason.focus();
+            }, 0);
+        });
     }
 
     function getSelectedProjectIds() {
@@ -2148,6 +2254,12 @@
             return;
         }
 
+        var historyTab = event.target.closest('[data-omo-project-detail-history-tab]');
+        if (historyTab) {
+            loadProjectHistory(historyTab);
+            return;
+        }
+
         var addDocumentButton = event.target.closest('[data-omo-project-detail-add-document]');
         if (addDocumentButton) {
             event.preventDefault();
@@ -2561,7 +2673,12 @@
             return;
         }
         select.disabled = true;
-        postStatus(projectId, select.value).then(function () {
+        var statusRequest = select.value === 'blocked'
+            ? openBlockedStatusDialog(item).then(function (blockedFields) {
+                return postProjectAction(projectId, 'update_status', Object.assign({status: selectedAction}, blockedFields));
+            })
+            : postStatus(projectId, select.value);
+        statusRequest.then(function () {
             if (item) {
                 columns.forEach(function (status) {
                     item.classList.remove('omo-project-detail__subproject-item--' + status);
@@ -2577,7 +2694,9 @@
         }).catch(function (error) {
             select.value = previousStatus;
             select.disabled = false;
-            window.omoNotify(error.message || texts.statusUpdateError, 'error');
+            if (!error || error.cancelled !== true) {
+                window.omoNotify(error.message || texts.statusUpdateError, 'error');
+            }
         });
     });
 

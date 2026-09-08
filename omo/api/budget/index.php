@@ -28,7 +28,23 @@ $timezone = new DateTimeZone(date_default_timezone_get());
 $today = new DateTimeImmutable('today', $timezone);
 $rangeStart = $today->modify('-29 days');
 $rangeEnd = $today->modify('+1 day');
-$dailySeconds = WorkTime::getDailyMeasuredSecondsForHolons($organizationId, $holonIds, $rangeStart, $rangeEnd);
+$dailySecondsByCategory = WorkTime::getDailyMeasuredSecondsByCategoryForHolons(
+    $organizationId,
+    $holonIds,
+    $rangeStart,
+    $rangeEnd
+);
+$dailySeconds = array_fill_keys(
+    array_keys((array)($dailySecondsByCategory['circle'] ?? array())),
+    0
+);
+foreach ($dailySecondsByCategory as $categoryDailySeconds) {
+    foreach ((array)$categoryDailySeconds as $dateKey => $seconds) {
+        if (array_key_exists($dateKey, $dailySeconds)) {
+            $dailySeconds[$dateKey] += max(0, (int)$seconds);
+        }
+    }
+}
 $totalSeconds = array_sum($dailySeconds);
 $timeBudgets = UserHolon::getActiveTimeBudgetsForHolons($holonIds);
 $budgetReferenceSeries = omoBudgetBuildTimeBudgetReferenceSeries($timeBudgets, array_keys($dailySeconds), $timezone);
@@ -75,7 +91,7 @@ $timeBudgetRecurrence = UserHolon::normalizeBudgetRecurrence($currentHolon->get(
 $moneyBudgetRecurrence = UserHolon::normalizeBudgetRecurrence($currentHolon->get('money_budget_recurrence'));
 ?>
 <link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260824-source-fields">
-<link rel="stylesheet" href="/omo/api/budget/budget.css?v=20260907-3">
+<link rel="stylesheet" href="/omo/api/budget/budget.css?v=20260908-time-categories">
 <div
     class="omo-budget omo-panel-view"
     id="omo-budget-root"
@@ -168,6 +184,7 @@ $moneyBudgetRecurrence = UserHolon::normalizeBudgetRecurrence($currentHolon->get
                     <?= omoBudgetRenderMeasuredTimeChart(
                         $dailySeconds,
                         $timezone,
+                        $dailySecondsByCategory,
                         $budgetReferenceSeries,
                         $holonBudgetReferenceSeries,
                         $hasHolonTimeBudget ? $holonTimeBudgetRecurrence : '',

@@ -112,6 +112,41 @@
     stroke: var(--color-text-light, #64748b);
 }
 
+.omo-budget__daily-bar--project {
+    fill: #15803d;
+    stroke: #15803d;
+}
+
+.omo-budget__daily-bar--role {
+    fill: var(--color-primary, #2563eb);
+    stroke: var(--color-primary, #2563eb);
+}
+
+.omo-budget__daily-bar--circle {
+    fill: #64748b;
+    stroke: #64748b;
+}
+
+.omo-budget .omo-budget__legend-item--project::before,
+.omo-budget .omo-budget__legend-item--role::before,
+.omo-budget .omo-budget__legend-item--circle::before {
+    width: 13px;
+    height: 13px;
+    border-radius: 2px;
+}
+
+.omo-budget .omo-budget__legend-item--project::before {
+    background: #15803d;
+}
+
+.omo-budget .omo-budget__legend-item--role::before {
+    background: var(--color-primary, #2563eb);
+}
+
+.omo-budget .omo-budget__legend-item--circle::before {
+    background: #64748b;
+}
+
 .omo-budget .omo-budget__legend-item--holon-reference::before {
     background: var(--color-text-light, #64748b);
 }
