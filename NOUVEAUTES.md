@@ -2084,5 +2084,6 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 
 # 2026-09-08
 
+- Le detail d un document propose maintenant un bouton Effacer avec une icone poubelle dans l entete du drawer, coherent avec les autres applications, avec confirmation puis rafraichissement de la liste.
 - Le bouton Fermer et le clic sur le fond du sous-drawer des Activites ferment a nouveau le detail, y compris dans le contexte des onglets PV.
 - L editeur de PV rafraichit maintenant la liste de presence apres une reprise de main ou un changement d etape, afin que ses cases refletent immediatement le droit d edition courant.
