@@ -9,6 +9,9 @@
     }
     root.dataset.activitiesReady = '1';
 
+    var useLocalDrawerNavigation = typeof window.omoIsPvApplicationTabContext === 'function'
+        && window.omoIsPvApplicationTabContext(root);
+
     var drawer = root.querySelector('[data-activity-drawer]');
     var body = root.querySelector('[data-activity-drawer-body]');
     var drawerController = drawer && typeof window.omoCreateSubdrawerController === 'function'

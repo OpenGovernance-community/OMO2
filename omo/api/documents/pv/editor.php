@@ -5689,12 +5689,21 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         syncDocumentStageUi(currentDocumentPayload);
         syncPvEditorUi(currentDocumentPayload);
         syncDocumentMetadataUi();
+        if (attendanceEnabled) {
+            renderAttendancePayload(currentAttendancePayload);
+        }
     }
 
     function formatAttendanceCount(presentCount, totalCount) {
         return <?= json_encode((string)$uiText['attendanceCount'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
             .replace('{present}', String(Math.max(0, Number(presentCount || 0))))
             .replace('{total}', String(Math.max(0, Number(totalCount || 0))));
+    }
+
+    function canManageAttendance() {
+        return currentDocumentPayload
+            && currentDocumentPayload.canManagePvDocument === true
+            && String(currentDocumentPayload.pvStage || '') !== 'review';
     }
 
     function buildAttendanceSignature(attendancePayload) {
@@ -5707,6 +5716,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             eventId: Number(attendancePayload.eventId || 0),
             presentCount: Number(attendancePayload.presentCount || 0),
             totalCount: Number(attendancePayload.totalCount || entries.length || 0),
+            canManage: canManageAttendance() ? 1 : 0,
             entries: entries.map(function (entry) {
                 return [
                     String(entry && entry.identityKey ? entry.identityKey : ''),
@@ -5766,9 +5776,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.checked = !!entry.isPresent;
-            checkbox.disabled = !(currentDocumentPayload
-                && currentDocumentPayload.canManagePvDocument === true
-                && String(currentDocumentPayload.pvStage || '') !== 'review');
+            checkbox.disabled = !canManageAttendance();
             checkbox.setAttribute('data-omo-pv-attendance-toggle', String(entry.identityKey));
 
             const copy = document.createElement('span');

@@ -416,7 +416,7 @@ commonRenderTopbar([
 <script>
 window.timerConfig = <?= json_encode([
     'csrfToken' => (string)$_SESSION['timer_csrf'],
-    'apiUrl' => '/timer/api/track.php',
+    'apiUrl' => '/timer/api/worktime.php',
     'structureUrl' => '/omo/api/getStructureData.php',
     'selectedOrganizationId' => $selectedOrganizationId,
     'organizations' => $organizationData,
