@@ -21,6 +21,7 @@ $currentHolon = $context['currentHolon'];
 $rootHolon = $context['rootHolon'];
 $organization = $context['organization'];
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+$openActivityId = isset($_GET['open_activity_id']) && is_numeric($_GET['open_activity_id']) ? (int)$_GET['open_activity_id'] : 0;
 $applicationViewPreferences = omoApplicationViewPreferencesGetContext('activities', $organization, $currentHolon, $currentUserId);
 $scopes = omoApiGetAvailableContextScopes(true, $currentHolon, $rootHolon);
 $scope = omoApiNormalizeContextScope(
@@ -110,6 +111,7 @@ $texts = [
     id="omo-activities-root"
     data-activity-oid="<?= (int)$organizationId ?>"
     data-activity-cid="<?= (int)$currentHolonId ?>"
+    data-activity-open-id="<?= (int)$openActivityId ?>"
     data-activity-scope="<?= omoApiEscape($scope) ?>"
     data-activity-current-url="<?= omoApiEscape($currentUrl) ?>"
     data-activity-base-url="<?= omoApiEscape($baseUrl) ?>"
@@ -266,4 +268,4 @@ $texts = [
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
-<script src="/omo/api/activities/activities.js?v=20260902-submit-lock"></script>
+<script src="/omo/api/activities/activities.js?v=20260907-dashboard-open"></script>

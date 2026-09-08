@@ -23,6 +23,7 @@
     var currentSearch = '';
     var currentUrl = root.getAttribute('data-activity-current-url') || '';
     var baseUrl = root.getAttribute('data-activity-base-url') || currentUrl;
+    var initialOpenActivityId = Number(root.getAttribute('data-activity-open-id') || 0);
     var savedViewsStorageKey = 'omo.activities.saved-views.v1';
     var sessionViewsStorageKey = 'omo.activities.session-views.v1';
     var searchStorageKey = 'omo.activities.quick-search.v1';
@@ -135,9 +136,13 @@
 
     function buildScopeUrl(scope) {
         var normalized = normalizeScope(scope);
-        return baseUrl + (normalized !== 'contextual'
+        var url = baseUrl + (normalized !== 'contextual'
             ? (baseUrl.indexOf('?') === -1 ? '?' : '&') + 'activity_scope=' + encodeURIComponent(normalized)
             : '');
+        if (Number.isInteger(initialOpenActivityId) && initialOpenActivityId > 0) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + 'open_activity_id=' + encodeURIComponent(String(initialOpenActivityId));
+        }
+        return url;
     }
 
     function stateMatches(itemState) {
@@ -336,6 +341,45 @@
         });
     }
 
+    function buildDetailUrl(activityId) {
+        var organizationId = Number(root.getAttribute('data-activity-oid') || 0);
+        var holonId = Number(root.getAttribute('data-activity-cid') || 0);
+        var resolvedActivityId = Number(activityId || 0);
+        if (!Number.isInteger(organizationId) || organizationId <= 0 || !Number.isInteger(resolvedActivityId) || resolvedActivityId <= 0) {
+            return '';
+        }
+        var detailUrl = '/omo/api/activities/detail.php?oid=' + encodeURIComponent(String(organizationId))
+            + '&id=' + encodeURIComponent(String(resolvedActivityId));
+        if (Number.isInteger(holonId) && holonId > 0) {
+            detailUrl += '&cid=' + encodeURIComponent(String(holonId));
+        }
+        return detailUrl;
+    }
+
+    function getCurrentRouteToken() {
+        if (useLocalDrawerNavigation || typeof window.omoParsePopupHashState !== 'function') {
+            return '';
+        }
+        var hashState = window.omoParsePopupHashState();
+        return hashState && hashState.routeToken ? String(hashState.routeToken) : '';
+    }
+
+    function maybeOpenInitialActivity() {
+        var activityId = initialOpenActivityId;
+        var routeMatch = getCurrentRouteToken().match(/^activities-d(\d+)$/i);
+        if (routeMatch) {
+            activityId = Number(routeMatch[1]);
+        }
+        if (!Number.isInteger(activityId) || activityId <= 0) {
+            return;
+        }
+        var detailUrl = buildDetailUrl(activityId);
+        if (!detailUrl) {
+            return;
+        }
+        openDrawer(detailUrl);
+    }
+
     function closeDrawer(refreshAfterClose) {
         if (!drawer) {
             return;
@@ -457,6 +501,10 @@
         var closeButton = event.target.closest('[data-activity-close]');
         if (closeButton) {
             event.preventDefault();
+            if (/^activities-d\d+$/i.test(getCurrentRouteToken()) && typeof window.omoOpenDrawerHashState === 'function') {
+                window.omoOpenDrawerHashState('activities');
+                return;
+            }
             closeDrawer(false);
             return;
         }
@@ -609,5 +657,34 @@
         }
     });
 
+    window.omoOpenActivityRoute = function (routeToken) {
+        if (!root.isConnected) {
+            return false;
+        }
+        var routeMatch = String(routeToken || '').replace(/^#/, '').trim().match(/^activities-d(\d+)$/i);
+        if (!routeMatch) {
+            return false;
+        }
+        initialOpenActivityId = Number(routeMatch[1]);
+        var detailUrl = buildDetailUrl(initialOpenActivityId);
+        if (!detailUrl) {
+            return false;
+        }
+        openDrawer(detailUrl);
+        return true;
+    };
+
+    function handleActivityRouteChange(event) {
+        var route = event && event.detail ? event.detail : {};
+        var activityId = Number(route.activityId || 0);
+        if (activityId > 0 && window.omoOpenActivityRoute('activities-d' + String(activityId))) {
+            return;
+        }
+        initialOpenActivityId = 0;
+        closeDrawer(false);
+    }
+
     initializeViewFilter();
+    window.addEventListener('omo-activities-route-change', handleActivityRouteChange);
+    window.setTimeout(maybeOpenInitialActivity, 40);
 }(window, document));

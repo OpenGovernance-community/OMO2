@@ -1021,6 +1021,12 @@ textarea.generic-form-control {
     resize: vertical;
 }
 
+textarea.generic-form-control--single-line {
+    min-height: 36px;
+    padding: 6px 9px;
+    resize: none;
+}
+
 .generic-filter-chips,
 .omo-view-filter__chips,
 .omo-projects__filter-chips {

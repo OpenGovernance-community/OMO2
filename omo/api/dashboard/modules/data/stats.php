@@ -59,6 +59,7 @@ if (!empty($enabledAppHashes['stats'])) {
             'title' => trim((string)$indicator->get('name')) !== ''
                 ? trim((string)$indicator->get('name'))
                 : 'Indicateur #' . (int)$indicator->getId(),
+            'holonId' => $indicatorHolon instanceof \dbObject\Holon ? (int)$indicatorHolon->getId() : 0,
             'contextLabel' => omoStatsContextLabel($indicator),
             'severity' => (string)($overdueInfo['severity'] ?? 'error'),
             'overdueDays' => (int)($overdueInfo['overdue_days'] ?? 0),

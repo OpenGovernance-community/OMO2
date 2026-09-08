@@ -3,6 +3,9 @@
 
     function boot() {
         var config = window.timerConfig || {};
+        var timerLayout = document.querySelector('[data-timer-layout]');
+        var timerSelector = document.querySelector('.timer-selector');
+        var timerControl = document.querySelector('.timer-control');
         var pickerHost = document.querySelector('[data-timer-holon-picker]');
         var projectList = document.querySelector('[data-timer-project-list]');
         var projectStatus = document.querySelector('[data-timer-project-status]');
@@ -10,6 +13,10 @@
         var swipeTrack = document.querySelector('[data-timer-swipe-track]');
         var toggleButton = document.querySelector('[data-timer-toggle]');
         var toggleLabel = document.querySelector('[data-timer-toggle-label]');
+        var workLabel = document.querySelector('[data-timer-work-label]');
+        var timesheetToggle = document.querySelector('[data-timer-timesheet-toggle]');
+        var timesheet = document.querySelector('[data-timer-timesheet]');
+        var timesheetList = document.querySelector('[data-timer-timesheet-list]');
         var clock = document.querySelector('[data-timer-clock]');
         var status = document.querySelector('[data-timer-status]');
         var statusDot = document.querySelector('[data-timer-status-dot]');
@@ -20,6 +27,7 @@
         var organizations = Array.isArray(config.organizations) ? config.organizations : [];
         var translations = config.translations || {};
         var activeEntry = config.activeEntry || null;
+        var interruptedEntry = config.interruptedEntry || null;
         var feedbackTimeoutId = 0;
         var state = {
             organizationId: normalizeId(config.selectedOrganizationId),
@@ -35,12 +43,108 @@
             projects: {},
             requestInProgress: false,
             serverOffsetMs: 0,
-            lastSwitchTarget: ''
+            lastSwitchTarget: '',
+            pendingSwitchTarget: '',
+            workLabel: activeEntry ? normalizeWorkLabel(activeEntry.label) : '',
+            savedWorkLabel: activeEntry ? normalizeWorkLabel(activeEntry.label) : '',
+            workLabelSaveTimeoutId: 0,
+            pickerLayoutFrameId: 0,
+            timesheetOpen: false,
+            recentEntries: [],
+            recentLoading: false,
+            editingEntryId: 0
         };
 
         function normalizeId(value) {
             var numericValue = Number(value || 0);
             return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : 0;
+        }
+
+        function normalizeWorkLabel(value) {
+            return String(value == null ? '' : value).replace(/\r\n?/g, '\n');
+        }
+
+        function resizeWorkLabel() {
+            if (!workLabel) {
+                return;
+            }
+            workLabel.style.height = 'auto';
+            var styles = window.getComputedStyle(workLabel);
+            var lineHeight = parseFloat(styles.lineHeight) || 19;
+            var verticalPadding = (parseFloat(styles.paddingTop) || 0)
+                + (parseFloat(styles.paddingBottom) || 0)
+                + (parseFloat(styles.borderTopWidth) || 0)
+                + (parseFloat(styles.borderBottomWidth) || 0);
+            var maximumHeight = (lineHeight * 3) + verticalPadding;
+            workLabel.style.height = Math.min(workLabel.scrollHeight, maximumHeight) + 'px';
+            workLabel.style.overflowY = workLabel.scrollHeight > maximumHeight ? 'auto' : 'hidden';
+            refreshPickerLayout();
+        }
+
+        function refreshPickerLayout() {
+            if (state.pickerLayoutFrameId !== 0) {
+                return;
+            }
+            state.pickerLayoutFrameId = window.requestAnimationFrame(function () {
+                state.pickerLayoutFrameId = 0;
+                if (state.picker && typeof state.picker.refresh === 'function') {
+                    state.picker.refresh();
+                }
+            });
+        }
+
+        function setWorkLabel(value) {
+            state.workLabel = normalizeWorkLabel(value);
+            if (workLabel) {
+                workLabel.value = state.workLabel;
+                resizeWorkLabel();
+            }
+        }
+
+        function scheduleWorkLabelSave(delay) {
+            if (!state.activeEntry || state.workLabel === state.savedWorkLabel) {
+                return;
+            }
+            if (state.workLabelSaveTimeoutId) {
+                window.clearTimeout(state.workLabelSaveTimeoutId);
+            }
+            state.workLabelSaveTimeoutId = window.setTimeout(function () {
+                state.workLabelSaveTimeoutId = 0;
+                saveWorkLabel();
+            }, typeof delay === 'number' ? delay : 600);
+        }
+
+        function saveWorkLabel() {
+            if (!state.activeEntry || state.workLabel === state.savedWorkLabel) {
+                return;
+            }
+            if (state.requestInProgress) {
+                scheduleWorkLabelSave(180);
+                return;
+            }
+
+            var entryId = normalizeId(state.activeEntry.id);
+            var label = state.workLabel;
+            if (entryId <= 0) {
+                return;
+            }
+
+            state.requestInProgress = true;
+            postAction('label', { entry_id: entryId, label: label })
+                .then(function (result) {
+                    applyResponse(result);
+                    if (state.activeEntry && normalizeId(state.activeEntry.id) === entryId) {
+                        state.savedWorkLabel = label;
+                    }
+                    if (state.activeEntry && state.workLabel !== state.savedWorkLabel) {
+                        scheduleWorkLabelSave();
+                    }
+                }).catch(function (error) {
+                    showFeedback(error.message || translations.genericError, false);
+                }).finally(function () {
+                    state.requestInProgress = false;
+                    flushPendingSwitchTarget();
+                });
         }
 
         function escapeHtml(value) {
@@ -107,6 +211,59 @@
                 dateStyle: 'short',
                 timeStyle: 'short'
             }).format(new Date(timestamp * 1000));
+        }
+
+        function formatLocalDateTimeValue(unixTimestamp) {
+            var timestamp = Number(unixTimestamp || 0);
+            if (timestamp <= 0) {
+                return '';
+            }
+            var date = new Date(timestamp * 1000);
+            var pad = function (value) { return String(value).padStart(2, '0'); };
+            return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate())
+                + 'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+        }
+
+        function formatEntryDateRange(entry) {
+            var startedAt = Number(entry && entry.startedAtUnix || 0);
+            var endedAt = Number(entry && entry.endedAtUnix || 0);
+            if (startedAt <= 0 || endedAt <= 0) {
+                return '';
+            }
+            return formatSignalDate(startedAt) + ' - ' + new Intl.DateTimeFormat(undefined, {
+                timeStyle: 'short'
+            }).format(new Date(endedAt * 1000));
+        }
+
+        function getRecentEntryTarget(entry) {
+            return [entry.organizationName, entry.holonName, entry.projectName]
+                .map(function (value) { return String(value || '').trim(); })
+                .filter(Boolean)
+                .join(' / ');
+        }
+
+        function renderRecentEntrySummary(entry) {
+            var organizationName = String(entry.organizationName || '').trim();
+            var holonName = String(entry.holonName || '').trim();
+            var projectName = String(entry.projectName || '').trim();
+            var label = String(entry.label || '').trim();
+            var targetParts = [];
+            if (organizationName) {
+                targetParts.push(escapeHtml(organizationName));
+            }
+            if (holonName) {
+                targetParts.push('<strong>' + escapeHtml(holonName) + '</strong>');
+            }
+            if (projectName) {
+                targetParts.push(escapeHtml(projectName));
+            }
+            var target = targetParts.join(' / ');
+            if (!target && !label) {
+                return '';
+            }
+            return '<p class="timer-timesheet-entry__summary">' + target
+                + (target && label ? ' - ' : '')
+                + escapeHtml(label) + '</p>';
         }
 
         function setServerClock(serverNow) {
@@ -257,6 +414,156 @@
             });
         }
 
+        function updateControlHeight() {
+            if (!timerLayout || !timerControl) {
+                return;
+            }
+            timerLayout.style.setProperty('--param-control-height', Math.ceil(timerControl.getBoundingClientRect().height) + 'px');
+        }
+
+        function renderRecentEntries() {
+            if (!timesheetList) {
+                return;
+            }
+            if (state.recentLoading) {
+                timesheetList.innerHTML = '<p class="timer-timesheet__message">' + escapeHtml(translations.historyLoading || '') + '</p>';
+                return;
+            }
+            if (!state.recentEntries.length) {
+                timesheetList.innerHTML = '<p class="timer-timesheet__message">' + escapeHtml(translations.historyEmpty || '') + '</p>';
+                return;
+            }
+
+            timesheetList.innerHTML = state.recentEntries.map(function (entry) {
+                var entryId = normalizeId(entry.id);
+                var target = getRecentEntryTarget(entry);
+                var label = String(entry.label || '');
+                var isEditing = entryId === state.editingEntryId;
+                var content = '<article class="timer-timesheet-entry" data-timer-timesheet-entry="' + entryId + '">'
+                    + '<div class="timer-timesheet-entry__meta"><strong class="timer-timesheet-entry__duration">'
+                    + escapeHtml(formatDuration(Number(entry.endedAtUnix || 0) - Number(entry.startedAtUnix || 0)))
+                    + '</strong><span class="timer-timesheet-entry__date">' + escapeHtml(formatEntryDateRange(entry)) + '</span></div>'
+                    + (target ? '<p class="timer-timesheet-entry__target">' + escapeHtml(target) + '</p>' : '');
+
+                if (isEditing) {
+                    content += '<form class="timer-timesheet-entry__form" data-timer-timesheet-edit-form>'
+                        + '<div class="timer-timesheet-entry__dates">'
+                        + '<label class="timer-timesheet-entry__field"><span>' + escapeHtml(translations.historyStart || '') + '</span>'
+                        + '<input required class="generic-form-control" name="started_at" type="datetime-local" value="' + escapeHtml(formatLocalDateTimeValue(entry.startedAtUnix)) + '"></label>'
+                        + '<label class="timer-timesheet-entry__field"><span>' + escapeHtml(translations.historyEnd || '') + '</span>'
+                        + '<input required class="generic-form-control" name="ended_at" type="datetime-local" value="' + escapeHtml(formatLocalDateTimeValue(entry.endedAtUnix)) + '"></label>'
+                        + '</div>'
+                        + '<label class="timer-timesheet-entry__field"><span>' + escapeHtml(translations.historyLabel || '') + '</span>'
+                        + '<textarea class="generic-form-control" name="label" rows="2" maxlength="1000">' + escapeHtml(label) + '</textarea></label>'
+                        + '<div class="timer-timesheet-entry__actions">'
+                        + '<button type="button" class="timer-timesheet-entry__action" data-timer-timesheet-action="cancel">' + escapeHtml(translations.historyCancel || '') + '</button>'
+                        + '<button type="submit" class="timer-timesheet-entry__action">' + escapeHtml(translations.historySave || '') + '</button>'
+                        + '</div></form>';
+                } else {
+                    content += (entry.endReason === 'interrupted'
+                        ? '<p class="timer-timesheet-entry__notice">' + escapeHtml(translations.interrupted || '') + '</p>'
+                        : '')
+                        + renderRecentEntrySummary(entry)
+                        + '<div class="timer-timesheet-entry__actions">'
+                        + '<button type="button" class="timer-timesheet-entry__action timer-timesheet-entry__action--delete" data-timer-timesheet-action="delete">' + escapeHtml(translations.historyDelete || '') + '</button>'
+                        + '<button type="button" class="timer-timesheet-entry__action" data-timer-timesheet-action="edit">' + escapeHtml(translations.historyEdit || '') + '</button>'
+                        + '</div>';
+                }
+                return content + '</article>';
+            }).join('');
+        }
+
+        function loadRecentEntries(force) {
+            if (!timesheetList || state.recentLoading) {
+                return;
+            }
+            state.recentLoading = true;
+            renderRecentEntries();
+            fetch(config.apiUrl + '?action=recent', {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' }
+            }).then(function (response) {
+                return response.json().catch(function () { return {}; }).then(function (result) {
+                    if (!response.ok || result.error) {
+                        throw new Error(result.message || translations.genericError);
+                    }
+                    return result;
+                });
+            }).then(function (result) {
+                state.recentEntries = Array.isArray(result.entries) ? result.entries : [];
+                setServerClock(result.serverNow);
+            }).catch(function (error) {
+                showFeedback(error.message || translations.genericError, false);
+            }).finally(function () {
+                state.recentLoading = false;
+                renderRecentEntries();
+            });
+        }
+
+        function setTimesheetOpen(open) {
+            state.timesheetOpen = Boolean(open);
+            state.editingEntryId = 0;
+            if (timerLayout) {
+                timerLayout.classList.toggle('is-timesheet', state.timesheetOpen);
+            }
+            if (timerSelector) {
+                timerSelector.setAttribute('aria-hidden', state.timesheetOpen ? 'true' : 'false');
+            }
+            if (timesheet) {
+                timesheet.setAttribute('aria-hidden', state.timesheetOpen ? 'false' : 'true');
+            }
+            if (timesheetToggle) {
+                timesheetToggle.setAttribute('aria-expanded', state.timesheetOpen ? 'true' : 'false');
+                timesheetToggle.setAttribute('aria-label', state.timesheetOpen ? translations.historyClose : translations.historyOpen);
+            }
+            if (state.timesheetOpen) {
+                loadRecentEntries(true);
+            }
+        }
+
+        function saveRecentEntry(form) {
+            var entry = form.closest('[data-timer-timesheet-entry]');
+            var entryId = entry ? normalizeId(entry.getAttribute('data-timer-timesheet-entry')) : 0;
+            if (entryId <= 0 || state.requestInProgress) {
+                return;
+            }
+            var startedAt = form.querySelector('[name="started_at"]');
+            var endedAt = form.querySelector('[name="ended_at"]');
+            var label = form.querySelector('[name="label"]');
+            state.requestInProgress = true;
+            postAction('update', {
+                entry_id: entryId,
+                started_at: startedAt ? startedAt.value : '',
+                ended_at: endedAt ? endedAt.value : '',
+                label: label ? label.value : ''
+            }).then(function () {
+                state.editingEntryId = 0;
+                loadRecentEntries(true);
+            }).catch(function (error) {
+                showFeedback(error.message || translations.genericError, false);
+            }).finally(function () {
+                state.requestInProgress = false;
+                flushPendingSwitchTarget();
+            });
+        }
+
+        function deleteRecentEntry(entryId) {
+            entryId = normalizeId(entryId);
+            if (entryId <= 0 || state.requestInProgress || !window.confirm(translations.historyDeleteConfirm || '')) {
+                return;
+            }
+            state.requestInProgress = true;
+            postAction('delete', { entry_id: entryId }).then(function () {
+                state.editingEntryId = 0;
+                loadRecentEntries(true);
+            }).catch(function (error) {
+                showFeedback(error.message || translations.genericError, false);
+            }).finally(function () {
+                state.requestInProgress = false;
+                flushPendingSwitchTarget();
+            });
+        }
+
         function applyResponse(result, options) {
             options = options || {};
             setServerClock(result.serverNow);
@@ -266,6 +573,10 @@
                 state.selectedHolonId = normalizeId(state.activeEntry.holonId);
                 state.selectedProjectId = normalizeId(state.activeEntry.projectId);
                 updateOrganizationButtons();
+            }
+            if (options.loadWorkLabel && state.activeEntry) {
+                setWorkLabel(state.activeEntry.label);
+                state.savedWorkLabel = state.workLabel;
             }
             renderStatus();
             if (options.recovered) {
@@ -277,11 +588,24 @@
             return [state.organizationId, state.selectedHolonId, state.selectedProjectId].join(':');
         }
 
+        function flushPendingSwitchTarget() {
+            if (!state.pendingSwitchTarget || state.requestInProgress) {
+                return;
+            }
+            state.pendingSwitchTarget = '';
+            state.lastSwitchTarget = '';
+            switchTarget();
+        }
+
         function switchTarget() {
-            if (!state.activeEntry || state.selectedHolonId <= 0 || state.requestInProgress) {
+            if (!state.activeEntry || state.selectedHolonId <= 0) {
                 return;
             }
             var nextTarget = targetKey();
+            if (state.requestInProgress) {
+                state.pendingSwitchTarget = nextTarget;
+                return;
+            }
             if (state.activeEntry.organizationId === state.organizationId
                 && state.activeEntry.holonId === state.selectedHolonId
                 && normalizeId(state.activeEntry.projectId) === state.selectedProjectId) {
@@ -295,14 +619,17 @@
             postAction('switch', {
                 organization_id: state.organizationId,
                 holon_id: state.selectedHolonId,
-                project_id: state.selectedProjectId
+                project_id: state.selectedProjectId,
+                label: state.workLabel
             }).then(function (result) {
                 applyResponse(result);
+                state.savedWorkLabel = state.workLabel;
                 showFeedback('', true);
             }).catch(function (error) {
                 showFeedback(error.message || translations.genericError, false);
             }).finally(function () {
                 state.requestInProgress = false;
+                flushPendingSwitchTarget();
             });
         }
 
@@ -404,6 +731,9 @@
             if (!pickerHost || state.organizationId <= 0 || typeof window.omoMountHolonScopePicker !== 'function') {
                 return;
             }
+            if (state.picker && typeof state.picker.destroy === 'function') {
+                state.picker.destroy();
+            }
             var mountedOrganizationId = state.organizationId;
             state.selectedHolonId = normalizeId(initialHolonId);
             state.selectedHolonName = '';
@@ -494,6 +824,7 @@
                     return null;
                 }).finally(function () {
                     state.requestInProgress = false;
+                    flushPendingSwitchTarget();
                 });
         }
 
@@ -506,11 +837,15 @@
                 postAction('stop', { entry_id: normalizeId(state.activeEntry.id) })
                     .then(function (result) {
                         applyResponse(result);
+                        if (state.timesheetOpen) {
+                            loadRecentEntries(true);
+                        }
                         showFeedback('', true);
                     }).catch(function (error) {
                         showFeedback(error.message || translations.genericError, false);
                     }).finally(function () {
                         state.requestInProgress = false;
+                        flushPendingSwitchTarget();
                     });
                 return;
             }
@@ -522,14 +857,17 @@
             postAction('start', {
                 organization_id: state.organizationId,
                 holon_id: state.selectedHolonId,
-                project_id: state.selectedProjectId
+                project_id: state.selectedProjectId,
+                label: state.workLabel
             }).then(function (result) {
                 applyResponse(result);
+                state.savedWorkLabel = state.workLabel;
                 showFeedback('', true);
             }).catch(function (error) {
                 showFeedback(error.message || translations.genericError, false);
             }).finally(function () {
                 state.requestInProgress = false;
+                flushPendingSwitchTarget();
             });
         }
 
@@ -559,6 +897,117 @@
         }
         if (toggleButton) {
             toggleButton.addEventListener('click', toggleTimer);
+        }
+        if (timesheetToggle) {
+            timesheetToggle.addEventListener('click', function () {
+                setTimesheetOpen(!state.timesheetOpen);
+            });
+        }
+        if (timesheetList) {
+            timesheetList.addEventListener('click', function (event) {
+                var actionButton = event.target.closest('[data-timer-timesheet-action]');
+                if (!actionButton) {
+                    return;
+                }
+                var entry = actionButton.closest('[data-timer-timesheet-entry]');
+                var entryId = entry ? normalizeId(entry.getAttribute('data-timer-timesheet-entry')) : 0;
+                var action = actionButton.getAttribute('data-timer-timesheet-action');
+                if (action === 'edit') {
+                    state.editingEntryId = entryId;
+                    renderRecentEntries();
+                } else if (action === 'cancel') {
+                    state.editingEntryId = 0;
+                    renderRecentEntries();
+                } else if (action === 'delete') {
+                    deleteRecentEntry(entryId);
+                }
+            });
+            timesheetList.addEventListener('submit', function (event) {
+                var form = event.target.closest('[data-timer-timesheet-edit-form]');
+                if (!form) {
+                    return;
+                }
+                event.preventDefault();
+                saveRecentEntry(form);
+            });
+        }
+        if (workLabel) {
+            setWorkLabel(state.workLabel);
+            workLabel.addEventListener('input', function () {
+                state.workLabel = normalizeWorkLabel(workLabel.value);
+                resizeWorkLabel();
+                scheduleWorkLabelSave();
+            });
+            workLabel.addEventListener('blur', function () {
+                if (state.workLabelSaveTimeoutId) {
+                    window.clearTimeout(state.workLabelSaveTimeoutId);
+                    state.workLabelSaveTimeoutId = 0;
+                }
+                saveWorkLabel();
+            });
+        }
+        function bindTimesheetSwipe(surface, opensTimesheet) {
+            if (!surface) {
+                return;
+            }
+            var swipeStart = null;
+            function canStart(eventTarget) {
+                if (opensTimesheet) {
+                    return !eventTarget.closest('input, textarea, select, button:not([data-timer-timesheet-toggle])');
+                }
+                return !timesheetList || timesheetList.scrollTop <= 2;
+            }
+            function startSwipe(clientY, eventTarget) {
+                if (!canStart(eventTarget)) {
+                    return;
+                }
+                swipeStart = clientY;
+            }
+            function finishSwipe(clientY) {
+                if (swipeStart === null) {
+                    return;
+                }
+                var deltaY = clientY - swipeStart;
+                swipeStart = null;
+                if (opensTimesheet) {
+                    if (!state.timesheetOpen && deltaY <= -48) {
+                        setTimesheetOpen(true);
+                    } else if (state.timesheetOpen && deltaY >= 48) {
+                        setTimesheetOpen(false);
+                    }
+                } else if (deltaY >= 48) {
+                    setTimesheetOpen(false);
+                }
+            }
+            surface.addEventListener('pointerdown', function (event) {
+                if (event.pointerType === 'mouse' && event.button !== 0) {
+                    return;
+                }
+                startSwipe(event.clientY, event.target);
+            });
+            surface.addEventListener('pointerup', function (event) {
+                finishSwipe(event.clientY);
+            });
+            surface.addEventListener('pointercancel', function () {
+                swipeStart = null;
+            });
+            if (!window.PointerEvent) {
+                surface.addEventListener('touchstart', function (event) {
+                    var touch = event.touches && event.touches[0];
+                    if (touch) {
+                        startSwipe(touch.clientY, event.target);
+                    }
+                }, { passive: true });
+                surface.addEventListener('touchend', function (event) {
+                    var touch = event.changedTouches && event.changedTouches[0];
+                    if (touch) {
+                        finishSwipe(touch.clientY);
+                    }
+                }, { passive: true });
+                surface.addEventListener('touchcancel', function () {
+                    swipeStart = null;
+                }, { passive: true });
+            }
         }
         function bindSwipeSurface(swipeSurface) {
             var swipeStart = null;
@@ -622,6 +1071,14 @@
         swipeSurfaces.forEach(function (swipeSurface) {
             bindSwipeSurface(swipeSurface);
         });
+        bindTimesheetSwipe(timerControl, true);
+        bindTimesheetSwipe(timesheetList, false);
+        updateControlHeight();
+        if (timerControl && typeof window.ResizeObserver === 'function') {
+            new window.ResizeObserver(updateControlHeight).observe(timerControl);
+        } else {
+            window.addEventListener('resize', updateControlHeight);
+        }
         document.addEventListener('visibilitychange', function () {
             if (!document.hidden) {
                 sendHeartbeat(true);
@@ -632,6 +1089,9 @@
 
         renderStatus();
         updateOrganizationButtons();
+        if (interruptedEntry) {
+            showFeedback(translations.interrupted, false);
+        }
         if (state.organizationId > 0) {
             mountPicker(state.selectedHolonId);
         }
@@ -646,7 +1106,14 @@
                 return;
             }
             var shouldRestore = Boolean(result.active && result.entry);
-            applyResponse(result, { followEntry: shouldRestore, recovered: Boolean(shouldRestore && !config.activeEntry) });
+            applyResponse(result, {
+                followEntry: shouldRestore,
+                recovered: Boolean(shouldRestore && !config.activeEntry),
+                loadWorkLabel: Boolean(shouldRestore && !config.activeEntry)
+            });
+            if (result.interruptedEntry) {
+                showFeedback(translations.interrupted, false);
+            }
             if (shouldRestore) {
                 selectOrganization(state.organizationId, true, false);
                 if (state.selectedProjectId > 0) {
