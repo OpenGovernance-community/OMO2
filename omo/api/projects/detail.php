@@ -76,6 +76,7 @@ $contextLabel = $projectHolon instanceof Holon
     : trim((string)$organization->get('name'));
 $startDate = omoProjectsFormatDate($project->get('planned_start_date'));
 $endDate = omoProjectsFormatDate($project->get('planned_end_date'));
+$isBlocked = Project::normalizeStatus($project->get('status')) === Project::STATUS_BLOCKED;
 $createdAt = $project->get('created_at');
 $allProjects = new ArrayProject();
 $allProjects->loadForOrganization($organizationId, !$isArchivedProject);
@@ -163,9 +164,12 @@ $documentsUrl = '/omo/api/projects/documents.php?oid=' . rawurlencode((string)$o
     . '&id=' . rawurlencode((string)$projectId);
 $eventsUrl = '/omo/api/projects/events.php?oid=' . rawurlencode((string)$organizationId)
     . '&id=' . rawurlencode((string)$projectId);
+$historyUrl = '/omo/api/projects/history.php?oid=' . rawurlencode((string)$organizationId)
+    . '&id=' . rawurlencode((string)$projectId);
 if ((int)($_GET['cid'] ?? 0) > 0) {
     $documentsUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
     $eventsUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
+    $historyUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
 }
 ?>
 <div
@@ -216,6 +220,7 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
             <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omo-project-detail-information-<?= (int)$project->getId() ?>"><?= omoApiEscape(omoProjectsT('projects.detail.tabs.information')) ?></button>
             <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-project-detail-documents-<?= (int)$project->getId() ?>" data-omo-project-detail-documents-tab><?= omoApiEscape(omoProjectsT('projects.detail.tabs.documents')) ?></button>
             <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-project-detail-events-<?= (int)$project->getId() ?>" data-omo-project-detail-events-tab><?= omoApiEscape(omoProjectsT('projects.detail.tabs.events')) ?></button>
+            <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-project-detail-history-<?= (int)$project->getId() ?>" data-omo-project-detail-history-tab><?= omoApiEscape(omoProjectsT('projects.detail.tabs.history')) ?></button>
         </div>
         <div class="generic-tabs__panels">
             <div id="omo-project-detail-information-<?= (int)$project->getId() ?>" class="generic-tabs__panel omo-project-detail__tab-panel" data-generic-tab-panel>
@@ -343,6 +348,12 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                 <?php if ($usesSize): ?><div><dt><?= omoApiEscape(omoProjectsT('projects.detail.size')) ?></dt><dd><?= omoApiEscape($projectSize) ?></dd></div><?php endif; ?>
             </dl>
         </section>
+        <?php if ($isBlocked): ?>
+            <section class="generic-soft-panel omo-project-detail__section omo-project-detail__blocked-section">
+                <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoProjectsT('projects.form.blocked')) ?></h3>
+                <?= omoProjectsRenderBlockedInfo($project) ?>
+            </section>
+        <?php endif; ?>
         <section class="generic-soft-panel omo-project-detail__section">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoProjectsT('projects.detail.parent')) ?></h3>
             <p class="omo-project-detail__value"><?= omoApiEscape($parent instanceof Project ? (string)$parent->get('title') : omoProjectsT('projects.detail.none')) ?></p>
@@ -356,6 +367,9 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
             </div>
             <div id="omo-project-detail-events-<?= (int)$project->getId() ?>" class="generic-tabs__panel omo-project-detail__tab-panel" data-generic-tab-panel data-omo-project-detail-events-panel data-omo-project-detail-events-url="<?= omoApiEscape($eventsUrl) ?>" data-omo-project-detail-events-loaded="0" hidden>
                 <div class="omo-project-detail__tab-content omo-project-detail__events-content generic-drawer-content" data-omo-project-detail-events-content></div>
+            </div>
+            <div id="omo-project-detail-history-<?= (int)$project->getId() ?>" class="generic-tabs__panel omo-project-detail__tab-panel" data-generic-tab-panel data-omo-project-detail-history-panel data-omo-project-detail-history-url="<?= omoApiEscape($historyUrl) ?>" data-omo-project-detail-history-loaded="0" hidden>
+                <div class="omo-project-detail__tab-content omo-project-detail__history-content generic-drawer-content" data-omo-project-detail-history-content></div>
             </div>
         </div>
     </div>

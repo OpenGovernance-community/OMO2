@@ -303,6 +303,10 @@
 
 .timer-timesheet__header {
     flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     padding: 8px 10px 4px;
 }
 
@@ -310,6 +314,28 @@
     margin: 0;
     color: var(--color-text, #111827);
     font-size: var(--generic-type-size-sm, .84rem);
+}
+
+.timer-timesheet__add {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--color-primary, #2563eb);
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.timer-timesheet__add:disabled {
+    cursor: not-allowed;
+    opacity: .42;
 }
 
 .timer-timesheet__list {

@@ -33,6 +33,9 @@ if (!function_exists('omoBudgetSourceLang')) {
             'budget.holon_budget.error.save' => ['text' => 'Impossible d’enregistrer le budget du holon.', 'context' => 'Fallback error returned when direct holon budgets cannot be saved.'],
             'budget.period' => ['text' => '30 derniers jours', 'context' => 'Label for the initial budget reporting period.'],
             'budget.daily_time' => ['text' => 'Temps par jour', 'context' => 'Heading for the daily measured time chart.'],
+            'budget.category.project' => ['text' => 'Projet', 'context' => 'Legend label for time recorded on a project.'],
+            'budget.category.role' => ['text' => 'Rôle', 'context' => 'Legend label for time recorded directly on a role.'],
+            'budget.category.circle' => ['text' => 'Cercle / groupe', 'context' => 'Legend label for time recorded directly on a circle, group, or organization.'],
             'budget.date' => ['text' => 'Date', 'context' => 'Date label in the measured time chart tooltip.'],
             'budget.scope.direct' => ['text' => 'Temps directement associé à ce rôle', 'context' => 'Scope explanation for a role holon.'],
             'budget.scope.descendants' => ['text' => 'Temps du holon et de tous ses descendants', 'context' => 'Scope explanation for a container holon.'],
@@ -289,6 +292,7 @@ if (!function_exists('omoBudgetRenderMeasuredTimeChart')) {
     function omoBudgetRenderMeasuredTimeChart(
         array $dailySeconds,
         DateTimeZone $timezone,
+        array $dailySecondsByCategory = array(),
         array $referenceSeries = array(),
         array $holonReferenceSeries = array(),
         string $cumulativeResetRecurrence = '',
@@ -298,6 +302,17 @@ if (!function_exists('omoBudgetRenderMeasuredTimeChart')) {
         $dailySeconds = array_map(static function ($seconds) {
             return max(0, (int)$seconds);
         }, $dailySeconds);
+        $dailyCategories = array('circle', 'role', 'project');
+        $providedDailySecondsByCategory = $dailySecondsByCategory;
+        $dailySecondsByCategory = array();
+        foreach ($dailyCategories as $category) {
+            $dailySecondsByCategory[$category] = array_fill_keys(array_keys($dailySeconds), 0);
+            foreach ((array)($providedDailySecondsByCategory[$category] ?? array()) as $dateKey => $seconds) {
+                if (array_key_exists($dateKey, $dailySeconds)) {
+                    $dailySecondsByCategory[$category][$dateKey] = max(0, (int)$seconds);
+                }
+            }
+        }
         $totalSeconds = array_sum($dailySeconds);
         if (
             count($dailySeconds) === 0
@@ -369,12 +384,35 @@ if (!function_exists('omoBudgetRenderMeasuredTimeChart')) {
             $dayStart = new DateTimeImmutable((string)$dateKey . ' 00:00:00', $timezone);
             $dayEnd = $dayStart->modify('+1 day');
             $x = $mapX((int)round(($dayStart->getTimestamp() + $dayEnd->getTimestamp()) / 2));
-            $barY = $mapY($seconds, $dailyScale['max']);
-            $barHeight = max(1.0, ($paddingTop + $plotHeight) - $barY);
-            $dailyTooltip = omoBudgetT('budget.measured_time') . ' : ' . omoBudgetFormatDuration($seconds)
-                . "\n" . omoBudgetT('budget.date') . ' : ' . $formatDate($dateKey);
+            $remainingSeconds = $seconds;
+            $barBottom = $paddingTop + $plotHeight;
+            foreach ($dailyCategories as $category) {
+                $categorySeconds = min(
+                    $remainingSeconds,
+                    max(0, (int)($dailySecondsByCategory[$category][$dateKey] ?? 0))
+                );
+                if ($categorySeconds <= 0) {
+                    continue;
+                }
 
-            $svg .= '<rect class="omo-stats-chart__bar" x="' . $formatNumber($x - ($barWidth / 2)) . '" y="' . $formatNumber($barY) . '" width="' . $formatNumber($barWidth) . '" height="' . $formatNumber($barHeight) . '" rx="3" data-omo-stats-chart-tooltip="' . omoApiEscape($dailyTooltip) . '" tabindex="0" aria-label="' . omoApiEscape($dailyTooltip) . '"/>';
+                $barHeight = ($categorySeconds / max(1, $dailyScale['max'])) * $plotHeight;
+                $barY = $barBottom - $barHeight;
+                $dailyTooltip = omoBudgetT('budget.category.' . $category) . ' : ' . omoBudgetFormatDuration($categorySeconds)
+                    . "\n" . omoBudgetT('budget.measured_time') . ' : ' . omoBudgetFormatDuration($seconds)
+                    . "\n" . omoBudgetT('budget.date') . ' : ' . $formatDate($dateKey);
+
+                $svg .= '<rect class="omo-stats-chart__bar omo-budget__daily-bar omo-budget__daily-bar--' . $category . '" x="' . $formatNumber($x - ($barWidth / 2)) . '" y="' . $formatNumber($barY) . '" width="' . $formatNumber($barWidth) . '" height="' . $formatNumber(max(1.0, $barHeight)) . '" rx="3" data-omo-stats-chart-tooltip="' . omoApiEscape($dailyTooltip) . '" tabindex="0" aria-label="' . omoApiEscape($dailyTooltip) . '"/>';
+                $barBottom = $barY;
+                $remainingSeconds -= $categorySeconds;
+            }
+
+            if ($remainingSeconds > 0) {
+                $barHeight = ($remainingSeconds / max(1, $dailyScale['max'])) * $plotHeight;
+                $barY = $barBottom - $barHeight;
+                $dailyTooltip = omoBudgetT('budget.measured_time') . ' : ' . omoBudgetFormatDuration($remainingSeconds)
+                    . "\n" . omoBudgetT('budget.date') . ' : ' . $formatDate($dateKey);
+                $svg .= '<rect class="omo-stats-chart__bar omo-budget__daily-bar omo-budget__daily-bar--circle" x="' . $formatNumber($x - ($barWidth / 2)) . '" y="' . $formatNumber($barY) . '" width="' . $formatNumber($barWidth) . '" height="' . $formatNumber(max(1.0, $barHeight)) . '" rx="3" data-omo-stats-chart-tooltip="' . omoApiEscape($dailyTooltip) . '" tabindex="0" aria-label="' . omoApiEscape($dailyTooltip) . '"/>';
+            }
         }
 
         $cumulativeCoordinates = array_map(static function (array $point) use ($mapX, $mapY, $cumulativeScale): array {
@@ -440,7 +478,9 @@ if (!function_exists('omoBudgetRenderMeasuredTimeChart')) {
         $svg .= '<text class="omo-stats-chart__axis-label" x="' . ($width - $paddingRight) . '" y="' . ($height - 12) . '" text-anchor="end">' . omoApiEscape($formatDate($lastDate)) . '</text>';
         $svg .= '</svg>';
         $svg .= '<div class="omo-stats-detail__legend omo-stats-detail__legend--cumulative" aria-hidden="true">';
-        $svg .= '<span class="omo-stats-detail__legend-item omo-stats-detail__legend-item--measure">' . omoApiEscape(omoBudgetT('budget.measured_time')) . '</span>';
+        $svg .= '<span class="omo-stats-detail__legend-item omo-budget__legend-item--project">' . omoApiEscape(omoBudgetT('budget.category.project')) . '</span>';
+        $svg .= '<span class="omo-stats-detail__legend-item omo-budget__legend-item--role">' . omoApiEscape(omoBudgetT('budget.category.role')) . '</span>';
+        $svg .= '<span class="omo-stats-detail__legend-item omo-budget__legend-item--circle">' . omoApiEscape(omoBudgetT('budget.category.circle')) . '</span>';
         $svg .= '<span class="omo-stats-detail__legend-item omo-stats-detail__legend-item--cumulative">' . omoApiEscape(omoBudgetT('budget.cumulative_time')) . '</span>';
         if (count($referenceCoordinates) > 1) {
             $svg .= '<span class="omo-stats-detail__legend-item omo-stats-detail__legend-item--reference">' . omoApiEscape(omoBudgetT('budget.reference')) . '</span>';

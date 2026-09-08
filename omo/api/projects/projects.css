@@ -451,6 +451,12 @@
     --omo-project-status-color: var(--omo-project-status-blocked);
 }
 
+.omo-project-card--blocked-overdue,
+.omo-project-list-item--blocked-overdue {
+    --omo-project-status-color: var(--color-danger, #dc2626);
+    background-color: color-mix(in srgb, var(--color-danger, #dc2626) 11%, var(--color-surface, #fff));
+}
+
 .omo-project-card--review,
 .omo-project-detail__subproject-item--review,
 .omo-project-list-item--review {
@@ -572,6 +578,119 @@
 .omo-project-card__meta time {
     flex: 0 0 auto;
     font-variant-numeric: tabular-nums;
+}
+
+.omo-project-blocked-info {
+    display: grid;
+    gap: 3px;
+    padding: 8px 10px;
+    border-left: 3px solid var(--omo-project-status-blocked);
+    border-radius: var(--radius-sm, 8px);
+    background: color-mix(in srgb, var(--omo-project-status-blocked) 9%, var(--color-surface, #fff));
+    color: var(--color-text, #1f2937);
+    font-size: .74rem;
+    line-height: 1.35;
+}
+
+.omo-project-blocked-info__reason,
+.omo-project-blocked-info__meta {
+    overflow-wrap: anywhere;
+}
+
+.omo-project-blocked-info__reason strong {
+    color: var(--omo-project-status-blocked);
+}
+
+.omo-project-blocked-info__meta {
+    color: var(--color-text-light, #64748b);
+    font-size: .68rem;
+    font-weight: 700;
+}
+
+.omo-project-blocked-info--overdue {
+    border-left-color: var(--color-danger, #dc2626);
+    background: color-mix(in srgb, var(--color-danger, #dc2626) 11%, var(--color-surface, #fff));
+}
+
+.omo-project-blocked-info--overdue .omo-project-blocked-info__reason strong,
+.omo-project-blocked-info--overdue .omo-project-blocked-info__meta {
+    color: var(--color-danger, #dc2626);
+}
+
+.omo-project-history,
+.omo-project-history__list {
+    display: grid;
+    gap: 10px;
+    align-content: start;
+}
+
+.omo-project-detail__history-content {
+    align-content: start;
+}
+
+.omo-project-history__item {
+    display: grid;
+    gap: 8px;
+    align-self: start;
+}
+
+.omo-project-history__meta {
+    align-items: center;
+}
+
+.omo-project-history__meta strong {
+    color: var(--color-text, #1f2937);
+}
+
+.omo-project-history__content {
+    margin: 0;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.omo-project-history__content .omo-history-reference--project {
+    display: inline;
+    padding: 1px 4px;
+    border-radius: var(--radius-sm, 8px);
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #fff));
+    color: var(--color-text, #1f2937);
+    font-weight: 800;
+}
+
+.omo-project-history__details {
+    font-size: .84rem;
+}
+
+.omo-project-history__details summary {
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.omo-project-history__changes {
+    margin-top: 10px;
+}
+
+.omo-project-blocked-dialog {
+    display: grid;
+    gap: 14px;
+}
+
+.omo-project-blocked-dialog__hint,
+.omo-project-blocked-dialog__error {
+    margin: 0;
+}
+
+.omo-project-blocked-dialog__error {
+    color: var(--color-danger, #dc2626);
+    font-size: .84rem;
+    font-weight: 700;
+}
+
+.omo-project-blocked-dialog__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
 .omo-project-status-bar {
@@ -842,6 +961,10 @@
     color: var(--color-text, #1f2937);
 }
 
+.omo-project-list-item__blocked-info {
+    grid-column: 2 / -1;
+}
+
 .omo-projects__gantt {
     flex: 1 1 auto;
     min-height: 0;
@@ -962,6 +1085,11 @@
     white-space: nowrap;
 }
 
+.omo-project-gantt-row__project .omo-project-gantt-row__blocked-info {
+    grid-column: 2;
+    white-space: normal;
+}
+
 .omo-project-gantt-row__project .omo-project-selection-control {
     grid-row: 1 / span 2;
 }
@@ -978,6 +1106,7 @@
 }
 
 .omo-project-gantt-row--overdue .omo-project-gantt-row__project,
+.omo-project-gantt-row--blocked-overdue .omo-project-gantt-row__project,
 .omo-project-gantt-row--overdue.is-related-child .omo-project-gantt-row__project {
     border-left-color: var(--color-danger, #dc2626);
     background-color: color-mix(in srgb, var(--color-danger, #dc2626) 11%, var(--color-surface, #fff));
@@ -985,6 +1114,11 @@
 
 .omo-project-gantt-row--overdue .omo-project-gantt-row__project strong {
     color: color-mix(in srgb, var(--color-danger, #dc2626) 82%, #450a0a);
+}
+
+.omo-project-gantt-row--blocked-overdue .omo-project-gantt-row__project strong,
+.omo-project-gantt-row--blocked-overdue .omo-project-gantt-row__project span {
+    color: color-mix(in srgb, var(--color-danger, #dc2626) 68%, var(--color-text, #1f2937));
 }
 
 .omo-project-gantt-row--overdue .omo-project-gantt-row__project span {
@@ -1558,6 +1692,14 @@
 
 .omo-project-form__grid--assignment {
     --generic-form-grid-min: 280px;
+}
+
+.omo-project-form__blocked-section[hidden] {
+    display: none;
+}
+
+.omo-project-form__blocked-auto-field {
+    align-self: end;
 }
 
 .omo-project-form__parent-control {

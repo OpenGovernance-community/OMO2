@@ -17,6 +17,7 @@
         var timesheetToggle = document.querySelector('[data-timer-timesheet-toggle]');
         var timesheet = document.querySelector('[data-timer-timesheet]');
         var timesheetList = document.querySelector('[data-timer-timesheet-list]');
+        var timesheetAddButton = document.querySelector('[data-timer-timesheet-add]');
         var clock = document.querySelector('[data-timer-clock]');
         var status = document.querySelector('[data-timer-status]');
         var statusDot = document.querySelector('[data-timer-status-dot]');
@@ -53,7 +54,8 @@
             recentEntries: [],
             recentLoading: false,
             recentRequestId: 0,
-            editingEntryId: 0
+            editingEntryId: 0,
+            addingEntry: false
         };
 
         function normalizeId(value) {
@@ -267,6 +269,23 @@
                 + escapeHtml(label) + '</p>';
         }
 
+        function getManualEntryTarget() {
+            var organization = findOrganization(state.organizationId);
+            return [
+                organization && organization.name ? organization.name : '',
+                state.selectedHolonName,
+                state.selectedProjectName
+            ].map(function (value) {
+                return String(value || '').trim();
+            }).filter(Boolean).join(' / ');
+        }
+
+        function getManualEntryDateValue(offsetMinutes) {
+            var date = new Date(Date.now() + (Number(offsetMinutes || 0) * 60 * 1000));
+            date.setSeconds(0, 0);
+            return formatLocalDateTimeValue(Math.floor(date.getTime() / 1000));
+        }
+
         function setServerClock(serverNow) {
             var numericServerNow = Number(serverNow || 0);
             if (numericServerNow > 0) {
@@ -305,6 +324,7 @@
                 text = replaceTokens(translations.selectionOrganization, { organizationName: organizationName });
             }
             currentTarget.textContent = text;
+            updateManualEntryAvailability();
         }
 
         function renderStatus() {
@@ -422,6 +442,34 @@
             timerLayout.style.setProperty('--param-control-height', Math.ceil(timerControl.getBoundingClientRect().height) + 'px');
         }
 
+        function updateManualEntryAvailability() {
+            if (!timesheetAddButton) {
+                return;
+            }
+            timesheetAddButton.disabled = state.organizationId <= 0 || state.selectedHolonId <= 0;
+        }
+
+        function renderManualEntryForm() {
+            if (!state.addingEntry) {
+                return '';
+            }
+            var target = getManualEntryTarget();
+            return '<form class="timer-timesheet-entry timer-timesheet-entry__form" data-timer-timesheet-create-form>'
+                + (target ? '<p class="timer-timesheet-entry__target">' + escapeHtml(target) + '</p>' : '')
+                + '<div class="timer-timesheet-entry__dates">'
+                + '<label class="timer-timesheet-entry__field"><span>' + escapeHtml(translations.historyStart || '') + '</span>'
+                + '<input required class="generic-form-control" name="started_at" type="datetime-local" value="' + escapeHtml(getManualEntryDateValue(-60)) + '"></label>'
+                + '<label class="timer-timesheet-entry__field"><span>' + escapeHtml(translations.historyEnd || '') + '</span>'
+                + '<input required class="generic-form-control" name="ended_at" type="datetime-local" value="' + escapeHtml(getManualEntryDateValue(0)) + '"></label>'
+                + '</div>'
+                + '<label class="timer-timesheet-entry__field"><span>' + escapeHtml(translations.historyLabel || '') + '</span>'
+                + '<textarea class="generic-form-control" name="label" rows="2" maxlength="1000"></textarea></label>'
+                + '<div class="timer-timesheet-entry__actions">'
+                + '<button type="button" class="timer-timesheet-entry__action" data-timer-timesheet-action="create-cancel">' + escapeHtml(translations.historyCancel || '') + '</button>'
+                + '<button type="submit" class="timer-timesheet-entry__action">' + escapeHtml(translations.historySave || '') + '</button>'
+                + '</div></form>';
+        }
+
         function renderRecentEntries() {
             if (!timesheetList) {
                 return;
@@ -431,11 +479,12 @@
                 return;
             }
             if (!state.recentEntries.length) {
-                timesheetList.innerHTML = '<p class="timer-timesheet__message">' + escapeHtml(translations.historyEmpty || '') + '</p>';
+                timesheetList.innerHTML = renderManualEntryForm()
+                    + '<p class="timer-timesheet__message">' + escapeHtml(translations.historyEmpty || '') + '</p>';
                 return;
             }
 
-            timesheetList.innerHTML = state.recentEntries.map(function (entry) {
+            timesheetList.innerHTML = renderManualEntryForm() + state.recentEntries.map(function (entry) {
                 var entryId = normalizeId(entry.id);
                 var target = getRecentEntryTarget(entry);
                 var label = String(entry.label || '');
@@ -549,6 +598,33 @@
                 label: label ? label.value : ''
             }).then(function () {
                 state.editingEntryId = 0;
+                loadRecentEntries(true);
+            }).catch(function (error) {
+                showFeedback(error.message || translations.genericError, false);
+            }).finally(function () {
+                state.requestInProgress = false;
+                flushPendingSwitchTarget();
+            });
+        }
+
+        function createManualEntry(form) {
+            if (state.organizationId <= 0 || state.selectedHolonId <= 0 || state.requestInProgress) {
+                showFeedback(translations.noHolon, false);
+                return;
+            }
+            var startedAt = form.querySelector('[name="started_at"]');
+            var endedAt = form.querySelector('[name="ended_at"]');
+            var label = form.querySelector('[name="label"]');
+            state.requestInProgress = true;
+            postAction('create', {
+                organization_id: state.organizationId,
+                holon_id: state.selectedHolonId,
+                project_id: state.selectedProjectId,
+                started_at: startedAt ? startedAt.value : '',
+                ended_at: endedAt ? endedAt.value : '',
+                label: label ? label.value : ''
+            }).then(function () {
+                state.addingEntry = false;
                 loadRecentEntries(true);
             }).catch(function (error) {
                 showFeedback(error.message || translations.genericError, false);
@@ -914,6 +990,21 @@
                 setTimesheetOpen(!state.timesheetOpen);
             });
         }
+        if (timesheetAddButton) {
+            timesheetAddButton.addEventListener('click', function () {
+                if (timesheetAddButton.disabled) {
+                    return;
+                }
+                state.addingEntry = true;
+                state.editingEntryId = 0;
+                renderRecentEntries();
+                var form = timesheetList && timesheetList.querySelector('[data-timer-timesheet-create-form]');
+                var startField = form && form.querySelector('[name="started_at"]');
+                if (startField) {
+                    startField.focus();
+                }
+            });
+        }
         if (timesheetList) {
             timesheetList.addEventListener('click', function (event) {
                 var actionButton = event.target.closest('[data-timer-timesheet-action]');
@@ -929,17 +1020,25 @@
                 } else if (action === 'cancel') {
                     state.editingEntryId = 0;
                     renderRecentEntries();
+                } else if (action === 'create-cancel') {
+                    state.addingEntry = false;
+                    renderRecentEntries();
                 } else if (action === 'delete') {
                     deleteRecentEntry(entryId);
                 }
             });
             timesheetList.addEventListener('submit', function (event) {
-                var form = event.target.closest('[data-timer-timesheet-edit-form]');
-                if (!form) {
+                var createForm = event.target.closest('[data-timer-timesheet-create-form]');
+                var editForm = event.target.closest('[data-timer-timesheet-edit-form]');
+                if (!createForm && !editForm) {
                     return;
                 }
                 event.preventDefault();
-                saveRecentEntry(form);
+                if (createForm) {
+                    createManualEntry(createForm);
+                } else {
+                    saveRecentEntry(editForm);
+                }
             });
         }
         if (workLabel) {

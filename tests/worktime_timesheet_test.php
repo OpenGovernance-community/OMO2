@@ -22,6 +22,7 @@ $parseManualDateTime->setAccessible(true);
 
 assertWorkTimeTimesheet(
     str_contains($workTimeApi, "if (\$action === 'recent')")
+        && str_contains($workTimeApi, "if (\$action === 'create')")
         && str_contains($workTimeApi, "if (\$action === 'update')")
         && str_contains($workTimeApi, "if (\$action === 'delete')"),
     'The timer API must expose recent, update and delete actions for the timesheet.'
@@ -38,9 +39,10 @@ assertWorkTimeTimesheet(
         && str_contains($timerScript, 'bindTimesheetSwipe')
         && str_contains($timerScript, 'bindTimesheetRefresh')
         && str_contains($timerScript, 'recentRequestId')
+        && str_contains($timerScript, 'createManualEntry')
         && str_contains($timerScript, "postAction('update'")
         && str_contains($timerScript, "postAction('delete'"),
-    'The Timer must provide the vertical timesheet sheet, its refresh gestures and its edit actions.'
+    'The Timer must provide the vertical timesheet sheet, its refresh gestures and its entry actions.'
 );
 assertWorkTimeTimesheet(
     $parseManualDateTime->invoke(null, '2026-09-08T14:30') instanceof DateTimeImmutable

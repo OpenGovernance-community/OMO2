@@ -138,6 +138,10 @@ $sourceLang = [
         'text' => 'Pointages recents',
         'context' => 'Heading for the recent work time sheet.',
     ],
+    'timer.history.add' => [
+        'text' => 'Ajouter un pointage',
+        'context' => 'Accessible label for the button that adds a manual work time entry.',
+    ],
     'timer.history.loading' => [
         'text' => 'Chargement des pointages...',
         'context' => 'Loading message for the recent work time sheet.',
@@ -315,7 +319,7 @@ $profileData = commonResolveTopbarProfileData($organizationContext, []);
     <title><?= htmlspecialchars(t('timer.page.title'), ENT_QUOTES, 'UTF-8') ?></title>
     <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="/common/assets/topbar.css">
-    <link rel="stylesheet" href="/timer/assets/timer.css?v=20260908-timesheet-path-once">
+    <link rel="stylesheet" href="/timer/assets/timer.css?v=20260908-manual-entry">
 </head>
 <body class="timer-page">
 <?php
@@ -408,6 +412,7 @@ commonRenderTopbar([
     <section id="timer-timesheet" class="timer-timesheet" data-timer-timesheet aria-hidden="true" aria-label="<?= htmlspecialchars(t('timer.history.heading'), ENT_QUOTES, 'UTF-8') ?>">
         <header class="timer-timesheet__header">
             <h2><?= htmlspecialchars(t('timer.history.heading')) ?></h2>
+            <button type="button" class="timer-timesheet__add" data-timer-timesheet-add aria-label="<?= htmlspecialchars(t('timer.history.add'), ENT_QUOTES, 'UTF-8') ?>">+</button>
         </header>
         <div class="timer-timesheet__list" data-timer-timesheet-list aria-live="polite"></div>
     </section>
@@ -447,6 +452,7 @@ window.timerConfig = <?= json_encode([
         'historyOpen' => t('timer.history.open'),
         'historyClose' => t('timer.history.close'),
         'historyLoading' => t('timer.history.loading'),
+        'historyAdd' => t('timer.history.add'),
         'historyEmpty' => t('timer.history.empty'),
         'historyEdit' => t('timer.history.edit'),
         'historyDelete' => t('timer.history.delete'),
@@ -459,6 +465,6 @@ window.timerConfig = <?= json_encode([
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/timer/assets/timer.js?v=20260908-timesheet-path-once" defer></script>
+<script src="/timer/assets/timer.js?v=20260908-manual-entry" defer></script>
 </body>
 </html>

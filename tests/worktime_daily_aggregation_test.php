@@ -26,5 +26,17 @@ assertWorkTimeDailyAggregation($daily['2026-09-01'] === 5400, 'Intervals must be
 assertWorkTimeDailyAggregation($daily['2026-09-02'] === 1800, 'The segment after midnight must be assigned to the next day.');
 assertWorkTimeDailyAggregation($daily['2026-09-03'] === 43200, 'The final interval must be clipped at the exclusive range end.');
 
-echo "worktime_daily_aggregation_test: OK\n";
+$dailyByCategory = \dbObject\WorkTime::aggregateMeasuredIntervalsByDayAndCategory([
+    ['started_at' => '2026-09-01 22:30:00', 'ended_at' => '2026-09-02 00:30:00', 'category' => 'role'],
+    ['started_at' => '2026-09-02 10:00:00', 'ended_at' => '2026-09-02 12:00:00', 'category' => 'project'],
+    ['started_at' => '2026-09-03 12:00:00', 'ended_at' => '2026-09-03 13:00:00', 'category' => 'circle'],
+    ['started_at' => '2026-09-03 13:00:00', 'ended_at' => '2026-09-03 13:30:00', 'category' => 'unknown'],
+], $rangeStart, $rangeEnd);
 
+assertWorkTimeDailyAggregation(array_keys($dailyByCategory) === ['project', 'role', 'circle'], 'Every reporting category must be present.');
+assertWorkTimeDailyAggregation($dailyByCategory['role']['2026-09-01'] === 5400, 'Role time must keep the segment before midnight.');
+assertWorkTimeDailyAggregation($dailyByCategory['role']['2026-09-02'] === 1800, 'Role time must split at midnight.');
+assertWorkTimeDailyAggregation($dailyByCategory['project']['2026-09-02'] === 7200, 'Project time must be assigned to its category.');
+assertWorkTimeDailyAggregation($dailyByCategory['circle']['2026-09-03'] === 5400, 'Circle time must include uncategorized entries.');
+
+echo "worktime_daily_aggregation_test: OK\n";
