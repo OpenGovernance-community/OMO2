@@ -12,6 +12,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Lors d un switch, une ligne de moins de dix secondes est absorbee par la ligne precedente uniquement si celle-ci se terminait aussi par un switch et que les deux lignes sont separees de moins de cinq minutes. Sinon, la micro-ligne est retiree sans modifier l historique precedent.
 - Un suivi encore ouvert mais sans signal depuis plus de huit heures est clos automatiquement sans ajouter de temps, avec la raison Interrompu. Le Timer revient pret a demarrer et la timesheet signale cette ligne afin qu elle puisse etre verifiee.
 - Les pointages recents du Timer regroupent maintenant sur une seule ligne leur organisation, holon, projet eventuel et legende. Le holon est mis en gras pour rester rapidement identifiable.
+- Le retour du Timer sous la legende ne reserve plus de ligne vide. La timesheet est rechargee a chaque ouverture et accepte un geste de tirage vers le bas, depuis le haut de la liste, pour actualiser les pointages.
 
 - Le segment de phase d elaboration du graphique de scrutin utilise maintenant le meme libelle Elaboration que le reste de l interface.
 - Les participants identifies par un lien public utilisent maintenant un pseudonyme stable dans les propositions anonymes et leurs discussions, meme lorsqu ils disposent aussi d un compte.

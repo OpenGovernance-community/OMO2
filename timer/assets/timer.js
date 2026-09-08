@@ -52,6 +52,7 @@
             timesheetOpen: false,
             recentEntries: [],
             recentLoading: false,
+            recentRequestId: 0,
             editingEntryId: 0
         };
 
@@ -474,9 +475,11 @@
         }
 
         function loadRecentEntries(force) {
-            if (!timesheetList || state.recentLoading) {
+            if (!timesheetList || (state.recentLoading && !force)) {
                 return;
             }
+            var requestId = state.recentRequestId + 1;
+            state.recentRequestId = requestId;
             state.recentLoading = true;
             renderRecentEntries();
             fetch(config.apiUrl + '?action=recent', {
@@ -490,11 +493,19 @@
                     return result;
                 });
             }).then(function (result) {
+                if (requestId !== state.recentRequestId) {
+                    return;
+                }
                 state.recentEntries = Array.isArray(result.entries) ? result.entries : [];
                 setServerClock(result.serverNow);
             }).catch(function (error) {
-                showFeedback(error.message || translations.genericError, false);
+                if (requestId === state.recentRequestId) {
+                    showFeedback(error.message || translations.genericError, false);
+                }
             }).finally(function () {
+                if (requestId !== state.recentRequestId) {
+                    return;
+                }
                 state.recentLoading = false;
                 renderRecentEntries();
             });
@@ -1009,6 +1020,57 @@
                 }, { passive: true });
             }
         }
+        function bindTimesheetRefresh(surface) {
+            if (!surface) {
+                return;
+            }
+            var swipeStart = null;
+            function startRefreshSwipe(clientY, eventTarget) {
+                if (surface.scrollTop > 2 || eventTarget.closest('input, textarea, select, button')) {
+                    return;
+                }
+                swipeStart = clientY;
+            }
+            function finishRefreshSwipe(clientY) {
+                if (swipeStart === null) {
+                    return;
+                }
+                var deltaY = clientY - swipeStart;
+                swipeStart = null;
+                if (surface.scrollTop <= 2 && deltaY >= 48) {
+                    loadRecentEntries(true);
+                }
+            }
+            surface.addEventListener('pointerdown', function (event) {
+                if (event.pointerType === 'mouse' && event.button !== 0) {
+                    return;
+                }
+                startRefreshSwipe(event.clientY, event.target);
+            });
+            surface.addEventListener('pointerup', function (event) {
+                finishRefreshSwipe(event.clientY);
+            });
+            surface.addEventListener('pointercancel', function () {
+                swipeStart = null;
+            });
+            if (!window.PointerEvent) {
+                surface.addEventListener('touchstart', function (event) {
+                    var touch = event.touches && event.touches[0];
+                    if (touch) {
+                        startRefreshSwipe(touch.clientY, event.target);
+                    }
+                }, { passive: true });
+                surface.addEventListener('touchend', function (event) {
+                    var touch = event.changedTouches && event.changedTouches[0];
+                    if (touch) {
+                        finishRefreshSwipe(touch.clientY);
+                    }
+                }, { passive: true });
+                surface.addEventListener('touchcancel', function () {
+                    swipeStart = null;
+                }, { passive: true });
+            }
+        }
         function bindSwipeSurface(swipeSurface) {
             var swipeStart = null;
             function startSwipe(clientX, clientY) {
@@ -1072,7 +1134,7 @@
             bindSwipeSurface(swipeSurface);
         });
         bindTimesheetSwipe(timerControl, true);
-        bindTimesheetSwipe(timesheetList, false);
+        bindTimesheetRefresh(timesheetList);
         updateControlHeight();
         if (timerControl && typeof window.ResizeObserver === 'function') {
             new window.ResizeObserver(updateControlHeight).observe(timerControl);

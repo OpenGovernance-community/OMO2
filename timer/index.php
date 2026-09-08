@@ -315,7 +315,7 @@ $profileData = commonResolveTopbarProfileData($organizationContext, []);
     <title><?= htmlspecialchars(t('timer.page.title'), ENT_QUOTES, 'UTF-8') ?></title>
     <link rel="stylesheet" href="/shared_css.css">
     <link rel="stylesheet" href="/common/assets/topbar.css">
-    <link rel="stylesheet" href="/timer/assets/timer.css?v=20260908-timesheet-summary">
+    <link rel="stylesheet" href="/timer/assets/timer.css?v=20260908-timesheet-refresh">
 </head>
 <body class="timer-page">
 <?php
@@ -403,7 +403,7 @@ commonRenderTopbar([
             placeholder="<?= htmlspecialchars(t('timer.control.label_placeholder'), ENT_QUOTES, 'UTF-8') ?>"
             aria-label="<?= htmlspecialchars(t('timer.control.label_aria'), ENT_QUOTES, 'UTF-8') ?>"
         ></textarea>
-        <p class="timer-feedback generic-feedback" data-timer-feedback aria-live="polite"></p>
+        <p class="timer-feedback generic-feedback generic-feedback--collapse-empty" data-timer-feedback aria-live="polite"></p>
     </section>
     <section id="timer-timesheet" class="timer-timesheet" data-timer-timesheet aria-hidden="true" aria-label="<?= htmlspecialchars(t('timer.history.heading'), ENT_QUOTES, 'UTF-8') ?>">
         <header class="timer-timesheet__header">
@@ -459,6 +459,6 @@ window.timerConfig = <?= json_encode([
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/timer/assets/timer.js?v=20260908-timesheet-summary" defer></script>
+<script src="/timer/assets/timer.js?v=20260908-timesheet-refresh" defer></script>
 </body>
 </html>
