@@ -311,6 +311,18 @@
         var renderedWidth = 0;
         var renderedHeight = 0;
         var renderedDpr = 0;
+        var resizeFrameId = 0;
+        var resizeObserver = null;
+
+        function scheduleDraw() {
+            if (resizeFrameId !== 0) {
+                return;
+            }
+            resizeFrameId = window.requestAnimationFrame(function () {
+                resizeFrameId = 0;
+                draw();
+            });
+        }
 
         function updateTooltip() {
             if (!tooltip) {
@@ -505,6 +517,25 @@
             }
         });
 
+        if (typeof window.ResizeObserver === 'function') {
+            resizeObserver = new window.ResizeObserver(scheduleDraw);
+            resizeObserver.observe(map);
+        }
+        window.addEventListener('resize', scheduleDraw);
+
+        draw.refresh = scheduleDraw;
+        draw.destroy = function () {
+            if (resizeFrameId !== 0) {
+                window.cancelAnimationFrame(resizeFrameId);
+                resizeFrameId = 0;
+            }
+            if (resizeObserver) {
+                resizeObserver.disconnect();
+                resizeObserver = null;
+            }
+            window.removeEventListener('resize', scheduleDraw);
+        };
+
         return draw;
     }
 
@@ -651,6 +682,16 @@
 
         return {
             matches: matches,
+            refresh: function () {
+                if (typeof redrawMap === 'function') {
+                    redrawMap.refresh ? redrawMap.refresh() : redrawMap();
+                }
+            },
+            destroy: function () {
+                if (typeof redrawMap === 'function' && typeof redrawMap.destroy === 'function') {
+                    redrawMap.destroy();
+                }
+            },
             getSelectedHolonId: function () { return selectedHolonId; },
             setSelectedHolonId: function (holonId) {
                 selectedHolonId = normalizeId(holonId);
