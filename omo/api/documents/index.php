@@ -2704,6 +2704,53 @@ if (!is_string($documentsPayload)) {
 
                                 document.addEventListener('fullscreenchange', syncDocumentFullscreenButton);
                                 detailDrawer.addEventListener('click', function (event) {
+                                    const deleteButton = event.target.closest('[data-omo-document-delete-id]');
+                                    if (deleteButton) {
+                                        event.preventDefault();
+
+                                        const documentId = Number(deleteButton.getAttribute('data-omo-document-delete-id') || 0);
+                                        const confirmation = String(deleteButton.getAttribute('data-omo-document-delete-confirm') || '');
+                                        const fallbackError = String(deleteButton.getAttribute('data-omo-document-delete-error') || <?= json_encode(omoDocumentsScopeT('documents.menu.action_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);
+                                        if (!Number.isInteger(documentId) || documentId <= 0 || !window.confirm(confirmation)) {
+                                            return;
+                                        }
+
+                                        deleteButton.disabled = true;
+                                        window.fetch('/omo/api/documents/lifecycle_action.php', {
+                                            method: 'POST',
+                                            credentials: 'same-origin',
+                                            headers: {
+                                                'Accept': 'application/json',
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({id: documentId, action: 'delete'}),
+                                        })
+                                            .then(function (response) {
+                                                return response.json()
+                                                    .catch(function () { return null; })
+                                                    .then(function (payload) {
+                                                        if (!response.ok || !payload || payload.status !== true) {
+                                                            throw new Error(String(payload && payload.message || fallbackError));
+                                                        }
+                                                    });
+                                            })
+                                            .then(function () {
+                                                closeDetailDrawer();
+                                                if (typeof window.omoRefreshDocumentsPanel === 'function') {
+                                                    return window.omoRefreshDocumentsPanel();
+                                                }
+                                                window.location.reload();
+                                                return null;
+                                            })
+                                            .catch(function (error) {
+                                                window.omoNotify(String(error && error.message || fallbackError), 'error');
+                                            })
+                                            .finally(function () {
+                                                deleteButton.disabled = false;
+                                            });
+                                        return;
+                                    }
+
                                     const fullscreenButton = event.target.closest('[data-omo-document-fullscreen]');
                                     if (fullscreenButton) {
                                         event.preventDefault();

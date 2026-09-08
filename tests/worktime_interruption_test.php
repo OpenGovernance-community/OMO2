@@ -13,7 +13,7 @@ function assertWorkTimeInterruption(bool $condition, string $message): void
 
 $root = dirname(__DIR__);
 $workTimeSource = (string)file_get_contents($root . '/class/dbobject/worktime.class.php');
-$trackApi = (string)file_get_contents($root . '/timer/api/track.php');
+$workTimeApi = (string)file_get_contents($root . '/timer/api/worktime.php');
 $timerIndex = (string)file_get_contents($root . '/timer/index.php');
 $timerScript = (string)file_get_contents($root . '/timer/assets/timer.js');
 
@@ -29,7 +29,7 @@ assertWorkTimeInterruption(
     'Stale open work time must be closed without extending its confirmed duration.'
 );
 assertWorkTimeInterruption(
-    str_contains($trackApi, 'interruptedEntry')
+    str_contains($workTimeApi, 'interruptedEntry')
         && str_contains($timerIndex, 'closeStaleOpenForUser')
         && str_contains($timerScript, "entry.endReason === 'interrupted'"),
     'The Timer must expose interrupted work time to the user and identify it in the timesheet.'
