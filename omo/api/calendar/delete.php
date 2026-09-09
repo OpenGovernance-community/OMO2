@@ -49,6 +49,7 @@ if (
     !$event->load($eventId)
     || (int)$event->get('IDorganization') !== $organizationId
     || (int)$event->get('active') !== 1
+    || !$event->isDraftVisibleToViewer($currentUserId)
 ) {
     omoCalendarDeleteResponse([
         'status' => false,

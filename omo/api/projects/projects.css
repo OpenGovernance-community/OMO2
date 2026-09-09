@@ -1613,6 +1613,16 @@
     transform: translateY(-1px);
 }
 
+.omo-project-detail__event-item.is-status-option {
+    border-inline-start: 4px solid #eab308;
+    background: color-mix(in srgb, #eab308 8%, var(--color-surface, #fff));
+}
+
+.omo-project-detail__event-item.is-status-confirmed {
+    border-inline-start: 4px solid #16a34a;
+    background: color-mix(in srgb, #16a34a 7%, var(--color-surface, #fff));
+}
+
 .omo-project-detail__event-date {
     display: grid;
     flex: 0 0 auto;

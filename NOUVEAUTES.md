@@ -2096,6 +2096,13 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - La configuration globale de SpaceDeck est maintenant disponible dans Admin du serveur : URL publique, URL interne optionnelle, jeton de provisioning et cle de signature des acces, avec un test qui cree puis supprime un tableau temporaire.
 - Le menu de creation des Documents est maintenant groupe par familles, avec le dossier en tete, des separateurs visuels et le tableau blanc collaboratif a la fin. Un classeur collaboratif cree desormais un fichier ODS directement editable dans Collabora.
 
+# 2026-09-09
+
+- L ouverture dun evenement depuis le tableau de pilotage conserve maintenant la vue calendrier et le scope enregistres au lieu de forcer la vue locale du jour.
+- Les evenements affichent maintenant une icone document ouvrable lorsqu un PV ou un autre document y est associe, dans le calendrier comme dans le tableau de pilotage.
+- Le statut des evenements est maintenant editable avec les etats Brouillon, Option et Confirme. Les brouillons restent visibles uniquement par leur createur, tandis que les options et les dates confirmees sont marquees par une barre jaune ou verte.
+- Les notifications de nouvelles propositions utilisent maintenant le titre ou, a defaut, un extrait de leur description, et indiquent le scrutin concerne.
+
 # 2026-09-08
 
 - Le detail d un document propose maintenant un bouton Effacer avec une icone poubelle dans l entete du drawer, coherent avec les autres applications, avec confirmation puis rafraichissement de la liste.

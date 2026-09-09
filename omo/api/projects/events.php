@@ -65,7 +65,7 @@ $sectionLabels = [
 $eventSections = [];
 
 foreach ($events as $event) {
-    if (!($event instanceof Event)) {
+    if (!($event instanceof Event) || !$event->isDraftVisibleToViewer($currentUserId)) {
         continue;
     }
 
@@ -170,7 +170,7 @@ if (count($eventSections) === 0) {
                     $statusLabel = trim((string)($statusCatalog[$status]['label'] ?? ''));
                     ?>
                     <a
-                        class="omo-project-detail__event-item"
+                        class="omo-project-detail__event-item is-status-<?= omoApiEscape($status) ?>"
                         href="#calendar-e<?= (int)$event->getId() ?>"
                         data-omo-project-detail-event-link
                         data-event-id="<?= (int)$event->getId() ?>"

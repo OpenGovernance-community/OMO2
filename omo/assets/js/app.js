@@ -4376,14 +4376,21 @@ $(document).on('click', '[data-omo-personal-space-route-token]', function (e) {
 
 $(document).on('click', '[data-omo-personal-space-document-url]', function (e) {
     e.preventDefault();
+    e.stopPropagation();
 
     const documentUrl = String($(this).attr('data-omo-personal-space-document-url') || '').trim();
     const documentTitle = String($(this).attr('data-omo-personal-space-document-title') || '').trim();
-    if (documentUrl === '' || typeof window.omoOpenSearchDocumentResult !== 'function') {
+    const documentPvEditorUrl = String($(this).attr('data-omo-personal-space-document-pv-editor-url') || '').trim();
+    if (documentUrl === '' || typeof window.omoOpenAssociatedDocumentResult !== 'function') {
         return;
     }
 
-    window.omoOpenSearchDocumentResult(documentUrl, documentTitle);
+    window.omoOpenAssociatedDocumentResult(
+        documentUrl,
+        documentTitle,
+        documentPvEditorUrl,
+        'omo-pv-preparation-dashboard-'
+    );
 });
 
 $(document).on('click', '[data-omo-personal-space-calendar-event-id]', function (e) {
@@ -5445,6 +5452,35 @@ function omoOpenSearchDocumentResult(documentUrl, title) {
     return true;
 }
 
+function omoOpenAssociatedDocumentResult(documentUrl, title, pvEditorUrl, persistKeyPrefix) {
+    const resolvedUrl = String(documentUrl || '').trim();
+    if (resolvedUrl === '') {
+        return false;
+    }
+
+    const resolvedTitle = String(title || 'Document').trim() || 'Document';
+    const resolvedPvEditorUrl = String(pvEditorUrl || '').trim();
+    if (resolvedPvEditorUrl && typeof window.omoOpenExternalPanelDrawer === 'function') {
+        window.omoOpenExternalPanelDrawer({
+            url: resolvedPvEditorUrl,
+            mode: 'fetch',
+            title: resolvedTitle,
+            description: 'Edition du PV.',
+            variant: 'top-sheet',
+            hideHeader: true,
+            persistKey: String(persistKeyPrefix || 'omo-pv-preparation-calendar-') + resolvedPvEditorUrl,
+            keepMountedOnClose: true
+        });
+        return true;
+    }
+
+    if (typeof window.omoOpenSearchDocumentResult !== 'function') {
+        return false;
+    }
+
+    return window.omoOpenSearchDocumentResult(resolvedUrl, resolvedTitle);
+}
+
 function omoOpenSearchDecisionResult(decisionId, holonId) {
     const decisionRouteToken = omoBuildDecisionRouteToken(decisionId);
     if (!decisionRouteToken) {
@@ -5848,6 +5884,7 @@ window.omoOpenSearchActivityResult = omoOpenSearchActivityResult;
 window.omoOpenSearchStatIndicatorResult = omoOpenSearchStatIndicatorResult;
 window.omoBuildDocumentRouteToken = omoBuildDocumentRouteToken;
 window.omoOpenSearchDocumentResult = omoOpenSearchDocumentResult;
+window.omoOpenAssociatedDocumentResult = omoOpenAssociatedDocumentResult;
 window.omoOpenSearchTutorialResult = omoOpenSearchTutorialResult;
 window.omoOpenSearchPopupHashState = omoOpenSearchPopupHashState;
 window.omoOpenTutorialsHelp = omoOpenTutorialsHelp;

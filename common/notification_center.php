@@ -101,6 +101,34 @@ if (!function_exists('notificationCenterBuildEventUrl')) {
     }
 }
 
+if (!function_exists('notificationCenterBuildDecisionProposalLabel')) {
+    function notificationCenterBuildDecisionProposalLabel(\dbObject\DecisionProposal $proposal, $descriptionLength = 30)
+    {
+        $title = trim((string)$proposal->get('title'));
+        if ($title !== '') {
+            return mb_substr($title, 0, 150, 'UTF-8');
+        }
+
+        $description = html_entity_decode(
+            strip_tags((string)$proposal->get('description')),
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8'
+        );
+        $description = preg_replace('/\s+/u', ' ', trim($description));
+        if (!is_string($description) || $description === '') {
+            return '';
+        }
+
+        $descriptionLength = max(1, (int)$descriptionLength);
+        $label = mb_substr($description, 0, $descriptionLength, 'UTF-8');
+        if (mb_strlen($description, 'UTF-8') > $descriptionLength) {
+            $label = rtrim($label) . '...';
+        }
+
+        return $label;
+    }
+}
+
 if (!function_exists('notificationCenterFormatEventDateTime')) {
     function notificationCenterFormatEventDateTime($value)
     {
@@ -396,8 +424,15 @@ if (!function_exists('notificationCenterDispatchDecisionProposal')) {
         $organizationId = (int)$decision->get('IDorganization');
         $decisionId = (int)$decision->getId();
         $proposalId = (int)$proposal->getId();
-        $title = 'Nouvelle proposition';
-        $body = 'La proposition "' . mb_substr(trim((string)$proposal->get('title')), 0, 150, 'UTF-8') . '" vient d etre ajoutee.';
+        $decisionTitle = mb_substr(trim((string)$decision->get('title')), 0, 140, 'UTF-8');
+        if ($decisionTitle === '') {
+            $decisionTitle = 'ce scrutin';
+        }
+        $proposalLabel = notificationCenterBuildDecisionProposalLabel($proposal);
+        $title = 'Nouvelle proposition - ' . $decisionTitle;
+        $body = $proposalLabel !== ''
+            ? 'La proposition "' . $proposalLabel . '" vient d’être ajoutée au scrutin "' . $decisionTitle . '".'
+            : 'Une nouvelle proposition vient d’être ajoutée au scrutin "' . $decisionTitle . '".';
         $url = notificationCenterBuildDecisionUrl($organizationId, $decisionId);
         $dedupeKey = 'PROPOSAL_' . $organizationId . '_' . $proposalId;
         $actorUserId = (int)$proposal->getAuthorUserId();

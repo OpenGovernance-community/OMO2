@@ -4,6 +4,7 @@ namespace dbObject;
 class Event extends DbObject
 {
     const STATUS_DRAFT = 'draft';
+    const STATUS_OPTION = 'option';
     const STATUS_CONFIRMED = 'confirmed';
     const STATUS_CANCELLED = 'cancelled';
     const LOCATION_MODE_IN_PERSON = 'in_person';
@@ -105,6 +106,10 @@ class Event extends DbObject
             self::STATUS_DRAFT => [
                 'label' => 'Brouillon',
                 'description' => "L'événement est encore en préparation.",
+            ],
+            self::STATUS_OPTION => [
+                'label' => 'Option',
+                'description' => 'Date envisageable mais pas encore confirmee.',
             ],
             self::STATUS_CONFIRMED => [
                 'label' => 'Confirmé',
@@ -568,6 +573,7 @@ class Event extends DbObject
             'where' => [
                 ['field' => 'active', 'value' => 1],
                 ['field' => 'status', 'op' => '<>', 'value' => self::STATUS_CANCELLED],
+                ['field' => 'status', 'op' => '<>', 'value' => self::STATUS_DRAFT],
                 ['field' => 'start_at', 'op' => '>=', 'value' => $referenceDateTime->format('Y-m-d H:i:s')],
             ],
             'orderBy' => [
@@ -904,6 +910,16 @@ class Event extends DbObject
         return $memberMatchCache[$cacheKey];
     }
 
+    public function isDraftVisibleToViewer($userId): bool
+    {
+        if (self::normalizeStatus($this->get('status')) !== self::STATUS_DRAFT) {
+            return true;
+        }
+
+        $userId = (int)$userId;
+        return $userId > 0 && $userId === (int)$this->get('IDuser');
+    }
+
     public function isVisibleToInvitationViewer($userId, $organizationId = 0, $viewerEmail = ''): bool
     {
         $userId = (int)$userId;
@@ -923,6 +939,10 @@ class Event extends DbObject
         }
 
         if ($organizationId <= 0 || (int)$this->get('IDorganization') !== $organizationId) {
+            return false;
+        }
+
+        if (!$this->isDraftVisibleToViewer($userId)) {
             return false;
         }
 
