@@ -1301,6 +1301,59 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
     padding: 10px 12px;
 }
 
+.omo-dashboard-event-item {
+    position: relative;
+}
+
+.omo-dashboard-event-item .omo-personal-space__item-button {
+    padding-inline-end: 44px;
+}
+
+.omo-dashboard-event-item.is-status-option .omo-personal-space__item-button {
+    border-inline-start: 4px solid #eab308;
+    background: color-mix(in srgb, #eab308 8%, var(--color-surface));
+}
+
+.omo-dashboard-event-item.is-status-confirmed .omo-personal-space__item-button {
+    border-inline-start: 4px solid #16a34a;
+    background: color-mix(in srgb, #16a34a 7%, var(--color-surface));
+}
+
+.omo-dashboard-event-document {
+    position: absolute;
+    inset-inline-end: 10px;
+    top: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 3px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--color-text-light, #64748b);
+    cursor: pointer;
+    font: inherit;
+    transform: translateY(-50%);
+}
+
+.omo-dashboard-event-document svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.omo-dashboard-event-document:hover,
+.omo-dashboard-event-document:focus-visible {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, transparent);
+    color: var(--color-primary, #2563eb);
+}
+
 .omo-dashboard-project-item {
     position: relative;
     overflow: hidden;

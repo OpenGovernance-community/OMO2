@@ -219,6 +219,7 @@ if (
     || (int)$event->get('IDorganization') !== $organizationId
     || (int)$event->get('active') !== 1
     || Event::normalizeStatus($event->get('status')) === Event::STATUS_CANCELLED
+    || !$event->isDraftVisibleToViewer($currentUserId)
 ) {
     http_response_code(404);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoCalendarDetailT('calendar.detail.not_found')) . '</div>';
@@ -267,6 +268,7 @@ $deleteUrl = '/omo/api/calendar/delete.php?oid=' . rawurlencode((string)$organiz
 $statusCatalog = Event::getStatusCatalog();
 $normalizedStatus = Event::normalizeStatus($event->get('status'));
 $statusLabel = trim((string)($statusCatalog[$normalizedStatus]['label'] ?? $normalizedStatus));
+$statusClass = 'is-' . $normalizedStatus;
 $title = trim((string)$event->get('title'));
 $eventTitle = $title !== '' ? $title : ('Événement #' . (int)$event->getId());
 $description = trim((string)$event->get('description'));
@@ -373,7 +375,7 @@ $invitationContext = [
                     </span>
                     <div>
                         <span class="omo-calendar-detail__meta-label generic-meta-label"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.status')) ?></span>
-                        <strong class="omo-calendar-detail__meta-value generic-meta-value omo-calendar-detail__status-value<?= $normalizedStatus === Event::STATUS_CONFIRMED ? ' is-confirmed' : '' ?>"><?= omoApiEscape($statusLabel) ?></strong>
+                        <strong class="omo-calendar-detail__meta-value generic-meta-value omo-calendar-detail__status-value <?= omoApiEscape($statusClass) ?>"><?= omoApiEscape($statusLabel) ?></strong>
                     </div>
                 </div>
                 <div class="omo-calendar-detail__meta-card">
@@ -454,7 +456,7 @@ $invitationContext = [
                     <dl class="omo-calendar-detail__quick-info-list">
                         <div>
                             <dt><?= omoApiEscape(omoCalendarDetailT('calendar.detail.section.status')) ?></dt>
-                            <dd class="omo-calendar-detail__status-value<?= $normalizedStatus === Event::STATUS_CONFIRMED ? ' is-confirmed' : '' ?>"><?= omoApiEscape($statusLabel) ?></dd>
+                            <dd class="omo-calendar-detail__status-value <?= omoApiEscape($statusClass) ?>"><?= omoApiEscape($statusLabel) ?></dd>
                         </div>
                         <?php if ($createdAt instanceof \DateTimeInterface): ?>
                             <div>
@@ -545,6 +547,10 @@ $invitationContext = [
 
     .omo-calendar-detail__status-value.is-confirmed {
         color: var(--color-success, #15803d);
+    }
+
+    .omo-calendar-detail__status-value.is-option {
+        color: #a16207;
     }
 
     .omo-calendar-detail__content-grid {

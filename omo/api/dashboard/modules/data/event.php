@@ -1,5 +1,9 @@
 <?php
+require_once dirname(__DIR__, 3) . '/calendar/permissions_shared.php';
+
+use dbObject\ArrayDocument;
 use dbObject\ArrayEvent;
+use dbObject\Document;
 use dbObject\Holon;
 
 $calendarEvents = array();
@@ -14,6 +18,40 @@ if (!empty($enabledAppHashes['calendar'])) {
         $dashboardEventWindowEnd,
         false
     );
+    $eventIds = array();
+    foreach ($events as $event) {
+        if (
+            $event instanceof \dbObject\Event
+            && (int)$event->getId() > 0
+            && $event->isDraftVisibleToViewer($currentUserId)
+        ) {
+            $eventIds[] = (int)$event->getId();
+        }
+    }
+    $associatedDocumentsByEventId = array();
+    if ($eventIds !== array()) {
+        $associatedDocuments = new ArrayDocument();
+        $associatedDocuments->load(array(
+            'where' => array(
+                array('field' => 'IDorganization', 'value' => $currentOrganizationId),
+                array('field' => 'IDevent', 'op' => 'in', 'value' => array_values(array_unique($eventIds))),
+            ),
+            'orderBy' => array(
+                array('field' => 'id', 'dir' => 'ASC'),
+            ),
+            'hydrate' => true,
+        ));
+        foreach ($associatedDocuments as $document) {
+            if (!($document instanceof Document) || (int)$document->getId() <= 0) {
+                continue;
+            }
+
+            $documentEventId = (int)$document->get('IDevent');
+            if ($documentEventId > 0) {
+                $associatedDocumentsByEventId[$documentEventId][] = $document;
+            }
+        }
+    }
     $holonNameCache = array();
     $organizationContextLabel = t('personal_space.calendar.context.organization', [], $lang, $sourceLang);
     $calendarScopeHolonIdMap = $dashboardModuleScope === 'contextual'
@@ -21,11 +59,16 @@ if (!empty($enabledAppHashes['calendar'])) {
         : $dashboardModuleScopeHolonIdMap;
 
     foreach ($events as $event) {
-        if (!($event instanceof \dbObject\Event) || (int)$event->getId() <= 0) {
+        if (
+            !($event instanceof \dbObject\Event)
+            || (int)$event->getId() <= 0
+            || !$event->isDraftVisibleToViewer($currentUserId)
+        ) {
             continue;
         }
 
         $eventHolonId = (int)$event->get('IDholon');
+        $eventStatus = \dbObject\Event::normalizeStatus($event->get('status'));
         if ($eventHolonId > 0 && !isset($calendarScopeHolonIdMap[$eventHolonId])) {
             continue;
         }
@@ -58,15 +101,26 @@ if (!empty($enabledAppHashes['calendar'])) {
             trim((string)($locationData['address'] ?? '')),
             trim((string)($locationData['videoUrl'] ?? '')),
         )));
+        $associatedDocumentOpenData = omoCalendarBuildAssociatedDocumentOpenData(
+            $event,
+            $associatedDocumentsByEventId[(int)$event->getId()] ?? array(),
+            $currentUserId,
+            $currentOrganizationId,
+            $eventHolonId > 0 ? $eventHolonId : $dashboardModuleContextHolonId
+        );
 
         $calendarEvents[] = array(
             'id' => (int)$event->getId(),
             'holonId' => $eventHolonId,
+            'status' => $eventStatus,
             'title' => trim((string)$event->get('title')) !== ''
                 ? trim((string)$event->get('title'))
                 : 'Evenement #' . (int)$event->getId(),
             'description' => trim((string)$event->get('description')),
             'contextLabel' => $contextLabel,
+            'documentUrl' => $associatedDocumentOpenData['url'],
+            'documentTitle' => $associatedDocumentOpenData['title'],
+            'documentPvEditorUrl' => $associatedDocumentOpenData['pvEditorUrl'],
             'locationLabel' => implode(' · ', $locationParts),
             'filters' => $isMine ? array('all', 'mine') : array('all'),
             'rangeLabel' => $formatCalendarRange(

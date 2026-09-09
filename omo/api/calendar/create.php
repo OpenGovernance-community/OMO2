@@ -38,6 +38,22 @@ $sourceLang = array_merge([
         'text' => 'Description',
         'context' => 'Label of the event description field.',
     ],
+    'calendar.create.field.status' => [
+        'text' => 'Statut',
+        'context' => 'Label of the event visibility and planning status field.',
+    ],
+    'calendar.create.status.draft' => [
+        'text' => 'Brouillon',
+        'context' => 'Event status visible only to its creator.',
+    ],
+    'calendar.create.status.option' => [
+        'text' => 'Option',
+        'context' => 'Event status for a possible date that is not confirmed yet.',
+    ],
+    'calendar.create.status.confirmed' => [
+        'text' => 'Confirmé',
+        'context' => 'Event status for a confirmed date.',
+    ],
     'calendar.create.field.start' => [
         'text' => 'Début',
         'context' => 'Label of the event start date time field.',
@@ -185,6 +201,10 @@ $sourceLang = array_merge([
     'calendar.create.error.end' => [
         'text' => 'La date de fin est invalide.',
         'context' => 'Validation error returned when the end date is invalid.',
+    ],
+    'calendar.create.error.status' => [
+        'text' => 'Le statut choisi est invalide.',
+        'context' => 'Validation error returned when the event status is invalid.',
     ],
     'calendar.create.error.holon' => [
         'text' => 'Le contexte choisi est invalide.',
@@ -392,6 +412,7 @@ if ($eventId > 0) {
     if (
         !$event->load($eventId)
         || (int)$event->get('IDorganization') !== $organizationId
+        || !$event->isDraftVisibleToViewer($currentUserId)
     ) {
         http_response_code(403);
         if (commonIsAjaxJsonRequest()) {
@@ -523,6 +544,11 @@ $canCreateLinkedDocument = Document::canCreateInOrganizationContext(
     0,
     false
 );
+$editableEventStatuses = [
+    Event::STATUS_DRAFT => omoCalendarCreateT('calendar.create.status.draft'),
+    Event::STATUS_OPTION => omoCalendarCreateT('calendar.create.status.option'),
+    Event::STATUS_CONFIRMED => omoCalendarCreateT('calendar.create.status.confirmed'),
+];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=UTF-8');
@@ -540,6 +566,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $title = trim((string)($_POST['title'] ?? ''));
     $description = trim((string)($_POST['description'] ?? ''));
+    $status = trim((string)($_POST['status'] ?? Event::STATUS_CONFIRMED));
     $selectedHolonId = $hasStructureApplication && isset($_POST['IDholon']) ? (int)$_POST['IDholon'] : 0;
     if ($project instanceof Project) {
         $projectHolon = $project->getHolon();
@@ -567,6 +594,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode([
             'status' => false,
             'message' => omoCalendarCreateT('calendar.create.error.title'),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    if (!array_key_exists($status, $editableEventStatuses)) {
+        echo json_encode([
+            'status' => false,
+            'message' => omoCalendarCreateT('calendar.create.error.status'),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         exit;
     }
@@ -702,7 +737,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $event->set('title', $title);
     $event->set('description', $description !== '' ? $description : null);
-    $event->set('status', Event::STATUS_CONFIRMED);
+    $event->set('status', $status);
     $event->set('timezone', date_default_timezone_get());
     $event->set('locationmode', $locationMode !== '' ? $locationMode : null);
     $event->set('locationaddress', $locationAddress !== '' ? $locationAddress : null);
@@ -857,7 +892,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         $notificationEvent = new Event();
-        if ($notificationEvent->load((int)$event->getId())) {
+        if (
+            $notificationEvent->load((int)$event->getId())
+            && Event::normalizeStatus($notificationEvent->get('status')) !== Event::STATUS_DRAFT
+        ) {
             if (!$isEditMode) {
                 notificationCenterDispatchEventInvitation($notificationEvent, $currentUserId);
             } else {
@@ -916,6 +954,10 @@ $endDefault = $isEditMode
     : (clone $startDefault)->modify('+1 hour');
 $titleDefault = $isEditMode ? trim((string)$event->get('title')) : '';
 $descriptionDefault = $isEditMode ? trim((string)$event->get('description')) : '';
+$statusDefault = $isEditMode ? Event::normalizeStatus($event->get('status')) : Event::STATUS_CONFIRMED;
+if (!array_key_exists($statusDefault, $editableEventStatuses)) {
+    $statusDefault = Event::STATUS_CONFIRMED;
+}
 $isAllDayDefault = $isEditMode ? (bool)$event->get('is_all_day') : false;
 $locationDisplayData = $isEditMode ? $event->getLocationDisplayData() : ['mode' => '', 'address' => '', 'videoUrl' => ''];
 $locationModeDefault = $locationDisplayData['mode'] !== ''
@@ -1025,6 +1067,15 @@ if ($isEditMode) {
                                     maxlength="190"
                                     required
                                 >
+                            </label>
+
+                            <label class="omo-calendar-create__field generic-form-field">
+                                <span class="generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.status')) ?></span>
+                                <select name="status" class="generic-form-control">
+                                    <?php foreach ($editableEventStatuses as $statusValue => $statusLabel): ?>
+                                        <option value="<?= omoApiEscape($statusValue) ?>"<?= $statusValue === $statusDefault ? ' selected' : '' ?>><?= omoApiEscape($statusLabel) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
                             </label>
 
                             <?php if ($hasStructureApplication): ?>
