@@ -26,6 +26,10 @@ $usesImportance = !empty($projectDisplayConfig['useImportance']);
 $usesSize = !empty($projectDisplayConfig['useSize']);
 
 $isEdit = $projectId > 0;
+$canCreateProject = omoProjectsCanCreateContext($context);
+$canProposeProject = omoProjectsCanProposeContext($context);
+$requestedParentId = isset($_GET['parent_id']) && is_numeric($_GET['parent_id']) ? (int)$_GET['parent_id'] : 0;
+$canCreateSubprojectFromParent = false;
 $project = new Project();
 if ($isEdit) {
     if (
@@ -39,7 +43,16 @@ if ($isEdit) {
         exit;
     }
 } else {
-    if (!omoProjectsCanCreateContext($context)) {
+    if ($requestedParentId > 0) {
+        $requestedParent = new Project();
+        $canCreateSubprojectFromParent = $requestedParent->load($requestedParentId)
+            && (int)$requestedParent->get('IDorganization') === $organizationId
+            && (int)$requestedParent->get('active') === 1
+            && Project::normalizeKind($requestedParent->get('project_kind')) === Project::KIND_STANDARD
+            && omoProjectsCanManageProject($requestedParent, $context);
+    }
+
+    if (!$canCreateProject && !$canProposeProject && !$canCreateSubprojectFromParent) {
         http_response_code(403);
         echo '<div class="omo-empty-state">' . omoApiEscape(omoProjectsT('projects.error.forbidden')) . '</div>';
         exit;
@@ -54,7 +67,6 @@ if ($isEdit) {
     $project->set('capture_mode', Project::CAPTURE_MULTIPLE_DOCUMENTS);
     $project->set('project_size', Project::SIZE_M);
 
-    $requestedParentId = isset($_GET['parent_id']) && is_numeric($_GET['parent_id']) ? (int)$_GET['parent_id'] : 0;
     if ($requestedParentId > 0) {
         $requestedParent = new Project();
         if (
@@ -68,6 +80,8 @@ if ($isEdit) {
         }
     }
 }
+
+$isProposalForm = !$isEdit && !$canCreateProject && $canProposeProject;
 
 $formatDateValue = static function ($value): string {
     if ($value instanceof \DateTimeInterface) {
@@ -97,7 +111,7 @@ $allProjects = new ArrayProject();
 $allProjects->loadForOrganization($organizationId);
 $parentProjects = [];
 foreach ($allProjects as $candidate) {
-    if (!($candidate instanceof Project) || !$project->canUseAsParent($candidate)) {
+    if (!($candidate instanceof Project) || !omoProjectsCanViewProject($candidate, $context) || $candidate->isPendingProposal() || !$project->canUseAsParent($candidate)) {
         continue;
     }
 
@@ -174,7 +188,7 @@ $formTexts = [
         data-omo-subdrawer-title="<?= omoApiEscape(omoProjectsT($isEdit ? 'projects.form.edit_title' : 'projects.form.title')) ?>"
         data-omo-subdrawer-description="<?= omoApiEscape(omoProjectsT($isEdit ? 'projects.form.edit_description' : 'projects.form.description')) ?>"
     >
-        <button type="submit" form="<?= $formId ?>" class="generic-action-button generic-action-button--main" data-omo-subdrawer-action data-omo-project-form-submit><?= omoApiEscape(omoProjectsT($isEdit ? 'projects.form.edit_submit' : 'projects.form.submit')) ?></button>
+        <button type="submit" form="<?= $formId ?>" class="generic-action-button generic-action-button--main" data-omo-subdrawer-action data-omo-project-form-submit><?= omoApiEscape(omoProjectsT($isEdit ? 'projects.form.edit_submit' : ($isProposalForm ? 'projects.action.propose' : 'projects.form.submit'))) ?></button>
         <button type="button" form="<?= $formId ?>" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-omo-projects-cancel-create><?= omoApiEscape(omoProjectsT('projects.action.cancel')) ?></button>
     </div>
 
@@ -536,12 +550,24 @@ $formTexts = [
         var submitters = document.querySelectorAll('[data-omo-project-form-submit], button[type="submit"][form="' + form.id + '"]');
         submitters.forEach(function (button) { button.disabled = true; });
         fetch(form.action, {method: 'POST', credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: new FormData(form)})
-            .then(function (response) { return response.json().then(function (payload) { return {ok: response.ok, payload: payload}; }); })
+            .then(function (response) {
+                return response.json().catch(function () { return null; }).then(function (payload) {
+                    return {ok: response.ok, payload: payload};
+                });
+            })
             .then(function (result) {
                 if (!result.ok || !result.payload || !result.payload.success) throw new Error(result.payload && result.payload.message ? result.payload.message : texts.saveError);
                 return typeof window.omoProjectsAfterSave === 'function' ? window.omoProjectsAfterSave() : null;
             })
-            .catch(function (error) { setFeedback(error && error.message ? error.message : texts.saveError); submitters.forEach(function (button) { button.disabled = false; }); });
+            .catch(function (error) {
+                var message = error && error.message ? error.message : texts.saveError;
+                if (typeof window.omoNotify === 'function') {
+                    window.omoNotify(message, 'error');
+                } else {
+                    setFeedback(message);
+                }
+                submitters.forEach(function (button) { button.disabled = false; });
+            });
     });
 })(window, document);
 </script>

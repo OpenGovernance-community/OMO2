@@ -20,6 +20,7 @@ if (!function_exists('notificationCenterEventCatalog')) {
             'calendar_event_location_changed' => 'Modification du lieu d un evenement',
             'calendar_event_schedule_changed' => 'Modification de l horaire d un evenement',
             'calendar_event_starting' => 'Debut prochain d un evenement',
+            'project_proposal_refused' => 'Refus de mes propositions de projet',
         ];
     }
 }
@@ -50,6 +51,12 @@ if (!function_exists('notificationCenterEventGroupCatalog')) {
                     'calendar_event_location_changed',
                     'calendar_event_schedule_changed',
                     'calendar_event_starting',
+                ],
+            ],
+            'projects' => [
+                'applicationHash' => 'projects',
+                'eventKeys' => [
+                    'project_proposal_refused',
                 ],
             ],
         ];

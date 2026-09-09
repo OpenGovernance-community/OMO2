@@ -2626,7 +2626,8 @@ INSERT INTO `permission` VALUES
 (29,'CAN_EDIT_CONTROL_ACTIVITY','Modifier des activites recurrentes','Autorise la modification des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
 (30,'CAN_DELETE_CONTROL_ACTIVITY','Supprimer des activites recurrentes','Autorise la suppression des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
 (31,'CAN_EDIT_HOLON_BUDGET','Modifier les budgets de holons','Autorise la modification des budgets temps et argent des holons dans le contexte cible.',1,'2026-09-07 00:00:00','2026-09-07 00:00:00'),
-(32,'CAN_EDIT_AFFECTATION_BUDGET','Modifier les budgets des affectations','Autorise la modification des budgets temps et argent des affectations dans le contexte cible.',1,'2026-09-07 00:00:00','2026-09-07 00:00:00');
+(32,'CAN_EDIT_AFFECTATION_BUDGET','Modifier les budgets des affectations','Autorise la modification des budgets temps et argent des affectations dans le contexte cible.',1,'2026-09-07 00:00:00','2026-09-07 00:00:00'),
+(33,'CAN_PROPOSE_PROJECT','Proposer des projets','Autorise la proposition de projets au role ou cercle cible.',1,'2026-09-09 00:00:00','2026-09-09 00:00:00');
 /*!40000 ALTER TABLE `permission` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2642,9 +2643,13 @@ CREATE TABLE `project` (
   `IDorganization` int(11) NOT NULL,
   `IDholon` int(11) DEFAULT NULL,
   `IDuser` int(11) DEFAULT NULL,
+  `IDuser_proposed` int(11) DEFAULT NULL,
   `IDproject_parent` int(11) DEFAULT NULL,
   `IDdocument_journal` int(11) DEFAULT NULL,
   `project_kind` varchar(30) NOT NULL DEFAULT 'standard',
+  `proposal_status` varchar(20) NOT NULL DEFAULT 'normal',
+  `proposed_at` datetime DEFAULT NULL,
+  `proposal_decided_at` datetime DEFAULT NULL,
   `IDproject_template` int(11) DEFAULT NULL,
   `title` varchar(255) NOT NULL,
   `description` mediumtext DEFAULT NULL,
@@ -2663,6 +2668,8 @@ CREATE TABLE `project` (
   KEY `idx_project_organization` (`IDorganization`),
   KEY `idx_project_holon` (`IDholon`),
   KEY `idx_project_user` (`IDuser`),
+  KEY `idx_project_proposer` (`IDuser_proposed`),
+  KEY `idx_project_proposal_status` (`proposal_status`, `active`),
   KEY `idx_project_parent` (`IDproject_parent`),
   KEY `idx_project_journal` (`IDdocument_journal`),
   KEY `idx_project_status` (`status`),
@@ -2675,7 +2682,8 @@ CREATE TABLE `project` (
   CONSTRAINT `fk_project_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_project_parent` FOREIGN KEY (`IDproject_parent`) REFERENCES `project` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_project_template` FOREIGN KEY (`IDproject_template`) REFERENCES `project` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_project_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_project_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_project_proposer` FOREIGN KEY (`IDuser_proposed`) REFERENCES `user` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -2685,7 +2693,7 @@ CREATE TABLE `project` (
 
 LOCK TABLES `project` WRITE;
 /*!40000 ALTER TABLE `project` DISABLE KEYS */;
-INSERT INTO `project` VALUES
+INSERT INTO `project` (`id`, `IDorganization`, `IDholon`, `IDuser`, `IDproject_parent`, `IDdocument_journal`, `project_kind`, `IDproject_template`, `title`, `description`, `status`, `planned_start_date`, `planned_end_date`, `priority`, `importance`, `calculated_importance`, `project_size`, `capture_mode`, `active`, `created_at`, `updated_at`) VALUES
 (1,1,708,NULL,NULL,NULL,'checklist_template',NULL,'Processus d\'accueil des nouveaux et nouvelles','Ensemble des étapes à suivre pour accueillir une nouvelle personne au sein de l\'organisation.','someday',NULL,NULL,NULL,NULL,0.00000000,'M','multiple_documents',1,'2026-07-23 15:52:32','2026-07-24 09:32:36'),
 (2,1,708,NULL,1,NULL,'checklist_template',NULL,'Créer l\'adresse e-mail du nouveau venu',NULL,'someday',NULL,NULL,4,NULL,0.00000000,'S','multiple_documents',1,'2026-07-23 15:53:45','2026-07-23 16:07:10'),
 (3,1,708,NULL,1,NULL,'checklist_template',NULL,'Un restaurant est réservé pour le premier repas de midi',NULL,'someday',NULL,NULL,3,NULL,0.00000000,'S','multiple_documents',1,'2026-07-23 16:03:57','2026-07-23 16:03:57'),

@@ -732,6 +732,27 @@
 				)
 			);
 		}
+
+		public static function getLatestStructureEntryId($organizationId)
+		{
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return 0;
+			}
+
+			return (int)self::fetchValue(
+				"SELECT MAX(id)
+				FROM history
+				WHERE active = 1
+				  AND IDorganization = :organization_id
+				  AND (target_type = :target_type OR action = :account_merge_action)",
+				array(
+					'organization_id' => $organizationId,
+					'target_type' => 'holon',
+					'account_merge_action' => 'account_merge',
+				)
+			);
+		}
 	}
 
 ?>

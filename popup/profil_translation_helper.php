@@ -50,6 +50,212 @@ function profilPopupGetSourceLang(): array
             'text' => 'Patreon',
             'context' => 'Tab label used for the Patreon information tab in the profile popup.',
         ],
+        'profile.popup.tabs.tools' => [
+            'text' => 'Outils',
+            'context' => 'Tab label used for account tools in the profile popup.',
+        ],
+        'profile.popup.merge.title' => [
+            'text' => 'Fusionner deux profils',
+            'context' => 'Title of the account merge tool.',
+        ],
+        'profile.popup.merge.intro' => [
+            'text' => "Rassemblez dans un seul profil les organisations, rôles, documents, décisions, validations et autres actions de deux comptes qui vous appartiennent.",
+            'context' => 'Introductory text for the account merge tool.',
+        ],
+        'profile.popup.merge.current_email' => [
+            'text' => 'Adresse de connexion de ce compte',
+            'context' => 'Label for the current account login email.',
+        ],
+        'profile.popup.merge.reveal' => [
+            'text' => 'Fusionner deux profils',
+            'context' => 'Button that reveals the account merge form.',
+        ],
+        'profile.popup.merge.other_email_label' => [
+            'text' => "Adresse e-mail de connexion de l’autre compte",
+            'context' => 'Label for the second account login email.',
+        ],
+        'profile.popup.merge.other_email_placeholder' => [
+            'text' => 'autre@exemple.ch',
+            'context' => 'Placeholder for the second account login email.',
+        ],
+        'profile.popup.merge.start' => [
+            'text' => 'Fusionner',
+            'context' => 'Button that starts ownership verification for an account merge.',
+        ],
+        'profile.popup.merge.code_label' => [
+            'text' => 'Code reçu par e-mail',
+            'context' => 'Label for the emailed account merge verification code.',
+        ],
+        'profile.popup.merge.verify_code' => [
+            'text' => 'Valider le code',
+            'context' => 'Button that verifies the emailed account merge code.',
+        ],
+        'profile.popup.merge.resend_code' => [
+            'text' => 'Renvoyer le code',
+            'context' => 'Button that sends a fresh account merge verification code.',
+        ],
+        'profile.popup.merge.use_password' => [
+            'text' => 'Utiliser le mot de passe',
+            'context' => 'Button that switches the account merge verification to password mode.',
+        ],
+        'profile.popup.merge.use_code' => [
+            'text' => 'Utiliser le code reçu',
+            'context' => 'Button that switches the account merge verification to email code mode.',
+        ],
+        'profile.popup.merge.password_label' => [
+            'text' => "Mot de passe de l’autre compte",
+            'context' => 'Label for the second account password.',
+        ],
+        'profile.popup.merge.verify_password' => [
+            'text' => 'Valider le mot de passe',
+            'context' => 'Button that verifies the second account password.',
+        ],
+        'profile.popup.merge.totp_label' => [
+            'text' => "Code de l’application de validation",
+            'context' => 'Label for the second factor code during account merge.',
+        ],
+        'profile.popup.merge.verify_totp' => [
+            'text' => 'Valider la double authentification',
+            'context' => 'Button that verifies the second factor during account merge.',
+        ],
+        'profile.popup.merge.keep_title' => [
+            'text' => 'Quel profil souhaitez-vous conserver ?',
+            'context' => 'Title of the account choice shown after ownership verification.',
+        ],
+        'profile.popup.merge.keep_help' => [
+            'text' => "L’adresse, le mot de passe, la photo et les préférences du profil conservé resteront prioritaires. Les informations manquantes seront complétées avec l’autre profil.",
+            'context' => 'Explanation of which profile properties win during a merge.',
+        ],
+        'profile.popup.merge.superadmin_kept' => [
+            'text' => 'Le profil superadmin doit être conservé et a été sélectionné automatiquement.',
+            'context' => 'Notice explaining that the superadmin account is the mandatory merge survivor.',
+        ],
+        'profile.popup.merge.keep_current' => [
+            'text' => 'Conserver le compte actuel',
+            'context' => 'Option label for keeping the currently authenticated account.',
+        ],
+        'profile.popup.merge.keep_other' => [
+            'text' => "Conserver l’autre compte",
+            'context' => 'Option label for keeping the newly verified account.',
+        ],
+        'profile.popup.merge.warning' => [
+            'text' => "Tous les objets et historiques seront réattribués au profil conservé. L’autre compte sera ensuite supprimé. Cette opération ne peut pas être annulée.",
+            'context' => 'Destructive account merge warning.',
+        ],
+        'profile.popup.merge.confirm_label' => [
+            'text' => "Je confirme vouloir fusionner ces deux profils et supprimer le compte en trop.",
+            'context' => 'Explicit confirmation checkbox label for account merge.',
+        ],
+        'profile.popup.merge.complete' => [
+            'text' => 'Finaliser la fusion',
+            'context' => 'Button that performs the account merge.',
+        ],
+        'profile.popup.merge.cancel' => [
+            'text' => 'Annuler',
+            'context' => 'Button that cancels the account merge flow.',
+        ],
+        'profile.popup.merge.status.code_sent' => [
+            'text' => "Un code a été envoyé à l’autre adresse e-mail.",
+            'context' => 'Status shown after sending an account merge verification code.',
+        ],
+        'profile.popup.merge.status.code_pending' => [
+            'text' => "Le code a été créé, mais l’envoi de l’e-mail n’a pas pu être confirmé. Vous pouvez réessayer ou utiliser le mot de passe.",
+            'context' => 'Status shown when merge code email delivery is uncertain.',
+        ],
+        'profile.popup.merge.status.mfa_required' => [
+            'text' => "Saisissez le code de double authentification de l’autre compte.",
+            'context' => 'Status shown when account merge requires a second factor.',
+        ],
+        'profile.popup.merge.status.verified' => [
+            'text' => "L’autre compte a été vérifié. Choisissez maintenant le profil à conserver.",
+            'context' => 'Status shown after verifying ownership of the second account.',
+        ],
+        'profile.popup.merge.status.processing' => [
+            'text' => 'Fusion en cours…',
+            'context' => 'Status shown while the account merge is running.',
+        ],
+        'profile.popup.merge.status.complete' => [
+            'text' => 'Les deux profils ont été fusionnés. La page va être actualisée.',
+            'context' => 'Status shown after a successful account merge.',
+        ],
+        'profile.popup.merge.error.invalid_request' => [
+            'text' => 'La demande de fusion est invalide.',
+            'context' => 'Generic invalid account merge request error.',
+        ],
+        'profile.popup.merge.error.invalid_email' => [
+            'text' => 'Veuillez saisir une adresse e-mail valide.',
+            'context' => 'Invalid second account email error.',
+        ],
+        'profile.popup.merge.error.same_account' => [
+            'text' => "Cette adresse appartient déjà au compte actuel.",
+            'context' => 'Error shown when both account merge emails resolve to the same account.',
+        ],
+        'profile.popup.merge.error.account_not_found' => [
+            'text' => "Aucun autre compte ne correspond exactement à cette adresse de connexion.",
+            'context' => 'Error shown when the second account cannot be uniquely found.',
+        ],
+        'profile.popup.merge.error.send_failed' => [
+            'text' => "Le code n’a pas pu être envoyé. Veuillez réessayer.",
+            'context' => 'Error shown when the account merge code cannot be sent.',
+        ],
+        'profile.popup.merge.error.rate_limited' => [
+            'text' => 'Trop de tentatives ont été effectuées. Veuillez patienter avant de réessayer.',
+            'context' => 'Rate limit error during account merge.',
+        ],
+        'profile.popup.merge.error.expired' => [
+            'text' => 'Cette demande de fusion a expiré. Veuillez recommencer.',
+            'context' => 'Expired account merge flow error.',
+        ],
+        'profile.popup.merge.error.missing_code' => [
+            'text' => 'Veuillez saisir le code reçu par e-mail.',
+            'context' => 'Missing account merge email code error.',
+        ],
+        'profile.popup.merge.error.wrong_code' => [
+            'one' => 'Code incorrect. Il reste {count} essai.',
+            'other' => 'Code incorrect. Il reste {count} essais.',
+            'context' => 'Wrong account merge email code error.',
+        ],
+        'profile.popup.merge.error.locked' => [
+            'text' => 'Cette vérification est verrouillée. Veuillez recommencer plus tard.',
+            'context' => 'Locked account merge verification error.',
+        ],
+        'profile.popup.merge.error.missing_password' => [
+            'text' => "Veuillez saisir le mot de passe de l’autre compte.",
+            'context' => 'Missing second account password error.',
+        ],
+        'profile.popup.merge.error.invalid_password' => [
+            'text' => 'Mot de passe incorrect.',
+            'context' => 'Wrong second account password error.',
+        ],
+        'profile.popup.merge.error.password_disabled' => [
+            'text' => "La connexion par mot de passe n’est pas activée sur cet autre compte.",
+            'context' => 'Password login disabled error during account merge.',
+        ],
+        'profile.popup.merge.error.missing_mfa_code' => [
+            'text' => "Veuillez saisir le code de l’application de validation.",
+            'context' => 'Missing second factor error during account merge.',
+        ],
+        'profile.popup.merge.error.wrong_mfa_code' => [
+            'one' => 'Code de validation incorrect. Il reste {count} essai.',
+            'other' => 'Code de validation incorrect. Il reste {count} essais.',
+            'context' => 'Wrong second factor error during account merge.',
+        ],
+        'profile.popup.merge.error.mfa_unavailable' => [
+            'text' => 'La double authentification de cet autre compte est indisponible.',
+            'context' => 'Unavailable second factor error during account merge.',
+        ],
+        'profile.popup.merge.error.confirmation_required' => [
+            'text' => 'Veuillez confirmer la suppression du compte en trop.',
+            'context' => 'Missing destructive confirmation error during account merge.',
+        ],
+        'profile.popup.merge.error.invalid_choice' => [
+            'text' => 'Veuillez choisir le profil à conserver.',
+            'context' => 'Invalid kept account choice error.',
+        ],
+        'profile.popup.merge.error.merge_failed' => [
+            'text' => "La fusion n’a pas pu être terminée. Aucune donnée n’a été modifiée.",
+            'context' => 'Transactional account merge failure error.',
+        ],
         'profile.popup.section.patreon.title' => [
             'text' => 'Patreon',
             'context' => 'Section title shown for the Patreon connection block in the profile popup.',

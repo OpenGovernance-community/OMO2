@@ -59,7 +59,7 @@ if ($projectId <= 0) {
     $archivedProjects = new ArrayProject();
     $archivedProjects->loadArchivedForOrganization($organizationId);
     foreach ($archivedProjects as $archivedProject) {
-        if (!($archivedProject instanceof Project)) {
+        if (!($archivedProject instanceof Project) || !omoProjectsCanViewProject($archivedProject, $context)) {
             continue;
         }
         if (!omoProjectsScopeContainsProject($archivedProject, $projectScope, $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0, $scopeHolonIds)) {
@@ -164,6 +164,7 @@ if (
     !$project->load($projectId)
     || (int)$project->get('IDorganization') !== $organizationId
     || (int)$project->get('active') !== 1
+    || !omoProjectsCanViewProject($project, $context)
 ) {
     http_response_code(404);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoProjectsT('projects.error.not_found')) . '</div>';
@@ -191,7 +192,7 @@ $hasArchivedProject = false;
 ?>
 <div class="omo-project-archives__list">
     <?php foreach ($archivedProjects as $archivedProject): ?>
-        <?php if (!($archivedProject instanceof Project) || (int)$archivedProject->get('active') === 1): continue; endif; ?>
+        <?php if (!($archivedProject instanceof Project) || (int)$archivedProject->get('active') === 1 || !omoProjectsCanViewProject($archivedProject, $context)): continue; endif; ?>
         <?php $hasArchivedProject = true; ?>
         <div class="generic-soft-panel omo-project-archives__item">
             <a href="#projects-d<?= (int)$archivedProject->getId() ?>" class="omo-project-archives__item-title" data-omo-project-archive-link data-project-id="<?= (int)$archivedProject->getId() ?>"><?= omoApiEscape((string)$archivedProject->get('title')) ?></a>
