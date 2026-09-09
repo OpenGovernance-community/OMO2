@@ -80,7 +80,11 @@ if ($documentId > 0) {
     $invitationClass = DocumentInvitation::class;
     $resourceField = 'IDdocument';
 } else {
-    if (!$event->load($eventId) || (int)$event->get('IDorganization') !== $organizationId) {
+    if (
+        !$event->load($eventId)
+        || (int)$event->get('IDorganization') !== $organizationId
+        || !$event->isDraftVisibleToViewer($currentUserId)
+    ) {
         http_response_code(403);
         ?><div class="omo-calendar-invitations-popup__empty"><?= omoApiEscape(omoCalendarInvitationsPopupT('calendar.invitations.empty_denied')) ?></div><?php
         exit;

@@ -92,6 +92,10 @@ $sourceLang = [
         'text' => 'Orga',
         'context' => 'Short fallback context label used for organization-wide events in the personal space panel.',
     ],
+    'personal_space.calendar.document.open' => [
+        'text' => 'Ouvrir le document associe',
+        'context' => 'Accessible label for the document icon shown next to a dashboard event.',
+    ],
     'personal_space.team.empty' => [
         'text' => 'Aucun anniversaire proche à afficher.',
         'context' => 'Empty state shown when no upcoming personal or professional anniversaries are found.',
