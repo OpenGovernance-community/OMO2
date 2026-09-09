@@ -48,6 +48,18 @@ $sourceLang = array_merge([
         'text' => 'Consulter le document',
         'context' => 'Button used to open the linked document from the event detail view.',
     ],
+    'calendar.detail.action.delete_document' => [
+        'text' => 'Supprimer le document',
+        'context' => 'Icon-only button used to delete the linked document from the event detail view.',
+    ],
+    'calendar.detail.confirm_delete_document' => [
+        'text' => 'Supprimer définitivement ce document ?',
+        'context' => 'Confirmation message shown before deleting the linked document from an event.',
+    ],
+    'calendar.detail.delete_document_error' => [
+        'text' => 'Impossible de supprimer le document.',
+        'context' => 'Fallback error shown when deleting the linked document from an event fails.',
+    ],
     'calendar.detail.header.subtitle' => [
         'text' => 'Consultez les détails, puis modifiez-les si besoin.',
         'context' => 'Short explanatory subtitle below the event detail heading.',
@@ -300,6 +312,14 @@ $associatedDocumentPvPreparationUrl = $associatedDocument instanceof \dbObject\D
     && $associatedDocument->canUserOpenPvEditor($currentUserId, $organizationId)
     ? $associatedDocument->buildPvEditorUrl($organizationId)
     : '';
+$canDeleteAssociatedDocument = $associatedDocument instanceof \dbObject\Document
+    && $associatedDocument->canManageLifecycle($organizationId, $currentUserId)
+    && $associatedDocument->canDeleteDocument(true);
+$detailRefreshUrl = '/omo/api/calendar/detail.php?oid=' . rawurlencode((string)$organizationId)
+    . '&id=' . rawurlencode((string)$eventId);
+if ($editContextHolonId > 0) {
+    $detailRefreshUrl .= '&cid=' . rawurlencode((string)$editContextHolonId);
+}
 $invitationContext = [
     'organizationId' => $organizationId,
     'targetHolonId' => $editContextHolonId,
@@ -437,14 +457,34 @@ $invitationContext = [
                             <strong class="omo-calendar-detail__meta-value"><?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : ('Document #' . (int)$associatedDocument->getId())) ?></strong>
                             <span class="omo-calendar-detail__document-type"><?= omoApiEscape($associatedDocument->getDocumentTypeLabel()) ?></span>
                         </div>
-                        <?php if ($associatedDocumentUrl !== ''): ?>
-                            <button
-                                type="button"
-                                class="generic-action-button generic-action-button--secondary"
-                                data-omo-calendar-open-url="<?= omoApiEscape($associatedDocumentUrl) ?>"
-                                data-omo-calendar-open-url-title="<?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : ('Document #' . (int)$associatedDocument->getId())) ?>"
-                                data-omo-calendar-open-pv-editor-url="<?= omoApiEscape($associatedDocumentPvPreparationUrl) ?>"
-                            ><?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.open_document')) ?></button>
+                        <?php if ($associatedDocumentUrl !== '' || $canDeleteAssociatedDocument): ?>
+                            <div class="omo-calendar-detail__document-actions">
+                                <?php if ($associatedDocumentUrl !== ''): ?>
+                                    <button
+                                        type="button"
+                                        class="generic-action-button generic-action-button--secondary"
+                                        data-omo-calendar-open-url="<?= omoApiEscape($associatedDocumentUrl) ?>"
+                                        data-omo-calendar-open-url-title="<?= omoApiEscape(trim((string)$associatedDocument->get('title')) !== '' ? trim((string)$associatedDocument->get('title')) : ('Document #' . (int)$associatedDocument->getId())) ?>"
+                                        data-omo-calendar-open-pv-editor-url="<?= omoApiEscape($associatedDocumentPvPreparationUrl) ?>"
+                                    ><?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.open_document')) ?></button>
+                                <?php endif; ?>
+                                <?php if ($canDeleteAssociatedDocument): ?>
+                                    <button
+                                        type="button"
+                                        class="generic-action-button generic-action-button--danger generic-action-button--icon-only"
+                                        data-omo-calendar-document-delete-id="<?= (int)$associatedDocument->getId() ?>"
+                                        data-omo-calendar-document-delete-refresh-url="<?= omoApiEscape($detailRefreshUrl) ?>"
+                                        data-omo-calendar-document-delete-confirm="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.confirm_delete_document')) ?>"
+                                        data-omo-calendar-document-delete-error="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.delete_document_error')) ?>"
+                                        title="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.delete_document')) ?>"
+                                        aria-label="<?= omoApiEscape(omoCalendarDetailT('calendar.detail.action.delete_document')) ?>"
+                                    >
+                                        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                                            <path d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2m-9 0 1 13h10l1-13"></path>
+                                        </svg>
+                                    </button>
+                                <?php endif; ?>
+                            </div>
                         <?php endif; ?>
                     <?php else: ?>
                         <p class="omo-calendar-detail__empty generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarDetailT('calendar.detail.empty.document')) ?></p>
@@ -609,6 +649,13 @@ $invitationContext = [
         justify-content: space-between;
         gap: 12px;
         flex-wrap: wrap;
+    }
+
+    .omo-calendar-detail__document-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
     }
 
     .omo-calendar-detail__quick-info-list {

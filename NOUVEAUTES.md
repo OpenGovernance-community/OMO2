@@ -2099,7 +2099,11 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 # 2026-09-09
 
 - L ouverture dun evenement depuis le tableau de pilotage conserve maintenant la vue calendrier et le scope enregistres au lieu de forcer la vue locale du jour.
+- La reouverture du meme evenement apres un retour sur l ancrage resynchronise maintenant le drawer Calendrier et son sous-drawer Evenement, sans laisser le tableau de pilotage visible derriere le detail.
 - Les evenements affichent maintenant une icone document ouvrable lorsqu un PV ou un autre document y est associe, dans le calendrier comme dans le tableau de pilotage.
+- Le detail d un evenement propose maintenant la suppression du document associe avec confirmation, lorsque l utilisateur dispose des droits necessaires.
+- L ouverture d un document associe rejoue maintenant la route du sous-drawer et le rend visible sans recharger son contenu lorsqu il est deja disponible.
+- Le detail d un document permet maintenant aussi de supprimer un document lie a un evenement depuis le bouton poubelle de l en-tete, apres confirmation.
 - Le statut des evenements est maintenant editable avec les etats Brouillon, Option et Confirme. Les brouillons restent visibles uniquement par leur createur, tandis que les options et les dates confirmees sont marquees par une barre jaune ou verte.
 - Les notifications de nouvelles propositions utilisent maintenant le titre ou, a defaut, un extrait de leur description, et indiquent le scrutin concerne.
 
