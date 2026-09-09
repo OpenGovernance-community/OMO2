@@ -2242,6 +2242,26 @@
     });
 
     root.addEventListener('click', function (event) {
+        var proposalResponseButton = event.target.closest('[data-omo-project-proposal-response]');
+        if (proposalResponseButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            var proposalProjectId = Number(proposalResponseButton.getAttribute('data-project-id') || 0);
+            var proposalAction = proposalResponseButton.getAttribute('data-omo-project-proposal-response') || '';
+            if (proposalProjectId <= 0 || !proposalAction) {
+                return;
+            }
+            proposalResponseButton.disabled = true;
+            postProjectAction(proposalProjectId, proposalAction).then(function () {
+                rootNeedsRefresh = true;
+                return refreshRoot(currentUrl, {revealProjectId: proposalAction === 'accept_project_proposal' ? proposalProjectId : 0});
+            }).catch(function (actionError) {
+                proposalResponseButton.disabled = false;
+                window.omoNotify(actionError.message || texts.actionError, 'error');
+            });
+            return;
+        }
+
         var documentsTab = event.target.closest('[data-omo-project-detail-documents-tab]');
         if (documentsTab) {
             loadProjectDocuments(documentsTab);

@@ -71,6 +71,7 @@
         'auth.error.rate_limited': 'Trop de tentatives. Veuillez patienter avant de reessayer.',
         'auth.error.reset_send_failed': "Impossible d'envoyer l'e-mail de réinitialisation.",
         'auth.error.restart_login': 'Merci de relancer la connexion.',
+        'auth.error.secondary_email_in_use': 'Cette adresse est déjà enregistrée comme adresse secondaire sur un profil. Aucun nouveau compte ne sera créé. Utilisez l’adresse principale de ce profil pour vous connecter.',
         'auth.error.send_failed': "Impossible d'envoyer le code par e-mail.",
         'auth.error.unexpected': 'Une erreur est survenue.',
         'auth.error.verify_failed': 'Impossible de verifier le code.',
@@ -822,6 +823,9 @@
                     setStatus(t('auth.error.challenge_expired'), 'error');
                 } else if (data.error === 'no_challenge') {
                     setStatus(t('auth.error.restart_login'), 'error');
+                } else if (data.error === 'secondary_email_in_use') {
+                    hideChallengeBox();
+                    setStatus(data.message || t('auth.error.secondary_email_in_use'), 'error');
                 } else if (data.error === 'send_failed') {
                     setStatus(t('auth.error.send_failed') + (data.mail_error ? ' ' + data.mail_error : ''), 'error');
                 } else {

@@ -21,6 +21,7 @@ $project = new Project();
 if (
     !$project->load($projectId)
     || (int)$project->get('IDorganization') !== $organizationId
+    || !omoProjectsCanViewProject($project, $context)
 ) {
     http_response_code(404);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoProjectsT('projects.error.not_found')) . '</div>';
@@ -46,7 +47,7 @@ if (
 
 $currentUserId = (int)commonGetCurrentUserId();
 $createPermissionHolon = $projectHolon instanceof Holon ? $projectHolon : $rootHolon;
-$canCreateEvent = !$isArchivedProject && $currentUserId > 0
+$canCreateEvent = !$isArchivedProject && !$project->isPendingProposal() && $currentUserId > 0
     && (
         $createPermissionHolon instanceof Holon
             ? $createPermissionHolon->isAllowed('CAN_CREATE_EVENT', true, $currentUserId)

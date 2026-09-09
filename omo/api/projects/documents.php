@@ -19,6 +19,7 @@ $project = new Project();
 if (
     !$project->load($projectId)
     || (int)$project->get('IDorganization') !== $organizationId
+    || !omoProjectsCanViewProject($project, $context)
 ) {
     http_response_code(404);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoProjectsT('projects.error.not_found')) . '</div>';

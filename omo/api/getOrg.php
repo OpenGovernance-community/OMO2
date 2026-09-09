@@ -262,7 +262,9 @@ function omoFormatListItemValue($item, array $entry)
         if (!isset($projectTitleCache[$projectId])) {
             $project = new Project();
             $projectTitleCache[$projectId] = ($project->load($projectId)
-                && (int)$project->get('IDorganization') === (int)($_SESSION['currentOrganization'] ?? 0))
+                && (int)$project->get('IDorganization') === (int)($_SESSION['currentOrganization'] ?? 0)
+                && omoProjectsCanViewProject($project, omoProjectsResolveContext((int)$_SESSION['currentOrganization']))
+            )
                 ? trim((string)$project->get('title'))
                 : '';
         }
@@ -304,6 +306,7 @@ function omoGetProjectReferenceData($projectId)
     static $projectsById = null;
     static $childrenByParent = null;
     static $statusSummaryMemo = array();
+    static $projectContext = null;
 
     $projectId = (int)$projectId;
     if ($projectId <= 0) {
@@ -313,12 +316,13 @@ function omoGetProjectReferenceData($projectId)
     if ($projectsById === null) {
         $projectsById = array();
         $childrenByParent = array();
+        $projectContext = omoProjectsResolveContext((int)($_SESSION['currentOrganization'] ?? 0));
         $projects = new ArrayProject();
         $projects->loadForOrganization((int)($_SESSION['currentOrganization'] ?? 0));
 
         foreach ($projects as $project) {
             $id = (int)$project->getId();
-            if ($id <= 0) {
+            if ($id <= 0 || empty($projectContext['status']) || !omoProjectsCanViewProject($project, $projectContext)) {
                 continue;
             }
 

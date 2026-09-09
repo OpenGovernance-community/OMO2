@@ -34,6 +34,13 @@ if (
     exit;
 }
 
+$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+if (!omoProjectsCanViewProject($project, $context)) {
+    http_response_code(404);
+    echo '<div class="omo-empty-state">' . omoApiEscape(omoProjectsT('projects.error.not_found')) . '</div>';
+    exit;
+}
+
 $isArchivedProject = (int)$project->get('active') !== 1;
 
 $organization = $context['organization'];
@@ -60,10 +67,13 @@ if (
 $responsible = $project->getResponsible();
 $parent = $project->getParent();
 $canEdit = !$isArchivedProject && omoProjectsCanManageProject($project, $context);
-$currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
-$canCreateSubproject = !$isArchivedProject && ($projectHolon instanceof Holon
-    ? $projectHolon->isAllowed('CAN_CREATE_PROJECT', true, $currentUserId)
-    : omoProjectsCanCreateContext($context));
+$isPendingProposal = $project->isPendingProposal();
+$canRespondToProposal = !$isArchivedProject && omoProjectsCanRespondToProposal($project, $context);
+$proposer = $project->get('IDuser_proposed') ? (new \dbObject\User()) : null;
+if ($proposer instanceof \dbObject\User && !$proposer->load((int)$project->get('IDuser_proposed'))) {
+    $proposer = null;
+}
+$canCreateSubproject = !$isArchivedProject && !$isPendingProposal && $canEdit;
 $editUrl = '/omo/api/projects/create.php?oid=' . rawurlencode((string)$organizationId) . '&id=' . rawurlencode((string)$projectId);
 if ((int)($_GET['cid'] ?? 0) > 0) {
     $editUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
@@ -84,7 +94,7 @@ $projectsByParent = [];
 $projectsById = [];
 $attachableProjects = [];
 foreach ($allProjects as $allProject) {
-    if (!($allProject instanceof Project) || (int)$allProject->getId() <= 0) {
+    if (!($allProject instanceof Project) || (int)$allProject->getId() <= 0 || !omoProjectsCanViewProject($allProject, $context)) {
         continue;
     }
     $projectsById[(int)$allProject->getId()] = $allProject;
@@ -146,9 +156,39 @@ $hasSubprojectActions = $canCreateSubproject || count($attachableProjects) > 0;
 $subprojects = $projectsByParent[(int)$project->getId()] ?? [];
 $archivedSubprojects = new ArrayProject();
 $archivedSubprojects->loadForParent((int)$project->getId(), false);
+$knownSubprojectIds = [];
+$refusedProposalSubprojectIds = [];
+foreach ($subprojects as $subproject) {
+    if ($subproject instanceof Project) {
+        $knownSubprojectIds[(int)$subproject->getId()] = true;
+    }
+}
+foreach ($archivedSubprojects as $archivedSubproject) {
+    if (!($archivedSubproject instanceof Project) || !omoProjectsCanViewProject($archivedSubproject, $context)) {
+        continue;
+    }
+
+    $proposalStatus = Project::normalizeProposalStatus($archivedSubproject->get('proposal_status'));
+    if (!in_array($proposalStatus, [Project::PROPOSAL_PENDING, Project::PROPOSAL_REFUSED], true)) {
+        continue;
+    }
+
+    $archivedSubprojectId = (int)$archivedSubproject->getId();
+    if (!isset($knownSubprojectIds[$archivedSubprojectId])) {
+        $subprojects[] = $archivedSubproject;
+        $knownSubprojectIds[$archivedSubprojectId] = true;
+    }
+    if ($proposalStatus === Project::PROPOSAL_REFUSED) {
+        $refusedProposalSubprojectIds[$archivedSubprojectId] = true;
+    }
+}
 $archivedSubprojectCount = 0;
 foreach ($archivedSubprojects as $archivedSubproject) {
-    if ($archivedSubproject instanceof Project && (int)$archivedSubproject->get('active') !== 1) {
+    if (
+        $archivedSubproject instanceof Project
+        && (int)$archivedSubproject->get('active') !== 1
+        && !isset($refusedProposalSubprojectIds[(int)$archivedSubproject->getId()])
+    ) {
         $archivedSubprojectCount++;
     }
 }
@@ -193,6 +233,10 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                 data-omo-projects-edit-project-id="<?= (int)$project->getId() ?>"
             ><?= omoApiEscape(omoProjectsT('projects.action.edit')) ?></button>
         <?php endif; ?>
+        <?php if ($canRespondToProposal): ?>
+            <button type="button" class="generic-action-button generic-action-button--main" data-omo-project-proposal-response="accept_project_proposal" data-project-id="<?= (int)$project->getId() ?>"><?= omoApiEscape(omoProjectsT('projects.action.accept_proposal')) ?></button>
+            <button type="button" class="generic-action-button generic-action-button--danger" data-omo-project-proposal-response="refuse_project_proposal" data-project-id="<?= (int)$project->getId() ?>"><?= omoApiEscape(omoProjectsT('projects.action.refuse_proposal')) ?></button>
+        <?php endif; ?>
     </div>
     <?php if (count($projectBreadcrumb) > 0): ?>
         <nav class="omo-project-detail__breadcrumb" aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.breadcrumb')) ?>">
@@ -225,6 +269,24 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
         <div class="generic-tabs__panels">
             <div id="omo-project-detail-information-<?= (int)$project->getId() ?>" class="generic-tabs__panel omo-project-detail__tab-panel" data-generic-tab-panel>
                 <div class="omo-project-detail__tab-content generic-drawer-content">
+    <?php if ($isPendingProposal): ?>
+        <section class="generic-soft-panel omo-project-detail__section omo-project-proposal-panel">
+            <span class="omo-project-proposal-badge"><?= omoApiEscape(omoProjectsT('projects.proposal.badge')) ?></span>
+            <dl class="omo-project-detail__facts">
+                <div><dt><?= omoApiEscape(omoProjectsT('projects.proposal.proposed_by')) ?></dt><dd><?= omoApiEscape(omoProjectsGetUserLabel($proposer)) ?></dd></div>
+                <div><dt><?= omoApiEscape(omoProjectsT('projects.proposal.proposed_at')) ?></dt><dd><?= omoApiEscape(omoProjectsFormatDate($project->get('proposed_at')) ?: omoProjectsT('projects.detail.none')) ?></dd></div>
+            </dl>
+            <?php if ($canEdit): ?>
+                <p class="generic-description generic-description--small"><?= omoApiEscape(omoProjectsT('projects.proposal.editable')) ?></p>
+            <?php elseif ($canRespondToProposal): ?>
+                <p class="generic-description generic-description--small"><?= omoApiEscape(omoProjectsT('projects.proposal.readonly')) ?></p>
+                <div class="generic-form-actions generic-form-actions--stack-mobile">
+                    <button type="button" class="generic-action-button generic-action-button--main" data-omo-project-proposal-response="accept_project_proposal" data-project-id="<?= (int)$project->getId() ?>"><?= omoApiEscape(omoProjectsT('projects.action.accept_proposal')) ?></button>
+                    <button type="button" class="generic-action-button generic-action-button--danger" data-omo-project-proposal-response="refuse_project_proposal" data-project-id="<?= (int)$project->getId() ?>"><?= omoApiEscape(omoProjectsT('projects.action.refuse_proposal')) ?></button>
+                </div>
+            <?php endif; ?>
+        </section>
+    <?php endif; ?>
     <section class="generic-section omo-project-detail__section">
         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoProjectsT('projects.detail.description')) ?></h3>
         <?php if ($description !== ''): ?>
@@ -255,6 +317,9 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                     <?php foreach ($subprojects as $subproject): ?>
                     <?php
                     $subprojectStatus = Project::normalizeStatus($subproject->get('status'));
+                    $subprojectProposalStatus = Project::normalizeProposalStatus($subproject->get('proposal_status'));
+                    $subprojectIsProposal = in_array($subprojectProposalStatus, [Project::PROPOSAL_PENDING, Project::PROPOSAL_REFUSED], true);
+                    $subprojectIsRefusedProposal = $subprojectProposalStatus === Project::PROPOSAL_REFUSED;
                     $subprojectSummary = omoProjectsBuildStatusBar($subproject, $projectsByParent, $statusSummaryMemo, true);
                     $subprojectIsProject = count($projectsByParent[(int)$subproject->getId()] ?? []) > 0;
                     $subprojectHolon = $subproject->getHolon();
@@ -268,7 +333,7 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                     $subprojectCanDelete = omoProjectsCanDeleteProject($subproject, $context);
                     ?>
                     <article
-                        class="omo-project-detail__subproject-item omo-project-detail__subproject-item--<?= omoApiEscape($subprojectStatus) ?><?= $subprojectIsProject ? '' : ' omo-project-detail__subproject-item--task' ?>"
+                        class="omo-project-detail__subproject-item omo-project-detail__subproject-item--<?= omoApiEscape($subprojectStatus) ?><?= $subprojectIsProject ? '' : ' omo-project-detail__subproject-item--task' ?><?= $subprojectIsProposal ? ' omo-project-detail__subproject-item--proposal' : '' ?><?= $subprojectIsRefusedProposal ? ' omo-project-detail__subproject-item--proposal-refused' : '' ?>"
                         data-omo-project-subproject
                         data-project-id="<?= (int)$subproject->getId() ?>"
                         tabindex="0"
@@ -283,6 +348,9 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                         </span>
                         <div class="omo-project-detail__subproject-copy">
                             <strong><?= omoApiEscape((string)$subproject->get('title')) ?></strong>
+                            <?php if ($subprojectIsProposal): ?>
+                                <span class="omo-project-proposal-badge"><?= omoApiEscape(omoProjectsT($subprojectIsRefusedProposal ? 'projects.proposal.refused_badge' : 'projects.proposal.badge')) ?></span>
+                            <?php endif; ?>
                             <div class="omo-project-detail__subproject-meta">
                                 <span><?= omoApiEscape($subprojectHolonLabel) ?></span>
                                 <span><?= omoApiEscape($subprojectResponsible) ?></span>

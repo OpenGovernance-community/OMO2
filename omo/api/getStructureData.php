@@ -231,7 +231,7 @@ $includeMemberUserIds = !(
     && commonGetCurrentShareToken() !== ''
     && !commonCurrentShareAllowsPeople()
 );
-$latestHolonHistoryId = \dbObject\History::getLatestHolonEntryId($organizationId);
+$latestStructureHistoryId = \dbObject\History::getLatestStructureEntryId($organizationId);
 $cacheKey = omoStructureBuildCacheKey(
     $organizationId,
     (int)$navigationRoot->getId(),
@@ -240,7 +240,7 @@ $cacheKey = omoStructureBuildCacheKey(
 $forceRefresh = (int)($_GET['structure_refresh'] ?? 0) === 1;
 $cachedRepresentation = $forceRefresh
     ? null
-    : omoStructureReadSessionCache($cacheKey, $latestHolonHistoryId);
+    : omoStructureReadSessionCache($cacheKey, $latestStructureHistoryId);
 
 if (is_array($cachedRepresentation)) {
     if (session_status() === PHP_SESSION_ACTIVE) {
@@ -293,6 +293,6 @@ if ((int)$navigationRoot->getId() !== (int)$root->getId() && (int)$navigationRoo
     }
 }
 
-omoStructureWriteSessionCache($cacheKey, $latestHolonHistoryId, $representation);
+omoStructureWriteSessionCache($cacheKey, $latestStructureHistoryId, $representation);
 header('X-OMO-Structure-Cache: miss');
 echo json_encode($representation, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
