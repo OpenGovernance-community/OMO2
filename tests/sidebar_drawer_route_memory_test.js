@@ -18,6 +18,9 @@ assert(cacheStart >= 0 && cacheEnd > cacheStart, 'Unable to locate the drawer ro
 const restoreStart = source.indexOf('function omoRestoreCachedDrawerRoute');
 const restoreEnd = source.indexOf('function omoGetMenuHashForRouteToken', restoreStart);
 assert(restoreStart >= 0 && restoreEnd > restoreStart, 'Unable to locate the cached drawer route restoration implementation.');
+const reopenStart = source.indexOf('function omoReopenCurrentDrawerRoute');
+const reopenEnd = source.indexOf('function omoOpenSearchDocumentResult', reopenStart);
+assert(reopenStart >= 0 && reopenEnd > reopenStart, 'Unable to locate the current drawer route reopening implementation.');
 const start = source.indexOf('let omoRememberedDrawerRoutes');
 const end = source.indexOf('let omoPendingDrawerRouteOptions', start);
 assert(start >= 0 && end > start, 'Unable to locate the drawer route memory implementation.');
@@ -42,6 +45,7 @@ const context = {
 vm.createContext(context);
 vm.runInContext(source.slice(cacheStart, cacheEnd), context);
 vm.runInContext(source.slice(restoreStart, restoreEnd), context);
+vm.runInContext(source.slice(reopenStart, reopenEnd), context);
 vm.runInContext(source.slice(start, end), context);
 
 assert(
@@ -76,6 +80,32 @@ assert(
     && restoredRoute.routeToken === 'documents-d7662'
     && restoredRoute.previousRouteToken === 'documents-d7662',
   'A cached Documents drawer must replay its detail route even when the same subdrawer was already visible.'
+);
+assert(
+  source.includes('function omoReplayLoadedDocumentsRoute(')
+    && source.includes('omoReplayLoadedDocumentsRoute(requestedRouteToken, currentRouteToken);'),
+  'A Documents drawer loaded for the first time must replay its detailed route after its scripts are ready.'
+);
+
+let reopenedRoute = null;
+context.omoParseHashState = function (hash) {
+  return {routeToken: String(hash || '').trim() || null};
+};
+context.window = {
+  omoOpenDrawerHashState: function (routeToken) {
+    reopenedRoute = routeToken;
+  }
+};
+assert(
+  vm.runInContext("omoReopenCurrentDrawerRoute('calendar-e42', 57, 2500, {oid: 57, cid: 2500, hash: 'calendar-e42'})", context) === true
+    && reopenedRoute === 'calendar-e42',
+  'Reopening the current calendar event route must restore its cached drawer directly.'
+);
+reopenedRoute = null;
+assert(
+  vm.runInContext("omoReopenCurrentDrawerRoute('calendar-e43', 57, 2500, {oid: 57, cid: 2500, hash: 'calendar-e42'})", context) === false
+    && reopenedRoute === null,
+  'Opening another calendar event must continue through normal navigation.'
 );
 
 vm.runInContext("omoRememberDrawerRoute('projects-d1286')", context);
