@@ -536,6 +536,10 @@ function commonGetAuthSharedSourceLang(): array
             'text' => 'La connexion avec mot de passe n est pas autorisee pour ce compte. Utilisez le code recu par e-mail.',
             'context' => 'Error shown after a correct password is refused because the account only allows CalDAV or CardDAV use.'
         ],
+        'auth.error.secondary_email_in_use' => [
+            'text' => 'Cette adresse est déjà enregistrée comme adresse secondaire sur un profil. Aucun nouveau compte ne sera créé. Utilisez l’adresse principale de ce profil pour vous connecter.',
+            'context' => 'Error shown when automatic account creation is blocked because the email already belongs to an organization-specific profile field.'
+        ],
     ];
 }
 
@@ -2565,7 +2569,7 @@ function commonIsAjaxJsonRequest()
     return strpos($accept, 'application/json') !== false;
 }
 
-function commonSendLoginCode($userId, $email, array $organizationContext, $remember, $returnTo)
+function commonSendLoginCode($userId, $email, array $organizationContext, $remember, $returnTo, $verifyPath = '/common/login_verify.php')
 {
     $sourceLang = commonGetAuthPhpSourceLang();
     $lang = commonAuthLoadBundle('common_auth_page', $sourceLang);
@@ -2580,7 +2584,9 @@ function commonSendLoginCode($userId, $email, array $organizationContext, $remem
     }
 
     $returnTo = commonNormalizeLocalPath($returnTo, '/');
-    $link = commonGetRequestScheme() . "://" . ($_SERVER['HTTP_HOST'] ?? '') . "/common/login_verify.php?token=" . urlencode($requestToken) . "&code=" . urlencode($loginCode) . "&return_to=" . urlencode($returnTo);
+    $verifyPath = commonNormalizeLocalPath($verifyPath, '/common/login_verify.php');
+    $querySeparator = strpos($verifyPath, '?') === false ? '?' : '&';
+    $link = commonGetRequestScheme() . "://" . ($_SERVER['HTTP_HOST'] ?? '') . $verifyPath . $querySeparator . "token=" . urlencode($requestToken) . "&code=" . urlencode($loginCode) . "&return_to=" . urlencode($returnTo);
 
     $subject = commonAuthT('auth.email.subject', [], $lang, $sourceLang);
     $orgName = htmlspecialchars($organizationContext['name'] ?: ($_SERVER['HTTP_HOST'] ?? 'Organisation'));
@@ -2853,6 +2859,18 @@ function commonHandleMagicLoginSend($defaultReturnTo = '/')
             'status' => 'code_sent',
             'request_token' => $loginRequest['request_token'],
             'password_login_enabled' => commonUserAllowsPasswordLogin($user),
+        ]);
+        exit;
+    }
+
+    if (\dbObject\User::isOrganizationEmailInUse($email)) {
+        commonAuthSecurityLog('magic_login_account_creation', 'blocked', [
+            'email' => $email,
+            'reason' => 'secondary_email_in_use',
+        ]);
+        echo json_encode([
+            'error' => 'secondary_email_in_use',
+            'message' => commonAuthT('auth.error.secondary_email_in_use', [], $lang, $sourceLang),
         ]);
         exit;
     }

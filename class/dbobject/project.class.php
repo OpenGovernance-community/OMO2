@@ -13,6 +13,11 @@ class Project extends DbObject
     public const STATUS_REVIEW = 'review';
     public const STATUS_DONE = 'done';
 
+    public const PROPOSAL_NONE = 'normal';
+    public const PROPOSAL_PENDING = 'pending';
+    public const PROPOSAL_ACCEPTED = 'accepted';
+    public const PROPOSAL_REFUSED = 'refused';
+
     public const SAVE_ERROR_PARENT_SOMEDAY = 'parent_someday';
     public const SAVE_ERROR_PARENT_END_DATE = 'parent_end_date';
     public const SAVE_ERROR_BLOCKED_DETAILS = 'blocked_details';
@@ -40,12 +45,12 @@ class Project extends DbObject
             [['IDorganization', 'title'], 'required'],
             [['id', 'priority', 'importance'], 'integer'],
             [['calculated_importance'], 'float'],
-            [['IDorganization', 'IDholon', 'IDuser', 'IDproject_parent', 'IDdocument_journal', 'IDproject_template'], 'fk'],
-            [['title', 'status', 'capture_mode', 'project_size', 'project_kind', 'blocked_reactivate_status'], 'string'],
+            [['IDorganization', 'IDholon', 'IDuser', 'IDuser_proposed', 'IDproject_parent', 'IDdocument_journal', 'IDproject_template'], 'fk'],
+            [['title', 'status', 'capture_mode', 'project_size', 'project_kind', 'proposal_status', 'blocked_reactivate_status'], 'string'],
             [['blocked_reason'], 'text'],
             [['description'], 'html'],
             [['planned_start_date', 'planned_end_date', 'blocked_until'], 'date'],
-            [['created_at', 'updated_at', 'closed_at', 'archived_at'], 'datetime'],
+            [['created_at', 'updated_at', 'closed_at', 'archived_at', 'proposed_at', 'proposal_decided_at'], 'datetime'],
             [['active'], 'boolean'],
             [['blocked_auto_reactivate'], 'boolean'],
             [['id'], 'safe'],
@@ -59,9 +64,11 @@ class Project extends DbObject
             'IDorganization' => 'Organisation',
             'IDholon' => 'Holon',
             'IDuser' => 'Responsable',
+            'IDuser_proposed' => 'Proposé par',
             'IDproject_parent' => 'Projet parent',
             'IDdocument_journal' => 'Document journal',
             'project_kind' => 'Type de projet',
+            'proposal_status' => 'État de la proposition',
             'IDproject_template' => 'Projet modele',
             'title' => 'Titre',
             'description' => 'Description',
@@ -82,6 +89,8 @@ class Project extends DbObject
             'updated_at' => 'Date de modification',
             'closed_at' => 'Date de cloture',
             'archived_at' => 'Date d archivage',
+            'proposed_at' => 'Date de proposition',
+            'proposal_decided_at' => 'Date de décision de la proposition',
         ];
     }
 
@@ -105,6 +114,7 @@ class Project extends DbObject
             'project_size' => 'Taille relative du projet, utilisee pour ponderer sa place dans les barres de synthese.',
             'project_kind' => 'Distingue un projet operationnel d un projet utilise comme modele de processus.',
             'IDproject_template' => 'Projet modele a l origine de cette instance.',
+            'proposal_status' => 'Conserve le cycle de validation d un projet proposé avant qu il devienne un projet normal.',
         ];
     }
 
@@ -117,6 +127,7 @@ class Project extends DbObject
             'capture_mode' => 30,
             'project_size' => 3,
             'project_kind' => 30,
+            'proposal_status' => 20,
         ];
     }
 
@@ -303,6 +314,35 @@ class Project extends DbObject
         return in_array($value, self::statuses(), true)
             ? $value
             : self::STATUS_SOMEDAY;
+    }
+
+    public static function proposalStatuses()
+    {
+        return [
+            self::PROPOSAL_NONE,
+            self::PROPOSAL_PENDING,
+            self::PROPOSAL_ACCEPTED,
+            self::PROPOSAL_REFUSED,
+        ];
+    }
+
+    public static function normalizeProposalStatus($value)
+    {
+        $value = trim(mb_strtolower((string)$value, 'UTF-8'));
+        return in_array($value, self::proposalStatuses(), true) ? $value : self::PROPOSAL_NONE;
+    }
+
+    public function isPendingProposal(): bool
+    {
+        return self::normalizeProposalStatus($this->get('proposal_status')) === self::PROPOSAL_PENDING;
+    }
+
+    public function isPrivateProposal(): bool
+    {
+        return in_array(self::normalizeProposalStatus($this->get('proposal_status')), [
+            self::PROPOSAL_PENDING,
+            self::PROPOSAL_REFUSED,
+        ], true);
     }
 
     public static function normalizeBlockedReactivateStatus($value)
@@ -540,11 +580,22 @@ class Project extends DbObject
         return (string)($catalog[$status]['label'] ?? $status);
     }
 
+    private static function getHistoryProposalStatusLabel($status)
+    {
+        return match (self::normalizeProposalStatus($status)) {
+            self::PROPOSAL_PENDING => 'En attente',
+            self::PROPOSAL_ACCEPTED => 'Acceptee',
+            self::PROPOSAL_REFUSED => 'Refusee',
+            default => '',
+        };
+    }
+
     private static function buildHistoryState(array $values)
     {
         return [
             'title' => trim((string)($values['title'] ?? '')),
             'status' => self::getHistoryStatusLabel($values['status'] ?? self::STATUS_SOMEDAY),
+            'proposal_status' => self::getHistoryProposalStatusLabel($values['proposal_status'] ?? self::PROPOSAL_NONE),
             'planned_start_date' => self::formatHistoryDate($values['planned_start_date'] ?? null),
             'planned_end_date' => self::formatHistoryDate($values['planned_end_date'] ?? null),
             'blocked_reason' => trim((string)($values['blocked_reason'] ?? '')),
@@ -558,7 +609,7 @@ class Project extends DbObject
     private static function getStoredHistoryState($projectId)
     {
         $row = self::fetchRow(
-            'SELECT title, status, planned_start_date, planned_end_date, blocked_reason, blocked_until, blocked_auto_reactivate, blocked_reactivate_status
+            'SELECT title, status, proposal_status, planned_start_date, planned_end_date, blocked_reason, blocked_until, blocked_auto_reactivate, blocked_reactivate_status
              FROM project
              WHERE id = :id
              LIMIT 1',
@@ -572,6 +623,7 @@ class Project extends DbObject
         return self::buildHistoryState([
             'title' => $this->get('title'),
             'status' => $this->get('status'),
+            'proposal_status' => $this->get('proposal_status'),
             'planned_start_date' => $this->get('planned_start_date'),
             'planned_end_date' => $this->get('planned_end_date'),
             'blocked_reason' => $this->get('blocked_reason'),
@@ -586,6 +638,7 @@ class Project extends DbObject
         $labels = [
             'title' => 'Intitulé',
             'status' => 'Statut',
+            'proposal_status' => 'Etat de la proposition',
             'planned_start_date' => 'Début planifié',
             'planned_end_date' => 'Fin planifiée',
             'blocked_reason' => 'Motif du blocage',
@@ -661,6 +714,8 @@ class Project extends DbObject
         switch ($field) {
             case 'status':
                 return $transition('Le statut du projet ' . $projectToken);
+            case 'proposal_status':
+                return $transition('L etat de la proposition du projet ' . $projectToken);
             case 'title':
                 return $transition('L’intitulé du projet ' . $projectToken);
             case 'planned_start_date':
@@ -778,6 +833,7 @@ class Project extends DbObject
             $this->set('calculated_importance', 0.0);
         }
         $this->set('project_kind', self::normalizeKind($this->get('project_kind')));
+        $this->set('proposal_status', self::normalizeProposalStatus($this->get('proposal_status')));
         $this->set('status', self::normalizeStatus($this->get('status')));
         $this->set('capture_mode', self::normalizeCaptureMode($this->get('capture_mode')));
         $this->set('project_size', self::normalizeSize($this->get('project_size')));

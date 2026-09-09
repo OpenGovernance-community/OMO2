@@ -7,12 +7,15 @@ $overdueProjects = [];
 $dashboardProjectItems = [];
 $dashboardProjectCounts = array('total' => 0, 'in_progress' => 0, 'late' => 0);
 if (!empty($enabledAppHashes['projects'])) {
+    $dashboardProjectContext = omoProjectsResolveContext($currentOrganizationId, $dashboardModuleContextHolonId);
     $allProjects = new ArrayProject();
     $allProjects->loadForOrganization($currentOrganizationId);
     $today = new DateTimeImmutable('today');
     foreach ($allProjects as $project) {
         if (
             !($project instanceof Project)
+            || empty($dashboardProjectContext['status'])
+            || !omoProjectsCanViewProject($project, $dashboardProjectContext)
             || Project::normalizeStatus($project->get('status')) === Project::STATUS_DONE
             || ($dashboardModuleAudience === 'mine' && (int)$project->get('IDuser') !== $currentUserId)
             || !omoProjectsScopeContainsProject(

@@ -5,6 +5,7 @@ require_once dirname(__DIR__, 4) . '/common/patreon.php';
 require_once dirname(__DIR__, 4) . '/common/openai_text.php';
 require_once dirname(__DIR__, 4) . '/common/object_visibility_selector.php';
 require_once dirname(__DIR__, 2) . '/stats/shared.php';
+require_once dirname(__DIR__, 2) . '/projects/shared.php';
 
 $sourceLang = omoDocumentsPvEditorSourceLang();
 $lang = omoLoadTranslationBundle('omo_documents_pv_editor', $sourceLang);
@@ -324,8 +325,9 @@ if ($hasDecisionApplication) {
 
 $embeddableProjects = new \dbObject\ArrayProject();
 $embeddableProjects->loadForOrganization($organizationId, true, \dbObject\Project::KIND_STANDARD, true);
+$projectProposalContext = omoProjectsResolveContext($organizationId);
 foreach ($embeddableProjects as $embeddableProject) {
-    if (!($embeddableProject instanceof \dbObject\Project) || (int)$embeddableProject->getId() <= 0) {
+    if (!($embeddableProject instanceof \dbObject\Project) || (int)$embeddableProject->getId() <= 0 || empty($projectProposalContext['status']) || !omoProjectsCanViewProject($embeddableProject, $projectProposalContext)) {
         continue;
     }
     $projectHolon = $embeddableProject->getHolon();
@@ -2802,8 +2804,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                         <div class="omo-pv-editor__event-info-item omo-pv-editor__event-info-item--schedule">
                             <span class="omo-pv-editor__event-info-icon" aria-hidden="true"><img src="/omo/assets/images/documents/event-schedule.png" alt="" class="black-icon"></span>
                             <span class="omo-pv-editor__event-info-value" data-omo-pv-event-schedule><?= $escape($eventSchedule) ?></span>
-                            <?php if ($canExtendAssociatedEvent): ?>
-                                <div class="generic-menu omo-pv-editor__event-extension-menu" data-omo-pv-event-extension-menu>
+                            <?php if (!$isPublicParticipation && $hasAssociatedEvent): ?>
+                                <div class="generic-menu omo-pv-editor__event-extension-menu" data-omo-pv-event-extension-menu<?= $canExtendAssociatedEvent && $canManagePvDocument ? '' : ' hidden' ?>>
                                     <button type="button" class="generic-menu-toggle omo-pv-editor__event-extension-toggle" data-omo-pv-event-extension-toggle aria-haspopup="menu" aria-expanded="false" aria-controls="omoPvEventExtensionMenu" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.event.extend.button_title')) ?>" title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.event.extend.button_title')) ?>">+</button>
                                     <div id="omoPvEventExtensionMenu" class="generic-menu-panel generic-menu-panel--wide omo-pv-editor__event-extension-panel" data-omo-pv-event-extension-panel role="menu" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.event.extend.menu_aria')) ?>" hidden>
                                         <?php foreach ([5, 10, 15, 30] as $extensionMinutes): ?>
@@ -5555,6 +5557,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             return;
         }
 
+        syncEventExtensionUi(documentPayload);
+
         if (secretaryName instanceof Element) {
             const label = String(documentPayload.pvEditorLabel || '').trim();
             secretaryName.textContent = label !== '' ? label : <?= json_encode((string)$uiText['pvEditorEmpty'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -5827,6 +5831,23 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         const scheduleLabel = String(eventPayload.scheduleLabel || '').trim();
         if (eventScheduleValue instanceof Element && scheduleLabel !== '') {
             eventScheduleValue.textContent = scheduleLabel;
+        }
+    }
+
+    function syncEventExtensionUi(documentPayload) {
+        if (!(eventExtensionMenu instanceof HTMLElement)) {
+            return;
+        }
+
+        const canExtendEvent = documentPayload
+            && documentPayload.canManagePvDocument === true
+            && String(documentPayload.pvStage || '') === 'meeting';
+        eventExtensionMenu.hidden = !canExtendEvent;
+        if (eventExtensionToggle instanceof HTMLButtonElement) {
+            eventExtensionToggle.disabled = !canExtendEvent;
+        }
+        if (!canExtendEvent) {
+            closeEventExtensionMenu();
         }
     }
 

@@ -181,13 +181,61 @@ if ($projectId > 0) {
 
 $canManageContext = omoProjectsCanManageContext($context);
 $canCreateProject = omoProjectsCanCreateContext($context);
+$canProposeProject = omoProjectsCanProposeContext($context);
+$canDeletePendingProposal = $existingProject instanceof Project
+    && $action === 'delete_project'
+    && $existingProject->isPendingProposal()
+    && omoProjectsCanDeleteProject($existingProject, $context);
+
+if (in_array($action, ['accept_project_proposal', 'refuse_project_proposal'], true)) {
+    if (!($existingProject instanceof Project) || !omoProjectsCanRespondToProposal($existingProject, $context)) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
+    }
+
+    $existingProject->set('proposal_status', $action === 'accept_project_proposal'
+        ? Project::PROPOSAL_ACCEPTED
+        : Project::PROPOSAL_REFUSED);
+    $existingProject->set('proposal_decided_at', new \DateTime());
+    if ($action === 'refuse_project_proposal') {
+        $existingProject->set('active', 0);
+    }
+    $saveResult = $existingProject->save();
+    if (!is_array($saveResult) || empty($saveResult['status'])) {
+        omoProjectsActionRespond(false, omoProjectsSaveFailureMessage($saveResult), [], 422);
+    }
+
+    if ($action === 'refuse_project_proposal') {
+        $proposerId = (int)$existingProject->get('IDuser_proposed');
+        if ($proposerId > 0) {
+            require_once dirname(__DIR__, 3) . '/common/notification_center.php';
+            notificationCenterCreateForUsers(
+                $organizationId,
+                'project_proposal_refused',
+                [$proposerId],
+                'project_proposal_refused:' . (int)$existingProject->getId(),
+                omoProjectsT('projects.proposal.refused_notification_title'),
+                omoProjectsT('projects.proposal.refused_notification_body', [
+                    'title' => trim((string)$existingProject->get('title')),
+                ]),
+                '/omo/o/' . $organizationId . '#projects-d' . (int)$existingProject->getId(),
+                'project_proposal_refused:' . (int)$existingProject->getId()
+            );
+        }
+    }
+
+    omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), [
+        'id' => (int)$existingProject->getId(),
+        'proposalStatus' => Project::normalizeProposalStatus($existingProject->get('proposal_status')),
+    ]);
+}
+
 if (
     $currentUserId <= 0
     || ($existingProject instanceof Project
         ? (in_array($action, ['attach_document', 'remove_document'], true)
             ? !omoProjectsCanCreateDocument($existingProject, $currentUserId)
-            : !omoProjectsCanManageProject($existingProject, $context))
-        : !$canCreateProject)
+            : (!$canDeletePendingProposal && !omoProjectsCanManageProject($existingProject, $context)))
+        : ($action !== 'save_project' && !$canCreateProject && !$canProposeProject))
 ) {
     omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
 }
@@ -454,9 +502,14 @@ if ($action === 'delete_project') {
     }
     $projectTree = omoProjectsGetProjectTree($existingProject, $organizationId, true);
     foreach ($projectTree as $treeProject) {
+        $isPendingProposalDelete = $treeProject->isPendingProposal()
+            && omoProjectsCanDeleteProject($treeProject, $context);
         if (
-            !omoProjectsCanManageProject($treeProject, $context)
-            || !omoProjectsCanDeleteProject($treeProject, $context)
+            !$isPendingProposalDelete
+            && (
+                !omoProjectsCanManageProject($treeProject, $context)
+                || !omoProjectsCanDeleteProject($treeProject, $context)
+            )
         ) {
             omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
         }
@@ -497,8 +550,19 @@ if (
 ) {
     omoProjectsActionRespond(false, omoProjectsT('projects.error.holon'), [], 422);
 }
-if ($projectId <= 0 && !$targetHolon->isAllowed('CAN_CREATE_PROJECT', false, $currentUserId)) {
-    omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
+if ($projectId <= 0) {
+    $canCreateTarget = $targetHolon->isAllowed('CAN_CREATE_PROJECT', false, $currentUserId);
+    $canProposeTarget = !$canCreateTarget && $targetHolon->isAllowed('CAN_PROPOSE_PROJECT', false, $currentUserId);
+    if (!$canCreateTarget && !$canProposeTarget) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
+    }
+    if ($canProposeTarget) {
+        $project->set('IDuser_proposed', $currentUserId);
+        $project->set('proposal_status', Project::PROPOSAL_PENDING);
+        $project->set('proposed_at', new \DateTime());
+    } else {
+        $project->set('proposal_status', Project::PROPOSAL_NONE);
+    }
 }
 if ($projectId <= 0) {
     $project->set('IDorganization', $organizationId);
@@ -570,6 +634,8 @@ if ($parentId > 0) {
         !$parent->load($parentId)
         || (int)$parent->get('IDorganization') !== $organizationId
         || (int)$parent->get('active') !== 1
+        || !omoProjectsCanViewProject($parent, $context)
+        || $parent->isPendingProposal()
         || Project::normalizeKind($parent->get('project_kind')) !== Project::KIND_STANDARD
         || !$project->canUseAsParent($parent)
     ) {

@@ -27,6 +27,7 @@ if (
     !$project->load($projectId)
     || (int)$project->get('IDorganization') !== $organizationId
     || (int)$project->get('active') !== 1
+    || !omoProjectsCanViewProject($project, $context)
 ) {
     $respond(false, ['message' => omoProjectsT('projects.error.not_found')], 404);
 }
