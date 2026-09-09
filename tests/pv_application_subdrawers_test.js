@@ -88,13 +88,26 @@ assert(
 });
 
 const documentsSource = read('omo/api/documents/index.php');
+const documentDetailSource = read('omo/api/documents/detail.php');
 assert(
   documentsSource.includes('function useLocalDrawerNavigation(rootOverride)'),
   'Documents must detect local PV drawer navigation.'
 );
 assert(
+  documentDetailSource.includes('data-omo-document-delete-id=')
+    && documentDetailSource.includes('canDeleteDocument(true)')
+    && documentsSource.includes('allow_event_document: true'),
+  'Document details must expose and execute the red delete action for removable event documents.'
+);
+assert(
   documentsSource.includes("detailDrawerController && typeof detailDrawerController.open === 'function'"),
   'Document details must use the shared animated subdrawer opener when available.'
+);
+assert(
+  documentsSource.includes('const cachedDocumentId = Number(drawer.dataset.omoDocumentDrawerDocumentId || 0);')
+    && documentsSource.includes("drawer.dataset.omoDocumentDrawerMode === 'detail'")
+    && documentsSource.includes('const hasRenderedDetail = body.childElementCount > 0'),
+  'Opening an already loaded document must reuse its content and only restore subdrawer visibility.'
 );
 assert(
   documentsSource.includes("!empty($applicationViewPreferences['isPvApplicationTab']) ? ' omo-overlay-drawer--detail-panel' : ''"),

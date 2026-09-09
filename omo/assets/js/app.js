@@ -1534,6 +1534,7 @@ function openDrawer(id, url, options = {}) {
                 drawer.data('omo-drawer-route-token', requestedRouteToken);
                 drawer.data('omo-drawer-route-context', requestedContextKey);
             }
+            omoReplayLoadedDocumentsRoute(requestedRouteToken, currentRouteToken);
         });
     } else if (requestedRouteToken) {
         drawer.data('omo-drawer-route-token', requestedRouteToken);
@@ -1594,20 +1595,35 @@ function refreshDrawer(id, url, options = {}) {
     const resolvedUrl = omoResolveAppUrl(url);
     const requestedRouteToken = omoResolveDrawerContentRouteToken(drawerReference.id, options.routeToken);
     const requestedContextKey = omoGetDrawerRouteContextKey();
+    const openAfterRefresh = options.open === true;
 
     if (!drawer.length) {
         return false;
+    }
+
+    if (openAfterRefresh) {
+        clearDrawerRemoval(drawer);
     }
 
     drawer.data('omo-drawer-url', resolvedUrl);
     drawer.removeData('omo-drawer-route-token');
     drawer.removeData('omo-drawer-route-context');
     updateDrawerPosition(drawer);
+
+    if (openAfterRefresh && !drawer.hasClass('open')) {
+        window.requestAnimationFrame(function () {
+            window.requestAnimationFrame(function () {
+                drawer.addClass('open');
+            });
+        });
+    }
+
     loadContent(drawer.find('.drawer-content'), resolvedUrl, 'panel', function () {
         if (requestedRouteToken) {
             drawer.data('omo-drawer-route-token', requestedRouteToken);
             drawer.data('omo-drawer-route-context', requestedContextKey);
         }
+        omoReplayLoadedDocumentsRoute(requestedRouteToken, null);
     });
 
     return true;
@@ -2317,6 +2333,18 @@ function omoRestoreCachedDrawerRoute(routeToken = null, previousRouteToken = nul
         visibleSubdrawer.length > 0
         && normalizedRouteToken === normalizedPreviousRouteToken
     ) || omoDispatchSpecialDrawerRouteChange(normalizedRouteToken, normalizedPreviousRouteToken);
+}
+
+function omoReplayLoadedDocumentsRoute(routeToken = null, previousRouteToken = null) {
+    const normalizedRouteToken = omoNormalizeHashToken(routeToken);
+    if (!normalizedRouteToken || omoGetMenuHashForRouteToken(normalizedRouteToken) !== 'documents') {
+        return false;
+    }
+
+    return omoDispatchSpecialDrawerRouteChange(
+        normalizedRouteToken,
+        omoNormalizeHashToken(previousRouteToken)
+    );
 }
 
 function omoGetMenuHashForRouteToken(routeToken = null) {
@@ -4864,7 +4892,10 @@ function handleRoute() {
         resetDrawers(activeDrawerId);
 
         if (routeToken && activeDrawerId && activeDrawerUrl) {
-            if (!refreshDrawer(activeDrawerId, activeDrawerUrl, {routeToken: routeToken})) {
+            if (!refreshDrawer(activeDrawerId, activeDrawerUrl, {
+                routeToken: routeToken,
+                open: true
+            })) {
                 openDrawer(activeDrawerId, activeDrawerUrl, {routeToken: routeToken});
             }
         }
@@ -5402,6 +5433,30 @@ function omoOpenSearchRulesResult(holonId) {
     return true;
 }
 
+function omoReopenCurrentDrawerRoute(routeToken, targetOid, targetCid, route = null) {
+    const currentRoute = route && typeof route === 'object' ? route : parseUrl();
+    const currentOid = Number(currentRoute.oid || 0);
+    const currentCid = Number(currentRoute.cid || 0);
+    const resolvedTargetOid = Number(targetOid || 0);
+    const resolvedTargetCid = Number(targetCid || 0);
+    const currentHashState = omoParseHashState(currentRoute.hash || null);
+    const sameContext = resolvedTargetCid <= 0 || currentCid === resolvedTargetCid;
+
+    if (
+        currentHashState.routeToken !== routeToken
+        || !Number.isInteger(currentOid)
+        || currentOid <= 0
+        || currentOid !== resolvedTargetOid
+        || !sameContext
+        || typeof window.omoOpenDrawerHashState !== 'function'
+    ) {
+        return false;
+    }
+
+    window.omoOpenDrawerHashState(routeToken);
+    return true;
+}
+
 function omoOpenSearchDocumentResult(documentUrl, title) {
     const resolvedUrl = String(documentUrl || '').trim();
     if (resolvedUrl === '') {
@@ -5433,7 +5488,9 @@ function omoOpenSearchDocumentResult(documentUrl, title) {
     if (routeToken && Number.isInteger(targetOid) && targetOid > 0) {
         omoClosePopupModalFromRoute();
 
-        navigate(targetOid, targetCid, routeToken);
+        if (!omoReopenCurrentDrawerRoute(routeToken, targetOid, targetCid, route)) {
+            navigate(targetOid, targetCid, routeToken);
+        }
         return true;
     }
 
@@ -5521,7 +5578,9 @@ function omoOpenSearchCalendarEventResult(eventId, holonId) {
         ? resolvedHolonId
         : null;
 
-    navigate(route.oid, targetCid, calendarEventRouteToken);
+    if (!omoReopenCurrentDrawerRoute(calendarEventRouteToken, route.oid, targetCid, route)) {
+        navigate(route.oid, targetCid, calendarEventRouteToken);
+    }
     return true;
 }
 

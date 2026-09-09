@@ -182,7 +182,7 @@ $canEditDocumentContent = !$document->isPvDocument()
 $canEditDocument = !$document->isPvDocument()
     && ($canManageDocument || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && !$document->isWhiteboardDocument() && $canEditDocumentContent));
 $canDeleteDocument = $document->canManageLifecycle($organizationId, $currentUserId)
-    && $document->canDeleteDocument();
+    && $document->canDeleteDocument(true);
 $editUrl = $canEditDocument
     ? '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)
         . ($holonId > 0 ? '&cid=' . rawurlencode((string)$holonId) : '')

@@ -5,6 +5,8 @@ $calendarSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calenda
 $dashboardDataSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/dashboard/modules/data/event.php');
 $dashboardTemplateSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/dashboard/modules/event.php');
 $sharedPermissionSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/permissions_shared.php');
+$calendarDetailSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/detail.php');
+$documentLifecycleSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/lifecycle_action.php');
 $appSource = (string)file_get_contents(dirname(__DIR__) . '/omo/assets/js/app.js');
 
 function assertCalendarEventDocument(bool $condition, string $message): void
@@ -39,6 +41,13 @@ assertCalendarEventDocument(
     strpos($appSource, 'function omoOpenAssociatedDocumentResult(') !== false
         && strpos($appSource, 'window.omoOpenAssociatedDocumentResult = omoOpenAssociatedDocumentResult;') !== false,
     'The shared document opener must be available to calendar and dashboard actions.'
+);
+assertCalendarEventDocument(
+    strpos($calendarDetailSource, 'data-omo-calendar-document-delete-id=') !== false
+        && strpos($calendarDetailSource, 'canDeleteDocument(true)') !== false
+        && strpos($documentLifecycleSource, 'canDeleteDocument($allowEventDocument)') !== false
+        && strpos($calendarSource, 'function deleteAssociatedDocument(') !== false,
+    'The event detail must expose a confirmed deletion action for removable linked documents.'
 );
 assertCalendarEventDocument(
     strpos($calendarSource, '<strong class="omo-calendar__time-event-title"')
