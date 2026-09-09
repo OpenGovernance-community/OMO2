@@ -28,6 +28,7 @@ if (
     !$project->load($projectId)
     || (int)$project->get('IDorganization') !== $organizationId
     || (int)$project->get('active') !== 1
+    || !omoProjectsCanViewProject($project, $context)
 ) {
     http_response_code(404);
     exit;
@@ -51,7 +52,7 @@ $projects = new ArrayProject();
 $projects->loadForOrganization($organizationId);
 $childrenByParent = array();
 foreach ($projects as $candidate) {
-    if (!($candidate instanceof Project) || (int)$candidate->getId() <= 0) {
+    if (!($candidate instanceof Project) || (int)$candidate->getId() <= 0 || !omoProjectsCanViewProject($candidate, $context)) {
         continue;
     }
 

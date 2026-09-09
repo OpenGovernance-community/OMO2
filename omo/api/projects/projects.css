@@ -479,6 +479,38 @@
     opacity: .45;
 }
 
+.omo-project-card--proposal,
+.omo-project-list-item--proposal,
+.omo-project-gantt-row--proposal .omo-project-gantt-row__project,
+.omo-project-detail__subproject-item--proposal {
+    --omo-project-status-color: var(--color-text-light, #64748b);
+    background-color: color-mix(in srgb, var(--color-text-light, #64748b) 10%, var(--color-surface, #fff));
+    filter: grayscale(.78);
+}
+
+.omo-project-detail__subproject-item--proposal-refused {
+    border-style: dashed;
+    opacity: .7;
+}
+
+.omo-project-proposal-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    min-height: 22px;
+    padding: 2px 8px;
+    border: 1px solid color-mix(in srgb, var(--color-text-light, #64748b) 38%, var(--color-border, #e5e7eb));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 12%, var(--color-surface, #fff));
+    color: var(--color-text-light, #64748b);
+    font-size: .68rem;
+    font-weight: 800;
+}
+
+.omo-project-proposal-panel {
+    gap: 10px;
+}
+
 .omo-project-card.is-menu-open {
     z-index: 30;
 }

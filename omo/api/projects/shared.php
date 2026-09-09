@@ -15,7 +15,10 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.action.more' => ['text' => 'Autres options', 'context' => 'Accessible label for the project application actions menu.'],
             'projects.action.view_archives' => ['text' => 'Voir les archives', 'context' => 'Menu action opening the archived projects popup.'],
             'projects.action.new' => ['text' => 'Nouveau projet', 'context' => 'Primary action opening project creation.'],
+            'projects.action.propose' => ['text' => 'Proposer', 'context' => 'Primary action opening a project proposal.'],
             'projects.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening project edition from the detail header.'],
+            'projects.action.accept_proposal' => ['text' => 'Accepter le projet', 'context' => 'Action accepting a pending project proposal.'],
+            'projects.action.refuse_proposal' => ['text' => 'Refuser le projet', 'context' => 'Action refusing a pending project proposal.'],
             'projects.action.close' => ['text' => 'Fermer', 'context' => 'Button closing the project subdrawer.'],
             'projects.action.save' => ['text' => 'Enregistrer', 'context' => 'Submit action saving a project.'],
             'projects.action.cancel' => ['text' => 'Annuler', 'context' => 'Button cancelling project creation.'],
@@ -121,6 +124,14 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.drawer.title' => ['text' => 'Projet', 'context' => 'Default title of the project subdrawer.'],
             'projects.drawer.description' => ['text' => 'Détails et informations du projet.', 'context' => 'Default description of the project subdrawer.'],
             'projects.detail.badge' => ['text' => 'Projet', 'context' => 'Eyebrow label shown above the project detail title.'],
+            'projects.proposal.badge' => ['text' => 'Proposition en attente', 'context' => 'Badge identifying a project that has not been accepted yet.'],
+            'projects.proposal.refused_badge' => ['text' => 'Proposition refusée', 'context' => 'Badge identifying a refused project proposal.'],
+            'projects.proposal.readonly' => ['text' => 'Cette proposition est en attente de votre décision. Ses informations sont en lecture seule.', 'context' => 'Explanation shown to the target of a pending project proposal.'],
+            'projects.proposal.editable' => ['text' => 'Cette proposition est en attente de la décision du rôle. Vous pouvez modifier ou compléter sa description jusqu à son refus ou son acceptation.', 'context' => 'Explanation shown to the proposer of a pending project proposal.'],
+            'projects.proposal.proposed_by' => ['text' => 'Proposé par', 'context' => 'Label identifying the author of a project proposal.'],
+            'projects.proposal.proposed_at' => ['text' => 'Proposé le', 'context' => 'Label identifying when a project was proposed.'],
+            'projects.proposal.refused_notification_title' => ['text' => 'Projet refusé', 'context' => 'Title of the notification sent after a project proposal is refused.'],
+            'projects.proposal.refused_notification_body' => ['text' => 'Votre proposition de projet "{title}" a été refusée.', 'context' => 'Body of the notification sent after a project proposal is refused.'],
             'projects.detail.breadcrumb' => ['text' => 'Projets parents', 'context' => 'Accessible label for the project parent breadcrumb.'],
             'projects.detail.breadcrumb.expand' => ['text' => 'Afficher tous les projets parents', 'context' => 'Accessible title for the collapsed project breadcrumb button.'],
             'projects.detail.description' => ['text' => 'Description', 'context' => 'Project detail description section label.'],
@@ -387,12 +398,116 @@ if (!function_exists('omoProjectsCanCreateContext')) {
     }
 }
 
+if (!function_exists('omoProjectsCanProposeContext')) {
+    function omoProjectsCanProposeContext(array $context)
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0 || omoProjectsCanCreateContext($context)) {
+            return false;
+        }
+
+        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+        $currentHolon = $context['currentHolon'] ?? null;
+        if ($currentHolon instanceof Holon) {
+            return $currentHolon->isAllowed('CAN_PROPOSE_PROJECT', $useSessionCache, $currentUserId);
+        }
+
+        $rootHolon = $context['rootHolon'] ?? null;
+        return $rootHolon instanceof Holon
+            && $rootHolon->isAllowed('CAN_PROPOSE_PROJECT', $useSessionCache, $currentUserId);
+    }
+}
+
+if (!function_exists('omoProjectsCanRespondToProposal')) {
+    function omoProjectsCanRespondToProposal(Project $project, array $context)
+    {
+        if (!$project->isPendingProposal()) {
+            return false;
+        }
+
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+        if ((int)$project->get('IDuser') === $currentUserId) {
+            return true;
+        }
+
+        $projectHolon = $project->getHolon();
+        if (!($projectHolon instanceof Holon)) {
+            return false;
+        }
+
+        // A proposal addressed to a role can be decided by a current member
+        // of that exact role. This lookup intentionally bypasses the session
+        // permission cache so a newly added member can act immediately.
+        static $directMembershipCache = [];
+        $membershipKey = $currentUserId . ':' . (int)$projectHolon->getId();
+        if (!array_key_exists($membershipKey, $directMembershipCache)) {
+            $memberships = \dbObject\UserHolon::fetchEffectiveRowsForUserAndHolonIds(
+                $currentUserId,
+                [(int)$projectHolon->getId()]
+            );
+            $directMembershipCache[$membershipKey] = count($memberships) > 0;
+        }
+        if ($directMembershipCache[$membershipKey]) {
+            return true;
+        }
+
+        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+        return $projectHolon->isAllowed('CAN_CREATE_PROJECT', $useSessionCache, $currentUserId);
+    }
+}
+
+if (!function_exists('omoProjectsCanViewProject')) {
+    function omoProjectsCanViewProject(Project $project, array $context)
+    {
+        if (!$project->isPrivateProposal()) {
+            return true;
+        }
+
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+        if (
+            (int)$project->get('IDuser_proposed') === $currentUserId
+            || (int)$project->get('IDuser') === $currentUserId
+            || ($project->isPendingProposal() && omoProjectsCanRespondToProposal($project, $context))
+        ) {
+            return true;
+        }
+
+        $projectHolon = $project->getHolon();
+        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+        return $projectHolon instanceof Holon
+            && $projectHolon->isAllowed('CAN_CREATE_PROJECT', $useSessionCache, $currentUserId);
+    }
+}
+
 if (!function_exists('omoProjectsCanManageProject')) {
     function omoProjectsCanManageProject(Project $project, array $context)
     {
+        if ($project->isPendingProposal()) {
+            // When somebody is both proposer and recipient, the recipient
+            // workflow has priority: they can accept or refuse, not edit.
+            if (omoProjectsCanRespondToProposal($project, $context)) {
+                return false;
+            }
+
+            $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+            return $currentUserId > 0 && (int)$project->get('IDuser_proposed') === $currentUserId;
+        }
+
         $projectHolon = $project->getHolon();
         if ($projectHolon instanceof Holon) {
-            return $projectHolon->canEdit();
+            $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+            if ($currentUserId <= 0) {
+                return false;
+            }
+
+            $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+            return $projectHolon->isAllowed('CAN_CREATE_PROJECT', $useSessionCache, $currentUserId);
         }
 
         // A task without its own holon inherits the management right of its
@@ -418,7 +533,7 @@ if (!function_exists('omoProjectsCanCreateDocument')) {
     function omoProjectsCanCreateDocument(Project $project, $currentUserId = 0)
     {
         $currentUserId = (int)$currentUserId;
-        if ($currentUserId <= 0 || (int)$project->get('active') !== 1) {
+        if ($currentUserId <= 0 || (int)$project->get('active') !== 1 || $project->isPendingProposal()) {
             return false;
         }
 
@@ -437,6 +552,9 @@ if (!function_exists('omoProjectsCanDeleteProject')) {
         $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
         if ($currentUserId <= 0) {
             return false;
+        }
+        if ($project->isPendingProposal()) {
+            return (int)$project->get('IDuser_proposed') === $currentUserId;
         }
 
         $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';

@@ -2,6 +2,21 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-09
+
+- Chaque organisation concernee par une fusion de profils recoit maintenant une entree d historique nommant les deux profils. Cette entree invalide aussi le cache de structure de l organisation afin que ses membres et roles soient recalcules immediatement.
+- Lors d une fusion de profils, un compte superadmin est maintenant toujours conserve, meme si l autre profil avait ete choisi. L adresse principale du compte supprime devient aussi l adresse du profil d organisation sur ses anciennes appartenances lorsqu aucune adresse locale n y etait deja definie.
+- La connexion ne propose plus de creer un nouveau compte lorsqu une adresse est deja enregistree comme adresse secondaire d un profil dans une organisation. Elle demande alors d utiliser l adresse principale du profil existant, sans connecter automatiquement ce dernier.
+- L editeur de profil propose maintenant un onglet Outils pour fusionner deux comptes apres verification complete du second profil par code e-mail ou mot de passe, puis double authentification si elle est active. La personne choisit le profil conserve; les appartenances, roles, objets, auteurs, validations et historiques sont regroupes dans une transaction avant la suppression du compte en trop et le rafraichissement de la session.
+- Le droit contextuel `CAN_PROPOSE_PROJECT` permet maintenant de proposer un projet lorsqu il n est pas permis de le creer directement. La proposition reste grisee et privee entre son auteur et le role ou la personne cible; l auteur peut la completer ou la supprimer, tandis que le destinataire peut seulement l accepter ou la refuser. Un refus archive le projet et notifie son auteur avec un lien direct vers la proposition.
+- Le panneau d une proposition en attente precise maintenant le droit effectif de la personne connectee : edition et complement pour le proposeur, ou lecture seule et decision pour le destinataire.
+- Une personne qui devient membre du role cible peut immediatement accepter ou refuser sa propre proposition ; le parcours de decision masque alors les options de modification.
+- Les actions Accepter et Refuser sont aussi affichees directement dans le panneau de la proposition en attente, afin de rester visibles lorsque les actions de l entete du drawer ne sont pas rendues.
+- La creation dun sous-projet est maintenant accessible avec le meme droit de modification que son rattachement ; la sauvegarde applique ensuite le droit de creation ou de proposition du holon choisi.
+- Les sous-projets proposes restent affiches en gris dans le detail de leur parent, avec leur etat en attente ou refuse ; une proposition refusee ne disparait donc pas de cette liste pour son proposeur.
+- Le changement de statut dun sous-projet est maintenant soumis au droit de gestion sur son propre holon, cote interface comme cote serveur.
+- Les projets normaux enregistrent maintenant un etat explicite, ce qui retablit leur creation apres l ajout du cycle de propositions ; les erreurs de sauvegarde sont affichees dans la notification visible de la barre superieure.
+
 ## 2026-09-08
 
 - Le graphique Budget distingue maintenant, dans chaque barre quotidienne, le temps pointe sur un projet, directement sur un role, ou directement sur un cercle, groupe ou organisation. La courbe de cumul et les references de budget continuent de porter sur le total.
@@ -2112,3 +2127,4 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Le detail d un document propose maintenant un bouton Effacer avec une icone poubelle dans l entete du drawer, coherent avec les autres applications, avec confirmation puis rafraichissement de la liste.
 - Le bouton Fermer et le clic sur le fond du sous-drawer des Activites ferment a nouveau le detail, y compris dans le contexte des onglets PV.
 - L editeur de PV rafraichit maintenant la liste de presence apres une reprise de main ou un changement d etape, afin que ses cases refletent immediatement le droit d edition courant.
+- Le bouton d ajout de minutes de l evenement associe apparait maintenant des le passage du PV en etape Reunion, sans rechargement de la page.

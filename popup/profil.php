@@ -44,7 +44,7 @@ $requestedScope = isset($_GET['scope']) && $_GET['scope'] === 'organization' ? '
 $requestedTab = isset($_GET['tab']) ? (string)$_GET['tab'] : '';
 $initialTab = 'general';
 
-if (in_array($requestedTab, array('current', 'general', 'organization', 'competences', 'patreon'), true)) {
+if (in_array($requestedTab, array('current', 'general', 'organization', 'competences', 'patreon', 'tools'), true)) {
     $initialTab = $requestedTab;
 } elseif (isset($_GET['scope'])) {
     $initialTab = $requestedScope === 'organization' ? 'organization' : 'general';
@@ -563,6 +563,13 @@ function profilFormatAmountCents($value)
                         data-profile-fragment-panel="profile-panel-tab-patreon"
                     ><?= htmlspecialchars(profilPopupT('profile.popup.tabs.patreon')) ?></button>
                     <?php endif; ?>
+                    <button
+                        type="button"
+                        class="generic-tabs__tab<?= $initialTab === 'tools' ? ' is-active' : '' ?>"
+                        data-generic-tab
+                        data-generic-tab-target="profile-panel-tab-tools"
+                        data-profile-fragment-panel="profile-panel-tab-tools"
+                    ><?= htmlspecialchars(profilPopupT('profile.popup.tabs.tools')) ?></button>
                 </div>
 
                 <div class="generic-tabs__panels">
@@ -658,6 +665,23 @@ function profilFormatAmountCents($value)
                         </div>
                     </div>
                     <?php endif; ?>
+                    <div
+                        id="profile-panel-tab-tools"
+                        class="generic-tabs__panel profile-panel__tab-panel"
+                        data-generic-tab-panel
+                        <?= $initialTab !== 'tools' ? ' hidden' : '' ?>
+                    >
+                        <div
+                            class="profile-panel__fragment-host"
+                            data-profile-fragment-host="1"
+                            data-profile-fragment-kind="tools"
+                            data-profile-fragment-url="/popup/profil_tools.php<?= isset($_GET['token'], $_GET['code']) ? '?token=' . rawurlencode((string)$_GET['token']) . '&amp;code=' . rawurlencode((string)$_GET['code']) : '' ?>"
+                        >
+                            <?php if ($initialTab === 'tools'): ?>
+                            <div class="profile-panel__feedback"><?= htmlspecialchars(profilPopupT('profile.popup.scope.loading')) ?></div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
                 </div>
             </div>
   
@@ -754,7 +778,7 @@ function profilFormatAmountCents($value)
     }
 
     function buildProfileModalUrl(tabName, scopeName) {
-        var normalizedTab = tabName === "organization" || tabName === "general" || tabName === "competences" || tabName === "patreon" ? tabName : "current";
+        var normalizedTab = tabName === "organization" || tabName === "general" || tabName === "competences" || tabName === "patreon" || tabName === "tools" ? tabName : "current";
         var normalizedScope = scopeName === "organization" ? "organization" : "general";
         return "/popup/profil.php?tab=" + encodeURIComponent(normalizedTab) + "&scope=" + encodeURIComponent(normalizedScope);
     }
@@ -776,6 +800,9 @@ function profilFormatAmountCents($value)
         }
         if (activeTab.getAttribute("data-generic-tab-target") === "profile-panel-tab-patreon") {
             return "patreon";
+        }
+        if (activeTab.getAttribute("data-generic-tab-target") === "profile-panel-tab-tools") {
+            return "tools";
         }
 
         return "current";
