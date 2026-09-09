@@ -3080,6 +3080,51 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             });
         }
 
+        function deleteAssociatedDocument(deleteButton) {
+            if (!(deleteButton instanceof Element)) {
+                return;
+            }
+
+            var documentId = Number(deleteButton.getAttribute('data-omo-calendar-document-delete-id') || '0');
+            var confirmationMessage = deleteButton.getAttribute('data-omo-calendar-document-delete-confirm') || '';
+            var fallbackError = deleteButton.getAttribute('data-omo-calendar-document-delete-error') || 'Impossible de supprimer le document.';
+            var refreshUrl = deleteButton.getAttribute('data-omo-calendar-document-delete-refresh-url') || '';
+            if (!Number.isInteger(documentId) || documentId <= 0 || (confirmationMessage !== '' && !window.confirm(confirmationMessage))) {
+                return;
+            }
+
+            deleteButton.disabled = true;
+            fetch('/omo/api/documents/lifecycle_action.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    id: documentId,
+                    action: 'delete',
+                    allow_event_document: true
+                })
+            }).then(function (response) {
+                return response.json().catch(function () { return null; }).then(function (payload) {
+                    if (!response.ok || !payload || payload.status !== true) {
+                        throw new Error(String(payload && payload.message || fallbackError));
+                    }
+                });
+            }).then(function () {
+                if (typeof window.omoInvalidateMainRightPanel === 'function') {
+                    window.omoInvalidateMainRightPanel();
+                }
+                if (refreshUrl) {
+                    openDrawerWithUrl(refreshUrl);
+                }
+            }).catch(function (error) {
+                window.omoNotify(error && error.message ? error.message : fallbackError, 'error');
+                deleteButton.disabled = false;
+            });
+        }
+
         window.omoCalendarOpenEventDrawer = function (url) {
             if (!url) {
                 return;
@@ -3725,6 +3770,14 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     if (cancelDetailUrl) {
                         openDrawerWithUrl(cancelDetailUrl);
                     }
+                    return;
+                }
+
+                var documentDeleteButton = event.target.closest('[data-omo-calendar-document-delete-id]');
+                if (documentDeleteButton) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    deleteAssociatedDocument(documentDeleteButton);
                     return;
                 }
 

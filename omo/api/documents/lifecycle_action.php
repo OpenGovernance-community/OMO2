@@ -9,6 +9,9 @@ $payload = json_decode(file_get_contents('php://input'), true);
 $payload = is_array($payload) ? $payload : [];
 $documentId = (int)($_GET['id'] ?? $_POST['id'] ?? ($payload['id'] ?? 0));
 $action = trim(strtolower((string)($_GET['action'] ?? $_POST['action'] ?? ($payload['action'] ?? ''))));
+$allowEventDocument = !empty($_GET['allow_event_document'])
+    || !empty($_POST['allow_event_document'])
+    || !empty($payload['allow_event_document']);
 $userId = (int)commonGetCurrentUserId();
 $documentIds = [];
 foreach ((array)($_GET['ids'] ?? $_POST['ids'] ?? ($payload['ids'] ?? [])) as $requestedDocumentId) {
@@ -53,7 +56,7 @@ foreach ($documentIds as $requestedDocumentId) {
         $error('Ce document est deja archive.', 422);
     }
 
-    if ($action === 'delete' && !$document->canDeleteDocument()) {
+    if ($action === 'delete' && !$document->canDeleteDocument($allowEventDocument)) {
         $error('Ce document ne peut pas être supprimé car il est utilisé ailleurs ou contient encore des documents.', 422);
     }
 

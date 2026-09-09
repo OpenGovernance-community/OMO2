@@ -2723,7 +2723,7 @@ if (!is_string($documentsPayload)) {
                                                 'Accept': 'application/json',
                                                 'Content-Type': 'application/json',
                                             },
-                                            body: JSON.stringify({id: documentId, action: 'delete'}),
+                                            body: JSON.stringify({id: documentId, action: 'delete', allow_event_document: true}),
                                         })
                                             .then(function (response) {
                                                 return response.json()
@@ -4606,6 +4606,29 @@ if (!is_string($documentsPayload)) {
 
                 if (!drawer || !body || detailUrl === '' || (documentItem && documentItem.isFolder)) {
                     return false;
+                }
+
+                const requestedDocumentId = Number(documentItem && documentItem.id ? documentItem.id : 0);
+                const cachedDocumentId = Number(drawer.dataset.omoDocumentDrawerDocumentId || 0);
+                const hasRenderedDetail = body.childElementCount > 0
+                    && !body.querySelector('.loading, .skeleton');
+                if (
+                    Number.isInteger(requestedDocumentId)
+                    && requestedDocumentId > 0
+                    && cachedDocumentId === requestedDocumentId
+                    && drawer.dataset.omoDocumentDrawerMode === 'detail'
+                    && hasRenderedDetail
+                ) {
+                    const drawerController = drawer.__omoSubdrawerController;
+                    if (drawerController && typeof drawerController.open === 'function') {
+                        drawerController.open();
+                    } else {
+                        drawer.hidden = false;
+                        requestAnimationFrame(function () {
+                            drawer.classList.add('is-open');
+                        });
+                    }
+                    return true;
                 }
 
                 if (!useLocalDrawerNavigation(root) && !window.omoPreserveDocumentPvPreparationDrawer()) {
