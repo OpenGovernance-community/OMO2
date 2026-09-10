@@ -493,6 +493,30 @@
     opacity: .7;
 }
 
+.omo-project-discussion-action {
+    display: grid;
+    gap: 1px;
+    justify-items: center;
+}
+
+.omo-project-discussion-action .omo-chat-popup-actions {
+    flex-wrap: nowrap;
+    gap: 2px;
+}
+
+.omo-project-discussion-action__since {
+    max-width: 170px;
+    color: var(--color-text-light, #64748b);
+    font-size: 10px;
+    line-height: 1.2;
+    text-align: center;
+}
+
+.omo-projects__drawer .generic-drawer-header__actions,
+.omo-projects__drawer [data-omo-subdrawer-actions] {
+    align-items: flex-start;
+}
+
 .omo-project-proposal-badge {
     display: inline-flex;
     align-items: center;
