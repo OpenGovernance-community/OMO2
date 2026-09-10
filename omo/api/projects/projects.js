@@ -1677,6 +1677,70 @@
         });
     }
 
+    function loadProjectDocumentFolder(folderNode, folderToggle) {
+        if (!(folderNode instanceof HTMLElement) || !(folderToggle instanceof HTMLElement)) {
+            return;
+        }
+        var content = folderNode.querySelector('[data-omo-project-detail-folder-content]');
+        var folderId = Number(folderToggle.getAttribute('data-document-id') || 0);
+        var projectId = Number(folderToggle.getAttribute('data-project-id') || 0);
+        if (!(content instanceof HTMLElement) || !Number.isInteger(folderId) || folderId <= 0 || !Number.isInteger(projectId) || projectId <= 0) {
+            return;
+        }
+        if (folderNode.getAttribute('data-omo-project-detail-folder-loaded') === '1') {
+            return;
+        }
+        content.textContent = texts.documentsFolderLoading || 'Chargement du dossier...';
+        var url = '/omo/api/projects/document_folder.php?oid=' + encodeURIComponent(String(root.getAttribute('data-omo-projects-oid') || ''))
+            + '&cid=' + encodeURIComponent(String(routeCid || ''))
+            + '&id=' + encodeURIComponent(String(projectId))
+            + '&folder_id=' + encodeURIComponent(String(folderId));
+        var remotePath = folderToggle.getAttribute('data-remote-path') || '';
+        if (remotePath !== '') {
+            url += '&path=' + encodeURIComponent(remotePath);
+        }
+        fetch(resolveUrl(url), {
+            credentials: 'same-origin',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            cache: 'no-store'
+        }).then(function (response) {
+            if (!response.ok) {
+                throw new Error('folder_load_failed');
+            }
+            return response.text();
+        }).then(function (html) {
+            content.innerHTML = html;
+            folderNode.setAttribute('data-omo-project-detail-folder-loaded', '1');
+        }).catch(function () {
+            content.textContent = texts.documentsFolderError || 'Impossible de charger le contenu du dossier.';
+        });
+    }
+
+    function deleteProjectEvent(url) {
+        var payload = new FormData();
+        payload.append('oid', root.getAttribute('data-omo-projects-oid') || '0');
+        payload.append('delete_documents', '0');
+        return fetch(resolveUrl(url), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            body: payload
+        }).then(function (response) {
+            return response.text().then(function (text) {
+                var data;
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    data = null;
+                }
+                if (!response.ok || !data || !data.status) {
+                    throw new Error(data && data.message ? data.message : (texts.eventsDeleteError || texts.actionError));
+                }
+                return data;
+            });
+        });
+    }
+
     function postStatus(projectId, status) {
         return postProjectAction(projectId, 'update_status', {status: status});
     }
@@ -1852,12 +1916,12 @@
     }
 
     function closeProjectMenus(exceptMenu) {
-        root.querySelectorAll('[data-omo-project-menu], [data-omo-projects-header-menu], [data-omo-project-detail-document-menu]').forEach(function (menu) {
+        root.querySelectorAll('[data-omo-project-menu], [data-omo-projects-header-menu], [data-omo-project-detail-document-menu], [data-omo-project-detail-event-menu]').forEach(function (menu) {
             if (menu === exceptMenu) {
                 return;
             }
-            var panel = menu.querySelector('[data-omo-project-menu-panel], [data-omo-projects-header-menu-panel], [data-omo-project-detail-document-menu-panel]');
-            var toggle = menu.querySelector('[data-omo-project-menu-toggle], [data-omo-projects-header-menu-toggle], [data-omo-project-detail-document-menu-toggle]');
+            var panel = menu.querySelector('[data-omo-project-menu-panel], [data-omo-projects-header-menu-panel], [data-omo-project-detail-document-menu-panel], [data-omo-project-detail-event-menu-panel]');
+            var toggle = menu.querySelector('[data-omo-project-menu-toggle], [data-omo-projects-header-menu-toggle], [data-omo-project-detail-document-menu-toggle], [data-omo-project-detail-event-menu-toggle]');
             if (panel) {
                 panel.hidden = true;
             }
@@ -2352,6 +2416,99 @@
                     window.omoNotify(error.message || texts.documentsRemoveError || texts.actionError, 'error');
                 }
                 removeDocumentButton.disabled = false;
+            });
+            return;
+        }
+
+        var folderToggle = event.target.closest('[data-omo-project-detail-folder-toggle]');
+        if (folderToggle) {
+            event.preventDefault();
+            event.stopPropagation();
+            var folderNode = folderToggle.closest('[data-omo-project-detail-folder]');
+            var folderContent = folderNode ? folderNode.querySelector('[data-omo-project-detail-folder-content]') : null;
+            if (!folderNode || !folderContent) {
+                return;
+            }
+            var willOpenFolder = folderContent.hidden;
+            folderContent.hidden = !willOpenFolder;
+            folderToggle.setAttribute('aria-expanded', willOpenFolder ? 'true' : 'false');
+            if (willOpenFolder) {
+                loadProjectDocumentFolder(folderNode, folderToggle);
+            }
+            return;
+        }
+
+        var remoteDocumentButton = event.target.closest('[data-omo-project-detail-remote-document]');
+        if (remoteDocumentButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            var remoteFolderId = Number(remoteDocumentButton.getAttribute('data-folder-id') || 0);
+            var remotePath = remoteDocumentButton.getAttribute('data-remote-path') || '';
+            var remoteMimeType = remoteDocumentButton.getAttribute('data-mime-type') || '';
+            if (Number.isInteger(remoteFolderId) && remoteFolderId > 0 && remotePath !== '') {
+                openProjectDocumentDrawer('/omo/api/documents/nextcloud/detail.php?oid='
+                    + encodeURIComponent(String(root.getAttribute('data-omo-projects-oid') || ''))
+                    + '&id=' + encodeURIComponent(String(remoteFolderId))
+                    + '&path=' + encodeURIComponent(remotePath)
+                    + '&mime=' + encodeURIComponent(remoteMimeType));
+            }
+            return;
+        }
+
+        var eventMenuToggle = event.target.closest('[data-omo-project-detail-event-menu-toggle]');
+        if (eventMenuToggle) {
+            event.preventDefault();
+            event.stopPropagation();
+            var eventMenu = eventMenuToggle.closest('[data-omo-project-detail-event-menu]');
+            var eventMenuPanel = eventMenu ? eventMenu.querySelector('[data-omo-project-detail-event-menu-panel]') : null;
+            var isEventMenuOpen = !!eventMenuPanel && !eventMenuPanel.hidden;
+            closeProjectMenus(eventMenu);
+            if (eventMenuPanel) {
+                eventMenuPanel.hidden = isEventMenuOpen;
+            }
+            if (eventMenu) {
+                eventMenu.classList.toggle('is-open', !isEventMenuOpen);
+            }
+            eventMenuToggle.setAttribute('aria-expanded', isEventMenuOpen ? 'false' : 'true');
+            return;
+        }
+
+        var eventEditorButton = event.target.closest('[data-omo-project-detail-event-editor-url]');
+        if (eventEditorButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            var eventEditorUrl = eventEditorButton.getAttribute('data-omo-project-detail-event-editor-url') || '';
+            closeProjectMenus();
+            if (eventEditorUrl !== '') {
+                openProjectDocumentDrawer(eventEditorUrl);
+            }
+            return;
+        }
+
+        var deleteEventButton = event.target.closest('[data-omo-project-detail-event-delete-url]');
+        if (deleteEventButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            var deleteEventProjectId = Number(deleteEventButton.getAttribute('data-project-id') || 0);
+            var deleteEventUrl = deleteEventButton.getAttribute('data-omo-project-detail-event-delete-url') || '';
+            var deleteEventConfirm = deleteEventButton.getAttribute('data-confirm') || '';
+            if (!Number.isInteger(deleteEventProjectId) || deleteEventProjectId <= 0 || deleteEventUrl === '') {
+                return;
+            }
+            if (deleteEventConfirm !== '' && !window.confirm(deleteEventConfirm)) {
+                return;
+            }
+            deleteEventButton.disabled = true;
+            closeProjectMenus();
+            deleteProjectEvent(deleteEventUrl).then(function () {
+                window.dispatchEvent(new CustomEvent('omo-project-event-saved', {
+                    detail: {projectId: deleteEventProjectId}
+                }));
+            }).catch(function (error) {
+                if (typeof window.omoNotify === 'function') {
+                    window.omoNotify(error.message || texts.eventsDeleteError || texts.actionError, 'error');
+                }
+                deleteEventButton.disabled = false;
             });
             return;
         }

@@ -6,7 +6,8 @@ require_once dirname(__DIR__, 4) . '/common/collabora.php';
 use dbObject\Document;
 use dbObject\User;
 
-$documentId = (int)($_GET['id'] ?? 0);
+$documentId = (int)($_GET['id'] ?? $_GET['folder_id'] ?? 0);
+$remotePath = \dbObject\Document::normalizeNextcloudFolderPath($_GET['path'] ?? '');
 $userId = (int)commonGetCurrentUserId();
 
 if ($documentId <= 0 || $userId <= 0) {
@@ -16,7 +17,7 @@ if ($documentId <= 0 || $userId <= 0) {
 }
 
 $document = new Document();
-if (!$document->load($documentId) || !$document->canOpenWithCollabora()) {
+if (!$document->load($documentId) || (!$document->canOpenWithCollabora() && !$document->isNextcloudFolder())) {
     http_response_code(404);
     echo 'Document introuvable.';
     exit;
@@ -55,7 +56,15 @@ if (!($discoveryResult['status'] ?? false)) {
     exit;
 }
 
-$extension = strtolower((string)pathinfo($document->getStoredFileDownloadName(), PATHINFO_EXTENSION));
+$isRemoteFile = $document->isNextcloudFolder();
+if ($isRemoteFile && ($remotePath === '' || !$document->isRemoteFolderStoragePathAllowed($organization, $remotePath))) {
+    http_response_code(400);
+    echo 'Chemin NextCloud invalide.';
+    exit;
+}
+
+$filename = $isRemoteFile ? basename($remotePath) : $document->getStoredFileDownloadName();
+$extension = strtolower((string)pathinfo($filename, PATHINFO_EXTENSION));
 $canEdit = $document->canEditInOrganizationContext($organizationId, $userId, false);
 $actionName = $canEdit ? 'edit' : 'view';
 $actionUrl = '';
@@ -83,7 +92,7 @@ if ($actionUrl === '') {
 $publicUrl = rtrim((string)$config['baseUrl'], '/');
 $actionUrl = preg_replace('#^https?://[^/]+#i', $publicUrl, $actionUrl);
 $tokenExpiresAt = time() + omoCollaboraGetWopiTokenLifetimeSeconds();
-$accessToken = omoCollaboraBuildWopiToken($document, $userId, $tokenExpiresAt);
+$accessToken = omoCollaboraBuildWopiToken($document, $userId, $tokenExpiresAt, $isRemoteFile ? $remotePath : '');
 $wopiSource = omoCollaboraBuildWopiSource($documentId);
 $uiDefaults = 'UIMode=tabbed;SavedUIState=false;';
 $cssVariables = omoCollaboraBuildOrganizationCssVariables($organization);
@@ -105,7 +114,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><?= htmlspecialchars($document->getStoredFileDownloadName(), ENT_QUOTES, 'UTF-8') ?></title>
+    <title><?= htmlspecialchars($filename, ENT_QUOTES, 'UTF-8') ?></title>
 </head>
 <body>
     <form id="collabora-launch" method="post" action="<?= htmlspecialchars($actionUrl, ENT_QUOTES, 'UTF-8') ?>">
