@@ -12,6 +12,7 @@ $documentsSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/projec
 $folderSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/projects/document_folder.php');
 $scriptSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/projects/projects.js');
 $documentSource = (string)file_get_contents(dirname(__DIR__) . '/class/dbobject/document.class.php');
+$organizationSource = (string)file_get_contents(dirname(__DIR__) . '/class/dbobject/organization.class.php');
 $nextcloudSharedSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/nextcloud/shared.php');
 
 assertProjectDocumentFolder(
@@ -21,9 +22,9 @@ assertProjectDocumentFolder(
 );
 assertProjectDocumentFolder(
     str_contains($folderSource, 'getDirectChildren()')
-        && str_contains($folderSource, 'listNextcloudDocumentsDirectory(')
+        && str_contains($folderSource, 'listDocumentStorageDirectory(')
         && str_contains($folderSource, 'omoProjectsFolderRenderRemoteEntry'),
-    'Project folder loading must support both local and NextCloud folders.'
+    'Project folder loading must support both local and remote folders.'
 );
 assertProjectDocumentFolder(
     str_contains($scriptSource, 'function loadProjectDocumentFolder(')
@@ -36,13 +37,19 @@ assertProjectDocumentFolder(
     'Existing NextCloud folders must remain readable when their WebDAV response does not expose a file identifier.'
 );
 assertProjectDocumentFolder(
-    str_contains($nextcloudSharedSource, '$fallbackRemotePath = $folder->buildNextcloudFolderRemotePath($organization);'),
-    'NextCloud folder reads must retain a path-based fallback when the optional location lookup fails.'
+    str_contains($nextcloudSharedSource, '$fallbackRemotePath = $folder->buildRemoteFolderStoragePath($organization);'),
+    'Remote folder reads must retain a path-based fallback when the optional location lookup fails.'
 );
 assertProjectDocumentFolder(
     !str_contains($nextcloudSharedSource, '$resolvedPath === \'\' || $resolvedFileId === \'\'')
         && str_contains($nextcloudSharedSource, 'if ($resolvedFileId !== \'\')'),
     'A valid NextCloud folder path must not require an optional file identifier.'
+);
+assertProjectDocumentFolder(
+    str_contains($organizationSource, 'function listKdriveDocumentsDirectory(')
+        && str_contains($organizationSource, 'function listDocumentStorageDirectory(')
+        && str_contains($documentSource, 'function resolveRemoteFolderStorageLocation('),
+    'Remote folders must use the configured kDrive or NextCloud WebDAV storage.'
 );
 
 echo "project_document_folder_test: OK\n";

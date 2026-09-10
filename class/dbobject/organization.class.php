@@ -476,6 +476,11 @@
 			return false;
 		}
 
+		public function isKdriveDocumentStorage(): bool
+		{
+			return ($this->getDocumentStorageConfig()['type'] ?? '') === 'kdrive' && $this->hasDocumentStorage();
+		}
+
 		public function testDocumentStorageConnection(array $config): array
 		{
 			require_once dirname(__DIR__, 2) . '/omo/api/documents/params/shared.php';
@@ -744,6 +749,117 @@
 			return !is_array($result) || empty($result['status'])
 				? array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de mettre à jour le fichier distant.')))
 				: array('status' => true, 'size' => strlen($contents));
+		}
+
+		public function listKdriveDocumentsDirectory(string $relativePath): array
+		{
+			$config = $this->getDocumentStorageConfig();
+			if (($config['type'] ?? '') !== 'kdrive' || !$this->hasDocumentStorage()) {
+				return array('status' => false, 'text' => 'Le stockage kDrive est indisponible.');
+			}
+
+			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
+			$result = $this->executeKdriveDocumentsRequest('PROPFIND', $relativePath, $config, array(
+				'timeout' => 60,
+				'headers' => array('Depth: 1', 'Content-Length: 0'),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de lire le dossier kDrive.')));
+			}
+
+			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
+			if (!($xml instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'La reponse WebDAV du dossier kDrive est invalide.');
+			}
+			$xml->registerXPathNamespace('d', 'DAV:');
+			$responses = $xml->xpath('//d:response');
+			if (!is_array($responses)) {
+				return array('status' => true, 'entries' => array());
+			}
+
+			$configFolder = trim(str_replace('\\', '/', (string)($config['folder'] ?? '')), '/');
+			$entries = array();
+			foreach ($responses as $response) {
+				$propertyNodes = $response->xpath('./d:propstat/d:prop');
+				$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
+				if (!($property instanceof \SimpleXMLElement)) {
+					continue;
+				}
+				$hrefNodes = $response->xpath('./d:href');
+				$hrefPath = is_array($hrefNodes) && isset($hrefNodes[0]) ? (string)parse_url((string)$hrefNodes[0], PHP_URL_PATH) : '';
+				$path = trim(rawurldecode($hrefPath), '/');
+				if ($configFolder !== '' && ($path === $configFolder || str_starts_with($path, $configFolder . '/'))) {
+					$path = $path === $configFolder ? '' : substr($path, strlen($configFolder) + 1);
+				}
+				if ($path === '' || $path === $relativePath) {
+					continue;
+				}
+				$collectionNodes = $property->xpath('./d:resourcetype/d:collection');
+				$nameNodes = $property->xpath('./d:displayname');
+				$name = is_array($nameNodes) && isset($nameNodes[0]) ? trim((string)$nameNodes[0]) : basename($path);
+				$typeNodes = $property->xpath('./d:getcontenttype');
+				$sizeNodes = $property->xpath('./d:getcontentlength');
+				$modifiedNodes = $property->xpath('./d:getlastmodified');
+				$entries[] = array(
+					'path' => $path,
+					'name' => $name !== '' ? $name : basename($path),
+					'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0,
+					'mimeType' => is_array($typeNodes) && isset($typeNodes[0]) ? trim((string)$typeNodes[0]) : '',
+					'size' => is_array($sizeNodes) && isset($sizeNodes[0]) ? max(0, (int)$sizeNodes[0]) : 0,
+					'modifiedAt' => is_array($modifiedNodes) && isset($modifiedNodes[0]) ? trim((string)$modifiedNodes[0]) : '',
+				);
+			}
+			usort($entries, static function (array $left, array $right): int {
+				if ((bool)$left['isFolder'] !== (bool)$right['isFolder']) {
+					return (bool)$left['isFolder'] ? -1 : 1;
+				}
+				return strnatcasecmp((string)$left['name'], (string)$right['name']);
+			});
+			return array('status' => true, 'entries' => $entries);
+		}
+
+		public function getKdriveDocumentsDirectoryInfo(string $relativePath): array
+		{
+			$config = $this->getDocumentStorageConfig();
+			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
+			if (($config['type'] ?? '') !== 'kdrive' || !$this->hasDocumentStorage() || $relativePath === '') {
+				return array('status' => false, 'text' => 'Chemin kDrive invalide.');
+			}
+			$result = $this->executeKdriveDocumentsRequest('PROPFIND', $relativePath, $config, array(
+				'timeout' => 60,
+				'headers' => array('Depth: 0', 'Content-Length: 0'),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de lire le dossier kDrive.')));
+			}
+			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
+			if (!($xml instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'La reponse WebDAV du dossier kDrive est invalide.');
+			}
+			$xml->registerXPathNamespace('d', 'DAV:');
+			$responses = $xml->xpath('//d:response');
+			$response = is_array($responses) && isset($responses[0]) ? $responses[0] : null;
+			$propertyNodes = $response instanceof \SimpleXMLElement ? $response->xpath('./d:propstat/d:prop') : array();
+			$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
+			if (!($property instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'Le dossier kDrive est introuvable.');
+			}
+			$collectionNodes = $property->xpath('./d:resourcetype/d:collection');
+			return array('status' => true, 'path' => $relativePath, 'fileId' => '', 'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0);
+		}
+
+		public function listDocumentStorageDirectory(string $relativePath): array
+		{
+			return $this->isKdriveDocumentStorage()
+				? $this->listKdriveDocumentsDirectory($relativePath)
+				: $this->listNextcloudDocumentsDirectory($relativePath);
+		}
+
+		public function getDocumentStorageDirectoryInfo(string $relativePath): array
+		{
+			return $this->isKdriveDocumentStorage()
+				? $this->getKdriveDocumentsDirectoryInfo($relativePath)
+				: $this->getNextcloudDocumentsDirectoryInfo($relativePath);
 		}
 
 		public function testNextcloudDocumentStorageConnection(array $config): array

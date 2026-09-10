@@ -211,15 +211,15 @@ $sourceLang = [
         'context' => 'Loading state shown while a document drawer is loading.',
     ],
     'documents.nextcloud.initial' => [
-        'text' => 'Ouvrez le dossier pour charger son contenu NextCloud.',
+        'text' => 'Ouvrez le dossier pour charger son contenu distant.',
         'context' => 'Initial lazy-loading state of a referenced NextCloud folder.',
     ],
     'documents.nextcloud.loading' => [
-        'text' => 'Chargement du dossier NextCloud...',
+        'text' => 'Chargement du dossier distant...',
         'context' => 'Loading state while a referenced NextCloud folder is read.',
     ],
     'documents.nextcloud.error' => [
-        'text' => 'Impossible de lire le dossier NextCloud.',
+        'text' => 'Impossible de lire le dossier distant.',
         'context' => 'Error shown when a referenced NextCloud folder cannot be read.',
     ],
     'documents.nextcloud.empty' => [

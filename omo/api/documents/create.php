@@ -35,6 +35,10 @@ $sourceLang = [
     'documents.create.type.ethercalc' => ['text' => 'Tableur collaboratif', 'context' => 'Option label for EtherCalc documents.'],
     'documents.create.type.folder' => ['text' => 'Dossier', 'context' => 'Option label for folders.'],
     'documents.create.type.nextcloud_folder' => ['text' => 'Dossier NextCloud', 'context' => 'Option label for a remotely listed NextCloud folder.'],
+	'documents.create.type.kdrive_folder' => ['text' => 'Dossier kDrive', 'context' => 'Option label for a remotely listed kDrive folder.'],
+	'documents.create.field.kdrive_folder_path' => ['text' => 'Chemin du dossier kDrive', 'context' => 'Label for the selected remote kDrive folder path.'],
+	'documents.create.field.kdrive_folder_hint' => ['text' => 'Le chemin est relatif au dossier kDrive configure pour les documents. Le contenu sera relu a chaque ouverture.', 'context' => 'Hint for the remote kDrive folder path.'],
+	'documents.create.action.kdrive_browse' => ['text' => 'Parcourir kDrive', 'context' => 'Button opening the remote kDrive folder browser.'],
     'documents.create.field.nextcloud_folder_path' => ['text' => 'Chemin du dossier NextCloud', 'context' => 'Label for the selected remote folder path.'],
     'documents.create.field.nextcloud_folder_hint' => ['text' => 'Le chemin est relatif au dossier NextCloud configure pour les documents. Le contenu sera relu a chaque ouverture.', 'context' => 'Hint for the remote NextCloud folder path.'],
     'documents.create.action.nextcloud_browse' => ['text' => 'Parcourir NextCloud', 'context' => 'Button opening the remote NextCloud folder browser.'],
@@ -194,7 +198,19 @@ $pvTemplatesPayload = array();
 $organization = new Organization();
 $organizationLoaded = $organizationId > 0 && $organization->load($organizationId);
 $nextcloudDocumentsAvailable = $organizationLoaded && $organization->hasDocumentStorage();
-$nextcloudFoldersAvailable = $organizationLoaded && $organization->hasNextcloudDocumentStorage();
+$nextcloudFoldersAvailable = $organizationLoaded && $organization->hasDocumentStorage();
+$remoteFolderTypeLabel = $organizationLoaded && $organization->isKdriveDocumentStorage()
+	? omoDocumentsCreateT('documents.create.type.kdrive_folder')
+	: omoDocumentsCreateT('documents.create.type.nextcloud_folder');
+$remoteFolderPathLabel = $organizationLoaded && $organization->isKdriveDocumentStorage()
+	? omoDocumentsCreateT('documents.create.field.kdrive_folder_path')
+	: omoDocumentsCreateT('documents.create.field.nextcloud_folder_path');
+$remoteFolderHint = $organizationLoaded && $organization->isKdriveDocumentStorage()
+	? omoDocumentsCreateT('documents.create.field.kdrive_folder_hint')
+	: omoDocumentsCreateT('documents.create.field.nextcloud_folder_hint');
+$remoteFolderBrowseLabel = $organizationLoaded && $organization->isKdriveDocumentStorage()
+	? omoDocumentsCreateT('documents.create.action.kdrive_browse')
+	: omoDocumentsCreateT('documents.create.action.nextcloud_browse');
 $etherpadDocumentsAvailable = $organizationLoaded && omoEtherpadCanUseEditingSessions($organization);
 $collaboraDocumentsAvailable = $organizationLoaded && $nextcloudDocumentsAvailable && omoCollaboraHasConfig($organization);
 $whiteboardDocumentsAvailable = omoSpacedeckHasConfig();
@@ -426,7 +442,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         >
                             <option value="<?= $escape(Document::TYPE_FOLDER) ?>" <?= $documentType === Document::TYPE_FOLDER ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.folder')) ?></option>
 							<?php if ($nextcloudFoldersAvailable || $documentType === Document::TYPE_NEXTCLOUD_FOLDER): ?>
-                                <option value="<?= $escape(Document::TYPE_NEXTCLOUD_FOLDER) ?>" <?= $documentType === Document::TYPE_NEXTCLOUD_FOLDER ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.nextcloud_folder')) ?></option>
+                                <option value="<?= $escape(Document::TYPE_NEXTCLOUD_FOLDER) ?>" <?= $documentType === Document::TYPE_NEXTCLOUD_FOLDER ? ' selected' : '' ?>><?= $escape($remoteFolderTypeLabel) ?></option>
 							<?php endif; ?>
                             <?php if ($etherpadGroupAvailable || $collaboraGroupAvailable || $whiteboardGroupAvailable): ?>
                             <option disabled aria-hidden="true">--------------------</option>
@@ -569,12 +585,12 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
                 <div class="omo-document-editor__field generic-form-field" data-omo-document-nextcloud-folder-section<?= $documentType !== Document::TYPE_NEXTCLOUD_FOLDER ? ' hidden' : '' ?>>
                     <label class="omo-document-editor__field generic-form-field">
-                        <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.nextcloud_folder_path')) ?></span>
+                        <span class="omo-document-editor__label generic-form-label"><?= $escape($remoteFolderPathLabel) ?></span>
                         <input type="text" name="nextcloud_folder_path" class="generic-form-control" maxlength="1000" autocomplete="off" value="<?= $escape($documentNextcloudFolderPath) ?>" data-omo-document-nextcloud-folder-path <?= $isEditing && !$canManageDocument ? ' disabled' : '' ?>>
                     </label>
-                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-document-nextcloud-browse<?= $isEditing && !$canManageDocument ? ' disabled' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.action.nextcloud_browse')) ?></button>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-document-nextcloud-browse<?= $isEditing && !$canManageDocument ? ' disabled' : '' ?>><?= $escape($remoteFolderBrowseLabel) ?></button>
                     <div class="generic-soft-panel" data-omo-document-nextcloud-browser hidden></div>
-                    <span class="omo-document-editor__hint generic-help-text"><?= $escape(omoDocumentsCreateT('documents.create.field.nextcloud_folder_hint')) ?></span>
+                    <span class="omo-document-editor__hint generic-help-text"><?= $escape($remoteFolderHint) ?></span>
                 </div>
 
                 <div class="omo-document-editor__field generic-form-field" data-omo-document-pv-section<?= $documentType !== Document::TYPE_PV ? ' hidden' : '' ?>>

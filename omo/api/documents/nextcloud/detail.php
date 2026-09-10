@@ -3,8 +3,8 @@ require_once __DIR__ . '/shared.php';
 require_once dirname(__DIR__, 4) . '/common/collabora.php';
 
 $sourceLang = array(
-    'documents.nextcloud.detail.invalid_path' => array('text' => 'Chemin NextCloud invalide.', 'context' => 'Error shown when a remote file path is invalid.'),
-    'documents.nextcloud.detail.rights' => array('text' => 'Les droits du dossier NextCloud s appliquent a ce fichier.', 'context' => 'Hint shown for an editable remote file.'),
+    'documents.nextcloud.detail.invalid_path' => array('text' => 'Chemin du dossier distant invalide.', 'context' => 'Error shown when a remote file path is invalid.'),
+    'documents.nextcloud.detail.rights' => array('text' => 'Les droits du dossier distant s appliquent a ce fichier.', 'context' => 'Hint shown for an editable remote file.'),
     'documents.nextcloud.detail.download' => array('text' => 'Telecharger', 'context' => 'Download action for a remote file.'),
     'documents.nextcloud.detail.fullscreen' => array('text' => 'Plein ecran', 'context' => 'Fullscreen action for a remote preview.'),
     'documents.nextcloud.detail.exit_fullscreen' => array('text' => 'Quitter le plein ecran', 'context' => 'Label shown after entering fullscreen.'),
@@ -33,6 +33,7 @@ $mimeType = omoDocumentsNextcloudFileMimeType($filename, (string)($_GET['mime'] 
 $isPdf = strtolower((string)pathinfo($filename, PATHINFO_EXTENSION)) === 'pdf' || in_array(strtolower($mimeType), array('application/pdf', 'application/x-pdf'), true);
 $canUseCollabora = !$isPdf && omoCollaboraHasConfig($context['organization']) && omoCollaboraSupportsFilename($filename);
 $canEdit = $context['folder']->canEditInOrganizationContext($context['organizationId'], $context['userId'], false);
+$storageLabel = $context['organization']->isKdriveDocumentStorage() ? 'kDrive' : 'NextCloud';
 $baseQuery = 'id=' . rawurlencode((string)(int)$context['folder']->getId()) . '&oid=' . rawurlencode((string)$context['organizationId']) . '&path=' . rawurlencode($remotePath);
 $downloadUrl = '/omo/api/documents/nextcloud/file.php?' . $baseQuery;
 $inlineUrl = $downloadUrl . '&inline=1';
@@ -47,7 +48,7 @@ $collaboraOrigin = $canUseCollabora ? omoCollaboraBuildPostMessageOrigin((string
     </div>
     <article class="omo-document-detail__article generic-stack generic-stack--roomy">
         <div class="omo-document-detail__keyword-actions">
-            <div class="omo-document-detail__keywords"><span class="omo-pill">NextCloud</span></div>
+            <div class="omo-document-detail__keywords"><span class="omo-pill"><?= $escape($storageLabel) ?></span></div>
             <div class="omo-document-detail__preview-actions">
                 <a class="generic-action-button generic-action-button--secondary" href="<?= $escape($downloadUrl) ?>" download="<?= $escape($filename) ?>"><?= $escape($t('documents.nextcloud.detail.download')) ?></a>
                 <?php if ($isPdf || $collaboraUrl !== ''): ?><button type="button" class="generic-action-button generic-action-button--secondary omo-document-detail__fullscreen-button" data-omo-document-fullscreen data-omo-document-fullscreen-label="<?= $escape($t('documents.nextcloud.detail.fullscreen')) ?>" data-omo-document-exit-fullscreen-label="<?= $escape($t('documents.nextcloud.detail.exit_fullscreen')) ?>"><?= $escape($t('documents.nextcloud.detail.fullscreen')) ?></button><?php endif; ?>
