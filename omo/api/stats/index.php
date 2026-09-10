@@ -1,15 +1,11 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
-require_once dirname(__DIR__, 3) . '/common/ethercalc.php';
-require_once dirname(__DIR__, 3) . '/common/spreadsheet.php';
 
-use dbObject\ArrayDocument;
 use dbObject\ArrayStatIndicator;
 use dbObject\ArrayStatIndicatorGroup;
 use dbObject\ArrayStatIndicatorImport;
 use dbObject\Holon;
-use dbObject\Document;
 use dbObject\StatIndicator;
 use dbObject\StatIndicatorGroup;
 use dbObject\StatIndicatorReferencePoint;
@@ -206,7 +202,7 @@ foreach ($groupViewData as $groupItem) {
         if ($sourceIndicator instanceof StatIndicator) {
             $groupFrequencyRank = min(
                 $groupFrequencyRank,
-                omoStatsMeasurementFrequencyRank($sourceIndicator->get('measurement_frequency'))
+                omoStatsMeasurementFrequencyRank($sourceIndicator)
             );
         }
     }
@@ -232,7 +228,7 @@ foreach ($groupViewData as $groupItem) {
 foreach ($indicatorViewData as $item) {
     $indicator = $item['indicator'];
     $name = trim((string)$indicator->get('name'));
-    $frequency = $indicator->get('measurement_frequency');
+    $frequency = $indicator->getEffectiveMeasurementFrequency();
     $statsEntries[] = [
         'kind' => 'indicator',
         'data' => $item,
@@ -267,46 +263,6 @@ foreach ($pickerItems as $indicator) {
         'description' => trim((string)$indicator->get('description')),
     ];
 }
-$ethercalcPickerData = [];
-$spreadsheetPickerData = [];
-$ethercalcPickerAvailable = omoEthercalcHasConfig();
- $pickerDocuments = new ArrayDocument();
- $pickerDocuments->load([
-     'where' => [
-         ['field' => 'IDorganization', 'value' => $organizationId],
-         ['field' => 'active', 'value' => 1],
-     ],
-     'orderBy' => [
-         ['field' => 'title', 'dir' => 'ASC'],
-         ['field' => 'id', 'dir' => 'ASC'],
-     ],
- ]);
- $pickerDocuments->filterVisibleForCurrentViewer($organizationId);
- foreach ($pickerDocuments as $document) {
-     if (!($document instanceof Document) || !$document->isEthercalcDocument() || $document->getEthercalcRoomId() === '') {
-         if (
-             $document instanceof Document
-             && $document->isUploadedFile()
-             && $document->hasStoredFile()
-             && omoSpreadsheetSupportsFilename($document->getStoredFileDownloadName())
-         ) {
-             $spreadsheetPickerData[] = [
-                 'id' => (int)$document->getId(),
-                 'name' => trim((string)$document->get('title')),
-                 'description' => trim((string)$document->get('description')),
-                 'filename' => $document->getStoredFileDownloadName(),
-             ];
-         }
-         continue;
-     }
-
-        $ethercalcPickerData[] = [
-            'id' => (int)$document->getId(),
-            'name' => trim((string)$document->get('title')),
-            'description' => trim((string)$document->get('description')),
-        ];
- }
-$spreadsheetPickerAvailable = count($spreadsheetPickerData) > 0;
 $displayItemCount = count($statsEntries);
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
@@ -331,10 +287,6 @@ $displayItemCount = count($statsEntries);
     data-omo-stats-open-indicator-id="<?= (int)$openIndicatorId ?>"
     data-omo-stats-open-group-id="<?= (int)$openGroupId ?>"
     data-omo-stats-picker="<?= omoApiEscape(json_encode($pickerData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
-    data-omo-stats-ethercalc-picker="<?= omoApiEscape(json_encode($ethercalcPickerData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
-    data-omo-stats-ethercalc-available="<?= $ethercalcPickerAvailable ? '1' : '0' ?>"
-    data-omo-stats-spreadsheet-picker="<?= omoApiEscape(json_encode($spreadsheetPickerData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
-    data-omo-stats-spreadsheet-available="<?= $spreadsheetPickerAvailable ? '1' : '0' ?>"
 >
     <header class="omo-stats__header omo-panel-view__header omo-panel-view__header--stacked">
         <div class="omo-panel-view__header-main">
@@ -800,6 +752,10 @@ $displayItemCount = count($statsEntries);
         'ethercalcFrequencyHourly' => omoStatsT('stats.import.ethercalc.frequency_hourly'),
         'ethercalcFrequencyDaily' => omoStatsT('stats.import.ethercalc.frequency_daily'),
         'ethercalcFrequencyWeekly' => omoStatsT('stats.import.ethercalc.frequency_weekly'),
+        'ethercalcFrequencyMonthly' => omoStatsT('stats.import.ethercalc.frequency_monthly'),
+        'ethercalcFrequencyQuarterly' => omoStatsT('stats.import.ethercalc.frequency_quarterly'),
+        'ethercalcFrequencySemiannual' => omoStatsT('stats.import.ethercalc.frequency_semiannual'),
+        'ethercalcFrequencyYearly' => omoStatsT('stats.import.ethercalc.frequency_yearly'),
         'ethercalcRange' => omoStatsT('stats.import.ethercalc.range'),
         'ethercalcDateColumn' => omoStatsT('stats.import.ethercalc.date_column'),
         'ethercalcValueColumns' => omoStatsT('stats.import.ethercalc.value_columns'),
@@ -819,6 +775,10 @@ $displayItemCount = count($statsEntries);
         'spreadsheetFrequencyHourly' => omoStatsT('stats.import.spreadsheet.frequency_hourly'),
         'spreadsheetFrequencyDaily' => omoStatsT('stats.import.spreadsheet.frequency_daily'),
         'spreadsheetFrequencyWeekly' => omoStatsT('stats.import.spreadsheet.frequency_weekly'),
+        'spreadsheetFrequencyMonthly' => omoStatsT('stats.import.spreadsheet.frequency_monthly'),
+        'spreadsheetFrequencyQuarterly' => omoStatsT('stats.import.spreadsheet.frequency_quarterly'),
+        'spreadsheetFrequencySemiannual' => omoStatsT('stats.import.spreadsheet.frequency_semiannual'),
+        'spreadsheetFrequencyYearly' => omoStatsT('stats.import.spreadsheet.frequency_yearly'),
         'spreadsheetRange' => omoStatsT('stats.import.spreadsheet.range'),
         'spreadsheetDateColumn' => omoStatsT('stats.import.spreadsheet.date_column'),
         'spreadsheetValueColumns' => omoStatsT('stats.import.spreadsheet.value_columns'),
@@ -1673,26 +1633,6 @@ $displayItemCount = count($statsEntries);
         }
     }
 
-    function getEthercalcPickerItems() {
-        try {
-            var raw = root.getAttribute('data-omo-stats-ethercalc-picker') || '[]';
-            var items = JSON.parse(raw);
-            return Array.isArray(items) ? items : [];
-        } catch (error) {
-            return [];
-        }
-    }
-
-    function getSpreadsheetPickerItems() {
-        try {
-            var raw = root.getAttribute('data-omo-stats-spreadsheet-picker') || '[]';
-            var items = JSON.parse(raw);
-            return Array.isArray(items) ? items : [];
-        } catch (error) {
-            return [];
-        }
-    }
-
     function openGroupDrawerEditor(editData) {
         if (!drawer || !drawerBody) {
             return;
@@ -1931,12 +1871,12 @@ $displayItemCount = count($statsEntries);
             ? editData.indicatorIds.map(function (id) { return String(id); })
             : [];
         var firstRender = true;
-        var ethercalcAvailable = !isGroup && !isEditing && root.getAttribute('data-omo-stats-ethercalc-available') === '1';
+        var ethercalcAvailable = false;
         var pickerFieldsHtml = (isGroup ? '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.groupName) + '</span><input type="text" class="generic-form-control" data-omo-stats-picker-name></label>' : '')
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.search) + '</span><input type="search" class="generic-form-control" data-omo-stats-picker-search placeholder="' + escapeHtml(texts.searchPlaceholder) + '"></label>'
             + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.visible) + '</span><select class="generic-form-control omo-stats-picker__select" data-omo-stats-picker-select size="10"' + multiple + '></select></label>'
             + (isGroup ? '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.groupMode) + '</span><select class="generic-form-control" data-omo-stats-picker-mode><option value="overlay">' + escapeHtml(texts.overlay) + '</option><option value="sum">' + escapeHtml(texts.sum) + '</option></select></label>' : '');
-        var spreadsheetAvailable = !isGroup && !isEditing && root.getAttribute('data-omo-stats-spreadsheet-available') === '1';
+        var spreadsheetAvailable = false;
         var ethercalcFieldsHtml = '';
         if (ethercalcAvailable || spreadsheetAvailable) {
             ethercalcFieldsHtml = '<div class="generic-tabs omo-stats-picker__tabs" data-generic-tabs>'
@@ -1954,13 +1894,13 @@ $displayItemCount = count($statsEntries);
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcMode) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-mode><option value="cell">' + escapeHtml(texts.ethercalcModeCell) + '</option><option value="table">' + escapeHtml(texts.ethercalcModeTable) + '</option></select></label>'
                     + '<section class="generic-soft-panel generic-soft-panel--stack" data-omo-stats-ethercalc-cell-fields>'
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcCell) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-cell value="A1" placeholder="A1"></label>'
-                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcMeasurementFrequency) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-frequency><option value="hourly">' + escapeHtml(texts.ethercalcFrequencyHourly) + '</option><option value="daily">' + escapeHtml(texts.ethercalcFrequencyDaily) + '</option><option value="weekly">' + escapeHtml(texts.ethercalcFrequencyWeekly) + '</option></select></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcMeasurementFrequency) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-frequency><option value="hourly">' + escapeHtml(texts.ethercalcFrequencyHourly) + '</option><option value="daily">' + escapeHtml(texts.ethercalcFrequencyDaily) + '</option><option value="weekly">' + escapeHtml(texts.ethercalcFrequencyWeekly) + '</option><option value="monthly">' + escapeHtml(texts.ethercalcFrequencyMonthly) + '</option><option value="quarterly">' + escapeHtml(texts.ethercalcFrequencyQuarterly) + '</option><option value="semiannual">' + escapeHtml(texts.ethercalcFrequencySemiannual) + '</option><option value="yearly">' + escapeHtml(texts.ethercalcFrequencyYearly) + '</option></select></label>'
                     + '</section>'
                     + '<section class="generic-soft-panel generic-soft-panel--stack" data-omo-stats-ethercalc-table-fields hidden>'
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcRange) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-range value="A1:C100" placeholder="A1:C100"></label>'
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcDateColumn) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-date-column value="A" placeholder="A"></label>'
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcValueColumns) + '</span><input type="text" class="generic-form-control" data-omo-stats-ethercalc-value-columns value="B,C" placeholder="B,C"></label>'
-                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcSyncFrequency) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-table-frequency><option value="hourly">' + escapeHtml(texts.ethercalcFrequencyHourly) + '</option><option value="daily" selected>' + escapeHtml(texts.ethercalcFrequencyDaily) + '</option><option value="weekly">' + escapeHtml(texts.ethercalcFrequencyWeekly) + '</option></select></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.ethercalcSyncFrequency) + '</span><select class="generic-form-control" data-omo-stats-ethercalc-table-frequency><option value="hourly">' + escapeHtml(texts.ethercalcFrequencyHourly) + '</option><option value="daily" selected>' + escapeHtml(texts.ethercalcFrequencyDaily) + '</option><option value="weekly">' + escapeHtml(texts.ethercalcFrequencyWeekly) + '</option><option value="monthly">' + escapeHtml(texts.ethercalcFrequencyMonthly) + '</option><option value="quarterly">' + escapeHtml(texts.ethercalcFrequencyQuarterly) + '</option><option value="semiannual">' + escapeHtml(texts.ethercalcFrequencySemiannual) + '</option><option value="yearly">' + escapeHtml(texts.ethercalcFrequencyYearly) + '</option></select></label>'
                     + '<p class="generic-description">' + escapeHtml(texts.ethercalcTableHelp) + '</p>'
                     + '</section>'
                     + '</section>' : '')
@@ -1972,13 +1912,13 @@ $displayItemCount = count($statsEntries);
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetMode) + '</span><select class="generic-form-control" data-omo-stats-spreadsheet-mode><option value="cell">' + escapeHtml(texts.spreadsheetModeCell) + '</option><option value="table">' + escapeHtml(texts.spreadsheetModeTable) + '</option></select></label>'
                     + '<section class="generic-soft-panel generic-soft-panel--stack" data-omo-stats-spreadsheet-cell-fields>'
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetCell) + '</span><input type="text" class="generic-form-control" data-omo-stats-spreadsheet-cell value="A1" placeholder="A1"></label>'
-                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetMeasurementFrequency) + '</span><select class="generic-form-control" data-omo-stats-spreadsheet-frequency><option value="hourly">' + escapeHtml(texts.spreadsheetFrequencyHourly) + '</option><option value="daily" selected>' + escapeHtml(texts.spreadsheetFrequencyDaily) + '</option><option value="weekly">' + escapeHtml(texts.spreadsheetFrequencyWeekly) + '</option></select></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetMeasurementFrequency) + '</span><select class="generic-form-control" data-omo-stats-spreadsheet-frequency><option value="hourly">' + escapeHtml(texts.spreadsheetFrequencyHourly) + '</option><option value="daily" selected>' + escapeHtml(texts.spreadsheetFrequencyDaily) + '</option><option value="weekly">' + escapeHtml(texts.spreadsheetFrequencyWeekly) + '</option><option value="monthly">' + escapeHtml(texts.spreadsheetFrequencyMonthly) + '</option><option value="quarterly">' + escapeHtml(texts.spreadsheetFrequencyQuarterly) + '</option><option value="semiannual">' + escapeHtml(texts.spreadsheetFrequencySemiannual) + '</option><option value="yearly">' + escapeHtml(texts.spreadsheetFrequencyYearly) + '</option></select></label>'
                     + '</section>'
                     + '<section class="generic-soft-panel generic-soft-panel--stack" data-omo-stats-spreadsheet-table-fields hidden>'
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetRange) + '</span><input type="text" class="generic-form-control" data-omo-stats-spreadsheet-range value="A1:C100" placeholder="A1:C100"></label>'
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetDateColumn) + '</span><input type="text" class="generic-form-control" data-omo-stats-spreadsheet-date-column value="A" placeholder="A"></label>'
                     + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetValueColumns) + '</span><input type="text" class="generic-form-control" data-omo-stats-spreadsheet-value-columns value="B,C" placeholder="B,C"></label>'
-                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetSyncFrequency) + '</span><select class="generic-form-control" data-omo-stats-spreadsheet-table-frequency><option value="hourly">' + escapeHtml(texts.spreadsheetFrequencyHourly) + '</option><option value="daily" selected>' + escapeHtml(texts.spreadsheetFrequencyDaily) + '</option><option value="weekly">' + escapeHtml(texts.spreadsheetFrequencyWeekly) + '</option></select></label>'
+                    + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.spreadsheetSyncFrequency) + '</span><select class="generic-form-control" data-omo-stats-spreadsheet-table-frequency><option value="hourly">' + escapeHtml(texts.spreadsheetFrequencyHourly) + '</option><option value="daily" selected>' + escapeHtml(texts.spreadsheetFrequencyDaily) + '</option><option value="weekly">' + escapeHtml(texts.spreadsheetFrequencyWeekly) + '</option><option value="monthly">' + escapeHtml(texts.spreadsheetFrequencyMonthly) + '</option><option value="quarterly">' + escapeHtml(texts.spreadsheetFrequencyQuarterly) + '</option><option value="semiannual">' + escapeHtml(texts.spreadsheetFrequencySemiannual) + '</option><option value="yearly">' + escapeHtml(texts.spreadsheetFrequencyYearly) + '</option></select></label>'
                     + '<p class="generic-description">' + escapeHtml(texts.spreadsheetTableHelp) + '</p>'
                     + '</section>'
                     + '</section>' : '')
