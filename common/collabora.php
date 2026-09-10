@@ -218,7 +218,7 @@ if (!function_exists('omoCollaboraBuildPostMessageOrigin')) {
 }
 
 if (!function_exists('omoCollaboraBuildWopiToken')) {
-    function omoCollaboraBuildWopiToken(\dbObject\Document $document, int $userId, int $validUntil = 0): string
+    function omoCollaboraBuildWopiToken(\dbObject\Document $document, int $userId, int $validUntil = 0, string $remotePath = ''): string
     {
         $documentId = (int)$document->getId();
         $userId = (int)$userId;
@@ -229,6 +229,10 @@ if (!function_exists('omoCollaboraBuildWopiToken')) {
             'expiresAt' => $validUntil,
             'nonce' => bin2hex(random_bytes(12)),
         );
+        $remotePath = \dbObject\Document::normalizeNextcloudFolderPath($remotePath);
+        if ($remotePath !== '') {
+            $payload['remotePath'] = $remotePath;
+        }
         $encodedPayload = omoCollaboraBase64UrlEncode((string)json_encode($payload, JSON_UNESCAPED_SLASHES));
         $secret = trim((string)$document->get('codeedit'));
         if ($secret === '') {

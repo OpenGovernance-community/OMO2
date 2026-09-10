@@ -49,7 +49,7 @@ if ($accessToken === '' && preg_match('/^Bearer\s+(.+)$/i', (string)($_SERVER['H
 }
 
 $document = new Document();
-if ($documentId <= 0 || !$document->load($documentId) || !$document->canOpenWithCollabora()) {
+if ($documentId <= 0 || !$document->load($documentId) || (!$document->canOpenWithCollabora() && !$document->isNextcloudFolder())) {
     http_response_code(404);
     exit;
 }
@@ -74,13 +74,30 @@ if (
 }
 
 $organization = new \dbObject\Organization();
-if (!$organization->load($organizationId) || !$organization->hasDocumentStorage()) {
+if (!$organization->load($organizationId) || !$organization->hasDocumentStorage() || ($document->isNextcloudFolder() && !$organization->hasNextcloudDocumentStorage())) {
     http_response_code(503);
     exit;
 }
 
 $collaboraConfig = omoCollaboraGetConfig($organization);
 $canEdit = $document->canEditInOrganizationContext($organizationId, $userId, false);
+$remotePath = $document->isNextcloudFolder()
+    ? Document::normalizeNextcloudFolderPath($tokenPayload['remotePath'] ?? '')
+    : '';
+if ($document->isNextcloudFolder() && ($remotePath === '' || !$document->isNextcloudFolderRemotePathAllowed($organization, $remotePath))) {
+    http_response_code(403);
+    exit;
+}
+$isRemoteFile = $remotePath !== '';
+$filename = $isRemoteFile ? basename($remotePath) : $document->getStoredFileDownloadName();
+$mimeType = $isRemoteFile
+    ? (function_exists('omoDocumentsNextcloudFileMimeType') ? omoDocumentsNextcloudFileMimeType($filename) : 'application/octet-stream')
+    : $document->getStoredFileMimeType();
+$downloadFile = static function () use ($isRemoteFile, $organization, $remotePath, $document): array {
+    return $isRemoteFile
+        ? $organization->downloadDocumentFileFromNextcloud($remotePath)
+        : $organization->downloadDocumentFileFromStorage((string)$document->get('storedfilepath'));
+};
 $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 $override = strtoupper((string)($_SERVER['HTTP_X_WOPI_OVERRIDE'] ?? ''));
 
@@ -120,14 +137,14 @@ if ($method === 'POST' && $isSettingsUploadRequest) {
 }
 
 if ($method === 'GET' && $isContentsRequest) {
-    $fileResult = $organization->downloadDocumentFileFromStorage((string)$document->get('storedfilepath'));
+    $fileResult = $downloadFile();
     if (!is_array($fileResult) || empty($fileResult['status'])) {
         http_response_code(502);
         exit;
     }
 
     $body = (string)($fileResult['body'] ?? '');
-    header('Content-Type: ' . $document->getStoredFileMimeType());
+    header('Content-Type: ' . (trim((string)($fileResult['contentType'] ?? '')) !== '' ? trim((string)$fileResult['contentType']) : $mimeType));
     header('Content-Length: ' . strlen($body));
     header('X-WOPI-ItemVersion: ' . sha1($body));
     echo $body;
@@ -147,8 +164,8 @@ if ($method === 'GET') {
         ? $lastModified->format(DateTimeInterface::ATOM)
         : (string)$lastModified;
     $version = sha1(implode('|', array(
-        (string)$document->get('storedfilepath'),
-        (string)$document->get('storedfilesize'),
+        $isRemoteFile ? $remotePath : (string)$document->get('storedfilepath'),
+        $isRemoteFile ? '' : (string)$document->get('storedfilesize'),
         $lastModifiedVersion,
     )));
     $lastModifiedTime = $lastModified instanceof DateTimeInterface
@@ -160,7 +177,7 @@ if ($method === 'GET') {
 
     header('Content-Type: application/json; charset=UTF-8');
     echo json_encode(array(
-        'BaseFileName' => $document->getStoredFileDownloadName(),
+        'BaseFileName' => $filename,
         'OwnerId' => (string)max(0, (int)$document->get('IDusercreation')),
         'UserId' => (string)$userId,
         'UserFriendlyName' => $displayName,
@@ -168,7 +185,7 @@ if ($method === 'GET') {
         'IsAnonymousUser' => false,
         'UserCanWrite' => $canEdit,
         'UserCanNotWriteRelative' => true,
-        'Size' => $document->getStoredFileSize(),
+        'Size' => $isRemoteFile ? 0 : $document->getStoredFileSize(),
         'Version' => $version,
         'LastModifiedTime' => $lastModifiedTime,
         'SupportsLocks' => false,
@@ -195,24 +212,23 @@ if (!is_string($contents)) {
     exit;
 }
 
-$mimeType = $document->getStoredFileMimeType();
-$updateResult = $organization->updateDocumentFileContentsOnStorage(
-    (string)$document->get('storedfilepath'),
-    $contents,
-    $mimeType
-);
+$updateResult = $isRemoteFile
+    ? $organization->updateDocumentFileContentsOnNextcloud($remotePath, $contents, $mimeType)
+    : $organization->updateDocumentFileContentsOnStorage((string)$document->get('storedfilepath'), $contents, $mimeType);
 if (!is_array($updateResult) || empty($updateResult['status'])) {
     http_response_code(502);
     exit;
 }
 
-$document->set('storedfilesize', strlen($contents));
-$document->set('IDusermodification', $userId);
-$document->set('datemodification', new DateTimeImmutable());
-$saveResult = $document->save();
-if (!is_array($saveResult) || empty($saveResult['status'])) {
-    http_response_code(500);
-    exit;
+if (!$isRemoteFile) {
+    $document->set('storedfilesize', strlen($contents));
+    $document->set('IDusermodification', $userId);
+    $document->set('datemodification', new DateTimeImmutable());
+    $saveResult = $document->save();
+    if (!is_array($saveResult) || empty($saveResult['status'])) {
+        http_response_code(500);
+        exit;
+    }
 }
 
 header('Content-Type: application/json; charset=UTF-8');

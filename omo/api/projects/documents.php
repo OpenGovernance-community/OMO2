@@ -87,14 +87,14 @@ if (count($documents) === 0) {
         $removeConfirm = omoProjectsT($shouldDeleteDocument
             ? 'projects.detail.documents.confirm_delete'
             : 'projects.detail.documents.confirm_detach');
+        $isFolder = !empty($documentItem['isFolder']);
         ?>
-        <div class="omo-project-detail__document-item">
-            <a
-                class="omo-project-detail__document-link"
-                href="#documents-d<?= (int)$documentItem['id'] ?>"
-                data-omo-project-detail-document-link
-                data-document-id="<?= (int)$documentItem['id'] ?>"
-            >
+        <div class="omo-project-detail__document-item<?= $isFolder ? ' omo-project-detail__document-item--folder' : '' ?>"<?= $isFolder ? ' data-omo-project-detail-folder' : '' ?>>
+            <?php if ($isFolder): ?>
+                <button type="button" class="omo-project-detail__document-link omo-project-detail__document-folder-toggle" data-omo-project-detail-folder-toggle data-document-id="<?= (int)$documentItem['id'] ?>" data-project-id="<?= (int)$projectId ?>" aria-expanded="false">
+            <?php else: ?>
+                <a class="omo-project-detail__document-link" href="#documents-d<?= (int)$documentItem['id'] ?>" data-omo-project-detail-document-link data-document-id="<?= (int)$documentItem['id'] ?>">
+            <?php endif; ?>
                 <span class="omo-project-detail__document-icon" aria-hidden="true">
                     <img src="<?= omoApiEscape((string)$documentItem['iconUrl']) ?>" alt="" class="black-icon" loading="lazy">
                 </span>
@@ -102,7 +102,7 @@ if (count($documents) === 0) {
                     <strong><?= omoApiEscape($documentItem['title'] !== '' ? $documentItem['title'] : ('Document #' . (int)$documentItem['id'])) ?></strong>
                     <span><?= omoApiEscape($documentItem['type']) ?><?php if ($documentItem['addedAt'] !== ''): ?> · <?= omoApiEscape(omoProjectsT('projects.detail.documents.added', ['date' => $documentItem['addedAt']])) ?><?php endif; ?></span>
                 </span>
-            </a>
+            <?= $isFolder ? '</button>' : '</a>' ?>
             <div class="generic-menu omo-project-detail__document-menu" data-omo-project-detail-document-menu>
                 <button
                     type="button"
@@ -112,12 +112,14 @@ if (count($documents) === 0) {
                     aria-expanded="false"
                 >&#8230;</button>
                 <div class="generic-menu-panel omo-project-detail__document-menu-panel" data-omo-project-detail-document-menu-panel hidden>
-                    <a
-                        class="generic-menu-item"
-                        href="/omo/#documents-d<?= (int)$documentItem['id'] ?>"
-                        target="_blank"
-                        rel="noopener"
-                    ><?= omoApiEscape(omoProjectsT('projects.detail.documents.open_new_window')) ?></a>
+                    <?php if (!$isFolder): ?>
+                        <a
+                            class="generic-menu-item"
+                            href="/omo/#documents-d<?= (int)$documentItem['id'] ?>"
+                            target="_blank"
+                            rel="noopener"
+                        ><?= omoApiEscape(omoProjectsT('projects.detail.documents.open_new_window')) ?></a>
+                    <?php endif; ?>
                     <?php if ($canRemoveDocument): ?>
                         <button
                             type="button"
@@ -130,6 +132,9 @@ if (count($documents) === 0) {
                     <?php endif; ?>
                 </div>
             </div>
+            <?php if ($isFolder): ?>
+                <div class="omo-project-detail__folder-content" data-omo-project-detail-folder-content hidden></div>
+            <?php endif; ?>
         </div>
     <?php endforeach; ?>
 </div>
