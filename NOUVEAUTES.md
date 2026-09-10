@@ -2,6 +2,12 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-10
+
+- Les indicateurs automatiques issus de tableurs et de Framacalc proposent maintenant les rythmes mensuel, trimestriel, semestriel et annuel, en plus des rythmes existants. Leur unique frequence de lecture sert aussi au classement et aux alertes des indicateurs, sans dupliquer une frequence de mesure classique. La creation et l edition utilisent maintenant le meme formulaire de source pour modifier le document, la feuille, la cellule ou la plage, sans recharger le drawer au changement de type. Le type de source peut aussi etre change lors de l edition, sans supprimer l historique des valeurs.
+- Les indicateurs relies a une cellule de Framacalc ou d un document tableur ne memorisent plus une nouvelle valeur identique a chaque synchronisation ; leur frequence configuree continue de declencher les lectures suivantes.
+- Le graphique d un indicateur automatique peut maintenant afficher son document source dans l application, avec une ouverture dans un nouvel onglet en secours.
+
 ## 2026-09-09
 
 - Chaque organisation concernee par une fusion de profils recoit maintenant une entree d historique nommant les deux profils. Cette entree invalide aussi le cache de structure de l organisation afin que ses membres et roles soient recalcules immediatement.
