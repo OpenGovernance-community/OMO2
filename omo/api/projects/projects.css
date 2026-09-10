@@ -1552,13 +1552,22 @@
 
 .omo-project-detail__document-item:hover,
 .omo-project-detail__document-item:focus-within {
+    z-index: 2;
     border-color: color-mix(in srgb, var(--color-primary, #2563eb) 38%, var(--color-border, #e5e7eb));
     background: color-mix(in srgb, var(--color-primary, #2563eb) 5%, var(--color-surface, #fff));
     transform: translateY(-1px);
 }
 
+.omo-project-detail__document-item:has(.omo-project-detail__document-menu.is-open) {
+    z-index: 3;
+}
+
 .omo-project-detail__document-item:focus-within {
     outline: none;
+}
+
+.omo-project-detail__document-item--folder {
+    flex-wrap: wrap;
 }
 
 .omo-project-detail__document-link {
@@ -1573,6 +1582,58 @@
 
 .omo-project-detail__document-link:focus-visible {
     outline: none;
+}
+
+.omo-project-detail__document-folder-toggle,
+.omo-project-detail__folder-entry-link {
+    border: 0;
+    background: transparent;
+    font: inherit;
+    text-align: start;
+}
+
+.omo-project-detail__folder-content {
+    flex: 1 0 100%;
+    min-width: 0;
+}
+
+.omo-project-detail__folder-children {
+    display: grid;
+    gap: 6px;
+    margin: 2px 0 0 30px;
+    padding-inline-start: 12px;
+    border-inline-start: 2px solid color-mix(in srgb, var(--color-border, #e5e7eb) 82%, transparent);
+}
+
+.omo-project-detail__folder-entry {
+    min-width: 0;
+}
+
+.omo-project-detail__folder-entry-link {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 10px;
+    min-width: 0;
+    padding: 7px 8px;
+    border-radius: var(--radius-sm, 7px);
+    color: inherit;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.omo-project-detail__folder-entry-link:hover,
+.omo-project-detail__folder-entry-link:focus-visible {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 6%, var(--color-surface, #fff));
+    outline: none;
+}
+
+.omo-project-detail__folder-entry .omo-project-detail__folder-content {
+    margin-inline-start: 8px;
+}
+
+.omo-project-detail__folder-feedback {
+    margin: 4px 0;
 }
 
 .omo-project-detail__document-icon {
@@ -1609,12 +1670,14 @@
     font-size: .78rem;
 }
 
-.omo-project-detail__document-menu {
+.omo-project-detail__document-menu,
+.omo-project-detail__event-menu {
     position: relative;
     flex: 0 0 auto;
 }
 
-.omo-project-detail__document-menu-toggle {
+.omo-project-detail__document-menu-toggle,
+.omo-project-detail__event-menu-toggle {
     min-width: 32px;
     width: 32px;
     padding: 0;
@@ -1623,7 +1686,8 @@
     font-weight: 800;
 }
 
-.omo-project-detail__document-menu-panel {
+.omo-project-detail__document-menu-panel,
+.omo-project-detail__event-menu-panel {
     position: absolute;
     top: calc(100% + 6px);
     right: 0;
@@ -1646,6 +1710,14 @@
     margin: 0;
 }
 
+.omo-project-detail__event-row {
+    min-width: 0;
+}
+
+.omo-project-detail__event-row .omo-project-detail__event-item {
+    width: 100%;
+}
+
 .omo-project-detail__event-item {
     display: flex;
     align-items: center;
@@ -1661,8 +1733,23 @@
     transition: border-color .16s ease, background-color .16s ease, transform .16s ease;
 }
 
+.omo-project-detail__event-link {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    gap: 12px;
+    min-width: 0;
+    color: inherit;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.omo-project-detail__event-link:focus-visible {
+    outline: none;
+}
+
 .omo-project-detail__event-item:hover,
-.omo-project-detail__event-item:focus-visible {
+.omo-project-detail__event-item:focus-within {
     border-color: color-mix(in srgb, var(--color-primary, #2563eb) 38%, var(--color-border, #e5e7eb));
     background: color-mix(in srgb, var(--color-primary, #2563eb) 5%, var(--color-surface, #fff));
     outline: none;
