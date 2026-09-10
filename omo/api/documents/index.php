@@ -210,6 +210,26 @@ $sourceLang = [
         'text' => 'Chargement…',
         'context' => 'Loading state shown while a document drawer is loading.',
     ],
+    'documents.nextcloud.initial' => [
+        'text' => 'Ouvrez le dossier pour charger son contenu distant.',
+        'context' => 'Initial lazy-loading state of a referenced NextCloud folder.',
+    ],
+    'documents.nextcloud.loading' => [
+        'text' => 'Chargement du dossier distant...',
+        'context' => 'Loading state while a referenced NextCloud folder is read.',
+    ],
+    'documents.nextcloud.error' => [
+        'text' => 'Impossible de lire le dossier distant.',
+        'context' => 'Error shown when a referenced NextCloud folder cannot be read.',
+    ],
+    'documents.nextcloud.empty' => [
+        'text' => 'Dossier vide.',
+        'context' => 'Empty state for a referenced NextCloud folder.',
+    ],
+    'documents.nextcloud.remote_folder' => [
+        'text' => 'Dossier distant',
+        'context' => 'Compact type label for a referenced NextCloud folder.',
+    ],
     'documents.menu.archive' => [
         'text' => 'Archiver',
         'context' => 'Menu action used to hide a document from the document list.',
@@ -656,6 +676,7 @@ foreach ($documents as $document) {
                 . '&oid=' . rawurlencode((string)$currentOrganizationId)
             : '',
         'isFolder' => $isFolder,
+		'isNextcloudFolder' => $document->isNextcloudFolder(),
         'isExternalLink' => $isExternalLink,
         'externalUrl' => $document->getExternalUrl(),
         'openInNewWindow' => $document->shouldOpenExternalLinkInNewWindow(),
@@ -1167,6 +1188,11 @@ if (!is_string($documentsPayload)) {
                  const omoDocumentsEthercalcType = 'ethercalc';
                  const omoDocumentsWhiteboardType = 'whiteboard';
                 const omoDocumentsMissingUploadedFileLabel = <?= json_encode(omoDocumentsScopeT('documents.upload_missing.badge'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+				const omoDocumentsNextcloudInitialLabel = <?= json_encode(omoDocumentsScopeT('documents.nextcloud.initial'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+				const omoDocumentsNextcloudLoadingLabel = <?= json_encode(omoDocumentsScopeT('documents.nextcloud.loading'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+				const omoDocumentsNextcloudErrorLabel = <?= json_encode(omoDocumentsScopeT('documents.nextcloud.error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+				const omoDocumentsNextcloudEmptyLabel = <?= json_encode(omoDocumentsScopeT('documents.nextcloud.empty'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+				const omoDocumentsNextcloudFolderLabel = <?= json_encode(omoDocumentsScopeT('documents.nextcloud.remote_folder'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                  const omoDocumentsEtherpadIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.etherpad'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                  const omoDocumentsEthercalcIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.ethercalc'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                  const omoDocumentsWhiteboardIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.whiteboard'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -1896,6 +1922,9 @@ if (!is_string($documentsPayload)) {
                             };
 
                             const createDocumentSelectionControl = function (documentItem) {
+								if (documentItem && documentItem.isRemoteFile) {
+									return null;
+								}
                                 if (!documentItem || (!documentItem.canArchive && !documentItem.canMove)) {
                                     return null;
                                 }
@@ -1979,6 +2008,9 @@ if (!is_string($documentsPayload)) {
                                     container.setAttribute('data-omo-document-can-open-in-pv-tab', documentItem.canOpenInPvApplicationTab ? '1' : '0');
                                     container.setAttribute('data-omo-document-title', documentItem.title || '');
                                     container.setAttribute('data-omo-document-full-date', documentItem.fullDateLabel || '');
+									if (documentItem.isRemoteFile) {
+										container.setAttribute('data-omo-nextcloud-file', '1');
+									}
                                 }
 
                                 container.classList.add(
@@ -2059,9 +2091,11 @@ if (!is_string($documentsPayload)) {
                                         const count = Array.isArray(documentItem.children) ? documentItem.children.length : 0;
                                         const compactCount = document.createElement('span');
                                         compactCount.className = 'omo-documents__compact-count generic-file-list__count';
-                                        compactCount.textContent = count > 0
+										compactCount.textContent = documentItem.isNextcloudFolder
+											? omoDocumentsNextcloudFolderLabel
+											: (count > 0
                                             ? String(count) + ' element' + (count > 1 ? 's' : '')
-                                            : 'Vide';
+												: 'Vide');
                                         compactTitleStack.appendChild(compactCount);
                                     }
 
@@ -2163,9 +2197,11 @@ if (!is_string($documentsPayload)) {
                                     const count = Array.isArray(documentItem.children) ? documentItem.children.length : 0;
                                     const countLabel = document.createElement('span');
                                     countLabel.className = 'omo-documents__kind-detail';
-                                    countLabel.textContent = count > 0
+									countLabel.textContent = documentItem.isNextcloudFolder
+										? omoDocumentsNextcloudFolderLabel
+										: (count > 0
                                         ? String(count) + ' element' + (count > 1 ? 's' : '')
-                                        : 'Vide';
+											: 'Vide');
                                     eyebrow.appendChild(countLabel);
                                 } else if (String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
                                     const countLabel = document.createElement('span');
@@ -2324,6 +2360,9 @@ if (!is_string($documentsPayload)) {
                             const createItem = function (documentItem) {
                                 const shell = document.createElement('article');
                                 shell.className = 'omo-documents__item-shell generic-file-list__item-shell';
+								const isNextcloudFolder = documentItem.isNextcloudFolder === true || documentItem.isRemoteFolder === true;
+								const nextcloudFolderId = Number(documentItem.remoteFolderId || (documentItem.isNextcloudFolder ? documentItem.id : 0));
+								const nextcloudPath = String(documentItem.remotePath || '');
 
                                 if (state.density === 'compact') {
                                     shell.classList.add('omo-documents__item-shell--compact');
@@ -2346,6 +2385,10 @@ if (!is_string($documentsPayload)) {
                                         + (isExpanded ? '' : ' is-collapsed');
                                     accordion.setAttribute('data-generic-accordion', '1');
                                     accordion.setAttribute('data-omo-document-folder', String(documentItem.id || '0'));
+									if (isNextcloudFolder && Number.isInteger(nextcloudFolderId) && nextcloudFolderId > 0) {
+										accordion.setAttribute('data-omo-nextcloud-folder-id', String(nextcloudFolderId));
+										accordion.setAttribute('data-omo-nextcloud-path', nextcloudPath);
+									}
 
                                     const header = document.createElement('div');
                                     header.className = 'generic-accordion__header omo-documents__folder-header generic-file-list__folder-header';
@@ -2380,7 +2423,13 @@ if (!is_string($documentsPayload)) {
                                     const content = document.createElement('div');
                                     content.className = 'generic-accordion__content omo-documents__folder-content generic-file-list__folder-content';
 
-                                    if (Array.isArray(documentItem.children) && documentItem.children.length > 0) {
+									if (isNextcloudFolder) {
+										const remoteLoading = document.createElement('div');
+										remoteLoading.className = 'omo-documents__folder-empty generic-file-list__empty';
+										remoteLoading.setAttribute('data-omo-nextcloud-folder-content', '1');
+										remoteLoading.textContent = omoDocumentsNextcloudInitialLabel;
+										content.appendChild(remoteLoading);
+									} else if (Array.isArray(documentItem.children) && documentItem.children.length > 0) {
                                         const childList = document.createElement('div');
                                         childList.className = 'omo-documents__folder-children generic-file-list__children';
 
@@ -2423,6 +2472,82 @@ if (!is_string($documentsPayload)) {
 
                                 return shell;
                             };
+
+							const getNextcloudStoredFileKind = function (filename, mimeType) {
+								const extension = String(filename || '').split('.').pop().toLowerCase();
+								const type = String(mimeType || '').toLowerCase();
+								if (type.indexOf('image/') === 0 || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension)) return 'image';
+								if (type.indexOf('video/') === 0 || ['mp4', 'webm', 'mov'].includes(extension)) return 'video';
+								if (type.indexOf('audio/') === 0 || ['mp3', 'wav', 'ogg'].includes(extension)) return 'audio';
+								if (['ods', 'xlsx', 'xls', 'csv'].includes(extension)) return 'spreadsheet';
+								if (['odp', 'pptx', 'ppt'].includes(extension)) return 'presentation';
+								if (['odg'].includes(extension)) return 'drawing';
+								if (['txt', 'md', 'odt', 'docx', 'doc', 'pdf'].includes(extension)) return 'text';
+								return '';
+							};
+
+							const createNextcloudRemoteItem = function (folderId, entry) {
+								const path = String(entry && entry.path || '');
+								const name = String(entry && entry.name || path.split('/').pop() || 'Fichier');
+								const isFolder = !!(entry && entry.isFolder);
+								const query = 'id=' + encodeURIComponent(String(folderId)) + '&path=' + encodeURIComponent(path);
+								return {
+									id: 0,
+									title: name,
+									listTitle: name,
+									documentType: 'uploaded_file',
+									storedFileKind: getNextcloudStoredFileKind(name, entry && entry.mimeType),
+									isFolder: isFolder,
+									isNextcloudFolder: false,
+									isRemoteFolder: isFolder,
+									isRemoteFile: !isFolder,
+									remoteFolderId: folderId,
+									remotePath: path,
+									remoteKey: String(folderId) + ':' + path,
+									contextUrl: isFolder ? '' : '/omo/api/documents/nextcloud/detail.php?' + query + '&mime=' + encodeURIComponent(String(entry && entry.mimeType || '')),
+									isExternalLink: false,
+									openInNewWindow: false,
+									canOpenInPvApplicationTab: true,
+									canEdit: false,
+									canMove: false,
+									canArchive: false,
+									canDelete: false,
+									canShare: false,
+									canExportPdf: false,
+									keywords: '',
+									description: '',
+									dateLabel: '',
+									fullDateLabel: String(entry && entry.modifiedAt || ''),
+									children: []
+								};
+							};
+
+							const loadNextcloudFolder = function (accordion) {
+								if (!(accordion instanceof HTMLElement)) return;
+								const folderId = Number(accordion.getAttribute('data-omo-nextcloud-folder-id') || 0);
+								const path = String(accordion.getAttribute('data-omo-nextcloud-path') || '');
+								const content = accordion.querySelector('[data-omo-nextcloud-folder-content]');
+								if (!Number.isInteger(folderId) || folderId <= 0 || !(content instanceof HTMLElement)) return;
+								content.textContent = omoDocumentsNextcloudLoadingLabel;
+								const endpoint = new URL('/omo/api/documents/nextcloud/browse.php', window.location.origin);
+								endpoint.searchParams.set('id', String(folderId));
+								endpoint.searchParams.set('path', path);
+								fetch(endpoint.toString(), {credentials: 'same-origin', cache: 'no-store'})
+									.then(function (response) { return response.json().then(function (payload) {
+										if (!response.ok || !payload || payload.status !== true) throw new Error(String(payload && payload.message || omoDocumentsNextcloudErrorLabel));
+										return payload;
+									}); })
+									.then(function (payload) {
+										const entries = Array.isArray(payload.entries) ? payload.entries : [];
+										if (entries.length === 0) { content.textContent = omoDocumentsNextcloudEmptyLabel; return; }
+										const list = document.createElement('div');
+										list.className = 'omo-documents__folder-children generic-file-list__children';
+										if (state.density === 'compact') list.classList.add('omo-documents__folder-children--compact');
+										entries.forEach(function (entry) { list.appendChild(createItem(createNextcloudRemoteItem(folderId, entry))); });
+										content.replaceChildren(list);
+									})
+									.catch(function (error) { content.textContent = String(error && error.message || omoDocumentsNextcloudErrorLabel); });
+							};
 
                             const persistOpenFolderState = function () {
                                 omoDocumentsWriteSessionCookie(
@@ -2519,6 +2644,9 @@ if (!is_string($documentsPayload)) {
                                 const documentId = frame instanceof HTMLIFrameElement
                                     ? Number(frame.getAttribute('data-omo-collabora-document-id') || 0)
                                     : 0;
+								const remotePath = frame instanceof HTMLIFrameElement
+									? String(frame.getAttribute('data-omo-collabora-remote-path') || '').trim()
+									: '';
                                 const collaboraOrigin = detail instanceof HTMLElement
                                     ? String(detail.getAttribute('data-omo-collabora-origin') || '').trim()
                                     : '';
@@ -2566,6 +2694,9 @@ if (!is_string($documentsPayload)) {
                                     refreshInFlight = true;
                                     const body = new URLSearchParams();
                                     body.set('id', String(documentId));
+									if (remotePath !== '') {
+										body.set('path', remotePath);
+									}
 
                                     fetch('/omo/api/documents/collabora/token.php', {
                                         method: 'POST',
@@ -2826,7 +2957,7 @@ if (!is_string($documentsPayload)) {
                             };
 
                             const openDocumentDetail = function (documentItem) {
-                                if (!detailDrawer || !detailBody || !documentItem || !documentItem.id || documentItem.isFolder) {
+								if (!detailDrawer || !detailBody || !documentItem || (!documentItem.id && !documentItem.isRemoteFile) || documentItem.isFolder) {
                                     return;
                                 }
 
@@ -2852,8 +2983,11 @@ if (!is_string($documentsPayload)) {
                                     return;
                                 }
 
-                                state.activeDocumentId = Number(documentItem.id);
-                                detailDrawer.dataset.omoDocumentActiveId = String(documentItem.id);
+								const activeDocumentKey = documentItem.isRemoteFile
+									? String(documentItem.remoteKey || documentItem.contextUrl || '')
+									: String(Number(documentItem.id));
+								state.activeDocumentId = activeDocumentKey;
+								detailDrawer.dataset.omoDocumentActiveId = activeDocumentKey;
                                 setDetailHeader(documentItem);
                                 renderDetailLoading();
                                 openDetailDrawer();
@@ -2868,7 +3002,7 @@ if (!is_string($documentsPayload)) {
                                     method: 'GET',
                                     cache: false,
                                     success: function (data) {
-                                        if (requestToken !== detailRequestToken || state.activeDocumentId !== Number(documentItem.id)) {
+										if (requestToken !== detailRequestToken || state.activeDocumentId !== activeDocumentKey) {
                                             return;
                                         }
 
@@ -3648,10 +3782,30 @@ if (!is_string($documentsPayload)) {
                                 const folderToggle = event.target.closest('[data-omo-document-folder-toggle]');
                                 if (folderToggle && panel.contains(folderToggle)) {
                                     window.setTimeout(function () {
+										const accordion = folderToggle.closest('[data-generic-accordion][data-omo-nextcloud-folder-id]');
+										if (accordion instanceof HTMLElement && !accordion.classList.contains('is-collapsed')) {
+											loadNextcloudFolder(accordion);
+										}
                                         syncFolderAccordionState(true);
                                     }, 0);
                                     return;
                                 }
+
+								const remoteFileTrigger = event.target.closest('[data-omo-nextcloud-file]');
+								if (remoteFileTrigger && panel.contains(remoteFileTrigger)) {
+									event.preventDefault();
+									openDocumentDetail({
+										isRemoteFile: true,
+										remoteKey: String(remoteFileTrigger.getAttribute('data-omo-document-context-url') || ''),
+										contextUrl: String(remoteFileTrigger.getAttribute('data-omo-document-context-url') || ''),
+										title: String(remoteFileTrigger.getAttribute('data-omo-document-title') || ''),
+										fullDateLabel: String(remoteFileTrigger.getAttribute('data-omo-document-full-date') || ''),
+										documentType: 'uploaded_file',
+										isFolder: false,
+										canOpenInPvApplicationTab: true
+									});
+									return;
+								}
 
                                 const trigger = event.target.closest('[data-omo-document-id]');
 
@@ -3708,6 +3862,10 @@ if (!is_string($documentsPayload)) {
                                     && !event.target.closest('input, button, a')
                                 ) {
                                     event.preventDefault();
+									if (card.hasAttribute('data-omo-nextcloud-file')) {
+										card.click();
+										return;
+									}
                                     if (typeof window.omoOpenDocumentDetailFromTrigger === 'function') {
                                         window.omoOpenDocumentDetailFromTrigger(card);
                                         return;
@@ -3726,6 +3884,9 @@ if (!is_string($documentsPayload)) {
                             });
 
                             render();
+							results.querySelectorAll('[data-generic-accordion][data-omo-nextcloud-folder-id]:not(.is-collapsed)').forEach(function (accordion) {
+								loadNextcloudFolder(accordion);
+							});
                             window.setTimeout(function () {
                                 retryInitialDocumentOpen(0);
                             }, 0);

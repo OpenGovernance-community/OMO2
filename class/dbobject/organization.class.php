@@ -476,6 +476,11 @@
 			return false;
 		}
 
+		public function isKdriveDocumentStorage(): bool
+		{
+			return ($this->getDocumentStorageConfig()['type'] ?? '') === 'kdrive' && $this->hasDocumentStorage();
+		}
+
 		public function testDocumentStorageConnection(array $config): array
 		{
 			require_once dirname(__DIR__, 2) . '/omo/api/documents/params/shared.php';
@@ -746,6 +751,117 @@
 				: array('status' => true, 'size' => strlen($contents));
 		}
 
+		public function listKdriveDocumentsDirectory(string $relativePath): array
+		{
+			$config = $this->getDocumentStorageConfig();
+			if (($config['type'] ?? '') !== 'kdrive' || !$this->hasDocumentStorage()) {
+				return array('status' => false, 'text' => 'Le stockage kDrive est indisponible.');
+			}
+
+			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
+			$result = $this->executeKdriveDocumentsRequest('PROPFIND', $relativePath, $config, array(
+				'timeout' => 60,
+				'headers' => array('Depth: 1', 'Content-Length: 0'),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de lire le dossier kDrive.')));
+			}
+
+			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
+			if (!($xml instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'La reponse WebDAV du dossier kDrive est invalide.');
+			}
+			$xml->registerXPathNamespace('d', 'DAV:');
+			$responses = $xml->xpath('//d:response');
+			if (!is_array($responses)) {
+				return array('status' => true, 'entries' => array());
+			}
+
+			$configFolder = trim(str_replace('\\', '/', (string)($config['folder'] ?? '')), '/');
+			$entries = array();
+			foreach ($responses as $response) {
+				$propertyNodes = $response->xpath('./d:propstat/d:prop');
+				$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
+				if (!($property instanceof \SimpleXMLElement)) {
+					continue;
+				}
+				$hrefNodes = $response->xpath('./d:href');
+				$hrefPath = is_array($hrefNodes) && isset($hrefNodes[0]) ? (string)parse_url((string)$hrefNodes[0], PHP_URL_PATH) : '';
+				$path = trim(rawurldecode($hrefPath), '/');
+				if ($configFolder !== '' && ($path === $configFolder || str_starts_with($path, $configFolder . '/'))) {
+					$path = $path === $configFolder ? '' : substr($path, strlen($configFolder) + 1);
+				}
+				if ($path === '' || $path === $relativePath) {
+					continue;
+				}
+				$collectionNodes = $property->xpath('./d:resourcetype/d:collection');
+				$nameNodes = $property->xpath('./d:displayname');
+				$name = is_array($nameNodes) && isset($nameNodes[0]) ? trim((string)$nameNodes[0]) : basename($path);
+				$typeNodes = $property->xpath('./d:getcontenttype');
+				$sizeNodes = $property->xpath('./d:getcontentlength');
+				$modifiedNodes = $property->xpath('./d:getlastmodified');
+				$entries[] = array(
+					'path' => $path,
+					'name' => $name !== '' ? $name : basename($path),
+					'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0,
+					'mimeType' => is_array($typeNodes) && isset($typeNodes[0]) ? trim((string)$typeNodes[0]) : '',
+					'size' => is_array($sizeNodes) && isset($sizeNodes[0]) ? max(0, (int)$sizeNodes[0]) : 0,
+					'modifiedAt' => is_array($modifiedNodes) && isset($modifiedNodes[0]) ? trim((string)$modifiedNodes[0]) : '',
+				);
+			}
+			usort($entries, static function (array $left, array $right): int {
+				if ((bool)$left['isFolder'] !== (bool)$right['isFolder']) {
+					return (bool)$left['isFolder'] ? -1 : 1;
+				}
+				return strnatcasecmp((string)$left['name'], (string)$right['name']);
+			});
+			return array('status' => true, 'entries' => $entries);
+		}
+
+		public function getKdriveDocumentsDirectoryInfo(string $relativePath): array
+		{
+			$config = $this->getDocumentStorageConfig();
+			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
+			if (($config['type'] ?? '') !== 'kdrive' || !$this->hasDocumentStorage() || $relativePath === '') {
+				return array('status' => false, 'text' => 'Chemin kDrive invalide.');
+			}
+			$result = $this->executeKdriveDocumentsRequest('PROPFIND', $relativePath, $config, array(
+				'timeout' => 60,
+				'headers' => array('Depth: 0', 'Content-Length: 0'),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de lire le dossier kDrive.')));
+			}
+			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
+			if (!($xml instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'La reponse WebDAV du dossier kDrive est invalide.');
+			}
+			$xml->registerXPathNamespace('d', 'DAV:');
+			$responses = $xml->xpath('//d:response');
+			$response = is_array($responses) && isset($responses[0]) ? $responses[0] : null;
+			$propertyNodes = $response instanceof \SimpleXMLElement ? $response->xpath('./d:propstat/d:prop') : array();
+			$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
+			if (!($property instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'Le dossier kDrive est introuvable.');
+			}
+			$collectionNodes = $property->xpath('./d:resourcetype/d:collection');
+			return array('status' => true, 'path' => $relativePath, 'fileId' => '', 'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0);
+		}
+
+		public function listDocumentStorageDirectory(string $relativePath): array
+		{
+			return $this->isKdriveDocumentStorage()
+				? $this->listKdriveDocumentsDirectory($relativePath)
+				: $this->listNextcloudDocumentsDirectory($relativePath);
+		}
+
+		public function getDocumentStorageDirectoryInfo(string $relativePath): array
+		{
+			return $this->isKdriveDocumentStorage()
+				? $this->getKdriveDocumentsDirectoryInfo($relativePath)
+				: $this->getNextcloudDocumentsDirectoryInfo($relativePath);
+		}
+
 		public function testNextcloudDocumentStorageConnection(array $config): array
 		{
 			$baseUrl = rtrim(trim((string)($config['baseUrl'] ?? '')), '/');
@@ -851,7 +967,9 @@
 			}
 
 			$config = $this->getNextcloudDocumentsConfig();
-			$url = $this->buildNextcloudDocumentsDavUrl($relativePath);
+			$url = !empty($options['davRoot'])
+				? rtrim((string)$config['baseUrl'], '/') . '/remote.php/dav/'
+				: $this->buildNextcloudDocumentsDavUrl($relativePath);
 			if ($url === '') {
 				return array(
 					'status' => false,
@@ -1121,6 +1239,175 @@
 				'contentType' => trim((string)(($result['headers']['content-type'] ?? 'application/octet-stream'))),
 				'contentLength' => isset($result['headers']['content-length']) ? (int)$result['headers']['content-length'] : strlen((string)($result['body'] ?? '')),
 			);
+		}
+
+		public function listNextcloudDocumentsDirectory(string $relativePath): array
+		{
+			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
+			$result = $this->executeNextcloudDocumentsRequest('PROPFIND', $relativePath, array(
+				'timeout' => 60,
+				'headers' => array('Depth: 1', 'Content-Length: 0'),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array(
+					'status' => false,
+					'text' => trim((string)($result['text'] ?? 'Impossible de lire le dossier NextCloud.')),
+				);
+			}
+
+			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
+			if (!($xml instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'La reponse WebDAV du dossier NextCloud est invalide.');
+			}
+
+			$xml->registerXPathNamespace('d', 'DAV:');
+			$responses = $xml->xpath('//d:response');
+			if (!is_array($responses)) {
+				return array('status' => true, 'entries' => array());
+			}
+
+			$config = $this->getNextcloudDocumentsConfig();
+			$davPrefix = '/remote.php/dav/files/' . rawurlencode((string)$config['username']) . '/';
+			$currentPath = trim($relativePath, '/');
+			$entries = array();
+			foreach ($responses as $response) {
+				$hrefNodes = $response->xpath('./d:href');
+				$href = is_array($hrefNodes) && isset($hrefNodes[0]) ? (string)$hrefNodes[0] : '';
+				$hrefPath = (string)parse_url($href, PHP_URL_PATH);
+				$relativeHref = trim(rawurldecode(str_starts_with($hrefPath, $davPrefix) ? substr($hrefPath, strlen($davPrefix)) : $hrefPath), '/');
+				if ($relativeHref === '' || $relativeHref === $currentPath) {
+					continue;
+				}
+
+				$propertyNodes = $response->xpath('./d:propstat/d:prop');
+				$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
+				if (!($property instanceof \SimpleXMLElement)) {
+					continue;
+				}
+				$collectionNodes = $property->xpath('./d:resourcetype/d:collection');
+				$isFolder = is_array($collectionNodes) && count($collectionNodes) > 0;
+				$nameNodes = $property->xpath('./d:displayname');
+				$name = is_array($nameNodes) && isset($nameNodes[0]) ? trim((string)$nameNodes[0]) : '';
+				if ($name === '') {
+					$name = basename($relativeHref);
+				}
+				$typeNodes = $property->xpath('./d:getcontenttype');
+				$sizeNodes = $property->xpath('./d:getcontentlength');
+				$modifiedNodes = $property->xpath('./d:getlastmodified');
+				$entries[] = array(
+					'path' => $relativeHref,
+					'name' => $name,
+					'isFolder' => $isFolder,
+					'mimeType' => is_array($typeNodes) && isset($typeNodes[0]) ? trim((string)$typeNodes[0]) : '',
+					'size' => is_array($sizeNodes) && isset($sizeNodes[0]) ? max(0, (int)$sizeNodes[0]) : 0,
+					'modifiedAt' => is_array($modifiedNodes) && isset($modifiedNodes[0]) ? trim((string)$modifiedNodes[0]) : '',
+				);
+			}
+
+			usort($entries, static function (array $left, array $right): int {
+				if ((bool)$left['isFolder'] !== (bool)$right['isFolder']) {
+					return (bool)$left['isFolder'] ? -1 : 1;
+				}
+				return strnatcasecmp((string)$left['name'], (string)$right['name']);
+			});
+
+			return array('status' => true, 'entries' => $entries);
+		}
+
+		public function getNextcloudDocumentsDirectoryInfo(string $relativePath): array
+		{
+			$relativePath = trim(str_replace('\\', '/', $relativePath), '/');
+			if ($relativePath === '') {
+				return array('status' => false, 'text' => 'Chemin NextCloud invalide.');
+			}
+
+			$result = $this->executeNextcloudDocumentsRequest('PROPFIND', $relativePath, array(
+				'timeout' => 60,
+				'headers' => array('Depth: 0', 'Content-Length: 0'),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de lire le dossier NextCloud.')));
+			}
+
+			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
+			if (!($xml instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'La reponse WebDAV du dossier NextCloud est invalide.');
+			}
+			$xml->registerXPathNamespace('d', 'DAV:');
+			$xml->registerXPathNamespace('oc', 'http://owncloud.org/ns');
+			$responses = $xml->xpath('//d:response');
+			$response = is_array($responses) && isset($responses[0]) ? $responses[0] : null;
+			if (!($response instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'Le dossier NextCloud est introuvable.');
+			}
+
+			$propertyNodes = $response->xpath('./d:propstat/d:prop');
+			$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
+			if (!($property instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'Les informations du dossier NextCloud sont indisponibles.');
+			}
+			$property->registerXPathNamespace('d', 'DAV:');
+			$property->registerXPathNamespace('oc', 'http://owncloud.org/ns');
+			$fileIdNodes = $property->xpath('./oc:fileid');
+			$collectionNodes = $property->xpath('./d:resourcetype/d:collection');
+			return array(
+				'status' => true,
+				'path' => $relativePath,
+				'fileId' => is_array($fileIdNodes) && isset($fileIdNodes[0]) ? trim((string)$fileIdNodes[0]) : '',
+				'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0,
+			);
+		}
+
+		public function findNextcloudDocumentsPathByFileId(string $fileId): array
+		{
+			$fileId = trim($fileId);
+			if ($fileId === '' || !preg_match('/^[0-9]+$/', $fileId)) {
+				return array('status' => false, 'text' => 'Identifiant NextCloud invalide.');
+			}
+
+			$config = $this->getNextcloudDocumentsConfig();
+			$username = trim((string)($config['username'] ?? ''));
+			if ($username === '') {
+				return array('status' => false, 'text' => 'Configuration NextCloud invalide.');
+			}
+			$escapedUsername = htmlspecialchars($username, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+			$searchBody = '<?xml version="1.0" encoding="UTF-8"?>'
+				. '<d:searchrequest xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns"><d:basicsearch><d:select><d:prop><d:resourcetype/><oc:fileid/></d:prop></d:select><d:from><d:scope><d:href>/files/' . $escapedUsername . '</d:href><d:depth>infinity</d:depth></d:scope></d:from><d:where><d:eq><d:prop><oc:fileid/></d:prop><d:literal>' . $fileId . '</d:literal></d:eq></d:where><d:orderby/></d:basicsearch></d:searchrequest>';
+			$result = $this->executeNextcloudDocumentsRequest('SEARCH', '', array(
+				'davRoot' => true,
+				'timeout' => 60,
+				'body' => $searchBody,
+				'headers' => array('Content-Type: text/xml; charset=UTF-8', 'Content-Length: ' . strlen($searchBody)),
+			));
+			if (!is_array($result) || empty($result['status'])) {
+				return array('status' => false, 'text' => trim((string)($result['text'] ?? 'Impossible de rechercher le dossier NextCloud.')));
+			}
+
+			$xml = @simplexml_load_string((string)($result['body'] ?? ''));
+			if (!($xml instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'La reponse de recherche NextCloud est invalide.');
+			}
+			$xml->registerXPathNamespace('d', 'DAV:');
+			$xml->registerXPathNamespace('oc', 'http://owncloud.org/ns');
+			$responses = $xml->xpath('//d:response');
+			$response = is_array($responses) && isset($responses[0]) ? $responses[0] : null;
+			if (!($response instanceof \SimpleXMLElement)) {
+				return array('status' => false, 'text' => 'Le dossier NextCloud est introuvable.');
+			}
+
+			$hrefNodes = $response->xpath('./d:href');
+			$hrefPath = is_array($hrefNodes) && isset($hrefNodes[0]) ? (string)parse_url((string)$hrefNodes[0], PHP_URL_PATH) : '';
+			$davPrefix = '/remote.php/dav/files/' . rawurlencode($username) . '/';
+			$relativePath = trim(rawurldecode(str_starts_with($hrefPath, $davPrefix) ? substr($hrefPath, strlen($davPrefix)) : $hrefPath), '/');
+			$propertyNodes = $response->xpath('./d:propstat/d:prop');
+			$property = is_array($propertyNodes) && isset($propertyNodes[0]) ? $propertyNodes[0] : null;
+			if ($property instanceof \SimpleXMLElement) {
+				$property->registerXPathNamespace('d', 'DAV:');
+			}
+			$collectionNodes = $property instanceof \SimpleXMLElement ? $property->xpath('./d:resourcetype/d:collection') : array();
+			return $relativePath === ''
+				? array('status' => false, 'text' => 'Le chemin du dossier NextCloud est introuvable.')
+				: array('status' => true, 'path' => $relativePath, 'isFolder' => is_array($collectionNodes) && count($collectionNodes) > 0);
 		}
 
 		public function updateDocumentFileContentsOnNextcloud(string $relativePath, string $contents, string $mimeType = 'application/octet-stream'): array

@@ -2,6 +2,7 @@
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 require_once dirname(__DIR__, 3) . '/common/calendar/upcoming_sections.php';
+require_once dirname(__DIR__) . '/calendar/permissions_shared.php';
 
 use dbObject\Event;
 use dbObject\Holon;
@@ -169,12 +170,32 @@ if (count($eventSections) === 0) {
                     $status = Event::normalizeStatus($event->get('status'));
                     $statusCatalog = Event::getStatusCatalog();
                     $statusLabel = trim((string)($statusCatalog[$status]['label'] ?? ''));
+                    $eventPermissionHolon = omoCalendarResolveEventPermissionHolon($event, $rootHolon);
+                    $canEditEvent = omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, true);
+                    $canDeleteEvent = $currentUserId > 0 && (
+                        $eventPermissionHolon instanceof Holon
+                            ? $eventPermissionHolon->isAllowed('CAN_DELETE_EVENT', false, $currentUserId)
+                            : commonCurrentUserHasOrganizationAccess($organizationId)
+                    );
+                    $eventEditorUrl = '/omo/api/calendar/create.php?oid=' . rawurlencode((string)$organizationId)
+                        . '&project_id=' . rawurlencode((string)$projectId)
+                        . '&editor_host=project';
+                    if ($projectHolon instanceof Holon) {
+                        $eventEditorUrl .= '&cid=' . rawurlencode((string)(int)$projectHolon->getId());
+                    }
+                    $eventId = (int)$event->getId();
+                    $eventEditUrl = $eventEditorUrl . '&id=' . rawurlencode((string)$eventId);
+                    $eventDuplicateUrl = $eventEditorUrl . '&duplicate_id=' . rawurlencode((string)$eventId);
+                    $eventDeleteUrl = '/omo/api/calendar/delete.php?oid=' . rawurlencode((string)$organizationId)
+                        . '&id=' . rawurlencode((string)$eventId);
                     ?>
+                    <div class="omo-project-detail__event-row">
+                        <div class="omo-project-detail__event-item is-status-<?= omoApiEscape($status) ?>">
                     <a
-                        class="omo-project-detail__event-item is-status-<?= omoApiEscape($status) ?>"
-                        href="#calendar-e<?= (int)$event->getId() ?>"
+                        class="omo-project-detail__event-link"
+                        href="#calendar-e<?= $eventId ?>"
                         data-omo-project-detail-event-link
-                        data-event-id="<?= (int)$event->getId() ?>"
+                        data-event-id="<?= $eventId ?>"
                     >
                         <span class="omo-project-detail__event-date" aria-hidden="true">
                             <strong><?= omoApiEscape($startAt instanceof \DateTimeInterface ? $startAt->format('d') : '–') ?></strong>
@@ -187,6 +208,40 @@ if (count($eventSections) === 0) {
                             })))) ?></span>
                         </span>
                     </a>
+                    <?php if ($canEditEvent || $canDeleteEvent || $canCreateEvent): ?>
+                        <div class="generic-menu omo-project-detail__event-menu" data-omo-project-detail-event-menu>
+                            <button
+                                type="button"
+                                class="generic-menu-toggle omo-project-detail__event-menu-toggle"
+                                data-omo-project-detail-event-menu-toggle
+                                aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.events.menu')) ?>"
+                                aria-expanded="false"
+                            >&#8230;</button>
+                            <div class="generic-menu-panel omo-project-detail__event-menu-panel" data-omo-project-detail-event-menu-panel hidden>
+                                <?php if ($canEditEvent): ?>
+                                    <button type="button" class="generic-menu-item" data-omo-project-detail-event-editor-url="<?= omoApiEscape($eventEditUrl) ?>">
+                                        <?= omoApiEscape(omoProjectsT('projects.detail.events.edit')) ?>
+                                    </button>
+                                <?php endif; ?>
+                                <?php if ($canCreateEvent): ?>
+                                    <button type="button" class="generic-menu-item" data-omo-project-detail-event-editor-url="<?= omoApiEscape($eventDuplicateUrl) ?>">
+                                        <?= omoApiEscape(omoProjectsT('projects.detail.events.duplicate')) ?>
+                                    </button>
+                                <?php endif; ?>
+                                <?php if ($canDeleteEvent): ?>
+                                    <button
+                                        type="button"
+                                        class="generic-menu-item generic-menu-item--danger"
+                                        data-omo-project-detail-event-delete-url="<?= omoApiEscape($eventDeleteUrl) ?>"
+                                        data-project-id="<?= (int)$projectId ?>"
+                                        data-confirm="<?= omoApiEscape(omoProjectsT('projects.detail.events.confirm_delete')) ?>"
+                                    ><?= omoApiEscape(omoProjectsT('projects.detail.events.delete')) ?></button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                        </div>
+                    </div>
                 <?php endforeach; ?>
             </div>
         </section>

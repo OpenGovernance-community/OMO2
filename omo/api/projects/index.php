@@ -753,8 +753,11 @@ $projectTexts = [
     'cancel' => omoProjectsT('projects.action.cancel'),
     'documentsLoading' => omoProjectsT('projects.detail.documents.loading'),
     'documentsError' => omoProjectsT('projects.detail.documents.error'),
+    'documentsFolderLoading' => omoProjectsT('projects.detail.documents.folder_loading'),
+    'documentsFolderError' => omoProjectsT('projects.detail.documents.folder_error'),
     'eventsLoading' => omoProjectsT('projects.detail.events.loading'),
     'eventsError' => omoProjectsT('projects.detail.events.error'),
+    'eventsDeleteError' => omoProjectsT('projects.detail.events.delete_error'),
     'historyLoading' => omoProjectsT('projects.history.loading'),
     'historyError' => omoProjectsT('projects.history.error'),
     'documentsAdd' => omoProjectsT('projects.detail.documents.add'),
@@ -778,7 +781,7 @@ $projectTexts = [
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">
 <link rel="stylesheet" href="/common/chat/thread.css?v=20260910-project-chat">
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260910-project-chat">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260910-project-event-card">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
@@ -1230,4 +1233,4 @@ $projectTexts = [
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="/common/choice/change-details.js?v=20260816-governance-details"></script>
 <script src="/common/chat/thread.js?v=20260910-project-chat"></script>
-<script src="/omo/api/projects/projects.js?v=20260908-project-history"></script>
+<script src="/omo/api/projects/projects.js?v=20260910-project-folders"></script>

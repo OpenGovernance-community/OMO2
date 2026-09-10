@@ -7,6 +7,7 @@
 		public const TYPE_EXTERNAL_LINK = 'external_link';
 		public const TYPE_UPLOADED_FILE = 'uploaded_file';
 		public const TYPE_FOLDER = 'folder';
+		public const TYPE_NEXTCLOUD_FOLDER = 'nextcloud_folder';
 		public const TYPE_PV = 'pv';
 		public const TYPE_ETHERPAD = 'etherpad';
 		public const TYPE_ETHERCALC = 'ethercalc';
@@ -33,7 +34,7 @@
 			return [
 				[['title'], 'required'],						// Champs obligatoires
 				[['id', 'version', 'estDossier', 'active', 'is_template', 'pv_editor_handover_open', 'openinnewwindow', 'project_visible_in_holon', 'storedfilesize'], 'integer'],				// Nombres entiers
-				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'etherpadpadid', 'ethercalcroomid', 'spacedeckspaceid'], 'string'],	// Chaines de caractere
+				[['title', 'codeview', 'codeedit', 'keywords', 'documenttype', 'pvstage', 'externalurl', 'storedfilepath', 'storedfilename', 'storedfilemime', 'nextcloudfolderpath', 'nextcloudfolderfileid', 'etherpadpadid', 'ethercalcroomid', 'spacedeckspaceid'], 'string'],	// Chaines de caractere
 				[['description', 'content', 'contentedition'], 'text'],			// Textes libres
 				[['datecreation', 'datemodification', 'dateconsultation', 'dateedition', 'datecontentedition'], 'datetime'],	// Date avec precision des heures
 				[['IDuser', 'IDusercreation', 'IDusermodification', 'IDuseredition', 'IDuser_pv_editor', 'IDuser_pv_official_editor', 'IDorganization', 'IDholon', 'IDdocument_parent', 'IDevent'], 'fk'],	// Cles etrangeres
@@ -82,6 +83,8 @@
 				'storedfilename' => 'Nom original du fichier',
 				'storedfilemime' => 'Type MIME du fichier',
 				'storedfilesize' => 'Taille du fichier',
+				'nextcloudfolderpath' => 'Chemin du dossier NextCloud',
+				'nextcloudfolderfileid' => 'Identifiant NextCloud du dossier',
 				'etherpadpadid' => 'Identifiant du pad Etherpad',
 				'ethercalcroomid' => 'Identifiant du tableur EtherCalc',
 				'spacedeckspaceid' => 'Identifiant du tableau SpaceDeck',
@@ -121,6 +124,8 @@
 				'storedfilename' => 'Nom du fichier televerse par l utilisateur',
 				'storedfilemime' => 'Type MIME detecte pour le fichier distant',
 				'storedfilesize' => 'Taille du fichier distant en octets',
+				'nextcloudfolderpath' => 'Chemin du dossier NextCloud, relatif au dossier configure pour les documents',
+				'nextcloudfolderfileid' => 'Identifiant stable NextCloud utilise pour retrouver un dossier renomme ou deplace',
 				'etherpadpadid' => 'Identifiant technique du pad associe a ce document',
 				'ethercalcroomid' => 'Identifiant technique du tableur associe a ce document',
 				'spacedeckspaceid' => 'Identifiant technique du tableau blanc SpaceDeck associe a ce document',
@@ -137,6 +142,8 @@
 				'storedfilepath' => 1000,
 				'storedfilename' => 255,
 				'storedfilemime' => 255,
+				'nextcloudfolderpath' => 1000,
+				'nextcloudfolderfileid' => 64,
 				'etherpadpadid' => 255,
 				'ethercalcroomid' => 255,
 				'spacedeckspaceid' => 255,
@@ -198,6 +205,8 @@
 				'storedfilename',
 				'storedfilemime',
 				'storedfilesize',
+				'nextcloudfolderpath',
+				'nextcloudfolderfileid',
 				'etherpadpadid',
 				'ethercalcroomid',
 				'spacedeckspaceid',
@@ -1982,11 +1991,14 @@
 
 		public static function normalizeDocumentType($rawType, bool $isFolder = false): string
 		{
-			if ($isFolder) {
+			$documentType = trim(mb_strtolower((string)$rawType, 'UTF-8'));
+			if ($isFolder && $documentType !== self::TYPE_NEXTCLOUD_FOLDER) {
 				return self::TYPE_FOLDER;
 			}
 
-			$documentType = trim(mb_strtolower((string)$rawType, 'UTF-8'));
+			if ($documentType === self::TYPE_NEXTCLOUD_FOLDER) {
+				return self::TYPE_NEXTCLOUD_FOLDER;
+			}
 			if ($documentType === self::TYPE_EXTERNAL_LINK) {
 				return self::TYPE_EXTERNAL_LINK;
 			}
@@ -2139,6 +2151,7 @@
 				self::TYPE_EXTERNAL_LINK => 'Lien externe',
 				self::TYPE_UPLOADED_FILE => 'Telechargement',
 				self::TYPE_FOLDER => 'Dossier',
+				self::TYPE_NEXTCLOUD_FOLDER => 'Dossier NextCloud',
 				self::TYPE_PV => 'PV',
 				self::TYPE_ETHERPAD => 'Pad coopératif',
 				self::TYPE_ETHERCALC => 'Tableur collaboratif',
@@ -2165,6 +2178,181 @@
 		public function isExternalLink(): bool
 		{
 			return $this->getDocumentType() === self::TYPE_EXTERNAL_LINK;
+		}
+
+		public function isNextcloudFolder(): bool
+		{
+			return $this->isFolder() && $this->getDocumentType() === self::TYPE_NEXTCLOUD_FOLDER;
+		}
+
+		public static function normalizeNextcloudFolderPath($path): string
+		{
+			$path = trim(str_replace('\\', '/', (string)$path));
+			if ($path === '') {
+				return '';
+			}
+
+			$segments = array();
+			foreach (explode('/', trim($path, '/')) as $segment) {
+				$segment = trim(rawurldecode($segment));
+				if ($segment === '' || $segment === '.') {
+					continue;
+				}
+				if ($segment === '..' || str_contains($segment, "\0")) {
+					return '';
+				}
+				$segments[] = $segment;
+			}
+
+			return implode('/', $segments);
+		}
+
+		public function getNextcloudFolderPath(): string
+		{
+			return $this->isNextcloudFolder()
+				? self::normalizeNextcloudFolderPath($this->get('nextcloudfolderpath'))
+				: '';
+		}
+
+		public function getNextcloudFolderFileId(): string
+		{
+			return $this->isNextcloudFolder()
+				? trim((string)$this->get('nextcloudfolderfileid'))
+				: '';
+		}
+
+		public function buildNextcloudFolderRemotePath(\dbObject\Organization $organization, string $childPath = ''): string
+		{
+			if (!$this->isNextcloudFolder()) {
+				return '';
+			}
+
+			$config = $organization->getNextcloudDocumentsConfig();
+			$baseParts = array_filter(array(
+				self::normalizeNextcloudFolderPath($config['folder'] ?? ''),
+				$this->getNextcloudFolderPath(),
+				self::normalizeNextcloudFolderPath($childPath),
+			), static function ($part): bool {
+				return $part !== '';
+			});
+
+			return implode('/', $baseParts);
+		}
+
+		public function isNextcloudFolderRemotePathAllowed(\dbObject\Organization $organization, string $remotePath): bool
+		{
+			$remotePath = self::normalizeNextcloudFolderPath($remotePath);
+			$basePath = $this->buildNextcloudFolderRemotePath($organization);
+			return $remotePath !== ''
+				&& $basePath !== ''
+				&& ($remotePath === $basePath || str_starts_with($remotePath, $basePath . '/'));
+		}
+
+		public function resolveNextcloudFolderLocation(\dbObject\Organization $organization): array
+		{
+			if (!$this->isNextcloudFolder() || !$organization->hasNextcloudDocumentStorage()) {
+				return array('status' => false, 'text' => 'Le dossier NextCloud est indisponible.');
+			}
+
+			$currentRelativePath = $this->getNextcloudFolderPath();
+			$currentRemotePath = $this->buildNextcloudFolderRemotePath($organization);
+			$storedFileId = $this->getNextcloudFolderFileId();
+			$currentLocation = $currentRemotePath !== ''
+				? $organization->getNextcloudDocumentsDirectoryInfo($currentRemotePath)
+				: array('status' => false, 'text' => 'Chemin NextCloud invalide.');
+
+			if (
+				!empty($currentLocation['status'])
+				&& !empty($currentLocation['isFolder'])
+				&& (
+					$storedFileId === ''
+					|| trim((string)($currentLocation['fileId'] ?? '')) === ''
+					|| (string)($currentLocation['fileId'] ?? '') === $storedFileId
+				)
+			) {
+				return array(
+					'status' => true,
+					'relativePath' => $currentRelativePath,
+					'remotePath' => $currentRemotePath,
+					'fileId' => trim((string)($currentLocation['fileId'] ?? '')),
+				);
+			}
+
+			if ($storedFileId === '') {
+				return array(
+					'status' => false,
+					'text' => trim((string)($currentLocation['text'] ?? 'Le dossier NextCloud est introuvable.')),
+				);
+			}
+
+			$locatedFolder = $organization->findNextcloudDocumentsPathByFileId($storedFileId);
+			$locatedRemotePath = self::normalizeNextcloudFolderPath($locatedFolder['path'] ?? '');
+			$configFolder = self::normalizeNextcloudFolderPath(($organization->getNextcloudDocumentsConfig()['folder'] ?? ''));
+			$relativePath = $configFolder === ''
+				? $locatedRemotePath
+				: (
+					str_starts_with($locatedRemotePath, $configFolder . '/')
+						? substr($locatedRemotePath, strlen($configFolder) + 1)
+						: ''
+				);
+			if (empty($locatedFolder['status']) || empty($locatedFolder['isFolder']) || $relativePath === '') {
+				return array(
+					'status' => false,
+					'text' => trim((string)($locatedFolder['text'] ?? 'Le dossier NextCloud est introuvable ou a quitte le dossier configure.')),
+				);
+			}
+
+			return array(
+				'status' => true,
+				'relativePath' => $relativePath,
+				'remotePath' => $locatedRemotePath,
+				'fileId' => $storedFileId,
+				'wasRelocated' => $relativePath !== $currentRelativePath,
+			);
+		}
+
+		public function buildRemoteFolderStoragePath(\dbObject\Organization $organization, string $childPath = ''): string
+		{
+			if (!$this->isNextcloudFolder()) {
+				return '';
+			}
+			if (!$organization->isKdriveDocumentStorage()) {
+				return $this->buildNextcloudFolderRemotePath($organization, $childPath);
+			}
+			return implode('/', array_filter(array(
+				$this->getNextcloudFolderPath(),
+				self::normalizeNextcloudFolderPath($childPath),
+			), static function ($part): bool {
+				return $part !== '';
+			}));
+		}
+
+		public function isRemoteFolderStoragePathAllowed(\dbObject\Organization $organization, string $remotePath): bool
+		{
+			$remotePath = self::normalizeNextcloudFolderPath($remotePath);
+			$basePath = $this->buildRemoteFolderStoragePath($organization);
+			return $remotePath !== ''
+				&& $basePath !== ''
+				&& ($remotePath === $basePath || str_starts_with($remotePath, $basePath . '/'));
+		}
+
+		public function resolveRemoteFolderStorageLocation(\dbObject\Organization $organization): array
+		{
+			if (!$this->isNextcloudFolder() || !$organization->hasDocumentStorage()) {
+				return array('status' => false, 'text' => 'Le stockage de dossiers distants est indisponible.');
+			}
+			if (!$organization->isKdriveDocumentStorage()) {
+				return $this->resolveNextcloudFolderLocation($organization);
+			}
+			$relativePath = $this->getNextcloudFolderPath();
+			$remotePath = $this->buildRemoteFolderStoragePath($organization);
+			$location = $remotePath !== ''
+				? $organization->getDocumentStorageDirectoryInfo($remotePath)
+				: array('status' => false, 'text' => 'Chemin kDrive invalide.');
+			if (empty($location['status']) || empty($location['isFolder'])) {
+				return array('status' => false, 'text' => trim((string)($location['text'] ?? 'Le dossier kDrive est introuvable.')));
+			}
+			return array('status' => true, 'relativePath' => $relativePath, 'remotePath' => $remotePath, 'fileId' => '');
 		}
 
 		public function supportsHtmlContent(): bool
@@ -4913,8 +5101,12 @@
 
 			$description = trim((string)($values['description'] ?? ''));
 			$requestedDocumentType = (string)($values['document_type'] ?? '');
-			$isFolder = !empty($values['is_folder']) || trim(mb_strtolower($requestedDocumentType, 'UTF-8')) === self::TYPE_FOLDER;
+			$isNextcloudFolder = trim(mb_strtolower($requestedDocumentType, 'UTF-8')) === self::TYPE_NEXTCLOUD_FOLDER;
+			$isFolder = !empty($values['is_folder']) || trim(mb_strtolower($requestedDocumentType, 'UTF-8')) === self::TYPE_FOLDER || $isNextcloudFolder;
 			$normalizedRequestedDocumentType = self::normalizeDocumentType($requestedDocumentType, $isFolder);
+			$nextcloudFolderPath = $isNextcloudFolder
+				? self::normalizeNextcloudFolderPath($values['nextcloud_folder_path'] ?? '')
+				: '';
 			$isCollaboraTemplate = in_array($normalizedRequestedDocumentType, [self::TYPE_COLLABORA_DOCUMENT, self::TYPE_COLLABORA_SPREADSHEET, self::TYPE_COLLABORA_PRESENTATION, self::TYPE_COLLABORA_DRAWING], true);
 			$isWhiteboard = $normalizedRequestedDocumentType === self::TYPE_WHITEBOARD;
 			$collaboraTemplateKind = $normalizedRequestedDocumentType === self::TYPE_COLLABORA_SPREADSHEET
@@ -4951,6 +5143,12 @@
 					'text' => 'Un fichier est obligatoire pour ce type de document.',
 				);
 			}
+			if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && $nextcloudFolderPath === '') {
+				return array(
+					'status' => false,
+					'text' => 'Le chemin du dossier NextCloud est obligatoire et ne peut pas contenir de remontee de dossier.',
+				);
+			}
 			$keywords = trim((string)($values['keywords'] ?? ''));
 			$visibilityType = $this->resolveScopeTypeInput(
 				$values,
@@ -4978,6 +5176,11 @@
 			$this->set('is_template', 0);
 			$this->set('externalurl', $externalUrl !== '' ? $externalUrl : null);
 			$this->set('openinnewwindow', $openInNewWindow ? 1 : 0);
+			$previousNextcloudFolderPath = $this->getNextcloudFolderPath();
+			$this->set('nextcloudfolderpath', $nextcloudFolderPath !== '' ? $nextcloudFolderPath : null);
+			if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && $nextcloudFolderPath !== $previousNextcloudFolderPath) {
+				$this->set('nextcloudfolderfileid', null);
+			}
 			$this->set('IDevent', $eventId > 0 ? $eventId : null);
 			$this->set('IDuser', $userId);
 			$this->set('IDusercreation', $userId);
@@ -5068,6 +5271,28 @@
 						'status' => false,
 						'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
 					);
+				}
+
+				if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && !$organization->hasDocumentStorage()) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+					'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
+					);
+				}
+
+				if ($documentType === self::TYPE_NEXTCLOUD_FOLDER) {
+					$nextcloudFolderLocation = $this->resolveRemoteFolderStorageLocation($organization);
+					if (empty($nextcloudFolderLocation['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? 'Le dossier NextCloud est introuvable.')));
+					}
+					$this->set('nextcloudfolderfileid', trim((string)($nextcloudFolderLocation['fileId'] ?? '')) ?: null);
 				}
 
 				if ($isCollaboraTemplate) {
@@ -5454,6 +5679,17 @@
 				? trim((string)($values['description'] ?? ''))
 				: trim((string)$this->get('description'));
 			$documentType = $this->getDocumentType();
+			$nextcloudFolderPath = $documentType === self::TYPE_NEXTCLOUD_FOLDER
+				? ($canManageDocument
+					? self::normalizeNextcloudFolderPath($values['nextcloud_folder_path'] ?? '')
+					: $this->getNextcloudFolderPath())
+				: '';
+			if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && $nextcloudFolderPath === '') {
+				return array(
+					'status' => false,
+					'text' => 'Le chemin du dossier NextCloud est obligatoire et ne peut pas contenir de remontee de dossier.',
+				);
+			}
 			$uploadedFile = $canEditContent && $documentType === self::TYPE_UPLOADED_FILE
 				? self::extractValidUploadedFile($values['uploaded_file'] ?? null)
 				: null;
@@ -5514,6 +5750,11 @@
 			}
 			$this->set('externalurl', $externalUrl !== '' ? $externalUrl : null);
 			$this->set('openinnewwindow', $openInNewWindow ? 1 : 0);
+			$previousNextcloudFolderPath = $this->getNextcloudFolderPath();
+			$this->set('nextcloudfolderpath', $nextcloudFolderPath !== '' ? $nextcloudFolderPath : null);
+			if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && $nextcloudFolderPath !== $previousNextcloudFolderPath) {
+				$this->set('nextcloudfolderfileid', null);
+			}
 			if ($documentType !== self::TYPE_HTML) {
 				$this->clearDraftContentState();
 			}
@@ -5569,6 +5810,33 @@
 						'status' => false,
 						'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
 					);
+				}
+
+				if (
+					!$isWithoutContext
+					&& $documentType === self::TYPE_NEXTCLOUD_FOLDER
+					&& !$organization->hasDocumentStorage()
+				) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+					'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
+					);
+				}
+
+				if (!$isWithoutContext && $documentType === self::TYPE_NEXTCLOUD_FOLDER) {
+					$nextcloudFolderLocation = $this->resolveRemoteFolderStorageLocation($organization);
+					if (empty($nextcloudFolderLocation['status'])) {
+						if ($startedTransaction && $pdo->inTransaction()) {
+							$pdo->rollBack();
+						}
+						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? 'Le dossier NextCloud est introuvable.')));
+					}
+					$this->set('nextcloudfolderpath', (string)$nextcloudFolderLocation['relativePath']);
+					$this->set('nextcloudfolderfileid', trim((string)($nextcloudFolderLocation['fileId'] ?? '')) ?: null);
 				}
 
 				$saveResult = $this->save();

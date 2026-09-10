@@ -214,6 +214,10 @@ $sourceLang = array_merge([
         'text' => 'Le projet associé est invalide ou inaccessible.',
         'context' => 'Validation error returned when an event is created for an invalid project.',
     ],
+    'calendar.create.error.duplicate' => [
+        'text' => "Impossible de préparer la duplication de cet événement.",
+        'context' => 'Validation error returned when an event duplication source cannot be used.',
+    ],
     'calendar.create.error.document_type' => [
         'text' => 'Le type de document associé est invalide.',
         'context' => 'Validation error returned when the selected linked document type is invalid.',
@@ -331,6 +335,7 @@ $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_REQUEST['oid'] ??
 $currentHolonId = isset($_REQUEST['cid']) && is_numeric($_REQUEST['cid']) ? (int)$_REQUEST['cid'] : 0;
 $currentUserId = (int)commonGetCurrentUserId();
 $eventId = isset($_REQUEST['id']) && is_numeric($_REQUEST['id']) ? (int)$_REQUEST['id'] : 0;
+$duplicateEventId = isset($_REQUEST['duplicate_id']) && is_numeric($_REQUEST['duplicate_id']) ? (int)$_REQUEST['duplicate_id'] : 0;
 $requestedProjectId = isset($_REQUEST['project_id']) && is_numeric($_REQUEST['project_id']) ? (int)$_REQUEST['project_id'] : 0;
 $editorHost = trim((string)($_REQUEST['editor_host'] ?? '')) === 'project' ? 'project' : 'calendar';
 
@@ -407,6 +412,7 @@ $ethercalcDocumentsAvailable = omoEthercalcHasConfig();
 
 $event = new Event();
 $isEditMode = false;
+$duplicateEvent = null;
 
 if ($eventId > 0) {
     if (
@@ -442,6 +448,35 @@ if ($eventId > 0) {
     }
 
     $isEditMode = true;
+}
+
+$isDuplicateMode = !$isEditMode && $duplicateEventId > 0;
+if ($isDuplicateMode) {
+    $candidateDuplicateEvent = new Event();
+    $duplicateIsValid = $candidateDuplicateEvent->load($duplicateEventId)
+        && (int)$candidateDuplicateEvent->get('IDorganization') === $organizationId
+        && (int)$candidateDuplicateEvent->get('active') === 1
+        && $candidateDuplicateEvent->isDraftVisibleToViewer($currentUserId);
+
+    if ($duplicateIsValid && $project instanceof Project) {
+        $duplicateIsValid = (int)$candidateDuplicateEvent->get('IDproject') === (int)$project->getId();
+    }
+
+    if (!$duplicateIsValid) {
+        http_response_code(403);
+        if (commonIsAjaxJsonRequest()) {
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode([
+                'status' => false,
+                'message' => omoCalendarCreateT('calendar.create.error.duplicate'),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } else {
+            echo '<div class="omo-empty-state">' . omoApiEscape(omoCalendarCreateT('calendar.create.error.duplicate')) . '</div>';
+        }
+        exit;
+    }
+
+    $duplicateEvent = $candidateDuplicateEvent;
 }
 
 $associatedDocument = $isEditMode ? $event->getAssociatedDocument() : null;
@@ -524,8 +559,9 @@ if ($isEditMode) {
     }
 }
 
+$prefillEvent = $isEditMode ? $event : $duplicateEvent;
 $invitationEditorState = omoCalendarBuildInvitationEditorState(
-    $isEditMode ? $event : null,
+    $prefillEvent,
     $organization,
     $organizationId,
     $currentContextHolon,
@@ -948,26 +984,33 @@ $initialDateDefault = $initialDate !== ''
 
 $startDefault = $isEditMode
     ? $event->get('start_at')
-    : ($initialStartDefault ?: $initialDateDefault ?: new \DateTime('today 09:00'));
+    : ($isDuplicateMode ? null : ($initialStartDefault ?: $initialDateDefault ?: new \DateTime('today 09:00')));
 $endDefault = $isEditMode
     ? $event->get('end_at')
-    : (clone $startDefault)->modify('+1 hour');
-$titleDefault = $isEditMode ? trim((string)$event->get('title')) : '';
-$descriptionDefault = $isEditMode ? trim((string)$event->get('description')) : '';
-$statusDefault = $isEditMode ? Event::normalizeStatus($event->get('status')) : Event::STATUS_CONFIRMED;
+    : ($isDuplicateMode ? null : (clone $startDefault)->modify('+1 hour'));
+$titleDefault = $prefillEvent instanceof Event ? trim((string)$prefillEvent->get('title')) : '';
+$descriptionDefault = $prefillEvent instanceof Event ? trim((string)$prefillEvent->get('description')) : '';
+$statusDefault = $prefillEvent instanceof Event ? Event::normalizeStatus($prefillEvent->get('status')) : Event::STATUS_CONFIRMED;
 if (!array_key_exists($statusDefault, $editableEventStatuses)) {
     $statusDefault = Event::STATUS_CONFIRMED;
 }
-$isAllDayDefault = $isEditMode ? (bool)$event->get('is_all_day') : false;
-$locationDisplayData = $isEditMode ? $event->getLocationDisplayData() : ['mode' => '', 'address' => '', 'videoUrl' => ''];
+$isAllDayDefault = $prefillEvent instanceof Event ? (bool)$prefillEvent->get('is_all_day') : false;
+$locationDisplayData = $prefillEvent instanceof Event ? $prefillEvent->getLocationDisplayData() : ['mode' => '', 'address' => '', 'videoUrl' => ''];
 $locationModeDefault = $locationDisplayData['mode'] !== ''
     ? (string)$locationDisplayData['mode']
     : '';
 $locationAddressDefault = trim((string)($locationDisplayData['address'] ?? ''));
 $videoMeetingUrlDefault = trim((string)($locationDisplayData['videoUrl'] ?? ''));
 
-$documentTypeDefault = $associatedDocument instanceof Document ? $associatedDocument->getDocumentType() : '';
-$documentTitleDefault = '';
+$duplicateAssociatedDocument = $isDuplicateMode && $duplicateEvent instanceof Event
+    ? $duplicateEvent->getAssociatedDocument()
+    : null;
+$documentTypeDefault = $associatedDocument instanceof Document
+    ? $associatedDocument->getDocumentType()
+    : ($duplicateAssociatedDocument instanceof Document ? $duplicateAssociatedDocument->getDocumentType() : '');
+$documentTitleDefault = $isDuplicateMode && $duplicateAssociatedDocument instanceof Document
+    ? trim((string)$duplicateAssociatedDocument->get('title'))
+    : '';
 $documentTypeOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable, $etherpadDocumentsAvailable, $ethercalcDocumentsAvailable);
 $canOpenAssociatedDocument = $associatedDocument instanceof Document
     && (
@@ -1103,7 +1146,7 @@ if ($isEditMode) {
                                     type="datetime-local"
                                     name="start_at"
                                     class="generic-form-control"
-                                    value="<?= omoApiEscape($startDefault->format('Y-m-d\TH:i')) ?>"
+                                    value="<?= omoApiEscape($startDefault instanceof \DateTimeInterface ? $startDefault->format('Y-m-d\TH:i') : '') ?>"
                                     required
                                 >
                             </label>
@@ -1114,7 +1157,7 @@ if ($isEditMode) {
                                     type="datetime-local"
                                     name="end_at"
                                     class="generic-form-control"
-                                    value="<?= omoApiEscape($endDefault->format('Y-m-d\TH:i')) ?>"
+                                    value="<?= omoApiEscape($endDefault instanceof \DateTimeInterface ? $endDefault->format('Y-m-d\TH:i') : '') ?>"
                                     required
                                 >
                             </label>

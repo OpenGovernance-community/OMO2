@@ -34,6 +34,15 @@ $sourceLang = [
     'documents.create.type.whiteboard' => ['text' => 'Tableau blanc collaboratif', 'context' => 'Option label for SpaceDeck whiteboard documents.'],
     'documents.create.type.ethercalc' => ['text' => 'Tableur collaboratif', 'context' => 'Option label for EtherCalc documents.'],
     'documents.create.type.folder' => ['text' => 'Dossier', 'context' => 'Option label for folders.'],
+    'documents.create.type.nextcloud_folder' => ['text' => 'Dossier NextCloud', 'context' => 'Option label for a remotely listed NextCloud folder.'],
+	'documents.create.type.kdrive_folder' => ['text' => 'Dossier kDrive', 'context' => 'Option label for a remotely listed kDrive folder.'],
+	'documents.create.field.kdrive_folder_path' => ['text' => 'Chemin du dossier kDrive', 'context' => 'Label for the selected remote kDrive folder path.'],
+	'documents.create.field.kdrive_folder_hint' => ['text' => 'Le chemin est relatif au dossier kDrive configure pour les documents. Le contenu sera relu a chaque ouverture.', 'context' => 'Hint for the remote kDrive folder path.'],
+	'documents.create.action.kdrive_browse' => ['text' => 'Parcourir kDrive', 'context' => 'Button opening the remote kDrive folder browser.'],
+    'documents.create.field.nextcloud_folder_path' => ['text' => 'Chemin du dossier NextCloud', 'context' => 'Label for the selected remote folder path.'],
+    'documents.create.field.nextcloud_folder_hint' => ['text' => 'Le chemin est relatif au dossier NextCloud configure pour les documents. Le contenu sera relu a chaque ouverture.', 'context' => 'Hint for the remote NextCloud folder path.'],
+    'documents.create.action.nextcloud_browse' => ['text' => 'Parcourir NextCloud', 'context' => 'Button opening the remote NextCloud folder browser.'],
+    'documents.create.nextcloud.empty' => ['text' => 'Aucun sous-dossier disponible.', 'context' => 'Empty state for the NextCloud folder picker.'],
     'documents.create.field.title' => ['text' => 'Titre', 'context' => 'Label of the document title field.'],
     'documents.create.field.title_placeholder' => ['text' => 'Nom du document', 'context' => 'Placeholder shown in the document title field.'],
     'documents.create.field.parent_folder' => ['text' => 'Dossier parent', 'context' => 'Label shown for the parent folder when present.'],
@@ -172,6 +181,7 @@ $documentStoredFilename = '';
 $documentStoredFileMime = '';
 $documentStoredFileSize = 0;
 $documentHasStoredFile = false;
+$documentNextcloudFolderPath = '';
 $isFolder = false;
 $selectedVisibilityType = $organizationId > 0
     ? Document::getDefaultVisibilityTypeForOrganization($organizationId)
@@ -188,6 +198,19 @@ $pvTemplatesPayload = array();
 $organization = new Organization();
 $organizationLoaded = $organizationId > 0 && $organization->load($organizationId);
 $nextcloudDocumentsAvailable = $organizationLoaded && $organization->hasDocumentStorage();
+$nextcloudFoldersAvailable = $organizationLoaded && $organization->hasDocumentStorage();
+$remoteFolderTypeLabel = $organizationLoaded && $organization->isKdriveDocumentStorage()
+	? omoDocumentsCreateT('documents.create.type.kdrive_folder')
+	: omoDocumentsCreateT('documents.create.type.nextcloud_folder');
+$remoteFolderPathLabel = $organizationLoaded && $organization->isKdriveDocumentStorage()
+	? omoDocumentsCreateT('documents.create.field.kdrive_folder_path')
+	: omoDocumentsCreateT('documents.create.field.nextcloud_folder_path');
+$remoteFolderHint = $organizationLoaded && $organization->isKdriveDocumentStorage()
+	? omoDocumentsCreateT('documents.create.field.kdrive_folder_hint')
+	: omoDocumentsCreateT('documents.create.field.nextcloud_folder_hint');
+$remoteFolderBrowseLabel = $organizationLoaded && $organization->isKdriveDocumentStorage()
+	? omoDocumentsCreateT('documents.create.action.kdrive_browse')
+	: omoDocumentsCreateT('documents.create.action.nextcloud_browse');
 $etherpadDocumentsAvailable = $organizationLoaded && omoEtherpadCanUseEditingSessions($organization);
 $collaboraDocumentsAvailable = $organizationLoaded && $nextcloudDocumentsAvailable && omoCollaboraHasConfig($organization);
 $whiteboardDocumentsAvailable = omoSpacedeckHasConfig();
@@ -281,6 +304,7 @@ if ($isEditing) {
     $documentStoredFileMime = $document->getStoredFileMimeType();
     $documentStoredFileSize = $document->getStoredFileSize();
     $documentHasStoredFile = $document->hasStoredFile();
+	$documentNextcloudFolderPath = $document->getNextcloudFolderPath();
     $isFolder = $document->isFolder();
     $parentDocumentId = (int)$document->get('IDdocument_parent');
     if ($parentDocumentId > 0) {
@@ -417,6 +441,9 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                             <?= $isEditing ? 'disabled' : '' ?>
                         >
                             <option value="<?= $escape(Document::TYPE_FOLDER) ?>" <?= $documentType === Document::TYPE_FOLDER ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.folder')) ?></option>
+							<?php if ($nextcloudFoldersAvailable || $documentType === Document::TYPE_NEXTCLOUD_FOLDER): ?>
+                                <option value="<?= $escape(Document::TYPE_NEXTCLOUD_FOLDER) ?>" <?= $documentType === Document::TYPE_NEXTCLOUD_FOLDER ? ' selected' : '' ?>><?= $escape($remoteFolderTypeLabel) ?></option>
+							<?php endif; ?>
                             <?php if ($etherpadGroupAvailable || $collaboraGroupAvailable || $whiteboardGroupAvailable): ?>
                             <option disabled aria-hidden="true">--------------------</option>
                             <?php endif; ?>
@@ -554,6 +581,16 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                         <?php endif; ?>
                         <div class="omo-document-editor__dictation-status generic-soft-panel" data-omo-document-dictation-status hidden></div>
                     </div>
+                </div>
+
+                <div class="omo-document-editor__field generic-form-field" data-omo-document-nextcloud-folder-section<?= $documentType !== Document::TYPE_NEXTCLOUD_FOLDER ? ' hidden' : '' ?>>
+                    <label class="omo-document-editor__field generic-form-field">
+                        <span class="omo-document-editor__label generic-form-label"><?= $escape($remoteFolderPathLabel) ?></span>
+                        <input type="text" name="nextcloud_folder_path" class="generic-form-control" maxlength="1000" autocomplete="off" value="<?= $escape($documentNextcloudFolderPath) ?>" data-omo-document-nextcloud-folder-path <?= $isEditing && !$canManageDocument ? ' disabled' : '' ?>>
+                    </label>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-document-nextcloud-browse<?= $isEditing && !$canManageDocument ? ' disabled' : '' ?>><?= $escape($remoteFolderBrowseLabel) ?></button>
+                    <div class="generic-soft-panel" data-omo-document-nextcloud-browser hidden></div>
+                    <span class="omo-document-editor__hint generic-help-text"><?= $escape($remoteFolderHint) ?></span>
                 </div>
 
                 <div class="omo-document-editor__field generic-form-field" data-omo-document-pv-section<?= $documentType !== Document::TYPE_PV ? ' hidden' : '' ?>>
@@ -924,6 +961,10 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     const pvSection = form.querySelector('[data-omo-document-pv-section]');
     const externalSection = form.querySelector('[data-omo-document-external-section]');
     const uploadSection = form.querySelector('[data-omo-document-upload-section]');
+    const nextcloudFolderSection = form.querySelector('[data-omo-document-nextcloud-folder-section]');
+    const nextcloudFolderPathField = form.querySelector('[data-omo-document-nextcloud-folder-path]');
+    const nextcloudBrowseButton = form.querySelector('[data-omo-document-nextcloud-browse]');
+    const nextcloudBrowser = form.querySelector('[data-omo-document-nextcloud-browser]');
     const etherpadSection = form.querySelector('[data-omo-document-etherpad-section]');
     const collaboraSection = form.querySelector('[data-omo-document-collabora-section]');
     const whiteboardSection = form.querySelector('[data-omo-document-whiteboard-section]');
@@ -1001,11 +1042,16 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
         return getSelectedDocumentType() === 'uploaded_file';
     }
 
+    function isNextcloudFolderTypeSelected() {
+        return getSelectedDocumentType() === 'nextcloud_folder';
+    }
+
     function syncTypeUi() {
         const isHtmlDocument = isHtmlTypeSelected();
         const isPvDocument = getSelectedDocumentType() === 'pv';
         const isExternalLink = getSelectedDocumentType() === 'external_link';
         const isUploadedFile = isUploadedFileTypeSelected();
+		const isNextcloudFolder = isNextcloudFolderTypeSelected();
         const isEtherpad = getSelectedDocumentType() === 'etherpad';
         const isCollabora = ['collabora_document', 'collabora_spreadsheet', 'collabora_presentation', 'collabora_drawing'].includes(getSelectedDocumentType());
         const isWhiteboard = getSelectedDocumentType() === 'whiteboard';
@@ -1029,6 +1075,14 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
 
         if (uploadSection) {
             uploadSection.hidden = !isUploadedFile;
+        }
+
+        if (nextcloudFolderSection) {
+            nextcloudFolderSection.hidden = !isNextcloudFolder;
+        }
+
+        if (nextcloudFolderPathField) {
+            nextcloudFolderPathField.required = isNextcloudFolder;
         }
 
         if (etherpadSection) {
@@ -2588,6 +2642,78 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             window.setTimeout(function () {
                 flushKeywordInputDelimiters(true);
             }, 0);
+        });
+    }
+
+    if (nextcloudBrowseButton && nextcloudBrowser && nextcloudFolderPathField) {
+        const browseNextcloudFolder = function (requestedPath) {
+            const path = String(requestedPath === undefined ? nextcloudFolderPathField.value : requestedPath).trim().replace(/^\/+|\/+$/g, '');
+            const endpoint = new URL('/omo/api/documents/nextcloud/browse.php', window.location.origin);
+            endpoint.searchParams.set('oid', String(<?= (int)$organizationId ?>));
+            endpoint.searchParams.set('cid', String(<?= (int)$contextHolonId ?>));
+            endpoint.searchParams.set('path', path);
+            nextcloudBrowseButton.disabled = true;
+            nextcloudBrowser.hidden = false;
+            nextcloudBrowser.textContent = 'Chargement...';
+
+            fetch(endpoint.toString(), {credentials: 'same-origin', cache: 'no-store'})
+                .then(function (response) {
+                    return response.json().then(function (payload) {
+                        if (!response.ok || !payload || payload.status !== true) {
+                            throw new Error(String(payload && payload.message || 'Impossible de lire NextCloud.'));
+                        }
+                        return payload;
+                    });
+                })
+                .then(function (payload) {
+                    const currentPath = String(payload.path || '');
+                    const entries = Array.isArray(payload.entries) ? payload.entries : [];
+                    nextcloudBrowser.replaceChildren();
+                    const title = document.createElement('div');
+                    title.className = 'generic-card-title';
+                    title.textContent = currentPath === '' ? '/' : '/' + currentPath;
+                    nextcloudBrowser.appendChild(title);
+                    const parentPath = currentPath.split('/').filter(Boolean).slice(0, -1).join('/');
+                    if (currentPath !== '') {
+                        const parentButton = document.createElement('button');
+                        parentButton.type = 'button';
+                        parentButton.className = 'generic-action-button generic-action-button--secondary';
+                        parentButton.textContent = '..';
+                        parentButton.addEventListener('click', function () { browseNextcloudFolder(parentPath); });
+                        nextcloudBrowser.appendChild(parentButton);
+                    }
+                    if (entries.length === 0) {
+                        const empty = document.createElement('div');
+                        empty.className = 'generic-help-text';
+                        empty.textContent = <?= json_encode(omoDocumentsCreateT('documents.create.nextcloud.empty'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                        nextcloudBrowser.appendChild(empty);
+                        return;
+                    }
+                    entries.forEach(function (entry) {
+                        if (!entry || !entry.isFolder) {
+                            return;
+                        }
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'generic-action-button generic-action-button--secondary';
+                        button.textContent = String(entry.name || entry.path || 'Dossier');
+                        button.addEventListener('click', function () {
+                            nextcloudFolderPathField.value = String(entry.path || '');
+                            browseNextcloudFolder(entry.path || '');
+                        });
+                        nextcloudBrowser.appendChild(button);
+                    });
+                })
+                .catch(function (error) {
+                    nextcloudBrowser.textContent = String(error && error.message || 'Impossible de lire NextCloud.');
+                })
+                .finally(function () {
+                    nextcloudBrowseButton.disabled = false;
+                });
+        };
+
+        nextcloudBrowseButton.addEventListener('click', function () {
+            browseNextcloudFolder();
         });
     }
 
