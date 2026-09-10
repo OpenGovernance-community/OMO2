@@ -43,7 +43,7 @@ if (!$organization->load($organizationId)) {
 }
 
 $config = omoCollaboraGetConfig($organization);
-if (!omoCollaboraHasConfig($organization) || !$organization->hasDocumentStorage() || ($document->isNextcloudFolder() && !$organization->hasNextcloudDocumentStorage())) {
+if (!omoCollaboraHasConfig($organization) || !$organization->hasDocumentStorage()) {
     http_response_code(503);
     echo 'Collabora ou le stockage de documents n’est pas disponible.';
     exit;
@@ -57,7 +57,7 @@ if (!($discoveryResult['status'] ?? false)) {
 }
 
 $isRemoteFile = $document->isNextcloudFolder();
-if ($isRemoteFile && ($remotePath === '' || !$document->isNextcloudFolderRemotePathAllowed($organization, $remotePath))) {
+if ($isRemoteFile && ($remotePath === '' || !$document->isRemoteFolderStoragePathAllowed($organization, $remotePath))) {
     http_response_code(400);
     echo 'Chemin NextCloud invalide.';
     exit;

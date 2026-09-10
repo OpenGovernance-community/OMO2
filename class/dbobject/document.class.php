@@ -2311,6 +2311,50 @@
 			);
 		}
 
+		public function buildRemoteFolderStoragePath(\dbObject\Organization $organization, string $childPath = ''): string
+		{
+			if (!$this->isNextcloudFolder()) {
+				return '';
+			}
+			if (!$organization->isKdriveDocumentStorage()) {
+				return $this->buildNextcloudFolderRemotePath($organization, $childPath);
+			}
+			return implode('/', array_filter(array(
+				$this->getNextcloudFolderPath(),
+				self::normalizeNextcloudFolderPath($childPath),
+			), static function ($part): bool {
+				return $part !== '';
+			}));
+		}
+
+		public function isRemoteFolderStoragePathAllowed(\dbObject\Organization $organization, string $remotePath): bool
+		{
+			$remotePath = self::normalizeNextcloudFolderPath($remotePath);
+			$basePath = $this->buildRemoteFolderStoragePath($organization);
+			return $remotePath !== ''
+				&& $basePath !== ''
+				&& ($remotePath === $basePath || str_starts_with($remotePath, $basePath . '/'));
+		}
+
+		public function resolveRemoteFolderStorageLocation(\dbObject\Organization $organization): array
+		{
+			if (!$this->isNextcloudFolder() || !$organization->hasDocumentStorage()) {
+				return array('status' => false, 'text' => 'Le stockage de dossiers distants est indisponible.');
+			}
+			if (!$organization->isKdriveDocumentStorage()) {
+				return $this->resolveNextcloudFolderLocation($organization);
+			}
+			$relativePath = $this->getNextcloudFolderPath();
+			$remotePath = $this->buildRemoteFolderStoragePath($organization);
+			$location = $remotePath !== ''
+				? $organization->getDocumentStorageDirectoryInfo($remotePath)
+				: array('status' => false, 'text' => 'Chemin kDrive invalide.');
+			if (empty($location['status']) || empty($location['isFolder'])) {
+				return array('status' => false, 'text' => trim((string)($location['text'] ?? 'Le dossier kDrive est introuvable.')));
+			}
+			return array('status' => true, 'relativePath' => $relativePath, 'remotePath' => $remotePath, 'fileId' => '');
+		}
+
 		public function supportsHtmlContent(): bool
 		{
 			return $this->getDocumentType() === self::TYPE_HTML;
@@ -5229,26 +5273,26 @@
 					);
 				}
 
-				if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && !$organization->hasNextcloudDocumentStorage()) {
+				if ($documentType === self::TYPE_NEXTCLOUD_FOLDER && !$organization->hasDocumentStorage()) {
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
 					}
 
 					return array(
 						'status' => false,
-						'text' => 'Le stockage NextCloud n est pas configure pour cette organisation.',
+					'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
 					);
 				}
 
 				if ($documentType === self::TYPE_NEXTCLOUD_FOLDER) {
-					$nextcloudFolderLocation = $this->resolveNextcloudFolderLocation($organization);
-					if (empty($nextcloudFolderLocation['status']) || trim((string)($nextcloudFolderLocation['fileId'] ?? '')) === '') {
+					$nextcloudFolderLocation = $this->resolveRemoteFolderStorageLocation($organization);
+					if (empty($nextcloudFolderLocation['status'])) {
 						if ($startedTransaction && $pdo->inTransaction()) {
 							$pdo->rollBack();
 						}
 						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? 'Le dossier NextCloud est introuvable.')));
 					}
-					$this->set('nextcloudfolderfileid', (string)$nextcloudFolderLocation['fileId']);
+					$this->set('nextcloudfolderfileid', trim((string)($nextcloudFolderLocation['fileId'] ?? '')) ?: null);
 				}
 
 				if ($isCollaboraTemplate) {
@@ -5771,7 +5815,7 @@
 				if (
 					!$isWithoutContext
 					&& $documentType === self::TYPE_NEXTCLOUD_FOLDER
-					&& !$organization->hasNextcloudDocumentStorage()
+					&& !$organization->hasDocumentStorage()
 				) {
 					if ($startedTransaction && $pdo->inTransaction()) {
 						$pdo->rollBack();
@@ -5779,20 +5823,20 @@
 
 					return array(
 						'status' => false,
-						'text' => 'Le stockage NextCloud n est pas configure pour cette organisation.',
+					'text' => 'Le stockage de documents n est pas configure pour cette organisation.',
 					);
 				}
 
 				if (!$isWithoutContext && $documentType === self::TYPE_NEXTCLOUD_FOLDER) {
-					$nextcloudFolderLocation = $this->resolveNextcloudFolderLocation($organization);
-					if (empty($nextcloudFolderLocation['status']) || trim((string)($nextcloudFolderLocation['fileId'] ?? '')) === '') {
+					$nextcloudFolderLocation = $this->resolveRemoteFolderStorageLocation($organization);
+					if (empty($nextcloudFolderLocation['status'])) {
 						if ($startedTransaction && $pdo->inTransaction()) {
 							$pdo->rollBack();
 						}
 						return array('status' => false, 'text' => trim((string)($nextcloudFolderLocation['text'] ?? 'Le dossier NextCloud est introuvable.')));
 					}
 					$this->set('nextcloudfolderpath', (string)$nextcloudFolderLocation['relativePath']);
-					$this->set('nextcloudfolderfileid', (string)$nextcloudFolderLocation['fileId']);
+					$this->set('nextcloudfolderfileid', trim((string)($nextcloudFolderLocation['fileId'] ?? '')) ?: null);
 				}
 
 				$saveResult = $this->save();

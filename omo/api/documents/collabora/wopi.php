@@ -74,7 +74,7 @@ if (
 }
 
 $organization = new \dbObject\Organization();
-if (!$organization->load($organizationId) || !$organization->hasDocumentStorage() || ($document->isNextcloudFolder() && !$organization->hasNextcloudDocumentStorage())) {
+if (!$organization->load($organizationId) || !$organization->hasDocumentStorage()) {
     http_response_code(503);
     exit;
 }
@@ -84,7 +84,7 @@ $canEdit = $document->canEditInOrganizationContext($organizationId, $userId, fal
 $remotePath = $document->isNextcloudFolder()
     ? Document::normalizeNextcloudFolderPath($tokenPayload['remotePath'] ?? '')
     : '';
-if ($document->isNextcloudFolder() && ($remotePath === '' || !$document->isNextcloudFolderRemotePathAllowed($organization, $remotePath))) {
+if ($document->isNextcloudFolder() && ($remotePath === '' || !$document->isRemoteFolderStoragePathAllowed($organization, $remotePath))) {
     http_response_code(403);
     exit;
 }
@@ -95,7 +95,7 @@ $mimeType = $isRemoteFile
     : $document->getStoredFileMimeType();
 $downloadFile = static function () use ($isRemoteFile, $organization, $remotePath, $document): array {
     return $isRemoteFile
-        ? $organization->downloadDocumentFileFromNextcloud($remotePath)
+        ? $organization->downloadDocumentFileFromStorage($remotePath)
         : $organization->downloadDocumentFileFromStorage((string)$document->get('storedfilepath'));
 };
 $method = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET'));
@@ -213,7 +213,7 @@ if (!is_string($contents)) {
 }
 
 $updateResult = $isRemoteFile
-    ? $organization->updateDocumentFileContentsOnNextcloud($remotePath, $contents, $mimeType)
+    ? $organization->updateDocumentFileContentsOnStorage($remotePath, $contents, $mimeType)
     : $organization->updateDocumentFileContentsOnStorage((string)$document->get('storedfilepath'), $contents, $mimeType);
 if (!is_array($updateResult) || empty($updateResult['status'])) {
     http_response_code(502);

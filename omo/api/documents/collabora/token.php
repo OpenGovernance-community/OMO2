@@ -38,14 +38,14 @@ if (
 }
 
 $organization = new \dbObject\Organization();
-if (!$organization->load($organizationId) || !$organization->hasDocumentStorage() || !omoCollaboraHasConfig($organization) || ($document->isNextcloudFolder() && !$organization->hasNextcloudDocumentStorage())) {
+if (!$organization->load($organizationId) || !$organization->hasDocumentStorage() || !omoCollaboraHasConfig($organization)) {
     http_response_code(503);
     echo json_encode(array('status' => false, 'message' => 'Collabora ou le stockage de documents n est pas disponible.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
 $isRemoteFile = $document->isNextcloudFolder();
-if ($isRemoteFile && ($remotePath === '' || !$document->isNextcloudFolderRemotePathAllowed($organization, $remotePath))) {
+if ($isRemoteFile && ($remotePath === '' || !$document->isRemoteFolderStoragePathAllowed($organization, $remotePath))) {
     http_response_code(400);
     echo json_encode(array('status' => false, 'message' => 'Chemin NextCloud invalide.'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;

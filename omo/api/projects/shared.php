@@ -209,6 +209,9 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.documents.folder_loading' => ['text' => 'Chargement du dossier…', 'context' => 'Loading state for a folder expanded in the project documents list.'],
             'projects.detail.documents.folder_empty' => ['text' => 'Dossier vide.', 'context' => 'Empty state for a folder expanded in the project documents list.'],
             'projects.detail.documents.folder_error' => ['text' => 'Impossible de charger le contenu du dossier.', 'context' => 'Error state for a folder expanded in the project documents list.'],
+			'projects.detail.documents.remote_folder' => ['text' => 'Dossier distant', 'context' => 'Type label for an attached remote folder.'],
+			'projects.detail.documents.remote_entry_folder' => ['text' => 'Dossier {storage}', 'context' => 'Type label for a folder shown inside an attached remote folder.'],
+			'projects.detail.documents.remote_entry_file' => ['text' => '{storage}', 'context' => 'Type label for a file shown inside an attached remote folder.'],
             'projects.history.loading' => ['text' => 'Chargement de l’historique...', 'context' => 'History tab loading message.'],
             'projects.history.error' => ['text' => 'Impossible de charger l’historique.', 'context' => 'History tab loading error.'],
             'projects.history.empty' => ['text' => 'Aucune modification n’a encore été enregistrée pour ce projet.', 'context' => 'Empty project history state.'],
@@ -828,7 +831,7 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
             $visibleDocuments[] = [
                 'id' => (int)$document->getId(),
                 'title' => trim((string)$document->get('title')),
-                'type' => $document->getDocumentTypeLabel(),
+                'type' => $document->isNextcloudFolder() ? omoProjectsT('projects.detail.documents.remote_folder') : $document->getDocumentTypeLabel(),
                 'iconUrl' => omoProjectsGetDocumentTypeIconUrl($document),
                 'documentType' => $document->getDocumentType(),
                 'isFolder' => $document->isFolder(),

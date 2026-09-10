@@ -17,7 +17,7 @@ if ($remotePath === '') {
     exit;
 }
 
-$downloadResult = $context['organization']->downloadDocumentFileFromNextcloud($remotePath);
+$downloadResult = $context['organization']->downloadDocumentFileFromStorage($remotePath);
 if (empty($downloadResult['status'])) {
     http_response_code(502);
     header('Content-Type: text/plain; charset=UTF-8');

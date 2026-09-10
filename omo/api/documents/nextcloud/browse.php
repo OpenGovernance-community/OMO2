@@ -34,7 +34,7 @@ if ($folderId > 0) {
         || !commonUserHasOrganizationAccess($userId, $organizationId)
         || !\dbObject\Document::canCreateInOrganizationContext($organizationId, $contextHolonId > 0 ? $contextHolonId : null, $userId, 0, false)
         || !$organization->load($organizationId)
-        || !$organization->hasNextcloudDocumentStorage()
+        || !$organization->hasDocumentStorage()
     ) {
         http_response_code(403);
         echo json_encode(array('status' => false, 'message' => 'Acces refuse.'));
@@ -42,11 +42,13 @@ if ($folderId > 0) {
     }
 
     $relativePath = \dbObject\Document::normalizeNextcloudFolderPath($rawPath);
-    $configFolder = \dbObject\Document::normalizeNextcloudFolderPath(($organization->getNextcloudDocumentsConfig()['folder'] ?? ''));
+    $configFolder = $organization->isKdriveDocumentStorage()
+        ? ''
+        : \dbObject\Document::normalizeNextcloudFolderPath(($organization->getNextcloudDocumentsConfig()['folder'] ?? ''));
     $remotePath = implode('/', array_filter(array($configFolder, $relativePath)));
 }
 
-$result = $organization->listNextcloudDocumentsDirectory($remotePath);
+$result = $organization->listDocumentStorageDirectory($remotePath);
 if (empty($result['status'])) {
     http_response_code(502);
     echo json_encode(array('status' => false, 'message' => (string)($result['text'] ?? 'Impossible de lire le dossier NextCloud.')));
@@ -54,7 +56,7 @@ if (empty($result['status'])) {
 }
 
 $entries = array();
-$configFolder = $folderId > 0
+$configFolder = $folderId > 0 || $organization->isKdriveDocumentStorage()
     ? ''
     : \dbObject\Document::normalizeNextcloudFolderPath(($organization->getNextcloudDocumentsConfig()['folder'] ?? ''));
 foreach ((array)($result['entries'] ?? array()) as $entry) {

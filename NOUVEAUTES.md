@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-10
 
+- Les dossiers distants des Documents fonctionnent aussi avec le kDrive configure dans l organisation. Ils se parcourent et se rafraichissent comme les dossiers NextCloud, leurs fichiers gardent les droits du dossier et peuvent etre previsualises, telecharges ou ouverts dans Collabora selon leur format.
 - Les dossiers associes a un projet, y compris les dossiers NextCloud, se deplient directement dans la liste avec un retrait. Leurs sous-dossiers restent eux aussi deployables, tandis que les fichiers conservant une fiche ouvrent leur detail habituel.
 - Les menus des documents associes a un projet passent maintenant au-dessus des lignes suivantes lorsqu ils sont ouverts.
 - Les actions des evenements associes a un projet sont integrees a leur carte, et les dossiers associes ne proposent plus d ouverture dans un nouvel onglet.

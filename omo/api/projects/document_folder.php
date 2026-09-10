@@ -47,7 +47,7 @@ function omoProjectsFolderRenderLocalEntry(Document $document, int $projectId): 
     return $html . '</div>';
 }
 
-function omoProjectsFolderRenderRemoteEntry(array $entry, int $folderId, int $projectId): string
+function omoProjectsFolderRenderRemoteEntry(array $entry, int $folderId, int $projectId, string $storageLabel): string
 {
     $path = Document::normalizeNextcloudFolderPath($entry['path'] ?? '');
     if ($path === '') {
@@ -63,7 +63,10 @@ function omoProjectsFolderRenderRemoteEntry(array $entry, int $folderId, int $pr
     $html = '<div class="omo-project-detail__folder-entry"' . ($isFolder ? ' data-omo-project-detail-folder' : '') . '>';
     $html .= '<button type="button" class="omo-project-detail__folder-entry-link"' . $attributes . '>';
     $html .= '<span class="omo-project-detail__document-icon" aria-hidden="true"><img src="' . ($isFolder ? '/omo/assets/images/documents/folder.png' : '/omo/assets/images/documents/download.png') . '" alt="" class="black-icon" loading="lazy"></span>';
-    $html .= '<span class="omo-project-detail__document-copy"><strong>' . omoApiEscape($name) . '</strong><span>' . omoApiEscape($isFolder ? 'Dossier NextCloud' : 'NextCloud') . '</span></span>';
+    $typeLabel = $isFolder
+        ? omoProjectsT('projects.detail.documents.remote_entry_folder', array('storage' => $storageLabel))
+        : omoProjectsT('projects.detail.documents.remote_entry_file', array('storage' => $storageLabel));
+    $html .= '<span class="omo-project-detail__document-copy"><strong>' . omoApiEscape($name) . '</strong><span>' . omoApiEscape($typeLabel) . '</span></span>';
     $html .= '</button>';
     if ($isFolder) {
         $html .= '<div class="omo-project-detail__folder-content" data-omo-project-detail-folder-content hidden></div>';
@@ -119,12 +122,12 @@ if ($folder->isNextcloudFolder()) {
     if ($remotePath === '') {
         omoProjectsFolderFail(400, omoProjectsT('projects.detail.documents.folder_error'));
     }
-    $result = $nextcloud['organization']->listNextcloudDocumentsDirectory($remotePath);
+    $result = $nextcloud['organization']->listDocumentStorageDirectory($remotePath);
     if (empty($result['status'])) {
         omoProjectsFolderFail(502, (string)($result['text'] ?? omoProjectsT('projects.detail.documents.folder_error')));
     }
     foreach ((array)($result['entries'] ?? []) as $entry) {
-        $html .= omoProjectsFolderRenderRemoteEntry((array)$entry, $folderId, $projectId);
+        $html .= omoProjectsFolderRenderRemoteEntry((array)$entry, $folderId, $projectId, $nextcloud['organization']->isKdriveDocumentStorage() ? 'kDrive' : 'NextCloud');
     }
 } else {
     foreach ($folder->getDirectChildren() as $childDocument) {

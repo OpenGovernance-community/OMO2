@@ -21,13 +21,13 @@ function omoDocumentsNextcloudLoadFolder(int $folderId, int $organizationId = 0)
     }
 
     $organization = new \dbObject\Organization();
-    if (!$organization->load($resolvedOrganizationId) || !$organization->hasNextcloudDocumentStorage()) {
-        return array('status' => false, 'httpCode' => 503, 'text' => 'Le stockage NextCloud est indisponible.');
+    if (!$organization->load($resolvedOrganizationId) || !$organization->hasDocumentStorage()) {
+        return array('status' => false, 'httpCode' => 503, 'text' => 'Le stockage de documents est indisponible.');
     }
 
-	$location = $folder->resolveNextcloudFolderLocation($organization);
+	$location = $folder->resolveRemoteFolderStorageLocation($organization);
 	if (empty($location['status'])) {
-		$fallbackRemotePath = $folder->buildNextcloudFolderRemotePath($organization);
+		$fallbackRemotePath = $folder->buildRemoteFolderStoragePath($organization);
 		if ($fallbackRemotePath === '') {
 			return array('status' => false, 'httpCode' => 404, 'text' => trim((string)($location['text'] ?? 'Dossier NextCloud introuvable.')));
 		}
@@ -74,10 +74,10 @@ function omoDocumentsNextcloudGetRemotePath(\dbObject\Document $folder, \dbObjec
 {
     $requestedPath = \dbObject\Document::normalizeNextcloudFolderPath($rawPath);
     if ($requestedPath === '' && $allowFolderRoot) {
-        return $folder->buildNextcloudFolderRemotePath($organization);
+        return $folder->buildRemoteFolderStoragePath($organization);
     }
 
-    return $folder->isNextcloudFolderRemotePathAllowed($organization, $requestedPath)
+    return $folder->isRemoteFolderStoragePathAllowed($organization, $requestedPath)
         ? $requestedPath
         : '';
 }
