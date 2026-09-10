@@ -2404,6 +2404,56 @@
 			return $mimeType !== '' ? $mimeType : 'application/octet-stream';
 		}
 
+		public function isStoredPdfFile(): bool
+		{
+			if (!$this->isUploadedFile() || !$this->hasStoredFile()) {
+				return false;
+			}
+
+			$mimeType = strtolower(trim($this->getStoredFileMimeType()));
+			if (in_array($mimeType, array('application/pdf', 'application/x-pdf'), true)) {
+				return true;
+			}
+
+			return strtolower((string)pathinfo($this->getStoredFileDownloadName(), PATHINFO_EXTENSION)) === 'pdf';
+		}
+
+		public function getStoredPdfDownloadName(): string
+		{
+			$filename = $this->getStoredFileDownloadName();
+			if (strtolower((string)pathinfo($filename, PATHINFO_EXTENSION)) !== 'pdf') {
+				$filename .= '.pdf';
+			}
+
+			return $filename;
+		}
+
+		public function buildStoredFileDownloadUrl(bool $inline = false, int $organizationId = 0, int $holonId = 0): string
+		{
+			if (!$this->isUploadedFile() || !$this->hasStoredFile() || (int)$this->getId() <= 0) {
+				return '';
+			}
+
+			$url = '/omo/api/documents/upload/download.php';
+			if ($this->isStoredPdfFile()) {
+				$previewFilename = str_replace(array('/', '\\'), '-', $this->getStoredPdfDownloadName());
+				$url .= '/' . rawurlencode($previewFilename);
+			}
+
+			$query = array('id=' . rawurlencode((string)(int)$this->getId()));
+			if ($organizationId > 0) {
+				$query[] = 'oid=' . rawurlencode((string)$organizationId);
+			}
+			if ($holonId > 0) {
+				$query[] = 'cid=' . rawurlencode((string)$holonId);
+			}
+			if ($inline) {
+				$query[] = 'inline=1';
+			}
+
+			return $url . '?' . implode('&', $query);
+		}
+
 		public function getStoredFileSize(): int
 		{
 			return max(0, (int)$this->get('storedfilesize'));
@@ -3245,7 +3295,8 @@
 				return '<div class="omo-document-file omo-document-file--empty">Aucun fichier n est actuellement televerse pour ce document.</div>';
 			}
 
-			$collaboraOpenUrl = $this->buildCollaboraOpenUrl();
+			$isStoredPdf = $this->isStoredPdfFile();
+			$collaboraOpenUrl = $isStoredPdf ? '' : $this->buildCollaboraOpenUrl();
 			if ($collaboraOpenUrl !== '') {
 				require_once dirname(__DIR__, 2) . '/common/collabora.php';
 				$organization = new \dbObject\Organization();
@@ -3258,9 +3309,17 @@
 				}
 			}
 
-			$downloadUrl = '/omo/api/documents/upload/download.php?id=' . (int)$this->getId();
-			$inlineMediaUrl = $downloadUrl . '&inline=1';
+			$downloadUrl = $this->buildStoredFileDownloadUrl();
+			$inlineMediaUrl = $this->buildStoredFileDownloadUrl(true);
 			$storedFileKind = $this->getStoredFileKind();
+			if ($isStoredPdf) {
+				return '<div class="omo-document-file__media omo-document-file__media--pdf">'
+					. '<iframe class="omo-document-file__pdf-frame" src="'
+					. htmlspecialchars($inlineMediaUrl, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+					. '" title="' . htmlspecialchars($this->getStoredFileDownloadName(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+					. '" loading="lazy" allow="fullscreen" allowfullscreen></iframe>'
+					. '</div>';
+			}
 			$fileSize = $this->getStoredFileSize();
 			$fileMeta = array();
 			if ($this->getStoredFileMimeType() !== '') {
