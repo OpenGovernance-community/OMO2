@@ -119,6 +119,9 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.detail.tab.chart' => ['text' => 'Graphique', 'context' => 'Tab showing the large chart.'],
             'stats.detail.tab.values' => ['text' => 'Valeurs', 'context' => 'Tab showing dated values.'],
             'stats.detail.source' => ['text' => 'Consulter la source', 'context' => 'External link to the indicator source.'],
+            'stats.detail.source_document' => ['text' => 'Afficher le document source', 'context' => 'Button revealing the collaborative document used by an automatic indicator.'],
+            'stats.detail.source_document_new_window' => ['text' => 'Ouvrir dans un nouvel onglet', 'context' => 'Fallback link opening an automatic indicator source document in a separate browser tab.'],
+            'stats.detail.source_document_title' => ['text' => 'Document source de l indicateur', 'context' => 'Accessible title for the embedded automatic indicator source document.'],
             'stats.detail.reference' => ['text' => 'Référence', 'context' => 'Label for the reference type.'],
             'stats.detail.reference_none' => ['text' => 'Sans courbe de référence', 'context' => 'Indicator reference type label for no reference.'],
             'stats.detail.reference_ceiling' => ['text' => 'Plafond horizontal', 'context' => 'Indicator reference type label for ceiling.'],
@@ -141,6 +144,14 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.form.create_title' => ['text' => 'Nouvel indicateur', 'context' => 'Heading of the create indicator form.'],
             'stats.form.edit_title' => ['text' => "Modifier l'indicateur", 'context' => 'Heading of the edit indicator form.'],
             'stats.form.intro' => ['text' => 'Définissez la série et, si nécessaire, sa courbe de référence.', 'context' => 'Introductory copy in the indicator form.'],
+            'stats.form.source_title' => ['text' => 'Source des valeurs', 'context' => 'Heading of the source choice in the indicator creation form.'],
+            'stats.form.source_help' => ['text' => 'Choisissez une saisie manuelle ou une source automatique.', 'context' => 'Help text for the source choice in the indicator creation form.'],
+            'stats.form.source_type' => ['text' => 'Type de source', 'context' => 'Label for the source type selector in the indicator creation form.'],
+            'stats.form.source_manual' => ['text' => 'Saisie manuelle', 'context' => 'Source type option for manually entered indicator values.'],
+            'stats.form.source_ethercalc_cell' => ['text' => 'Framacalc : cellule', 'context' => 'Source type option for a Framacalc cell.'],
+            'stats.form.source_ethercalc_table' => ['text' => 'Framacalc : tableau', 'context' => 'Source type option for a Framacalc table.'],
+            'stats.form.source_spreadsheet_cell' => ['text' => 'Document tableur : cellule', 'context' => 'Source type option for a spreadsheet document cell.'],
+            'stats.form.source_spreadsheet_table' => ['text' => 'Document tableur : tableau', 'context' => 'Source type option for a spreadsheet document table.'],
             'stats.form.schedule_title' => ['text' => 'Rythme de mesure', 'context' => 'Heading of the expected measurement schedule editor.'],
             'stats.form.schedule_help' => ['text' => "Définissez le rythme attendu. Le moment est facultatif : sans lui, le système pourra s'appuyer sur l'intervalle observé entre les mesures.", 'context' => 'Help text for optional measurement timing.'],
             'stats.form.frequency' => ['text' => 'Fréquence', 'context' => 'Label for expected measurement frequency select.'],
@@ -222,6 +233,10 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.import.ethercalc.frequency_hourly' => ['text' => 'Toutes les heures', 'context' => 'Hourly EtherCalc read schedule option in the indicator import prototype.'],
             'stats.import.ethercalc.frequency_daily' => ['text' => 'Chaque jour', 'context' => 'Daily EtherCalc read schedule option in the indicator import prototype.'],
             'stats.import.ethercalc.frequency_weekly' => ['text' => 'Chaque semaine', 'context' => 'Weekly EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_monthly' => ['text' => 'Chaque mois', 'context' => 'Monthly EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_quarterly' => ['text' => 'Chaque trimestre', 'context' => 'Quarterly EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_semiannual' => ['text' => 'Chaque semestre', 'context' => 'Semiannual EtherCalc read schedule option in the indicator import prototype.'],
+            'stats.import.ethercalc.frequency_yearly' => ['text' => 'Chaque annee', 'context' => 'Yearly EtherCalc read schedule option in the indicator import prototype.'],
             'stats.import.ethercalc.range' => ['text' => 'Plage de données', 'context' => 'Label for the EtherCalc table range in the indicator import prototype.'],
             'stats.import.ethercalc.date_column' => ['text' => 'Colonne de date', 'context' => 'Label for the EtherCalc date column in the indicator import prototype.'],
             'stats.import.ethercalc.value_columns' => ['text' => 'Colonnes de valeurs', 'context' => 'Label for the EtherCalc value columns in the indicator import prototype.'],
@@ -244,6 +259,10 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.import.spreadsheet.frequency_hourly' => ['text' => 'Toutes les heures', 'context' => 'Hourly spreadsheet read schedule option.'],
             'stats.import.spreadsheet.frequency_daily' => ['text' => 'Chaque jour', 'context' => 'Daily spreadsheet read schedule option.'],
             'stats.import.spreadsheet.frequency_weekly' => ['text' => 'Chaque semaine', 'context' => 'Weekly spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.frequency_monthly' => ['text' => 'Chaque mois', 'context' => 'Monthly spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.frequency_quarterly' => ['text' => 'Chaque trimestre', 'context' => 'Quarterly spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.frequency_semiannual' => ['text' => 'Chaque semestre', 'context' => 'Semiannual spreadsheet read schedule option.'],
+            'stats.import.spreadsheet.frequency_yearly' => ['text' => 'Chaque annee', 'context' => 'Yearly spreadsheet read schedule option.'],
             'stats.import.spreadsheet.range' => ['text' => 'Plage de données', 'context' => 'Label for the spreadsheet table range.'],
             'stats.import.spreadsheet.date_column' => ['text' => 'Colonne de date', 'context' => 'Label for the spreadsheet date column.'],
             'stats.import.spreadsheet.value_columns' => ['text' => 'Colonnes de valeurs', 'context' => 'Label for the spreadsheet value columns.'],
@@ -289,6 +308,9 @@ if (!function_exists('omoStatsT')) {
 if (!function_exists('omoStatsMeasurementFrequencyLabel')) {
     function omoStatsMeasurementFrequencyLabel($frequency)
     {
+        if ($frequency instanceof StatIndicator) {
+            $frequency = $frequency->getEffectiveMeasurementFrequency();
+        }
         $frequency = StatIndicator::normalizeMeasurementFrequency($frequency);
         return $frequency === null ? omoStatsT('stats.frequency.none') : omoStatsT('stats.frequency.' . $frequency);
     }
@@ -297,6 +319,9 @@ if (!function_exists('omoStatsMeasurementFrequencyLabel')) {
 if (!function_exists('omoStatsMeasurementFrequencyRank')) {
     function omoStatsMeasurementFrequencyRank($frequency)
     {
+        if ($frequency instanceof StatIndicator) {
+            $frequency = $frequency->getEffectiveMeasurementFrequency();
+        }
         $frequency = StatIndicator::normalizeMeasurementFrequency($frequency);
         $ranks = [
             StatIndicator::FREQUENCY_DAILY => 10,
@@ -408,7 +433,7 @@ if (!function_exists('omoStatsGetIndicatorOverdueInfo')) {
             'overdue_seconds' => 0,
             'period_seconds' => 0,
         ];
-        $frequency = StatIndicator::normalizeMeasurementFrequency($indicator->get('measurement_frequency'));
+        $frequency = $indicator->getEffectiveMeasurementFrequency();
         if ($frequency === null) {
             return $emptyResult;
         }
@@ -1293,7 +1318,7 @@ if (!function_exists('omoStatsSmallIndicatorTimestampRange')) {
         }, $measureSeries);
         $latestTimestamp = max($timestamps);
         $latestDate = (new DateTimeImmutable())->setTimestamp($latestTimestamp);
-        $frequency = StatIndicator::normalizeMeasurementFrequency($indicator->get('measurement_frequency'));
+        $frequency = $indicator->getEffectiveMeasurementFrequency();
         $months = [
             StatIndicator::FREQUENCY_MONTHLY => 12,
             StatIndicator::FREQUENCY_QUARTERLY => 36,

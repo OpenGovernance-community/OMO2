@@ -293,6 +293,12 @@ if ($action === 'save_indicator') {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
 
+    $requestedSourceType = StatIndicator::normalizeSourceType($_POST['source_type'] ?? StatIndicator::SOURCE_MANUAL);
+    $isEthercalcSource = in_array($requestedSourceType, [StatIndicator::SOURCE_ETHERCALC_CELL, StatIndicator::SOURCE_ETHERCALC_TABLE], true);
+    $isSpreadsheetSource = in_array($requestedSourceType, [StatIndicator::SOURCE_SPREADSHEET_CELL, StatIndicator::SOURCE_SPREADSHEET_TABLE], true);
+    $isEthercalcCellSource = $requestedSourceType === StatIndicator::SOURCE_ETHERCALC_CELL;
+    $isSpreadsheetCellSource = $requestedSourceType === StatIndicator::SOURCE_SPREADSHEET_CELL;
+
     $name = trim((string)($_POST['name'] ?? ''));
     if ($name === '') {
         omoStatsActionRespond(false, omoStatsT('stats.error.name'), [], 422);
@@ -308,7 +314,7 @@ if ($action === 'save_indicator') {
     $spreadsheetAdditionalIndicators = [];
     $spreadsheetAdditionalGroupIndicators = [];
     $sourceUrl = null;
-    if ($indicatorId > 0 && $indicator->isEthercalcSource()) {
+    if ($isEthercalcSource) {
         $documentId = isset($_POST['ethercalc_document_id']) && is_numeric($_POST['ethercalc_document_id'])
             ? (int)$_POST['ethercalc_document_id']
             : 0;
@@ -317,7 +323,7 @@ if ($action === 'save_indicator') {
             omoStatsActionRespond(false, omoStatsT('stats.error.document_ethercalc'), [], 422);
         }
 
-        if ($indicator->isEthercalcCellSource()) {
+        if ($isEthercalcCellSource) {
             $cell = StatIndicator::normalizeEthercalcCell($_POST['ethercalc_cell'] ?? '');
             if ($cell === '') {
                 omoStatsActionRespond(false, omoStatsT('stats.error.ethercalc_cell'), [], 422);
@@ -369,7 +375,7 @@ if ($action === 'save_indicator') {
                 'ethercalc_last_sync_at' => null,
             ];
         }
-    } elseif ($indicatorId > 0 && $indicator->isSpreadsheetSource()) {
+    } elseif ($isSpreadsheetSource) {
         $documentId = isset($_POST['spreadsheet_document_id']) && is_numeric($_POST['spreadsheet_document_id'])
             ? (int)$_POST['spreadsheet_document_id']
             : 0;
@@ -380,7 +386,7 @@ if ($action === 'save_indicator') {
 
         $sheet = StatIndicator::normalizeSpreadsheetSheet($_POST['spreadsheet_sheet'] ?? '');
         $frequency = StatIndicator::normalizeSpreadsheetFrequency($_POST['spreadsheet_frequency'] ?? '');
-        if ($indicator->isSpreadsheetCellSource()) {
+        if ($isSpreadsheetCellSource) {
             $cell = StatIndicator::normalizeEthercalcCell($_POST['spreadsheet_cell'] ?? '');
             if ($cell === '') {
                 omoStatsActionRespond(false, omoStatsT('stats.error.spreadsheet_cell'), [], 422);
@@ -473,6 +479,7 @@ if ($action === 'save_indicator') {
     $indicator->set('name', $name);
     $indicator->set('description', trim((string)($_POST['description'] ?? '')));
     $indicator->set('source_url', $sourceUrl !== null && $sourceUrl !== '' ? $sourceUrl : null);
+    $indicator->set('source_type', $requestedSourceType);
     if (is_array($ethercalcSourceUpdate)) {
         foreach ($ethercalcSourceUpdate as $field => $value) {
             $indicator->set($field, $value);
@@ -482,9 +489,6 @@ if ($action === 'save_indicator') {
         foreach ($spreadsheetSourceUpdate as $field => $value) {
             $indicator->set($field, $value);
         }
-        $indicator->set('source_type', $indicator->isSpreadsheetCellSource()
-            ? StatIndicator::SOURCE_SPREADSHEET_CELL
-            : StatIndicator::SOURCE_SPREADSHEET_TABLE);
     }
     $indicator->set('reference_type', $referenceType);
     $indicator->set('measurement_frequency', $measurementFrequency);
@@ -722,6 +726,9 @@ if ($action === 'delete_value') {
     }
     if ($indicator->isEthercalcSource()) {
         omoStatsActionRespond(false, omoStatsT('stats.error.ethercalc_synced'), [], 403);
+    }
+    if ($indicator->isSpreadsheetSource()) {
+        omoStatsActionRespond(false, omoStatsT('stats.error.spreadsheet_synced'), [], 403);
     }
 
     if (!$value->delete()) {

@@ -218,14 +218,16 @@ if (!function_exists('omoStatsSynchronizeSpreadsheetIndicator')) {
             if (empty($result['status'])) {
                 return $result;
             }
-            $value = new StatIndicatorValue();
-            $value->set('IDstatindicator', (int)$indicator->getId());
-            $value->set('IDuser', null);
-            $value->set('value', (float)$result['value']);
-            $value->set('measured_at', \DateTime::createFromInterface($referenceDate));
-            $saveResult = $value->save();
-            if (!is_array($saveResult) || empty($saveResult['status'])) {
-                return ['status' => false, 'text' => 'Impossible d enregistrer la valeur du tableur.'];
+            if (!$indicator->hasLatestMeasurementValue($result['value'])) {
+                $value = new StatIndicatorValue();
+                $value->set('IDstatindicator', (int)$indicator->getId());
+                $value->set('IDuser', null);
+                $value->set('value', (float)$result['value']);
+                $value->set('measured_at', \DateTime::createFromInterface($referenceDate));
+                $saveResult = $value->save();
+                if (!is_array($saveResult) || empty($saveResult['status'])) {
+                    return ['status' => false, 'text' => 'Impossible d enregistrer la valeur du tableur.'];
+                }
             }
         } elseif ($indicator->isSpreadsheetTableSource()) {
             $result = omoStatsSpreadsheetReadTable(
