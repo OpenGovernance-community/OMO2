@@ -6,6 +6,7 @@ class ChatThread extends DbObject
     const SUBJECT_DECISION_PROPOSAL = 'decision_proposal';
     const SUBJECT_DOCUMENT_PV = 'document_pv';
     const SUBJECT_DOCUMENT_PV_POINT = 'document_pv_point';
+    const SUBJECT_PROJECT = 'project';
 
     public static function tableName()
     {
@@ -148,13 +149,33 @@ class ChatThread extends DbObject
         $parameters = [
             'organization_id' => $organizationId,
             'subject_type' => $subjectType,
-            'viewer_user_id_case' => $viewerUserId,
-            'viewer_user_id_subquery' => $viewerUserId,
-            'viewer_participant_id_case' => $viewerParticipantId,
-            'viewer_participant_id_subquery' => $viewerParticipantId,
-            'viewer_document_share_link_id_case' => $viewerDocumentShareLinkId,
-            'viewer_document_share_link_id_subquery' => $viewerDocumentShareLinkId,
         ];
+        $viewerMessageCaseConditions = [];
+        $viewerMessageSubqueryConditions = [];
+        if ($viewerUserId > 0) {
+            $viewerMessageCaseConditions[] = 'message.`IDuser` = :viewer_user_id_case';
+            $viewerMessageSubqueryConditions[] = 'viewer_message.`IDuser` = :viewer_user_id_subquery';
+            $parameters['viewer_user_id_case'] = $viewerUserId;
+            $parameters['viewer_user_id_subquery'] = $viewerUserId;
+        }
+        if ($viewerParticipantId > 0) {
+            $viewerMessageCaseConditions[] = 'message.`IDdecision_participant` = :viewer_participant_id_case';
+            $viewerMessageSubqueryConditions[] = 'viewer_message.`IDdecision_participant` = :viewer_participant_id_subquery';
+            $parameters['viewer_participant_id_case'] = $viewerParticipantId;
+            $parameters['viewer_participant_id_subquery'] = $viewerParticipantId;
+        }
+        if ($viewerDocumentShareLinkId > 0) {
+            $viewerMessageCaseConditions[] = 'message.`IDdocument_share_link` = :viewer_document_share_link_id_case';
+            $viewerMessageSubqueryConditions[] = 'viewer_message.`IDdocument_share_link` = :viewer_document_share_link_id_subquery';
+            $parameters['viewer_document_share_link_id_case'] = $viewerDocumentShareLinkId;
+            $parameters['viewer_document_share_link_id_subquery'] = $viewerDocumentShareLinkId;
+        }
+        $viewerMessageCaseCondition = count($viewerMessageCaseConditions) > 0
+            ? '(' . implode(' OR ', $viewerMessageCaseConditions) . ')'
+            : '0 = 1';
+        $viewerMessageSubqueryCondition = count($viewerMessageSubqueryConditions) > 0
+            ? '(' . implode(' OR ', $viewerMessageSubqueryConditions) . ')'
+            : '0 = 1';
         $subjectPlaceholders = [];
         foreach ($subjectIds as $index => $subjectId) {
             $placeholder = 'subject_id_' . $index;
@@ -167,11 +188,7 @@ class ChatThread extends DbObject
                     COUNT(message.`id`) AS `total_messages`,
                     MAX(message.`id`) AS `last_message_id`,
                     MAX(CASE
-                        WHEN (
-                            message.`IDuser` = :viewer_user_id_case
-                            OR message.`IDdecision_participant` = :viewer_participant_id_case
-                            OR message.`IDdocument_share_link` = :viewer_document_share_link_id_case
-                        ) AND message.`message_type` = \'user\'
+                        WHEN ' . $viewerMessageCaseCondition . ' AND message.`message_type` = \'user\'
                         THEN message.`id`
                         ELSE 0
                     END) AS `last_viewer_message_id`,
@@ -180,11 +197,7 @@ class ChatThread extends DbObject
                             SELECT MAX(viewer_message.`id`)
                             FROM `chat_message` viewer_message
                             WHERE viewer_message.`IDchat_thread` = thread.`id`
-                              AND (
-                                  viewer_message.`IDuser` = :viewer_user_id_subquery
-                                  OR viewer_message.`IDdecision_participant` = :viewer_participant_id_subquery
-                                  OR viewer_message.`IDdocument_share_link` = :viewer_document_share_link_id_subquery
-                              )
+                              AND ' . $viewerMessageSubqueryCondition . '
                               AND viewer_message.`message_type` = \'user\'
                         ), 0)
                         THEN 1

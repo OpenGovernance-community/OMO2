@@ -2686,7 +2686,7 @@ if (!is_string($documentsPayload)) {
 
                                 const syncDocumentFullscreenButton = function () {
                                     const fullscreenButton = detailDrawer.querySelector('[data-omo-document-fullscreen]');
-                                     const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame, .omo-document-collabora__frame, .omo-document-spacedeck__frame');
+                                     const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame, .omo-document-collabora__frame, .omo-document-spacedeck__frame, .omo-document-file__pdf-frame');
                                     if (!(fullscreenButton instanceof HTMLButtonElement) || !(frame instanceof HTMLElement)) {
                                         return;
                                     }
@@ -2754,7 +2754,7 @@ if (!is_string($documentsPayload)) {
                                     const fullscreenButton = event.target.closest('[data-omo-document-fullscreen]');
                                     if (fullscreenButton) {
                                         event.preventDefault();
-                                         const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame, .omo-document-collabora__frame, .omo-document-spacedeck__frame');
+                                         const frame = detailDrawer.querySelector('.omo-document-etherpad__frame, .omo-document-ethercalc__frame, .omo-document-collabora__frame, .omo-document-spacedeck__frame, .omo-document-file__pdf-frame');
                                         if (!(frame instanceof HTMLElement)) {
                                             return;
                                         }
@@ -3171,6 +3171,34 @@ if (!is_string($documentsPayload)) {
                                         } else {
                                             panel.classList.toggle('is-loading', !!isLoading);
                                         }
+                                    }
+                                }).then(function (nextPanel) {
+                                    if (!(nextPanel instanceof Element) || !document.body.contains(nextPanel)) {
+                                        return;
+                                    }
+
+                                    const nextDataNode = nextPanel.querySelector('[data-omo-documents-data]');
+                                    if (!(nextDataNode instanceof Element)) {
+                                        return;
+                                    }
+
+                                    let nextPayload = null;
+                                    try {
+                                        nextPayload = JSON.parse(nextDataNode.textContent || '{}');
+                                    } catch (error) {
+                                        return;
+                                    }
+
+                                    if (Number(nextPayload && nextPayload.openDocumentId || 0) !== documentId) {
+                                        return;
+                                    }
+
+                                    if (typeof nextPanel.__omoDocumentsApplyRouteChange === 'function') {
+                                        nextPanel.__omoDocumentsApplyRouteChange({
+                                            documentId: documentId,
+                                            mode: normalizeDocumentOpenMode(mode || 'detail'),
+                                            forcedScope: scopeOverride || ''
+                                        });
                                     }
                                 }).catch(function () {
                                     if (typeof window.omoSetDocumentsPanelLoadingState === 'function') {
@@ -3722,7 +3750,16 @@ if (!is_string($documentsPayload)) {
                                         : 'descendants';
 
                                     if (targetDocumentId > 0) {
-                                        const documentItem = findDocumentItemById(targetDocumentId);
+                                        // A document linked to a project is normally absent from the
+                                        // contextual document list. The route response nevertheless
+                                        // carries its payload, which is enough to open its detail drawer.
+                                        const documentItem = findDocumentItemById(targetDocumentId)
+                                            || (
+                                                requestedDocument
+                                                && Number(requestedDocument.id || 0) === targetDocumentId
+                                                ? requestedDocument
+                                                : null
+                                            );
                                         const shouldPreferPanelRefresh = targetMode !== 'edit'
                                             && !documentItem;
 
@@ -3753,6 +3790,11 @@ if (!is_string($documentsPayload)) {
                                         if (targetMode !== 'edit' && documentItem && typeof window.omoOpenDocumentDetailByPayload === 'function') {
                                             window.omoCloseDocumentEditorDrawer({ force: true, preserveDrawer: true });
                                             if (window.omoOpenDocumentDetailByPayload(documentItem, panel) === true) {
+                                                if (documentItem === requestedDocument) {
+                                                    payload.openDocumentId = 0;
+                                                    payload.openDocumentMode = 'detail';
+                                                    payload.requestedDocument = null;
+                                                }
                                                 return true;
                                             }
                                         }

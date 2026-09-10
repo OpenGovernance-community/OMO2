@@ -24,6 +24,7 @@ $sourceLang = [
     'documents.detail.delete_error' => ['text' => 'Impossible d effacer le document.', 'context' => 'Error shown when permanent document deletion fails from its detail drawer.'],
     'documents.detail.action.fullscreen' => ['text' => 'Plein écran', 'context' => 'Button used to show a collaborative document iframe in fullscreen.'],
     'documents.detail.action.exit_fullscreen' => ['text' => 'Quitter le plein écran', 'context' => 'Button used to leave the collaborative document fullscreen mode.'],
+    'documents.detail.action.download' => ['text' => 'Télécharger', 'context' => 'Button used to download an uploaded PDF displayed in the document detail drawer.'],
     'documents.detail.alt_texts.title' => ['text' => 'Versions texte', 'context' => 'Section title listing alternate text versions.'],
     'documents.detail.alt_texts.fallback' => ['text' => 'Version texte', 'context' => 'Fallback title for an alternate text variant.'],
     'documents.detail.media.title' => ['text' => 'Médias associés', 'context' => 'Section title listing associated media.'],
@@ -164,6 +165,12 @@ $hasCollaborativeFrame = $document->isEtherpadDocument()
     || $document->isEthercalcDocument()
     || $uploadedFileCollaboraAvailable
     || $spaceDeckOpenUrl !== '';
+$uploadedPdfDownloadUrl = $document->isStoredPdfFile()
+    ? $document->buildStoredFileDownloadUrl(false, $organizationId, $holonId)
+    : '';
+$uploadedPdfDownloadName = $uploadedPdfDownloadUrl !== ''
+    ? $document->getStoredPdfDownloadName()
+    : '';
 $drawerTitle = trim((string)$document->get('title'));
 $drawerDescription = $createdAt instanceof DateTimeInterface ? $formatDateTime($createdAt) : '';
 $associatedEvent = $document->getAssociatedEvent();
@@ -291,7 +298,7 @@ if ($associatedEvent instanceof \dbObject\Event) {
                 </div>
             <?php endif; ?>
 
-            <?php if ($keywords !== '' || $hasCollaborativeFrame): ?>
+            <?php if ($keywords !== '' || $hasCollaborativeFrame || $uploadedPdfDownloadUrl !== ''): ?>
                 <div class="omo-document-detail__keyword-actions">
                     <div class="omo-document-detail__keywords">
                         <?php if ($keywords !== ''): ?>
@@ -302,7 +309,16 @@ if ($associatedEvent instanceof \dbObject\Event) {
                     <?php endforeach; ?>
                         <?php endif; ?>
                     </div>
-                    <?php if ($hasCollaborativeFrame): ?>
+                    <?php if ($uploadedPdfDownloadUrl !== '' || $hasCollaborativeFrame): ?>
+                        <div class="omo-document-detail__preview-actions">
+                    <?php if ($uploadedPdfDownloadUrl !== ''): ?>
+                        <a
+                            class="generic-action-button generic-action-button--secondary omo-document-detail__fullscreen-button"
+                            href="<?= $escape($uploadedPdfDownloadUrl) ?>"
+                            download="<?= $escape($uploadedPdfDownloadName) ?>"
+                        ><?= $escape(omoDocumentsDetailT('documents.detail.action.download')) ?></a>
+                    <?php endif; ?>
+                    <?php if ($hasCollaborativeFrame || $uploadedPdfDownloadUrl !== ''): ?>
                         <button
                             type="button"
                             class="generic-action-button generic-action-button--secondary omo-document-detail__fullscreen-button"
@@ -311,6 +327,8 @@ if ($associatedEvent instanceof \dbObject\Event) {
                             data-omo-document-exit-fullscreen-label="<?= $escape(omoDocumentsDetailT('documents.detail.action.exit_fullscreen')) ?>"
                             aria-pressed="false"
                         ><?= $escape(omoDocumentsDetailT('documents.detail.action.fullscreen')) ?></button>
+                    <?php endif; ?>
+                        </div>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
@@ -537,6 +555,14 @@ if ($associatedEvent instanceof \dbObject\Event) {
     font-size: 0.76rem;
 }
 
+.omo-document-detail__preview-actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
 .omo-document-detail__meta {
     margin-top: 8px;
     padding-top: 14px;
@@ -663,6 +689,20 @@ if ($associatedEvent instanceof \dbObject\Event) {
     width: min(100%, 560px);
 }
 
+.omo-document-detail__content .omo-document-file__media--pdf {
+    display: block;
+    width: 100%;
+}
+
+.omo-document-detail__content .omo-document-file__pdf-frame {
+    display: block;
+    width: 100%;
+    min-height: 72vh;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+}
+
 .omo-document-detail__content .omo-document-etherpad,
 .omo-document-detail__content .omo-document-ethercalc,
 .omo-document-detail__content .omo-document-collabora,
@@ -687,7 +727,8 @@ if ($associatedEvent instanceof \dbObject\Event) {
 .omo-document-detail__content .omo-document-etherpad__frame:fullscreen,
 .omo-document-detail__content .omo-document-ethercalc__frame:fullscreen,
 .omo-document-detail__content .omo-document-collabora__frame:fullscreen,
-.omo-document-detail__content .omo-document-spacedeck__frame:fullscreen {
+.omo-document-detail__content .omo-document-spacedeck__frame:fullscreen,
+.omo-document-detail__content .omo-document-file__pdf-frame:fullscreen {
     width: 100vw;
     height: 100vh;
     min-height: 100vh;

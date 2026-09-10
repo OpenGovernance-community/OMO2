@@ -4,6 +4,7 @@ require_once __DIR__ . '/shared.php';
 
 use dbObject\Holon;
 use dbObject\ArrayProject;
+use dbObject\ChatThread;
 use dbObject\Project;
 use dbObject\ProjectImportanceCalculator;
 use dbObject\PropertyFormat;
@@ -42,6 +43,33 @@ if (!omoProjectsCanViewProject($project, $context)) {
 }
 
 $isArchivedProject = (int)$project->get('active') !== 1;
+$projectDiscussionSummary = ChatThread::getSubjectDiscussionSummaries(
+    $organizationId,
+    ChatThread::SUBJECT_PROJECT,
+    [(int)$project->getId()],
+    $currentUserId
+);
+$projectDiscussionSummary = $projectDiscussionSummary[(int)$project->getId()] ?? [];
+$projectDiscussionMessageCount = max(0, (int)($projectDiscussionSummary['total_messages'] ?? 0));
+$projectDiscussionMessagesSinceIntervention = null;
+if ((int)($projectDiscussionSummary['last_viewer_message_id'] ?? 0) > 0) {
+    $projectDiscussionMessagesSinceIntervention = max(0, (int)($projectDiscussionSummary['messages_since_viewer'] ?? 0));
+}
+$projectDiscussionContext = json_encode([
+    'oid' => $organizationId,
+    'cid' => (int)($_GET['cid'] ?? 0),
+    'project_id' => (int)$project->getId(),
+], JSON_UNESCAPED_SLASHES);
+$projectDiscussionLabels = json_encode([
+    'loading' => omoProjectsT('projects.chat.loading'),
+    'empty' => omoProjectsT('projects.chat.empty'),
+    'placeholder' => omoProjectsT('projects.chat.placeholder'),
+    'send' => omoProjectsT('projects.chat.send'),
+    'messageCount' => omoProjectsT('projects.chat.message_count', ['count' => '{count}']),
+    'messagesSinceViewerOne' => omoProjectsT('projects.chat.messages_since_intervention', ['count' => 1]),
+    'messagesSinceViewerOther' => omoProjectsT('projects.chat.messages_since_intervention', ['count' => 2]),
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+$projectDiscussionMessageCountLabel = omoProjectsT('projects.chat.message_count', ['count' => $projectDiscussionMessageCount]);
 
 $organization = $context['organization'];
 $projectDisplayConfig = omoProjectsGetDisplayConfig($organizationId);
@@ -224,6 +252,28 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
         data-omo-subdrawer-title="<?= omoApiEscape((string)$project->get('title')) ?>"
         data-omo-subdrawer-description="<?= omoApiEscape($contextLabel) ?>"
     >
+        <div class="omo-project-discussion-action" data-omo-subdrawer-action data-omo-chat-action-container>
+            <div class="omo-chat-popup-actions">
+                <span class="omo-chat-popup-count" data-omo-chat-message-count-display title="<?= omoApiEscape($projectDiscussionMessageCountLabel) ?>" aria-label="<?= omoApiEscape($projectDiscussionMessageCountLabel) ?>">
+                    <span class="omo-chat-popup-count-value"><?= (int)$projectDiscussionMessageCount ?></span>
+                </span>
+                <button
+                    type="button"
+                    class="generic-action-button generic-action-button--secondary omo-chat-popup-trigger"
+                    data-omo-chat-open
+                    data-omo-chat-endpoint="/omo/api/projects/discussion.php"
+                    data-omo-chat-context="<?= omoApiEscape((string)$projectDiscussionContext) ?>"
+                    data-omo-chat-title="<?= omoApiEscape(omoProjectsT('projects.chat.title')) ?>"
+                    data-omo-chat-point-title="<?= omoApiEscape((string)$project->get('title')) ?>"
+                    data-omo-chat-labels="<?= omoApiEscape((string)$projectDiscussionLabels) ?>"
+                    data-omo-chat-message-count="<?= (int)$projectDiscussionMessageCount ?>"
+                    data-omo-chat-readonly="<?= $isArchivedProject ? '1' : '0' ?>"
+                    title="<?= omoApiEscape(omoProjectsT('projects.chat.open')) ?>"
+                    aria-label="<?= omoApiEscape(omoProjectsT('projects.chat.open')) ?>"
+                ><?= omoApiEscape(omoProjectsT('projects.action.discuss')) ?></button>
+            </div>
+            <span class="omo-project-discussion-action__since" data-omo-chat-messages-since-display<?= $projectDiscussionMessagesSinceIntervention === null || $projectDiscussionMessagesSinceIntervention === 0 ? ' hidden' : '' ?>><?= $projectDiscussionMessagesSinceIntervention === null || $projectDiscussionMessagesSinceIntervention === 0 ? '' : omoApiEscape(omoProjectsT('projects.chat.messages_since_intervention', ['count' => $projectDiscussionMessagesSinceIntervention])) ?></span>
+        </div>
         <?php if ($canEdit): ?>
             <button
                 type="button"

@@ -21,6 +21,8 @@ if (!function_exists('notificationCenterEventCatalog')) {
             'calendar_event_schedule_changed' => 'Modification de l horaire d un evenement',
             'calendar_event_starting' => 'Debut prochain d un evenement',
             'project_proposal_refused' => 'Refus de mes propositions de projet',
+            'project_chat_owner' => 'Nouveau commentaire sur mes projets ou propositions',
+            'project_chat_participant' => 'Nouveau commentaire dans une discussion de projet a laquelle je participe',
         ];
     }
 }
@@ -57,6 +59,8 @@ if (!function_exists('notificationCenterEventGroupCatalog')) {
                 'applicationHash' => 'projects',
                 'eventKeys' => [
                     'project_proposal_refused',
+                    'project_chat_owner',
+                    'project_chat_participant',
                 ],
             ],
         ];
@@ -105,6 +109,13 @@ if (!function_exists('notificationCenterBuildEventUrl')) {
     function notificationCenterBuildEventUrl($organizationId, $eventId)
     {
         return '/omo/o/' . (int)$organizationId . '#calendar-e' . (int)$eventId;
+    }
+}
+
+if (!function_exists('notificationCenterBuildProjectUrl')) {
+    function notificationCenterBuildProjectUrl($organizationId, $projectId)
+    {
+        return '/omo/o/' . (int)$organizationId . '#projects-d' . (int)$projectId;
     }
 }
 
@@ -501,6 +512,74 @@ if (!function_exists('notificationCenterDispatchDecisionChatMessage')) {
             $body,
             $url,
             $dedupeKey,
+            $actorUserId
+        );
+    }
+}
+
+if (!function_exists('notificationCenterDispatchProjectChatMessage')) {
+    function notificationCenterDispatchProjectChatMessage(\dbObject\ChatMessage $message)
+    {
+        $thread = new \dbObject\ChatThread();
+        if (
+            !$thread->load((int)$message->get('IDchat_thread'))
+            || (string)$thread->get('subject_type') !== \dbObject\ChatThread::SUBJECT_PROJECT
+        ) {
+            return;
+        }
+
+        $project = new \dbObject\Project();
+        if (
+            !$project->load((int)$thread->get('subject_id'))
+            || (int)$project->get('IDorganization') !== (int)$thread->get('IDorganization')
+        ) {
+            return;
+        }
+
+        $organizationId = (int)$project->get('IDorganization');
+        $projectId = (int)$project->getId();
+        if ($organizationId <= 0 || $projectId <= 0) {
+            return;
+        }
+
+        $projectTitle = mb_substr(trim((string)$project->get('title')), 0, 120, 'UTF-8');
+        if ($projectTitle === '') {
+            $projectTitle = 'ce projet';
+        }
+        $authorName = mb_substr(trim((string)$message->get('author_name')), 0, 80, 'UTF-8');
+        if ($authorName === '') {
+            $authorName = 'Un membre';
+        }
+        $title = 'Nouveau message - ' . $projectTitle;
+        $body = $authorName . ' a ecrit dans la discussion du projet "' . $projectTitle . '".';
+        $url = notificationCenterBuildProjectUrl($organizationId, $projectId);
+        $messageId = (int)$message->getId();
+        $actorUserId = (int)$message->get('IDuser');
+        $ownerUserIds = [
+            (int)$project->get('IDuser'),
+            (int)$project->get('IDuser_proposed'),
+        ];
+
+        notificationCenterCreateForUsers(
+            $organizationId,
+            'project_chat_owner',
+            $ownerUserIds,
+            'project-chat-owner-' . $messageId,
+            $title,
+            $body,
+            $url,
+            'PROJECT_CHAT_' . $organizationId . '_' . $messageId,
+            $actorUserId
+        );
+        notificationCenterCreateForUsers(
+            $organizationId,
+            'project_chat_participant',
+            \dbObject\ChatMessage::getParticipantUserIdsForThread((int)$thread->getId()),
+            'project-chat-participant-' . $messageId,
+            $title,
+            $body,
+            $url,
+            'PROJECT_CHAT_' . $organizationId . '_' . $messageId,
             $actorUserId
         );
     }

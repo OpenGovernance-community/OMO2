@@ -283,9 +283,9 @@
         if (typeof payload.messageCount === 'undefined' || !root.__omoChatTrigger) return;
         var messageCount = Math.max(0, Number(payload.messageCount) || 0);
         var trigger = root.__omoChatTrigger;
-        var countDisplay = trigger.closest('.omo-chat-popup-actions');
-        if (!countDisplay) return;
-        countDisplay = countDisplay.querySelector('[data-omo-chat-message-count-display]');
+        var actionContainer = trigger.closest('[data-omo-chat-action-container]') || trigger.closest('.omo-chat-popup-actions');
+        if (!actionContainer) return;
+        var countDisplay = actionContainer.querySelector('[data-omo-chat-message-count-display]');
         if (!countDisplay) return;
         var countLabel = String(root.__omoChatLabels.messageCount || '').replace('{count}', String(messageCount));
         trigger.setAttribute('data-omo-chat-message-count', String(messageCount));
@@ -293,6 +293,24 @@
         countDisplay.setAttribute('aria-label', countLabel);
         var countValue = countDisplay.querySelector('.omo-chat-popup-count-value');
         if (countValue) countValue.textContent = String(messageCount);
+
+        if (!Object.prototype.hasOwnProperty.call(payload, 'messagesSinceViewer')) return;
+        var sinceDisplay = actionContainer.querySelector('[data-omo-chat-messages-since-display]');
+        if (!sinceDisplay) return;
+        if (payload.messagesSinceViewer === null || typeof payload.messagesSinceViewer === 'undefined') {
+            sinceDisplay.hidden = true;
+            return;
+        }
+        var messagesSinceViewer = Math.max(0, Number(payload.messagesSinceViewer) || 0);
+        if (messagesSinceViewer === 0) {
+            sinceDisplay.hidden = true;
+            return;
+        }
+        var sinceTemplate = messagesSinceViewer === 1
+            ? String(root.__omoChatLabels.messagesSinceViewerOne || '')
+            : String(root.__omoChatLabels.messagesSinceViewerOther || '');
+        sinceDisplay.textContent = sinceTemplate.replace('{count}', String(messagesSinceViewer));
+        sinceDisplay.hidden = sinceTemplate === '';
     }
 
     function loadDiscussion(root) {
