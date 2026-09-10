@@ -777,7 +777,8 @@ $projectTexts = [
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260908-project-history-project-name">
+<link rel="stylesheet" href="/common/chat/thread.css?v=20260910-project-chat">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260910-project-chat">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
@@ -1228,4 +1229,5 @@ $projectTexts = [
 <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="/common/choice/change-details.js?v=20260816-governance-details"></script>
+<script src="/common/chat/thread.js?v=20260910-project-chat"></script>
 <script src="/omo/api/projects/projects.js?v=20260908-project-history"></script>
