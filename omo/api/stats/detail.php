@@ -23,10 +23,24 @@ $valuesDescending = array_reverse($values);
 $latestValue = count($values) > 0 ? $values[count($values) - 1] : null;
 $latestReferencePercentage = omoStatsGetIndicatorReferencePercentage($indicator, $latestValue, $referencePoints);
 $canEdit = $indicator->canEdit();
-$canEditValues = $canEdit && !$indicator->isEthercalcSource();
+$canEditValues = $canEdit && !$indicator->isEthercalcSource() && !$indicator->isSpreadsheetSource();
 $sourceUrl = StatIndicator::sanitizeSourceUrl($indicator->get('source_url'));
+$sourceDocument = null;
+$sourceDocumentOpenUrl = '';
+if ($indicator->isEthercalcSource() || $indicator->isSpreadsheetSource()) {
+    $sourceDocument = $indicator->isEthercalcSource()
+        ? $indicator->getEthercalcDocument()
+        : $indicator->getSpreadsheetDocument();
+    if ($sourceDocument instanceof \dbObject\Document && $sourceDocument->canViewDirectlyInOrganization($organizationId)) {
+        if ($indicator->isEthercalcSource() && $sourceDocument->isEthercalcDocument()) {
+            $sourceDocumentOpenUrl = $sourceDocument->buildEthercalcOpenUrl();
+        } elseif ($indicator->isSpreadsheetSource()) {
+            $sourceDocumentOpenUrl = $sourceDocument->buildCollaboraOpenUrl();
+        }
+    }
+}
 $contextLabel = omoStatsContextLabel($indicator);
-$measurementFrequency = StatIndicator::normalizeMeasurementFrequency($indicator->get('measurement_frequency'));
+$measurementFrequency = $indicator->getEffectiveMeasurementFrequency();
 $measurementSchedule = omoStatsMeasurementScheduleLabel($measurementFrequency, $indicator->get('measurement_schedule'));
 $chartMinValue = is_numeric($indicator->get('chart_min_value')) ? (float)$indicator->get('chart_min_value') : null;
 $showCumulative = (int)$indicator->get('show_cumulative') > 0;
@@ -111,6 +125,32 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
                         <span class="omo-stats-detail__legend-item omo-stats-detail__legend-item--reference"><?= omoApiEscape(omoStatsT('stats.detail.reference')) ?></span>
                     <?php endif; ?>
                 </div>
+                <?php if ($sourceDocumentOpenUrl !== ''): ?>
+                    <div class="omo-stats-detail__source-document generic-form-actions">
+                        <button
+                            type="button"
+                            class="generic-action-button generic-action-button--secondary"
+                            data-omo-stats-open-source-document
+                        ><?= omoApiEscape(omoStatsT('stats.detail.source_document')) ?></button>
+                        <a
+                            class="generic-action-button generic-action-button--secondary"
+                            href="<?= omoApiEscape($sourceDocumentOpenUrl) ?>"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        ><?= omoApiEscape(omoStatsT('stats.detail.source_document_new_window')) ?></a>
+                        <div class="omo-stats-detail__source-document-frame" data-omo-stats-source-document-frame hidden>
+                            <iframe
+                                title="<?= omoApiEscape(omoStatsT('stats.detail.source_document_title')) ?>"
+                                data-omo-stats-source-document-iframe
+                                data-source-url="<?= omoApiEscape($sourceDocumentOpenUrl) ?>"
+                                loading="lazy"
+                                allow="clipboard-read; clipboard-write; fullscreen"
+                                allowfullscreen
+                                referrerpolicy="same-origin"
+                            ></iframe>
+                        </div>
+                    </div>
+                <?php endif; ?>
             </section>
             <section id="<?= omoApiEscape($tabPrefix) ?>-values" class="generic-tabs__panel" data-generic-tab-panel hidden>
                 <?php if (count($valuesDescending) === 0): ?>
@@ -166,4 +206,25 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         </form>
     <?php endif; ?>
 </article>
+<script>
+    (function () {
+        var detail = document.querySelector('[data-omo-stats-detail][data-indicator-id="<?= (int)$indicatorId ?>"]');
+        if (!(detail instanceof HTMLElement)) {
+            return;
+        }
+        var button = detail.querySelector('[data-omo-stats-open-source-document]');
+        var frameContainer = detail.querySelector('[data-omo-stats-source-document-frame]');
+        var frame = detail.querySelector('[data-omo-stats-source-document-iframe]');
+        if (!(button instanceof HTMLButtonElement) || !(frameContainer instanceof HTMLElement) || !(frame instanceof HTMLIFrameElement)) {
+            return;
+        }
+        button.addEventListener('click', function () {
+            if (!frame.getAttribute('src')) {
+                frame.setAttribute('src', frame.getAttribute('data-source-url') || '');
+            }
+            frameContainer.hidden = false;
+            button.hidden = true;
+        });
+    }());
+</script>
 <script src="/omo/api/stats/chart.js?v=20260807-range-handles"></script>

@@ -20,9 +20,17 @@ class StatIndicator extends DbObject
     const ETHERCALC_FREQUENCY_HOURLY = 'hourly';
     const ETHERCALC_FREQUENCY_DAILY = 'daily';
     const ETHERCALC_FREQUENCY_WEEKLY = 'weekly';
+    const ETHERCALC_FREQUENCY_MONTHLY = 'monthly';
+    const ETHERCALC_FREQUENCY_QUARTERLY = 'quarterly';
+    const ETHERCALC_FREQUENCY_SEMIANNUAL = 'semiannual';
+    const ETHERCALC_FREQUENCY_YEARLY = 'yearly';
     const SPREADSHEET_FREQUENCY_HOURLY = 'hourly';
     const SPREADSHEET_FREQUENCY_DAILY = 'daily';
     const SPREADSHEET_FREQUENCY_WEEKLY = 'weekly';
+    const SPREADSHEET_FREQUENCY_MONTHLY = 'monthly';
+    const SPREADSHEET_FREQUENCY_QUARTERLY = 'quarterly';
+    const SPREADSHEET_FREQUENCY_SEMIANNUAL = 'semiannual';
+    const SPREADSHEET_FREQUENCY_YEARLY = 'yearly';
 
     public static function tableName()
     {
@@ -181,6 +189,10 @@ class StatIndicator extends DbObject
             self::ETHERCALC_FREQUENCY_HOURLY => 'Toutes les heures',
             self::ETHERCALC_FREQUENCY_DAILY => 'Chaque jour',
             self::ETHERCALC_FREQUENCY_WEEKLY => 'Chaque semaine',
+            self::ETHERCALC_FREQUENCY_MONTHLY => 'Chaque mois',
+            self::ETHERCALC_FREQUENCY_QUARTERLY => 'Chaque trimestre',
+            self::ETHERCALC_FREQUENCY_SEMIANNUAL => 'Chaque semestre',
+            self::ETHERCALC_FREQUENCY_YEARLY => 'Chaque annee',
         ];
     }
 
@@ -314,6 +326,11 @@ class StatIndicator extends DbObject
             $this->clearSpreadsheetSourceFields();
         }
 
+        if (in_array($sourceType, [self::SOURCE_ETHERCALC_CELL, self::SOURCE_ETHERCALC_TABLE, self::SOURCE_SPREADSHEET_CELL, self::SOURCE_SPREADSHEET_TABLE], true)) {
+            $this->set('measurement_frequency', null);
+            $this->set('measurement_schedule', null);
+        }
+
         $sourceUrl = trim((string)$this->get('source_url'));
         if ($sourceUrl !== '') {
             $this->set('source_url', self::sanitizeSourceUrl($sourceUrl));
@@ -381,6 +398,17 @@ class StatIndicator extends DbObject
         return in_array(self::normalizeSourceType($this->get('source_type')), [self::SOURCE_SPREADSHEET_CELL, self::SOURCE_SPREADSHEET_TABLE], true);
     }
 
+    public function getEffectiveMeasurementFrequency()
+    {
+        if ($this->isEthercalcSource()) {
+            return self::normalizeMeasurementFrequency($this->get('ethercalc_frequency'));
+        }
+        if ($this->isSpreadsheetSource()) {
+            return self::normalizeMeasurementFrequency($this->get('spreadsheet_frequency'));
+        }
+        return self::normalizeMeasurementFrequency($this->get('measurement_frequency'));
+    }
+
     public function isHiddenFromCatalog()
     {
         $indicatorId = (int)$this->getId();
@@ -434,23 +462,17 @@ class StatIndicator extends DbObject
             return false;
         }
 
-        if ($this->isEthercalcTableSource()) {
-            return true;
-        }
-
         $referenceDate = $referenceDate instanceof \DateTimeInterface ? $referenceDate : new \DateTimeImmutable();
         $lastSyncAt = $this->get('ethercalc_last_sync_at');
         if (!($lastSyncAt instanceof \DateTimeInterface)) {
             return true;
         }
 
-        $intervals = [
-            self::ETHERCALC_FREQUENCY_HOURLY => 3600,
-            self::ETHERCALC_FREQUENCY_DAILY => 86400,
-            self::ETHERCALC_FREQUENCY_WEEKLY => 604800,
-        ];
-        $frequency = self::normalizeEthercalcFrequency($this->get('ethercalc_frequency'));
-        return $referenceDate->getTimestamp() >= $lastSyncAt->getTimestamp() + ($intervals[$frequency] ?? 86400);
+        return self::isSourceSyncDue(
+            $lastSyncAt,
+            self::normalizeEthercalcFrequency($this->get('ethercalc_frequency')),
+            $referenceDate
+        );
     }
 
     public function markEthercalcSynced(\DateTimeInterface $syncedAt)
@@ -471,13 +493,43 @@ class StatIndicator extends DbObject
             return true;
         }
 
-        $intervals = [
-            self::SPREADSHEET_FREQUENCY_HOURLY => 3600,
-            self::SPREADSHEET_FREQUENCY_DAILY => 86400,
-            self::SPREADSHEET_FREQUENCY_WEEKLY => 604800,
-        ];
-        $frequency = self::normalizeSpreadsheetFrequency($this->get('spreadsheet_frequency'));
-        return $referenceDate->getTimestamp() >= $lastSyncAt->getTimestamp() + ($intervals[$frequency] ?? 86400);
+        return self::isSourceSyncDue(
+            $lastSyncAt,
+            self::normalizeSpreadsheetFrequency($this->get('spreadsheet_frequency')),
+            $referenceDate
+        );
+    }
+
+    protected static function isSourceSyncDue(\DateTimeInterface $lastSyncAt, $frequency, \DateTimeInterface $referenceDate)
+    {
+        $frequency = trim((string)$frequency);
+        $nextSyncAt = \DateTimeImmutable::createFromInterface($lastSyncAt);
+        if ($frequency === self::ETHERCALC_FREQUENCY_MONTHLY) {
+            $nextSyncAt = self::addSourceSyncMonths($nextSyncAt, 1);
+        } elseif ($frequency === self::ETHERCALC_FREQUENCY_QUARTERLY) {
+            $nextSyncAt = self::addSourceSyncMonths($nextSyncAt, 3);
+        } elseif ($frequency === self::ETHERCALC_FREQUENCY_SEMIANNUAL) {
+            $nextSyncAt = self::addSourceSyncMonths($nextSyncAt, 6);
+        } elseif ($frequency === self::ETHERCALC_FREQUENCY_YEARLY) {
+            $nextSyncAt = self::addSourceSyncMonths($nextSyncAt, 12);
+        } else {
+            $modifiers = [
+                self::ETHERCALC_FREQUENCY_HOURLY => '+1 hour',
+                self::ETHERCALC_FREQUENCY_DAILY => '+1 day',
+                self::ETHERCALC_FREQUENCY_WEEKLY => '+1 week',
+            ];
+            $nextSyncAt = $nextSyncAt->modify($modifiers[$frequency] ?? '+1 day');
+        }
+        return $referenceDate->getTimestamp() >= $nextSyncAt->getTimestamp();
+    }
+
+    protected static function addSourceSyncMonths(\DateTimeImmutable $date, int $months): \DateTimeImmutable
+    {
+        $monthIndex = ((int)$date->format('Y') * 12) + (int)$date->format('n') - 1 + $months;
+        $year = intdiv($monthIndex, 12);
+        $month = ($monthIndex % 12) + 1;
+        $lastDay = (int)$date->setDate($year, $month, 1)->format('t');
+        return $date->setDate($year, $month, min((int)$date->format('j'), $lastDay));
     }
 
     public function markSpreadsheetSynced(\DateTimeInterface $syncedAt)
@@ -721,6 +773,30 @@ class StatIndicator extends DbObject
         $values = new \dbObject\ArrayStatIndicatorValue();
         $values->loadForIndicator((int)$this->getId());
         return $values;
+    }
+
+    public function hasLatestMeasurementValue($candidateValue): bool
+    {
+        if (!is_numeric($candidateValue)) {
+            return false;
+        }
+
+        $latestMeasurement = null;
+        foreach ($this->getMeasurements() as $measurement) {
+            if ($measurement instanceof \dbObject\StatIndicatorValue) {
+                $latestMeasurement = $measurement;
+            }
+        }
+
+        if (!($latestMeasurement instanceof \dbObject\StatIndicatorValue) || !is_numeric($latestMeasurement->get('value'))) {
+            return false;
+        }
+
+        $candidate = (float)$candidateValue;
+        $latest = (float)$latestMeasurement->get('value');
+        $tolerance = 0.000000001 * max(1.0, abs($candidate), abs($latest));
+
+        return abs($candidate - $latest) <= $tolerance;
     }
 
     public function getReferencePoints()

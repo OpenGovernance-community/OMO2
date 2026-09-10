@@ -188,14 +188,16 @@ if (!function_exists('omoStatsSynchronizeEthercalcIndicator')) {
             if (empty($result['status'])) {
                 return $result;
             }
-            $value = new StatIndicatorValue();
-            $value->set('IDstatindicator', (int)$indicator->getId());
-            $value->set('IDuser', null);
-            $value->set('value', (float)$result['value']);
-            $value->set('measured_at', \DateTime::createFromInterface($referenceDate));
-            $saveResult = $value->save();
-            if (!is_array($saveResult) || empty($saveResult['status'])) {
-                return ['status' => false, 'text' => 'Impossible d enregistrer la valeur EtherCalc.'];
+            if (!$indicator->hasLatestMeasurementValue($result['value'])) {
+                $value = new StatIndicatorValue();
+                $value->set('IDstatindicator', (int)$indicator->getId());
+                $value->set('IDuser', null);
+                $value->set('value', (float)$result['value']);
+                $value->set('measured_at', \DateTime::createFromInterface($referenceDate));
+                $saveResult = $value->save();
+                if (!is_array($saveResult) || empty($saveResult['status'])) {
+                    return ['status' => false, 'text' => 'Impossible d enregistrer la valeur EtherCalc.'];
+                }
             }
         } elseif ($indicator->isEthercalcTableSource()) {
             $result = omoStatsEthercalcReadTable(
