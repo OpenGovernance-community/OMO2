@@ -26,6 +26,11 @@ if (empty($context['status'])) {
     <?php
     exit;
 }
+$context['pvMeetingPermission'] = commonResolvePvMeetingPermissionContext($organizationId);
+$pvMeetingQuery = is_array($context['pvMeetingPermission'])
+    ? '&pv_meeting_document_id=' . (int)$context['pvMeetingPermission']['documentId']
+        . '&pv_meeting_editor_token=' . rawurlencode((string)($_GET['pv_meeting_editor_token'] ?? ''))
+    : '';
 
 $organization = $context['organization'];
 $rootHolon = $context['rootHolon'];
@@ -119,18 +124,22 @@ if ($statsScope !== 'contextual') {
     $currentUrl .= '&stats_scope=' . rawurlencode($statsScope);
 }
 $currentUrl .= '&stats_sort=' . rawurlencode($statsSort);
+$currentUrl .= $pvMeetingQuery;
 $createUrl = '/omo/api/stats/edit.php?oid=' . rawurlencode((string)$organizationId);
 if ($currentHolonId > 0) {
     $createUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
 }
+$createUrl .= $pvMeetingQuery;
 $detailBaseUrl = '/omo/api/stats/detail.php?oid=' . rawurlencode((string)$organizationId);
 if ($currentHolonId > 0) {
     $detailBaseUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
 }
+$detailBaseUrl .= $pvMeetingQuery;
 $groupDetailBaseUrl = '/omo/api/stats/group_detail.php?oid=' . rawurlencode((string)$organizationId);
 if ($currentHolonId > 0) {
     $groupDetailBaseUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
 }
+$groupDetailBaseUrl .= $pvMeetingQuery;
 
 $indicatorViewData = [];
 foreach ($indicatorItems as $indicator) {
@@ -148,6 +157,7 @@ foreach ($indicatorItems as $indicator) {
         'isImported' => isset($importedIndicatorLabels[(int)$indicator->getId()]),
         'importId' => $importedIndicatorIds[(int)$indicator->getId()] ?? 0,
         'canEditImport' => $importedIndicatorEditable[(int)$indicator->getId()] ?? false,
+        'canEdit' => omoStatsCanEditIndicator($indicator, $context),
         'isOverdue' => (bool)$overdueInfo['is_overdue'],
         'overdueSeverity' => (string)$overdueInfo['severity'],
         'overdueDays' => (int)$overdueInfo['overdue_days'],
@@ -461,8 +471,8 @@ $displayItemCount = count($statsEntries);
                                         <span class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape((string)$item['contextLabel']) ?></span>
                                         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape($indicatorName) ?></h3>
                                     </div>
-                                    <span class="omo-stats-card__value-count<?= $indicator->canEdit() ? ' omo-stats-card__value-count--with-menu' : '' ?>"><?= omoApiEscape(omoStatsT('stats.card.value_count', ['count' => count($item['values'])])) ?></span>
-                                    <?php if ($item['isImported'] ? $item['canEditImport'] : $indicator->canEdit()): ?>
+                                    <span class="omo-stats-card__value-count<?= $item['canEdit'] ? ' omo-stats-card__value-count--with-menu' : '' ?>"><?= omoApiEscape(omoStatsT('stats.card.value_count', ['count' => count($item['values'])])) ?></span>
+                                    <?php if ($item['isImported'] ? $item['canEditImport'] : $item['canEdit']): ?>
                                         <div class="omo-stats-item-menu generic-menu" data-omo-stats-item-menu>
                                             <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
                                             <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
@@ -606,7 +616,7 @@ $displayItemCount = count($statsEntries);
                                     role="button"
                                     aria-label="<?= omoApiEscape(omoStatsT('stats.card.open', ['name' => $indicatorName])) ?>"
                                 >
-                                    <?php if ($item['isImported'] ? $item['canEditImport'] : $indicator->canEdit()): ?>
+                                    <?php if ($item['isImported'] ? $item['canEditImport'] : $item['canEdit']): ?>
                                         <div class="omo-stats-item-menu generic-menu" data-omo-stats-item-menu>
                                             <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
                                             <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
@@ -1600,6 +1610,16 @@ $displayItemCount = count($statsEntries);
     }
 
     function postFormData(formData) {
+        try {
+            var meetingUrl = new URL(currentUrl, window.location.origin);
+            var meetingDocumentId = meetingUrl.searchParams.get('pv_meeting_document_id') || '';
+            var meetingEditorToken = meetingUrl.searchParams.get('pv_meeting_editor_token') || '';
+            if (meetingDocumentId !== '' && meetingEditorToken !== '') {
+                formData.set('pv_meeting_document_id', meetingDocumentId);
+                formData.set('pv_meeting_editor_token', meetingEditorToken);
+            }
+        } catch (error) {
+        }
         return fetch(resolveUrl('/omo/api/stats/action.php'), {
             method: 'POST',
             credentials: 'same-origin',

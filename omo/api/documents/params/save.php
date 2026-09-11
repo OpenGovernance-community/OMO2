@@ -63,6 +63,12 @@ try {
         $pdo->beginTransaction();
     }
 
+    $pvResult = omoDocumentsParamsStorePvSettings($organization, $_POST);
+    if (!is_array($pvResult) || empty($pvResult['status'])) {
+        $failureMessage = trim((string)($pvResult['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
+        throw new \RuntimeException('documents_settings_save_failed');
+    }
+
     $collaboraResult = omoDocumentsParamsStoreCollaboraConfig($organization, $_POST);
     if (!is_array($collaboraResult) || empty($collaboraResult['status'])) {
         $failureMessage = trim((string)($collaboraResult['text'] ?? omoDocumentsParamsT('documents.params.error.save_failed')));
@@ -112,5 +118,5 @@ try {
 
 echo json_encode(array(
     'status' => true,
-    'message' => trim((string)($defaultsResult['text'] ?? $collaboraResult['text'] ?? $result['text'] ?? omoDocumentsParamsT('documents.params.feedback.saved'))),
+    'message' => trim((string)($pvResult['text'] ?? $defaultsResult['text'] ?? $collaboraResult['text'] ?? $result['text'] ?? omoDocumentsParamsT('documents.params.feedback.saved'))),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

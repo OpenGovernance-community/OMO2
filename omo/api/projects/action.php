@@ -102,6 +102,7 @@ $context = omoProjectsResolveContext($organizationId, $currentHolonId);
 if (empty($context['status'])) {
     omoProjectsActionRespond(false, (string)$context['message'], [], 403);
 }
+$context['pvMeetingPermission'] = commonResolvePvMeetingPermissionContext($organizationId);
 $action = trim((string)($_POST['project_action'] ?? $_POST['action'] ?? ''));
 $bulkProjectIds = [];
 foreach ((array)($_POST['project_ids'] ?? []) as $bulkProjectId) {
@@ -551,7 +552,7 @@ if (
     omoProjectsActionRespond(false, omoProjectsT('projects.error.holon'), [], 422);
 }
 if ($projectId <= 0) {
-    $canCreateTarget = $targetHolon->isAllowed('CAN_CREATE_PROJECT', false, $currentUserId);
+    $canCreateTarget = omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context);
     $canProposeTarget = !$canCreateTarget && $targetHolon->isAllowed('CAN_PROPOSE_PROJECT', false, $currentUserId);
     if (!$canCreateTarget && !$canProposeTarget) {
         omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
@@ -570,7 +571,8 @@ if ($projectId <= 0) {
 $project->set('IDholon', $targetHolonId);
 $project->set('title', mb_substr($title, 0, 255, 'UTF-8'));
 $project->set('description', PropertyFormat::sanitizeHtml((string)($_POST['description'] ?? '')));
-$project->set('status', Project::normalizeStatus($_POST['status'] ?? Project::STATUS_SOMEDAY));
+$defaultStatus = $projectId <= 0 ? Project::STATUS_IN_PROGRESS : $project->get('status');
+$project->set('status', Project::normalizeStatus($_POST['status'] ?? $defaultStatus));
 $projectStatus = Project::normalizeStatus($project->get('status'));
 omoProjectsApplyBlockedFields($project, $projectStatus, $_POST);
 $project->set('capture_mode', Project::normalizeCaptureMode($_POST['capture_mode'] ?? Project::CAPTURE_MULTIPLE_DOCUMENTS));

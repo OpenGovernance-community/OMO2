@@ -21,6 +21,7 @@ $currentHolon = $context['currentHolon'];
 $rootHolon = $context['rootHolon'];
 $organization = $context['organization'];
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+$pvMeetingQuery = omoActivityPvMeetingQuery($organizationId);
 $openActivityId = isset($_GET['open_activity_id']) && is_numeric($_GET['open_activity_id']) ? (int)$_GET['open_activity_id'] : 0;
 $applicationViewPreferences = omoApplicationViewPreferencesGetContext('activities', $organization, $currentHolon, $currentUserId);
 $scopes = omoApiGetAvailableContextScopes(true, $currentHolon, $rootHolon);
@@ -57,7 +58,8 @@ foreach ($activities as $activity) {
     $occurrenceAt = $state['occurrenceAt'] ?? null;
     $stateKey = (string)($state['state'] ?? 'upcoming');
     $detailUrl = '/omo/api/activities/detail.php?oid=' . $organizationId . '&id=' . (int)$activity->getId()
-        . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '');
+        . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '')
+        . $pvMeetingQuery;
 
     $groups[$frequency][] = [
         'activity' => $activity,
@@ -92,10 +94,10 @@ foreach ($groups as &$groupRows) {
 unset($groupRows);
 
 $baseUrl = '/omo/api/activities/index.php?oid=' . $organizationId
-    . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '');
+    . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . $pvMeetingQuery;
 $currentUrl = $baseUrl . ($scope !== 'contextual' ? '&activity_scope=' . rawurlencode($scope) : '');
 $createUrl = '/omo/api/activities/edit.php?oid=' . $organizationId
-    . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '');
+    . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . $pvMeetingQuery;
 $canCreate = omoActivityCanUsePermission($currentHolon, 'CAN_CREATE_CONTROL_ACTIVITY');
 $stateFilters = ['all', 'attention', 'missed', 'checked', 'upcoming'];
 $texts = [

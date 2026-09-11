@@ -18,6 +18,7 @@ if (!($group instanceof StatIndicatorGroup)) {
 }
 
 $context = omoStatsResolveContext($organizationId, $currentHolonId);
+$context['pvMeetingPermission'] = commonResolvePvMeetingPermissionContext($organizationId);
 $canEdit = !empty($context['status']) && omoStatsCanEditContextResource($group, $context);
 $groupItems = omoStatsCollectionItems($group->getItems(), StatIndicatorGroupItem::class);
 $indicatorIds = [];

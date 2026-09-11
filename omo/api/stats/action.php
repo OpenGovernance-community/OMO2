@@ -276,6 +276,7 @@ $context = omoStatsResolveContext($organizationId, $currentHolonId);
 if (empty($context['status'])) {
     omoStatsActionRespond(false, (string)($context['message'] ?? omoStatsT('stats.error.context')), [], 403);
 }
+$context['pvMeetingPermission'] = commonResolvePvMeetingPermissionContext($organizationId);
 
 $action = trim((string)($_POST['stats_action'] ?? $_POST['action'] ?? ''));
 
@@ -286,7 +287,7 @@ if ($action === 'save_indicator') {
     if ($indicatorId > 0 && !($indicator instanceof StatIndicator)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.not_found'), [], 404);
     }
-    if ($indicatorId > 0 && !$indicator->canEdit()) {
+    if ($indicatorId > 0 && !omoStatsCanEditIndicator($indicator, $context)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
     if ($indicatorId <= 0 && !omoStatsCanCreateContext($context)) {
@@ -673,7 +674,7 @@ if ($action === 'add_value') {
     if (!($indicator instanceof StatIndicator)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.not_found'), [], 404);
     }
-    if (!$indicator->canEdit()) {
+    if (!omoStatsCanEditIndicator($indicator, $context)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
     if ($indicator->isEthercalcSource()) {
@@ -721,7 +722,7 @@ if ($action === 'delete_value') {
     ) {
         omoStatsActionRespond(false, omoStatsT('stats.error.not_found'), [], 404);
     }
-    if (!$indicator->canEdit()) {
+    if (!omoStatsCanEditIndicator($indicator, $context)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
     if ($indicator->isEthercalcSource()) {
@@ -744,7 +745,7 @@ if ($action === 'delete_indicator') {
     if (!($indicator instanceof StatIndicator)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.not_found'), [], 404);
     }
-    if (!$indicator->canEdit()) {
+    if (!omoStatsCanEditIndicator($indicator, $context)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
     $indicator->set('active', 0);

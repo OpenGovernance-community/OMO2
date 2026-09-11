@@ -2,8 +2,17 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-11
+
+- Les points a l ordre du jour des PV ont maintenant une priorite P1 a P5. La couleur est visible dans la liste de gauche et le cercle du point permet de la modifier directement.
+- Dans l ordre du jour du PV, la barre de priorite est plus large pour les points crees avant le debut de l evenement; les points ajoutes pendant la reunion gardent la barre fine.
+- Les parametres Documents permettent maintenant d activer ou retirer le format PV. Un bloc visible dans le meme ecran permet de renommer les libelles P1 a P5 pour chaque organisation.
+- Les nouveaux projets demarrent desormais en cours a la date du jour; le changement de statut reste un choix explicite. Lorsqu un projet est cree depuis un point de PV, il reprend aussi sa priorite.
+
 ## 2026-09-10
 
+- Dans l editeur de PV, selectionner du texte puis utiliser Projet ouvre directement la creation d un projet avec ce texte comme titre, la personne du point comme responsable et son role concerne comme contexte. Le texte reste en place en cas d annulation et nest remplace qu apres insertion du projet, meme lorsque le contenu etait encore du texte sans paragraphe.
+- Pendant l etape Reunion d un PV, son editeur peut utiliser les droits Collectif de ses propres roles et cercles dans les onglets Projets, Activites et Indicateurs. Ces droits respectent leurs portees, s ajoutent aux droits personnels habituels et cessent immediatement lors dune passation, dun changement detape ou sans le jeton de lediteur.
 - Les dossiers distants des Documents fonctionnent aussi avec le kDrive configure dans l organisation. Ils se parcourent et se rafraichissent comme les dossiers NextCloud, leurs fichiers gardent les droits du dossier et peuvent etre previsualises, telecharges ou ouverts dans Collabora selon leur format.
 - Les dossiers associes a un projet, y compris les dossiers NextCloud, se deplient directement dans la liste avec un retrait. Leurs sous-dossiers restent eux aussi deployables, tandis que les fichiers conservant une fiche ouvrent leur detail habituel.
 - Les menus des documents associes a un projet passent maintenant au-dessus des lignes suivantes lorsqu ils sont ouverts.

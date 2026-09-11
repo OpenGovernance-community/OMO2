@@ -24,7 +24,8 @@ $frequency = RecurrenceSchedule::normalizeFrequency($activity->get('frequency'))
 $options = omoActivityScheduleOptions();
 $schedule = RecurrenceSchedule::normalizeSchedule($frequency, $activity->get('schedule'))
     ?: (string)($options[$frequency][0]['value'] ?? '1');
-$suffix = $currentHolonId > 0 ? '&cid=' . $currentHolonId : '';
+$pvMeetingQuery = omoActivityPvMeetingQuery($organizationId);
+$suffix = ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . $pvMeetingQuery;
 $backUrl = $activityId > 0
     ? '/omo/api/activities/detail.php?oid=' . $organizationId . '&id=' . $activityId . $suffix
     : '';
@@ -53,6 +54,10 @@ $drawerTitle = omoActivityT($activityId > 0 ? 'activity.editor.edit_title' : 'ac
         <input type="hidden" name="activity_action" value="save_activity">
         <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
         <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
+        <?php if ($pvMeetingQuery !== ''): ?>
+            <input type="hidden" name="pv_meeting_document_id" value="<?= (int)($_GET['pv_meeting_document_id'] ?? 0) ?>">
+            <input type="hidden" name="pv_meeting_editor_token" value="<?= omoApiEscape((string)($_GET['pv_meeting_editor_token'] ?? '')) ?>">
+        <?php endif; ?>
         <?php if ($activityId > 0): ?><input type="hidden" name="id" value="<?= (int)$activityId ?>"><?php endif; ?>
 
         <section class="generic-section generic-section--stack generic-form-section">

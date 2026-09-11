@@ -19,7 +19,7 @@ class DocumentPvPoint extends DbObject
     {
         return [
             [['IDdocument', 'title', 'pointtype'], 'required'],
-            [['id', 'position', 'desired_duration_minutes', 'actual_duration_minutes'], 'integer'],
+            [['id', 'position', 'priority', 'desired_duration_minutes', 'actual_duration_minutes'], 'integer'],
             [['IDdocument', 'IDparent', 'IDuser_author', 'IDholon_concerned', 'IDuser_modification', 'IDuser_editing'], 'fk'],
             [['title', 'item_type', 'author_email', 'pointtype', 'edit_lock_token'], 'string'],
             [['content'], 'html'],
@@ -42,6 +42,7 @@ class DocumentPvPoint extends DbObject
             'IDholon_concerned' => 'Holon concerne',
             'content' => 'Texte HTML',
             'position' => 'Ordre',
+            'priority' => 'Priorite',
             'desired_duration_minutes' => 'Duree souhaitee',
             'actual_duration_minutes' => 'Duree reelle',
             'pointtype' => 'Type',
@@ -68,6 +69,7 @@ class DocumentPvPoint extends DbObject
             'IDholon_concerned' => 'Holon principal directement concerne par ce point.',
             'content' => 'Contenu HTML formate du point.',
             'position' => 'Ordre d affichage dans le PV.',
+            'priority' => 'Priorite du point, de P1 (la plus haute) a P5.',
             'desired_duration_minutes' => 'Duree visee en minutes.',
             'actual_duration_minutes' => 'Duree observee en minutes.',
             'pointtype' => 'Nature du point: information, normal, consultation ou decision.',
@@ -90,9 +92,27 @@ class DocumentPvPoint extends DbObject
         ];
     }
 
+    public static function attributeValues()
+    {
+        $priorityValues = [];
+        for ($level = 1; $level <= 5; $level++) {
+            $priorityValues[] = [(string)$level, 'P' . (string)$level];
+        }
+
+        return [
+            'priority' => $priorityValues,
+        ];
+    }
+
     public static function getOrder()
     {
         return 'position ASC, id ASC';
+    }
+
+    public static function normalizePriority($value): int
+    {
+        $value = (int)$value;
+        return $value >= 1 && $value <= 5 ? $value : 3;
     }
 
     public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
@@ -1096,6 +1116,7 @@ class DocumentPvPoint extends DbObject
             'item_type' => self::normalizeItemType($this->get('item_type')),
             'parent_id' => (int)$this->get('IDparent'),
             'position' => $position,
+            'priority' => self::normalizePriority($this->get('priority')),
             'title' => trim((string)$this->get('title')),
             'author_user_id' => (int)$this->get('IDuser_author'),
             'author_email' => trim((string)$this->get('author_email')),
@@ -1116,6 +1137,7 @@ class DocumentPvPoint extends DbObject
             'isGroup' => $this->isGroup(),
             'parentId' => (int)$this->get('IDparent'),
             'position' => $position,
+            'priority' => self::normalizePriority($this->get('priority')),
             'positionLabel' => $position > 0 ? str_pad((string)$position, 2, '0', STR_PAD_LEFT) : '--',
             'title' => trim((string)$this->get('title')),
             'pointType' => self::normalizePointType($this->get('pointtype')),
@@ -1186,6 +1208,7 @@ class DocumentPvPoint extends DbObject
         $position = (int)$this->get('position');
         $desiredDuration = $this->getDurationMinutesValue('desired_duration_minutes');
         $actualDuration = $this->getDurationMinutesValue('actual_duration_minutes');
+        $priority = self::normalizePriority($this->get('priority'));
 
         $this->set('title', $title);
         $this->set('item_type', self::normalizeItemType($this->get('item_type')));
@@ -1193,6 +1216,7 @@ class DocumentPvPoint extends DbObject
         $this->set('pointtype', self::normalizePointType($this->get('pointtype')));
         $this->set('desired_duration_minutes', $desiredDuration);
         $this->set('actual_duration_minutes', $actualDuration);
+        $this->set('priority', $priority);
         $this->set('is_handled', $this->isHandled());
         $this->set('is_confidential', $this->isConfidential());
 
@@ -1239,6 +1263,7 @@ class DocumentPvPoint extends DbObject
             $this->set('content', '');
             $this->set('desired_duration_minutes', null);
             $this->set('actual_duration_minutes', null);
+            $this->set('priority', null);
             $this->set('pointtype', self::TYPE_INFORMATION);
             $this->set('is_handled', false);
             $this->set('is_confidential', false);
@@ -1334,6 +1359,7 @@ class DocumentPvPoint extends DbObject
             'item_type' => self::normalizeItemType($this->get('item_type')),
             'parent_id' => (int)$this->get('IDparent'),
             'position' => (int)$this->get('position'),
+            'priority' => self::normalizePriority($this->get('priority')),
             'title' => trim((string)$this->get('title')),
             'point_type' => self::normalizePointType($this->get('pointtype')),
             'content' => (string)$this->get('content'),

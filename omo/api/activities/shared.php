@@ -1,4 +1,6 @@
 <?php
+require_once dirname(__DIR__, 3) . '/common/pv_meeting_permissions.php';
+
 use dbObject\ControlActivity;
 use dbObject\Holon;
 use dbObject\Organization;
@@ -137,7 +139,27 @@ function omoActivityResolveContext($organizationId, $currentHolonId = 0)
 function omoActivityCanUsePermission(Holon $holon, $permissionKey)
 {
     $userId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
-    return $userId > 0 && $holon->isAllowed((string)$permissionKey, strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST', $userId);
+    if ($userId <= 0) {
+        return false;
+    }
+
+    return $holon->isAllowed((string)$permissionKey, strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST', $userId)
+        || commonPvMeetingCanUseCollectivePermission(
+            commonResolvePvMeetingPermissionContext(commonResolveHolonOrganizationId($holon)),
+            $holon,
+            (string)$permissionKey
+        );
+}
+
+function omoActivityPvMeetingQuery(int $organizationId): string
+{
+    $meetingContext = commonResolvePvMeetingPermissionContext($organizationId);
+    $documentId = is_array($meetingContext) ? (int)($meetingContext['documentId'] ?? 0) : 0;
+    $request = $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : $_GET;
+    $editorToken = trim((string)($request['pv_meeting_editor_token'] ?? $request['editor_token'] ?? ''));
+    return $documentId > 0 && $editorToken !== ''
+        ? '&pv_meeting_document_id=' . $documentId . '&pv_meeting_editor_token=' . rawurlencode($editorToken)
+        : '';
 }
 
 function omoActivityCanView(ControlActivity $activity)

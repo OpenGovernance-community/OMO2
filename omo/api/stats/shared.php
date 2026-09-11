@@ -1,5 +1,7 @@
 <?php
 
+require_once dirname(__DIR__, 3) . '/common/pv_meeting_permissions.php';
+
 use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\ArrayDocument;
@@ -587,11 +589,39 @@ if (!function_exists('omoStatsCanManageContext')) {
 
         $currentHolon = $context['currentHolon'] ?? null;
         if ($currentHolon instanceof Holon) {
-            return $currentHolon->canEdit();
+            return $currentHolon->canEdit()
+                || omoStatsCanUsePermission($currentHolon, 'CAN_CREATE_INDICATOR', $context);
         }
 
         $organization = $context['organization'] ?? null;
         return $organization instanceof Organization && $organization->canEdit();
+    }
+}
+
+if (!function_exists('omoStatsCanUsePermission')) {
+    function omoStatsCanUsePermission(Holon $holon, string $permissionKey, array $context): bool
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+        return $holon->isAllowed($permissionKey, $useSessionCache, $currentUserId)
+            || commonPvMeetingCanUseCollectivePermission($context['pvMeetingPermission'] ?? null, $holon, $permissionKey);
+    }
+}
+
+if (!function_exists('omoStatsCanEditIndicator')) {
+    function omoStatsCanEditIndicator(StatIndicator $indicator, array $context): bool
+    {
+        if ($indicator->canEdit()) {
+            return true;
+        }
+
+        $holon = $indicator->getHolon();
+        return $holon instanceof Holon
+            && omoStatsCanUsePermission($holon, 'CAN_CREATE_INDICATOR', $context);
     }
 }
 
@@ -603,15 +633,14 @@ if (!function_exists('omoStatsCanCreateContext')) {
             return false;
         }
 
-        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
         $currentHolon = $context['currentHolon'] ?? null;
         if ($currentHolon instanceof Holon) {
-            return $currentHolon->isAllowed('CAN_CREATE_INDICATOR', $useSessionCache, $currentUserId);
+            return omoStatsCanUsePermission($currentHolon, 'CAN_CREATE_INDICATOR', $context);
         }
 
         $rootHolon = $context['rootHolon'] ?? null;
         if ($rootHolon instanceof Holon) {
-            return $rootHolon->isAllowed('CAN_CREATE_INDICATOR', $useSessionCache, $currentUserId);
+            return omoStatsCanUsePermission($rootHolon, 'CAN_CREATE_INDICATOR', $context);
         }
 
         $organization = $context['organization'] ?? null;
