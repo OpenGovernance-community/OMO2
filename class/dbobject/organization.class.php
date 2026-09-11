@@ -417,6 +417,47 @@
 			return $link ? $link->getParametersArray() : array();
 		}
 
+		public static function normalizePvPriorityLabels(array $labels): array
+		{
+			$normalized = array();
+			for ($priority = 1; $priority <= 5; $priority++) {
+				$label = trim((string)($labels[$priority] ?? $labels[(string)$priority] ?? ''));
+				$label = preg_replace('/\s+/u', ' ', $label) ?? '';
+				$normalized[$priority] = $label !== ''
+					? mb_substr($label, 0, 60, 'UTF-8')
+					: 'P' . $priority;
+			}
+
+			return $normalized;
+		}
+
+		public function getPvDocumentSettings(): array
+		{
+			$parameters = $this->getApplicationParametersByDirectory('documents');
+			$pvSettings = isset($parameters['pv']) && is_array($parameters['pv'])
+				? $parameters['pv']
+				: array();
+
+			return array(
+				'enabled' => !array_key_exists('enabled', $pvSettings) || !empty($pvSettings['enabled']),
+				'priorityLabels' => self::normalizePvPriorityLabels(
+					isset($pvSettings['priorityLabels']) && is_array($pvSettings['priorityLabels'])
+						? $pvSettings['priorityLabels']
+						: array()
+				),
+			);
+		}
+
+		public function isPvDocumentEnabled(): bool
+		{
+			return !empty($this->getPvDocumentSettings()['enabled']);
+		}
+
+		public function getPvPriorityLabels(): array
+		{
+			return $this->getPvDocumentSettings()['priorityLabels'];
+		}
+
 		public function getNextcloudDocumentsConfig(): array
 		{
 			require_once dirname(__DIR__, 2) . '/omo/api/documents/params/shared.php';

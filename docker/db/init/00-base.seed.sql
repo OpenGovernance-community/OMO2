@@ -1194,6 +1194,7 @@ CREATE TABLE `document_pv_point` (
   `IDholon_concerned` int(11) DEFAULT NULL,
   `content` mediumtext DEFAULT NULL,
   `position` int(11) NOT NULL DEFAULT 1,
+  `priority` tinyint(3) unsigned DEFAULT 3,
   `desired_duration_minutes` int(11) DEFAULT NULL,
   `actual_duration_minutes` int(11) DEFAULT NULL,
   `pointtype` varchar(20) NOT NULL DEFAULT 'information',

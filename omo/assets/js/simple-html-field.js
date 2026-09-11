@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260904-highlight-clear';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260911-project-selection-embed';
 
     if (
         window.omoSimpleHtmlField
@@ -1472,9 +1472,21 @@
                 return false;
             }
 
-            const markerParagraph = markerNode.parentElement
+            let markerParagraph = markerNode.parentElement
                 ? markerNode.parentElement.closest('p')
                 : null;
+            if (!(markerParagraph instanceof HTMLParagraphElement) && markerNode.parentNode === editable) {
+                markerParagraph = document.createElement('p');
+                editable.insertBefore(markerParagraph, markerNode);
+                markerParagraph.appendChild(markerNode);
+
+                while (markerParagraph.previousSibling instanceof Text) {
+                    markerParagraph.insertBefore(markerParagraph.previousSibling, markerParagraph.firstChild);
+                }
+                while (markerParagraph.nextSibling instanceof Text) {
+                    markerParagraph.appendChild(markerParagraph.nextSibling);
+                }
+            }
             const embedParagraph = document.createElement('p');
             embedParagraph.appendChild(embedNode);
             if (markerParagraph instanceof HTMLParagraphElement && editable.contains(markerParagraph)) {
@@ -1867,11 +1879,13 @@
             return markerNode;
         }
 
-        function createTemporaryCursorMarker() {
+        function createTemporaryCursorMarker(options) {
             const editable = getEditableElement();
             if (!editable) {
                 return null;
             }
+
+            const preserveSelection = !!(options && options.preserveSelection === true);
 
             restoreRange();
             let range = getSelectionRange();
@@ -1884,10 +1898,23 @@
             }
 
             const markerNode = buildCursorMarkerNode();
+            const preservesSelectedContent = preserveSelection && !range.collapsed;
 
             try {
-                range.deleteContents();
-                range.insertNode(markerNode);
+                if (preservesSelectedContent) {
+                    const endMarkerNode = buildCursorMarkerNode();
+                    const endRange = cloneRange(range) || range;
+                    endRange.collapse(false);
+                    endRange.insertNode(endMarkerNode);
+
+                    const startRange = cloneRange(range) || range;
+                    startRange.collapse(true);
+                    startRange.insertNode(markerNode);
+                    markerNode.__omoSelectionEndMarker = endMarkerNode;
+                } else {
+                    range.deleteContents();
+                    range.insertNode(markerNode);
+                }
             } catch (error) {
                 editable.appendChild(markerNode);
             }
@@ -1912,6 +1939,22 @@
             if (!editable || !markerNode || !editable.contains(markerNode)) {
                 return insertHtmlAtCursor(safeHtml);
             }
+
+            const selectionEndMarker = markerNode.__omoSelectionEndMarker;
+            if (selectionEndMarker && editable.contains(selectionEndMarker)) {
+                try {
+                    const selectedRange = document.createRange();
+                    selectedRange.setStartAfter(markerNode);
+                    selectedRange.setEndBefore(selectionEndMarker);
+                    selectedRange.deleteContents();
+                } catch (error) {
+                    // Fall back to inserting at the marker if the preserved range is no longer valid.
+                }
+                if (editable.contains(selectionEndMarker)) {
+                    selectionEndMarker.remove();
+                }
+            }
+            delete markerNode.__omoSelectionEndMarker;
 
             const resourceEmbed = getSingleResourceEmbedFromHtml(safeHtml);
             if (resourceEmbed && insertResourceEmbedAtMarker(markerNode, resourceEmbed)) {
@@ -1971,6 +2014,12 @@
             if (!editable || !markerNode || !editable.contains(markerNode)) {
                 return false;
             }
+
+            const selectionEndMarker = markerNode.__omoSelectionEndMarker;
+            if (selectionEndMarker && editable.contains(selectionEndMarker)) {
+                selectionEndMarker.remove();
+            }
+            delete markerNode.__omoSelectionEndMarker;
 
             if (window.getSelection) {
                 const selection = window.getSelection();

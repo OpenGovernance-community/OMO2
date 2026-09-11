@@ -198,6 +198,7 @@ $pvTemplatesPayload = array();
 $organization = new Organization();
 $organizationLoaded = $organizationId > 0 && $organization->load($organizationId);
 $nextcloudDocumentsAvailable = $organizationLoaded && $organization->hasDocumentStorage();
+$pvDocumentsEnabled = $organizationLoaded && $organization->isPvDocumentEnabled();
 $nextcloudFoldersAvailable = $organizationLoaded && $organization->hasDocumentStorage();
 $remoteFolderTypeLabel = $organizationLoaded && $organization->isKdriveDocumentStorage()
 	? omoDocumentsCreateT('documents.create.type.kdrive_folder')
@@ -222,7 +223,7 @@ $collaboraGroupAvailable = $collaboraDocumentsAvailable
     || in_array($documentType, [Document::TYPE_COLLABORA_DOCUMENT, Document::TYPE_COLLABORA_SPREADSHEET, Document::TYPE_COLLABORA_PRESENTATION, Document::TYPE_COLLABORA_DRAWING], true);
 $whiteboardGroupAvailable = $whiteboardDocumentsAvailable || $documentType === Document::TYPE_WHITEBOARD;
 
-if (!$isEditing && $organizationLoaded) {
+if (!$isEditing && $organizationLoaded && $pvDocumentsEnabled) {
     $pvTemplates = new \dbObject\ArrayDocument();
     $pvTemplates->loadVisiblePvTemplatesForOrganization($organizationId);
     foreach ($pvTemplates as $pvTemplate) {
@@ -452,7 +453,9 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                                 <option value="<?= $escape(Document::TYPE_UPLOADED_FILE) ?>" <?= $documentType === Document::TYPE_UPLOADED_FILE ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.uploaded')) ?></option>
                             <?php endif; ?>
                             <option value="<?= $escape(Document::TYPE_HTML) ?>" <?= $documentType === Document::TYPE_HTML ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.html')) ?></option>
-                            <option value="<?= $escape(Document::TYPE_PV) ?>" <?= $documentType === Document::TYPE_PV ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.pv')) ?></option>
+                            <?php if ($pvDocumentsEnabled): ?>
+                                <option value="<?= $escape(Document::TYPE_PV) ?>" <?= $documentType === Document::TYPE_PV ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.pv')) ?></option>
+                            <?php endif; ?>
                             <option disabled aria-hidden="true">--------------------</option>
                             <?php if ($etherpadDocumentsAvailable || $documentType === Document::TYPE_ETHERPAD): ?>
                                 <option value="<?= $escape(Document::TYPE_ETHERPAD) ?>" <?= $documentType === Document::TYPE_ETHERPAD ? ' selected' : '' ?>><?= $escape(omoDocumentsCreateT('documents.create.type.etherpad')) ?></option>
@@ -2209,7 +2212,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             return;
         }
 
-        const htmlFieldVersion = '20260904-highlight-clear';
+        const htmlFieldVersion = '20260911-project-selection-embed';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'

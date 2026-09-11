@@ -3,6 +3,7 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 require_once __DIR__ . '/helpers.php';
 require_once dirname(__DIR__, 2) . '/stats/shared.php';
 require_once dirname(__DIR__, 4) . '/common/notification_center.php';
+require_once dirname(__DIR__, 4) . '/common/pv_meeting_permissions.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -112,7 +113,10 @@ function omoDocumentsPvEditorBuildLockPayload(array $lockResult, string $lockTok
 
 function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint $point, int $organizationId, int $currentUserId, ?\dbObject\DocumentShareLink $publicParticipationLink = null): array
 {
-    $uiText = omoDocumentsPvEditorBuildUiText('omoDocumentsPvEditorActionT');
+    $uiText = omoDocumentsPvEditorBuildUiText(
+        'omoDocumentsPvEditorActionT',
+        omoDocumentsPvEditorGetOrganizationPriorityLabels($organizationId)
+    );
     $lockToken = trim((string)($_POST['editor_token'] ?? ''));
     $document = new \dbObject\Document();
     $isPublicParticipation = $publicParticipationLink instanceof \dbObject\DocumentShareLink;
@@ -159,7 +163,10 @@ function omoDocumentsPvEditorBuildPointResponsePayload(\dbObject\DocumentPvPoint
 
 function omoDocumentsPvEditorBuildPointsPayloadForDocument(int $documentId, int $organizationId, int $currentUserId, string $lockToken = '', ?\dbObject\DocumentShareLink $publicParticipationLink = null): array
 {
-    $uiText = omoDocumentsPvEditorBuildUiText('omoDocumentsPvEditorActionT');
+    $uiText = omoDocumentsPvEditorBuildUiText(
+        'omoDocumentsPvEditorActionT',
+        omoDocumentsPvEditorGetOrganizationPriorityLabels($organizationId)
+    );
     $document = new \dbObject\Document();
     $hasDocument = $document->load($documentId);
     $points = $hasDocument
@@ -770,7 +777,14 @@ if ($action === 'add_indicator_value') {
     }
 
     $isPvEditor = $document->isPvEditor($currentUserId);
-    if (!$indicator->canEdit() && !$isPvEditor) {
+    $indicatorHolon = $indicator->getHolon();
+    $canUseCollectiveIndicatorPermission = $indicatorHolon instanceof \dbObject\Holon
+        && commonPvMeetingCanUseCollectivePermission(
+            commonResolvePvMeetingPermissionContext($organizationId),
+            $indicatorHolon,
+            'CAN_CREATE_INDICATOR'
+        );
+    if (!$indicator->canEdit() && !$canUseCollectiveIndicatorPermission) {
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
             'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
@@ -1097,6 +1111,7 @@ if ($action === 'save_point') {
         'desired_duration_minutes',
         $isReview ? $point->get('desired_duration_minutes') : trim((string)($_POST['desired_duration_minutes'] ?? ''))
     );
+    $point->set('priority', \dbObject\DocumentPvPoint::normalizePriority($_POST['priority'] ?? null));
     $point->set('IDuser_author', $requestedAuthorUserId > 0 ? $requestedAuthorUserId : null);
     $point->set('author_email', $requestedAuthorEmail !== '' ? $requestedAuthorEmail : null);
     $point->set('IDholon_concerned', $requestedConcernedHolonId > 0 ? $requestedConcernedHolonId : null);

@@ -31,6 +31,13 @@ $collaboraConfig = $organizationLoaded
     ? omoDocumentsParamsGetCollaboraConfig($organization, $organizationApplication)
     : omoCollaboraNormalizeConfig(array());
 $collaboraConfigured = $organizationLoaded && $storageConfigured && omoDocumentsParamsHasCollaboraConfig($collaboraConfig);
+$pvSettings = $organizationLoaded
+    ? $organization->getPvDocumentSettings()
+    : array('enabled' => true, 'priorityLabels' => \dbObject\Organization::normalizePvPriorityLabels(array()));
+$pvEnabled = !empty($pvSettings['enabled']);
+$pvPriorityLabels = is_array($pvSettings['priorityLabels'] ?? null)
+    ? $pvSettings['priorityLabels']
+    : \dbObject\Organization::normalizePvPriorityLabels(array());
 $usesLegacyConfig = $organizationLoaded
     ? omoDocumentsParamsUsesLegacyNextcloudConfig($organization, $organizationApplication)
     : false;
@@ -222,6 +229,38 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
                             </button>
                             <span class="omo-documents-params__test-feedback generic-help-text" data-omo-documents-storage-test-feedback aria-live="polite"></span>
                         </div>
+                    </div>
+
+                    <h3 class="generic-card-title generic-card-title--small generic-form-field--full">
+                        <?= htmlspecialchars(omoDocumentsParamsT('documents.params.section.pv'), ENT_QUOTES, 'UTF-8') ?>
+                    </h3>
+
+                    <label class="omo-documents-params__checkbox generic-checkbox omo-documents-params__field--full generic-form-field--full">
+                        <input
+                            type="checkbox"
+                            name="pv_enabled"
+                            value="1"
+                            data-omo-documents-pv-toggle
+                            <?= $pvEnabled ? ' checked' : '' ?>
+                        >
+                        <span><?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.pv_enabled'), ENT_QUOTES, 'UTF-8') ?></span>
+                    </label>
+                    <p class="omo-documents-params__hint generic-help-text generic-form-field--full">
+                        <?= htmlspecialchars(omoDocumentsParamsT('documents.params.field.pv_enabled_hint'), ENT_QUOTES, 'UTF-8') ?>
+                    </p>
+                    <div class="omo-documents-params__pv-fields generic-soft-panel generic-form-grid generic-form-field--full" data-omo-documents-pv-fields<?= $pvEnabled ? '' : ' hidden' ?>>
+                        <h4 class="generic-card-title generic-card-title--small generic-form-field--full">
+                            <?= htmlspecialchars(omoDocumentsParamsT('documents.params.pv.priority_labels'), ENT_QUOTES, 'UTF-8') ?>
+                        </h4>
+                        <?php for ($priority = 1; $priority <= 5; $priority++): ?>
+                            <label class="omo-documents-params__field generic-form-field">
+                                <span class="generic-form-label"><?= htmlspecialchars(omoDocumentsParamsT('documents.params.pv.priority_label', array('priority' => 'P' . $priority)), ENT_QUOTES, 'UTF-8') ?></span>
+                                <input type="text" name="pv_priority_label_<?= $priority ?>" class="generic-form-control" maxlength="60" value="<?= htmlspecialchars((string)($pvPriorityLabels[$priority] ?? 'P' . $priority), ENT_QUOTES, 'UTF-8') ?>">
+                            </label>
+                        <?php endfor; ?>
+                        <p class="omo-documents-params__hint generic-help-text generic-form-field--full">
+                            <?= htmlspecialchars(omoDocumentsParamsT('documents.params.pv.priority_hint'), ENT_QUOTES, 'UTF-8') ?>
+                        </p>
                     </div>
 
                     <h3 class="generic-card-title generic-card-title--small generic-form-field--full">
@@ -440,6 +479,8 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
         var kdriveTestFeedback = root.querySelector('[data-omo-documents-storage-test-feedback]');
         var collaboraToggle = root.querySelector('[data-omo-documents-collabora-toggle]');
         var collaboraFields = root.querySelector('[data-omo-documents-collabora-fields]');
+        var pvToggle = root.querySelector('[data-omo-documents-pv-toggle]');
+        var pvFields = root.querySelector('[data-omo-documents-pv-fields]');
         var idleLabel = <?= json_encode(omoDocumentsParamsT('documents.params.action.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var busyLabel = <?= json_encode(omoDocumentsParamsT('documents.params.action.saving'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var storageTestLabel = <?= json_encode(omoDocumentsParamsT('documents.params.action.test_storage'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -493,6 +534,17 @@ $iconUrl = $applicationIcon !== '' ? $applicationIcon : 'images/tools/documents-
         if (collaboraToggle) {
             collaboraToggle.addEventListener('change', syncCollaboraFields);
             syncCollaboraFields();
+        }
+
+        function syncPvFields() {
+            if (pvFields && pvToggle) {
+                pvFields.hidden = !pvToggle.checked;
+            }
+        }
+
+        if (pvToggle) {
+            pvToggle.addEventListener('change', syncPvFields);
+            syncPvFields();
         }
 
         function testStorage(button, testFeedback) {

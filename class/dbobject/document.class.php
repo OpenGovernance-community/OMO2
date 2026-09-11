@@ -5305,6 +5305,17 @@
 					);
 				}
 
+				if ($documentType === self::TYPE_PV && !$organization->isPvDocumentEnabled()) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+
+					return array(
+						'status' => false,
+						'text' => 'Le format PV n est pas active pour cette organisation.',
+					);
+				}
+
 				if ($eventId > 0) {
 					$event = new \dbObject\Event();
 					if (

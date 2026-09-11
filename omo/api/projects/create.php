@@ -61,9 +61,12 @@ if ($isEdit) {
     $project->set('IDorganization', $organizationId);
     $project->set('IDholon', $context['currentHolon'] instanceof Holon ? (int)$context['currentHolon']->getId() : null);
     $project->set('IDuser', null);
-    $requestedStatus = isset($_GET['status']) ? (string)$_GET['status'] : Project::STATUS_SOMEDAY;
+    $requestedStatus = isset($_GET['status']) ? (string)$_GET['status'] : Project::STATUS_IN_PROGRESS;
     $requestedStatus = Project::normalizeStatus($requestedStatus);
     $project->set('status', in_array($requestedStatus, $enabledStatuses, true) ? $requestedStatus : $enabledStatuses[0]);
+    if (Project::normalizeStatus($project->get('status')) === Project::STATUS_IN_PROGRESS) {
+        $project->set('planned_start_date', (new \DateTimeImmutable('today'))->format('Y-m-d'));
+    }
     $project->set('capture_mode', Project::CAPTURE_MULTIPLE_DOCUMENTS);
     $project->set('project_size', Project::SIZE_M);
 
@@ -194,6 +197,10 @@ $formTexts = [
 
     <form id="<?= $formId ?>" class="omo-project-form__fields generic-form-stack" action="/omo/api/projects/action.php" method="post" novalidate>
         <input type="hidden" name="project_action" value="save_project">
+        <?php if (omoProjectsPvMeetingQuery($organizationId) !== ''): ?>
+            <input type="hidden" name="pv_meeting_document_id" value="<?= (int)($_GET['pv_meeting_document_id'] ?? 0) ?>">
+            <input type="hidden" name="pv_meeting_editor_token" value="<?= omoApiEscape((string)($_GET['pv_meeting_editor_token'] ?? '')) ?>">
+        <?php endif; ?>
         <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
         <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
         <?php if ($isEdit): ?><input type="hidden" name="id" value="<?= (int)$projectId ?>"><?php endif; ?>

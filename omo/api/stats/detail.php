@@ -9,6 +9,10 @@ use dbObject\StatIndicatorValue;
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $indicatorId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : 0;
+$context = omoStatsResolveContext($organizationId, $currentHolonId);
+if (!empty($context['status'])) {
+    $context['pvMeetingPermission'] = commonResolvePvMeetingPermissionContext($organizationId);
+}
 $indicator = omoStatsLoadIndicator($indicatorId, $organizationId);
 
 if (!($indicator instanceof StatIndicator)) {
@@ -22,7 +26,7 @@ $referencePoints = omoStatsCollectionItems($indicator->getReferencePoints(), Sta
 $valuesDescending = array_reverse($values);
 $latestValue = count($values) > 0 ? $values[count($values) - 1] : null;
 $latestReferencePercentage = omoStatsGetIndicatorReferencePercentage($indicator, $latestValue, $referencePoints);
-$canEdit = $indicator->canEdit();
+$canEdit = !empty($context['status']) && omoStatsCanEditIndicator($indicator, $context);
 $canEditValues = $canEdit && !$indicator->isEthercalcSource() && !$indicator->isSpreadsheetSource();
 $sourceUrl = StatIndicator::sanitizeSourceUrl($indicator->get('source_url'));
 $sourceDocument = null;

@@ -266,7 +266,7 @@ function omoCalendarParseLocalDateTime($rawValue)
     }
 }
 
-function omoCalendarDocumentTypeOptions(bool $nextcloudDocumentsAvailable, bool $etherpadDocumentsAvailable = false, bool $ethercalcDocumentsAvailable = false): array
+function omoCalendarDocumentTypeOptions(bool $nextcloudDocumentsAvailable, bool $etherpadDocumentsAvailable = false, bool $ethercalcDocumentsAvailable = false, bool $pvDocumentsEnabled = true): array
 {
     $options = [
         '' => omoCalendarCreateT('calendar.create.document.none'),
@@ -274,8 +274,11 @@ function omoCalendarDocumentTypeOptions(bool $nextcloudDocumentsAvailable, bool 
         Document::TYPE_EXTERNAL_LINK => (string)Document::getDocumentTypeCatalog()[Document::TYPE_EXTERNAL_LINK],
         Document::TYPE_ETHERPAD => (string)Document::getDocumentTypeCatalog()[Document::TYPE_ETHERPAD],
         Document::TYPE_ETHERCALC => (string)Document::getDocumentTypeCatalog()[Document::TYPE_ETHERCALC],
-        Document::TYPE_PV => (string)Document::getDocumentTypeCatalog()[Document::TYPE_PV],
     ];
+
+    if ($pvDocumentsEnabled) {
+        $options[Document::TYPE_PV] = (string)Document::getDocumentTypeCatalog()[Document::TYPE_PV];
+    }
 
     if ($nextcloudDocumentsAvailable) {
         $options[Document::TYPE_UPLOADED_FILE] = (string)Document::getDocumentTypeCatalog()[Document::TYPE_UPLOADED_FILE];
@@ -371,6 +374,7 @@ if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
 $hasStructureApplication = $organization->isStructureApplicationEnabled($currentUserId);
 $rootHolon = $hasStructureApplication ? $organization->getEnabledStructuralRootHolon($currentUserId) : null;
 $nextcloudDocumentsAvailable = $organization->hasDocumentStorage();
+$pvDocumentsEnabled = $organization->isPvDocumentEnabled();
 $project = null;
 
 if ($requestedProjectId > 0) {
@@ -730,7 +734,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($linkedDocument instanceof Document) {
         $resolvedDocumentType = $linkedDocument->getDocumentType();
     } elseif ($requestedDocumentType !== '') {
-        $documentOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable, $etherpadDocumentsAvailable, $ethercalcDocumentsAvailable);
+        $documentOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable, $etherpadDocumentsAvailable, $ethercalcDocumentsAvailable, $pvDocumentsEnabled);
         if (!array_key_exists($requestedDocumentType, $documentOptions)) {
             echo json_encode([
                 'status' => false,
@@ -1011,7 +1015,7 @@ $documentTypeDefault = $associatedDocument instanceof Document
 $documentTitleDefault = $isDuplicateMode && $duplicateAssociatedDocument instanceof Document
     ? trim((string)$duplicateAssociatedDocument->get('title'))
     : '';
-$documentTypeOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable, $etherpadDocumentsAvailable, $ethercalcDocumentsAvailable);
+$documentTypeOptions = omoCalendarDocumentTypeOptions($nextcloudDocumentsAvailable, $etherpadDocumentsAvailable, $ethercalcDocumentsAvailable, $pvDocumentsEnabled);
 $canOpenAssociatedDocument = $associatedDocument instanceof Document
     && (
         $associatedDocument->isPvDocument() && !$associatedDocument->isPvValidated()

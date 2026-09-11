@@ -1,5 +1,7 @@
 <?php
 
+require_once dirname(__DIR__, 3) . '/common/pv_meeting_permissions.php';
+
 use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\ArrayProjectDocument;
@@ -382,6 +384,7 @@ if (!function_exists('omoProjectsResolveContext')) {
             'organization' => $organization,
             'rootHolon' => $rootHolon instanceof Holon ? $rootHolon : null,
             'currentHolon' => $currentHolon,
+            'pvMeetingPermission' => commonResolvePvMeetingPermissionContext((int)$organizationId),
         ];
     }
 }
@@ -391,11 +394,39 @@ if (!function_exists('omoProjectsCanManageContext')) {
     {
         $currentHolon = $context['currentHolon'] ?? null;
         if ($currentHolon instanceof Holon) {
-            return $currentHolon->canEdit();
+            return $currentHolon->canEdit()
+                || omoProjectsCanUsePermission($currentHolon, 'CAN_CREATE_PROJECT', $context);
         }
 
         $organization = $context['organization'] ?? null;
         return $organization instanceof Organization && $organization->canEdit();
+    }
+}
+
+if (!function_exists('omoProjectsCanUsePermission')) {
+    function omoProjectsCanUsePermission(Holon $holon, string $permissionKey, array $context): bool
+    {
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
+        return $holon->isAllowed($permissionKey, $useSessionCache, $currentUserId)
+            || commonPvMeetingCanUseCollectivePermission($context['pvMeetingPermission'] ?? null, $holon, $permissionKey);
+    }
+}
+
+if (!function_exists('omoProjectsPvMeetingQuery')) {
+    function omoProjectsPvMeetingQuery(int $organizationId): string
+    {
+        $meetingContext = commonResolvePvMeetingPermissionContext($organizationId);
+        $request = $_SERVER['REQUEST_METHOD'] === 'POST' ? $_POST : $_GET;
+        $editorToken = trim((string)($request['pv_meeting_editor_token'] ?? ''));
+        $documentId = is_array($meetingContext) ? (int)($meetingContext['documentId'] ?? 0) : 0;
+        return $documentId > 0 && $editorToken !== ''
+            ? '&pv_meeting_document_id=' . $documentId . '&pv_meeting_editor_token=' . rawurlencode($editorToken)
+            : '';
     }
 }
 
@@ -407,16 +438,15 @@ if (!function_exists('omoProjectsCanCreateContext')) {
             return false;
         }
 
-        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
         $currentHolon = $context['currentHolon'] ?? null;
         if ($currentHolon instanceof Holon) {
-            return $currentHolon->isAllowed('CAN_CREATE_PROJECT', $useSessionCache, $currentUserId);
+            return omoProjectsCanUsePermission($currentHolon, 'CAN_CREATE_PROJECT', $context);
         }
 
         $organization = $context['organization'] ?? null;
         $rootHolon = $context['rootHolon'] ?? null;
         if ($rootHolon instanceof Holon) {
-            return $rootHolon->isAllowed('CAN_CREATE_PROJECT', $useSessionCache, $currentUserId);
+            return omoProjectsCanUsePermission($rootHolon, 'CAN_CREATE_PROJECT', $context);
         }
 
         return $organization instanceof Organization && $organization->canEdit();
@@ -479,8 +509,7 @@ if (!function_exists('omoProjectsCanRespondToProposal')) {
             return true;
         }
 
-        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
-        return $projectHolon->isAllowed('CAN_CREATE_PROJECT', $useSessionCache, $currentUserId);
+        return omoProjectsCanUsePermission($projectHolon, 'CAN_CREATE_PROJECT', $context);
     }
 }
 
@@ -504,9 +533,8 @@ if (!function_exists('omoProjectsCanViewProject')) {
         }
 
         $projectHolon = $project->getHolon();
-        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
         return $projectHolon instanceof Holon
-            && $projectHolon->isAllowed('CAN_CREATE_PROJECT', $useSessionCache, $currentUserId);
+            && omoProjectsCanUsePermission($projectHolon, 'CAN_CREATE_PROJECT', $context);
     }
 }
 
@@ -531,8 +559,7 @@ if (!function_exists('omoProjectsCanManageProject')) {
                 return false;
             }
 
-            $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
-            return $projectHolon->isAllowed('CAN_CREATE_PROJECT', $useSessionCache, $currentUserId);
+            return omoProjectsCanUsePermission($projectHolon, 'CAN_CREATE_PROJECT', $context);
         }
 
         // A task without its own holon inherits the management right of its
@@ -582,10 +609,9 @@ if (!function_exists('omoProjectsCanDeleteProject')) {
             return (int)$project->get('IDuser_proposed') === $currentUserId;
         }
 
-        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
         $projectHolon = $project->getHolon();
         if ($projectHolon instanceof Holon) {
-            return $projectHolon->isAllowed('CAN_DELETE_PROJECT', $useSessionCache, $currentUserId);
+            return omoProjectsCanUsePermission($projectHolon, 'CAN_DELETE_PROJECT', $context);
         }
 
         $parent = $project->getParent();
@@ -599,7 +625,7 @@ if (!function_exists('omoProjectsCanDeleteProject')) {
 
         $rootHolon = $context['rootHolon'] ?? null;
         if ($rootHolon instanceof Holon) {
-            return $rootHolon->isAllowed('CAN_DELETE_PROJECT', $useSessionCache, $currentUserId);
+            return omoProjectsCanUsePermission($rootHolon, 'CAN_DELETE_PROJECT', $context);
         }
 
         $organization = $context['organization'] ?? null;
