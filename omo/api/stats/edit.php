@@ -12,6 +12,7 @@ $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0))
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $indicatorId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : 0;
 $context = omoStatsResolveContext($organizationId, $currentHolonId);
+$context['pvMeetingPermission'] = commonResolvePvMeetingPermissionContext($organizationId);
 
 if (empty($context['status'])) {
     http_response_code(403);
@@ -25,7 +26,7 @@ if ($indicatorId > 0 && !($indicator instanceof StatIndicator)) {
     echo '<div class="omo-empty-state">' . omoApiEscape(omoStatsT('stats.error.not_found')) . '</div>';
     exit;
 }
-if ($indicatorId > 0 && !$indicator->canEdit()) {
+if ($indicatorId > 0 && !omoStatsCanEditIndicator($indicator, $context)) {
     http_response_code(403);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoStatsT('stats.error.forbidden')) . '</div>';
     exit;
@@ -392,6 +393,10 @@ ob_start();
 <input type="hidden" name="stats_action" value="save_indicator">
 <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
 <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
+<?php if (!empty($context['pvMeetingPermission'])): ?>
+    <input type="hidden" name="pv_meeting_document_id" value="<?= (int)($context['pvMeetingPermission']['documentId'] ?? 0) ?>">
+    <input type="hidden" name="pv_meeting_editor_token" value="<?= omoApiEscape((string)($_GET['pv_meeting_editor_token'] ?? '')) ?>">
+<?php endif; ?>
 <div class="omo-stats-editor__actions generic-form-actions generic-form-actions--stack-mobile">
     <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-cancel-editor data-indicator-id="<?= (int)$indicatorId ?>"><?= omoApiEscape(omoStatsT('stats.action.cancel')) ?></button>
     <button type="submit" class="generic-action-button generic-action-button--main" data-omo-stats-save-editor><?= omoApiEscape(omoStatsT('stats.action.save')) ?></button>

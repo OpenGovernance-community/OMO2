@@ -3,7 +3,7 @@ require_once dirname(__DIR__) . '/bootstrap.php'; require_once __DIR__ . '/share
 header('Content-Type: application/json; charset=utf-8');
 function omoActivityRespond($status, $message, array $extra = []) { echo json_encode(array_merge(['status' => (bool)$status, 'message' => (string)$message], $extra), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); exit; }
 if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); }
-$oid = (int)($_SESSION['currentOrganization'] ?? ($_POST['oid'] ?? 0)); $cid = (int)($_POST['cid'] ?? 0); $context = omoActivityResolveContext($oid, $cid); if (empty($context['status'])) { omoActivityRespond(false, $context['message']); } $action = trim((string)($_POST['activity_action'] ?? '')); $suffix = $cid > 0 ? '&cid=' . $cid : '';
+$oid = (int)($_SESSION['currentOrganization'] ?? ($_POST['oid'] ?? 0)); $cid = (int)($_POST['cid'] ?? 0); $context = omoActivityResolveContext($oid, $cid); if (empty($context['status'])) { omoActivityRespond(false, $context['message']); } $action = trim((string)($_POST['activity_action'] ?? '')); $suffix = ($cid > 0 ? '&cid=' . $cid : '') . omoActivityPvMeetingQuery($oid);
 if ($action === 'save_activity') {
     $id = (int)($_POST['id'] ?? 0); $activity = new ControlActivity(); if ($id > 0 && (!$activity->load($id) || (int)$activity->get('IDorganization') !== $oid)) { omoActivityRespond(false, omoActivityT('activity.error.not_found')); }
     if ($id > 0 ? !omoActivityCanEdit($activity) : !omoActivityCanUsePermission($context['currentHolon'], 'CAN_CREATE_CONTROL_ACTIVITY')) { omoActivityRespond(false, omoActivityT('activity.error.forbidden')); }
