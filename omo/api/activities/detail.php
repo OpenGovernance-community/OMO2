@@ -23,7 +23,7 @@ if (!($activity instanceof ControlActivity)
 $now = new DateTimeImmutable('now');
 $state = $activity->getOccurrenceState($now);
 $stateKey = (string)($state['state'] ?? 'upcoming');
-$suffix = $currentHolonId > 0 ? '&cid=' . $currentHolonId : '';
+$suffix = ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . omoActivityPvMeetingQuery($organizationId);
 $editUrl = '/omo/api/activities/edit.php?oid=' . $organizationId . '&id=' . (int)$activity->getId() . $suffix;
 $history = $activity->getRegularity(12, $now);
 $holon = $activity->getHolon();

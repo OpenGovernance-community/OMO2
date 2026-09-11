@@ -63,6 +63,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.field.duration' => ['text' => 'Durée estimée', 'context' => 'Label showing the desired duration of a PV point.'],
         'documents.pv_editor.field.duration_short' => ['text' => '{minutes} min', 'context' => 'Short duration label used in compact PV point rows.'],
         'documents.pv_editor.field.duration_empty' => ['text' => '-- min', 'context' => 'Fallback duration label used when no desired duration is set.'],
+        'documents.pv_editor.field.priority' => ['text' => 'Priorité', 'context' => 'Label for the PV agenda point priority picker.'],
         'documents.pv_editor.field.confidential' => ['text' => 'Confidentiel', 'context' => 'Checkbox label used to limit a PV point to people marked present at the meeting.'],
         'documents.pv_editor.field.confidential_hint' => ['text' => 'Visible uniquement par les personnes présentes à la réunion.', 'context' => 'Help text for the confidential PV point checkbox.'],
         'documents.pv_editor.field.stage' => ['text' => 'Étape', 'context' => 'Label of the PV workflow stage selector.'],
@@ -329,7 +330,7 @@ function omoDocumentsPvEditorBuildIndicatorEmbedPayload(\dbObject\StatIndicator 
     ];
 }
 
-function omoDocumentsPvEditorBuildUiText(?callable $translate = null): array
+function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $priorityLabels = []): array
 {
     $resolve = static function (string $key, string $fallback) use ($translate): string {
         if (is_callable($translate)) {
@@ -339,7 +340,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null): array
         return $fallback;
     };
 
-    return [
+    $uiText = [
         'reviewReadonly' => $resolve('documents.pv_editor.notice.review_readonly', 'Ce point est verrouillé pendant la relecture. Utilisez la discussion pour signaler une correction.'),
         'save' => $resolve('documents.pv_editor.action.save', 'Enregistrer'),
         'takeOverLock' => $resolve('documents.pv_editor.action.take_over_lock', 'Reprendre l’édition'),
@@ -360,6 +361,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null): array
         'duration' => $resolve('documents.pv_editor.field.duration', 'Durée estimée'),
         'durationShort' => $resolve('documents.pv_editor.field.duration_short', '{minutes} min'),
         'durationEmpty' => $resolve('documents.pv_editor.field.duration_empty', '-- min'),
+        'priority' => $resolve('documents.pv_editor.field.priority', 'Priorité'),
         'confidential' => $resolve('documents.pv_editor.field.confidential', 'Confidentiel'),
         'confidentialHint' => $resolve('documents.pv_editor.field.confidential_hint', 'Visible uniquement par les personnes présentes à la réunion.'),
         'stage' => $resolve('documents.pv_editor.field.stage', 'Étape'),
@@ -445,6 +447,8 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null): array
         'groupPoints' => $resolve('documents.pv_editor.group.points', 'points'),
         'groupMinutes' => $resolve('documents.pv_editor.group.minutes', 'min'),
     ];
+    $uiText['priorityLabels'] = \dbObject\Organization::normalizePvPriorityLabels($priorityLabels);
+    return $uiText;
 }
 
 function omoDocumentsPvEditorEscape($value): string
@@ -459,6 +463,28 @@ function omoDocumentsPvEditorDurationLabel(?int $minutes, array $uiText): string
     }
 
     return str_replace('{minutes}', (string)$minutes, (string)($uiText['durationShort'] ?? '{minutes} min'));
+}
+
+function omoDocumentsPvEditorPriorityLabel(int $priority, array $uiText): string
+{
+    $priority = max(1, min(5, $priority));
+    $priorityLabels = is_array($uiText['priorityLabels'] ?? null) ? $uiText['priorityLabels'] : [];
+    $label = trim((string)($priorityLabels[$priority] ?? $priorityLabels[(string)$priority] ?? ''));
+    return $label !== '' ? $label : 'P' . $priority;
+}
+
+function omoDocumentsPvEditorGetOrganizationPriorityLabels(int $organizationId): array
+{
+    static $cache = [];
+    if (isset($cache[$organizationId])) {
+        return $cache[$organizationId];
+    }
+
+    $organization = new \dbObject\Organization();
+    $cache[$organizationId] = $organizationId > 0 && $organization->load($organizationId)
+        ? $organization->getPvPriorityLabels()
+        : \dbObject\Organization::normalizePvPriorityLabels([]);
+    return $cache[$organizationId];
 }
 
 function omoDocumentsPvEditorAttachConcernedHolonOptions(array $pointData, array $baseOptions): array
@@ -552,6 +578,12 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     ?\dbObject\DocumentShareLink $publicParticipationLink = null
 ): array {
     $pointData = $point->buildEditorData($organizationId, $currentUserId, $lockToken);
+    $event = $document->getAssociatedEvent();
+    $pointCreatedAt = $point->get('datecreation');
+    $eventStartAt = $event instanceof \dbObject\Event ? $event->get('start_at') : null;
+    $pointData['wasCreatedBeforeMeeting'] = $pointCreatedAt instanceof \DateTimeInterface
+        && $eventStartAt instanceof \DateTimeInterface
+        && $pointCreatedAt < $eventStartAt;
     $pointData['positionLabel'] = $positionLabel !== '' ? $positionLabel : '--';
     $pointData['documentId'] = (int)$document->getId();
     $pointData['organizationId'] = $organizationId;
@@ -837,7 +869,11 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
     $handledDisabled = empty($pointData['canToggleHandled']) ? ' disabled' : '';
 
     $canDelete = !empty($pointData['canDelete']);
-    return '<div class="omo-pv-editor__nav-row' . (!empty($pointData['isHandled']) ? ' is-handled' : '') . '" data-omo-pv-nav-node="' . $pointId . '" data-omo-pv-parent-id="' . (int)($pointData['parentId'] ?? 0) . '" data-omo-pv-point-nav-row="' . $pointId . '" data-omo-pv-can-delete="' . ($canDelete ? '1' : '0') . '">'
+    $priority = \dbObject\DocumentPvPoint::normalizePriority($pointData['priority'] ?? null);
+    $priorityWidthClass = !empty($pointData['wasCreatedBeforeMeeting'])
+        ? ' omo-pv-editor__nav-row--priority-wide'
+        : '';
+    return '<div class="omo-pv-editor__nav-row omo-pv-editor__nav-row--priority-p' . $priority . $priorityWidthClass . (!empty($pointData['isHandled']) ? ' is-handled' : '') . '" data-omo-pv-nav-node="' . $pointId . '" data-omo-pv-parent-id="' . (int)($pointData['parentId'] ?? 0) . '" data-omo-pv-point-nav-row="' . $pointId . '" data-omo-pv-can-delete="' . ($canDelete ? '1' : '0') . '">'
         . $reorderHandle
         . '  <button type="button" class="omo-pv-editor__nav-item" data-omo-pv-point-nav-target="' . $pointId . '">'
         . '      <span class="omo-pv-editor__nav-titleline">'
@@ -948,6 +984,8 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     $concernedHolonOptions = is_array($pointData['concernedHolonOptions'] ?? null) ? $pointData['concernedHolonOptions'] : [];
     $durationValue = isset($pointData['desiredDurationMinutes']) ? (int)$pointData['desiredDurationMinutes'] : 0;
     $durationLabel = omoDocumentsPvEditorDurationLabel($durationValue, $uiText);
+    $priority = \dbObject\DocumentPvPoint::normalizePriority($pointData['priority'] ?? null);
+    $priorityLabel = omoDocumentsPvEditorPriorityLabel($priority, $uiText);
     $updateInfo = '';
     if (
         trim((string)($pointData['lastModifiedByLabel'] ?? '')) !== ''
@@ -976,6 +1014,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
             $html .= '      <span class="omo-pv-editor__point-duration-readonly">' . omoDocumentsPvEditorEscape($durationLabel) . '</span>';
         }
         $html .= '      <input type="hidden" value="' . omoDocumentsPvEditorEscape($pointType) . '" data-omo-pv-point-type="' . $pointId . '">';
+        $html .= '      <input type="hidden" value="' . $priority . '" data-omo-pv-point-priority="' . $pointId . '">';
         $html .= '      <div class="omo-segmented omo-pv-editor__type-switch" role="radiogroup" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['type']) . '">';
         foreach ([
             'information' => (string)$uiText['information'],
@@ -997,6 +1036,15 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
                 . '</button>';
         }
         $html .= '      </div>';
+        $html .= '      <details class="omo-pv-editor__priority-menu" data-omo-pv-point-priority-menu="' . $pointId . '">';
+        $html .= '          <summary class="omo-pv-editor__priority-circle omo-pv-editor__priority-circle--p' . $priority . '" title="' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '"><span class="omo-pv-editor__sr-only">' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '</span></summary>';
+        $html .= '          <div class="omo-pv-editor__priority-options">';
+        for ($level = 1; $level <= 5; $level++) {
+            $isSelected = $level === $priority;
+            $html .= '<button type="button" class="omo-pv-editor__priority-option' . ($isSelected ? ' is-active' : '') . '" data-omo-pv-point-priority-option="' . $pointId . '" data-omo-pv-point-priority-value="' . $level . '" aria-pressed="' . ($isSelected ? 'true' : 'false') . '"><span class="omo-pv-editor__priority-circle omo-pv-editor__priority-circle--p' . $level . '" aria-hidden="true"></span><span>' . omoDocumentsPvEditorEscape(omoDocumentsPvEditorPriorityLabel($level, $uiText)) . '</span></button>';
+        }
+        $html .= '          </div>';
+        $html .= '      </details>';
     } else {
         $html .= '      <h3 class="omo-document-pv__point-title">' . omoDocumentsPvEditorEscape($title) . '</h3>';
         $html .= '      <span class="omo-pv-editor__point-duration-readonly">' . omoDocumentsPvEditorEscape($durationLabel) . '</span>';
@@ -1004,6 +1052,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '          <img src="' . omoDocumentsPvEditorEscape($pointTypeIcon) . '" alt="" aria-hidden="true" class="omo-document-pv__point-type-icon omo-pv-editor__point-type-icon">';
         $html .= '          <span>' . omoDocumentsPvEditorEscape($pointTypeLabel) . '</span>';
         $html .= '      </span>';
+        $html .= '      <span class="omo-pv-editor__priority-circle omo-pv-editor__priority-circle--p' . $priority . '" title="' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '"></span>';
     }
     if (!empty($pointData['lock']['isLockedByOther'])) {
         $html .= '      <span class="omo-pv-editor__point-ownership">' . omoDocumentsPvEditorEscape((string)$uiText['lockedState']) . '</span>';

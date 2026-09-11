@@ -46,6 +46,22 @@
         return typeof window.omoResolveAppUrl === 'function' ? window.omoResolveAppUrl(url) : url;
     }
 
+    function appendPvMeetingContext(formData) {
+        var currentUrlValue = root.getAttribute('data-activity-current-url') || '';
+        var currentUrl;
+        try {
+            currentUrl = new URL(currentUrlValue, window.location.origin);
+        } catch (error) {
+            return;
+        }
+        var documentId = currentUrl.searchParams.get('pv_meeting_document_id') || '';
+        var editorToken = currentUrl.searchParams.get('pv_meeting_editor_token') || '';
+        if (documentId !== '' && editorToken !== '') {
+            formData.set('pv_meeting_document_id', documentId);
+            formData.set('pv_meeting_editor_token', editorToken);
+        }
+    }
+
     function normalizeScope(value) {
         value = String(value || '').trim().toLowerCase();
         return value === 'children' || value === 'descendants' ? value : 'contextual';
@@ -444,6 +460,7 @@
         data.append('id', id);
         data.append('oid', root.getAttribute('data-activity-oid'));
         data.append('cid', root.getAttribute('data-activity-cid'));
+        appendPvMeetingContext(data);
         element.disabled = true;
         fetch('/omo/api/activities/action.php', {
             method: 'POST',
@@ -611,6 +628,7 @@
         }
         var feedback = form.querySelector('[data-activity-feedback]');
         var formData = new FormData(form);
+        appendPvMeetingContext(formData);
         var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
         var submitButton = form.querySelector('[type="submit"]');
         if (usesSharedPendingState && !window.omoBeginPendingAction(form)) {

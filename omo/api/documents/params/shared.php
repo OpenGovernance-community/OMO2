@@ -55,6 +55,12 @@ if (!function_exists('omoDocumentsParamsSourceLang')) {
             'documents.params.field.default_visibility' => ['text' => 'Visibilité par défaut', 'context' => 'Label of the default document visibility selector in Documents settings.'],
             'documents.params.section.nextcloud' => ['text' => 'Stockage Nextcloud', 'context' => 'Heading of the Nextcloud settings section.'],
             'documents.params.section.collabora' => ['text' => 'Documents Collabora', 'context' => 'Heading of the Collabora settings section.'],
+            'documents.params.section.pv' => ['text' => 'Procès-verbaux de réunion', 'context' => 'Heading of the PV document settings section.'],
+            'documents.params.field.pv_enabled' => ['text' => 'Activer les PV', 'context' => 'Checkbox enabling the meeting minutes document format.'],
+            'documents.params.field.pv_enabled_hint' => ['text' => 'Le format de procès-verbal sera proposé lors de la création de documents et d événements.', 'context' => 'Explanation shown below the PV enable checkbox.'],
+            'documents.params.pv.priority_labels' => ['text' => 'Libellés des priorités', 'context' => 'Heading above the PV priority label fields.'],
+            'documents.params.pv.priority_label' => ['text' => 'Priorité {priority}', 'context' => 'Label of one editable PV priority name field.'],
+            'documents.params.pv.priority_hint' => ['text' => 'Ces libellés identifient les couleurs P1 à P5 dans les PV. L ordre des priorités ne change pas.', 'context' => 'Help text for configurable PV priority labels.'],
             'documents.params.field.collabora_enabled' => ['text' => 'Ajouter un serveur Collabora', 'context' => 'Checkbox enabling Collabora documents for the organization.'],
             'documents.params.field.collabora_enabled_hint' => ['text' => 'Permet de créer et modifier des documents bureautiques collaboratifs stockés sur le serveur de documents choisi.', 'context' => 'Explanation shown below the Collabora enable checkbox.'],
             'documents.params.field.collabora_base_url' => ['text' => 'URL publique du serveur Collabora', 'context' => 'Public Collabora URL field.'],
@@ -719,6 +725,41 @@ if (!function_exists('omoDocumentsParamsStoreCollaboraConfig')) {
         $saveResult = $organizationApplication->save();
         return is_array($saveResult) && !empty($saveResult['status'])
             ? array('status' => true, 'text' => omoDocumentsParamsT('documents.params.feedback.saved'), 'config' => $config)
+            : array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.save_failed'));
+    }
+}
+
+if (!function_exists('omoDocumentsParamsStorePvSettings')) {
+    function omoDocumentsParamsStorePvSettings(\dbObject\Organization $organization, array $values): array
+    {
+        $organizationId = (int)$organization->getId();
+        $organizationApplication = $organizationId > 0
+            ? omoDocumentsParamsGetApplicationLink($organizationId, true)
+            : null;
+        if (!$organizationApplication) {
+            return array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.unavailable'));
+        }
+
+        $parameters = $organizationApplication->getParametersArray();
+        $currentSettings = $organization->getPvDocumentSettings();
+        $priorityLabels = array();
+        for ($priority = 1; $priority <= 5; $priority++) {
+            $priorityLabels[$priority] = (string)($values['pv_priority_label_' . $priority]
+                ?? $currentSettings['priorityLabels'][$priority]
+                ?? '');
+        }
+
+        $parameters['pv'] = array(
+            'enabled' => array_key_exists('pv_enabled', $values)
+                ? (!empty($values['pv_enabled']) ? 1 : 0)
+                : (!empty($currentSettings['enabled']) ? 1 : 0),
+            'priorityLabels' => \dbObject\Organization::normalizePvPriorityLabels($priorityLabels),
+        );
+        $organizationApplication->setParametersArray($parameters);
+        $saveResult = $organizationApplication->save();
+
+        return is_array($saveResult) && !empty($saveResult['status'])
+            ? array('status' => true, 'text' => omoDocumentsParamsT('documents.params.feedback.saved'))
             : array('status' => false, 'text' => omoDocumentsParamsT('documents.params.error.save_failed'));
     }
 }

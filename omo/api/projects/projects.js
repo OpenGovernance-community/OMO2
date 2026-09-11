@@ -165,6 +165,22 @@
         return typeof window.omoResolveAppUrl === 'function' ? window.omoResolveAppUrl(url) : url;
     }
 
+    function appendPvMeetingContext(payload) {
+        var currentUrlValue = root.getAttribute('data-omo-projects-current-url') || '';
+        var currentUrlObject;
+        try {
+            currentUrlObject = new URL(currentUrlValue, window.location.origin);
+        } catch (error) {
+            return;
+        }
+        var documentId = currentUrlObject.searchParams.get('pv_meeting_document_id') || '';
+        var editorToken = currentUrlObject.searchParams.get('pv_meeting_editor_token') || '';
+        if (documentId !== '' && editorToken !== '') {
+            payload.set('pv_meeting_document_id', documentId);
+            payload.set('pv_meeting_editor_token', editorToken);
+        }
+    }
+
     function setLoading(isLoading) {
         root.classList.toggle('is-loading', Boolean(isLoading));
         if (typeof window.omoSetPanelResultsLoadingSkeleton === 'function') {
@@ -1653,6 +1669,7 @@
         payload.append('oid', root.getAttribute('data-omo-projects-oid') || '0');
         payload.append('cid', String(routeCid));
         payload.append('id', String(projectId || '0'));
+        appendPvMeetingContext(payload);
         Object.keys(fields || {}).forEach(function (name) {
             payload.append(name, String(fields[name] || ''));
         });
@@ -1720,6 +1737,7 @@
         var payload = new FormData();
         payload.append('oid', root.getAttribute('data-omo-projects-oid') || '0');
         payload.append('delete_documents', '0');
+        appendPvMeetingContext(payload);
         return fetch(resolveUrl(url), {
             method: 'POST',
             credentials: 'same-origin',
@@ -1876,6 +1894,7 @@
         payload.append('project_action', action);
         payload.append('oid', root.getAttribute('data-omo-projects-oid') || '0');
         payload.append('cid', String(routeCid));
+        appendPvMeetingContext(payload);
         projectIds.forEach(function (projectId) {
             payload.append('project_ids[]', String(projectId));
         });

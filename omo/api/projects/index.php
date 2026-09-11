@@ -686,6 +686,7 @@ for ($month = $ganttRangeStart->modify('first day of this month'); $month <= $ga
 }
 $ganttTodayOffset = $ganttToday >= $ganttRangeStart && $ganttToday <= $ganttRangeEnd ? $ganttDateOffset($ganttToday) : null;
 
+$pvMeetingQuery = omoProjectsPvMeetingQuery($organizationId);
 $currentUrl = '/omo/api/projects/index.php?oid=' . rawurlencode((string)$organizationId);
 if ($currentHolonId > 0) {
     $currentUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
@@ -705,13 +706,16 @@ if ($projectAssignment === 'mine') {
 if ($projectQuickSearch !== '') {
     $currentUrl .= '&project_query=' . rawurlencode($projectQuickSearch);
 }
+$currentUrl .= $pvMeetingQuery;
 
 $createUrl = '/omo/api/projects/create.php?oid=' . rawurlencode((string)$organizationId);
 if ($currentHolonId > 0) {
     $createUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
 }
+$createUrl .= $pvMeetingQuery;
 
 $detailUrl = '/omo/api/projects/detail.php?oid=' . rawurlencode((string)$organizationId);
+$detailUrl .= $pvMeetingQuery;
 $actionUrl = '/omo/api/projects/action.php';
 $canManage = omoProjectsCanManageContext($context);
 $canCreate = omoProjectsCanCreateContext($context);
