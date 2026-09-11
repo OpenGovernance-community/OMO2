@@ -4954,7 +4954,67 @@
 			$this->set('IDorganization', $organizationId);
 			$this->set('IDholon', $resolvedHolonId);
 
-			return $this->save();
+			$saveResult = $this->save();
+			if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+				return $saveResult;
+			}
+
+			return $this->ensureOrganizationVisibilityRules();
+		}
+
+		/**
+		 * Add the default visibility rules required by a document that entered an
+		 * organization outside the regular document editor, for example Telegram.
+		 * Existing rules are intentionally left unchanged.
+		 */
+		public function ensureOrganizationVisibilityRules(): array
+		{
+			$documentId = (int)$this->getId();
+			$organizationId = (int)$this->get('IDorganization');
+			if ($documentId <= 0 || $organizationId <= 0) {
+				return array(
+					'status' => false,
+					'text' => 'Contexte de visibilite du document invalide.',
+				);
+			}
+
+			$visibilityRule = \dbObject\ObjectVisibility::loadActiveRuleRow(
+				self::getVisibilityObjectType(),
+				$documentId,
+				$organizationId
+			);
+			if (!is_array($visibilityRule)) {
+				$visibilityType = $this->normalizeScopeTypeForCurrentContext(
+					self::getDefaultVisibilityTypeForOrganization($organizationId),
+					\dbObject\ObjectVisibility::TYPE_ORGANIZATION
+				);
+				$visibilitySaveResult = $this->saveVisibilityRule($visibilityType);
+				if (!is_array($visibilitySaveResult) || ($visibilitySaveResult['status'] ?? false) !== true) {
+					return is_array($visibilitySaveResult)
+						? $visibilitySaveResult
+						: array('status' => false, 'text' => 'Impossible de creer la visibilite du document.');
+				}
+			}
+
+			$editVisibilityRule = \dbObject\ObjectVisibility::loadActiveRuleRow(
+				self::getEditVisibilityObjectType(),
+				$documentId,
+				$organizationId
+			);
+			if (!is_array($editVisibilityRule)) {
+				$editVisibilityType = $this->normalizeScopeTypeForCurrentContext(
+					self::getDefaultEditVisibilityTypeForOrganization($organizationId),
+					self::getDefaultEditVisibilityType()
+				);
+				$editVisibilitySaveResult = $this->saveEditVisibilityRule($editVisibilityType);
+				if (!is_array($editVisibilitySaveResult) || ($editVisibilitySaveResult['status'] ?? false) !== true) {
+					return is_array($editVisibilitySaveResult)
+						? $editVisibilitySaveResult
+						: array('status' => false, 'text' => 'Impossible de creer la portee d edition du document.');
+				}
+			}
+
+			return array('status' => true);
 		}
 
 		public static function resolveCreationPermissionHolon(int $organizationId, ?int $requestedHolonId = null, int $parentDocumentId = 0)

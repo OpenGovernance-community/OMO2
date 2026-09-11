@@ -1607,6 +1607,13 @@
 					throw new \RuntimeException('telegram_document_save_failed');
 				}
 
+				if (is_array($groupDestinationContext)) {
+					$visibilityResult = $doc->ensureOrganizationVisibilityRules();
+					if (!is_array($visibilityResult) || empty($visibilityResult['status'])) {
+						throw new \RuntimeException('telegram_document_visibility_save_failed');
+					}
+				}
+
 				if (
 					is_array($groupDestinationContext)
 					&& ($groupDestinationContext['type'] ?? '') === \dbObject\TelegramChatDestination::TYPE_PROJECT
