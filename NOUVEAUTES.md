@@ -2131,6 +2131,8 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 
 # 2026-09-09
 
+- Les documents HTML classes depuis Telegram initialisent maintenant leur portee d edition dans le role ou le cercle cible, ce qui rend leur contenu editable dans OMO pour les membres autorises. Une migration repare aussi les documents deja classes sans regle d edition.
+
 - L ouverture dun evenement depuis le tableau de pilotage conserve maintenant la vue calendrier et le scope enregistres au lieu de forcer la vue locale du jour.
 - La reouverture du meme evenement apres un retour sur l ancrage resynchronise maintenant le drawer Calendrier et son sous-drawer Evenement, sans laisser le tableau de pilotage visible derriere le detail.
 - Les evenements affichent maintenant une icone document ouvrable lorsqu un PV ou un autre document y est associe, dans le calendrier comme dans le tableau de pilotage.
