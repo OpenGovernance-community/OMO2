@@ -1675,6 +1675,89 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         justify-content: flex-end;
     }
 
+    .omo-pv-editor__sort-menu {
+        position: relative;
+        margin-right: auto;
+    }
+
+    .omo-pv-editor__sort-menu > summary {
+        display: grid;
+        width: 42px;
+        min-width: 42px;
+        height: 42px;
+        padding: 0;
+        place-items: center;
+        list-style: none;
+        font-size: 22px;
+        font-weight: 800;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .omo-pv-editor__sort-menu > summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .omo-pv-editor__sort-menu-panel {
+        position: fixed;
+        z-index: 300;
+        top: 12px;
+        left: 12px;
+        width: min(290px, calc(100vw - 44px));
+        padding: 12px;
+        border: 1px solid var(--color-border, #d1d5db);
+        border-radius: var(--radius-md);
+        background: var(--color-surface, #fff);
+        box-shadow: 0 14px 28px rgba(15, 23, 42, 0.18);
+    }
+
+    .omo-pv-editor__sort-options {
+        display: grid;
+        gap: 8px;
+        margin: 0 0 12px;
+        padding: 0;
+        border: 0;
+    }
+
+    .omo-pv-editor__sort-options legend {
+        margin-bottom: 7px;
+        color: var(--color-text-light, #64748b);
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .omo-pv-editor__sort-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        color: var(--color-text, #1e293b);
+        font-size: 0.86rem;
+        line-height: 1.3;
+        cursor: pointer;
+    }
+
+    .omo-pv-editor__sort-option input {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 auto;
+        margin: 1px 0 0;
+        accent-color: var(--color-primary, #2563eb);
+        cursor: inherit;
+    }
+
+    .omo-pv-editor__sort-flags {
+        display: grid;
+        gap: 8px;
+        margin: 0 0 12px;
+        padding-top: 11px;
+        border-top: 1px solid var(--color-border, #d1d5db);
+    }
+
+    .omo-pv-editor__sort-submit {
+        width: 100%;
+        justify-content: center;
+    }
+
     .omo-pv-editor__auto-save {
         display: inline-flex;
         align-items: center;
@@ -2766,6 +2849,28 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     <aside class="omo-pv-editor__sidebar">
         <section class="omo-pv-editor__panel generic-section omo-pv-editor__agenda-panel">
             <div class="omo-pv-editor__toolbar">
+                <?php if ($isPvEditor && !$isPvReview): ?>
+                    <details class="omo-pv-editor__sort-menu" data-omo-pv-sort-menu>
+                        <summary class="generic-action-button generic-action-button--secondary" title="<?= $escape((string)$uiText['sort']) ?>" aria-label="<?= $escape((string)$uiText['sort']) ?>">&hellip;</summary>
+                        <form class="omo-pv-editor__sort-menu-panel" data-omo-pv-sort-form>
+                            <fieldset class="omo-pv-editor__sort-options">
+                                <legend><?= $escape((string)$uiText['sort']) ?></legend>
+                                <label class="omo-pv-editor__sort-option"><input type="radio" name="omo_pv_sort_mode" value="none" checked> <?= $escape((string)$uiText['sortNone']) ?></label>
+                                <label class="omo-pv-editor__sort-option"><input type="radio" name="omo_pv_sort_mode" value="priority"> <?= $escape((string)$uiText['sortPriority']) ?></label>
+                                <label class="omo-pv-editor__sort-option"><input type="radio" name="omo_pv_sort_mode" value="creation"> <?= $escape((string)$uiText['sortCreation']) ?></label>
+                                <label class="omo-pv-editor__sort-option"><input type="radio" name="omo_pv_sort_mode" value="person"> <?= $escape((string)$uiText['sortPerson']) ?></label>
+                                <label class="omo-pv-editor__sort-option"><input type="radio" name="omo_pv_sort_mode" value="role"> <?= $escape((string)$uiText['sortRole']) ?></label>
+                                <label class="omo-pv-editor__sort-option"><input type="radio" name="omo_pv_sort_mode" value="duration"> <?= $escape((string)$uiText['sortDuration']) ?></label>
+                            </fieldset>
+                            <div class="omo-pv-editor__sort-flags">
+                                <label class="omo-pv-editor__sort-option"><input type="checkbox" name="omo_pv_sort_randomize_ties" value="1"> <?= $escape((string)$uiText['sortRandomizeTies']) ?></label>
+                                <label class="omo-pv-editor__sort-option"><input type="checkbox" name="omo_pv_sort_handled_last" value="1"> <?= $escape((string)$uiText['sortHandledLast']) ?></label>
+                                <label class="omo-pv-editor__sort-option"><input type="checkbox" name="omo_pv_sort_group_by_type" value="1"> <?= $escape((string)$uiText['sortGroupByType']) ?></label>
+                            </div>
+                            <button type="submit" class="generic-action-button generic-action-button--main omo-pv-editor__sort-submit" data-omo-pv-sort-submit data-omo-pv-sort-label="<?= $escape((string)$uiText['sortApply']) ?>" data-omo-pv-sort-applying-label="<?= $escape((string)$uiText['sortApplying']) ?>"><?= $escape((string)$uiText['sortApply']) ?></button>
+                        </form>
+                    </details>
+                <?php endif; ?>
                 <button type="button" class="omo-pv-editor__delete-dropzone" data-omo-pv-delete-dropzone title="<?= $escape((string)$uiText['deleteItem']) ?>" aria-label="<?= $escape((string)$uiText['deleteItem']) ?>"<?= $isPvReview ? ' hidden' : '' ?>><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>
                 <?php if ($canCreatePvGroups): ?>
                     <button type="button" class="generic-action-button generic-action-button--secondary omo-pv-editor__add-button" data-omo-pv-editor-add-group title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>"><img src="/omo/assets/images/documents/add-folder.png" alt="" aria-hidden="true"></button>
@@ -3061,6 +3166,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     const mainPanel = root.querySelector('.omo-pv-editor__main');
     const addButton = root.querySelector('[data-omo-pv-editor-add-point]');
     const addGroupButton = root.querySelector('[data-omo-pv-editor-add-group]');
+    const sortMenu = root.querySelector('[data-omo-pv-sort-menu]');
+    const sortForm = root.querySelector('[data-omo-pv-sort-form]');
+    const sortSubmitButton = root.querySelector('[data-omo-pv-sort-submit]');
     const autoSaveToggle = root.querySelector('[data-omo-pv-auto-save]');
     const deleteDropzone = root.querySelector('[data-omo-pv-delete-dropzone]');
     const resizer = root.querySelector('[data-omo-pv-editor-resizer]');
@@ -7924,6 +8032,116 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             .catch(function () {
                 // Keep the local order even if the save fails; the user can retry by dragging again.
             });
+    }
+
+    function applyAgendaSort() {
+        if (!(sortForm instanceof HTMLFormElement) || !(sortSubmitButton instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        const selectedMode = sortForm.querySelector('input[name="omo_pv_sort_mode"]:checked');
+        const randomizeTies = sortForm.querySelector('input[name="omo_pv_sort_randomize_ties"]');
+        const handledLast = sortForm.querySelector('input[name="omo_pv_sort_handled_last"]');
+        const groupByType = sortForm.querySelector('input[name="omo_pv_sort_group_by_type"]');
+        const defaultLabel = String(sortSubmitButton.getAttribute('data-omo-pv-sort-label') || sortSubmitButton.textContent || '');
+        const applyingLabel = String(sortSubmitButton.getAttribute('data-omo-pv-sort-applying-label') || defaultLabel);
+
+        sortSubmitButton.disabled = true;
+        sortSubmitButton.textContent = applyingLabel;
+        postPointAction('sort_points', 0, {
+            sort_mode: selectedMode instanceof HTMLInputElement ? selectedMode.value : 'none',
+            randomize_ties: randomizeTies instanceof HTMLInputElement && randomizeTies.checked ? '1' : '0',
+            handled_last: handledLast instanceof HTMLInputElement && handledLast.checked ? '1' : '0',
+            group_by_type: groupByType instanceof HTMLInputElement && groupByType.checked ? '1' : '0'
+        })
+            .then(function (payload) {
+                if (!payload || !Array.isArray(payload.points)) {
+                    throw new Error('sort_failed');
+                }
+                renderPointCollection(payload.points, true);
+                if (sortMenu instanceof HTMLDetailsElement) {
+                    sortMenu.open = false;
+                }
+            })
+            .catch(function (error) {
+                window.alert(String(error && (error.message || error.text) || editorClientUi.genericError || ''));
+            })
+            .finally(function () {
+                sortSubmitButton.disabled = false;
+                sortSubmitButton.textContent = defaultLabel;
+            });
+    }
+
+    if (sortForm instanceof HTMLFormElement) {
+        const sortStorageKey = 'omo.pv.editor.sort-options.v2';
+        const restoreAgendaSortPreferences = function () {
+            try {
+                const stored = JSON.parse(localStorage.getItem(sortStorageKey) || '{}');
+                const mode = ['none', 'priority', 'creation', 'person', 'role', 'duration'].includes(String(stored.mode || ''))
+                    ? String(stored.mode)
+                    : 'none';
+                const modeInput = sortForm.querySelector('input[name="omo_pv_sort_mode"][value="' + mode + '"]');
+                const randomizeInput = sortForm.querySelector('input[name="omo_pv_sort_randomize_ties"]');
+                const handledInput = sortForm.querySelector('input[name="omo_pv_sort_handled_last"]');
+                const groupInput = sortForm.querySelector('input[name="omo_pv_sort_group_by_type"]');
+                if (modeInput instanceof HTMLInputElement) modeInput.checked = true;
+                if (randomizeInput instanceof HTMLInputElement) randomizeInput.checked = stored.randomizeTies === true;
+                if (handledInput instanceof HTMLInputElement) handledInput.checked = stored.handledLast === true;
+                if (groupInput instanceof HTMLInputElement) groupInput.checked = stored.groupByType === true;
+            } catch (error) {
+                // Ignore unavailable or malformed local browser storage.
+            }
+        };
+        const saveAgendaSortPreferences = function () {
+            try {
+                const selectedMode = sortForm.querySelector('input[name="omo_pv_sort_mode"]:checked');
+                const randomizeInput = sortForm.querySelector('input[name="omo_pv_sort_randomize_ties"]');
+                const handledInput = sortForm.querySelector('input[name="omo_pv_sort_handled_last"]');
+                const groupInput = sortForm.querySelector('input[name="omo_pv_sort_group_by_type"]');
+                localStorage.setItem(sortStorageKey, JSON.stringify({
+                    mode: selectedMode instanceof HTMLInputElement ? selectedMode.value : 'none',
+                    randomizeTies: randomizeInput instanceof HTMLInputElement && randomizeInput.checked,
+                    handledLast: handledInput instanceof HTMLInputElement && handledInput.checked,
+                    groupByType: groupInput instanceof HTMLInputElement && groupInput.checked
+                }));
+            } catch (error) {
+                // Ignore unavailable browser storage.
+            }
+        };
+        restoreAgendaSortPreferences();
+        sortForm.querySelectorAll('input').forEach(function (input) {
+            input.addEventListener('change', saveAgendaSortPreferences);
+        });
+        sortForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            saveAgendaSortPreferences();
+            applyAgendaSort();
+        });
+    }
+
+    function positionAgendaSortMenu() {
+        if (!(sortMenu instanceof HTMLDetailsElement) || !sortMenu.open || !(sortForm instanceof HTMLElement)) {
+            return;
+        }
+        const summary = sortMenu.querySelector('summary');
+        if (!(summary instanceof HTMLElement)) {
+            return;
+        }
+
+        const summaryRect = summary.getBoundingClientRect();
+        const panelWidth = sortForm.offsetWidth;
+        const left = Math.min(
+            Math.max(12, summaryRect.left),
+            Math.max(12, window.innerWidth - panelWidth - 12)
+        );
+        sortForm.style.left = Math.round(left) + 'px';
+        sortForm.style.top = Math.round(summaryRect.bottom + 6) + 'px';
+    }
+
+    if (sortMenu instanceof HTMLDetailsElement) {
+        sortMenu.addEventListener('toggle', positionAgendaSortMenu);
+        window.addEventListener('resize', positionAgendaSortMenu);
+        document.addEventListener('scroll', positionAgendaSortMenu, true);
     }
 
     function addPoint() {

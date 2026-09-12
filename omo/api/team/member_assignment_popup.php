@@ -113,6 +113,16 @@ $refreshUrl = '/omo/api/team/index.php?oid=' . $organizationId
     . '&cid=' . $holonId
     . '&team_scope=' . rawurlencode($teamScope)
     . ($teamQuery !== '' ? '&team_query=' . rawurlencode($teamQuery) : '');
+$returnPopupUrl = trim((string)($_GET['return_popup_url'] ?? ''));
+$returnPopupParts = $returnPopupUrl !== '' ? parse_url($returnPopupUrl) : false;
+$returnPopupQuery = array();
+if (is_array($returnPopupParts) && isset($returnPopupParts['query'])) {
+    parse_str((string)$returnPopupParts['query'], $returnPopupQuery);
+}
+$canReturnToUserPopup = is_array($returnPopupParts)
+    && (string)($returnPopupParts['path'] ?? '') === '/popup/user.php'
+    && (int)($returnPopupQuery['id'] ?? 0) === $userId
+    && (int)($returnPopupQuery['oid'] ?? 0) === $organizationId;
 ?>
 <form class="omo-team-assignment-editor generic-section generic-section--plain" method="post" action="<?= omoApiEscape('/omo/api/team/member_assignment_popup.php?hid=' . $holonId . '&user_id=' . $userId) ?>">
     <div class="omo-team-assignment-editor__heading">
@@ -164,20 +174,25 @@ $refreshUrl = '/omo/api/team/index.php?oid=' . $organizationId
     <?php endif; ?>
 
     <div class="omo-team-assignment-editor__actions">
-        <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape(omoTeamT('team.assignment_popup.save', [], $lang, $sourceLang)) ?></button>
         <span class="omo-team-assignment-editor__feedback" aria-live="polite"></span>
+        <div class="omo-team-assignment-editor__buttons">
+            <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape(omoTeamT('team.assignment_popup.save', [], $lang, $sourceLang)) ?></button>
+            <button type="button" class="generic-action-button generic-action-button--secondary" data-assignment-cancel><?= omoApiEscape(omoTeamT('team.assignment_popup.cancel', [], $lang, $sourceLang)) ?></button>
+        </div>
     </div>
 </form>
 
 <style>
 .omo-team-assignment-editor { display: grid; gap: var(--generic-space-3, 12px); }
-.omo-team-assignment-editor__heading, .omo-team-assignment-editor__field, .omo-team-assignment-editor__actions { display: grid; gap: var(--generic-space-1, 4px); }
+.omo-team-assignment-editor__heading, .omo-team-assignment-editor__field { display: grid; gap: var(--generic-space-1, 4px); }
 .omo-team-assignment-editor__field small, .omo-team-assignment-editor__feedback { color: var(--color-text-light); font-size: 0.82rem; }
 .omo-team-assignment-editor__focus-deadline { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 0.55fr); gap: var(--generic-space-3, 12px); }
 .omo-team-assignment-editor__budget-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 0.72fr) minmax(0, 1fr) minmax(130px, 0.72fr); gap: var(--generic-space-3, 12px); }
-.omo-team-assignment-editor__actions { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
+.omo-team-assignment-editor__actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--generic-space-2, 8px); flex-wrap: wrap; }
+.omo-team-assignment-editor__feedback { flex: 1 1 auto; min-width: 0; }
+.omo-team-assignment-editor__buttons { display: flex; align-items: center; justify-content: flex-end; gap: var(--generic-space-2, 8px); flex-wrap: wrap; }
 .omo-team-assignment-editor__feedback.is-error { color: #b91c1c; }
-@media (max-width: 560px) { .omo-team-assignment-editor__focus-deadline, .omo-team-assignment-editor__budget-grid, .omo-team-assignment-editor__actions { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .omo-team-assignment-editor__focus-deadline, .omo-team-assignment-editor__budget-grid { grid-template-columns: 1fr; } .omo-team-assignment-editor__feedback { flex-basis: 100%; } .omo-team-assignment-editor__buttons { width: 100%; } }
 </style>
 
 <script>
@@ -187,7 +202,20 @@ $refreshUrl = '/omo/api/team/index.php?oid=' . $organizationId
 
     const feedback = form.querySelector('.omo-team-assignment-editor__feedback');
     const submitButton = form.querySelector('button[type="submit"]');
+    const cancelButton = form.querySelector('[data-assignment-cancel]');
     const refreshUrl = <?= json_encode($refreshUrl, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const returnPopupUrl = <?= json_encode($canReturnToUserPopup ? $returnPopupUrl : '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    if (cancelButton) {
+        cancelButton.addEventListener('click', function () {
+            if (returnPopupUrl !== '' && typeof window.commonTopbarRefreshModalContent === 'function') {
+                window.commonTopbarRefreshModalContent(returnPopupUrl);
+                return;
+            }
+            if (typeof window.commonTopbarCloseModal === 'function') {
+                window.commonTopbarCloseModal();
+            }
+        });
+    }
     form.addEventListener('submit', function (event) {
         event.preventDefault();
         if (submitButton) submitButton.disabled = true;
@@ -203,6 +231,10 @@ $refreshUrl = '/omo/api/team/index.php?oid=' . $organizationId
                     return;
                 }
                 if (typeof window.omoNotify === 'function') window.omoNotify(result.data.message, 'success');
+                if (returnPopupUrl !== '' && typeof window.commonTopbarRefreshModalContent === 'function') {
+                    window.commonTopbarRefreshModalContent(returnPopupUrl);
+                    return;
+                }
                 if (typeof refreshDrawer === 'function') refreshDrawer('drawer_team', refreshUrl);
                 if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
             })
