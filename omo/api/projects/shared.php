@@ -351,16 +351,40 @@ if (!function_exists('omoProjectsT')) {
     }
 }
 
-if (!function_exists('omoProjectsAreAvailableForCurrentRequest')) {
-    function omoProjectsAreAvailableForCurrentRequest(): bool
+if (!function_exists('omoProjectsIsStructuralShareRequest')) {
+    function omoProjectsIsStructuralShareRequest(): bool
     {
         $shareLink = function_exists('commonGetCurrentShareLink')
             ? commonGetCurrentShareLink()
             : null;
 
+        return $shareLink instanceof \dbObject\HolonShareLink;
+    }
+}
+
+if (!function_exists('omoProjectsAreAvailableForCurrentRequest')) {
+    function omoProjectsAreAvailableForCurrentRequest(): bool
+    {
         // A structural share exposes only the explicitly selected structure
         // and people data. It never grants access to the Projects application.
-        return !($shareLink instanceof \dbObject\HolonShareLink);
+        return !omoProjectsIsStructuralShareRequest();
+    }
+}
+
+if (!function_exists('omoProjectsCanRevealProjectTitle')) {
+    function omoProjectsCanRevealProjectTitle(Project $project): bool
+    {
+        if ((int)$project->getId() <= 0 || (int)$project->get('IDorganization') <= 0) {
+            return false;
+        }
+
+        if (!omoProjectsIsStructuralShareRequest()) {
+            return true;
+        }
+
+        $shareLink = commonGetCurrentShareLink();
+        return $shareLink instanceof \dbObject\HolonShareLink
+            && $shareLink->canViewOrganization((int)$project->get('IDorganization'));
     }
 }
 
