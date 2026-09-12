@@ -7,7 +7,7 @@ use dbObject\ArrayOrganization;
 use dbObject\ArrayProject;
 use dbObject\Authority;
 
-const OMO_STRUCTURE_CACHE_VERSION = 3;
+const OMO_STRUCTURE_CACHE_VERSION = 4;
 
 function omoStructureBuildCacheKey($organizationId, $navigationRootId, $includeMemberUserIds)
 {
@@ -143,6 +143,48 @@ function omoStructureCollectAuthorityIds(array $node, array &$authorityIds)
     }
 }
 
+function omoStructureCollectProjectIds(array $node, array &$projectIds)
+{
+    $data = is_array($node['data'] ?? null) ? $node['data'] : array();
+    foreach ($data as $entry) {
+        if (
+            !is_array($entry)
+            || (string)($entry['listItemType'] ?? '') !== \dbObject\Property::LIST_ITEM_PROJECT
+        ) {
+            continue;
+        }
+
+        $formatId = (int)($entry['formatId'] ?? 0);
+        foreach (array('value', 'ancestor', 'effectiveValue') as $field) {
+            $rawValue = trim((string)($entry[$field] ?? ''));
+            if ($rawValue === '') {
+                continue;
+            }
+
+            if ($formatId === \dbObject\PropertyFormat::FORMAT_HTML_LIST) {
+                $items = (array)(\dbObject\PropertyFormat::getHtmlListParts($rawValue)['items'] ?? array());
+            } else {
+                $decodedItems = json_decode($rawValue, true);
+                $items = is_array($decodedItems)
+                    ? array_values($decodedItems)
+                    : preg_split('/\r\n|\r|\n|\|/', $rawValue);
+            }
+            foreach ($items as $item) {
+                $projectId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+                if ($projectId > 0) {
+                    $projectIds[$projectId] = true;
+                }
+            }
+        }
+    }
+
+    foreach ((array)($node['children'] ?? array()) as $child) {
+        if (is_array($child)) {
+            omoStructureCollectProjectIds($child, $projectIds);
+        }
+    }
+}
+
 $organizationId = (int)($_GET['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
 if ($organizationId <= 0) {
     http_response_code(400);
@@ -274,8 +316,10 @@ if (count($representation) === 0) {
     exit;
 }
 
+$projectIds = array();
+omoStructureCollectProjectIds($representation, $projectIds);
 $representation['projectTitles'] = $shareLink instanceof \dbObject\HolonShareLink
-    ? array()
+    ? ArrayProject::fetchTitlesForProjectIds($organizationId, array_keys($projectIds))
     : ArrayProject::fetchTitlesForOrganization($organizationId);
 
 $authorityIds = array();
