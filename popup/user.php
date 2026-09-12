@@ -26,6 +26,106 @@ function omoUserContextFormatDate($value)
     return $value->format('d.m.Y');
 }
 
+function omoUserContextFormatAssignmentBudgetAmount($value, $isMoney = false)
+{
+    if (!is_numeric($value) || (float)$value < 0) {
+        return '';
+    }
+
+    $amount = (float)$value;
+    $formatted = rtrim(rtrim(number_format($amount, 2, '.', ''), '0'), '.');
+    if ($formatted === '') {
+        $formatted = '0';
+    }
+
+    return $isMoney ? $formatted . '.-' : $formatted . 'h';
+}
+
+function omoUserContextBuildAssignmentBudgetLabels(array $assignment)
+{
+    $recurrenceLabels = array(
+        'day' => 'par jour',
+        'week' => 'par semaine',
+        'month' => 'par mois',
+        'year' => 'par an',
+    );
+    $labels = array();
+    $timeRecurrence = trim((string)($assignment['timeBudgetRecurrence'] ?? ''));
+    $timeAmount = omoUserContextFormatAssignmentBudgetAmount($assignment['timeBudgetHours'] ?? null);
+    if ($timeAmount !== '' && isset($recurrenceLabels[$timeRecurrence])) {
+        $labels[] = $timeAmount . ' ' . $recurrenceLabels[$timeRecurrence];
+    }
+
+    $moneyRecurrence = trim((string)($assignment['moneyBudgetRecurrence'] ?? ''));
+    $moneyAmount = omoUserContextFormatAssignmentBudgetAmount($assignment['moneyBudget'] ?? null, true);
+    if ($moneyAmount !== '' && isset($recurrenceLabels[$moneyRecurrence])) {
+        $labels[] = $moneyAmount . ' ' . $recurrenceLabels[$moneyRecurrence];
+    }
+
+    return $labels;
+}
+
+function omoUserContextRenderRoleAssignment(array $assignment, $userId, $returnPopupUrl)
+{
+    $roleId = (int)($assignment['holonId'] ?? 0);
+    $roleName = (string)($assignment['name'] ?? '');
+    $roleLabel = $roleName !== '' ? $roleName : ('Role ' . $roleId);
+    $canEditAssignment = !empty($assignment['canEditAssignment']);
+    $assignmentEditorUrl = '/omo/api/team/member_assignment_popup.php?hid=' . $roleId
+        . '&user_id=' . (int)$userId
+        . '&team_scope=contextual&team_query='
+        . '&return_popup_url=' . rawurlencode((string)$returnPopupUrl);
+    ?>
+    <li class="omo-user-context__role generic-soft-panel">
+        <button
+            type="button"
+            class="omo-user-context__role-link"
+            data-user-role-cid="<?= $roleId ?>"
+            aria-label="<?= omoApiEscape('Ouvrir le role ' . $roleLabel) ?>"
+        >
+            <div class="omo-user-context__role-head">
+                <div>
+                    <div class="omo-user-context__role-name-line">
+                        <div class="omo-user-context__role-name"><?= omoApiEscape($roleLabel) ?></div>
+                        <?php foreach ((array)($assignment['budgetLabels'] ?? []) as $budgetLabel): ?>
+                            <span class="omo-user-context__role-budget">| <?= omoApiEscape($budgetLabel) ?></span>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php if ((string)($assignment['pathLabel'] ?? '') !== ''): ?>
+                        <div class="omo-user-context__role-path"><?= omoApiEscape((string)$assignment['pathLabel']) ?></div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </button>
+        <div class="omo-user-context__role-actions">
+            <?php if (!empty($assignment['isPending'])): ?>
+                <span class="omo-user-context__role-status">En attente</span>
+            <?php endif; ?>
+            <?php if ($canEditAssignment): ?>
+                <div class="omo-user-context__role-menu generic-menu" data-user-role-menu="1">
+                    <button
+                        type="button"
+                        class="generic-menu-toggle"
+                        data-user-role-menu-toggle="1"
+                        aria-haspopup="menu"
+                        aria-expanded="false"
+                        aria-label="<?= omoApiEscape('Actions pour le role ' . $roleLabel) ?>"
+                    >...</button>
+                    <div class="generic-menu-panel generic-menu-panel--wide" data-user-role-menu-panel="1" role="menu" hidden>
+                        <button
+                            type="button"
+                            class="generic-menu-item"
+                            data-user-role-edit-url="<?= omoApiEscape($assignmentEditorUrl) ?>"
+                            role="menuitem"
+                        >Editer l affectation</button>
+                    </div>
+                </div>
+            <?php endif; ?>
+        </div>
+    </li>
+    <?php
+}
+
 function omoUserContextRenderRightsFragment($targetUserId, $organizationId)
 {
     $details = \dbObject\HolonPermission::buildEffectivePermissionDetailsForOrganization((int)$targetUserId, (int)$organizationId);
@@ -727,6 +827,7 @@ if ($requestedSection === 'rights') {
 
 $membership = $user->getOrganizationMembership($organizationId);
 $currentViewerUserId = (int)commonGetCurrentUserId();
+$hasBudgetApplication = $organization->isApplicationEnabled('budget', $currentViewerUserId);
 $displayName = trim((string)$user->getScopedDisplayName($organizationId));
 $email = trim((string)$user->getScopedEmail($organizationId));
 $username = trim((string)$user->getScopedUsername($organizationId));
@@ -751,6 +852,17 @@ $organizationAssignments = $hasStructureContext
         'organizationId' => $organizationId,
     ])
     : [];
+if ($hasBudgetApplication) {
+    foreach ($currentAssignments as &$assignment) {
+        $assignment['budgetLabels'] = omoUserContextBuildAssignmentBudgetLabels($assignment);
+    }
+    unset($assignment);
+
+    foreach ($organizationAssignments as &$assignment) {
+        $assignment['budgetLabels'] = omoUserContextBuildAssignmentBudgetLabels($assignment);
+    }
+    unset($assignment);
+}
 $competenceRows = $user->getVisibleCompetenceRows($organizationId, $currentViewerUserId);
 $canValidateCompetences = $currentViewerUserId > 0
     && $currentViewerUserId !== $userId
@@ -758,6 +870,8 @@ $canValidateCompetences = $currentViewerUserId > 0
     && (!function_exists('commonGetCurrentShareToken') || commonGetCurrentShareToken() === '');
 $popupReloadUrl = '/popup/user.php?id=' . (int)$userId . '&oid=' . (int)$organizationId . ($currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '');
 $rightsFragmentUrl = '/popup/user.php?section=rights&id=' . (int)$userId . '&oid=' . (int)$organizationId;
+$initialTab = trim((string)($_GET['tab'] ?? ''));
+$initialTab = in_array($initialTab, array('current-roles', 'organization-roles'), true) ? $initialTab : '';
 $showCurrentScope = $hasStructureContext && (int)$currentHolon->getId() !== (int)$rootHolon->getId();
 $currentScopeName = $showCurrentScope ? trim((string)$currentHolon->getDisplayName()) : '';
 $secondaryLabel = $email !== '' ? $email : ($username !== '' ? '@' . $username : '');
@@ -800,7 +914,7 @@ foreach ($competenceRows as $competenceRow) {
     }
 }
 ?>
-<div class="omo-user-context" data-user-competence-popup-url="<?= omoApiEscape($popupReloadUrl) ?>">
+<div class="omo-user-context" data-user-competence-popup-url="<?= omoApiEscape($popupReloadUrl) ?>" data-user-initial-tab="<?= omoApiEscape($initialTab) ?>">
     <style>
     .omo-user-context {
         display: grid;
@@ -1106,13 +1220,10 @@ foreach ($competenceRows as $competenceRow) {
         --generic-soft-panel-radius: 16px;
         --generic-soft-panel-padding-block: 14px;
         --generic-soft-panel-padding-inline: 16px;
-    }
-
-    .omo-user-context__role-link {
-        width: 100%;
-        border: 0;
-        text-align: left;
-        cursor: pointer;
+        display: flex;
+        position: relative;
+        align-items: flex-start;
+        gap: 12px;
         transition:
             transform 0.15s ease,
             box-shadow 0.15s ease,
@@ -1120,10 +1231,24 @@ foreach ($competenceRows as $competenceRow) {
             background 0.15s ease;
     }
 
-    .omo-user-context__role-link:hover {
+    .omo-user-context__role.is-menu-open {
+        z-index: 20;
+    }
+
+    .omo-user-context__role:hover {
         transform: translateY(-1px);
         border-color: color-mix(in srgb, var(--color-primary, #2563eb) 26%, var(--color-border, #e5e7eb));
         box-shadow: 0 12px 28px color-mix(in srgb, var(--color-primary, #2563eb) 10%, transparent);
+    }
+
+    .omo-user-context__role-link {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        cursor: pointer;
     }
 
     .omo-user-context__role-link:focus-visible {
@@ -1144,6 +1269,19 @@ foreach ($competenceRows as $competenceRow) {
         color: var(--color-text, #1f2937);
     }
 
+    .omo-user-context__role-name-line {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 4px 8px;
+    }
+
+    .omo-user-context__role-budget {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--color-text-light, #6b7280);
+    }
+
     .omo-user-context__role-path {
         margin-top: 5px;
         font-size: 13px;
@@ -1158,6 +1296,24 @@ foreach ($competenceRows as $competenceRow) {
         color: var(--color-primary, #2563eb);
         font-size: 11px;
         font-weight: 700;
+    }
+
+    .omo-user-context__role-actions {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .omo-user-context__role-menu {
+        position: relative;
+    }
+
+    .omo-user-context__role-menu .generic-menu-panel {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        z-index: 20;
     }
 
     .omo-user-context__competence-labels {
@@ -1922,26 +2078,7 @@ foreach ($competenceRows as $competenceRow) {
                                 <?php else: ?>
                                     <ul class="omo-user-context__roles">
                                         <?php foreach ($currentAssignments as $assignment): ?>
-                                            <li>
-                                                <button
-                                                    type="button"
-                                                    class="omo-user-context__role omo-user-context__role-link generic-soft-panel"
-                                                    data-user-role-cid="<?= (int)$assignment['holonId'] ?>"
-                                                    aria-label="<?= omoApiEscape('Ouvrir le role ' . ($assignment['name'] ?: ('Role ' . (int)$assignment['holonId']))) ?>"
-                                                >
-                                                    <div class="omo-user-context__role-head">
-                                                        <div>
-                                                            <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Role ' . (int)$assignment['holonId'])) ?></div>
-                                                            <?php if ((string)$assignment['pathLabel'] !== ''): ?>
-                                                                <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
-                                                            <?php endif; ?>
-                                                        </div>
-                                                        <?php if (!empty($assignment['isPending'])): ?>
-                                                            <span class="omo-user-context__role-status">En attente</span>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </button>
-                                            </li>
+                                            <?php omoUserContextRenderRoleAssignment($assignment, $userId, $popupReloadUrl . '&tab=current-roles'); ?>
                                         <?php endforeach; ?>
                                     </ul>
                                 <?php endif; ?>
@@ -1963,26 +2100,7 @@ foreach ($competenceRows as $competenceRow) {
                                 <?php else: ?>
                                     <ul class="omo-user-context__roles">
                                         <?php foreach ($organizationAssignments as $assignment): ?>
-                                            <li>
-                                                <button
-                                                    type="button"
-                                                    class="omo-user-context__role omo-user-context__role-link generic-soft-panel"
-                                                    data-user-role-cid="<?= (int)$assignment['holonId'] ?>"
-                                                    aria-label="<?= omoApiEscape('Ouvrir le role ' . ($assignment['name'] ?: ('Role ' . (int)$assignment['holonId']))) ?>"
-                                                >
-                                                    <div class="omo-user-context__role-head">
-                                                        <div>
-                                                            <div class="omo-user-context__role-name"><?= omoApiEscape($assignment['name'] ?: ('Role ' . (int)$assignment['holonId'])) ?></div>
-                                                            <?php if ((string)$assignment['pathLabel'] !== ''): ?>
-                                                                <div class="omo-user-context__role-path"><?= omoApiEscape($assignment['pathLabel']) ?></div>
-                                                            <?php endif; ?>
-                                                        </div>
-                                                        <?php if (!empty($assignment['isPending'])): ?>
-                                                            <span class="omo-user-context__role-status">En attente</span>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </button>
-                                            </li>
+                                            <?php omoUserContextRenderRoleAssignment($assignment, $userId, $popupReloadUrl . '&tab=organization-roles'); ?>
                                         <?php endforeach; ?>
                                     </ul>
                                 <?php endif; ?>
@@ -2015,6 +2133,18 @@ foreach ($competenceRows as $competenceRow) {
 
     if (modalBody) {
         modalBody.setAttribute('data-omo-popup-live-sync', '1');
+    }
+
+    var initialTab = String(root.getAttribute('data-user-initial-tab') || '').trim();
+    if (initialTab !== '') {
+        window.setTimeout(function () {
+            root.querySelectorAll('[data-generic-tab]').forEach(function (tab) {
+                var target = String(tab.getAttribute('data-generic-tab-target') || '');
+                if (target === 'omo-user-context-panel-' + initialTab) {
+                    tab.click();
+                }
+            });
+        }, 0);
     }
 
     function loadFragmentHost(host) {
@@ -2088,6 +2218,91 @@ foreach ($competenceRows as $competenceRow) {
                 }, 140);
             }
         });
+    });
+
+    var openRoleMenu = null;
+
+    function closeRoleMenu(menu) {
+        if (!menu) {
+            return;
+        }
+
+        var panel = menu.querySelector('[data-user-role-menu-panel="1"]');
+        var toggle = menu.querySelector('[data-user-role-menu-toggle="1"]');
+        if (panel) {
+            panel.hidden = true;
+        }
+        if (toggle) {
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+        var role = menu.closest('.omo-user-context__role');
+        if (role) {
+            role.classList.remove('is-menu-open');
+        }
+        if (openRoleMenu === menu) {
+            openRoleMenu = null;
+        }
+    }
+
+    root.querySelectorAll('[data-user-role-menu-toggle="1"]').forEach(function (toggle) {
+        toggle.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            var menu = toggle.closest('[data-user-role-menu="1"]');
+            var panel = menu ? menu.querySelector('[data-user-role-menu-panel="1"]') : null;
+            if (!menu || !panel) {
+                return;
+            }
+
+            if (openRoleMenu === menu) {
+                closeRoleMenu(menu);
+                return;
+            }
+
+            closeRoleMenu(openRoleMenu);
+            panel.hidden = false;
+            toggle.setAttribute('aria-expanded', 'true');
+            var role = menu.closest('.omo-user-context__role');
+            if (role) {
+                role.classList.add('is-menu-open');
+            }
+            openRoleMenu = menu;
+        });
+    });
+
+    root.querySelectorAll('[data-user-role-edit-url]').forEach(function (button) {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            var editorUrl = String(button.getAttribute('data-user-role-edit-url') || '').trim();
+            if (editorUrl === '') {
+                return;
+            }
+
+            closeRoleMenu(openRoleMenu);
+            if (typeof window.commonTopbarRefreshModalContent === 'function') {
+                window.commonTopbarRefreshModalContent(editorUrl);
+                return;
+            }
+
+            if (typeof window.commonTopbarOpenModal === 'function') {
+                window.commonTopbarOpenModal('Editer l affectation', editorUrl, 'fetch');
+            }
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        if (openRoleMenu && !openRoleMenu.contains(event.target)) {
+            closeRoleMenu(openRoleMenu);
+        }
+    });
+
+    root.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeRoleMenu(openRoleMenu);
+        }
     });
 })();
 </script>

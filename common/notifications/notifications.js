@@ -1,6 +1,6 @@
 (function () {
     var notificationCounter = 0;
-    var defaultDuration = 10000;
+    var defaultDuration = 5000;
     var removeAnimationDuration = 240;
 
     function getRegion() {
@@ -146,19 +146,26 @@
         notification.dataset.commonNotificationState = 'visible';
         notification.setAttribute('role', type === 'error' ? 'alert' : 'status');
         notification.__commonNotificationRemaining = getDuration(normalizedOptions.duration);
+        notification.style.setProperty('--common-notification-duration', notification.__commonNotificationRemaining + 'ms');
         notification.__commonNotificationStartedAt = 0;
         notification.__commonNotificationTimer = null;
         notification.__commonNotificationPaused = false;
         notification.addEventListener('mouseenter', function () {
             pauseDismissal(notification);
+            notification.classList.add('is-paused');
         });
         notification.addEventListener('mouseleave', function () {
             resumeDismissal(notification);
+            notification.classList.remove('is-paused');
         });
 
         messageNode = document.createElement('div');
         messageNode.className = 'common-notification__message';
         messageNode.textContent = messageText;
+
+        var progressNode = document.createElement('div');
+        progressNode.className = 'common-notification__progress';
+        progressNode.setAttribute('aria-hidden', 'true');
 
         closeButton = document.createElement('button');
         closeButton.type = 'button';
@@ -171,6 +178,7 @@
 
         notification.appendChild(messageNode);
         notification.appendChild(closeButton);
+        notification.appendChild(progressNode);
         region.appendChild(notification);
 
         window.requestAnimationFrame(function () {

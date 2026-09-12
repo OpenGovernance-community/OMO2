@@ -2,8 +2,14 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-12
+
+- Les notifications standard restent maintenant visibles cinq secondes et affichent une fine barre de progression en bas, qui se met en pause au survol.
+- Les liens publics de partage de structure n ouvrent plus l application Projets ni les projets associes ; cette restriction est egalement appliquee aux appels directs vers son API.
+
 ## 2026-09-11
 
+- L ordre du jour des PV propose un menu de classement sans tri, par priorite, date de creation, personne, role ou duree. La duree est croissante et les points sans duree restent a la fin. Une option separee melange les elements a egalite, puis les points peuvent etre regroupes par type et places en dernier lorsqu ils sont traites, tout en preservant l ordre obtenu. Les reglages sont memorises dans le navigateur et le menu reste visible au-dessus des panneaux, quelle que soit la largeur reglee de la colonne.
 - Les points a l ordre du jour des PV ont maintenant une priorite P1 a P5. La couleur est visible dans la liste de gauche et le cercle du point permet de la modifier directement.
 - Dans l ordre du jour du PV, la barre de priorite est plus large pour les points crees avant le debut de l evenement; les points ajoutes pendant la reunion gardent la barre fine.
 - Les parametres Documents permettent maintenant d activer ou retirer le format PV. Un bloc visible dans le meme ecran permet de renommer les libelles P1 a P5 pour chaque organisation.
@@ -2139,6 +2145,12 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Le menu de creation des Documents est maintenant groupe par familles, avec le dossier en tete, des separateurs visuels et le tableau blanc collaboratif a la fin. Un classeur collaboratif cree desormais un fichier ODS directement editable dans Collabora.
 
 # 2026-09-09
+
+- L editeur d affectation de Team propose maintenant un bouton Annuler a droite du bouton Enregistrer ; depuis une fiche utilisateur, il revient a la fiche sans sauvegarder.
+
+- Les roles affiches dans la popup utilisateur proposent maintenant un menu d actions pour editer leur affectation avec le formulaire Team existant, puis rouvrent la fiche actualisee apres enregistrement.
+
+- La popup utilisateur affiche maintenant les budgets temps et argent de chaque affectation de role sur la ligne du titre, uniquement lorsque l application Budget est activee.
 
 - Les documents HTML classes depuis Telegram initialisent maintenant leur portee d edition dans le role ou le cercle cible, ce qui rend leur contenu editable dans OMO pour les membres autorises. Une migration repare aussi les documents deja classes sans regle d edition.
 
