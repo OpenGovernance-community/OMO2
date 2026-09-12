@@ -43,6 +43,35 @@ class ArrayProject extends ArrayDbObject
         return $titles;
     }
 
+    public static function fetchTitlesForProjectIds($organizationId, array $projectIds)
+    {
+        $organizationId = (int)$organizationId;
+        $projectIds = array_values(array_unique(array_filter(array_map('intval', $projectIds))));
+        if ($organizationId <= 0 || count($projectIds) === 0) {
+            return [];
+        }
+
+        $projects = new self();
+        $projects->load([
+            'where' => [
+                ['field' => 'IDorganization', 'value' => $organizationId],
+                ['field' => 'id', 'op' => 'in', 'value' => $projectIds],
+                ['field' => 'active', 'value' => 1],
+                ['field' => 'project_kind', 'value' => Project::KIND_STANDARD],
+            ],
+        ]);
+
+        $titles = [];
+        foreach ($projects as $project) {
+            $projectId = (int)$project->getId();
+            if ($projectId > 0) {
+                $titles[$projectId] = trim((string)$project->get('title'));
+            }
+        }
+
+        return $titles;
+    }
+
     public function loadForOrganization($organizationId, $activeOnly = true, $projectKind = Project::KIND_STANDARD, $hydrate = false)
     {
         $this->exchangeArray([]);

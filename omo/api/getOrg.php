@@ -263,7 +263,10 @@ function omoFormatListItemValue($item, array $entry)
             $project = new Project();
             $projectTitleCache[$projectId] = ($project->load($projectId)
                 && (int)$project->get('IDorganization') === (int)($_SESSION['currentOrganization'] ?? 0)
-                && omoProjectsCanViewProject($project, omoProjectsResolveContext((int)$_SESSION['currentOrganization']))
+                && (
+                    omoProjectsCanRevealProjectTitle($project)
+                    || omoProjectsCanViewProject($project, omoProjectsResolveContext((int)$_SESSION['currentOrganization']))
+                )
             )
                 ? trim((string)$project->get('title'))
                 : '';
@@ -313,6 +316,22 @@ function omoGetProjectReferenceData($projectId)
         return null;
     }
 
+    if (omoProjectsIsStructuralShareRequest()) {
+        $project = new Project();
+        if (
+            !$project->load($projectId)
+            || (int)$project->get('IDorganization') !== (int)($_SESSION['currentOrganization'] ?? 0)
+            || !omoProjectsCanRevealProjectTitle($project)
+        ) {
+            return null;
+        }
+
+        return array(
+            'project' => $project,
+            'titleOnly' => true,
+        );
+    }
+
     if ($projectsById === null) {
         $projectsById = array();
         $childrenByParent = array();
@@ -358,6 +377,11 @@ function omoRenderProjectReferenceItem($item, $source = '')
     $title = trim((string)$project->get('title'));
     if ($title === '') {
         return '';
+    }
+
+    if (!empty($referenceData['titleOnly'])) {
+        $className = $source !== '' ? ' class="is-' . omoApiEscape($source) . '"' : '';
+        return '<li' . $className . '>' . omoApiEscape($title) . '</li>';
     }
 
 	$priority = Project::normalizeLevel($project->get('priority'));
