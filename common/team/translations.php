@@ -91,6 +91,7 @@ if (!function_exists('omoTeamSourceLang')) {
             'team.assignment_popup.recurrence.month' => ['text' => 'Par mois', 'context' => 'Monthly budget recurrence option in the assignment editor popup.'],
             'team.assignment_popup.recurrence.year' => ['text' => 'Par annee', 'context' => 'Yearly budget recurrence option in the assignment editor popup.'],
             'team.assignment_popup.save' => ['text' => 'Enregistrer', 'context' => 'Save button in the assignment editor popup.'],
+            'team.assignment_popup.cancel' => ['text' => 'Annuler', 'context' => 'Cancel button in the assignment editor popup.'],
             'team.assignment_popup.save_success' => ['text' => 'Affectation mise a jour.', 'context' => 'Success message after saving the assignment editor popup.'],
             'team.assignment_popup.invalid_assignment' => ['text' => 'Affectation invalide.', 'context' => 'Error shown when the assignment editor popup cannot find the member link.'],
             'team.assignment_popup.invalid_budget' => ['text' => 'Le budget doit etre un nombre positif ou nul.', 'context' => 'Error shown when an assignment budget is invalid.'],

@@ -22,6 +22,8 @@ $lang = omoLoadTranslationBundle('omo_get_sidebar_panel', $sourceLang);
 $currentOrganizationId = (int)($_SESSION['currentOrganization'] ?? 0);
 $currentUserId = commonGetCurrentUserId();
 $canManageApplications = omoCurrentUserCanManageOrganizationApplications($currentOrganizationId, $currentUserId);
+$isStructuralShare = function_exists('commonGetCurrentShareLink')
+    && commonGetCurrentShareLink() instanceof \dbObject\HolonShareLink;
 
 $applications = new \dbObject\ArrayApplication();
 if ($currentOrganizationId > 0) {
@@ -68,6 +70,10 @@ $renderMenuItem = static function (array $item) use ($escape) {
 <div class="menu-primary">
 <?php foreach ($applications as $application): ?>
     <?php
+    if ($isStructuralShare && $application->getRouteHash() === 'projects') {
+        continue;
+    }
+
     $renderMenuItem([
         'label' => $application->get('label'),
         'hash' => $application->getRouteHash(),

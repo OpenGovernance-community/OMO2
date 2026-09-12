@@ -1708,6 +1708,228 @@ class DocumentPvPoint extends DbObject
 
         return ['status' => true];
     }
+
+    public static function normalizeAgendaSortMode($value): string
+    {
+        $value = trim(mb_strtolower((string)$value, 'UTF-8'));
+        return in_array($value, ['none', 'priority', 'creation', 'person', 'role', 'duration'], true)
+            ? $value
+            : 'none';
+    }
+
+    public static function sortAgendaForDocumentByUser(
+        int $documentId,
+        int $userId,
+        $sortMode,
+        bool $handledLast,
+        bool $groupByType,
+        bool $randomizeTies
+    ): array {
+        $documentId = (int)$documentId;
+        $userId = (int)$userId;
+        $document = new \dbObject\Document();
+        if ($documentId <= 0 || $userId <= 0 || !$document->load($documentId) || !$document->isPvDocument() || $document->isPvValidated()) {
+            return ['status' => false, 'message' => 'Document PV invalide.'];
+        }
+        if (!$document->isPvEditor($userId) || $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW) {
+            return ['status' => false, 'message' => 'Vous ne pouvez pas classer cet ordre du jour.'];
+        }
+
+        $rows = self::fetchAll(
+            "SELECT id, COALESCE(IDparent, 0) AS parent_id, position, item_type, priority,
+                    pointtype, is_handled, datecreation, IDuser_author,
+                    IDholon_concerned, desired_duration_minutes
+             FROM document_pv_point
+             WHERE IDdocument = :document_id
+               AND COALESCE(active, 1) = 1
+             ORDER BY COALESCE(IDparent, 0) ASC, position ASC, id ASC",
+            ['document_id' => $documentId]
+        );
+        if (!is_array($rows)) {
+            return ['status' => false, 'message' => 'Impossible de charger l ordre du jour.'];
+        }
+
+        $sortMode = self::normalizeAgendaSortMode($sortMode);
+        $organizationId = (int)$document->get('IDorganization');
+        $childrenByParent = [];
+        $roleLabels = [];
+        foreach ($rows as $row) {
+            $id = (int)($row['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+
+            $authorUserId = (int)($row['IDuser_author'] ?? 0);
+            $concernedHolonId = (int)($row['IDholon_concerned'] ?? 0);
+            if ($concernedHolonId > 0 && !array_key_exists($concernedHolonId, $roleLabels)) {
+                $roleLabels[$concernedHolonId] = mb_strtolower(self::resolveHolonLabelById($concernedHolonId), 'UTF-8');
+            }
+            $duration = (int)($row['desired_duration_minutes'] ?? 0);
+            $childrenByParent[max(0, (int)($row['parent_id'] ?? 0))][] = [
+                'id' => $id,
+                'position' => (int)($row['position'] ?? 0),
+                'itemType' => self::normalizeItemType($row['item_type'] ?? ''),
+                'priority' => self::normalizePriority($row['priority'] ?? 0),
+                'pointType' => self::normalizePointType($row['pointtype'] ?? ''),
+                'handled' => !empty($row['is_handled']),
+                'creation' => strtotime((string)($row['datecreation'] ?? '')) ?: PHP_INT_MAX,
+                'author' => $authorUserId > 0
+                    ? mb_strtolower(trim(self::getUserDisplayNameForOrganization($authorUserId, $organizationId)), 'UTF-8')
+                    : '',
+                'roleId' => $concernedHolonId,
+                'role' => $concernedHolonId > 0 ? ($roleLabels[$concernedHolonId] ?? '') : '',
+                'duration' => $duration > 0 ? $duration : null,
+            ];
+        }
+
+        $pdo = self::getPdo();
+        if (!$pdo) {
+            return ['status' => false, 'message' => 'Connexion a la base impossible.'];
+        }
+
+        $sortRun = static function (array $items) use ($sortMode, $handledLast, $groupByType, $randomizeTies): array {
+            foreach ($items as $index => &$item) {
+                $item['stableIndex'] = $index;
+                $item['randomOrder'] = $randomizeTies ? random_int(0, PHP_INT_MAX) : 0;
+            }
+            unset($item);
+
+            usort($items, static function (array $left, array $right) use ($sortMode, $randomizeTies): int {
+                if ($sortMode === 'priority') {
+                    $comparison = $left['priority'] <=> $right['priority'];
+                } elseif ($sortMode === 'creation') {
+                    $comparison = $left['creation'] <=> $right['creation'];
+                } elseif ($sortMode === 'person') {
+                    $leftAuthor = $left['author'] === '' ? "\xFF" : $left['author'];
+                    $rightAuthor = $right['author'] === '' ? "\xFF" : $right['author'];
+                    $comparison = $leftAuthor <=> $rightAuthor;
+                } elseif ($sortMode === 'role') {
+                    if ($left['role'] === '' && $right['role'] !== '') {
+                        $comparison = 1;
+                    } elseif ($left['role'] !== '' && $right['role'] === '') {
+                        $comparison = -1;
+                    } else {
+                        $comparison = $left['role'] <=> $right['role'];
+                        if ($comparison === 0) {
+                            $comparison = $left['roleId'] <=> $right['roleId'];
+                        }
+                    }
+                } elseif ($sortMode === 'duration') {
+                    if ($left['duration'] === null && $right['duration'] !== null) {
+                        $comparison = 1;
+                    } elseif ($left['duration'] !== null && $right['duration'] === null) {
+                        $comparison = -1;
+                    } elseif ($left['duration'] === null) {
+                        $comparison = 0;
+                    } else {
+                        $comparison = $left['duration'] <=> $right['duration'];
+                    }
+                } else {
+                    $comparison = 0;
+                }
+                if ($comparison === 0 && $randomizeTies) {
+                    $comparison = $left['randomOrder'] <=> $right['randomOrder'];
+                }
+
+                return $comparison !== 0
+                    ? $comparison
+                    : $left['stableIndex'] <=> $right['stableIndex'];
+            });
+            foreach ($items as $index => &$item) {
+                $item['orderIndex'] = $index;
+            }
+            unset($item);
+
+            if ($groupByType) {
+                $typeOrder = [
+                    self::TYPE_INFORMATION => 0,
+                    self::TYPE_CONSULTATION => 1,
+                    self::TYPE_DECISION => 2,
+                ];
+                usort($items, static function (array $left, array $right) use ($typeOrder): int {
+                    $comparison = ($typeOrder[$left['pointType']] ?? 99) <=> ($typeOrder[$right['pointType']] ?? 99);
+                    return $comparison !== 0
+                        ? $comparison
+                        : $left['orderIndex'] <=> $right['orderIndex'];
+                });
+                foreach ($items as $index => &$item) {
+                    $item['orderIndex'] = $index;
+                }
+                unset($item);
+            }
+
+            if ($handledLast) {
+                usort($items, static function (array $left, array $right): int {
+                    $comparison = (int)$left['handled'] <=> (int)$right['handled'];
+                    return $comparison !== 0
+                        ? $comparison
+                        : $left['orderIndex'] <=> $right['orderIndex'];
+                });
+            }
+
+            return $items;
+        };
+
+        $startedTransaction = false;
+        try {
+            $startedTransaction = !$pdo->inTransaction();
+            if ($startedTransaction) {
+                $pdo->beginTransaction();
+            }
+
+            $updatedAt = date('Y-m-d H:i:s');
+            foreach ($childrenByParent as $children) {
+                $nextChildren = [];
+                $pointRun = [];
+                foreach ($children as $child) {
+                    if ($child['itemType'] === self::ITEM_TYPE_GROUP) {
+                        $nextChildren = array_merge($nextChildren, $sortRun($pointRun));
+                        $pointRun = [];
+                        $nextChildren[] = $child;
+                        continue;
+                    }
+                    $pointRun[] = $child;
+                }
+                $nextChildren = array_merge($nextChildren, $sortRun($pointRun));
+
+                foreach ($nextChildren as $index => $child) {
+                    $nextPosition = $index + 1;
+                    if ((int)$child['position'] === $nextPosition) {
+                        continue;
+                    }
+                    $result = self::execute(
+                        "UPDATE document_pv_point
+                         SET position = :position,
+                             IDuser_modification = :user_id,
+                             datemodification = :updated_at
+                         WHERE IDdocument = :document_id
+                           AND id = :item_id",
+                        [
+                            'position' => $nextPosition,
+                            'user_id' => $userId,
+                            'updated_at' => $updatedAt,
+                            'document_id' => $documentId,
+                            'item_id' => (int)$child['id'],
+                        ]
+                    );
+                    if ($result === false) {
+                        throw new \RuntimeException('pv_agenda_sort_update_failed');
+                    }
+                }
+            }
+
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+        } catch (\Throwable $exception) {
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return ['status' => false, 'message' => 'Impossible de classer l ordre du jour.'];
+        }
+
+        return ['status' => true];
+    }
 }
 
 ?>

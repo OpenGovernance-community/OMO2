@@ -1240,6 +1240,35 @@ if ($action === 'reorder_points') {
     ]);
 }
 
+if ($action === 'sort_points') {
+    if (!$document->isPvEditor($currentUserId) || $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $sortResult = \dbObject\DocumentPvPoint::sortAgendaForDocumentByUser(
+        (int)$document->getId(),
+        $currentUserId,
+        $_POST['sort_mode'] ?? 'none',
+        !empty($_POST['handled_last']),
+        !empty($_POST['group_by_type']),
+        !empty($_POST['randomize_ties'])
+    );
+    if (!is_array($sortResult) || ($sortResult['status'] ?? false) !== true) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => trim((string)($sortResult['message'] ?? omoDocumentsPvEditorActionT('documents.pv_editor.error.operation_failed'))),
+        ], 400);
+    }
+
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'points' => omoDocumentsPvEditorBuildPointsPayloadForDocument((int)$document->getId(), $organizationId, $currentUserId, $editorToken),
+    ]);
+}
+
 if ($action === 'update_stage') {
     if (
         $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW

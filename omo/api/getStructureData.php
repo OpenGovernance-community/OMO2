@@ -7,7 +7,7 @@ use dbObject\ArrayOrganization;
 use dbObject\ArrayProject;
 use dbObject\Authority;
 
-const OMO_STRUCTURE_CACHE_VERSION = 2;
+const OMO_STRUCTURE_CACHE_VERSION = 3;
 
 function omoStructureBuildCacheKey($organizationId, $navigationRootId, $includeMemberUserIds)
 {
@@ -274,7 +274,9 @@ if (count($representation) === 0) {
     exit;
 }
 
-$representation['projectTitles'] = ArrayProject::fetchTitlesForOrganization($organizationId);
+$representation['projectTitles'] = $shareLink instanceof \dbObject\HolonShareLink
+    ? array()
+    : ArrayProject::fetchTitlesForOrganization($organizationId);
 
 $authorityIds = array();
 omoStructureCollectAuthorityIds($representation, $authorityIds);
