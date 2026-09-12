@@ -325,6 +325,7 @@ class DocumentPvPoint extends DbObject
         }
 
         $assignments = [];
+        $contextCircleId = self::resolveDocumentContextCircleId($document);
 
         $rootHolon = null;
         $organization = new \dbObject\Organization();
@@ -336,6 +337,7 @@ class DocumentPvPoint extends DbObject
             $assignments = $rootHolon->getVisibleRoleAssignmentsForUser($userId, [
                 'organizationId' => $organizationId,
                 'includeDescendants' => true,
+                'contextCircleId' => $contextCircleId,
             ]);
         }
 
@@ -350,7 +352,6 @@ class DocumentPvPoint extends DbObject
             }
         }
 
-        $contextCircleId = self::resolveDocumentContextCircleId($document);
         $options = [];
         foreach ($assignments as $assignment) {
             $holonId = (int)($assignment['holonId'] ?? 0);
@@ -358,7 +359,7 @@ class DocumentPvPoint extends DbObject
                 continue;
             }
 
-            $label = trim((string)($assignment['name'] ?? ''));
+            $label = trim((string)($assignment['displayName'] ?? ($assignment['name'] ?? '')));
             if ($label === '') {
                 $label = self::resolveHolonLabelById($holonId);
             }
@@ -368,7 +369,10 @@ class DocumentPvPoint extends DbObject
 
             $circleId = (int)($assignment['circleId'] ?? 0);
             $circleLabel = trim((string)($assignment['circleLabel'] ?? ''));
-            $isLocal = $contextCircleId > 0 && $circleId === $contextCircleId;
+            $isLocal = $contextCircleId > 0 && (
+                $circleId === $contextCircleId
+                || (!empty($assignment['isLinkedToContext']) && (int)($assignment['contextCircleId'] ?? 0) === $contextCircleId)
+            );
             $displayLabel = $label;
             if (!$isLocal && $circleLabel !== '') {
                 $displayLabel .= ' (' . $circleLabel . ')';
