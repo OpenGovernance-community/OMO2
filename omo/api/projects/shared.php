@@ -351,11 +351,29 @@ if (!function_exists('omoProjectsT')) {
     }
 }
 
+if (!function_exists('omoProjectsAreAvailableForCurrentRequest')) {
+    function omoProjectsAreAvailableForCurrentRequest(): bool
+    {
+        $shareLink = function_exists('commonGetCurrentShareLink')
+            ? commonGetCurrentShareLink()
+            : null;
+
+        // A structural share exposes only the explicitly selected structure
+        // and people data. It never grants access to the Projects application.
+        return !($shareLink instanceof \dbObject\HolonShareLink);
+    }
+}
+
 if (!function_exists('omoProjectsResolveContext')) {
     function omoProjectsResolveContext($organizationId, $currentHolonId = 0)
     {
         $organizationId = (int)$organizationId;
         $currentHolonId = (int)$currentHolonId;
+
+        if (!omoProjectsAreAvailableForCurrentRequest()) {
+            return ['status' => false, 'message' => omoProjectsT('projects.error.context')];
+        }
+
         $organization = new Organization();
 
         if ($organizationId <= 0 || !$organization->load($organizationId) || !$organization->canViewDetail()) {
@@ -516,6 +534,10 @@ if (!function_exists('omoProjectsCanRespondToProposal')) {
 if (!function_exists('omoProjectsCanViewProject')) {
     function omoProjectsCanViewProject(Project $project, array $context)
     {
+        if (empty($context['status']) || !omoProjectsAreAvailableForCurrentRequest()) {
+            return false;
+        }
+
         if (!$project->isPrivateProposal()) {
             return true;
         }
