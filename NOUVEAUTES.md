@@ -5,6 +5,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 ## 2026-09-12
 
 - Les notifications standard restent maintenant visibles cinq secondes et affichent une fine barre de progression en bas, qui se met en pause au survol.
+- Les liens publics de partage de structure n ouvrent plus l application Projets ni les projets associes ; cette restriction est egalement appliquee aux appels directs vers son API.
 
 ## 2026-09-11
 
