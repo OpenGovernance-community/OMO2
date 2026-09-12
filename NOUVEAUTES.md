@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-12
 
+- Les rôles liés à un cercle englobant sont maintenant inclus dans les rôles du contexte courant, dans les points de PV comme dans la fiche de profil, avec leur libellé complet « Rôle (cercle source) » et un ordre alphabétique. La fiche de profil limite ce contexte aux rôles directs et liés ; les rôles des descendants restent dans l onglet de l organisation.
 - Les notifications standard restent maintenant visibles cinq secondes et affichent une fine barre de progression en bas, qui se met en pause au survol.
 - Les liens publics de partage de structure n ouvrent plus l application Projets ni les projets associes ; les listes de projets restent lisibles avec leur seul titre, sans detail, statut ni navigation. Cette restriction est egalement appliquee aux appels directs vers son API.
 
