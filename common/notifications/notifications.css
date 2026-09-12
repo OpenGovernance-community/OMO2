@@ -50,6 +50,28 @@
     transform: translateY(-8px);
 }
 
+.common-notification__progress {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    border-radius: 0 0 var(--radius-md, 6px) var(--radius-md, 6px);
+    background: var(--common-notification-accent);
+    transform: scaleX(1);
+    transform-origin: left center;
+    animation: common-notification-progress var(--common-notification-duration, 5000ms) linear forwards;
+}
+
+.common-notification.is-paused .common-notification__progress {
+    animation-play-state: paused;
+}
+
+@keyframes common-notification-progress {
+    from { transform: scaleX(1); }
+    to { transform: scaleX(0); }
+}
+
 .common-notification--warning {
     --common-notification-accent: var(--color-warning, #f59e0b);
     --common-notification-background: #fffbeb;
@@ -108,5 +130,9 @@
 @media (prefers-reduced-motion: reduce) {
     .common-notification {
         transition: none;
+    }
+
+    .common-notification__progress {
+        animation: none;
     }
 }

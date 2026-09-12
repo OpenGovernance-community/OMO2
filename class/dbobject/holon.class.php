@@ -2515,6 +2515,11 @@
 				$assignmentsByHolonId[$roleHolonId] = array(
 					'holonId' => $roleHolonId,
 					'name' => trim((string)$roleHolon->getDisplayName()),
+					'timeBudgetHours' => $row['holon_time_budget_hours'] ?? null,
+					'timeBudgetRecurrence' => trim((string)($row['holon_time_budget_recurrence'] ?? '')),
+					'moneyBudget' => $row['holon_money_budget'] ?? null,
+					'moneyBudgetRecurrence' => trim((string)($row['holon_money_budget_recurrence'] ?? '')),
+					'canEditAssignment' => $roleHolon->canEdit(),
 					'parentLabel' => $parentHolon ? trim((string)$parentHolon->getDisplayName()) : '',
 					'circleId' => $containingCircle ? (int)$containingCircle->getId() : 0,
 					'circleLabel' => $containingCircle ? trim((string)$containingCircle->getDisplayName()) : '',
