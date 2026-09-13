@@ -1306,7 +1306,17 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
 }
 
 .omo-dashboard-event-item .omo-personal-space__item-button {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding-inline-start: 10px;
     padding-inline-end: 44px;
+}
+
+.omo-dashboard-event-item.has-meeting-link .omo-personal-space__item-button {
+    padding-block-end: 30px;
 }
 
 .omo-dashboard-event-item.is-status-option .omo-personal-space__item-button {
@@ -1322,7 +1332,7 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
 .omo-dashboard-event-document {
     position: absolute;
     inset-inline-end: 10px;
-    top: 50%;
+    top: 10px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1335,7 +1345,6 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
     color: var(--color-text-light, #64748b);
     cursor: pointer;
     font: inherit;
-    transform: translateY(-50%);
 }
 
 .omo-dashboard-event-document svg {
@@ -1380,6 +1389,101 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.omo-dashboard-event__date {
+    display: grid;
+    width: 42px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 25%, var(--color-border, #e5e7eb));
+    border-radius: 7px;
+    background: var(--color-surface, #fff);
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+}
+
+.omo-dashboard-event__date-month {
+    padding: 2px 3px;
+    background: var(--color-primary, #2563eb);
+    color: var(--color-primary-text, #fff);
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.omo-dashboard-event__date-day {
+    padding: 3px;
+    color: var(--color-text, #0f172a);
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.omo-dashboard-event__content {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+}
+
+.omo-dashboard-event__title,
+.omo-dashboard-event__holon,
+.omo-dashboard-event__meeting-link {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.omo-dashboard-event__meta-row {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+    gap: 7px;
+}
+
+.omo-dashboard-event__holon {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.omo-dashboard-event__time {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.omo-dashboard-event__time::before {
+    content: "\00b7";
+    margin-inline-end: 7px;
+}
+
+.omo-dashboard-event__meeting-link {
+    display: block;
+    min-width: 0;
+    flex: 1 1 auto;
+    color: var(--color-primary, #2563eb);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.omo-dashboard-event__meeting-line {
+    position: absolute;
+    z-index: 1;
+    inset-inline: 64px 44px;
+    bottom: 8px;
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+    gap: 7px;
+}
+
+.omo-dashboard-event__location-mode {
+    flex: 0 0 auto;
+    padding-inline-end: 7px;
+    border-inline-end: 1px solid color-mix(in srgb, var(--color-border, #e5e7eb) 85%, transparent);
+    font-weight: 700;
 }
 
 .omo-personal-space__item-topline {
