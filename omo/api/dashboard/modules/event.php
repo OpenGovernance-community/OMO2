@@ -10,11 +10,24 @@ if (!isset($calendarEvents, $dashboardEventCounts, $dashboardMetricLabels)) {
 </div>
 <div class="omo-personal-space__item-list omo-dashboard-module__list">
     <?php foreach ($calendarEvents as $eventItem): ?>
-        <div class="omo-dashboard-event-item is-status-<?= omoApiEscape($eventItem['status'] ?? '') ?>" data-omo-dashboard-filter-item="<?= omoApiEscape(implode(' ', (array)($eventItem['filters'] ?? array()))) ?>">
-            <button type="button" class="omo-personal-space__item-button" data-omo-personal-space-calendar-event-id="<?= (int)($eventItem['id'] ?? 0) ?>" data-omo-personal-space-calendar-holon-id="<?= (int)($eventItem['holonId'] ?? 0) ?>">
-                <span class="omo-personal-space__item-title"><?= omoApiEscape($eventItem['title'] ?? '') ?></span><span class="omo-personal-space__item-meta"><?= omoApiEscape($eventItem['rangeLabel'] ?? '') ?></span><span class="omo-personal-space__item-meta"><?= omoApiEscape($eventItem['contextLabel'] ?? '') ?></span>
-                <?php if (trim((string)($eventItem['locationLabel'] ?? '')) !== ''): ?><span class="omo-personal-space__item-meta omo-dashboard-event__location"><?= omoApiEscape($eventItem['locationLabel']) ?></span><?php endif; ?>
+        <div class="omo-dashboard-event-item is-status-<?= omoApiEscape($eventItem['status'] ?? '') ?><?= trim((string)($eventItem['videoMeetingUrl'] ?? '')) !== '' ? ' has-meeting-link' : '' ?>" data-omo-dashboard-filter-item="<?= omoApiEscape(implode(' ', (array)($eventItem['filters'] ?? array()))) ?>">
+            <button type="button" class="omo-personal-space__item-button" data-omo-personal-space-calendar-event-id="<?= (int)($eventItem['id'] ?? 0) ?>" data-omo-personal-space-calendar-holon-id="<?= (int)($eventItem['holonId'] ?? 0) ?>" aria-label="<?= omoApiEscape(trim((string)($eventItem['title'] ?? '') . ' - ' . (string)($eventItem['rangeLabel'] ?? ''))) ?>">
+                <span class="omo-dashboard-event__date" aria-hidden="true"><span class="omo-dashboard-event__date-month"><?= omoApiEscape($eventItem['dateMonth'] ?? '') ?></span><span class="omo-dashboard-event__date-day"><?= omoApiEscape($eventItem['dateDay'] ?? '') ?></span></span>
+                <span class="omo-dashboard-event__content">
+                    <span class="omo-personal-space__item-title omo-dashboard-event__title" title="<?= omoApiEscape($eventItem['title'] ?? '') ?>"><?= omoApiEscape($eventItem['title'] ?? '') ?></span>
+                    <span class="omo-dashboard-event__meta-row">
+                        <span class="omo-personal-space__item-meta omo-dashboard-event__holon" title="<?= omoApiEscape($eventItem['contextLabel'] ?? '') ?>"><?= omoApiEscape($eventItem['contextLabel'] ?? '') ?></span>
+                        <?php if (trim((string)($eventItem['timeLabel'] ?? '')) !== ''): ?><span class="omo-personal-space__item-meta omo-dashboard-event__time"><?= omoApiEscape($eventItem['timeLabel']) ?></span><?php endif; ?>
+                    </span>
+                    <?php if (trim((string)($eventItem['locationLabel'] ?? '')) !== '' && trim((string)($eventItem['videoMeetingUrl'] ?? '')) === ''): ?><span class="omo-personal-space__item-meta omo-dashboard-event__location" title="<?= omoApiEscape($eventItem['locationLabel']) ?>"><?= omoApiEscape($eventItem['locationLabel']) ?></span><?php endif; ?>
+                </span>
             </button>
+            <?php if (trim((string)($eventItem['videoMeetingUrl'] ?? '')) !== ''): ?>
+                <span class="omo-dashboard-event__meeting-line">
+                    <?php if (trim((string)($eventItem['locationModeLabel'] ?? '')) !== ''): ?><span class="omo-personal-space__item-meta omo-dashboard-event__location-mode"><?= omoApiEscape($eventItem['locationModeLabel']) ?></span><?php endif; ?>
+                    <a class="omo-dashboard-event__meeting-link" href="<?= omoApiEscape($eventItem['videoMeetingUrl']) ?>" target="_blank" rel="noopener noreferrer" title="<?= omoApiEscape($eventItem['videoMeetingUrl']) ?>"><?= omoApiEscape($eventItem['videoMeetingUrl']) ?></a>
+                </span>
+            <?php endif; ?>
             <?php if (trim((string)($eventItem['documentUrl'] ?? '')) !== ''): ?>
                 <button
                     type="button"

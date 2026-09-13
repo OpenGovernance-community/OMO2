@@ -99,8 +99,10 @@ if (!empty($enabledAppHashes['calendar'])) {
         $locationParts = array_values(array_filter(array(
             trim((string)($locationData['modeLabel'] ?? '')),
             trim((string)($locationData['address'] ?? '')),
-            trim((string)($locationData['videoUrl'] ?? '')),
         )));
+        $startAt = $event->get('start_at');
+        $endAt = $event->get('end_at');
+        $isAllDay = (bool)$event->get('is_all_day');
         $associatedDocumentOpenData = omoCalendarBuildAssociatedDocumentOpenData(
             $event,
             $associatedDocumentsByEventId[(int)$event->getId()] ?? array(),
@@ -121,13 +123,16 @@ if (!empty($enabledAppHashes['calendar'])) {
             'documentUrl' => $associatedDocumentOpenData['url'],
             'documentTitle' => $associatedDocumentOpenData['title'],
             'documentPvEditorUrl' => $associatedDocumentOpenData['pvEditorUrl'],
+            'videoMeetingUrl' => trim((string)($locationData['videoUrl'] ?? '')),
+            'locationModeLabel' => trim((string)($locationData['modeLabel'] ?? '')),
             'locationLabel' => implode(' · ', $locationParts),
             'filters' => $isMine ? array('all', 'mine') : array('all'),
-            'rangeLabel' => $formatCalendarRange(
-                $event->get('start_at'),
-                $event->get('end_at'),
-                (bool)$event->get('is_all_day')
-            ),
+            'dateDay' => $startAt instanceof DateTimeInterface ? $startAt->format('j') : '',
+            'dateMonth' => $startAt instanceof DateTimeInterface
+                ? t('personal_space.calendar.month.' . $startAt->format('m'), array(), $lang, $sourceLang)
+                : '',
+            'rangeLabel' => $formatCalendarRange($startAt, $endAt, $isAllDay),
+            'timeLabel' => $formatCalendarTime($startAt, $endAt, $isAllDay),
         );
     }
 }
