@@ -2,6 +2,10 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-13
+
+- Le module Evenements du tableau de pilotage affiche maintenant une vignette calendrier avec le mois en lettres, rassemble le holon et l horaire sur une ligne, et tronque proprement les titres, lieux et liens de visio. Les liens de reunion restent ouvrables directement.
+
 ## 2026-09-12
 
 - Le passage dun PV en relecture demande maintenant une confirmation explicite : cette etape empeche tout retour en preparation ou en reunion.

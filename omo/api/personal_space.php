@@ -96,6 +96,18 @@ $sourceLang = [
         'text' => 'Ouvrir le document associe',
         'context' => 'Accessible label for the document icon shown next to a dashboard event.',
     ],
+    'personal_space.calendar.month.01' => ['text' => 'Jan', 'context' => 'Short January label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.02' => ['text' => 'Fev', 'context' => 'Short February label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.03' => ['text' => 'Mar', 'context' => 'Short March label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.04' => ['text' => 'Avr', 'context' => 'Short April label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.05' => ['text' => 'Mai', 'context' => 'Short May label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.06' => ['text' => 'Juin', 'context' => 'Short June label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.07' => ['text' => 'Juil', 'context' => 'Short July label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.08' => ['text' => 'Aout', 'context' => 'Short August label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.09' => ['text' => 'Sept', 'context' => 'Short September label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.10' => ['text' => 'Oct', 'context' => 'Short October label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.11' => ['text' => 'Nov', 'context' => 'Short November label shown in the dashboard event date badge.'],
+    'personal_space.calendar.month.12' => ['text' => 'Dec', 'context' => 'Short December label shown in the dashboard event date badge.'],
     'personal_space.team.empty' => [
         'text' => 'Aucun anniversaire proche à afficher.',
         'context' => 'Empty state shown when no upcoming personal or professional anniversaries are found.',
@@ -324,6 +336,18 @@ $formatCalendarRange = static function ($startAt, $endAt, $isAllDay = false) use
     }
 
     return $startAt->format('d.m.Y H:i') . ' -> ' . $endAt->format('d.m.Y H:i');
+};
+
+$formatCalendarTime = static function ($startAt, $endAt, $isAllDay = false): string {
+    if ($isAllDay || !($startAt instanceof DateTimeInterface) || !($endAt instanceof DateTimeInterface)) {
+        return '';
+    }
+
+    if ($startAt->format('Y-m-d') === $endAt->format('Y-m-d')) {
+        return $startAt->format('H:i') . ' - ' . $endAt->format('H:i');
+    }
+
+    return $startAt->format('d.m H:i') . ' -> ' . $endAt->format('d.m H:i');
 };
 
 if ($currentHolonId > 0) {
