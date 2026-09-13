@@ -4,7 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-13
 
-- Le module Evenements du tableau de pilotage affiche maintenant une vignette calendrier avec le mois en lettres, rassemble le holon et l horaire sur une ligne, et tronque proprement les titres, lieux et liens de visio. Les liens de reunion restent ouvrables directement. Dans toutes les cartes doubles du tableau, la liste utilise la hauteur complete de sa cellule et reste alignee avec les deux cartes voisines.
+- Le module Evenements du tableau de pilotage affiche maintenant une vignette calendrier avec le mois en lettres, rassemble le holon et l horaire sur une ligne, et tronque proprement les titres, lieux et liens de visio. Les liens de reunion restent ouvrables directement. Dans toutes les cartes doubles du tableau, la carte est bornee par sa cellule de grille et sa liste flex utilise la hauteur complete disponible, alignee avec les deux cartes voisines. La feuille de styles OMO est versionnee pour que ce correctif soit recharge sans cache ancien.
 
 ## 2026-09-12
 
