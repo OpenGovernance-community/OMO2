@@ -2212,7 +2212,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
             return;
         }
 
-        const htmlFieldVersion = '20260911-project-selection-embed';
+        const htmlFieldVersion = '20260912-toolbar-always-visible';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'

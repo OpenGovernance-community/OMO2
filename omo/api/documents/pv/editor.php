@@ -891,7 +891,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         height: 28px;
         flex: 0 0 28px;
         border-radius: var(--radius-md);
-        background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, white);
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface, #fff));
     }
 
     .omo-pv-editor__event-info-icon img {
@@ -1191,18 +1191,15 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         width: 48px;
         height: 48px;
         border-radius: var(--radius-md);
-        background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, white);
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #fff));
         color: var(--color-primary, #2563eb);
     }
 
-    .omo-pv-editor__attendance-icon svg {
+    .omo-pv-editor__attendance-icon img {
+        display: block;
         width: 27px;
         height: 27px;
-        fill: none;
-        stroke: currentColor;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        stroke-width: 1.8;
+        object-fit: contain;
     }
 
     .omo-pv-editor__attendance-body {
@@ -1284,12 +1281,17 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     .omo-pv-editor__sidebar {
+        --omo-pv-editor-timing-height: 156px;
+        --omo-pv-editor-timing-resizer-size: 10px;
         display: grid;
-        grid-template-rows: minmax(0, 1fr) auto;
-        gap: 10px;
+        grid-template-rows: minmax(0, 1fr) var(--omo-pv-editor-timing-resizer-size) var(--omo-pv-editor-timing-height);
         align-content: start;
         overflow: hidden;
         padding-right: 4px;
+    }
+
+    .omo-pv-editor__sidebar.is-timing-collapsed {
+        grid-template-rows: minmax(0, 1fr) var(--omo-pv-editor-timing-resizer-size) 0;
     }
 
     .omo-pv-editor__resizer {
@@ -1326,6 +1328,43 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         background:
             linear-gradient(
                 90deg,
+                color-mix(in srgb, var(--color-border, #e5e7eb) 22%, transparent),
+                color-mix(in srgb, var(--color-border, #e5e7eb) 88%, transparent),
+                color-mix(in srgb, var(--color-border, #e5e7eb) 22%, transparent)
+            );
+    }
+
+    .omo-pv-editor__timing-resizer {
+        min-height: var(--omo-pv-editor-timing-resizer-size);
+        cursor: row-resize;
+        position: relative;
+        border: 0;
+        padding: 0;
+        background:
+            linear-gradient(
+                180deg,
+                color-mix(in srgb, var(--color-border, #e5e7eb) 28%, transparent),
+                color-mix(in srgb, var(--color-border, #e5e7eb) 72%, transparent),
+                color-mix(in srgb, var(--color-border, #e5e7eb) 28%, transparent)
+            );
+    }
+
+    .omo-pv-editor__timing-resizer::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 44px;
+        height: 4px;
+        border-radius: 999px;
+        transform: translate(-50%, -50%);
+        background: color-mix(in srgb, var(--color-text-light, #64748b) 55%, transparent);
+    }
+
+    .omo-pv-editor__timing-resizer:hover {
+        background:
+            linear-gradient(
+                180deg,
                 color-mix(in srgb, var(--color-border, #e5e7eb) 22%, transparent),
                 color-mix(in srgb, var(--color-border, #e5e7eb) 88%, transparent),
                 color-mix(in srgb, var(--color-border, #e5e7eb) 22%, transparent)
@@ -1436,10 +1475,33 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         min-width: 0;
     }
 
-    .omo-pv-editor__group-title,
-    .omo-pv-editor__group-title-input {
+    .omo-pv-editor__group-title-line {
         grid-column: 4;
         grid-row: 1;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .omo-pv-editor__group-title-line > .omo-pv-editor__group-title,
+    .omo-pv-editor__group-title-line > .omo-pv-editor__group-title-input {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .omo-pv-editor__group-point-count {
+        display: none;
+        flex: 0 0 20px;
+        place-items: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, var(--color-surface-alt, #f8fafc));
+        color: var(--color-text-light, #64748b);
+        font-size: 0.68rem;
+        font-weight: 800;
+        line-height: 1;
     }
 
     .omo-pv-editor__group-summary {
@@ -1617,6 +1679,22 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         white-space: nowrap;
     }
 
+    .omo-pv-editor__nav.is-compact .omo-pv-editor__nav-meta {
+        display: none;
+    }
+
+    .omo-pv-editor__nav.is-compact .omo-pv-editor__group-head {
+        grid-template-rows: auto;
+    }
+
+    .omo-pv-editor__nav.is-compact .omo-pv-editor__group-summary {
+        display: none;
+    }
+
+    .omo-pv-editor__nav.is-compact .omo-pv-editor__group-point-count {
+        display: inline-grid;
+    }
+
     .omo-pv-editor__nav-actions {
         display: inline-flex;
         align-items: stretch;
@@ -1688,9 +1766,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         padding: 0;
         place-items: center;
         list-style: none;
-        font-size: 22px;
-        font-weight: 800;
-        line-height: 1;
         cursor: pointer;
     }
 
@@ -1832,14 +1907,14 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         place-items: center;
     }
 
-    .omo-pv-editor__add-button img {
+    .omo-pv-editor__toolbar-icon {
         display: block;
         width: 24px;
         height: 24px;
         object-fit: contain;
     }
 
-    .omo-pv-editor__add-button.generic-action-button--main img {
+    .omo-pv-editor__toolbar-icon--on-main {
         filter: brightness(0) invert(1);
     }
 
@@ -2151,6 +2226,11 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         font-size: 0.86rem;
     }
 
+    .omo-pv-editor__point-meta-line > * + * {
+        padding-left: 8px;
+        border-left: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 72%, transparent);
+    }
+
     .omo-pv-editor__point-author,
     .omo-pv-editor__point-concerned-readonly {
         min-width: 0;
@@ -2238,6 +2318,13 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         color: color-mix(in srgb, var(--color-primary, #2563eb) 65%, var(--color-text, #0f172a));
         font-size: 0.74rem;
         font-weight: 900;
+    }
+
+    .omo-pv-editor__person-icon img {
+        display: block;
+        width: 22px;
+        height: 22px;
+        object-fit: contain;
     }
 
     .omo-pv-editor__person-copy {
@@ -2342,45 +2429,26 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         gap: 10px;
     }
 
-    .omo-pv-editor .omo-simple-html-field .note-toolbar {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 4px;
-    }
-
-    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__point-actions--toolbar {
+    .omo-pv-editor__point-meta-actions {
         margin-left: auto;
-        padding-left: 8px;
-        border-left: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 76%, transparent);
+        flex: 0 0 auto;
     }
 
-    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__save-button,
-    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__delete-button,
-    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-chat-popup-trigger {
-        min-height: 28px;
-        height: 28px;
-    }
-
-    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__save-button,
-    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-chat-popup-trigger {
-        padding: 4px 9px;
-        font-size: 0.78rem;
+    .omo-pv-editor__point-meta-actions .omo-pv-editor__save-button,
+    .omo-pv-editor__point-meta-actions .omo-chat-popup-trigger {
+        min-height: 34px;
+        height: 34px;
+        padding: 6px 10px;
+        font-size: 0.8rem;
         line-height: 1;
     }
 
-    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__delete-button {
-        width: 28px;
-        min-width: 28px;
-        padding: 6px;
-        margin-right: 8px;
-    }
-
-    .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__point-status {
-        max-width: 130px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+    .omo-pv-editor__point-meta-actions .omo-pv-editor__delete-button {
+        width: 34px;
+        min-width: 34px;
+        height: 34px;
+        min-height: 34px;
+        padding: 8px;
     }
 
     .omo-pv-editor__delete-button {
@@ -2420,26 +2488,17 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         cursor: wait;
     }
 
-    @media (max-width: 620px) {
-        .omo-pv-editor .omo-simple-html-field .note-toolbar .omo-pv-editor__point-actions--toolbar {
-            width: 100%;
-            margin-left: 0;
-            padding: 6px 0 0;
-            border-top: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 76%, transparent);
-            border-left: 0;
-        }
-    }
-
     .omo-pv-editor__empty {
         padding: 24px;
     }
 
     .omo-pv-editor__timing {
-        position: sticky;
-        bottom: 0;
+        position: relative;
         display: grid;
         gap: 8px;
-        align-self: end;
+        align-self: stretch;
+        min-height: 92px;
+        overflow: auto;
         justify-items: center;
         padding: 10px;
         background:
@@ -2449,6 +2508,10 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 color-mix(in srgb, var(--color-surface, #ffffff) 96%, white 4%) 24%
             );
         backdrop-filter: blur(6px);
+    }
+
+    .omo-pv-editor__sidebar.is-timing-collapsed .omo-pv-editor__timing {
+        display: none;
     }
 
     .omo-pv-editor__timing-chart-shell {
@@ -2461,7 +2524,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     .omo-pv-editor__timing-chart {
-        width: 116px;
+        width: var(--omo-pv-editor-timing-chart-size, 116px);
         aspect-ratio: 1;
         border-radius: 50%;
         position: relative;
@@ -2504,7 +2567,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     .omo-pv-editor__timing-legend {
         display: grid;
         gap: 4px;
-        min-width: 0;
+        min-width: 96px;
         width: 100%;
     }
 
@@ -2579,6 +2642,19 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             padding-right: 0;
         }
 
+        .omo-pv-editor__sidebar {
+            grid-template-rows: auto auto;
+            gap: 10px;
+        }
+
+        .omo-pv-editor__timing-resizer {
+            display: none;
+        }
+
+        .omo-pv-editor__timing {
+            min-height: 0;
+        }
+
         .omo-pv-editor__resizer {
             display: none;
         }
@@ -2611,6 +2687,10 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 
         .omo-pv-editor__timing-chart-shell {
             grid-template-columns: 1fr;
+        }
+
+        .omo-pv-editor__timing-chart {
+            width: 116px;
         }
     }
 
@@ -2664,7 +2744,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             border-radius: var(--radius-md);
         }
 
-        .omo-pv-editor__attendance-icon svg {
+        .omo-pv-editor__attendance-icon img {
             width: 22px;
             height: 22px;
         }
@@ -2851,7 +2931,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             <div class="omo-pv-editor__toolbar">
                 <?php if ($isPvEditor && !$isPvReview): ?>
                     <details class="omo-pv-editor__sort-menu" data-omo-pv-sort-menu>
-                        <summary class="generic-action-button generic-action-button--secondary" title="<?= $escape((string)$uiText['sort']) ?>" aria-label="<?= $escape((string)$uiText['sort']) ?>">&hellip;</summary>
+                        <summary class="generic-action-button generic-action-button--secondary" title="<?= $escape((string)$uiText['sort']) ?>" aria-label="<?= $escape((string)$uiText['sort']) ?>"><img src="/omo/assets/images/documents/sort-ascending.png" class="omo-pv-editor__toolbar-icon black-icon" alt="" aria-hidden="true"></summary>
                         <form class="omo-pv-editor__sort-menu-panel" data-omo-pv-sort-form>
                             <fieldset class="omo-pv-editor__sort-options">
                                 <legend><?= $escape((string)$uiText['sort']) ?></legend>
@@ -2866,6 +2946,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                                 <label class="omo-pv-editor__sort-option"><input type="checkbox" name="omo_pv_sort_randomize_ties" value="1"> <?= $escape((string)$uiText['sortRandomizeTies']) ?></label>
                                 <label class="omo-pv-editor__sort-option"><input type="checkbox" name="omo_pv_sort_handled_last" value="1"> <?= $escape((string)$uiText['sortHandledLast']) ?></label>
                                 <label class="omo-pv-editor__sort-option"><input type="checkbox" name="omo_pv_sort_group_by_type" value="1"> <?= $escape((string)$uiText['sortGroupByType']) ?></label>
+                                <label class="omo-pv-editor__sort-option"><input type="checkbox" name="omo_pv_sort_compact_display" value="1"> <?= $escape((string)$uiText['sortCompactDisplay']) ?></label>
                             </div>
                             <button type="submit" class="generic-action-button generic-action-button--main omo-pv-editor__sort-submit" data-omo-pv-sort-submit data-omo-pv-sort-label="<?= $escape((string)$uiText['sortApply']) ?>" data-omo-pv-sort-applying-label="<?= $escape((string)$uiText['sortApplying']) ?>"><?= $escape((string)$uiText['sortApply']) ?></button>
                         </form>
@@ -2873,9 +2954,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 <?php endif; ?>
                 <button type="button" class="omo-pv-editor__delete-dropzone" data-omo-pv-delete-dropzone title="<?= $escape((string)$uiText['deleteItem']) ?>" aria-label="<?= $escape((string)$uiText['deleteItem']) ?>"<?= $isPvReview ? ' hidden' : '' ?>><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>
                 <?php if ($canCreatePvGroups): ?>
-                    <button type="button" class="generic-action-button generic-action-button--secondary omo-pv-editor__add-button" data-omo-pv-editor-add-group title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>"><img src="/omo/assets/images/documents/add-folder.png" alt="" aria-hidden="true"></button>
+                    <button type="button" class="generic-action-button generic-action-button--secondary omo-pv-editor__add-button" data-omo-pv-editor-add-group title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_group')) ?>"><img src="/omo/assets/images/documents/add-folder.png" class="omo-pv-editor__toolbar-icon black-icon" alt="" aria-hidden="true"></button>
                 <?php endif; ?>
-                <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__add-button" data-omo-pv-editor-add-point<?= $isPvValidated || $isPvReview ? ' disabled' : '' ?> title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>"><img src="/omo/assets/images/documents/add.png" alt="" aria-hidden="true"></button>
+                <button type="button" class="generic-action-button generic-action-button--main omo-pv-editor__add-button" data-omo-pv-editor-add-point<?= $isPvValidated || $isPvReview ? ' disabled' : '' ?> title="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>" aria-label="<?= $escape(omoDocumentsPvEditorT('documents.pv_editor.action.add_point')) ?>"><img src="/omo/assets/images/documents/add.png" class="omo-pv-editor__toolbar-icon omo-pv-editor__toolbar-icon--on-main" alt="" aria-hidden="true"></button>
             </div>
             <div class="omo-pv-editor__nav generic-stack generic-stack--compact" data-omo-pv-editor-nav>
                 <?php if (count($pointNavItems) === 0): ?>
@@ -2885,6 +2966,14 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 <?php endif; ?>
             </div>
         </section>
+
+        <div
+            class="omo-pv-editor__timing-resizer"
+            data-omo-pv-timing-resizer
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="<?= $escape((string)$uiText['resizeTiming']) ?>"
+        ></div>
 
         <section class="omo-pv-editor__panel generic-section omo-pv-editor__timing" data-omo-pv-timing-panel>
             <div class="omo-pv-editor__timing-chart-shell">
@@ -3035,14 +3124,14 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             <div class="omo-pv-editor__secretary" data-omo-pv-secretary>
                 <div class="omo-pv-editor__secretary-people">
                     <div class="omo-pv-editor__person-block">
-                        <span class="omo-pv-editor__person-icon" aria-hidden="true">AU</span>
+                        <span class="omo-pv-editor__person-icon" aria-hidden="true"><img src="/omo/assets/images/documents/pv-initial-author.png" class="black-icon" alt=""></span>
                         <span class="omo-pv-editor__person-copy">
                             <span class="omo-pv-editor__field-label"><?= $escape((string)$uiText['initialAuthor']) ?></span>
                             <span class="omo-pv-editor__secretary-name" data-omo-pv-initial-author><?= $escape($pvCreatorLabel !== '' ? $pvCreatorLabel : (string)$uiText['pvEditorEmpty']) ?></span>
                         </span>
                     </div>
                     <div class="omo-pv-editor__person-block">
-                        <span class="omo-pv-editor__person-icon" aria-hidden="true">PV</span>
+                        <span class="omo-pv-editor__person-icon" aria-hidden="true"><img src="/omo/assets/images/documents/pv-editor.png" class="black-icon" alt=""></span>
                         <span class="omo-pv-editor__person-copy">
                             <span class="omo-pv-editor__field-label"><?= $escape((string)$uiText['pvEditor']) ?></span>
                             <span class="omo-pv-editor__secretary-name" data-omo-pv-secretary-name><?= $escape($pvEditorLabel !== '' ? $pvEditorLabel : (string)$uiText['pvEditorEmpty']) ?></span>
@@ -3092,9 +3181,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             </div>
             <?php if ($showAttendance): ?>
             <div class="omo-pv-editor__attendance" data-omo-pv-attendance-root<?= is_array($attendancePayload) ? '' : ' hidden' ?>>
-                <div class="omo-pv-editor__attendance-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M16 20v-1.5a4.5 4.5 0 0 0-4.5-4.5h-4A4.5 4.5 0 0 0 3 18.5V20"></path><circle cx="9.5" cy="7" r="3.5"></circle><path d="M17 10a3 3 0 1 0 0-6M18 14c2.2.7 3 2.2 3 4.5V20"></path></svg>
-                </div>
+                <div class="omo-pv-editor__attendance-icon" aria-hidden="true"><img src="/omo/assets/images/documents/pv-attendance.png" class="black-icon" alt=""></div>
                 <div class="omo-pv-editor__attendance-body generic-stack generic-stack--compact">
                 <div class="omo-pv-editor__attendance-head">
                     <span class="omo-pv-editor__field-label"><?= $escape((string)$uiText['attendance']) ?></span>
@@ -3166,6 +3253,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     const mainPanel = root.querySelector('.omo-pv-editor__main');
     const addButton = root.querySelector('[data-omo-pv-editor-add-point]');
     const addGroupButton = root.querySelector('[data-omo-pv-editor-add-group]');
+    const sidebar = root.querySelector('.omo-pv-editor__sidebar');
+    const timingPanel = root.querySelector('[data-omo-pv-timing-panel]');
+    const timingResizer = root.querySelector('[data-omo-pv-timing-resizer]');
     const sortMenu = root.querySelector('[data-omo-pv-sort-menu]');
     const sortForm = root.querySelector('[data-omo-pv-sort-form]');
     const sortSubmitButton = root.querySelector('[data-omo-pv-sort-submit]');
@@ -3254,6 +3344,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     const unsavedCloseMessage = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.warning.unsaved_close'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const deletePointMessage = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.warning.delete_point'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const deleteItemMessage = <?= json_encode((string)$uiText['deleteItemMessage'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const reviewIrreversibleMessage = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.warning.review_irreversible'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const validateIrreversibleMessage = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.warning.validate_irreversible'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const unsavedHandoverMessage = <?= json_encode((string)$uiText['unsavedHandover'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const notStartedValue = <?= json_encode((string)$uiText['notStartedValue'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -5410,6 +5501,131 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         });
     })();
 
+    (function initTimingResizer() {
+        if (!(sidebar instanceof HTMLElement) || !(timingPanel instanceof HTMLElement) || !(timingResizer instanceof HTMLElement)) {
+            return;
+        }
+
+        const storageKey = 'omo.pv.editor.timing-height.v1';
+        const minHeight = 92;
+        let isResizing = false;
+
+        const timingChartShell = root.querySelector('.omo-pv-editor__timing-chart-shell');
+        const getTimingPanelPaddingHeight = function () {
+            const panelStyle = window.getComputedStyle(timingPanel);
+            return (parseFloat(panelStyle.paddingTop) || 0) + (parseFloat(panelStyle.paddingBottom) || 0);
+        };
+        const getTimingChartMaxSize = function () {
+            if (!(timingChartShell instanceof HTMLElement)) {
+                return 56;
+            }
+
+            const chartShellStyle = window.getComputedStyle(timingChartShell);
+            const chartGap = parseFloat(chartShellStyle.columnGap) || 12;
+            const maxByWidth = timingChartShell.clientWidth - chartGap - 96;
+            return Math.max(56, Math.min(180, Math.floor(maxByWidth)));
+        };
+        const syncTimingChartSize = function () {
+            if (!(timingChartShell instanceof HTMLElement) || sidebar.classList.contains('is-timing-collapsed')) {
+                return;
+            }
+
+            const maxByHeight = timingPanel.clientHeight - getTimingPanelPaddingHeight();
+            const chartSize = Math.max(56, Math.min(getTimingChartMaxSize(), Math.floor(maxByHeight)));
+
+            timingPanel.style.setProperty('--omo-pv-editor-timing-chart-size', chartSize + 'px');
+        };
+
+        const applyTimingHeight = function (nextHeight) {
+            const numericHeight = Number(nextHeight);
+            if (!Number.isFinite(numericHeight) || numericHeight < 0) {
+                return null;
+            }
+
+            const sidebarHeight = sidebar.getBoundingClientRect().height;
+            const collapseThreshold = minHeight / 2;
+            const maxHeightFromChart = getTimingChartMaxSize() + getTimingPanelPaddingHeight();
+            const maxHeight = sidebarHeight > 0
+                ? Math.max(minHeight, Math.min(Math.floor(sidebarHeight * 0.72), Math.ceil(maxHeightFromChart)))
+                : Math.max(minHeight, Math.ceil(maxHeightFromChart));
+
+            if (numericHeight < collapseThreshold) {
+                sidebar.classList.add('is-timing-collapsed');
+                sidebar.style.setProperty('--omo-pv-editor-timing-height', '0px');
+                return 0;
+            }
+
+            const clampedHeight = Math.max(minHeight, Math.min(maxHeight, Math.round(numericHeight)));
+            sidebar.classList.remove('is-timing-collapsed');
+            sidebar.style.setProperty('--omo-pv-editor-timing-height', clampedHeight + 'px');
+            window.requestAnimationFrame(syncTimingChartSize);
+            return clampedHeight;
+        };
+
+        try {
+            const savedHeight = localStorage.getItem(storageKey);
+            if (savedHeight !== null) {
+                applyTimingHeight(savedHeight);
+            } else {
+                applyTimingHeight(timingPanel.getBoundingClientRect().height);
+            }
+        } catch (error) {
+            // Keep the default height when browser storage is unavailable.
+            applyTimingHeight(timingPanel.getBoundingClientRect().height);
+        }
+
+        timingResizer.addEventListener('mousedown', function (event) {
+            if (event.button !== 0 || window.matchMedia('(max-width: 980px)').matches) {
+                return;
+            }
+
+            isResizing = true;
+            document.body.classList.add('resizing');
+            event.preventDefault();
+        });
+
+        document.addEventListener('mousemove', function (event) {
+            if (!isResizing) {
+                return;
+            }
+
+            const sidebarRect = sidebar.getBoundingClientRect();
+            applyTimingHeight(sidebarRect.bottom - event.clientY);
+        });
+
+        const stopResizing = function () {
+            if (!isResizing) {
+                return;
+            }
+
+            isResizing = false;
+            document.body.classList.remove('resizing');
+            try {
+                localStorage.setItem(storageKey, sidebar.classList.contains('is-timing-collapsed') ? '0' : String(Math.round(timingPanel.getBoundingClientRect().height)));
+            } catch (error) {
+                // The chosen height remains active for the current page.
+            }
+        };
+
+        document.addEventListener('mouseup', stopResizing);
+        window.addEventListener('blur', stopResizing);
+        window.addEventListener('resize', function () {
+            applyTimingHeight(sidebar.classList.contains('is-timing-collapsed') ? 0 : timingPanel.getBoundingClientRect().height);
+            syncTimingChartSize();
+        });
+
+        if (typeof ResizeObserver === 'function') {
+            const timingResizeObserver = new ResizeObserver(function () {
+                if (!sidebar.classList.contains('is-timing-collapsed')) {
+                    applyTimingHeight(timingPanel.getBoundingClientRect().height);
+                }
+                syncTimingChartSize();
+            });
+            timingResizeObserver.observe(sidebar);
+        }
+        syncTimingChartSize();
+    })();
+
     function ensureHtmlFieldLibrary(callback) {
         const ensureHighlightPalette = function (next) {
             if (window.omoHighlightPalette) {
@@ -5441,7 +5657,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         const onReady = function () {
             ensureHighlightPalette(callback);
         };
-        const htmlFieldVersion = '20260911-project-selection-embed';
+        const htmlFieldVersion = '20260912-toolbar-always-visible';
         if (
             window.omoSimpleHtmlField
             && typeof window.omoSimpleHtmlField.mount === 'function'
@@ -6398,7 +6614,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     name: 'omoPvHighlight',
                     group: 'color',
                     label: String(editorClientUi.highlightLabel || ''),
-                    contents: '<img src="/omo/images/tools/surligneur.png" alt="" class="omo-simple-html-highlight-icon">',
+                    contents: '<img src="/omo/images/tools/surligneur.png" alt="" class="omo-simple-html-highlight-icon black-icon">',
+                    className: 'note-btn-light omo-pv-editor__highlight-button',
                     title: String(editorClientUi.highlightTitle || ''),
                     onClick: function (context) {
                         const api = context && context.api ? context.api : field;
@@ -6503,12 +6720,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                         refreshPvIndicatorEmbedSnapshots(api);
                         refreshPvProjectEmbedReviews(api);
                         refreshPvChecklistEmbedReviews(api);
-                        const toolbar = editorHost.querySelector('.note-toolbar');
-                        const pointActions = card.querySelector('.omo-pv-editor__point-actions');
-                        if (toolbar instanceof Element && pointActions instanceof Element) {
-                            pointActions.classList.add('omo-pv-editor__point-actions--toolbar');
-                            toolbar.appendChild(pointActions);
-                        }
                     },
                     onDoubleClick: function (context) {
                         const targetNode = context && context.target && context.target.closest
@@ -7144,6 +7355,17 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         const activeValue = activeInput ? activeInput.value : '';
         const selectionStart = activeInput ? activeInput.selectionStart : null;
         const selectionEnd = activeInput ? activeInput.selectionEnd : null;
+        const activeMoveButton = document.activeElement instanceof HTMLButtonElement
+            && nav.contains(document.activeElement)
+            && document.activeElement.matches('[data-omo-pv-point-move]')
+            ? document.activeElement
+            : null;
+        const activeMovePointId = activeMoveButton
+            ? Number(activeMoveButton.getAttribute('data-omo-pv-point-move') || 0)
+            : 0;
+        const activeMoveDirection = activeMoveButton
+            ? String(activeMoveButton.getAttribute('data-omo-pv-point-move-direction') || '').trim().toLowerCase()
+            : '';
 
         const items = Object.keys(currentPointPayloads).map(function (key) { return currentPointPayloads[key]; }).filter(function (item) {
             return item && Number(item.id || 0) > 0;
@@ -7215,6 +7437,10 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 if (Number.isInteger(selectionStart) && Number.isInteger(selectionEnd)) nextInput.setSelectionRange(selectionStart, selectionEnd);
             }
         }
+
+        if (activeMovePointId > 0 && (activeMoveDirection === 'up' || activeMoveDirection === 'down')) {
+            focusPointMoveButton(activeMovePointId, activeMoveDirection);
+        }
     }
 
     function updateGroupSummaryLabels() {
@@ -7273,6 +7499,13 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 const summaryNode = nav.querySelector('[data-omo-pv-group="' + itemId + '"] .omo-pv-editor__group-summary');
                 if (summaryNode) {
                     summaryNode.textContent = summary.pointCount + ' ' + groupPointsLabel + ' | ' + summary.durationMinutes + ' ' + groupMinutesLabel;
+                }
+                const pointCountNode = nav.querySelector('[data-omo-pv-group="' + itemId + '"] .omo-pv-editor__group-point-count');
+                if (pointCountNode) {
+                    const pointCountLabel = summary.pointCount + ' ' + groupPointsLabel;
+                    pointCountNode.textContent = String(summary.pointCount);
+                    pointCountNode.setAttribute('aria-label', pointCountLabel);
+                    pointCountNode.setAttribute('title', pointCountLabel);
                 }
             }
         });
@@ -7496,10 +7729,68 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         });
     }
 
-    function movePointByDirection(pointId, direction) {
+    function focusPointMoveButton(pointId, direction) {
+        if (!(nav instanceof Element) || pointId <= 0 || (direction !== 'up' && direction !== 'down')) {
+            return;
+        }
+
+        const restore = function () {
+            const moveButton = nav.querySelector('[data-omo-pv-point-move="' + pointId + '"][data-omo-pv-point-move-direction="' + direction + '"]');
+            if (moveButton instanceof HTMLElement) {
+                try {
+                    moveButton.focus({preventScroll: true});
+                } catch (error) {
+                    moveButton.focus();
+                }
+                moveButton.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'nearest'});
+            }
+
+            const pointCard = pointsContainer instanceof Element
+                ? pointsContainer.querySelector('[data-omo-pv-point-card="' + pointId + '"]')
+                : null;
+            if (pointCard instanceof Element) {
+                pointCard.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'nearest'});
+            }
+        };
+
+        restore();
+        window.requestAnimationFrame(function () {
+            const activeElement = document.activeElement;
+            const activeMoveButton = activeElement instanceof HTMLElement
+                ? activeElement.closest('[data-omo-pv-point-move]')
+                : null;
+            const activePointId = activeMoveButton instanceof HTMLElement
+                ? Number(activeMoveButton.getAttribute('data-omo-pv-point-move') || 0)
+                : 0;
+            const activeDirection = activeMoveButton instanceof HTMLElement
+                ? String(activeMoveButton.getAttribute('data-omo-pv-point-move-direction') || '').trim().toLowerCase()
+                : '';
+            if (
+                activeElement === document.body
+                || activeElement === document.documentElement
+                || (activePointId === pointId && activeDirection === direction)
+            ) {
+                restore();
+            }
+        });
+    }
+
+    function movePointByDirection(pointId, direction, requestedFocusDirection) {
         if (!nav) {
             return false;
         }
+
+        const requestedDirection = String(requestedFocusDirection || '').trim().toLowerCase();
+        const activeElement = document.activeElement;
+        const activeMoveButton = activeElement instanceof HTMLElement
+            ? activeElement.closest('[data-omo-pv-point-move]')
+            : null;
+        const restoreFocusDirection = requestedDirection === 'up' || requestedDirection === 'down'
+            ? requestedDirection
+            : (activeMoveButton instanceof HTMLElement
+            && Number(activeMoveButton.getAttribute('data-omo-pv-point-move') || 0) === pointId
+            ? String(activeMoveButton.getAttribute('data-omo-pv-point-move-direction') || '').trim().toLowerCase()
+            : '');
 
         const row = pointId > 0 ? nav.querySelector('[data-omo-pv-nav-node="' + pointId + '"]') : null;
         if (!(row instanceof Element)) {
@@ -7551,7 +7842,13 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const payload = currentPointPayloads[String(item.id)] || {};
             return payload.isGroup !== true;
         }).map(function (item) { return item.id; }));
-        persistPointOrder(layout);
+        if (restoreFocusDirection === 'up' || restoreFocusDirection === 'down') {
+            focusPointMoveButton(pointId, restoreFocusDirection);
+        }
+        persistPointOrder(layout, restoreFocusDirection ? {
+            pointId: pointId,
+            direction: restoreFocusDirection
+        } : null);
         return true;
     }
 
@@ -7616,6 +7913,16 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 
         const scrollAnchor = captureMainScrollAnchor();
         const focusedEditor = captureFocusedEditor();
+        const activeElement = document.activeElement;
+        const focusedMoveButton = activeElement instanceof HTMLElement
+            ? activeElement.closest('[data-omo-pv-point-move]')
+            : null;
+        const focusedMovePointId = focusedMoveButton instanceof HTMLElement
+            ? Number(focusedMoveButton.getAttribute('data-omo-pv-point-move') || 0)
+            : 0;
+        const focusedMoveDirection = focusedMoveButton instanceof HTMLElement
+            ? String(focusedMoveButton.getAttribute('data-omo-pv-point-move-direction') || '').trim().toLowerCase()
+            : '';
         const nextPointIds = [];
         pointPayloads.forEach(function (pointPayload) {
             const pointId = Number(pointPayload && pointPayload.id ? pointPayload.id : 0);
@@ -7678,6 +7985,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         renderTimingSummary();
         restoreMainScrollAnchor(scrollAnchor);
         restoreFocusedEditor(focusedEditor);
+        if (focusedMovePointId > 0 && (focusedMoveDirection === 'up' || focusedMoveDirection === 'down')) {
+            focusPointMoveButton(focusedMovePointId, focusedMoveDirection);
+        }
     }
 
     function ensurePointLock(pointId) {
@@ -8006,7 +8316,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             });
     }
 
-    function persistPointOrder(layout) {
+    function persistPointOrder(layout, focusContext) {
         const formData = new FormData();
         formData.append('action', 'reorder_points');
         formData.append('document_id', String(documentId));
@@ -8028,6 +8338,12 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 }
 
                 renderPointCollection(payload.points);
+                if (focusContext && Number(focusContext.pointId || 0) > 0) {
+                    focusPointMoveButton(
+                        Number(focusContext.pointId || 0),
+                        String(focusContext.direction || '').trim().toLowerCase()
+                    );
+                }
             })
             .catch(function () {
                 // Keep the local order even if the save fails; the user can retry by dragging again.
@@ -8043,9 +8359,13 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         const randomizeTies = sortForm.querySelector('input[name="omo_pv_sort_randomize_ties"]');
         const handledLast = sortForm.querySelector('input[name="omo_pv_sort_handled_last"]');
         const groupByType = sortForm.querySelector('input[name="omo_pv_sort_group_by_type"]');
+        const compactDisplay = sortForm.querySelector('input[name="omo_pv_sort_compact_display"]');
         const defaultLabel = String(sortSubmitButton.getAttribute('data-omo-pv-sort-label') || sortSubmitButton.textContent || '');
         const applyingLabel = String(sortSubmitButton.getAttribute('data-omo-pv-sort-applying-label') || defaultLabel);
 
+        if (nav instanceof HTMLElement) {
+            nav.classList.toggle('is-compact', compactDisplay instanceof HTMLInputElement && compactDisplay.checked);
+        }
         sortSubmitButton.disabled = true;
         sortSubmitButton.textContent = applyingLabel;
         postPointAction('sort_points', 0, {
@@ -8084,10 +8404,12 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 const randomizeInput = sortForm.querySelector('input[name="omo_pv_sort_randomize_ties"]');
                 const handledInput = sortForm.querySelector('input[name="omo_pv_sort_handled_last"]');
                 const groupInput = sortForm.querySelector('input[name="omo_pv_sort_group_by_type"]');
+                const compactInput = sortForm.querySelector('input[name="omo_pv_sort_compact_display"]');
                 if (modeInput instanceof HTMLInputElement) modeInput.checked = true;
                 if (randomizeInput instanceof HTMLInputElement) randomizeInput.checked = stored.randomizeTies === true;
                 if (handledInput instanceof HTMLInputElement) handledInput.checked = stored.handledLast === true;
                 if (groupInput instanceof HTMLInputElement) groupInput.checked = stored.groupByType === true;
+                if (compactInput instanceof HTMLInputElement) compactInput.checked = stored.compactDisplay === true;
             } catch (error) {
                 // Ignore unavailable or malformed local browser storage.
             }
@@ -8098,11 +8420,13 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 const randomizeInput = sortForm.querySelector('input[name="omo_pv_sort_randomize_ties"]');
                 const handledInput = sortForm.querySelector('input[name="omo_pv_sort_handled_last"]');
                 const groupInput = sortForm.querySelector('input[name="omo_pv_sort_group_by_type"]');
+                const compactInput = sortForm.querySelector('input[name="omo_pv_sort_compact_display"]');
                 localStorage.setItem(sortStorageKey, JSON.stringify({
                     mode: selectedMode instanceof HTMLInputElement ? selectedMode.value : 'none',
                     randomizeTies: randomizeInput instanceof HTMLInputElement && randomizeInput.checked,
                     handledLast: handledInput instanceof HTMLInputElement && handledInput.checked,
-                    groupByType: groupInput instanceof HTMLInputElement && groupInput.checked
+                    groupByType: groupInput instanceof HTMLInputElement && groupInput.checked,
+                    compactDisplay: compactInput instanceof HTMLInputElement && compactInput.checked
                 }));
             } catch (error) {
                 // Ignore unavailable browser storage.
@@ -8391,6 +8715,10 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 return;
             }
 
+            if (nextStage === 'review' && !window.confirm(reviewIrreversibleMessage)) {
+                return;
+            }
+
             if (nextStage === 'validated') {
                 if (hasUnsavedPointChanges() && !window.confirm(unsavedCloseMessage)) {
                     return;
@@ -8449,7 +8777,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const pointId = Number(moveButton.getAttribute('data-omo-pv-point-move') || 0);
             const direction = String(moveButton.getAttribute('data-omo-pv-point-move-direction') || '').trim().toLowerCase();
             if (pointId > 0 && (direction === 'up' || direction === 'down')) {
-                movePointByDirection(pointId, direction);
+                movePointByDirection(pointId, direction, direction);
             }
             return;
         }
@@ -8567,6 +8895,55 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     });
 
     root.addEventListener('keydown', function (event) {
+        const prioritySummary = event.target.closest('[data-omo-pv-point-priority-menu] > summary');
+        if (prioritySummary instanceof HTMLElement && root.contains(prioritySummary)) {
+            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+                return;
+            }
+
+            const priorityMenu = prioritySummary.parentElement;
+            const pointId = priorityMenu instanceof HTMLElement
+                ? Number(priorityMenu.getAttribute('data-omo-pv-point-priority-menu') || 0)
+                : 0;
+            const card = pointId > 0 ? root.querySelector('[data-omo-pv-point-card="' + pointId + '"]') : null;
+            const priorityField = card ? card.querySelector('[data-omo-pv-point-priority="' + pointId + '"]') : null;
+            if (!(card instanceof Element) || !(priorityField instanceof HTMLInputElement)) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            const currentPriority = Math.max(1, Math.min(5, Number(priorityField.value || 3) || 3));
+            const nextPriority = Math.max(1, Math.min(5, currentPriority + (event.key === 'ArrowDown' ? 1 : -1)));
+            if (nextPriority === currentPriority) {
+                return;
+            }
+            const nextButton = card.querySelector('[data-omo-pv-point-priority-option="' + pointId + '"][data-omo-pv-point-priority-value="' + nextPriority + '"]');
+            if (nextButton instanceof HTMLButtonElement) {
+                selectPointPriorityOption(nextButton);
+            }
+            return;
+        }
+
+        const moveButton = event.target.closest('[data-omo-pv-point-move]');
+        if (moveButton instanceof HTMLButtonElement && root.contains(moveButton)) {
+            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+                return;
+            }
+
+            const pointId = Number(moveButton.getAttribute('data-omo-pv-point-move') || 0);
+            if (pointId <= 0) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            const direction = event.key === 'ArrowUp' ? 'up' : 'down';
+            const focusDirection = String(moveButton.getAttribute('data-omo-pv-point-move-direction') || '').trim().toLowerCase();
+            movePointByDirection(pointId, direction, focusDirection);
+            return;
+        }
+
         const typeButton = event.target.closest('[data-omo-pv-point-type-option]');
         if (!(typeButton instanceof HTMLButtonElement) || !root.contains(typeButton)) {
             return;

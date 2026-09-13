@@ -3912,7 +3912,10 @@
 		public function canUserViewPvPoint(\dbObject\DocumentPvPoint $point, int $userId): bool
 		{
 			return (int)$point->get('IDdocument') === (int)$this->getId()
-				&& (!$point->isConfidential() || $this->isUserPresentAtPvMeeting($userId));
+				&& (!$point->isConfidential()
+					|| $this->isUserPresentAtPvMeeting($userId)
+					|| $this->isPvEditor($userId)
+					|| $point->isEditableByUser($userId));
 		}
 
 		public function getVisiblePvPointsForUser(int $userId, bool $activeOnly = true)
@@ -3925,6 +3928,7 @@
 			$itemsById = array();
 			$visibleIds = array();
 			$isUserPresent = $this->isUserPresentAtPvMeeting($userId);
+			$isUserPvEditor = $this->isPvEditor($userId);
 			foreach ($points as $point) {
 				if (!($point instanceof \dbObject\DocumentPvPoint) || (int)$point->getId() <= 0) {
 					continue;
@@ -3934,7 +3938,10 @@
 					$visibleIds[(int)$point->getId()] = true;
 					continue;
 				}
-				if (!$point->isConfidential() || $isUserPresent) {
+				if (!$point->isConfidential()
+					|| $isUserPresent
+					|| $isUserPvEditor
+					|| $point->isEditableByUser($userId)) {
 					$visibleIds[(int)$point->getId()] = true;
 				}
 			}
