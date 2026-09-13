@@ -892,9 +892,9 @@ body {
 }
 
 .omo-dashboard-module--event.omo-dashboard-module--tall .omo-dashboard-module__list {
-    height: auto;
-    max-height: 80vh;
-    max-height: min(80dvh, 200cqw);
+    align-self: stretch;
+    height: 100%;
+    max-height: none;
 }
 
 .omo-dashboard-module__list:has(> :nth-child(2)) {
@@ -1135,6 +1135,12 @@ body {
         max-height: 80vh;
         max-height: min(80dvh, 200cqw);
     }
+
+    .omo-dashboard-module--event.omo-dashboard-module--tall .omo-dashboard-module__list {
+        height: auto;
+        max-height: 80vh;
+        max-height: min(80dvh, 200cqw);
+    }
 }
 
 @media (max-width: 760px) {
@@ -1154,6 +1160,12 @@ body {
     }
 
     .omo-dashboard-module--tall .omo-dashboard-module__list {
+        height: auto;
+        max-height: 80vh;
+        max-height: min(80dvh, 200cqw);
+    }
+
+    .omo-dashboard-module--event.omo-dashboard-module--tall .omo-dashboard-module__list {
         height: auto;
         max-height: 80vh;
         max-height: min(80dvh, 200cqw);
