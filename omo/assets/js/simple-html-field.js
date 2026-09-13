@@ -1,7 +1,7 @@
 (function (window, document) {
     'use strict';
 
-    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260911-project-selection-embed';
+    const OMO_SIMPLE_HTML_FIELD_VERSION = '20260912-toolbar-always-visible';
 
     if (
         window.omoSimpleHtmlField
@@ -39,11 +39,14 @@
             + '.omo-html-resource-gap-helper{position:absolute;z-index:7;display:none;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:1px solid color-mix(in srgb,var(--color-primary,#2563eb) 48%,var(--color-border,#d1d5db));border-radius:999px;background:var(--color-surface,#fff);box-shadow:0 5px 12px -7px rgba(15,23,42,.55);color:var(--color-primary,#2563eb);font-size:18px;font-weight:800;line-height:1;cursor:pointer;transform:translate(-50%,-50%);}'
             + '.omo-html-resource-gap-helper:hover,.omo-html-resource-gap-helper:focus-visible{border-color:var(--color-primary,#2563eb);background:color-mix(in srgb,var(--color-primary,#2563eb) 10%,var(--color-surface,#fff));outline:none;}'
             + '.omo-simple-html-field .note-editor.note-frame{border:1px solid var(--color-border,#d1d5db);border-radius:var(--radius-md);background:var(--color-surface,#fff);}'
-            + '.omo-simple-html-field .note-toolbar{position:sticky;top:0;z-index:6;border-bottom:1px solid var(--color-border,#d1d5db);background:color-mix(in srgb,var(--color-surface-alt,#f8fafc) 88%,white);border-top-left-radius:var(--radius-md);border-top-right-radius:var(--radius-md);padding:8px;box-shadow:0 8px 18px -18px rgba(15,23,42,.45);}'
-            + '.omo-simple-html-field .note-btn{border-radius:var(--radius-md);border-color:var(--color-border,#d1d5db);}'
+            + '.omo-simple-html-field .note-toolbar{position:sticky;top:0;z-index:6;overflow:visible;max-height:none;border:0;background:var(--color-surface,#fff);border-top-left-radius:var(--radius-md);border-top-right-radius:var(--radius-md);padding:6px 8px;box-shadow:none;}'
+            + '.omo-simple-html-field .note-toolbar .note-btn-group{margin:0 2px 0 0;}'
+            + '.omo-simple-html-field .note-toolbar .note-btn,.omo-simple-html-field .note-toolbar .note-btn-group>.note-btn,.omo-simple-html-field .note-toolbar .note-btn-group>.note-btn:not(:first-child),.omo-simple-html-field .note-toolbar .note-btn-group>.note-btn:not(:last-child):not(.dropdown-toggle){border:0!important;border-radius:var(--radius-sm)!important;background:transparent!important;box-shadow:none!important;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-toolbar .note-btn:hover,.omo-simple-html-field .note-toolbar .note-btn:focus-visible,.omo-simple-html-field .note-toolbar .note-btn.active{background:color-mix(in srgb,var(--color-primary,#2563eb) 12%,var(--color-surface,#fff))!important;color:var(--color-primary,#2563eb);outline:none;}'
+            + '.omo-simple-html-field .note-toolbar .note-btn:focus-visible{box-shadow:0 0 0 2px color-mix(in srgb,var(--color-primary,#2563eb) 32%,transparent)!important;}'
             + '.omo-simple-html-field .omo-simple-html-highlight-icon{display:block;width:18px;height:18px;object-fit:contain;}'
             + '.omo-simple-html-field .note-editing-area{overflow:visible;}'
-            + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;height:auto!important;overflow-y:hidden!important;padding:14px;line-height:1.55;color:var(--color-text,#1f2937);}'
+            + '.omo-simple-html-field .note-editing-area .note-editable{min-height:140px;height:auto!important;overflow-y:hidden!important;padding:14px;background:var(--color-surface,#fff);line-height:1.55;color:var(--color-text,#1f2937);}'
             + '.omo-simple-html-field .note-placeholder{color:var(--color-text-light,#6b7280);}'
             + '.omo-simple-html-field .note-statusbar{display:none;}'
             + '.omo-simple-html-field .note-editable h1,.omo-simple-html-render h1{margin:0 0 .6em;font-size:1.8rem;line-height:1.15;font-weight:850;color:var(--color-text,#1f2937);}'
@@ -196,10 +199,10 @@
                     throw new Error('jQuery est requis pour Summernote.');
                 }
 
-                ensureLocalStyles();
                 return ensureStylesheet(SUMMERNOTE_CSS_URL);
             })
             .then(function () {
+                ensureLocalStyles();
                 return ensureScript(SUMMERNOTE_JS_URL);
             })
             .then(function () {

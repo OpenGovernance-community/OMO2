@@ -3929,7 +3929,7 @@ body.view-right .panel-right {
     width: 17px;
     height: 17px;
     margin: auto;
-    background: var(--color-primary, #2563eb);
+    background: #000;
     -webkit-mask: url('/omo/images/tools/documents-folder.png') center / contain no-repeat;
     mask: url('/omo/images/tools/documents-folder.png') center / contain no-repeat;
     pointer-events: none;
@@ -3941,7 +3941,7 @@ body.view-right .panel-right {
     width: 17px;
     height: 17px;
     margin: auto;
-    background: #7c3aed;
+    background: #000;
     -webkit-mask: url('/omo/images/tools/decision.png') center / contain no-repeat;
     mask: url('/omo/images/tools/decision.png') center / contain no-repeat;
     pointer-events: none;
@@ -3953,7 +3953,7 @@ body.view-right .panel-right {
     width: 17px;
     height: 17px;
     margin: auto;
-    background: #0f766e;
+    background: #000;
     -webkit-mask: url('/omo/images/tools/calendar.png') center / contain no-repeat;
     mask: url('/omo/images/tools/calendar.png') center / contain no-repeat;
     pointer-events: none;
@@ -3965,7 +3965,7 @@ body.view-right .panel-right {
     width: 17px;
     height: 17px;
     margin: auto;
-    background: #2563eb;
+    background: #000;
     -webkit-mask: url('/omo/images/tools/product.png') center / contain no-repeat;
     mask: url('/omo/images/tools/product.png') center / contain no-repeat;
     pointer-events: none;
@@ -3977,7 +3977,7 @@ body.view-right .panel-right {
     width: 17px;
     height: 17px;
     margin: auto;
-    background: #0f766e;
+    background: #000;
     -webkit-mask: url('/omo/images/tools/checklist.png') center / contain no-repeat;
     mask: url('/omo/images/tools/checklist.png') center / contain no-repeat;
     pointer-events: none;
@@ -3989,10 +3989,35 @@ body.view-right .panel-right {
     width: 17px;
     height: 17px;
     margin: auto;
-    background: #0369a1;
+    background: #000;
     -webkit-mask: url('/omo/images/tools/stats.png') center / contain no-repeat;
     mask: url('/omo/images/tools/stats.png') center / contain no-repeat;
     pointer-events: none;
+}
+
+.omo-pv-editor .note-toolbar .note-btn-group:has(.omo-pv-editor__highlight-button) + .note-btn-group {
+    margin-left: 6px;
+    padding-left: 8px;
+    border-left: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 76%, transparent);
+}
+
+html[data-theme="dark"] .omo-pv-editor .note-btn.omo-pv-editor__document-embed-button::before,
+html[data-theme="dark"] .omo-pv-editor .note-btn.omo-pv-editor__decision-embed-button::before,
+html[data-theme="dark"] .omo-pv-editor .note-btn.omo-pv-editor__event-embed-button::before,
+html[data-theme="dark"] .omo-pv-editor .note-btn.omo-pv-editor__project-embed-button::before,
+html[data-theme="dark"] .omo-pv-editor .note-btn.omo-pv-editor__checklist-embed-button::before,
+html[data-theme="dark"] .omo-pv-editor .note-btn.omo-pv-editor__indicator-embed-button::before {
+    background: #fff;
+}
+
+.omo-pv-editor .note-toolbar .note-btn.omo-pv-editor__document-embed-button:hover,
+.omo-pv-editor .note-toolbar .note-btn.omo-pv-editor__decision-embed-button:hover,
+.omo-pv-editor .note-toolbar .note-btn.omo-pv-editor__event-embed-button:hover,
+.omo-pv-editor .note-toolbar .note-btn.omo-pv-editor__project-embed-button:hover,
+.omo-pv-editor .note-toolbar .note-btn.omo-pv-editor__checklist-embed-button:hover,
+.omo-pv-editor .note-toolbar .note-btn.omo-pv-editor__indicator-embed-button:hover {
+    background: transparent !important;
+    color: var(--color-text, #1f2937) !important;
 }
 
 .omo-pv-editor .omo-document-embed {

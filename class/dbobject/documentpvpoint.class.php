@@ -77,7 +77,7 @@ class DocumentPvPoint extends DbObject
             'IDuser_editing' => 'Personne qui detient actuellement le verrou d edition.',
             'edit_lock_token' => 'Jeton technique de verrouillage d une session d edition.',
             'is_handled' => 'Indique si le point a deja ete traite en reunion.',
-            'is_confidential' => 'Reserve ce point aux personnes declarees presentes a la reunion.',
+            'is_confidential' => 'Reserve ce point aux personnes presentes a la reunion, a l editeur du PV et a la personne qui le porte.',
         ];
     }
 
