@@ -49,8 +49,10 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.sort.randomize_ties' => ['text' => 'Mélanger les éléments à égalité', 'context' => 'PV agenda sorting option that randomizes items sharing the same sort value.'],
         'documents.pv_editor.sort.handled_last' => ['text' => 'Déplacer les points traités à la fin', 'context' => 'PV agenda sorting option.'],
         'documents.pv_editor.sort.group_by_type' => ['text' => 'Regrouper par type (info, consultation, décisions)', 'context' => 'PV agenda sorting option.'],
+        'documents.pv_editor.sort.compact_display' => ['text' => 'Affichage compact', 'context' => 'PV agenda display option that hides the secondary line of each point.'],
         'documents.pv_editor.sort.apply' => ['text' => 'Appliquer', 'context' => 'Button applying the selected PV agenda sorting options.'],
         'documents.pv_editor.sort.applying' => ['text' => 'Classement...', 'context' => 'Temporary label while the PV agenda is being sorted.'],
+        'documents.pv_editor.action.resize_timing' => ['text' => 'Redimensionner le compteur de temps', 'context' => 'Accessible label for the handle that resizes the PV timing panel.'],
         'documents.pv_editor.action.save' => ['text' => 'Enregistrer', 'context' => 'Button used to save a PV point.'],
         'documents.pv_editor.action.take_over_lock' => ['text' => 'Reprendre l’édition', 'context' => 'Button allowing the PV editor to take over a point editing lock.'],
         'documents.pv_editor.field.auto_save' => ['text' => 'Enregistrer automatiquement', 'context' => 'Checkbox enabling automatic saving of PV points after inactivity.'],
@@ -77,7 +79,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.field.duration_empty' => ['text' => '-- min', 'context' => 'Fallback duration label used when no desired duration is set.'],
         'documents.pv_editor.field.priority' => ['text' => 'Priorité', 'context' => 'Label for the PV agenda point priority picker.'],
         'documents.pv_editor.field.confidential' => ['text' => 'Confidentiel', 'context' => 'Checkbox label used to limit a PV point to people marked present at the meeting.'],
-        'documents.pv_editor.field.confidential_hint' => ['text' => 'Visible uniquement par les personnes présentes à la réunion.', 'context' => 'Help text for the confidential PV point checkbox.'],
+        'documents.pv_editor.field.confidential_hint' => ['text' => 'Visible par les personnes présentes à la réunion, l’éditeur du PV et la personne qui porte le point.', 'context' => 'Help text for the confidential PV point checkbox.'],
         'documents.pv_editor.field.stage' => ['text' => 'Étape', 'context' => 'Label of the PV workflow stage selector.'],
         'documents.pv_editor.field.document_title' => ['text' => 'Titre du PV', 'context' => 'Label for the editable PV document title.'],
         'documents.pv_editor.field.document_description' => ['text' => 'Description', 'context' => 'Label for the editable PV document description.'],
@@ -262,6 +264,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.notice.updated_by' => ['text' => 'Mis à jour par {user}.', 'context' => 'Short helper shown when a point was last updated by another user.'],
         'documents.pv_editor.notice.stage_readonly' => ['text' => 'Seules les personnes qui peuvent éditer le document peuvent changer cette étape.', 'context' => 'Helper shown below the PV stage selector when it is read only.'],
         'documents.pv_editor.warning.unsaved_close' => ['text' => 'Des modifications non enregistrées n’ont pas été sauvegardées. Fermer quand même ?', 'context' => 'Browser confirmation shown before closing the PV editor with unsaved changes.'],
+        'documents.pv_editor.warning.review_irreversible' => ['text' => 'Passer ce PV en relecture est définitif. Il ne sera plus possible de revenir en préparation ou en réunion. Continuer ?', 'context' => 'Confirmation shown before changing a PV stage to review.'],
         'documents.pv_editor.warning.validate_irreversible' => ['text' => 'Valider ce PV est irréversible. Il ne sera plus possible de le modifier. Continuer ?', 'context' => 'Confirmation shown before changing a PV stage to validated.'],
         'documents.pv_editor.summary.meeting_duration' => ['text' => 'Durée de la réunion', 'context' => 'Label for the total meeting duration in the PV editor timing summary.'],
         'documents.pv_editor.summary.remaining_time' => ['text' => 'Temps restant', 'context' => 'Label for the remaining meeting time when the meeting is in progress.'],
@@ -371,8 +374,10 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
         'sortRandomizeTies' => $resolve('documents.pv_editor.sort.randomize_ties', 'Mélanger les éléments à égalité'),
         'sortHandledLast' => $resolve('documents.pv_editor.sort.handled_last', 'Déplacer les points traités à la fin'),
         'sortGroupByType' => $resolve('documents.pv_editor.sort.group_by_type', 'Regrouper par type (info, consultation, décisions)'),
+        'sortCompactDisplay' => $resolve('documents.pv_editor.sort.compact_display', 'Affichage compact'),
         'sortApply' => $resolve('documents.pv_editor.sort.apply', 'Appliquer'),
         'sortApplying' => $resolve('documents.pv_editor.sort.applying', 'Classement...'),
+        'resizeTiming' => $resolve('documents.pv_editor.action.resize_timing', 'Redimensionner le compteur de temps'),
         'saved' => $resolve('documents.pv_editor.state.saved', 'Enregistré'),
         'dirty' => $resolve('documents.pv_editor.state.dirty', 'Modifications non enregistrées'),
         'readonly' => $resolve('documents.pv_editor.state.readonly', 'Lecture seule'),
@@ -387,7 +392,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
         'durationEmpty' => $resolve('documents.pv_editor.field.duration_empty', '-- min'),
         'priority' => $resolve('documents.pv_editor.field.priority', 'Priorité'),
         'confidential' => $resolve('documents.pv_editor.field.confidential', 'Confidentiel'),
-        'confidentialHint' => $resolve('documents.pv_editor.field.confidential_hint', 'Visible uniquement par les personnes présentes à la réunion.'),
+        'confidentialHint' => $resolve('documents.pv_editor.field.confidential_hint', 'Visible par les personnes présentes à la réunion, l’éditeur du PV et la personne qui porte le point.'),
         'stage' => $resolve('documents.pv_editor.field.stage', 'Étape'),
         'stagePreparation' => $resolve('documents.pv_editor.field.stage.preparation', 'Préparation'),
         'stageMeeting' => $resolve('documents.pv_editor.field.stage.meeting', 'Réunion'),
@@ -627,7 +632,8 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
         && $document->canUserManagePvDocument($currentUserId)
         && !empty($pointData['lock']['isLockedByOther']);
     $pointData['canToggleHandled'] = !$pointData['isReview'] && $document->canUserManagePvDocument($currentUserId);
-    $pointData['canAssignAuthor'] = $document->canUserManagePvDocument($currentUserId);
+    $pointData['canAssignAuthor'] = !$pointData['isHandled']
+        && $document->canUserManagePvDocument($currentUserId);
     $pointData['hasStructureApplication'] = $hasStructureApplication;
     $pointData['authorOptions'] = $authorOptions;
     $pointData['authorHolonOptions'] = $authorHolonOptions;
@@ -857,7 +863,9 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
         $titleHtml = !empty($pointData['canEditGroup'])
             ? '<input type="text" class="omo-pv-editor__group-title-input" maxlength="80" value="' . omoDocumentsPvEditorEscape($title) . '" data-omo-pv-group-title="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['title'] ?? 'Titre')) . '">'
             : '<strong class="omo-pv-editor__group-title">' . omoDocumentsPvEditorEscape($title) . '</strong>';
-        $groupSummary = ((int)($pointData['groupPointCount'] ?? 0)) . ' ' . (string)($uiText['groupPoints'] ?? 'points')
+        $groupPointCount = (int)($pointData['groupPointCount'] ?? 0);
+        $groupPointCountLabel = $groupPointCount . ' ' . (string)($uiText['groupPoints'] ?? 'points');
+        $groupSummary = $groupPointCountLabel
             . ' | ' . ((int)($pointData['groupDurationMinutes'] ?? 0)) . ' ' . (string)($uiText['groupMinutes'] ?? 'min');
 
         $canDelete = !empty($pointData['canDelete']);
@@ -866,7 +874,7 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
             . $reorderHandle
             . '<button type="button" class="omo-pv-editor__group-toggle" data-omo-pv-group-toggle="' . $pointId . '" aria-expanded="true" title="' . omoDocumentsPvEditorEscape((string)($uiText['toggleGroup'] ?? 'Ouvrir ou fermer le groupe')) . '"><span aria-hidden="true">&#9662;</span></button>'
             . '<span class="omo-pv-editor__nav-order omo-pv-editor__group-order">' . omoDocumentsPvEditorEscape((string)($pointData['positionLabel'] ?? '--')) . '</span>'
-            . '<span class="omo-pv-editor__group-copy">' . $titleHtml . '<span class="omo-pv-editor__group-summary">' . omoDocumentsPvEditorEscape($groupSummary) . '</span></span>'
+            . '<span class="omo-pv-editor__group-copy"><span class="omo-pv-editor__group-title-line">' . $titleHtml . '<span class="omo-pv-editor__group-point-count" role="img" aria-label="' . omoDocumentsPvEditorEscape($groupPointCountLabel) . '" title="' . omoDocumentsPvEditorEscape($groupPointCountLabel) . '">' . $groupPointCount . '</span></span><span class="omo-pv-editor__group-summary">' . omoDocumentsPvEditorEscape($groupSummary) . '</span></span>'
             . '</div>'
             . '<div class="omo-pv-editor__group-children generic-stack generic-stack--compact" data-omo-pv-nav-children="' . $pointId . '"></div>'
             . '</section>';
@@ -1144,6 +1152,15 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     } elseif (!empty($pointData['isConfidential'])) {
         $html .= '      <span class="omo-pv-editor__point-confidential">' . omoDocumentsPvEditorEscape((string)$uiText['confidential']) . '</span>';
     }
+    if ($canEditNow) {
+        $html .= '      <div class="omo-pv-editor__point-actions omo-pv-editor__point-meta-actions">';
+        $html .= '        <button type="button" class="generic-action-button omo-pv-editor__save-button" data-omo-pv-point-save="' . $pointId . '" disabled aria-disabled="true">' . omoDocumentsPvEditorEscape((string)$uiText['saved']) . '</button>';
+        if (!empty($pointData['canDelete'])) {
+            $html .= '        <button type="button" class="omo-pv-editor__delete-button" data-omo-pv-point-delete="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '"><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>';
+        }
+        $html .= omoDocumentsPvEditorRenderPointDiscussionTrigger($pointData, $uiText, $title);
+        $html .= '      </div>';
+    }
     $html .= '    </div>';
     if ($chips !== '') {
         $html .= '<div class="omo-document-pv__point-chips">' . $chips . '</div>';
@@ -1164,13 +1181,6 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
             $footerNoteParts[] = $updateInfo;
         }
         $html .= '  <span class="omo-pv-editor__point-note">' . omoDocumentsPvEditorEscape(implode(' | ', $footerNoteParts)) . '</span>';
-        $html .= '  <div class="omo-pv-editor__point-actions">';
-        $html .= '    <button type="button" class="generic-action-button omo-pv-editor__save-button" data-omo-pv-point-save="' . $pointId . '" disabled aria-disabled="true">' . omoDocumentsPvEditorEscape((string)$uiText['saved']) . '</button>';
-        if (!empty($pointData['canDelete'])) {
-            $html .= '    <button type="button" class="omo-pv-editor__delete-button" data-omo-pv-point-delete="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['deletePoint'] ?? 'Supprimer le point')) . '"><img src="/omo/assets/images/documents/poubelle.png" alt="" aria-hidden="true"></button>';
-        }
-        $html .= omoDocumentsPvEditorRenderPointDiscussionTrigger($pointData, $uiText, $title);
-        $html .= '  </div>';
         $html .= '</div>';
     } else {
         $html .= '<div class="omo-document-pv__point-content prose omo-simple-html-render">' . (string)($pointData['contentHtml'] ?? '') . '</div>';

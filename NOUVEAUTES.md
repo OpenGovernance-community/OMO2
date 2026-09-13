@@ -4,6 +4,26 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-12
 
+- Le passage dun PV en relecture demande maintenant une confirmation explicite : cette etape empeche tout retour en preparation ou en reunion.
+- Les boutons de reordonnancement des points de PV conservent maintenant le focus sur la fleche utilisee apres chaque reconstruction de la liste, y compris apres la confirmation serveur, et recentrent les zones de navigation et de contenu sur le point deplace.
+- Les controles clavier de l ordre du jour des PV permettent maintenant de modifier la priorite avec les fleches haut et bas, ou de deplacer un point dans la liste lorsque ses fleches de reordre ont le focus. Les metadonnees des points affichent aussi des separateurs visuels.
+- Les editeurs Summernote gardent maintenant leur barre d outils visible en permanence, avec un debordement autorise pour que les menus de styles, de liens et de couleurs restent entierement accessibles.
+- Les points confidentiels restent maintenant visibles par l editeur du PV et la personne qui les porte, meme lorsque ces personnes ne sont pas marquees presentes. La liste ne peut donc plus les faire disparaitre pour leurs responsables.
+- Lorsqu un point de PV est marque traite, son champ Porté par est maintenant verrouille comme les autres champs, avec une protection equivalente cote serveur.
+- La barre Summernote du PV separe maintenant le surlignage des boutons d integration par un trait vertical discret. Les icones Document, Decision, Projet, Liste, Evenement et Indicateur utilisent une couleur neutre adaptee au theme, sans fond de survol distinct.
+- Les actions Sauvegarder et Effacer dun point de PV sont maintenant alignees a droite des parametres Porté par et Confidentiel, au lieu de la barre d outils de mise en forme.
+- La barre d outils des editeurs Summernote partages reste masquee au repos et apparait uniquement lorsque le champ est actif, sans disparaitre pendant l utilisation de ses commandes.
+- Les editeurs Summernote partages reprennent un style plus epure : barre d outils et contenu continus sur la meme surface, avec des commandes reduites a leurs icones et des etats de survol discrets.
+- La hauteur maximale du compteur de temps du PV est maintenant calculee selon la taille maximale utile de son cercle et la largeur de la colonne. Le reste de la hauteur reste disponible pour l ordre du jour.
+- Le cercle du compteur de temps du PV suit maintenant la hauteur de sa zone : il diminue dans une zone reduite et augmente dans une zone plus grande, avec une limite qui preserve la legende.
+- Le compteur de temps du PV peut etre redimensionne verticalement depuis sa poignee. Sa hauteur est bornee, son reglage est memorise dans le navigateur et il peut etre replie completement.
+- En affichage compact, les groupes de l ordre du jour des PV cachent aussi leur resume et affichent leur nombre de points dans un petit badge rond.
+- Le menu de classement des points de PV propose un affichage compact memorise dans le navigateur : apres application, seule la premiere ligne de chaque point reste affichee dans l ordre du jour.
+- La liste de presence du PV utilise une icone de groupe, adaptee automatiquement au mode sombre.
+- L auteur initial et l editeur du PV sont identifies par une icone de cle et une plume, adaptees automatiquement au mode sombre.
+- Les boutons scindes utilisent desormais une fleche a la meme hauteur que leur action principale. Les icones des informations d evenement de PV conservent aussi un contraste lisible en mode sombre.
+- Le bouton de classement de l ordre du jour des PV utilise maintenant une icone explicite. Les icones de classement et d ajout de dossier gardent un contraste adapte en mode sombre, comme celle d ajout de point.
+- Les rôles liés à un cercle englobant sont maintenant inclus dans les rôles du contexte courant, dans les points de PV comme dans la fiche de profil, avec leur libellé complet « Rôle (cercle source) » et un ordre alphabétique. La fiche de profil limite ce contexte aux rôles directs et liés ; les rôles des descendants restent dans l onglet de l organisation.
 - Les notifications standard restent maintenant visibles cinq secondes et affichent une fine barre de progression en bas, qui se met en pause au survol.
 - Les liens publics de partage de structure n ouvrent plus l application Projets ni les projets associes ; les listes de projets restent lisibles avec leur seul titre, sans detail, statut ni navigation. Cette restriction est egalement appliquee aux appels directs vers son API.
 

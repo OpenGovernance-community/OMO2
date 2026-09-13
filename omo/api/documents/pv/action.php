@@ -1069,6 +1069,12 @@ if ($action === 'save_point') {
         if ($requestedAuthorValue === '') {
             $requestedAuthorValue = $currentAuthorValue;
         }
+        if ($point->isHandled() && $requestedAuthorValue !== $currentAuthorValue) {
+            omoDocumentsPvEditorJsonResponse([
+                'status' => false,
+                'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+            ], 403);
+        }
         $authorOptionsByValue = [];
         foreach ($document->getPvPointAuthorOptions($organizationId) as $authorOption) {
             $optionValue = trim((string)($authorOption['value'] ?? ''));

@@ -68,7 +68,7 @@ function omoUserContextBuildAssignmentBudgetLabels(array $assignment)
 function omoUserContextRenderRoleAssignment(array $assignment, $userId, $returnPopupUrl)
 {
     $roleId = (int)($assignment['holonId'] ?? 0);
-    $roleName = (string)($assignment['name'] ?? '');
+    $roleName = (string)($assignment['displayName'] ?? ($assignment['name'] ?? ''));
     $roleLabel = $roleName !== '' ? $roleName : ('Role ' . $roleId);
     $canEditAssignment = !empty($assignment['canEditAssignment']);
     $assignmentEditorUrl = '/omo/api/team/member_assignment_popup.php?hid=' . $roleId
@@ -845,6 +845,7 @@ $isAdmin = $membership ? $membership->isOrganizationAdmin() : false;
 $currentAssignments = $hasStructureContext
     ? $currentHolon->getVisibleRoleAssignmentsForUser($userId, [
         'organizationId' => $organizationId,
+        'includeDescendants' => false,
     ])
     : [];
 $organizationAssignments = $hasStructureContext

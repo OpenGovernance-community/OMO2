@@ -2472,6 +2472,37 @@
 			$scopeHolonIds = array();
 			$visitedHolonIds = array();
 			$this->collectRoleScopeHolonIds((bool)$options['includeDescendants'], $scopeHolonIds, $visitedHolonIds);
+			if (!(bool)$options['includeDescendants'] && (int)$this->get('IDtypeholon') !== 1) {
+				foreach ($this->getChildren() as $child) {
+					if ((int)$child->get('IDtypeholon') === 1) {
+						$scopeHolonIds[(int)$child->getId()] = (int)$child->getId();
+					}
+				}
+			}
+
+			$contextCircleId = (int)($options['contextCircleId'] ?? 0);
+			if ($contextCircleId <= 0 && (int)$this->get('IDtypeholon') === 2) {
+				$contextCircleId = (int)$this->getId();
+			}
+			$linkedRoleIds = array();
+			$contextCircle = null;
+			if ($contextCircleId > 0) {
+				if ($contextCircleId === (int)$this->getId()) {
+					$contextCircle = $this;
+				} else {
+					$contextCircle = new self();
+					if (!$contextCircle->load($contextCircleId)) {
+						$contextCircle = null;
+					}
+				}
+			}
+			if ($contextCircle instanceof self && (int)$contextCircle->get('IDtypeholon') === 2) {
+				$visitedLinkHolonIds = array();
+				$contextCircle->collectLinkRoleIdsForEnglobingCircleMembership($contextCircleId, $linkedRoleIds, $visitedLinkHolonIds);
+				foreach ($linkedRoleIds as $linkedRoleId) {
+					$scopeHolonIds[] = (int)$linkedRoleId;
+				}
+			}
 			$scopeHolonIds = array_values($scopeHolonIds);
 
 			$linkRows = $this->loadVisibleMemberLinkRows($scopeHolonIds, (int)$options['organizationId']);
@@ -2512,17 +2543,28 @@
 				}
 
 				$parentHolon = $roleHolon->getParentHolon();
+				$isLinkedToContext = isset($linkedRoleIds[$roleHolonId]);
+				$assignmentName = trim((string)$roleHolon->getDisplayName());
+				$assignmentCircle = $containingCircle;
+				$assignmentCircleLabel = $assignmentCircle ? trim((string)$assignmentCircle->getDisplayName()) : '';
+				$displayName = $assignmentName;
+				if ($isLinkedToContext && $assignmentCircleLabel !== '') {
+					$displayName .= ' (' . $assignmentCircleLabel . ')';
+				}
 				$assignmentsByHolonId[$roleHolonId] = array(
 					'holonId' => $roleHolonId,
-					'name' => trim((string)$roleHolon->getDisplayName()),
+					'name' => $assignmentName,
+					'displayName' => $displayName,
 					'timeBudgetHours' => $row['holon_time_budget_hours'] ?? null,
 					'timeBudgetRecurrence' => trim((string)($row['holon_time_budget_recurrence'] ?? '')),
 					'moneyBudget' => $row['holon_money_budget'] ?? null,
 					'moneyBudgetRecurrence' => trim((string)($row['holon_money_budget_recurrence'] ?? '')),
 					'canEditAssignment' => $roleHolon->canEdit(),
 					'parentLabel' => $parentHolon ? trim((string)$parentHolon->getDisplayName()) : '',
-					'circleId' => $containingCircle ? (int)$containingCircle->getId() : 0,
-					'circleLabel' => $containingCircle ? trim((string)$containingCircle->getDisplayName()) : '',
+					'circleId' => $assignmentCircle ? (int)$assignmentCircle->getId() : 0,
+					'circleLabel' => $assignmentCircleLabel,
+					'isLinkedToContext' => $isLinkedToContext,
+					'contextCircleId' => $isLinkedToContext ? $contextCircleId : 0,
 					'pathLabel' => implode(' > ', $pathLabels),
 					'isPending' => (
 						!(bool)($row['holon_effective_active'] ?? ($row['holon_active'] ?? false))
@@ -2534,14 +2576,19 @@
 
 			$assignments = array_values($assignmentsByHolonId);
 			usort($assignments, static function (array $left, array $right) {
+				$comparison = strnatcasecmp(
+					self::buildMemberSortKey($left['displayName'] ?? $left['name'] ?? ''),
+					self::buildMemberSortKey($right['displayName'] ?? $right['name'] ?? '')
+				);
+				if ($comparison !== 0) {
+					return $comparison;
+				}
+
 				if ($left['isPending'] !== $right['isPending']) {
 					return $left['isPending'] ? 1 : -1;
 				}
 
-				return strcmp(
-					self::buildMemberSortKey($left['pathLabel'] ?: ($left['name'] ?? '')),
-					self::buildMemberSortKey($right['pathLabel'] ?: ($right['name'] ?? ''))
-				);
+				return (int)($left['holonId'] ?? 0) <=> (int)($right['holonId'] ?? 0);
 			});
 
 			return $assignments;
