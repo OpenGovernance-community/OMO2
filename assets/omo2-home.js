@@ -90,4 +90,31 @@
         reducedMotion.addEventListener('change', start);
         start();
     });
+
+    document.querySelectorAll('[data-omo2-org-marquee]').forEach((marquee) => {
+        const track = marquee.querySelector('.omo2-org-marquee__track');
+        const group = marquee.querySelector('.omo2-org-marquee__group');
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+        if (!track || !group) return;
+
+        const refresh = () => {
+            track.querySelectorAll('.omo2-org-marquee__group--clone').forEach((clone) => clone.remove());
+            marquee.classList.remove('is-looping');
+
+            if (reducedMotion.matches || group.scrollWidth <= marquee.clientWidth) return;
+
+            const clone = group.cloneNode(true);
+            clone.classList.add('omo2-org-marquee__group--clone');
+            clone.setAttribute('aria-hidden', 'true');
+            clone.querySelectorAll('img').forEach((image) => image.alt = '');
+            track.append(clone);
+            marquee.classList.add('is-looping');
+        };
+
+        const observer = new ResizeObserver(refresh);
+        observer.observe(marquee);
+        reducedMotion.addEventListener('change', refresh);
+        refresh();
+    });
 })();
