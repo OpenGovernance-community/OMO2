@@ -240,6 +240,10 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             && !$evaluationStarted
             && !$resultsMode;
         $liveResultsMode = !$resultsMode && $isParticipateMode && $evaluationStarted && $showLiveResults;
+        $showOwnerIntermediateResults = $isManageMode
+            && !empty($context['isOwner'])
+            && !$resultsMode
+            && $evaluationStarted;
         $coreLocked = $decision instanceof DecisionProcess && $evaluationStarted;
         $startDatesLocked = $coreLocked || ($decision instanceof DecisionProcess && $hasSubmittedResponses);
         $isEditable = $isManageMode && !$resultsMode;
@@ -739,6 +743,58 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                     <?php endif; ?>
                                     <input type="hidden" name="proposal_info_urls[]" value="<?= $escape((string)($proposalItem['info_url'] ?? '')) ?>" data-omo-decision-mj-proposal-info-url>
                                     <input type="hidden" name="proposal_ids[]" value="<?= $escape((int)($proposalItem['id'] ?? 0)) ?>">
+                                    <?php if ($showOwnerIntermediateResults): ?>
+                                    <?php
+                                    $ownerProposalId = (int)($proposalItem['id'] ?? 0);
+                                    $ownerStat = $proposalStats[$ownerProposalId] ?? [
+                                        'distribution' => omoDecisionMajorityJudgmentGetEmptyDistribution(),
+                                        'counted_count' => 0,
+                                        'scale' => 1,
+                                    ];
+                                    $ownerCountedMentions = (int)($ownerStat['counted_count'] ?? 0);
+                                    $ownerStatScale = max(1, (int)($ownerStat['scale'] ?? 1));
+                                    ?>
+                                    <span class="omo-decision-majority-judgment__readonly-stat">
+                                        <strong><?= $escape(t('decisions.majority_judgment.field.proposal_votes', [], $lang, $sourceLang)) ?></strong>
+                                        <span><?= $escape((string)omoDecisionBlockSettingsVoteWeightUnitsToValue($ownerCountedMentions, $ownerStatScale)) ?></span>
+                                    </span>
+                                    <?php if ($ownerCountedMentions > 0): ?>
+                                    <div class="omo-decision-majority-judgment__distribution" aria-label="<?= $escape(t('decisions.majority_judgment.field.distribution', [], $lang, $sourceLang)) ?>">
+                                        <?php foreach ($mentions as $score => $mentionLabel): ?>
+                                        <?php
+                                        if ((int)$score === omoDecisionMajorityJudgmentGetNoOpinionScore()) {
+                                            continue;
+                                        }
+                                        $ownerSegmentCount = (int)($ownerStat['distribution'][$score] ?? 0);
+                                        $ownerSegmentPercent = ($ownerSegmentCount / $ownerCountedMentions) * 100;
+                                        $ownerSegmentPercentLabel = number_format($ownerSegmentPercent, 1, ',', ' ');
+                                        $ownerSegmentWidth = $ownerSegmentPercent > 0 ? number_format($ownerSegmentPercent, 4, '.', '') : '0';
+                                        $ownerSegmentTooltip = t(
+                                            'decisions.majority_judgment.tooltip.segment',
+                                            [
+                                                'mention' => (string)$mentionLabel,
+                                                'count' => (string)omoDecisionBlockSettingsVoteWeightUnitsToValue($ownerSegmentCount, $ownerStatScale),
+                                                'percent' => $ownerSegmentPercentLabel,
+                                            ],
+                                            $lang,
+                                            $sourceLang
+                                        );
+                                        ?>
+                                        <span
+                                            class="omo-decision-majority-judgment__distribution-segment omo-decision-majority-judgment__distribution-segment--<?= $escape((string)$score) ?>"
+                                            style="width: <?= $escape($ownerSegmentWidth) ?>%;"
+                                            title="<?= $escape($ownerSegmentTooltip) ?>"
+                                            aria-label="<?= $escape($ownerSegmentTooltip) ?>"
+                                        ></span>
+                                        <?php endforeach; ?>
+                                        <span class="omo-decision-majority-judgment__distribution-marker" aria-hidden="true"></span>
+                                    </div>
+                                    <div class="omo-decision-majority-judgment__distribution-scale" aria-hidden="true">
+                                        <span><?= $escape((string)$mentions[0]) ?></span>
+                                        <span><?= $escape((string)$mentions[6]) ?></span>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="omo-decision-majority-judgment__proposal-menu" data-omo-decision-mj-proposal-menu>
                                         <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-majority-judgment__proposal-menu-toggle" data-omo-decision-mj-proposal-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="<?= $escape(t('decisions.majority_judgment.field.proposal_actions', [], $lang, $sourceLang)) ?>">...</button>

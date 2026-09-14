@@ -807,7 +807,7 @@ function translationBundleTranslateWithAi(string $bundleKey, string $locale, arr
         . 'Translate the provided bundle from French into the requested locale. '
         . 'Return only a JSON object. Keep the same top-level keys. '
         . 'For each entry, return only translated text fields named text, one, and other. '
-        . 'Do not return context fields. Preserve placeholders like {username}, HTML, punctuation, and line breaks. '
+        . 'Do not return context fields. Preserve placeholders like {username}, HTML, Markdown markers such as **bold**, punctuation, and line breaks. '
         . 'Do not invent keys. Do not add explanations.';
 
     $userPrompt = [
