@@ -513,6 +513,10 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         $resultsMode = $decision instanceof DecisionProcess
             && in_array($status, [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
         $liveResultsMode = !$resultsMode && $isParticipateMode && $evaluationStarted && $showLiveResults;
+        $showOwnerIntermediateResults = $isManageMode
+            && !empty($context['isOwner'])
+            && !$resultsMode
+            && $evaluationStarted;
         $coreLocked = $decision instanceof DecisionProcess && $evaluationStarted;
         $startDatesLocked = $coreLocked || ($decision instanceof DecisionProcess && $hasSubmittedResponses);
         $isEditable = $isManageMode && !$resultsMode;
@@ -1120,6 +1124,13 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     <?php endif; ?>
                                     <input type="hidden" name="proposal_info_urls[]" value="<?= $escape((string)($proposalItem['info_url'] ?? '')) ?>" data-omo-decision-vote-proposal-info-url>
                                     <input type="hidden" name="proposal_ids[]" value="<?= $escape((int)($proposalItem['id'] ?? 0)) ?>">
+                                    <?php if ($showOwnerIntermediateResults): ?>
+                                    <?php $ownerProposalId = (int)($proposalItem['id'] ?? 0); ?>
+                                    <span class="omo-decision-vote__readonly-stat">
+                                        <strong><?= $escape(t('decisions.vote.field.proposal_votes', [], $lang, $sourceLang)) ?></strong>
+                                        <span><?= $escape((string)($proposalVoteCounts[$ownerProposalId] ?? 0)) ?></span>
+                                    </span>
+                                    <?php endif; ?>
                                 </div>
 
                                 <div class="omo-decision-vote__proposal-menu" data-omo-decision-vote-proposal-menu>

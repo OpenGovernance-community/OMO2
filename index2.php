@@ -139,16 +139,16 @@ $sourceLang = [
     'home.flow.return.title' => ['text' => 'Et l’expérience nourrit la suite.', 'context' => 'Feedback loop caption in the connected modules diagram.'],
     'home.flow.return.body' => ['text' => 'Ce que le collectif apprend aide à ajuster les rôles, les pratiques et les prochaines décisions.', 'context' => 'Explanation of the organizational learning feedback loop.'],
     'home.values' => ['text' => 'Confiance · Coopération · Souveraineté · Responsabilité · Pragmatisme · Respect', 'context' => 'Public OMO2 homepage: values.'],
-    'home.polarity.1' => ['text' => 'L’autorité assumée plutôt que l’autorité statutaire', 'context' => 'Public OMO2 homepage: polarity 1.'],
-    'home.polarity.2' => ['text' => 'L’intelligence organisée du collectif plutôt que la décision isolée', 'context' => 'Public OMO2 homepage: polarity 2.'],
-    'home.polarity.3' => ['text' => 'S’orienter par la raison d’être plutôt que par les intérêts particuliers', 'context' => 'Public OMO2 homepage: polarity 3.'],
-    'home.polarity.4' => ['text' => 'Le pouvoir qui circule plutôt que le pouvoir qui se concentre', 'context' => 'Public OMO2 homepage: polarity 4.'],
-    'home.polarity.5' => ['text' => 'La confiance et la transparence plutôt que le contrôle', 'context' => 'Public OMO2 homepage: polarity 5.'],
-    'home.polarity.6' => ['text' => 'Des structures qui apprennent plutôt qu’un modèle figé', 'context' => 'Public OMO2 homepage: polarity 5.'],
-    'home.polarity.7' => ['text' => 'Différencier les rôles plutôt que hiérarchiser les personnes', 'context' => 'Public OMO2 homepage: polarity 5.'],
-    'home.polarity.8' => ['text' => 'Les tensions comme signal plutôt que comme menace', 'context' => 'Public OMO2 homepage: polarity 5.'],
-    'home.polarity.9' => ['text' => 'La présence consciente plutôt que la réaction automatique', 'context' => 'Public OMO2 homepage: polarity 5.'],
-    'home.polarity.10' => ['text' => 'Prendre soin de l’écosystème plutôt que rechercher l’efficacité isolée', 'context' => 'Public OMO2 homepage: polarity 5.'],
+    'home.polarity.1' => ['text' => '**L’autorité assumée** plutôt que l’autorité statutaire', 'context' => 'Public OMO2 homepage: polarity 1.'],
+    'home.polarity.2' => ['text' => '**L’intelligence organisée du collectif** plutôt que la décision isolée', 'context' => 'Public OMO2 homepage: polarity 2.'],
+    'home.polarity.3' => ['text' => '**S’orienter par la raison d’être** plutôt que par les intérêts particuliers', 'context' => 'Public OMO2 homepage: polarity 3.'],
+    'home.polarity.4' => ['text' => '**Le pouvoir qui circule** plutôt que le pouvoir qui se concentre', 'context' => 'Public OMO2 homepage: polarity 4.'],
+    'home.polarity.5' => ['text' => '**La confiance et la transparence** plutôt que le contrôle', 'context' => 'Public OMO2 homepage: polarity 5.'],
+    'home.polarity.6' => ['text' => '**Des structures qui apprennent** plutôt qu’un modèle figé', 'context' => 'Public OMO2 homepage: polarity 5.'],
+    'home.polarity.7' => ['text' => '**Différencier les rôles** plutôt que hiérarchiser les personnes', 'context' => 'Public OMO2 homepage: polarity 5.'],
+    'home.polarity.8' => ['text' => '**Les tensions comme signal** plutôt que comme menace', 'context' => 'Public OMO2 homepage: polarity 5.'],
+    'home.polarity.9' => ['text' => '**La présence consciente** plutôt que la réaction automatique', 'context' => 'Public OMO2 homepage: polarity 5.'],
+    'home.polarity.10' => ['text' => '**Prendre soin de l’écosystème** plutôt que rechercher l’efficacité isolée', 'context' => 'Public OMO2 homepage: polarity 5.'],
     'home.community.kicker' => ['text' => 'Porté par OpenGouvernance', 'context' => 'Public OMO2 homepage: community kicker.'],
     'home.community.practitioners' => ['text' => 'Avec notamment Instant Z, Présence Active, We Reinvent et d’autres praticiens et contributeurs.', 'context' => 'Public OMO2 homepage: community practitioners.'],
     'home.opensource.kicker' => ['text' => 'Un outil ouvert', 'context' => 'Public OMO2 homepage: opensource kicker.'],
@@ -171,6 +171,10 @@ $t = static function (string $key) use ($lang, $sourceLang): string {
 $e = static function (string $text): string {
     return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
 };
+$renderInlineMarkdown = static function (string $text) use ($e): string {
+    $escapedText = $e($text);
+    return preg_replace('/\\*\\*(.+?)\\*\\*/s', '<strong>$1</strong>', $escapedText) ?? $escapedText;
+};
 
 $omo2Organizations = class_exists('\\dbObject\\Organization')
     ? \dbObject\Organization::fetchPublicLogoRowsByLastConnection()
@@ -179,7 +183,7 @@ $omo2Organizations = class_exists('\\dbObject\\Organization')
 $omo2Links = [
     'login' => '/omo/',
     'try' => '/omo/',
-    'manifesto' => '/survey/',
+    'manifesto' => 'https://localtest.me/survey/',
     'source' => 'https://github.com/OpenGovernance-community/OMO2',
     'support' => 'https://www.patreon.com/cw/OpenGovernance',
     'eventRegistration' => '',
@@ -386,8 +390,8 @@ $canonicalUrl = '/index2.php';
         <section class="omo2-section omo2-section--maturity" id="maturite" aria-labelledby="maturity-title">
             <div class="omo2-shell omo2-maturity">
                 <div class="omo2-maturity__shape" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
-                <div class="omo2-maturity__copy"><p class="omo2-eyebrow"><?= $e($t('home.maturity.kicker')) ?></p><h2 id="maturity-title"><?= $e($t('home.maturity.title')) ?></h2><p><?= $e($t('home.maturity.body')) ?></p><a class="omo2-text-link" href="<?= $e($omo2Links['manifesto']) ?>"><?= $e($t('home.action.manifesto')) ?><span aria-hidden="true">↘</span></a></div>
-                <div class="omo2-polarities"><p><?= $e($t('home.values')) ?></p><ul><li><?= $e($t('home.polarity.1')) ?></li><li><?= $e($t('home.polarity.2')) ?></li><li><?= $e($t('home.polarity.3')) ?></li><li><?= $e($t('home.polarity.4')) ?></li><li><?= $e($t('home.polarity.5')) ?></li><li><?= $e($t('home.polarity.6')) ?></li><li><?= $e($t('home.polarity.7')) ?></li><li><?= $e($t('home.polarity.8')) ?></li><li><?= $e($t('home.polarity.9')) ?></li><li><?= $e($t('home.polarity.10')) ?></li></ul></div>
+                <div class="omo2-maturity__copy"><p class="omo2-eyebrow"><?= $e($t('home.maturity.kicker')) ?></p><h2 id="maturity-title"><?= $e($t('home.maturity.title')) ?></h2><p><?= $e($t('home.maturity.body')) ?></p><a class="omo2-button" href="<?= $e($omo2Links['manifesto']) ?>"><?= $e($t('home.action.manifesto')) ?><span aria-hidden="true">↘</span></a></div>
+                <div class="omo2-polarities"><p><?= $e($t('home.values')) ?></p><ul><li><?= $renderInlineMarkdown($t('home.polarity.1')) ?></li><li><?= $renderInlineMarkdown($t('home.polarity.2')) ?></li><li><?= $renderInlineMarkdown($t('home.polarity.3')) ?></li><li><?= $renderInlineMarkdown($t('home.polarity.4')) ?></li><li><?= $renderInlineMarkdown($t('home.polarity.5')) ?></li><li><?= $renderInlineMarkdown($t('home.polarity.6')) ?></li><li><?= $renderInlineMarkdown($t('home.polarity.7')) ?></li><li><?= $renderInlineMarkdown($t('home.polarity.8')) ?></li><li><?= $renderInlineMarkdown($t('home.polarity.9')) ?></li><li><?= $renderInlineMarkdown($t('home.polarity.10')) ?></li></ul></div>
             </div>
         </section>
 
@@ -401,7 +405,7 @@ $canonicalUrl = '/index2.php';
         <section class="omo2-section omo2-section--split" aria-label="<?= $e($t('home.support.label')) ?>">
             <div class="omo2-shell omo2-split-grid">
                 <article class="omo2-open-source"><p class="omo2-eyebrow omo2-eyebrow--light"><?= $e($t('home.opensource.kicker')) ?></p><h2><?= $e($t('home.opensource.title')) ?></h2><p><?= $e($t('home.opensource.body')) ?></p><p class="omo2-open-source__statement"><?= $e($t('home.opensource.statement')) ?></p><a class="omo2-button omo2-button--light" href="<?= $e($omo2Links['source']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.source')) ?><span aria-hidden="true">↗</span></a></article>
-                <article class="omo2-support" id="soutenir"><p class="omo2-eyebrow"><?= $e($t('home.support.kicker')) ?></p><h2><?= $e($t('home.support.title')) ?></h2><p><?= $e($t('home.support.body')) ?></p><p class="omo2-statement"><?= $e($t('home.support.statement')) ?></p><a class="omo2-text-link" href="<?= $e($omo2Links['support']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.support')) ?><span aria-hidden="true">↗</span></a></article>
+                <article class="omo2-support" id="soutenir"><p class="omo2-eyebrow"><?= $e($t('home.support.kicker')) ?></p><h2><?= $e($t('home.support.title')) ?></h2><p><?= $e($t('home.support.body')) ?><br/></p><p class="omo2-statement"><?= $e($t('home.support.statement')) ?></p><a class="omo2-button" href="<?= $e($omo2Links['support']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.support')) ?><span aria-hidden="true">↗</span></a></article>
             </div>
         </section>
 
