@@ -2390,6 +2390,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             display: flex;
             align-items: stretch;
             width: 100%;
+            max-width: 400px;
+            margin-inline: auto;
             overflow: hidden;
             touch-action: pan-y pinch-zoom;
             border-radius: var(--radius-md);

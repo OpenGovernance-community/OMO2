@@ -2,7 +2,19 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-14
+
+- Dans les votes anonymes, les propositions ne montrent plus leur auteur ni leur date de proposition. L echelle de jugement majoritaire est maintenant centree et limitee a 400 px de large.
+
 ## 2026-09-13
+
+- Le domaine `omo2.org` sert maintenant `index2.php` a sa racine, tandis que les autres domaines continuent de servir `index.php`.
+
+- La section Du role a l action de la homepage presente maintenant cinq etapes reliees, avec pictogrammes, questions concretes et une boucle d apprentissage. Le parcours devient vertical sur mobile.
+
+- La homepage index2.php conserve maintenant les proportions des images, affiche les vues illustrees en entier et met davantage en valeur le logo OMO. La partie Documenter integre une illustration de l edition collaborative. Les textes soulignent la communaute et le portage du commun OpenMyOrganization par l association OpenGouvernance. Les appels d inscription attendent une date et un lien configures.
+
+- Une nouvelle homepage publique OMO2 est disponible dans `index2.php` : elle presente les quatre dimensions Structurer, Partager, Decider et Documenter, les valeurs du manifeste, la communaute, le modele open source, le soutien, la video de presentation avec chargement apres action, le prochain evenement configurable et les liens legaux existants. Les visuels et la feuille de styles dedies sont regroupes sous `img/omo2/` et `assets/omo2-home.*`.
 
 - Le module Evenements du tableau de pilotage affiche maintenant une vignette calendrier avec le mois en lettres, rassemble le holon et l horaire sur une ligne, et tronque proprement les titres, lieux et liens de visio. Les liens de reunion restent ouvrables directement. Dans toutes les cartes doubles du tableau, la carte est bornee par sa cellule de grille et sa liste flex utilise la hauteur complete disponible, alignee avec les deux cartes voisines. La feuille de styles OMO est versionnee pour que ce correctif soit recharge sans cache ancien.
 
@@ -2193,3 +2205,14 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Le bouton Fermer et le clic sur le fond du sous-drawer des Activites ferment a nouveau le detail, y compris dans le contexte des onglets PV.
 - L editeur de PV rafraichit maintenant la liste de presence apres une reprise de main ou un changement d etape, afin que ses cases refletent immediatement le droit d edition courant.
 - Le bouton d ajout de minutes de l evenement associe apparait maintenant des le passage du PV en etape Reunion, sans rechargement de la page.
+## 13 septembre 2026
+
+- La rubrique Partager affiche maintenant ses vues calendrier et projets dans un carrousel avec des commandes accessibles et des légendes synchronisées, plus concises sur une ligne.
+
+# 2026-09-14
+
+- La rubrique Decider presente une vue illustree de la collecte des avis et de la construction d un choix commun.
+- Le favicon de la page publique reprend maintenant le visuel iceberg d OMO.
+- La rubrique Communaute est illustree par une scene de construction collective.
+- Le parcours Du role a l action utilise cinq illustrations de manchots integrees sur fond bleu, avec des reperes numerotes et un affichage adapte au mobile.
+- Le bloc final d invitation a cooperer utilise le panorama iceberg fourni, sans les cercles ni les traits decoratifs precedents.
