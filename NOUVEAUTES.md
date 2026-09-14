@@ -2,6 +2,10 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-14
+
+- Dans les votes anonymes, les propositions ne montrent plus leur auteur ni leur date de proposition. L echelle de jugement majoritaire est maintenant centree et limitee a 400 px de large.
+
 ## 2026-09-13
 
 - Le domaine `omo2.org` sert maintenant `index2.php` a sa racine, tandis que les autres domaines continuent de servir `index.php`.
