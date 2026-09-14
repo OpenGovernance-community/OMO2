@@ -4,6 +4,10 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-14
 
+- Les auteurs de scrutins en cours voient maintenant, dans Gérer et sous chaque proposition verrouillée, les résultats intermédiaires : la répartition des mentions pour le jugement majoritaire, et le nombre de réponses pour le vote et le consentement.
+
+- Les principes de maturite organisationnelle de `index2.php` acceptent maintenant le gras Markdown limite a `**texte**`, y compris dans les traductions. Les appels Patreon et d evaluation de la maturite sont presentes comme des boutons, avec un espacement au-dessus du bouton de soutien.
+
 - Les sous-domaines des organisations ouvrent maintenant directement l application OMO sous `/omo/`, au lieu de l application de tutoriels.
 
 - Dans les votes anonymes, les propositions ne montrent plus leur auteur ni leur date de proposition. L echelle de jugement majoritaire est maintenant centree et limitee a 400 px de large.

@@ -176,7 +176,7 @@ h3 { font-size: clamp(1.45rem, 2vw, 2rem); }
 .omo2-split-grid h2 { margin-bottom: 23px; font-size: clamp(2.1rem, 3.7vw, 3.8rem); }
 .omo2-split-grid p:not(.omo2-eyebrow):not(.omo2-statement):not(.omo2-open-source__statement) { max-width: 510px; }
 .omo2-open-source { position: relative; overflow: hidden; color: #fff; background: var(--omo2-deep); }.omo2-open-source::after { content: ''; position: absolute; width: 410px; aspect-ratio: 1; right: -100px; bottom: -170px; border: 1px solid rgba(99,208,255,.38); border-radius: 50%; box-shadow: 0 0 0 65px rgba(99,208,255,.05), 0 0 0 145px rgba(99,208,255,.03); }.omo2-open-source p:not(.omo2-eyebrow):not(.omo2-open-source__statement) { color: rgba(255,255,255,.77); }.omo2-open-source__statement { position: relative; z-index: 1; max-width: 490px; margin: 35px 0; color: var(--omo2-sky); font-family: 'Segoe UI', Arial, sans-serif; font-size: 1.12rem !important; font-weight: 700; }.omo2-open-source .omo2-button { position: relative; z-index: 1; }
-.omo2-support { background: var(--omo2-pale); }.omo2-support > p:not(.omo2-eyebrow):not(.omo2-statement) { color: var(--omo2-muted); }
+.omo2-support { background: var(--omo2-pale); }.omo2-support > p:not(.omo2-eyebrow):not(.omo2-statement) { color: var(--omo2-muted); }.omo2-support .omo2-button { margin-top: 10px; }
 
 .omo2-section--discover { background: #fff; }
 .omo2-discover-grid { display: grid; grid-template-columns: minmax(0, 1.04fr) minmax(0, .86fr); align-items: stretch; gap: clamp(28px, 4.5vw, 66px); }
