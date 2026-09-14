@@ -19,11 +19,9 @@ $sourceLang = [
     'home.action.login' => ['text' => 'Se connecter', 'context' => 'Header and footer action that opens the OMO workspace.'],
     'home.action.discover' => ['text' => 'Découvrir OMO2', 'context' => 'Primary homepage action that scrolls to the product discovery section.'],
     'home.action.try' => ['text' => 'Essayer OMO2', 'context' => 'Action that opens the OMO workspace.'],
-    'home.hero.eyebrow' => ['text' => 'Un logiciel créé avec sa communauté', 'context' => 'Small label shown above the homepage hero heading.'],
+    'home.hero.eyebrow' => ['text' => 'Un logiciel pour soutenir la gouvernance', 'context' => 'Small label shown above the homepage hero heading.'],
     'home.hero.title' => ['text' => 'Mieux s’organiser pour mieux coopérer.', 'context' => 'Homepage main heading.'],
     'home.hero.body' => ['text' => 'Votre collectif a une raison d’être. OMO vous aide à la faire vivre au quotidien : des rôles clairs, des informations partagées et des décisions que l’on peut suivre ensemble.', 'context' => 'Introductory paragraph in the homepage hero.'],
-    'home.hero.open_source' => ['text' => 'Un logiciel open source, construit par et avec celles et ceux qui coopèrent.', 'context' => 'Open-source statement in the homepage hero.'],
-    'home.hero.experience' => ['text' => '13 ans de pratique partagée. Une nouvelle génération.', 'context' => 'Experience statement in the homepage hero.'],
     'home.verb.structure' => ['text' => 'Structurer', 'context' => 'First core OMO2 capability.'],
     'home.verb.share' => ['text' => 'Partager', 'context' => 'Second core OMO2 capability.'],
     'home.verb.decide' => ['text' => 'Décider', 'context' => 'Third core OMO2 capability.'],
@@ -31,7 +29,7 @@ $sourceLang = [
     'home.other.title' => ['text' => 'Une autre manière de faire organisation.', 'context' => 'Editorial section heading.'],
     'home.other.body' => ['text' => 'Qui fait quoi ? Où trouver la bonne information ? Comment avancer quand les avis diffèrent ? Ces questions traversent la vie de tous les collectifs. OMO aide à y répondre, pour que chacun trouve sa place et puisse agir.', 'context' => 'Editorial section body.'],
     'home.other.conclusion' => ['text' => 'Un cadre clair, de la confiance et de la place pour chacun.', 'context' => 'Editorial section concluding statement.'],
-    'home.idea.one.title' => ['text' => 'Clarifier sans subordonner', 'context' => 'First organizational principle heading.'],
+    'home.idea.one.title' => ['text' => 'Déléguer sans subordonner', 'context' => 'First organizational principle heading.'],
     'home.idea.one.body' => ['text' => 'Rendre les responsabilités lisibles, tout en reconnaissant la même valeur à chaque personne.', 'context' => 'First organizational principle body.'],
     'home.idea.two.title' => ['text' => 'Distribuer sans diluer', 'context' => 'Second organizational principle heading.'],
     'home.idea.two.body' => ['text' => 'Donner à chacun un espace pour agir, avec les informations et les responsabilités qui vont avec.', 'context' => 'Second organizational principle body.'],
@@ -54,7 +52,7 @@ $sourceLang = [
     'home.maturity.kicker' => ['text' => 'Ce qui nous guide', 'context' => 'Maturity section eyebrow.'],
     'home.maturity.title' => ['text' => 'Grandir ensemble, à votre manière.', 'context' => 'Maturity section heading.'],
     'home.maturity.body' => ['text' => 'La maturité organisationnelle se cultive au fil de l’expérience : apprendre, ajuster ses règles, partager le pouvoir avec responsabilité. OMO accompagne ce chemin, sans imposer de méthode, en gardant votre raison d’être comme repère.', 'context' => 'Maturity section body.'],
-    'home.action.manifesto' => ['text' => 'Découvrir le manifeste', 'context' => 'Call to action for the maturity manifesto.'],
+    'home.action.manifesto' => ['text' => 'Evaluez votre maturité organisationnelle', 'context' => 'Call to action for the maturity test.'],
     'home.community.title' => ['text' => 'Un commun que l’on fait grandir ensemble.', 'context' => 'Community section heading.'],
     'home.community.lead' => ['text' => 'OpenMyOrganization est un commun porté par l’association OpenGouvernance.', 'context' => 'Association carrying the OpenMyOrganization commons.'],
     'home.community.body' => ['text' => 'Autour du projet, des personnes qui utilisent le logiciel, accompagnent les collectifs et développent l’outil partagent leurs expériences et construisent la suite ensemble.', 'context' => 'Community section body.'],
@@ -101,7 +99,7 @@ $sourceLang = [
     'home.image.documents' => ['text' => 'Illustration de l’espace de fichiers et de l’édition collaborative de documents dans OMO2', 'context' => 'Alternative text for the supplied collaborative document illustration.'],
     'home.image.documents.caption' => ['text' => 'Écrire et construire ensemble.', 'context' => 'Caption for the supplied collaborative document illustration.'],
     'home.image.story' => ['text' => 'Iceberg aux facettes bleues, symbole des dimensions visibles et invisibles du collectif', 'context' => 'Public OMO2 homepage: image story.'],
-    'home.image.community' => ['text' => 'Construit ensemble', 'context' => 'Public OMO2 homepage: image community.'],
+    'home.image.community' => ['text' => 'Des manchots qui construisent ensemble, illustration de la communauté OMO', 'context' => 'Public OMO2 homepage: image community.'],
     'home.image.kind' => ['text' => 'Vue illustrée', 'context' => 'Public OMO2 homepage: image kind.'],
     'home.image.structure.caption' => ['text' => 'Rôles, cercles et contributions visibles.', 'context' => 'Public OMO2 homepage: image structure caption.'],
     'home.image.calendar.caption' => ['text' => 'Agenda collectif partagé.', 'context' => 'Public OMO2 homepage: image calendar caption.'],
@@ -131,11 +129,16 @@ $sourceLang = [
     'home.flow.return.title' => ['text' => 'Et l’expérience nourrit la suite.', 'context' => 'Feedback loop caption in the connected modules diagram.'],
     'home.flow.return.body' => ['text' => 'Ce que le collectif apprend aide à ajuster les rôles, les pratiques et les prochaines décisions.', 'context' => 'Explanation of the organizational learning feedback loop.'],
     'home.values' => ['text' => 'Confiance · Coopération · Souveraineté · Responsabilité · Pragmatisme · Respect', 'context' => 'Public OMO2 homepage: values.'],
-    'home.polarity.1' => ['text' => 'Autonomie + cadre', 'context' => 'Public OMO2 homepage: polarity 1.'],
-    'home.polarity.2' => ['text' => 'Intelligence collective + responsabilité individuelle', 'context' => 'Public OMO2 homepage: polarity 2.'],
-    'home.polarity.3' => ['text' => 'Clarté des rôles + égalité de dignité', 'context' => 'Public OMO2 homepage: polarity 3.'],
-    'home.polarity.4' => ['text' => 'Efficacité + soin', 'context' => 'Public OMO2 homepage: polarity 4.'],
-    'home.polarity.5' => ['text' => 'Ambition + soutenabilité', 'context' => 'Public OMO2 homepage: polarity 5.'],
+    'home.polarity.1' => ['text' => 'L’autorité assumée plutôt que l’autorité statutaire', 'context' => 'Public OMO2 homepage: polarity 1.'],
+    'home.polarity.2' => ['text' => 'L’intelligence organisée du collectif plutôt que la décision isolée', 'context' => 'Public OMO2 homepage: polarity 2.'],
+    'home.polarity.3' => ['text' => 'S’orienter par la raison d’être plutôt que par les intérêts particuliers', 'context' => 'Public OMO2 homepage: polarity 3.'],
+    'home.polarity.4' => ['text' => 'Le pouvoir qui circule plutôt que le pouvoir qui se concentre', 'context' => 'Public OMO2 homepage: polarity 4.'],
+    'home.polarity.5' => ['text' => 'La confiance et la transparence plutôt que le contrôle', 'context' => 'Public OMO2 homepage: polarity 5.'],
+    'home.polarity.6' => ['text' => 'Des structures qui apprennent plutôt qu’un modèle figé', 'context' => 'Public OMO2 homepage: polarity 5.'],
+    'home.polarity.7' => ['text' => 'Différencier les rôles plutôt que hiérarchiser les personnes', 'context' => 'Public OMO2 homepage: polarity 5.'],
+    'home.polarity.8' => ['text' => 'Les tensions comme signal plutôt que comme menace', 'context' => 'Public OMO2 homepage: polarity 5.'],
+    'home.polarity.9' => ['text' => 'La présence consciente plutôt que la réaction automatique', 'context' => 'Public OMO2 homepage: polarity 5.'],
+    'home.polarity.10' => ['text' => 'Prendre soin de l’écosystème plutôt que rechercher l’efficacité isolée', 'context' => 'Public OMO2 homepage: polarity 5.'],
     'home.community.kicker' => ['text' => 'Porté par OpenGouvernance', 'context' => 'Public OMO2 homepage: community kicker.'],
     'home.community.practitioners' => ['text' => 'Avec notamment Instant Z, Présence Active, We Reinvent et d’autres praticiens et contributeurs.', 'context' => 'Public OMO2 homepage: community practitioners.'],
     'home.opensource.kicker' => ['text' => 'Un outil ouvert', 'context' => 'Public OMO2 homepage: opensource kicker.'],
@@ -162,8 +165,8 @@ $e = static function (string $text): string {
 $omo2Links = [
     'login' => '/omo/',
     'try' => '/omo/',
-    'manifesto' => '#maturite',
-    'source' => 'https://github.com/DavidDrayer/OMO2',
+    'manifesto' => '/survey/',
+    'source' => 'https://github.com/OpenGovernance-community/OMO2',
     'support' => 'https://www.patreon.com/cw/OpenGovernance',
     'eventRegistration' => '',
     'eventDates' => '',
@@ -197,8 +200,8 @@ $canonicalUrl = '/index2.php';
     <meta property="og:image" content="/img/omo2-social-card.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="theme-color" content="#05263c">
-    <link rel="icon" href="/img/omo2/logo-omo.png">
-    <link rel="stylesheet" href="/assets/omo2-home.css?v=20260913-carousel-5">
+    <link rel="icon" type="image/jpeg" href="/img/omo-iceberg.jpg?v=20260914" sizes="1254x1254">
+    <link rel="stylesheet" href="/assets/omo2-home.css?v=20260914-final-iceberg-8">
     <script type="application/ld+json">
     {"@context":"https://schema.org","@type":"SoftwareApplication","name":"OpenMyOrganization","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"<?= $e($t('home.meta.description')) ?>","url":"<?= $e($canonicalUrl) ?>"}
     </script>
@@ -237,13 +240,11 @@ $canonicalUrl = '/index2.php';
                     <div class="omo2-verb-line" aria-label="<?= $e($t('home.verb.structure')) ?>, <?= $e($t('home.verb.share')) ?>, <?= $e($t('home.verb.decide')) ?>, <?= $e($t('home.verb.document')) ?>">
                         <span><?= $e($t('home.verb.structure')) ?></span><i></i><span><?= $e($t('home.verb.share')) ?></span><i></i><span><?= $e($t('home.verb.decide')) ?></span><i></i><span><?= $e($t('home.verb.document')) ?></span>
                     </div>
-                    <p class="omo2-hero__open-source"><?= $e($t('home.hero.open_source')) ?></p>
                     <div class="omo2-actions">
                         <a class="omo2-button omo2-button--light" href="#fonctionnalites"><?= $e($t('home.action.discover')) ?><span aria-hidden="true">↘</span></a>
                         <a class="omo2-button omo2-button--ghost-light" href="<?= $e($omo2Links['try']) ?>"><?= $e($t('home.action.try')) ?></a>
                     </div>
-                    <p class="omo2-hero__experience"><span aria-hidden="true">✦</span><?= $e($t('home.hero.experience')) ?></p>
-                </div>
+                 </div>
                 <figure class="omo2-hero__visual">
                     <img class="omo2-hero__logo" src="/img/omo2/logo-omo.png" width="1081" height="441" alt="OpenMyOrganization" fetchpriority="high">
                     <div class="omo2-hero__window">
@@ -278,11 +279,11 @@ $canonicalUrl = '/index2.php';
                 </div>
                 <div class="omo2-capabilities">
                     <article class="omo2-capability omo2-capability--structure">
-                        <div class="omo2-capability__copy"><span class="omo2-capability__index">01</span><p class="omo2-capability__verb"><?= $e($t('home.verb.structure')) ?></p><h3><?= $e($t('home.cap.structure.title')) ?></h3><p><?= $e($t('home.cap.structure.body')) ?></p></div>
+                        <div class="omo2-capability__copy"><p class="omo2-capability__verb"><?= $e($t('home.verb.structure')) ?></p><h3><?= $e($t('home.cap.structure.title')) ?></h3><p><?= $e($t('home.cap.structure.body')) ?></p></div>
                         <figure class="omo2-product-view"><img src="/img/omo2/structure.png" width="1672" height="941" loading="lazy" decoding="async" alt="<?= $e($t('home.image.structure')) ?>"><figcaption><span><?= $e($t('home.image.kind')) ?></span><?= $e($t('home.image.structure.caption')) ?></figcaption></figure>
                     </article>
                     <article class="omo2-capability omo2-capability--share">
-                        <div class="omo2-capability__copy"><span class="omo2-capability__index">02</span><p class="omo2-capability__verb"><?= $e($t('home.verb.share')) ?></p><h3><?= $e($t('home.cap.share.title')) ?></h3><p><?= $e($t('home.cap.share.body')) ?></p></div>
+                        <div class="omo2-capability__copy"><p class="omo2-capability__verb"><?= $e($t('home.verb.share')) ?></p><h3><?= $e($t('home.cap.share.title')) ?></h3><p><?= $e($t('home.cap.share.body')) ?></p></div>
                         <div class="omo2-product-carousel" data-omo2-carousel aria-roledescription="carousel" aria-label="<?= $e($t('home.carousel.share')) ?>">
                             <div class="omo2-product-carousel__viewport">
                                 <div class="omo2-product-carousel__track">
@@ -291,21 +292,21 @@ $canonicalUrl = '/index2.php';
                                 </div>
                             </div>
                             <div class="omo2-product-carousel__controls">
-                                <button class="omo2-carousel-button" type="button" data-carousel-prev aria-label="<?= $e($t('home.carousel.previous')) ?>">&#8592;</button>
+                                <button style='display:none' class="omo2-carousel-button" type="button" data-carousel-prev aria-label="<?= $e($t('home.carousel.previous')) ?>">&#8592;</button>
                                 <div class="omo2-carousel-dots" role="group" aria-label="<?= $e($t('home.carousel.share')) ?>">
                                     <button class="is-active" type="button" data-carousel-dot aria-label="<?= $e($t('home.carousel.calendar')) ?>" aria-current="true"></button>
                                     <button type="button" data-carousel-dot aria-label="<?= $e($t('home.carousel.projects')) ?>"></button>
                                 </div>
-                                <button class="omo2-carousel-button" type="button" data-carousel-next aria-label="<?= $e($t('home.carousel.next')) ?>">&#8594;</button>
+                                <button style='display:none' class="omo2-carousel-button" type="button" data-carousel-next aria-label="<?= $e($t('home.carousel.next')) ?>">&#8594;</button>
                             </div>
                         </div>
                     </article>
                     <article class="omo2-capability omo2-capability--decide">
-                        <div class="omo2-capability__copy"><span class="omo2-capability__index">03</span><p class="omo2-capability__verb"><?= $e($t('home.verb.decide')) ?></p><h3><?= $e($t('home.cap.decide.title')) ?></h3><p><?= $e($t('home.cap.decide.body')) ?></p></div>
+                        <div class="omo2-capability__copy"><p class="omo2-capability__verb"><?= $e($t('home.verb.decide')) ?></p><h3><?= $e($t('home.cap.decide.title')) ?></h3><p><?= $e($t('home.cap.decide.body')) ?></p></div>
                         <figure class="omo2-product-view"><img src="/img/omo2/decision.png" width="1672" height="941" loading="lazy" decoding="async" alt="<?= $e($t('home.image.decision')) ?>"><figcaption><span><?= $e($t('home.image.kind')) ?></span><?= $e($t('home.image.decision.caption')) ?></figcaption></figure>
                     </article>
                     <article class="omo2-capability omo2-capability--document">
-                        <div class="omo2-capability__copy"><span class="omo2-capability__index">04</span><p class="omo2-capability__verb"><?= $e($t('home.verb.document')) ?></p><h3><?= $e($t('home.cap.document.title')) ?></h3><p><?= $e($t('home.cap.document.body')) ?></p></div>
+                        <div class="omo2-capability__copy"><p class="omo2-capability__verb"><?= $e($t('home.verb.document')) ?></p><h3><?= $e($t('home.cap.document.title')) ?></h3><p><?= $e($t('home.cap.document.body')) ?></p></div>
                         <figure class="omo2-product-view"><img src="/img/omo2/documents.png" width="1672" height="941" loading="lazy" decoding="async" alt="<?= $e($t('home.image.documents')) ?>"><figcaption><span><?= $e($t('home.image.kind')) ?></span><?= $e($t('home.image.documents.caption')) ?></figcaption></figure>
                     </article>
                 </div>
@@ -321,22 +322,16 @@ $canonicalUrl = '/index2.php';
                 <figure class="omo2-flow-figure" aria-label="<?= $e($t('home.flow.label')) ?>">
                     <ol class="omo2-flow">
                         <?php
-                        // Decorative line icons; every step is described in visible text.
-                        $flowIcons = [
-                            'structure' => '<circle cx="24" cy="10" r="5"/><circle cx="10" cy="36" r="5"/><circle cx="38" cy="36" r="5"/><path d="M24 15v9M10 31v-7h28v7"/>',
-                            'information' => '<path d="M8 8h32v24H22l-10 8v-8H8zM16 16h16M16 23h11"/>',
-                            'decision' => '<circle cx="24" cy="24" r="17"/><path d="m15 24 6 6 13-13"/>',
-                            'action' => '<path d="M9 12h17M9 24h10M9 36h17M25 17l8 7-8 7M19 24h20"/>',
-                            'memory' => '<path d="M12 7h18l8 8v23H12zM30 7v9h8M8 14H6v29h25M19 24h12M19 30h9"/>',
-                        ];
+                        // The adjacent text describes each decorative illustration.
+                        $flowSteps = ['structure', 'information', 'decision', 'action', 'memory'];
                         $flowStep = 0;
-                        foreach ($flowIcons as $flowKey => $flowIcon):
+                        foreach ($flowSteps as $flowKey):
                             $flowStep++;
                         ?>
                         <li class="omo2-flow__step omo2-flow__step--<?= $e($flowKey) ?>">
                             <div class="omo2-flow__node" aria-hidden="true">
                                 <span class="omo2-flow__number"><?= sprintf('%02d', $flowStep) ?></span>
-                                <svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false"><?= $flowIcon ?></svg>
+                                <img src="/img/omo2/flow-<?= $e($flowKey) ?>.png" width="1254" height="1254" loading="lazy" decoding="async" alt="">
                             </div>
                             <div class="omo2-flow__text">
                                 <h3><?= $e($t('home.flow.' . $flowKey)) ?></h3>
@@ -358,13 +353,13 @@ $canonicalUrl = '/index2.php';
             <div class="omo2-shell omo2-maturity">
                 <div class="omo2-maturity__shape" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
                 <div class="omo2-maturity__copy"><p class="omo2-eyebrow"><?= $e($t('home.maturity.kicker')) ?></p><h2 id="maturity-title"><?= $e($t('home.maturity.title')) ?></h2><p><?= $e($t('home.maturity.body')) ?></p><a class="omo2-text-link" href="<?= $e($omo2Links['manifesto']) ?>"><?= $e($t('home.action.manifesto')) ?><span aria-hidden="true">↘</span></a></div>
-                <div class="omo2-polarities"><p><?= $e($t('home.values')) ?></p><ul><li><?= $e($t('home.polarity.1')) ?></li><li><?= $e($t('home.polarity.2')) ?></li><li><?= $e($t('home.polarity.3')) ?></li><li><?= $e($t('home.polarity.4')) ?></li><li><?= $e($t('home.polarity.5')) ?></li></ul></div>
+                <div class="omo2-polarities"><p><?= $e($t('home.values')) ?></p><ul><li><?= $e($t('home.polarity.1')) ?></li><li><?= $e($t('home.polarity.2')) ?></li><li><?= $e($t('home.polarity.3')) ?></li><li><?= $e($t('home.polarity.4')) ?></li><li><?= $e($t('home.polarity.5')) ?></li><li><?= $e($t('home.polarity.6')) ?></li><li><?= $e($t('home.polarity.7')) ?></li><li><?= $e($t('home.polarity.8')) ?></li><li><?= $e($t('home.polarity.9')) ?></li><li><?= $e($t('home.polarity.10')) ?></li></ul></div>
             </div>
         </section>
 
         <section class="omo2-section omo2-section--community" id="communaute" aria-labelledby="community-title">
             <div class="omo2-shell omo2-community">
-                <div class="omo2-community__people" aria-hidden="true"><span><?= $e($t('home.image.community')) ?></span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                <figure class="omo2-community__visual"><img src="/img/omo2/community.png" width="1672" height="941" loading="lazy" decoding="async" alt="<?= $e($t('home.image.community')) ?>"></figure>
                 <div><p class="omo2-eyebrow"><?= $e($t('home.community.kicker')) ?></p><h2 id="community-title"><?= $e($t('home.community.title')) ?></h2><p class="omo2-community__lead"><?= $e($t('home.community.lead')) ?></p><p><?= $e($t('home.community.body')) ?></p><p class="omo2-statement"><?= $e($t('home.community.conclusion')) ?></p><p class="omo2-community__names"><?= $e($t('home.community.practitioners')) ?></p></div>
             </div>
         </section>
@@ -383,9 +378,18 @@ $canonicalUrl = '/index2.php';
             </div>
         </section>
 
-        <section class="omo2-section omo2-section--story" aria-labelledby="story-title"><div class="omo2-shell omo2-story"><img src="/img/omo-iceberg.jpg" width="1254" height="1254" loading="lazy" alt="<?= $e($t('home.image.story')) ?>"><div><p class="omo2-eyebrow"><?= $e($t('home.story.kicker')) ?></p><h2 id="story-title"><?= $e($t('home.story.title')) ?></h2><p><?= $e($t('home.story.body')) ?></p><p class="omo2-statement"><?= $e($t('home.story.conclusion')) ?></p></div></div></section>
+        <section class="omo2-section omo2-section--story" aria-labelledby="story-title"><div class="omo2-shell omo2-story"><img src="/img/omo2/bottom_img.png" width="1254" height="1254" loading="lazy" alt="<?= $e($t('home.image.story')) ?>"><div><p class="omo2-eyebrow"><?= $e($t('home.story.kicker')) ?></p><h2 id="story-title"><?= $e($t('home.story.title')) ?></h2><p><?= $e($t('home.story.body')) ?></p><p class="omo2-statement"><?= $e($t('home.story.conclusion')) ?></p></div></div></section>
 
-        <section class="omo2-final"><div class="omo2-final__line" aria-hidden="true"></div><div class="omo2-shell omo2-final__content"><p class="omo2-eyebrow omo2-eyebrow--light">OpenMyOrganization - OMO2</p><h2><?= $e($t('home.final.title')) ?></h2><p><?= $e($t('home.final.body')) ?></p><div class="omo2-actions omo2-actions--center"><a class="omo2-button omo2-button--light" href="#fonctionnalites"><?= $e($t('home.action.discover')) ?><span aria-hidden="true">↗</span></a><a class="omo2-button omo2-button--ghost-light" href="<?= $e($omo2Links['try']) ?>"><?= $e($t('home.action.try')) ?></a></div><a class="omo2-final__event" href="#evenement"><?= $e($t('home.final.event')) ?> <span aria-hidden="true">↓</span></a></div></section>
+        <section class="omo2-final" id="cooperer" aria-labelledby="final-title">
+            <img class="omo2-final__art" src="/img/omo2/final-iceberg.png" width="1672" height="941" loading="lazy" decoding="async" alt="">
+            <div class="omo2-shell omo2-final__content">
+                <p class="omo2-eyebrow omo2-eyebrow--light">OpenMyOrganization - OMO2</p>
+                <h2 id="final-title"><?= $e($t('home.final.title')) ?></h2>
+                <p><?= $e($t('home.final.body')) ?></p>
+                <div class="omo2-actions omo2-actions--center"><a class="omo2-button omo2-button--light" href="#fonctionnalites"><?= $e($t('home.action.discover')) ?><span aria-hidden="true">↗</span></a><a class="omo2-button omo2-button--ghost-light" href="<?= $e($omo2Links['try']) ?>"><?= $e($t('home.action.try')) ?></a></div>
+                <a class="omo2-final__event" href="#evenement"><?= $e($t('home.final.event')) ?> <span aria-hidden="true">↓</span></a>
+            </div>
+        </section>
     </main>
 
     <footer class="omo2-footer"><div class="omo2-shell"><div class="omo2-footer__top"><a class="omo2-brand omo2-brand--footer" href="#accueil"><img src="/img/omo2/logo-omo.png" width="1081" height="441" alt="OpenMyOrganization"></a><p><?= $e($t('home.footer.tagline')) ?></p></div><div class="omo2-footer__columns"><div><h2><?= $e($t('home.footer.omo')) ?></h2><a href="#accueil"><?= $e($t('home.nav.about')) ?></a><a href="#fonctionnalites"><?= $e($t('home.nav.capabilities')) ?></a><a href="#maturite"><?= $e($t('home.action.manifesto')) ?></a><a href="<?= $e($omo2Links['source']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.opensource.title')) ?></a><a href="#communaute"><?= $e($t('home.nav.community')) ?></a></div><div><h2><?= $e($t('home.footer.discover')) ?></h2><a href="#evenement"><?= $e($t('home.event.label')) ?></a><a href="#decouvrir"><?= $e($t('home.video.title')) ?></a><a href="<?= $e($omo2Links['try']) ?>"><?= $e($t('home.action.try')) ?></a><a href="<?= $e($omo2Links['login']) ?>"><?= $e($t('home.action.login')) ?></a></div><div><h2><?= $e($t('home.footer.project')) ?></h2><a href="<?= $e($omo2Links['source']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.source')) ?></a><a href="<?= $e($omo2Links['support']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.support')) ?></a></div><div><h2><?= $e($t('home.footer.legal')) ?></h2><a href="<?= $e($omo2Links['terms']) ?>"><?= $e($t('home.footer.terms')) ?></a><a href="<?= $e($omo2Links['privacy']) ?>"><?= $e($t('home.footer.privacy')) ?></a></div></div><div class="omo2-footer__bottom"><span>© <?= date('Y') ?> OpenMyOrganization</span><span><?= $e($t('home.footer.signature')) ?></span></div></div></footer>

@@ -2208,3 +2208,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 # 2026-09-14
 
 - La rubrique Decider presente une vue illustree de la collecte des avis et de la construction d un choix commun.
+- Le favicon de la page publique reprend maintenant le visuel iceberg d OMO.
+- La rubrique Communaute est illustree par une scene de construction collective.
+- Le parcours Du role a l action utilise cinq illustrations de manchots integrees sur fond bleu, avec des reperes numerotes et un affichage adapte au mobile.
+- Le bloc final d invitation a cooperer utilise le panorama iceberg fourni, sans les cercles ni les traits decoratifs precedents.
