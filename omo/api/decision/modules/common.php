@@ -1415,18 +1415,21 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
             }
         }
 
-        $authorLine = '<span>' . $escape(omoDecisionProposalT('decisions.proposals.metadata.proposed_by')) . ' <strong>' . $escape($authorName) . '</strong>';
-        if ($dateLabel !== '') {
-            $authorLine .= '<span data-omo-proposal-date>, '
-                . $escape($wasModified
-                    ? omoDecisionProposalT('decisions.proposals.metadata.modified_on')
-                    : omoDecisionProposalT('decisions.proposals.metadata.on'))
-                . ' '
-                . $escape($dateLabel)
-                . '</span>';
+        $items = [];
+        if (!$isAnonymous) {
+            $authorLine = '<span>' . $escape(omoDecisionProposalT('decisions.proposals.metadata.proposed_by')) . ' <strong>' . $escape($authorName) . '</strong>';
+            if ($dateLabel !== '') {
+                $authorLine .= '<span data-omo-proposal-date>, '
+                    . $escape($wasModified
+                        ? omoDecisionProposalT('decisions.proposals.metadata.modified_on')
+                        : omoDecisionProposalT('decisions.proposals.metadata.on'))
+                    . ' '
+                    . $escape($dateLabel)
+                    . '</span>';
+            }
+            $authorLine .= '</span>';
+            $items[] = $authorLine;
         }
-        $authorLine .= '</span>';
-        $items = [$authorLine];
 
         if ($proposal->areDiscussionsEnabled() && !$decision->hasConsultationEnded()) {
             $summary = omoDecisionGetProposalDiscussionSummary($proposal, $context);
@@ -1472,6 +1475,10 @@ if (!function_exists('omoDecisionRenderProposalMetadata')) {
             } else {
                 $items[] = '<span class="omo-proposal-meta__discussion">' . $escape(omoDecisionProposalT('decisions.proposals.metadata.no_messages')) . '</span>';
             }
+        }
+
+        if ($items === []) {
+            return '';
         }
 
         return '<div class="omo-proposal-meta">' . implode('', $items) . '</div>';
