@@ -194,6 +194,68 @@
 			return $result;
 		}
 
+		/**
+		 * Returns public organization branding ordered by the latest activity in
+		 * each organization. History is preferred, with member sign-in activity
+		 * used as a fallback. This keeps the homepage query close to its table.
+		 */
+		public static function fetchPublicLogoRowsByLastConnection(): array
+		{
+			$rows = self::fetchAll(
+				"SELECT
+					o.id,
+					o.name,
+					o.shortname,
+					o.logo,
+					COALESCE(history_activity.last_activity, member_activity.last_connection) AS last_activity
+				FROM organization o
+				LEFT JOIN (
+					SELECT IDorganization, MAX(datecreation) AS last_activity
+					FROM history
+					WHERE active = 1
+					GROUP BY IDorganization
+				) history_activity ON history_activity.IDorganization = o.id
+				LEFT JOIN (
+					SELECT IDorganization, MAX(dateconnexion) AS last_connection
+					FROM user_organization
+					WHERE active = 1
+					GROUP BY IDorganization
+				) member_activity ON member_activity.IDorganization = o.id
+				WHERE o.logo IS NOT NULL
+					AND TRIM(o.logo) <> ''
+				ORDER BY
+					last_activity IS NULL ASC,
+					last_activity DESC,
+					o.name ASC,
+					o.id ASC"
+			);
+
+			if (!is_array($rows)) {
+				return array();
+			}
+
+			$result = array();
+			foreach ($rows as $row) {
+				$organization = new self();
+				$organization->loadFromArray($row);
+
+				$organizationId = (int)$organization->getId();
+				$logo = trim((string)$organization->get('logo'));
+				if ($organizationId <= 0 || $logo === '') {
+					continue;
+				}
+
+				$result[] = array(
+					'id' => $organizationId,
+					'name' => trim((string)$organization->get('name')),
+					'shortname' => trim((string)$organization->get('shortname')),
+					'logo' => $logo,
+				);
+			}
+
+			return $result;
+		}
+
 		public function getParametersArray(): array
 		{
 			$parameters = json_decode((string)$this->get('parameters'), true);

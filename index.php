@@ -24,7 +24,7 @@
 		exit;
 	} else {
 		if ($hasOrganizationSubdomain) {
-			require __DIR__ . "/lms/index.php";
+			header('Location: /omo/', true, 302);
 			exit;
 		}
 	}
