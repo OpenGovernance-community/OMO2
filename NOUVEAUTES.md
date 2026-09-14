@@ -2218,4 +2218,4 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - La rubrique Communaute est illustree par une scene de construction collective.
 - Le parcours Du role a l action utilise cinq illustrations de manchots integrees sur fond bleu, avec des reperes numerotes et un affichage adapte au mobile.
 - Le bloc final d invitation a cooperer utilise le panorama iceberg fourni, sans les cercles ni les traits decoratifs precedents.
-- La page publique affiche maintenant les organisations ayant defini un logo, classees par leur derniere activite dans OMO et defilant en boucle lorsqu elles depassent la largeur disponible, dans une bande compacte de logos carres aux coins arrondis et nommes, avec un titre de section aligne sur la hierarchie de la page.
+- La page publique affiche maintenant les organisations ayant defini un logo, classees par leur derniere activite dans OMO et defilant en boucle lorsqu elles depassent la largeur disponible, dans une bande compacte de logos carres aux coins arrondis et nommes, avec une boucle de defilement sans blanc.

@@ -121,7 +121,7 @@ h3 { font-size: clamp(1.45rem, 2vw, 2rem); }
 .omo2-org-logo { display: grid; justify-items: center; align-content: start; flex: 0 0 auto; width: clamp(142px, 16vw, 190px); gap: 8px; margin: 0; }
 .omo2-org-logo img { width: clamp(88px, 10vw, 118px); aspect-ratio: 1; object-fit: contain; border-radius: 18px; background: #fff; box-shadow: 0 6px 16px rgba(5, 48, 67, .1); }
 .omo2-org-logo figcaption { width: 100%; color: var(--omo2-ink); font-size: .78rem; font-weight: 650; line-height: 1.3; text-align: center; }
-@keyframes omo2-org-marquee-scroll { to { transform: translateX(-50%); } }
+@keyframes omo2-org-marquee-scroll { to { transform: translate3d(calc(-1 * var(--omo2-org-marquee-shift)), 0, 0); } }
 
 .omo2-section--connected { position: relative; overflow: hidden; color: #fff; background: var(--omo2-deep); }
 .omo2-section--connected::before { content: ''; position: absolute; width: 900px; height: 900px; left: -410px; top: -590px; border: 1px solid rgba(99,208,255,.18); border-radius: 50%; box-shadow: 0 0 0 100px rgba(99,208,255,.035), 0 0 0 250px rgba(99,208,255,.022); }
