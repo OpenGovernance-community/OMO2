@@ -101,6 +101,7 @@
         const refresh = () => {
             track.querySelectorAll('.omo2-org-marquee__group--clone').forEach((clone) => clone.remove());
             marquee.classList.remove('is-looping');
+            track.style.removeProperty('--omo2-org-marquee-shift');
 
             if (reducedMotion.matches || group.scrollWidth <= marquee.clientWidth) return;
 
@@ -109,6 +110,7 @@
             clone.setAttribute('aria-hidden', 'true');
             clone.querySelectorAll('img').forEach((image) => image.alt = '');
             track.append(clone);
+            track.style.setProperty('--omo2-org-marquee-shift', group.getBoundingClientRect().width + 'px');
             marquee.classList.add('is-looping');
         };
 

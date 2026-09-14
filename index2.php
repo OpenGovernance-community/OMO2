@@ -215,7 +215,7 @@ $canonicalUrl = '/index2.php';
     <meta name="twitter:card" content="summary_large_image">
     <meta name="theme-color" content="#05263c">
     <link rel="icon" type="image/jpeg" href="/img/omo-iceberg.jpg?v=20260914" sizes="1254x1254">
-    <link rel="stylesheet" href="/assets/omo2-home.css?v=20260914-organizations-15">
+    <link rel="stylesheet" href="/assets/omo2-home.css?v=20260914-organizations-16">
     <script type="application/ld+json">
     {"@context":"https://schema.org","@type":"SoftwareApplication","name":"OpenMyOrganization","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"<?= $e($t('home.meta.description')) ?>","url":"<?= $e($canonicalUrl) ?>"}
     </script>
@@ -427,6 +427,6 @@ $canonicalUrl = '/index2.php';
     </main>
 
     <footer class="omo2-footer"><div class="omo2-shell"><div class="omo2-footer__top"><a class="omo2-brand omo2-brand--footer" href="#accueil"><img src="/img/omo2/logo-omo.png" width="1081" height="441" alt="OpenMyOrganization"></a><p><?= $e($t('home.footer.tagline')) ?></p></div><div class="omo2-footer__columns"><div><h2><?= $e($t('home.footer.omo')) ?></h2><a href="#accueil"><?= $e($t('home.nav.about')) ?></a><a href="#fonctionnalites"><?= $e($t('home.nav.capabilities')) ?></a><a href="#maturite"><?= $e($t('home.action.manifesto')) ?></a><a href="<?= $e($omo2Links['source']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.opensource.title')) ?></a><a href="#communaute"><?= $e($t('home.nav.community')) ?></a></div><div><h2><?= $e($t('home.footer.discover')) ?></h2><a href="#evenement"><?= $e($t('home.event.label')) ?></a><a href="#decouvrir"><?= $e($t('home.video.title')) ?></a><a href="<?= $e($omo2Links['try']) ?>"><?= $e($t('home.action.try')) ?></a><a href="<?= $e($omo2Links['login']) ?>"><?= $e($t('home.action.login')) ?></a></div><div><h2><?= $e($t('home.footer.project')) ?></h2><a href="<?= $e($omo2Links['source']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.source')) ?></a><a href="<?= $e($omo2Links['support']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.support')) ?></a></div><div><h2><?= $e($t('home.footer.legal')) ?></h2><a href="<?= $e($omo2Links['terms']) ?>"><?= $e($t('home.footer.terms')) ?></a><a href="<?= $e($omo2Links['privacy']) ?>"><?= $e($t('home.footer.privacy')) ?></a></div></div><div class="omo2-footer__bottom"><span>© <?= date('Y') ?> OpenMyOrganization</span><span><?= $e($t('home.footer.signature')) ?></span></div></div></footer>
-    <script src="/assets/omo2-home.js?v=20260914-organizations-9"></script>
+    <script src="/assets/omo2-home.js?v=20260914-organizations-16"></script>
 </body>
 </html>
