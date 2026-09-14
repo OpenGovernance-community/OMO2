@@ -30,6 +30,10 @@ RewriteCond %{HTTP_HOST} !(^|\.)(localhost|127\.0\.0\.1)(:\d+)?$ [NC]
 RewriteCond %{HTTP_HOST} ^([A-Za-z0-9.-]+)(?::\d+)?$ [NC]
 RewriteRule ^(.*)$ https://%1/$1 [R=301,L,NE]
 
+# Serve the alternate homepage at the omo2.org root without changing the URL.
+RewriteCond %{HTTP_HOST} ^(?:www\.)?omo2\.org(?::\d+)?$ [NC]
+RewriteRule ^$ /index2.php [QSA,L]
+
 RewriteRule ^memo/?$ /memo/index.php [QSA,L]
 RewriteRule ^memo/([0-9]+)/?$ /memo/index.php?open_document_id=$1 [QSA,L]
 RewriteRule ^memo/([0-9]+)/([0-9a-f]+)/?$ /memo/view.php?id=$1&access_code=$2 [QSA,L]
