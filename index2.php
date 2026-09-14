@@ -6,6 +6,15 @@ declare(strict_types=1);
  * intentionally grouped here so the public calls to action can be updated
  * without searching through the page markup.
  */
+require_once __DIR__ . '/config.php';
+
+spl_autoload_register(static function (string $class): void {
+    $path = __DIR__ . '/class/' . str_replace('\\', '/', strtolower($class)) . '.class.php';
+    if (is_file($path)) {
+        require_once $path;
+    }
+});
+
 require_once __DIR__ . '/common/translation_bundles.php';
 
 $sourceLang = [
@@ -26,7 +35,7 @@ $sourceLang = [
     'home.verb.share' => ['text' => 'Partager', 'context' => 'Second core OMO2 capability.'],
     'home.verb.decide' => ['text' => 'Décider', 'context' => 'Third core OMO2 capability.'],
     'home.verb.document' => ['text' => 'Documenter', 'context' => 'Fourth core OMO2 capability.'],
-    'home.other.title' => ['text' => 'Une autre manière de faire organisation.', 'context' => 'Editorial section heading.'],
+    'home.other.title' => ['text' => 'Une autre manière de faire équipe.', 'context' => 'Editorial section heading.'],
     'home.other.body' => ['text' => 'Qui fait quoi ? Où trouver la bonne information ? Comment avancer quand les avis diffèrent ? Ces questions traversent la vie de tous les collectifs. OMO aide à y répondre, pour que chacun trouve sa place et puisse agir.', 'context' => 'Editorial section body.'],
     'home.other.conclusion' => ['text' => 'Un cadre clair, de la confiance et de la place pour chacun.', 'context' => 'Editorial section concluding statement.'],
     'home.idea.one.title' => ['text' => 'Déléguer sans subordonner', 'context' => 'First organizational principle heading.'],
@@ -37,6 +46,7 @@ $sourceLang = [
     'home.idea.three.body' => ['text' => 'Accueillir les tensions et les points de vue différents pour apprendre et faire évoluer les façons de travailler.', 'context' => 'Third organizational principle body.'],
     'home.capabilities.kicker' => ['text' => 'Quatre façons de mieux coopérer', 'context' => 'Capabilities section eyebrow.'],
     'home.capabilities.title' => ['text' => 'Tout ce qui vous aide à avancer ensemble.', 'context' => 'Capabilities section heading.'],
+    'home.organizations.kicker' => ['text' => 'Des collectifs en action', 'context' => 'Organization logo list eyebrow.'],
     'home.cap.structure.title' => ['text' => 'Clarifier sans rigidifier.', 'context' => 'Structure capability subheading.'],
     'home.cap.structure.body' => ['text' => 'Qui porte quoi, et dans quel but ? Rendez visibles les équipes, les rôles et leurs responsabilités. Votre structure peut évoluer avec la vie du collectif.', 'context' => 'Structure capability body.'],
     'home.cap.share.title' => ['text' => 'Le bon contexte pour agir.', 'context' => 'Sharing capability subheading.'],
@@ -162,6 +172,10 @@ $e = static function (string $text): string {
     return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
 };
 
+$omo2Organizations = class_exists('\\dbObject\\Organization')
+    ? \dbObject\Organization::fetchPublicLogoRowsByLastConnection()
+    : array();
+
 $omo2Links = [
     'login' => '/omo/',
     'try' => '/omo/',
@@ -201,7 +215,7 @@ $canonicalUrl = '/index2.php';
     <meta name="twitter:card" content="summary_large_image">
     <meta name="theme-color" content="#05263c">
     <link rel="icon" type="image/jpeg" href="/img/omo-iceberg.jpg?v=20260914" sizes="1254x1254">
-    <link rel="stylesheet" href="/assets/omo2-home.css?v=20260914-final-iceberg-8">
+    <link rel="stylesheet" href="/assets/omo2-home.css?v=20260914-organizations-16">
     <script type="application/ld+json">
     {"@context":"https://schema.org","@type":"SoftwareApplication","name":"OpenMyOrganization","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"<?= $e($t('home.meta.description')) ?>","url":"<?= $e($canonicalUrl) ?>"}
     </script>
@@ -270,6 +284,26 @@ $canonicalUrl = '/index2.php';
                 </div>
             </div>
         </section>
+
+        <?php if ($omo2Organizations !== array()): ?>
+        <section class="omo2-section omo2-section--organizations" aria-labelledby="organizations-title">
+            <div class="omo2-shell omo2-organizations__heading">
+                <p class="omo2-eyebrow" id="organizations-title"><?= $e($t('home.organizations.kicker')) ?></p>
+            </div>
+            <div class="omo2-org-marquee" data-omo2-org-marquee>
+                <div class="omo2-org-marquee__track">
+                    <div class="omo2-org-marquee__group">
+                        <?php foreach ($omo2Organizations as $omo2Organization): ?>
+                        <figure class="omo2-org-logo">
+                            <img src="<?= $e($omo2Organization['logo']) ?>" alt="<?= $e($omo2Organization['name']) ?>" loading="lazy" decoding="async">
+                            <figcaption><?= $e($omo2Organization['name']) ?></figcaption>
+                        </figure>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <?php endif; ?>
 
         <section class="omo2-section omo2-section--capabilities" id="fonctionnalites" aria-labelledby="capabilities-title">
             <div class="omo2-shell">
@@ -393,6 +427,6 @@ $canonicalUrl = '/index2.php';
     </main>
 
     <footer class="omo2-footer"><div class="omo2-shell"><div class="omo2-footer__top"><a class="omo2-brand omo2-brand--footer" href="#accueil"><img src="/img/omo2/logo-omo.png" width="1081" height="441" alt="OpenMyOrganization"></a><p><?= $e($t('home.footer.tagline')) ?></p></div><div class="omo2-footer__columns"><div><h2><?= $e($t('home.footer.omo')) ?></h2><a href="#accueil"><?= $e($t('home.nav.about')) ?></a><a href="#fonctionnalites"><?= $e($t('home.nav.capabilities')) ?></a><a href="#maturite"><?= $e($t('home.action.manifesto')) ?></a><a href="<?= $e($omo2Links['source']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.opensource.title')) ?></a><a href="#communaute"><?= $e($t('home.nav.community')) ?></a></div><div><h2><?= $e($t('home.footer.discover')) ?></h2><a href="#evenement"><?= $e($t('home.event.label')) ?></a><a href="#decouvrir"><?= $e($t('home.video.title')) ?></a><a href="<?= $e($omo2Links['try']) ?>"><?= $e($t('home.action.try')) ?></a><a href="<?= $e($omo2Links['login']) ?>"><?= $e($t('home.action.login')) ?></a></div><div><h2><?= $e($t('home.footer.project')) ?></h2><a href="<?= $e($omo2Links['source']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.source')) ?></a><a href="<?= $e($omo2Links['support']) ?>" target="_blank" rel="noopener noreferrer"><?= $e($t('home.action.support')) ?></a></div><div><h2><?= $e($t('home.footer.legal')) ?></h2><a href="<?= $e($omo2Links['terms']) ?>"><?= $e($t('home.footer.terms')) ?></a><a href="<?= $e($omo2Links['privacy']) ?>"><?= $e($t('home.footer.privacy')) ?></a></div></div><div class="omo2-footer__bottom"><span>© <?= date('Y') ?> OpenMyOrganization</span><span><?= $e($t('home.footer.signature')) ?></span></div></div></footer>
-    <script src="/assets/omo2-home.js?v=20260913-carousel-4"></script>
+    <script src="/assets/omo2-home.js?v=20260914-organizations-16"></script>
 </body>
 </html>
