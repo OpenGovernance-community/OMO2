@@ -403,6 +403,18 @@ class DecisionParticipant extends DbObject
         return is_array($saveResult) && !empty($saveResult['status']);
     }
 
+    public function revokePublicAccess()
+    {
+        $parameters = $this->getRootParametersArray();
+        unset($parameters['public_access_code']);
+
+        $this->set('access_token', '');
+        $this->set('parameters', $parameters);
+
+        $saveResult = $this->save();
+        return is_array($saveResult) && !empty($saveResult['status']);
+    }
+
     public function getPublicAccessCodeState()
     {
         $parameters = $this->getRootParametersArray();

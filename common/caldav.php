@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/omo/api/calendar/permissions_shared.php';
 
 use dbObject\ArrayEvent;
 use dbObject\ArrayUserOrganization;
+use dbObject\CalDavSyncChange;
 use dbObject\Event;
 use dbObject\Holon;
 use dbObject\Organization;
@@ -809,19 +810,17 @@ if (!function_exists('commonCalDavBuildEventResource')) {
 if (!function_exists('commonCalDavBuildCalendarSyncToken')) {
     function commonCalDavBuildCalendarSyncToken($organizationId, array $eventResources, $calendarIdentity = '')
     {
-        $parts = array('org:' . (int)$organizationId);
+        $organizationId = (int)$organizationId;
         $calendarIdentity = trim((string)$calendarIdentity);
-        if ($calendarIdentity !== '') {
-            $parts[] = 'calendar:' . $calendarIdentity;
-        }
+        $calendarKey = sha1('caldav-sync:' . $calendarIdentity);
+        $changeId = CalDavSyncChange::getLatestChangeId($organizationId);
 
-        foreach ($eventResources as $eventResource) {
-            $parts[] = (string)($eventResource['eventId'] ?? 0)
-                . ':'
-                . (string)($eventResource['etag'] ?? '');
-        }
-
-        return 'data:,' . sha1(implode('|', $parts));
+        return 'data:,omo-caldav-sync-v1-'
+            . $organizationId
+            . '-'
+            . $calendarKey
+            . '-'
+            . $changeId;
     }
 }
 
@@ -1106,7 +1105,7 @@ if (!function_exists('commonCalDavLoadCalendarsForViewer')) {
             }
 
             $calendarSlug = 'organization-' . $organizationId;
-            $syncToken = commonCalDavBuildCalendarSyncToken($organizationId, array_values($eventResources));
+            $syncToken = commonCalDavBuildCalendarSyncToken($organizationId, array_values($eventResources), $calendarSlug);
 
             $calendarMap[$calendarSlug] = array(
                 'type' => 'calendar',
@@ -1498,6 +1497,34 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                 $calendarHomeHref = !empty($resource['isScopedCalendar'])
                     ? (string)($resource['calendarHomeHref'] ?? '')
                     : $calendarRootHref;
+                $calendarCanDeleteEvents = false;
+                $calendarOrganization = $resource['organization'] ?? null;
+                $calendarOrganizationId = (int)($resource['organizationId'] ?? 0);
+                if (!($calendarOrganization instanceof Organization) && $calendarOrganizationId > 0) {
+                    $calendarOrganization = new Organization();
+                    if (!$calendarOrganization->load($calendarOrganizationId)) {
+                        $calendarOrganization = null;
+                    }
+                }
+                if ($calendarOrganization instanceof Organization) {
+                    $calendarRootHolon = $calendarOrganization->getEnabledStructuralRootHolon();
+                    foreach ((array)($resource['events'] ?? array()) as $calendarEventResource) {
+                        $calendarEvent = $calendarEventResource['event'] ?? null;
+                        if (
+                            $calendarEvent instanceof Event
+                            && omoCalendarCanDeleteEvent(
+                                $calendarEvent,
+                                $calendarOrganizationId,
+                                $viewerUserId,
+                                $calendarRootHolon instanceof Holon ? $calendarRootHolon : null,
+                                false
+                            )
+                        ) {
+                            $calendarCanDeleteEvents = true;
+                            break;
+                        }
+                    }
+                }
                 $calendarPrivileges = array(
                     array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'read'),
                     array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'read-current-user-privilege-set'),
@@ -1506,6 +1533,8 @@ if (!function_exists('commonCalDavBuildPropertyMap')) {
                     $calendarPrivileges[] = array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'write');
                     $calendarPrivileges[] = array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'write-content');
                     $calendarPrivileges[] = array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'bind');
+                }
+                if ($calendarCanDeleteEvents) {
                     $calendarPrivileges[] = array('namespace' => 'DAV:', 'prefix' => 'd', 'localName' => 'unbind');
                 }
 
@@ -1798,6 +1827,60 @@ if (!function_exists('commonCalDavHandleCalendarMultigetReport')) {
     }
 }
 
+if (!function_exists('commonCalDavExtractSyncCollectionToken')) {
+    function commonCalDavExtractSyncCollectionToken(?DOMDocument $document = null)
+    {
+        if (!$document || !$document->documentElement) {
+            return '';
+        }
+
+        foreach ($document->documentElement->getElementsByTagNameNS('DAV:', 'sync-token') as $node) {
+            return trim((string)$node->textContent);
+        }
+
+        return '';
+    }
+}
+
+if (!function_exists('commonCalDavParseSyncCollectionToken')) {
+    function commonCalDavParseSyncCollectionToken($token, $organizationId, $calendarIdentity)
+    {
+        $token = trim((string)$token);
+        $organizationId = (int)$organizationId;
+        $calendarKey = sha1('caldav-sync:' . trim((string)$calendarIdentity));
+        if ($token === '' || $organizationId <= 0) {
+            return null;
+        }
+
+        $pattern = '#^data:,omo-caldav-sync-v1-'
+            . preg_quote((string)$organizationId, '#')
+            . '-'
+            . preg_quote($calendarKey, '#')
+            . '-(\d+)$#';
+        if (!preg_match($pattern, $token, $matches)) {
+            return false;
+        }
+
+        return (int)$matches[1];
+    }
+}
+
+if (!function_exists('commonCalDavSendInvalidSyncToken')) {
+    function commonCalDavSendInvalidSyncToken()
+    {
+        list($document, $root) = commonCalDavCreateDom('error');
+        $root->appendChild($document->createElementNS('DAV:', 'd:valid-sync-token'));
+
+        http_response_code(410);
+        header('Content-Type: application/xml; charset=UTF-8');
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        commonCardDavSendDebugHeaders();
+        echo $document->saveXML();
+        exit;
+    }
+}
+
 if (!function_exists('commonCalDavHandleSyncCollectionReport')) {
     function commonCalDavHandleSyncCollectionReport(User $viewer, array $resource, ?DOMDocument $document = null)
     {
@@ -1807,8 +1890,40 @@ if (!function_exists('commonCalDavHandleSyncCollectionReport')) {
         }
 
         $responses = array();
+        $eventMap = array();
         foreach ((array)($resource['events'] ?? array()) as $eventResource) {
-            $responses[] = commonCalDavBuildResponseForResource($eventResource, $viewer, $requestedProperties, false);
+            $eventId = (int)($eventResource['eventId'] ?? 0);
+            if ($eventId > 0) {
+                $eventMap[$eventId] = $eventResource;
+            }
+        }
+
+        $organizationId = (int)($resource['organizationId'] ?? 0);
+        $calendarIdentity = (string)($resource['calendarSlug'] ?? '');
+        $requestedToken = commonCalDavExtractSyncCollectionToken($document);
+        $changeId = commonCalDavParseSyncCollectionToken($requestedToken, $organizationId, $calendarIdentity);
+        $latestChangeId = CalDavSyncChange::getLatestChangeId($organizationId);
+        if ($requestedToken !== '' && ($changeId === false || $changeId > $latestChangeId)) {
+            commonCalDavSendInvalidSyncToken();
+        }
+
+        if ($changeId === null) {
+            foreach ($eventMap as $eventResource) {
+                $responses[] = commonCalDavBuildResponseForResource($eventResource, $viewer, $requestedProperties, false);
+            }
+        } else {
+            $changes = CalDavSyncChange::getLatestEventChangesSince($organizationId, $changeId);
+            foreach ($changes as $eventId => $change) {
+                if (isset($eventMap[$eventId])) {
+                    $responses[] = commonCalDavBuildResponseForResource($eventMap[$eventId], $viewer, $requestedProperties, false);
+                    continue;
+                }
+
+                $responses[] = array(
+                    'href' => rtrim((string)($resource['href'] ?? ''), '/') . '/event-' . (int)$eventId . '.ics',
+                    'statusOnly' => 'HTTP/1.1 404 Not Found',
+                );
+            }
         }
 
         commonCardDavSetDebugValue('request_method', 'REPORT-sync');
@@ -2273,6 +2388,59 @@ if (!function_exists('commonCalDavHandleEventPut')) {
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         header('Pragma: no-cache');
         commonCardDavSetDebugValue('request_method', 'PUT');
+        commonCardDavSetDebugValue('resource_type', 'event');
+        commonCardDavSendDebugHeaders();
+        http_response_code(204);
+        exit;
+    }
+}
+
+if (!function_exists('commonCalDavCanDeleteEventResource')) {
+    function commonCalDavCanDeleteEventResource(User $viewer, array $resource)
+    {
+        $event = $resource['event'] ?? null;
+        $organizationId = (int)($resource['organizationId'] ?? 0);
+        if (!($event instanceof Event) || $organizationId <= 0) {
+            return false;
+        }
+
+        $organization = new Organization();
+        $rootHolon = $organization->load($organizationId) ? $organization->getEnabledStructuralRootHolon() : null;
+
+        return omoCalendarCanDeleteEvent(
+            $event,
+            $organizationId,
+            (int)$viewer->getId(),
+            $rootHolon instanceof Holon ? $rootHolon : null,
+            false
+        );
+    }
+}
+
+if (!function_exists('commonCalDavHandleEventDelete')) {
+    function commonCalDavHandleEventDelete(User $viewer, array $resource)
+    {
+        $event = $resource['event'] ?? null;
+        $organizationId = (int)($resource['organizationId'] ?? 0);
+        if (!($event instanceof Event) || $organizationId <= 0) {
+            commonCalDavSendStatusText(404, 'CalDAV event not found.');
+        }
+
+        if (!commonCalDavCanDeleteEventResource($viewer, $resource)) {
+            commonCalDavSendStatusText(403, 'You do not have permission to delete this event.');
+        }
+
+        if (!commonCalDavRequestMatchesEventEtag($resource)) {
+            commonCalDavSendStatusText(412, 'The event has changed on the server.');
+        }
+
+        if (!$event->delete()) {
+            commonCalDavSendStatusText(409, 'The event could not be deleted.');
+        }
+
+        header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        header('Pragma: no-cache');
+        commonCardDavSetDebugValue('request_method', 'DELETE');
         commonCardDavSetDebugValue('resource_type', 'event');
         commonCardDavSendDebugHeaders();
         http_response_code(204);

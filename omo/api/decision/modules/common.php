@@ -717,6 +717,7 @@ if (!function_exists('omoDecisionRenderVoteWeightResponseSelector')) {
         if (count($options) === 0) {
             return '';
         }
+        $disabled = !empty($config['disabled']);
 
         ob_start();
         ?>
@@ -742,6 +743,7 @@ if (!function_exists('omoDecisionRenderVoteWeightResponseSelector')) {
                     class="omo-segmented__button omo-decision-vote-weight-selector__button<?= $isSelected ? ' is-active' : '' ?>"
                     data-omo-decision-vote-weight-selector-button="<?= $escape($weight) ?>"
                     aria-pressed="<?= $isSelected ? 'true' : 'false' ?>"
+                    <?= $disabled ? 'disabled' : '' ?>
                 >
                     <span><?= $escape($label) ?></span>
                     <span class="omo-decision-vote-weight-selector__weight"><?= $escape($weight) ?>x</span>
