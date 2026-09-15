@@ -1218,6 +1218,7 @@ class Event extends DbObject
         }
 
         CalDavCache::invalidateOrganization((int)$this->get('IDorganization'));
+        CalDavSyncChange::recordEventChange((int)$this->get('IDorganization'), (int)$this->getId(), 'updated');
 
         $syncResult = $this->syncAssociatedDocumentEventDate();
         if (!is_array($syncResult) || ($syncResult['status'] ?? false) !== true) {
@@ -1230,9 +1231,11 @@ class Event extends DbObject
     public function delete()
     {
         $organizationId = (int)$this->get('IDorganization');
+        $eventId = (int)$this->getId();
         $deleted = parent::delete();
         if ($deleted) {
             CalDavCache::invalidateOrganization($organizationId);
+            CalDavSyncChange::recordEventChange($organizationId, $eventId, 'deleted');
         }
 
         return $deleted;

@@ -61,6 +61,8 @@ if (!function_exists('commonDecisionParticipationGetSourceLang')) {
             'decisions.public.options.responses_locked' => ['text' => 'Vos réponses ne sont plus modifiables.', 'context' => 'Public option indicating that responses can no longer be changed.'],
             'decisions.public.options.results_hidden' => ['text' => 'Les résultats ne sont pas visibles avant la fin du vote.', 'context' => 'Public option indicating that results are hidden.'],
             'decisions.public.options.results_visible' => ['text' => 'Les résultats sont visibles.', 'context' => 'Public option indicating that results are visible.'],
+            'decisions.public.options.owner_intermediate_results_access' => ['text' => 'Les résultats intermédiaires sont accessibles à l’organisateur.', 'context' => 'Public option indicating that the organizer can view intermediate results before the end of the vote.'],
+            'decisions.public.options.owner_intermediate_results_hidden' => ['text' => 'Les résultats intermédiaires sont secrets jusqu’à la date de fin du scrutin.', 'context' => 'Public option indicating that the organizer cannot view intermediate results before the end of the vote.'],
             'decisions.public.options.consultation_only_method_pending' => ['text' => 'Le mode de scrutin sera défini, si nécessaire, à l’issue de la consultation.', 'context' => 'Public option explaining that a consultation-only process has no vote method yet.'],
             'decisions.public.options.anonymous' => ['text' => 'Ce scrutin est anonyme.', 'context' => 'Public option indicating that the decision is anonymous.'],
             'decisions.public.options.not_anonymous' => ['text' => 'Ce scrutin n’est pas anonyme.', 'context' => 'Public option indicating that the decision is not anonymous.'],
@@ -111,6 +113,7 @@ if (!function_exists('commonDecisionParticipationGetSourceLang')) {
             'decisions.public.access.resend' => ['text' => 'Renvoyer le code', 'context' => 'Button resending a public access code.'],
             'decisions.public.access.enter' => ['text' => 'Accéder au scrutin', 'context' => 'Button validating the public access code.'],
             'decisions.public.navigation.help' => ['text' => 'Aide', 'context' => 'Public decision page help label.'],
+            'decisions.public.logout' => ['text' => 'Se deconnecter', 'context' => 'Button that ends a participant personal public access.'],
             'decisions.public.help.webmaster' => ['text' => 'Webmaster : {email}', 'context' => 'Server administrator email link shown below the public decision help items.'],
             'decisions.public.navigation.aria' => ['text' => 'Navigation du scrutin', 'context' => 'Public decision page mobile navigation label.'],
             'decisions.public.navigation.info' => ['text' => 'Infos', 'context' => 'Public decision page mobile information tab.'],
@@ -581,6 +584,10 @@ function commonDecisionParticipationBuildOptionLines($decision, array $context)
         } else {
             $lines[] = commonDecisionParticipationT('decisions.public.options.results_visible');
         }
+
+        $lines[] = $decision->hasOwnerIntermediateResultsAccess()
+            ? commonDecisionParticipationT('decisions.public.options.owner_intermediate_results_access')
+            : commonDecisionParticipationT('decisions.public.options.owner_intermediate_results_hidden');
     }
 
     $anonymousFlags = [];
@@ -1117,6 +1124,9 @@ $decisionPublicLocale = function_exists('omoGetTranslationLocale') ? omoGetTrans
 $participantLabel = $participant
     ? trim((string)$participant->getIdentityLabel($organization ? (int)$organization->getId() : 0))
     : '';
+$hasPersonalPublicAccess = (($context['accessMode'] ?? '') === 'public')
+    && $participant instanceof DecisionParticipant
+    && trim((string)($context['publicToken'] ?? '')) !== '';
 $accentColor = $organization ? trim((string)$organization->get('color')) : '';
 $organizationContext = commonBuildOmoPublicOrganizationContext($organization);
 $publicHelpItems = commonBuildOmoPublicHelpItems('decision', $organizationName);
@@ -2101,6 +2111,13 @@ if (empty($context['status'])) {
                 'helpItems' => $publicHelpItems,
                 'helpLinks' => $publicHelpLinks,
                 'helpLabel' => commonDecisionParticipationT('decisions.public.navigation.help'),
+                'publicParticipant' => [
+                    'enabled' => $hasPersonalPublicAccess,
+                    'name' => $participantLabel,
+                    'logoutLabel' => commonDecisionParticipationT('decisions.public.logout'),
+                    'logoutPath' => '/common/decision_public_logout.php',
+                    'token' => (string)($context['publicToken'] ?? ''),
+                ],
             ]);
             ?>
             <div class="omo-public-banner decision-public-banner">
@@ -2138,6 +2155,14 @@ if (empty($context['status'])) {
 <?php endif; ?>
     <script>
         (function () {
+            <?php if ($hasPersonalPublicAccess): ?>
+            window.addEventListener('pageshow', function (event) {
+                if (event.persisted) {
+                    window.location.reload();
+                }
+            });
+            <?php endif; ?>
+
             var decisionPublicTranslations = <?= json_encode([
                 'defaultTitle' => commonDecisionParticipationT('decisions.public.default_title'),
                 'invalidResponse' => commonDecisionParticipationT('decisions.public.js.invalid_response'),

@@ -210,6 +210,10 @@ $baseSourceLang = [
         'text' => 'Description du contexte',
         'context' => 'Label for the shared decision process description.',
     ],
+    'decisions.edit.owner_intermediate_results_access' => [
+        'text' => 'Afficher les résultats intermédiaires',
+        'context' => 'Label for allowing the decision organizer to view intermediate results before the end of the vote.',
+    ],
     'decisions.edit.multi.status' => [
         'text' => 'Statut',
         'context' => 'Label for the shared decision status.',
@@ -688,6 +692,14 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                 <?php
                 $multiStatus = DecisionProcess::normalizeStatus($decision->get('status'));
                 $multiConsultationOnly = DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method')) === DecisionProcess::METHOD_CONSULTATION_ONLY;
+                $multiHasVotingGroup = false;
+                foreach ($decisionGroups as $multiGroup) {
+                    if (DecisionProcess::normalizeEvaluationMethod($multiGroup->get('evaluation_method')) !== DecisionProcess::METHOD_CONSULTATION_ONLY) {
+                        $multiHasVotingGroup = true;
+                        break;
+                    }
+                }
+                $multiOwnerIntermediateResultsAccess = $decision->hasOwnerIntermediateResultsAccess();
                 $multiCoreLocked = $decision->hasEvaluationStarted();
                 $multiStartDatesLocked = $multiCoreLocked || $decision->hasSubmittedResponses();
                 $multiResultsMode = in_array($multiStatus, [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
@@ -782,6 +794,20 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                                 <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.evaluation_end', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="evaluation_end_at" value="<?= $escape($multiDateValue($decision->get('evaluation_end_at'))) ?>"></label>
                                 <?php endif; ?>
                             </div>
+
+                            <?php if ($multiHasVotingGroup): ?>
+                            <input type="hidden" name="owner_intermediate_results_access" value="<?= $multiOwnerIntermediateResultsAccess ? '1' : '0' ?>">
+                            <label class="generic-form-checkbox">
+                                <input
+                                    type="checkbox"
+                                    name="<?= $multiCanEditStructure ? 'owner_intermediate_results_access' : '' ?>"
+                                    value="1"
+                                    <?= $multiOwnerIntermediateResultsAccess ? 'checked' : '' ?>
+                                    <?= $multiCanEditStructure ? '' : 'disabled' ?>
+                                >
+                                <span><?= $escape(t('decisions.edit.owner_intermediate_results_access', [], $lang, $baseSourceLang)) ?></span>
+                            </label>
+                            <?php endif; ?>
 
                             <?= omoDecisionRenderInvitationSection($decision, $multiContext, $lang, $baseSourceLang, $escape, 'omo-decision-edit__multi-invitations') ?>
                         </form>

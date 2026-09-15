@@ -211,6 +211,14 @@ function commonRenderTopbar(array $options = [])
         array_splice($helpItems, $faqTargetIndex, 0, [$faqHelpItem]);
     }
 
+    $publicParticipantLogoutPath = trim((string)($options['publicParticipant']['logoutPath'] ?? ''));
+    if ($publicParticipantLogoutPath !== '') {
+        $normalizedPublicParticipantLogoutPath = commonNormalizeLocalPath($publicParticipantLogoutPath, '/');
+        $publicParticipantLogoutPath = ($normalizedPublicParticipantLogoutPath === '/' && $publicParticipantLogoutPath !== '/')
+            ? ''
+            : $normalizedPublicParticipantLogoutPath;
+    }
+
     $config = [
         'appKey' => (string)($options['appKey'] ?? 'app'),
         'appLabel' => (string)($options['appLabel'] ?? 'Application'),
@@ -332,6 +340,13 @@ function commonRenderTopbar(array $options = [])
         'helpLabel' => (string)($options['helpLabel'] ?? 'Aide'),
         'helpItems' => $helpItems,
         'helpLinks' => array_values($options['helpLinks'] ?? []),
+        'publicParticipant' => [
+            'enabled' => !empty($options['publicParticipant']['enabled']) && $publicParticipantLogoutPath !== '',
+            'name' => (string)($options['publicParticipant']['name'] ?? ''),
+            'logoutLabel' => (string)($options['publicParticipant']['logoutLabel'] ?? 'Se deconnecter'),
+            'logoutPath' => $publicParticipantLogoutPath,
+            'token' => (string)($options['publicParticipant']['token'] ?? ''),
+        ],
         'logoutLabel' => (string)($options['logoutLabel'] ?? 'Se deconnecter'),
         'modal' => [
             'defaultTitle' => (string)($options['modal']['defaultTitle'] ?? 'Panneau'),
@@ -374,6 +389,14 @@ function commonRenderTopbar(array $options = [])
         )
     );
     $profileAvatarStyle = 'background-color: ' . $profileAvatarPalette['background'] . '; color: ' . $profileAvatarPalette['foreground'] . ';';
+    $publicParticipantName = trim((string)$config['publicParticipant']['name']);
+    $publicParticipantInitials = \dbObject\User::buildInitials($publicParticipantName);
+    $publicParticipantAvatarPalette = commonBuildAvatarPalette(
+        $publicParticipantInitials,
+        0,
+        $publicParticipantName
+    );
+    $publicParticipantAvatarStyle = 'background-color: ' . $publicParticipantAvatarPalette['background'] . '; color: ' . $publicParticipantAvatarPalette['foreground'] . ';';
     $currentLocaleCode = trim((string)$config['profile']['preferences']['currentLocale']);
     if ($currentLocaleCode === '' || $currentLocaleCode === 'system') {
         $currentLocaleCode = trim((string)$config['profile']['preferences']['resolvedLocale']);
@@ -554,6 +577,22 @@ function commonRenderTopbar(array $options = [])
                 <?php endif; ?>
             </div>
         </div>
+
+        <?php if (!empty($config['publicParticipant']['enabled']) && $config['publicParticipant']['token'] !== ''): ?>
+        <form method="post" action="<?= htmlspecialchars($config['publicParticipant']['logoutPath'], ENT_QUOTES, 'UTF-8') ?>" class="common-topbar__menu-wrap">
+            <input type="hidden" name="token" value="<?= htmlspecialchars($config['publicParticipant']['token'], ENT_QUOTES, 'UTF-8') ?>">
+            <button
+                type="submit"
+                class="common-topbar__action common-topbar__action--square common-topbar__profile"
+                title="<?= htmlspecialchars($config['publicParticipant']['logoutLabel']) ?>"
+            >
+                <span class="common-topbar__avatar" style="<?= htmlspecialchars($publicParticipantAvatarStyle, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true">
+                    <span class="common-topbar__avatar-initial"><?= htmlspecialchars($publicParticipantInitials) ?></span>
+                </span>
+                <span class="common-topbar__action-label"><?= htmlspecialchars($config['publicParticipant']['logoutLabel']) ?></span>
+            </button>
+        </form>
+        <?php endif; ?>
 
         <?php if (!empty($config['notifications']['enabled'])): ?>
         <div class="common-topbar__menu-wrap common-topbar__menu-wrap--panel">

@@ -18,7 +18,9 @@ class EventInvitation extends ResourceInvitation
         $eventId = (int)$this->get('IDevent');
         $result = parent::save();
         if (is_array($result) && ($result['status'] ?? false) === true) {
-            CalDavCache::invalidateOrganization(Event::getOrganizationIdByEventId($eventId));
+            $organizationId = Event::getOrganizationIdByEventId($eventId);
+            CalDavCache::invalidateOrganization($organizationId);
+            CalDavSyncChange::recordEventChange($organizationId, $eventId, 'updated');
         }
 
         return $result;
@@ -29,7 +31,9 @@ class EventInvitation extends ResourceInvitation
         $eventId = (int)$this->get('IDevent');
         $deleted = parent::delete();
         if ($deleted) {
-            CalDavCache::invalidateOrganization(Event::getOrganizationIdByEventId($eventId));
+            $organizationId = Event::getOrganizationIdByEventId($eventId);
+            CalDavCache::invalidateOrganization($organizationId);
+            CalDavSyncChange::recordEventChange($organizationId, $eventId, 'updated');
         }
 
         return $deleted;

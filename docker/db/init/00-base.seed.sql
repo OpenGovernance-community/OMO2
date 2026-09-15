@@ -1398,6 +1398,35 @@ INSERT INTO `event` VALUES
 UNLOCK TABLES;
 
 --
+-- Table structure for table `caldav_sync_change`
+--
+
+DROP TABLE IF EXISTS `caldav_sync_change`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `caldav_sync_change` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `IDorganization` int(11) NOT NULL,
+  `event_id` int(11) NOT NULL,
+  `change_type` varchar(20) NOT NULL,
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_caldav_sync_change_organization_id` (`IDorganization`,`id`),
+  KEY `idx_caldav_sync_change_event_id` (`event_id`),
+  CONSTRAINT `fk_caldav_sync_change_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `caldav_sync_change`
+--
+
+LOCK TABLES `caldav_sync_change` WRITE;
+/*!40000 ALTER TABLE `caldav_sync_change` DISABLE KEYS */;
+/*!40000 ALTER TABLE `caldav_sync_change` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `event_attendance`
 --
 

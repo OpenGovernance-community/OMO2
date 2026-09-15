@@ -52,6 +52,34 @@ if (!function_exists('omoCalendarCanEditEvent')) {
     }
 }
 
+if (!function_exists('omoCalendarCanUseDeleteEventPermission')) {
+    function omoCalendarCanUseDeleteEventPermission(\dbObject\Holon $permissionHolon, int $organizationId, int $userId, bool $useSessionCache = true): bool
+    {
+        $organizationId = (int)$organizationId;
+        $userId = (int)$userId;
+        if ($organizationId <= 0 || $userId <= 0) {
+            return false;
+        }
+
+        return $permissionHolon->isAllowed('CAN_DELETE_EVENT', $useSessionCache, $userId);
+    }
+}
+
+if (!function_exists('omoCalendarCanDeleteEvent')) {
+    function omoCalendarCanDeleteEvent(\dbObject\Event $event, int $organizationId, int $userId, ?\dbObject\Holon $rootHolon = null, bool $useSessionCache = true): bool
+    {
+        $organizationId = (int)$organizationId;
+        $userId = (int)$userId;
+        if ($organizationId <= 0 || $userId <= 0 || (int)$event->get('IDorganization') !== $organizationId) {
+            return false;
+        }
+
+        $permissionHolon = omoCalendarResolveEventPermissionHolon($event, $rootHolon);
+        return $permissionHolon instanceof \dbObject\Holon
+            && omoCalendarCanUseDeleteEventPermission($permissionHolon, $organizationId, $userId, $useSessionCache);
+    }
+}
+
 if (!function_exists('omoCalendarBuildAssociatedDocumentOpenData')) {
     function omoCalendarBuildAssociatedDocumentOpenData(
         \dbObject\Event $event,
