@@ -127,6 +127,16 @@ if (count($scoreMap) === 0 && !$draftRequested) {
 }
 
 $response = DecisionResponse::findByDecisionAndParticipant((int)$decision->getId(), (int)$participant->getId(), (int)$decisionGroup->getId());
+if (
+    $response instanceof DecisionResponse
+    && DecisionResponse::normalizeStatus($response->get('status')) === DecisionResponse::STATUS_SUBMITTED
+    && !$decision->areParticipantResponsesEditable()
+) {
+    omoDecisionModuleJsonResponse(403, [
+        'status' => false,
+        'message' => 'Votre reponse a deja ete soumise et ne peut plus etre modifiee.',
+    ]);
+}
 if (!$response) {
     $response = new DecisionResponse();
     $response->set('IDdecision_process', (int)$decision->getId());

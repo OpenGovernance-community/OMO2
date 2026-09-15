@@ -77,15 +77,17 @@ foreach ($serializedGroups as $groupIndex => $serializedGroup) {
 }
 
 $decisionId = (int)($groupPayloads[0]['postData']['id'] ?? 0);
+$isCreatingDecision = $decisionId <= 0;
 $batchDecision = new DecisionProcess();
-if ($decisionId <= 0 || !$batchDecision->load($decisionId)) {
+if (!$isCreatingDecision && !$batchDecision->load($decisionId)) {
     omoDecisionMultiSaveRespond(404, [
         'status' => false,
         'message' => 'Prise de décision introuvable.',
     ]);
 }
 foreach ($groupPayloads as $groupPayload) {
-    if ((int)($groupPayload['postData']['id'] ?? 0) !== $decisionId) {
+    if ((!$isCreatingDecision && (int)($groupPayload['postData']['id'] ?? 0) !== $decisionId)
+        || ($isCreatingDecision && (int)($groupPayload['postData']['id'] ?? 0) !== 0)) {
         omoDecisionMultiSaveRespond(400, [
             'status' => false,
             'message' => 'Les questions n’appartiennent pas au même scrutin.',
@@ -93,10 +95,12 @@ foreach ($groupPayloads as $groupPayload) {
     }
 }
 
-$primaryGroup = $batchDecision->getPrimaryGroup(false);
+$primaryGroup = $isCreatingDecision ? null : $batchDecision->getPrimaryGroup(false);
 $primaryGroupId = $primaryGroup ? (int)$primaryGroup->getId() : 0;
-$desiredStatus = DecisionProcess::normalizeStatus((string)($groupPayloads[count($groupPayloads) - 1]['postData']['status'] ?? $batchDecision->get('status')));
-$originalStatus = DecisionProcess::normalizeStatus($batchDecision->get('status'));
+$desiredStatus = DecisionProcess::normalizeStatus((string)($groupPayloads[count($groupPayloads) - 1]['postData']['status'] ?? ($isCreatingDecision ? DecisionProcess::STATUS_DRAFT : $batchDecision->get('status'))));
+$originalStatus = $isCreatingDecision
+    ? DecisionProcess::STATUS_DRAFT
+    : DecisionProcess::normalizeStatus($batchDecision->get('status'));
 usort($groupPayloads, static function (array $left, array $right) use ($primaryGroupId): int {
     $leftPrimary = (int)($left['postData']['gid'] ?? 0) === $primaryGroupId;
     $rightPrimary = (int)($right['postData']['gid'] ?? 0) === $primaryGroupId;
@@ -125,11 +129,22 @@ try {
     $pdo->beginTransaction();
     $lastExecutionIndex = count($groupPayloads) - 1;
     foreach ($groupPayloads as $executionIndex => $groupPayload) {
+        if ($isCreatingDecision && $executionIndex > 0) {
+            $groupPayload['postData']['id'] = $decisionId;
+            $groupPayload['postData']['gid'] = 0;
+            $groupPayload['postData']['group_action'] = 'create';
+        }
         $groupPayload['postData']['status'] = $executionIndex === $lastExecutionIndex ? $desiredStatus : $originalStatus;
         $response = omoDecisionMultiSaveExecute($groupPayload['saveFile'], $groupPayload['postData']);
         if ($response->statusCode >= 400 || empty($response->payload['status'])) {
             $failureCode = $response->statusCode;
             throw new RuntimeException((string)($response->payload['message'] ?? 'Impossible d’enregistrer cette question.'));
+        }
+        if ($isCreatingDecision && $decisionId <= 0) {
+            $decisionId = (int)($response->payload['decisionId'] ?? 0);
+            if ($decisionId <= 0) {
+                throw new RuntimeException('Impossible de creer le scrutin.');
+            }
         }
         $results[$groupPayload['originalIndex']] = $response->payload;
     }

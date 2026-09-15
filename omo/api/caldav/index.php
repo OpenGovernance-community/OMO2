@@ -108,6 +108,9 @@ if ($resourceType === 'calendar') {
     if (empty($resource['readOnly'])) {
         $allowedMethods[] = 'PUT';
     }
+    if (commonCalDavCanDeleteEventResource($viewer, $resource)) {
+        $allowedMethods[] = 'DELETE';
+    }
 } else {
     $allowedMethods[] = 'GET';
     $allowedMethods[] = 'HEAD';
@@ -136,6 +139,10 @@ if ($resourceType === 'event' && ($method === 'GET' || $method === 'HEAD')) {
 
 if ($resourceType === 'event' && $method === 'PUT') {
     commonCalDavHandleEventPut($viewer, $resource);
+}
+
+if ($resourceType === 'event' && $method === 'DELETE') {
+    commonCalDavHandleEventDelete($viewer, $resource);
 }
 
 if ($resourceType === 'calendar' && $method === 'PUT') {
