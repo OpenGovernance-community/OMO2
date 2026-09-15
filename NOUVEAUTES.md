@@ -6,6 +6,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 - Projets : apres un retour depuis un document associe, l ouverture dun autre document recharge maintenant son propre contexte au lieu de reutiliser le document precedent, y compris lorsqu il nest pas visible dans le holon.
 
+- Projets : le sous-drawer de detail utilise maintenant la meme largeur que les sous-drawers Documents et Decisions.
+
 - Documents : les iframes Collabora autorisent explicitement la lecture et l ecriture du presse-papiers, pour permettre les copier-coller dans les documents.
 
 - Survey : ajout d’un mode « Tout public » avec lien de campagne, accès par e-mail/code sans création de compte OMO et rattachement automatique des réponses à l’organisation.
