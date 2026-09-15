@@ -7,6 +7,15 @@ function assertDecisionSettingsPopup($condition, $message): void
 }
 
 $root = dirname(__DIR__);
+$editorSource = file_get_contents($root . '/omo/api/decision/edit_shared.php');
+assertDecisionSettingsPopup(
+    is_string($editorSource)
+        && str_contains($editorSource, 'data-omo-decision-general-settings-open')
+        && str_contains($editorSource, 'data-omo-decision-general-hidden-anonymous')
+        && str_contains($editorSource, 'data-omo-decision-general-hidden-owner-intermediate-results')
+        && str_contains($editorSource, 'data-omo-decision-general-hidden-participant-responses-editable'),
+    'The multi-question editor must expose one shared general settings popup.'
+);
 $modules = [
     'majority_judgment' => 'mj',
     'vote' => 'vote',
@@ -19,8 +28,9 @@ foreach ($modules as $module => $selectorPrefix) {
         is_string($source)
             && str_contains($source, 'data-omo-decision-' . $selectorPrefix . '-popup-owner-intermediate-results')
             && str_contains($source, 'data-omo-decision-' . $selectorPrefix . '-popup-participant-intermediate-results')
-            && str_contains($source, 'data-omo-decision-' . $selectorPrefix . '-popup-participant-responses-editable'),
-        'The ' . $module . ' settings popup must expose the three shared participation settings.'
+            && str_contains($source, 'data-omo-decision-' . $selectorPrefix . '-popup-participant-responses-editable')
+            && str_contains($source, 'data-omo-decision-embedded-question'),
+        'The ' . $module . ' settings editor must distinguish embedded question settings.'
     );
 }
 
