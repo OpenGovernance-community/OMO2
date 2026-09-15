@@ -1198,7 +1198,7 @@ $projectTexts = [
         </div>
     </div>
 
-    <div class="omo-overlay-drawer omo-overlay-drawer--detail-panel omo-projects__drawer" data-omo-projects-drawer hidden>
+    <div class="omo-overlay-drawer omo-projects__drawer" data-omo-projects-drawer hidden>
         <div class="omo-overlay-drawer__backdrop" data-omo-projects-drawer-close></div>
         <div class="omo-overlay-drawer__panel">
             <div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky">
