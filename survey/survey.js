@@ -14,6 +14,7 @@
     var periods = ['today', 'tomorrow'];
     var advanceTimer = null;
     var automaticInvitationSaveAttempted = false;
+    var associatedSaveChain = Promise.resolve();
 
     var elements = {
         welcome: document.getElementById('surveyWelcome'),
@@ -154,8 +155,9 @@
     }
 
     var hasPersistedAnswers = hydratePersistedAnswers();
-    var savedAnswers = hasPersistedAnswers ? cloneAnswers(state.answers) : null;
+    var savedAnswers = hasPersistedAnswers && persistence.isCompleted === true ? cloneAnswers(state.answers) : null;
     var savedLinks = persistence.links && typeof persistence.links === 'object' ? persistence.links : null;
+    var isAssociatedSurvey = isInvitation || persistence.isOrganizationLinked === true;
 
     function saveState() {
         try {
@@ -239,6 +241,23 @@
             return answer.affinity !== null;
         }
         return answer.situation.today !== null && answer.situation.tomorrow !== null;
+    }
+
+    function findFirstIncompleteStep() {
+        for (var questionIndex = 0; questionIndex < questions.length; questionIndex += 1) {
+            var answer = state.answers[questionIndex];
+            if (answer.affinity === null) {
+                return { questionIndex: questionIndex, phase: 'scale', activePeriod: 'today' };
+            }
+            if (answer.situation.today === null || answer.situation.tomorrow === null) {
+                return {
+                    questionIndex: questionIndex,
+                    phase: 'choice',
+                    activePeriod: answer.situation.today === null ? 'today' : 'tomorrow'
+                };
+            }
+        }
+        return null;
     }
 
     function navigateToProgressStep(questionIndex, phase) {
@@ -356,7 +375,7 @@
         elements.validation.textContent = labels.incomplete;
         elements.validation.hidden = true;
         elements.back.textContent = labels.back;
-        elements.saveStatus.textContent = labels.saveStatus;
+        elements.saveStatus.textContent = isAssociatedSurvey ? labels.saveDraftReady : labels.saveStatus;
         elements.privacyLink.textContent = labels.privacyPolicy;
 
         if (state.phase === 'scale') {
@@ -412,6 +431,7 @@
         saveState();
         renderScaleResponse();
         updateNavigation();
+        saveAssociatedDraft();
         scheduleAdvance();
     }
 
@@ -497,6 +517,7 @@
         saveState();
         renderChoiceResponse(question);
         updateNavigation();
+        saveAssociatedDraft();
         if (movesToTomorrow) {
             revealActivePeriod();
         }
@@ -853,26 +874,69 @@
         elements.saveOmo.hidden = isInvitation;
     }
 
+    function saveAssociatedAnswers(answers, draft) {
+        associatedSaveChain = associatedSaveChain.catch(function () {
+            return null;
+        }).then(function () {
+            return window.fetch(String(persistence.saveEndpoint || '/survey/api/save.php'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    answers: answers,
+                    privateToken: privateToken,
+                    invitationToken: invitationToken,
+                    draft: draft === true
+                })
+            }).then(function (response) {
+                return response.json().catch(function () {
+                    return { status: false };
+                });
+            }).then(function (result) {
+                if (!result || result.status !== true || (isInvitation && result.invitation !== true)) {
+                    throw new Error('save_failed');
+                }
+                return result;
+            });
+        });
+        return associatedSaveChain;
+    }
+
+    function saveAssociatedDraft() {
+        if (!isAssociatedSurvey) {
+            return;
+        }
+        elements.saveStatus.textContent = labels.saveDraftSaving;
+        saveAssociatedAnswers(cloneAnswers(state.answers), true).then(function () {
+            elements.saveStatus.textContent = labels.saveDraftSaved;
+        }).catch(function () {
+            elements.saveStatus.textContent = labels.saveDraftError;
+        });
+    }
+
     function saveCurrentResult() {
         if (savedAnswers !== null && (isInvitation || savedLinks !== null) && !isSurveyDirty()) {
             return Promise.resolve(isInvitation ? { status: true, invitation: true } : savedLinks);
         }
 
         setSaveButtonsBusy(true);
-        return window.fetch(String(persistence.saveEndpoint || '/survey/api/save.php'), {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                answers: state.answers,
-                privateToken: privateToken,
-                invitationToken: invitationToken
-            })
-        }).then(function (response) {
-            return response.json().catch(function () {
-                return { status: false };
+        var request = isAssociatedSurvey
+            ? saveAssociatedAnswers(cloneAnswers(state.answers), false)
+            : window.fetch(String(persistence.saveEndpoint || '/survey/api/save.php'), {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    answers: state.answers,
+                    privateToken: privateToken,
+                    invitationToken: invitationToken
+                })
+            }).then(function (response) {
+                return response.json().catch(function () {
+                    return { status: false };
+                });
             });
-        }).then(function (result) {
+        return request.then(function (result) {
             if (!result || result.status !== true) {
                 throw new Error('save_failed');
             }
@@ -954,6 +1018,24 @@
         return label;
     }
 
+    function copyInviteLink(input, button) {
+        var value = String(input && input.value || '');
+        if (!value) {
+            return;
+        }
+        var copied = function () {
+            button.textContent = labels.invitePublicCopied;
+            window.setTimeout(function () { button.textContent = labels.invitePublicCopy; }, 1800);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(value).then(copied).catch(function () { input.select(); document.execCommand('copy'); copied(); });
+            return;
+        }
+        input.select();
+        document.execCommand('copy');
+        copied();
+    }
+
     function renderInviteDialog(organizationId) {
         var organization = getInviteOrganization(organizationId);
         if (!organization) {
@@ -967,6 +1049,7 @@
         var panels = el('div', 'survey-invite-dialog__panels');
         var feedback = el('p', 'survey-invite-dialog__feedback');
         var submit = el('button', 'generic-action-button generic-action-button--main', labels.inviteSend);
+        var activeTabKey = 'holons';
 
         elements.inviteDialogEyebrow.textContent = labels.inviteEyebrow;
         elements.inviteDialogTitle.textContent = labels.inviteTitle;
@@ -987,19 +1070,59 @@
         [
             { key: 'holons', label: labels.inviteHolons, options: organization.holons || [] },
             { key: 'members', label: labels.inviteMembers, options: organization.members || [] },
-            { key: 'emails', label: labels.inviteEmails, options: [] }
+            { key: 'emails', label: labels.inviteEmails, options: [] },
+            { key: 'public', label: labels.invitePublic, options: [] }
         ].forEach(function (definition, index) {
             var tab = el('button', 'survey-invite-dialog__tab', definition.label);
             var panel = el('section', 'survey-invite-dialog__panel');
             tab.type = 'button';
             tab.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
             tab.addEventListener('click', function () {
+                activeTabKey = definition.key;
                 tabs.querySelectorAll('button').forEach(function (button) { button.setAttribute('aria-selected', 'false'); });
                 panels.querySelectorAll('section').forEach(function (item) { item.hidden = true; });
                 tab.setAttribute('aria-selected', 'true');
                 panel.hidden = false;
+                submit.hidden = activeTabKey === 'public';
             });
-            if (definition.key === 'emails') {
+            if (definition.key === 'public') {
+                panel.appendChild(el('p', 'survey-invite-dialog__help', labels.invitePublicHelp));
+                var generate = el('button', 'generic-action-button generic-action-button--main', labels.invitePublicGenerate);
+                generate.type = 'button';
+                var linkBox = el('div', 'survey-invite-dialog__public-link');
+                linkBox.hidden = true;
+                generate.addEventListener('click', function () {
+                    generate.disabled = true;
+                    generate.textContent = labels.invitePublicGenerating;
+                    feedback.hidden = true;
+                    window.fetch(String(invite.endpoint || '/survey/api/invitations.php'), {
+                        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ organizationId: Number(organization.id), mode: 'public_link' })
+                    }).then(function (response) { return response.json().catch(function () { return { status: false }; }); }).then(function (result) {
+                        if (!result || result.status !== true || !result.publicUrl) { throw new Error('public_link_failed'); }
+                        linkBox.replaceChildren();
+                        var input = document.createElement('input');
+                        input.className = 'generic-form-control';
+                        input.type = 'text';
+                        input.readOnly = true;
+                        input.value = result.publicUrl;
+                        var copy = el('button', 'generic-action-button generic-action-button--secondary', labels.invitePublicCopy);
+                        copy.type = 'button';
+                        copy.addEventListener('click', function () { copyInviteLink(input, copy); });
+                        linkBox.append(el('strong', '', labels.invitePublicGenerated), input, copy);
+                        linkBox.hidden = false;
+                        feedback.hidden = true;
+                    }).catch(function () {
+                        feedback.textContent = labels.inviteError;
+                        feedback.classList.add('survey-invite-dialog__feedback--error');
+                        feedback.hidden = false;
+                    }).finally(function () {
+                        generate.disabled = false;
+                        generate.textContent = labels.invitePublicGenerate;
+                    });
+                });
+                panel.append(generate, linkBox);
+            } else if (definition.key === 'emails') {
                 var textarea = document.createElement('textarea');
                 textarea.className = 'generic-form-control';
                 textarea.rows = 5;
@@ -1021,6 +1144,9 @@
         form.append(feedback, submit);
         form.addEventListener('submit', function (event) {
             event.preventDefault();
+            if (activeTabKey === 'public') {
+                return;
+            }
             submit.disabled = true;
             submit.textContent = labels.inviteSending;
             feedback.hidden = true;
@@ -1268,9 +1394,21 @@
     elements.start.addEventListener('click', function () {
         if (state.completed) {
             showResults();
-        } else {
-            showQuestion();
+            return;
         }
+        var firstIncomplete = findFirstIncompleteStep();
+        if (!firstIncomplete) {
+            state.completed = true;
+            saveState();
+            showResults();
+            return;
+        }
+        state.questionIndex = firstIncomplete.questionIndex;
+        state.phase = firstIncomplete.phase;
+        state.activePeriod = firstIncomplete.activePeriod;
+        state.manualNavigation = false;
+        saveState();
+        showQuestion();
     });
     elements.restart.addEventListener('click', restartSurvey);
     elements.resultsRestart.addEventListener('click', restartSurvey);

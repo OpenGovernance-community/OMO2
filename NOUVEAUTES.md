@@ -4,6 +4,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-15
 
+- Survey : ajout d’un mode « Tout public » avec lien de campagne, accès par e-mail/code sans création de compte OMO et rattachement automatique des réponses à l’organisation.
+- Survey : les questionnaires liés à une organisation enregistrent maintenant les réponses au fil de la saisie et reprennent à la première étape incomplète.
 - Les participants a un scrutin public disposent maintenant d un bouton de deconnexion. Il revoque leur lien personnel recu par e-mail et renvoie vers la demande d acces, y compris apres un retour arriere du navigateur. Un ancien lien affiche clairement qu il est invalide.
 - Les resultats intermediaires des scrutins sont maintenant regles separement pour l organisateur et pour les participants. Les participants ne les voient qu apres une reponse complete, et les resultats restent caches partout lorsque les deux options sont desactivees.
 - Les organisateurs peuvent maintenant autoriser ou verrouiller la modification des reponses deja soumises. Lorsqu elles sont verrouillees, les choix du participant restent visibles mais ne peuvent plus etre modifies.

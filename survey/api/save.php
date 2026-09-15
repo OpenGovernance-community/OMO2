@@ -16,6 +16,7 @@ if (!is_array($payload)) {
 $answers = $payload['answers'] ?? null;
 $privateToken = surveyNormalizePrivateToken($payload['privateToken'] ?? '');
 $invitationToken = surveyNormalizeInvitationToken($payload['invitationToken'] ?? '');
+$draft = !empty($payload['draft']);
 
 if ($invitationToken !== '') {
     $invitation = \dbObject\OrganizationalMaturityInvitation::findByToken($invitationToken);
@@ -25,12 +26,17 @@ if ($invitationToken !== '') {
 
     $assessment = \dbObject\OrganizationalMaturityAssessment::findByInvitation((int)$invitation->getId());
     if ($assessment) {
-        if (!$assessment->updateAnswers(is_array($answers) ? $answers : [])) {
+        $saved = $draft
+            ? $assessment->updateDraftAnswers(is_array($answers) ? $answers : [])
+            : $assessment->updateAnswers(is_array($answers) ? $answers : []);
+        if (!$saved || (!$draft && !$assessment->attachToInvitation($invitation))) {
             surveyJsonResponse(['status' => false, 'error' => 'save_failed'], 422);
         }
     } else {
-        $created = \dbObject\OrganizationalMaturityAssessment::createFromAnswers(is_array($answers) ? $answers : []);
-        if ($created === false || !$created['assessment']->attachToInvitation($invitation)) {
+        $created = $draft
+            ? \dbObject\OrganizationalMaturityAssessment::createDraftFromAnswers(is_array($answers) ? $answers : [])
+            : \dbObject\OrganizationalMaturityAssessment::createFromAnswers(is_array($answers) ? $answers : []);
+        if ($created === false || !$created['assessment']->attachToInvitation($invitation, !$draft)) {
             surveyJsonResponse(['status' => false, 'error' => 'save_failed'], 422);
         }
         $assessment = $created['assessment'];
@@ -39,6 +45,7 @@ if ($invitationToken !== '') {
     surveyJsonResponse([
         'status' => true,
         'invitation' => true,
+        'draft' => $draft,
         'assessmentId' => (int)$assessment->getId(),
     ]);
 } elseif ($privateToken !== '') {
@@ -47,7 +54,10 @@ if ($invitationToken !== '') {
         surveyJsonResponse(['status' => false, 'error' => 'invalid_private_link'], 404);
     }
 
-    if (!$assessment->updateAnswers(is_array($answers) ? $answers : [])) {
+    $saved = $draft
+        ? $assessment->updateDraftAnswers(is_array($answers) ? $answers : [])
+        : $assessment->updateAnswers(is_array($answers) ? $answers : []);
+    if (!$saved) {
         surveyJsonResponse(['status' => false, 'error' => 'save_failed'], 422);
     }
 } else {
