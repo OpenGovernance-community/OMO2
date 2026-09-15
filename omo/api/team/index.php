@@ -439,12 +439,6 @@ foreach ($rawMemberCards as $rawCard) {
 
     $email = $hasMembership ? $membership->getScopedEmail() : ($hasUser ? $user->getScopedEmail($organizationId) : '');
     $username = $hasMembership ? $membership->getScopedUsername() : ($hasUser ? $user->getScopedUsername($organizationId) : '');
-    $secondary = $email !== ''
-        ? $email
-        : ($hasMembership
-            ? $membership->getUserSecondaryLabel()
-            : ($username !== '' ? '@' . $username : ''));
-
     $photoUrl = trim((string)($rawCard['photoUrl'] ?? ''));
     if ($photoUrl === '' && $hasMembership) {
         $photoUrl = $membership->getProfilePhotoUrl();
@@ -481,6 +475,13 @@ foreach ($rawMemberCards as $rawCard) {
     $resolvedDisplayName = $displayName !== ''
         ? $displayName
         : omoTeamT('team.member.user_fallback', ['userId' => (string)$userId], $lang, $sourceLang);
+    $structuredIdentityName = trim($firstName . ' ' . $lastName);
+    $identityTitle = $structuredIdentityName !== ''
+        ? $structuredIdentityName
+        : ($username !== '' ? $username : ($email !== '' ? $email : $resolvedDisplayName));
+    $identitySecondary = $structuredIdentityName !== '' && $username !== '' && $username !== $identityTitle
+        ? $username
+        : '';
     $memberSearchText = trim(implode(' ', array_filter(array(
         $resolvedDisplayName,
         $firstName,
@@ -488,7 +489,7 @@ foreach ($rawMemberCards as $rawCard) {
         $phone,
         $email,
         $username,
-        $secondary,
+        $identitySecondary,
         $currentHolonTypeId === 1 ? $contextFocus : '',
         $contextTimeBudgetLabel,
         $contextMoneyBudgetLabel,
@@ -507,7 +508,9 @@ foreach ($rawMemberCards as $rawCard) {
         'phone' => $phone,
         'email' => $email,
         'username' => $username,
-        'secondary' => $secondary,
+        'secondary' => $identitySecondary,
+        'identityTitle' => $identityTitle,
+        'identitySecondary' => $identitySecondary,
         'photoUrl' => $photoUrl,
         'initials' => $initials !== '' ? mb_strtoupper($initials, 'UTF-8') : 'P',
         'isOrganizationAdmin' => $isOrganizationAdmin,
@@ -780,9 +783,9 @@ if ($leafletMapsEnabled) {
                         <div class="omo-team-card__body">
                             <div class="omo-team-card__head">
                                 <div class="omo-team-card__identity">
-                                    <h3><?= omoApiEscape($card['displayName']) ?></h3>
-                                    <?php if ($card['secondary'] !== ''): ?>
-                                        <p><?= omoApiEscape($card['secondary']) ?></p>
+                                    <h3 title="<?= omoApiEscape($card['identityTitle']) ?>"><?= omoApiEscape($card['identityTitle']) ?></h3>
+                                    <?php if ($card['identitySecondary'] !== ''): ?>
+                                        <p title="<?= omoApiEscape($card['identitySecondary']) ?>"><?= omoApiEscape($card['identitySecondary']) ?></p>
                                     <?php endif; ?>
                                 </div>
 
@@ -796,11 +799,24 @@ if ($leafletMapsEnabled) {
                             </div>
 
                             <div class="omo-team-card__meta">
-                                <div class="omo-team-card__meta-row">
+                                <div class="omo-team-card__meta-row<?= !$isRoleTeamContext && $card['email'] !== '' ? ' omo-team-card__meta-row--email' : '' ?>">
                                     <span class="omo-team-card__meta-label generic-meta-label generic-meta-label--compact"><?= omoApiEscape(omoTeamT($isRoleTeamContext ? 'team.member.focus' : 'team.member.email', [], $lang, $sourceLang)) ?></span>
-                                    <span class="omo-team-card__meta-value<?= $isRoleTeamContext ? ' omo-team-card__focus-value' : '' ?> generic-meta-value generic-meta-value--compact<?= ($isRoleTeamContext ? $card['contextFocus'] : $card['email']) === '' ? ' omo-team-card__meta-value--muted' : '' ?>"><?= omoApiEscape($isRoleTeamContext
-                                        ? ($card['contextFocus'] !== '' ? $card['contextFocus'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang))
-                                        : ($card['email'] !== '' ? $card['email'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang))) ?></span>
+                                    <?php if (!$isRoleTeamContext && $card['email'] !== ''): ?>
+                                        <span class="omo-team-card__meta-value omo-team-card__email-value generic-meta-value generic-meta-value--compact">
+                                            <span class="omo-team-card__email-text" title="<?= omoApiEscape($card['email']) ?>"><?= omoApiEscape($card['email']) ?></span>
+                                            <button
+                                                type="button"
+                                                class="omo-team-card__copy-email"
+                                                data-team-copy-email="<?= omoApiEscape($card['email']) ?>"
+                                                aria-label="<?= omoApiEscape(omoTeamT('team.action.copy_email', [], $lang, $sourceLang)) ?>"
+                                                title="<?= omoApiEscape(omoTeamT('team.action.copy_email', [], $lang, $sourceLang)) ?>"
+                                            ><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 8h10v12H8zM5 4h10v2H7v10H5z" fill="currentColor"></path></svg></button>
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="omo-team-card__meta-value<?= $isRoleTeamContext ? ' omo-team-card__focus-value' : '' ?> generic-meta-value generic-meta-value--compact<?= ($isRoleTeamContext ? $card['contextFocus'] : $card['email']) === '' ? ' omo-team-card__meta-value--muted' : '' ?>"><?= omoApiEscape($isRoleTeamContext
+                                            ? ($card['contextFocus'] !== '' ? $card['contextFocus'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang))
+                                            : omoTeamT('team.member.not_provided', [], $lang, $sourceLang)) ?></span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
 
@@ -1462,12 +1478,16 @@ if ($leafletMapsEnabled) {
 
 .omo-team-card__identity {
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 .omo-team-card__identity h3 {
     margin: 0;
     font-size: 0.95rem;
     line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .omo-team-card__identity p {
@@ -1475,7 +1495,9 @@ if ($leafletMapsEnabled) {
     color: var(--color-text-light);
     font-size: 0.76rem;
     line-height: 1.25;
-    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .omo-team-card__badge {
@@ -1588,6 +1610,54 @@ if ($leafletMapsEnabled) {
 
 .omo-team-card__meta-value {
     word-break: break-word;
+}
+
+.omo-team-card__email-value {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.omo-team-card__email-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.omo-team-card__copy-email {
+    display: inline-grid;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    padding: 4px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-text-light);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: background 160ms ease, color 160ms ease, opacity 160ms ease;
+}
+
+.omo-team-card__copy-email svg {
+    width: 100%;
+    height: 100%;
+}
+
+.omo-team-card__meta-row--email:hover .omo-team-card__copy-email,
+.omo-team-card__meta-row--email:focus-within .omo-team-card__copy-email {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.omo-team-card__copy-email:hover,
+.omo-team-card__copy-email:focus-visible {
+    background: var(--color-surface-alt, #f0f2f5);
+    color: var(--color-primary);
+    outline: none;
 }
 
 .omo-team-card__focus-value {
@@ -2598,6 +2668,36 @@ $(document)
   .off('click.omoTeamMenuSurface', '.omo-team-card__menu')
   .on('click.omoTeamMenuSurface', '.omo-team-card__menu', function (event) {
     event.stopPropagation();
+  });
+
+$(document)
+  .off('click.omoTeamCopyEmail', '[data-team-copy-email]')
+  .on('click.omoTeamCopyEmail', '[data-team-copy-email]', function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const email = String($(this).attr('data-team-copy-email') || '').trim();
+    if (email === '') {
+        return;
+    }
+
+    const fallbackCopy = function () {
+        const input = document.createElement('textarea');
+        input.value = email;
+        input.setAttribute('readonly', '');
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+    };
+
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText(email).catch(fallbackCopy);
+    } else {
+        fallbackCopy();
+    }
   });
 
 $(document)
