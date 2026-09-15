@@ -59,8 +59,6 @@ if (!function_exists('commonDecisionParticipationGetSourceLang')) {
             'decisions.public.timeline.segment_results' => ['text' => 'Résultats', 'context' => 'Timeline segment label for results.'],
             'decisions.public.options.responses_editable' => ['text' => 'Vos réponses sont modifiables.', 'context' => 'Public option indicating that responses can still be changed.'],
             'decisions.public.options.responses_locked' => ['text' => 'Vos réponses ne sont plus modifiables.', 'context' => 'Public option indicating that responses can no longer be changed.'],
-            'decisions.public.options.results_hidden' => ['text' => 'Les résultats ne sont pas visibles avant la fin du vote.', 'context' => 'Public option indicating that results are hidden.'],
-            'decisions.public.options.results_visible' => ['text' => 'Les résultats sont visibles.', 'context' => 'Public option indicating that results are visible.'],
             'decisions.public.options.owner_intermediate_results_access' => ['text' => 'Les résultats intermédiaires sont visibles par l’organisateur.', 'context' => 'Public option indicating that the organizer can view intermediate results before the end of the vote.'],
             'decisions.public.options.owner_intermediate_results_hidden' => ['text' => 'Les résultats intermédiaires ne sont pas visibles par l’organisateur.', 'context' => 'Public option indicating that the organizer cannot view intermediate results before the end of the vote.'],
             'decisions.public.options.participant_intermediate_results_access' => ['text' => 'Les résultats intermédiaires sont visibles par les participants après une réponse complète.', 'context' => 'Public option indicating that participants can see intermediate results after completing their response.'],
@@ -577,16 +575,10 @@ function commonDecisionParticipationBuildOptionLines($decision, array $context)
     if ($consultationOnly) {
         $lines[] = commonDecisionParticipationT('decisions.public.options.consultation_only_method_pending');
     } else {
-        if ($status === DecisionProcess::STATUS_RESULTS || $status === DecisionProcess::STATUS_ARCHIVED) {
+        if (!$decision->areParticipantResponsesEditable() || $status === DecisionProcess::STATUS_RESULTS || $status === DecisionProcess::STATUS_ARCHIVED) {
             $lines[] = commonDecisionParticipationT('decisions.public.options.responses_locked');
         } else {
             $lines[] = commonDecisionParticipationT('decisions.public.options.responses_editable');
-        }
-
-        if (DecisionProcess::getStatusRank($status) < DecisionProcess::getStatusRank(DecisionProcess::STATUS_RESULTS)) {
-            $lines[] = commonDecisionParticipationT('decisions.public.options.results_hidden');
-        } else {
-            $lines[] = commonDecisionParticipationT('decisions.public.options.results_visible');
         }
 
         $lines[] = $decision->hasOwnerIntermediateResultsAccess()
