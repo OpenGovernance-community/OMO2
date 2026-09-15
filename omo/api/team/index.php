@@ -1466,22 +1466,27 @@ if ($leafletMapsEnabled) {
 .omo-team-card__body {
     display: grid;
     gap: 8px;
+    min-width: 0;
     padding: 8px 14px 12px;
 }
 
 .omo-team-card__head {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: flex-start;
-    justify-content: space-between;
     gap: 10px;
+    min-width: 0;
 }
 
 .omo-team-card__identity {
+    width: 100%;
     min-width: 0;
-    flex: 1 1 auto;
 }
 
 .omo-team-card__identity h3 {
+    display: block;
+    width: 100%;
+    min-width: 0;
     margin: 0;
     font-size: 0.95rem;
     line-height: 1.2;
@@ -1491,6 +1496,9 @@ if ($leafletMapsEnabled) {
 }
 
 .omo-team-card__identity p {
+    display: block;
+    width: 100%;
+    min-width: 0;
     margin: 2px 0 0;
     color: var(--color-text-light);
     font-size: 0.76rem;
@@ -1593,6 +1601,7 @@ if ($leafletMapsEnabled) {
 
 .omo-team-card__meta {
     display: block;
+    min-width: 0;
 }
 
 .omo-team-card__head + .omo-team-card__meta {
@@ -1602,6 +1611,7 @@ if ($leafletMapsEnabled) {
 .omo-team-card__meta-row {
     display: grid;
     gap: 0;
+    min-width: 0;
 }
 
 .omo-team-card__meta-row .omo-team-card__meta-label {
@@ -1609,6 +1619,7 @@ if ($leafletMapsEnabled) {
 }
 
 .omo-team-card__meta-value {
+    min-width: 0;
     word-break: break-word;
 }
 
@@ -1617,9 +1628,12 @@ if ($leafletMapsEnabled) {
     align-items: center;
     gap: 4px;
     min-width: 0;
+    max-width: 100%;
 }
 
 .omo-team-card__email-text {
+    display: block;
+    flex: 1 1 0;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
