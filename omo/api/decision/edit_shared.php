@@ -214,6 +214,14 @@ $baseSourceLang = [
         'text' => 'Afficher les résultats intermédiaires',
         'context' => 'Label for allowing the decision organizer to view intermediate results before the end of the vote.',
     ],
+    'decisions.edit.owner_intermediate_results_access_explicit' => [
+        'text' => 'Afficher les résultats intermédiaires à l’organisateur',
+        'context' => 'Explicit label for allowing the decision organizer to view intermediate results before the end of the vote.',
+    ],
+    'decisions.edit.participant_intermediate_results_access' => [
+        'text' => 'Afficher les résultats intermédiaires aux participants ayant répondu à toutes les propositions',
+        'context' => 'Label for allowing participants with a complete response to view intermediate results before the end of the vote.',
+    ],
     'decisions.edit.multi.status' => [
         'text' => 'Statut',
         'context' => 'Label for the shared decision status.',
@@ -700,6 +708,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                     }
                 }
                 $multiOwnerIntermediateResultsAccess = $decision->hasOwnerIntermediateResultsAccess();
+                $multiParticipantIntermediateResultsAccess = $decision->hasParticipantIntermediateResultsAccess();
                 $multiCoreLocked = $decision->hasEvaluationStarted();
                 $multiStartDatesLocked = $multiCoreLocked || $decision->hasSubmittedResponses();
                 $multiResultsMode = in_array($multiStatus, [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
@@ -805,7 +814,18 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                                     <?= $multiOwnerIntermediateResultsAccess ? 'checked' : '' ?>
                                     <?= $multiCanEditStructure ? '' : 'disabled' ?>
                                 >
-                                <span><?= $escape(t('decisions.edit.owner_intermediate_results_access', [], $lang, $baseSourceLang)) ?></span>
+                                <span><?= $escape(t('decisions.edit.owner_intermediate_results_access_explicit', [], $lang, $baseSourceLang)) ?></span>
+                            </label>
+                            <input type="hidden" name="participant_intermediate_results_access" value="<?= $multiParticipantIntermediateResultsAccess ? '1' : '0' ?>">
+                            <label class="generic-form-checkbox">
+                                <input
+                                    type="checkbox"
+                                    name="<?= $multiCanEditStructure ? 'participant_intermediate_results_access' : '' ?>"
+                                    value="1"
+                                    <?= $multiParticipantIntermediateResultsAccess ? 'checked' : '' ?>
+                                    <?= $multiCanEditStructure ? '' : 'disabled' ?>
+                                >
+                                <span><?= $escape(t('decisions.edit.participant_intermediate_results_access', [], $lang, $baseSourceLang)) ?></span>
                             </label>
                             <?php endif; ?>
 

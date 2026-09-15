@@ -61,8 +61,10 @@ if (!function_exists('commonDecisionParticipationGetSourceLang')) {
             'decisions.public.options.responses_locked' => ['text' => 'Vos réponses ne sont plus modifiables.', 'context' => 'Public option indicating that responses can no longer be changed.'],
             'decisions.public.options.results_hidden' => ['text' => 'Les résultats ne sont pas visibles avant la fin du vote.', 'context' => 'Public option indicating that results are hidden.'],
             'decisions.public.options.results_visible' => ['text' => 'Les résultats sont visibles.', 'context' => 'Public option indicating that results are visible.'],
-            'decisions.public.options.owner_intermediate_results_access' => ['text' => 'Les résultats intermédiaires sont accessibles à l’organisateur.', 'context' => 'Public option indicating that the organizer can view intermediate results before the end of the vote.'],
-            'decisions.public.options.owner_intermediate_results_hidden' => ['text' => 'Les résultats intermédiaires sont secrets jusqu’à la date de fin du scrutin.', 'context' => 'Public option indicating that the organizer cannot view intermediate results before the end of the vote.'],
+            'decisions.public.options.owner_intermediate_results_access' => ['text' => 'Les résultats intermédiaires sont visibles par l’organisateur.', 'context' => 'Public option indicating that the organizer can view intermediate results before the end of the vote.'],
+            'decisions.public.options.owner_intermediate_results_hidden' => ['text' => 'Les résultats intermédiaires ne sont pas visibles par l’organisateur.', 'context' => 'Public option indicating that the organizer cannot view intermediate results before the end of the vote.'],
+            'decisions.public.options.participant_intermediate_results_access' => ['text' => 'Les résultats intermédiaires sont visibles par les participants après une réponse complète.', 'context' => 'Public option indicating that participants can see intermediate results after completing their response.'],
+            'decisions.public.options.participant_intermediate_results_hidden' => ['text' => 'Les résultats intermédiaires ne sont pas visibles par les participants.', 'context' => 'Public option indicating that participants cannot see intermediate results before the end of the vote.'],
             'decisions.public.options.consultation_only_method_pending' => ['text' => 'Le mode de scrutin sera défini, si nécessaire, à l’issue de la consultation.', 'context' => 'Public option explaining that a consultation-only process has no vote method yet.'],
             'decisions.public.options.anonymous' => ['text' => 'Ce scrutin est anonyme.', 'context' => 'Public option indicating that the decision is anonymous.'],
             'decisions.public.options.not_anonymous' => ['text' => 'Ce scrutin n’est pas anonyme.', 'context' => 'Public option indicating that the decision is not anonymous.'],
@@ -92,6 +94,8 @@ if (!function_exists('commonDecisionParticipationGetSourceLang')) {
             'decisions.public.access.missing_code' => ['text' => 'Aucun code valide n’a été trouvé pour cette adresse. Demandez-en un nouveau.', 'context' => 'Public access error when no code exists.'],
             'decisions.public.access.expired_code' => ['text' => 'Ce code a expiré. Demandez-en un nouveau depuis cette page.', 'context' => 'Public access error for an expired code.'],
             'decisions.public.access.invalid_code' => ['text' => 'Le code saisi est incorrect.', 'context' => 'Public access error for an invalid code.'],
+            'decisions.public.access.invalid_link_title' => ['text' => 'Lien personnel invalide', 'context' => 'Title shown when a personal public decision link has been revoked or is unknown.'],
+            'decisions.public.access.invalid_link_description' => ['text' => 'Ce lien personnel n’est plus valide. Demandez un nouvel accès depuis la page publique du scrutin.', 'context' => 'Explanation shown when a personal public decision link has been revoked or is unknown.'],
             'decisions.public.access.consume_failed' => ['text' => 'Le code est correct, mais l’accès n’a pas pu être finalisé. Réessayez dans un instant.', 'context' => 'Public access error when code consumption fails.'],
             'decisions.public.access.code_verification_failed' => ['text' => 'Impossible de vérifier ce code pour le moment.', 'context' => 'Fallback public access error during code verification.'],
             'decisions.public.access.finalize_failed' => ['text' => 'Le lien personnel n’a pas pu être finalisé. Réessayez dans un instant.', 'context' => 'Public access error when the personal link cannot be finalized.'],
@@ -588,6 +592,10 @@ function commonDecisionParticipationBuildOptionLines($decision, array $context)
         $lines[] = $decision->hasOwnerIntermediateResultsAccess()
             ? commonDecisionParticipationT('decisions.public.options.owner_intermediate_results_access')
             : commonDecisionParticipationT('decisions.public.options.owner_intermediate_results_hidden');
+
+        $lines[] = $decision->hasParticipantIntermediateResultsAccess()
+            ? commonDecisionParticipationT('decisions.public.options.participant_intermediate_results_access')
+            : commonDecisionParticipationT('decisions.public.options.participant_intermediate_results_hidden');
     }
 
     $anonymousFlags = [];
@@ -1022,6 +1030,8 @@ $participant = !empty($context['participant']) && $context['participant'] instan
     : null;
 $organization = !empty($context['organization']) ? $context['organization'] : null;
 $requiresPublicAccessEmail = (($context['accessMode'] ?? '') === 'public_request');
+$hasInvalidPersonalPublicAccessLink = empty($context['status'])
+    && trim((string)($_GET['token'] ?? '')) !== '';
 $allowPublicSelfRegistration = $decision instanceof DecisionProcess
     ? $decision->isPublicSelfRegistrationEnabled()
     : false;
@@ -1202,6 +1212,14 @@ if (!empty($context['status'])) {
 
 ob_start();
 ?>
+
+        <?php if ($hasInvalidPersonalPublicAccessLink): ?>
+        <section class="generic-hero-panel accent decision-public-access-error" role="alert">
+            <h1 class="generic-empty-hero__title"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.access.invalid_link_title')) ?></h1>
+            <p class="generic-empty-hero__text"><?= omoApiEscape(commonDecisionParticipationT('decisions.public.access.invalid_link_description')) ?></p>
+        </section>
+        <?php endif; ?>
+
         <section class="generic-hero-panel fill accent decision-public-hero">
             <?php if (!$isResultsDisplay): ?>
             <div class="decision-public-eyebrow">

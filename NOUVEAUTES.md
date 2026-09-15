@@ -4,8 +4,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-15
 
-- Les participants a un scrutin public disposent maintenant d un bouton de deconnexion. Il revoque leur lien personnel recu par e-mail et renvoie vers la demande d acces, y compris apres un retour arriere du navigateur.
-- Les parametres generaux des scrutins permettent maintenant de rendre les resultats intermediaires accessibles ou non a l organisateur. Ce choix est affiche dans les options visibles par les participants.
+- Les participants a un scrutin public disposent maintenant d un bouton de deconnexion. Il revoque leur lien personnel recu par e-mail et renvoie vers la demande d acces, y compris apres un retour arriere du navigateur. Un ancien lien affiche clairement qu il est invalide.
+- Les resultats intermediaires des scrutins sont maintenant regles separement pour l organisateur et pour les participants. Les participants ne les voient qu apres une reponse complete, et les resultats restent caches partout lorsque les deux options sont desactivees.
 - La synchronisation CalDAV conserve maintenant un journal des changements et des suppressions de reunions, afin que les agendas connectes retirent les evenements supprimes dans OMO. Les suppressions depuis un client CalDAV respectent separement le droit `CAN_DELETE_EVENT`.
 
 ## 2026-09-14

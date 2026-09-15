@@ -104,6 +104,7 @@ assertDecisionParams(count($emptyProposalItems) === 0, 'An empty proposal must n
 $newDecision = new DecisionProcess();
 assertDecisionParams($newDecision->canEnableNamedVote(), 'A new decision must allow a named vote configuration.');
 assertDecisionParams(!$newDecision->hasOwnerIntermediateResultsAccess(), 'Intermediate results must remain unavailable to the organizer by default.');
+assertDecisionParams(!$newDecision->hasParticipantIntermediateResultsAccess(), 'Intermediate results must remain unavailable to participants by default.');
 $intermediateResultsParameters = DecisionProcess::mergeOwnerIntermediateResultsAccessParameter([
     DecisionProcess::METHOD_SIMPLE_VOTE => ['choice_mode' => 'single'],
 ], true);
@@ -111,6 +112,12 @@ assertDecisionParams(
     !empty($intermediateResultsParameters['owner_intermediate_results_access'])
         && !empty($intermediateResultsParameters[DecisionProcess::METHOD_SIMPLE_VOTE]),
     'The organizer intermediate results setting must preserve method parameters.'
+);
+$intermediateResultsParameters = DecisionProcess::mergeParticipantIntermediateResultsAccessParameter($intermediateResultsParameters, true);
+assertDecisionParams(
+    !empty($intermediateResultsParameters['participant_intermediate_results_access'])
+        && !empty($intermediateResultsParameters[DecisionProcess::METHOD_SIMPLE_VOTE]),
+    'The participant intermediate results setting must preserve method parameters.'
 );
 
 $anonymousDecision = new DecisionProcess();

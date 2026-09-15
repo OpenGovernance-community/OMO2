@@ -1622,6 +1622,23 @@ class DecisionProcess extends DbObject
         return $parameters;
     }
 
+    public function hasParticipantIntermediateResultsAccess(): bool
+    {
+        $parameters = $this->getRootParametersArray();
+        return !empty($parameters['participant_intermediate_results_access']);
+    }
+
+    public static function mergeParticipantIntermediateResultsAccessParameter($parameters, $enabled): array
+    {
+        if (!is_array($parameters)) {
+            $decoded = json_decode(trim((string)$parameters), true);
+            $parameters = is_array($decoded) ? $decoded : [];
+        }
+
+        $parameters['participant_intermediate_results_access'] = !empty($enabled) ? 1 : 0;
+        return $parameters;
+    }
+
     public function getPublicAccessSettings()
     {
         $parameters = $this->getRootParametersArray();

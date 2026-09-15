@@ -481,9 +481,11 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         $allowAnonymousVotes = !empty($voteConfig['allow_anonymous_votes']);
         $allowConsultationProposals = !empty($voteConfig['allow_consultation_proposals']);
         $allowProposalDiscussions = !empty($voteConfig['allow_proposal_discussions']);
-        $showLiveResults = !empty($voteConfig['show_live_results']);
         $ownerIntermediateResultsAccess = $decision instanceof DecisionProcess
             && $decision->hasOwnerIntermediateResultsAccess();
+        $participantIntermediateResultsAccess = $decision instanceof DecisionProcess
+            && $decision->hasParticipantIntermediateResultsAccess();
+        $showLiveResults = $participantIntermediateResultsAccess;
         $randomizeProposalOrder = !$consultationOnly && !empty($voteConfig['randomize_proposal_order']);
         $oneProposalAtATime = !$consultationOnly && !empty($voteConfig['one_proposal_at_a_time']);
         $proposalContent = omoDecisionNormalizeProposalContent($voteConfig['proposal_content'] ?? null);
@@ -514,7 +516,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         $hasSubmittedResponses = $decision instanceof DecisionProcess ? $decision->hasSubmittedResponses() : false;
         $resultsMode = $decision instanceof DecisionProcess
             && in_array($status, [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
-        $liveResultsMode = !$resultsMode && $isParticipateMode && $evaluationStarted && $showLiveResults;
+        $liveResultsMode = false;
         $showOwnerIntermediateResults = $isManageMode
             && !empty($context['isOwner'])
             && !$resultsMode
@@ -558,6 +560,13 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             $selectedVoteWeight = (string)($selectedVoteWeightSelection['weight'] ?? '1');
             $selectedResponseIsAnonymous = omoDecisionResponseIsAnonymous($selectedResponse, omoDecisionVoteGetMethodKey());
         }
+        $participantHasCompletedResponse = $selectedResponse instanceof DecisionResponse
+            && DecisionResponse::normalizeStatus($selectedResponse->get('status')) === DecisionResponse::STATUS_SUBMITTED;
+        $liveResultsMode = !$resultsMode
+            && $isParticipateMode
+            && $evaluationStarted
+            && $showLiveResults
+            && $participantHasCompletedResponse;
         $anonymousVoteChecked = $isAnonymous || ($allowAnonymousVotes && $selectedResponseIsAnonymous);
         $anonymousVoteDisabled = $isAnonymous || !$allowAnonymousVotes;
         $submittedResponses = [];
@@ -905,7 +914,12 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         <input type="hidden" name="owner_intermediate_results_access" value="<?= $ownerIntermediateResultsAccess ? '1' : '0' ?>">
                         <label class="generic-form-checkbox">
                             <input type="checkbox" name="<?= $canEditStructure ? 'owner_intermediate_results_access' : '' ?>" value="1" <?= $ownerIntermediateResultsAccess ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
-                            <span><?= $escape(t('decisions.edit.owner_intermediate_results_access', [], $lang, $sourceLang)) ?></span>
+                            <span><?= $escape(t('decisions.edit.owner_intermediate_results_access_explicit', [], $lang, $sourceLang)) ?></span>
+                        </label>
+                        <input type="hidden" name="participant_intermediate_results_access" value="<?= $participantIntermediateResultsAccess ? '1' : '0' ?>">
+                        <label class="generic-form-checkbox">
+                            <input type="checkbox" name="<?= $canEditStructure ? 'participant_intermediate_results_access' : '' ?>" value="1" <?= $participantIntermediateResultsAccess ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                            <span><?= $escape(t('decisions.edit.participant_intermediate_results_access', [], $lang, $sourceLang)) ?></span>
                         </label>
                         <?php endif; ?>
                         <input type="hidden" name="randomize_proposal_order" value="<?= $randomizeProposalOrder ? '1' : '' ?>" data-omo-decision-vote-hidden-random-order>
