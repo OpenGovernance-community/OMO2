@@ -39,6 +39,7 @@ if (!function_exists('omoTeamSourceLang')) {
             'team.search.placeholder' => ['text' => 'Filtrer les membres', 'context' => 'Placeholder for the Team quick search input.'],
             'team.search.empty' => ['text' => 'Aucun membre ne correspond à cette recherche.', 'context' => 'Empty state when Team quick search hides all members in the active representation.'],
             'team.action.add_member' => ['text' => 'Ajouter un membre', 'context' => 'Primary action button used to add a member in the team module.'],
+            'team.action.copy_email' => ['text' => 'Copier l adresse e-mail', 'context' => 'Accessible label and tooltip of the button that copies a Team member email address.'],
             'team.action.edit_assignment' => ['text' => 'Editer l affectation', 'context' => 'Menu action used to edit a member assignment in the team module.'],
             'team.action.cancel_invitation' => ['text' => "Annuler l'invitation", 'context' => 'Menu action used to cancel a pending invitation in the team module.'],
             'team.action.remove_from_context' => ['text' => 'Retirer du contexte {context}', 'context' => 'Menu action used to remove a member from a context in the team module.'],
