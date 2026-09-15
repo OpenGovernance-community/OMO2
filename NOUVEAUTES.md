@@ -4,6 +4,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-15
 
+- Team : les cartes privilegient maintenant prenom et nom, puis le nom d utilisateur lorsqu il est renseigne. Les adresses e-mail longues sont tronquees avec leur valeur complete au survol, et l adresse de la rubrique E-mail peut etre copiee depuis son icone au survol.
+
 - Projets : apres un retour depuis un document associe, l ouverture dun autre document recharge maintenant son propre contexte au lieu de reutiliser le document precedent, y compris lorsqu il nest pas visible dans le holon.
 
 - Projets : le sous-drawer de detail utilise maintenant la meme largeur que les sous-drawers Documents et Decisions.
@@ -2235,6 +2237,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 
 # 2026-09-14
 
+- Quitter une organisation met a nouveau a jour les references des Documents, y compris les champs de secretaire de proces-verbal, sans echec de requete preparee PDO.
 - La rubrique Decider presente une vue illustree de la collecte des avis et de la construction d un choix commun.
 - Le favicon de la page publique reprend maintenant le visuel iceberg d OMO.
 - La rubrique Communaute est illustree par une scene de construction collective.
