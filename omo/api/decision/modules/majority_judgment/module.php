@@ -191,9 +191,11 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         $allowAnonymousVotes = !empty($config['allow_anonymous_votes']);
         $allowConsultationProposals = !empty($config['allow_consultation_proposals']);
         $allowProposalDiscussions = !empty($config['allow_proposal_discussions']);
-        $showLiveResults = !empty($config['show_live_results']);
         $ownerIntermediateResultsAccess = $decision instanceof DecisionProcess
             && $decision->hasOwnerIntermediateResultsAccess();
+        $participantIntermediateResultsAccess = $decision instanceof DecisionProcess
+            && $decision->hasParticipantIntermediateResultsAccess();
+        $showLiveResults = $participantIntermediateResultsAccess;
         $randomizeProposalOrder = !empty($config['randomize_proposal_order']);
         $oneProposalAtATime = !empty($config['one_proposal_at_a_time']);
         $proposalContent = omoDecisionNormalizeProposalContent($config['proposal_content'] ?? null);
@@ -241,7 +243,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             && $consultationStarted
             && !$evaluationStarted
             && !$resultsMode;
-        $liveResultsMode = !$resultsMode && $isParticipateMode && $evaluationStarted && $showLiveResults;
+        $liveResultsMode = false;
         $showOwnerIntermediateResults = $isManageMode
             && !empty($context['isOwner'])
             && !$resultsMode
@@ -278,6 +280,13 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             $selectedVoteWeight = (string)($selectedVoteWeightSelection['weight'] ?? '1');
             $selectedResponseIsAnonymous = omoDecisionResponseIsAnonymous($selectedResponse, omoDecisionMajorityJudgmentGetMethodKey());
         }
+        $participantHasCompletedResponse = $selectedResponse instanceof DecisionResponse
+            && DecisionResponse::normalizeStatus($selectedResponse->get('status')) === DecisionResponse::STATUS_SUBMITTED;
+        $liveResultsMode = !$resultsMode
+            && $isParticipateMode
+            && $evaluationStarted
+            && $showLiveResults
+            && $participantHasCompletedResponse;
         $anonymousVoteChecked = $isAnonymous || ($allowAnonymousVotes && $selectedResponseIsAnonymous);
         $anonymousVoteDisabled = $isAnonymous || !$allowAnonymousVotes;
 
@@ -545,7 +554,12 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         <input type="hidden" name="owner_intermediate_results_access" value="<?= $ownerIntermediateResultsAccess ? '1' : '0' ?>">
                         <label class="generic-form-checkbox">
                             <input type="checkbox" name="<?= $canEditStructure ? 'owner_intermediate_results_access' : '' ?>" value="1" <?= $ownerIntermediateResultsAccess ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
-                            <span><?= $escape(t('decisions.edit.owner_intermediate_results_access', [], $lang, $sourceLang)) ?></span>
+                            <span><?= $escape(t('decisions.edit.owner_intermediate_results_access_explicit', [], $lang, $sourceLang)) ?></span>
+                        </label>
+                        <input type="hidden" name="participant_intermediate_results_access" value="<?= $participantIntermediateResultsAccess ? '1' : '0' ?>">
+                        <label class="generic-form-checkbox">
+                            <input type="checkbox" name="<?= $canEditStructure ? 'participant_intermediate_results_access' : '' ?>" value="1" <?= $participantIntermediateResultsAccess ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                            <span><?= $escape(t('decisions.edit.participant_intermediate_results_access', [], $lang, $sourceLang)) ?></span>
                         </label>
                         <?php endif; ?>
                         <input type="hidden" name="randomize_proposal_order" value="<?= $randomizeProposalOrder ? '1' : '' ?>" data-omo-decision-mj-hidden-random-order>
