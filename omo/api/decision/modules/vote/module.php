@@ -482,6 +482,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         $allowConsultationProposals = !empty($voteConfig['allow_consultation_proposals']);
         $allowProposalDiscussions = !empty($voteConfig['allow_proposal_discussions']);
         $showLiveResults = !empty($voteConfig['show_live_results']);
+        $ownerIntermediateResultsAccess = $decision instanceof DecisionProcess
+            && $decision->hasOwnerIntermediateResultsAccess();
         $randomizeProposalOrder = !$consultationOnly && !empty($voteConfig['randomize_proposal_order']);
         $oneProposalAtATime = !$consultationOnly && !empty($voteConfig['one_proposal_at_a_time']);
         $proposalContent = omoDecisionNormalizeProposalContent($voteConfig['proposal_content'] ?? null);
@@ -516,7 +518,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         $showOwnerIntermediateResults = $isManageMode
             && !empty($context['isOwner'])
             && !$resultsMode
-            && $evaluationStarted;
+            && $evaluationStarted
+            && $ownerIntermediateResultsAccess;
         $coreLocked = $decision instanceof DecisionProcess && $evaluationStarted;
         $startDatesLocked = $coreLocked || ($decision instanceof DecisionProcess && $hasSubmittedResponses);
         $isEditable = $isManageMode && !$resultsMode;
@@ -898,6 +901,13 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         <input type="hidden" name="allow_consultation_proposals" value="<?= $allowConsultationProposals ? '1' : '' ?>" data-omo-decision-vote-hidden-consultation-proposals>
                         <input type="hidden" name="allow_proposal_discussions" value="<?= $allowProposalDiscussions ? '1' : '' ?>" data-omo-decision-vote-hidden-proposal-discussions>
                         <input type="hidden" name="show_live_results" value="<?= $showLiveResults ? '1' : '' ?>" data-omo-decision-vote-hidden-live-results>
+                        <?php if (!$embeddedQuestion && !$consultationOnly): ?>
+                        <input type="hidden" name="owner_intermediate_results_access" value="<?= $ownerIntermediateResultsAccess ? '1' : '0' ?>">
+                        <label class="generic-form-checkbox">
+                            <input type="checkbox" name="<?= $canEditStructure ? 'owner_intermediate_results_access' : '' ?>" value="1" <?= $ownerIntermediateResultsAccess ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                            <span><?= $escape(t('decisions.edit.owner_intermediate_results_access', [], $lang, $sourceLang)) ?></span>
+                        </label>
+                        <?php endif; ?>
                         <input type="hidden" name="randomize_proposal_order" value="<?= $randomizeProposalOrder ? '1' : '' ?>" data-omo-decision-vote-hidden-random-order>
                         <input type="hidden" name="one_proposal_at_a_time" value="<?= $oneProposalAtATime ? '1' : '' ?>" data-omo-decision-vote-hidden-one-proposal-at-a-time>
                         <?= omoDecisionRenderProposalContentSettings($proposalContent, $lang, $sourceLang, $escape, $canEditStructure, 'hidden') ?>

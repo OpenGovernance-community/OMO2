@@ -192,6 +192,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         $allowConsultationProposals = !empty($config['allow_consultation_proposals']);
         $allowProposalDiscussions = !empty($config['allow_proposal_discussions']);
         $showLiveResults = !empty($config['show_live_results']);
+        $ownerIntermediateResultsAccess = $decision instanceof DecisionProcess
+            && $decision->hasOwnerIntermediateResultsAccess();
         $randomizeProposalOrder = !empty($config['randomize_proposal_order']);
         $oneProposalAtATime = !empty($config['one_proposal_at_a_time']);
         $proposalContent = omoDecisionNormalizeProposalContent($config['proposal_content'] ?? null);
@@ -243,7 +245,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         $showOwnerIntermediateResults = $isManageMode
             && !empty($context['isOwner'])
             && !$resultsMode
-            && $evaluationStarted;
+            && $evaluationStarted
+            && $ownerIntermediateResultsAccess;
         $coreLocked = $decision instanceof DecisionProcess && $evaluationStarted;
         $startDatesLocked = $coreLocked || ($decision instanceof DecisionProcess && $hasSubmittedResponses);
         $isEditable = $isManageMode && !$resultsMode;
@@ -538,6 +541,13 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         <input type="hidden" name="allow_consultation_proposals" value="<?= $allowConsultationProposals ? '1' : '' ?>" data-omo-decision-mj-hidden-consultation-proposals>
                         <input type="hidden" name="allow_proposal_discussions" value="<?= $allowProposalDiscussions ? '1' : '' ?>" data-omo-decision-mj-hidden-proposal-discussions>
                         <input type="hidden" name="show_live_results" value="<?= $showLiveResults ? '1' : '' ?>" data-omo-decision-mj-hidden-live-results>
+                        <?php if (!$embeddedQuestion): ?>
+                        <input type="hidden" name="owner_intermediate_results_access" value="<?= $ownerIntermediateResultsAccess ? '1' : '0' ?>">
+                        <label class="generic-form-checkbox">
+                            <input type="checkbox" name="<?= $canEditStructure ? 'owner_intermediate_results_access' : '' ?>" value="1" <?= $ownerIntermediateResultsAccess ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                            <span><?= $escape(t('decisions.edit.owner_intermediate_results_access', [], $lang, $sourceLang)) ?></span>
+                        </label>
+                        <?php endif; ?>
                         <input type="hidden" name="randomize_proposal_order" value="<?= $randomizeProposalOrder ? '1' : '' ?>" data-omo-decision-mj-hidden-random-order>
                         <input type="hidden" name="one_proposal_at_a_time" value="<?= $oneProposalAtATime ? '1' : '' ?>" data-omo-decision-mj-hidden-one-proposal-at-a-time>
                         <?= omoDecisionRenderProposalContentSettings($proposalContent, $lang, $sourceLang, $escape, $canEditStructure, 'hidden') ?>
@@ -754,10 +764,6 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                     $ownerCountedMentions = (int)($ownerStat['counted_count'] ?? 0);
                                     $ownerStatScale = max(1, (int)($ownerStat['scale'] ?? 1));
                                     ?>
-                                    <span class="omo-decision-majority-judgment__readonly-stat">
-                                        <strong><?= $escape(t('decisions.majority_judgment.field.proposal_votes', [], $lang, $sourceLang)) ?></strong>
-                                        <span><?= $escape((string)omoDecisionBlockSettingsVoteWeightUnitsToValue($ownerCountedMentions, $ownerStatScale)) ?></span>
-                                    </span>
                                     <?php if ($ownerCountedMentions > 0): ?>
                                     <div class="omo-decision-majority-judgment__distribution" aria-label="<?= $escape(t('decisions.majority_judgment.field.distribution', [], $lang, $sourceLang)) ?>">
                                         <?php foreach ($mentions as $score => $mentionLabel): ?>
@@ -789,11 +795,12 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                         <?php endforeach; ?>
                                         <span class="omo-decision-majority-judgment__distribution-marker" aria-hidden="true"></span>
                                     </div>
-                                    <div class="omo-decision-majority-judgment__distribution-scale" aria-hidden="true">
+                                    <?php endif; ?>
+                                    <div class="omo-decision-majority-judgment__distribution-scale omo-decision-majority-judgment__distribution-scale--with-count">
                                         <span><?= $escape((string)$mentions[0]) ?></span>
+                                        <span><strong><?= $escape(t('decisions.majority_judgment.field.proposal_votes', [], $lang, $sourceLang)) ?></strong> <?= $escape((string)omoDecisionBlockSettingsVoteWeightUnitsToValue($ownerCountedMentions, $ownerStatScale)) ?></span>
                                         <span><?= $escape((string)$mentions[6]) ?></span>
                                     </div>
-                                    <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
                                 <div class="omo-decision-majority-judgment__proposal-menu" data-omo-decision-mj-proposal-menu>
@@ -2703,6 +2710,15 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             gap: 12px;
             color: var(--color-text-light, #475569);
             font-size: 12px;
+        }
+
+        .omo-decision-majority-judgment__distribution-scale--with-count {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        }
+
+        .omo-decision-majority-judgment__distribution-scale--with-count span:last-child {
+            text-align: right;
         }
 
         @media (max-width: 680px) {
