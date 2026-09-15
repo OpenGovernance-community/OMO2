@@ -4,6 +4,10 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-15
 
+- Projets : apres un retour depuis un document associe, l ouverture dun autre document recharge maintenant son propre contexte au lieu de reutiliser le document precedent, y compris lorsqu il nest pas visible dans le holon.
+
+- Documents : les iframes Collabora autorisent explicitement la lecture et l ecriture du presse-papiers, pour permettre les copier-coller dans les documents.
+
 - Survey : ajout d’un mode « Tout public » avec lien de campagne, accès par e-mail/code sans création de compte OMO et rattachement automatique des réponses à l’organisation.
 - Survey : les questionnaires liés à une organisation enregistrent maintenant les réponses au fil de la saisie et reprennent à la première étape incomplète.
 - Les participants a un scrutin public disposent maintenant d un bouton de deconnexion. Il revoque leur lien personnel recu par e-mail et renvoie vers la demande d acces, y compris apres un retour arriere du navigateur. Un ancien lien affiche clairement qu il est invalide.

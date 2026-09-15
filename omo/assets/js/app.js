@@ -1403,6 +1403,20 @@ function omoCanReuseStoredDrawerRoute(
     requestedContextKey,
     forceReload = false
 ) {
+    const currentDocumentRoute = omoParseDocumentRouteToken(currentRouteToken);
+    const requestedDocumentRoute = omoParseDocumentRouteToken(requestedRouteToken);
+
+    // A document route can come from a project even when the document is not
+    // part of the current holon list. Reusing the previous Documents panel in
+    // that case would keep the previous route payload and reopen its detail.
+    if (
+        currentDocumentRoute
+        && requestedDocumentRoute
+        && currentDocumentRoute.documentId !== requestedDocumentRoute.documentId
+    ) {
+        return false;
+    }
+
     return forceReload !== true
         && hasLoadedContent === true
         && Boolean(requestedRouteToken)
@@ -1464,6 +1478,11 @@ function openDrawer(id, url, options = {}) {
     const currentContextKey = drawer.length
         ? String(drawer.data('omo-drawer-route-context') || '')
         : '';
+    const currentDocumentRoute = omoParseDocumentRouteToken(currentRouteToken);
+    const requestedDocumentRoute = omoParseDocumentRouteToken(requestedRouteToken);
+    const mustReloadForDocumentRouteChange = currentDocumentRoute
+        && requestedDocumentRoute
+        && currentDocumentRoute.documentId !== requestedDocumentRoute.documentId;
     const canReuseCachedRoute = omoCanReuseStoredDrawerRoute(
         hasLoadedContent,
         currentRouteToken,
@@ -1472,9 +1491,13 @@ function openDrawer(id, url, options = {}) {
         requestedContextKey,
         options.forceReload === true
     );
-    const canReuseCachedDrawer = canReuseCachedRoute
-        || omoCanReuseCachedPanelDrawer(drawer, resolvedUrl, currentUrl);
+    const canReuseCachedDrawer = !mustReloadForDocumentRouteChange
+        && (
+            canReuseCachedRoute
+            || omoCanReuseCachedPanelDrawer(drawer, resolvedUrl, currentUrl)
+        );
     const shouldReloadContent = options.forceReload === true
+        || mustReloadForDocumentRouteChange
         || !drawer.length
         || (!canReuseCachedDrawer && currentUrl !== resolvedUrl);
     const isReopeningCachedStructureDrawer = drawerId === 'drawer_structure'
