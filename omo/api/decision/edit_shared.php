@@ -477,10 +477,19 @@ if (empty($context['status'])) {
 
 $organization = $context['organization'];
 $decision = $context['decision'];
+$duplicateDecision = ($context['duplicateDecision'] ?? null) instanceof DecisionProcess
+    ? $context['duplicateDecision']
+    : null;
+$duplicateDecisionGroups = is_iterable($context['duplicateDecisionGroups'] ?? null)
+    ? $context['duplicateDecisionGroups']
+    : [];
+$isDuplicate = !($decision instanceof DecisionProcess) && $duplicateDecision instanceof DecisionProcess;
 $effectiveHolon = $context['effectiveHolon'];
 $intent = (string)($context['intent'] ?? 'manage');
 $isEditing = $decision instanceof DecisionProcess;
-$decisionGroups = $isEditing ? $decision->getDecisionGroups(false) : [];
+$decisionGroups = $isEditing
+    ? $decision->getDecisionGroups(false)
+    : ($isDuplicate ? $duplicateDecisionGroups : []);
 $modeLabel = $isEditing
     ? t('decisions.edit.summary.mode_edit', [], $lang, $baseSourceLang)
     : t('decisions.edit.summary.mode_create', [], $lang, $baseSourceLang);
@@ -496,7 +505,7 @@ $showContextSummary = (($context['accessMode'] ?? '') !== 'public') && empty($co
 $isGovernanceWorkflow = trim((string)($viewInput['workflow'] ?? '')) === DecisionProcess::WORKFLOW_GOVERNANCE
     || ($decision instanceof DecisionProcess && $decision->isGovernanceWorkflow());
 $decisionSettings = omoDecisionParamsGetConfig($organization);
-$useMultiQuestionEditor = $isEditing
+$useMultiQuestionEditor = ($isEditing || $isDuplicate)
     && $intent === 'manage'
     && !$isGovernanceWorkflow
     && $groupAction === ''
@@ -702,8 +711,9 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                 </div>
             <?php elseif ($useMultiQuestionEditor): ?>
                 <?php
-                $multiStatus = DecisionProcess::normalizeStatus($decision->get('status'));
-                $multiConsultationOnly = DecisionProcess::normalizeEvaluationMethod($decision->get('evaluation_method')) === DecisionProcess::METHOD_CONSULTATION_ONLY;
+                $multiDecision = $isDuplicate ? $duplicateDecision : $decision;
+                $multiStatus = DecisionProcess::normalizeStatus($multiDecision->get('status'));
+                $multiConsultationOnly = DecisionProcess::normalizeEvaluationMethod($multiDecision->get('evaluation_method')) === DecisionProcess::METHOD_CONSULTATION_ONLY;
                 $multiHasVotingGroup = false;
                 foreach ($decisionGroups as $multiGroup) {
                     if (DecisionProcess::normalizeEvaluationMethod($multiGroup->get('evaluation_method')) !== DecisionProcess::METHOD_CONSULTATION_ONLY) {
@@ -711,15 +721,16 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                         break;
                     }
                 }
-                $multiOwnerIntermediateResultsAccess = $decision->hasOwnerIntermediateResultsAccess();
-                $multiParticipantIntermediateResultsAccess = $decision->hasParticipantIntermediateResultsAccess();
-                $multiParticipantResponsesEditable = $decision->areParticipantResponsesEditable();
-                $multiCoreLocked = $decision->hasEvaluationStarted();
-                $multiStartDatesLocked = $multiCoreLocked || $decision->hasSubmittedResponses();
-                $multiResultsMode = in_array($multiStatus, [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
+                $multiOwnerIntermediateResultsAccess = $multiDecision->hasOwnerIntermediateResultsAccess();
+                $multiParticipantIntermediateResultsAccess = $multiDecision->hasParticipantIntermediateResultsAccess();
+                $multiParticipantResponsesEditable = $multiDecision->areParticipantResponsesEditable();
+                $multiCoreLocked = !$isDuplicate && $multiDecision->hasEvaluationStarted();
+                $multiStartDatesLocked = !$isDuplicate && ($multiCoreLocked || $multiDecision->hasSubmittedResponses());
+                $multiResultsMode = !$isDuplicate
+                    && in_array($multiStatus, [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
                 $multiCanEditStructure = !$multiResultsMode && !$multiCoreLocked;
                 $multiCanEditStartDates = !$multiResultsMode && !$multiStartDatesLocked;
-                $multiVisibilityState = omoDecisionResolveVisibilityEditorState($decision, $context);
+                $multiVisibilityState = omoDecisionResolveVisibilityEditorState($multiDecision, $context);
                 $multiDateValue = static function ($value): string {
                     $date = DecisionProcess::normalizeDateTimeValue($value);
                     return $date instanceof DateTimeInterface ? $date->format('Y-m-d\TH:i') : '';
@@ -738,7 +749,8 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                 $multiContext = $context;
                 $multiContext['multiQuestionEditor'] = true;
                 $multiContext['canAddQuestion'] = $multiCanEditStructure;
-                $multiEditorDomId = 'omo-decision-multi-editor-' . (int)$decision->getId();
+                $multiContext['isDuplicate'] = $isDuplicate;
+                $multiEditorDomId = 'omo-decision-multi-editor-' . ($isDuplicate ? 'duplicate-' . (int)$duplicateDecision->getId() : (int)$decision->getId());
                 ?>
                 <div
                     hidden
@@ -768,16 +780,16 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                         <form class="generic-form-stack" data-omo-decision-process-form>
                             <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                             <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
-                            <input type="hidden" name="id" value="<?= $escape((int)$decision->getId()) ?>">
+                            <input type="hidden" name="id" value="<?= $escape($isDuplicate ? 0 : (int)$decision->getId()) ?>">
 
                             <label class="generic-form-field">
                                 <span class="generic-form-label"><?= $escape(t('decisions.edit.multi.process_name', [], $lang, $baseSourceLang)) ?></span>
-                                <input type="text" class="generic-form-control" name="process_title" required maxlength="190" value="<?= $escape(trim((string)$decision->get('title'))) ?>" <?= $multiCanEditStructure ? '' : 'readonly' ?>>
+                                <input type="text" class="generic-form-control" name="process_title" required maxlength="190" value="<?= $escape(trim((string)$multiDecision->get('title'))) ?>" <?= $multiCanEditStructure ? '' : 'readonly' ?>>
                             </label>
 
                             <label class="generic-form-field">
                                 <span class="generic-form-label"><?= $escape(t('decisions.edit.multi.process_description', [], $lang, $baseSourceLang)) ?></span>
-                                <textarea class="generic-form-control" name="process_description" rows="4" <?= $multiCanEditStructure ? '' : 'readonly' ?>><?= $escape(trim((string)$decision->get('description'))) ?></textarea>
+                                <textarea class="generic-form-control" name="process_description" rows="4" <?= $multiCanEditStructure ? '' : 'readonly' ?>><?= $escape(trim((string)$multiDecision->get('description'))) ?></textarea>
                             </label>
 
                             <div class="omo-decision-edit__process-primary">
@@ -801,11 +813,11 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                             </div>
 
                             <div class="omo-decision-edit__process-dates">
-                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.consultation_start', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="consultation_start_at" value="<?= $escape($multiDateValue($decision->get('consultation_start_at'))) ?>" <?= $multiCanEditStartDates ? '' : 'readonly' ?>></label>
-                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.consultation_end', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="consultation_end_at" value="<?= $escape($multiDateValue($decision->get('consultation_end_at'))) ?>"></label>
+                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.consultation_start', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="consultation_start_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('consultation_start_at'))) ?>" <?= $multiCanEditStartDates ? '' : 'readonly' ?>></label>
+                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.consultation_end', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="consultation_end_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('consultation_end_at'))) ?>"></label>
                                 <?php if (!$multiConsultationOnly): ?>
-                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.evaluation_start', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="evaluation_start_at" value="<?= $escape($multiDateValue($decision->get('evaluation_start_at'))) ?>" <?= $multiCanEditStartDates ? '' : 'readonly' ?>></label>
-                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.evaluation_end', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="evaluation_end_at" value="<?= $escape($multiDateValue($decision->get('evaluation_end_at'))) ?>"></label>
+                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.evaluation_start', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="evaluation_start_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('evaluation_start_at'))) ?>" <?= $multiCanEditStartDates ? '' : 'readonly' ?>></label>
+                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.evaluation_end', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="evaluation_end_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('evaluation_end_at'))) ?>"></label>
                                 <?php endif; ?>
                             </div>
 
@@ -845,13 +857,26 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                             </label>
                             <?php endif; ?>
 
+                            <?php if (!$isDuplicate): ?>
                             <?= omoDecisionRenderInvitationSection($decision, $multiContext, $lang, $baseSourceLang, $escape, 'omo-decision-edit__multi-invitations') ?>
+                            <?php endif; ?>
                         </form>
                     </section>
 
                     <section class="generic-section generic-section--stack omo-decision-edit__questions-section">
                         <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.multi.questions_title', [], $lang, $baseSourceLang)) ?></h3>
+                        <?php if ($isDuplicate): ?>
+                        <nav class="omo-decision-edit__question-nav" data-omo-decision-question-nav aria-label="<?= $escape(t('decisions.edit.groups.title', [], $lang, $baseSourceLang)) ?>">
+                            <div class="omo-decision-edit__question-tabs">
+                                <?php foreach ($decisionGroups as $duplicateQuestionIndex => $duplicateQuestionGroup): ?>
+                                <?php $duplicateQuestionId = (int)$duplicateQuestionGroup->getId(); ?>
+                                <a class="omo-decision-edit__question-tab<?= $duplicateQuestionId === $multiSelectedGroupId ? ' is-active' : '' ?>" href="#" data-omo-decision-question-link data-question-key="group-<?= $duplicateQuestionId ?>"<?= $duplicateQuestionId === $multiSelectedGroupId ? ' aria-current="page"' : '' ?>><?= $escape(t('decisions.edit.groups.item', ['index' => (string)($duplicateQuestionIndex + 1)], $lang, $baseSourceLang)) ?></a>
+                                <?php endforeach; ?>
+                            </div>
+                        </nav>
+                        <?php else: ?>
                         <?php omoDecisionRenderEditorGroupSwitch($multiContext, $decision, $selectedGroup, $decisionGroups, $lang, $baseSourceLang, $escape); ?>
+                        <?php endif; ?>
 
                         <div class="omo-decision-edit__question-panels" data-omo-decision-question-panels>
                             <?php $renderedQuestionAssets = []; ?>
@@ -862,8 +887,11 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                                 $groupDefinition = omoDecisionGetModuleDefinition($groupMethod, (int)$context['organizationId']);
                                 $groupRenderFunction = is_array($groupDefinition) ? (string)($groupDefinition['render_function'] ?? '') : '';
                                 $groupContext = $context;
-                                $groupContext['decisionGroup'] = $groupItem;
-                                $groupContext['decisionGroupId'] = $groupId;
+                                $groupContext['decisionGroup'] = $isDuplicate ? null : $groupItem;
+                                $groupContext['decisionGroupId'] = $isDuplicate ? 0 : $groupId;
+                                $groupContext['duplicateDecision'] = $isDuplicate ? $duplicateDecision : null;
+                                $groupContext['duplicateDecisionGroup'] = $isDuplicate ? $groupItem : null;
+                                $groupContext['isDuplicate'] = $isDuplicate;
                                 $groupContext['multiQuestionEditor'] = true;
                                 $isActiveQuestion = $groupId === $multiSelectedGroupId;
                                 ?>

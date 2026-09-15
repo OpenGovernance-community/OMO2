@@ -578,6 +578,10 @@ $sourceLang = [
         'text' => 'Déplacer',
         'context' => 'Menu action used to move a decision to another holon.',
     ],
+    'decisions.index.action.duplicate' => [
+        'text' => 'Dupliquer',
+        'context' => 'Menu action opening a prefilled, unsaved copy of one decision.',
+    ],
     'decisions.index.move.modal_title' => [
         'text' => 'Déplacer la prise de décision',
         'context' => 'Title of the decision move dialog.',
@@ -1084,6 +1088,19 @@ foreach ($decisionRows as $row) {
 
     $menuActions = [];
     if ($canManage) {
+        if ($canCreateDecision) {
+            $menuActions[] = [
+                'label' => t('decisions.index.action.duplicate', [], $lang, $sourceLang),
+                'behavior' => 'open',
+                'url' => '/omo/api/decision/edit.php?' . http_build_query([
+                    'oid' => $currentOrganizationId,
+                    'cid' => $normalizedCurrentHolonId > 0 ? $normalizedCurrentHolonId : $holonId,
+                    'duplicate_id' => $decisionId,
+                ]),
+                'title' => t('decisions.index.action.duplicate', [], $lang, $sourceLang),
+            ];
+        }
+
         $menuActions[] = [
             'label' => t('decisions.index.action.move', [], $lang, $sourceLang),
             'behavior' => 'modal',
