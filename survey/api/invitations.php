@@ -21,6 +21,11 @@ if (!commonCurrentUserCanUseAdminMode($organizationId)) {
     surveyJsonResponse(['status' => false, 'error' => 'organization_access_denied'], 403);
 }
 
+if (($payload['mode'] ?? '') === 'public_link') {
+    $result = \dbObject\OrganizationalMaturityPublicLink::issueForOrganization($organizationId);
+    surveyJsonResponse($result, !empty($result['status']) ? 200 : 422);
+}
+
 $result = \dbObject\OrganizationalMaturityInvitation::issueForSelections(
     $organizationId,
     is_array($payload['holonIds'] ?? null) ? $payload['holonIds'] : [],
