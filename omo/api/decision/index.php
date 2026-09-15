@@ -1091,7 +1091,7 @@ foreach ($decisionRows as $row) {
         if ($canCreateDecision) {
             $menuActions[] = [
                 'label' => t('decisions.index.action.duplicate', [], $lang, $sourceLang),
-                'behavior' => 'open',
+                'behavior' => 'direct',
                 'url' => '/omo/api/decision/edit.php?' . http_build_query([
                     'oid' => $currentOrganizationId,
                     'cid' => $normalizedCurrentHolonId > 0 ? $normalizedCurrentHolonId : $holonId,
@@ -4172,7 +4172,7 @@ function buildCompactMenuItem(action, title, description) {
     button.setAttribute('role', 'menuitem');
     button.setAttribute(
         'data-omo-decision-menu-behavior',
-        behavior === 'mutation' || behavior === 'export' || behavior === 'window' || behavior === 'modal' ? behavior : 'open'
+        behavior === 'mutation' || behavior === 'export' || behavior === 'window' || behavior === 'modal' || behavior === 'direct' ? behavior : 'open'
     );
     if (behavior === 'mutation') {
         button.setAttribute('data-omo-decision-menu-request-url', String(action && action.requestUrl ? action.requestUrl : ''));
@@ -4597,6 +4597,21 @@ omoDecisionRegisterGlobalListener(ownerDocument, 'click', function (event) {
                         || String(payload.text && payload.text.moveModalTitle ? payload.text.moveModalTitle : 'Déplacer la prise de décision'),
                     targetUrl,
                     'fetch'
+                );
+            }
+
+            closeCompactMenus();
+            return;
+        }
+
+        if (behavior === 'direct') {
+            const targetUrl = String(actionButton.getAttribute('data-open-url') || '').trim();
+            if (targetUrl !== '') {
+                openDecisionEditor(
+                    targetUrl,
+                    String(actionButton.getAttribute('data-open-title') || '').trim()
+                        || (payload.text && payload.text.drawerTitle ? payload.text.drawerTitle : 'Prises de decision'),
+                    String(actionButton.getAttribute('data-open-description') || '').trim()
                 );
             }
 

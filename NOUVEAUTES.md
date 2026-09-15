@@ -8,6 +8,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 - Les resultats intermediaires des scrutins sont maintenant regles separement pour l organisateur et pour les participants. Les participants ne les voient qu apres une reponse complete, et les resultats restent caches partout lorsque les deux options sont desactivees.
 - Les organisateurs peuvent maintenant autoriser ou verrouiller la modification des reponses deja soumises. Lorsqu elles sont verrouillees, les choix du participant restent visibles mais ne peuvent plus etre modifies.
 - Les reglages de visibilite des resultats intermediaires et de modification des reponses sont disponibles dans le panneau Configurer pour le jugement majoritaire, le vote et le consentement.
+- Dans l editeur multi-questions, les parametres generaux du scrutin sont maintenant regroupes sous les dates, avant les invitations, tandis que chaque question ne conserve que ses reglages propres.
 - Le menu des scrutins permet maintenant de dupliquer un scrutin dans un editeur pre-rempli. Aucun nouveau scrutin n est cree avant le premier enregistrement et les dates restent vides dans la copie.
 - La synchronisation CalDAV conserve maintenant un journal des changements et des suppressions de reunions, afin que les agendas connectes retirent les evenements supprimes dans OMO. Les suppressions depuis un client CalDAV respectent separement le droit `CAN_DELETE_EVENT`.
 

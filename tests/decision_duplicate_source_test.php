@@ -13,7 +13,7 @@ $editorSource = file_get_contents($root . '/omo/api/decision/edit_shared.php');
 $multiSaveSource = file_get_contents($root . '/omo/api/decision/save_multi.php');
 
 assertDecisionDuplicateSource(
-    is_string($indexSource) && str_contains($indexSource, "'decisions.index.action.duplicate'") && str_contains($indexSource, "'duplicate_id' => \$decisionId"),
+    is_string($indexSource) && str_contains($indexSource, "'decisions.index.action.duplicate'") && str_contains($indexSource, "'duplicate_id' => \$decisionId") && str_contains($indexSource, "'behavior' => 'direct'"),
     'Decision cards must expose the duplicate action.'
 );
 assertDecisionDuplicateSource(
