@@ -223,8 +223,19 @@
 
 		public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
 		{
-			$params = array('organization_id' => (int)$organizationId, 'source_creation' => (int)$userId, 'source_owner' => (int)$userId, 'source_modification' => (int)$userId, 'source_edition' => (int)$userId, 'source_pv_editor' => (int)$userId, 'ghost_creation' => (int)$ghostUserId, 'ghost_owner' => (int)$ghostUserId, 'ghost_modification' => (int)$ghostUserId);
-			return self::execute("UPDATE document SET IDusercreation = CASE WHEN IDusercreation = :source_creation THEN :ghost_creation ELSE IDusercreation END, IDuser = CASE WHEN IDuser = :source_owner THEN CASE WHEN active = 0 THEN :ghost_owner ELSE NULL END ELSE IDuser END, IDusermodification = CASE WHEN IDusermodification = :source_modification THEN CASE WHEN active = 0 THEN :ghost_modification ELSE NULL END ELSE IDusermodification END, IDuseredition = CASE WHEN IDuseredition = :source_edition THEN NULL ELSE IDuseredition END, IDuser_pv_editor = CASE WHEN IDuser_pv_editor = :source_pv_editor THEN NULL ELSE IDuser_pv_editor END, IDuser_pv_official_editor = CASE WHEN IDuser_pv_official_editor = :source_pv_editor THEN NULL ELSE IDuser_pv_official_editor END WHERE IDorganization = :organization_id", $params);
+			$params = array(
+				'organization_id' => (int)$organizationId,
+				'source_creation' => (int)$userId,
+				'source_owner' => (int)$userId,
+				'source_modification' => (int)$userId,
+				'source_edition' => (int)$userId,
+				'source_pv_editor' => (int)$userId,
+				'source_pv_official_editor' => (int)$userId,
+				'ghost_creation' => (int)$ghostUserId,
+				'ghost_owner' => (int)$ghostUserId,
+				'ghost_modification' => (int)$ghostUserId,
+			);
+			return self::execute("UPDATE document SET IDusercreation = CASE WHEN IDusercreation = :source_creation THEN :ghost_creation ELSE IDusercreation END, IDuser = CASE WHEN IDuser = :source_owner THEN CASE WHEN active = 0 THEN :ghost_owner ELSE NULL END ELSE IDuser END, IDusermodification = CASE WHEN IDusermodification = :source_modification THEN CASE WHEN active = 0 THEN :ghost_modification ELSE NULL END ELSE IDusermodification END, IDuseredition = CASE WHEN IDuseredition = :source_edition THEN NULL ELSE IDuseredition END, IDuser_pv_editor = CASE WHEN IDuser_pv_editor = :source_pv_editor THEN NULL ELSE IDuser_pv_editor END, IDuser_pv_official_editor = CASE WHEN IDuser_pv_official_editor = :source_pv_official_editor THEN NULL ELSE IDuser_pv_official_editor END WHERE IDorganization = :organization_id", $params);
 		}
 
 		public function isArchived(): bool
