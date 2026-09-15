@@ -57,7 +57,7 @@ $collaboraOrigin = $canUseCollabora ? omoCollaboraBuildPostMessageOrigin((string
         <?php if ($isPdf): ?>
             <iframe class="omo-document-file__pdf-frame" src="<?= $escape($inlineUrl) ?>" title="<?= $escape($filename) ?>"></iframe>
         <?php elseif ($collaboraUrl !== ''): ?>
-            <iframe class="omo-document-collabora__frame" src="<?= $escape($collaboraUrl) ?>" title="<?= $escape($filename) ?>" data-omo-collabora-document-id="<?= (int)$context['folder']->getId() ?>" data-omo-collabora-remote-path="<?= $escape($remotePath) ?>"></iframe>
+            <iframe class="omo-document-collabora__frame" src="<?= $escape($collaboraUrl) ?>" title="<?= $escape($filename) ?>" data-omo-collabora-document-id="<?= (int)$context['folder']->getId() ?>" data-omo-collabora-remote-path="<?= $escape($remotePath) ?>" allow="clipboard-read *; clipboard-write *; fullscreen" allowfullscreen></iframe>
         <?php else: ?>
             <div class="omo-empty-state"><?= $escape($t('documents.nextcloud.detail.download_only')) ?></div>
         <?php endif; ?>
