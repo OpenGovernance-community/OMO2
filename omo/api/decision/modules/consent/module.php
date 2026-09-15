@@ -170,6 +170,8 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
             && $decision->hasOwnerIntermediateResultsAccess();
         $participantIntermediateResultsAccess = $decision instanceof DecisionProcess
             && $decision->hasParticipantIntermediateResultsAccess();
+        $participantResponsesEditable = !($decision instanceof DecisionProcess)
+            || $decision->areParticipantResponsesEditable();
         $showLiveResults = $participantIntermediateResultsAccess;
         $randomizeProposalOrder = !empty($config['randomize_proposal_order']);
         $oneProposalAtATime = !empty($config['one_proposal_at_a_time']);
@@ -256,6 +258,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         }
         $participantHasCompletedResponse = $selectedResponse instanceof DecisionResponse
             && DecisionResponse::normalizeStatus($selectedResponse->get('status')) === DecisionResponse::STATUS_SUBMITTED;
+        $canEditSubmittedResponse = !$participantHasCompletedResponse || $participantResponsesEditable;
         $liveResultsMode = !$resultsMode
             && $isParticipateMode
             && $evaluationStarted
@@ -498,6 +501,11 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         <input type="checkbox" name="<?= $canEditStructure ? 'participant_intermediate_results_access' : '' ?>" value="1" <?= $participantIntermediateResultsAccess ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
                         <span><?= $escape(t('decisions.edit.participant_intermediate_results_access', [], $lang, $sourceLang)) ?></span>
                     </label>
+                    <input type="hidden" name="participant_responses_editable" value="<?= $participantResponsesEditable ? '1' : '0' ?>">
+                    <label class="generic-form-checkbox">
+                        <input type="checkbox" name="<?= $canEditStructure ? 'participant_responses_editable' : '' ?>" value="1" <?= $participantResponsesEditable ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                        <span><?= $escape(t('decisions.edit.participant_responses_editable', [], $lang, $sourceLang)) ?></span>
+                    </label>
                     <?php endif; ?>
                     <input type="hidden" name="randomize_proposal_order" value="<?= $randomizeProposalOrder ? '1' : '' ?>" data-omo-decision-consent-hidden-random-order>
                     <input type="hidden" name="one_proposal_at_a_time" value="<?= $oneProposalAtATime ? '1' : '' ?>" data-omo-decision-consent-hidden-one-proposal-at-a-time>
@@ -717,7 +725,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     <input type="hidden" name="intent" value="participate">
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
 
-                    <fieldset class="omo-decision-consent__fieldset">
+                    <fieldset class="omo-decision-consent__fieldset"<?= !$canEditSubmittedResponse ? ' disabled' : '' ?>>
                         <legend class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.your_choices', [], $lang, $sourceLang)) ?></legend>
                         <p class="omo-decision-consent__text"><?= $escape(t('decisions.consent.field.select_all', [], $lang, $sourceLang)) ?></p>
 
@@ -766,7 +774,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                         <?php endif; ?>
                     </fieldset>
                     <label class="omo-decision-consent__modal-option">
-                        <input type="checkbox" name="is_anonymous" value="1"<?= $anonymousVoteChecked ? ' checked' : '' ?><?= $anonymousVoteDisabled ? ' disabled' : '' ?>>
+                        <input type="checkbox" name="is_anonymous" value="1"<?= $anonymousVoteChecked ? ' checked' : '' ?><?= $anonymousVoteDisabled || !$canEditSubmittedResponse ? ' disabled' : '' ?>>
                         <span><?= $escape(t('decisions.consent.field.anonymous', [], $lang, $sourceLang)) ?></span>
                     </label>
                     <?php if ($consultationProposalPanel !== ''): ?>
@@ -774,7 +782,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     <?php endif; ?>
 
                     <div class="omo-decision-consent__footer">
-                        <button type="submit" class="generic-action-button generic-action-button--main" data-omo-decision-consent-response-submit><?= $escape($selectedResponse instanceof DecisionResponse ? t('decisions.consent.action.update_response', [], $lang, $sourceLang) : t('decisions.consent.action.submit_response', [], $lang, $sourceLang)) ?></button>
+                        <button type="submit" class="generic-action-button generic-action-button--main" data-omo-decision-consent-response-submit<?= $canEditSubmittedResponse ? '' : ' disabled' ?>><?= $escape($selectedResponse instanceof DecisionResponse ? t('decisions.consent.action.update_response', [], $lang, $sourceLang) : t('decisions.consent.action.submit_response', [], $lang, $sourceLang)) ?></button>
                         <div class="omo-decision-consent__feedback" data-omo-decision-consent-response-feedback aria-live="polite"></div>
                     </div>
 

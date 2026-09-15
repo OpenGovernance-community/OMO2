@@ -1639,6 +1639,24 @@ class DecisionProcess extends DbObject
         return $parameters;
     }
 
+    public function areParticipantResponsesEditable(): bool
+    {
+        $parameters = $this->getRootParametersArray();
+        return !array_key_exists('participant_responses_editable', $parameters)
+            || !empty($parameters['participant_responses_editable']);
+    }
+
+    public static function mergeParticipantResponsesEditableParameter($parameters, $enabled): array
+    {
+        if (!is_array($parameters)) {
+            $decoded = json_decode(trim((string)$parameters), true);
+            $parameters = is_array($decoded) ? $decoded : [];
+        }
+
+        $parameters['participant_responses_editable'] = !empty($enabled) ? 1 : 0;
+        return $parameters;
+    }
+
     public function getPublicAccessSettings()
     {
         $parameters = $this->getRootParametersArray();

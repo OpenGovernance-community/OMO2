@@ -195,6 +195,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
             && $decision->hasOwnerIntermediateResultsAccess();
         $participantIntermediateResultsAccess = $decision instanceof DecisionProcess
             && $decision->hasParticipantIntermediateResultsAccess();
+        $participantResponsesEditable = !($decision instanceof DecisionProcess)
+            || $decision->areParticipantResponsesEditable();
         $showLiveResults = $participantIntermediateResultsAccess;
         $randomizeProposalOrder = !empty($config['randomize_proposal_order']);
         $oneProposalAtATime = !empty($config['one_proposal_at_a_time']);
@@ -282,6 +284,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
         }
         $participantHasCompletedResponse = $selectedResponse instanceof DecisionResponse
             && DecisionResponse::normalizeStatus($selectedResponse->get('status')) === DecisionResponse::STATUS_SUBMITTED;
+        $canEditSubmittedResponse = !$participantHasCompletedResponse || $participantResponsesEditable;
         $liveResultsMode = !$resultsMode
             && $isParticipateMode
             && $evaluationStarted
@@ -560,6 +563,11 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         <label class="generic-form-checkbox">
                             <input type="checkbox" name="<?= $canEditStructure ? 'participant_intermediate_results_access' : '' ?>" value="1" <?= $participantIntermediateResultsAccess ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
                             <span><?= $escape(t('decisions.edit.participant_intermediate_results_access', [], $lang, $sourceLang)) ?></span>
+                        </label>
+                        <input type="hidden" name="participant_responses_editable" value="<?= $participantResponsesEditable ? '1' : '0' ?>">
+                        <label class="generic-form-checkbox">
+                            <input type="checkbox" name="<?= $canEditStructure ? 'participant_responses_editable' : '' ?>" value="1" <?= $participantResponsesEditable ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                            <span><?= $escape(t('decisions.edit.participant_responses_editable', [], $lang, $sourceLang)) ?></span>
                         </label>
                         <?php endif; ?>
                         <input type="hidden" name="randomize_proposal_order" value="<?= $randomizeProposalOrder ? '1' : '' ?>" data-omo-decision-mj-hidden-random-order>
@@ -898,7 +906,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 <div class="omo-decision-majority-judgment__rating-scale" role="radiogroup" aria-label="<?= $escape(t('decisions.majority_judgment.field.your_scores', [], $lang, $sourceLang)) ?>">
                                 <?php foreach ($mentions as $score => $mentionLabel): ?>
                                     <div class="omo-decision-majority-judgment__rating-option omo-decision-majority-judgment__rating-option--<?= $escape((string)$score) ?><?= array_key_exists($proposalId, $selectedScores) && (int)$selectedScores[$proposalId] === (int)$score ? ' is-selected' : '' ?>">
-                                        <input class="omo-decision-majority-judgment__rating-input" type="radio" name="scores[<?= $escape($proposalId) ?>]" value="<?= $escape($score) ?>" <?= array_key_exists($proposalId, $selectedScores) && (int)$selectedScores[$proposalId] === (int)$score ? 'checked' : '' ?> required>
+                                        <input class="omo-decision-majority-judgment__rating-input" type="radio" name="scores[<?= $escape($proposalId) ?>]" value="<?= $escape($score) ?>" <?= array_key_exists($proposalId, $selectedScores) && (int)$selectedScores[$proposalId] === (int)$score ? 'checked' : '' ?><?= $canEditSubmittedResponse ? '' : ' disabled' ?> required>
                                         <label
                                             class="omo-decision-majority-judgment__rating-chip"
                                             data-omo-decision-mj-rating-trigger
@@ -933,9 +941,10 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         'question' => $voteWeightQuestion,
                         'options' => $voteWeightOptions,
                         'selected_weight' => $selectedVoteWeight,
+                        'disabled' => !$canEditSubmittedResponse,
                     ]) ?>
                     <label class="omo-decision-majority-judgment__toggle">
-                        <input type="checkbox" name="is_anonymous" value="1"<?= $anonymousVoteChecked ? ' checked' : '' ?><?= $anonymousVoteDisabled ? ' disabled' : '' ?>>
+                        <input type="checkbox" name="is_anonymous" value="1"<?= $anonymousVoteChecked ? ' checked' : '' ?><?= $anonymousVoteDisabled || !$canEditSubmittedResponse ? ' disabled' : '' ?>>
                         <span><?= $escape(t('decisions.majority_judgment.field.anonymous', [], $lang, $sourceLang)) ?></span>
                     </label>
                     <?php endif; ?>
@@ -945,7 +954,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
 
                     <?php if (!$isConsultationPhase): ?>
                     <div class="omo-decision-majority-judgment__footer">
-                        <button type="submit" class="generic-action-button generic-action-button--main" data-omo-decision-mj-response-submit><?= $escape($selectedResponse instanceof DecisionResponse ? t('decisions.majority_judgment.action.update_response', [], $lang, $sourceLang) : t('decisions.majority_judgment.action.submit_response', [], $lang, $sourceLang)) ?></button>
+                        <button type="submit" class="generic-action-button generic-action-button--main" data-omo-decision-mj-response-submit<?= $canEditSubmittedResponse ? '' : ' disabled' ?>><?= $escape($selectedResponse instanceof DecisionResponse ? t('decisions.majority_judgment.action.update_response', [], $lang, $sourceLang) : t('decisions.majority_judgment.action.submit_response', [], $lang, $sourceLang)) ?></button>
                         <div class="omo-decision-majority-judgment__feedback" data-omo-decision-mj-response-feedback aria-live="polite"></div>
                     </div>
 

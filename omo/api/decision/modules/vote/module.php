@@ -485,6 +485,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             && $decision->hasOwnerIntermediateResultsAccess();
         $participantIntermediateResultsAccess = $decision instanceof DecisionProcess
             && $decision->hasParticipantIntermediateResultsAccess();
+        $participantResponsesEditable = !($decision instanceof DecisionProcess)
+            || $decision->areParticipantResponsesEditable();
         $showLiveResults = $participantIntermediateResultsAccess;
         $randomizeProposalOrder = !$consultationOnly && !empty($voteConfig['randomize_proposal_order']);
         $oneProposalAtATime = !$consultationOnly && !empty($voteConfig['one_proposal_at_a_time']);
@@ -562,6 +564,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         }
         $participantHasCompletedResponse = $selectedResponse instanceof DecisionResponse
             && DecisionResponse::normalizeStatus($selectedResponse->get('status')) === DecisionResponse::STATUS_SUBMITTED;
+        $canEditSubmittedResponse = !$participantHasCompletedResponse || $participantResponsesEditable;
         $liveResultsMode = !$resultsMode
             && $isParticipateMode
             && $evaluationStarted
@@ -921,6 +924,11 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             <input type="checkbox" name="<?= $canEditStructure ? 'participant_intermediate_results_access' : '' ?>" value="1" <?= $participantIntermediateResultsAccess ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
                             <span><?= $escape(t('decisions.edit.participant_intermediate_results_access', [], $lang, $sourceLang)) ?></span>
                         </label>
+                        <input type="hidden" name="participant_responses_editable" value="<?= $participantResponsesEditable ? '1' : '0' ?>">
+                        <label class="generic-form-checkbox">
+                            <input type="checkbox" name="<?= $canEditStructure ? 'participant_responses_editable' : '' ?>" value="1" <?= $participantResponsesEditable ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
+                            <span><?= $escape(t('decisions.edit.participant_responses_editable', [], $lang, $sourceLang)) ?></span>
+                        </label>
                         <?php endif; ?>
                         <input type="hidden" name="randomize_proposal_order" value="<?= $randomizeProposalOrder ? '1' : '' ?>" data-omo-decision-vote-hidden-random-order>
                         <input type="hidden" name="one_proposal_at_a_time" value="<?= $oneProposalAtATime ? '1' : '' ?>" data-omo-decision-vote-hidden-one-proposal-at-a-time>
@@ -1265,7 +1273,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
                     <input type="hidden" name="choice_mode" value="<?= $escape($choiceMode) ?>">
 
-                    <fieldset class="omo-decision-vote__fieldset"<?= $oneProposalAtATime && $evaluationStarted ? ' data-omo-decision-one-at-a-time' : '' ?><?= $oneProposalAtATime && $evaluationStarted && $choiceMode === 'single' ? ' data-omo-decision-one-at-a-time-single-choice="1"' : '' ?><?= $oneProposalAtATime && $evaluationStarted && (!($selectedResponse instanceof DecisionResponse) || DecisionResponse::normalizeStatus($selectedResponse->get('status')) !== DecisionResponse::STATUS_SUBMITTED) ? ' data-omo-decision-one-at-a-time-draft-url="/omo/api/decision/modules/vote/respond.php"' : '' ?>>
+                    <fieldset class="omo-decision-vote__fieldset"<?= !$canEditSubmittedResponse ? ' disabled' : '' ?><?= $oneProposalAtATime && $evaluationStarted ? ' data-omo-decision-one-at-a-time' : '' ?><?= $oneProposalAtATime && $evaluationStarted && $choiceMode === 'single' ? ' data-omo-decision-one-at-a-time-single-choice="1"' : '' ?><?= $oneProposalAtATime && $evaluationStarted && (!($selectedResponse instanceof DecisionResponse) || DecisionResponse::normalizeStatus($selectedResponse->get('status')) !== DecisionResponse::STATUS_SUBMITTED) ? ' data-omo-decision-one-at-a-time-draft-url="/omo/api/decision/modules/vote/respond.php"' : '' ?>>
                         <legend class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.your_choice', [], $lang, $sourceLang)) ?></legend>
                         <?php if ($choiceMode === 'multiple'): ?>
                         <p class="omo-decision-vote__text"><?= $escape($maxChoices === 0
@@ -1307,9 +1315,10 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         'question' => $voteWeightQuestion,
                         'options' => $voteWeightOptions,
                         'selected_weight' => $selectedVoteWeight,
+                        'disabled' => !$canEditSubmittedResponse,
                     ]) ?>
                     <label class="omo-decision-vote__check-row">
-                        <input type="checkbox" name="is_anonymous" value="1"<?= $anonymousVoteChecked ? ' checked' : '' ?><?= $anonymousVoteDisabled ? ' disabled' : '' ?>>
+                        <input type="checkbox" name="is_anonymous" value="1"<?= $anonymousVoteChecked ? ' checked' : '' ?><?= $anonymousVoteDisabled || !$canEditSubmittedResponse ? ' disabled' : '' ?>>
                         <span><?= $escape(t('decisions.vote.field.anonymous', [], $lang, $sourceLang)) ?></span>
                     </label>
                     <?php if ($consultationProposalPanel !== ''): ?>
@@ -1317,7 +1326,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     <?php endif; ?>
 
                     <div class="omo-decision-vote__footer">
-                        <button type="submit" class="generic-action-button generic-action-button--main" data-omo-decision-vote-response-submit>
+                        <button type="submit" class="generic-action-button generic-action-button--main" data-omo-decision-vote-response-submit<?= $canEditSubmittedResponse ? '' : ' disabled' ?>>
                             <?= $escape($selectedResponse instanceof DecisionResponse ? t('decisions.vote.action.update_response', [], $lang, $sourceLang) : t('decisions.vote.action.submit_response', [], $lang, $sourceLang)) ?>
                         </button>
                         <div class="omo-decision-vote__feedback" data-omo-decision-vote-response-feedback aria-live="polite"></div>

@@ -65,6 +65,9 @@ $ownerIntermediateResultsAccess = array_key_exists('owner_intermediate_results_a
 $participantIntermediateResultsAccess = array_key_exists('participant_intermediate_results_access', $_POST)
     ? !empty($_POST['participant_intermediate_results_access'])
     : ($decision instanceof DecisionProcess && $decision->hasParticipantIntermediateResultsAccess());
+$participantResponsesEditable = array_key_exists('participant_responses_editable', $_POST)
+    ? !empty($_POST['participant_responses_editable'])
+    : !($decision instanceof DecisionProcess) || $decision->areParticipantResponsesEditable();
 $randomizeProposalOrder = !empty($_POST['randomize_proposal_order']);
 $oneProposalAtATime = !empty($_POST['one_proposal_at_a_time']);
 $proposalContentInput = omoDecisionNormalizeProposalContent([
@@ -259,6 +262,10 @@ try {
     $parameters = DecisionProcess::mergeParticipantIntermediateResultsAccessParameter(
         $parameters,
         $participantIntermediateResultsAccess
+    );
+    $parameters = DecisionProcess::mergeParticipantResponsesEditableParameter(
+        $parameters,
+        $participantResponsesEditable
     );
     $saveDecision = $decision->save();
     if (empty($saveDecision['status'])) {
