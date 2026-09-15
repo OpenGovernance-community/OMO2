@@ -15,7 +15,7 @@ class OrganizationalMaturityAssessment extends DbObject
             [['id'], 'integer'],
             [['IDuser', 'IDorganization', 'IDinvitation'], 'fk'],
             [['public_token', 'private_token_hash'], 'string'],
-            [['created_at', 'updated_at'], 'datetime'],
+            [['created_at', 'updated_at', 'completed_at'], 'datetime'],
             [['id'], 'safe'],
         ];
     }
@@ -30,6 +30,7 @@ class OrganizationalMaturityAssessment extends DbObject
             'private_token_hash' => 'Cle de modification',
             'created_at' => 'Cree le',
             'updated_at' => 'Modifie le',
+            'completed_at' => 'Termine le',
         ];
     }
 
@@ -118,6 +119,7 @@ class OrganizationalMaturityAssessment extends DbObject
              FROM organizational_maturity_assessment_response r
              INNER JOIN organizational_maturity_assessment a ON a.id = r.IDassessment
              WHERE a.IDorganization = :organization_id
+               AND a.completed_at IS NOT NULL
              GROUP BY r.principle_number
              ORDER BY r.principle_number ASC',
             ['organization_id' => $organizationId]
@@ -130,6 +132,7 @@ class OrganizationalMaturityAssessment extends DbObject
              LEFT JOIN organizational_maturity_assessment a
                 ON a.IDorganization = uo.IDorganization
                AND a.IDuser = uo.IDuser
+               AND a.completed_at IS NOT NULL
              WHERE uo.IDorganization = :organization_id
                AND uo.active = 1',
             ['organization_id' => $organizationId]
@@ -326,6 +329,7 @@ class OrganizationalMaturityAssessment extends DbObject
              FROM organizational_maturity_assessment a
              INNER JOIN organizational_maturity_assessment_response r ON r.IDassessment = a.id
              WHERE a.IDorganization = :organization_id
+               AND a.completed_at IS NOT NULL
              ORDER BY a.id ASC, r.principle_number ASC',
             ['organization_id' => (int)$organizationId]
         );
@@ -660,9 +664,66 @@ class OrganizationalMaturityAssessment extends DbObject
         return $normalized;
     }
 
+    public static function normalizeDraftAnswers($answers)
+    {
+        if (!is_array($answers) || count($answers) !== 10) {
+            return false;
+        }
+
+        $normalized = [];
+        foreach (array_values($answers) as $index => $answer) {
+            if (!is_array($answer)) {
+                return false;
+            }
+            $normalized[] = [
+                'principle_number' => $index + 1,
+                'affinity_score' => self::normalizeScore($answer['affinity'] ?? null) ?? 0,
+                'today_score' => self::normalizeScore($answer['situation']['today'] ?? null) ?? 0,
+                'tomorrow_score' => self::normalizeScore($answer['situation']['tomorrow'] ?? null) ?? 0,
+            ];
+        }
+
+        return $normalized;
+    }
+
     public static function createFromAnswers(array $answers)
     {
         $normalized = self::normalizeAnswers($answers);
+        if ($normalized === false) {
+            return false;
+        }
+
+        try {
+            $privateToken = bin2hex(random_bytes(32));
+            $publicToken = bin2hex(random_bytes(8));
+        } catch (\Throwable $error) {
+            return false;
+        }
+
+        $assessment = new self();
+        $assessment->set('public_token', $publicToken);
+        $assessment->set('private_token_hash', hash('sha256', $privateToken));
+        $assessment->set('created_at', new \DateTimeImmutable());
+        $assessment->set('updated_at', new \DateTimeImmutable());
+        $assessment->set('completed_at', new \DateTimeImmutable());
+        $saveResult = $assessment->save();
+        if (empty($saveResult['status']) || (int)$assessment->getId() <= 0) {
+            return false;
+        }
+
+        if (!OrganizationalMaturityAssessmentResponse::replaceForAssessment((int)$assessment->getId(), $normalized)) {
+            return false;
+        }
+
+        return [
+            'assessment' => $assessment,
+            'privateToken' => $privateToken,
+        ];
+    }
+
+    public static function createDraftFromAnswers(array $answers)
+    {
+        $normalized = self::normalizeDraftAnswers($answers);
         if ($normalized === false) {
             return false;
         }
@@ -683,15 +744,10 @@ class OrganizationalMaturityAssessment extends DbObject
         if (empty($saveResult['status']) || (int)$assessment->getId() <= 0) {
             return false;
         }
-
         if (!OrganizationalMaturityAssessmentResponse::replaceForAssessment((int)$assessment->getId(), $normalized)) {
             return false;
         }
-
-        return [
-            'assessment' => $assessment,
-            'privateToken' => $privateToken,
-        ];
+        return ['assessment' => $assessment, 'privateToken' => $privateToken];
     }
 
     public function updateAnswers(array $answers)
@@ -707,8 +763,23 @@ class OrganizationalMaturityAssessment extends DbObject
         }
 
         $this->set('updated_at', new \DateTimeImmutable());
+        $this->set('completed_at', new \DateTimeImmutable());
         $saveResult = $this->save();
         return !empty($saveResult['status']);
+    }
+
+    public function updateDraftAnswers(array $answers)
+    {
+        $assessmentId = (int)$this->getId();
+        $normalized = self::normalizeDraftAnswers($answers);
+        if ($assessmentId <= 0 || $normalized === false) {
+            return false;
+        }
+        if (!OrganizationalMaturityAssessmentResponse::replaceForAssessment($assessmentId, $normalized)) {
+            return false;
+        }
+        $this->set('updated_at', new \DateTimeImmutable());
+        return !empty($this->save()['status']);
     }
 
     public function attachToUserOrganization($userId, $organizationId)
@@ -727,12 +798,17 @@ class OrganizationalMaturityAssessment extends DbObject
         return !empty($saveResult['status']);
     }
 
-    public function attachToInvitation(OrganizationalMaturityInvitation $invitation)
+    public function attachToInvitation(OrganizationalMaturityInvitation $invitation, $resolveUser = true)
     {
-        $user = $invitation->resolveOrCreateUser();
         $organizationId = (int)$invitation->get('IDorganization');
-        if (!$user || $organizationId <= 0) return false;
-        $this->set('IDuser', (int)$user->getId()); $this->set('IDorganization', $organizationId); $this->set('IDinvitation', (int)$invitation->getId()); $this->set('updated_at', new \DateTimeImmutable());
+        if ($organizationId <= 0) return false;
+        $userId = (int)$invitation->get('IDuser');
+        if ((int)$invitation->get('public_access') !== 1 && $resolveUser) {
+            $user = $invitation->resolveOrCreateUser();
+            if (!$user) return false;
+            $userId = (int)$user->getId();
+        }
+        $this->set('IDuser', $userId > 0 ? $userId : null); $this->set('IDorganization', $organizationId); $this->set('IDinvitation', (int)$invitation->getId()); $this->set('updated_at', new \DateTimeImmutable());
         return !empty($this->save()['status']);
     }
 

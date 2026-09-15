@@ -105,6 +105,110 @@ $sourceLang = [
         'text' => 'E-mails',
         'context' => 'Email selector tab in the survey invitation dialog.',
     ],
+    'survey.invite.public' => [
+        'text' => 'Tout public',
+        'context' => 'Public self-registration tab in the survey invitation dialog.',
+    ],
+    'survey.invite.public_help' => [
+        'text' => 'Créez un lien que chacun pourra ouvrir. La personne saisira son e-mail, recevra un code, puis ses réponses seront rattachées à cette organisation.',
+        'context' => 'Explanation for the public survey link in the survey invitation dialog.',
+    ],
+    'survey.invite.public_generate' => [
+        'text' => 'Générer le lien public',
+        'context' => 'Button that creates the public self-registration survey link.',
+    ],
+    'survey.invite.public_generating' => [
+        'text' => 'Génération en cours…',
+        'context' => 'Busy label while creating the public survey link.',
+    ],
+    'survey.invite.public_generated' => [
+        'text' => 'Lien public prêt',
+        'context' => 'Heading shown after the public survey link has been created.',
+    ],
+    'survey.invite.public_copy' => [
+        'text' => 'Copier le lien',
+        'context' => 'Button that copies the public survey link.',
+    ],
+    'survey.invite.public_copied' => [
+        'text' => 'Lien copié',
+        'context' => 'Confirmation after copying the public survey link.',
+    ],
+    'survey.public_access.invalid' => [
+        'text' => 'Ce lien public n’est plus disponible.',
+        'context' => 'Error shown for an invalid public survey link.',
+    ],
+    'survey.public_access.title' => [
+        'text' => 'Participer à l’évaluation de {organization}',
+        'context' => 'Title on the public survey access page.',
+    ],
+    'survey.public_access.intro' => [
+        'text' => 'Saisissez votre adresse e-mail pour recevoir un code d’accès et partager votre perception de {organization}.',
+        'context' => 'Introductory text on the public survey access page.',
+    ],
+    'survey.public_access.eyebrow' => [
+        'text' => 'Accès public',
+        'context' => 'Eyebrow on the public survey access page.',
+    ],
+    'survey.public_access.email' => [
+        'text' => 'Adresse e-mail',
+        'context' => 'Email field label on the public survey access page.',
+    ],
+    'survey.public_access.email_placeholder' => [
+        'text' => 'nom@exemple.org',
+        'context' => 'Email field placeholder on the public survey access page.',
+    ],
+    'survey.public_access.code' => [
+        'text' => 'Code reçu par e-mail',
+        'context' => 'Code field label on the public survey access page.',
+    ],
+    'survey.public_access.code_placeholder' => [
+        'text' => '123456',
+        'context' => 'Code field placeholder on the public survey access page.',
+    ],
+    'survey.public_access.send' => [
+        'text' => 'Envoyer mon accès',
+        'context' => 'Button requesting a public survey access code.',
+    ],
+    'survey.public_access.resend' => [
+        'text' => 'Renvoyer le code',
+        'context' => 'Button resending a public survey access code.',
+    ],
+    'survey.public_access.enter' => [
+        'text' => 'Accéder au questionnaire',
+        'context' => 'Button validating a public survey access code.',
+    ],
+    'survey.public_access.code_sent' => [
+        'text' => 'Un code personnel vient d’être envoyé à {email}.',
+        'context' => 'Confirmation after sending a public survey access code.',
+    ],
+    'survey.public_access.code_valid' => [
+        'text' => 'Code valide. Redirection en cours…',
+        'context' => 'Confirmation after validating a public survey access code.',
+    ],
+    'survey.public_access.invalid_email' => [
+        'text' => 'Merci de saisir une adresse e-mail valide.',
+        'context' => 'Error for an invalid public survey access email.',
+    ],
+    'survey.public_access.code_empty' => [
+        'text' => 'Merci de saisir le code reçu par e-mail.',
+        'context' => 'Error for an empty public survey access code.',
+    ],
+    'survey.public_access.code_missing' => [
+        'text' => 'Aucun code valide n’a été trouvé pour cette adresse. Demandez-en un nouveau.',
+        'context' => 'Error when no public survey access code exists.',
+    ],
+    'survey.public_access.code_expired' => [
+        'text' => 'Ce code a expiré. Demandez-en un nouveau.',
+        'context' => 'Error for an expired public survey access code.',
+    ],
+    'survey.public_access.code_invalid' => [
+        'text' => 'Ce code est incorrect.',
+        'context' => 'Error for an incorrect public survey access code.',
+    ],
+    'survey.public_access.process_failed' => [
+        'text' => 'Impossible de traiter cette demande pour le moment.',
+        'context' => 'Fallback error on the public survey access page.',
+    ],
     'survey.invite.email_help' => [
         'text' => 'Une adresse par ligne, ou plusieurs adresses séparées par des virgules.',
         'context' => 'Help below external email textarea in the survey invitation dialog.',
@@ -260,6 +364,22 @@ $sourceLang = [
     'survey.save.status' => [
         'text' => 'Ce questionnaire est anonyme',
         'context' => 'Anonymity note shown under the survey navigation.',
+    ],
+    'survey.save.draft_saving' => [
+        'text' => 'Sauvegarde de vos réponses…',
+        'context' => 'Status while an organization-linked survey draft is being saved.',
+    ],
+    'survey.save.draft_ready' => [
+        'text' => 'Vos réponses sont sauvegardées automatiquement.',
+        'context' => 'Status before answering an organization-linked survey.',
+    ],
+    'survey.save.draft_saved' => [
+        'text' => 'Vos réponses sont sauvegardées.',
+        'context' => 'Status after an organization-linked survey draft has been saved.',
+    ],
+    'survey.save.draft_error' => [
+        'text' => 'Vos réponses restent sur cet appareil en attendant la sauvegarde.',
+        'context' => 'Status when an organization-linked survey draft could not be saved.',
     ],
     'survey.privacy.policy' => [
         'text' => 'Politique de confidentialité',

@@ -59,6 +59,9 @@ $persistedAssessment = $invitationToken !== ''
     ? \dbObject\OrganizationalMaturityAssessment::findByInvitation((int)$invitation->getId())
     : ($privateToken !== '' ? \dbObject\OrganizationalMaturityAssessment::findByPrivateToken($privateToken) : null);
 $persistedAnswers = $persistedAssessment ? $persistedAssessment->getSurveyAnswers() : [];
+$persistedCompleted = $persistedAssessment
+    && ($persistedAssessment->get('completed_at') instanceof \DateTimeInterface || trim((string)$persistedAssessment->get('completed_at')) !== '');
+$persistedOrganizationLinked = $persistedAssessment && (int)$persistedAssessment->get('IDorganization') > 0;
 $persistedLinks = $persistedAssessment && $invitationToken === ''
     ? surveyBuildAssessmentUrls((string)$persistedAssessment->get('public_token'), $privateToken)
     : null;
@@ -155,6 +158,8 @@ $surveyConfig = [
         'privateToken' => $persistedAssessment ? $privateToken : '',
         'invitationToken' => $invitationToken,
         'isInvitation' => $isInvitationSurvey,
+        'isCompleted' => $persistedCompleted,
+        'isOrganizationLinked' => $persistedOrganizationLinked,
         'answers' => $persistedAnswers,
         'links' => $persistedLinks,
         'saveEndpoint' => '/survey/api/save.php',
@@ -203,6 +208,10 @@ $surveyConfig = [
             5 => t('survey.scale.5', [], $lang, $sourceLang),
         ],
         'saveStatus' => t('survey.save.status', [], $lang, $sourceLang),
+        'saveDraftSaving' => t('survey.save.draft_saving', [], $lang, $sourceLang),
+        'saveDraftReady' => t('survey.save.draft_ready', [], $lang, $sourceLang),
+        'saveDraftSaved' => t('survey.save.draft_saved', [], $lang, $sourceLang),
+        'saveDraftError' => t('survey.save.draft_error', [], $lang, $sourceLang),
         'privacyPolicy' => t('survey.privacy.policy', [], $lang, $sourceLang),
         'incomplete' => t('survey.error.incomplete', [], $lang, $sourceLang),
         'resultsEyebrow' => t('survey.results.eyebrow', [], $lang, $sourceLang),
@@ -259,6 +268,13 @@ $surveyConfig = [
         'inviteHolons' => t('survey.invite.holons', [], $lang, $sourceLang),
         'inviteMembers' => t('survey.invite.members', [], $lang, $sourceLang),
         'inviteEmails' => t('survey.invite.emails', [], $lang, $sourceLang),
+        'invitePublic' => t('survey.invite.public', [], $lang, $sourceLang),
+        'invitePublicHelp' => t('survey.invite.public_help', [], $lang, $sourceLang),
+        'invitePublicGenerate' => t('survey.invite.public_generate', [], $lang, $sourceLang),
+        'invitePublicGenerating' => t('survey.invite.public_generating', [], $lang, $sourceLang),
+        'invitePublicGenerated' => t('survey.invite.public_generated', [], $lang, $sourceLang),
+        'invitePublicCopy' => t('survey.invite.public_copy', [], $lang, $sourceLang),
+        'invitePublicCopied' => t('survey.invite.public_copied', [], $lang, $sourceLang),
         'inviteEmailHelp' => t('survey.invite.email_help', [], $lang, $sourceLang),
         'inviteEmailPlaceholder' => t('survey.invite.email_placeholder', [], $lang, $sourceLang),
         'inviteSend' => t('survey.invite.send', [], $lang, $sourceLang),
@@ -278,7 +294,7 @@ $surveyConfig = [
     <meta name="theme-color" content="#073a59">
     <title><?= $escape($pageTitle) ?></title>
     <link rel="stylesheet" href="/common/assets/components.css?v=20260830-layout7">
-    <link rel="stylesheet" href="/survey/survey.css?v=20260830-layout7">
+    <link rel="stylesheet" href="/survey/survey.css?v=20260915-drafts">
 </head>
 <body>
     <main class="survey-page" id="surveyPage">
@@ -497,6 +513,6 @@ $surveyConfig = [
     <script>
         window.SURVEY_PROTOTYPE = <?= json_encode($surveyConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
     </script>
-    <script src="/survey/survey.js?v=20260830-layout7"></script>
+    <script src="/survey/survey.js?v=20260915-drafts"></script>
 </body>
 </html>

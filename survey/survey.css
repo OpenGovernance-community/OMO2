@@ -2558,6 +2558,23 @@ input:focus-visible + label {
     line-height: 1.5;
 }
 
+.survey-invite-dialog__public-link {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--survey-ice);
+}
+
+.survey-invite-dialog__public-link strong {
+    color: var(--survey-deep);
+}
+
+.survey-invite-dialog__public-link input {
+    min-width: 0;
+    font-size: 0.82rem;
+}
+
 .survey-invite-dialog__feedback {
     padding: 10px 12px;
     border-radius: 10px;
@@ -2568,6 +2585,64 @@ input:focus-visible + label {
 .survey-invite-dialog__feedback--error {
     background: #fff1f1;
     color: #9b3d3d;
+}
+
+.survey-public-access {
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+    padding: clamp(18px, 5vw, 56px);
+}
+
+.survey-public-access__card {
+    display: grid;
+    gap: 16px;
+    width: min(100%, 620px);
+    padding: clamp(24px, 5vw, 44px);
+    border-color: rgba(40, 168, 212, 0.24);
+    box-shadow: var(--survey-shadow);
+}
+
+.survey-public-access__card h1 {
+    margin: 0;
+    color: var(--survey-deep);
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    letter-spacing: -0.04em;
+    line-height: 1.08;
+}
+
+.survey-public-access__intro,
+.survey-public-access__feedback {
+    margin: 0;
+    color: var(--color-text-light);
+    line-height: 1.6;
+}
+
+.survey-public-access__form,
+.survey-public-access__form label {
+    display: grid;
+    gap: 8px;
+}
+
+.survey-public-access__form {
+    gap: 16px;
+    margin-top: 4px;
+}
+
+.survey-public-access__form label > span {
+    color: var(--survey-deep);
+    font-weight: 750;
+}
+
+.survey-public-access__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.survey-public-access__feedback.is-success {
+    color: #087d80;
+    font-weight: 700;
 }
 
 
