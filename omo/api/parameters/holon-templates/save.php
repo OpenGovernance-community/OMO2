@@ -33,6 +33,19 @@ if (!$organization->load($organizationId)) {
     exit;
 }
 
+$discoveryModeAccess = omoHolonTemplateDiscoveryModeAccess($organization);
+if (empty($discoveryModeAccess['status'])) {
+    http_response_code(403);
+    echo json_encode(
+        array(
+            'status' => 'error',
+            'message' => (string)($discoveryModeAccess['message'] ?? omoHolonTemplateT('parameters.holon_templates.error.discovery_mode')),
+        ),
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    exit;
+}
+
 $adminModeAccess = omoHolonTemplateAdminModeAccess($organizationId);
 if (empty($adminModeAccess['status'])) {
     http_response_code(403);

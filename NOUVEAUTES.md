@@ -2,6 +2,24 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-16
+
+- Holons : le resume des droits ne repose plus sur un panneau gris, afin d alleger le bloc et de mieux distinguer son bouton Editer.
+- Holons : les sections Proprietes, Droits et Equipe sont separees par le meme espacement vertical que la section Apparence.
+- Holons : le bloc Droits devient repliable et s ouvre lorsqu il porte des droits directs. Le bouton Editer est place a cote des droits directs, nommes droits associes au modele dans un holon template.
+- Holons : le bloc Admin est renomme Equipe et devient repliable sans texte explicatif. Il est ouvert lorsqu une limite locale est redefinie, et les en-tetes Equipe et Apparence sont cliquables en entier.
+- Holons : le bloc Admin est maintenant place apres le bloc Droits dans l editeur.
+- Holons : les champs Nom et Modele sont regroupes sur une ligne lorsque la largeur le permet, tandis que Nom complet reste en pleine largeur en dessous.
+- Holons : le panneau Apparence presente maintenant Couleur et Illustrations comme deux rubriques, sans texte descriptif supplementaire.
+- Holons : le choix de couleur tient maintenant sur une seule ligne. Cocher la redefinition remplace son libelle par le selecteur de couleur.
+- Droits : dans les holons standards, leur bloc d edition est reserve au mode expert. Les droits des holons template restent accessibles dans les autres modes hors decouverte.
+- Holons : les reglages d apparence sont replies par defaut et se deploient automatiquement lorsqu une couleur, une icone ou une banniere est deja definie sur le holon.
+- Holons : le bouton d ajout de propriete est affiche uniquement aux personnes ayant `CAN_ADD_HOLON_PROPERTIES` et conserve une largeur adaptee a son libelle.
+- Holons : `CAN_EDIT_HOLON` autorise maintenant aussi la modification des valeurs heritees du modele. Les droits `CAN_ADD_HOLON_PROPERTIES`, `CAN_EDIT_HOLON_PROPERTIES` et `CAN_DELETE_HOLON_PROPERTIES` sont reserves aux proprietes supplementaires attachees directement au holon.
+
+- Mode découverte : les droits ne sont plus affichés ni modifiables dans les fiches de holon et de membre. L éditeur de modèles de holons est grisé et refusé, afin de conserver les droits éventuels provenant d un template sans pouvoir les changer. Les réglages visuels locaux, y compris icône et bannière, restent aussi masqués.
+- Structure : le titre des éditeurs de holon est maintenant porté par la barre du sous-drawer et ne se répète plus dans le formulaire. Les limites Admin et le texte d aide du modèle sont aussi masqués en mode découverte, comme la synthèse de type et de propriétés.
+
 ## 2026-09-15
 
 - Team : les cartes privilegient maintenant prenom et nom, puis le nom d utilisateur lorsqu il est renseigne. Les adresses e-mail longues sont tronquees avec leur valeur complete au survol, et l adresse de la rubrique E-mail peut etre copiee depuis son icone au survol.

@@ -122,6 +122,22 @@
 			return self::normalizeInterfaceLevel($this->get('interface_level'));
 		}
 
+		public function isDiscoveryMode(): bool
+		{
+			return $this->getInterfaceLevel() === self::INTERFACE_LEVEL_DISCOVERY;
+		}
+
+		public function canManagePermissionAssignments(): bool
+		{
+			return !$this->isDiscoveryMode();
+		}
+
+		public function canManageHolonPermissionAssignments($isTemplate = false): bool
+		{
+			return $this->canManagePermissionAssignments()
+				&& ($isTemplate || $this->getInterfaceLevel() >= self::INTERFACE_LEVEL_EXPERT);
+		}
+
 		public static function publicReadableFields()
 		{
 			return array(
@@ -8204,8 +8220,8 @@
 				'types' => array(),
 				'formats' => array(),
 				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
-				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
-				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
+				'permissionCatalog' => $this->canManagePermissionAssignments() ? \dbObject\Permission::getEditorCatalog() : array(),
+				'permissionRanges' => $this->canManagePermissionAssignments() ? \dbObject\HolonPermission::getEditorRangeCatalog() : array(),
 				'templateCatalog' => array(),
 				'definitionHolonCatalog' => $this->getTemplateDefinitionDestinationCatalog(),
 				'projectCatalog' => $this->getProjectListEditorCatalog($contextHolon),
@@ -8519,7 +8535,7 @@
 			return array('status' => true);
 		}
 
-		protected function canEditSubmittedTemplatePropertyValues(\dbObject\Holon $holon, \dbObject\Holon $permissionHolon, array $submittedValuesByPropertyId, array $propertyDefinitions)
+		protected function canEditSubmittedTemplatePropertyValues(\dbObject\Holon $holon, \dbObject\Holon $permissionHolon, array $submittedValuesByPropertyId, array $propertyDefinitions, $permissionKey = 'CAN_EDIT_HOLON')
 		{
 			$existingValuesByPropertyId = array();
 			if ((int)$holon->getId() > 0) {
@@ -8554,14 +8570,15 @@
 				}
 
 				// La modification soumise est une valeur locale de l instance,
-				// et non une modification de la definition du modele.
-				if ($permissionHolon->isAllowed('CAN_EDIT_HOLON_PROPERTIES', false)) {
+				// et non une modification de la definition du modele. Elle releve
+				// donc de l edition du holon, et non des proprietes ajoutees localement.
+				if ($permissionHolon->isAllowed($permissionKey, false)) {
 					continue;
 				}
 
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas les droits pour modifier les proprietes du holon.",
+					'message' => "Vous n'avez pas les droits pour modifier ce holon.",
 				);
 			}
 
@@ -8612,8 +8629,8 @@
 				'types' => array(),
 				'formats' => array(),
 				'listItemTypes' => \dbObject\Property::getTemplateListItemTypeOptions(),
-				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
-				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
+				'permissionCatalog' => $this->canManagePermissionAssignments() ? \dbObject\Permission::getEditorCatalog() : array(),
+				'permissionRanges' => $this->canManagePermissionAssignments() ? \dbObject\HolonPermission::getEditorRangeCatalog() : array(),
 				'templateCatalog' => array(),
 				'projectCatalog' => $this->getProjectListEditorCatalog($holon),
 				'projectCatalogs' => $this->getProjectListEditorCatalogs($holon),
@@ -9537,8 +9554,8 @@
 				'canAddHolonProperties' => $editingHolon
 					? $editingHolon->isAllowed('CAN_ADD_HOLON_PROPERTIES')
 					: ($contextHolon ? $contextHolon->isAllowed('CAN_ADD_HOLON_PROPERTIES') : false),
-				'permissionCatalog' => \dbObject\Permission::getEditorCatalog(),
-				'permissionRanges' => \dbObject\HolonPermission::getEditorRangeCatalog(),
+				'permissionCatalog' => $this->canManageHolonPermissionAssignments($isTemplateEditing) ? \dbObject\Permission::getEditorCatalog() : array(),
+				'permissionRanges' => $this->canManageHolonPermissionAssignments($isTemplateEditing) ? \dbObject\HolonPermission::getEditorRangeCatalog() : array(),
 				'templateCatalog' => array(),
 				'holonCatalog' => array(),
 				'projectCatalog' => array(),
@@ -9558,9 +9575,10 @@
 				&& in_array((int)$contextHolon->get('IDtypeholon'), array(2, 3, 4), true);
 			$data['canEdit'] = $editingHolon
 				&& ($collectiveGovernance || $editingHolon->isAllowed('CAN_EDIT_HOLON'))
+				&& (!$isTemplateEditing || !$this->isDiscoveryMode())
 				&& in_array((int)$editingHolon->get('IDtypeholon'), array(1, 2, 3), true);
-			$canEditHolonPropertyValues = !$isTemplateEditing
-				&& ($collectiveGovernance || $contextHolon->isAllowed('CAN_EDIT_HOLON_PROPERTIES'));
+			$canEditInheritedHolonPropertyValues = !$isTemplateEditing
+				&& ($data['canEdit'] || $data['canCreate']);
 
 			$templateContextPathRank = array_flip(array_map(static function ($pathHolon) {
 				return (int)$pathHolon->getId();
@@ -9619,9 +9637,9 @@
 					'definedInLabel' => $definitionHolonLabel,
 					'properties' => $isTemplateEditing
 						? $template->getTemplatePropertyDefinitions()
-						: array_map(static function (array $definition) use ($canEditHolonPropertyValues) {
+						: array_map(static function (array $definition) use ($canEditInheritedHolonPropertyValues) {
 							$definition['canEditValue'] = empty($definition['effectiveLocked'])
-								&& $canEditHolonPropertyValues;
+								&& $canEditInheritedHolonPropertyValues;
 							return $definition;
 						}, $template->getHolonCreationPropertyDefinitions()),
 				), $this->getHolonIllustrationData($template));
@@ -9696,8 +9714,12 @@
 					'lockedAdminMax' => $editingAdminBounds['maxLocked'],
 					'adminMinOverride' => $editingAdminBounds['minOverridden'],
 					'adminMaxOverride' => $editingAdminBounds['maxOverridden'],
-					'inheritedPermissions' => $this->buildHolonInheritedPermissionSnapshot($editingHolon),
-					'permissionAssignments' => \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$editingHolon->getId()),
+					'inheritedPermissions' => $this->canManageHolonPermissionAssignments($isTemplateEditing)
+						? $this->buildHolonInheritedPermissionSnapshot($editingHolon)
+						: array(),
+					'permissionAssignments' => $this->canManageHolonPermissionAssignments($isTemplateEditing)
+						? \dbObject\HolonPermission::getAssignmentKeyMapForHolon((int)$editingHolon->getId())
+						: array(),
 					'properties' => $isTemplateEditing
 						? $editingHolon->getTemplatePropertyDefinitions()
 						: $editingHolon->getHolonEditorPropertyDefinitions(),
@@ -11779,6 +11801,12 @@
 				}
 
 				$isTemplateEditing = $holon->isTemplateNode($rootHolon ? (int)$rootHolon->getId() : 0);
+				if ($isTemplateEditing && $this->isDiscoveryMode()) {
+					return array(
+						'status' => false,
+						'message' => 'Les modeles de holons ne sont pas disponibles en mode decouverte.',
+					);
+				}
 
 				if (!$collectiveGovernance && !$isTemplateEditing && !$holon->isAllowed('CAN_EDIT_HOLON')) {
 					return array(
@@ -12077,7 +12105,8 @@
 					$holon ?: new \dbObject\Holon(),
 					$holon ?: $contextHolon,
 					$submittedValuesByPropertyId,
-					$templateDefinitions
+					$templateDefinitions,
+					$isEditing ? 'CAN_EDIT_HOLON' : 'CAN_ADD_HOLON'
 				);
 				if (empty($templatePropertyPermissionResult['status'])) {
 					return $templatePropertyPermissionResult;
@@ -12175,7 +12204,7 @@
 				}
 
 				$holon->syncEditorPropertyValues($submittedValuesByPropertyId, $templateDefinitions);
-				if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
+				if ($this->canManageHolonPermissionAssignments(false) && !\dbObject\HolonPermission::syncAssignmentsForHolon(
 					(int)$holon->getId(),
 					is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
 				)) {
@@ -12398,6 +12427,13 @@
 
 		public function saveHolonTemplateDefinition(array $payload, $userId = 0, $contextHolonId = 0, $scope = 'contextual')
 		{
+			if ($this->isDiscoveryMode()) {
+				return array(
+					'status' => false,
+					'message' => 'Les modeles de holons ne sont pas disponibles en mode decouverte.',
+				);
+			}
+
 			$rootHolon = $this->getStructuralRootHolon();
 			$contextHolon = $this->getTemplateContextHolon($contextHolonId);
 			$scope = $this->normalizeTemplateEditorScope($scope);
@@ -12762,6 +12798,13 @@
 
 		public function deleteHolonTemplateDefinition($templateId = 0, $userId = 0, $contextHolonId = 0, $scope = 'contextual')
 		{
+			if ($this->isDiscoveryMode()) {
+				return array(
+					'status' => false,
+					'message' => 'Les modeles de holons ne sont pas disponibles en mode decouverte.',
+				);
+			}
+
 			$rootHolon = $this->getStructuralRootHolon();
 			$contextHolon = $this->getTemplateContextHolon($contextHolonId);
 			$templateId = (int)$templateId;
@@ -12832,6 +12875,13 @@
 
 		public function saveHolonDefinitionEditor(array $payload, $userId = 0, $holonId = 0)
 		{
+			if ($this->isDiscoveryMode()) {
+				return array(
+					'status' => false,
+					'message' => 'Les modeles de holons ne sont pas disponibles en mode decouverte.',
+				);
+			}
+
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
 

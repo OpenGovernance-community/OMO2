@@ -820,8 +820,13 @@ if (!$user->canViewDetail()) {
 }
 
 $requestedSection = trim((string)($_GET['section'] ?? ''));
-if ($requestedSection === 'rights') {
+$canViewRights = $organization->canManagePermissionAssignments();
+if ($requestedSection === 'rights' && $canViewRights) {
     echo omoUserContextRenderRightsFragment($userId, $organizationId);
+    exit;
+}
+if ($requestedSection === 'rights') {
+    http_response_code(404);
     exit;
 }
 
@@ -1831,6 +1836,7 @@ foreach ($competenceRows as $competenceRow) {
                             data-generic-tab-target="omo-user-context-panel-organization-roles"
                         >Tous les roles</button>
                     <?php endif; ?>
+                    <?php if ($canViewRights): ?>
                     <button
                         type="button"
                         class="generic-tabs__tab"
@@ -1838,6 +1844,7 @@ foreach ($competenceRows as $competenceRow) {
                         data-generic-tab-target="omo-user-context-panel-rights"
                         data-user-fragment-panel="omo-user-context-panel-rights"
                     >Droits</button>
+                    <?php endif; ?>
                 </div>
                 <div class="generic-tabs__panels">
                     <div id="omo-user-context-panel-infos" class="generic-tabs__panel" data-generic-tab-panel>
@@ -2109,6 +2116,7 @@ foreach ($competenceRows as $competenceRow) {
                         </div>
                     <?php endif; ?>
 
+                    <?php if ($canViewRights): ?>
                     <div id="omo-user-context-panel-rights" class="generic-tabs__panel" data-generic-tab-panel hidden>
                         <div
                             class="omo-user-context__fragment-host"
@@ -2116,6 +2124,7 @@ foreach ($competenceRows as $competenceRow) {
                             data-user-fragment-url="<?= omoApiEscape($rightsFragmentUrl) ?>"
                         ></div>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
