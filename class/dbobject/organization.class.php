@@ -10,6 +10,7 @@
 		public const INTERFACE_LEVEL_DISCOVERY = 1;
 		public const INTERFACE_LEVEL_AUTONOMOUS = 2;
 		public const INTERFACE_LEVEL_EXPERT = 3;
+		public const STRUCTURE_DISPLAY_SETTINGS_PARAMETER = 'structureDisplay';
 		protected $lastDeleteError = '';
 		protected static $omo1ImportJournal = null;
 
@@ -281,6 +282,72 @@
 		public function setParametersArray(array $parameters): void
 		{
 			$this->set('parameters', $parameters);
+		}
+
+		public static function getDefaultStructureDisplaySettings(): array
+		{
+			return array(
+				'fadeOpacityStep' => 0.18,
+				'maxDescendantDepth' => 0,
+				'labelAutoMinRadius' => 18,
+				'labelHoverMinRadius' => 18,
+				'labelMinFontSize' => 0,
+				'textOutlineEnabled' => true,
+			);
+		}
+
+		public static function normalizeStructureDisplaySettings($settings): array
+		{
+			$defaults = self::getDefaultStructureDisplaySettings();
+			$settings = is_array($settings) ? $settings : array();
+			$normalized = $defaults;
+
+			if (isset($settings['fadeOpacityStep']) && is_numeric($settings['fadeOpacityStep'])) {
+				$normalized['fadeOpacityStep'] = max(0, min(1, round((float)$settings['fadeOpacityStep'], 3)));
+			}
+
+			if (isset($settings['maxDescendantDepth']) && is_numeric($settings['maxDescendantDepth'])) {
+				$normalized['maxDescendantDepth'] = max(0, min(20, (int)$settings['maxDescendantDepth']));
+			}
+
+			$legacyLabelMinRadius = isset($settings['labelMinRadius']) && is_numeric($settings['labelMinRadius'])
+				? max(3, min(200, (int)$settings['labelMinRadius']))
+				: null;
+			if (isset($settings['labelAutoMinRadius']) && is_numeric($settings['labelAutoMinRadius'])) {
+				$normalized['labelAutoMinRadius'] = max(3, min(200, (int)$settings['labelAutoMinRadius']));
+			} elseif ($legacyLabelMinRadius !== null) {
+				$normalized['labelAutoMinRadius'] = $legacyLabelMinRadius;
+			}
+			if (isset($settings['labelHoverMinRadius']) && is_numeric($settings['labelHoverMinRadius'])) {
+				$normalized['labelHoverMinRadius'] = max(3, min(200, (int)$settings['labelHoverMinRadius']));
+			} elseif ($legacyLabelMinRadius !== null) {
+				$normalized['labelHoverMinRadius'] = $legacyLabelMinRadius;
+			}
+			if (isset($settings['labelMinFontSize']) && is_numeric($settings['labelMinFontSize'])) {
+				$normalized['labelMinFontSize'] = max(0, min(30, (float)$settings['labelMinFontSize']));
+			}
+
+			if (array_key_exists('textOutlineEnabled', $settings)) {
+				$value = $settings['textOutlineEnabled'];
+				$normalized['textOutlineEnabled'] = !in_array($value, array(false, 0, '0', 'false', 'off', 'no'), true);
+			}
+
+			return $normalized;
+		}
+
+		public function getStructureDisplaySettings(): array
+		{
+			$parameters = $this->getParametersArray();
+			return self::normalizeStructureDisplaySettings(
+				$parameters[self::STRUCTURE_DISPLAY_SETTINGS_PARAMETER] ?? array()
+			);
+		}
+
+		public function setStructureDisplaySettings(array $settings): void
+		{
+			$parameters = $this->getParametersArray();
+			$parameters[self::STRUCTURE_DISPLAY_SETTINGS_PARAMETER] = self::normalizeStructureDisplaySettings($settings);
+			$this->setParametersArray($parameters);
 		}
 
 		public function getApplicationViewTemplateDefault($applicationKey, $templateKey): ?array
@@ -5123,6 +5190,30 @@
 			return function_exists('mb_substr') ? mb_substr($value, 0, (int)$length, 'UTF-8') : substr($value, 0, (int)$length);
 		}
 
+		protected static function omo1ImportUseTextListsForAuthorityDomains(array $payload): array
+		{
+			if (!isset($payload['propertyDefinitions']) || !is_array($payload['propertyDefinitions'])) {
+				return $payload;
+			}
+
+			foreach ($payload['propertyDefinitions'] as &$definition) {
+				if (!is_array($definition)) {
+					continue;
+				}
+				$propertyKey = self::normalizeImportTemplateKey($definition['shortname'] ?? ($definition['name'] ?? ''));
+				if (!in_array($propertyKey, array('domainesautorite', 'domainautorite', 'authoritydomains'), true)) {
+					continue;
+				}
+
+				$definition['formatId'] = \dbObject\PropertyFormat::FORMAT_LIST;
+				$definition['listItemType'] = \dbObject\Property::LIST_ITEM_TEXT;
+				unset($definition['listHolonTypeIds']);
+			}
+			unset($definition);
+
+			return $payload;
+		}
+
 		protected static function omo1ImportProjectStatus($legacyStatusId, $completedAt = null, $deletedAt = null)
 		{
 			if (self::omo1ImportDate($completedAt) || self::omo1ImportDate($deletedAt)) {
@@ -5760,6 +5851,13 @@
 		protected static function omo1ImportAuthorities(\dbObject\Organization $organization, array $records, array $holonIdMap, array &$stats, array &$warnings, array $options = array())
 		{
 			$hasAppliedOrganizationModel = !empty($options['hasAppliedOrganizationModel']);
+			if (!$hasAppliedOrganizationModel) {
+				return array(
+					'authorityIdMap' => array(),
+					'authorityIdsByHolonId' => array(),
+				);
+			}
+
 			$authorityIdMap = array();
 			$createdAuthoritiesBySourceId = array();
 			$entriesBySourceId = array();
@@ -5847,63 +5945,9 @@
 				);
 			}
 
-			$templatesToSync = array();
-			foreach ($entriesBySourceId as $sourceId => $entry) {
-				if (empty($entry['isTemplate'])) {
-					continue;
-				}
-				$record = $entry['record'];
-				$authority = self::omo1ImportFindMatchingAuthority(
-					$entry['holon'],
-					$record['label'] ?? ($record['sourceScopeLabel'] ?? ''),
-					$record['description'] ?? ($record['sourceScopeDescription'] ?? '')
-				);
-				if (!($authority instanceof \dbObject\Authority)) {
-					$authority = self::omo1ImportCreateAuthority($entry['holon'], $record, true, $stats);
-					$createdAuthoritiesBySourceId[$sourceId] = array('authority' => $authority, 'entry' => $entry);
-				}
-				$authorityIdMap[$sourceId] = (int)$authority->getId();
-				$templatesToSync[(int)$entry['holon']->getId()] = $entry['holon'];
-			}
-			foreach ($templatesToSync as $template) {
-				$organization->normalizeTemplateLocalAuthorities($template);
-				$organization->syncTemplateAuthorityInstances($template);
-			}
-
-			foreach ($entriesBySourceId as $sourceId => $entry) {
-				if (isset($authorityIdMap[$sourceId])) {
-					continue;
-				}
-				$record = $entry['record'];
-				$authority = self::omo1ImportFindMatchingAuthority(
-					$entry['holon'],
-					$record['label'] ?? ($record['sourceScopeLabel'] ?? ''),
-					$record['description'] ?? ($record['sourceScopeDescription'] ?? '')
-				);
-				if (!($authority instanceof \dbObject\Authority)) {
-					$authority = self::omo1ImportCreateAuthority($entry['holon'], $record, false, $stats);
-					$createdAuthoritiesBySourceId[$sourceId] = array('authority' => $authority, 'entry' => $entry);
-				}
-				$authorityIdMap[$sourceId] = (int)$authority->getId();
-			}
-
-			$manualParentCount = self::omo1ImportAttachCreatedAuthorityParents(
-				$createdAuthoritiesBySourceId,
-				$authorityIdMap,
-				$rootHolonId
-			);
-
-			if ($manualParentCount > 0) {
-				$warnings[] = $manualParentCount . ' autorite(s) OMO 1 restent sans parent et sont signalees en rouge pour rattachement manuel.';
-			}
-
-			return array(
-				'authorityIdMap' => $authorityIdMap,
-				'authorityIdsByHolonId' => self::omo1ImportBuildAuthorityIdsByHolon($organization, $authorityIdMap),
-			);
 		}
 
-		protected static function omo1ImportRules(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $authorityIdMap, array $authorityIdsByHolonId, array &$stats, array &$warnings)
+		protected static function omo1ImportRules(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array $authorityIdMap, array $authorityIdsByHolonId, array &$stats, array &$warnings, $authorityConversionExpected = false)
 		{
 			$reviewStartDate = new \DateTimeImmutable('today');
 			$importedRuleIndex = 0;
@@ -5941,7 +5985,7 @@
 				$targetAuthorityId = $sourceScopeId > 0 && isset($authorityIdsByHolonId[$targetHolonId][$sourceScopeId])
 					? (int)$authorityIdsByHolonId[$targetHolonId][$sourceScopeId]
 					: ($sourceScopeId > 0 && isset($authorityIdMap[$sourceScopeId]) ? (int)$authorityIdMap[$sourceScopeId] : 0);
-				if ($sourceScopeId > 0 && $targetAuthorityId <= 0) {
+				if ($authorityConversionExpected && $sourceScopeId > 0 && $targetAuthorityId <= 0) {
 					$warnings[] = 'La regle ' . (int)$record['sourceId'] . ' conserve un rattachement local car son domaine OMO 1 n a pas pu etre converti en autorite.';
 				}
 
@@ -7024,6 +7068,20 @@
 			if ($name === '') {
 				return array('status' => false, 'message' => 'Le nom de la nouvelle organisation est obligatoire.');
 			}
+			$hasAppliedOrganizationModel = (int)($templateCalibration['templateRootHolonId'] ?? 0) > 0
+				&& isset($templateCalibration['mappings'])
+				&& is_array($templateCalibration['mappings'])
+				&& count($templateCalibration['mappings']) > 0;
+			$authorityObjectModelApplied = false;
+			if ($hasAppliedOrganizationModel) {
+				$templateRootHolon = new \dbObject\Holon();
+				if ($templateRootHolon->load((int)$templateCalibration['templateRootHolonId'])) {
+					$authorityObjectModelApplied = (new self())->templateTreeUsesAuthorityProperties($templateRootHolon);
+				}
+			}
+			if (!$authorityObjectModelApplied) {
+				$payload = self::omo1ImportUseTextListsForAuthorityDomains($payload);
+			}
 
 			$importJournalReference = self::omo1ImportJournalStart($payload, $selectedModules, $templateCalibration, $actorUserId);
 			self::omo1ImportJournalWrite('organization_creation_started');
@@ -7086,10 +7144,6 @@
 				$holonIdMap = isset($structureResult['holonIdMap']) && is_array($structureResult['holonIdMap']) ? $structureResult['holonIdMap'] : array();
 				$rulesRecords = $selectedModules['rules'] ? self::omo1ImportModuleRecords($payload, 'rules') : array();
 				$ruleDomainRecords = $selectedModules['rules'] ? self::omo1ImportRuleDomains($payload, $rulesRecords) : array();
-				$hasAppliedOrganizationModel = (int)($templateCalibration['templateRootHolonId'] ?? 0) > 0
-					&& isset($templateCalibration['mappings'])
-					&& is_array($templateCalibration['mappings'])
-					&& count($templateCalibration['mappings']) > 0;
 				$userIdMap = array();
 				$documentIdMap = array();
 				$documentProjectSourceMap = array();
@@ -7130,7 +7184,7 @@
 						$holonIdMap,
 						$stats,
 						$warnings,
-						array('hasAppliedOrganizationModel' => $hasAppliedOrganizationModel)
+						array('hasAppliedOrganizationModel' => $authorityObjectModelApplied)
 					);
 					$authorityIdMap = isset($authorityImportResult['authorityIdMap']) && is_array($authorityImportResult['authorityIdMap'])
 						? $authorityImportResult['authorityIdMap']
@@ -7149,9 +7203,9 @@
 						isset($structureResult['templateExcludedPropertyIds']) && is_array($structureResult['templateExcludedPropertyIds']) ? $structureResult['templateExcludedPropertyIds'] : array(),
 						isset($structureResult['mappedSourceTemplateIds']) && is_array($structureResult['mappedSourceTemplateIds']) ? $structureResult['mappedSourceTemplateIds'] : array(),
 						$warnings,
-						!$hasAppliedOrganizationModel
+						false
 					);
-					self::omo1ImportRules($organization, $rulesRecords, $actorUserId, $userIdMap, $holonIdMap, $authorityIdMap, $authorityIdsByHolonId, $stats, $warnings);
+					self::omo1ImportRules($organization, $rulesRecords, $actorUserId, $userIdMap, $holonIdMap, $authorityIdMap, $authorityIdsByHolonId, $stats, $warnings, $authorityObjectModelApplied);
 					self::omo1ImportJournalWrite('module_rules_completed', array(
 						'authorities' => (int)$stats['authorities'],
 						'rules' => (int)$stats['rules'],

@@ -1456,6 +1456,7 @@ $currentUser = new \dbObject\User();
 if ($currentUser->load($currentUserId)) {
     $currentUserProfile['displayName'] = (string)$currentUser->getScopedDisplayName((int)$organizationContext['id']);
     $currentUserProfile['email'] = (string)$currentUser->getScopedEmail((int)$organizationContext['id']);
+	$currentUserProfile['phone'] = (string)$currentUser->getScopedPhone((int)$organizationContext['id']);
     $currentUserProfile['username'] = (string)$currentUser->getScopedUsername((int)$organizationContext['id']);
     $currentUserProfile['photoUrl'] = (string)$currentUser->getScopedProfilePhotoUrl((int)$organizationContext['id']);
 }
@@ -1645,8 +1646,8 @@ window.omoConfig = <?=
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
 <script src="assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
-<script src="assets/js/app.js?v=20260907-dashboard-item-context"></script>
-<script src="assets/js/structure-mini-map.js?v=20260826-structure-data-cache"></script>
+<script src="assets/js/app.js?v=20260916-structure-render-cache"></script>
+<script src="assets/js/structure-mini-map.js?v=20260916-structure-render-cache"></script>
 
 <script>
 $(document).ready(function () {
