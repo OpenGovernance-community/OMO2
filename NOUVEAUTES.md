@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-16
 
+- Import OMO 1 : les organisations importees commencent maintenant en mode Autonome. Les projets bloques sans motif ni date de relance dans OMO 1 sont egalement importes avec des valeurs de reprise compatibles.
 - Holons : le holon racine de type organisation reste editable en mode decouverte, tandis que les autres modeles de holons demeurent proteges. Ses droits existants sont preserves lors de l enregistrement.
 - Holons : nettoyage de l editeur apres les evolutions d interface : les rendus de synthese et les styles devenus inutiles ont ete retires, y compris les anciennes fonctions de resume des droits en doublon. Les libelles visibles concernes utilisent maintenant les accents francais.
 - Holons : le resume des droits ne repose plus sur un panneau gris, afin d alleger le bloc et de mieux distinguer son bouton Editer.
