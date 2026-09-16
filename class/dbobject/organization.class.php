@@ -8598,6 +8598,7 @@
 			if (
 				!$holon->load($holonId)
 				|| !$this->containsHolon($holon)
+				|| (int)$holon->getId() !== (int)$rootHolon->getId()
 				|| (int)$holon->get('IDtypeholon') !== 4
 			) {
 				return null;
@@ -12875,13 +12876,6 @@
 
 		public function saveHolonDefinitionEditor(array $payload, $userId = 0, $holonId = 0)
 		{
-			if ($this->isDiscoveryMode()) {
-				return array(
-					'status' => false,
-					'message' => 'Les modeles de holons ne sont pas disponibles en mode decouverte.',
-				);
-			}
-
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
 
@@ -12896,6 +12890,7 @@
 			if (
 				!$holon->load($holonId)
 				|| !$this->containsHolon($holon)
+				|| (int)$holon->getId() !== (int)$rootHolon->getId()
 				|| (int)$holon->get('IDtypeholon') !== 4
 			) {
 				return array(
@@ -13054,14 +13049,16 @@
 				$holon->syncEditorPropertyValues($postSyncSubmittedValues, $persistedDefinitions);
 			}
 
-			if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
-				(int)$holon->getId(),
-				is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
-			)) {
-				return array(
-					'status' => false,
-					'message' => "Les droits de l'organisation n'ont pas pu etre enregistres.",
-				);
+			if ($this->canManagePermissionAssignments()) {
+				if (!\dbObject\HolonPermission::syncAssignmentsForHolon(
+					(int)$holon->getId(),
+					is_array($payload['permissions'] ?? null) ? $payload['permissions'] : array()
+				)) {
+					return array(
+						'status' => false,
+						'message' => "Les droits de l'organisation n'ont pas pu etre enregistres.",
+					);
+				}
 			}
 
 			$holon->load((int)$holon->getId(), true);

@@ -33,19 +33,6 @@ if (!$organization->load($organizationId)) {
     exit;
 }
 
-$discoveryModeAccess = omoHolonTemplateDiscoveryModeAccess($organization);
-if (empty($discoveryModeAccess['status'])) {
-    http_response_code(403);
-    echo json_encode(
-        array(
-            'status' => 'error',
-            'message' => (string)($discoveryModeAccess['message'] ?? omoHolonTemplateT('parameters.holon_templates.error.discovery_mode')),
-        ),
-        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-    );
-    exit;
-}
-
 $adminModeAccess = omoHolonTemplateAdminModeAccess($organizationId);
 if (empty($adminModeAccess['status'])) {
     http_response_code(403);
@@ -67,6 +54,19 @@ if ($templateScope === 'global') {
 }
 if (!in_array($templateScope, array('contextual', 'children', 'descendants'), true)) {
     $templateScope = 'contextual';
+}
+
+$discoveryModeAccess = omoHolonTemplateDiscoveryModeAccess($organization, $holonId);
+if (empty($discoveryModeAccess['status'])) {
+    http_response_code(403);
+    echo json_encode(
+        array(
+            'status' => 'error',
+            'message' => (string)($discoveryModeAccess['message'] ?? omoHolonTemplateT('parameters.holon_templates.error.discovery_mode')),
+        ),
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    exit;
 }
 
 $rawPayload = $_POST['payload'] ?? file_get_contents('php://input');
