@@ -56,6 +56,19 @@ if (!in_array($templateScope, array('contextual', 'children', 'descendants'), tr
     $templateScope = 'contextual';
 }
 
+$discoveryModeAccess = omoHolonTemplateDiscoveryModeAccess($organization, $holonId);
+if (empty($discoveryModeAccess['status'])) {
+    http_response_code(403);
+    echo json_encode(
+        array(
+            'status' => 'error',
+            'message' => (string)($discoveryModeAccess['message'] ?? omoHolonTemplateT('parameters.holon_templates.error.discovery_mode')),
+        ),
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    );
+    exit;
+}
+
 $rawPayload = $_POST['payload'] ?? file_get_contents('php://input');
 $payload = json_decode($rawPayload, true);
 if (!is_array($payload)) {

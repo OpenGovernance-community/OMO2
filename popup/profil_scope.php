@@ -337,6 +337,7 @@ function profilRenderProfileFragment($scope, \dbObject\User $user, $organization
             "image",
             "username",
             "email",
+			"phone",
             "presentation",
         ),
     );
@@ -366,6 +367,7 @@ function profilRenderProfileFragment($scope, \dbObject\User $user, $organization
             "presentation",
             "birthdate",
             "email",
+			"phone",
         ),
     );
     if ($leafletMapsEnabled) {
@@ -983,6 +985,7 @@ function profilRenderCurrentSummaryFragment(
     $organization
 ) {
     $activeEmail = $user->getScopedEmail($currentOrganizationId);
+	$activePhone = $user->getScopedPhone($currentOrganizationId);
     $activeUsername = $user->getScopedUsername($currentOrganizationId);
     $activePhotoUrl = $user->getScopedProfilePhotoUrl($currentOrganizationId);
     $activePresentation = $user->getScopedPresentation($currentOrganizationId);
@@ -1009,6 +1012,10 @@ function profilRenderCurrentSummaryFragment(
             <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.email.label')) ?></strong>
             <?= htmlspecialchars($activeEmail !== '' ? $activeEmail : profilPopupT('profile.popup.value.not_provided')) ?>
         </div>
+		<div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
+			<strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.phone.label')) ?></strong>
+			<?= htmlspecialchars($activePhone !== '' ? $activePhone : profilPopupT('profile.popup.value.not_provided')) ?>
+		</div>
         <div class="profile-panel__item generic-soft-panel generic-soft-panel--stack">
             <strong class="generic-card-title generic-card-title--small"><?= htmlspecialchars(profilPopupT('profile.popup.active.username.label')) ?></strong>
             <?= htmlspecialchars($activeUsername !== '' ? $activeUsername : profilPopupT('profile.popup.value.not_provided')) ?>

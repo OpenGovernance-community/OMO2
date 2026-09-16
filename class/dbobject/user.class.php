@@ -13,7 +13,7 @@
 			return [
 				[['email'], 'required'],
 				[['id'], 'integer'],
-				[['username', 'email', 'firstname', 'lastname', 'code', 'telegramID'], 'string'],
+				[['username', 'email', 'phone', 'firstname', 'lastname', 'code', 'telegramID'], 'string'],
 				[['presentation'], 'text'],
 				[['latlong'], 'latlong'],
 				[['password'], 'password'],
@@ -36,6 +36,7 @@
 				'latlong' => 'Position geographique',
 				'birthdate' => 'Date de naissance',
 				'email' => 'E-mail',
+				'phone' => 'Téléphone',
 				'image' => 'Image de profil',
 				'telegramID' => 'ID Telegram',
 				'password' => 'Mot de passe',
@@ -55,6 +56,7 @@
 				'latlong' => 'Position geographique generale, partagee dans toutes les organisations.',
 				'birthdate' => 'Date de naissance facultative, utilisee pour afficher le prochain anniversaire.',
 				'email' => 'L\'adresse e-mail utilisee pour vous connecter et pour vous envoyer les messages du systeme.',
+				'phone' => 'Numéro de téléphone partagé entre les organisations, sauf si une organisation le remplace localement.',
 				'telegramID' => 'Identifiant numerique utilise pour associer votre compte Telegram.',
 				'siteadmin' => 'Donne un acces global a l administration du serveur.',
 			];
@@ -68,6 +70,7 @@
 				'presentation' => 2000,
 				'latlong' => 100,
 				'email' => 30,
+				'phone' => 50,
 				'telegramID' => 100,
 				'image' => [[320, 320], [160, 160]],
 			];
@@ -536,6 +539,16 @@
 			return trim((string)$this->get('email'));
 		}
 
+		public function getScopedPhone($organizationId = 0)
+		{
+			$membership = $this->getOrganizationMembership($organizationId);
+			if ($membership) {
+				return $membership->getScopedPhone();
+			}
+
+			return trim((string)$this->get('phone'));
+		}
+
 		public function getScopedDisplayName($organizationId = 0)
 		{
 			$fullName = trim((string)$this->get('firstname') . ' ' . (string)$this->get('lastname'));
@@ -716,14 +729,15 @@
 			return History::buildReferenceToken('user', (int)($userRow['id'] ?? 0), $label);
 		}
 
-		private static function accountMergeMembershipRows(\PDO $pdo, $keptUserId, $removedUserId, $removedEmail, array &$summary)
+		private static function accountMergeMembershipRows(\PDO $pdo, $keptUserId, $removedUserId, $removedEmail, $removedPhone, array &$summary)
 		{
 			$removedEmail = trim((string)$removedEmail);
+			$removedPhone = trim((string)$removedPhone);
 			$organizationPairs = self::accountMergeFetchAll(
 				$pdo,
 				"SELECT source.*, target.id AS target_id,
 					target.username AS target_username, target.image AS target_image,
-					target.email AS target_email, target.presentation AS target_presentation,
+					target.email AS target_email, target.phone AS target_phone, target.presentation AS target_presentation,
 					target.latlong AS target_latlong, target.parameters AS target_parameters,
 					target.datecreation AS target_datecreation, target.dateconnexion AS target_dateconnexion,
 					target.active AS target_active
@@ -747,10 +761,11 @@
 
 			foreach ($organizationPairs as $row) {
 				$sourceOrganizationEmail = self::accountMergeFillMissing($row['email'] ?? '', $removedEmail);
+				$sourceOrganizationPhone = self::accountMergeFillMissing($row['phone'] ?? '', $removedPhone);
 				self::accountMergeExecute(
 					$pdo,
 					"UPDATE user_organization
-					 SET username = :username, image = :image, email = :email,
+					 SET username = :username, image = :image, email = :email, phone = :phone,
 						 presentation = :presentation, latlong = :latlong, parameters = :parameters,
 						 datecreation = LEAST(datecreation, :source_datecreation),
 						 dateconnexion = CASE
@@ -764,6 +779,7 @@
 						'username' => self::accountMergeFillMissing($row['target_username'] ?? '', $row['username'] ?? null),
 						'image' => self::accountMergeFillMissing($row['target_image'] ?? '', $row['image'] ?? null),
 						'email' => self::accountMergeFillMissing($row['target_email'] ?? '', $sourceOrganizationEmail),
+						'phone' => self::accountMergeFillMissing($row['target_phone'] ?? '', $sourceOrganizationPhone),
 						'presentation' => self::accountMergeFillMissing($row['target_presentation'] ?? '', $row['presentation'] ?? null),
 						'latlong' => self::accountMergeFillMissing($row['target_latlong'] ?? '', $row['latlong'] ?? null),
 						'parameters' => self::accountMergeParameters($row['target_parameters'] ?? null, $row['parameters'] ?? null),
@@ -1377,7 +1393,7 @@
 				$pdo->beginTransaction();
 				$users = self::accountMergeFetchAll(
 					$pdo,
-					'SELECT id, email, username, firstname, lastname, siteadmin, parameters, param_easypv, param_easymemo, param_easycircle
+					'SELECT id, email, phone, username, firstname, lastname, siteadmin, parameters, param_easypv, param_easymemo, param_easycircle
 					 FROM `user` WHERE id IN (:kept_user_id, :removed_user_id) FOR UPDATE',
 					array('kept_user_id' => $keptUserId, 'removed_user_id' => $removedUserId)
 				);
@@ -1400,11 +1416,12 @@
 					$superAdminForced = true;
 				}
 				$removedEmail = (string)($usersById[$removedUserId]['email'] ?? '');
+				$removedPhone = (string)($usersById[$removedUserId]['phone'] ?? '');
 				$organizationIds = self::accountMergeOrganizationIds($pdo, $keptUserId, $removedUserId);
 				$keptUserReference = self::accountMergeUserReference($usersById[$keptUserId]);
 				$removedUserReference = self::accountMergeUserReference($usersById[$removedUserId]);
 
-				self::accountMergeMembershipRows($pdo, $keptUserId, $removedUserId, $removedEmail, $summary);
+				self::accountMergeMembershipRows($pdo, $keptUserId, $removedUserId, $removedEmail, $removedPhone, $summary);
 				self::accountMergeLearningRows($pdo, $keptUserId, $removedUserId, $summary);
 				self::accountMergeActivityRows($pdo, $keptUserId, $removedUserId, $summary);
 				self::accountMergeDecisionRows($pdo, $keptUserId, $removedUserId, $summary, $responseArchive);
@@ -1430,6 +1447,7 @@
 					"UPDATE `user` kept
 					 INNER JOIN `user` removed ON removed.id = :removed_user_id
 					 SET kept.username = COALESCE(NULLIF(kept.username, ''), removed.username),
+						 kept.phone = COALESCE(NULLIF(kept.phone, ''), removed.phone),
 						 kept.firstname = COALESCE(NULLIF(kept.firstname, ''), removed.firstname),
 						 kept.lastname = COALESCE(NULLIF(kept.lastname, ''), removed.lastname),
 						 kept.presentation = COALESCE(NULLIF(kept.presentation, ''), removed.presentation),

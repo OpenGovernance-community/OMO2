@@ -225,4 +225,23 @@ function omoActivityOverdueLabel(array $state, DateTimeImmutable $now)
     }
     return omoActivityT($days === 1 ? 'activity.overdue.days.one' : 'activity.overdue.days.other', ['count' => $days]);
 }
+
+function omoActivityDescriptionHtml($description)
+{
+    return \dbObject\PropertyFormat::sanitizeHtml((string)$description);
+}
+
+function omoActivityDescriptionText($description, $maxWidth = 0)
+{
+    $text = html_entity_decode(
+        strip_tags(omoActivityDescriptionHtml($description)),
+        ENT_QUOTES | ENT_HTML5,
+        'UTF-8'
+    );
+    $text = trim((string)preg_replace('/\s+/', ' ', $text));
+
+    return (int)$maxWidth > 0
+        ? mb_strimwidth($text, 0, (int)$maxWidth, '...', 'UTF-8')
+        : $text;
+}
 ?>

@@ -4001,9 +4001,10 @@
 			$definitionsByPropertyId = array();
 			$templatePropertyIds = array();
 			$templateAuthorityIdMap = $this->getTemplateAuthorityInstanceIdMap();
-			// Les droits de propriete peuvent venir d un role et de son modele.
-			// Cette edition doit donc utiliser le calcul courant, sans conserver une
-			// ancienne portee en cache dans la session.
+			// Les droits peuvent venir d un role et de son modele. Les valeurs
+			// heritees font partie de l edition du holon, alors que les proprietes
+			// locales supplementaires ont leurs droits propres.
+			$canEditHolon = $this->isAllowed('CAN_EDIT_HOLON', false);
 			$canEditHolonProperties = $this->isAllowed('CAN_EDIT_HOLON_PROPERTIES', false);
 
 			$templateId = (int)$this->get('IDholon_template');
@@ -4014,10 +4015,10 @@
 						$propertyId = (int)($definition['id'] ?? 0);
 						if ($propertyId > 0) {
 							// Une propriete uniquement heritee n a pas encore de ligne
-							// holonproperty locale. Son droit doit neanmoins etre evalue
-							// sur cette instance, et non sur le modele qui la definit.
+							// holonproperty locale. Sa valeur reste modifiable avec le
+							// droit d edition de cette instance.
 							$definition['canEditValue'] = empty($definition['effectiveLocked'])
-								&& $canEditHolonProperties;
+								&& $canEditHolon;
 							$definition['isTemplateProperty'] = true;
 							$definition['isDirectProperty'] = false;
 							$definition['canEditDefinition'] = false;
@@ -4053,7 +4054,7 @@
 					'inheritedLocked' => false,
 					'effectiveMandatory' => false,
 					'effectiveLocked' => false,
-					'canEditValue' => true,
+					'canEditValue' => $canEditHolonProperties,
 					'isTemplateProperty' => false,
 					'isDirectProperty' => true,
 					'canEditDefinition' => $this->isAllowed('CAN_EDIT_HOLON_PROPERTIES'),
@@ -4071,16 +4072,16 @@
 				}
 				$definition['effectiveMandatory'] = (bool)$property->get('mandatory');
 				$definition['effectiveLocked'] = (bool)$property->get('locked');
-				// Les valeurs ajoutees ici restent locales au holon. Le droit HOLON
-				// autorise donc leur edition, y compris pour une propriete definie
-				// par le modele, sans rendre sa definition heritee modifiable.
+				$isTemplateProperty = isset($templatePropertyIds[$propertyId]);
+				// Une valeur heritee releve de l edition du holon. Une propriete
+				// directement ajoutee reste soumise au droit sur les proprietes.
 				$definition['canEditValue'] = !((bool)$property->get('locked'))
-					&& $canEditHolonProperties;
-				$definition['isTemplateProperty'] = isset($templatePropertyIds[$propertyId]);
-				$definition['isDirectProperty'] = !isset($templatePropertyIds[$propertyId]);
-				$definition['canEditDefinition'] = !isset($templatePropertyIds[$propertyId])
+					&& ($isTemplateProperty ? $canEditHolon : $canEditHolonProperties);
+				$definition['isTemplateProperty'] = $isTemplateProperty;
+				$definition['isDirectProperty'] = !$isTemplateProperty;
+				$definition['canEditDefinition'] = !$isTemplateProperty
 					&& $this->isAllowed('CAN_EDIT_HOLON_PROPERTIES');
-				$definition['canDelete'] = !isset($templatePropertyIds[$propertyId])
+				$definition['canDelete'] = !$isTemplateProperty
 					&& $this->isAllowed('CAN_DELETE_HOLON_PROPERTIES');
 				$definition['position'] = (int)($property->get('effective_position') ?: ($definition['position'] ?? 0));
 

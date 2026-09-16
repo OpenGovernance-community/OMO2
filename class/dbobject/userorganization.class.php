@@ -52,7 +52,7 @@
 				[['IDuser', 'IDorganization'], 'required'],
 				[['id'], 'integer'],
 				[['IDuser', 'IDorganization'], 'fk'],
-				[['username', 'email'], 'string'],
+				[['username', 'email', 'phone'], 'string'],
 				[['presentation'], 'text'],
 				[['image'], 'sizedimage'],
 				[['parameters'], 'parameters'],
@@ -70,6 +70,7 @@
 				'IDorganization' => 'Organisation',
 				'username' => 'Nom d\'utilisateur',
 				'email' => 'E-mail',
+				'phone' => 'Téléphone',
 				'presentation' => 'Presentation',
 				'image' => 'Photo',
 				'parameters' => 'Parametres',
@@ -86,6 +87,7 @@
 				'IDorganization' => 'Organisation concernee par ce lien.',
 				'username' => 'Nom d\'utilisateur affiche specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
 				'email' => 'Adresse e-mail affichee specifiquement dans cette organisation. Laissez vide pour utiliser la valeur generale.',
+				'phone' => 'Numéro de téléphone affiché spécifiquement dans cette organisation. Laissez vide pour utiliser la valeur générale.',
 				'presentation' => 'Presentation visible uniquement dans cette organisation. Laissez vide pour reutiliser la presentation generale.',
 				'image' => 'Photo de profil specifique a cette organisation. Si elle est vide, la photo generale est utilisee.',
 				'parameters' => 'Parametres specifiques au role de cette personne dans l organisation.',
@@ -100,6 +102,7 @@
 				'image' => [[320, 320], [160, 160]],
 				'username' => 250,
 				'email' => 250,
+				'phone' => 50,
 				'presentation' => 2000,
 			];
 		}
@@ -249,6 +252,21 @@
 			}
 
 			return trim((string)$user->get('email'));
+		}
+
+		public function getScopedPhone()
+		{
+			$phone = trim((string)$this->get('phone'));
+			if ($phone !== '') {
+				return $phone;
+			}
+
+			$user = $this->get('user');
+			if (!$user || (int)$user->getId() <= 0) {
+				return '';
+			}
+
+			return trim((string)$user->get('phone'));
 		}
 
 		public function getScopedPresentation()

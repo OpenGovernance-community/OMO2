@@ -1232,9 +1232,10 @@ $projectTexts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
-<script src="/common/calendar/event-editor.js?v=20260902-submit-lock"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
+<script src="/common/calendar/availability.js?v=20260916"></script>
+<script src="/common/calendar/event-editor.js?v=20260916-availability"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="/common/choice/change-details.js?v=20260816-governance-details"></script>
 <script src="/common/chat/thread.js?v=20260910-project-chat"></script>
-<script src="/omo/api/projects/projects.js?v=20260910-project-folders"></script>
+<script src="/omo/api/projects/projects.js?v=20260916-view-save-menu"></script>

@@ -874,7 +874,6 @@
 			if ((int)$targetWidth > 0 && (int)$targetHeight > 0) {
 				$destination = imagecreatetruecolor((int)$targetWidth, (int)$targetHeight);
 				if ($destination === false) {
-					imagedestroy($source);
 					return false;
 				}
 
@@ -917,11 +916,6 @@
 				$imagePath = $targetDirectory . '/' . $fileNameBase . '.png';
 				$stored = imagepng($destination, rtrim($fullDirectory, '/\\') . DIRECTORY_SEPARATOR . $fileNameBase . '.png', 9, PNG_ALL_FILTERS);
 			}
-
-			if ($destination !== $source) {
-				imagedestroy($destination);
-			}
-			imagedestroy($source);
 
 			if (!$stored) {
 				return false;
@@ -1077,16 +1071,17 @@
 
 						switch ($mime) {
 							case "image/jpeg":
-								$src = imagecreatefromjpeg($tmpName);
+								$src = function_exists('imagecreatefromjpeg') ? @\imagecreatefromjpeg($tmpName) : false;
 								break;
 							case "image/png":
-								$src = imagecreatefrompng($tmpName);
+								$src = function_exists('imagecreatefrompng') ? @\imagecreatefrompng($tmpName) : false;
 								break;
 							case "image/webp":
-								$src = imagecreatefromwebp($tmpName);
+								// GD can be installed without WebP decoding support.
+								$src = function_exists('imagecreatefromwebp') ? @\imagecreatefromwebp($tmpName) : false;
 								break;
 							case "image/avif":
-								$src = function_exists('imagecreatefromavif') ? imagecreatefromavif($tmpName) : false;
+								$src = function_exists('imagecreatefromavif') ? @\imagecreatefromavif($tmpName) : false;
 								break;
 							default:
 								$src = false;

@@ -50,7 +50,6 @@ for ($y = 0; $y < 700; $y += 10) {
     imagefilledrectangle($source, 0, $y, 899, min(699, $y + 9), $color);
 }
 imagepng($source, $sourcePath);
-imagedestroy($source);
 
 $_SERVER['DOCUMENT_ROOT'] = $temporaryRoot;
 $_FILES['image'] = array(
@@ -67,17 +66,77 @@ $storedPath = (string)$object->get('image');
 $storedFullPath = $temporaryRoot . str_replace('/', DIRECTORY_SEPARATOR, $storedPath);
 $storedSize = getimagesize($storedFullPath);
 
-assertSizedImageOptimization(str_ends_with($storedPath, '.webp'), 'Sized images must be stored as WebP when supported.');
+assertSizedImageOptimization(
+    str_ends_with($storedPath, function_exists('imagewebp') ? '.webp' : '.png'),
+    'Sized images must use the best format supported by GD.'
+);
 assertSizedImageOptimization(is_array($storedSize), 'The optimized image must be readable.');
 assertSizedImageOptimization($storedSize[0] === 320 && $storedSize[1] === 320, 'The dbObject dimensions must be enforced.');
-assertSizedImageOptimization($storedSize['mime'] === 'image/webp', 'The stored image content must be WebP.');
+assertSizedImageOptimization(
+    $storedSize['mime'] === (function_exists('imagewebp') ? 'image/webp' : 'image/png'),
+    'The stored image format must match the GD capabilities.'
+);
+
+$jpegSourcePath = $temporaryRoot . DIRECTORY_SEPARATOR . 'source.jpg';
+imagejpeg($source, $jpegSourcePath, 90);
+$_FILES['image'] = array(
+    'name' => 'profile.jpg',
+    'type' => 'image/jpeg',
+    'tmp_name' => $jpegSourcePath,
+    'error' => UPLOAD_ERR_OK,
+    'size' => filesize($jpegSourcePath),
+);
+
+$jpegObject = new ImageOptimizationProbe();
+$jpegObject->set('image', 'newimage');
+$jpegStoredPath = (string)$jpegObject->get('image');
+$jpegStoredFullPath = $temporaryRoot . str_replace('/', DIRECTORY_SEPARATOR, $jpegStoredPath);
+$jpegStoredSize = getimagesize($jpegStoredFullPath);
+
+assertSizedImageOptimization(
+    str_ends_with($jpegStoredPath, function_exists('imagewebp') ? '.webp' : '.jpg'),
+    'JPEG uploads must be stored using a format supported by GD.'
+);
+assertSizedImageOptimization(is_array($jpegStoredSize), 'The optimized JPEG must be readable.');
+assertSizedImageOptimization($jpegStoredSize[0] === 320 && $jpegStoredSize[1] === 320, 'JPEG dimensions must be enforced.');
 
 unlink($storedFullPath);
 unlink($sourcePath);
+unlink($jpegStoredFullPath);
+unlink($jpegSourcePath);
 rmdir($uploadDirectory);
 rmdir(dirname($uploadDirectory));
 rmdir(dirname(dirname($uploadDirectory)));
 rmdir($temporaryRoot);
 unset($_FILES['image']);
+
+if (!function_exists('imagecreatefromwebp')) {
+    $webpPath = dirname(__DIR__) . '/img/orange.webp';
+    assertSizedImageOptimization(is_file($webpPath), 'The WebP fixture must be available.');
+
+    $_SERVER['DOCUMENT_ROOT'] = $temporaryRoot;
+    $_FILES['image'] = array(
+        'name' => 'profile.webp',
+        'type' => 'image/webp',
+        'tmp_name' => $webpPath,
+        'error' => UPLOAD_ERR_OK,
+        'size' => filesize($webpPath),
+    );
+
+    $unsupportedWebpObject = new ImageOptimizationProbe();
+    $unsupportedWebpObject->set('image', '/img/upload/previous.png');
+    $unsupportedWebpObject->set('image', 'newimage');
+    assertSizedImageOptimization(
+        $unsupportedWebpObject->get('image') === '/img/upload/previous.png',
+        'An unsupported WebP upload must preserve the previous image without a fatal error.'
+    );
+    unset($_FILES['image']);
+
+    $unsupportedUploadDirectory = $temporaryRoot . DIRECTORY_SEPARATOR . 'img' . DIRECTORY_SEPARATOR . 'upload' . DIRECTORY_SEPARATOR . 'imageoptimizationprobe';
+    rmdir($unsupportedUploadDirectory);
+    rmdir(dirname($unsupportedUploadDirectory));
+    rmdir(dirname(dirname($unsupportedUploadDirectory)));
+    rmdir($temporaryRoot);
+}
 
 echo "dbobject_sized_image_optimization_test: OK\n";

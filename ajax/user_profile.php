@@ -45,10 +45,10 @@ echo json_encode([
     'profile' => [
         'displayName' => $displayName,
         'email' => (string)$user->getScopedEmail($currentOrganizationId),
+		'phone' => (string)$user->getScopedPhone($currentOrganizationId),
         'username' => (string)$user->getScopedUsername($currentOrganizationId),
         'photoUrl' => (string)$user->getScopedProfilePhotoUrl($currentOrganizationId),
         'initials' => $initials,
         'avatarStyle' => 'background-color: ' . $avatarPalette['background'] . '; color: ' . $avatarPalette['foreground'] . ';',
     ],
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-

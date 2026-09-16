@@ -660,12 +660,20 @@ function displayField($object, $key, $default = null, $filter = null, ?array $tr
                     var zoomSlider_<?=$key?> = $('#zoomSlider_<?=$key?>');
                     var zoomValue_<?=$key?> = 1;
                     var oldZoomValue_<?=$key?> = 1;
-                    var exportMime_<?=$key?> = 'image/webp';
+                    var exportMime_<?=$key?> = 'image/jpeg';
 
                     function resolveExportFormat_<?=$key?>(source) {
+                        var normalizedSource = String(source || '').toLowerCase();
+                        if (normalizedSource.indexOf('image/png') !== -1 || /\.png(?:[?#].*)?$/.test(normalizedSource)) {
+                            return {
+                                mime: 'image/png',
+                                extension: 'png'
+                            };
+                        }
+
                         return {
-                            mime: 'image/webp',
-                            extension: 'webp'
+                            mime: 'image/jpeg',
+                            extension: 'jpg'
                         };
                     }
 

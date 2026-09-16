@@ -295,8 +295,8 @@ window.omoConfig = <?= json_encode(array(
     'shareAllowsPeopleDetail' => $shareLink->allowsPeopleDetail(),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/omo/assets/js/app.js?v=20260906-pv-all-subdrawers"></script>
-<script src="/omo/assets/js/structure-mini-map.js"></script>
+<script src="/omo/assets/js/app.js?v=20260916-structure-render-cache"></script>
+<script src="/omo/assets/js/structure-mini-map.js?v=20260916-structure-render-cache"></script>
 <script>
 $(document).ready(function () {
     if (window.omoConfig && !window.omoConfig.shareAllowsStructure) {

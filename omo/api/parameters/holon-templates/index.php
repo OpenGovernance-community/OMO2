@@ -26,6 +26,8 @@ if ($organizationId <= 0) {
     $errorMessage = omoHolonTemplateT('parameters.holon_templates.error.no_organization');
 } elseif (!$organization->load($organizationId)) {
     $errorMessage = omoHolonTemplateT('parameters.holon_templates.error.organization_not_found');
+} elseif (empty(($discoveryModeAccess = omoHolonTemplateDiscoveryModeAccess($organization, $targetHolonId))['status'])) {
+    $errorMessage = (string)($discoveryModeAccess['message'] ?? omoHolonTemplateT('parameters.holon_templates.error.discovery_mode'));
 } elseif (empty(($adminModeAccess = omoHolonTemplateAdminModeAccess($organizationId))['status'])) {
     $errorMessage = (string)($adminModeAccess['message'] ?? omoHolonTemplateT('parameters.holon_templates.error.admin_required'));
 } elseif ($organization->getEnabledStructuralRootHolon() === null) {

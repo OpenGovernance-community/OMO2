@@ -280,6 +280,10 @@ function profilPopupGetSourceLang(): array
             'text' => 'E-mail affiché',
             'context' => 'Label shown for the active profile email summary item.',
         ],
+		'profile.popup.active.phone.label' => [
+			'text' => 'Téléphone affiché',
+			'context' => 'Label shown for the active profile phone summary item.',
+		],
         'profile.popup.active.username.label' => [
             'text' => "Nom d'utilisateur affiche",
             'context' => 'Label shown for the active profile username summary item.',

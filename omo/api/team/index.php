@@ -33,6 +33,27 @@ function omoTeamNormalizeLatLong($value)
     );
 }
 
+function omoTeamPhoneHref($phone)
+{
+    $phone = trim((string)$phone);
+    $normalizedPhone = preg_replace('/[^0-9+*#]/', '', $phone);
+    if ($normalizedPhone === null || !preg_match('/\d/', $normalizedPhone)) {
+        return '';
+    }
+
+    return 'tel:' . $normalizedPhone;
+}
+
+function omoTeamEmailHref($email)
+{
+    $email = trim((string)$email);
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return '';
+    }
+
+    return 'mailto:' . $email;
+}
+
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $sourceLang = omoTeamSourceLang();
@@ -438,6 +459,9 @@ foreach ($rawMemberCards as $rawCard) {
     }
 
     $email = $hasMembership ? $membership->getScopedEmail() : ($hasUser ? $user->getScopedEmail($organizationId) : '');
+	$phone = $hasMembership ? $membership->getScopedPhone() : ($hasUser ? $user->getScopedPhone($organizationId) : '');
+	$phoneHref = omoTeamPhoneHref($phone);
+	$emailHref = omoTeamEmailHref($email);
     $username = $hasMembership ? $membership->getScopedUsername() : ($hasUser ? $user->getScopedUsername($organizationId) : '');
     $photoUrl = trim((string)($rawCard['photoUrl'] ?? ''));
     if ($photoUrl === '' && $hasMembership) {
@@ -449,8 +473,6 @@ foreach ($rawMemberCards as $rawCard) {
 
     $firstName = $hasUser ? trim((string)$user->get('firstname')) : '';
     $lastName = $hasUser ? trim((string)$user->get('lastname')) : '';
-    $phone = '';
-
     $initials = trim((string)($rawCard['initials'] ?? ''));
     if ($initials === '' && $hasMembership) {
         $initials = $membership->getUserInitials();
@@ -506,7 +528,9 @@ foreach ($rawMemberCards as $rawCard) {
         'firstName' => $firstName,
         'lastName' => $lastName,
         'phone' => $phone,
+		'phoneHref' => $phoneHref,
         'email' => $email,
+		'emailHref' => $emailHref,
         'username' => $username,
         'secondary' => $identitySecondary,
         'identityTitle' => $identityTitle,
@@ -585,6 +609,9 @@ $mapMemberPayload = array_map(static function (array $card): array {
         'displayName' => (string)$card['displayName'],
         'secondary' => (string)($card['secondary'] ?? ''),
         'email' => (string)($card['email'] ?? ''),
+		'emailHref' => (string)($card['emailHref'] ?? ''),
+		'phone' => (string)($card['phone'] ?? ''),
+		'phoneHref' => (string)($card['phoneHref'] ?? ''),
         'joinedAtLabel' => (string)($card['joinedAtLabel'] ?? ''),
         'lastSeenLabel' => (string)($card['lastSeenLabel'] ?? ''),
         'photoUrl' => (string)($card['photoUrl'] ?? ''),
@@ -799,25 +826,40 @@ if ($leafletMapsEnabled) {
                             </div>
 
                             <div class="omo-team-card__meta">
-                                <div class="omo-team-card__meta-row<?= !$isRoleTeamContext && $card['email'] !== '' ? ' omo-team-card__meta-row--email' : '' ?>">
-                                    <span class="omo-team-card__meta-label generic-meta-label generic-meta-label--compact"><?= omoApiEscape(omoTeamT($isRoleTeamContext ? 'team.member.focus' : 'team.member.email', [], $lang, $sourceLang)) ?></span>
-                                    <?php if (!$isRoleTeamContext && $card['email'] !== ''): ?>
-                                        <span class="omo-team-card__meta-value omo-team-card__email-value generic-meta-value generic-meta-value--compact">
-                                            <span class="omo-team-card__email-text" title="<?= omoApiEscape($card['email']) ?>"><?= omoApiEscape($card['email']) ?></span>
-                                            <button
-                                                type="button"
-                                                class="omo-team-card__copy-email"
-                                                data-team-copy-email="<?= omoApiEscape($card['email']) ?>"
-                                                aria-label="<?= omoApiEscape(omoTeamT('team.action.copy_email', [], $lang, $sourceLang)) ?>"
-                                                title="<?= omoApiEscape(omoTeamT('team.action.copy_email', [], $lang, $sourceLang)) ?>"
-                                            ><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 8h10v12H8zM5 4h10v2H7v10H5z" fill="currentColor"></path></svg></button>
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="omo-team-card__meta-value<?= $isRoleTeamContext ? ' omo-team-card__focus-value' : '' ?> generic-meta-value generic-meta-value--compact<?= ($isRoleTeamContext ? $card['contextFocus'] : $card['email']) === '' ? ' omo-team-card__meta-value--muted' : '' ?>"><?= omoApiEscape($isRoleTeamContext
-                                            ? ($card['contextFocus'] !== '' ? $card['contextFocus'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang))
-                                            : omoTeamT('team.member.not_provided', [], $lang, $sourceLang)) ?></span>
-                                    <?php endif; ?>
-                                </div>
+								<div class="omo-team-card__meta-row<?= !$isRoleTeamContext && ($card['phone'] !== '' || $card['email'] !== '') ? ' omo-team-card__meta-row--contact' : '' ?>">
+									<span class="omo-team-card__meta-label generic-meta-label generic-meta-label--compact"><?= omoApiEscape(omoTeamT($isRoleTeamContext ? 'team.member.focus' : 'team.member.contact', [], $lang, $sourceLang)) ?></span>
+									<?php if (!$isRoleTeamContext): ?>
+										<span class="omo-team-card__meta-value omo-team-card__contact-value generic-meta-value generic-meta-value--compact">
+											<span class="omo-team-card__contact-line omo-team-card__contact-line--phone<?= $card['phone'] === '' ? ' omo-team-card__contact-line--muted' : '' ?>">
+												<svg class="omo-team-card__contact-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6.6 10.8c1.4 2.8 3.7 5.1 6.5 6.5l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.5 21 3 13.5 3 4.2c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.3.1.7-.2 1L6.6 10.8z" fill="currentColor"></path></svg>
+												<?php if ($card['phoneHref'] !== ''): ?>
+												<a class="omo-team-card__phone-link" href="<?= omoApiEscape($card['phoneHref']) ?>" data-team-phone-link><?= omoApiEscape($card['phone']) ?></a>
+												<?php else: ?>
+												<span><?= omoApiEscape($card['phone'] !== '' ? $card['phone'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang)) ?></span>
+												<?php endif; ?>
+											</span>
+											<span class="omo-team-card__contact-line omo-team-card__contact-line--email<?= $card['email'] === '' ? ' omo-team-card__contact-line--muted' : '' ?>">
+												<svg class="omo-team-card__contact-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h13A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-11zm2 .2v.3l7 4.7 7-4.7v-.3c0-.4-.3-.7-.7-.7H5.7c-.4 0-.7.3-.7.7zm14 2.7-6.4 4.3a1 1 0 0 1-1.1 0L5 9.4v8.1c0 .4.3.7.7.7h12.6c.4 0 .7-.3.7-.7V9.4z" fill="currentColor"></path></svg>
+												<?php if ($card['emailHref'] !== ''): ?>
+												<a class="omo-team-card__email-text omo-team-card__email-link" href="<?= omoApiEscape($card['emailHref']) ?>" data-team-email-link title="<?= omoApiEscape($card['email']) ?>"><?= omoApiEscape($card['email']) ?></a>
+												<?php else: ?>
+												<span class="omo-team-card__email-text" title="<?= omoApiEscape($card['email']) ?>"><?= omoApiEscape($card['email'] !== '' ? $card['email'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang)) ?></span>
+												<?php endif; ?>
+												<?php if ($card['email'] !== ''): ?>
+												<button
+													type="button"
+													class="omo-team-card__copy-email"
+													data-team-copy-email="<?= omoApiEscape($card['email']) ?>"
+													aria-label="<?= omoApiEscape(omoTeamT('team.action.copy_email', [], $lang, $sourceLang)) ?>"
+													title="<?= omoApiEscape(omoTeamT('team.action.copy_email', [], $lang, $sourceLang)) ?>"
+												><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 8h10v12H8zM5 4h10v2H7v10H5z" fill="currentColor"></path></svg></button>
+												<?php endif; ?>
+											</span>
+										</span>
+									<?php else: ?>
+										<span class="omo-team-card__meta-value omo-team-card__focus-value generic-meta-value generic-meta-value--compact<?= $card['contextFocus'] === '' ? ' omo-team-card__meta-value--muted' : '' ?>"><?= omoApiEscape($card['contextFocus'] !== '' ? $card['contextFocus'] : omoTeamT('team.member.not_provided', [], $lang, $sourceLang)) ?></span>
+									<?php endif; ?>
+								</div>
                             </div>
 
                             <?php if ($card['contextTimeBudgetLabel'] !== '' || $card['contextMoneyBudgetLabel'] !== ''): ?>
@@ -1008,10 +1050,29 @@ if ($leafletMapsEnabled) {
                                 </div>
                                 <div class="omo-team__compact-cell generic-file-list__cell" data-label="<?= omoApiEscape(omoTeamT($isRoleTeamContext ? 'team.member.focus' : 'team.column.phone', [], $lang, $sourceLang)) ?>">
                                     <?php $compactFocus = trim((string)($card['contextFocus'] ?? '')); ?>
-                                    <span class="<?= ($isRoleTeamContext ? $compactFocus : $compactPhone) === '' ? 'omo-team__compact-placeholder' : '' ?>"><?= omoApiEscape($isRoleTeamContext ? ($compactFocus !== '' ? $compactFocus : '-') : ($compactPhone !== '' ? $compactPhone : '-')) ?></span>
+									<?php $compactPhoneHref = trim((string)($card['phoneHref'] ?? '')); ?>
+									<?php if (!$isRoleTeamContext && $compactPhone !== '' && $compactPhoneHref !== ''): ?>
+										<a class="omo-team__compact-phone-link" href="<?= omoApiEscape($compactPhoneHref) ?>" data-team-phone-link><?= omoApiEscape($compactPhone) ?></a>
+									<?php else: ?>
+										<span class="<?= ($isRoleTeamContext ? $compactFocus : $compactPhone) === '' ? 'omo-team__compact-placeholder' : '' ?>"><?= omoApiEscape($isRoleTeamContext ? ($compactFocus !== '' ? $compactFocus : '-') : ($compactPhone !== '' ? $compactPhone : '-')) ?></span>
+									<?php endif; ?>
                                 </div>
                                 <div class="omo-team__compact-cell generic-file-list__cell" data-label="<?= omoApiEscape(omoTeamT('team.member.email', [], $lang, $sourceLang)) ?>">
-                                    <span class="<?= $card['email'] === '' ? 'omo-team__compact-placeholder' : '' ?>"><?= omoApiEscape($card['email'] !== '' ? $card['email'] : '-') ?></span>
+									<?php $compactEmailHref = trim((string)($card['emailHref'] ?? '')); ?>
+									<?php if ($card['email'] !== '' && $compactEmailHref !== ''): ?>
+										<span class="omo-team__compact-email-value">
+											<a class="omo-team__compact-email-link" href="<?= omoApiEscape($compactEmailHref) ?>" data-team-email-link><?= omoApiEscape($card['email']) ?></a>
+											<button
+												type="button"
+												class="omo-team__compact-copy-email"
+												data-team-copy-email="<?= omoApiEscape($card['email']) ?>"
+												aria-label="<?= omoApiEscape(omoTeamT('team.action.copy_email', [], $lang, $sourceLang)) ?>"
+												title="<?= omoApiEscape(omoTeamT('team.action.copy_email', [], $lang, $sourceLang)) ?>"
+											><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 8h10v12H8zM5 4h10v2H7v10H5z" fill="currentColor"></path></svg></button>
+										</span>
+									<?php else: ?>
+										<span class="<?= $card['email'] === '' ? 'omo-team__compact-placeholder' : '' ?>"><?= omoApiEscape($card['email'] !== '' ? $card['email'] : '-') ?></span>
+									<?php endif; ?>
                                 </div>
                             </div>
                         </article>
@@ -1226,6 +1287,44 @@ if ($leafletMapsEnabled) {
     color: var(--color-text-light);
 }
 
+.omo-team__compact-email-value {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.omo-team__compact-email-link {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.omo-team__compact-copy-email {
+    display: inline-grid;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    padding: 4px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-text-light);
+    cursor: pointer;
+}
+
+.omo-team__compact-copy-email:hover,
+.omo-team__compact-copy-email:focus-visible {
+    background: var(--color-surface-alt, #f0f2f5);
+    color: var(--color-primary);
+    outline: none;
+}
+
+.omo-team__compact-copy-email svg {
+    width: 100%;
+    height: 100%;
+}
+
 .omo-team__map-summary {
     color: var(--color-text-light);
     font-size: 0.9rem;
@@ -1349,6 +1448,39 @@ if ($leafletMapsEnabled) {
     font-size: 0.82rem;
     line-height: 1.3;
     word-break: break-word;
+}
+
+.omo-team__map-popup-contact-value {
+    display: grid;
+    gap: 5px;
+}
+
+.omo-team__map-popup-contact-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.omo-team__map-popup-contact-icon {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    color: #64748b;
+}
+
+.omo-team__map-popup-contact-link {
+    min-width: 0;
+    color: #0f766e;
+    overflow: hidden;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.omo-team__map-popup-contact-link:hover,
+.omo-team__map-popup-contact-link:focus-visible {
+    text-decoration: underline;
 }
 
 .omo-team__map-popup-action {
@@ -1623,12 +1755,57 @@ if ($leafletMapsEnabled) {
     word-break: break-word;
 }
 
-.omo-team-card__email-value {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+.omo-team-card__contact-value {
+    display: grid;
+    gap: 3px;
     min-width: 0;
     max-width: 100%;
+}
+
+.omo-team-card__contact-line {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+
+.omo-team-card__contact-line--muted {
+    color: var(--color-text-light);
+}
+
+.omo-team-card__contact-line--email {
+    order: 1;
+}
+
+.omo-team-card__contact-line--phone {
+    order: 2;
+}
+
+.omo-team-card__contact-icon {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    color: var(--color-text-light);
+}
+
+.omo-team-card__phone-link,
+.omo-team__compact-phone-link,
+.omo-team-card__email-link,
+.omo-team__compact-email-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.omo-team-card__phone-link:hover,
+.omo-team-card__phone-link:focus-visible,
+.omo-team__compact-phone-link:hover,
+.omo-team__compact-phone-link:focus-visible,
+.omo-team-card__email-link:hover,
+.omo-team-card__email-link:focus-visible,
+.omo-team__compact-email-link:hover,
+.omo-team__compact-email-link:focus-visible {
+    color: var(--color-primary);
+    text-decoration: underline;
 }
 
 .omo-team-card__email-text {
@@ -1661,8 +1838,17 @@ if ($leafletMapsEnabled) {
     height: 100%;
 }
 
-.omo-team-card__meta-row--email:hover .omo-team-card__copy-email,
-.omo-team-card__meta-row--email:focus-within .omo-team-card__copy-email {
+.omo-team-card__copy-email.is-copied,
+.omo-team__compact-copy-email.is-copied {
+    width: auto;
+    min-width: 52px;
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.omo-team-card__meta-row--contact:hover .omo-team-card__copy-email,
+.omo-team-card__meta-row--contact:focus-within .omo-team-card__copy-email {
     opacity: 1;
     pointer-events: auto;
 }
@@ -1774,6 +1960,9 @@ $teamJsTranslations = [
     'adminContext' => omoTeamT('team.member.admin_context', ['adminLabel' => $contextAdminLabel], $lang, $sourceLang),
     'adminOrganization' => omoTeamT('team.member.admin_organization', ['adminLabel' => $organizationAdminLabel], $lang, $sourceLang),
     'email' => omoTeamT('team.member.email', [], $lang, $sourceLang),
+	'phone' => omoTeamT('team.column.phone', [], $lang, $sourceLang),
+    'contact' => omoTeamT('team.member.contact', [], $lang, $sourceLang),
+	'emailCopied' => omoTeamT('team.action.email_copied', [], $lang, $sourceLang),
     'notProvided' => omoTeamT('team.member.not_provided', [], $lang, $sourceLang),
     'added' => omoTeamT('team.member.added', [], $lang, $sourceLang),
     'lastConnection' => omoTeamT('team.member.last_connection', [], $lang, $sourceLang),
@@ -1793,7 +1982,7 @@ $teamJsTranslations = [
     'mapSummaryOther' => omoTeamT('team.map.summary_other', ['count' => '{count}'], $lang, $sourceLang),
 ];
 ?>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
 <script>
 var omoTeamSavedViewsStorageKey = 'omo.team.saved-views.v2';
 var omoTeamLegacySavedViewsStorageKey = 'omo.team.saved-views.v1';
@@ -2483,7 +2672,18 @@ function omoTeamEnsureMapReady() {
             popupBits.push('</div>');
 
             popupBits.push('<div class="omo-team__map-popup-meta">');
-            popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">' + omoTeamEscapeHtml(omoTeamText.email) + '</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.email || omoTeamText.notProvided) + '</div></div>');
+            const phoneIcon = '<svg class="omo-team__map-popup-contact-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8c1.4 2.8 3.7 5.1 6.5 6.5l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.5 21 3 13.5 3 4.2c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.3.1.7-.2 1L6.6 10.8z" fill="currentColor"></path></svg>';
+            const emailIcon = '<svg class="omo-team__map-popup-contact-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h13A2.5 2.5 0 0 1 21 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5v-11zm2 .2v.3l7 4.7 7-4.7v-.3c0-.4-.3-.7-.7-.7H5.7c-.4 0-.7.3-.7.7zm14 2.7-6.4 4.3a1 1 0 0 1-1.1 0L5 9.4v8.1c0 .4.3.7.7.7h12.6c.4 0 .7-.3.7-.7V9.4z" fill="currentColor"></path></svg>';
+            const contactLines = [];
+            const phoneValue = member.phoneHref
+                ? '<a class="omo-team__map-popup-contact-link" href="' + omoTeamEscapeHtml(member.phoneHref) + '" data-map-popup-contact-link>' + omoTeamEscapeHtml(member.phone) + '</a>'
+                : omoTeamEscapeHtml(member.phone || omoTeamText.notProvided);
+            const emailValue = member.emailHref
+                ? '<a class="omo-team__map-popup-contact-link" href="' + omoTeamEscapeHtml(member.emailHref) + '" data-map-popup-contact-link>' + omoTeamEscapeHtml(member.email) + '</a>'
+                : omoTeamEscapeHtml(member.email || omoTeamText.notProvided);
+            contactLines.push('<div class="omo-team__map-popup-contact-line">' + phoneIcon + '<span>' + phoneValue + '</span></div>');
+            contactLines.push('<div class="omo-team__map-popup-contact-line">' + emailIcon + '<span>' + emailValue + '</span></div>');
+            popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">' + omoTeamEscapeHtml(omoTeamText.contact) + '</div><div class="omo-team__map-popup-meta-value omo-team__map-popup-contact-value">' + contactLines.join('') + '</div></div>');
             popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">' + omoTeamEscapeHtml(omoTeamText.added) + '</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.joinedAtLabel || 'N/A') + '</div></div>');
             popupBits.push('<div class="omo-team__map-popup-meta-row"><div class="omo-team__map-popup-meta-label">' + omoTeamEscapeHtml(omoTeamText.lastConnection) + '</div><div class="omo-team__map-popup-meta-value">' + omoTeamEscapeHtml(member.lastSeenLabel || omoTeamText.never) + '</div></div>');
             popupBits.push('</div>');
@@ -2648,9 +2848,15 @@ $(document)
   });
 
 $(document)
+  .off('click.omoTeamMapPopupContact', '[data-map-popup-contact-link]')
+  .on('click.omoTeamMapPopupContact', '[data-map-popup-contact-link]', function (event) {
+    event.stopPropagation();
+  });
+
+$(document)
   .off('click.omoTeamUserContext', '[data-open-user-context="1"]')
   .on('click.omoTeamUserContext', '[data-open-user-context="1"]', function (event) {
-    if ($(event.target).closest('[data-team-member-menu="1"]').length) {
+    if ($(event.target).closest('[data-team-member-menu="1"], [data-team-phone-link], [data-team-email-link]').length) {
         return;
     }
 
@@ -2666,7 +2872,7 @@ $(document)
 $(document)
   .off('keydown.omoTeamUserContext', '[data-open-user-context="1"]')
   .on('keydown.omoTeamUserContext', '[data-open-user-context="1"]', function (event) {
-    if ($(event.target).closest('[data-team-member-menu="1"]').length) {
+    if ($(event.target).closest('[data-team-member-menu="1"], [data-team-phone-link], [data-team-email-link]').length) {
         return;
     }
 
@@ -2683,6 +2889,34 @@ $(document)
   .on('click.omoTeamMenuSurface', '.omo-team-card__menu', function (event) {
     event.stopPropagation();
   });
+
+function omoTeamShowEmailCopied(button) {
+    if (!button) {
+        return;
+    }
+
+    if (!button.dataset.teamCopyEmailOriginalHtml) {
+        button.dataset.teamCopyEmailOriginalHtml = button.innerHTML;
+        button.dataset.teamCopyEmailOriginalLabel = button.getAttribute('aria-label') || '';
+        button.dataset.teamCopyEmailOriginalTitle = button.getAttribute('title') || '';
+    }
+
+    if (button.omoTeamCopyRestoreTimer) {
+        window.clearTimeout(button.omoTeamCopyRestoreTimer);
+    }
+
+    button.textContent = omoTeamText.emailCopied;
+    button.classList.add('is-copied');
+    button.setAttribute('aria-label', omoTeamText.emailCopied);
+    button.setAttribute('title', omoTeamText.emailCopied);
+    button.omoTeamCopyRestoreTimer = window.setTimeout(function () {
+        button.innerHTML = button.dataset.teamCopyEmailOriginalHtml;
+        button.classList.remove('is-copied');
+        button.setAttribute('aria-label', button.dataset.teamCopyEmailOriginalLabel);
+        button.setAttribute('title', button.dataset.teamCopyEmailOriginalTitle);
+        button.omoTeamCopyRestoreTimer = null;
+    }, 2500);
+}
 
 $(document)
   .off('click.omoTeamCopyEmail', '[data-team-copy-email]')
@@ -2712,6 +2946,8 @@ $(document)
     } else {
         fallbackCopy();
     }
+
+    omoTeamShowEmailCopied(this);
   });
 
 $(document)

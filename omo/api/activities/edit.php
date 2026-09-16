@@ -67,10 +67,13 @@ $drawerTitle = omoActivityT($activityId > 0 ? 'activity.editor.edit_title' : 'ac
                     <span><?= omoApiEscape(omoActivityT('activity.title_field')) ?></span>
                     <input class="generic-form-control" type="text" name="title" maxlength="255" required autofocus value="<?= omoApiEscape((string)$activity->get('title')) ?>">
                 </label>
-                <label class="omo-activity-field omo-activity-field--wide">
+                <div class="omo-activity-field omo-activity-field--wide">
                     <span><?= omoApiEscape(omoActivityT('activity.description_field')) ?></span>
-                    <textarea class="generic-form-control" name="description" rows="5"><?= omoApiEscape((string)$activity->get('description')) ?></textarea>
-                </label>
+                    <div data-activity-html-editor-container>
+                        <div data-activity-html-editor></div>
+                        <textarea name="description" hidden aria-hidden="true" data-activity-html-value><?= omoApiEscape((string)$activity->get('description')) ?></textarea>
+                    </div>
+                </div>
             </div>
         </section>
 

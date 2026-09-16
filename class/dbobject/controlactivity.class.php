@@ -15,7 +15,7 @@ class ControlActivity extends ControlTask
             [['id', 'display_lead_value', 'execution_duration_value', 'position'], 'integer'],
             [['IDorganization', 'IDholon'], 'fk'],
             [['title', 'frequency', 'schedule', 'display_lead_unit', 'execution_duration_unit'], 'string'],
-            [['description'], 'text'],
+            [['description'], 'html'],
             [['active'], 'boolean'],
             [['created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],

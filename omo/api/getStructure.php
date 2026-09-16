@@ -206,19 +206,20 @@ $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0))
 $drawerMode = isset($_GET['drawer']) && (string)$_GET['drawer'] === '1';
 if ($organizationId > 0) {
     $organization = new \dbObject\Organization();
-    if ($organization->load($organizationId) && !$organization->canViewDetail()) {
+    $organizationLoaded = $organization->load($organizationId);
+    if ($organizationLoaded && !$organization->canViewDetail()) {
         http_response_code(403);
         echo '<div class="error">' . omoApiEscape(t('structure.error.organization_access_denied')) . '</div>';
         exit;
     }
 
-    if ($organization->load($organizationId) && !$organization->isStructureApplicationEnabled()) {
+    if ($organizationLoaded && !$organization->isStructureApplicationEnabled()) {
         http_response_code(404);
         omoRenderStructureDisabledPlaceholder($lang, $sourceLang);
         exit;
     }
 
-    if ($organization->load($organizationId) && $organization->getEnabledStructuralRootHolon() === null) {
+    if ($organizationLoaded && $organization->getEnabledStructuralRootHolon() === null) {
         if ($drawerMode) {
             require_once __DIR__ . '/organization_setup_panel.php';
             omoRenderOrganizationSetupPanel($organization);
@@ -230,11 +231,8 @@ if ($organizationId > 0) {
 }
 
 $structureDataParams = array();
-if (isset($_GET['oid']) && is_numeric($_GET['oid'])) {
-    $structureDataParams['oid'] = (int)$_GET['oid'];
-}
-if (isset($_GET['cid']) && is_numeric($_GET['cid'])) {
-    $structureDataParams['cid'] = (int)$_GET['cid'];
+if ($organizationId > 0) {
+    $structureDataParams['oid'] = $organizationId;
 }
 $initialCid = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
 
@@ -1091,9 +1089,17 @@ function getNodeDepthOpacity(node, minOpacity, maxOpacity) {
   const safeMinOpacity = clampNumber(Number(minOpacity), 0, 1);
   const safeMaxOpacity = clampNumber(Number(maxOpacity), safeMinOpacity, 1);
   const distanceFromCurrentLevel = Math.abs(getNodeDepth(node) - getCurrentStructureDepth());
-  const opacityStep = 0.18;
+  const opacityStep = structureDisplaySettings.fadeOpacityStep;
   const fadeDistance = Math.max(0, distanceFromCurrentLevel - 1);
   return clampNumber(safeMaxOpacity - (fadeDistance * opacityStep), safeMinOpacity, safeMaxOpacity);
+}
+
+function isNodeWithinStructureDisplayDepth(node) {
+  if (!structureDisplaySettings || structureDisplaySettings.maxDescendantDepth <= 0) {
+    return true;
+  }
+
+  return getNodeDepth(node) <= getCurrentStructureDepth() + structureDisplaySettings.maxDescendantDepth;
 }
 
 function getNodeVisualOpacity(node) {
@@ -1957,6 +1963,7 @@ $(document)
     const canCreateShareLink = <?= $canCreateShareLink ? 'true' : 'false' ?>;
     const canExportStructure = <?= $canExportStructure ? 'true' : 'false' ?>;
     let root = null;
+    let structureDisplaySettings = normalizeStructureDisplaySettings(null);
     let structureProjectTitles = {};
     let structureAuthorityLabels = {};
 
@@ -1974,6 +1981,31 @@ $(document)
     let structureCanvasPickingIssue = null;
     let structureCanvasWarningMessage = "";
     let structureCanvasWarningCollapsed = false;
+
+    function normalizeStructureDisplaySettings(settings) {
+      const source = settings && typeof settings === "object" ? settings : {};
+      const fadeOpacityStep = Number(source.fadeOpacityStep);
+      const maxDescendantDepth = Number(source.maxDescendantDepth);
+      const legacyLabelMinRadius = Number(source.labelMinRadius);
+      const labelAutoMinRadius = Number(source.labelAutoMinRadius);
+      const labelHoverMinRadius = Number(source.labelHoverMinRadius);
+      const labelMinFontSize = Number(source.labelMinFontSize);
+
+      return {
+        fadeOpacityStep: Number.isFinite(fadeOpacityStep) ? clampNumber(fadeOpacityStep, 0, 1) : 0.18,
+        maxDescendantDepth: Number.isFinite(maxDescendantDepth) ? Math.floor(clampNumber(maxDescendantDepth, 0, 20)) : 0,
+        labelAutoMinRadius: Number.isFinite(labelAutoMinRadius)
+          ? Math.floor(clampNumber(labelAutoMinRadius, 3, 200))
+          : (Number.isFinite(legacyLabelMinRadius) ? Math.floor(clampNumber(legacyLabelMinRadius, 3, 200)) : 18),
+        labelHoverMinRadius: Number.isFinite(labelHoverMinRadius)
+          ? Math.floor(clampNumber(labelHoverMinRadius, 3, 200))
+          : (Number.isFinite(legacyLabelMinRadius) ? Math.floor(clampNumber(legacyLabelMinRadius, 3, 200)) : 18),
+        labelMinFontSize: Number.isFinite(labelMinFontSize) ? clampNumber(labelMinFontSize, 0, 30) : 0,
+        textOutlineEnabled: source.textOutlineEnabled === undefined
+          ? true
+          : !(source.textOutlineEnabled === false || source.textOutlineEnabled === 0 || source.textOutlineEnabled === "0")
+      };
+    }
     const structureBrowserInfo = {
       name: structureTranslations.browserGenericName,
       isBrave: false
@@ -2321,6 +2353,7 @@ $(document)
       const requestedNodeId = nodeId === null || nodeId === undefined || nodeId === ""
         ? null
         : nodeId;
+
       const targetNode = requestedNodeId ? findPackedNodeById(requestedNodeId) : root;
 
       if (!targetNode && requestedNodeId && settings.allowReload) {
@@ -2474,6 +2507,7 @@ $(document)
         structureAuthorityLabels = response && response.authorityLabels && typeof response.authorityLabels === "object"
           ? response.authorityLabels
           : {};
+        structureDisplaySettings = normalizeStructureDisplaySettings(response.displaySettings);
         const normalizedRoot = normalizeStructureNode(response, 0);
 
         if (!normalizedRoot) {
@@ -2545,14 +2579,27 @@ $(document)
     }
 
     function drawText(ctx, text, fontSize, centerX, centerY, radius, fillcolor = "#000", strokecolor = "#FFF", style = "", font = "Arial", opacity = 1) {
-      if (fontSize < 6) return;
-      if (fontSize < 12) fontSize = 12;
+      const configuredMinimumFontSize = structureDisplaySettings.labelMinFontSize;
+      const allowsTinyText = configuredMinimumFontSize > 0
+        ? configuredMinimumFontSize < 6
+        : Math.min(
+        structureDisplaySettings.labelAutoMinRadius,
+        structureDisplaySettings.labelHoverMinRadius
+      ) < 6;
+      const minimumFontSize = configuredMinimumFontSize > 0
+        ? configuredMinimumFontSize
+        : (allowsTinyText ? 1 : 6);
+      const preferredMinimumFontSize = configuredMinimumFontSize > 0
+        ? configuredMinimumFontSize
+        : (allowsTinyText ? 1 : 12);
+      if (fontSize < minimumFontSize) return;
+      if (fontSize < preferredMinimumFontSize) fontSize = preferredMinimumFontSize;
 
       ctx.textBaseline = "alphabetic";
       ctx.textAlign = "center";
       ctx.fillStyle = colorToTransparentFill(fillcolor, opacity, "rgba(0,0,0," + opacity + ")");
       ctx.strokeStyle = colorToTransparentFill(strokecolor, opacity, "rgba(255,255,255," + opacity + ")");
-      ctx.lineWidth = 5;
+      ctx.lineWidth = allowsTinyText ? Math.max(0.25, Math.min(1, fontSize * 0.35)) : 5;
       ctx.setLineDash([]);
       ctx.lineJoin = "round";
       ctx.font = style + " " + fontSize + "pt '" + font + "'";
@@ -2561,8 +2608,8 @@ $(document)
       fontSize = titleText.fontSize;
       titleText = titleText.lines;
 
-      if (fontSize < 6) return;
-      if (fontSize < 12) fontSize = 12;
+      if (fontSize < minimumFontSize) return;
+      if (fontSize < preferredMinimumFontSize) fontSize = preferredMinimumFontSize;
 
       ctx.font = style + " " + fontSize + "pt '" + font + "'";
 
@@ -2572,7 +2619,9 @@ $(document)
           if (cpt === 3) txt = "...";
           const y = centerY + ((-Math.min(titleText.length, 4) / 2) + iterator + 0.5) * fontSize * 1.1;
           ctx.textBaseline = "middle";
-          ctx.strokeText(txt, centerX, y);
+          if (structureDisplaySettings.textOutlineEnabled) {
+            ctx.strokeText(txt, centerX, y);
+          }
           ctx.fillText(txt, centerX, y);
         }
         cpt += 1;
@@ -2696,6 +2745,9 @@ $(document)
 
       for (let i = 0; i < nodeCount; i++) {
         const node = nodes[i];
+        if (!isNodeWithinStructureDisplayDepth(node)) {
+          continue;
+        }
         const nodeX = ((node.x - zoomInfo.centerX) * zoomInfo.scale) + centerX;
         const nodeY = ((node.y - zoomInfo.centerY) * zoomInfo.scale) + centerY;
         const nodeR = node.r * zoomInfo.scale * (node.type == "1" ? 0.9 : (node.type == "4" ? 1.05 : 1));
@@ -2760,15 +2812,17 @@ $(document)
 
       for (let i = nodeCount - 1; i >= 0; i--) {
         const node = nodes[i];
+        if (!isNodeWithinStructureDisplayDepth(node)) {
+          continue;
+        }
         const nodeX = ((node.x - zoomInfo.centerX) * zoomInfo.scale) + centerX;
         const nodeY = ((node.y - zoomInfo.centerY) * zoomInfo.scale) + centerY;
         const nodeR = node.r * zoomInfo.scale * (node.type == "1" ? 0.9 : (node.type == "4" ? 1.05 : 1));
 
-        if (
-          !hidden &&
-          showText &&
-          currentnode &&
-          (
+        const isHoveredLabel = node.ID === hoverNode
+          && nodeR >= structureDisplaySettings.labelHoverMinRadius;
+        const isAutomaticLabel = nodeR >= structureDisplaySettings.labelAutoMinRadius
+          && (
             node.ID === currentnode.ID ||
             node.parent === currentnode ||
             (node.parent && node.parent.parent === currentnode) ||
@@ -2777,15 +2831,22 @@ $(document)
               (currentnode.type != "2" || currentnode.parent.children.length > 1) &&
               (node.ID === currentnode.parent.ID || (node.parent && node.parent.ID === currentnode.parent.ID))
             )
-          )
-        ) {
+          );
+
+        if (!hidden && showText && currentnode && (isHoveredLabel || isAutomaticLabel)) {
           const thename = node.name;
           const titleFont = "Arial";
           const nodeTextOpacity = getNodeTextOpacity(node);
 
           if ((node.type != "1" && node === currentnode) || currentnode.parent === node) {
             const fontSizeTitle = Math.round(nodeR / 6);
-            if (fontSizeTitle > 4) {
+            const circularMinimumFontSize = structureDisplaySettings.labelMinFontSize > 0
+              ? structureDisplaySettings.labelMinFontSize
+              : (Math.min(
+                structureDisplaySettings.labelAutoMinRadius,
+                structureDisplaySettings.labelHoverMinRadius
+              ) < 6 ? 1 : 5);
+            if (fontSizeTitle >= circularMinimumFontSize) {
               drawCircularText(chosenContext, thename.replace(/,? and /g, " & "), fontSizeTitle, "bold", titleFont, nodeX, nodeY, nodeR, 0, 0, nodeTextOpacity);
             }
           } else {
