@@ -67,6 +67,10 @@ $sourceLang = [
         'text' => 'Prise de rendez-vous',
         'context' => 'Open personal public booking settings.',
     ],
+    'calendar.action.share' => [
+        'text' => 'Partager',
+        'context' => 'Manage personal calendar subscription links across all organizations and external calendars.',
+    ],
     'calendar.confirm.delete' => [
         'text' => 'Supprimer cet événement ?',
         'context' => 'Confirmation shown before deleting an event from the compact menu.',
@@ -1432,6 +1436,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     >&#8942;</button>
                     <div class="generic-menu-panel omo-calendar__header-menu-panel" data-omo-calendar-header-menu-panel role="menu" hidden>
                         <button type="button" class="generic-menu-item" data-omo-calendar-open-connect role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.action.connect')) ?></button>
+                        <button type="button" class="generic-menu-item" data-omo-calendar-open-share role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.action.share')) ?></button>
                         <button type="button" class="generic-menu-item" data-omo-calendar-open-meeting role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.action.meeting')) ?></button>
                     </div>
                 </div>
@@ -1904,7 +1909,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             <div class="omo-overlay-drawer__body" data-omo-calendar-editor-body></div>
         </div>
     </div>
-    <script src="/common/calendar/availability.js?v=20260916"></script>
+    <link rel="stylesheet" href="/common/calendar/availability.css?v=20260916-conflict">
+    <script src="/common/calendar/availability.js?v=20260916-conflict"></script>
+    <script src="/common/calendar/share.js?v=20260916"></script>
     <script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
     <script>
     (function () {
@@ -2179,6 +2186,14 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
             if (event.target.closest('[data-omo-calendar-open-meeting]')) {
                 event.preventDefault(); openMeetingSettings(); return;
+            }
+            if (event.target.closest('[data-omo-calendar-open-share]')) {
+                event.preventDefault();
+                closeCalendarHeaderMenu();
+                window.omoCalendarOpenShare(resolveUrl('/omo/api/calendar/share.php'),
+                    <?= json_encode(omoCalendarT('calendar.action.share')) ?>,
+                    <?= json_encode(omoCalendarT('calendar.error.load_form')) ?>);
+                return;
             }
 
             if (calendarHeaderMenu && !calendarHeaderMenu.contains(event.target)) {
@@ -4189,6 +4204,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     feedback.className = 'omo-calendar-create__feedback';
                 }
 
+                if (window.omoCalendarSetAvailabilityPending) { window.omoCalendarSetAvailabilityPending(form, true); }
                 fetch(resolveUrl(form.getAttribute('action') || createUrl), {
                     method: 'POST',
                     credentials: 'same-origin',
@@ -4200,8 +4216,8 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     return response.json();
                 }).then(function (payload) {
                     if (!payload || payload.status !== true) {
-                        if (typeof window.omoCalendarShowAvailability === 'function') {
-                            window.omoCalendarShowAvailability(form, payload);
+                        if (window.omoCalendarShowAvailability && window.omoCalendarShowAvailability(form, payload)) {
+                            return;
                         }
                         throw payload || new Error('save_failed');
                     }
@@ -4236,6 +4252,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     feedback.textContent = message;
                     feedback.className = 'omo-calendar-create__feedback is-error';
                 }).finally(function () {
+                    if (window.omoCalendarSetAvailabilityPending) { window.omoCalendarSetAvailabilityPending(form, false); }
                     delete form.dataset.omoCalendarSubmitPending;
                     if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {
                         window.omoEndPendingAction(form);

@@ -5,6 +5,7 @@ require_once __DIR__ . '/permissions_shared.php';
 require_once dirname(__DIR__, 3) . '/common/etherpad.php';
 require_once dirname(__DIR__, 3) . '/common/ethercalc.php';
 require_once dirname(__DIR__, 3) . '/common/notification_center.php';
+require_once dirname(__DIR__, 3) . '/common/external_calendar.php';
 
 use dbObject\ArrayHolon;
 use dbObject\Document;
@@ -14,12 +15,22 @@ use dbObject\Organization;
 use dbObject\Project;
 
 $sourceLang = array_merge([
-    'calendar.availability.warning' => ['text' => 'Verifiez les disponibilites avant de confirmer.', 'context' => 'Non-blocking warning before saving an event with overlaps or an incomplete availability check.'],
-    'calendar.availability.conflict' => ['text' => '{name} : indisponible du {start} au {end}', 'context' => 'Private free/busy warning; no event title is exposed.'],
+    'calendar.availability.warning' => ['text' => 'Un point sur les disponibilites', 'context' => 'Heading of the event availability review.'],
+    'calendar.availability.waiting' => ['text' => 'Verification des disponibilites...', 'context' => 'Animated progress indicator while checking and refreshing invitee calendars.'],
+    'calendar.availability.waiting_hint' => ['text' => 'Les agendas sont actualises si necessaire.', 'context' => 'Explanation while refreshing calendars before saving an event.'],
+    'calendar.availability.conflict_label' => ['text' => 'Conflit', 'context' => 'Compact label after a warning icon at the beginning of a conflicting appointment row.'],
+    'calendar.availability.unknown' => ['text' => 'A verifier', 'context' => 'Label on an invitee whose availability could not be verified.'],
+    'calendar.availability.adjust' => ['text' => 'Modifier les horaires', 'context' => 'Return to the event schedule after reviewing availability.'],
+    'calendar.availability.conflict' => ['text' => '{name} - {context} : du {start} au {end}', 'context' => 'Conflicting appointment with its organization and circle or role, and full time range; no event title.'],
+    'calendar.availability.external' => ['text' => 'Agenda externe', 'context' => 'Generic source label for a conflicting external appointment.'],
+    'calendar.availability.omo' => ['text' => 'Agenda OMO', 'context' => 'Fallback source label when an appointment organization has no name.'],
     'calendar.availability.email' => ['text' => '{name} : agenda non accessible pour cette invitation par e-mail.', 'context' => 'Availability cannot be checked for an email-only invitee.'],
-    'calendar.availability.cache' => ['text' => '{name} : agenda externe non synchronise recemment ou hors de la periode en cache.', 'context' => 'Partial external calendar availability check.'],
+    'calendar.availability.cache' => ['text' => '{name} : l agenda n a pas pu etre actualise ou ne couvre pas cette periode.', 'context' => 'Partial external calendar availability check after a refresh attempt.'],
+    'calendar.availability.detail.email' => ['text' => 'Cette invitation par e-mail ne donne pas acces a un agenda.', 'context' => 'Availability card for an email-only invitation.'],
+    'calendar.availability.detail.cache' => ['text' => 'L agenda n a pas pu etre actualise ou ne couvre pas cette periode.', 'context' => 'Availability card when refreshing is unsuccessful or coverage is incomplete.'],
+    'calendar.availability.detail.storage' => ['text' => 'La verification est momentanement indisponible.', 'context' => 'Availability card when storage cannot be checked.'],
     'calendar.availability.storage' => ['text' => '{name} : verification indisponible pour le moment.', 'context' => 'Availability storage failure; never imply the guest is free.'],
-    'calendar.availability.note' => ['text' => 'Verification indicative des agendas OMO et des agendas externes deja synchronises. Aucun creneau n est bloque.', 'context' => 'Limits of the non-blocking availability check.'],
+    'calendar.availability.note' => ['text' => 'Vous pouvez ajuster les horaires ou conserver ce rendez-vous.', 'context' => 'Options after an availability warning.'],
     'calendar.availability.confirm' => ['text' => 'Enregistrer quand meme', 'context' => 'Explicit override of an event availability warning.'],
     'calendar.create.title' => [
         'text' => 'Nouvel événement',
@@ -793,7 +804,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $event->set('end_at', $endAt);
     $event->set('is_all_day', $isAllDay ? 1 : 0);
 
-    // Read-only validation happens before any event, document, pad or notification is created.
+    // Validate participants before refreshing calendars or creating any event/document.
     $selection = omoCalendarPrepareInvitationSelections($organization, $organizationId, $selectedInvitationHolonIds, $selectedInvitationUserIds, $selectedInvitationEmails);
     if (!$selection['status']) {
         echo json_encode($selection, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -807,7 +818,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $invitation->set('status', \dbObject\EventInvitation::STATUS_INVITED);
         $proposedInvitations[] = $invitation;
     }
-    $availability = $event->checkInvitationAvailability($proposedInvitations);
+    $refreshDeadline = microtime(true) + 18;
+    // An explicit override rechecks conflicts but does not retry an unreachable server.
+    $refreshCalendars = empty($_POST['availability_ack'])
+        ? static fn(int $userId) => commonExternalCalendarRefreshForAvailability($userId, $refreshDeadline)
+        : null;
+    $availability = $event->checkInvitationAvailability($proposedInvitations, $refreshCalendars);
     if ($availability['conflicts'] || $availability['unverified']) {
         // Bind acknowledgement to this session, schedule, participants and current conflicts.
         $_SESSION['calendar_availability_secret'] ??= bin2hex(random_bytes(32));
@@ -817,16 +833,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]), $_SESSION['calendar_availability_secret']);
         if (!hash_equals($acknowledgement, (string)($_POST['availability_ack'] ?? ''))) {
             $messages = [];
+            $items = [];
             foreach ($availability['conflicts'] as $conflict) {
+                $conflict['context'] = $conflict['source'] === 'external'
+                    ? omoCalendarCreateT('calendar.availability.external')
+                    : (implode(' - ', array_filter([$conflict['organization'], $conflict['holon']], static fn($label) => trim($label) !== ''))
+                        ?: omoCalendarCreateT('calendar.availability.omo'));
+                $items[] = $conflict + ['kind' => 'conflict', 'label' => omoCalendarCreateT('calendar.availability.conflict_label')];
                 $conflict['start'] = (new \DateTimeImmutable($conflict['start']))->format('d.m.Y H:i');
                 $conflict['end'] = (new \DateTimeImmutable($conflict['end']))->format('d.m.Y H:i');
                 $messages[] = omoCalendarCreateT('calendar.availability.conflict', $conflict);
             }
             foreach ($availability['unverified'] as $unknown) {
                 $messages[] = omoCalendarCreateT('calendar.availability.' . $unknown['reason'], ['name' => $unknown['name']]);
+                $items[] = ['name' => $unknown['name'], 'kind' => 'unknown',
+                    'label' => omoCalendarCreateT('calendar.availability.unknown'),
+                    'detail' => omoCalendarCreateT('calendar.availability.detail.' . $unknown['reason'])];
             }
             echo json_encode(['status' => false, 'message' => omoCalendarCreateT('calendar.availability.warning'),
-                'availability' => ['messages' => $messages, 'acknowledgement' => $acknowledgement]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                'availability' => ['items' => $items, 'messages' => $messages, 'acknowledgement' => $acknowledgement]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         }
     }
@@ -1350,12 +1375,7 @@ if ($isEditMode) {
             </div>
 
             <div class="omo-calendar-create__footer">
-                <div class="generic-soft-panel generic-form-stack" data-calendar-availability hidden role="status" tabindex="-1">
-                    <strong><?= omoApiEscape(omoCalendarCreateT('calendar.availability.warning')) ?></strong>
-                    <ul data-calendar-availability-messages></ul>
-                    <p><?= omoApiEscape(omoCalendarCreateT('calendar.availability.note')) ?></p>
-                    <button type="button" class="generic-action-button" data-calendar-availability-confirm><?= omoApiEscape(omoCalendarCreateT('calendar.availability.confirm')) ?></button>
-                </div>
+                <?php require dirname(__DIR__, 3) . '/common/calendar/availability-panel.php'; ?>
                 <input type="hidden" name="availability_ack" value="">
                 <div class="omo-calendar-create__feedback generic-feedback" data-omo-calendar-create-feedback></div>
             </div>
@@ -1465,11 +1485,6 @@ if ($isEditMode) {
     color: var(--color-text-light, #64748b);
 }
 
-.omo-calendar-create [data-calendar-availability-messages] {
-    max-height: 22vh;
-    overflow: auto;
-    overflow-wrap: anywhere;
-}
 
 .omo-calendar-create__feedback.is-error {
     color: var(--color-danger, #b42318);
