@@ -1179,7 +1179,8 @@ if (!is_string($documentsPayload)) {
                 const omoDocumentsSearchStorageKey = 'omo.documents.quick-search.v1';
                 const omoDocumentsFileIconUrl = '/omo/assets/images/documents/file.png';
                 const omoDocumentsDownloadIconUrl = '/omo/assets/images/documents/download.png';
-                const omoDocumentsFolderIconUrl = '/omo/assets/images/documents/folder.png';
+                const omoDocumentsFolderOpenIconUrl = '/omo/assets/images/documents/folder-open.png';
+                const omoDocumentsFolderClosedIconUrl = '/omo/assets/images/documents/folder-closed.png';
                 const omoDocumentsLinkIconUrl = '/omo/assets/images/documents/link.png';
                 const omoDocumentsPvIconUrl = '/omo/assets/images/documents/pv.png';
                  const omoDocumentsEtherpadIconUrl = '/omo/assets/images/documents/collaborative.png';
@@ -1208,9 +1209,13 @@ if (!is_string($documentsPayload)) {
                  const omoDocumentsEthercalcIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.ethercalc'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                  const omoDocumentsWhiteboardIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.whiteboard'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
+                const omoDocumentsGetFolderIconUrl = function (isExpanded) {
+                    return isExpanded ? omoDocumentsFolderOpenIconUrl : omoDocumentsFolderClosedIconUrl;
+                };
+
                 const omoDocumentsGetIconUrl = function (documentItem) {
                     if (documentItem && documentItem.isFolder) {
-                        return omoDocumentsFolderIconUrl;
+                        return omoDocumentsGetFolderIconUrl(false);
                     }
 
                     if (documentItem && documentItem.isExternalLink) {
@@ -2060,13 +2065,16 @@ if (!is_string($documentsPayload)) {
                                 visual.className = 'omo-documents__visual';
 
                                 const iconBox = document.createElement('div');
-                                iconBox.className = 'omo-documents__icon-box generic-file-list__icon-box';
+                                iconBox.className = 'omo-documents__icon-box';
 
                                 const icon = document.createElement('img');
                                 icon.className = 'omo-documents__icon black-icon';
                                 icon.src = omoDocumentsGetIconUrl(documentItem);
                                 icon.alt = omoDocumentsGetIconAlt(documentItem);
                                 icon.loading = 'lazy';
+                                if (documentItem.isFolder) {
+                                    icon.setAttribute('data-omo-document-folder-icon', '1');
+                                }
 
                                 iconBox.appendChild(icon);
                                 if (documentItem.isExternalLink) {
@@ -2435,14 +2443,13 @@ if (!is_string($documentsPayload)) {
                                     const folderCard = document.createElement('div');
                                     folderCard.className = 'omo-documents__item omo-card omo-documents__folder-card';
                                     appendDocumentCardContent(folderCard, documentItem, { interactive: false, plainContext: true });
-
-                                    const folderChevron = document.createElement('span');
-                                    folderChevron.className = 'generic-accordion__toggle omo-documents__folder-chevron generic-file-list__folder-chevron';
-                                    folderChevron.textContent = '▾';
+                                    const folderIcon = folderCard.querySelector('[data-omo-document-folder-icon]');
+                                    if (folderIcon instanceof HTMLImageElement) {
+                                        folderIcon.src = omoDocumentsGetFolderIconUrl(isExpanded);
+                                    }
 
                                     const folderMenu = createMenu(documentItem);
                                     headerToggle.appendChild(folderCard);
-                                    headerToggle.appendChild(folderChevron);
                                     header.appendChild(headerToggle);
 
                                     if (folderMenu) {
@@ -2597,6 +2604,12 @@ if (!is_string($documentsPayload)) {
                                         ? Number(accordion.getAttribute('data-omo-document-folder') || 0)
                                         : 0;
                                     toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+                                    const folderIcon = accordion
+                                        ? accordion.querySelector('[data-omo-document-folder-icon]')
+                                        : null;
+                                    if (folderIcon instanceof HTMLImageElement) {
+                                        folderIcon.src = omoDocumentsGetFolderIconUrl(isExpanded);
+                                    }
 
                                     if (isExpanded && Number.isInteger(folderId) && folderId > 0) {
                                         nextOpenFolderIds.add(folderId);
@@ -5710,32 +5723,6 @@ if (!is_string($documentsPayload)) {
     outline-offset: 2px;
 }
 
-.omo-documents__folder-card {
-    width: 100%;
-    padding-right: 62px;
-}
-
-.omo-documents__folder-chevron {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-surface) 74%, white 26%);
-    color: var(--color-text-light);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border) 80%, white 20%);
-    transition: transform 160ms ease, background 160ms ease, color 160ms ease;
-    pointer-events: none;
-}
-
-.omo-documents__item-shell--has-menu .omo-documents__folder-chevron {
-    right: 58px;
-}
-
 .omo-documents__folder-content {
     position: relative;
     margin-left: 28px;
@@ -5804,9 +5791,6 @@ if (!is_string($documentsPayload)) {
     position: relative;
     width: 56px;
     height: 56px;
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-surface) 76%, white 24%);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border) 78%, white 22%);
 }
 
 .omo-documents__icon {
@@ -6034,25 +6018,20 @@ if (!is_string($documentsPayload)) {
     box-shadow: 0 18px 38px -30px rgba(180, 83, 9, 0.26);
 }
 
-.omo-documents__item--folder-card .omo-documents__icon-box {
-    background: color-mix(in srgb, #f59e0b 18%, var(--color-surface-alt));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, #f59e0b 24%, var(--color-border));
+.omo-documents__item--folder-card .omo-documents__icon {
+    width: 42px;
+    height: 42px;
 }
 
-.omo-documents__item--file-card .omo-documents__icon-box {
-    background: color-mix(in srgb, var(--color-surface-alt) 84%, white 16%);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border) 84%, white 16%);
+.omo-documents__item--file-card .omo-documents__icon {
+    width: 28px;
+    height: 28px;
 }
 
 .omo-documents__item-shell--missing-upload .omo-documents__item {
     border-color: color-mix(in srgb, #dc2626 72%, var(--color-border));
     background: color-mix(in srgb, #fef2f2 78%, var(--color-surface));
     box-shadow: inset 4px 0 0 #dc2626, 0 14px 32px -30px rgba(185, 28, 28, 0.44);
-}
-
-.omo-documents__item-shell--missing-upload .omo-documents__icon-box {
-    background: color-mix(in srgb, #fee2e2 74%, var(--color-surface));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, #dc2626 45%, var(--color-border));
 }
 
 .omo-documents__missing-upload-badge {
@@ -6086,12 +6065,6 @@ if (!is_string($documentsPayload)) {
 .omo-documents__item--compact.is-selected {
     background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface, #fff));
     box-shadow: inset 3px 0 0 color-mix(in srgb, var(--color-primary, #2563eb) 72%, transparent);
-}
-
-.omo-documents__folder:not(.is-collapsed) .omo-documents__folder-chevron {
-    transform: rotate(180deg);
-    background: color-mix(in srgb, #f59e0b 18%, var(--color-surface-alt));
-    color: #b45309;
 }
 
 .omo-documents__folder:not(.is-collapsed) .omo-documents__folder-card {
@@ -6213,6 +6186,16 @@ if (!is_string($documentsPayload)) {
     .omo-documents__icon {
         width: 24px;
         height: 24px;
+    }
+
+    .omo-documents__item--folder-card .omo-documents__icon {
+        width: 30px;
+        height: 30px;
+    }
+
+    .omo-documents__item--file-card .omo-documents__icon {
+        width: 20px;
+        height: 20px;
     }
 
     .omo-documents__folder-content {

@@ -2085,17 +2085,24 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     var text = JSON.parse(form.dataset.text);
                     var message = form.querySelector('[data-meeting-feedback]');
                     var slugStatus = form.querySelector('[data-meeting-slug-status]');
+                    var enabledField = form.elements.enabled;
+                    var enabledContent = form.querySelector('[data-meeting-enabled-content]');
                     function show(node, value, success) { node.textContent = value; node.classList.toggle('is-success', success); }
+                    function syncMeetingEnabledContent() {
+                        if (enabledContent && enabledField) { enabledContent.hidden = !enabledField.checked; }
+                    }
                     function post(data) {
                         return fetch(resolveUrl(form.action), {method: 'POST', credentials: 'same-origin', body: data})
                             .then(function (response) { return response.json(); });
                     }
                     form.addEventListener('change', function () {
+                        syncMeetingEnabledContent();
                         form.querySelectorAll('[data-meeting-day]').forEach(function (day) {
                             day.querySelector('[data-meeting-hours]').hidden = !day.querySelector('[data-meeting-open]').checked;
                             day.querySelector('[data-meeting-break]').hidden = !day.querySelector('[data-meeting-pause]').checked;
                         });
                     });
+                    syncMeetingEnabledContent();
                     form.elements.slug.addEventListener('input', function () {
                         show(slugStatus, '', false);
                         form.querySelector('[data-meeting-link]').value = window.location.origin + '/meeting/' + form.elements.slug.value.trim().toLowerCase();
