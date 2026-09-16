@@ -388,10 +388,10 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
     }
 }
 
-if (!function_exists('omoCalendarApplyInvitationSelections')) {
-    function omoCalendarApplyInvitationSelections($event, Organization $organization, int $organizationId, array $selectedHolonIds, array $selectedUserIds, $selectedEmails, string $invitationClass = EventInvitation::class, string $resourceField = 'IDevent')
+if (!function_exists('omoCalendarPrepareInvitationSelections')) {
+    function omoCalendarPrepareInvitationSelections(Organization $organization, int $organizationId, array $selectedHolonIds, array $selectedUserIds, $selectedEmails)
     {
-        if ((int)$event->getId() <= 0 || $organizationId <= 0) {
+        if ($organizationId <= 0 || (int)$organization->getId() !== $organizationId) {
             return [
                 'status' => false,
                 'message' => "Contexte d'invitations invalide.",
@@ -442,13 +442,6 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
             $validUserLabels[$userId] = trim((string)$membership->getUserDisplayName());
         }
 
-        $existingInvitations = [];
-        foreach ($event->getInvitations(false) as $invitation) {
-            if ($invitation instanceof ResourceInvitation) {
-                $existingInvitations[$invitation->getIdentityKey()] = $invitation;
-            }
-        }
-
         $desiredInvitations = [];
         foreach ($selectedHolonIds as $holonId) {
             $desiredInvitations['holon:' . $holonId] = [
@@ -472,6 +465,25 @@ if (!function_exists('omoCalendarApplyInvitationSelections')) {
             ];
         }
 
+        return ['status' => true, 'invitations' => $desiredInvitations];
+    }
+}
+
+if (!function_exists('omoCalendarApplyInvitationSelections')) {
+    function omoCalendarApplyInvitationSelections($event, Organization $organization, int $organizationId, array $selectedHolonIds, array $selectedUserIds, $selectedEmails, string $invitationClass = EventInvitation::class, string $resourceField = 'IDevent')
+    {
+        if ((int)$event->getId() <= 0) {
+            return ['status' => false, 'message' => 'Contexte d invitations invalide.'];
+        }
+        $selection = omoCalendarPrepareInvitationSelections($organization, $organizationId, $selectedHolonIds, $selectedUserIds, $selectedEmails);
+        if (!$selection['status']) { return $selection; }
+        $desiredInvitations = $selection['invitations'];
+        $existingInvitations = [];
+        foreach ($event->getInvitations(false) as $invitation) {
+            if ($invitation instanceof ResourceInvitation) {
+                $existingInvitations[$invitation->getIdentityKey()] = $invitation;
+            }
+        }
         foreach ($desiredInvitations as $identityKey => $invitationData) {
             $invitation = $existingInvitations[$identityKey] ?? new $invitationClass();
             $existingParameters = $invitation->get('parameters');

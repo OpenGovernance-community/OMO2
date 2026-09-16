@@ -1,9 +1,13 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once dirname(__DIR__, 3) . '/common/calendar/upcoming_sections.php';
+require_once dirname(__DIR__, 3) . '/common/external_calendar.php';
 require_once __DIR__ . '/permissions_shared.php';
 
 use dbObject\ArrayEvent;
+use dbObject\ArrayExternalCalendarEvent;
+use dbObject\ExternalCalendar;
+use dbObject\ExternalCalendarEvent;
 use dbObject\ArrayDocument;
 use dbObject\Document;
 use dbObject\Event;
@@ -58,6 +62,10 @@ $sourceLang = [
     'calendar.action.connect' => [
         'text' => 'Connecter',
         'context' => 'Action opening the CalDAV connection popup for the current calendar scope.',
+    ],
+    'calendar.action.meeting' => [
+        'text' => 'Prise de rendez-vous',
+        'context' => 'Open personal public booking settings.',
     ],
     'calendar.confirm.delete' => [
         'text' => 'Supprimer cet événement ?',
@@ -769,6 +777,36 @@ $events->loadForOrganizationDateRange($organizationId, $calendarEarliestEventEnd
     'is_all_day',
     'active',
 ]);
+$externalEventMetaByVirtualId = [];
+if (ExternalCalendar::isStorageAvailable()) {
+    $externalEvents = new ArrayExternalCalendarEvent();
+    $externalEvents->loadActiveForUserDateRange($currentUserId, $calendarEarliestEventEndAt, new \DateTimeImmutable('+400 days'));
+    $virtualEventId = 1000000000;
+    foreach ($externalEvents as $externalEvent) {
+        if (!($externalEvent instanceof ExternalCalendarEvent)) {
+            continue;
+        }
+        $externalCalendar = new ExternalCalendar();
+        if (!$externalCalendar->load((int)$externalEvent->get('IDexternalcalendar'))) {
+            continue;
+        }
+        $virtualEvent = new Event();
+        $virtualEvent->setId($virtualEventId);
+        foreach (['title', 'description', 'start_at', 'end_at', 'is_all_day'] as $field) {
+            $virtualEvent->set($field, $externalEvent->get($field));
+        }
+        $virtualEvent->set('IDorganization', $organizationId);
+        $virtualEvent->set('IDuser', $currentUserId);
+        $virtualEvent->set('status', Event::STATUS_CONFIRMED);
+        $virtualEvent->set('active', 1);
+        $externalEventMetaByVirtualId[$virtualEventId] = [
+            'title' => trim((string)$externalCalendar->get('title')),
+            'color' => ExternalCalendar::normalizeColor($externalCalendar->get('color')),
+        ];
+        $events[] = $virtualEvent;
+        $virtualEventId++;
+    }
+}
 $eventIds = [];
 foreach ($events as $event) {
     if ($event instanceof Event && (int)$event->getId() > 0 && $event->isDraftVisibleToViewer($currentUserId)) {
@@ -882,18 +920,20 @@ foreach ($events as $event) {
     }
 
     $eventId = (int)$event->getId();
+    $externalMeta = $externalEventMetaByVirtualId[$eventId] ?? null;
+    $isExternalEvent = is_array($externalMeta);
     $eventTitle = trim((string)$event->get('title')) !== '' ? trim((string)$event->get('title')) : ('Événement #' . $eventId);
     $eventDescription = trim((string)$event->get('description'));
     $eventStatus = Event::normalizeStatus($event->get('status'));
     $eventStatusLabel = trim((string)($eventStatusCatalog[$eventStatus]['label'] ?? ''));
     $eventHolonId = (int)$event->get('IDholon');
-    $eventHolonLabel = $resolveHolonLabel($eventHolonId);
+    $eventHolonLabel = $isExternalEvent ? (string)($externalMeta['title'] ?? '') : $resolveHolonLabel($eventHolonId);
     $isAllDay = (bool)$event->get('is_all_day');
     $isInCurrentContext = !$canToggleScope || $eventHolonId === 0 || $eventHolonId === $currentHolonId;
     $isInDirectChildContext = $isInCurrentContext || ($eventHolonId > 0 && isset($directChildHolonIdMap[$eventHolonId]));
     $isInDescendantContext = $isInCurrentContext || ($eventHolonId > 0 && isset($descendantHolonIdMap[$eventHolonId]));
-    $isPersonallyRelevant = $event->isPersonallyRelevantToViewer($currentUserId, $organizationId);
-    $canEditEvent = omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false);
+    $isPersonallyRelevant = $isExternalEvent || $event->isPersonallyRelevantToViewer($currentUserId, $organizationId);
+    $canEditEvent = !$isExternalEvent && omoCalendarCanEditEvent($event, $organizationId, $currentUserId, $rootHolon, false);
     $deletePermissionHolon = $rootHolon;
     if ($eventHolonId > 0) {
         $eventPermissionHolon = new Holon();
@@ -901,7 +941,7 @@ foreach ($events as $event) {
             $deletePermissionHolon = $eventPermissionHolon;
         }
     }
-    $canDeleteEvent = $currentUserId > 0
+    $canDeleteEvent = !$isExternalEvent && $currentUserId > 0
         && (
             $deletePermissionHolon instanceof Holon
                 ? $deletePermissionHolon->isAllowed('CAN_DELETE_EVENT', false, $currentUserId)
@@ -957,6 +997,8 @@ foreach ($events as $event) {
                 'documentUrl' => $associatedDocumentOpenData['url'],
                 'documentTitle' => $associatedDocumentOpenData['title'],
                 'documentPvEditorUrl' => $associatedDocumentOpenData['pvEditorUrl'],
+                'isExternal' => $isExternalEvent,
+                'externalColor' => (string)($externalMeta['color'] ?? ''),
             ];
 
             $cursor = $cursor->modify('+1 day');
@@ -1001,6 +1043,8 @@ foreach ($events as $event) {
                 'sort' => (int)$startAt->format('U'),
                 'isFaded' => $isFadedInScope,
                 'isRouteTarget' => $openEventTargetId > 0 && $eventId === $openEventTargetId,
+                'isExternal' => $isExternalEvent,
+                'externalColor' => (string)($externalMeta['color'] ?? ''),
             ];
 
             $viewCountsByScope[$scopeKey]['list'] += 1;
@@ -1041,6 +1085,8 @@ foreach ($events as $event) {
                     'documentUrl' => $associatedDocumentOpenData['url'],
                     'documentTitle' => $associatedDocumentOpenData['title'],
                     'documentPvEditorUrl' => $associatedDocumentOpenData['pvEditorUrl'],
+                    'isExternal' => $isExternalEvent,
+                    'externalColor' => (string)($externalMeta['color'] ?? ''),
                 ];
                 continue;
             }
@@ -1064,6 +1110,8 @@ foreach ($events as $event) {
                 'documentUrl' => $associatedDocumentOpenData['url'],
                 'documentTitle' => $associatedDocumentOpenData['title'],
                 'documentPvEditorUrl' => $associatedDocumentOpenData['pvEditorUrl'],
+                'isExternal' => $isExternalEvent,
+                'externalColor' => (string)($externalMeta['color'] ?? ''),
             ];
         }
         unset($timelineDay);
@@ -1095,6 +1143,8 @@ foreach ($events as $event) {
                     'documentUrl' => $associatedDocumentOpenData['url'],
                     'documentTitle' => $associatedDocumentOpenData['title'],
                     'documentPvEditorUrl' => $associatedDocumentOpenData['pvEditorUrl'],
+                    'isExternal' => $isExternalEvent,
+                    'externalColor' => (string)($externalMeta['color'] ?? ''),
                 ];
                 continue;
             }
@@ -1118,9 +1168,45 @@ foreach ($events as $event) {
                 'documentUrl' => $associatedDocumentOpenData['url'],
                 'documentTitle' => $associatedDocumentOpenData['title'],
                 'documentPvEditorUrl' => $associatedDocumentOpenData['pvEditorUrl'],
+                'isExternal' => $isExternalEvent,
+                'externalColor' => (string)($externalMeta['color'] ?? ''),
             ];
         }
         unset($timelineDay);
+    }
+}
+
+// Personal cross-organization availability belongs only in the week/day timelines.
+$otherOrganizationBlocks = ArrayEvent::otherOrganizationBusyBlocks($currentUserId, $organizationId, $weekStart, $weekEnd->modify('+1 second'));
+foreach ($otherOrganizationBlocks as $blockIndex => $block) {
+    foreach ($calendarScopes as $scopeKey) {
+        foreach (['week', 'day'] as $timelineKey) {
+            $hasBlock = false;
+            foreach ($timelineViewsByScope[$scopeKey][$timelineKey] as &$timelineDay) {
+                $dayBegin = $timelineDay['date']->setTime(0, 0);
+                $dayEndExclusive = $dayBegin->modify('+1 day');
+                $segmentStart = max($block['start'], $dayBegin);
+                $segmentEnd = min($block['end'], $dayEndExclusive);
+                if ($segmentEnd <= $segmentStart) { continue; }
+                $hasBlock = true;
+                $item = [
+                    'id' => 2000000000 + $blockIndex, 'title' => $block['title'],
+                    'description' => '', 'timeLabel' => '', 'status' => Event::STATUS_CONFIRMED,
+                    'statusLabel' => '', 'holonLabel' => '', 'isFaded' => false, 'isRouteTarget' => false,
+                    'documentUrl' => '', 'documentTitle' => '', 'documentPvEditorUrl' => '',
+                    'isExternal' => false, 'externalColor' => '', 'isOtherOrganization' => true,
+                ];
+                if ($block['allDay']) {
+                    $timelineDay['allDay'][] = $item;
+                } else {
+                    $item['startMinute'] = (int)$segmentStart->format('H') * 60 + (int)$segmentStart->format('i');
+                    $item['endMinute'] = $segmentEnd == $dayEndExclusive ? 1440 : (int)$segmentEnd->format('H') * 60 + (int)$segmentEnd->format('i');
+                    $timelineDay['timed'][] = $item;
+                }
+            }
+            unset($timelineDay);
+            if ($hasBlock) { $viewCountsByScope[$scopeKey][$timelineKey]++; }
+        }
     }
 }
 
@@ -1346,6 +1432,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     >&#8942;</button>
                     <div class="generic-menu-panel omo-calendar__header-menu-panel" data-omo-calendar-header-menu-panel role="menu" hidden>
                         <button type="button" class="generic-menu-item" data-omo-calendar-open-connect role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.action.connect')) ?></button>
+                        <button type="button" class="generic-menu-item" data-omo-calendar-open-meeting role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.action.meeting')) ?></button>
                     </div>
                 </div>
                 <?php if ($canCreateEvent): ?>
@@ -1505,8 +1592,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                 <div class="omo-calendar__cell-items">
                                     <?php foreach ($items as $itemIndex => $item): ?>
                                         <div
-                                            class="omo-calendar__event-chip is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?><?= !empty($item['isRouteTarget']) ? ' is-route-target' : '' ?>"
+                                            class="omo-calendar__event-chip is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isExternal']) ? ' is-external-calendar' : '' ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?><?= !empty($item['isRouteTarget']) ? ' is-route-target' : '' ?>"
                                             data-omo-calendar-event-id="<?= (int)$item['id'] ?>"
+                                            <?= !empty($item['isExternal']) ? 'data-omo-calendar-external-event style="--param-external-calendar-color: ' . omoApiEscape($item['externalColor']) . ';"' : '' ?>
                                             data-omo-calendar-search-item
                                             <?= $itemIndex >= 3 ? 'hidden data-omo-calendar-overflow-event' : '' ?>
                                         >
@@ -1596,8 +1684,10 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                         <?php if (count($timelineDay['allDay']) > 0): ?>
                                             <?php foreach ($timelineDay['allDay'] as $item): ?>
                                                 <div
-                                                    class="omo-calendar__time-all-day-chip is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?><?= !empty($item['isRouteTarget']) ? ' is-route-target' : '' ?>"
+                                                    class="omo-calendar__time-all-day-chip is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isOtherOrganization']) ? ' is-other-organization' : '' ?><?= !empty($item['isExternal']) ? ' is-external-calendar' : '' ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?><?= !empty($item['isRouteTarget']) ? ' is-route-target' : '' ?>"
+                                                    <?= !empty($item['isOtherOrganization']) ? 'data-omo-calendar-other-organization' : '' ?>
                                                     data-omo-calendar-event-id="<?= (int)$item['id'] ?>"
+                                                    <?= !empty($item['isExternal']) ? 'data-omo-calendar-external-event style="--param-external-calendar-color: ' . omoApiEscape($item['externalColor']) . ';"' : '' ?>
                                                     data-omo-calendar-search-item
                                                 >
                                                     <div class="omo-calendar__time-all-day-title-row">
@@ -1650,10 +1740,12 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                         $width = 100 / $columnCount;
                                         ?>
                                         <article
-                                            class="omo-calendar__time-event is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?><?= !empty($item['isRouteTarget']) ? ' is-route-target' : '' ?>"
+                                            class="omo-calendar__time-event is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isOtherOrganization']) ? ' is-other-organization' : '' ?><?= !empty($item['isExternal']) ? ' is-external-calendar' : '' ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?><?= !empty($item['isRouteTarget']) ? ' is-route-target' : '' ?>"
+                                            <?= !empty($item['isOtherOrganization']) ? 'data-omo-calendar-other-organization' : '' ?>
                                             data-omo-calendar-event-id="<?= (int)$item['id'] ?>"
+                                            <?= !empty($item['isExternal']) ? 'data-omo-calendar-external-event' : '' ?>
                                             data-omo-calendar-search-item
-                                            style="top: <?= omoApiEscape(number_format($top, 4, '.', '')) ?>%; height: <?= omoApiEscape(number_format(min(100 - $top, $height), 4, '.', '')) ?>%; left: calc(<?= omoApiEscape(number_format($left, 4, '.', '')) ?>% + 4px); width: calc(<?= omoApiEscape(number_format($width, 4, '.', '')) ?>% - 8px);"
+                                            style="<?= !empty($item['isExternal']) ? '--param-external-calendar-color: ' . omoApiEscape($item['externalColor']) . '; ' : '' ?>top: <?= omoApiEscape(number_format($top, 4, '.', '')) ?>%; height: <?= omoApiEscape(number_format(min(100 - $top, $height), 4, '.', '')) ?>%; left: calc(<?= omoApiEscape(number_format($left, 4, '.', '')) ?>% + 4px); width: calc(<?= omoApiEscape(number_format($width, 4, '.', '')) ?>% - 8px);"
                                         >
                                             <strong class="omo-calendar__time-event-title"><?= omoApiEscape($item['title']) ?></strong>
                                             <?php if ($item['timeLabel'] !== '' || $item['documentUrl'] !== ''): ?>
@@ -1710,7 +1802,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                         <div class="omo-calendar__list-header-cell generic-file-list__header-cell"><?= omoApiEscape(omoCalendarT('calendar.list.column.context')) ?></div>
                                     </div>
                                     <?php foreach ($section['items'] as $item): ?>
-                                        <article class="omo-calendar__item-shell generic-file-list__item-shell is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?><?= !empty($item['isRouteTarget']) ? ' is-route-target' : '' ?>" data-omo-calendar-event-id="<?= (int)$item['id'] ?>" data-omo-calendar-search-item>
+                                        <article class="omo-calendar__item-shell generic-file-list__item-shell is-status-<?= omoApiEscape($item['status']) ?><?= !empty($item['isExternal']) ? ' is-external-calendar' : '' ?><?= !empty($item['isFaded']) ? ' is-faded' : '' ?><?= !empty($item['isRouteTarget']) ? ' is-route-target' : '' ?>" data-omo-calendar-event-id="<?= (int)$item['id'] ?>" <?= !empty($item['isExternal']) ? 'data-omo-calendar-external-event style="--param-external-calendar-color: ' . omoApiEscape($item['externalColor']) . ';"' : '' ?> data-omo-calendar-search-item>
                                             <div class="omo-calendar__list-item generic-file-list__row">
                                                 <div class="omo-calendar__list-date generic-file-list__cell generic-file-list__cell--date" data-label="<?= omoApiEscape(omoCalendarT('calendar.list.column.date')) ?>">
                                                     <span class="omo-calendar__list-weekday"><?= omoApiEscape($item['weekdayLabel']) ?></span>
@@ -1812,6 +1904,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             <div class="omo-overlay-drawer__body" data-omo-calendar-editor-body></div>
         </div>
     </div>
+    <script src="/common/calendar/availability.js?v=20260916"></script>
     <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
     <script>
     (function () {
@@ -1939,7 +2032,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             }
         }
 
-        function openCalendarConnectPopup() {
+        function openCalendarConnectPopup(externalTab) {
             if (!connectUrl || typeof window.commonTopbarOpenModal !== 'function') {
                 return;
             }
@@ -1969,10 +2062,72 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         window.initGenericComponents(modalBody);
                     }
                     initCalendarConnectControls(modalBody);
+                    if (externalTab === true) {
+                        var externalToggle = modalBody.querySelector('[data-generic-tab-target="omoCalendarConnectExternal"]');
+                        if (externalToggle) { externalToggle.click(); }
+                    }
                 }
             }).catch(function () {
                 window.commonTopbarOpenModal(<?= json_encode(omoCalendarT('calendar.action.connect')) ?>, '<div class="generic-section"><?= omoApiEscape(omoCalendarT('calendar.error.load_form')) ?></div>', 'html');
             });
+        }
+
+        function openMeetingSettings() {
+            closeCalendarHeaderMenu();
+            var title = <?= json_encode(omoCalendarT('calendar.action.meeting')) ?>;
+            window.commonTopbarOpenModal(title, '<p><?= omoApiEscape(omoCalendarT('calendar.action.meeting')) ?>...</p>', 'html');
+            fetch(resolveUrl('/omo/api/calendar/meeting_settings.php'), {credentials: 'same-origin'})
+                .then(function (response) { if (!response.ok) { throw new Error('load'); } return response.text(); })
+                .then(function (html) {
+                    window.commonTopbarOpenModal(title, html, 'html');
+                    var form = document.querySelector('#commonTopbarModalBody [data-meeting-settings]');
+                    if (!form) { return; }
+                    var text = JSON.parse(form.dataset.text);
+                    var message = form.querySelector('[data-meeting-feedback]');
+                    var slugStatus = form.querySelector('[data-meeting-slug-status]');
+                    function show(node, value, success) { node.textContent = value; node.classList.toggle('is-success', success); }
+                    function post(data) {
+                        return fetch(resolveUrl(form.action), {method: 'POST', credentials: 'same-origin', body: data})
+                            .then(function (response) { return response.json(); });
+                    }
+                    form.addEventListener('change', function () {
+                        form.querySelectorAll('[data-meeting-day]').forEach(function (day) {
+                            day.querySelector('[data-meeting-hours]').hidden = !day.querySelector('[data-meeting-open]').checked;
+                            day.querySelector('[data-meeting-break]').hidden = !day.querySelector('[data-meeting-pause]').checked;
+                        });
+                    });
+                    form.elements.slug.addEventListener('input', function () {
+                        show(slugStatus, '', false);
+                        form.querySelector('[data-meeting-link]').value = window.location.origin + '/meeting/' + form.elements.slug.value.trim().toLowerCase();
+                    });
+                    form.elements.slug.addEventListener('blur', function () {
+                        var value = form.elements.slug.value.trim().toLowerCase();
+                        form.elements.slug.value = value;
+                        var data = new FormData(form); data.set('action', 'check');
+                        post(data).then(function (result) {
+                            if (form.elements.slug.value === value) { show(slugStatus, result.message, result.status); }
+                        }).catch(function () { show(slugStatus, text.unavailable, false); });
+                    });
+                    form.querySelector('[data-meeting-copy]').addEventListener('click', function () {
+                        navigator.clipboard.writeText(form.querySelector('[data-meeting-link]').value)
+                            .then(function () { show(message, text.copied, true); })
+                            .catch(function () { form.querySelector('[data-meeting-link]').select(); });
+                    });
+                    form.addEventListener('submit', function (event) {
+                        event.preventDefault();
+                        var button = form.querySelector('[type="submit"]');
+                        if (button.disabled) { return; }
+                        var data = new FormData(form);
+                        button.disabled = true; show(message, text.saving, true);
+                        post(data).then(function (result) {
+                            show(message, result.message, result.status);
+                            if (result.status) { form.querySelector('[data-meeting-link]').value = window.location.origin + result.path; }
+                        }).catch(function () { show(message, text.unavailable, false); })
+                            .finally(function () { button.disabled = false; });
+                    });
+                }).catch(function () {
+                    window.commonTopbarOpenModal(title, '<p><?= omoApiEscape(omoCalendarT('calendar.error.load_form')) ?></p>', 'html');
+                });
         }
 
         if (calendarHeaderMenuToggle && calendarHeaderMenuPanel) {
@@ -2013,6 +2168,10 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 event.preventDefault();
                 openCalendarConnectPopup();
                 return;
+            }
+
+            if (event.target.closest('[data-omo-calendar-open-meeting]')) {
+                event.preventDefault(); openMeetingSettings(); return;
             }
 
             if (calendarHeaderMenu && !calendarHeaderMenu.contains(event.target)) {
@@ -2943,14 +3102,16 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 return null;
             }
 
+            // The connection popup can stay open after an earlier calendar reload.
+            var activeRoot = root.isConnected ? root : document.querySelector('#omo-calendar-root');
             return window.omoReplaceFetchedPanelRoot({
                 rootSelector: '#omo-calendar-root',
-                currentRoot: root,
+                currentRoot: activeRoot,
                 url: resolveUrl(targetUrl),
                 setLoadingState: function (isLoading) {
-                    root.classList.toggle('is-loading', Boolean(isLoading));
+                    activeRoot.classList.toggle('is-loading', Boolean(isLoading));
                     if (typeof window.omoSetPanelResultsLoadingSkeleton === 'function') {
-                        window.omoSetPanelResultsLoadingSkeleton(root, isLoading, {
+                        window.omoSetPanelResultsLoadingSkeleton(activeRoot, isLoading, {
                             contentSelector: '.omo-panel-view__body'
                         });
                     }
@@ -3572,10 +3733,124 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         });
 
         function initCalendarConnectControls(container) {
+            container = container ? container.querySelector('[data-omo-calendar-connect-popup]') : null;
             if (!container || container.dataset.omoCalendarConnectReady === '1') {
                 return;
             }
             container.dataset.omoCalendarConnectReady = '1';
+            var text = JSON.parse(container.getAttribute('data-omo-external-calendar-text') || '{}');
+            var csrf = container.getAttribute('data-omo-external-calendar-csrf') || '';
+            var discoveryForm = container.querySelector('[data-omo-external-calendar-form]');
+            var selectionForm = container.querySelector('[data-omo-external-calendar-selection]');
+            var discoveryToken = '';
+            var busy = false;
+            function feedback(node, message, failed) {
+                node.textContent = message;
+                node.classList.toggle('is-error', !!failed);
+            }
+            function setBusy(value) {
+                busy = value;
+                container.querySelectorAll('button, input').forEach(function (node) {
+                    node.disabled = value || node.dataset.calendarSaved === '1';
+                });
+                container.setAttribute('aria-busy', value ? 'true' : 'false');
+            }
+            function requestExternal(body) {
+                body.set('csrf_token', csrf);
+                return fetch(resolveUrl(discoveryForm.getAttribute('data-omo-external-calendar-action')), {
+                    method: 'POST', credentials: 'same-origin', body: body
+                }).then(function (response) { return response.json(); }).then(function (payload) {
+                    if (!payload || payload.status !== true) {
+                        throw new Error(payload && payload.message ? payload.message : text.failed);
+                    }
+                    return payload;
+                });
+            }
+            container.addEventListener('click', function (event) {
+                var button = event.target.closest('[data-omo-external-calendar-sync], [data-omo-external-calendar-delete]');
+                if (!button || busy) { return; }
+                var id = button.getAttribute('data-omo-external-calendar-id') || '';
+                var action = button.hasAttribute('data-omo-external-calendar-delete') ? 'delete' : 'sync';
+                if (!id || (action === 'delete' && !window.confirm(text.confirm_delete))) { return; }
+                setBusy(true);
+                var body = new URLSearchParams(); body.set('action', action); body.set('calendar_id', id);
+                requestExternal(body).then(function () {
+                    openCalendarConnectPopup(true);
+                    return refreshCalendar(currentUrl);
+                }).catch(function (error) { window.omoNotify(error.message || text.failed, 'error'); })
+                    .finally(function () { setBusy(false); });
+            });
+            discoveryForm.addEventListener('input', function () {
+                discoveryToken = '';
+                selectionForm.hidden = true;
+            });
+            discoveryForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                if (busy) { return; }
+                var body = new FormData(discoveryForm);
+                var message = discoveryForm.querySelector('[data-omo-external-calendar-feedback]');
+                discoveryToken = '';
+                selectionForm.hidden = true;
+                setBusy(true);
+                feedback(message, text.searching, false);
+                requestExternal(body).then(function (payload) {
+                    discoveryToken = payload.discoveryToken;
+                    discoveryForm.elements.password.value = '';
+                    var results = selectionForm.querySelector('[data-omo-external-calendar-results]');
+                    results.replaceChildren();
+                    payload.calendars.forEach(function (calendar) {
+                        var row = container.querySelector('[data-omo-external-calendar-template]').content.firstElementChild.cloneNode(true);
+                        row.dataset.calendarIndex = String(calendar.index);
+                        row.querySelector('[data-calendar-name]').textContent = calendar.title;
+                        row.querySelector('[data-calendar-title]').value = calendar.title;
+                        row.querySelector('[data-calendar-color]').value = calendar.color;
+                        row.querySelector('[data-calendar-selected]').checked = payload.calendars.length === 1 && !calendar.connected;
+                        row.querySelector('[data-calendar-connected]').hidden = !calendar.connected;
+                        results.appendChild(row);
+                    });
+                    feedback(message, payload.message, false);
+                    feedback(selectionForm.querySelector('[data-omo-external-calendar-feedback]'), '', false);
+                    selectionForm.hidden = false;
+                }).catch(function (error) { feedback(message, error.message || text.failed, true); })
+                    .finally(function () { setBusy(false); });
+            });
+            selectionForm.addEventListener('submit', async function (event) {
+                event.preventDefault();
+                if (busy || !discoveryToken) { return; }
+                var rows = Array.from(selectionForm.querySelectorAll('[data-omo-external-calendar-result]')).filter(function (row) {
+                    var checkbox = row.querySelector('[data-calendar-selected]');
+                    return checkbox.checked && !checkbox.disabled;
+                });
+                var message = selectionForm.querySelector('[data-omo-external-calendar-feedback]');
+                if (!rows.length) { feedback(message, text.choose, true); return; }
+                setBusy(true);
+                feedback(message, text.pending, false);
+                var saved = false;
+                for (var row of rows) {
+                    var status = row.querySelector('[data-calendar-status]');
+                    feedback(status, text.pending, false);
+                    var body = new URLSearchParams();
+                    body.set('action', 'save');
+                    body.set('discovery_token', discoveryToken);
+                    body.set('calendar_index', row.dataset.calendarIndex);
+                    body.set('title', row.querySelector('[data-calendar-title]').value);
+                    body.set('color', row.querySelector('[data-calendar-color]').value);
+                    try {
+                        var payload = await requestExternal(body);
+                        saved = true;
+                        row.querySelectorAll('input').forEach(function (input) { input.dataset.calendarSaved = '1'; });
+                        feedback(status, payload.message, payload.synced === false);
+                    } catch (error) {
+                        feedback(status, error.message || text.failed, true);
+                    }
+                }
+                feedback(message, text.finished, false);
+                setBusy(false);
+                if (saved) {
+                    try { await refreshCalendar(currentUrl); }
+                    catch (error) { window.omoNotify(text.failed, 'error'); }
+                }
+            });
 
             container.addEventListener('input', function (event) {
                 var colorField = event.target.closest('[data-omo-calendar-connect-color]');
@@ -3743,6 +4018,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             eventNode.addEventListener('dblclick', function (event) {
                 event.preventDefault();
                 event.stopPropagation();
+                if (eventNode.hasAttribute('data-omo-calendar-external-event') || eventNode.hasAttribute('data-omo-calendar-other-organization')) {
+                    return;
+                }
 
                 var eventId = eventNode.getAttribute('data-omo-calendar-event-id') || '';
                 if (!eventId) {
@@ -3915,6 +4193,9 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     return response.json();
                 }).then(function (payload) {
                     if (!payload || payload.status !== true) {
+                        if (typeof window.omoCalendarShowAvailability === 'function') {
+                            window.omoCalendarShowAvailability(form, payload);
+                        }
                         throw payload || new Error('save_failed');
                     }
 
@@ -5014,5 +5295,36 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         position: static;
         top: auto;
     }
+}
+.omo-calendar__event-chip.is-external-calendar,
+.omo-calendar__time-all-day-chip.is-external-calendar,
+.omo-calendar__time-event.is-external-calendar {
+    border-color: var(--param-external-calendar-color, #0f766e);
+    background: color-mix(in srgb, var(--param-external-calendar-color, #0f766e) 16%, var(--color-surface, #ffffff));
+}
+
+.omo-calendar__event-chip.is-external-calendar {
+    border-inline-start: 4px solid var(--param-external-calendar-color, #0f766e);
+}
+
+.omo-calendar__item-shell.is-external-calendar .omo-calendar__list-item {
+    border-inline-start: 4px solid var(--param-external-calendar-color, #0f766e);
+}
+.omo-calendar__time-event.is-other-organization,
+.omo-calendar__time-all-day-chip.is-other-organization {
+    background: var(--color-surface-muted, #edf0f3);
+    border-color: var(--color-border, #cbd2da);
+    color: var(--color-text-muted, #667085);
+    cursor: default;
+    box-shadow: none;
+}
+.omo-calendar__time-event.is-other-organization .omo-calendar__time-event-title {
+    color: inherit;
+    font-style: italic;
+    font-weight: 500;
+}
+.omo-calendar__time-all-day-chip.is-other-organization strong {
+    font-style: italic;
+    font-weight: 500;
 }
 </style>

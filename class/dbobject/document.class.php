@@ -1012,6 +1012,254 @@
 				|| $this->canManageInOrganizationContext($organizationId, $userId, false);
 		}
 
+		public static function getHtmlMergeEditorData(array $documentIds, int $userId, int $contextDocumentId = 0): array
+		{
+			$documentIds = array_values(array_unique(array_filter(array_map('intval', $documentIds), static function (int $documentId): bool {
+				return $documentId > 0;
+			})));
+			if (count($documentIds) < 2 || $userId <= 0) {
+				return array('status' => false, 'text' => 'Selection invalide.');
+			}
+
+			$documents = array();
+			$organizationId = 0;
+			$keywords = array();
+			$keywordKeys = array();
+			$descriptions = array();
+			$visibilityRanks = array(
+				\dbObject\ObjectVisibility::TYPE_EVERYONE => 0,
+				\dbObject\ObjectVisibility::TYPE_ORGANIZATION => 1,
+				\dbObject\ObjectVisibility::TYPE_CIRCLE => 2,
+				\dbObject\ObjectVisibility::TYPE_ROLE => 3,
+				\dbObject\ObjectVisibility::TYPE_SELF => 4,
+			);
+			$visibilityType = \dbObject\ObjectVisibility::TYPE_EVERYONE;
+			$visibilityRank = $visibilityRanks[$visibilityType];
+			$editVisibilityType = \dbObject\ObjectVisibility::TYPE_EVERYONE;
+			$editVisibilityRank = $visibilityRanks[$editVisibilityType];
+			$canDeleteSources = true;
+
+			foreach ($documentIds as $documentId) {
+				$document = new self();
+				if (!$document->load($documentId) || $document->getDocumentType() !== self::TYPE_HTML) {
+					return array('status' => false, 'text' => 'Seuls les documents HTML peuvent etre fusionnes.');
+				}
+
+				$documentOrganizationId = (int)$document->get('IDorganization');
+				if (
+					$documentOrganizationId <= 0
+					|| ($organizationId > 0 && $organizationId !== $documentOrganizationId)
+					|| !$document->canEditInOrganizationContext($documentOrganizationId, $userId, false)
+				) {
+					return array('status' => false, 'text' => 'Acces refuse.');
+				}
+
+				$organizationId = $documentOrganizationId;
+				$documents[] = $document;
+				$documentVisibilityRule = $document->getPrimaryVisibilityRuleRow();
+				$documentVisibilityType = \dbObject\ObjectVisibility::normalizeVisibilityType(
+					(string)($documentVisibilityRule['visibility_type'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION)
+				);
+				$documentVisibilityRank = (int)($visibilityRanks[$documentVisibilityType] ?? $visibilityRanks[\dbObject\ObjectVisibility::TYPE_ORGANIZATION]);
+				if ($documentVisibilityRank > $visibilityRank) {
+					$visibilityRank = $documentVisibilityRank;
+					$visibilityType = $documentVisibilityType;
+				}
+				$documentEditVisibilityRule = $document->getPrimaryEditVisibilityRuleRow();
+				$documentEditVisibilityType = \dbObject\ObjectVisibility::normalizeVisibilityType(
+					(string)($documentEditVisibilityRule['visibility_type'] ?? self::getDefaultEditVisibilityType())
+				);
+				$documentEditVisibilityRank = (int)($visibilityRanks[$documentEditVisibilityType] ?? $visibilityRanks[self::getDefaultEditVisibilityType()]);
+				if ($documentEditVisibilityRank > $editVisibilityRank) {
+					$editVisibilityRank = $documentEditVisibilityRank;
+					$editVisibilityType = $documentEditVisibilityType;
+				}
+				if (!$document->canManageLifecycle($documentOrganizationId, $userId) || !$document->canDeleteDocument(false)) {
+					$canDeleteSources = false;
+				}
+				$description = trim((string)$document->get('description'));
+				if ($description !== '') {
+					$descriptions[] = $description;
+				}
+				foreach (preg_split('/[,;]+/', (string)$document->get('keywords')) as $keyword) {
+					$keyword = trim($keyword);
+					$keywordKey = mb_strtolower($keyword, 'UTF-8');
+					if ($keyword !== '' && !isset($keywordKeys[$keywordKey])) {
+						$keywordKeys[$keywordKey] = true;
+						$keywords[] = $keyword;
+					}
+				}
+			}
+
+			$firstDocument = $documents[0];
+			if ($contextDocumentId > 0) {
+				foreach ($documents as $document) {
+					if ((int)$document->getId() === $contextDocumentId) {
+						$firstDocument = $document;
+						break;
+					}
+				}
+			}
+			$compatibleVisibilityType = self::resolveCompatibleScopeTypeForHolonId(
+				$visibilityType,
+				$organizationId,
+				(int)$firstDocument->get('IDholon') > 0 ? (int)$firstDocument->get('IDholon') : null,
+				\dbObject\ObjectVisibility::TYPE_SELF
+			);
+			if ($compatibleVisibilityType !== $visibilityType) {
+				$visibilityType = \dbObject\ObjectVisibility::TYPE_SELF;
+			}
+			$compatibleEditVisibilityType = self::resolveCompatibleScopeTypeForHolonId(
+				$editVisibilityType,
+				$organizationId,
+				(int)$firstDocument->get('IDholon') > 0 ? (int)$firstDocument->get('IDholon') : null,
+				\dbObject\ObjectVisibility::TYPE_SELF
+			);
+			if ($compatibleEditVisibilityType !== $editVisibilityType) {
+				$editVisibilityType = \dbObject\ObjectVisibility::TYPE_SELF;
+			}
+			if (!self::canCreateInOrganizationContext(
+				$organizationId,
+				(int)$firstDocument->get('IDholon') > 0 ? (int)$firstDocument->get('IDholon') : null,
+				$userId,
+				(int)$firstDocument->get('IDdocument_parent'),
+				false
+			)) {
+				return array('status' => false, 'text' => 'Acces refuse.');
+			}
+
+			$items = array();
+			foreach ($documents as $document) {
+				$items[] = array(
+					'id' => (int)$document->getId(),
+					'title' => trim((string)$document->get('title')),
+					'description' => trim((string)$document->get('description')),
+					'content' => (string)$document->get('content'),
+				);
+			}
+			$titleSuffix = ' (' . count($documents) . ' documents fusionnés)';
+			$firstTitle = trim((string)$firstDocument->get('title'));
+			$mergedTitle = mb_substr($firstTitle, 0, max(1, 100 - mb_strlen($titleSuffix, 'UTF-8')), 'UTF-8') . $titleSuffix;
+
+			return array(
+				'status' => true,
+				'organizationId' => $organizationId,
+				'contextDocumentId' => (int)$firstDocument->getId(),
+				'holonId' => (int)$firstDocument->get('IDholon'),
+				'parentDocumentId' => (int)$firstDocument->get('IDdocument_parent'),
+				'title' => $mergedTitle,
+				'description' => implode("\n\n", $descriptions),
+				'keywords' => $keywords,
+				'visibilityType' => $visibilityType,
+				'editVisibilityType' => $editVisibilityType,
+				'canDeleteSources' => $canDeleteSources,
+				'documents' => $items,
+			);
+		}
+
+		public static function mergeHtmlDocumentsInOrganizationContext(
+			array $documentIds,
+			int $userId,
+			string $title,
+			array $keywords,
+			int $contextDocumentId = 0,
+			string $visibilityType = '',
+			string $editVisibilityType = '',
+			bool $keepSources = true
+		): array
+		{
+			$mergeData = self::getHtmlMergeEditorData($documentIds, $userId, $contextDocumentId);
+			if (($mergeData['status'] ?? false) !== true) {
+				return $mergeData;
+			}
+
+			$title = trim($title);
+			if ($title === '') {
+				return array('status' => false, 'text' => 'Le titre est obligatoire.');
+			}
+			if (!$keepSources && empty($mergeData['canDeleteSources'])) {
+				return array('status' => false, 'text' => 'Un ou plusieurs documents source ne peuvent pas etre supprimes.');
+			}
+			$visibilityType = trim($visibilityType) !== ''
+				? \dbObject\ObjectVisibility::normalizeVisibilityType($visibilityType)
+				: (string)$mergeData['visibilityType'];
+			$editVisibilityType = trim($editVisibilityType) !== ''
+				? \dbObject\ObjectVisibility::normalizeVisibilityType($editVisibilityType)
+				: (string)$mergeData['editVisibilityType'];
+
+			$normalizedKeywords = array();
+			$keywordKeys = array();
+			foreach ($keywords as $keyword) {
+				$keyword = trim((string)$keyword);
+				$keywordKey = mb_strtolower($keyword, 'UTF-8');
+				if ($keyword !== '' && !isset($keywordKeys[$keywordKey])) {
+					$keywordKeys[$keywordKey] = true;
+					$normalizedKeywords[] = $keyword;
+				}
+			}
+
+			$contentParts = array();
+			foreach ($mergeData['documents'] as $document) {
+				$contentParts[] = (string)($document['content'] ?? '');
+			}
+
+			$pdo = self::getPdo();
+			$startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
+			try {
+				if ($startedTransaction) {
+					$pdo->beginTransaction();
+				}
+				$mergedDocument = new self();
+				$result = $mergedDocument->createInOrganizationContext(
+					(int)$mergeData['organizationId'],
+					(int)$mergeData['holonId'] > 0 ? (int)$mergeData['holonId'] : null,
+					$userId,
+					array(
+						'title' => $title,
+						'description' => (string)$mergeData['description'],
+						'keywords' => implode(',', $normalizedKeywords),
+						'content' => implode("\n<hr>\n", $contentParts),
+						'document_type' => self::TYPE_HTML,
+						'parent_document_id' => (int)$mergeData['parentDocumentId'],
+						'visibility_type' => $visibilityType,
+						'edit_visibility_type' => $editVisibilityType,
+					)
+				);
+				if (!is_array($result) || ($result['status'] ?? false) !== true) {
+					if ($startedTransaction && $pdo->inTransaction()) {
+						$pdo->rollBack();
+					}
+					return $result;
+				}
+
+				if (!$keepSources) {
+					foreach ($mergeData['documents'] as $sourceData) {
+						$sourceDocument = new self();
+						if (
+							!$sourceDocument->load((int)($sourceData['id'] ?? 0))
+							|| !$sourceDocument->canManageLifecycle((int)$mergeData['organizationId'], $userId)
+							|| !$sourceDocument->canDeleteDocument(false)
+							|| !$sourceDocument->delete()
+						) {
+							throw new \RuntimeException('document_merge_source_delete_failed');
+						}
+					}
+				}
+
+				if ($startedTransaction && $pdo->inTransaction()) {
+					$pdo->commit();
+				}
+				$result['document'] = $mergedDocument;
+				$result['sourcesDeleted'] = !$keepSources;
+				return $result;
+			} catch (\Throwable $exception) {
+				if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+				return array('status' => false, 'text' => 'Impossible de finaliser la fusion des documents.');
+			}
+		}
+
 		protected function normalizeScopeTypeForCurrentContext(string $visibilityType, string $fallbackType): string
 		{
 			return self::resolveCompatibleScopeTypeForHolonId(

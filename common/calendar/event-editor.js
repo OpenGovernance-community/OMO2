@@ -274,6 +274,9 @@
                     return {status: false, message: 'Réponse invalide du serveur.'};
                 }).then(function (payload) {
                     if (!response.ok || !payload.status) {
+                        if (typeof window.omoCalendarShowAvailability === 'function') {
+                            window.omoCalendarShowAvailability(form, payload);
+                        }
                         throw new Error(payload.message || "Impossible d'enregistrer cet événement.");
                     }
                     return payload;

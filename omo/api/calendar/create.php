@@ -14,6 +14,13 @@ use dbObject\Organization;
 use dbObject\Project;
 
 $sourceLang = array_merge([
+    'calendar.availability.warning' => ['text' => 'Verifiez les disponibilites avant de confirmer.', 'context' => 'Non-blocking warning before saving an event with overlaps or an incomplete availability check.'],
+    'calendar.availability.conflict' => ['text' => '{name} : indisponible du {start} au {end}', 'context' => 'Private free/busy warning; no event title is exposed.'],
+    'calendar.availability.email' => ['text' => '{name} : agenda non accessible pour cette invitation par e-mail.', 'context' => 'Availability cannot be checked for an email-only invitee.'],
+    'calendar.availability.cache' => ['text' => '{name} : agenda externe non synchronise recemment ou hors de la periode en cache.', 'context' => 'Partial external calendar availability check.'],
+    'calendar.availability.storage' => ['text' => '{name} : verification indisponible pour le moment.', 'context' => 'Availability storage failure; never imply the guest is free.'],
+    'calendar.availability.note' => ['text' => 'Verification indicative des agendas OMO et des agendas externes deja synchronises. Aucun creneau n est bloque.', 'context' => 'Limits of the non-blocking availability check.'],
+    'calendar.availability.confirm' => ['text' => 'Enregistrer quand meme', 'context' => 'Explicit override of an event availability warning.'],
     'calendar.create.title' => [
         'text' => 'Nouvel événement',
         'context' => 'Title shown at the top of the event creation form.',
@@ -786,6 +793,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $event->set('end_at', $endAt);
     $event->set('is_all_day', $isAllDay ? 1 : 0);
 
+    // Read-only validation happens before any event, document, pad or notification is created.
+    $selection = omoCalendarPrepareInvitationSelections($organization, $organizationId, $selectedInvitationHolonIds, $selectedInvitationUserIds, $selectedInvitationEmails);
+    if (!$selection['status']) {
+        echo json_encode($selection, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+    $proposedInvitations = [];
+    foreach ($selection['invitations'] as $values) {
+        $invitation = new \dbObject\EventInvitation();
+        foreach ($values as $field => $value) { $invitation->set($field, $value); }
+        $invitation->set('active', 1);
+        $invitation->set('status', \dbObject\EventInvitation::STATUS_INVITED);
+        $proposedInvitations[] = $invitation;
+    }
+    $availability = $event->checkInvitationAvailability($proposedInvitations);
+    if ($availability['conflicts'] || $availability['unverified']) {
+        // Bind acknowledgement to this session, schedule, participants and current conflicts.
+        $_SESSION['calendar_availability_secret'] ??= bin2hex(random_bytes(32));
+        $acknowledgement = hash_hmac('sha256', json_encode([
+            $organizationId, $event->getId(), $event->get('IDuser'), $selectedHolonId,
+            $startAt->format('c'), $endAt->format('c'), $isAllDay, $selection['invitations'], $availability,
+        ]), $_SESSION['calendar_availability_secret']);
+        if (!hash_equals($acknowledgement, (string)($_POST['availability_ack'] ?? ''))) {
+            $messages = [];
+            foreach ($availability['conflicts'] as $conflict) {
+                $conflict['start'] = (new \DateTimeImmutable($conflict['start']))->format('d.m.Y H:i');
+                $conflict['end'] = (new \DateTimeImmutable($conflict['end']))->format('d.m.Y H:i');
+                $messages[] = omoCalendarCreateT('calendar.availability.conflict', $conflict);
+            }
+            foreach ($availability['unverified'] as $unknown) {
+                $messages[] = omoCalendarCreateT('calendar.availability.' . $unknown['reason'], ['name' => $unknown['name']]);
+            }
+            echo json_encode(['status' => false, 'message' => omoCalendarCreateT('calendar.availability.warning'),
+                'availability' => ['messages' => $messages, 'acknowledgement' => $acknowledgement]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+    }
+
     $pdo = \dbObject\DbObject::getPdo();
     $startedTransaction = $pdo instanceof \PDO && !$pdo->inTransaction();
     $createdEtherpadPadId = '';
@@ -1305,6 +1350,13 @@ if ($isEditMode) {
             </div>
 
             <div class="omo-calendar-create__footer">
+                <div class="generic-soft-panel generic-form-stack" data-calendar-availability hidden role="status" tabindex="-1">
+                    <strong><?= omoApiEscape(omoCalendarCreateT('calendar.availability.warning')) ?></strong>
+                    <ul data-calendar-availability-messages></ul>
+                    <p><?= omoApiEscape(omoCalendarCreateT('calendar.availability.note')) ?></p>
+                    <button type="button" class="generic-action-button" data-calendar-availability-confirm><?= omoApiEscape(omoCalendarCreateT('calendar.availability.confirm')) ?></button>
+                </div>
+                <input type="hidden" name="availability_ack" value="">
                 <div class="omo-calendar-create__feedback generic-feedback" data-omo-calendar-create-feedback></div>
             </div>
         </form>
@@ -1399,10 +1451,11 @@ if ($isEditMode) {
 
 .omo-calendar-create__footer {
     display: flex;
+    flex-direction: column;
     flex: 0 0 auto;
     justify-content: space-between;
     gap: 12px;
-    align-items: center;
+    align-items: stretch;
     padding: 0;
 }
 
@@ -1410,6 +1463,12 @@ if ($isEditMode) {
     min-height: 0;
     margin: 0;
     color: var(--color-text-light, #64748b);
+}
+
+.omo-calendar-create [data-calendar-availability-messages] {
+    max-height: 22vh;
+    overflow: auto;
+    overflow-wrap: anywhere;
 }
 
 .omo-calendar-create__feedback.is-error {
