@@ -3,7 +3,7 @@ namespace dbObject;
 
 class ArrayExternalCalendarEvent extends ArrayDbObject
 {
-    /** Read the local cache only; never contact invitees' CalDAV servers during event creation. */
+    /** Read the local cache; an optional refresh is orchestrated by the caller before this read. */
     public static function busyIntervalsForUser(int $userId, \DateTimeInterface $start, \DateTimeInterface $end): array
     {
         $result = ['intervals' => [], 'hasCalendars' => false, 'incomplete' => false];

@@ -259,7 +259,8 @@
             if (!usesSharedPendingState && submitButton) {
                 submitButton.disabled = true;
             }
-            setFeedback(form, 'Enregistrement…', false);
+            setFeedback(form, '', false);
+            if (window.omoCalendarSetAvailabilityPending) { window.omoCalendarSetAvailabilityPending(form, true); }
 
             fetch(form.action, {
                 method: 'POST',
@@ -274,14 +275,15 @@
                     return {status: false, message: 'Réponse invalide du serveur.'};
                 }).then(function (payload) {
                     if (!response.ok || !payload.status) {
-                        if (typeof window.omoCalendarShowAvailability === 'function') {
-                            window.omoCalendarShowAvailability(form, payload);
+                        if (window.omoCalendarShowAvailability && window.omoCalendarShowAvailability(form, payload)) {
+                            return null;
                         }
                         throw new Error(payload.message || "Impossible d'enregistrer cet événement.");
                     }
                     return payload;
                 });
             }).then(function (payload) {
+                if (!payload) { return; }
                 setFeedback(form, payload.message || 'Événement enregistré.', false);
                 if (typeof window.omoNotify === 'function') {
                     window.omoNotify(payload.message || 'Événement enregistré.', 'success');
@@ -292,6 +294,7 @@
             }).catch(function (error) {
                 setFeedback(form, error.message || "Impossible d'enregistrer cet événement.", true);
             }).finally(function () {
+                if (window.omoCalendarSetAvailabilityPending) { window.omoCalendarSetAvailabilityPending(form, false); }
                 delete form.dataset.omoCalendarSubmitPending;
                 if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {
                     window.omoEndPendingAction(form);

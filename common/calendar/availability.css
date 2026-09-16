@@ -1,0 +1,91 @@
+.calendar-availability:focus {
+    outline: 2px solid color-mix(in srgb, var(--color-primary, #2563eb) 18%, transparent);
+    outline-offset: 2px;
+}
+.calendar-availability__heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.calendar-availability__heading p { margin: 5px 0 0; }
+.calendar-availability__symbol {
+    display: grid;
+    place-items: center;
+    flex: 0 0 40px;
+    height: 40px;
+    border-radius: 12px;
+    color: #946019;
+    background: color-mix(in srgb, #d99b35 14%, var(--color-surface, white));
+}
+.calendar-availability__symbol svg { width: 24px; height: 24px; }
+.calendar-availability__list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    margin-block: 12px;
+    max-height: min(30vh, 290px);
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+.calendar-availability__person {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: max-content;
+    min-width: 100%;
+    box-sizing: border-box;
+    white-space: nowrap;
+}
+.calendar-availability__person > span { flex: 0 0 auto; }
+.calendar-availability__name { font-size: 0.85rem; font-weight: 600; }
+.calendar-availability__conflict {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #946019;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.calendar-availability__conflict svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.calendar-availability__label {
+    align-self: start;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-text-light, #64748b);
+    background: var(--color-surface-alt, #f1f5f9);
+}
+.calendar-availability__context,
+.calendar-availability__detail {
+    color: var(--color-text-light, #64748b);
+    font-size: 0.8rem;
+    line-height: 1.5;
+}
+.calendar-availability__time {
+    color: var(--color-text, #1f2937);
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.calendar-availability__context::before,
+.calendar-availability__time::before,
+.calendar-availability__detail::before {
+    content: '\00b7';
+    margin-right: 8px;
+    color: var(--color-text-light, #64748b);
+}
+.calendar-availability__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.calendar-availability__loading { display: grid; gap: 5px; padding: 12px 0; }
+.calendar-availability[hidden], .calendar-availability__loading[hidden] { display: none; }
+@media (max-width: 520px) {
+    .calendar-availability__actions > button { flex: 1 1 100%; }
+}

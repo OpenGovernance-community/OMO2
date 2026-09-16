@@ -44,6 +44,8 @@ RewriteRule ^pv/([0-9]+)/?$ /pv/index.php?id=$1 [QSA,L]
 
 RewriteRule ^meeting/([0-9A-Za-z-]+)/?$ /meeting/index.php?name=$1 [QSA,L]
 
+RewriteRule ^calendar/share/([a-f0-9]{64})\.ics$ /common/calendar/feed.php?token=$1 [L]
+
 RewriteRule ^decision/access/([0-9A-Za-z_-]+)/?$ /common/decision_participation.php?token=$1 [QSA,L]
 RewriteRule ^decision/access/([0-9A-Za-z_-]+)/(view|participate)/?$ /common/decision_participation.php?token=$1&intent=$2 [QSA,L]
 RewriteRule ^decision/public/([0-9]+)/([0-9]+)/?$ /common/decision_participation.php?public=1&oid=$1&id=$2 [QSA,L]
