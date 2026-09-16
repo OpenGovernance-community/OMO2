@@ -6149,6 +6149,23 @@
 					: true;
 				$project->set('active', $projectIsActive);
 				$statusAt = self::omo1ImportDate($record['statusAt'] ?? null);
+				if ($projectStatus === \dbObject\Project::STATUS_BLOCKED) {
+					$blockedReason = self::omo1ImportLimitText($record['blockedReason'] ?? '', 4000);
+					$project->set(
+						'blocked_reason',
+						$blockedReason !== ''
+							? $blockedReason
+							: 'Projet importe d OMO 1 avec le statut bloque.'
+					);
+					$project->set(
+						'blocked_until',
+						self::omo1ImportDate($record['blockedUntil'] ?? null)
+							?: $statusAt
+							?: self::omo1ImportDate($record['plannedEndAt'] ?? null)
+							?: $createdAt
+							?: new \DateTimeImmutable('today', new \DateTimeZone('Europe/Zurich'))
+					);
+				}
 				$closedAt = self::omo1ImportDate($record['closedAt'] ?? null);
 				if (!$closedAt && $projectStatus === \dbObject\Project::STATUS_DONE) {
 					$closedAt = $statusAt;
@@ -7012,6 +7029,7 @@
 			self::omo1ImportJournalWrite('organization_creation_started');
 			$organization = new self();
 			$organization->set('name', self::omo1ImportLimitText($name, 100));
+			$organization->set('interface_level', self::INTERFACE_LEVEL_AUTONOMOUS);
 			$organization->set('color', trim((string)($sourceOrganization['color'] ?? '')) ?: null);
 			$organization->set('logo', $sourceOrganization['logo'] ?? null);
 			$organization->set('banner', $sourceOrganization['banner'] ?? null);
