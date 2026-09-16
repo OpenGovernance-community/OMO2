@@ -4,7 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-16
 
-- Vues des applications : en mode Admin d organisation, Enregistrer reste une sauvegarde personnelle, y compris en Decouverte. L action de modele applique maintenant les choix en attente, efface l ancienne preference personnelle puis enregistre le nouveau defaut pour tous les holons concernes et ferme son menu.
+- Vues des applications : en mode Admin d organisation, Enregistrer reste une sauvegarde personnelle, y compris en Decouverte. L action de modele applique maintenant les choix en attente, efface l ancienne preference personnelle puis enregistre le nouveau defaut pour tous les holons concernes et ferme son menu. Dans Projets, l ouverture de cette action conserve maintenant tous les choix en attente du filtre.
 
 - Activites : leur description accepte maintenant le HTML nettoye et les formulaires de creation ou modification utilisent Summernote. Les descriptions des activites de processus restent en texte simple.
 

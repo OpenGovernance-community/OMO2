@@ -2248,7 +2248,7 @@
                 closeProjectFilterPanel(true, true);
                 return;
             }
-            var button = event.target.closest('[data-omo-projects-scope], [data-omo-projects-assignment], [data-omo-projects-sort], [data-omo-projects-view]');
+            var button = event.target.closest('button[data-omo-projects-scope], button[data-omo-projects-assignment], button[data-omo-projects-sort], button[data-omo-projects-view]');
             if (!button || !pendingDisplayFilters) {
                 return;
             }
