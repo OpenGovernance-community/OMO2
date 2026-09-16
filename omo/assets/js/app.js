@@ -3394,7 +3394,32 @@ function omoOpenExternalPanelDrawer(options = {}) {
 
     if (mode === 'fetch') {
         if (!canReuseMountedContent) {
-            loadContent(body, url, 'panel');
+            loadContent(body, url, 'panel', function () {
+                const contentHeader = body.querySelector('[data-omo-subdrawer-header]');
+                const contentTitle = contentHeader
+                    ? String(contentHeader.getAttribute('data-omo-subdrawer-title') || '').trim()
+                    : '';
+                const contentDescription = contentHeader
+                    ? String(contentHeader.getAttribute('data-omo-subdrawer-description') || '').trim()
+                    : '';
+
+                if (contentTitle !== '') {
+                    if (titleNode) {
+                        titleNode.textContent = contentTitle;
+                    }
+                    if (peekToggle) {
+                        peekToggle.setAttribute('title', contentTitle);
+                    }
+                    if (peekLabelNode) {
+                        peekLabelNode.textContent = contentTitle;
+                    }
+                }
+
+                if (contentHeader && descriptionNode) {
+                    descriptionNode.hidden = contentDescription === '';
+                    descriptionNode.textContent = contentDescription;
+                }
+            });
         }
         return true;
     }

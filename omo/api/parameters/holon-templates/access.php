@@ -1,5 +1,17 @@
 <?php
 
+function omoHolonTemplateDiscoveryModeAccess(\dbObject\Organization $organization)
+{
+    if ($organization->isDiscoveryMode()) {
+        return [
+            'status' => false,
+            'message' => omoHolonTemplateT('parameters.holon_templates.error.discovery_mode'),
+        ];
+    }
+
+    return ['status' => true];
+}
+
 function omoHolonTemplateAdminModeAccess($organizationId)
 {
     $organizationId = (int)$organizationId;

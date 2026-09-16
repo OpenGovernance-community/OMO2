@@ -14,6 +14,12 @@ $adminLabel = 'Admin';
 $adminLabelLower = 'admin';
 $canEditHolonColor = false;
 $canEditHolonPermissions = false;
+$canEditHolonAdminBounds = false;
+$canAddHolonProperties = false;
+$hasCustomHolonAppearance = false;
+$hasCustomHolonAdminBounds = false;
+$hasDirectHolonPermissions = false;
+$directPermissionLabel = 'Droits associes au holon';
 
 if ($organizationId <= 0) {
     $errorMessage = "Aucune organisation n'est actuellement sélectionnée.";
@@ -27,8 +33,22 @@ if ($organizationId <= 0) {
 		: strtolower($adminLabel);
     $organizationInterfaceLevel = $organization->getInterfaceLevel();
     $canEditHolonColor = $organizationInterfaceLevel >= Organization::INTERFACE_LEVEL_EXPERT;
-    $canEditHolonPermissions = $organizationInterfaceLevel >= Organization::INTERFACE_LEVEL_AUTONOMOUS;
+    $canEditHolonAdminBounds = !$organization->isDiscoveryMode();
     $editorData = $organization->getHolonCreationEditorData($contextHolonId, $holonId, $governanceCapture);
+	$canEditHolonPermissions = $organization->canManageHolonPermissionAssignments(
+		($editorData['editorType'] ?? 'holon') === 'template'
+	);
+	$canAddHolonProperties = !empty($editorData['canAddHolonProperties']);
+	$editedHolonData = is_array($editorData['holon'] ?? null) ? $editorData['holon'] : array();
+	$hasCustomHolonAppearance = trim((string)($editedHolonData['color'] ?? '')) !== ''
+		|| trim((string)($editedHolonData['icon'] ?? '')) !== ''
+		|| trim((string)($editedHolonData['banner'] ?? '')) !== '';
+	$hasCustomHolonAdminBounds = !empty($editedHolonData['adminMinOverride'])
+		|| !empty($editedHolonData['adminMaxOverride']);
+	$hasDirectHolonPermissions = !empty($editedHolonData['permissionAssignments']);
+	if (($editorData['editorType'] ?? 'holon') === 'template') {
+		$directPermissionLabel = 'Droits associes au modele';
+	}
     if ($holonId > 0 && (($editorData['mode'] ?? 'create') !== 'edit')) {
         $errorMessage = "Le holon demandé est introuvable.";
     } elseif (($editorData['mode'] ?? 'create') === 'edit' && !($editorData['canEdit'] ?? false)) {
@@ -41,23 +61,17 @@ if ($organizationId <= 0) {
             : "Aucun modèle n'est disponible dans ce contexte pour créer un nouveau holon.";
     }
 }
+$drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le holon' : 'Nouveau holon';
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260807-project-picker-search">
 <div class="omo-holon-create omo-panel-view">
-    <div class="omo-panel-view__header">
-        <div class="omo-panel-view__header-copy">
-            <h2 class="omo-panel-view__title"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le holon' : 'Nouveau holon') ?></h2>
-            <p class="omo-panel-view__description">
-                <?php if (($editorData['mode'] ?? 'create') === 'edit'): ?>
-                    Modifiez ici ce holon à partir d'un modèle disponible dans
-                    <?= omoApiEscape($editorData['contextHolonName'] ?? '') ?>.
-                <?php else: ?>
-                    Créez ici un nouveau cercle ou rôle à partir d'un modèle disponible dans
-                    <?= omoApiEscape($editorData['contextHolonName'] ?? '') ?>.
-                <?php endif; ?>
-            </p>
-        </div>
-    </div>
+    <?php if ($errorMessage === ''): ?>
+    <div
+        hidden
+        data-omo-subdrawer-header
+        data-omo-subdrawer-title="<?= omoApiEscape($drawerTitle) ?>"
+    ></div>
+    <?php endif; ?>
 
     <div class="omo-panel-view__body">
         <?php if ($errorMessage !== ''): ?>
@@ -70,18 +84,16 @@ if ($organizationId <= 0) {
                     <form id="omo-holon-create-form" class="omo-holon-create__form generic-form-stack">
                         <div class="omo-panel-view__body_content">
                         <section class="omo-holon-create__section generic-section generic-section--stack generic-form-section">
-                            <div class="omo-holon-create__section-title generic-title generic-title--medium"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Édition' : 'Création') ?></div>
-
                             <div class="omo-holon-create__grid generic-form-grid">
                                 <label class="omo-holon-create__field generic-form-field">
-                                    <span class="generic-form-label">Modèle</span>
-                                    <select id="omo-holon-create-template" class="generic-form-control" required></select>
-                                </label>
-
-                                <label class="omo-holon-create__field omo-holon-create__field--full generic-form-field generic-form-field--full">
                                     <span class="generic-form-label">Nom</span>
                                     <input type="text" id="omo-holon-create-name" class="generic-form-control" maxlength="255" required>
                                     <small class="generic-help-text" id="omo-holon-create-name-help"></small>
+                                </label>
+
+                                <label class="omo-holon-create__field generic-form-field">
+                                    <span class="generic-form-label">Modèle</span>
+                                    <select id="omo-holon-create-template" class="generic-form-control" required></select>
                                 </label>
 
                                 <label class="omo-holon-create__field omo-holon-create__field--full generic-form-field generic-form-field--full">
@@ -91,43 +103,8 @@ if ($organizationId <= 0) {
                                 </label>
 
                             </div>
-
-                            <div class="omo-holon-create__template-meta" id="omo-holon-create-template-meta"></div>
                         </section>
-
-                        <section class="omo-holon-create__section generic-section generic-section--stack generic-form-section" id="omo-holon-create-admin-bounds-section">
-                            <div class="omo-holon-create__section-head generic-form-section__heading">
-                                <div class="generic-form-section__copy">
-                                    <div class="omo-holon-create__section-title generic-title generic-title--medium"><?= omoApiEscape($adminLabel) ?></div>
-                                    <p class="omo-holon-create__section-description generic-description">Ces limites viennent du modele. Elles peuvent etre redefinies uniquement si le modele ne les verrouille pas.</p>
-                                </div>
-                            </div>
-                            <div class="omo-holon-create__admin-bounds generic-form-grid">
-                                <label class="omo-holon-create__field generic-form-field">
-                                    <span class="omo-holon-create__admin-bound-head">
-                                        <span>Minimum de <?= omoApiEscape($adminLabelLower) ?></span>
-                                        <span class="omo-holon-create__color-toggle">
-                                            <input type="checkbox" id="omo-holon-create-admin-min-override">
-                                            <span>Redefinir</span>
-                                        </span>
-                                    </span>
-                                    <input type="number" id="omo-holon-create-admin-min" class="generic-form-control" min="0" step="1">
-                                </label>
-                                <label class="omo-holon-create__field generic-form-field">
-                                    <span class="omo-holon-create__admin-bound-head">
-                                        <span>Maximum de <?= omoApiEscape($adminLabelLower) ?></span>
-                                        <span class="omo-holon-create__color-toggle">
-                                            <input type="checkbox" id="omo-holon-create-admin-max-override">
-                                            <span>Redefinir</span>
-                                        </span>
-                                    </span>
-                                    <input type="number" id="omo-holon-create-admin-max" class="generic-form-control" min="0" step="1" placeholder="Sans limite">
-                                </label>
-                            </div>
-                            <small class="generic-help-text" id="omo-holon-create-admin-bounds-help"></small>
-                        </section>
-
-                        <section class="omo-holon-create__section generic-section generic-section--stack generic-form-section">
+                        <section class="omo-holon-create__section omo-holon-create__section--separated generic-section generic-section--stack generic-form-section">
                             <div class="omo-holon-create__section-head generic-form-section__heading">
                                 <div class="generic-form-section__copy">
                                     <div class="omo-holon-create__section-title generic-title generic-title--medium">Propriétés</div>
@@ -138,67 +115,135 @@ if ($organizationId <= 0) {
                             </div>
 
                             <div class="omo-holon-create__properties" id="omo-holon-create-properties"></div>
+                            <?php if ($canAddHolonProperties): ?>
+                            <div class="generic-action-row">
                             <button type="button" class="generic-action-button generic-action-button--secondary" id="omo-holon-create-add-property">Ajouter une propriete</button>
+                            </div>
+                            <?php endif; ?>
                         </section>
 
-                        <section class="omo-holon-create__section generic-section generic-section--stack generic-form-section">
-                            <div class="omo-holon-create__section-head generic-form-section__heading">
-                                <div class="generic-form-section__copy">
-                                    <div class="omo-holon-create__section-title generic-title generic-title--medium">Droits</div>
-                                    <p class="omo-holon-create__section-description generic-description">
-                                        Ce holon peut aussi porter des droits directs pour ses membres, ses admins ou le collectif.
-                                    </p>
-                                </div>
-                                <?php if ($canEditHolonPermissions): ?>
-                                <button
-                                    type="button"
-                                    class="generic-action-button generic-action-button--secondary"
-                                    id="omo-holon-create-permissions-toggle"
-                                    aria-expanded="false"
-                                    aria-controls="omo-holon-create-permissions-editor"
-                                >Editer</button>
-                                <?php endif; ?>
-                            </div>
+                        <?php if ($canEditHolonPermissions): ?>
+                        <section
+                            class="omo-holon-create__section omo-holon-create__section--separated generic-section generic-section--stack generic-form-section generic-accordion generic-accordion--card generic-accordion--collapsible<?= $hasDirectHolonPermissions ? '' : ' is-collapsed' ?>"
+                            data-generic-accordion
+                            id="omo-holon-create-permissions-section"
+                        >
+                            <button
+                                type="button"
+                                class="omo-holon-create__section-head omo-holon-create__accordion-header-toggle generic-form-section__heading generic-accordion__header"
+                                data-generic-accordion-toggle
+                                aria-expanded="<?= $hasDirectHolonPermissions ? 'true' : 'false' ?>"
+                                aria-controls="omo-holon-create-permissions-content"
+                            >
+                                <span class="generic-form-section__copy">
+                                    <span class="omo-holon-create__section-title generic-title generic-title--medium">Droits</span>
+                                </span>
+                                <span class="generic-accordion__toggle" aria-hidden="true">&#9662;</span>
+                            </button>
 
-                            <div class="omo-holon-create__permission-summary generic-soft-panel" id="omo-holon-create-permissions-summary">
-                                <div class="omo-holon-create__permission-summary-line">
-                                    <div class="omo-holon-create__permission-summary-label">Droits herites</div>
-                                    <div class="omo-holon-create__permission-summary-empty">aucun</div>
+                            <div class="generic-accordion__content" id="omo-holon-create-permissions-content">
+                                <div class="omo-holon-create__permission-summary" id="omo-holon-create-permissions-summary">
+                                    <div class="omo-holon-create__permission-summary-line">
+                                        <div class="omo-holon-create__permission-summary-label">Droits herites</div>
+                                        <div class="omo-holon-create__permission-summary-empty">aucun</div>
+                                    </div>
+                                    <div class="omo-holon-create__permission-summary-line">
+                                        <div class="omo-holon-create__permission-summary-heading">
+                                            <div class="omo-holon-create__permission-summary-label"><?= omoApiEscape($directPermissionLabel) ?></div>
+                                            <button
+                                                type="button"
+                                                class="generic-action-button generic-action-button--secondary generic-action-button--compact"
+                                                id="omo-holon-create-permissions-toggle"
+                                                aria-expanded="false"
+                                                aria-controls="omo-holon-create-permissions-editor"
+                                            >Editer</button>
+                                        </div>
+                                        <div class="omo-holon-create__permission-summary-empty">aucun</div>
+                                    </div>
                                 </div>
-                                <div class="omo-holon-create__permission-summary-line">
-                                    <div class="omo-holon-create__permission-summary-label">Droits associes au holon</div>
-                                    <div class="omo-holon-create__permission-summary-empty">aucun</div>
-                                </div>
+                                <div class="omo-holon-create__permissions" id="omo-holon-create-permissions-editor" hidden></div>
                             </div>
-                            <div class="omo-holon-create__permissions" id="omo-holon-create-permissions-editor" hidden></div>
                         </section>
+                        <?php endif; ?>
+                        <?php if ($canEditHolonAdminBounds): ?>
+                        <section
+                            class="omo-holon-create__section omo-holon-create__section--separated generic-section generic-section--stack generic-form-section generic-accordion generic-accordion--card generic-accordion--collapsible<?= $hasCustomHolonAdminBounds ? '' : ' is-collapsed' ?>"
+                            data-generic-accordion
+                            id="omo-holon-create-admin-bounds-section"
+                        >
+                            <button
+                                type="button"
+                                class="omo-holon-create__section-head omo-holon-create__accordion-header-toggle generic-form-section__heading generic-accordion__header"
+                                data-generic-accordion-toggle
+                                aria-expanded="<?= $hasCustomHolonAdminBounds ? 'true' : 'false' ?>"
+                                aria-controls="omo-holon-create-admin-bounds-content"
+                            >
+                                <span class="generic-form-section__copy">
+                                    <span class="omo-holon-create__section-title generic-title generic-title--medium">Équipe</span>
+                                </span>
+                                <span class="generic-accordion__toggle" aria-hidden="true">&#9662;</span>
+                            </button>
+                            <div class="generic-accordion__content" id="omo-holon-create-admin-bounds-content">
+                                <div class="omo-holon-create__admin-bounds generic-form-grid">
+                                    <label class="omo-holon-create__field generic-form-field">
+                                        <span class="omo-holon-create__admin-bound-head">
+                                            <span>Minimum de <?= omoApiEscape($adminLabelLower) ?></span>
+                                            <span class="omo-holon-create__color-toggle">
+                                                <input type="checkbox" id="omo-holon-create-admin-min-override">
+                                                <span>Redefinir</span>
+                                            </span>
+                                        </span>
+                                        <input type="number" id="omo-holon-create-admin-min" class="generic-form-control" min="0" step="1">
+                                    </label>
+                                    <label class="omo-holon-create__field generic-form-field">
+                                        <span class="omo-holon-create__admin-bound-head">
+                                            <span>Maximum de <?= omoApiEscape($adminLabelLower) ?></span>
+                                            <span class="omo-holon-create__color-toggle">
+                                                <input type="checkbox" id="omo-holon-create-admin-max-override">
+                                                <span>Redefinir</span>
+                                            </span>
+                                        </span>
+                                        <input type="number" id="omo-holon-create-admin-max" class="generic-form-control" min="0" step="1" placeholder="Sans limite">
+                                    </label>
+                                </div>
+                                <small class="generic-help-text" id="omo-holon-create-admin-bounds-help"></small>
+                            </div>
+                        </section>
+                        <?php endif; ?>
                         </div>
-                        <section class="omo-holon-create__section generic-section generic-section--stack generic-form-section">
-                            <div class="omo-holon-create__section-head generic-form-section__heading">
-                                <div class="generic-form-section__copy">
-                                    <div class="omo-holon-create__section-title generic-title generic-title--medium">Apparence</div>
-                                    <p class="omo-holon-create__section-description generic-description">
-                                        Les choix visuels viennent ici, apres les proprietes plus importantes.
-                                    </p>
-                                </div>
-                            </div>
+                        <?php if ($canEditHolonColor): ?>
+                        <section
+                            class="omo-holon-create__section generic-section generic-section--stack generic-form-section generic-accordion generic-accordion--card generic-accordion--collapsible<?= $hasCustomHolonAppearance ? '' : ' is-collapsed' ?>"
+                            data-generic-accordion
+                            id="omo-holon-create-appearance"
+                        >
+                            <button
+                                type="button"
+                                class="omo-holon-create__section-head omo-holon-create__accordion-header-toggle generic-form-section__heading generic-accordion__header"
+                                data-generic-accordion-toggle
+                                aria-expanded="<?= $hasCustomHolonAppearance ? 'true' : 'false' ?>"
+                                aria-controls="omo-holon-create-appearance-content"
+                            >
+                                <span class="generic-form-section__copy">
+                                    <span class="omo-holon-create__section-title generic-title generic-title--medium">Apparence</span>
+                                </span>
+                                <span class="generic-accordion__toggle" aria-hidden="true">&#9662;</span>
+                            </button>
 
+                            <div class="generic-accordion__content" id="omo-holon-create-appearance-content">
                             <div class="omo-holon-create__grid generic-form-grid">
-                                <?php if ($canEditHolonColor): ?>
                                 <label class="omo-holon-create__field generic-form-field" id="omo-holon-create-color-field">
+                                    <span class="generic-form-label">Couleur</span>
                                     <div class="omo-holon-create__color-head">
-                                        <span>Couleur</span>
                                         <span class="omo-holon-create__color-toggle">
-                                            <input type="checkbox" id="omo-holon-create-color-enabled">
-                                            <span>Redefinir</span>
+                                            <input type="checkbox" id="omo-holon-create-color-enabled" aria-label="Redefinir la couleur">
+                                            <span id="omo-holon-create-color-enabled-label">Redefinir</span>
+                                            <span class="omo-holon-create__color-body" id="omo-holon-create-color-body">
+                                                <input type="color" id="omo-holon-create-color" value="#f59e0b" aria-label="Couleur redefinie">
+                                            </span>
                                         </span>
                                     </div>
-                                    <div class="omo-holon-create__color-body" id="omo-holon-create-color-body">
-                                        <input type="color" id="omo-holon-create-color" value="#f59e0b">
-                                        <small class="generic-help-text">Sinon la couleur reste vide et l'heritage s'applique.</small>
-                                    </div>
                                 </label>
-                                <?php endif; ?>
 
                                 <div class="omo-holon-create__field omo-holon-create__field--full generic-form-field generic-form-field--full">
                                     <span class="generic-form-label">Illustrations</span>
@@ -214,7 +259,9 @@ if ($organizationId <= 0) {
                                     </div>
                                 </div>
                             </div>
+                            </div>
                         </section>
+                        <?php endif; ?>
 
                         <div class="omo-holon-create__footer generic-section">
                             <div class="omo-holon-create__hint generic-help-text" id="omo-holon-create-hint"></div>
@@ -241,6 +288,7 @@ const state = {
     statusTimer: null
 };
 const adminLexiconLabel = <?= json_encode($adminLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const directPermissionLabel = <?= json_encode($directPermissionLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 const canEditHolonColor = <?= $canEditHolonColor ? 'true' : 'false' ?>;
 const governanceCapture = <?= $governanceCapture ? 'true' : 'false' ?>;
 const governanceInitialPayload = governanceCapture && window.omoHolonGovernanceInitialPayload && typeof window.omoHolonGovernanceInitialPayload === 'object'
@@ -277,6 +325,7 @@ const elements = {
     name: root.querySelector('#omo-holon-create-name'),
     fullName: root.querySelector('#omo-holon-create-full-name'),
     colorEnabled: root.querySelector('#omo-holon-create-color-enabled'),
+	colorEnabledLabel: root.querySelector('#omo-holon-create-color-enabled-label'),
     colorBody: root.querySelector('#omo-holon-create-color-body'),
     color: root.querySelector('#omo-holon-create-color'),
 	adminBoundsSection: root.querySelector('#omo-holon-create-admin-bounds-section'),
@@ -287,12 +336,10 @@ const elements = {
 	adminBoundsHelp: root.querySelector('#omo-holon-create-admin-bounds-help'),
     iconField: root.querySelector('#omo-holon-create-icon-field'),
     bannerField: root.querySelector('#omo-holon-create-banner-field'),
-    meta: root.querySelector('#omo-holon-create-template-meta'),
     properties: root.querySelector('#omo-holon-create-properties'),
     addProperty: root.querySelector('#omo-holon-create-add-property'),
     permissions: root.querySelector('#omo-holon-create-permissions-editor'),
     permissionSummary: root.querySelector('#omo-holon-create-permissions-summary'),
-    permissionToggle: root.querySelector('#omo-holon-create-permissions-toggle'),
     hint: root.querySelector('#omo-holon-create-hint'),
     nameHelp: root.querySelector('#omo-holon-create-name-help'),
     cancel: root.querySelector('#omo-holon-create-cancel')
@@ -302,6 +349,39 @@ const mediaFields = {
     icon: null,
     banner: null
 };
+
+const editorAccordions = [
+    root.querySelector('#omo-holon-create-appearance'),
+    root.querySelector('#omo-holon-create-admin-bounds-section'),
+    root.querySelector('#omo-holon-create-permissions-section')
+].filter(Boolean);
+
+if (editorAccordions.length > 0 && typeof window.initGenericComponents === 'function') {
+    window.initGenericComponents(root);
+}
+
+function initEditorAccordion(accordion) {
+    const toggle = accordion ? accordion.querySelector('[data-generic-accordion-toggle]') : null;
+    if (!accordion || !toggle) {
+        return;
+    }
+
+    function syncAccessibility() {
+        toggle.setAttribute('aria-expanded', accordion.classList.contains('is-collapsed') ? 'false' : 'true');
+    }
+
+    if (typeof window.initGenericComponents === 'function') {
+        toggle.addEventListener('click', syncAccessibility);
+    } else {
+        toggle.addEventListener('click', function () {
+            accordion.classList.toggle('is-collapsed');
+            syncAccessibility();
+        });
+    }
+    syncAccessibility();
+}
+
+editorAccordions.forEach(initEditorAccordion);
 
 function waitForGlobalLibrary(globalKey, timeoutMs) {
     const key = String(globalKey || '').trim();
@@ -620,7 +700,7 @@ function syncPermissionSummary() {
             + '  <div class="omo-holon-create__permission-summary-empty">aucun droit disponible</div>'
             + '</div>'
             + '<div class="omo-holon-create__permission-summary-line">'
-            + '  <div class="omo-holon-create__permission-summary-label">Droits associes au holon</div>'
+            +      renderLocalPermissionSummaryHeading()
             + '  <div class="omo-holon-create__permission-summary-empty">aucun droit disponible</div>'
             + '</div>';
         return;
@@ -634,8 +714,17 @@ function syncPermissionSummary() {
         +      renderPermissionSummaryCapsules(inheritedItems, 'aucun')
         + '</div>'
         + '<div class="omo-holon-create__permission-summary-line">'
-        + '  <div class="omo-holon-create__permission-summary-label">Droits associes au holon</div>'
+        +      renderLocalPermissionSummaryHeading()
         +      renderPermissionSummaryCapsules(localItems, 'aucun')
+        + '</div>';
+}
+
+function renderLocalPermissionSummaryHeading() {
+    const isExpanded = Boolean(elements.permissions && elements.permissions.hidden === false);
+    return ''
+        + '<div class="omo-holon-create__permission-summary-heading">'
+        + '  <div class="omo-holon-create__permission-summary-label">' + escapeHtml(directPermissionLabel) + '</div>'
+        + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--compact" id="omo-holon-create-permissions-toggle" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" aria-controls="omo-holon-create-permissions-editor">' + (isExpanded ? 'Fermer' : 'Editer') + '</button>'
         + '</div>';
 }
 
@@ -644,9 +733,10 @@ function setPermissionEditorExpanded(isExpanded) {
         elements.permissions.hidden = !isExpanded;
     }
 
-    if (elements.permissionToggle) {
-        elements.permissionToggle.textContent = isExpanded ? 'Fermer' : 'Editer';
-        elements.permissionToggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+    const permissionToggle = root.querySelector('#omo-holon-create-permissions-toggle');
+    if (permissionToggle) {
+        permissionToggle.textContent = isExpanded ? 'Fermer' : 'Editer';
+        permissionToggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
     }
 }
 
@@ -963,6 +1053,10 @@ function syncColorField() {
     if (elements.colorBody) {
         elements.colorBody.hidden = !isEnabled;
     }
+
+	if (elements.colorEnabledLabel) {
+		elements.colorEnabledLabel.hidden = isEnabled;
+	}
 
     if (elements.color) {
         elements.color.disabled = !isEnabled;
@@ -1973,7 +2067,9 @@ function renderTemplateOptions(preferredTemplateId) {
 // Rend méta modèle
 function renderTemplateMeta(template, sourceProperties) {
     if (!template) {
-        elements.meta.innerHTML = '';
+        if (elements.meta) {
+            elements.meta.innerHTML = '';
+        }
         elements.hint.textContent = '';
         renderProperties([]);
         return;
@@ -1982,10 +2078,10 @@ function renderTemplateMeta(template, sourceProperties) {
     const meta = [];
     meta.push('<span class="omo-holon-create__chip omo-holon-create__chip--accent">' + escapeHtml(template.typeLabel || '') + '</span>');
     meta.push('<span class="omo-holon-create__chip">' + (Array.isArray(template.properties) ? template.properties.length : 0) + ' propriété' + ((template.properties || []).length > 1 ? 's' : '') + '</span>');
-    elements.meta.innerHTML = meta.join('');
-    elements.hint.textContent = getMode() === 'edit'
-        ? 'Le type et les propriétés suivent le modèle sélectionné.'
-        : 'Le type et les propriétés sont hérités du modèle sélectionné.';
+    if (elements.meta) {
+        elements.meta.innerHTML = meta.join('');
+    }
+    elements.hint.textContent = '';
     renderProperties(buildPropertiesForTemplate(template, sourceProperties));
 
     if (elements.color) {
@@ -2027,12 +2123,10 @@ function renderEditorMeta(template, sourceProperties) {
         meta.push('<span class="omo-holon-create__chip">Sans modèle parent</span>');
     }
 
-    elements.meta.innerHTML = meta.join('');
-    elements.hint.textContent = isTemplateEditing()
-        ? 'Les options et propriétés de ce template peuvent être redéfinies ici.'
-        : getMode() === 'edit'
-        ? 'Le type et les propriétés suivent le modèle sélectionné.'
-        : 'Le type et les propriétés sont hérités du modèle sélectionné.';
+    if (elements.meta) {
+        elements.meta.innerHTML = meta.join('');
+    }
+    elements.hint.textContent = '';
     renderProperties(properties);
     if (elements.addProperty) {
         elements.addProperty.disabled = isTemplateEditing() || !Boolean(state.data.canAddHolonProperties);
@@ -2413,6 +2507,7 @@ function saveHolon(event) {
 
     Promise.all(pendingMediaFlushes)
         .then(function () {
+            const editingHolon = getEditingHolon() || {};
             const payload = {
                 templateId: Number(elements.template.value || 0),
                 name: String(elements.name.value || '').trim(),
@@ -2422,12 +2517,24 @@ function saveHolon(event) {
                         ? String(elements.color && elements.color.value ? elements.color.value : '')
                         : '')
                     : String((getEditingHolon() || {}).color || ''),
-                icon: mediaFields.icon ? mediaFields.icon.getValue() : '',
-                banner: mediaFields.banner ? mediaFields.banner.getValue() : '',
-				adminMin: normalizeAdminBound(elements.adminMin && elements.adminMin.value, false),
-				adminMax: normalizeAdminBound(elements.adminMax && elements.adminMax.value, true),
-				adminMinOverride: Boolean(elements.adminMinOverride && elements.adminMinOverride.checked),
-				adminMaxOverride: Boolean(elements.adminMaxOverride && elements.adminMaxOverride.checked),
+                icon: mediaFields.icon
+                    ? mediaFields.icon.getValue()
+                    : String((getEditingHolon() || {}).icon || ''),
+                banner: mediaFields.banner
+                    ? mediaFields.banner.getValue()
+                    : String((getEditingHolon() || {}).banner || ''),
+                adminMin: elements.adminMin
+                    ? normalizeAdminBound(elements.adminMin.value, false)
+                    : normalizeAdminBound(editingHolon.adminMin, false),
+                adminMax: elements.adminMax
+                    ? normalizeAdminBound(elements.adminMax.value, true)
+                    : normalizeAdminBound(editingHolon.adminMax, true),
+				adminMinOverride: elements.adminMinOverride
+					? Boolean(elements.adminMinOverride.checked)
+					: Boolean(editingHolon.adminMinOverride),
+				adminMaxOverride: elements.adminMaxOverride
+					? Boolean(elements.adminMaxOverride.checked)
+					: Boolean(editingHolon.adminMaxOverride),
                 permissions: readPermissions(),
                 properties: readProperties()
             };
@@ -2682,12 +2789,13 @@ if (elements.adminMaxOverride) {
 	});
 }
 
-if (elements.permissionToggle) {
-    elements.permissionToggle.addEventListener('click', function () {
+root.addEventListener('click', function (event) {
+    const permissionToggle = event.target.closest('#omo-holon-create-permissions-toggle');
+    if (permissionToggle) {
         const isExpanded = !(elements.permissions && elements.permissions.hidden === false);
         setPermissionEditorExpanded(isExpanded);
-    });
-}
+    }
+});
 
 elements.form.addEventListener('submit', saveHolon);
 
@@ -2937,6 +3045,10 @@ root.addEventListener('click', function (event) {
     --generic-section-gap: var(--generic-space-4, 16px);
 }
 
+.omo-holon-create__section--separated {
+    margin-top: var(--generic-space-4, 16px);
+}
+
 .omo-holon-create__property {
     --generic-section-padding-block: 12px;
     --generic-section-padding-inline: 12px;
@@ -2982,15 +3094,38 @@ root.addEventListener('click', function (event) {
     grid-column: 1 / -1;
 }
 
+.omo-holon-create__accordion-header-toggle {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+}
+
 .omo-holon-create__color-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 12px;
 }
 
 .omo-holon-create__color-body[hidden] {
     display: none !important;
+}
+
+.omo-holon-create__color-body {
+    display: inline-flex;
+    align-items: center;
+}
+
+.omo-holon-create__color-body input[type="color"] {
+    width: 34px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    background: transparent;
 }
 
 .omo-holon-create__color-toggle {
@@ -3055,9 +3190,6 @@ root.addEventListener('click', function (event) {
 }
 
 .omo-holon-create__permission-summary {
-    --generic-soft-panel-padding-block: 12px;
-    --generic-soft-panel-padding-inline: 14px;
-    --generic-soft-panel-radius: var(--radius-md);
     color: var(--color-text);
 }
 
@@ -3067,11 +3199,23 @@ root.addEventListener('click', function (event) {
     border-top: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
 }
 
+.omo-holon-create__permission-summary-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
 .omo-holon-create__permission-summary-label {
     font-size: 0.82rem;
     font-weight: 700;
     color: var(--color-text);
     margin-bottom: 8px;
+}
+
+.omo-holon-create__permission-summary-heading .omo-holon-create__permission-summary-label {
+    margin-bottom: 0;
 }
 
 .omo-holon-create__permission-summary-capsules {
@@ -3755,6 +3899,11 @@ textarea.omo-holon-create__property-value:focus {
     .omo-holon-create__section-head {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .omo-holon-create__section-head.generic-accordion__header {
+        flex-direction: row;
+        align-items: center;
     }
 
     .omo-holon-create__property {
