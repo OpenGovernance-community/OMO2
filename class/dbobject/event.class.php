@@ -445,7 +445,7 @@ class Event extends DbObject
         return $displayNameCache[$cacheKey];
     }
 
-    protected function getEffectiveInvitationTargets($organizationId): array
+    protected function getEffectiveInvitationTargets($organizationId, ?array $proposedInvitations = null): array
     {
         $organizationId = (int)$organizationId;
         if ($organizationId <= 0) {
@@ -458,7 +458,7 @@ class Event extends DbObject
             'emails' => [],
         ];
 
-        foreach ($this->getInvitations(true) as $invitation) {
+        foreach ($proposedInvitations ?? $this->getInvitations(true) as $invitation) {
             if (!($invitation instanceof \dbObject\EventInvitation)) {
                 continue;
             }
@@ -517,6 +517,75 @@ class Event extends DbObject
         }
 
         return $targets;
+    }
+
+    /** Calendar intervals have an exclusive end; OMO all-day dates are inclusive. */
+    public function getBusyInterval(): ?array
+    {
+        $start = $this->get('start_at');
+        $end = $this->get('end_at');
+        if (!$start instanceof \DateTimeInterface) { return null; }
+        $start = \DateTimeImmutable::createFromInterface($start);
+        $end = $end instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($end) : $start->modify('+1 hour');
+        if ($this->get('is_all_day')) {
+            $start = $start->setTime(0, 0);
+            $end = $end->setTime(0, 0)->modify('+1 day');
+        }
+        return $end > $start ? [$start, $end] : null;
+    }
+
+    /** The caller must validate the proposed invitations against the current organization. */
+    public function checkInvitationAvailability(array $proposedInvitations): array
+    {
+        $organizationId = (int)$this->get('IDorganization');
+        $targets = $this->getEffectiveInvitationTargets($organizationId, $proposedInvitations);
+        $report = ['conflicts' => [], 'unverified' => [], 'externalCache' => false];
+        foreach ($targets['emails'] as $email) {
+            $report['unverified'][] = ['name' => $email, 'reason' => 'email'];
+        }
+        $interval = $this->getBusyInterval();
+        if ($interval === null) { return $report; }
+        [$start, $end] = $interval;
+        $userIds = array_unique(array_merge($targets['userIds'], [(int)$this->get('IDuser')]));
+        foreach ($userIds as $userId) {
+            if ($userId <= 0) { continue; }
+            $name = $this->getViewerDisplayName($userId, $organizationId);
+            $intervals = [];
+            try {
+                $events = new ArrayEvent();
+                $events->loadBusyForUserDateRange($userId, $start, $end);
+                foreach ($events as $event) {
+                    if ((int)$this->getId() > 0 && (int)$event->getId() === (int)$this->getId()) { continue; }
+                    $busy = $event->getBusyInterval();
+                    if ($busy !== null) { $intervals[] = $busy; }
+                }
+                $external = ArrayExternalCalendarEvent::busyIntervalsForUser($userId, $start, $end);
+                $intervals = array_merge($intervals, $external['intervals']);
+                $report['externalCache'] = $report['externalCache'] || $external['hasCalendars'];
+                if ($external['incomplete']) {
+                    $report['unverified'][] = ['name' => $name, 'reason' => 'cache'];
+                }
+            } catch (\Throwable $exception) {
+                error_log('Calendar availability check failed: ' . get_class($exception));
+                $report['unverified'][] = ['name' => $name, 'reason' => 'storage'];
+            }
+            // Merge overlapping intervals, and expose only their intersection with the proposed event.
+            usort($intervals, static fn($a, $b) => $a[0] <=> $b[0]);
+            $merged = [];
+            foreach ($intervals as [$busyStart, $busyEnd]) {
+                if ($busyStart >= $end || $busyEnd <= $start) { continue; }
+                $busyStart = max($start, $busyStart);
+                $busyEnd = min($end, $busyEnd);
+                $last = count($merged) - 1;
+                if ($last >= 0 && $merged[$last][1] >= $busyStart) {
+                    $merged[$last][1] = max($merged[$last][1], $busyEnd);
+                } else { $merged[] = [$busyStart, $busyEnd]; }
+            }
+            foreach ($merged as [$busyStart, $busyEnd]) {
+                $report['conflicts'][] = ['name' => $name, 'start' => $busyStart->format('Y-m-d H:i'), 'end' => $busyEnd->format('Y-m-d H:i')];
+            }
+        }
+        return $report;
     }
 
     public function getNotificationRecipientUserIds(): array

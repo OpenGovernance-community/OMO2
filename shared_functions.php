@@ -573,7 +573,7 @@
 	
 	
 	// Fonction E-mail passant par un serveur, pour minimier les effets SPAM
-	function myHTMLMail($from,$to,$subject,$body,$cc=null, $bcc=null) {
+	function myHTMLMail($from,$to,$subject,$body,$cc=null, $bcc=null, array $attachments = []) {
 
 
 		appSetLastMailError('');
@@ -638,6 +638,9 @@
 		
 		// Envoi de l'e-mail
 		try {
+			foreach ($attachments as $attachment) {
+				$mail->addStringAttachment($attachment['content'], $attachment['name'], 'base64', $attachment['type'] ?? 'application/octet-stream');
+			}
 			$result = $mail->send();
 			if ($result) {
 				return true;

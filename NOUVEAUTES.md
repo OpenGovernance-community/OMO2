@@ -4,6 +4,31 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-16
 
+- Agenda : les vues semaine et jour montrent les occupations des autres organisations en gris, en italique et avec uniquement leur nom. Avant de creer ou modifier un evenement, les recouvrements de l organisateur et des invites sont signales sans divulguer les details de leurs agendas. Confirmation possible malgre les conflits ; agendas externes verifies sur le cache synchronise, invitations par e-mail signalees comme non verifiables.
+
+- Profils et images redimensionnees : un serveur GD sans decodeur WebP ne provoque plus d erreur fatale lors de l enregistrement. Les JPEG recadres sont transmis en JPEG, au lieu d etre convertis automatiquement en WebP par le navigateur.
+
+- Rendez-vous : les derniers horaires qui depassent l heure de fermeture ne sont plus affiches comme indisponibles.
+
+- Rendez-vous : nouvelle presentation publique, cartes claires, couleurs de disponibilite adoucies et legende sans libelles dans les jours. Photo du profil OMO (ou initiales), parcours par etapes, recapitulatif et confirmation revisites. Affichage compact sur ordinateur portable, adaptation mobile et horaires sans libelles redondants, avec contraste renforce entre disponibles et indisponibles. La pause de midi devient un separateur unique et le pied de page relie OMO2 et OpenMyOrganization a la racine de l instance courante.
+
+- Rendez-vous : les confirmations utilisent maintenant le modele d e-mail partage d OMO, avec son bandeau, un recapitulatif des informations et la fiche calendrier ICS en piece jointe.
+
+- Rendez-vous : les confirmations par e-mail fonctionnent aussi avec un relais SMTP sans identifiant, notamment Mailpit en local. L adresse d expediteur ne depend plus de la presence de MAIL_USER.
+
+- Rendez-vous : nouvelle page publique /meeting/nom avec disponibilites mensuelles, departs toutes les demi-heures et reservations d une heure dans un agenda CalDAV. Activation, nom unique, agenda de destination et horaires avec pause par jour se reglent depuis le menu de l agenda. Confirmation avec fichier ICS, verification des conflits et protection contre les doubles reservations OMO.
+
+- Agenda : le connecteur CalDAV recherche maintenant les agendas Nextcloud et Infomaniak depuis l adresse du serveur. Selection multiple, noms et couleurs personnalisables, detection des agendas deja connectes et resultats de synchronisation individuels.
+
+- Documents : une selection de documents HTML peut etre fusionnee dans un nouveau document. Le titre, les tags et l ordre des contenus sont preparables avant la creation, sans modifier les documents source.
+- Documents : le document fusionne reprend la visibilite la plus restrictive de ses sources. L ecran de preparation affiche cette portee, utilise l icone de fusion dediee et allege les tags ainsi que les controles de tri.
+- Documents : avant une fusion, les portees de lecture et de modification peuvent etre ajustees avec le meme selecteur que dans l editeur. Une case permet aussi de conserver les sources ou de les supprimer apres une fusion reussie.
+- Documents : les selecteurs Lecture et Modification de la fusion sont affiches cote a cote sur grand ecran, sans aide redondante sur le holon.
+
+- Documents : le menu des actions place maintenant Editer en tete, groupe les actions de cycle de vie en bas apres un separateur, et met Supprimer en rouge.
+
+- Documents : le deplacement groupe utilise maintenant le meme point d entree partage que le deplacement individuel, ce qui permet a nouveau de deplacer une selection.
+
 - Structure : la grande carte et la mini-carte partagent leur cache de donnees et de reglages par organisation. Les rafraichissements protegent les nouveaux reglages contre les anciennes reponses, et la mini-carte evite des traitements repetes pendant le rendu.
 
 - Structure : les admins peuvent maintenant regler par organisation l estompage, la profondeur affichee, les seuils des libelles automatiques et au survol (jusqu a 3 px), leur taille minimale de police et le contour des textes, pour la grande vue comme pour la mini-carte, sans modifier le calcul des positions.
@@ -2276,3 +2301,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Le parcours Du role a l action utilise cinq illustrations de manchots integrees sur fond bleu, avec des reperes numerotes et un affichage adapte au mobile.
 - Le bloc final d invitation a cooperer utilise le panorama iceberg fourni, sans les cercles ni les traits decoratifs precedents.
 - La page publique affiche maintenant les organisations ayant defini un logo, classees par leur derniere activite dans OMO et defilant en boucle lorsqu elles depassent la largeur disponible, dans une bande compacte de logos carres aux coins arrondis et nommes, avec une boucle de defilement sans blanc.
+# 2026-09-16
+
+- L agenda OMO peut maintenant importer en lecture seule un agenda Nextcloud CalDAV personnel depuis le menu Connecter, avec couleur propre, synchronisation manuelle et synchronisation periodique securisee.
+- Les synchronisations automatiques des agendas Nextcloud utilisent maintenant leur version CalDAV et ne rechargent les evenements qu apres un changement ; leur cadence normale est de deux heures.

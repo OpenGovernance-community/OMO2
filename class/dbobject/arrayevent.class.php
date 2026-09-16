@@ -3,9 +3,51 @@ namespace dbObject;
 
 class ArrayEvent extends ArrayDbObject
 {
+    public function loadBusyForUserDateRange(int $userId, \DateTimeInterface $start, \DateTimeInterface $end): void
+    {
+        $this->exchangeArray([]);
+        $rows = Event::fetchAll('SELECT e.id FROM `event` e WHERE e.active = 1 AND e.status <> :cancelled
+            AND e.start_at < :end AND (CASE WHEN e.is_all_day = 1
+                THEN DATE_ADD(DATE(COALESCE(e.end_at, e.start_at)), INTERVAL 1 DAY)
+                ELSE COALESCE(e.end_at, DATE_ADD(e.start_at, INTERVAL 1 HOUR)) END) > :start
+            AND (e.IDuser = :owner OR EXISTS (SELECT 1 FROM user_organization uo
+                WHERE uo.IDorganization = e.IDorganization AND uo.IDuser = :member AND uo.active = 1))',
+            ['cancelled' => Event::STATUS_CANCELLED, 'start' => $start, 'end' => $end, 'owner' => $userId, 'member' => $userId]);
+        if (!is_array($rows)) { throw new \RuntimeException('storage'); }
+        foreach ($rows as $row) {
+            $event = new Event();
+            if ($event->load((int)$row['id']) && ((int)$event->get('IDuser') === $userId
+                || $event->isVisibleToInvitationViewer($userId, (int)$event->get('IDorganization')))) {
+                $this[] = $event;
+            }
+        }
+    }
+
     public static function objectName()
     {
         return '\dbObject\Event';
+    }
+
+    /** Sanitized personal busy blocks: never expose another organization's event details. */
+    public static function otherOrganizationBusyBlocks(int $userId, int $organizationId, \DateTimeInterface $start, \DateTimeInterface $end): array
+    {
+        if ($userId <= 0) { return []; }
+        $events = new self();
+        $events->loadBusyForUserDateRange($userId, $start, $end);
+        $labels = [];
+        $blocks = [];
+        foreach ($events as $event) {
+            $otherId = (int)$event->get('IDorganization');
+            if ($otherId <= 0 || $otherId === $organizationId) { continue; }
+            if (!array_key_exists($otherId, $labels)) {
+                $organization = new Organization();
+                $labels[$otherId] = $organization->load($otherId) ? (string)$organization->get('name') : '';
+            }
+            $interval = $event->getBusyInterval();
+            if ($interval === null || $labels[$otherId] === '') { continue; }
+            $blocks[] = ['title' => $labels[$otherId], 'start' => $interval[0], 'end' => $interval[1], 'allDay' => (bool)$event->get('is_all_day')];
+        }
+        return $blocks;
     }
 
     public function loadForOrganization($organizationId, $includeInactive = false, $hydrate = false)

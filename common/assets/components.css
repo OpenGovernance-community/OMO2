@@ -318,6 +318,28 @@ input:focus-visible + .generic-choice-card,
     gap: var(--generic-soft-panel-gap, var(--generic-space-2));
 }
 
+/* Airy, elevated cards for standalone public flows. */
+.generic-soft-panel--elevated {
+    --param-elevated-panel-padding-block: clamp(20px, 3vw, 32px);
+    --param-elevated-panel-padding-inline: clamp(16px, 3vw, 32px);
+    --param-elevated-panel-gap: 24px;
+    --generic-soft-panel-padding-block: var(--param-elevated-panel-padding-block);
+    --generic-soft-panel-padding-inline: var(--param-elevated-panel-padding-inline);
+    --generic-soft-panel-radius: 18px;
+    --generic-soft-panel-background: var(--color-surface, #ffffff);
+    --generic-soft-panel-border: color-mix(in srgb, var(--color-border, #e5e7eb) 55%, transparent);
+    --generic-soft-panel-gap: var(--param-elevated-panel-gap);
+    box-shadow: 0 8px 32px color-mix(in srgb, var(--color-primary, #2563eb) 4%, transparent);
+}
+
+.generic-soft-panel--tinted {
+    --generic-soft-panel-background: color-mix(in srgb, var(--color-primary, #2563eb) 3%, var(--color-surface, #ffffff));
+    --generic-soft-panel-border: color-mix(in srgb, var(--color-primary, #2563eb) 6%, var(--color-surface, #ffffff));
+    --generic-soft-panel-padding-block: var(--generic-space-4);
+    --generic-soft-panel-padding-inline: var(--generic-space-4);
+    --generic-soft-panel-radius: 12px;
+}
+
 .generic-soft-panel.generic-stack {
     display: grid;
 }
@@ -455,10 +477,23 @@ input:focus-visible + .generic-choice-card,
     gap: var(--generic-form-gap, var(--generic-space-4));
 }
 
+.generic-form-stack--compact {
+    --generic-form-gap: 10px;
+    --generic-form-field-gap: 5px;
+}
+
 .generic-form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--generic-form-grid-min, 220px)), 1fr));
     gap: var(--generic-form-grid-gap, var(--generic-space-4));
+}
+
+.generic-form-grid--pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 480px) {
+    .generic-form-grid--pair { grid-template-columns: minmax(0, 1fr); }
 }
 
 .generic-form-stack[hidden],
@@ -592,6 +627,13 @@ input:focus-visible + .generic-choice-card,
 .generic-title--large,
 .generic-card-title--large {
     font-size: var(--generic-title-size-large);
+    color: var(--color-text, #1f2937);
+}
+
+.generic-card-title--display {
+    font-size: clamp(1.65rem, 3vw, 2.3rem);
+    font-weight: 750;
+    letter-spacing: -0.035em;
     color: var(--color-text, #1f2937);
 }
 
@@ -886,11 +928,28 @@ html[data-theme="dark"] .black-icon,
     border-color: var(--color-border, #e5e7eb);
 }
 
+.generic-action-button--choice {
+    background: var(--color-surface, #ffffff);
+    color: var(--color-primary, #2563eb);
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 40%, var(--color-surface, #ffffff));
+}
+
+.generic-action-button--choice:not(:disabled):hover {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface, #ffffff));
+    border-color: var(--color-primary, #2563eb);
+}
+
 .generic-action-button--compact {
     min-height: 34px;
     padding: 6px 10px;
     font-size: 0.82rem;
     line-height: 1.2;
+}
+
+.generic-action-button--wide {
+    width: 100%;
+    min-height: 54px;
+    gap: 12px;
 }
 
 .generic-action-button--danger {
@@ -913,6 +972,24 @@ html[data-theme="dark"] .black-icon,
     stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
+}
+
+.generic-action-button--quiet-icon {
+    width: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0;
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 34%, var(--color-border, #e5e7eb));
+    border-radius: 999px;
+    background: var(--color-surface, #ffffff);
+    color: var(--color-primary, #2563eb);
+    box-shadow: none;
+}
+
+.generic-action-button--quiet-icon:not(:disabled):hover,
+.generic-action-button--quiet-icon:not(:disabled):focus-visible {
+    border-color: var(--color-primary, #2563eb);
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
 }
 
 .generic-action-button:not(:disabled):hover {
@@ -946,6 +1023,16 @@ html[data-theme="dark"] .black-icon,
     cursor: wait;
     box-shadow: none;
     transform: none;
+}
+
+/* Non-interactive time options retain readable contrast, without a wait cursor. */
+.generic-action-button--unavailable:disabled {
+    opacity: 1;
+    cursor: not-allowed;
+    color: var(--color-text-light, #64748b);
+    background: color-mix(in srgb, var(--color-text-light, #64748b) 9%, var(--color-surface, #ffffff));
+    border-color: transparent;
+    font-weight: 400;
 }
 
 .generic-drag-handle {
@@ -989,6 +1076,18 @@ html[data-theme="dark"] .black-icon,
     cursor: default;
 }
 
+.generic-drag-handle--minimal {
+    min-width: 28px;
+    min-height: 34px;
+    padding: 4px;
+    border: 0;
+    background: transparent;
+}
+
+.generic-drag-handle--minimal:hover {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, transparent);
+}
+
 .generic-form-control {
     --generic-form-control-min-height: 44px;
     --generic-form-control-padding-block: 11px;
@@ -1029,6 +1128,15 @@ textarea.generic-form-control--single-line {
     min-height: 36px;
     padding: 6px 9px;
     resize: none;
+}
+
+.generic-form-control--compact {
+    --generic-form-control-min-height: 38px;
+    --generic-form-control-padding-block: 8px;
+}
+
+textarea.generic-form-control--compact {
+    --generic-form-control-textarea-min-height: 72px;
 }
 
 .generic-filter-chips,
@@ -1884,6 +1992,12 @@ textarea.generic-form-control--single-line {
 .generic-menu-item--danger:hover,
 .generic-menu-item--danger:focus-visible {
     background: color-mix(in srgb, var(--generic-menu-danger, var(--color-danger, #dc2626)) 10%, var(--generic-menu-surface, var(--color-surface, #ffffff)));
+}
+
+.generic-menu-separator {
+    height: 1px;
+    margin: 4px 0;
+    background: var(--generic-menu-border, var(--color-border, #d1d5db));
 }
 
 .generic-file-list--structured .generic-file-list__menu {
