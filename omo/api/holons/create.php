@@ -19,7 +19,7 @@ $canAddHolonProperties = false;
 $hasCustomHolonAppearance = false;
 $hasCustomHolonAdminBounds = false;
 $hasDirectHolonPermissions = false;
-$directPermissionLabel = 'Droits associes au holon';
+$directPermissionLabel = 'Droits associés au holon';
 
 if ($organizationId <= 0) {
     $errorMessage = "Aucune organisation n'est actuellement sélectionnée.";
@@ -47,7 +47,7 @@ if ($organizationId <= 0) {
 		|| !empty($editedHolonData['adminMaxOverride']);
 	$hasDirectHolonPermissions = !empty($editedHolonData['permissionAssignments']);
 	if (($editorData['editorType'] ?? 'holon') === 'template') {
-		$directPermissionLabel = 'Droits associes au modele';
+		$directPermissionLabel = 'Droits associés au modèle';
 	}
     if ($holonId > 0 && (($editorData['mode'] ?? 'create') !== 'edit')) {
         $errorMessage = "Le holon demandé est introuvable.";
@@ -117,7 +117,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
                             <div class="omo-holon-create__properties" id="omo-holon-create-properties"></div>
                             <?php if ($canAddHolonProperties): ?>
                             <div class="generic-action-row">
-                            <button type="button" class="generic-action-button generic-action-button--secondary" id="omo-holon-create-add-property">Ajouter une propriete</button>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" id="omo-holon-create-add-property">Ajouter une propriété</button>
                             </div>
                             <?php endif; ?>
                         </section>
@@ -144,7 +144,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
                             <div class="generic-accordion__content" id="omo-holon-create-permissions-content">
                                 <div class="omo-holon-create__permission-summary" id="omo-holon-create-permissions-summary">
                                     <div class="omo-holon-create__permission-summary-line">
-                                        <div class="omo-holon-create__permission-summary-label">Droits herites</div>
+                                        <div class="omo-holon-create__permission-summary-label">Droits hérités</div>
                                         <div class="omo-holon-create__permission-summary-empty">aucun</div>
                                     </div>
                                     <div class="omo-holon-create__permission-summary-line">
@@ -156,7 +156,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
                                                 id="omo-holon-create-permissions-toggle"
                                                 aria-expanded="false"
                                                 aria-controls="omo-holon-create-permissions-editor"
-                                            >Editer</button>
+                                            >Éditer</button>
                                         </div>
                                         <div class="omo-holon-create__permission-summary-empty">aucun</div>
                                     </div>
@@ -190,7 +190,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
                                             <span>Minimum de <?= omoApiEscape($adminLabelLower) ?></span>
                                             <span class="omo-holon-create__color-toggle">
                                                 <input type="checkbox" id="omo-holon-create-admin-min-override">
-                                                <span>Redefinir</span>
+                                                <span>Redéfinir</span>
                                             </span>
                                         </span>
                                         <input type="number" id="omo-holon-create-admin-min" class="generic-form-control" min="0" step="1">
@@ -200,7 +200,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
                                             <span>Maximum de <?= omoApiEscape($adminLabelLower) ?></span>
                                             <span class="omo-holon-create__color-toggle">
                                                 <input type="checkbox" id="omo-holon-create-admin-max-override">
-                                                <span>Redefinir</span>
+                                                <span>Redéfinir</span>
                                             </span>
                                         </span>
                                         <input type="number" id="omo-holon-create-admin-max" class="generic-form-control" min="0" step="1" placeholder="Sans limite">
@@ -236,10 +236,10 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
                                     <span class="generic-form-label">Couleur</span>
                                     <div class="omo-holon-create__color-head">
                                         <span class="omo-holon-create__color-toggle">
-                                            <input type="checkbox" id="omo-holon-create-color-enabled" aria-label="Redefinir la couleur">
-                                            <span id="omo-holon-create-color-enabled-label">Redefinir</span>
+                                            <input type="checkbox" id="omo-holon-create-color-enabled" aria-label="Redéfinir la couleur">
+                                            <span id="omo-holon-create-color-enabled-label">Redéfinir</span>
                                             <span class="omo-holon-create__color-body" id="omo-holon-create-color-body">
-                                                <input type="color" id="omo-holon-create-color" value="#f59e0b" aria-label="Couleur redefinie">
+                                                <input type="color" id="omo-holon-create-color" value="#f59e0b" aria-label="Couleur redéfinie">
                                             </span>
                                         </span>
                                     </div>
@@ -581,52 +581,6 @@ function renderPermissionSummaryCapsules(items, emptyText) {
 
 function buildLocalPermissionSummaryItems(assignments) {
     const defaultRangeOptions = getPermissionRangeOptions();
-
-    return Object.keys(assignments || {}).map(function (permissionKey) {
-        const ranges = normalizePermissionRanges(assignments[permissionKey]);
-        if (!ranges.length) {
-            return null;
-        }
-
-        const permissionCatalog = getPermissionCatalog();
-        const permission = permissionCatalog.find(function (item) {
-            return String(item && item.key ? item.key : '') === String(permissionKey || '');
-        });
-        const rangeOptions = permission && Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
-            ? permission.rangeOptions
-            : defaultRangeOptions;
-
-        return {
-            title: getPermissionTitle(permissionKey),
-            scope: ranges.map(function (rangeKey) {
-                return getPermissionRangeLabel(rangeKey, rangeOptions);
-            }).filter(Boolean).join(' · ')
-        };
-    }).filter(Boolean).sort(function (left, right) {
-        return String(left.title || '').localeCompare(String(right.title || ''), 'fr', { sensitivity: 'base' });
-    });
-}
-
-function buildInheritedPermissionSummary(inheritedPermissions) {
-    return Object.keys(inheritedPermissions || {}).map(function (permissionKey) {
-        const permission = inheritedPermissions && inheritedPermissions[permissionKey] ? inheritedPermissions[permissionKey] : null;
-        const visibleItems = permission && Array.isArray(permission.visibleItems) ? permission.visibleItems : [];
-
-        return {
-            title: permission ? String(permission.name || permission.shortname || permissionKey || '').trim() : String(permissionKey || '').trim(),
-            scope: visibleItems.map(function (item) {
-                return String(item && item.label ? item.label : '').trim();
-            }).filter(Boolean).join(' · ')
-        };
-    }).filter(function (item) {
-        return String(item.title || '').trim() !== '';
-    }).sort(function (left, right) {
-        return String(left.title || '').localeCompare(String(right.title || ''), 'fr', { sensitivity: 'base' });
-    });
-}
-
-function buildLocalPermissionSummaryItems(assignments) {
-    const defaultRangeOptions = getPermissionRangeOptions();
     const profiles = normalizePermissionProfiles(assignments);
     const profileLabels = { member: 'Membres', admin: adminLexiconLabel, collective: 'Collectif' };
     const items = [];
@@ -696,7 +650,7 @@ function syncPermissionSummary() {
     if (!permissionCatalog.length) {
         elements.permissionSummary.innerHTML = ''
             + '<div class="omo-holon-create__permission-summary-line">'
-            + '  <div class="omo-holon-create__permission-summary-label">Droits herites</div>'
+            + '  <div class="omo-holon-create__permission-summary-label">Droits hérités</div>'
             + '  <div class="omo-holon-create__permission-summary-empty">aucun droit disponible</div>'
             + '</div>'
             + '<div class="omo-holon-create__permission-summary-line">'
@@ -710,7 +664,7 @@ function syncPermissionSummary() {
     const localItems = buildLocalPermissionSummaryItems(readPermissions());
     elements.permissionSummary.innerHTML = ''
         + '<div class="omo-holon-create__permission-summary-line">'
-        + '  <div class="omo-holon-create__permission-summary-label">Droits herites</div>'
+        + '  <div class="omo-holon-create__permission-summary-label">Droits hérités</div>'
         +      renderPermissionSummaryCapsules(inheritedItems, 'aucun')
         + '</div>'
         + '<div class="omo-holon-create__permission-summary-line">'
@@ -724,7 +678,7 @@ function renderLocalPermissionSummaryHeading() {
     return ''
         + '<div class="omo-holon-create__permission-summary-heading">'
         + '  <div class="omo-holon-create__permission-summary-label">' + escapeHtml(directPermissionLabel) + '</div>'
-        + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--compact" id="omo-holon-create-permissions-toggle" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" aria-controls="omo-holon-create-permissions-editor">' + (isExpanded ? 'Fermer' : 'Editer') + '</button>'
+        + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--compact" id="omo-holon-create-permissions-toggle" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" aria-controls="omo-holon-create-permissions-editor">' + (isExpanded ? 'Fermer' : 'Éditer') + '</button>'
         + '</div>';
 }
 
@@ -735,7 +689,7 @@ function setPermissionEditorExpanded(isExpanded) {
 
     const permissionToggle = root.querySelector('#omo-holon-create-permissions-toggle');
     if (permissionToggle) {
-        permissionToggle.textContent = isExpanded ? 'Fermer' : 'Editer';
+        permissionToggle.textContent = isExpanded ? 'Fermer' : 'Éditer';
         permissionToggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
     }
 }
@@ -1026,7 +980,7 @@ function syncNameField(template) {
         elements.name.disabled = true;
         elements.name.required = false;
         if (elements.nameHelp) {
-            elements.nameHelp.textContent = 'Le nom est verrouille par le modele.';
+            elements.nameHelp.textContent = 'Le nom est verrouillé par le modèle.';
         }
         return;
     }
@@ -1041,7 +995,7 @@ function syncNameField(template) {
     elements.name.required = !isUnique;
     if (elements.nameHelp) {
         elements.nameHelp.textContent = isUnique
-            ? 'Si le nom est vide, celui du modele sera utilise.'
+            ? 'Si le nom est vide, celui du modèle sera utilisé.'
             : '';
     }
 }
@@ -1112,8 +1066,8 @@ function syncAdminBounds(template) {
             locked.push('maximum verrouille');
         }
         elements.adminBoundsHelp.textContent = locked.length
-            ? 'Le modele impose le ' + locked.join(' et le ') + '.'
-            : 'Cochez Redefinir pour appliquer une limite propre a ce holon.';
+            ? 'Le modèle impose le ' + locked.join(' et le ') + '.'
+            : 'Cochez Redéfinir pour appliquer une limite propre à ce holon.';
     }
 }
 
@@ -1325,8 +1279,8 @@ function updateAuthorityDeletionCounts(authorityRow) {
         getChoice('children', 'reassign')
     );
     const counts = {
-        authority: formatAuthorityDeletionCount(1, 'autorite', 'autorites'),
-        children: formatAuthorityDeletionCount(impact.descendants, 'sous-autorite', 'sous-autorites'),
+        authority: formatAuthorityDeletionCount(1, 'autorité', 'autorités'),
+        children: formatAuthorityDeletionCount(impact.descendants, 'sous-autorité', 'sous-autorités'),
         rules: formatAuthorityDeletionCount(impact.rules, 'regle concernee', 'regles concernees')
     };
     Object.keys(counts).forEach(function (name) {
@@ -1395,17 +1349,17 @@ function renderAuthorityDeletionChoices(authorityId, draft) {
     return ''
         + '<div class="omo-holon-create__authority-deletion" data-authority-deletion-options>'
         + '  <p>Choisissez ce qui doit etre conserve avant validation.</p>'
-        + '  <fieldset><legend>Cette autorite</legend>'
+        + '  <fieldset><legend>Cette autorité</legend>'
         + '    <label><input type="radio" name="' + prefix + '-authority" value="delete" data-authority-deletion-choice="authority"' + checked('authority', 'delete', 'reassign') + '> Supprimer definitivement</label>'
         + '    <label><input type="radio" name="' + prefix + '-authority" value="reassign" data-authority-deletion-choice="authority"' + checked('authority', 'reassign', 'reassign') + '> Remonter au holon parent</label>'
         + '  </fieldset>'
-        + (impact.descendants > 0 ? '  <fieldset data-authority-deletion-group="children"><legend>Sous-autorites</legend>'
-        + '    <label><input type="radio" name="' + prefix + '-children" value="delete" data-authority-deletion-choice="children"' + checked('children', 'delete', 'reassign') + '> Supprimer les branches<span data-authority-deletion-count="children">' + formatAuthorityDeletionCount(impact.descendants, 'sous-autorite', 'sous-autorites') + '</span></label>'
+        + (impact.descendants > 0 ? '  <fieldset data-authority-deletion-group="children"><legend>Sous-autorités</legend>'
+        + '    <label><input type="radio" name="' + prefix + '-children" value="delete" data-authority-deletion-choice="children"' + checked('children', 'delete', 'reassign') + '> Supprimer les branches<span data-authority-deletion-count="children">' + formatAuthorityDeletionCount(impact.descendants, 'sous-autorité', 'sous-autorités') + '</span></label>'
         + '    <label><input type="radio" name="' + prefix + '-children" value="reassign" data-authority-deletion-choice="children"' + checked('children', 'reassign', 'reassign') + '> Remonter les branches au holon parent<span data-authority-deletion-count="children">' + formatAuthorityDeletionCount(impact.descendants, 'sous-autorite', 'sous-autorites') + '</span></label>'
         + '  </fieldset>' : '')
-        + '  <fieldset data-authority-deletion-group="rules"' + (impact.rules <= 0 ? ' hidden' : '') + '><legend>Regles des autorites supprimees</legend>'
+        + '  <fieldset data-authority-deletion-group="rules"' + (impact.rules <= 0 ? ' hidden' : '') + '><legend>Règles des autorités supprimées</legend>'
         + '    <label><input type="radio" name="' + prefix + '-rules" value="delete" data-authority-deletion-choice="rules"' + checked('rules', 'delete', 'reassign') + '> Supprimer les regles<span data-authority-deletion-count="rules">' + formatAuthorityDeletionCount(impact.rules, 'regle concernee', 'regles concernees') + '</span></label>'
-        + '    <label><input type="radio" name="' + prefix + '-rules" value="reassign" data-authority-deletion-choice="rules"' + checked('rules', 'reassign', 'reassign') + '> Remonter a l autorite la plus proche et demander une revue sous 2 mois<span data-authority-deletion-count="rules">' + formatAuthorityDeletionCount(impact.rules, 'regle concernee', 'regles concernees') + '</span></label>'
+        + '    <label><input type="radio" name="' + prefix + '-rules" value="reassign" data-authority-deletion-choice="rules"' + checked('rules', 'reassign', 'reassign') + '> Remonter à l’autorité la plus proche et demander une revue sous 2 mois<span data-authority-deletion-count="rules">' + formatAuthorityDeletionCount(impact.rules, 'règle concernée', 'règles concernées') + '</span></label>'
         + '  </fieldset>'
         + '</div>';
 }
@@ -1421,9 +1375,9 @@ function renderAuthorityListRow(value) {
         const authorityPath = authority ? String(authority.pathLabel || authority.holonLabel || '') : '';
         const detailsPrefix = authority
             ? (authority.templateOriginLost
-                ? 'Origine du modele supprimee'
+                ? 'Origine du modèle supprimée'
                 : (authority.isTemplateInstance || authority.isTemplateSource
-                    ? 'Definie par le modele'
+                    ? 'Définie par le modèle'
                     : (authority.needsParent ? 'A rattacher manuellement' : '')))
             : '';
         const details = detailsPrefix + (detailsPrefix && authorityPath ? ' - ' : '') + authorityPath;
@@ -1436,7 +1390,7 @@ function renderAuthorityListRow(value) {
             + (isManagedTemplateAuthority
                 ? '  <div class="omo-holon-create__authority-edit" aria-disabled="true">' + labelMarkup + (details ? '<small>' + escapeHtml(details) + '</small>' : '') + '</div>'
                 : '  <button type="button" class="omo-holon-create__authority-edit" data-authority-edit="1">' + labelMarkup + (details ? '<small>' + escapeHtml(details) + '</small>' : '') + '</button>')
-            + (isManagedTemplateAuthority ? '' : '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost" data-authority-delete="1" aria-label="Supprimer l autorite">&times;</button>')
+            + (isManagedTemplateAuthority ? '' : '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost" data-authority-delete="1" aria-label="Supprimer l’autorité">&times;</button>')
             + (isManagedTemplateAuthority ? '' : renderAuthorityDeletionChoices(authorityId, draft))
             + '</div>';
     }
@@ -1468,7 +1422,7 @@ function renderAuthorityListRow(value) {
         + '          <option value="complete"' + (delegationMode === 'complete' ? ' selected' : '') + '>Delegation complete</option>'
         + '      </select>';
     const authorityDetails = (authorityId > 0 || parentId > 0 || rootAuthoritySelected) && (authorityId > 0 || delegationMode !== 'complete')
-        ? '      <input type="text" class="omo-holon-create__authority-label generic-form-control" value="' + escapeHtml(label) + '" placeholder="Nouvelle autorite">'
+        ? '      <input type="text" class="omo-holon-create__authority-label generic-form-control" value="' + escapeHtml(label) + '" placeholder="Nouvelle autorité">'
             + '      <textarea class="omo-holon-create__authority-description generic-form-control" rows="3" placeholder="Description">' + escapeHtml(description) + '</textarea>'
         : parentId > 0 && delegationMode === 'complete'
             ? '      <div class="omo-holon-create__authority-complete-note">L autorite parente sera deleguee completement. Une coquille sera conservee si le chemin doit rester marque.</div>'
@@ -1486,7 +1440,7 @@ function renderAuthorityListRow(value) {
         + delegationField
         + authorityDetails
         + '  </div>'
-        + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost" ' + (authorityId > 0 ? 'data-authority-delete="1" aria-label="Supprimer l autorite"' : 'data-authority-remove="1" aria-label="Retirer"') + '>&times;</button>'
+        + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost" ' + (authorityId > 0 ? 'data-authority-delete="1" aria-label="Supprimer l’autorité"' : 'data-authority-remove="1" aria-label="Retirer"') + '>&times;</button>'
         + (authorityId > 0 ? renderAuthorityDeletionChoices(authorityId, draft) : '')
         + '</div>';
 }
@@ -1496,15 +1450,15 @@ function renderAuthorityListInput(values) {
     const rows = Array.isArray(values) && values.length ? values : [];
     const canCreateAuthority = authorities.length > 0 || canCreateRootAuthority();
     if (!canCreateAuthority && !rows.length) {
-        return '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Une autorite parente existante est necessaire avant de pouvoir en creer une nouvelle.</div>';
+        return '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Une autorité parente existante est nécessaire avant de pouvoir en créer une nouvelle.</div>';
     }
 
     return ''
         + '<div class="omo-holon-create__authority-list">'
         + '  <div class="omo-holon-create__authority-items">' + rows.map(renderAuthorityListRow).join('') + '</div>'
         + (canCreateAuthority
-            ? '  <button type="button" class="omo-holon-create__button omo-holon-create__button--secondary" data-authority-add="1">Ajouter une autorite</button>'
-            : '  <div class="omo-holon-create__empty-note generic-description generic-description--compact">Les autorites existantes restent disponibles, mais une autorite parente est necessaire pour en creer une nouvelle.</div>')
+            ? '  <button type="button" class="omo-holon-create__button omo-holon-create__button--secondary" data-authority-add="1">Ajouter une autorité</button>'
+            : '  <div class="omo-holon-create__empty-note generic-description generic-description--compact">Les autorités existantes restent disponibles, mais une autorité parente est nécessaire pour en créer une nouvelle.</div>')
         + '</div>';
 }
 
@@ -1775,7 +1729,7 @@ function renderInheritedValue(property) {
         if (String(property.listItemType || 'text') === 'detail') {
             return ''
                 + '<div class="omo-holon-create__inherited">'
-                + '  <div class="omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow">Valeur heritee</div>'
+                + '  <div class="omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow">Valeur héritée</div>'
                 + '  <div class="omo-holon-create__inherited-detail-list">'
                 + items.map(function (item) {
                     return ''
@@ -1804,7 +1758,7 @@ function renderInheritedValue(property) {
     if (Number(property.formatId || 0) === 5) {
         return ''
             + '<div class="omo-holon-create__inherited">'
-            + '  <div class="omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow">Valeur heritee</div>'
+            + '  <div class="omo-holon-create__inherited-label generic-card-title generic-card-title--eyebrow">Valeur héritée</div>'
             +       renderHtmlPreview(inheritedValue, 'omo-holon-create__inherited-text generic-meta')
             + '</div>';
     }
@@ -1867,11 +1821,11 @@ function renderDirectPropertyDefinition(property) {
     return ''
         + '<div class="omo-holon-create__direct-property-definition generic-soft-panel">'
         + '  <div class="omo-holon-create__grid">'
-        + '    <label class="omo-holon-create__field"><span>Nom de la propriete</span><input type="text" class="omo-holon-create__direct-property-name generic-form-control" maxlength="255" value="' + escapeHtml(property.name || '') + '"' + disabledAttribute + '></label>'
+        + '    <label class="omo-holon-create__field"><span>Nom de la propriété</span><input type="text" class="omo-holon-create__direct-property-name generic-form-control" maxlength="255" value="' + escapeHtml(property.name || '') + '"' + disabledAttribute + '></label>'
         + '    <label class="omo-holon-create__field"><span>Format</span><select class="omo-holon-create__direct-property-format generic-form-control"' + disabledAttribute + '>' + getPropertyFormatOptions(property.formatId) + '</select></label>'
         +      renderDirectPropertyListConfig(property, disabled)
         + '  </div>'
-        + '  <button type="button" class="generic-action-button generic-action-button--secondary" data-direct-property-remove="1"' + deleteDisabled + '>Retirer cette propriete</button>'
+        + '  <button type="button" class="generic-action-button generic-action-button--secondary" data-direct-property-remove="1"' + deleteDisabled + '>Retirer cette propriété</button>'
         + '</div>';
 }
 
@@ -1930,7 +1884,7 @@ function createPropertyRow(property, index) {
 
     const propertyTitle = row.querySelector('.omo-holon-create__property-name');
     if (propertyTitle && (!property.name || Number(property.id || 0) <= 0)) {
-        propertyTitle.textContent = String(property.name || '').trim() || 'Nouvelle propriete';
+        propertyTitle.textContent = String(property.name || '').trim() || 'Nouvelle propriété';
     }
 
     if ([5, 7].indexOf(Number(property.formatId || 0)) >= 0) {
@@ -2064,68 +2018,10 @@ function renderTemplateOptions(preferredTemplateId) {
     elements.template.required = true;
 }
 
-// Rend méta modèle
-function renderTemplateMeta(template, sourceProperties) {
-    if (!template) {
-        if (elements.meta) {
-            elements.meta.innerHTML = '';
-        }
-        elements.hint.textContent = '';
-        renderProperties([]);
-        return;
-    }
-
-    const meta = [];
-    meta.push('<span class="omo-holon-create__chip omo-holon-create__chip--accent">' + escapeHtml(template.typeLabel || '') + '</span>');
-    meta.push('<span class="omo-holon-create__chip">' + (Array.isArray(template.properties) ? template.properties.length : 0) + ' propriété' + ((template.properties || []).length > 1 ? 's' : '') + '</span>');
-    if (elements.meta) {
-        elements.meta.innerHTML = meta.join('');
-    }
-    elements.hint.textContent = '';
-    renderProperties(buildPropertiesForTemplate(template, sourceProperties));
-
-    if (elements.color) {
-        const editingHolon = getEditingHolon();
-        const resolvedColor = getMode() === 'edit' && editingHolon
-            ? String(editingHolon.color || template.color || '')
-            : String(template.color || '');
-        elements.color.value = resolvedColor.trim() !== '' ? resolvedColor : '#f59e0b';
-    }
-    if (elements.colorEnabled) {
-        const editingHolon = getEditingHolon();
-        elements.colorEnabled.checked = getMode() === 'edit'
-            ? String((editingHolon && editingHolon.color) || '').trim() !== ''
-            : false;
-    }
-    syncColorField();
-}
-
 // Synchronise modèle courant
 function renderEditorMeta(template, sourceProperties) {
     const editingHolon = getEditingHolon();
     const properties = buildPropertiesForTemplate(template, sourceProperties);
-    const propertyCount = Array.isArray(properties) ? properties.length : 0;
-    const meta = [];
-    const typeLabel = template
-        ? String(template.typeLabel || '')
-        : String((editingHolon && editingHolon.typeLabel) || '');
-
-    if (elements.templateLabel) {
-        elements.templateLabel.textContent = isTemplateEditing() ? 'Modèle parent' : 'Modèle';
-    }
-
-    if (typeLabel) {
-        meta.push('<span class="omo-holon-create__chip omo-holon-create__chip--accent">' + escapeHtml(typeLabel) + '</span>');
-    }
-    meta.push('<span class="omo-holon-create__chip">' + propertyCount + ' propriété' + (propertyCount > 1 ? 's' : '') + '</span>');
-
-    if (isTemplateEditing() && !template) {
-        meta.push('<span class="omo-holon-create__chip">Sans modèle parent</span>');
-    }
-
-    if (elements.meta) {
-        elements.meta.innerHTML = meta.join('');
-    }
     elements.hint.textContent = '';
     renderProperties(properties);
     if (elements.addProperty) {
@@ -3144,32 +3040,6 @@ root.addEventListener('click', function (event) {
     accent-color: var(--color-primary);
 }
 
-.omo-holon-create__toggles {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.omo-holon-create__toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 38px;
-    padding: 8px 12px;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    background: var(--color-surface-alt);
-    color: var(--color-text);
-    font-size: 0.9rem;
-}
-
-.omo-holon-create__toggle input {
-    width: 16px;
-    height: 16px;
-    margin: 0;
-    accent-color: var(--color-primary);
-}
-
 .omo-holon-create__field > span {
     display: block;
     color: var(--color-text, #1f2937);
@@ -3405,7 +3275,6 @@ textarea.omo-holon-create__property-value:focus {
     background: var(--color-surface);
 }
 
-.omo-holon-create__template-meta,
 .omo-holon-create__property-meta {
     display: flex;
     flex-wrap: wrap;
@@ -3494,10 +3363,6 @@ textarea.omo-holon-create__property-value:focus {
     line-height: 1.35;
 }
 
-.omo-holon-create__property-meta--toggles {
-    margin-top: -4px;
-}
-
 .omo-holon-create__property-toggle {
     display: inline-flex;
     align-items: center;
@@ -3537,7 +3402,6 @@ textarea.omo-holon-create__property-value:focus {
     color: var(--color-text-light);
 }
 
-.omo-holon-create__locked-note,
 .omo-holon-create__permission-note,
 .omo-holon-create__empty-note {
     padding: 12px;
@@ -3761,8 +3625,7 @@ textarea.omo-holon-create__property-value:focus {
     display: block;
 }
 
-.omo-holon-create__authority-row small,
-.omo-holon-create__authority-state {
+.omo-holon-create__authority-row small {
     color: var(--color-text-light);
     font-size: 0.82rem;
     line-height: 1.35;
@@ -3863,12 +3726,6 @@ textarea.omo-holon-create__property-value:focus {
     color: var(--color-text);
     cursor: pointer;
     font: inherit;
-}
-
-.omo-holon-create__button--primary {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-    color: var(--color-text-inverse);
 }
 
 .omo-holon-create__button--secondary {

@@ -4,6 +4,7 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-16
 
+- Holons : nettoyage de l editeur apres les evolutions d interface : les rendus de synthese et les styles devenus inutiles ont ete retires, y compris les anciennes fonctions de resume des droits en doublon. Les libelles visibles concernes utilisent maintenant les accents francais.
 - Holons : le resume des droits ne repose plus sur un panneau gris, afin d alleger le bloc et de mieux distinguer son bouton Editer.
 - Holons : les sections Proprietes, Droits et Equipe sont separees par le meme espacement vertical que la section Apparence.
 - Holons : le bloc Droits devient repliable et s ouvre lorsqu il porte des droits directs. Le bouton Editer est place a cote des droits directs, nommes droits associes au modele dans un holon template.
