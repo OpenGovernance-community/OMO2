@@ -4,6 +4,12 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-16
 
+- Agenda : nouvelle action Partager pour creer plusieurs liens d abonnement ICS personnels, regroupant les evenements OMO de toutes les organisations et les agendas externes connectes. Chaque lien propose une fenetre glissante de 1 a 12 mois, un mode en clair ou Occupe, une expiration facultative et une revocation independante. Les flux utilisent le cache synchronise des agendas externes et ne contiennent ni identifiants de connexion ni listes d invites. Migration calendar_share ajoutee ; pliage ICS/vCard corrige pour respecter 75 octets sur les lignes de continuation.
+
+- Agenda : les avertissements de disponibilite montrent chaque rendez-vous en conflit sur une seule ligne compacte : petite icone d avertissement et mention Conflit, invite, organisation / cercle / role, date courte et horaires complets. Les occupations externes portent uniquement la mention Agenda externe, sans titre ni detail prive. Les longues lignes restent accessibles par defilement horizontal sur petit ecran.
+
+- Agenda : verification des invites avec actualisation automatique des agendas externes anciens et indicateur anime. Les conflits sont presentes dans des cartes par personne, avec dates lisibles, horaires distincts et actions pour modifier ou confirmer. En cas d echec de synchronisation, la confirmation reste possible apres avertissement.
+
 - Vues des applications : en mode Admin d organisation, Enregistrer reste une sauvegarde personnelle, y compris en Decouverte. L action de modele applique maintenant les choix en attente, efface l ancienne preference personnelle puis enregistre le nouveau defaut pour tous les holons concernes et ferme son menu. Dans Projets, l ouverture de cette action conserve maintenant tous les choix en attente du filtre.
 
 - Activites : leur description accepte maintenant le HTML nettoye et les formulaires de creation ou modification utilisent Summernote. Les descriptions des activites de processus restent en texte simple.
