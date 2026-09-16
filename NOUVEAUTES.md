@@ -4,6 +4,17 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-16
 
+- Structure : la grande carte et la mini-carte partagent leur cache de donnees et de reglages par organisation. Les rafraichissements protegent les nouveaux reglages contre les anciennes reponses, et la mini-carte evite des traitements repetes pendant le rendu.
+
+- Structure : les admins peuvent maintenant regler par organisation l estompage, la profondeur affichee, les seuils des libelles automatiques et au survol (jusqu a 3 px), leur taille minimale de police et le contour des textes, pour la grande vue comme pour la mini-carte, sans modifier le calcul des positions.
+
+- Team : les membres peuvent maintenant enregistrer un numero de telephone general ou propre a chaque organisation. La vue compacte l affiche, tandis que les fiches regroupent telephone et e-mail sous Contact avec leurs icones.
+- Team : les numeros de telephone sont cliquables dans les fiches et la vue compacte pour lancer un appel depuis un appareil compatible.
+- Team : les adresses e-mail sont aussi cliquables dans les fiches et la vue compacte pour ouvrir un nouveau message.
+- Team : les fiches de la carte geographique affichent aussi les contacts cliquables, et la vue compacte permet de copier une adresse e-mail.
+- Team : le bouton de copie d une adresse e-mail confirme maintenant l action par Copié avant de retrouver son icone.
+
+- Import OMO 1 : sans modele d organisation utilisant les objets Autorite, les domaines importes restent des listes de textes comme dans OMO 1. Un modele cible utilisant ces objets declenche toujours leur conversion.
 - Import OMO 1 : les organisations importees commencent maintenant en mode Autonome. Les projets bloques sans motif ni date de relance dans OMO 1 sont egalement importes avec des valeurs de reprise compatibles.
 - Holons : le holon racine de type organisation reste editable en mode decouverte, tandis que les autres modeles de holons demeurent proteges. Ses droits existants sont preserves lors de l enregistrement.
 - Holons : nettoyage de l editeur apres les evolutions d interface : les rendus de synthese et les styles devenus inutiles ont ete retires, y compris les anciennes fonctions de resume des droits en doublon. Les libelles visibles concernes utilisent maintenant les accents francais.
