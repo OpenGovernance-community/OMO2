@@ -4,6 +4,9 @@ require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/meeting/service.php';
 require_once dirname(__DIR__) . '/meeting/translations.php';
 
+$meetingSettingsSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/meeting_settings.php');
+$calendarSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/index.php');
+
 use dbObject\MeetingProfile;
 use dbObject\MeetingBooking;
 use dbObject\ExternalCalendar;
@@ -18,6 +21,12 @@ function meetingReject(callable $fn, string $expected): void
     try { $fn(); } catch (RuntimeException $e) { meetingExpect($e->getMessage() === $expected, 'Expected ' . $expected . ', got ' . $e->getMessage()); return; }
     throw new RuntimeException('Expected rejection: ' . $expected);
 }
+
+meetingExpect(
+    str_contains($meetingSettingsSource, 'data-meeting-enabled-content')
+        && str_contains($calendarSource, 'syncMeetingEnabledContent'),
+    'Disabled meeting settings must hide their configuration until activation.'
+);
 
 if (str_starts_with($argv[1] ?? '', '--lock-check=')) {
     $id = (int)substr($argv[1], strlen('--lock-check='));

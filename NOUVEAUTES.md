@@ -4,11 +4,15 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-16
 
+- Documents : les dossiers n affichent plus de chevron a cote de la selection. Leur icone, agrandie par rapport aux fichiers et sans cadre colore, indique maintenant directement si leur contenu est ouvert ou ferme.
+
 - Agenda : les vues semaine et jour montrent les occupations des autres organisations en gris, en italique et avec uniquement leur nom. Avant de creer ou modifier un evenement, les recouvrements de l organisateur et des invites sont signales sans divulguer les details de leurs agendas. Confirmation possible malgre les conflits ; agendas externes verifies sur le cache synchronise, invitations par e-mail signalees comme non verifiables.
 
 - Profils et images redimensionnees : un serveur GD sans decodeur WebP ne provoque plus d erreur fatale lors de l enregistrement. Les JPEG recadres sont transmis en JPEG, au lieu d etre convertis automatiquement en WebP par le navigateur.
 
 - Rendez-vous : les derniers horaires qui depassent l heure de fermeture ne sont plus affiches comme indisponibles.
+
+- Rendez-vous : les reglages detailles restent masques tant que la prise de rendez-vous n est pas explicitement activee, afin de rendre cette activation incontournable.
 
 - Rendez-vous : nouvelle presentation publique, cartes claires, couleurs de disponibilite adoucies et legende sans libelles dans les jours. Photo du profil OMO (ou initiales), parcours par etapes, recapitulatif et confirmation revisites. Affichage compact sur ordinateur portable, adaptation mobile et horaires sans libelles redondants, avec contraste renforce entre disponibles et indisponibles. La pause de midi devient un separateur unique et le pied de page relie OMO2 et OpenMyOrganization a la racine de l instance courante.
 
