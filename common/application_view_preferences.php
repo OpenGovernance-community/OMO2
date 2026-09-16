@@ -149,9 +149,11 @@ if (!function_exists('omoApplicationViewPreferencesGetContext')) {
             'defaultView' => $applicationKey !== '' ? omoApplicationViewPreferencesResolveDefault($applicationKey, $organization, $holon) : null,
             'csrfToken' => (string)$_SESSION['omo_application_view_preferences_csrf'],
             'endpoint' => '/omo/api/application_view_preferences.php',
-            'canSavePersonal' => !$isDiscoveryMode && ($membership !== null || $isSiteAdmin),
+            // An organization administrator keeps a personal view in Discovery mode too.
+            // The collective template default remains available from the save menu.
+            'canSavePersonal' => (!$isDiscoveryMode || $isOrganizationAdmin || $isSiteAdmin) && ($membership !== null || $isSiteAdmin),
             'personalResetAttributes' => $personalResetAttributes[$applicationKey] ?? array(),
-            'primarySaveScope' => $isDiscoveryMode && ($isOrganizationAdmin || $isSiteAdmin) && $templateKey !== '' ? 'organization_template' : '',
+            'primarySaveScope' => '',
             'canSaveOrganizationTemplate' => ($isOrganizationAdmin || $isSiteAdmin) && $templateKey !== '',
             'canSaveApplicationType' => $isSiteAdmin && $typeId > 0,
         );

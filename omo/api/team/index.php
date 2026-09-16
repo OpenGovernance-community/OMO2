@@ -1982,7 +1982,7 @@ $teamJsTranslations = [
     'mapSummaryOther' => omoTeamT('team.map.summary_other', ['count' => '{count}'], $lang, $sourceLang),
 ];
 ?>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
 <script>
 var omoTeamSavedViewsStorageKey = 'omo.team.saved-views.v2';
 var omoTeamLegacySavedViewsStorageKey = 'omo.team.saved-views.v1';

@@ -351,6 +351,7 @@
                 window.initGenericComponents(body);
             }
             body.querySelectorAll('[data-activity-task-form]').forEach(updateSchedule);
+            initializeHtmlEditors(body);
             return true;
         }).catch(function () {
             if (localToken === requestToken) {
@@ -448,6 +449,56 @@
             schedule.value = selected;
         }
         schedule.removeAttribute('data-selected-value');
+    }
+
+    function initializeHtmlEditors(container) {
+        if (!window.omoSimpleHtmlField || typeof window.omoSimpleHtmlField.mount !== 'function') {
+            return;
+        }
+
+        container.querySelectorAll('[data-activity-html-editor]').forEach(function (editorHost) {
+            if (editorHost.dataset.activityHtmlEditorReady === '1') {
+                return;
+            }
+
+            var fieldContainer = editorHost.closest('[data-activity-html-editor-container]');
+            var valueField = fieldContainer
+                ? fieldContainer.querySelector('[data-activity-html-value]')
+                : null;
+            if (!valueField) {
+                return;
+            }
+
+            editorHost.dataset.activityHtmlEditorReady = '1';
+            window.omoSimpleHtmlField.mount(editorHost, {
+                value: valueField.value || '',
+                placeholder: '',
+                minHeight: 180,
+                simpleOnly: true,
+                onChange: function (value) {
+                    valueField.value = String(value || '');
+                },
+                onReady: function (api) {
+                    if (api && typeof api.getValue === 'function') {
+                        valueField.value = String(api.getValue() || '');
+                    }
+                }
+            });
+        });
+    }
+
+    function syncHtmlEditors(form) {
+        form.querySelectorAll('[data-activity-html-editor]').forEach(function (editorHost) {
+            var fieldContainer = editorHost.closest('[data-activity-html-editor-container]');
+            var valueField = fieldContainer
+                ? fieldContainer.querySelector('[data-activity-html-value]')
+                : null;
+            var api = editorHost.__omoSimpleHtmlField;
+
+            if (valueField && api && typeof api.getValue === 'function') {
+                valueField.value = String(api.getValue() || '');
+            }
+        });
     }
 
     function postAction(action, id, element) {
@@ -626,6 +677,7 @@
         if (!form.reportValidity()) {
             return;
         }
+        syncHtmlEditors(form);
         var feedback = form.querySelector('[data-activity-feedback]');
         var formData = new FormData(form);
         appendPvMeetingContext(formData);

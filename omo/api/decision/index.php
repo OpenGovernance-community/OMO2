@@ -1521,7 +1521,7 @@ if (!is_string($payloadJson)) {
 </div>
 
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
 <link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260813-decision-uniformity">
 <script src="/common/choice/decision_cards.js"></script>
 

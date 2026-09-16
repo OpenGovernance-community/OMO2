@@ -1905,7 +1905,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         </div>
     </div>
     <script src="/common/calendar/availability.js?v=20260916"></script>
-    <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
+    <script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
     <script>
     (function () {
         var root = typeof window.omoFindApplicationRoot === 'function'

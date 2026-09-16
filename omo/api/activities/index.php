@@ -227,7 +227,8 @@ $texts = [
                                                     <span class="generic-file-list__icon-box omo-activity-row__icon" aria-hidden="true"><img src="/omo/images/tools/control-list.png" alt=""></span>
                                                     <span class="generic-file-list__title-block">
                                                         <span class="generic-file-list__title-row"><strong class="generic-file-list__title"><?= omoApiEscape((string)$activity->get('title')) ?></strong></span>
-                                                        <span class="generic-file-list__meta-line"><?= omoApiEscape(omoActivityScheduleLabel($frequency, $activity->get('schedule'))) ?><?php if (trim((string)$activity->get('description')) !== ''): ?> · <?= omoApiEscape(mb_strimwidth(trim((string)$activity->get('description')), 0, 85, '…', 'UTF-8')) ?><?php endif; ?></span>
+                                                        <?php $descriptionPreview = omoActivityDescriptionText($activity->get('description'), 85); ?>
+                                                        <span class="generic-file-list__meta-line"><?= omoApiEscape(omoActivityScheduleLabel($frequency, $activity->get('schedule'))) ?><?php if ($descriptionPreview !== ''): ?> · <?= omoApiEscape($descriptionPreview) ?><?php endif; ?></span>
                                                     </span>
                                                 </div>
                                             </div>
@@ -269,5 +270,6 @@ $texts = [
     </div>
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
-<script src="/omo/api/activities/activities.js?v=20260908-close-subdrawer"></script>
+<script src="/omo/assets/js/simple-html-field.js?v=20260912-toolbar-always-visible"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
+<script src="/omo/api/activities/activities.js?v=20260916-html-description"></script>
