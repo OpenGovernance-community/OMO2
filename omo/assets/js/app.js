@@ -3394,7 +3394,32 @@ function omoOpenExternalPanelDrawer(options = {}) {
 
     if (mode === 'fetch') {
         if (!canReuseMountedContent) {
-            loadContent(body, url, 'panel');
+            loadContent(body, url, 'panel', function () {
+                const contentHeader = body.querySelector('[data-omo-subdrawer-header]');
+                const contentTitle = contentHeader
+                    ? String(contentHeader.getAttribute('data-omo-subdrawer-title') || '').trim()
+                    : '';
+                const contentDescription = contentHeader
+                    ? String(contentHeader.getAttribute('data-omo-subdrawer-description') || '').trim()
+                    : '';
+
+                if (contentTitle !== '') {
+                    if (titleNode) {
+                        titleNode.textContent = contentTitle;
+                    }
+                    if (peekToggle) {
+                        peekToggle.setAttribute('title', contentTitle);
+                    }
+                    if (peekLabelNode) {
+                        peekLabelNode.textContent = contentTitle;
+                    }
+                }
+
+                if (contentHeader && descriptionNode) {
+                    descriptionNode.hidden = contentDescription === '';
+                    descriptionNode.textContent = contentDescription;
+                }
+            });
         }
         return true;
     }
@@ -4615,6 +4640,9 @@ const omoStructureDataRequestCache = new Map();
 function omoNormalizeStructureDataUrl(url) {
     const resolvedUrl = new URL(String(url || ''), window.location.href);
     resolvedUrl.searchParams.delete('structure_refresh');
+    // The endpoint returns the whole authorized tree; focus is handled locally.
+    resolvedUrl.searchParams.delete('cid');
+    resolvedUrl.searchParams.sort();
     return resolvedUrl;
 }
 
@@ -4665,7 +4693,10 @@ window.omoFetchStructureData = function (url, options = {}) {
         entry.data = payload;
         entry.promise = null;
         entry.forceRefresh = false;
-        omoStructureDataRequestCache.set(cacheKey, entry);
+        // An invalidation or newer request may have replaced this entry meanwhile.
+        if (omoStructureDataRequestCache.get(cacheKey) === entry) {
+            omoStructureDataRequestCache.set(cacheKey, entry);
+        }
         return payload;
     }).catch(function (error) {
         if (omoStructureDataRequestCache.get(cacheKey) === entry) {

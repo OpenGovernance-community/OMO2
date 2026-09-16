@@ -274,6 +274,10 @@ $sourceLang = [
         'text' => 'Déplacer la sélection',
         'context' => 'Bulk action moving the selected documents.',
     ],
+    'documents.selection.merge' => [
+        'text' => 'Fusionner les documents HTML sélectionnés',
+        'context' => 'Bulk action merging selected HTML documents into a new document.',
+    ],
     'documents.selection.confirm_archive' => [
         'text' => 'Archiver les {count} documents sélectionnés ? Ils ne seront plus visibles dans la liste.',
         'context' => 'Confirmation shown before bulk archiving documents.',
@@ -631,6 +635,9 @@ foreach ($documents as $document) {
     );
     $canMoveDocument = ($document->isPvDocument() && $document->canUserManagePvDocument($currentUserId))
         || $canManageDocument;
+    $canMergeDocument = $document->supportsHtmlContent()
+        && $canManageDocument
+        && $document->canEditInOrganizationContext($documentOrganizationId, $currentUserId, false);
     $canManageLifecycle = $document->isPvDocument()
         ? $document->isPvCreatorOrEditor($currentUserId)
         : $canManageDocument;
@@ -705,6 +712,7 @@ foreach ($documents as $document) {
         'keywords' => trim((string)$document->get('keywords')),
         'hasUpcomingPvEvent' => $hasUpcomingPvEvent,
         'canMove' => $canMoveDocument,
+        'canMerge' => $canMergeDocument,
         'canArchive' => $canManageLifecycle && !$document->isArchived(),
         'canDelete' => $canManageLifecycle
             && (int)$document->get('IDevent') <= 0
@@ -914,6 +922,9 @@ if (!is_string($documentsPayload)) {
             <div class="omo-panel-view__aside omo-documents__header-main-actions" data-omo-header-actions>
                 <div class="omo-documents__bulk-actions" data-omo-documents-bulk-actions hidden>
                     <span class="omo-documents__bulk-count" data-omo-documents-bulk-count></span>
+                    <button type="button" class="generic-action-button generic-action-button--secondary omo-documents__bulk-action-button" data-omo-documents-bulk-action="merge" title="<?= $escape(omoDocumentsScopeT('documents.selection.merge')) ?>" aria-label="<?= $escape(omoDocumentsScopeT('documents.selection.merge')) ?>" hidden>
+                        <span class="omo-documents__bulk-action-icon omo-documents__bulk-action-icon--merge" aria-hidden="true"></span>
+                    </button>
                     <button type="button" class="generic-action-button generic-action-button--secondary omo-documents__bulk-action-button" data-omo-documents-bulk-action="move" title="<?= $escape(omoDocumentsScopeT('documents.selection.move')) ?>" aria-label="<?= $escape(omoDocumentsScopeT('documents.selection.move')) ?>">
                         <span class="omo-documents__bulk-action-icon omo-documents__bulk-action-icon--move" aria-hidden="true">&#8594;</span>
                     </button>
@@ -1154,7 +1165,7 @@ if (!is_string($documentsPayload)) {
 
             <script type="application/json" data-omo-documents-data><?= $documentsPayload ?></script>
             <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
-            <script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
+            <script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
             <script>
             (function () {
                 window.omoDocumentsFindRoot = function () {
@@ -1168,7 +1179,8 @@ if (!is_string($documentsPayload)) {
                 const omoDocumentsSearchStorageKey = 'omo.documents.quick-search.v1';
                 const omoDocumentsFileIconUrl = '/omo/assets/images/documents/file.png';
                 const omoDocumentsDownloadIconUrl = '/omo/assets/images/documents/download.png';
-                const omoDocumentsFolderIconUrl = '/omo/assets/images/documents/folder.png';
+                const omoDocumentsFolderOpenIconUrl = '/omo/assets/images/documents/folder-open.png';
+                const omoDocumentsFolderClosedIconUrl = '/omo/assets/images/documents/folder-closed.png';
                 const omoDocumentsLinkIconUrl = '/omo/assets/images/documents/link.png';
                 const omoDocumentsPvIconUrl = '/omo/assets/images/documents/pv.png';
                  const omoDocumentsEtherpadIconUrl = '/omo/assets/images/documents/collaborative.png';
@@ -1197,9 +1209,13 @@ if (!is_string($documentsPayload)) {
                  const omoDocumentsEthercalcIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.ethercalc'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                  const omoDocumentsWhiteboardIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.whiteboard'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
+                const omoDocumentsGetFolderIconUrl = function (isExpanded) {
+                    return isExpanded ? omoDocumentsFolderOpenIconUrl : omoDocumentsFolderClosedIconUrl;
+                };
+
                 const omoDocumentsGetIconUrl = function (documentItem) {
                     if (documentItem && documentItem.isFolder) {
-                        return omoDocumentsFolderIconUrl;
+                        return omoDocumentsGetFolderIconUrl(false);
                     }
 
                     if (documentItem && documentItem.isExternalLink) {
@@ -1884,12 +1900,23 @@ if (!is_string($documentsPayload)) {
                                 });
                             };
 
+                            const selectedDocumentsCanBeMerged = function (selectedDocumentIds) {
+                                return selectedDocumentIds.length > 1 && selectedDocumentIds.every(function (documentId) {
+                                    return documents.some(function (documentItem) {
+                                        return Number(documentItem && documentItem.id || 0) === documentId
+                                            && documentItem.documentType === 'html'
+                                            && documentItem.canMerge === true;
+                                    });
+                                });
+                            };
+
                             const syncDocumentSelection = function () {
                                 const selectedDocumentIds = getSelectedDocumentIds();
                                 const selectedCount = selectedDocumentIds.length;
                                 const bulkActions = panel.querySelector('[data-omo-documents-bulk-actions]');
                                 const bulkCount = panel.querySelector('[data-omo-documents-bulk-count]');
                                 const moveButton = panel.querySelector('[data-omo-documents-bulk-action="move"]');
+                                const mergeButton = panel.querySelector('[data-omo-documents-bulk-action="merge"]');
                                 const deleteButton = panel.querySelector('[data-omo-documents-bulk-action="delete"]');
 
                                 if (bulkActions) {
@@ -1903,6 +1930,9 @@ if (!is_string($documentsPayload)) {
                                 }
                                 if (moveButton) {
                                     moveButton.hidden = selectedCount === 0 || !selectedDocumentsCanBeMoved(selectedDocumentIds);
+                                }
+                                if (mergeButton) {
+                                    mergeButton.hidden = !selectedDocumentsCanBeMerged(selectedDocumentIds);
                                 }
                                 if (deleteButton) {
                                     deleteButton.hidden = selectedCount === 0 || !selectedDocumentsCanBeDeleted(selectedDocumentIds);
@@ -1925,7 +1955,7 @@ if (!is_string($documentsPayload)) {
 								if (documentItem && documentItem.isRemoteFile) {
 									return null;
 								}
-                                if (!documentItem || (!documentItem.canArchive && !documentItem.canMove)) {
+                                if (!documentItem || (!documentItem.canArchive && !documentItem.canMove && !documentItem.canMerge)) {
                                     return null;
                                 }
 
@@ -1983,6 +2013,12 @@ if (!is_string($documentsPayload)) {
                                 syncDocumentSelection();
                             });
 
+                            window.addEventListener('omo-documents-merge-complete', function (event) {
+                                const completedIds = event && event.detail && Array.isArray(event.detail.ids) ? event.detail.ids : [];
+                                completedIds.forEach(function (documentId) { state.selectedDocumentIds.delete(Number(documentId || 0)); });
+                                syncDocumentSelection();
+                            });
+
                             const appendDocumentCardContent = function (container, documentItem, options) {
                                 const settings = options && typeof options === 'object' ? options : {};
 
@@ -2029,13 +2065,16 @@ if (!is_string($documentsPayload)) {
                                 visual.className = 'omo-documents__visual';
 
                                 const iconBox = document.createElement('div');
-                                iconBox.className = 'omo-documents__icon-box generic-file-list__icon-box';
+                                iconBox.className = 'omo-documents__icon-box';
 
                                 const icon = document.createElement('img');
                                 icon.className = 'omo-documents__icon black-icon';
                                 icon.src = omoDocumentsGetIconUrl(documentItem);
                                 icon.alt = omoDocumentsGetIconAlt(documentItem);
                                 icon.loading = 'lazy';
+                                if (documentItem.isFolder) {
+                                    icon.setAttribute('data-omo-document-folder-icon', '1');
+                                }
 
                                 iconBox.appendChild(icon);
                                 if (documentItem.isExternalLink) {
@@ -2404,14 +2443,13 @@ if (!is_string($documentsPayload)) {
                                     const folderCard = document.createElement('div');
                                     folderCard.className = 'omo-documents__item omo-card omo-documents__folder-card';
                                     appendDocumentCardContent(folderCard, documentItem, { interactive: false, plainContext: true });
-
-                                    const folderChevron = document.createElement('span');
-                                    folderChevron.className = 'generic-accordion__toggle omo-documents__folder-chevron generic-file-list__folder-chevron';
-                                    folderChevron.textContent = '▾';
+                                    const folderIcon = folderCard.querySelector('[data-omo-document-folder-icon]');
+                                    if (folderIcon instanceof HTMLImageElement) {
+                                        folderIcon.src = omoDocumentsGetFolderIconUrl(isExpanded);
+                                    }
 
                                     const folderMenu = createMenu(documentItem);
                                     headerToggle.appendChild(folderCard);
-                                    headerToggle.appendChild(folderChevron);
                                     header.appendChild(headerToggle);
 
                                     if (folderMenu) {
@@ -2566,6 +2604,12 @@ if (!is_string($documentsPayload)) {
                                         ? Number(accordion.getAttribute('data-omo-document-folder') || 0)
                                         : 0;
                                     toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+                                    const folderIcon = accordion
+                                        ? accordion.querySelector('[data-omo-document-folder-icon]')
+                                        : null;
+                                    if (folderIcon instanceof HTMLImageElement) {
+                                        folderIcon.src = omoDocumentsGetFolderIconUrl(isExpanded);
+                                    }
 
                                     if (isExpanded && Number.isInteger(folderId) && folderId > 0) {
                                         nextOpenFolderIds.add(folderId);
@@ -3696,15 +3740,22 @@ if (!is_string($documentsPayload)) {
                                     const action = String(bulkActionButton.getAttribute('data-omo-documents-bulk-action') || '').trim();
                                     const isDelete = action === 'delete';
                                     const isMove = action === 'move';
+                                    const isMerge = action === 'merge';
 
-                                    if (selectedCount <= 0 || (!isDelete && !isMove && action !== 'archive')) {
+                                    if (selectedCount <= 0 || (!isDelete && !isMove && !isMerge && action !== 'archive')) {
+                                        return;
+                                    }
+                                    if (isMerge) {
+                                        if (selectedDocumentsCanBeMerged(selectedDocumentIds) && typeof window.omoOpenDocumentMergePopup === 'function') {
+                                            window.omoOpenDocumentMergePopup(selectedDocumentIds);
+                                        }
                                         return;
                                     }
                                     if (isMove) {
                                         if (!selectedDocumentsCanBeMoved(selectedDocumentIds)) {
                                             return;
                                         }
-                                        openDocumentMovePopup(null, selectedDocumentIds);
+                                        window.omoOpenDocumentMovePopup(null, selectedDocumentIds);
                                         return;
                                     }
                                     if (isDelete && !selectedDocumentsCanBeDeleted(selectedDocumentIds)) {
@@ -4531,7 +4582,23 @@ if (!is_string($documentsPayload)) {
                     : ('documents-d' + String(resolvedDocumentId));
             }
 
-            function openDocumentMovePopup(documentId, documentIds) {
+            window.omoOpenDocumentMergePopup = function (documentIds) {
+                const resolvedDocumentIds = (Array.isArray(documentIds) ? documentIds : [])
+                    .map(function (value) { return Number(value || 0); })
+                    .filter(function (value, index, values) {
+                        return Number.isInteger(value) && value > 0 && values.indexOf(value) === index;
+                    });
+                if (resolvedDocumentIds.length < 2 || typeof window.commonTopbarOpenModal !== 'function') {
+                    return;
+                }
+                window.commonTopbarOpenModal(
+                    <?= json_encode(omoDocumentsScopeT('documents.selection.merge'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                    '/omo/api/documents/merge.php?ids=' + encodeURIComponent(resolvedDocumentIds.join(',')),
+                    'fetch'
+                );
+            };
+
+            window.omoOpenDocumentMovePopup = function (documentId, documentIds) {
                 const resolvedDocumentId = Number(documentId || 0);
                 const resolvedDocumentIds = (Array.isArray(documentIds) ? documentIds : [resolvedDocumentId])
                     .map(function (value) { return Number(value || 0); })
@@ -4566,7 +4633,7 @@ if (!is_string($documentsPayload)) {
                         'fetch'
                     );
                 }
-            }
+            };
 
             function openDocumentSharePopup(documentId) {
                 const resolvedDocumentId = Number(documentId || 0);
@@ -5071,6 +5138,13 @@ if (!is_string($documentsPayload)) {
                 return button;
             }
 
+            function buildDocumentMenuSeparator() {
+                const separator = ownerDocument.createElement('div');
+                separator.className = 'generic-menu-separator';
+                separator.setAttribute('role', 'separator');
+                return separator;
+            }
+
             function populateDocumentMenu(toggle) {
                 const documentId = Number(toggle && toggle.getAttribute('data-omo-document-menu-document-id') || 0);
                 const documentTitle = String(toggle && toggle.getAttribute('data-omo-document-menu-title') || '').trim();
@@ -5084,6 +5158,16 @@ if (!is_string($documentsPayload)) {
                 const canExportPdf = String(toggle && toggle.getAttribute('data-omo-document-menu-can-export-pdf') || '') === '1';
                 const pdfExportUrl = String(toggle && toggle.getAttribute('data-omo-document-menu-pdf-url') || '').trim();
                 const fragment = ownerDocument.createDocumentFragment();
+
+                if (canEdit && editUrl !== '') {
+                    fragment.appendChild(buildDocumentMenuItem('Éditer', {
+                        'data-omo-document-menu-action': 'edit',
+                        'data-omo-document-edit': '1',
+                        'data-omo-document-edit-id': String(documentId),
+                        'data-omo-document-edit-url': editUrl,
+                        'data-omo-document-edit-title': documentTitle
+                    }));
+                }
 
                 if (canExportPdf && pdfExportUrl !== '') {
                     fragment.appendChild(buildDocumentMenuItem(<?= json_encode(omoDocumentsScopeT('documents.menu.export_pdf'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, {
@@ -5100,6 +5184,23 @@ if (!is_string($documentsPayload)) {
                     }));
                 }
 
+                if (Number.isInteger(documentId) && documentId > 0 && !isFolder && canShare) {
+                    fragment.appendChild(buildDocumentMenuItem('Partager', {
+                        'data-omo-document-menu-action': 'share',
+                        'data-omo-document-share': '1',
+                        'data-omo-document-share-id': String(documentId)
+                    }));
+                }
+
+                if (
+                    fragment.childElementCount > 0
+                    && (canArchive || canDelete)
+                    && Number.isInteger(documentId)
+                    && documentId > 0
+                ) {
+                    fragment.appendChild(buildDocumentMenuSeparator());
+                }
+
                 if (canArchive && Number.isInteger(documentId) && documentId > 0) {
                     fragment.appendChild(buildDocumentMenuItem(<?= json_encode(omoDocumentsScopeT('documents.menu.archive'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, {
                         'data-omo-document-menu-action': 'archive',
@@ -5109,29 +5210,13 @@ if (!is_string($documentsPayload)) {
                 }
 
                 if (canDelete && Number.isInteger(documentId) && documentId > 0) {
-                    fragment.appendChild(buildDocumentMenuItem(<?= json_encode(omoDocumentsScopeT('documents.menu.delete'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, {
+                    const deleteItem = buildDocumentMenuItem(<?= json_encode(omoDocumentsScopeT('documents.menu.delete'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, {
                         'data-omo-document-menu-action': 'delete',
                         'data-omo-document-lifecycle': 'delete',
                         'data-omo-document-lifecycle-id': String(documentId)
-                    }));
-                }
-
-                if (Number.isInteger(documentId) && documentId > 0 && !isFolder && canShare) {
-                    fragment.appendChild(buildDocumentMenuItem('Partager', {
-                        'data-omo-document-menu-action': 'share',
-                        'data-omo-document-share': '1',
-                        'data-omo-document-share-id': String(documentId)
-                    }));
-                }
-
-                if (canEdit && editUrl !== '') {
-                    fragment.appendChild(buildDocumentMenuItem('Éditer', {
-                        'data-omo-document-menu-action': 'edit',
-                        'data-omo-document-edit': '1',
-                        'data-omo-document-edit-id': String(documentId),
-                        'data-omo-document-edit-url': editUrl,
-                        'data-omo-document-edit-title': documentTitle
-                    }));
+                    });
+                    deleteItem.classList.add('generic-menu-item--danger');
+                    fragment.appendChild(deleteItem);
                 }
 
                 floatingMenu.replaceChildren(fragment);
@@ -5235,7 +5320,7 @@ if (!is_string($documentsPayload)) {
                 }
 
                 if (action === 'move') {
-                    openDocumentMovePopup(actionButton.getAttribute('data-omo-document-move-id'));
+                    window.omoOpenDocumentMovePopup(actionButton.getAttribute('data-omo-document-move-id'));
                     return true;
                 }
 
@@ -5356,7 +5441,7 @@ if (!is_string($documentsPayload)) {
                     event.stopPropagation();
 
                     closeDocumentMenus();
-                    openDocumentMovePopup(moveButton.getAttribute('data-omo-document-move-id'));
+                    window.omoOpenDocumentMovePopup(moveButton.getAttribute('data-omo-document-move-id'));
                     return;
                 }
 
@@ -5511,6 +5596,11 @@ if (!is_string($documentsPayload)) {
     -webkit-mask-image: url('/omo/assets/images/projects/archive.svg');
 }
 
+.omo-documents__bulk-action-icon--merge {
+    mask-image: url('/omo/assets/images/documents/merge.png');
+    -webkit-mask-image: url('/omo/assets/images/documents/merge.png');
+}
+
 .omo-documents__bulk-action-icon--delete {
     mask-image: url('/omo/assets/images/documents/poubelle.png');
     -webkit-mask-image: url('/omo/assets/images/documents/poubelle.png');
@@ -5633,32 +5723,6 @@ if (!is_string($documentsPayload)) {
     outline-offset: 2px;
 }
 
-.omo-documents__folder-card {
-    width: 100%;
-    padding-right: 62px;
-}
-
-.omo-documents__folder-chevron {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-surface) 74%, white 26%);
-    color: var(--color-text-light);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border) 80%, white 20%);
-    transition: transform 160ms ease, background 160ms ease, color 160ms ease;
-    pointer-events: none;
-}
-
-.omo-documents__item-shell--has-menu .omo-documents__folder-chevron {
-    right: 58px;
-}
-
 .omo-documents__folder-content {
     position: relative;
     margin-left: 28px;
@@ -5727,9 +5791,6 @@ if (!is_string($documentsPayload)) {
     position: relative;
     width: 56px;
     height: 56px;
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-surface) 76%, white 24%);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border) 78%, white 22%);
 }
 
 .omo-documents__icon {
@@ -5957,25 +6018,20 @@ if (!is_string($documentsPayload)) {
     box-shadow: 0 18px 38px -30px rgba(180, 83, 9, 0.26);
 }
 
-.omo-documents__item--folder-card .omo-documents__icon-box {
-    background: color-mix(in srgb, #f59e0b 18%, var(--color-surface-alt));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, #f59e0b 24%, var(--color-border));
+.omo-documents__item--folder-card .omo-documents__icon {
+    width: 42px;
+    height: 42px;
 }
 
-.omo-documents__item--file-card .omo-documents__icon-box {
-    background: color-mix(in srgb, var(--color-surface-alt) 84%, white 16%);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border) 84%, white 16%);
+.omo-documents__item--file-card .omo-documents__icon {
+    width: 28px;
+    height: 28px;
 }
 
 .omo-documents__item-shell--missing-upload .omo-documents__item {
     border-color: color-mix(in srgb, #dc2626 72%, var(--color-border));
     background: color-mix(in srgb, #fef2f2 78%, var(--color-surface));
     box-shadow: inset 4px 0 0 #dc2626, 0 14px 32px -30px rgba(185, 28, 28, 0.44);
-}
-
-.omo-documents__item-shell--missing-upload .omo-documents__icon-box {
-    background: color-mix(in srgb, #fee2e2 74%, var(--color-surface));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, #dc2626 45%, var(--color-border));
 }
 
 .omo-documents__missing-upload-badge {
@@ -6009,12 +6065,6 @@ if (!is_string($documentsPayload)) {
 .omo-documents__item--compact.is-selected {
     background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface, #fff));
     box-shadow: inset 3px 0 0 color-mix(in srgb, var(--color-primary, #2563eb) 72%, transparent);
-}
-
-.omo-documents__folder:not(.is-collapsed) .omo-documents__folder-chevron {
-    transform: rotate(180deg);
-    background: color-mix(in srgb, #f59e0b 18%, var(--color-surface-alt));
-    color: #b45309;
 }
 
 .omo-documents__folder:not(.is-collapsed) .omo-documents__folder-card {
@@ -6136,6 +6186,16 @@ if (!is_string($documentsPayload)) {
     .omo-documents__icon {
         width: 24px;
         height: 24px;
+    }
+
+    .omo-documents__item--folder-card .omo-documents__icon {
+        width: 30px;
+        height: 30px;
+    }
+
+    .omo-documents__item--file-card .omo-documents__icon {
+        width: 20px;
+        height: 20px;
     }
 
     .omo-documents__folder-content {

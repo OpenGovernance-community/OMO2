@@ -9,6 +9,8 @@ $organization = null;
 $isOrganizationAdmin = false;
 $isOrganizationAdminModeEnabled = false;
 $hasStructureTemplates = false;
+$canUseHolonTemplateEditor = false;
+$isDiscoveryMode = false;
 $organizationName = '';
 $isSiteAdmin = commonCurrentUserIsSiteAdminModeEnabled();
 $applicationSettingsCards = [];
@@ -21,6 +23,8 @@ if ($currentOrganizationId > 0) {
         $isOrganizationAdminModeEnabled = commonCurrentUserIsAdminModeEnabled($currentOrganizationId)
             || commonCurrentUserIsSiteAdminModeEnabled();
         $hasStructureTemplates = $organization->getEnabledStructuralRootHolon() !== null;
+        $isDiscoveryMode = $organization->isDiscoveryMode();
+        $canUseHolonTemplateEditor = !$isDiscoveryMode && $isOrganizationAdminModeEnabled;
         $organizationName = trim((string)$organization->get('name'));
         $installedApplications = new \dbObject\ArrayApplication();
         $installedApplications->loadEnabledForOrganization($currentOrganizationId, (int)$currentUserId);
@@ -220,11 +224,40 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
             <?php if ($hasStructureTemplates): ?>
             <button
                 type="button"
+                class="omo-settings__card omo-card omo-card--interactive omo-settings__card--admin-mode-required"
+                data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.structure_display.title'), ENT_QUOTES, 'UTF-8') ?>"
+                data-omo-settings-drawer-url="/omo/api/parameters/structure-display/index.php"
+                data-omo-settings-drawer-mode="fetch"
+                <?= $isOrganizationAdminModeEnabled ? '' : 'disabled aria-disabled="true"' ?>
+            >
+                <span class="omo-settings__card-head">
+                    <span class="omo-settings__card-icon-shell omo-settings__card-icon-shell--fallback">
+                        <span class="omo-settings__card-fallback-icon">MAP</span>
+                    </span>
+                    <span class="omo-settings__card-title-wrap">
+                        <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.structure_display.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.structure_display.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                    </span>
+                </span>
+                <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(
+                    $isOrganizationAdminModeEnabled
+                        ? omoParametersIndexT('parameters.index.card.structure_display.description')
+                        : omoParametersIndexT('parameters.index.card.structure_display.admin_mode_required', ['adminLabel' => $organizationAdminLabel]),
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?></span>
+                <span class="omo-settings__card-footer" aria-hidden="true">
+                    <span class="omo-settings__card-cta generic-action-button <?= $isOrganizationAdminModeEnabled ? 'generic-action-button--main' : 'generic-action-button--secondary' ?>"><?= htmlspecialchars($isOrganizationAdminModeEnabled ? 'editer' : omoParametersIndexT('parameters.index.card.structure_display.admin_mode_cta', ['adminLabel' => $organizationAdminLabel]), ENT_QUOTES, 'UTF-8') ?></span>
+                </span>
+            </button>
+
+            <button
+                type="button"
                 class="omo-settings__card omo-card omo-card--interactive omo-settings__card--admin-mode-required noMobile"
                 data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.title'), ENT_QUOTES, 'UTF-8') ?>"
                 data-omo-settings-drawer-url="/omo/api/parameters/holon-templates/index.php"
                 data-omo-settings-drawer-mode="fetch"
-                <?= $isOrganizationAdminModeEnabled ? '' : 'disabled aria-disabled="true"' ?>
+                <?= $canUseHolonTemplateEditor ? '' : 'disabled aria-disabled="true"' ?>
             >
                 <span class="omo-settings__card-head">
                     <span class="omo-settings__card-icon-shell">
@@ -236,14 +269,16 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                     </span>
                 </span>
                 <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(
-                    $isOrganizationAdminModeEnabled
+                    $canUseHolonTemplateEditor
                         ? omoParametersIndexT('parameters.index.card.holon_templates.description')
-                        : omoParametersIndexT('parameters.index.card.holon_templates.admin_mode_required', ['adminLabel' => $organizationAdminLabel]),
+                        : ($isDiscoveryMode
+                            ? omoParametersIndexT('parameters.index.card.holon_templates.discovery_mode')
+                            : omoParametersIndexT('parameters.index.card.holon_templates.admin_mode_required', ['adminLabel' => $organizationAdminLabel])),
                     ENT_QUOTES,
                     'UTF-8'
                 ) ?></span>
                 <span class="omo-settings__card-footer" aria-hidden="true">
-                    <span class="omo-settings__card-cta generic-action-button <?= $isOrganizationAdminModeEnabled ? 'generic-action-button--main' : 'generic-action-button--secondary' ?>"><?= htmlspecialchars($isOrganizationAdminModeEnabled ? 'editer' : omoParametersIndexT('parameters.index.card.holon_templates.admin_mode_cta', ['adminLabel' => $organizationAdminLabel]), ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="omo-settings__card-cta generic-action-button <?= $canUseHolonTemplateEditor ? 'generic-action-button--main' : 'generic-action-button--secondary' ?>"><?= htmlspecialchars($canUseHolonTemplateEditor ? 'editer' : ($isDiscoveryMode ? omoParametersIndexT('parameters.index.card.holon_templates.discovery_mode_cta') : omoParametersIndexT('parameters.index.card.holon_templates.admin_mode_cta', ['adminLabel' => $organizationAdminLabel])), ENT_QUOTES, 'UTF-8') ?></span>
                 </span>
             </button>
             <?php endif; ?>

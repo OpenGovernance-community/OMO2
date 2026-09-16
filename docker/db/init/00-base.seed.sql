@@ -3839,6 +3839,7 @@ DROP TABLE IF EXISTS `user`;
 CREATE TABLE `user` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `email` varchar(150) DEFAULT NULL,
+  `phone` varchar(50) DEFAULT NULL,
   `lastname` varchar(150) DEFAULT NULL,
   `presentation` text DEFAULT NULL,
   `latlong` varchar(100) DEFAULT NULL,
@@ -3872,7 +3873,7 @@ CREATE TABLE `user` (
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
 INSERT INTO `user` VALUES
-(1,'admin@omo.test',NULL,NULL,NULL,NULL,NULL,'Admin',NULL,'$2y$10$ES6a68iJbT4z8MxzjNBMoOEtBAn7HJCEqdUnTdBNXQGSerKh.ZQC6',0,0,NULL,'2026-04-21 09:01:00','2026-07-24 18:09:07',1,1,NULL,NULL,'{\"lang\":\"fr\"}',NULL,NULL,NULL,NULL);
+(1,'admin@omo.test',NULL,NULL,NULL,NULL,NULL,NULL,'Admin',NULL,'$2y$10$ES6a68iJbT4z8MxzjNBMoOEtBAn7HJCEqdUnTdBNXQGSerKh.ZQC6',0,0,NULL,'2026-04-21 09:01:00','2026-07-24 18:09:07',1,1,NULL,NULL,'{\"lang\":\"fr\"}',NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -4264,6 +4265,7 @@ CREATE TABLE `user_organization` (
   `username` varchar(250) DEFAULT NULL,
   `image` varchar(100) DEFAULT NULL,
   `email` varchar(250) DEFAULT NULL,
+  `phone` varchar(50) DEFAULT NULL,
   `presentation` text DEFAULT NULL,
   `latlong` varchar(100) DEFAULT NULL,
   `parameters` mediumtext DEFAULT NULL,
@@ -4283,8 +4285,8 @@ CREATE TABLE `user_organization` (
 LOCK TABLES `user_organization` WRITE;
 /*!40000 ALTER TABLE `user_organization` DISABLE KEYS */;
 INSERT INTO `user_organization` VALUES
-(1,1,1,NULL,NULL,'admin@omo.test',NULL,NULL,'{\"isAdmin\":true}','2026-04-21 12:20:00','2026-07-28 12:03:00',1),
-(2,1,2,'Admin',NULL,'admin@omo.test',NULL,NULL,'{\"isAdmin\":true}','2026-04-21 12:25:00',NULL,1);
+(1,1,1,NULL,NULL,'admin@omo.test',NULL,NULL,NULL,'{\"isAdmin\":true}','2026-04-21 12:20:00','2026-07-28 12:03:00',1),
+(2,1,2,'Admin',NULL,'admin@omo.test',NULL,NULL,NULL,'{\"isAdmin\":true}','2026-04-21 12:25:00',NULL,1);
 /*!40000 ALTER TABLE `user_organization` ENABLE KEYS */;
 UNLOCK TABLES;
 

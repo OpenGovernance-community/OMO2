@@ -48,6 +48,10 @@ function commonResolveTopbarProfileData($organizationContext = null, array $prof
                     $profileData['email'] = (string)$user->getScopedEmail($organizationId);
                 }
 
+				if ($profileData['phone'] === '') {
+					$profileData['phone'] = (string)$user->getScopedPhone($organizationId);
+				}
+
                 if ($profileData['username'] === '') {
                     $profileData['username'] = (string)$user->getScopedUsername($organizationId);
                 }

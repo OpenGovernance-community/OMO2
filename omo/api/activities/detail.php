@@ -27,6 +27,7 @@ $suffix = ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . omoActivityPv
 $editUrl = '/omo/api/activities/edit.php?oid=' . $organizationId . '&id=' . (int)$activity->getId() . $suffix;
 $history = $activity->getRegularity(12, $now);
 $holon = $activity->getHolon();
+$descriptionHtml = omoActivityDescriptionHtml($activity->get('description'));
 $timelineEntries = [];
 $timelineStart = null;
 $timelineEnd = $now;
@@ -121,7 +122,7 @@ if ($stateKey === 'due') {
             </div>
             <h3 class="generic-card-title generic-card-title--large"><?= omoApiEscape((string)$activity->get('title')) ?></h3>
             <?php if ($stateDetail !== ''): ?><p class="omo-activity-detail__state-copy omo-activity-detail__state-copy--<?= omoApiEscape($stateKey) ?>"><?= omoApiEscape($stateDetail) ?></p><?php endif; ?>
-            <?php if (trim((string)$activity->get('description')) !== ''): ?><p class="generic-description generic-description--relaxed"><?= nl2br(omoApiEscape((string)$activity->get('description'))) ?></p><?php endif; ?>
+            <?php if ($descriptionHtml !== ''): ?><div class="omo-simple-html-render generic-description generic-description--relaxed"><?= $descriptionHtml ?></div><?php endif; ?>
         </div>
         <div class="omo-activity-detail__schedule">
             <span><?= omoApiEscape(omoActivityT('activity.frequency')) ?></span>

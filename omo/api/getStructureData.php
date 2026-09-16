@@ -7,9 +7,9 @@ use dbObject\ArrayOrganization;
 use dbObject\ArrayProject;
 use dbObject\Authority;
 
-const OMO_STRUCTURE_CACHE_VERSION = 4;
+const OMO_STRUCTURE_CACHE_VERSION = 5;
 
-function omoStructureBuildCacheKey($organizationId, $navigationRootId, $includeMemberUserIds)
+function omoStructureBuildCacheKey($organizationId, $navigationRootId, $includeMemberUserIds, array $displaySettings)
 {
     $currentUserId = function_exists('commonGetCurrentUserId')
         ? (int)commonGetCurrentUserId()
@@ -23,6 +23,7 @@ function omoStructureBuildCacheKey($organizationId, $navigationRootId, $includeM
         (int)$organizationId,
         (int)$navigationRootId,
         $includeMemberUserIds ? 1 : 0,
+        hash('sha256', json_encode($displaySettings, JSON_UNESCAPED_SLASHES)),
         $currentUserId,
         $shareToken,
     )));
@@ -273,11 +274,13 @@ $includeMemberUserIds = !(
     && commonGetCurrentShareToken() !== ''
     && !commonCurrentShareAllowsPeople()
 );
+$displaySettings = $organization->getStructureDisplaySettings();
 $latestStructureHistoryId = \dbObject\History::getLatestStructureEntryId($organizationId);
 $cacheKey = omoStructureBuildCacheKey(
     $organizationId,
     (int)$navigationRoot->getId(),
-    $includeMemberUserIds
+    $includeMemberUserIds,
+    $displaySettings
 );
 $forceRefresh = (int)($_GET['structure_refresh'] ?? 0) === 1;
 $cachedRepresentation = $forceRefresh
@@ -325,6 +328,7 @@ $representation['projectTitles'] = $shareLink instanceof \dbObject\HolonShareLin
 $authorityIds = array();
 omoStructureCollectAuthorityIds($representation, $authorityIds);
 $representation['authorityLabels'] = Authority::getLabelsByIds(array_keys($authorityIds));
+$representation['displaySettings'] = $displaySettings;
 
 if ((int)$navigationRoot->getId() !== (int)$root->getId() && (int)$navigationRoot->get('IDtypeholon') !== 4) {
     $representation['type'] = '4';

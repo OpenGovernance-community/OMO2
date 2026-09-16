@@ -329,7 +329,7 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         <div class="omo-overlay-drawer__panel"><div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky"><div class="generic-drawer-header__copy"><h3 class="omo-overlay-drawer__title"><?= omoApiEscape(omoPolicyT('policy.drawer.title')) ?></h3><p class="omo-overlay-drawer__description"><?= omoApiEscape(omoPolicyT('policy.drawer.description')) ?></p></div><div class="generic-drawer-header__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-policy-close><?= omoApiEscape(omoPolicyT('policy.close')) ?></button></div></div><div class="omo-overlay-drawer__body" data-policy-drawer-body></div></div>
     </div>
 </div>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
 <script>
 (function () {
     var root = typeof window.omoFindApplicationRoot === 'function'

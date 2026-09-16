@@ -2,6 +2,71 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-16
+
+- Vues des applications : en mode Admin d organisation, Enregistrer reste une sauvegarde personnelle, y compris en Decouverte. L action de modele applique maintenant les choix en attente, efface l ancienne preference personnelle puis enregistre le nouveau defaut pour tous les holons concernes et ferme son menu. Dans Projets, l ouverture de cette action conserve maintenant tous les choix en attente du filtre.
+
+- Activites : leur description accepte maintenant le HTML nettoye et les formulaires de creation ou modification utilisent Summernote. Les descriptions des activites de processus restent en texte simple.
+
+- Documents : les dossiers n affichent plus de chevron a cote de la selection. Leur icone, agrandie par rapport aux fichiers et sans cadre colore, indique maintenant directement si leur contenu est ouvert ou ferme.
+
+- Agenda : les vues semaine et jour montrent les occupations des autres organisations en gris, en italique et avec uniquement leur nom. Avant de creer ou modifier un evenement, les recouvrements de l organisateur et des invites sont signales sans divulguer les details de leurs agendas. Confirmation possible malgre les conflits ; agendas externes verifies sur le cache synchronise, invitations par e-mail signalees comme non verifiables.
+
+- Profils et images redimensionnees : un serveur GD sans decodeur WebP ne provoque plus d erreur fatale lors de l enregistrement. Les JPEG recadres sont transmis en JPEG, au lieu d etre convertis automatiquement en WebP par le navigateur.
+
+- Rendez-vous : les derniers horaires qui depassent l heure de fermeture ne sont plus affiches comme indisponibles.
+
+- Rendez-vous : les reglages detailles restent masques tant que la prise de rendez-vous n est pas explicitement activee, afin de rendre cette activation incontournable.
+
+- Rendez-vous : nouvelle presentation publique, cartes claires, couleurs de disponibilite adoucies et legende sans libelles dans les jours. Photo du profil OMO (ou initiales), parcours par etapes, recapitulatif et confirmation revisites. Affichage compact sur ordinateur portable, adaptation mobile et horaires sans libelles redondants, avec contraste renforce entre disponibles et indisponibles. La pause de midi devient un separateur unique et le pied de page relie OMO2 et OpenMyOrganization a la racine de l instance courante.
+
+- Rendez-vous : les confirmations utilisent maintenant le modele d e-mail partage d OMO, avec son bandeau, un recapitulatif des informations et la fiche calendrier ICS en piece jointe.
+
+- Rendez-vous : les confirmations par e-mail fonctionnent aussi avec un relais SMTP sans identifiant, notamment Mailpit en local. L adresse d expediteur ne depend plus de la presence de MAIL_USER.
+
+- Rendez-vous : nouvelle page publique /meeting/nom avec disponibilites mensuelles, departs toutes les demi-heures et reservations d une heure dans un agenda CalDAV. Activation, nom unique, agenda de destination et horaires avec pause par jour se reglent depuis le menu de l agenda. Confirmation avec fichier ICS, verification des conflits et protection contre les doubles reservations OMO.
+
+- Agenda : le connecteur CalDAV recherche maintenant les agendas Nextcloud et Infomaniak depuis l adresse du serveur. Selection multiple, noms et couleurs personnalisables, detection des agendas deja connectes et resultats de synchronisation individuels.
+
+- Documents : une selection de documents HTML peut etre fusionnee dans un nouveau document. Le titre, les tags et l ordre des contenus sont preparables avant la creation, sans modifier les documents source.
+- Documents : le document fusionne reprend la visibilite la plus restrictive de ses sources. L ecran de preparation affiche cette portee, utilise l icone de fusion dediee et allege les tags ainsi que les controles de tri.
+- Documents : avant une fusion, les portees de lecture et de modification peuvent etre ajustees avec le meme selecteur que dans l editeur. Une case permet aussi de conserver les sources ou de les supprimer apres une fusion reussie.
+- Documents : les selecteurs Lecture et Modification de la fusion sont affiches cote a cote sur grand ecran, sans aide redondante sur le holon.
+
+- Documents : le menu des actions place maintenant Editer en tete, groupe les actions de cycle de vie en bas apres un separateur, et met Supprimer en rouge.
+
+- Documents : le deplacement groupe utilise maintenant le meme point d entree partage que le deplacement individuel, ce qui permet a nouveau de deplacer une selection.
+
+- Structure : la grande carte et la mini-carte partagent leur cache de donnees et de reglages par organisation. Les rafraichissements protegent les nouveaux reglages contre les anciennes reponses, et la mini-carte evite des traitements repetes pendant le rendu.
+
+- Structure : les admins peuvent maintenant regler par organisation l estompage, la profondeur affichee, les seuils des libelles automatiques et au survol (jusqu a 3 px), leur taille minimale de police et le contour des textes, pour la grande vue comme pour la mini-carte, sans modifier le calcul des positions.
+
+- Team : les membres peuvent maintenant enregistrer un numero de telephone general ou propre a chaque organisation. La vue compacte l affiche, tandis que les fiches regroupent telephone et e-mail sous Contact avec leurs icones.
+- Team : les numeros de telephone sont cliquables dans les fiches et la vue compacte pour lancer un appel depuis un appareil compatible.
+- Team : les adresses e-mail sont aussi cliquables dans les fiches et la vue compacte pour ouvrir un nouveau message.
+- Team : les fiches de la carte geographique affichent aussi les contacts cliquables, et la vue compacte permet de copier une adresse e-mail.
+- Team : le bouton de copie d une adresse e-mail confirme maintenant l action par Copié avant de retrouver son icone.
+
+- Import OMO 1 : sans modele d organisation utilisant les objets Autorite, les domaines importes restent des listes de textes comme dans OMO 1. Un modele cible utilisant ces objets declenche toujours leur conversion.
+- Import OMO 1 : les organisations importees commencent maintenant en mode Autonome. Les projets bloques sans motif ni date de relance dans OMO 1 sont egalement importes avec des valeurs de reprise compatibles.
+- Holons : le holon racine de type organisation reste editable en mode decouverte, tandis que les autres modeles de holons demeurent proteges. Ses droits existants sont preserves lors de l enregistrement.
+- Holons : nettoyage de l editeur apres les evolutions d interface : les rendus de synthese et les styles devenus inutiles ont ete retires, y compris les anciennes fonctions de resume des droits en doublon. Les libelles visibles concernes utilisent maintenant les accents francais.
+- Holons : le resume des droits ne repose plus sur un panneau gris, afin d alleger le bloc et de mieux distinguer son bouton Editer.
+- Holons : les sections Proprietes, Droits et Equipe sont separees par le meme espacement vertical que la section Apparence.
+- Holons : le bloc Droits devient repliable et s ouvre lorsqu il porte des droits directs. Le bouton Editer est place a cote des droits directs, nommes droits associes au modele dans un holon template.
+- Holons : le bloc Admin est renomme Equipe et devient repliable sans texte explicatif. Il est ouvert lorsqu une limite locale est redefinie, et les en-tetes Equipe et Apparence sont cliquables en entier.
+- Holons : le bloc Admin est maintenant place apres le bloc Droits dans l editeur.
+- Holons : les champs Nom et Modele sont regroupes sur une ligne lorsque la largeur le permet, tandis que Nom complet reste en pleine largeur en dessous.
+- Holons : le panneau Apparence presente maintenant Couleur et Illustrations comme deux rubriques, sans texte descriptif supplementaire.
+- Holons : le choix de couleur tient maintenant sur une seule ligne. Cocher la redefinition remplace son libelle par le selecteur de couleur.
+- Droits : dans les holons standards, leur bloc d edition est reserve au mode expert. Les droits des holons template restent accessibles dans les autres modes hors decouverte.
+- Holons : les reglages d apparence sont replies par defaut et se deploient automatiquement lorsqu une couleur, une icone ou une banniere est deja definie sur le holon.
+- Holons : le bouton d ajout de propriete est affiche uniquement aux personnes ayant `CAN_ADD_HOLON_PROPERTIES` et conserve une largeur adaptee a son libelle.
+- Holons : `CAN_EDIT_HOLON` autorise maintenant aussi la modification des valeurs heritees du modele. Les droits `CAN_ADD_HOLON_PROPERTIES`, `CAN_EDIT_HOLON_PROPERTIES` et `CAN_DELETE_HOLON_PROPERTIES` sont reserves aux proprietes supplementaires attachees directement au holon.
+
+- Mode découverte : les droits ne sont plus affichés ni modifiables dans les fiches de holon et de membre. L éditeur de modèles de holons est grisé et refusé, afin de conserver les droits éventuels provenant d un template sans pouvoir les changer. Les réglages visuels locaux, y compris icône et bannière, restent aussi masqués.
+- Structure : le titre des éditeurs de holon est maintenant porté par la barre du sous-drawer et ne se répète plus dans le formulaire. Les limites Admin et le texte d aide du modèle sont aussi masqués en mode découverte, comme la synthèse de type et de propriétés.
+
 ## 2026-09-15
 
 - Team : les cartes privilegient maintenant prenom et nom, puis le nom d utilisateur lorsqu il est renseigne. Les adresses e-mail longues sont tronquees avec leur valeur complete au survol, et l adresse de la rubrique E-mail peut etre copiee depuis son icone au survol.
@@ -2244,3 +2309,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 - Le parcours Du role a l action utilise cinq illustrations de manchots integrees sur fond bleu, avec des reperes numerotes et un affichage adapte au mobile.
 - Le bloc final d invitation a cooperer utilise le panorama iceberg fourni, sans les cercles ni les traits decoratifs precedents.
 - La page publique affiche maintenant les organisations ayant defini un logo, classees par leur derniere activite dans OMO et defilant en boucle lorsqu elles depassent la largeur disponible, dans une bande compacte de logos carres aux coins arrondis et nommes, avec une boucle de defilement sans blanc.
+# 2026-09-16
+
+- L agenda OMO peut maintenant importer en lecture seule un agenda Nextcloud CalDAV personnel depuis le menu Connecter, avec couleur propre, synchronisation manuelle et synchronisation periodique securisee.
+- Les synchronisations automatiques des agendas Nextcloud utilisent maintenant leur version CalDAV et ne rechargent les evenements qu apres un changement ; leur cadence normale est de deux heures.

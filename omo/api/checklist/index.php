@@ -292,5 +292,5 @@ $texts = [
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260905-pv-app-tabs"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
 <script src="/omo/api/checklist/checklist.js?v=20260907-process-project-link"></script>

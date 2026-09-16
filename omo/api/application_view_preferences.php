@@ -105,7 +105,7 @@ if ($pvApplicationTabId > 0) {
 if (
     $scope === 'personal'
     && (
-        $organization->getInterfaceLevel() === Organization::INTERFACE_LEVEL_DISCOVERY
+        ($organization->getInterfaceLevel() === Organization::INTERFACE_LEVEL_DISCOVERY && !($isOrganizationAdmin || $isSiteAdmin))
         || !($holon instanceof Holon)
         || ($membership === null && !$isSiteAdmin)
     )
