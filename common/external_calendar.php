@@ -131,9 +131,9 @@ function commonExternalCalendarNormalizeUrl($value)
         . ($parts['path'] ?? '/') . (isset($parts['query']) ? '?' . $parts['query'] : '');
 }
 
-function commonExternalCalendarHttpReport($url, $username, $password, $requestBody)
+function commonExternalCalendarHttpReport($url, $username, $password, $requestBody, ?float $deadline = null)
 {
-    return commonExternalCalendarHttpRequest($url, $username, $password, $requestBody, 'REPORT', 1);
+    return commonExternalCalendarHttpRequest($url, $username, $password, $requestBody, 'REPORT', 1, 0, [], $deadline);
 }
 
 // Resolve DAV hrefs without ever forwarding credentials to another origin.
@@ -172,8 +172,11 @@ function commonExternalCalendarResolveHref($base, $href)
     return $origin . $path . (isset($target['query']) ? '?' . $target['query'] : '');
 }
 
-function commonExternalCalendarHttpRequest($url, $username, $password, $requestBody, $method = 'PROPFIND', $depth = 0, $redirects = 0, array $extraHeaders = [])
+function commonExternalCalendarHttpRequest($url, $username, $password, $requestBody, $method = 'PROPFIND', $depth = 0, $redirects = 0, array $extraHeaders = [], ?float $deadline = null)
 {
+    if ($deadline !== null && microtime(true) >= $deadline) {
+        return ['status' => false, 'message' => 'Le delai de synchronisation est depasse.'];
+    }
     if (!function_exists('curl_init')) {
         return ['status' => false, 'message' => 'L extension cURL est indisponible sur le serveur.'];
     }
@@ -201,8 +204,9 @@ function commonExternalCalendarHttpRequest($url, $username, $password, $requestB
     curl_setopt($curl, CURLOPT_POSTFIELDS, (string)$requestBody);
     curl_setopt($curl, CURLOPT_USERPWD, (string)$username . ':' . (string)$password);
     curl_setopt($curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-    curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_setopt($curl, CURLOPT_TIMEOUT, 45);
+    $timeoutMs = $deadline === null ? 45000 : max(1, min(45000, (int)(($deadline - microtime(true)) * 1000)));
+    curl_setopt($curl, CURLOPT_CONNECTTIMEOUT_MS, min(10000, $timeoutMs));
+    curl_setopt($curl, CURLOPT_TIMEOUT_MS, $timeoutMs);
     curl_setopt($curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
     curl_setopt($curl, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS);
     curl_setopt($curl, CURLOPT_PROXY, '');
@@ -241,7 +245,7 @@ function commonExternalCalendarHttpRequest($url, $username, $password, $requestB
         if ($target === null || $redirects >= 4) {
             return ['status' => false, 'message' => 'Redirection CalDAV refusee. Utilisez directement l adresse HTTPS du serveur de synchronisation.'];
         }
-        return commonExternalCalendarHttpRequest($target, $username, $password, $requestBody, $method, $depth, $redirects + 1, $extraHeaders);
+        return commonExternalCalendarHttpRequest($target, $username, $password, $requestBody, $method, $depth, $redirects + 1, $extraHeaders, $deadline);
     }
     if ($statusCode < 200 || $statusCode >= 300) {
         return ['status' => false, 'code' => $statusCode, 'message' => in_array($statusCode, [401, 403], true)
@@ -410,13 +414,13 @@ function commonExternalCalendarDiscover($url, $username, $password, ?callable $r
     return $calendars ? ['status' => true, 'calendars' => array_values($calendars)] : ['status' => false, 'message' => $error];
 }
 
-function commonExternalCalendarReadSourceCtag($url, $username, $password)
+function commonExternalCalendarReadSourceCtag($url, $username, $password, ?float $deadline = null)
 {
     if (!function_exists('curl_init') || !class_exists('DOMDocument')) {
         return null;
     }
     $body = '<?xml version="1.0" encoding="UTF-8"?><d:propfind xmlns:d="DAV:" xmlns:cs="http://calendarserver.org/ns/"><d:prop><cs:getctag/><d:sync-token/></d:prop></d:propfind>';
-    $result = commonExternalCalendarHttpRequest($url, $username, $password, $body);
+    $result = commonExternalCalendarHttpRequest($url, $username, $password, $body, 'PROPFIND', 0, 0, [], $deadline);
     if (empty($result['status'])) {
         return null;
     }
@@ -690,7 +694,7 @@ function commonExternalCalendarParseReport($xml, $strict = false)
     return ['status' => true, 'events' => array_values($events)];
 }
 
-function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeStart = null, $rangeEnd = null, $force = false)
+function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeStart = null, $rangeEnd = null, $force = false, ?float $deadline = null)
 {
     $calendarId = (int)$calendar->getId();
     $url = commonExternalCalendarNormalizeUrl($calendar->get('calendar_url'));
@@ -706,7 +710,7 @@ function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeSta
         return ['status' => false, 'message' => 'La plage de synchronisation est invalide.'];
     }
 
-    $sourceCtag = commonExternalCalendarReadSourceCtag($url, trim((string)$calendar->get('username')), $password);
+    $sourceCtag = commonExternalCalendarReadSourceCtag($url, trim((string)$calendar->get('username')), $password, $deadline);
     if (!$force && $sourceCtag !== null && hash_equals((string)$calendar->get('source_ctag'), $sourceCtag)) {
         $calendar->markSyncResult(true, '', $sourceCtag);
         return ['status' => true, 'count' => 0, 'unchanged' => true];
@@ -716,7 +720,8 @@ function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeSta
         $url,
         trim((string)$calendar->get('username')),
         $password,
-        commonExternalCalendarBuildReport($rangeStart, $rangeEnd)
+        commonExternalCalendarBuildReport($rangeStart, $rangeEnd),
+        $deadline
     );
     if (empty($response['status'])) {
         $message = trim((string)($response['message'] ?? 'Synchronisation CalDAV impossible.'));
@@ -770,6 +775,28 @@ function commonExternalCalendarSynchronize(ExternalCalendar $calendar, $rangeSta
 
     $calendar->markSyncResult(true, '', $sourceCtag);
     return ['status' => true, 'count' => count((array)$parsed['events'])];
+}
+
+/** Refresh only stale calendars of a validated invitee, within the request's shared time budget. */
+function commonExternalCalendarRefreshForAvailability(int $userId, float $deadline, ?callable $synchronize = null): void
+{
+    if (!ExternalCalendar::isStorageAvailable() || microtime(true) >= $deadline) { return; }
+    // Share the booking lock so a concurrent refresh cannot overwrite a new reservation.
+    if (!\dbObject\MeetingProfile::lock($userId)) { return; }
+    try {
+        $calendars = new ArrayExternalCalendar();
+        $calendars->loadForUser($userId, true);
+        $synchronize ??= 'commonExternalCalendarSynchronize';
+        foreach ($calendars as $calendar) {
+            if (microtime(true) >= $deadline) { break; }
+            $last = $calendar->get('last_sync_at');
+            $failed = trim((string)$calendar->get('last_sync_error')) !== '';
+            if ($last instanceof \DateTimeInterface && $last->getTimestamp() > time() - ($failed ? 60 : 7200)) { continue; }
+            $synchronize($calendar, null, null, false, min($deadline, microtime(true) + 8));
+        }
+    } finally {
+        \dbObject\MeetingProfile::unlock($userId);
+    }
 }
 
 function commonExternalCalendarSynchronizeDue($limit = 10, $minimumAgeMinutes = 120)

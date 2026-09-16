@@ -535,7 +535,7 @@ class Event extends DbObject
     }
 
     /** The caller must validate the proposed invitations against the current organization. */
-    public function checkInvitationAvailability(array $proposedInvitations): array
+    public function checkInvitationAvailability(array $proposedInvitations, ?callable $refreshUserCalendars = null): array
     {
         $organizationId = (int)$this->get('IDorganization');
         $targets = $this->getEffectiveInvitationTargets($organizationId, $proposedInvitations);
@@ -547,6 +547,8 @@ class Event extends DbObject
         if ($interval === null) { return $report; }
         [$start, $end] = $interval;
         $userIds = array_unique(array_merge($targets['userIds'], [(int)$this->get('IDuser')]));
+        $organizationLabels = [];
+        $holonLabels = [];
         foreach ($userIds as $userId) {
             if ($userId <= 0) { continue; }
             $name = $this->getViewerDisplayName($userId, $organizationId);
@@ -557,10 +559,27 @@ class Event extends DbObject
                 foreach ($events as $event) {
                     if ((int)$this->getId() > 0 && (int)$event->getId() === (int)$this->getId()) { continue; }
                     $busy = $event->getBusyInterval();
-                    if ($busy !== null) { $intervals[] = $busy; }
+                    if ($busy === null || $busy[0] >= $end || $busy[1] <= $start) { continue; }
+                    $eventOrganizationId = (int)$event->get('IDorganization');
+                    $holonId = (int)$event->get('IDholon');
+                    if (!array_key_exists($eventOrganizationId, $organizationLabels)) {
+                        $organization = new Organization();
+                        $organizationLabels[$eventOrganizationId] = $eventOrganizationId > 0 && $organization->load($eventOrganizationId)
+                            ? (string)$organization->get('name') : '';
+                    }
+                    if (!array_key_exists($holonId, $holonLabels)) {
+                        $holon = new Holon();
+                        $holonLabels[$holonId] = $holonId > 0 && $holon->load($holonId) ? $holon->getDisplayName() : '';
+                    }
+                    $intervals[] = ['start' => $busy[0], 'end' => $busy[1], 'source' => 'omo',
+                        'organization' => $organizationLabels[$eventOrganizationId], 'holon' => $holonLabels[$holonId]];
                 }
+                if ($refreshUserCalendars !== null) { $refreshUserCalendars((int)$userId); }
                 $external = ArrayExternalCalendarEvent::busyIntervalsForUser($userId, $start, $end);
-                $intervals = array_merge($intervals, $external['intervals']);
+                foreach ($external['intervals'] as [$busyStart, $busyEnd]) {
+                    $intervals[] = ['start' => $busyStart, 'end' => $busyEnd, 'source' => 'external',
+                        'organization' => '', 'holon' => ''];
+                }
                 $report['externalCache'] = $report['externalCache'] || $external['hasCalendars'];
                 if ($external['incomplete']) {
                     $report['unverified'][] = ['name' => $name, 'reason' => 'cache'];
@@ -569,20 +588,14 @@ class Event extends DbObject
                 error_log('Calendar availability check failed: ' . get_class($exception));
                 $report['unverified'][] = ['name' => $name, 'reason' => 'storage'];
             }
-            // Merge overlapping intervals, and expose only their intersection with the proposed event.
-            usort($intervals, static fn($a, $b) => $a[0] <=> $b[0]);
-            $merged = [];
-            foreach ($intervals as [$busyStart, $busyEnd]) {
-                if ($busyStart >= $end || $busyEnd <= $start) { continue; }
-                $busyStart = max($start, $busyStart);
-                $busyEnd = min($end, $busyEnd);
-                $last = count($merged) - 1;
-                if ($last >= 0 && $merged[$last][1] >= $busyStart) {
-                    $merged[$last][1] = max($merged[$last][1], $busyEnd);
-                } else { $merged[] = [$busyStart, $busyEnd]; }
-            }
-            foreach ($merged as [$busyStart, $busyEnd]) {
-                $report['conflicts'][] = ['name' => $name, 'start' => $busyStart->format('Y-m-d H:i'), 'end' => $busyEnd->format('Y-m-d H:i')];
+            // Keep each appointment and its full duration, without exposing titles or descriptions.
+            usort($intervals, static fn($a, $b) => [$a['start'], $a['end'], $a['source'], $a['organization'], $a['holon']]
+                <=> [$b['start'], $b['end'], $b['source'], $b['organization'], $b['holon']]);
+            foreach ($intervals as $busy) {
+                if ($busy['start'] >= $end || $busy['end'] <= $start) { continue; }
+                $busy['start'] = $busy['start']->format('Y-m-d H:i');
+                $busy['end'] = $busy['end']->format('Y-m-d H:i');
+                $report['conflicts'][] = ['name' => $name] + $busy;
             }
         }
         return $report;
