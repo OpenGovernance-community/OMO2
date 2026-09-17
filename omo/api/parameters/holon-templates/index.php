@@ -66,8 +66,6 @@ if ($organizationId <= 0) {
 $showTemplateWelcome = !$isHolonDefinitionMode && $selectedTemplateId <= 0;
 
 $omoHolonTemplateTexts = [
-    'mediaIconLabel' => omoHolonTemplateT('parameters.holon_templates.media.icon_label'),
-    'mediaBannerLabel' => omoHolonTemplateT('parameters.holon_templates.media.banner_label'),
     'permissionSelf' => omoHolonTemplateT('parameters.holon_templates.permission.self'),
     'permissionMembers' => omoHolonTemplateT('parameters.holon_templates.permission.members'),
     'permissionAdmins' => omoHolonTemplateT('parameters.holon_templates.permission.admins', ['adminLabel' => $adminLabel]),
@@ -349,17 +347,25 @@ $omoHolonTemplateTexts = [
                             </div>
 
                             <div class="omo-template-form__grid">
-                                <div class="omo-field omo-color-field" id="omo-template-color-field">
+                                <div class="omo-field omo-color-field omo-color-field--compact" id="omo-template-color-field">
                                     <div class="omo-color-field__head">
                                         <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.color'), ENT_QUOTES, 'UTF-8') ?></span>
                                         <label class="omo-color-field__toggle">
-                                            <input type="checkbox" id="omo-template-color-enabled">
-                                            <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.override'), ENT_QUOTES, 'UTF-8') ?></span>
+                                            <input type="checkbox" id="omo-template-color-enabled" aria-label="<?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.override'), ENT_QUOTES, 'UTF-8') ?>">
+                                            <span id="omo-template-color-override-label"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.override'), ENT_QUOTES, 'UTF-8') ?></span>
+                                            <input type="color" name="color" id="omo-template-color" value="#f59e0b" aria-label="<?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.color'), ENT_QUOTES, 'UTF-8') ?>" hidden>
                                         </label>
                                     </div>
-                                    <div class="omo-color-field__body" id="omo-template-color-body">
-                                        <input type="color" name="color" id="omo-template-color" value="#f59e0b">
-                                        <small><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.color_empty_help'), ENT_QUOTES, 'UTF-8') ?></small>
+                                </div>
+
+                                <div class="omo-field omo-color-field omo-color-field--compact<?= $isHolonDefinitionMode ? ' omo-template-field--hidden' : '' ?>" id="omo-template-unassigned-color-field">
+                                    <div class="omo-color-field__head">
+                                        <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.unassigned_color'), ENT_QUOTES, 'UTF-8') ?></span>
+                                        <label class="omo-color-field__toggle">
+                                            <input type="checkbox" id="omo-template-unassigned-color-enabled" aria-label="<?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.override'), ENT_QUOTES, 'UTF-8') ?>">
+                                            <span id="omo-template-unassigned-color-override-label"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.override'), ENT_QUOTES, 'UTF-8') ?></span>
+                                            <input type="color" name="unassignedColor" id="omo-template-unassigned-color" value="#94a3b8" aria-label="<?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.unassigned_color'), ENT_QUOTES, 'UTF-8') ?>" hidden>
+                                        </label>
                                     </div>
                                 </div>
 
@@ -375,16 +381,6 @@ $omoHolonTemplateTexts = [
                                                 </label>
                                             </div>
                                             <div id="omo-template-icon-field"></div>
-                                        </div>
-                                        <div class="omo-template-media-card generic-section generic-section--stack generic-section--roomy">
-                                            <div class="omo-template-media-card__head">
-                                                <div class="omo-template-media-card__title generic-title generic-title--compact"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.banner'), ENT_QUOTES, 'UTF-8') ?></div>
-                                                <label class="omo-template-media-card__lock">
-                                                    <input type="checkbox" id="omo-template-locked-banner">
-                                                    <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.locked_banner'), ENT_QUOTES, 'UTF-8') ?></span>
-                                                </label>
-                                            </div>
-                                            <div id="omo-template-banner-field"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -416,23 +412,6 @@ $omoHolonTemplateTexts = [
                                             <input type="text" id="omo-template-public-name" maxlength="255">
                                         </label>
 
-                                        <div class="omo-field omo-field--full">
-                                            <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.shared_model_media'), ENT_QUOTES, 'UTF-8') ?></span>
-                                            <div class="omo-template-media-grid">
-                                                <div class="omo-template-media-card generic-section generic-section--stack generic-section--roomy">
-                                                    <div class="omo-template-media-card__head">
-                                                        <div class="omo-template-media-card__title generic-title generic-title--compact"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.logo_icon'), ENT_QUOTES, 'UTF-8') ?></div>
-                                                    </div>
-                                                    <div id="omo-template-public-icon-field"></div>
-                                                </div>
-                                                <div class="omo-template-media-card generic-section generic-section--stack generic-section--roomy">
-                                                    <div class="omo-template-media-card__head">
-                                                        <div class="omo-template-media-card__title generic-title generic-title--compact"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.banner'), ENT_QUOTES, 'UTF-8') ?></div>
-                                                    </div>
-                                                    <div id="omo-template-public-banner-field"></div>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -586,6 +565,8 @@ $omoHolonTemplateTexts = [
 <script src="/omo/assets/js/sized-image-field.js"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
+<link rel="stylesheet" href="/common/permissions/editor.css?v=20260917-crud-3">
+<script src="/common/permissions/editor.js?v=20260917-crud-3"></script>
 <script>
 (() => {
 const omoHolonTemplatePageRoot = document.getElementById('omo-holon-template-page');
@@ -617,19 +598,20 @@ const omoHolonTemplateElements = {
     definitionHolon: omoHolonTemplateRoot.querySelector('#omo-template-definition-holon'),
     name: omoHolonTemplateRoot.querySelector('#omo-template-name'),
     colorEnabled: omoHolonTemplateRoot.querySelector('#omo-template-color-enabled'),
+    colorOverrideLabel: omoHolonTemplateRoot.querySelector('#omo-template-color-override-label'),
     colorBody: omoHolonTemplateRoot.querySelector('#omo-template-color-body'),
     color: omoHolonTemplateRoot.querySelector('#omo-template-color'),
+    unassignedColorEnabled: omoHolonTemplateRoot.querySelector('#omo-template-unassigned-color-enabled'),
+    unassignedColorOverrideLabel: omoHolonTemplateRoot.querySelector('#omo-template-unassigned-color-override-label'),
+    unassignedColorBody: omoHolonTemplateRoot.querySelector('#omo-template-unassigned-color-body'),
+    unassignedColor: omoHolonTemplateRoot.querySelector('#omo-template-unassigned-color'),
     iconField: omoHolonTemplateRoot.querySelector('#omo-template-icon-field'),
-    bannerField: omoHolonTemplateRoot.querySelector('#omo-template-banner-field'),
     sharePublic: omoHolonTemplateRoot.querySelector('#omo-template-share-public'),
     publicShareFields: omoHolonTemplateRoot.querySelector('#omo-template-public-share-fields'),
     publicName: omoHolonTemplateRoot.querySelector('#omo-template-public-name'),
-    publicIconField: omoHolonTemplateRoot.querySelector('#omo-template-public-icon-field'),
-    publicBannerField: omoHolonTemplateRoot.querySelector('#omo-template-public-banner-field'),
     mandatory: omoHolonTemplateRoot.querySelector('#omo-template-mandatory'),
     lockedName: omoHolonTemplateRoot.querySelector('#omo-template-locked-name'),
     lockedIcon: omoHolonTemplateRoot.querySelector('#omo-template-locked-icon'),
-    lockedBanner: omoHolonTemplateRoot.querySelector('#omo-template-locked-banner'),
     unique: omoHolonTemplateRoot.querySelector('#omo-template-unique'),
     link: omoHolonTemplateRoot.querySelector('#omo-template-link'),
     adminParent: omoHolonTemplateRoot.querySelector('#omo-template-admin-parent'),
@@ -775,8 +757,7 @@ if (typeof window.ResizeObserver === 'function') {
 window.addEventListener('resize', omoHolonTemplateSyncPermissionGroupStickyOffset);
 
 const omoHolonTemplateMediaFields = {
-    icon: null,
-    banner: null
+    icon: null
 };
 
 function omoHolonTemplateWaitForGlobalLibrary(globalKey, timeoutMs) {
@@ -840,10 +821,8 @@ function omoHolonTemplateIsHolonDefinitionMode() {
 }
 
 if (omoHolonTemplateIsHolonDefinitionMode()) {
-    omoHolonTemplateElements.iconField = omoHolonTemplateElements.publicIconField;
-    omoHolonTemplateElements.bannerField = omoHolonTemplateElements.publicBannerField;
+    omoHolonTemplateElements.iconField = null;
     omoHolonTemplateElements.lockedIcon = null;
-    omoHolonTemplateElements.lockedBanner = null;
 }
 
 function omoHolonTemplateToggleTypeField(isInherited) {
@@ -971,6 +950,28 @@ function omoHolonTemplateSyncColorField() {
 
     if (omoHolonTemplateElements.color) {
         omoHolonTemplateElements.color.disabled = !isEnabled;
+        omoHolonTemplateElements.color.hidden = !isEnabled;
+    }
+
+    if (omoHolonTemplateElements.colorOverrideLabel) {
+        omoHolonTemplateElements.colorOverrideLabel.hidden = isEnabled;
+    }
+}
+
+function omoHolonTemplateSyncUnassignedColorField() {
+    const isEnabled = Boolean(omoHolonTemplateElements.unassignedColorEnabled && omoHolonTemplateElements.unassignedColorEnabled.checked);
+
+    if (omoHolonTemplateElements.unassignedColorBody) {
+        omoHolonTemplateElements.unassignedColorBody.hidden = !isEnabled;
+    }
+
+    if (omoHolonTemplateElements.unassignedColor) {
+        omoHolonTemplateElements.unassignedColor.disabled = !isEnabled;
+        omoHolonTemplateElements.unassignedColor.hidden = !isEnabled;
+    }
+
+    if (omoHolonTemplateElements.unassignedColorOverrideLabel) {
+        omoHolonTemplateElements.unassignedColorOverrideLabel.hidden = isEnabled;
     }
 }
 
@@ -991,17 +992,7 @@ function omoHolonTemplateSyncPublicShareFields() {
     }
 }
 
-function omoHolonTemplateGetMediaDisplayConfig(kind) {
-    if (kind === 'banner') {
-        return {
-            displayWidth: 360,
-            displayHeight: 202,
-            targetWidth: 960,
-            targetHeight: 540,
-            emptyText: 'Aucune bannière transmise par ce modèle.'
-        };
-    }
-
+function omoHolonTemplateGetMediaDisplayConfig() {
     return {
         displayWidth: 160,
         displayHeight: 160,
@@ -1012,7 +1003,7 @@ function omoHolonTemplateGetMediaDisplayConfig(kind) {
 }
 
 function omoHolonTemplateResolveMediaState(kind, template, preserveCurrentValue) {
-    const suffix = kind === 'icon' ? 'Icon' : 'Banner';
+    const suffix = 'Icon';
     const currentController = omoHolonTemplateMediaFields[kind];
     const shouldReuseController = Boolean(currentController) && Boolean(preserveCurrentValue);
     const localValue = shouldReuseController
@@ -1036,8 +1027,7 @@ function omoHolonTemplateRenderMediaFields(template, preserveCurrentValue) {
     }
 
     [
-        ['icon', omoHolonTemplateElements.iconField, omoHolonTemplateElements.lockedIcon, 'Icône'],
-        ['banner', omoHolonTemplateElements.bannerField, omoHolonTemplateElements.lockedBanner, 'Bannière']
+        ['icon', omoHolonTemplateElements.iconField, omoHolonTemplateElements.lockedIcon, 'Icône']
     ].forEach(function (entry) {
         const kind = entry[0];
         const target = entry[1];
@@ -1048,7 +1038,7 @@ function omoHolonTemplateRenderMediaFields(template, preserveCurrentValue) {
         }
 
         const mediaState = omoHolonTemplateResolveMediaState(kind, template, preserveCurrentValue);
-        const config = omoHolonTemplateGetMediaDisplayConfig(kind);
+        const config = omoHolonTemplateGetMediaDisplayConfig();
         if (lockField) {
             lockField.checked = Boolean(mediaState.localLocked);
             lockField.disabled = false;
@@ -1282,8 +1272,10 @@ function omoHolonTemplateReadCurrentFormState() {
         color: Boolean(omoHolonTemplateElements.colorEnabled && omoHolonTemplateElements.colorEnabled.checked)
             ? String(omoHolonTemplateElements.color && omoHolonTemplateElements.color.value ? omoHolonTemplateElements.color.value : '')
             : '',
+        unassignedColor: Boolean(omoHolonTemplateElements.unassignedColorEnabled && omoHolonTemplateElements.unassignedColorEnabled.checked)
+            ? String(omoHolonTemplateElements.unassignedColor && omoHolonTemplateElements.unassignedColor.value ? omoHolonTemplateElements.unassignedColor.value : '')
+            : '',
         icon: omoHolonTemplateMediaFields.icon ? omoHolonTemplateMediaFields.icon.getValue() : '',
-        banner: omoHolonTemplateMediaFields.banner ? omoHolonTemplateMediaFields.banner.getValue() : '',
         typeId: effectiveTypeId,
         typeLabel: omoHolonTemplateGetTypeLabel(effectiveTypeId),
         mandatory: Boolean(omoHolonTemplateElements.mandatory && omoHolonTemplateElements.mandatory.checked),
@@ -1292,11 +1284,6 @@ function omoHolonTemplateReadCurrentFormState() {
             ? (omoHolonTemplateElements.lockedIcon.disabled
                 ? String(omoHolonTemplateElements.lockedIcon.dataset.localValue || '0') === '1'
                 : Boolean(omoHolonTemplateElements.lockedIcon.checked))
-            : false,
-        lockedBanner: omoHolonTemplateElements.lockedBanner
-            ? (omoHolonTemplateElements.lockedBanner.disabled
-                ? String(omoHolonTemplateElements.lockedBanner.dataset.localValue || '0') === '1'
-                : Boolean(omoHolonTemplateElements.lockedBanner.checked))
             : false,
         unique: Boolean(omoHolonTemplateElements.unique && omoHolonTemplateElements.unique.checked),
         link: Boolean(omoHolonTemplateElements.link && omoHolonTemplateElements.link.checked),
@@ -1429,6 +1416,7 @@ function omoHolonTemplateRenderPermissions(permissionAssignments) {
         omoHolonTemplateBindPermissionRow(row, permissionRangeOptions, allPermissionRangeOptions);
         omoHolonTemplateSetPermissionRowRanges(row, selectedRanges, allPermissionRangeOptions);
     });
+    window.omoPermissionEditorEnhance(omoHolonTemplateElements.permissions);
 }
 
 function omoHolonTemplateGroupPermissionCatalog(permissionCatalog) {
@@ -1643,11 +1631,6 @@ function omoHolonTemplateApplyInheritedMediaState(template) {
     template.effectiveIcon = String(template.icon || '').trim() !== '' ? String(template.icon || '') : template.inheritedIcon;
     template.effectiveLockedIcon = Boolean(template.lockedIcon || template.inheritedLockedIcon);
 
-    template.inheritedBanner = parentTemplate ? String(parentTemplate.effectiveBanner || '') : '';
-    template.inheritedLockedBanner = parentTemplate ? Boolean(parentTemplate.effectiveLockedBanner) : false;
-    template.effectiveBanner = String(template.banner || '').trim() !== '' ? String(template.banner || '') : template.inheritedBanner;
-    template.effectiveLockedBanner = Boolean(template.lockedBanner || template.inheritedLockedBanner);
-
     template.inheritedAdminMin = parentTemplate ? Number(parentTemplate.effectiveAdminMin || 0) : 0;
     template.inheritedAdminMax = parentTemplate && parentTemplate.effectiveAdminMax !== null && parentTemplate.effectiveAdminMax !== undefined
         ? Number(parentTemplate.effectiveAdminMax)
@@ -1681,12 +1664,10 @@ function omoHolonTemplateBuildDraft(inheritsFromId, definitionHolonId) {
         id: 0,
         name: '',
         color: '',
+        unassignedColor: '',
         icon: '',
         inheritedIcon: '',
         effectiveIcon: '',
-        banner: '',
-        inheritedBanner: '',
-        effectiveBanner: '',
         typeId: effectiveTypeId,
         typeLabel: omoHolonTemplateGetTypeLabel(effectiveTypeId) || String(firstType.name || 'Holon'),
         visible: false,
@@ -1695,9 +1676,6 @@ function omoHolonTemplateBuildDraft(inheritsFromId, definitionHolonId) {
         lockedIcon: false,
         inheritedLockedIcon: false,
         effectiveLockedIcon: false,
-        lockedBanner: false,
-        inheritedLockedBanner: false,
-        effectiveLockedBanner: false,
         unique: false,
         link: false,
         adminParent: false,
@@ -3334,6 +3312,13 @@ function omoHolonTemplateFillForm(template, options) {
         omoHolonTemplateElements.color.value = current.color || '#f59e0b';
     }
     omoHolonTemplateSyncColorField();
+    if (omoHolonTemplateElements.unassignedColorEnabled) {
+        omoHolonTemplateElements.unassignedColorEnabled.checked = String(current.unassignedColor || '').trim() !== '';
+    }
+    if (omoHolonTemplateElements.unassignedColor) {
+        omoHolonTemplateElements.unassignedColor.value = current.unassignedColor || '#94a3b8';
+    }
+    omoHolonTemplateSyncUnassignedColorField();
     if (omoHolonTemplateElements.mandatory) {
         omoHolonTemplateElements.mandatory.checked = Boolean(current.mandatory);
     }
@@ -3343,10 +3328,6 @@ function omoHolonTemplateFillForm(template, options) {
     if (omoHolonTemplateElements.lockedIcon) {
         omoHolonTemplateElements.lockedIcon.checked = Boolean(current.lockedIcon);
         omoHolonTemplateElements.lockedIcon.disabled = false;
-    }
-    if (omoHolonTemplateElements.lockedBanner) {
-        omoHolonTemplateElements.lockedBanner.checked = Boolean(current.lockedBanner);
-        omoHolonTemplateElements.lockedBanner.disabled = false;
     }
     if (omoHolonTemplateElements.unique) {
         omoHolonTemplateElements.unique.checked = Boolean(current.unique);
@@ -3499,10 +3480,6 @@ function omoHolonTemplateSave(event) {
     if (omoHolonTemplateMediaFields.icon && typeof omoHolonTemplateMediaFields.icon.flushPending === 'function') {
         pendingMediaFlushes.push(omoHolonTemplateMediaFields.icon.flushPending());
     }
-    if (omoHolonTemplateMediaFields.banner && typeof omoHolonTemplateMediaFields.banner.flushPending === 'function') {
-        pendingMediaFlushes.push(omoHolonTemplateMediaFields.banner.flushPending());
-    }
-
     Promise.all(pendingMediaFlushes)
         .then(function () {
             const payload = {
@@ -3512,19 +3489,16 @@ function omoHolonTemplateSave(event) {
                 color: Boolean(omoHolonTemplateElements.colorEnabled && omoHolonTemplateElements.colorEnabled.checked)
                     ? String(omoHolonTemplateElements.color && omoHolonTemplateElements.color.value ? omoHolonTemplateElements.color.value : '')
                     : '',
+                unassignedColor: Boolean(omoHolonTemplateElements.unassignedColorEnabled && omoHolonTemplateElements.unassignedColorEnabled.checked)
+                    ? String(omoHolonTemplateElements.unassignedColor && omoHolonTemplateElements.unassignedColor.value ? omoHolonTemplateElements.unassignedColor.value : '')
+                    : '',
                 icon: omoHolonTemplateMediaFields.icon ? omoHolonTemplateMediaFields.icon.getValue() : '',
-                banner: omoHolonTemplateMediaFields.banner ? omoHolonTemplateMediaFields.banner.getValue() : '',
                 mandatory: Boolean(omoHolonTemplateElements.mandatory && omoHolonTemplateElements.mandatory.checked),
                 lockedName: Boolean(omoHolonTemplateElements.lockedName && omoHolonTemplateElements.lockedName.checked),
                 lockedIcon: omoHolonTemplateElements.lockedIcon
                     ? (omoHolonTemplateElements.lockedIcon.disabled
                         ? String(omoHolonTemplateElements.lockedIcon.dataset.localValue || '0') === '1'
                         : Boolean(omoHolonTemplateElements.lockedIcon.checked))
-                    : false,
-                lockedBanner: omoHolonTemplateElements.lockedBanner
-                    ? (omoHolonTemplateElements.lockedBanner.disabled
-                        ? String(omoHolonTemplateElements.lockedBanner.dataset.localValue || '0') === '1'
-                        : Boolean(omoHolonTemplateElements.lockedBanner.checked))
                     : false,
                 unique: Boolean(omoHolonTemplateElements.unique && omoHolonTemplateElements.unique.checked),
                 link: Boolean(omoHolonTemplateElements.link && omoHolonTemplateElements.link.checked),
@@ -3548,7 +3522,6 @@ function omoHolonTemplateSave(event) {
 
                 if (!payload.shareAsTemplate) {
                     payload.icon = '';
-                    payload.banner = '';
                 }
             }
 
@@ -3572,10 +3545,6 @@ function omoHolonTemplateSave(event) {
             if (omoHolonTemplateMediaFields.icon) {
                 omoHolonTemplateMediaFields.icon.appendToFormData(formData);
             }
-            if (omoHolonTemplateMediaFields.banner) {
-                omoHolonTemplateMediaFields.banner.appendToFormData(formData);
-            }
-
             return fetch(saveUrl, {
                 method: 'POST',
                 body: formData
@@ -3734,6 +3703,11 @@ if (omoHolonTemplateElements.root) {
 
         if (event.target === omoHolonTemplateElements.colorEnabled) {
             omoHolonTemplateSyncColorField();
+            return;
+        }
+
+        if (event.target === omoHolonTemplateElements.unassignedColorEnabled) {
+            omoHolonTemplateSyncUnassignedColorField();
             return;
         }
 
@@ -4480,6 +4454,12 @@ Promise.all([
     display: none !important;
 }
 
+.omo-color-field--compact {
+    grid-column: 1 / -1;
+    justify-self: start;
+    width: min(100%, 420px);
+}
+
 .omo-color-field__toggle {
     display: inline-flex;
     align-items: center;
@@ -4489,11 +4469,33 @@ Promise.all([
     color: var(--color-text-light);
 }
 
-.omo-color-field__toggle input {
+.omo-color-field__toggle input[type="checkbox"] {
     width: 16px;
     height: 16px;
     margin: 0;
     accent-color: var(--color-primary);
+}
+
+.omo-color-field__head .omo-color-field__toggle input[type="color"] {
+    width: 38px;
+    min-width: 38px;
+    min-height: 28px;
+    height: 28px;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 7px;
+    background: var(--color-surface-alt);
+    cursor: pointer;
+}
+
+.omo-color-field__head .omo-color-field__toggle input[type="color"]:disabled {
+    cursor: default;
+}
+
+#omo-template-color,
+#omo-template-unassigned-color {
+    padding: 0;
 }
 
 #omo-template-type-field[hidden],

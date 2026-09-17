@@ -1,4 +1,4 @@
-@import url('/common/assets/theme.css');
+@import url('/common/assets/theme.css?v=20260917-light-surfaces');
 
 :root {
     --radius-sm: 4px;
@@ -10,6 +10,7 @@
     --generic-space-4: 16px;
     --generic-space-5: 20px;
     --generic-space-6: 24px;
+    --generic-button-hover-halo: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 12%, transparent);
     --generic-type-size-xs: 0.78rem;
     --generic-type-size-micro: 0.7rem;
     --generic-type-size-sm: 0.84rem;
@@ -179,7 +180,7 @@ html[data-theme="dark"] .note-modal .note-modal-footer .note-btn-primary {
 
 .generic-section--stack {
     display: grid;
-    gap: var(--generic-section-gap, 0px);
+    gap: var(--param-section-gap, var(--generic-section-gap, 0px));
 }
 
 .generic-section--alt {
@@ -300,9 +301,9 @@ input:focus-visible + .generic-choice-card,
     --generic-soft-panel-background: var(--generic-container-surface-alt);
     display: block;
     padding: var(--generic-soft-panel-padding-block) var(--generic-soft-panel-padding-inline);
-    border: 1px solid var(--generic-soft-panel-border);
+    border: 1px solid var(--param-soft-panel-border, var(--generic-soft-panel-border));
     border-radius: var(--generic-soft-panel-radius);
-    background: var(--generic-soft-panel-background);
+    background: var(--param-soft-panel-background, var(--generic-soft-panel-background));
 }
 .generic-soft-panel {
     --generic-soft-panel-radius: var(--generic-container-radius);
@@ -459,7 +460,7 @@ input:focus-visible + .generic-choice-card,
     --generic-drawer-content-padding-block: var(--generic-space-4);
     --generic-drawer-content-padding-inline: var(--generic-container-padding-inline);
     display: grid;
-    gap: var(--generic-drawer-content-gap);
+    gap: var(--param-drawer-content-gap, var(--generic-drawer-content-gap));
     padding: var(--generic-drawer-content-padding-block) var(--generic-drawer-content-padding-inline);
 }
 
@@ -484,7 +485,7 @@ input:focus-visible + .generic-choice-card,
 
 .generic-form-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--generic-form-grid-min, 220px)), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--param-form-grid-min, var(--generic-form-grid-min, 220px))), 1fr));
     gap: var(--generic-form-grid-gap, var(--generic-space-4));
 }
 
@@ -513,6 +514,45 @@ input:focus-visible + .generic-choice-card,
     grid-column: 1 / -1;
 }
 
+/* Semantic field groups inside a drawer: a heading and divider, without a nested box. */
+.generic-fieldset {
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.generic-fieldset > legend {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0 0 var(--generic-space-3);
+    margin-bottom: var(--generic-space-4);
+    border-bottom: 1px solid var(--generic-container-border);
+}
+
+.generic-fieldset__body {
+    display: grid;
+    align-content: start;
+    gap: var(--generic-space-3);
+    min-width: 0;
+}
+
+.generic-setting-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--generic-space-3);
+    min-width: 0;
+}
+
+.generic-setting-row > * {
+    min-width: 0;
+}
+
+@media (max-width: 480px) {
+    .generic-setting-row { grid-template-columns: minmax(0, 1fr); }
+}
+
 .generic-checkbox {
     display: flex;
     align-items: flex-start;
@@ -533,6 +573,21 @@ input:focus-visible + .generic-choice-card,
     --generic-section-gap: var(--generic-space-4);
     min-width: 0;
     margin: 0;
+}
+
+/* Sections inside an existing drawer or panel need a divider, not another box. */
+.generic-form-section--divided {
+    padding: var(--generic-space-4) 0;
+    border: 0;
+    border-top: 1px solid var(--generic-container-border);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.generic-form-section--divided:first-child {
+    padding-top: 0;
+    border-top: 0;
 }
 
 .generic-form-section__heading {
@@ -561,6 +616,7 @@ input:focus-visible + .generic-choice-card,
 
 .generic-feedback.generic-feedback--collapse-empty {
     min-height: 0;
+    margin: 0;
 }
 
 .generic-feedback.is-success {
@@ -887,12 +943,24 @@ html[data-theme="dark"] .black-icon,
     filter: var(--black-icon-filter-dark, invert(1) brightness(1.2));
 }
 
+.generic-action-button,
+.generic-menu-toggle,
+.generic-menu-item {
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        color 0.15s ease,
+        transform 0.15s ease;
+}
+
 .generic-action-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 42px;
-    padding: 10px 16px;
+    gap: var(--generic-space-2);
+    min-height: 34px;
+    padding: 5px 16px;
     border: 1px solid transparent;
     border-radius: var(--radius-md);
     background: var(--color-surface-alt, #f0f2f5);
@@ -903,12 +971,6 @@ html[data-theme="dark"] .black-icon,
     text-decoration: none;
     cursor: pointer;
     box-sizing: border-box;
-    transition:
-        background-color 0.15s ease,
-        border-color 0.15s ease,
-        box-shadow 0.15s ease,
-        color 0.15s ease,
-        transform 0.15s ease;
 }
 
 .generic-action-button[hidden] {
@@ -919,7 +981,6 @@ html[data-theme="dark"] .black-icon,
     background: var(--color-primary, #2563eb);
     color: var(--color-text-inverse, #ffffff);
     border-color: color-mix(in srgb, var(--color-primary, #2563eb) 64%, transparent);
-    box-shadow: var(--shadow-md, 0 12px 24px rgba(0, 0, 0, 0.12));
 }
 
 .generic-action-button--secondary {
@@ -946,6 +1007,62 @@ html[data-theme="dark"] .black-icon,
     line-height: 1.2;
 }
 
+/* Clickable summary counts inside dashboard cards. */
+.generic-action-button--metric {
+    justify-content: flex-start;
+    min-width: 0;
+    min-height: 44px;
+    gap: var(--generic-space-2);
+    padding: 8px;
+    background: transparent;
+    text-align: left;
+}
+
+.generic-action-button--metric > strong {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    min-width: 28px;
+    min-height: 28px;
+    padding-inline: 5px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--generic-metric-accent, var(--color-primary, #2563eb)) 8%, var(--color-surface, #ffffff));
+    color: var(--generic-metric-accent, var(--color-primary, #2563eb));
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.generic-action-button--metric > span {
+    min-width: 0;
+    color: var(--generic-metric-label, var(--color-text-light, #64748b));
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.generic-action-button--metric:not(:disabled):hover {
+    background: color-mix(in srgb, var(--generic-metric-accent, var(--color-primary, #2563eb)) 4%, var(--color-surface, #ffffff));
+}
+
+.generic-action-button--metric.is-active,
+.generic-action-button--metric[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--generic-metric-accent, var(--color-primary, #2563eb)) 7%, var(--color-surface, #ffffff));
+    border-color: color-mix(in srgb, var(--generic-metric-accent, var(--color-primary, #2563eb)) 28%, var(--color-border, #e5e7eb));
+}
+
+.generic-action-button--metric.is-active > span,
+.generic-action-button--metric[aria-pressed="true"] > span {
+    color: var(--generic-metric-label, var(--color-text, #1f2937));
+}
+
+.generic-action-button--metric-alert {
+    --generic-metric-accent: var(--color-danger, #dc2626);
+    --generic-metric-label: var(--color-danger, #dc2626);
+}
+
 .generic-action-button--wide {
     width: 100%;
     min-height: 54px;
@@ -953,15 +1070,15 @@ html[data-theme="dark"] .black-icon,
 }
 
 .generic-action-button--danger {
-    background: color-mix(in srgb, #dc2626 12%, var(--color-surface, #ffffff));
-    color: #dc2626;
-    border-color: color-mix(in srgb, #dc2626 30%, var(--color-border, #e5e7eb));
+    background: color-mix(in srgb, var(--color-danger, #dc2626) 12%, var(--color-surface, #ffffff));
+    color: var(--color-danger, #dc2626);
+    border-color: color-mix(in srgb, var(--color-danger, #dc2626) 30%, var(--color-border, #e5e7eb));
 }
 
 .generic-action-button--icon-only {
-    width: 42px;
-    min-width: 42px;
-    padding-inline: 10px;
+    width: 34px;
+    min-width: 34px;
+    padding-inline: 7px;
 }
 
 .generic-action-button--icon-only svg {
@@ -976,6 +1093,7 @@ html[data-theme="dark"] .black-icon,
 
 .generic-action-button--quiet-icon {
     width: 34px;
+    height: 34px;
     min-width: 34px;
     min-height: 34px;
     padding: 0;
@@ -992,20 +1110,20 @@ html[data-theme="dark"] .black-icon,
     background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
 }
 
-.generic-action-button:not(:disabled):hover {
+.generic-action-button:not(:disabled):hover,
+.generic-menu-toggle:not(:disabled):hover,
+.generic-menu-item:not(:disabled):hover {
     transform: translateY(-1px);
+    box-shadow: var(--generic-button-hover-halo);
 }
 
 .generic-action-button--no-lift:not(:disabled):hover {
     transform: none;
 }
 
-.generic-action-button--no-lift.generic-action-button--main:not(:disabled):hover {
-    box-shadow: var(--shadow-md, 0 12px 24px rgba(0, 0, 0, 0.12));
-}
-
-.generic-action-button--main:not(:disabled):hover {
-    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.22);
+.generic-action-button:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--color-primary, #2563eb) 45%, transparent);
+    outline-offset: 3px;
 }
 
 .generic-action-button--secondary:not(:disabled):hover {
@@ -1014,8 +1132,8 @@ html[data-theme="dark"] .black-icon,
 }
 
 .generic-action-button--danger:not(:disabled):hover {
-    background: #fef2f2;
-    border-color: #fecaca;
+    background: color-mix(in srgb, var(--color-danger, #dc2626) 18%, var(--color-surface, #ffffff));
+    border-color: color-mix(in srgb, var(--color-danger, #dc2626) 48%, var(--color-border, #e5e7eb));
 }
 
 .generic-action-button:disabled {
@@ -1100,6 +1218,7 @@ html[data-theme="dark"] .black-icon,
     --generic-form-control-color: var(--color-text, #1f2937);
     --generic-form-control-focus-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary, #2563eb) 14%, transparent);
     display: block;
+    min-width: 0;
     width: 100%;
     min-height: var(--generic-form-control-min-height);
     padding: var(--generic-form-control-padding-block) var(--generic-form-control-padding-inline);
@@ -1109,6 +1228,7 @@ html[data-theme="dark"] .black-icon,
     color: var(--generic-form-control-color);
     font: inherit;
     box-sizing: border-box;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .generic-form-control:focus {
@@ -1116,6 +1236,34 @@ html[data-theme="dark"] .black-icon,
     border-color: var(--generic-form-control-border-focus);
     box-shadow: var(--generic-form-control-focus-shadow);
     background: var(--generic-form-control-background-focus);
+}
+
+/* Composite controls (for example tags) share the same focus treatment. */
+.generic-form-control--composite:focus-within {
+    border-color: var(--generic-form-control-border-focus);
+    box-shadow: var(--generic-form-control-focus-shadow);
+    background: var(--generic-form-control-background-focus);
+}
+
+.generic-form-control:disabled {
+    cursor: not-allowed;
+    color: var(--color-text-light, #64748b);
+    background: var(--color-surface-alt, #f0f2f5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .generic-action-button,
+    .generic-menu-toggle,
+    .generic-menu-item,
+    .generic-form-control {
+        transition: none;
+    }
+
+    .generic-action-button:not(:disabled):hover,
+    .generic-menu-toggle:not(:disabled):hover,
+    .generic-menu-item:not(:disabled):hover {
+        transform: none;
+    }
 }
 
 textarea.generic-form-control {
@@ -1403,6 +1551,7 @@ textarea.generic-form-control--compact {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: var(--generic-space-1);
     min-height: 42px;
     padding: var(--param-tabs-tab-padding-block) var(--param-tabs-tab-padding-inline);
     border: 1px solid var(--param-tabs-tab-border);
@@ -1421,6 +1570,30 @@ textarea.generic-form-control--compact {
         border-color 0.15s ease,
         color 0.15s ease,
         transform 0.15s ease;
+}
+
+.generic-tabs__tab-icon {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
+html[data-theme="dark"] .generic-monochrome-icon {
+    filter: invert(1);
+}
+
+.generic-tabs__tab .generic-monochrome-icon {
+    transition: opacity 0.15s ease;
+}
+
+html[data-theme="dark"] .generic-tabs__tab:not(.is-active) .generic-monochrome-icon {
+    opacity: 0.62;
+}
+
+html[data-theme="dark"] .generic-tabs__tab:hover .generic-monochrome-icon,
+html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-icon {
+    opacity: 1;
 }
 
 .generic-tabs__tab:hover {
@@ -1458,6 +1631,50 @@ textarea.generic-form-control--compact {
     border-radius: 0 0 var(--param-tabs-panel-radius) var(--param-tabs-panel-radius);
     background: var(--param-tabs-panel-background);
     box-shadow: var(--param-tabs-panel-shadow);
+}
+
+.generic-tabs--equal > .generic-tabs__list {
+    flex-wrap: nowrap;
+    align-items: stretch;
+}
+.generic-tabs--equal > .generic-tabs__list > .generic-tabs__tab {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.generic-tabs--icons-mobile {
+    --param-tabs-tab-padding-inline: var(--generic-space-2);
+}
+
+/* Keep a row of tabs usable on narrow screens while preserving their accessible names. */
+@media (max-width: 640px) {
+    .generic-tabs--icons-mobile > .generic-tabs__list {
+        flex-wrap: nowrap;
+        padding-inline: var(--generic-space-1);
+    }
+
+    .generic-tabs--icons-mobile > .generic-tabs__list > .generic-tabs__tab {
+        flex: 1 1 0;
+        min-width: 0;
+        padding-inline: var(--generic-space-2);
+    }
+
+    .generic-tabs--icons-mobile .generic-tabs__tab-label {
+        display: none;
+    }
+}
+
+.generic-tabs--embedded {
+    gap: var(--generic-space-4);
+}
+
+/* The host drawer supplies the surface and its panels own their padding. */
+.generic-tabs--embedded > .generic-tabs__panels {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .generic-tabs__panel {
@@ -1898,16 +2115,17 @@ textarea.generic-form-control--compact {
     line-height: 1;
 }
 
-.generic-menu-toggle:hover,
-.generic-menu-toggle:focus-visible,
+.generic-menu-toggle:not(:disabled):hover,
+.generic-menu-toggle:not(:disabled):focus-visible,
+.generic-menu-toggle[aria-expanded="true"],
 .generic-menu.is-open > .generic-menu-toggle {
     border-color: color-mix(in srgb, var(--generic-menu-accent, var(--color-primary, #2563eb)) 36%, var(--generic-menu-border, var(--color-border, #d1d5db)));
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--generic-menu-accent, var(--color-primary, #2563eb)) 12%, transparent);
+    box-shadow: var(--generic-button-hover-halo);
     outline: none;
 }
 
-.generic-menu-toggle:hover,
-.generic-menu-toggle:focus-visible {
+.generic-menu-toggle:not(:disabled):hover,
+.generic-menu-toggle:not(:disabled):focus-visible {
     color: var(--generic-menu-accent, var(--color-primary, #2563eb));
 }
 
@@ -2142,6 +2360,17 @@ textarea.generic-form-control--compact {
     transition: transform 0.2s ease;
 }
 
+.generic-accordion > summary {
+    padding-block: var(--generic-space-2);
+    color: var(--color-primary, #2563eb);
+    font-weight: 600;
+    cursor: pointer;
+}
+.generic-accordion > summary:focus-visible {
+    outline: 2px solid var(--color-primary, #2563eb);
+    outline-offset: 2px;
+}
+
 .generic-accordion__content {
     margin-top: 10px;
 }
@@ -2278,5 +2507,85 @@ textarea.generic-form-control--compact {
 @media (prefers-reduced-motion: reduce) {
     .generic-loading-indicator__spinner {
         animation-duration: 1.8s;
+    }
+}
+
+/* Fields with a nearby copy/action button, shared by settings dialogs. */
+.generic-control-action {
+    display: flex;
+    align-items: end;
+    flex-wrap: wrap;
+    gap: var(--generic-space-2);
+}
+.generic-control-action > .generic-form-field,
+.generic-control-action > .generic-form-control {
+    flex: 1 1 220px;
+    min-width: 0;
+}
+.generic-form-actions--sticky {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding-block: var(--generic-space-3);
+    border-top: 1px solid var(--color-border, #e5e7eb);
+    background: var(--color-surface, #ffffff);
+}
+.generic-form-actions--sticky > .generic-feedback {
+    flex: 1 1 200px;
+    margin: 0;
+}
+.generic-menu-panel--descriptive {
+    width: 320px;
+}
+.generic-menu-item--descriptive {
+    display: grid;
+    gap: 4px;
+    padding: 12px;
+}
+.generic-menu-item__description {
+    color: var(--color-text-light, #64748b);
+    font-size: .8rem;
+    line-height: 1.45;
+}
+
+/* A compact action menu can remain directly available on small screens. */
+@media (max-width: 768px) {
+    .generic-menu.generic-menu--expanded-mobile {
+        width: 100%;
+        flex: 1 0 100%;
+        order: 1;
+    }
+    .generic-menu--expanded-mobile > .generic-menu-toggle { display: none; }
+    .generic-menu--expanded-mobile > .generic-menu-panel {
+        position: static;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--generic-space-2);
+        width: 100%;
+        max-width: none;
+        padding: 0;
+        border: 0;
+        box-shadow: none;
+        background: transparent;
+    }
+    .generic-menu--expanded-mobile .generic-menu-item {
+        min-height: 44px;
+        padding: 8px;
+        text-align: left;
+        align-content: center;
+    }
+    .generic-menu--expanded-mobile .generic-menu-item__description { display: none; }
+}
+
+/* Compact actions for responsive header menus, including nested action groups. */
+@media (max-width: 1024px) {
+    .generic-menu-panel--compact-mobile .generic-action-button,
+    .generic-menu-panel--compact-mobile .generic-menu-item {
+        box-sizing: border-box;
+        min-height: 34px;
+        height: auto;
+        padding: 5px 12px;
+        font-size: inherit;
+        line-height: 1.2;
     }
 }

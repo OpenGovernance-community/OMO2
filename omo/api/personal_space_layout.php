@@ -41,28 +41,37 @@ if ($currentUserId <= 0) {
 if ($csrfToken === '' || $expectedCsrfToken === '' || !hash_equals($expectedCsrfToken, $csrfToken)) {
     $respond(false, 'Jeton de securite invalide.', array(), 403);
 }
-if (!in_array($scope, array('personal', 'personal_reset', 'holon', 'holon_reset', 'organization_template', 'organization_template_reset', 'application_type', 'application_type_reset'), true)) {
+if (!in_array($scope, array('temporary', 'temporary_reset', 'personal', 'personal_reset', 'holon', 'holon_reset', 'organization_template', 'organization_template_reset', 'application_type', 'application_type_reset', 'global', 'global_reset'), true)) {
     $respond(false, 'Portee d enregistrement invalide.', array(), 400);
 }
 
 $organization = new Organization();
-$holon = new Holon();
-if (!$organization->load($organizationId) || !$holon->load($holonId)) {
+$holon = null;
+if (!$organization->load($organizationId)) {
     $respond(false, 'Contexte introuvable.', array(), 404);
 }
 
 $rootHolon = $organization->getEnabledStructuralRootHolon();
 $isSiteAdmin = function_exists('commonUserHasSiteAdminOverride') && commonUserHasSiteAdminOverride($currentUserId);
-if (
-    !($rootHolon instanceof Holon)
-    || !$holon->isDescendantOf((int)$rootHolon->getId(), true)
-    || (!$holon->canViewDetail() && !$isSiteAdmin)
-) {
-    $respond(false, 'Contexte inaccessible.', array(), 403);
+if ($holonId > 0) {
+    $candidateHolon = new Holon();
+    if (
+        !$candidateHolon->load($holonId)
+        || !($rootHolon instanceof Holon)
+        || !$candidateHolon->isDescendantOf((int)$rootHolon->getId(), true)
+        || (!$candidateHolon->canViewDetail() && !$isSiteAdmin)
+    ) {
+        $respond(false, 'Contexte inaccessible.', array(), 403);
+    }
+    $holon = $candidateHolon;
+} elseif (!in_array($scope, array('temporary', 'temporary_reset', 'global', 'global_reset'), true)) {
+    $respond(false, 'Contexte introuvable.', array(), 404);
 }
 
 $layout = UserHolon::normalizeDashboardLayout($payload['layout'] ?? null);
-$availableModuleScopes = omoApiGetAvailableContextScopes(true, $holon, $rootHolon);
+$availableModuleScopes = $holon instanceof Holon
+    ? omoApiGetAvailableContextScopes(true, $holon, $rootHolon)
+    : array('contextual');
 foreach ($layout as &$module) {
     $moduleType = trim((string)($module['type'] ?? ''));
     $moduleCatalogItem = UserHolon::getDashboardModuleCatalog()[$moduleType] ?? array();
@@ -78,19 +87,25 @@ unset($module);
 $dashboardAccess = omoDashboardViewPreferencesGetAccess($currentUserId, $organization, $holon);
 $interfaceLevel = (int)$dashboardAccess['interfaceLevel'];
 $canEditDashboard = !empty($dashboardAccess['canEdit']);
+$canSaveTemporary = !empty($dashboardAccess['canSaveTemporary']);
+$canSavePersonalLayout = !empty($dashboardAccess['canSavePersonal']);
 $canSaveHolonDefault = !empty($dashboardAccess['canSaveHolon']);
 $canSaveOrganizationTemplateDefault = !empty($dashboardAccess['canSaveOrganizationTemplate']);
 $canSaveApplicationBaseTypeDefault = !empty($dashboardAccess['canSaveApplicationType']);
-$canResetPersonalLayout = !empty($dashboardAccess['canSavePersonal']);
+$canSaveGlobalDefault = !empty($dashboardAccess['canSaveGlobal']);
+$canResetTemporaryLayout = $canSaveTemporary;
+$canResetPersonalLayout = $canSavePersonalLayout;
 $canResetHolonDefault = $canSaveHolonDefault;
 $canResetOrganizationTemplateDefault = $canSaveOrganizationTemplateDefault;
 $canResetApplicationBaseTypeDefault = $canSaveApplicationBaseTypeDefault;
-$directTemplateKey = $holon->getDashboardDirectTemplateLayoutKey();
-$baseTypeKey = $holon->getDashboardBaseTypeLayoutKey();
+$directTemplateKey = $holon instanceof Holon ? $holon->getDashboardDirectTemplateLayoutKey() : '';
+$baseTypeKey = $holon instanceof Holon ? $holon->getDashboardBaseTypeLayoutKey() : '';
 
 if (
     !$canEditDashboard
-    || ($scope === 'personal' && $interfaceLevel !== Organization::INTERFACE_LEVEL_EXPERT)
+    || ($scope === 'temporary' && ($interfaceLevel !== Organization::INTERFACE_LEVEL_DISCOVERY || !$canSaveTemporary))
+    || ($scope === 'temporary_reset' && ($interfaceLevel !== Organization::INTERFACE_LEVEL_DISCOVERY || !$canResetTemporaryLayout))
+    || ($scope === 'personal' && ($interfaceLevel === Organization::INTERFACE_LEVEL_DISCOVERY || !$canSavePersonalLayout))
     || ($scope === 'personal_reset' && !$canResetPersonalLayout)
     || ($scope === 'holon' && !$canSaveHolonDefault)
     || ($scope === 'holon_reset' && !$canResetHolonDefault)
@@ -98,13 +113,19 @@ if (
     || ($scope === 'organization_template_reset' && !$canResetOrganizationTemplateDefault)
     || ($scope === 'application_type' && !$canSaveApplicationBaseTypeDefault)
     || ($scope === 'application_type_reset' && !$canResetApplicationBaseTypeDefault)
+    || ($scope === 'global' && !$canSaveGlobalDefault)
+    || ($scope === 'global_reset' && !$canSaveGlobalDefault)
     || (in_array($scope, array('organization_template', 'organization_template_reset'), true) && $templateKey !== $directTemplateKey)
 ) {
     $respond(false, 'Droits administrateur requis.', array(), 403);
 }
 
 $saveResult = null;
-if ($scope === 'personal') {
+if ($scope === 'temporary') {
+    $saveResult = omoDashboardViewPreferencesSaveTemporaryLayout($currentUserId, $organizationId, $holonId, $layout);
+} elseif ($scope === 'temporary_reset') {
+    $saveResult = omoDashboardViewPreferencesClearTemporaryLayout($currentUserId, $organizationId, $holonId);
+} elseif ($scope === 'personal') {
     $saveResult = UserHolon::saveDashboardLayoutForUser($currentUserId, $holonId, $layout);
 } elseif ($scope === 'personal_reset') {
     $saveResult = UserHolon::clearDashboardLayoutForUser($currentUserId, $holonId);
@@ -125,6 +146,10 @@ if ($scope === 'personal') {
         $saveResult = ApplicationSetting::saveDashboardBaseTypeDefaultLayout((int)$holon->get('IDtypeholon'), $layout);
     } elseif ($scope === 'application_type_reset') {
         $saveResult = ApplicationSetting::clearDashboardBaseTypeDefaultLayout((int)$holon->get('IDtypeholon'));
+    } elseif ($scope === 'global') {
+        $saveResult = ApplicationSetting::saveDashboardGlobalDefaultLayout($layout);
+    } elseif ($scope === 'global_reset') {
+        $saveResult = ApplicationSetting::clearDashboardGlobalDefaultLayout();
     }
 }
 if (!is_array($saveResult) || empty($saveResult['status'])) {

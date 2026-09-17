@@ -131,7 +131,7 @@ if (!function_exists('omoPolicyCanCreateLocalRule')) {
     function omoPolicyCanCreateLocalRule(array $context)
     {
         $holon = $context['currentHolon'] ?? null;
-        return $holon instanceof Holon && $holon->canEdit();
+        return $holon instanceof Holon && $holon->isAllowed('CAN_CREATE_RULE', false);
     }
 }
 

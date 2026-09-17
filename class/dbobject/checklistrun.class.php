@@ -100,7 +100,6 @@ class ChecklistRun extends DbObject
 
     public function getPvReviewItems()
     {
-        $statusCatalog = Project::getStatusCatalog();
         $reviewItems = [];
         foreach ($this->getItems() as $runItem) {
             if (!($runItem instanceof ChecklistRunItem)) {
@@ -121,7 +120,7 @@ class ChecklistRun extends DbObject
                 'title' => $project instanceof Project ? trim((string)$project->get('title')) : ($templateProject instanceof Project ? trim((string)$templateProject->get('title')) : ''),
                 'projectId' => $project instanceof Project ? (int)$project->getId() : 0,
                 'status' => $status,
-                'statusLabel' => $status !== '' ? (string)($statusCatalog[$status]['label'] ?? $status) : ($state === ChecklistRunItem::STATE_BLOCKED ? 'Bloque' : 'En attente'),
+                'statusLabel' => $status !== '' ? Project::getOrganizationStatusLabel((int)$sizedProject->get('IDorganization'), $status) : ($state === ChecklistRunItem::STATE_BLOCKED ? 'Bloque' : 'En attente'),
                 'size' => $size,
                 'weight' => Project::getSizeWeight($size),
                 'holonLabel' => (string)($metadata['holonLabel'] ?? ''),

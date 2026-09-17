@@ -5,7 +5,7 @@ if (!isset($calendarEvents, $dashboardEventCounts, $dashboardMetricLabels)) {
 ?>
 <div class="omo-dashboard-metrics omo-dashboard-metrics--two" role="group">
     <?php foreach ($dashboardEventCounts as $metricKey => $metricCount): ?>
-        <button type="button" class="omo-dashboard-metric" data-omo-dashboard-filter="<?= omoApiEscape($metricKey) ?>"><strong><?= (int)$metricCount ?></strong><span><?= omoApiEscape($dashboardMetricLabels['event'][$metricKey] ?? $metricKey) ?></span></button>
+        <button type="button" class="omo-dashboard-metric generic-action-button generic-action-button--metric generic-action-button--no-lift" aria-pressed="false" data-omo-dashboard-filter="<?= omoApiEscape($metricKey) ?>"><strong><?= (int)$metricCount ?></strong><span><?= omoApiEscape($dashboardMetricLabels['event'][$metricKey] ?? $metricKey) ?></span></button>
     <?php endforeach; ?>
 </div>
 <div class="omo-personal-space__item-list omo-dashboard-module__list">

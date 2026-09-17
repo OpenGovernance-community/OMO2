@@ -45,7 +45,7 @@ $adminLabelLower = function_exists('mb_strtolower')
 
 switch ($action) {
     case 'remove_preview':
-        if (!$holon->canEdit()) {
+        if (!$holon->isAllowed('CAN_DELETE_MEMBER', false)) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
@@ -62,7 +62,7 @@ switch ($action) {
         break;
 
     case 'remove':
-        if (!$holon->canEdit()) {
+        if (!$holon->isAllowed('CAN_DELETE_MEMBER', false)) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,
@@ -100,7 +100,7 @@ switch ($action) {
         break;
 
     case 'cancel_invitation':
-        if (!$holon->canEdit()) {
+        if (!$holon->isAllowed('CAN_DELETE_MEMBER', false)) {
             http_response_code(403);
             echo json_encode(array(
                 'status' => false,

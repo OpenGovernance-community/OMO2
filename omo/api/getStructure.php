@@ -52,6 +52,10 @@ function omoGetStructurePanelSourceLang(): array
             'text' => 'Imprimer',
             'context' => 'Structure action menu item used to print the current structure.',
         ],
+        'structure.actions.refresh' => [
+            'text' => 'Rafraichir',
+            'context' => 'Structure action menu item that clears caches and reloads the current structure.',
+        ],
         'structure.actions.share' => [
             'text' => 'Partager',
             'context' => 'Structure action menu item used to open the sharing dialog for the current structure.',
@@ -79,6 +83,14 @@ function omoGetStructurePanelSourceLang(): array
         'structure.list.search.placeholder' => [
             'text' => 'Filtre rapide',
             'context' => 'Placeholder shown above the structure list view search field.',
+        ],
+        'structure.member.focus_line' => [
+            'text' => 'Focus : {focus}',
+            'context' => 'Second line of the terminal member avatar tooltip when a member focus is defined.',
+        ],
+        'structure.member.unassigned' => [
+            'text' => 'Non attribué',
+            'context' => 'Label displayed inside a selected terminal structure element with no assigned people.',
         ],
         'structure.message.invalid' => [
             'text' => 'Structure invalide.',
@@ -257,9 +269,12 @@ $structureTranslations = [
     'exportModalIntro' => t('structure.actions.export.modal_intro'),
     'exportModalTitle' => t('structure.actions.export.modal_title'),
     'actionsPrint' => t('structure.actions.print'),
+    'actionsRefresh' => t('structure.actions.refresh'),
     'actionsShare' => t('structure.actions.share'),
     'browserGenericName' => t('structure.browser.generic_name'),
     'emptySearch' => t('structure.list.empty_search'),
+    'memberFocusLine' => t('structure.member.focus_line'),
+    'memberUnassigned' => t('structure.member.unassigned'),
     'hidePropertiesAria' => t('structure.list.properties.hide_aria'),
     'invalidStructure' => t('structure.message.invalid'),
     'loadError' => t('structure.message.load_error'),
@@ -785,6 +800,7 @@ input:checked + .slider::before {
                 <?php if ($canExportStructure) { ?>
                     <button type="button" class="structure-actions__item" data-omo-structure-action="export"><?= omoApiEscape(t('structure.actions.export')) ?></button>
                 <?php } ?>
+                <button type="button" class="structure-actions__item" data-omo-structure-action="refresh"><?= omoApiEscape(t('structure.actions.refresh')) ?></button>
                 <?php if ($canCreateShareLink) { ?>
                     <button type="button" class="structure-actions__item" data-omo-structure-action="share"><?= omoApiEscape(t('structure.actions.share')) ?></button>
                 <?php } ?>
@@ -1048,7 +1064,8 @@ function getNodeDisplayColor(node, fallbackColor) {
   }
 
   if (!roleHasAttachedUsers(node)) {
-    return colorToDesaturatedGray(baseColor, fallbackColor);
+    const unassignedColor = String(node && node.unassignedColor || "").trim();
+    return unassignedColor || colorToDesaturatedGray(baseColor, fallbackColor);
   }
 
   return baseColor;
@@ -1909,6 +1926,17 @@ $(document)
       return;
     }
 
+    if (action === "refresh") {
+      const currentHolonId = omoGetCurrentStructureHolonId();
+      if (typeof window.omoInvalidateStructureDataCache === "function") {
+        window.omoInvalidateStructureDataCache();
+      }
+      if (typeof window.omoReloadStructureAndFocus === "function") {
+        window.omoReloadStructureAndFocus(currentHolonId || null, {quickZoom: true});
+      }
+      return;
+    }
+
     if (action !== "share" || !canCreateShareLink) {
       return;
     }
@@ -1966,10 +1994,12 @@ $(document)
     let structureDisplaySettings = normalizeStructureDisplaySettings(null);
     let structureProjectTitles = {};
     let structureAuthorityLabels = {};
+    const structureAvatarImageCache = {};
 
     let canvas, hiddenCanvas, context, hiddenContext;
     let pack, nodes, nodeCount, focus, currentnode, hoverNode = null;
     let highlightedMemberUserId = null;
+    let structureMemberAvatarHitAreas = [];
     let centerX, centerY, chartwidth, chartheight, diameter;
     let zoomInfo, colToCircle = {};
     let ease, interpolator = null, duration = 500, timeElapsed = 0, vOld;
@@ -2003,7 +2033,8 @@ $(document)
         labelMinFontSize: Number.isFinite(labelMinFontSize) ? clampNumber(labelMinFontSize, 0, 30) : 0,
         textOutlineEnabled: source.textOutlineEnabled === undefined
           ? true
-          : !(source.textOutlineEnabled === false || source.textOutlineEnabled === 0 || source.textOutlineEnabled === "0")
+          : !(source.textOutlineEnabled === false || source.textOutlineEnabled === 0 || source.textOutlineEnabled === "0"),
+        showTerminalMembers: source.showTerminalMembers === true || source.showTerminalMembers === 1 || source.showTerminalMembers === "1"
       };
     }
     const structureBrowserInfo = {
@@ -2414,6 +2445,7 @@ $(document)
 
       normalizedNode.ID = String(normalizedNode.ID || "");
       normalizedNode.type = String(normalizedNode.type || "");
+      normalizedNode.unassignedColor = String(normalizedNode.unassignedColor || "");
       normalizedNode.size = Number(normalizedNode.size || (normalizedNode.type === "1" ? 10 : 20));
       normalizedNode.depth = Number.isFinite(Number(normalizedNode.depth)) ? Number(normalizedNode.depth) : normalizedDepth;
       normalizedNode.userIds = Array.isArray(normalizedNode.userIds)
@@ -2421,6 +2453,22 @@ $(document)
             return Number(userId);
           }).filter(function (userId) {
             return !Number.isNaN(userId) && userId > 0;
+          })
+        : [];
+      normalizedNode.memberCards = Array.isArray(normalizedNode.memberCards)
+        ? normalizedNode.memberCards.map(function (member) {
+            const card = member && typeof member === "object" ? member : {};
+            return {
+              userId: Number(card.userId || 0),
+              displayName: String(card.displayName || ""),
+              photoUrl: String(card.photoUrl || ""),
+              initials: String(card.initials || ""),
+              avatarSeed: String(card.avatarSeed || ""),
+              focus: String(card.focus || ""),
+              isAdmin: Boolean(card.isAdmin)
+            };
+          }).filter(function (card) {
+            return card.userId > 0;
           })
         : [];
       normalizedNode.children = children
@@ -2738,7 +2786,240 @@ $(document)
       });
     }
 
+    function getTerminalMemberCards(node) {
+      if (
+        !structureDisplaySettings.showTerminalMembers
+        || !node
+        || !currentnode
+        || String(node.ID) !== String(currentnode.ID)
+        || !Array.isArray(node.memberCards)
+        || (Array.isArray(node.children) && node.children.length > 0)
+      ) {
+        return null;
+      }
+
+      return {
+        admins: node.memberCards.filter(function (member) {
+          return !!member.isAdmin;
+        }),
+        members: node.memberCards.filter(function (member) {
+          return !member.isAdmin;
+        })
+      };
+    }
+
+    function getStructureAvatarImage(photoUrl) {
+      const url = String(photoUrl || "").trim();
+      if (!url) {
+        return null;
+      }
+
+      if (structureAvatarImageCache[url]) {
+        return structureAvatarImageCache[url];
+      }
+
+      const image = new Image();
+      image.addEventListener("load", function () {
+        if (context) {
+          drawCanvas(context, false);
+        }
+      });
+      image.addEventListener("error", function () {
+        image.failed = true;
+        if (context) {
+          drawCanvas(context, false);
+        }
+      });
+      image.src = url;
+      structureAvatarImageCache[url] = image;
+      return image;
+    }
+
+    function getStructureAvatarColor(member) {
+      const source = String(member.avatarSeed || member.displayName || member.userId || "P");
+      let hash = 0;
+      for (let index = 0; index < source.length; index += 1) {
+        hash = ((hash << 5) - hash) + source.charCodeAt(index);
+        hash |= 0;
+      }
+      return "hsl(" + Math.abs(hash % 360) + ", 48%, 76%)";
+    }
+
+    function getStructureMemberTooltip(member) {
+      const lines = [String(member.displayName || member.initials || "Profil").trim() || "Profil"];
+      const focus = String(member.focus || "").trim();
+      if (focus) {
+        lines.push(String(structureTranslations.memberFocusLine || "Focus : {focus}").replace("{focus}", focus));
+      }
+      return lines.join("\n");
+    }
+
+    function drawStructureMemberAvatar(ctx, member, label, x, y, radius, opacity) {
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, 2 * Math.PI, true);
+      ctx.fillStyle = getStructureAvatarColor(member);
+      ctx.fill();
+      ctx.clip();
+
+      const image = getStructureAvatarImage(member.photoUrl);
+      if (image && image.complete && image.naturalWidth > 0 && !image.failed) {
+        const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+        const sourceX = (image.naturalWidth - sourceSize) / 2;
+        const sourceY = (image.naturalHeight - sourceSize) / 2;
+        ctx.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, x - radius, y - radius, radius * 2, radius * 2);
+      } else {
+        ctx.fillStyle = "rgba(31, 41, 55, 0.88)";
+        ctx.font = "700 " + Math.max(9, Math.round(radius * 0.82)) + "px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(label, x, y + 1);
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, 2 * Math.PI, true);
+      ctx.lineWidth = Math.max(1.5, radius * 0.12);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.94)";
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function getTerminalMemberLayout(cards, nodeR, maximumAvatarRadius) {
+      if (!Array.isArray(cards) || cards.length === 0) {
+        return null;
+      }
+
+      const maximumVisibleCards = 12;
+      const visibleCards = cards.length > maximumVisibleCards
+        ? cards.slice(0, maximumVisibleCards - 1).concat([{moreCount: cards.length - maximumVisibleCards + 1}])
+        : cards;
+      const columns = visibleCards.length <= 4
+        ? visibleCards.length
+        : Math.ceil(visibleCards.length / 2);
+      const rows = Math.ceil(visibleCards.length / columns);
+      const devicePixelRatio = window.devicePixelRatio || 1;
+      const horizontalGap = Math.max(8 * devicePixelRatio, nodeR * 0.055);
+      const availableWidth = nodeR * 1.68;
+      const widthRadius = (availableWidth - (horizontalGap * Math.max(0, columns - 1))) / (2 * columns);
+      const heightRadius = rows === 1 ? nodeR * 0.29 : nodeR * 0.18;
+      const avatarRadius = Math.min(
+        52 * devicePixelRatio,
+        widthRadius,
+        heightRadius,
+        Number.isFinite(maximumAvatarRadius) ? maximumAvatarRadius : Number.POSITIVE_INFINITY
+      );
+
+      if (avatarRadius < 10 * devicePixelRatio) {
+        return null;
+      }
+
+      return {
+        cards: visibleCards,
+        columns: columns,
+        rows: rows,
+        radius: avatarRadius,
+        horizontalGap: horizontalGap,
+        rowGap: Math.max(8 * devicePixelRatio, avatarRadius * 0.28)
+      };
+    }
+
+    function drawTerminalMemberGroup(ctx, cards, nodeX, nodeY, nodeR, isAdmin, opacity, maximumAvatarRadius) {
+      const layout = getTerminalMemberLayout(cards, nodeR, maximumAvatarRadius);
+      if (!layout) {
+        return 0;
+      }
+
+      const firstRowY = layout.rows === 1
+        ? nodeY + (isAdmin ? -(nodeR * 0.48) : nodeR * 0.48)
+        : nodeY + (isAdmin ? -(nodeR * 0.59) : nodeR * 0.18);
+
+      layout.cards.forEach(function (member, index) {
+        const row = Math.floor(index / layout.columns);
+        const column = index % layout.columns;
+        const cardsInRow = Math.min(layout.columns, layout.cards.length - (row * layout.columns));
+        const rowWidth = (cardsInRow * layout.radius * 2) + (Math.max(0, cardsInRow - 1) * layout.horizontalGap);
+        const avatarX = nodeX - (rowWidth / 2) + layout.radius + (column * ((layout.radius * 2) + layout.horizontalGap));
+        const avatarY = firstRowY + (row * ((layout.radius * 2) + layout.rowGap));
+
+        if (member.moreCount) {
+          drawStructureMemberAvatar(
+            ctx,
+            {userId: 0, displayName: "", initials: "", avatarSeed: "more"},
+            "+" + String(member.moreCount),
+            avatarX,
+            avatarY,
+            layout.radius,
+            opacity
+          );
+          return;
+        }
+
+        const initials = String(member.initials || member.displayName || "P").trim().slice(0, 2).toUpperCase();
+        drawStructureMemberAvatar(ctx, member, initials || "P", avatarX, avatarY, layout.radius, opacity);
+        structureMemberAvatarHitAreas.push({
+          x: avatarX,
+          y: avatarY,
+          radius: layout.radius,
+          member: member
+        });
+      });
+
+      return layout.radius;
+    }
+
+    function drawTerminalMembers(ctx, node, nodeX, nodeY, nodeR, opacity) {
+      const groups = getTerminalMemberCards(node);
+      if (!showText || !groups || nodeR < 62) {
+        return;
+      }
+
+      if (groups.admins.length === 0 && groups.members.length === 0) {
+        drawText(
+          ctx,
+          structureTranslations.memberUnassigned || "Non attribué",
+          Math.min(26, Math.round(nodeR / 5)),
+          nodeX,
+          nodeY,
+          nodeR,
+          chartColors.labelLight,
+          chartColors.labelDark,
+          "bold",
+          "Arial",
+          opacity
+        );
+        return;
+      }
+
+      const adminRadius = drawTerminalMemberGroup(
+        ctx,
+        groups.admins,
+        nodeX,
+        nodeY,
+        nodeR,
+        true,
+        opacity,
+        Number.POSITIVE_INFINITY
+      );
+      drawTerminalMemberGroup(
+        ctx,
+        groups.members,
+        nodeX,
+        nodeY,
+        nodeR,
+        false,
+        opacity,
+        adminRadius > 0 ? adminRadius * 0.8 : Number.POSITIVE_INFINITY
+      );
+    }
+
     function drawCanvas(chosenContext, hidden = false) {
+      if (!hidden) {
+        structureMemberAvatarHitAreas = [];
+      }
       chosenContext.clearRect(0, 0, chartwidth, chartheight);
       chosenContext.fillStyle = chartColors.background;
       chosenContext.fillRect(0, 0, chartwidth, chartheight);
@@ -2838,7 +3119,10 @@ $(document)
           const titleFont = "Arial";
           const nodeTextOpacity = getNodeTextOpacity(node);
 
-          if ((node.type != "1" && node === currentnode) || currentnode.parent === node) {
+          const selectedRoleUsesTerminalMemberLayout = structureDisplaySettings.showTerminalMembers
+            && node.type == "1"
+            && node === currentnode;
+          if ((node.type != "1" && node === currentnode) || currentnode.parent === node || selectedRoleUsesTerminalMemberLayout) {
             const fontSizeTitle = Math.round(nodeR / 6);
             const circularMinimumFontSize = structureDisplaySettings.labelMinFontSize > 0
               ? structureDisplaySettings.labelMinFontSize
@@ -2860,6 +3144,20 @@ $(document)
             }
           }
         }
+      }
+
+      if (!hidden && currentnode) {
+        const currentNodeX = ((currentnode.x - zoomInfo.centerX) * zoomInfo.scale) + centerX;
+        const currentNodeY = ((currentnode.y - zoomInfo.centerY) * zoomInfo.scale) + centerY;
+        const currentNodeR = currentnode.r * zoomInfo.scale * (currentnode.type == "1" ? 0.9 : (currentnode.type == "4" ? 1.05 : 1));
+        drawTerminalMembers(
+          chosenContext,
+          currentnode,
+          currentNodeX,
+          currentNodeY,
+          currentNodeR,
+          getNodeVisualOpacity(currentnode)
+        );
       }
     }
 
@@ -2999,6 +3297,29 @@ function getNodeFromEvent(event) {
   return colToCircle[colString] || null;
 }
 
+function getStructureMemberFromEvent(event) {
+  if (!canvas || !Array.isArray(structureMemberAvatarHitAreas) || structureMemberAvatarHitAreas.length === 0) {
+    return null;
+  }
+
+  const rect = canvas.node().getBoundingClientRect();
+  const scaleX = chartwidth / rect.width;
+  const scaleY = chartheight / rect.height;
+  const mouseX = (event.clientX - rect.left) * scaleX;
+  const mouseY = (event.clientY - rect.top) * scaleY;
+
+  for (let index = structureMemberAvatarHitAreas.length - 1; index >= 0; index -= 1) {
+    const area = structureMemberAvatarHitAreas[index];
+    const deltaX = mouseX - area.x;
+    const deltaY = mouseY - area.y;
+    if ((deltaX * deltaX) + (deltaY * deltaY) <= area.radius * area.radius) {
+      return area.member;
+    }
+  }
+
+  return null;
+}
+
 
 function buildCanvas() {
   const chartEl = document.getElementById("chart");
@@ -3117,6 +3438,21 @@ function hideCanvasTooltip() {
     return;
   }
 
+  const member = getStructureMemberFromEvent(event);
+  if (member) {
+    hoverNode = null;
+    drawCanvas(context, false);
+    const memberTooltipTarget = "member:" + String(currentnode && currentnode.ID || "") + ":" + String(member.userId || "");
+    if (tooltipTarget !== memberTooltipTarget) {
+      openTooltip(getStructureMemberTooltip(member), event, memberTooltipTarget);
+    } else {
+      moveTooltip(event);
+    }
+    canvas.style("cursor", "help");
+    return;
+  }
+
+  canvas.style("cursor", "");
   const node = getNodeFromEvent(event);
   hoverNode = node ? node.ID : null;
   drawCanvas(context, false);
@@ -3145,6 +3481,7 @@ canvas.on("mousedown", function () {
 canvas.on("mouseout", function () {
   isDragging = false;
   hoverNode = null;
+  canvas.style("cursor", "");
   closeTooltip();
   drawCanvas(context, false);
   drawCanvas(hiddenContext, true);
@@ -3152,6 +3489,10 @@ canvas.on("mouseout", function () {
 
 canvas.on("click", function () {
   closeTooltip();
+
+  if (getStructureMemberFromEvent(d3.event)) {
+    return;
+  }
 
   const node = getNodeFromEvent(d3.event);
 

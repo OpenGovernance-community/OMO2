@@ -33,6 +33,7 @@ $organization->setStructureDisplaySettings(array(
     'labelHoverMinRadius' => $_POST['labelHoverMinRadius'] ?? null,
     'labelMinFontSize' => $_POST['labelMinFontSize'] ?? null,
     'textOutlineEnabled' => isset($_POST['textOutlineEnabled']),
+    'showTerminalMembers' => isset($_POST['showTerminalMembers']),
 ));
 
 $result = $organization->save();

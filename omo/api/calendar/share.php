@@ -7,6 +7,7 @@ $sourceLang = [
     'intro' => ['text' => 'Partagez tous vos agendas personnels : evenements OMO de vos organisations et agendas externes connectes.', 'context' => 'Scope of a personal calendar subscription.'],
     'privacy' => ['text' => 'Toute personne possedant le lien peut le consulter. La revocation bloque les prochaines lectures, mais ne supprime pas les copies deja telechargees.', 'context' => 'Capability URL privacy and revocation warning.'],
     'subscription' => ['text' => 'Ajoutez le lien comme abonnement dans un agenda, plutot que d importer le fichier une seule fois. Les agendas externes utilisent la derniere synchronisation ; la frequence de lecture depend de l application abonnee.', 'context' => 'How to subscribe and how freshness works.'],
+    'instructions' => ['text' => 'Comment utiliser le lien ?', 'context' => 'Disclosure for calendar subscription instructions.'],
     'new' => ['text' => 'Nouveau lien', 'context' => 'Calendar share creation heading.'],
     'label' => ['text' => 'Nom du partage', 'context' => 'Private label to identify the recipient of a sharing link.'],
     'label_hint' => ['text' => 'Par exemple : famille. Ce nom reste prive.', 'context' => 'Private sharing label help.'],
@@ -80,14 +81,14 @@ $shares = CalendarShare::forUser($userId);
 $text = [];
 foreach (['saving', 'storage', 'copied', 'copy_manual'] as $key) { $text[$key] = calendarShareT($key); }
 ?>
-<div class="generic-drawer-content generic-form-stack" data-calendar-share data-text="<?= omoApiEscape(json_encode($text)) ?>" data-csrf="<?= omoApiEscape($csrf) ?>">
+<div class="generic-drawer-content generic-form-stack" data-topbar-modal-max-width="760px" data-calendar-share data-text="<?= omoApiEscape(json_encode($text)) ?>" data-csrf="<?= omoApiEscape($csrf) ?>">
     <p class="generic-help-text"><?= omoApiEscape(calendarShareT('intro')) ?></p>
-    <section class="generic-soft-panel generic-soft-panel--stack">
+    <section class="generic-form-section generic-form-section--divided generic-form-stack">
         <p class="generic-help-text"><?= omoApiEscape(calendarShareT('privacy')) ?></p>
-        <p class="generic-help-text"><?= omoApiEscape(calendarShareT('subscription')) ?></p>
+        <details class="generic-accordion"><summary><?= omoApiEscape(calendarShareT('instructions')) ?></summary><div class="generic-accordion__content"><p class="generic-help-text"><?= omoApiEscape(calendarShareT('subscription')) ?></p></div></details>
     </section>
     <p class="generic-feedback generic-feedback--collapse-empty" data-calendar-share-feedback aria-live="polite"></p>
-    <form class="generic-form-stack" data-calendar-share-create method="post">
+    <form class="generic-form-section generic-form-section--divided generic-form-stack" data-calendar-share-create method="post">
         <h3 class="generic-card-title"><?= omoApiEscape(calendarShareT('new')) ?></h3>
         <input type="hidden" name="csrf" value="<?= omoApiEscape($csrf) ?>">
         <input type="hidden" name="action" value="create">
@@ -110,7 +111,7 @@ foreach (['saving', 'storage', 'copied', 'copy_manual'] as $key) { $text[$key] =
             <input class="generic-form-control" type="date" name="expiration" min="<?= date('Y-m-d') ?>">
             <span class="generic-help-text"><?= omoApiEscape(calendarShareT('expiration_hint')) ?></span>
         </label>
-        <div class="generic-form-actions"><button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape(calendarShareT('create')) ?></button></div>
+        <div class="generic-form-actions generic-form-actions--sticky"><button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape(calendarShareT('create')) ?></button></div>
     </form>
     <h3 class="generic-card-title"><?= omoApiEscape(calendarShareT('list')) ?></h3>
     <?php if (!$shares): ?><p class="generic-help-text"><?= omoApiEscape(calendarShareT('empty')) ?></p><?php endif; ?>
@@ -125,7 +126,7 @@ foreach (['saving', 'storage', 'copied', 'copy_manual'] as $key) { $text[$key] =
                 </label>
                 <div class="generic-form-actions">
                     <button type="button" class="generic-action-button generic-action-button--secondary" data-calendar-share-copy><?= omoApiEscape(calendarShareT('copy')) ?></button>
-                    <button type="button" class="generic-action-button generic-action-button--secondary" data-calendar-share-revoke="<?= (int)$share->getId() ?>"><?= omoApiEscape(calendarShareT('revoke')) ?></button>
+                    <button type="button" class="generic-action-button generic-action-button--danger" data-calendar-share-revoke="<?= (int)$share->getId() ?>"><?= omoApiEscape(calendarShareT('revoke')) ?></button>
                 </div>
             <?php endif; ?>
         </section>

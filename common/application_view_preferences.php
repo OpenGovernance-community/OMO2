@@ -10,12 +10,20 @@ if (!function_exists('omoApplicationViewPreferencesSourceLang')) {
     function omoApplicationViewPreferencesSourceLang(): array
     {
         return array(
-            'app_view.save_options' => array('text' => 'Autres options d enregistrement', 'context' => 'Accessible label for the application view save options menu.'),
+            'app_view.save_options' => array('text' => 'Autres options d’enregistrement', 'context' => 'Accessible label for the application view save options menu.'),
+            'app_view.save_holon' => array('text' => 'Enregistrer par défaut pour ce holon', 'context' => 'Save the current application view as the default for one holon.'),
             'app_view.save_organization_template' => array('text' => 'Enregistrer pour tous les holons du modèle {templateName}', 'context' => 'Save the current application view for holons directly inheriting one organization template.'),
+            'app_view.save_organization' => array('text' => 'Enregistrer par défaut pour cette organisation', 'context' => 'Save the current application view as the organization-wide default.'),
             'app_view.save_application_type' => array('text' => 'Enregistrer pour tous les holons de type {typeName}', 'context' => 'Save the current application view for one base holon type in all organizations.'),
+            'app_view.save_global' => array('text' => 'Enregistrer par défaut global', 'context' => 'Save the current application view as the global default.'),
+            'app_view.clear_temporary' => array('text' => 'Restaurer la vue par défaut', 'context' => 'Remove the temporary discovery application view.'),
+            'app_view.clear_personal' => array('text' => 'Effacer ma préférence personnelle', 'context' => 'Remove the personal application view and restore the configured default.'),
+            'app_view.clear_holon' => array('text' => 'Effacer le défaut de ce holon', 'context' => 'Remove the holon application view default.'),
             'app_view.clear_organization_template' => array('text' => 'Effacer le défaut du modèle {templateName}', 'context' => 'Remove the organization template application view default.'),
-            'app_view.restore_default' => array('text' => 'Restaurer la vue par defaut', 'context' => 'Remove the personal application view and restore the configured default.'),
-            'app_view.save_error' => array('text' => 'Impossible d enregistrer cette vue par defaut.', 'context' => 'Error shown when a default application view cannot be saved.'),
+            'app_view.clear_organization' => array('text' => 'Effacer le défaut de cette organisation', 'context' => 'Remove the organization-wide application view default.'),
+            'app_view.clear_application_type' => array('text' => 'Effacer le défaut du type {typeName}', 'context' => 'Remove the base holon type application view default.'),
+            'app_view.clear_global' => array('text' => 'Effacer le défaut global', 'context' => 'Remove the global application view default.'),
+            'app_view.save_error' => array('text' => 'Impossible d’enregistrer cette vue par défaut.', 'context' => 'Error shown when a default application view cannot be saved.'),
         );
     }
 }
@@ -40,41 +48,202 @@ if (!function_exists('omoApplicationViewPreferencesT')) {
     }
 }
 
+if (!function_exists('omoApplicationViewPreferencesResolveCapabilities')) {
+    function omoApplicationViewPreferencesResolveCapabilities($interfaceLevel, $holonId, $templateKey, $baseTypeKey, array $roles): array
+    {
+        $isDiscoveryMode = (int)$interfaceLevel === Organization::INTERFACE_LEVEL_DISCOVERY;
+        $holonId = (int)$holonId;
+        $templateKey = trim((string)$templateKey);
+        $baseTypeKey = trim((string)$baseTypeKey);
+        $isMember = !empty($roles['isMember']);
+        $isHolonAdmin = !empty($roles['isHolonAdmin']);
+        $isOrganizationAdmin = !empty($roles['isOrganizationAdmin']);
+        $isSiteAdmin = !empty($roles['isSiteAdmin']);
+
+        $capabilities = array(
+            'canSaveTemporary' => false,
+            'canSavePersonal' => false,
+            'canSaveHolon' => false,
+            'canSaveOrganizationTemplate' => ($isOrganizationAdmin || $isSiteAdmin) && $templateKey !== '',
+            'canSaveOrganization' => $isOrganizationAdmin || $isSiteAdmin,
+            'canSaveApplicationType' => $isSiteAdmin && $baseTypeKey !== '',
+            'canSaveGlobal' => $isSiteAdmin,
+        );
+
+        if ($isDiscoveryMode) {
+            $capabilities['canSaveTemporary'] = $isMember || $isHolonAdmin || $isOrganizationAdmin || $isSiteAdmin;
+        } else {
+            $capabilities['canSavePersonal'] = $holonId > 0 && $isMember;
+            $capabilities['canSaveHolon'] = $holonId > 0 && ($isHolonAdmin || $isOrganizationAdmin || $isSiteAdmin);
+        }
+
+        $capabilities['canEdit'] = in_array(true, $capabilities, true);
+        return $capabilities;
+    }
+}
+
+if (!function_exists('omoApplicationViewPreferencesGetAccess')) {
+    function omoApplicationViewPreferencesGetAccess($userId, Organization $organization, ?Holon $holon): array
+    {
+        $userId = (int)$userId;
+        $organizationId = (int)$organization->getId();
+        $holonId = $holon instanceof Holon ? (int)$holon->getId() : 0;
+        $membership = $userId > 0 ? $organization->getMembership($userId, true) : null;
+        $isMember = $membership !== null;
+        $isOrganizationAdmin = $isMember
+            && $membership->isOrganizationAdmin()
+            && function_exists('commonCurrentUserIsAdminModeEnabled')
+            && commonCurrentUserIsAdminModeEnabled($organizationId);
+        $isSiteAdmin = $userId > 0
+            && function_exists('commonUserHasSiteAdminOverride')
+            && commonUserHasSiteAdminOverride($userId);
+        $isHolonAdmin = $userId > 0
+            && $holonId > 0
+            && UserHolon::canUserManageDashboardHolonDefault($userId, $organizationId, $holonId);
+        $templateKey = $holon instanceof Holon ? $holon->getDashboardDirectTemplateLayoutKey() : '';
+        $baseTypeKey = $holon instanceof Holon ? $holon->getDashboardBaseTypeLayoutKey() : '';
+
+        return array_merge(array(
+            'interfaceLevel' => $organization->getInterfaceLevel(),
+            'isMember' => $isMember,
+            'isHolonAdmin' => $isHolonAdmin,
+            'isOrganizationAdmin' => $isOrganizationAdmin,
+            'isSiteAdmin' => $isSiteAdmin,
+        ), omoApplicationViewPreferencesResolveCapabilities(
+            $organization->getInterfaceLevel(),
+            $holonId,
+            $templateKey,
+            $baseTypeKey,
+            array(
+                'isMember' => $isMember,
+                'isHolonAdmin' => $isHolonAdmin,
+                'isOrganizationAdmin' => $isOrganizationAdmin,
+                'isSiteAdmin' => $isSiteAdmin,
+            )
+        ));
+    }
+}
+
+if (!function_exists('omoApplicationViewPreferencesGetOrderedSaveScopes')) {
+    function omoApplicationViewPreferencesGetOrderedSaveScopes(array $access): array
+    {
+        $scopes = array();
+        foreach (array(
+            'temporary' => 'canSaveTemporary',
+            'personal' => 'canSavePersonal',
+            'holon' => 'canSaveHolon',
+            'organization_template' => 'canSaveOrganizationTemplate',
+            'organization' => 'canSaveOrganization',
+            'application_type' => 'canSaveApplicationType',
+            'global' => 'canSaveGlobal',
+        ) as $scope => $permission) {
+            if (!empty($access[$permission])) {
+                $scopes[] = $scope;
+            }
+        }
+        return $scopes;
+    }
+}
+
+if (!function_exists('omoApplicationViewPreferencesTemporaryKey')) {
+    function omoApplicationViewPreferencesTemporaryKey($userId, $organizationId, $holonId, $applicationKey): string
+    {
+        return (int)$userId . ':' . (int)$organizationId . ':' . max(0, (int)$holonId) . ':'
+            . UserHolon::normalizeApplicationViewKey($applicationKey);
+    }
+}
+
+if (!function_exists('omoApplicationViewPreferencesGetTemporaryView')) {
+    function omoApplicationViewPreferencesGetTemporaryView($userId, $organizationId, $holonId, $applicationKey): ?array
+    {
+        $key = omoApplicationViewPreferencesTemporaryKey($userId, $organizationId, $holonId, $applicationKey);
+        $views = $_SESSION['omo_application_temporary_views'] ?? array();
+        if (!is_array($views) || !array_key_exists($key, $views)) {
+            return null;
+        }
+        return UserHolon::normalizeApplicationView($views[$key]);
+    }
+}
+
+if (!function_exists('omoApplicationViewPreferencesSaveTemporaryView')) {
+    function omoApplicationViewPreferencesSaveTemporaryView($userId, $organizationId, $holonId, $applicationKey, array $view): array
+    {
+        $key = omoApplicationViewPreferencesTemporaryKey($userId, $organizationId, $holonId, $applicationKey);
+        if (UserHolon::normalizeApplicationViewKey($applicationKey) === '') {
+            return array('status' => false);
+        }
+        if (!isset($_SESSION['omo_application_temporary_views']) || !is_array($_SESSION['omo_application_temporary_views'])) {
+            $_SESSION['omo_application_temporary_views'] = array();
+        }
+        $_SESSION['omo_application_temporary_views'][$key] = UserHolon::normalizeApplicationView($view);
+        return array('status' => true);
+    }
+}
+
+if (!function_exists('omoApplicationViewPreferencesClearTemporaryView')) {
+    function omoApplicationViewPreferencesClearTemporaryView($userId, $organizationId, $holonId, $applicationKey): array
+    {
+        $key = omoApplicationViewPreferencesTemporaryKey($userId, $organizationId, $holonId, $applicationKey);
+        if (isset($_SESSION['omo_application_temporary_views']) && is_array($_SESSION['omo_application_temporary_views'])) {
+            unset($_SESSION['omo_application_temporary_views'][$key]);
+            if ($_SESSION['omo_application_temporary_views'] === array()) {
+                unset($_SESSION['omo_application_temporary_views']);
+            }
+        }
+        return array('status' => true);
+    }
+}
+
+if (!function_exists('omoApplicationViewPreferencesResolveView')) {
+    function omoApplicationViewPreferencesResolveView(array $views): ?array
+    {
+        foreach (array('temporary', 'personal', 'holon', 'organizationTemplate', 'organization', 'applicationType', 'global') as $scope) {
+            if (array_key_exists($scope, $views) && is_array($views[$scope])) {
+                return $views[$scope];
+            }
+        }
+        return null;
+    }
+}
+
+if (!function_exists('omoApplicationViewPreferencesGetDefaultViews')) {
+    function omoApplicationViewPreferencesGetDefaultViews($applicationKey, Organization $organization, ?Holon $holon): array
+    {
+        $applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+        $typeId = $holon instanceof Holon ? (int)$holon->get('IDtypeholon') : 0;
+        $applicationDefaults = $applicationKey !== ''
+            ? ApplicationSetting::getApplicationViewDefaultsForType($applicationKey, $typeId)
+            : array('baseType' => null, 'global' => null);
+
+        return array(
+            'holon' => $applicationKey !== '' && $holon instanceof Holon ? $holon->getApplicationViewDefault($applicationKey) : null,
+            'organizationTemplate' => $applicationKey !== '' && $holon instanceof Holon
+                ? $organization->getApplicationViewTemplateDefaultForHolon($holon, $applicationKey)
+                : null,
+            'organization' => $applicationKey !== '' ? $organization->getApplicationViewDefault($applicationKey) : null,
+            'applicationType' => $applicationDefaults['baseType'] ?? null,
+            'global' => $applicationDefaults['global'] ?? null,
+        );
+    }
+}
+
 if (!function_exists('omoApplicationViewPreferencesResolveDefault')) {
     function omoApplicationViewPreferencesResolveDefault($applicationKey, Organization $organization, ?Holon $holon): ?array
     {
-        $applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
-        if ($applicationKey === '') {
-            return null;
-        }
-
-        $organizationTemplateView = $holon instanceof Holon
-            ? $organization->getApplicationViewTemplateDefaultForHolon($holon, $applicationKey)
-            : null;
-        if ($organizationTemplateView !== null) {
-            return $organizationTemplateView;
-        }
-        $typeId = $holon instanceof Holon ? (int)$holon->get('IDtypeholon') : 0;
-        $applicationDefaults = ApplicationSetting::getApplicationViewDefaultsForType($applicationKey, $typeId);
-        $applicationTypeView = $applicationDefaults['baseType'] ?? null;
-        if ($applicationTypeView !== null) {
-            return $applicationTypeView;
-        }
-
-        return $applicationDefaults['global'] ?? null;
+        return omoApplicationViewPreferencesResolveView(
+            omoApplicationViewPreferencesGetDefaultViews($applicationKey, $organization, $holon)
+        );
     }
 }
 
 if (!function_exists('omoApplicationViewPreferencesGetEffectiveView')) {
     function omoApplicationViewPreferencesGetEffectiveView(array $context): ?array
     {
-        $personalView = $context['personalView'] ?? null;
-        if (is_array($personalView)) {
-            return $personalView;
-        }
-
-        $defaultView = $context['defaultView'] ?? null;
-        return is_array($defaultView) ? $defaultView : null;
+        return omoApplicationViewPreferencesResolveView(array(
+            'temporary' => $context['temporaryView'] ?? null,
+            'personal' => $context['personalView'] ?? null,
+            'holon' => $context['defaultView'] ?? null,
+        ));
     }
 }
 
@@ -86,13 +255,30 @@ if (!function_exists('omoApplicationViewPreferencesGetInitialValue')) {
         if ($requestKey !== '' && array_key_exists($requestKey, $_GET)) {
             return $_GET[$requestKey];
         }
-
         $effectiveView = omoApplicationViewPreferencesGetEffectiveView($context);
         if ($viewKey !== '' && is_array($effectiveView) && array_key_exists($viewKey, $effectiveView)) {
             return $effectiveView[$viewKey];
         }
-
         return $fallback;
+    }
+}
+
+if (!function_exists('omoApplicationViewPreferencesSaveLabel')) {
+    function omoApplicationViewPreferencesSaveLabel($scope, array $context): string
+    {
+        $labels = array(
+            'holon' => 'app_view.save_holon',
+            'organization_template' => 'app_view.save_organization_template',
+            'organization' => 'app_view.save_organization',
+            'application_type' => 'app_view.save_application_type',
+            'global' => 'app_view.save_global',
+        );
+        return isset($labels[$scope])
+            ? omoApplicationViewPreferencesT($labels[$scope], array(
+                'templateName' => $context['templateLabel'] ?? '',
+                'typeName' => $context['typeLabel'] ?? '',
+            ))
+            : '';
     }
 }
 
@@ -106,10 +292,17 @@ if (!function_exists('omoApplicationViewPreferencesGetContext')) {
         }
 
         $organizationId = (int)$organization->getId();
+        $holonId = $holon instanceof Holon ? (int)$holon->getId() : 0;
         $typeId = $holon instanceof Holon ? (int)$holon->get('IDtypeholon') : 0;
-        $typeLabel = $holon instanceof Holon ? $holon->getTypeLabel() : '';
         $templateKey = $holon instanceof Holon ? $holon->getDashboardDirectTemplateLayoutKey() : '';
-        $templateLabel = $holon instanceof Holon ? $holon->getDashboardTemplateLayoutLabel() : '';
+        $access = omoApplicationViewPreferencesGetAccess($currentUserId, $organization, $holon);
+        $defaultViews = omoApplicationViewPreferencesGetDefaultViews($applicationKey, $organization, $holon);
+        $personalView = !empty($access['canSavePersonal']) && $applicationKey !== '' && $holonId > 0
+            ? UserHolon::getApplicationViewForUser($currentUserId, $holonId, $applicationKey)
+            : null;
+        $temporaryView = !empty($access['canSaveTemporary']) && $applicationKey !== ''
+            ? omoApplicationViewPreferencesGetTemporaryView($currentUserId, $organizationId, $holonId, $applicationKey)
+            : null;
         $personalResetAttributes = array(
             'activities' => array('data-activity-filter-restore' => ''),
             'calendar' => array('data-omo-calendar-filter-more-action' => 'restore-default'),
@@ -121,46 +314,36 @@ if (!function_exists('omoApplicationViewPreferencesGetContext')) {
             'stats' => array('data-omo-stats-filter-more-action' => 'restore-default'),
             'team' => array('data-team-filter-more-action' => 'restore-default'),
         );
-        $membership = $currentUserId > 0 ? $organization->getMembership($currentUserId, true) : null;
-        $isOrganizationAdmin = $membership !== null
-            && $membership->isOrganizationAdmin()
-            && function_exists('commonCurrentUserIsAdminModeEnabled')
-            && commonCurrentUserIsAdminModeEnabled($organizationId);
-        $isSiteAdmin = $currentUserId > 0
-            && function_exists('commonUserHasSiteAdminOverride')
-            && commonUserHasSiteAdminOverride($currentUserId);
-        $isDiscoveryMode = $organization->getInterfaceLevel() === Organization::INTERFACE_LEVEL_DISCOVERY;
 
         if (empty($_SESSION['omo_application_view_preferences_csrf'])) {
             $_SESSION['omo_application_view_preferences_csrf'] = bin2hex(random_bytes(32));
         }
 
-        $context = array(
+        $saveScopes = omoApplicationViewPreferencesGetOrderedSaveScopes($access);
+        $context = array_merge($access, array(
             'application' => $applicationKey,
             'organizationId' => $organizationId,
-            'holonId' => $holon instanceof Holon ? (int)$holon->getId() : 0,
+            'holonId' => $holonId,
             'typeId' => $typeId,
-            'typeLabel' => $typeLabel,
+            'typeLabel' => $holon instanceof Holon ? $holon->getTypeLabel() : '',
             'templateKey' => $templateKey,
-            'templateLabel' => $templateLabel,
-            'personalView' => $applicationKey !== '' && $holon instanceof Holon
-                ? UserHolon::getApplicationViewForUser($currentUserId, (int)$holon->getId(), $applicationKey)
-                : null,
-            'defaultView' => $applicationKey !== '' ? omoApplicationViewPreferencesResolveDefault($applicationKey, $organization, $holon) : null,
+            'templateLabel' => $holon instanceof Holon ? $holon->getDashboardTemplateLayoutLabel() : '',
+            'temporaryView' => $temporaryView,
+            'personalView' => $personalView,
+            'holonView' => $defaultViews['holon'],
+            'organizationTemplateView' => $defaultViews['organizationTemplate'],
+            'organizationView' => $defaultViews['organization'],
+            'applicationTypeView' => $defaultViews['applicationType'],
+            'globalView' => $defaultViews['global'],
+            'defaultView' => omoApplicationViewPreferencesResolveView($defaultViews),
             'csrfToken' => (string)$_SESSION['omo_application_view_preferences_csrf'],
             'endpoint' => '/omo/api/application_view_preferences.php',
-            // An organization administrator keeps a personal view in Discovery mode too.
-            // The collective template default remains available from the save menu.
-            'canSavePersonal' => (!$isDiscoveryMode || $isOrganizationAdmin || $isSiteAdmin) && ($membership !== null || $isSiteAdmin),
             'personalResetAttributes' => $personalResetAttributes[$applicationKey] ?? array(),
-            'primarySaveScope' => '',
-            'canSaveOrganizationTemplate' => ($isOrganizationAdmin || $isSiteAdmin) && $templateKey !== '',
-            'canSaveApplicationType' => $isSiteAdmin && $typeId > 0,
-        );
+            'primarySaveScope' => $saveScopes[0] ?? '',
+        ));
+        $context['primarySaveLabel'] = omoApplicationViewPreferencesSaveLabel($context['primarySaveScope'], $context);
 
-        $pvApplicationTabId = isset($_GET['pv_application_tab_id'])
-            ? max(0, (int)$_GET['pv_application_tab_id'])
-            : 0;
+        $pvApplicationTabId = isset($_GET['pv_application_tab_id']) ? max(0, (int)$_GET['pv_application_tab_id']) : 0;
         if ($pvApplicationTabId <= 0 || $applicationKey === '') {
             return $context;
         }
@@ -178,15 +361,18 @@ if (!function_exists('omoApplicationViewPreferencesGetContext')) {
         }
 
         $pvApplicationView = $pvApplicationTab->getViewParametersArray();
+        foreach (array('canSaveTemporary', 'canSavePersonal', 'canSaveHolon', 'canSaveOrganizationTemplate', 'canSaveOrganization', 'canSaveApplicationType', 'canSaveGlobal') as $capability) {
+            $context[$capability] = false;
+        }
         $context['pvApplicationTabId'] = $pvApplicationTabId;
         $context['pvApplicationViewRevision'] = substr(hash('sha256', (string)json_encode($pvApplicationView)), 0, 16);
         $context['isPvApplicationTab'] = true;
+        $context['temporaryView'] = null;
         $context['personalView'] = $pvApplicationView;
         $context['defaultView'] = array();
         $context['canSavePersonal'] = $pvDocument->canUserManagePvDocument($currentUserId);
-        $context['primarySaveScope'] = '';
-        $context['canSaveOrganizationTemplate'] = false;
-        $context['canSaveApplicationType'] = false;
+        $context['primarySaveScope'] = $context['canSavePersonal'] ? 'personal' : '';
+        $context['primarySaveLabel'] = '';
         return $context;
     }
 }
@@ -197,17 +383,33 @@ if (!function_exists('omoApplicationViewPreferencesRenderMenu')) {
         $saveOptions = array();
         $restoreOptions = array();
         $primarySaveScope = trim((string)($context['primarySaveScope'] ?? ''));
-        if (!empty($context['canSaveOrganizationTemplate'])) {
-            if ($primarySaveScope !== 'organization_template') {
-                $saveOptions[] = array('organization_template', 'save', omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $context['templateLabel'] ?? '')));
+        foreach (omoApplicationViewPreferencesGetOrderedSaveScopes($context) as $scope) {
+            if ($scope === $primarySaveScope || in_array($scope, array('temporary', 'personal'), true)) {
+                continue;
             }
-            $restoreOptions[] = array('organization_template', 'clear', omoApplicationViewPreferencesT('app_view.clear_organization_template', array('templateName' => $context['templateLabel'] ?? '')));
+            $saveOptions[] = array($scope, 'save', omoApplicationViewPreferencesSaveLabel($scope, $context));
         }
-        if (!empty($context['canSaveApplicationType'])) {
-            $saveOptions[] = array('application_type', 'save', omoApplicationViewPreferencesT('app_view.save_application_type', array('typeName' => $context['typeLabel'] ?? '')));
-        }
-        if (!empty($context['canSavePersonal'])) {
-            $restoreOptions[] = array('personal', 'clear', omoApplicationViewPreferencesT('app_view.restore_default'), $context['personalResetAttributes'] ?? array());
+
+        $resetDefinitions = array(
+            'temporary' => array('canSaveTemporary', 'temporaryView', 'app_view.clear_temporary'),
+            'personal' => array('canSavePersonal', 'personalView', 'app_view.clear_personal'),
+            'holon' => array('canSaveHolon', 'holonView', 'app_view.clear_holon'),
+            'organization_template' => array('canSaveOrganizationTemplate', 'organizationTemplateView', 'app_view.clear_organization_template'),
+            'organization' => array('canSaveOrganization', 'organizationView', 'app_view.clear_organization'),
+            'application_type' => array('canSaveApplicationType', 'applicationTypeView', 'app_view.clear_application_type'),
+            'global' => array('canSaveGlobal', 'globalView', 'app_view.clear_global'),
+        );
+        foreach ($resetDefinitions as $scope => $definition) {
+            if (empty($context[$definition[0]]) || !is_array($context[$definition[1]] ?? null)) {
+                continue;
+            }
+            $attributes = in_array($scope, array('temporary', 'personal'), true)
+                ? ($context['personalResetAttributes'] ?? array())
+                : array();
+            $restoreOptions[] = array($scope, 'clear', omoApplicationViewPreferencesT($definition[2], array(
+                'templateName' => $context['templateLabel'] ?? '',
+                'typeName' => $context['typeLabel'] ?? '',
+            )), $attributes);
         }
         if ($saveOptions === array() && $restoreOptions === array()) {
             return '';

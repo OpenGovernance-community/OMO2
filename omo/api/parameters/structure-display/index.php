@@ -82,6 +82,21 @@ if ($organizationId <= 0 || !$organization->load($organizationId)) {
             </div>
         </section>
 
+        <section class="generic-section generic-section--stack generic-section--roomy generic-form-section">
+            <div class="generic-form-section__heading">
+                <div class="generic-form-section__copy">
+                    <h3 class="generic-card-title generic-card-title--medium"><?= omoStructureDisplayEscape(omoStructureDisplayT('parameters.structure_display.section.members')) ?></h3>
+                </div>
+            </div>
+            <label class="generic-checkbox">
+                <input type="checkbox" name="showTerminalMembers" value="1"<?= !empty($settings['showTerminalMembers']) ? ' checked' : '' ?>>
+                <span>
+                    <span class="generic-card-title generic-card-title--small"><?= omoStructureDisplayEscape(omoStructureDisplayT('parameters.structure_display.field.terminal_members.label')) ?></span>
+                    <small class="generic-help-text"><?= omoStructureDisplayEscape(omoStructureDisplayT('parameters.structure_display.field.terminal_members.help')) ?></small>
+                </span>
+            </label>
+        </section>
+
         <p class="generic-feedback generic-feedback--collapse-empty" data-omo-structure-display-feedback aria-live="polite"></p>
         <div class="generic-form-actions">
             <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-structure-display-reset><?= omoStructureDisplayEscape(omoStructureDisplayT('parameters.structure_display.action.reset')) ?></button>
@@ -121,6 +136,7 @@ if ($organizationId <= 0 || !$organization->load($organizationId)) {
         form.elements.labelHoverMinRadius.value = String(defaults.labelHoverMinRadius);
         form.elements.labelMinFontSize.value = String(defaults.labelMinFontSize);
         form.elements.textOutlineEnabled.checked = Boolean(defaults.textOutlineEnabled);
+        form.elements.showTerminalMembers.checked = Boolean(defaults.showTerminalMembers);
         setFeedback('', '');
     });
 

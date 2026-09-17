@@ -7,7 +7,7 @@ use dbObject\ArrayOrganization;
 use dbObject\ArrayProject;
 use dbObject\Authority;
 
-const OMO_STRUCTURE_CACHE_VERSION = 5;
+const OMO_STRUCTURE_CACHE_VERSION = 7;
 
 function omoStructureBuildCacheKey($organizationId, $navigationRootId, $includeMemberUserIds, array $displaySettings)
 {
@@ -275,6 +275,7 @@ $includeMemberUserIds = !(
     && !commonCurrentShareAllowsPeople()
 );
 $displaySettings = $organization->getStructureDisplaySettings();
+$includeMemberCards = !empty($displaySettings['showTerminalMembers']) && $includeMemberUserIds;
 $latestStructureHistoryId = \dbObject\History::getLatestStructureEntryId($organizationId);
 $cacheKey = omoStructureBuildCacheKey(
     $organizationId,
@@ -283,6 +284,9 @@ $cacheKey = omoStructureBuildCacheKey(
     $displaySettings
 );
 $forceRefresh = (int)($_GET['structure_refresh'] ?? 0) === 1;
+if ($forceRefresh && session_status() === PHP_SESSION_ACTIVE) {
+    unset($_SESSION['omoStructureRepresentationCache']);
+}
 $cachedRepresentation = $forceRefresh
     ? null
     : omoStructureReadSessionCache($cacheKey, $latestStructureHistoryId);
@@ -303,6 +307,7 @@ if (session_status() === PHP_SESSION_ACTIVE) {
 $representation = $navigationRoot->toBulkStructureRepresentationArray(array(
     'representation' => 'circle',
     'includeMemberUserIds' => $includeMemberUserIds,
+    'includeMemberCards' => $includeMemberCards,
     'organizationId' => $organizationId,
     'organizationRootHolonId' => (int)$root->getId(),
 ));

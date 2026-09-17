@@ -17,6 +17,8 @@
     var configuratorScopes = root.querySelector('[data-omo-dashboard-configurator-scopes]');
     var configuratorAudienceField = root.querySelector('[data-omo-dashboard-configurator-audience-field]');
     var configuratorAudiences = root.querySelector('[data-omo-dashboard-configurator-audiences]');
+    var configuratorVideoField = root.querySelector('[data-omo-dashboard-configurator-video-field]');
+    var configuratorVideo = root.querySelector('[data-omo-dashboard-configurator-video]');
     var saveMenu = root.querySelector('[data-omo-dashboard-save-menu]');
     var saveMenuToggle = root.querySelector('[data-omo-dashboard-save-menu-toggle]');
     var saveMenuPanel = root.querySelector('[data-omo-dashboard-save-menu-panel]');
@@ -31,6 +33,7 @@
     var configuredModuleId = null;
     var pendingScope = 'contextual';
     var pendingAudience = 'all';
+    var pendingVideo = '';
 
     if (!Array.isArray(availableScopes) || availableScopes.length === 0) {
         availableScopes = ['contextual'];
@@ -70,8 +73,13 @@
         return Boolean(item && item.settings && item.settings.audience);
     }
 
+    function moduleHasVideoSetting(type) {
+        var item = moduleCatalogItem(type);
+        return Boolean(item && item.settings && item.settings.video);
+    }
+
     function moduleHasConfigSetting(type) {
-        return moduleHasScopeSetting(type) || moduleHasAudienceSetting(type);
+        return moduleHasScopeSetting(type) || moduleHasAudienceSetting(type) || moduleHasVideoSetting(type);
     }
 
     function normalizeScope(scope) {
@@ -82,6 +90,10 @@
         return audience === 'mine' ? 'mine' : 'all';
     }
 
+    function normalizeVideo(video) {
+        return String(video || '').trim().slice(0, 2000);
+    }
+
     function defaultModuleSettings(type) {
         var settings = {};
         if (moduleHasScopeSetting(type)) {
@@ -89,6 +101,9 @@
         }
         if (moduleHasAudienceSetting(type)) {
             settings.audience = 'all';
+        }
+        if (moduleHasVideoSetting(type)) {
+            settings.video = '';
         }
         return settings;
     }
@@ -124,6 +139,11 @@
         }
         if (moduleHasAudienceSetting(module.type)) {
             labels.push(audienceLabel(moduleAudience(module)));
+        }
+        if (moduleHasVideoSetting(module.type)) {
+            labels.push(normalizeVideo(module.settings && module.settings.video) !== ''
+                ? (texts.videoConfigured || 'Vidéo')
+                : (texts.videoMissing || 'Aucune vidéo configurée'));
         }
         return labels.join(' · ');
     }
@@ -271,6 +291,7 @@
         configuredModuleId = module.id;
         pendingScope = moduleScope(module);
         pendingAudience = moduleAudience(module);
+        pendingVideo = normalizeVideo(module.settings && module.settings.video);
         if (configuratorTitle) {
             configuratorTitle.textContent = String(texts.configureTitle || 'Configurer {module}').replace('{module}', moduleLabel(module.type));
         }
@@ -309,6 +330,12 @@
                     configuratorAudiences.appendChild(button);
                 });
             }
+        }
+        if (configuratorVideoField) {
+            configuratorVideoField.hidden = !moduleHasVideoSetting(module.type);
+        }
+        if (configuratorVideo && moduleHasVideoSetting(module.type)) {
+            configuratorVideo.value = pendingVideo;
         }
         configurator.hidden = false;
     }
@@ -349,6 +376,9 @@
         }
         if (moduleHasAudienceSetting(module.type)) {
             module.settings.audience = normalizeAudience(pendingAudience);
+        }
+        if (moduleHasVideoSetting(module.type)) {
+            module.settings.video = normalizeVideo(configuratorVideo ? configuratorVideo.value : pendingVideo);
         }
         closeConfigurator();
         renderEditor();
@@ -414,7 +444,7 @@
 
     function saveLayout(scope, templateKey) {
         var saveButtons = root.querySelectorAll('[data-omo-dashboard-editor-save], [data-omo-dashboard-editor-reset], [data-omo-dashboard-save-scope], [data-omo-dashboard-save-menu-toggle]');
-        scope = scope === 'holon' || scope === 'organization_template' || scope === 'application_type' || scope === 'personal_reset' || scope === 'holon_reset' || scope === 'organization_template_reset' || scope === 'application_type_reset'
+        scope = scope === 'temporary' || scope === 'personal' || scope === 'holon' || scope === 'organization_template' || scope === 'application_type' || scope === 'global' || scope === 'temporary_reset' || scope === 'personal_reset' || scope === 'holon_reset' || scope === 'organization_template_reset' || scope === 'application_type_reset' || scope === 'global_reset'
             ? scope
             : 'personal';
         saveButtons.forEach(function (button) { button.disabled = true; });
@@ -499,6 +529,7 @@
             filter = metric.getAttribute('data-omo-dashboard-filter') || '';
             metric.parentNode.querySelectorAll('[data-omo-dashboard-filter]').forEach(function (button) {
                 button.classList.toggle('is-active', button === metric && !metric.classList.contains('is-active'));
+                button.setAttribute('aria-pressed', button.classList.contains('is-active') ? 'true' : 'false');
             });
             filter = metric.classList.contains('is-active') ? filter : '';
             updateModuleList(module, filter);

@@ -1156,7 +1156,13 @@
         var personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
             ? window.omoApplicationViewPreferencesGetPersonal(root)
             : null;
-        var preferences = getTemporaryDisplayPreferences() || personalView || serverDefault || getStoredDisplayPreferences() || getDefaultDisplayPreferences();
+        var canUseLegacyPersonal = typeof window.omoApplicationViewPreferencesCanUseLegacyPersonal === 'function'
+            && window.omoApplicationViewPreferencesCanUseLegacyPersonal(root);
+        var preferences = getTemporaryDisplayPreferences()
+            || personalView
+            || serverDefault
+            || (canUseLegacyPersonal ? getStoredDisplayPreferences() : null)
+            || (canUseLegacyPersonal ? getDefaultDisplayPreferences() : null);
         if (!preferences) {
             return false;
         }
@@ -1554,19 +1560,13 @@
         root.querySelectorAll('[data-omo-projects-kanban-cell]').forEach(function (cell) {
             cell.classList.toggle('is-mobile-active', cell.getAttribute('data-status') === currentStatus);
         });
-        var labelNode = root.querySelector('[data-omo-projects-column-label]');
-        var previousButton = root.querySelector('[data-omo-projects-column-prev]');
-        var nextButton = root.querySelector('[data-omo-projects-column-next]');
-        var titleNode = currentColumn ? currentColumn.querySelector('h3') : null;
-        if (labelNode) {
-            labelNode.textContent = titleNode ? titleNode.textContent : '';
-        }
-        if (previousButton) {
+        root.querySelectorAll('[data-omo-projects-column-prev]').forEach(function (previousButton) {
             previousButton.disabled = mobileColumnIndex <= 0;
-        }
-        if (nextButton) {
+        });
+        root.querySelectorAll('[data-omo-projects-column-next]').forEach(function (nextButton) {
             nextButton.disabled = mobileColumnIndex >= columnNodes.length - 1;
-        }
+        });
+        syncGroupedKanbanHeaderOffset();
     }
 
     function syncGroupedKanbanHeaderOffset() {
@@ -1934,9 +1934,15 @@
             .replace(/'/g, '&#039;');
     }
 
+    window.resetGenericExpandedMenu(root.querySelector('[data-omo-projects-header-menu]'));
+
     function closeProjectMenus(exceptMenu) {
         root.querySelectorAll('[data-omo-project-menu], [data-omo-projects-header-menu], [data-omo-project-detail-document-menu], [data-omo-project-detail-event-menu]').forEach(function (menu) {
             if (menu === exceptMenu) {
+                return;
+            }
+            if (menu.classList.contains('generic-menu--expanded-mobile')) {
+                window.resetGenericExpandedMenu(menu);
                 return;
             }
             var panel = menu.querySelector('[data-omo-project-menu-panel], [data-omo-projects-header-menu-panel], [data-omo-project-detail-document-menu-panel], [data-omo-project-detail-event-menu-panel]');
@@ -2289,20 +2295,18 @@
         }
     });
 
-    var previousColumnButton = root.querySelector('[data-omo-projects-column-prev]');
-    var nextColumnButton = root.querySelector('[data-omo-projects-column-next]');
-    if (previousColumnButton) {
+    root.querySelectorAll('[data-omo-projects-column-prev]').forEach(function (previousColumnButton) {
         previousColumnButton.addEventListener('click', function () {
             mobileColumnIndex -= 1;
             updateMobileColumn();
         });
-    }
-    if (nextColumnButton) {
+    });
+    root.querySelectorAll('[data-omo-projects-column-next]').forEach(function (nextColumnButton) {
         nextColumnButton.addEventListener('click', function () {
             mobileColumnIndex += 1;
             updateMobileColumn();
         });
-    }
+    });
 
     root.querySelectorAll('[data-omo-projects-open-create]').forEach(function (button) {
         button.addEventListener('click', function () {

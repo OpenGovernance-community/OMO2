@@ -15,6 +15,22 @@ if (!function_exists('omoProjectsParamsSourceLang')) {
             'projects.params.description' => ['text' => "Réglez ici l'affichage et le calcul d'importance stratégique partagés par les projets de cette organisation.", 'context' => 'Projects application settings description.'],
             'projects.params.display_title' => ['text' => "Affichage de l'application", 'context' => 'Projects application display settings section title.'],
             'projects.params.columns' => ['text' => 'Colonnes du Kanban', 'context' => 'Projects application settings label for enabled Kanban columns.'],
+            'projects.params.column_label' => ['text' => 'Nom de la colonne {status}', 'context' => 'Accessible label for an optional custom Kanban column name.'],
+            'projects.params.columns_help' => ['text' => 'Cochez les colonnes utiles. Laissez le nom vide pour conserver le libellé par défaut.', 'context' => 'Help for column visibility and custom names.'],
+            'projects.params.calculation_title' => ['text' => 'Calcul de l’importance stratégique', 'context' => 'Heading for the project importance calculation settings.'],
+            'projects.params.calculation_intro' => ['text' => 'Ajustez l’influence du projet parent et de l’importance saisie sur chaque projet. Ces réglages s’appliquent à toute l’organisation.', 'context' => 'Introduction to organization-wide importance settings.'],
+            'projects.params.balance_title' => ['text' => '1. Équilibre entre le parent et le projet', 'context' => 'Legend for the parent and local weights.'],
+            'projects.params.parent_help' => ['text' => 'Saisissez une valeur de 0 à 1 : 0,70 donne 70 % de poids au parent. Plus ce poids est élevé, plus le score suit celui du parent.', 'context' => 'Plain language explanation of the parent weight.'],
+            'projects.params.local_help' => ['text' => 'Calculé automatiquement : les deux poids totalisent 100 %. Il correspond à l’importance saisie sur le projet.', 'context' => 'Explanation of the live complementary local weight.'],
+            'projects.params.parent_share' => ['text' => 'Part du parent : {percent} %', 'context' => 'Live percentage corresponding to the parent weight.'],
+            'projects.params.depth_title' => ['text' => '2. Influence de la position dans la structure', 'context' => 'Legend for the root project depth penalty.'],
+            'projects.params.depth_help' => ['text' => 'Ce réglage réduit le score d’un projet sans parent lorsqu’il se trouve plus bas dans la structure des cercles et rôles. Il ne s’applique pas aux chaînes ancrées dans le holon racine. Saisissez 0 pour le désactiver.', 'context' => 'Plain language explanation of the depth penalty.'],
+            'projects.params.depth_example' => ['text' => 'Réduction appliquée au score : niveau 1, {level1} % ; niveau 2, {level2} % ; niveau 3, {level3} %.', 'context' => 'Live example of exp(-depth penalty) at depths one, two and three.'],
+            'projects.params.rules_title' => ['text' => 'Comment le score est calculé', 'context' => 'Heading for calculation rules.'],
+            'projects.params.rules_balance' => ['text' => 'Quand les deux valeurs existent, le calcul les combine avec une moyenne géométrique pondérée. Dans ce cas, le score du sous-projet est plafonné au score calculé de son parent.', 'context' => 'Weighted combination and parent score ceiling.'],
+            'projects.params.rules_missing' => ['text' => 'Sans importance saisie sur le projet, le score est hérité du parent. Sans valeur renseignée dans toute la chaîne, le score est 0.', 'context' => 'Explanation of missing importance values.'],
+            'projects.params.rules_depth' => ['text' => 'La réduction liée à la profondeur est appliquée une seule fois, au projet sans parent. Elle est ensuite transmise aux sous-projets.', 'context' => 'Explanation that the depth penalty is not repeated.'],
+            'projects.params.calculation_save' => ['text' => 'Enregistrer et recalculer', 'context' => 'Save action for importance calculation settings.'],
             'projects.params.classification' => ['text' => 'Classifications', 'context' => 'Projects application settings label for enabled project classifications.'],
             'projects.params.use_priority' => ['text' => 'Utiliser la priorité', 'context' => 'Projects application setting toggling priority.'],
             'projects.params.use_importance' => ['text' => "Utiliser l'importance stratégique", 'context' => 'Projects application setting toggling strategic importance.'],
@@ -148,6 +164,7 @@ if (!function_exists('omoProjectsParamsStoreConfig')) {
             }
             $nextDisplay = omoProjectsNormalizeDisplayConfig([
                 'enabledStatuses' => $enabledStatuses,
+                'statusLabels' => $values['status_labels'] ?? [],
                 'usePriority' => isset($values['use_priority']),
                 'useImportance' => isset($values['use_importance']),
                 'useSize' => isset($values['use_size']),
@@ -182,6 +199,7 @@ if (!function_exists('omoProjectsParamsStoreConfig')) {
             if ($calculationChanged) {
                 ProjectImportanceCalculator::recalculateOrganization($organizationId);
             }
+            \dbObject\Project::clearOrganizationStatusLabelsCache($organizationId);
             if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
                 $pdo->commit();
             }

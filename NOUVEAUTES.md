@@ -2,7 +2,67 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-17
+
+- Filtres des applications OMO : les vues suivent maintenant la priorite temporaire de session, personnelle, holon, modele de holon, organisation, type de holon puis globale. Chaque niveau autorise peut enregistrer et effacer son propre defaut. En mode Decouverte, les membres et admins de holon restent sur une vue temporaire, sans preference persistante, tandis que les admins d organisation et super admins conservent leurs portees administratives.
+
+- Activités : une personne en charge peut maintenant être attribuée en complément du rôle. Les vues compacte, fiche et détail affichent En charge : Rôle (personne ou Non attribué), et le filtre Moi du tableau de pilotage tient compte de cette attribution.
+
+- Indicateurs et processus : les vues compactes, les fiches et les details affichent maintenant la responsabilite sous la forme En charge : Role (personne ou Non attribue).
+
+- Tableau de pilotage : un module Video autonome peut maintenant etre place dans les vues par defaut d un type, d un modele, d un holon ou d une organisation. Sa configuration accepte les liens Vimeo, YouTube et Infomaniak, affiches dans un lecteur integre sans activer une application.
+
+- Tableau de pilotage : les vues suivent maintenant la priorite temporaire de session, personnelle, holon, modele d organisation, type de holon puis defaut global. Le super admin peut enregistrer ou effacer le defaut global meme sans structure ; le repli integre est vide. En mode Decouverte, membres et admins de holon ne conservent qu une vue temporaire de session, tandis que les niveaux administratifs superieurs gardent leurs options de modele, type et global.
+
+- Modèles de holons : les bannières propres aux holons ont été retirées. Les modèles publics reprennent maintenant le logo et la bannière de leur organisation source.
+
+- Modèles de holons : une couleur facultative peut maintenant être définie pour les rôles non attribués. Lorsqu elle reste vide, la structure conserve le gris calculé depuis la couleur principale ; la valeur peut être héritée par les modèles enfants.
+
+- Droits : ajout des permissions de modification et suppression manquantes pour les projets, regles, indicateurs, documents, membres, decisions et FAQ. Les controles serveur distinguent les operations ; seuls les modes admin actives donnent une derogation. Les editeurs de holons et de templates regroupent les droits par application, avec recherche, filtres, groupes repliables et distinction des portees locales et heritees.
+
+- Indicateurs et processus : une personne en charge peut maintenant etre choisie en complement du role ou holon responsable. Le tableau de pilotage propose aussi le module Processus et les modules Indicateurs et Processus peuvent etre regles sur Tous ou Moi. Moi affiche les elements attribues a la personne, ainsi que ceux sans attribution individuelle pour lesquels elle fait partie du role.
+
+- Structure : une option d affichage permet maintenant de montrer les personnes des cercles, roles et elements de liaison terminaux selectionnes. Les admins occupent le demi-cercle superieur et les autres membres le demi-cercle inferieur, avec photo ou initiales et un espacement adapte ; les membres simples ne depassent pas 80 % de la taille des admins. Leur survol affiche le nom et le focus eventuel ; un element sans personne affiche Non attribué. Les roles selectionnes utilisent aussi un libelle en arc lorsque cette option est activee. Le menu Actions propose Rafraichir pour vider les caches puis recharger la structure. Les donnees personnes ne sont chargees que lorsque cette option est activee.
+
+- Paramètres Projets : fieldsets harmonisés avec OMO et documentés dans le guide de styles partagé. Calcul de l’importance stratégique réorganisé autour de deux réglages expliqués — le poids local et la pénalité de profondeur —, avec un exemple sur trois niveaux actualisé pendant la saisie, des règles de calcul dépliables et une sauvegarde sans quitter le tiroir.
+
+- Projets : les colonnes du Kanban peuvent maintenant recevoir un libelle propre a chaque organisation. Dans les parametres de l application, chaque statut conserve son nom par defaut en placeholder ; un champ renseigne le remplace dans le Kanban, les formulaires, les details, les recherches, les projets integres aux PV et les processus relies. La sauvegarde reste dans le panneau des parametres et affiche son retour sans ouvrir la reponse JSON.
+
+- Interface : survol harmonise des boutons d action et des menus avec un deplacement de 1 px et un halo discret, au lieu d une ombre portee. Les actions mobiles utilisent aussi cet effet partage ; le mouvement est desactive si les animations reduites sont preferees.
+
+- Interface : les boutons d action standards adoptent la hauteur compacte de 34 px des menus a trois points, avec moins de marge verticale. Les boutons a icone et les boutons d ajout des entetes mobiles sont harmonises au meme format.
+
+- Structure : en mode Decouverte, une organisation vide masque la creation a partir de rien lorsqu un modele predefini est disponible. Cette creation reste disponible uniquement si aucun modele ne peut etre propose.
+
+- Projets : le detail rassemble maintenant les indicateurs d attention au-dessus de la description, avec leurs libelles sur ordinateur et une version compacte sur mobile. L importance strategique reste toujours visible : elle affiche la valeur calculee seule ou 0 sans donnee, et ajoute la valeur definie lorsqu elle existe. Le fil des projets parents suit le titre Description, puis la personne en charge avec son cercle ou role. Une personne sans attribution est affichee comme Non attribue. Un bloc rouge Bloque par presente aussi le motif et les informations de reactivation. Les dates de creation, debut et fin sont sur une ligne. Les contenus courts restent maintenant groupes en haut du panneau, sans blancs verticaux.
+
+- Projets : les onglets du detail affichent leurs pictogrammes et conservent leur libelle sur ordinateur. Sur petit ecran mobile, les quatre icones restent sur une seule ligne et les noms restent disponibles aux lecteurs d ecran. Les pictogrammes monochromes reutilisent maintenant une classe generique qui les inverse en blanc sur fond sombre et les attenue dans les onglets inactifs.
+
+- Menus Actions mobiles : hauteur compacte commune de 34 px pour les boutons et les sous-actions de toutes les apps, y compris Aujourd hui. Le format est defini dans les composants generiques.
+
+- OMO mobile : le tableau de bord reste charge et a jour dans Resume meme lorsqu une application est ouverte, y compris apres un changement de contexte ou un passage du mode ordinateur au mode mobile. Le chargement reste differe derriere les applications sur ordinateur.
+
+- Calendrier : action renommee Nouvel evenement et menu Actions mobile legerement elargi pour conserver le libelle sur une ligne. Le bouton Aujourd hui occupe toute la largeur du menu.
+
+- Navigation : les vues mois, semaine et jour du calendrier reprennent les fleches rondes de Projets. Dimensions, bordure, couleur et chevrons reposent sur les styles generiques existants ; les surcharges locales du calendrier sont retirees.
+
+- Projets : les archives sont directement accessibles dans le menu Actions sur mobile, sans second menu a ouvrir. Le comportement adaptatif est partage avec le calendrier.
+
+- Projets : sur mobile uniquement, les fleches de navigation du kanban sont integrees aux entetes de chaque colonne, avec ou sans regroupement, et le compteur reste accole au titre. La ligne de navigation et le titre en double au-dessus du tableau sont supprimes. Versions des fichiers CSS et JavaScript renouvelees pour eviter de conserver les anciens boutons et comportements en cache.
+
+- Calendrier : menu Actions plus lisible avec descriptions et navigation au clavier, directement deplie dans le menu Actions sur mobile ; fenetres Connecter, Partager et Prise de rendez-vous allegees. Horaires compacts avec petits champs et pause de midi entre debut et fin, bouton Enregistrer toujours accessible. Navigation mensuelle harmonisee et styles du calendrier externalises.
+
+- OMO mobile : le changement d ecran par swipe demande maintenant un geste horizontal ample et rapide (au moins 120 px, en 350 ms maximum, avec une vitesse minimale de 0.6 px/ms). Un geste de defilement ou le scroll d un bloc annule la navigation.
+
+- Tableau de bord : compteurs presentes comme des filtres discrets, chiffre en pastille a cote du libelle, selection visible et annoncee aux lecteurs d ecran. Les compteurs En retard des projets et activites deviennent rouges uniquement au-dessus de zero. Espacement de 16 px entre les titres, les compteurs et les listes, conserve lors du chargement des feuilles partagees.
+
+- OMO : harmonisation des boutons des tiroirs, du tableau de bord, des checklists, des activites et des parametres. Les formulaires Holons, Documents, Agenda, Activites, Checklists, Regles et Indicateurs utilisent des sections avec separateurs au lieu de cadres imbriques. Tableau de bord allege avec compteurs generiques et moins de cadres internes. Fonds secondaires nettement eclaircis dans les palettes claires et textes secondaires plus lisibles en mode sombre. Champs Holons et focus clavier mutualises, ombres des boutons allegees, quatre feuilles CSS externalisees et surcharges redondantes retirees.
+
 ## 2026-09-16
+
+- Agenda : les entetes des vues semaine et jour sont plus compactes. Les jours n y repetent plus le mois, les nombres d evenements apparaissent dans de petites bulles a cote des titres, et les phrases de synthese ont disparu. Les boutons de navigation utilisent des chevrons arrondis mieux espaces, tandis que les titres des evenements horaires sont limites a deux lignes avec une ellipse.
+
+- Agenda : les vues semaine et jour affichent maintenant une ligne mobile a l heure courante dans la colonne d aujourd hui. A leur ouverture, la grille se centre verticalement sur cette ligne ; lorsqu aujourd hui n est pas affiche, elle conserve son ouverture vers 7 h.
 
 - Agenda : nouvelle action Partager pour creer plusieurs liens d abonnement ICS personnels, regroupant les evenements OMO de toutes les organisations et les agendas externes connectes. Chaque lien propose une fenetre glissante de 1 a 12 mois, un mode en clair ou Occupe, une expiration facultative et une revocation independante. Les flux utilisent le cache synchronise des agendas externes et ne contiennent ni identifiants de connexion ni listes d invites. Migration calendar_share ajoutee ; pliage ICS/vCard corrige pour respecter 75 octets sur les lignes de continuation.
 

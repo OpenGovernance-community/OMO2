@@ -190,6 +190,20 @@ try {
                 availabilityExpect(in_array($panel->getAttribute('data-omo-calendar-view-panel'), ['week', 'day'], true), 'No other-organization blocks in month/list');
             }
             availabilityExpect(!str_contains($html, 'SECRET title') && !str_contains($html, 'SECRET details'), 'Source event never serialized into page');
+            $nowIndicators = $xpath->query('//*[@data-omo-calendar-now-indicator]');
+            availabilityExpect($nowIndicators->length > 0, 'Week and day timelines contain current-time indicators');
+            availabilityExpect($xpath->query('//*[@data-omo-calendar-timezone and normalize-space(@data-omo-calendar-timezone) != ""]')->length === 1,
+                'Calendar timezone is supplied to current-time positioning');
+            availabilityExpect(str_contains($html, 'scrollTimelineToRelevantTime') && str_contains($html, 'availableHeight / 2')
+                && str_contains($html, 'setInterval(function ()'), 'Current-time line updates and opens vertically centered');
+            $dayHeaders = $xpath->query('//*[@data-omo-calendar-time-view="week"]//*[contains(concat(" ", normalize-space(@class), " "), " omo-calendar__time-day-header ")]');
+            availabilityExpect($dayHeaders->length > 0 && preg_match('/^(Lun|Mar|Mer|Jeu|Ven|Sam|Dim) [0-9]{1,2}[0-9]*$/',
+                trim($xpath->query('.//strong', $dayHeaders->item(0))->item(0)->textContent)) === 1, 'Timeline day heading omits repeated month name');
+            availabilityExpect($xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " omo-calendar__period-title--compact ")]/*[contains(concat(" ", normalize-space(@class), " "), " omo-calendar__timeline-count-badge ")]')->length > 0,
+                'Timeline period count uses a compact badge');
+            availabilityExpect($xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " omo-calendar__time-day-header ")]/*[contains(concat(" ", normalize-space(@class), " "), " omo-calendar__timeline-count-badge ")]')->length > 0,
+                'Timeline day counts use compact badges');
+            availabilityExpect(substr_count($html, '-webkit-line-clamp: 2') >= 2, 'Timed and all-day event titles are clamped to two lines');
         } else {
             $_POST = ['title' => 'Availability test ' . $nonce, 'status' => Event::STATUS_DRAFT,
                 'start_at' => $day->format('Y-m-d') . 'T10:30', 'end_at' => $day->format('Y-m-d') . 'T11:30',

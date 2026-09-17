@@ -4,6 +4,8 @@ require_once __DIR__ . '/shared.php';
 
 use dbObject\Checklist;
 use dbObject\ChecklistTrigger;
+use dbObject\ArrayUserOrganization;
+use dbObject\DocumentPvPoint;
 use dbObject\Holon;
 use dbObject\Project;
 use dbObject\RecurrenceSchedule;
@@ -36,6 +38,19 @@ if (!($templateRoot instanceof Project)) {
     http_response_code(404);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoChecklistT('checklist.error.not_found')) . '</div>';
     exit;
+}
+
+$checklistResponsibleOptions = [];
+$organizationMembers = new ArrayUserOrganization();
+$organizationMembers->loadActiveForOrganization($organizationId);
+foreach ($organizationMembers as $membership) {
+    $userId = (int)$membership->get('IDuser');
+    if ($userId > 0) {
+        $checklistResponsibleOptions[] = [
+            'id' => $userId,
+            'label' => DocumentPvPoint::getUserDisplayNameForOrganization($userId, $organizationId),
+        ];
+    }
 }
 
 $trigger = $isEdit ? omoChecklistGetPrimaryTrigger($checklist) : null;
@@ -82,7 +97,7 @@ if ($isEdit) {
         <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
         <?php if ($isEdit): ?><input type="hidden" name="id" value="<?= (int)$checklistId ?>"><?php endif; ?>
 
-        <section class="generic-section generic-section--stack generic-form-section omo-checklist-editor__section">
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided omo-checklist-editor__section">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoChecklistT('checklist.form.identity')) ?></h3>
             <div class="omo-checklist-form-grid generic-form-grid">
                 <label class="omo-checklist-field omo-checklist-field--wide">
@@ -112,10 +127,20 @@ if ($isEdit) {
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.revision_note')) ?></span>
                     <input class="generic-form-control" type="text" name="revision_note" value="<?= omoApiEscape((string)$checklist->get('revision_note')) ?>">
                 </label>
+                <label class="omo-checklist-field">
+                    <span><?= omoApiEscape(omoChecklistT('checklist.form.responsible')) ?></span>
+                    <select class="generic-form-control" name="IDuser_responsible">
+                        <option value=""><?= omoApiEscape(omoChecklistT('checklist.form.responsible_none')) ?></option>
+                        <?php foreach ($checklistResponsibleOptions as $responsible): ?>
+                            <option value="<?= (int)$responsible['id'] ?>"<?= (int)$checklist->get('IDuser_responsible') === (int)$responsible['id'] ? ' selected' : '' ?>><?= omoApiEscape((string)$responsible['label']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small class="generic-help-text"><?= omoApiEscape(omoChecklistT('checklist.form.responsible_help')) ?></small>
+                </label>
             </div>
         </section>
 
-        <section class="generic-section generic-section--stack generic-form-section omo-checklist-editor__section" data-checklist-trigger-section>
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided omo-checklist-editor__section" data-checklist-trigger-section>
             <div class="omo-checklist-editor__section-heading generic-form-section__heading">
                 <div class="generic-form-section__copy">
                     <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoChecklistT('checklist.form.trigger')) ?></h3>

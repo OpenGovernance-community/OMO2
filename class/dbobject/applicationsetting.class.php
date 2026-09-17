@@ -119,6 +119,50 @@ class ApplicationSetting extends DbObject
         return $setting->save();
     }
 
+    public static function saveApplicationViewGlobalDefault($applicationKey, array $view)
+    {
+        $applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+        if ($applicationKey === '') {
+            return array('status' => false);
+        }
+        $setting = self::loadApplicationViewSetting();
+        if (!$setting) {
+            $setting = new self();
+            $setting->set('setting_key', self::APPLICATION_VIEW_SETTING_KEY);
+            self::$applicationViewSettingCache = $setting;
+            self::$applicationViewSettingLoaded = true;
+        }
+        $parameters = $setting->getParametersArray();
+        $views = UserHolon::normalizeApplicationViewDefaults(
+            $parameters[UserHolon::APPLICATION_VIEW_DEFAULTS_PARAMETER] ?? array()
+        );
+        $views[$applicationKey] = UserHolon::normalizeApplicationView($view);
+        $parameters[UserHolon::APPLICATION_VIEW_DEFAULTS_PARAMETER] = $views;
+        $setting->set('parameters', $parameters);
+        return $setting->save();
+    }
+
+    public static function clearApplicationViewGlobalDefault($applicationKey)
+    {
+        $applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+        $setting = self::loadApplicationViewSetting();
+        if ($applicationKey === '' || !$setting) {
+            return array('status' => true);
+        }
+        $parameters = $setting->getParametersArray();
+        $views = UserHolon::normalizeApplicationViewDefaults(
+            $parameters[UserHolon::APPLICATION_VIEW_DEFAULTS_PARAMETER] ?? array()
+        );
+        unset($views[$applicationKey]);
+        if ($views === array()) {
+            unset($parameters[UserHolon::APPLICATION_VIEW_DEFAULTS_PARAMETER]);
+        } else {
+            $parameters[UserHolon::APPLICATION_VIEW_DEFAULTS_PARAMETER] = $views;
+        }
+        $setting->set('parameters', $parameters);
+        return $setting->save();
+    }
+
     public static function clearApplicationViewBaseTypeDefault($applicationKey, $typeId)
     {
         $applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
@@ -164,6 +208,50 @@ class ApplicationSetting extends DbObject
     public static function getDashboardBaseTypeDefaultLayoutForHolon(Holon $holon): ?array
     {
         return self::getDashboardBaseTypeDefaultLayout((int)$holon->get('IDtypeholon'));
+    }
+
+    public static function getDashboardGlobalDefaultLayout(): ?array
+    {
+        $setting = self::loadDashboardSetting();
+        if (!$setting) {
+            return null;
+        }
+
+        $parameters = $setting->getParametersArray();
+        if (!array_key_exists(UserHolon::DASHBOARD_GLOBAL_LAYOUT_PARAMETER, $parameters)) {
+            return null;
+        }
+
+        return UserHolon::normalizeDashboardLayout(
+            $parameters[UserHolon::DASHBOARD_GLOBAL_LAYOUT_PARAMETER]
+        );
+    }
+
+    public static function saveDashboardGlobalDefaultLayout(array $layout)
+    {
+        $setting = self::loadDashboardSetting();
+        if (!$setting) {
+            $setting = new self();
+            $setting->set('setting_key', self::DASHBOARD_SETTING_KEY);
+        }
+
+        $parameters = $setting->getParametersArray();
+        $parameters[UserHolon::DASHBOARD_GLOBAL_LAYOUT_PARAMETER] = UserHolon::normalizeDashboardLayout($layout);
+        $setting->set('parameters', $parameters);
+        return $setting->save();
+    }
+
+    public static function clearDashboardGlobalDefaultLayout()
+    {
+        $setting = self::loadDashboardSetting();
+        if (!$setting) {
+            return array('status' => true);
+        }
+
+        $parameters = $setting->getParametersArray();
+        unset($parameters[UserHolon::DASHBOARD_GLOBAL_LAYOUT_PARAMETER]);
+        $setting->set('parameters', $parameters);
+        return $setting->save();
     }
 
     public static function saveDashboardBaseTypeDefaultLayout($typeId, array $layout)

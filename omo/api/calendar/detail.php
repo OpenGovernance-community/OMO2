@@ -313,7 +313,7 @@ $associatedDocumentPvPreparationUrl = $associatedDocument instanceof \dbObject\D
     ? $associatedDocument->buildPvEditorUrl($organizationId)
     : '';
 $canDeleteAssociatedDocument = $associatedDocument instanceof \dbObject\Document
-    && $associatedDocument->canManageLifecycle($organizationId, $currentUserId)
+    && $associatedDocument->canDeleteInOrganizationContext($organizationId, $currentUserId)
     && $associatedDocument->canDeleteDocument(true);
 $detailRefreshUrl = '/omo/api/calendar/detail.php?oid=' . rawurlencode((string)$organizationId)
     . '&id=' . rawurlencode((string)$eventId);

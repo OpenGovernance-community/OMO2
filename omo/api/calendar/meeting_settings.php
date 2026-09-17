@@ -50,50 +50,62 @@ $hours = $profile->hours();
 $text = [];
 foreach (['settings', 'saving', 'copied', 'unavailable'] as $key) { $text[$key] = meetingT($key); }
 ?>
-<form class="generic-drawer-content generic-form-stack" data-meeting-settings data-text="<?= meetingEscape(json_encode($text)) ?>" action="/omo/api/calendar/meeting_settings.php" method="post">
+<link rel="stylesheet" href="/omo/api/calendar/popups.css?v=20260917-calendar-ui-6">
+<form class="generic-drawer-content generic-form-stack" data-topbar-modal-max-width="860px" data-meeting-settings data-text="<?= meetingEscape(json_encode($text)) ?>" action="/omo/api/calendar/meeting_settings.php" method="post">
     <input type="hidden" name="csrf" value="<?= meetingEscape($csrf) ?>">
     <label class="generic-checkbox"><input type="checkbox" name="enabled" value="1" <?= $profile->get('enabled') ? 'checked' : '' ?>><?= meetingEscape(meetingT('enable')) ?></label>
     <div class="generic-form-stack" data-meeting-enabled-content<?= $profile->get('enabled') ? '' : ' hidden' ?>>
-        <section class="generic-soft-panel generic-soft-panel--stack">
-        <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT('slug')) ?></span>
-            <input class="generic-form-control" type="text" name="slug" required minlength="3" maxlength="48" pattern="[A-Za-z][A-Za-z0-9-]{1,46}[A-Za-z0-9]" value="<?= meetingEscape($profile->get('slug')) ?>" placeholder="david" autocapitalize="none">
-            <span class="generic-help-text"><?= meetingEscape(meetingT('slug_hint')) ?></span>
-        </label>
-        <p class="generic-feedback generic-feedback--collapse-empty" data-meeting-slug-status aria-live="polite"></p>
-        <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT('link')) ?></span><input class="generic-form-control" data-meeting-link readonly value="<?= meetingEscape($profile->get('slug') ? appGetCurrentSiteBaseUrl() . '/meeting/' . $profile->get('slug') : '') ?>"></label>
-        <button class="generic-action-button generic-action-button--secondary" type="button" data-meeting-copy><?= meetingEscape(meetingT('copy')) ?></button>
-        <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT('calendar')) ?></span>
-            <select class="generic-form-control" name="calendar">
-                <option value=""><?= meetingEscape(meetingT('calendar_choose')) ?></option>
-                <?php foreach ($calendars as $calendar): $writable = commonExternalCalendarCanCreate($calendar); ?>
-                    <option value="<?= (int)$calendar->getId() ?>" <?= (int)$profile->get('IDexternalcalendar') === (int)$calendar->getId() ? 'selected' : '' ?> <?= $writable ? '' : 'disabled' ?>><?= meetingEscape($calendar->get('title') . ($writable ? '' : ' - ' . meetingT('readonly'))) ?></option>
-                <?php endforeach; ?>
-            </select>
-            <span class="generic-help-text"><?= meetingEscape(meetingT('calendar_hint')) ?></span>
-        </label>
+        <section class="generic-form-section generic-form-section--divided generic-form-stack">
+            <div class="generic-form-grid">
+                <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT('slug')) ?></span>
+                    <input class="generic-form-control" type="text" name="slug" required minlength="3" maxlength="48" pattern="[A-Za-z][A-Za-z0-9-]{1,46}[A-Za-z0-9]" value="<?= meetingEscape($profile->get('slug')) ?>" placeholder="david" autocapitalize="none">
+                    <span class="generic-help-text"><?= meetingEscape(meetingT('slug_hint')) ?></span>
+                    <span class="generic-feedback generic-feedback--collapse-empty" data-meeting-slug-status aria-live="polite"></span>
+                </label>
+                <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT('calendar')) ?></span>
+                    <select class="generic-form-control" name="calendar">
+                        <option value=""><?= meetingEscape(meetingT('calendar_choose')) ?></option>
+                        <?php foreach ($calendars as $calendar): $writable = commonExternalCalendarCanCreate($calendar); ?>
+                            <option value="<?= (int)$calendar->getId() ?>" <?= (int)$profile->get('IDexternalcalendar') === (int)$calendar->getId() ? 'selected' : '' ?> <?= $writable ? '' : 'disabled' ?>><?= meetingEscape($calendar->get('title') . ($writable ? '' : ' - ' . meetingT('readonly'))) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <span class="generic-help-text"><?= meetingEscape(meetingT('calendar_hint')) ?></span>
+                </label>
+            </div>
+            <div class="generic-control-action">
+                <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT('link')) ?></span><input class="generic-form-control" data-meeting-link readonly value="<?= meetingEscape($profile->get('slug') ? appGetCurrentSiteBaseUrl() . '/meeting/' . $profile->get('slug') : '') ?>"></label>
+                <button class="generic-action-button generic-action-button--secondary" type="button" data-meeting-copy><?= meetingEscape(meetingT('copy')) ?></button>
+            </div>
         </section>
-        <h3 class="generic-card-title"><?= meetingEscape(meetingT('hours')) ?></h3>
-        <p class="generic-help-text"><?= meetingEscape(meetingT('timezone')) ?></p>
-        <?php foreach (meetingWeekdayKeys() as $day => $label): $row = $hours[$day]; ?>
-            <section class="generic-soft-panel generic-soft-panel--stack" data-meeting-day>
-                <h4 class="generic-card-title generic-card-title--small"><?= meetingEscape(meetingT($label)) ?></h4>
-                <label class="generic-checkbox"><input type="checkbox" name="hours[<?= $day ?>][open]" value="1" data-meeting-open <?= $row['open'] ? 'checked' : '' ?>><?= meetingEscape(meetingT('open')) ?></label>
-                <div data-meeting-hours class="generic-form-stack" <?= $row['open'] ? '' : 'hidden' ?>>
-                    <div class="generic-form-grid">
-                        <?php foreach (['start', 'end'] as $field): ?>
-                            <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT($field)) ?></span><input type="time" class="generic-form-control" name="hours[<?= $day ?>][<?= $field ?>]" step="1800" required value="<?= meetingEscape($row[$field]) ?>"></label>
-                        <?php endforeach; ?>
+        <section class="generic-form-section generic-form-section--divided">
+            <div class="generic-form-section__copy">
+                <h3 class="generic-card-title"><?= meetingEscape(meetingT('hours')) ?></h3>
+                <p class="generic-help-text"><?= meetingEscape(meetingT('timezone')) ?></p>
+            </div>
+            <?php foreach (meetingWeekdayKeys() as $day => $label): $row = $hours[$day]; ?>
+                <section class="omo-calendar-meeting__day" data-meeting-day aria-labelledby="meetingDay<?= $day ?>">
+                    <div class="omo-calendar-meeting__day-name">
+                        <h4 class="generic-card-title generic-card-title--small" id="meetingDay<?= $day ?>"><?= meetingEscape(meetingT($label)) ?></h4>
+                        <label class="generic-checkbox"><input type="checkbox" name="hours[<?= $day ?>][open]" value="1" data-meeting-open <?= $row['open'] ? 'checked' : '' ?>><?= meetingEscape(meetingT('open')) ?></label>
                     </div>
-                    <label class="generic-checkbox"><input type="checkbox" name="hours[<?= $day ?>][pause]" value="1" data-meeting-pause <?= $row['pause'] ? 'checked' : '' ?>><?= meetingEscape(meetingT('pause')) ?></label>
-                    <div class="generic-form-grid" data-meeting-break <?= $row['pause'] ? '' : 'hidden' ?>>
-                        <?php foreach (['pause_start', 'pause_end'] as $field): ?>
-                            <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT($field)) ?></span><input type="time" class="generic-form-control" name="hours[<?= $day ?>][<?= $field ?>]" step="1800" required value="<?= meetingEscape($row[$field]) ?>"></label>
-                        <?php endforeach; ?>
+                    <div data-meeting-hours class="omo-calendar-meeting__hours" <?= $row['open'] ? '' : 'hidden' ?>>
+                        <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT('start')) ?></span><input type="time" class="generic-form-control" name="hours[<?= $day ?>][start]" step="1800" required value="<?= meetingEscape($row['start']) ?>"></label>
+                        <div class="generic-form-stack generic-form-stack--compact">
+                            <label class="generic-checkbox"><input type="checkbox" name="hours[<?= $day ?>][pause]" value="1" data-meeting-pause <?= $row['pause'] ? 'checked' : '' ?>><?= meetingEscape(meetingT('pause')) ?></label>
+                            <div class="omo-calendar-meeting__times" data-meeting-break <?= $row['pause'] ? '' : 'hidden' ?>>
+                                <?php foreach (['pause_start', 'pause_end'] as $field): ?>
+                                    <input type="time" class="generic-form-control" name="hours[<?= $day ?>][<?= $field ?>]" aria-label="<?= meetingEscape(meetingT($field)) ?>" title="<?= meetingEscape(meetingT($field)) ?>" step="1800" required value="<?= meetingEscape($row[$field]) ?>">
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <label class="generic-form-field"><span class="generic-form-label"><?= meetingEscape(meetingT('end')) ?></span><input type="time" class="generic-form-control" name="hours[<?= $day ?>][end]" step="1800" required value="<?= meetingEscape($row['end']) ?>"></label>
                     </div>
-                </div>
-            </section>
-        <?php endforeach; ?>
+                </section>
+            <?php endforeach; ?>
+        </section>
     </div>
-    <button class="generic-action-button generic-action-button--main" type="submit"><?= meetingEscape(meetingT('save')) ?></button>
-    <p class="generic-feedback" data-meeting-feedback aria-live="polite"></p>
+    <div class="generic-form-actions generic-form-actions--sticky">
+        <p class="generic-feedback generic-feedback--collapse-empty" data-meeting-feedback aria-live="polite"></p>
+        <button class="generic-action-button generic-action-button--main" type="submit"><?= meetingEscape(meetingT('save')) ?></button>
+    </div>
 </form>

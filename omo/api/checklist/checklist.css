@@ -231,12 +231,6 @@
     gap: 6px;
 }
 
-.omo-checklist-item-editor__actions .generic-action-button {
-    min-height: 32px;
-    padding: 6px 10px;
-    font-size: .73rem;
-}
-
 .omo-checklist-feedback {
     min-height: 1.4em;
     color: var(--color-text-light, #64748b);
@@ -436,12 +430,6 @@
     justify-content: flex-end;
     flex-wrap: wrap;
     gap: 8px;
-}
-
-.omo-checklist-flow__title-actions .generic-action-button {
-    min-height: 30px;
-    padding: 5px 9px;
-    font-size: .72rem;
 }
 
 .omo-checklist-flow__title-actions [data-checklist-item-menu] {

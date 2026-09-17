@@ -129,6 +129,8 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.detail.reference_ceiling' => ['text' => 'Plafond horizontal', 'context' => 'Indicator reference type label for ceiling.'],
             'stats.detail.reference_objective' => ['text' => 'Objectif ou trajectoire', 'context' => 'Indicator reference type label for objective.'],
             'stats.detail.latest' => ['text' => 'Valeur actuelle', 'context' => 'Label for the latest value in indicator detail.'],
+            'stats.responsibility.label' => ['text' => 'En charge', 'context' => 'Label preceding the role and directly assigned person for an indicator.'],
+            'stats.responsibility.unassigned' => ['text' => 'Non attribué', 'context' => 'Direct responsible person fallback for an indicator.'],
             'stats.detail.frequency' => ['text' => 'Fréquence attendue', 'context' => 'Label for the expected measurement frequency in indicator detail.'],
             'stats.detail.schedule' => ['text' => 'Moment attendu', 'context' => 'Label for the optional expected measurement moment in indicator detail.'],
             'stats.detail.chart_min_value' => ['text' => 'Valeur basse', 'context' => 'Label for the optional lower chart value in indicator detail.'],
@@ -146,6 +148,9 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.form.create_title' => ['text' => 'Nouvel indicateur', 'context' => 'Heading of the create indicator form.'],
             'stats.form.edit_title' => ['text' => "Modifier l'indicateur", 'context' => 'Heading of the edit indicator form.'],
             'stats.form.intro' => ['text' => 'Définissez la série et, si nécessaire, sa courbe de référence.', 'context' => 'Introductory copy in the indicator form.'],
+            'stats.form.responsible' => ['text' => 'Personne en charge', 'context' => 'Directly assigned person for an indicator.'],
+            'stats.form.responsible_none' => ['text' => 'Aucune personne', 'context' => 'Empty direct responsible person option for an indicator.'],
+            'stats.form.responsible_help' => ['text' => 'Si aucune personne n est choisie, la responsabilité reste portée par le rôle ou holon associé.', 'context' => 'Help text for the indicator responsible user selector.'],
             'stats.form.source_title' => ['text' => 'Source des valeurs', 'context' => 'Heading of the source choice in the indicator creation form.'],
             'stats.form.source_help' => ['text' => 'Choisissez une saisie manuelle ou une source automatique.', 'context' => 'Help text for the source choice in the indicator creation form.'],
             'stats.form.source_type' => ['text' => 'Type de source', 'context' => 'Label for the source type selector in the indicator creation form.'],
@@ -589,12 +594,11 @@ if (!function_exists('omoStatsCanManageContext')) {
 
         $currentHolon = $context['currentHolon'] ?? null;
         if ($currentHolon instanceof Holon) {
-            return $currentHolon->canEdit()
-                || omoStatsCanUsePermission($currentHolon, 'CAN_CREATE_INDICATOR', $context);
+            return omoStatsCanUsePermission($currentHolon, 'CAN_EDIT_INDICATOR', $context);
         }
 
         $organization = $context['organization'] ?? null;
-        return $organization instanceof Organization && $organization->canEdit();
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_EDIT_INDICATOR', (int)$organization->getId(), $currentUserId));
     }
 }
 
@@ -621,7 +625,31 @@ if (!function_exists('omoStatsCanEditIndicator')) {
 
         $holon = $indicator->getHolon();
         return $holon instanceof Holon
-            && omoStatsCanUsePermission($holon, 'CAN_CREATE_INDICATOR', $context);
+            && omoStatsCanUsePermission($holon, 'CAN_EDIT_INDICATOR', $context);
+    }
+}
+
+if (!function_exists('omoStatsCanDeleteIndicator')) {
+    function omoStatsCanDeleteIndicator(StatIndicator $indicator, array $context): bool
+    {
+        $holon = $indicator->getHolon() ?: ($context['rootHolon'] ?? null);
+        return $holon instanceof Holon
+            ? omoStatsCanUsePermission($holon, 'CAN_DELETE_INDICATOR', $context)
+            : $indicator->canDelete();
+    }
+}
+
+if (!function_exists('omoStatsCanDeleteContextResource')) {
+    function omoStatsCanDeleteContextResource($resource, array $context): bool
+    {
+        $holon = $context['currentHolon'] ?? $context['rootHolon'] ?? null;
+        $contextHolonId = ($context['currentHolon'] ?? null) instanceof Holon ? (int)$context['currentHolon']->getId() : 0;
+        return ($resource instanceof StatIndicatorImport || $resource instanceof StatIndicatorGroup)
+            && (int)$resource->get('IDholon') === $contextHolonId
+            && ($holon instanceof Holon
+                ? omoStatsCanUsePermission($holon, 'CAN_DELETE_INDICATOR', $context)
+                : (($context['organization'] ?? null) instanceof Organization
+                    && \dbObject\Permission::userCanInOrganization('CAN_DELETE_INDICATOR', (int)$context['organization']->getId(), (int)commonGetCurrentUserId())));
     }
 }
 
@@ -644,7 +672,7 @@ if (!function_exists('omoStatsCanCreateContext')) {
         }
 
         $organization = $context['organization'] ?? null;
-        return $organization instanceof Organization && $organization->canEdit();
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_CREATE_INDICATOR', (int)$organization->getId(), $currentUserId));
     }
 }
 
@@ -1617,6 +1645,22 @@ if (!function_exists('omoStatsRenderInteractiveChartRange')) {
             . '<span data-omo-stats-chart-range-min></span><span data-omo-stats-chart-range-max></span>'
             . '</div>'
             . '</div>';
+    }
+}
+
+if (!function_exists('omoStatsResponsibleAssignmentLabel')) {
+    function omoStatsResponsibleAssignmentLabel(StatIndicator $indicator): string
+    {
+        $holon = $indicator->getHolon();
+        $roleLabel = $holon instanceof Holon
+            ? trim((string)$holon->getDisplayName())
+            : omoStatsContextLabel($indicator);
+        $responsibleUserId = (int)$indicator->get('IDuser_responsible');
+        $personLabel = $responsibleUserId > 0
+            ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($responsibleUserId, (int)$indicator->get('IDorganization'))
+            : omoStatsT('stats.responsibility.unassigned');
+
+        return trim($roleLabel) . ' (' . trim($personLabel) . ')';
     }
 }
 

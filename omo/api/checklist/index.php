@@ -100,6 +100,7 @@ foreach ($checklists as $checklist) {
         'title' => trim((string)$templateRoot->get('title')),
         'description' => trim(strip_tags((string)$templateRoot->get('description'))),
         'holon' => $holon instanceof Holon ? trim((string)$holon->getDisplayName()) : '',
+        'responsibilityLabel' => omoChecklistResponsibleAssignmentLabel($checklist),
         'itemCount' => $itemCount,
         'openRunCount' => $openRunCount,
         'recurringActiveCount' => $recurringActiveCount,
@@ -136,7 +137,7 @@ $texts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<link rel="stylesheet" href="/omo/api/checklist/checklist.css?v=20260805-checklist-list-menu">
+<link rel="stylesheet" href="/omo/api/checklist/checklist.css?v=20260917-style-review-final">
 <div
     class="omo-checklist omo-panel-view"
     id="omo-checklist-root"
@@ -192,10 +193,10 @@ $texts = [
                     </div>
                     <div class="omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--secondary" data-checklist-filter-apply><?= omoApiEscape(omoChecklistT('checklist.filters.apply')) ?></button>
-                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
-                            <button type="button" class="generic-action-button generic-action-button--main" data-checklist-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoChecklistT('checklist.filters.save_view')) ?></button>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal']) || !empty($applicationViewPreferences['canSaveTemporary'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--main"<?= !empty($applicationViewPreferences['canSavePersonal']) ? ' data-checklist-filter-save' : '' ?> data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoChecklistT('checklist.filters.save_view')) ?></button>
                         <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
-                            <button type="button" class="generic-action-button generic-action-button--main" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                            <button type="button" class="generic-action-button generic-action-button--main" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape($applicationViewPreferences['primarySaveLabel'] ?? '') ?></button>
                         <?php endif; ?>
                         <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
@@ -237,7 +238,7 @@ $texts = [
                                                         <span class="omo-checklist-status omo-checklist-status--<?= omoApiEscape(Checklist::normalizeStatus($checklist->get('status'))) ?>"><?= omoApiEscape(omoChecklistStatusLabel($checklist->get('status'))) ?></span>
                                                     </span>
                                                     <?php if ((int)$row['recurringActiveCount'] > 0): ?><span class="omo-checklist-list__active-count"><?= omoApiEscape(omoChecklistT('checklist.detail.recurring_instance_count', ['count' => (int)$row['recurringActiveCount']])) ?></span><?php endif; ?>
-                                                <span class="generic-file-list__meta-line"><?= omoApiEscape(omoChecklistT(!empty($row['isContainer']) ? 'checklist.detail.activity_count' : 'checklist.detail.step_count', ['count' => (int)$row['itemCount']])) ?><?= empty($row['isContainer']) ? ' · ' . omoApiEscape(omoChecklistT('checklist.detail.open_run_count', ['count' => (int)$row['openRunCount']])) : '' ?><?= $row['description'] !== '' ? ' · ' . omoApiEscape(mb_strimwidth((string)$row['description'], 0, 90, '…', 'UTF-8')) : '' ?></span>
+                                                <span class="generic-file-list__meta-line"><?= omoApiEscape(omoChecklistT(!empty($row['isContainer']) ? 'checklist.detail.activity_count' : 'checklist.detail.step_count', ['count' => (int)$row['itemCount']])) ?><?= empty($row['isContainer']) ? ' · ' . omoApiEscape(omoChecklistT('checklist.detail.open_run_count', ['count' => (int)$row['openRunCount']])) : '' ?><?= $row['description'] !== '' ? ' · ' . omoApiEscape(mb_strimwidth((string)$row['description'], 0, 90, '…', 'UTF-8')) : '' ?> · <?= omoApiEscape(omoChecklistT('checklist.responsibility.label')) ?> : <?= omoApiEscape((string)$row['responsibilityLabel']) ?></span>
                                             </span>
                                         </div>
                                     </div>
@@ -292,5 +293,5 @@ $texts = [
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
-<script src="/omo/api/checklist/checklist.js?v=20260907-process-project-link"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
+<script src="/omo/api/checklist/checklist.js?v=20260917-filter-hierarchy"></script>

@@ -93,6 +93,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.blocked.reactivate_in_progress' => ['text' => 'En cours', 'context' => 'Status option after automatic blocked project reactivation.'],
             'projects.blocked.save' => ['text' => 'Enregistrer le blocage', 'context' => 'Submit button in the blocked project dialog.'],
             'projects.blocked.display_reason' => ['text' => 'Blocage', 'context' => 'Label shown before the blocked project reason.'],
+            'projects.blocked.display_reason_detail' => ['text' => 'Bloqué par', 'context' => 'Label shown before the blocked project reason in a project detail.'],
             'projects.blocked.display_until' => ['text' => 'Réexamen le {date}', 'context' => 'Date shown on a blocked project.'],
             'projects.blocked.display_due' => ['text' => 'Blocage en retard depuis le {date}', 'context' => 'Past blocked review date shown on a project that is not set to reactivate automatically.'],
             'projects.blocked.display_auto' => ['text' => 'Réactivation automatique le {date} à {status}', 'context' => 'Automatic reactivation information shown on a blocked project.'],
@@ -153,12 +154,13 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.detail.context' => ['text' => 'Contexte', 'context' => 'Project detail holon section label.'],
             'projects.detail.schedule' => ['text' => 'Dates planifiées', 'context' => 'Project detail planned dates section label.'],
             'projects.detail.organisation' => ['text' => 'Organisation', 'context' => 'Project detail organization label.'],
-            'projects.detail.responsible' => ['text' => 'Responsable', 'context' => 'Project detail responsible person label.'],
+            'projects.detail.responsible' => ['text' => 'Personne en charge', 'context' => 'Project detail responsible person label.'],
             'projects.detail.status' => ['text' => 'Statut', 'context' => 'Project detail status label.'],
             'projects.detail.priority' => ['text' => 'Priorité', 'context' => 'Project detail priority label.'],
             'projects.detail.importance' => ['text' => 'Importance stratégique', 'context' => 'Project detail importance label.'],
             'projects.detail.calculated_importance' => ['text' => 'Importance stratégique calculée', 'context' => 'Server-calculated project importance label.'],
             'projects.detail.calculated_importance_help' => ['text' => "Calculée à partir de l'importance stratégique déclarée, de la chaîne de projets et de la position holarchique.", 'context' => 'Help text for server-calculated project importance.'],
+            'projects.detail.importance_values_help' => ['text' => "Importance stratégique : valeur calculée / valeur définie.", 'context' => 'Help text for the calculated and defined importance values.'],
             'projects.detail.size' => ['text' => 'Taille', 'context' => 'Project detail project size label.'],
             'projects.detail.parent' => ['text' => 'Projet parent', 'context' => 'Project detail parent label.'],
             'projects.detail.subprojects' => ['text' => 'Sous-projets', 'context' => 'Project detail subprojects section label.'],
@@ -304,6 +306,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.capture_mode.multiple_documents' => ['text' => 'Documents multiples', 'context' => 'Project Telegram capture mode option.'],
             'projects.capture_mode.single_journal' => ['text' => 'Journal unique', 'context' => 'Project Telegram capture mode option.'],
             'projects.responsible.none' => ['text' => 'Aucun responsable', 'context' => 'Empty responsible person option in the project form.'],
+            'projects.responsible.unassigned' => ['text' => 'Non attribué', 'context' => 'Empty person in charge label in project views.'],
             'projects.responsible.help' => ['text' => 'Seules les personnes actives de cette organisation sont proposées.', 'context' => 'Help text below the responsible person selector in the project form.'],
             'projects.parent.none' => ['text' => 'Aucun projet parent', 'context' => 'Empty parent project value in the project form.'],
             'projects.parent.choose' => ['text' => 'Choisir un projet', 'context' => 'Button opening the parent project picker in the project form.'],
@@ -436,12 +439,12 @@ if (!function_exists('omoProjectsCanManageContext')) {
     {
         $currentHolon = $context['currentHolon'] ?? null;
         if ($currentHolon instanceof Holon) {
-            return $currentHolon->canEdit()
+            return omoProjectsCanUsePermission($currentHolon, 'CAN_EDIT_PROJECT', $context)
                 || omoProjectsCanUsePermission($currentHolon, 'CAN_CREATE_PROJECT', $context);
         }
 
         $organization = $context['organization'] ?? null;
-        return $organization instanceof Organization && $organization->canEdit();
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_EDIT_PROJECT', (int)$organization->getId(), (int)commonGetCurrentUserId()) || \dbObject\Permission::userCanInOrganization('CAN_CREATE_PROJECT', (int)$organization->getId(), (int)commonGetCurrentUserId()));
     }
 }
 
@@ -491,7 +494,7 @@ if (!function_exists('omoProjectsCanCreateContext')) {
             return omoProjectsCanUsePermission($rootHolon, 'CAN_CREATE_PROJECT', $context);
         }
 
-        return $organization instanceof Organization && $organization->canEdit();
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_CREATE_PROJECT', (int)$organization->getId(), $currentUserId));
     }
 }
 
@@ -587,6 +590,7 @@ if (!function_exists('omoProjectsCanViewProject')) {
 if (!function_exists('omoProjectsCanManageProject')) {
     function omoProjectsCanManageProject(Project $project, array $context)
     {
+        if (commonUserHasAdminOverride((int)commonGetCurrentUserId(), (int)$project->get('IDorganization'))) return true;
         if ($project->isPendingProposal()) {
             // When somebody is both proposer and recipient, the recipient
             // workflow has priority: they can accept or refuse, not edit.
@@ -605,7 +609,7 @@ if (!function_exists('omoProjectsCanManageProject')) {
                 return false;
             }
 
-            return omoProjectsCanUsePermission($projectHolon, 'CAN_CREATE_PROJECT', $context);
+            return omoProjectsCanUsePermission($projectHolon, 'CAN_EDIT_PROJECT', $context);
         }
 
         // A task without its own holon inherits the management right of its
@@ -623,7 +627,7 @@ if (!function_exists('omoProjectsCanManageProject')) {
         }
 
         $organization = $context['organization'] ?? null;
-        return $organization instanceof Organization && $organization->canEdit();
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_EDIT_PROJECT', (int)$organization->getId(), (int)commonGetCurrentUserId()));
     }
 }
 
@@ -640,13 +644,14 @@ if (!function_exists('omoProjectsCanCreateDocument')) {
             return $projectHolon->isAllowed('CAN_CREATE_DOCUMENT', true, $currentUserId);
         }
 
-        return commonCurrentUserHasOrganizationAccess((int)$project->get('IDorganization'));
+        return Document::canCreateInOrganizationContext((int)$project->get('IDorganization'), null, $currentUserId, 0, false);
     }
 }
 
 if (!function_exists('omoProjectsCanDeleteProject')) {
     function omoProjectsCanDeleteProject(Project $project, array $context)
     {
+        if (commonUserHasAdminOverride((int)commonGetCurrentUserId(), (int)$project->get('IDorganization'))) return true;
         $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
         if ($currentUserId <= 0) {
             return false;
@@ -675,7 +680,7 @@ if (!function_exists('omoProjectsCanDeleteProject')) {
         }
 
         $organization = $context['organization'] ?? null;
-        return $organization instanceof Organization && $organization->canEdit();
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_DELETE_PROJECT', (int)$organization->getId(), $currentUserId));
     }
 }
 
@@ -911,7 +916,7 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
                 'visibleInHolon' => $document->isVisibleInHolonWhenProjectDocument(),
                 'otherProjectCount' => $otherProjectCount,
                 'canDelete' => $document->canDeleteDocument(),
-                'canManageLifecycle' => $document->canManageLifecycle((int)$organizationId, (int)commonGetCurrentUserId()),
+                'canDeleteInContext' => $document->canDeleteInOrganizationContext((int)$organizationId, (int)commonGetCurrentUserId()),
                 'addedAt' => $createdAt instanceof \DateTimeInterface ? $createdAt->format('d.m.Y') : '',
             ];
         }
@@ -921,10 +926,13 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
 }
 
 if (!function_exists('omoProjectsStatusLabel')) {
-    function omoProjectsStatusLabel($status)
+    function omoProjectsStatusLabel($status, ?int $organizationId = null)
     {
         $status = Project::normalizeStatus($status);
-        return omoProjectsT('projects.status.' . $status);
+        $organizationId = $organizationId ?? (int)($_SESSION['currentOrganization'] ?? 0);
+        $customLabels = Project::getOrganizationStatusLabels($organizationId);
+        $customLabel = trim((string)($customLabels[$status] ?? ''));
+        return $customLabel !== '' ? $customLabel : omoProjectsT('projects.status.' . $status);
     }
 }
 
@@ -943,7 +951,7 @@ if (!function_exists('omoProjectsIsBlockedOverdue')) {
 }
 
 if (!function_exists('omoProjectsRenderBlockedInfo')) {
-    function omoProjectsRenderBlockedInfo(Project $project, $extraClass = '')
+    function omoProjectsRenderBlockedInfo(Project $project, $extraClass = '', $detailLegend = false)
     {
         if (Project::normalizeStatus($project->get('status')) !== Project::STATUS_BLOCKED) {
             return '';
@@ -972,7 +980,7 @@ if (!function_exists('omoProjectsRenderBlockedInfo')) {
             . ' ' . (string)$extraClass);
         $html = '<div class="' . omoApiEscape($className) . '">';
         $html .= '<span class="omo-project-blocked-info__reason"><strong>'
-            . omoApiEscape(omoProjectsT('projects.blocked.display_reason'))
+            . omoApiEscape(omoProjectsT($detailLegend ? 'projects.blocked.display_reason_detail' : 'projects.blocked.display_reason'))
             . '</strong> ' . omoApiEscape($reason !== '' ? $reason : omoProjectsT('projects.detail.none')) . '</span>';
         $html .= '<span class="omo-project-blocked-info__meta">' . omoApiEscape($metaLabel) . '</span>';
         return $html . '</div>';
@@ -1003,10 +1011,10 @@ if (!function_exists('omoProjectsScopeContainsProject')) {
 }
 
 if (!function_exists('omoProjectsGetUserLabel')) {
-    function omoProjectsGetUserLabel($user)
+    function omoProjectsGetUserLabel($user, $emptyLabelKey = 'projects.responsible.unassigned')
     {
         if (!is_object($user)) {
-            return omoProjectsT('projects.detail.none');
+            return omoProjectsT($emptyLabelKey);
         }
 
         $name = trim(trim((string)$user->get('firstname')) . ' ' . trim((string)$user->get('lastname')));
@@ -1045,6 +1053,7 @@ if (!function_exists('omoProjectsDefaultDisplayConfig')) {
     {
         return [
             'enabledStatuses' => omoProjectsStatusDisplayOrder(),
+            'statusLabels' => [],
             'usePriority' => true,
             'useImportance' => true,
             'useSize' => true,
@@ -1073,6 +1082,7 @@ if (!function_exists('omoProjectsNormalizeDisplayConfig')) {
 
         return [
             'enabledStatuses' => $enabledStatuses,
+            'statusLabels' => Project::normalizeStatusLabels($value['statusLabels'] ?? []),
             'usePriority' => array_key_exists('usePriority', $value) ? !empty($value['usePriority']) : true,
             'useImportance' => array_key_exists('useImportance', $value) ? !empty($value['useImportance']) : true,
             'useSize' => array_key_exists('useSize', $value) ? !empty($value['useSize']) : true,

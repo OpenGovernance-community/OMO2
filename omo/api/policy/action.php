@@ -18,10 +18,10 @@ if ($ruleId > 0) {
     $ruleHolon = $rule->getHolon();
     if (!($ruleHolon instanceof \dbObject\Holon)) $respond(false, omoPolicyT('policy.error.load'), 404);
     $currentHolonId = (int)$ruleHolon->getId();
-    if (!$rule->canEdit()) $respond(false, omoPolicyT('policy.error.forbidden'), 403);
+    if ($action === 'delete' ? !$rule->canDelete() : !$rule->canEdit()) $respond(false, omoPolicyT('policy.error.forbidden'), 403);
 }
 $context = omoPolicyResolveContext($organizationId, $currentHolonId);
-if (empty($context['status']) || !omoPolicyCanCreateLocalRule($context)) $respond(false, omoPolicyT('policy.error.forbidden'), 403);
+if (empty($context['status']) || ($ruleId <= 0 && !omoPolicyCanCreateLocalRule($context))) $respond(false, omoPolicyT('policy.error.forbidden'), 403);
 if ($action === 'delete') {
     if ($ruleId <= 0 || !$rule->delete()) $respond(false, omoPolicyT('policy.error.delete'), 422);
     $respond(true, omoPolicyT('policy.success.delete'));

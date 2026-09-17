@@ -232,7 +232,8 @@
     }
 
     if (!roleHasAttachedUsers(node)) {
-      return colorToDesaturatedGray(baseColor, fallbackColor);
+      const unassignedColor = String(node && node.unassignedColor || '').trim();
+      return unassignedColor || colorToDesaturatedGray(baseColor, fallbackColor);
     }
 
     return baseColor;
@@ -263,6 +264,7 @@
     normalizedNode.name = String(node.name || '');
     normalizedNode.type = String(node.type || '');
     normalizedNode.mycolor = String(node.mycolor || '');
+    normalizedNode.unassignedColor = String(node.unassignedColor || '');
     normalizedNode.userIds = Array.isArray(node.userIds) ? node.userIds.slice() : [];
     normalizedNode.size = getNodePackSize(normalizedNode, node.size);
 

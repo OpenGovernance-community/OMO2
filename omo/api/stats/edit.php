@@ -6,7 +6,9 @@ require_once dirname(__DIR__, 3) . '/common/spreadsheet.php';
 use dbObject\StatIndicator;
 use dbObject\StatIndicatorReferencePoint;
 use dbObject\ArrayDocument;
+use dbObject\ArrayUserOrganization;
 use dbObject\Document;
+use dbObject\DocumentPvPoint;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
@@ -39,6 +41,39 @@ if ($indicatorId <= 0 && !omoStatsCanCreateContext($context)) {
 
 if ($indicatorId <= 0) {
     $indicator->set('reference_type', StatIndicator::REFERENCE_NONE);
+}
+
+$indicatorResponsibleOptions = [];
+$organizationMembers = new ArrayUserOrganization();
+$organizationMembers->loadActiveForOrganization($organizationId);
+foreach ($organizationMembers as $membership) {
+    $userId = (int)$membership->get('IDuser');
+    if ($userId > 0) {
+        $indicatorResponsibleOptions[] = [
+            'id' => $userId,
+            'label' => DocumentPvPoint::getUserDisplayNameForOrganization($userId, $organizationId),
+        ];
+    }
+}
+
+if (!function_exists('fct_IDuser_responsible')) {
+    function fct_IDuser_responsible($object, $field, $default = null)
+    {
+        global $indicatorResponsibleOptions;
+        $selectedUserId = (int)$object->get($field);
+        $html = '<select class="admin-edit__control generic-form-control" name="IDuser_responsible" id="IDuser_responsible">';
+        $html .= '<option value="">' . omoApiEscape(omoStatsT('stats.form.responsible_none')) . '</option>';
+        foreach ($indicatorResponsibleOptions as $option) {
+            $userId = (int)($option['id'] ?? 0);
+            if ($userId <= 0) {
+                continue;
+            }
+            $html .= '<option value="' . $userId . '"' . ($selectedUserId === $userId ? ' selected' : '') . '>'
+                . omoApiEscape((string)($option['label'] ?? '')) . '</option>';
+        }
+        $html .= '</select><small class="generic-help-text">' . omoApiEscape(omoStatsT('stats.form.responsible_help')) . '</small>';
+        return [omoApiEscape(omoStatsT('stats.form.responsible')), $html];
+    }
 }
 
 if (!function_exists('fct_reference_type')) {
@@ -154,7 +189,7 @@ usort($referencePoints, static function (StatIndicatorReferencePoint $left, Stat
 
 ob_start();
 ?>
-    <section class="generic-section generic-section--stack generic-form-section">
+    <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided">
         <div class="generic-form-section__heading">
             <div class="generic-form-section__copy">
                 <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.form.source_title')) ?></h3>
@@ -173,7 +208,7 @@ ob_start();
         </label>
     </section>
     <section
-        class="generic-section generic-section--stack generic-form-section"
+        class="generic-section generic-section--stack generic-form-section generic-form-section--divided"
         data-omo-stats-source-panel="ethercalc_cell ethercalc_table"
         <?= $isEthercalcSource ? '' : ' hidden' ?>
     >
@@ -226,7 +261,7 @@ ob_start();
         </div>
     </section>
     <section
-        class="generic-section generic-section--stack generic-form-section"
+        class="generic-section generic-section--stack generic-form-section generic-form-section--divided"
         data-omo-stats-source-panel="spreadsheet_cell spreadsheet_table"
         <?= $isSpreadsheetSource ? '' : ' hidden' ?>
     >
@@ -283,7 +318,7 @@ ob_start();
         </div>
     </section>
 <section
-    class="generic-section generic-section--stack generic-form-section omo-stats-schedule"
+    class="generic-section generic-section--stack generic-form-section generic-form-section--divided omo-stats-schedule"
     data-omo-stats-source-panel="manual"
     <?= $isAutomaticSource ? ' hidden' : '' ?>
 >
@@ -308,7 +343,7 @@ ob_start();
         </label>
     </div>
 </section>
-<section class="generic-section generic-section--stack generic-form-section omo-stats-ceiling-editor" data-omo-stats-ceiling-editor hidden>
+<section class="generic-section generic-section--stack generic-form-section generic-form-section--divided omo-stats-ceiling-editor" data-omo-stats-ceiling-editor hidden>
     <div class="omo-stats-ceiling-editor__heading generic-form-section__copy">
         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.form.ceiling_title')) ?></h3>
         <p class="generic-description"><?= omoApiEscape(omoStatsT('stats.form.ceiling_help')) ?></p>
@@ -326,7 +361,7 @@ ob_start();
         >
     </label>
 </section>
-<div class="omo-stats-reference-editor generic-section generic-section--stack generic-form-section" data-omo-stats-reference-editor>
+<div class="omo-stats-reference-editor generic-section generic-section--stack generic-form-section generic-form-section--divided" data-omo-stats-reference-editor>
     <div class="omo-stats-reference-editor__heading generic-form-section__heading">
         <div class="generic-form-section__copy">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.form.reference_title')) ?></h3>
@@ -404,7 +439,7 @@ ob_start();
 <?php
 $afterTableHtml = ob_get_clean();
 $params = [
-    'fields' => ['name', 'description', 'source_url', 'chart_min_value', 'show_cumulative', 'reference_type'],
+    'fields' => ['name', 'description', 'IDuser_responsible', 'source_url', 'chart_min_value', 'show_cumulative', 'reference_type'],
     'buttons' => false,
     'action' => '/omo/api/stats/action.php',
     'success' => 'omoStatsAfterIndicatorSave()',

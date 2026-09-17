@@ -219,10 +219,10 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
                     </div>
                     <div class="omo-context-filter__actions omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-policy-filter-apply><?= omoApiEscape(omoPolicyT('policy.filters.apply')) ?></button>
-                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-policy-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoPolicyT('policy.filters.save_view')) ?></button>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal']) || !empty($applicationViewPreferences['canSaveTemporary'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary"<?= !empty($applicationViewPreferences['canSavePersonal']) ? ' data-policy-filter-save' : '' ?> data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoPolicyT('policy.filters.save_view')) ?></button>
                         <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape($applicationViewPreferences['primarySaveLabel'] ?? '') ?></button>
                         <?php endif; ?>
                         <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
@@ -251,6 +251,7 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
                 $holonLabel = $ruleHolon ? $ruleHolon->getFullDisplayName() : '-';
                 $authorityLabel = $ruleAuthority ? trim((string)$ruleAuthority->get('label')) : '';
                 $canEditRule = $rule->canEdit();
+                $canDeleteRule = $rule->canDelete();
                 $ruleEditUrl = $canEditRule && $ruleHolon instanceof Holon
                     ? '/omo/api/policy/edit.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . rawurlencode((string)$ruleHolon->getId()) . '&rule_id=' . rawurlencode((string)$rule->getId())
                     : '';
@@ -266,12 +267,12 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
                             <?= omoApiEscape((string)$rule->get('title')) ?>
                             <?php if ($isExpired): ?><span class="omo-policy__rule-status omo-policy__rule-status--expired"><?= omoApiEscape(omoPolicyT('policy.status.expired')) ?></span><?php elseif ($needsReview): ?><span class="omo-policy__rule-status omo-policy__rule-status--review"><?= omoApiEscape(omoPolicyT('policy.status.review')) ?></span><?php endif; ?>
                         </h3>
-                        <?php if ($canEditRule): ?>
+                        <?php if ($canEditRule || $canDeleteRule): ?>
                             <div class="generic-menu omo-policy__rule-menu" data-policy-rule-menu>
                                 <button type="button" class="generic-menu-toggle omo-policy__rule-menu-toggle" data-policy-rule-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="<?= omoApiEscape(omoPolicyT('policy.edit')) ?>">...</button>
                                 <div class="generic-menu-panel omo-policy__rule-menu-panel" data-policy-rule-menu-panel role="menu" hidden>
-                                    <button type="button" class="generic-menu-item" data-policy-rule-edit data-policy-edit-url="<?= omoApiEscape($ruleEditUrl) ?>" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.edit')) ?></button>
-                                    <button type="button" class="generic-menu-item generic-menu-item--danger" data-policy-rule-delete data-policy-rule-id="<?= (int)$rule->getId() ?>" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.delete')) ?></button>
+                                    <?php if ($canEditRule): ?><button type="button" class="generic-menu-item" data-policy-rule-edit data-policy-edit-url="<?= omoApiEscape($ruleEditUrl) ?>" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.edit')) ?></button><?php endif; ?>
+                                    <?php if ($canDeleteRule): ?><button type="button" class="generic-menu-item generic-menu-item--danger" data-policy-rule-delete data-policy-rule-id="<?= (int)$rule->getId() ?>" role="menuitem"><?= omoApiEscape(omoPolicyT('policy.delete')) ?></button><?php endif; ?>
                                 </div>
                             </div>
                         <?php endif; ?>
@@ -329,7 +330,7 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         <div class="omo-overlay-drawer__panel"><div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky"><div class="generic-drawer-header__copy"><h3 class="omo-overlay-drawer__title"><?= omoApiEscape(omoPolicyT('policy.drawer.title')) ?></h3><p class="omo-overlay-drawer__description"><?= omoApiEscape(omoPolicyT('policy.drawer.description')) ?></p></div><div class="generic-drawer-header__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-policy-close><?= omoApiEscape(omoPolicyT('policy.close')) ?></button></div></div><div class="omo-overlay-drawer__body" data-policy-drawer-body></div></div>
     </div>
 </div>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
 <script>
 (function () {
     var root = typeof window.omoFindApplicationRoot === 'function'
@@ -704,7 +705,13 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         var personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
             ? window.omoApplicationViewPreferencesGetPersonal(root)
             : null;
-        var preferredView = readPreference(window.sessionStorage) || personalView || serverDefault || getStoredPreference() || getDefaultPreference();
+        var canUseLegacyPersonal = typeof window.omoApplicationViewPreferencesCanUseLegacyPersonal === 'function'
+            && window.omoApplicationViewPreferencesCanUseLegacyPersonal(root);
+        var preferredView = readPreference(window.sessionStorage)
+            || personalView
+            || serverDefault
+            || (canUseLegacyPersonal ? getStoredPreference() : null)
+            || (canUseLegacyPersonal ? getDefaultPreference() : null);
         if (preferredView && !viewsMatch(normalizeView(preferredView), currentView())) {
             refreshRoot(policyViewUrl(normalizeView(preferredView)));
         }

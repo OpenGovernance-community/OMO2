@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS `stat_indicator` (
     `IDorganization` int(11) NOT NULL,
     `IDholon` int(11) DEFAULT NULL,
     `IDuser` int(11) DEFAULT NULL,
+    `IDuser_responsible` int(11) DEFAULT NULL,
     `name` varchar(190) NOT NULL,
     `description` mediumtext DEFAULT NULL,
     `source_url` varchar(2000) DEFAULT NULL,
@@ -20,13 +21,16 @@ CREATE TABLE IF NOT EXISTS `stat_indicator` (
     KEY `idx_stat_indicator_organization` (`IDorganization`),
     KEY `idx_stat_indicator_holon` (`IDholon`),
     KEY `idx_stat_indicator_user` (`IDuser`),
+    KEY `idx_stat_indicator_responsible` (`IDuser_responsible`),
     KEY `idx_stat_indicator_active` (`active`),
     CONSTRAINT `fk_stat_indicator_organization`
         FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_stat_indicator_holon`
         FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE SET NULL,
     CONSTRAINT `fk_stat_indicator_user`
-        FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE SET NULL
+        FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_stat_indicator_responsible`
+        FOREIGN KEY (`IDuser_responsible`) REFERENCES `user` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `stat_indicator_value` (

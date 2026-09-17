@@ -20,7 +20,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     ]);
 }
 
-$context = omoDecisionResolveEditorContext($_POST);
+$requestedAction = trim((string)($_POST['decision_action'] ?? 'close')) ?: 'close';
+$request = $_POST;
+$request['intent'] = 'view';
+$context = omoDecisionResolveEditorContext($request);
 if (empty($context['status'])) {
     omoDecisionActionJsonResponse((int)($context['code'] ?? 400), [
         'status' => false,
@@ -36,7 +39,9 @@ if (!($decision instanceof DecisionProcess) || (int)$decision->getId() <= 0) {
     ]);
 }
 
-if (empty($context['canManage'])) {
+$requiresDelete = $requestedAction === 'delete'
+    || (!in_array($requestedAction, ['archive', 'delete'], true) && $decision->resolveManagerCloseAction() === 'delete');
+if ($requiresDelete ? empty($context['canDelete']) : empty($context['canManage'])) {
     omoDecisionActionJsonResponse(403, [
         'status' => false,
         'message' => 'Acces refuse a cette prise de decision.',
