@@ -2858,6 +2858,11 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
             align-self: start;
         }
 
+        .omo-decision-vote__proposal-card:has(.omo-decision-vote__proposal-menu-toggle[aria-expanded="true"]) {
+            position: relative;
+            z-index: 8;
+        }
+
         .omo-decision-vote__proposal-menu-toggle {
             min-width: 42px;
             padding-inline: 12px;
