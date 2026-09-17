@@ -391,6 +391,56 @@ window.initGenericEditableSelects(container);</pre>
             </div>
         </section>
 
+        <section class="generic-section generic-section--stack generic-section--roomy" id="fieldsets">
+            <h2 class="generic-card-title generic-card-title--medium">Groupes de champs (fieldset)</h2>
+            <p class="generic-description">Dans un panneau ou un tiroir, utilisez un fieldset sans cadre imbriqué : sa légende forme un titre avec un séparateur. Le corps conserve les espacements des formulaires OMO.</p>
+            <div class="styleguide-grid">
+                <div class="generic-form-stack">
+                    <fieldset class="generic-fieldset">
+                        <legend class="generic-card-title generic-card-title--medium">Colonnes visibles</legend>
+                        <div class="generic-fieldset__body">
+                            <p class="generic-help-text">Cochez une colonne et, si besoin, personnalisez son nom.</p>
+                            <div class="generic-setting-row">
+                                <label class="generic-checkbox"><input type="checkbox" checked> <span>Prêt</span></label>
+                                <input class="generic-form-control" type="text" placeholder="Prêt" value="À faire" aria-label="Nom de la colonne Prêt">
+                            </div>
+                            <div class="generic-setting-row">
+                                <label class="generic-checkbox"><input type="checkbox" checked> <span>En cours</span></label>
+                                <input class="generic-form-control" type="text" placeholder="En cours" aria-label="Nom de la colonne En cours">
+                            </div>
+                        </div>
+                    </fieldset>
+                    <fieldset class="generic-fieldset">
+                        <legend class="generic-card-title generic-card-title--medium">Options</legend>
+                        <div class="generic-fieldset__body">
+                            <label class="generic-checkbox"><input type="checkbox" checked> <span>Afficher les priorités</span></label>
+                            <label class="generic-checkbox"><input type="checkbox"> <span>Afficher les tailles</span></label>
+                        </div>
+                    </fieldset>
+                </div>
+                <pre class="styleguide-code">&lt;fieldset class="generic-fieldset"&gt;
+  &lt;legend class="generic-card-title generic-card-title--medium"&gt;
+    Titre du groupe
+  &lt;/legend&gt;
+  &lt;div class="generic-fieldset__body"&gt;
+    &lt;div class="generic-setting-row"&gt;
+      &lt;label class="generic-checkbox"&gt;...&lt;/label&gt;
+      &lt;input class="generic-form-control"&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/fieldset&gt;
+
+generic-fieldset : groupe sémantique, sans cadre
+legend : titre et séparateur pleine largeur
+generic-fieldset__body : contenu espacé verticalement
+generic-setting-row : libellé et contrôle alignés
+
+Utilisez generic-form-grid pour juxtaposer les groupes.
+Les lignes passent sur une colonne sous 360 px.
+Associez un label ou aria-label à chaque champ.</pre>
+            </div>
+        </section>
+
         <section class="generic-section generic-section--stack">
             <div class="generic-card-title generic-card-title--eyebrow">Aide contextuelle</div>
             <div class="styleguide-grid">

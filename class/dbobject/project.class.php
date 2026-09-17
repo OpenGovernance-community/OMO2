@@ -33,6 +33,7 @@ class Project extends DbObject
     public const SIZE_XXL = 'XXL';
 
     private $historyActionOverride = '';
+    private static array $organizationStatusLabelsCache = [];
 
     public static function tableName()
     {
@@ -292,6 +293,59 @@ class Project extends DbObject
                 'description' => 'Projet acheve.',
             ],
         ];
+    }
+
+    public static function normalizeStatusLabels($labels): array
+    {
+        if (!is_array($labels)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach (self::statuses() as $status) {
+            $label = trim((string)($labels[$status] ?? ''));
+            if ($label !== '') {
+                $normalized[$status] = mb_substr($label, 0, 60, 'UTF-8');
+            }
+        }
+
+        return $normalized;
+    }
+
+    public static function getOrganizationStatusLabels(int $organizationId): array
+    {
+        if ($organizationId <= 0) {
+            return [];
+        }
+        if (array_key_exists($organizationId, self::$organizationStatusLabelsCache)) {
+            return self::$organizationStatusLabelsCache[$organizationId];
+        }
+
+        $application = OrganizationApplication::loadByOrganizationAndDirectory($organizationId, 'projects', false);
+        if (!($application instanceof OrganizationApplication)) {
+            return self::$organizationStatusLabelsCache[$organizationId] = [];
+        }
+
+        $parameters = $application->getParametersArray();
+        $display = is_array($parameters['display'] ?? null) ? $parameters['display'] : [];
+        return self::$organizationStatusLabelsCache[$organizationId] = self::normalizeStatusLabels($display['statusLabels'] ?? []);
+    }
+
+    public static function clearOrganizationStatusLabelsCache(int $organizationId): void
+    {
+        unset(self::$organizationStatusLabelsCache[$organizationId]);
+    }
+
+    public static function getOrganizationStatusLabel(int $organizationId, $status): string
+    {
+        $status = self::normalizeStatus($status);
+        $labels = self::getOrganizationStatusLabels($organizationId);
+        if (!empty($labels[$status])) {
+            return (string)$labels[$status];
+        }
+
+        $catalog = self::getStatusCatalog();
+        return (string)($catalog[$status]['label'] ?? $status);
     }
 
     public static function getCaptureModeCatalog()
@@ -573,11 +627,9 @@ class Project extends DbObject
         return $date instanceof \DateTimeInterface ? $date->format('d.m.Y') : $value;
     }
 
-    private static function getHistoryStatusLabel($status)
+    private static function getHistoryStatusLabel(int $organizationId, $status)
     {
-        $status = self::normalizeStatus($status);
-        $catalog = self::getStatusCatalog();
-        return (string)($catalog[$status]['label'] ?? $status);
+        return self::getOrganizationStatusLabel($organizationId, $status);
     }
 
     private static function getHistoryProposalStatusLabel($status)
@@ -590,18 +642,18 @@ class Project extends DbObject
         };
     }
 
-    private static function buildHistoryState(array $values)
+    private static function buildHistoryState(array $values, int $organizationId = 0)
     {
         return [
             'title' => trim((string)($values['title'] ?? '')),
-            'status' => self::getHistoryStatusLabel($values['status'] ?? self::STATUS_SOMEDAY),
+            'status' => self::getHistoryStatusLabel($organizationId, $values['status'] ?? self::STATUS_SOMEDAY),
             'proposal_status' => self::getHistoryProposalStatusLabel($values['proposal_status'] ?? self::PROPOSAL_NONE),
             'planned_start_date' => self::formatHistoryDate($values['planned_start_date'] ?? null),
             'planned_end_date' => self::formatHistoryDate($values['planned_end_date'] ?? null),
             'blocked_reason' => trim((string)($values['blocked_reason'] ?? '')),
             'blocked_until' => self::formatHistoryDate($values['blocked_until'] ?? null),
             'blocked_auto_reactivate' => (int)($values['blocked_auto_reactivate'] ?? 0) === 1 ? 'Oui' : 'Non',
-            'blocked_reactivate_status' => self::getHistoryStatusLabel($values['blocked_reactivate_status'] ?? self::STATUS_READY),
+            'blocked_reactivate_status' => self::getHistoryStatusLabel($organizationId, $values['blocked_reactivate_status'] ?? self::STATUS_READY),
             '_status' => self::normalizeStatus($values['status'] ?? self::STATUS_SOMEDAY),
         ];
     }
@@ -609,13 +661,13 @@ class Project extends DbObject
     private static function getStoredHistoryState($projectId)
     {
         $row = self::fetchRow(
-            'SELECT title, status, proposal_status, planned_start_date, planned_end_date, blocked_reason, blocked_until, blocked_auto_reactivate, blocked_reactivate_status
+            'SELECT IDorganization, title, status, proposal_status, planned_start_date, planned_end_date, blocked_reason, blocked_until, blocked_auto_reactivate, blocked_reactivate_status
              FROM project
              WHERE id = :id
              LIMIT 1',
             ['id' => (int)$projectId]
         );
-        return is_array($row) ? self::buildHistoryState($row) : null;
+        return is_array($row) ? self::buildHistoryState($row, (int)($row['IDorganization'] ?? 0)) : null;
     }
 
     private function getCurrentHistoryState()
@@ -630,7 +682,7 @@ class Project extends DbObject
             'blocked_until' => $this->get('blocked_until'),
             'blocked_auto_reactivate' => $this->get('blocked_auto_reactivate'),
             'blocked_reactivate_status' => $this->get('blocked_reactivate_status'),
-        ]);
+        ], (int)$this->get('IDorganization'));
     }
 
     private static function buildHistoryChanges(array $before, array $after)

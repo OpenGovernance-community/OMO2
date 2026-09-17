@@ -330,6 +330,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
 
 <link rel="stylesheet" href="/omo/api/parameters/settings.css?v=20260917-style-review-final">
 
+<script src="/omo/api/projects/params/params.js?v=20260917-calculation"></script>
 <script>
 (function () {
 var settingsTexts = <?= json_encode($parametersIndexClientTexts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;

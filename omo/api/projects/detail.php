@@ -299,19 +299,19 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
     <div class="generic-tabs generic-tabs--icons-mobile omo-project-detail__tabs" data-generic-tabs>
         <div class="generic-tabs__list" aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.tabs.label')) ?>">
             <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omo-project-detail-information-<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.tabs.information')) ?>">
-                <img class="generic-tabs__tab-icon" src="/omo/images/tools/info.png" alt="">
+                <img class="generic-monochrome-icon generic-tabs__tab-icon" src="/omo/images/tools/info.png" alt="">
                 <span class="generic-tabs__tab-label"><?= omoApiEscape(omoProjectsT('projects.detail.tabs.information')) ?></span>
             </button>
             <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-project-detail-documents-<?= (int)$project->getId() ?>" data-omo-project-detail-documents-tab aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.tabs.documents')) ?>">
-                <img class="generic-tabs__tab-icon" src="/omo/images/tools/documents-folder.png" alt="">
+                <img class="generic-monochrome-icon generic-tabs__tab-icon" src="/omo/images/tools/documents-folder.png" alt="">
                 <span class="generic-tabs__tab-label"><?= omoApiEscape(omoProjectsT('projects.detail.tabs.documents')) ?></span>
             </button>
             <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-project-detail-events-<?= (int)$project->getId() ?>" data-omo-project-detail-events-tab aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.tabs.events')) ?>">
-                <img class="generic-tabs__tab-icon" src="/omo/images/tools/calendar.png" alt="">
+                <img class="generic-monochrome-icon generic-tabs__tab-icon" src="/omo/images/tools/calendar.png" alt="">
                 <span class="generic-tabs__tab-label"><?= omoApiEscape(omoProjectsT('projects.detail.tabs.events')) ?></span>
             </button>
             <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omo-project-detail-history-<?= (int)$project->getId() ?>" data-omo-project-detail-history-tab aria-label="<?= omoApiEscape(omoProjectsT('projects.detail.tabs.history')) ?>">
-                <img class="generic-tabs__tab-icon" src="/omo/images/tools/history.png" alt="">
+                <img class="generic-monochrome-icon generic-tabs__tab-icon" src="/omo/images/tools/history.png" alt="">
                 <span class="generic-tabs__tab-label"><?= omoApiEscape(omoProjectsT('projects.detail.tabs.history')) ?></span>
             </button>
         </div>

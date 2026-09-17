@@ -141,11 +141,12 @@ foreach ($parentProjects as $parentProject) {
     }
 }
 
-$statuses = array_filter(
-    Project::getStatusCatalog(),
-    static fn ($catalog, string $status): bool => in_array($status, $enabledStatuses, true),
-    ARRAY_FILTER_USE_BOTH
-);
+$statuses = [];
+foreach (omoProjectsStatusDisplayOrder() as $status) {
+    if (in_array($status, $enabledStatuses, true)) {
+        $statuses[$status] = ['label' => omoProjectsStatusLabel($status, $organizationId)];
+    }
+}
 $selectedStatus = Project::normalizeStatus($project->get('status'));
 $statusIsConfigurable = in_array($selectedStatus, $enabledStatuses, true);
 $selectedBlockedUntil = $formatDateValue($project->get('blocked_until'));

@@ -4,13 +4,19 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-17
 
+- Paramètres Projets : fieldsets harmonisés avec OMO et documentés dans le guide de styles partagé. Calcul de l’importance stratégique réorganisé autour de deux réglages expliqués — le poids local et la pénalité de profondeur —, avec un exemple sur trois niveaux actualisé pendant la saisie, des règles de calcul dépliables et une sauvegarde sans quitter le tiroir.
+
+- Projets : les colonnes du Kanban peuvent maintenant recevoir un libelle propre a chaque organisation. Dans les parametres de l application, chaque statut conserve son nom par defaut en placeholder ; un champ renseigne le remplace dans le Kanban, les formulaires, les details, les recherches, les projets integres aux PV et les processus relies. La sauvegarde reste dans le panneau des parametres et affiche son retour sans ouvrir la reponse JSON.
+
 - Interface : survol harmonise des boutons d action et des menus avec un deplacement de 1 px et un halo discret, au lieu d une ombre portee. Les actions mobiles utilisent aussi cet effet partage ; le mouvement est desactive si les animations reduites sont preferees.
 
 - Interface : les boutons d action standards adoptent la hauteur compacte de 34 px des menus a trois points, avec moins de marge verticale. Les boutons a icone et les boutons d ajout des entetes mobiles sont harmonises au meme format.
 
-- Projets : le detail rassemble maintenant les indicateurs d attention au-dessus de la description, avec leurs libelles sur ordinateur et une version compacte sur mobile. L importance strategique reste toujours visible : elle affiche la valeur calculee seule ou 0 sans donnee, et ajoute la valeur definie lorsqu elle existe. Le fil des projets parents suit le titre Description, puis la personne en charge avec son cercle ou role. Une personne sans attribution est affichee comme Non attribue. Un bloc rouge Bloque par presente aussi le motif et les informations de reactivation. Les dates de creation, debut et fin sont sur une ligne.
+- Structure : en mode Decouverte, une organisation vide masque la creation a partir de rien lorsqu un modele predefini est disponible. Cette creation reste disponible uniquement si aucun modele ne peut etre propose.
 
-- Projets : les onglets du detail affichent leurs pictogrammes et conservent leur libelle sur ordinateur. Sur petit ecran mobile, les quatre icones restent sur une seule ligne et les noms restent disponibles aux lecteurs d ecran.
+- Projets : le detail rassemble maintenant les indicateurs d attention au-dessus de la description, avec leurs libelles sur ordinateur et une version compacte sur mobile. L importance strategique reste toujours visible : elle affiche la valeur calculee seule ou 0 sans donnee, et ajoute la valeur definie lorsqu elle existe. Le fil des projets parents suit le titre Description, puis la personne en charge avec son cercle ou role. Une personne sans attribution est affichee comme Non attribue. Un bloc rouge Bloque par presente aussi le motif et les informations de reactivation. Les dates de creation, debut et fin sont sur une ligne. Les contenus courts restent maintenant groupes en haut du panneau, sans blancs verticaux.
+
+- Projets : les onglets du detail affichent leurs pictogrammes et conservent leur libelle sur ordinateur. Sur petit ecran mobile, les quatre icones restent sur une seule ligne et les noms restent disponibles aux lecteurs d ecran. Les pictogrammes monochromes reutilisent maintenant une classe generique qui les inverse en blanc sur fond sombre et les attenue dans les onglets inactifs.
 
 - Menus Actions mobiles : hauteur compacte commune de 34 px pour les boutons et les sous-actions de toutes les apps, y compris Aujourd hui. Le format est defini dans les composants generiques.
 

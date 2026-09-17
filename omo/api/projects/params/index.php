@@ -12,11 +12,11 @@ $config = $organizationLoaded ? omoProjectsParamsGetConfig($organization) : \dbO
 $displayConfig = $organizationLoaded ? omoProjectsParamsGetDisplayConfig($organization) : omoProjectsDefaultDisplayConfig();
 ?>
 <div class="omo-projects-params" data-omo-projects-params-root>
-    <section class="generic-section generic-section--stack generic-section--roomy">
+    <section class="generic-section generic-section--plain generic-form-stack">
         <div>
             <div class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoProjectsParamsT('projects.params.application'), ENT_QUOTES, 'UTF-8') ?></div>
             <h2 class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoProjectsParamsT('projects.params.title'), ENT_QUOTES, 'UTF-8') ?></h2>
-            <p class="omo-projects-params__description generic-description"><?= htmlspecialchars(omoProjectsParamsT('projects.params.description'), ENT_QUOTES, 'UTF-8') ?></p>
+            <p class="generic-description"><?= htmlspecialchars(omoProjectsParamsT('projects.params.description'), ENT_QUOTES, 'UTF-8') ?></p>
         </div>
         <?php if ($userId <= 0): ?>
             <div class="omo-empty-state"><?= htmlspecialchars(omoProjectsParamsT('projects.params.error.login'), ENT_QUOTES, 'UTF-8') ?></div>
@@ -27,25 +27,34 @@ $displayConfig = $organizationLoaded ? omoProjectsParamsGetDisplayConfig($organi
         <?php elseif (!$canManage): ?>
             <div class="omo-empty-state"><?= htmlspecialchars(omoProjectsParamsT('projects.params.error.forbidden'), ENT_QUOTES, 'UTF-8') ?></div>
         <?php else: ?>
-            <section class="generic-section generic-section--stack">
+            <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided">
                 <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoProjectsParamsT('projects.params.display_title'), ENT_QUOTES, 'UTF-8') ?></h3>
-                <form class="generic-form-stack" action="/omo/api/projects/params/save.php" method="post" data-omo-projects-params-form>
+                <form class="generic-form-stack" action="/omo/api/projects/params/save.php" method="post" data-omo-projects-params-form data-omo-projects-params-saving-label="<?= htmlspecialchars(omoProjectsParamsT('projects.params.saving'), ENT_QUOTES, 'UTF-8') ?>" data-omo-projects-params-error="<?= htmlspecialchars(omoProjectsParamsT('projects.params.error.save'), ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
                     <input type="hidden" name="save_display" value="1">
                     <input type="hidden" name="parent_weight" value="<?= htmlspecialchars((string)$config['parentWeight'], ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="depth_penalty" value="<?= htmlspecialchars((string)$config['depthPenalty'], ENT_QUOTES, 'UTF-8') ?>">
                     <div class="omo-projects-params__grid generic-form-grid">
-                        <fieldset class="generic-form-field">
-                            <legend class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoProjectsParamsT('projects.params.columns'), ENT_QUOTES, 'UTF-8') ?></legend>
+                        <fieldset class="generic-fieldset">
+                            <legend class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoProjectsParamsT('projects.params.columns'), ENT_QUOTES, 'UTF-8') ?></legend>
+                            <div class="generic-fieldset__body">
+                            <p class="generic-help-text"><?= htmlspecialchars(omoProjectsParamsT('projects.params.columns_help'), ENT_QUOTES, 'UTF-8') ?></p>
                             <?php foreach (omoProjectsStatusDisplayOrder() as $status): ?>
-                                <label class="generic-checkbox"><input type="checkbox" name="enabled_statuses[]" value="<?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?>"<?= in_array($status, $displayConfig['enabledStatuses'], true) ? ' checked' : '' ?>> <span><?= htmlspecialchars(omoProjectsStatusLabel($status), ENT_QUOTES, 'UTF-8') ?></span></label>
+                                <?php $defaultStatusLabel = omoProjectsT('projects.status.' . $status); ?>
+                                <div class="generic-setting-row">
+                                    <label class="generic-checkbox"><input type="checkbox" name="enabled_statuses[]" value="<?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?>"<?= in_array($status, $displayConfig['enabledStatuses'], true) ? ' checked' : '' ?>> <span><?= htmlspecialchars($defaultStatusLabel, ENT_QUOTES, 'UTF-8') ?></span></label>
+                                    <input class="generic-form-control" type="text" name="status_labels[<?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?>]" maxlength="60" value="<?= htmlspecialchars((string)($displayConfig['statusLabels'][$status] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="<?= htmlspecialchars($defaultStatusLabel, ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(omoProjectsParamsT('projects.params.column_label', ['status' => $defaultStatusLabel]), ENT_QUOTES, 'UTF-8') ?>">
+                                </div>
                             <?php endforeach; ?>
+                            </div>
                         </fieldset>
-                        <fieldset class="generic-form-field">
-                            <legend class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoProjectsParamsT('projects.params.classification'), ENT_QUOTES, 'UTF-8') ?></legend>
+                        <fieldset class="generic-fieldset">
+                            <legend class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoProjectsParamsT('projects.params.classification'), ENT_QUOTES, 'UTF-8') ?></legend>
+                            <div class="generic-fieldset__body">
                             <label class="generic-checkbox"><input type="checkbox" name="use_priority" value="1"<?= !empty($displayConfig['usePriority']) ? ' checked' : '' ?>> <span><?= htmlspecialchars(omoProjectsParamsT('projects.params.use_priority'), ENT_QUOTES, 'UTF-8') ?></span></label>
                             <label class="generic-checkbox"><input type="checkbox" name="use_importance" value="1"<?= !empty($displayConfig['useImportance']) ? ' checked' : '' ?>> <span><?= htmlspecialchars(omoProjectsParamsT('projects.params.use_importance'), ENT_QUOTES, 'UTF-8') ?></span></label>
                             <label class="generic-checkbox"><input type="checkbox" name="use_size" value="1"<?= !empty($displayConfig['useSize']) ? ' checked' : '' ?>> <span><?= htmlspecialchars(omoProjectsParamsT('projects.params.use_size'), ENT_QUOTES, 'UTF-8') ?></span></label>
+                            </div>
                         </fieldset>
                     </div>
                     <div class="omo-projects-params__actions generic-form-actions">
@@ -54,70 +63,63 @@ $displayConfig = $organizationLoaded ? omoProjectsParamsGetDisplayConfig($organi
                     <div class="omo-projects-params__feedback generic-soft-panel generic-feedback" data-omo-projects-params-feedback hidden></div>
                 </form>
             </section>
-            <p class="omo-projects-params__hint generic-description"><?= htmlspecialchars(omoProjectsParamsT('projects.params.formula'), ENT_QUOTES, 'UTF-8') ?></p>
-            <form class="generic-form-stack" action="/omo/api/projects/params/save.php" method="post" data-omo-projects-params-form>
-                <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
-                <div class="omo-projects-params__grid generic-form-grid">
-                    <label class="generic-form-field">
-                        <span class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoProjectsParamsT('projects.params.parent_weight'), ENT_QUOTES, 'UTF-8') ?></span>
-                        <input class="generic-form-control" name="parent_weight" type="number" min="0" max="1" step="0.01" value="<?= htmlspecialchars((string)$config['parentWeight'], ENT_QUOTES, 'UTF-8') ?>">
-                        <small><?= htmlspecialchars(omoProjectsParamsT('projects.params.parent_weight_hint'), ENT_QUOTES, 'UTF-8') ?></small>
-                    </label>
-                    <div class="omo-projects-params__derived generic-soft-panel generic-form-field">
-                        <span class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoProjectsParamsT('projects.params.local_weight'), ENT_QUOTES, 'UTF-8') ?></span>
-                        <strong data-omo-projects-local-weight><?= htmlspecialchars((string)round((1 - $config['parentWeight']) * 100), ENT_QUOTES, 'UTF-8') ?> %</strong>
+            <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided">
+                <div class="generic-form-section__copy">
+                    <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoProjectsParamsT('projects.params.calculation_title'), ENT_QUOTES, 'UTF-8') ?></h3>
+                    <p class="generic-description"><?= htmlspecialchars(omoProjectsParamsT('projects.params.calculation_intro'), ENT_QUOTES, 'UTF-8') ?></p>
+                </div>
+                <form class="generic-form-stack" action="/omo/api/projects/params/save.php" method="post" data-omo-projects-params-form data-omo-projects-params-saving-label="<?= htmlspecialchars(omoProjectsParamsT('projects.params.saving'), ENT_QUOTES, 'UTF-8') ?>" data-omo-projects-params-error="<?= htmlspecialchars(omoProjectsParamsT('projects.params.error.save'), ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
+                    <fieldset class="generic-fieldset">
+                        <legend class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoProjectsParamsT('projects.params.balance_title'), ENT_QUOTES, 'UTF-8') ?></legend>
+                        <div class="generic-fieldset__body">
+                            <div class="generic-form-grid generic-form-grid--pair">
+                                <div class="generic-soft-panel generic-soft-panel--stack">
+                                    <label class="generic-form-field">
+                                        <span class="generic-form-label"><?= htmlspecialchars(omoProjectsParamsT('projects.params.parent_weight'), ENT_QUOTES, 'UTF-8') ?></span>
+                                        <input class="generic-form-control" name="parent_weight" type="number" min="0" max="1" step="0.01" required value="<?= htmlspecialchars((string)$config['parentWeight'], ENT_QUOTES, 'UTF-8') ?>" data-omo-projects-parent-weight>
+                                    </label>
+                                    <output class="generic-card-title generic-card-title--big" data-omo-projects-parent-share data-template="<?= htmlspecialchars(omoProjectsParamsT('projects.params.parent_share', ['percent' => '{percent}']), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars(omoProjectsParamsT('projects.params.parent_share', ['percent' => round($config['parentWeight'] * 100)]), ENT_QUOTES, 'UTF-8') ?></output>
+                                    <small class="generic-help-text"><?= htmlspecialchars(omoProjectsParamsT('projects.params.parent_help'), ENT_QUOTES, 'UTF-8') ?></small>
+                                </div>
+                                <div class="generic-soft-panel generic-soft-panel--stack">
+                                    <span class="generic-form-label"><?= htmlspecialchars(omoProjectsParamsT('projects.params.local_weight'), ENT_QUOTES, 'UTF-8') ?></span>
+                                    <output class="generic-card-title generic-card-title--large" data-omo-projects-local-weight aria-live="polite"><?= htmlspecialchars((string)round((1 - $config['parentWeight']) * 100), ENT_QUOTES, 'UTF-8') ?> %</output>
+                                    <p class="generic-help-text"><?= htmlspecialchars(omoProjectsParamsT('projects.params.local_help'), ENT_QUOTES, 'UTF-8') ?></p>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <fieldset class="generic-fieldset">
+                        <legend class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(omoProjectsParamsT('projects.params.depth_title'), ENT_QUOTES, 'UTF-8') ?></legend>
+                        <div class="generic-fieldset__body">
+                            <div class="generic-form-grid generic-form-grid--pair">
+                                <label class="generic-form-field">
+                                    <span class="generic-form-label"><?= htmlspecialchars(omoProjectsParamsT('projects.params.depth_penalty'), ENT_QUOTES, 'UTF-8') ?></span>
+                                    <input class="generic-form-control" name="depth_penalty" type="number" min="0" step="0.01" required value="<?= htmlspecialchars((string)$config['depthPenalty'], ENT_QUOTES, 'UTF-8') ?>" data-omo-projects-depth-penalty>
+                                    <small class="generic-help-text"><?= htmlspecialchars(omoProjectsParamsT('projects.params.depth_help'), ENT_QUOTES, 'UTF-8') ?></small>
+                                </label>
+                                <div class="generic-soft-panel generic-soft-panel--stack">
+                                    <output class="generic-help-text" data-omo-projects-depth-example aria-live="polite" data-template="<?= htmlspecialchars(omoProjectsParamsT('projects.params.depth_example', ['level1' => '{level1}', 'level2' => '{level2}', 'level3' => '{level3}']), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars(omoProjectsParamsT('projects.params.depth_example', ['level1' => round(exp(-$config['depthPenalty']) * 100), 'level2' => round(exp(-$config['depthPenalty'] * 2) * 100), 'level3' => round(exp(-$config['depthPenalty'] * 3) * 100)]), ENT_QUOTES, 'UTF-8') ?></output>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+                    <details class="generic-accordion">
+                        <summary><?= htmlspecialchars(omoProjectsParamsT('projects.params.rules_title'), ENT_QUOTES, 'UTF-8') ?></summary>
+                        <div class="generic-accordion__content generic-form-stack">
+                            <p class="generic-description"><?= htmlspecialchars(omoProjectsParamsT('projects.params.rules_balance'), ENT_QUOTES, 'UTF-8') ?></p>
+                            <p class="generic-description"><?= htmlspecialchars(omoProjectsParamsT('projects.params.rules_missing'), ENT_QUOTES, 'UTF-8') ?></p>
+                            <p class="generic-description"><?= htmlspecialchars(omoProjectsParamsT('projects.params.rules_depth'), ENT_QUOTES, 'UTF-8') ?></p>
+                        </div>
+                    </details>
+                    <div class="generic-form-actions">
+                        <button class="generic-action-button generic-action-button--main" type="submit" data-omo-projects-params-submit><?= htmlspecialchars(omoProjectsParamsT('projects.params.calculation_save'), ENT_QUOTES, 'UTF-8') ?></button>
                     </div>
-                    <label class="generic-form-field">
-                        <span class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoProjectsParamsT('projects.params.depth_penalty'), ENT_QUOTES, 'UTF-8') ?></span>
-                        <input class="generic-form-control" name="depth_penalty" type="number" min="0" step="0.01" value="<?= htmlspecialchars((string)$config['depthPenalty'], ENT_QUOTES, 'UTF-8') ?>">
-                        <small><?= htmlspecialchars(omoProjectsParamsT('projects.params.depth_penalty_hint'), ENT_QUOTES, 'UTF-8') ?></small>
-                    </label>
-                </div>
-                <div class="omo-projects-params__actions generic-form-actions">
-                    <button class="generic-action-button generic-action-button--main" type="submit" data-omo-projects-params-submit><?= htmlspecialchars(omoProjectsParamsT('projects.params.save'), ENT_QUOTES, 'UTF-8') ?></button>
-                </div>
-                <div class="omo-projects-params__feedback generic-soft-panel generic-feedback" data-omo-projects-params-feedback hidden></div>
-            </form>
+                    <div class="omo-projects-params__feedback generic-soft-panel generic-feedback" data-omo-projects-params-feedback hidden></div>
+                </form>
+            </section>
         <?php endif; ?>
     </section>
 </div>
-<style>
-.omo-projects-params__description, .omo-projects-params__hint { margin-top: var(--generic-space-2); }
-.omo-projects-params__grid small { color: var(--color-text-light, #64748b); line-height: 1.4; }
-</style>
-<script>
-(function () {
-    document.querySelectorAll('[data-omo-projects-params-root]').forEach(function (root) {
-        if (root.dataset.omoProjectsParamsReady === '1') return;
-        root.dataset.omoProjectsParamsReady = '1';
-        var form = root.querySelector('[data-omo-projects-params-form]');
-        if (!form) return;
-        var input = form.querySelector('[name="parent_weight"]');
-        var localWeight = form.querySelector('[data-omo-projects-local-weight]');
-        var submit = form.querySelector('[data-omo-projects-params-submit]');
-        var feedback = form.querySelector('[data-omo-projects-params-feedback]');
-        var saveLabel = <?= json_encode(omoProjectsParamsT('projects.params.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var savingLabel = <?= json_encode(omoProjectsParamsT('projects.params.saving'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-        var refreshWeight = function () { if (input && localWeight) localWeight.textContent = String(Math.round((1 - Math.max(0, Math.min(1, Number(input.value) || 0))) * 100)) + ' %'; };
-        var showFeedback = function (message, isError) {
-            if (typeof window.commonNotify === 'function') {
-                window.commonNotify(String(message || ''), isError ? 'error' : 'success');
-                return;
-            }
-
-            feedback.hidden = false;
-            feedback.textContent = String(message || '');
-            feedback.className = 'omo-projects-params__feedback generic-soft-panel generic-feedback ' + (isError ? 'is-error' : 'is-success');
-        };
-        if (input) input.addEventListener('input', refreshWeight);
-        form.addEventListener('submit', function (event) {
-            event.preventDefault(); submit.disabled = true; submit.textContent = savingLabel; feedback.hidden = true;
-            window.fetch(form.action, { method: 'POST', body: new FormData(form), credentials: 'same-origin' })
-                .then(function (response) { return response.json(); })
-                .then(function (payload) { showFeedback(payload.message || '', !payload.status); })
-                .catch(function () { showFeedback(<?= json_encode(omoProjectsParamsT('projects.params.error.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, true); })
-                .finally(function () { submit.disabled = false; submit.textContent = saveLabel; });
-        });
-    });
-})();
-</script>
+<script src="/omo/api/projects/params/params.js?v=20260917-calculation"></script>

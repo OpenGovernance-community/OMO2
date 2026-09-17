@@ -4,6 +4,8 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
     function omoRenderOrganizationSetupPanel(\dbObject\Organization $organization)
     {
         $setupData = $organization->getStructuralInitializationData();
+        $templates = $setupData['templates'] ?? array();
+        $canStartFromScratch = !$organization->isDiscoveryMode() || count($templates) === 0;
         $organizationName = trim((string)($setupData['organizationName'] ?? ''));
         $organizationColor = trim((string)$organization->get('color'));
         $emptyCardImage = '/omo/images/organization-setup/rien.png';
@@ -28,6 +30,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
     <div class="omo-setup-panel__section generic-section">
         <div class="omo-setup-panel__section-title generic-card-title generic-card-title--small">Choisissez un point de départ</div>
         <div class="omo-setup-card-grid">
+            <?php if ($canStartFromScratch): ?>
             <button
                 type="button"
                 class="omo-setup-card omo-setup-card--primary"
@@ -43,6 +46,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                     <span class="omo-setup-card__cta">Créer l'organisation</span>
                 </span>
             </button>
+            <?php endif; ?>
 
             <button
                 type="button"
@@ -59,7 +63,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
                 </span>
             </button>
 
-            <?php foreach (($setupData['templates'] ?? array()) as $template): ?>
+            <?php foreach ($templates as $template): ?>
                 <?php
                 $templateColor = trim((string)($template['color'] ?? ''));
                 if ($templateColor === '') {
@@ -100,7 +104,7 @@ if (!function_exists('omoRenderOrganizationSetupPanel')) {
             <?php endforeach; ?>
         </div>
 
-        <?php if (count($setupData['templates'] ?? array()) === 0): ?>
+        <?php if (count($templates) === 0): ?>
             <div class="omo-setup-panel__empty generic-description generic-description--small">Aucun modèle d'organisation n'est disponible pour le moment.</div>
         <?php endif; ?>
     </div>
