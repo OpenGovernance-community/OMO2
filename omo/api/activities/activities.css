@@ -124,11 +124,6 @@
     gap: 8px;
 }
 
-.omo-activity-row__check {
-    min-height: 32px;
-    padding: 5px 13px;
-}
-
 .omo-activity-badge {
     display: inline-flex;
     align-items: center;

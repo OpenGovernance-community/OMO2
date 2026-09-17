@@ -139,7 +139,7 @@ function omoInitMobileHeaderMenus(container) {
         const menuId = 'omo-mobile-header-actions-' + String(omoMobileHeaderMenuSequence);
         const toggle = document.createElement('button');
         toggle.type = 'button';
-        toggle.className = 'omo-panel-view__mobile-actions-toggle';
+        toggle.className = 'generic-menu-toggle omo-panel-view__mobile-actions-toggle';
         toggle.setAttribute('aria-label', 'Actions');
         toggle.setAttribute('aria-controls', menuId);
         toggle.setAttribute('aria-expanded', 'false');
@@ -147,7 +147,7 @@ function omoInitMobileHeaderMenus(container) {
 
         const menu = document.createElement('div');
         menu.id = menuId;
-        menu.className = 'omo-panel-view__mobile-actions-menu';
+        menu.className = 'omo-panel-view__mobile-actions-menu generic-menu-panel--compact-mobile';
         menu.setAttribute('role', 'menu');
         menu.hidden = false;
 
@@ -593,6 +593,9 @@ $(document).ready(function () {
         }
 
         syncOpenDrawers();
+        if (omoIsMobileLayout()) {
+            omoEnsureMainRightPanelCurrent();
+        }
     });
 
 });
@@ -1136,7 +1139,7 @@ function omoRefreshMainRightPanel(oid = null, cid = null, options = {}) {
         return false;
     }
 
-    if (routeWillOpenDrawer || omoHasOpenDrawers()) {
+    if (!omoIsMobileLayout() && (routeWillOpenDrawer || omoHasOpenDrawers())) {
         return false;
     }
 
@@ -1174,7 +1177,7 @@ function omoEnsureMainRightPanelCurrent(oid = null, cid = null, options = {}) {
         return true;
     }
 
-    if (options.routeWillOpenDrawer === true || omoHasOpenDrawers()) {
+    if (!omoIsMobileLayout() && (options.routeWillOpenDrawer === true || omoHasOpenDrawers())) {
         return false;
     }
 
@@ -1300,8 +1303,14 @@ function omoBindMobileSwipeNavigation() {
     }
 
     const mediaQuery = window.matchMedia('(max-width: 768px)');
+    const minSwipeDistance = 120;
+    const maxSwipeDuration = 350;
+    const minSwipeSpeed = 0.6; // CSS pixels per millisecond.
+    const horizontalRatio = 3;
+    const verticalTolerance = 24;
     const swipeState = {
         active: false,
+        startTime: 0,
         startX: 0,
         startY: 0,
         lastX: 0,
@@ -1333,6 +1342,7 @@ function omoBindMobileSwipeNavigation() {
         }
 
         swipeState.active = true;
+        swipeState.startTime = event.timeStamp;
         swipeState.startX = touchPoint.clientX;
         swipeState.startY = touchPoint.clientY;
         swipeState.lastX = touchPoint.clientX;
@@ -1346,8 +1356,21 @@ function omoBindMobileSwipeNavigation() {
             return;
         }
 
+        if (event.touches && event.touches.length !== 1) {
+            resetSwipeState();
+            return;
+        }
+
         swipeState.lastX = touchPoint.clientX;
         swipeState.lastY = touchPoint.clientY;
+
+        const distanceX = Math.abs(swipeState.lastX - swipeState.startX);
+        const distanceY = Math.abs(swipeState.lastY - swipeState.startY);
+
+        // Once scrolling intent is detected, ignore the rest of this gesture.
+        if (distanceY > verticalTolerance && distanceX <= distanceY * horizontalRatio) {
+            resetSwipeState();
+        }
     }
 
     function handleTouchEnd(event) {
@@ -1364,13 +1387,19 @@ function omoBindMobileSwipeNavigation() {
 
         const deltaX = swipeState.lastX - swipeState.startX;
         const deltaY = swipeState.lastY - swipeState.startY;
+        const distanceX = Math.abs(deltaX);
+        const duration = event.timeStamp - swipeState.startTime;
         resetSwipeState();
 
-        if (Math.abs(deltaX) < 60) {
+        if (!mediaQuery.matches || (event.touches && event.touches.length !== 0)) {
             return;
         }
 
-        if (Math.abs(deltaX) <= Math.abs(deltaY) * 1.2) {
+        if (distanceX < minSwipeDistance || duration <= 0 || duration > maxSwipeDuration) {
+            return;
+        }
+
+        if (distanceX / duration < minSwipeSpeed || distanceX <= Math.abs(deltaY) * horizontalRatio) {
             return;
         }
 
@@ -1382,6 +1411,8 @@ function omoBindMobileSwipeNavigation() {
         element.addEventListener('touchmove', handleTouchMove, { passive: true });
         element.addEventListener('touchend', handleTouchEnd, { passive: true });
         element.addEventListener('touchcancel', resetSwipeState, { passive: true });
+        // Capture scrolls from nested blocks, including horizontal scrollers.
+        element.addEventListener('scroll', resetSwipeState, { passive: true, capture: true });
     });
 }
 
@@ -3018,7 +3049,7 @@ function omoEnsureExternalPanelDrawer() {
             + '      <p class="omo-overlay-drawer__description" data-omo-external-panel-drawer-description hidden></p>'
             + '    </div>'
             + '    <div class="generic-drawer-header__actions">'
-            + '      <button type="button" class="omo-overlay-drawer__close" data-omo-external-panel-drawer-close="1">Fermer</button>'
+            + '      <button type="button" class="omo-overlay-drawer__close generic-action-button generic-action-button--secondary" data-omo-external-panel-drawer-close="1">Fermer</button>'
             + '    </div>'
             + '  </div>'
             + '  <div class="omo-overlay-drawer__body" data-omo-external-panel-drawer-body></div>'
@@ -4967,9 +4998,9 @@ function handleRoute() {
         }
     }
 
-    if (!routeWillOpenDrawer) {
-        omoEnsureMainRightPanelCurrent(oid, cid);
-    }
+    omoEnsureMainRightPanelCurrent(oid, cid, {
+        routeWillOpenDrawer: routeWillOpenDrawer
+    });
 
     if (popupToken && popupKey) {
         omoOpenPopupModalFromRoute(popupKey, popupId);

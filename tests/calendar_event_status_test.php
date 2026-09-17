@@ -8,7 +8,7 @@ $detailSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/
 $dashboardSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/dashboard/modules/data/event.php');
 $dashboardTemplateSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/dashboard/modules/event.php');
 $projectEventsSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/projects/events.php');
-$calendarStyles = $calendarSource;
+$calendarStyles = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/calendar.css');
 
 function assertCalendarEventStatus(bool $condition, string $message): void
 {

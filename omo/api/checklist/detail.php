@@ -351,7 +351,7 @@ $formatDelay = static function ($value, $unit) {
                             <div class="omo-checklist-flow__title-actions">
                                 <span class="omo-checklist-flow__role"><?= omoApiEscape($itemHolonLabel) ?></span>
                                 <?php if ($canEdit): ?>
-                                    <button type="button" class="generic-action-button generic-action-button--secondary" data-checklist-open-item-form data-url="<?= omoApiEscape($itemEditUrl) ?>"><?= omoApiEscape(omoChecklistT('checklist.action.edit_item')) ?></button>
+                                    <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--compact" data-checklist-open-item-form data-url="<?= omoApiEscape($itemEditUrl) ?>"><?= omoApiEscape(omoChecklistT('checklist.action.edit_item')) ?></button>
                                     <div class="generic-menu" data-checklist-item-menu>
                                         <button type="button" class="generic-menu-toggle" data-checklist-item-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape(omoChecklistT('checklist.action.' . $itemKind . '_more')) ?>">&#8942;</button>
                                         <div class="generic-menu-panel generic-menu-panel--wide" data-checklist-item-menu-panel role="menu" hidden>

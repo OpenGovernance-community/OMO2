@@ -40,7 +40,7 @@ $selectedAuthorityId = $isEditing ? (int)$editingRule->get('IDauthority') : 0;
         <input type="hidden" name="cid" value="<?= (int)$context['currentHolon']->getId() ?>">
         <?php if ($isEditing): ?><input type="hidden" name="rule_id" value="<?= (int)$editingRule->getId() ?>"><?php endif; ?>
 
-        <section class="generic-section generic-section--stack generic-form-section">
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided">
             <label class="generic-form-field">
                 <span class="generic-form-label"><?= omoApiEscape(omoPolicyT('policy.field.title')) ?></span>
                 <input class="generic-form-control" name="title" maxlength="255" value="<?= omoApiEscape($isEditing ? (string)$editingRule->get('title') : '') ?>" required autofocus>

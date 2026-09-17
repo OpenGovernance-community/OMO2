@@ -15,6 +15,9 @@ use dbObject\Holon;
 use dbObject\Organization;
 
 $sourceLang = [
+    'calendar.action.meeting_hint' => ['text' => 'Choisir vos horaires et votre agenda de reservation.', 'context' => 'Help below the calendar meeting menu action.'],
+    'calendar.action.share_hint' => ['text' => 'Creer et gerer vos liens d abonnement.', 'context' => 'Help below the calendar share menu action.'],
+    'calendar.action.connect_hint' => ['text' => 'Synchroniser OMO ou ajouter un agenda externe.', 'context' => 'Help below the calendar connect menu action.'],
     'calendar.page.title' => [
         'text' => 'Calendrier',
         'context' => 'Main title of the calendar application.',
@@ -36,12 +39,20 @@ $sourceLang = [
         'context' => 'Label used to show events from the current holon and its descendants.',
     ],
     'calendar.action.add' => [
-        'text' => 'Ajouter un événement',
+        'text' => 'Nouvel événement',
         'context' => 'Primary button used to open the event creation drawer.',
     ],
     'calendar.action.today' => [
         'text' => "Aujourd'hui",
         'context' => 'Button used to return to the current month in the calendar application.',
+    ],
+    'calendar.navigation.previous' => [
+        'text' => 'Période précédente',
+        'context' => 'Accessible label for the previous period button in timeline calendar views.',
+    ],
+    'calendar.navigation.next' => [
+        'text' => 'Période suivante',
+        'context' => 'Accessible label for the next period button in timeline calendar views.',
     ],
     'calendar.action.edit' => [
         'text' => 'Editer',
@@ -162,6 +173,10 @@ $sourceLang = [
     'calendar.axis.all_day' => [
         'text' => 'Journée',
         'context' => 'Label used for the all-day row in week and day views.',
+    ],
+    'calendar.axis.now' => [
+        'text' => 'Maintenant',
+        'context' => 'Accessible label for the current-time indicator in week and day views.',
     ],
     'calendar.drawer.title' => [
         'text' => 'Événement',
@@ -416,6 +431,11 @@ function omoCalendarFormatWeekdayLabel(\DateTimeInterface $date)
 function omoCalendarFormatDayLabel(\DateTimeInterface $date)
 {
     return omoCalendarFormatWeekdayLabel($date) . ' ' . omoCalendarFormatDayMonthLabel($date);
+}
+
+function omoCalendarFormatTimelineDayLabel(\DateTimeInterface $date)
+{
+    return omoCalendarFormatWeekdayLabel($date) . ' ' . $date->format('j');
 }
 
 function omoCalendarFormatDayLabelWithYear(\DateTimeInterface $date)
@@ -880,7 +900,7 @@ $buildTimelineDays = static function (\DateTimeImmutable $rangeStart, int $dayCo
         $days[$dayKey] = [
             'date' => $cursor,
             'dayKey' => $dayKey,
-            'label' => omoCalendarFormatDayLabel($cursor),
+            'label' => omoCalendarFormatTimelineDayLabel($cursor),
             'fullLabel' => omoCalendarFormatDayLabelWithYear($cursor),
             'isToday' => $dayKey === $todayDayKey,
             'allDay' => [],
@@ -1339,6 +1359,7 @@ foreach ($calendarScopes as $scopeKey) {
         'week' => [
             'title' => omoCalendarFormatWeekRangeLabel($weekStart, $weekEnd),
             'subtitle' => (string)$viewSummariesByScope[$scopeKey]['week'],
+            'count' => (int)$scopeCounts['week'],
             'days' => $timelineViewsByScope[$scopeKey]['week'],
             'columnCount' => count($timelineViewsByScope[$scopeKey]['week']),
             'prevUrl' => omoCalendarBuildUrl($organizationId, $currentHolon ? (int)$currentHolon->getId() : 0, $prevWeekDate->modify('first day of this month'), 'week', $prevWeekDate, $scopeKey),
@@ -1348,6 +1369,7 @@ foreach ($calendarScopes as $scopeKey) {
         'day' => [
             'title' => omoCalendarFormatDayLabelWithYear($dayStart),
             'subtitle' => (string)$viewSummariesByScope[$scopeKey]['day'],
+            'count' => (int)$scopeCounts['day'],
             'days' => $timelineViewsByScope[$scopeKey]['day'],
             'columnCount' => count($timelineViewsByScope[$scopeKey]['day']),
             'prevUrl' => omoCalendarBuildUrl($organizationId, $currentHolon ? (int)$currentHolon->getId() : 0, $prevDayDate->modify('first day of this month'), 'day', $prevDayDate, $scopeKey),
@@ -1360,6 +1382,7 @@ foreach ($calendarScopes as $scopeKey) {
 $headerCount = (int)($viewCountsByScope[$calendarScope][$viewMode] ?? 0);
 $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? '');
 ?>
+<link rel="stylesheet" href="/omo/api/calendar/calendar.css?v=20260917-calendar-new-event">
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <div
     class="omo-calendar omo-panel-view"
@@ -1371,6 +1394,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     data-omo-calendar-month="<?= omoApiEscape($monthStart->format('Y-m')) ?>"
     data-omo-calendar-view="<?= omoApiEscape($viewMode) ?>"
     data-omo-calendar-scope="<?= omoApiEscape($calendarScope) ?>"
+    data-omo-calendar-timezone="<?= omoApiEscape(date_default_timezone_get()) ?>"
     data-omo-calendar-oid="<?= (int)$organizationId ?>"
     data-omo-calendar-cid="<?= $currentHolon ? (int)$currentHolon->getId() : 0 ?>"
     data-omo-app-view-preferences="<?= omoApiEscape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
@@ -1424,7 +1448,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         <?= omoApiEscape(omoCalendarT('calendar.action.today')) ?>
                     </button>
                 </div>
-                <div class="generic-menu omo-calendar__header-menu" data-omo-calendar-header-menu>
+                <div class="generic-menu generic-menu--expanded-mobile omo-calendar__header-menu" data-omo-calendar-header-menu>
                     <button
                         type="button"
                         class="generic-menu-toggle omo-calendar__header-menu-toggle"
@@ -1434,10 +1458,10 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         aria-label="<?= omoApiEscape(omoCalendarT('calendar.action.more')) ?>"
                         title="<?= omoApiEscape(omoCalendarT('calendar.action.more')) ?>"
                     >&#8942;</button>
-                    <div class="generic-menu-panel omo-calendar__header-menu-panel" data-omo-calendar-header-menu-panel role="menu" hidden>
-                        <button type="button" class="generic-menu-item" data-omo-calendar-open-connect role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.action.connect')) ?></button>
-                        <button type="button" class="generic-menu-item" data-omo-calendar-open-share role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.action.share')) ?></button>
-                        <button type="button" class="generic-menu-item" data-omo-calendar-open-meeting role="menuitem"><?= omoApiEscape(omoCalendarT('calendar.action.meeting')) ?></button>
+                    <div class="generic-menu-panel generic-menu-panel--descriptive omo-calendar__header-menu-panel" data-omo-calendar-header-menu-panel role="menu" hidden>
+                        <button type="button" class="generic-menu-item generic-menu-item--descriptive" data-omo-calendar-open-connect role="menuitem"><strong><?= omoApiEscape(omoCalendarT('calendar.action.connect')) ?></strong><span class="generic-menu-item__description"><?= omoApiEscape(omoCalendarT('calendar.action.connect_hint')) ?></span></button>
+                        <button type="button" class="generic-menu-item generic-menu-item--descriptive" data-omo-calendar-open-share role="menuitem"><strong><?= omoApiEscape(omoCalendarT('calendar.action.share')) ?></strong><span class="generic-menu-item__description"><?= omoApiEscape(omoCalendarT('calendar.action.share_hint')) ?></span></button>
+                        <button type="button" class="generic-menu-item generic-menu-item--descriptive" data-omo-calendar-open-meeting role="menuitem"><strong><?= omoApiEscape(omoCalendarT('calendar.action.meeting')) ?></strong><span class="generic-menu-item__description"><?= omoApiEscape(omoCalendarT('calendar.action.meeting_hint')) ?></span></button>
                     </div>
                 </div>
                 <?php if ($canCreateEvent): ?>
@@ -1553,10 +1577,11 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                         <div class="omo-calendar__toolbar">
                             <button
                                 type="button"
-                                class="generic-action-button generic-action-button--secondary"
+                                class="generic-action-button generic-action-button--icon-only generic-action-button--quiet-icon"
                                 data-omo-calendar-nav-url="<?= omoApiEscape(omoCalendarBuildUrl($organizationId, $currentHolon ? (int)$currentHolon->getId() : 0, $prevMonth, 'month', $prevMonth, $scopeKey)) ?>"
+                                aria-label="<?= omoApiEscape(omoCalendarT('calendar.navigation.previous')) ?>"
                             >
-                                &larr;
+                                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
                             </button>
                             <div class="omo-calendar__period-title">
                                 <strong><?= omoApiEscape(omoCalendarFormatMonthLabel($monthStart)) ?></strong>
@@ -1564,10 +1589,11 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                             </div>
                             <button
                                 type="button"
-                                class="generic-action-button generic-action-button--secondary"
+                                class="generic-action-button generic-action-button--icon-only generic-action-button--quiet-icon"
                                 data-omo-calendar-nav-url="<?= omoApiEscape(omoCalendarBuildUrl($organizationId, $currentHolon ? (int)$currentHolon->getId() : 0, $nextMonth, 'month', $nextMonth, $scopeKey)) ?>"
+                                aria-label="<?= omoApiEscape(omoCalendarT('calendar.navigation.next')) ?>"
                             >
-                                &rarr;
+                                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="m10 6 6 6-6 6"></path></svg>
                             </button>
                         </div>
 
@@ -1646,21 +1672,29 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     <div class="omo-calendar__toolbar">
                         <button
                             type="button"
-                            class="generic-action-button generic-action-button--secondary"
+                            class="generic-action-button generic-action-button--icon-only generic-action-button--quiet-icon"
                             data-omo-calendar-nav-url="<?= omoApiEscape((string)$timelineView['prevUrl']) ?>"
+                            aria-label="<?= omoApiEscape(omoCalendarT('calendar.navigation.previous')) ?>"
+                            title="<?= omoApiEscape(omoCalendarT('calendar.navigation.previous')) ?>"
                         >
-                            &larr;
+                            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
                         </button>
-                        <div class="omo-calendar__period-title">
+                        <div class="omo-calendar__period-title omo-calendar__period-title--compact">
                             <strong><?= omoApiEscape((string)$timelineView['title']) ?></strong>
-                            <span><?= omoApiEscape((string)$timelineView['subtitle']) ?></span>
+                            <span
+                                class="omo-calendar__timeline-count-badge"
+                                aria-label="<?= omoApiEscape((string)$timelineView['subtitle']) ?>"
+                                title="<?= omoApiEscape((string)$timelineView['subtitle']) ?>"
+                            ><?= (int)$timelineView['count'] ?></span>
                         </div>
                         <button
                             type="button"
-                            class="generic-action-button generic-action-button--secondary"
+                            class="generic-action-button generic-action-button--icon-only generic-action-button--quiet-icon"
                             data-omo-calendar-nav-url="<?= omoApiEscape((string)$timelineView['nextUrl']) ?>"
+                            aria-label="<?= omoApiEscape(omoCalendarT('calendar.navigation.next')) ?>"
+                            title="<?= omoApiEscape(omoCalendarT('calendar.navigation.next')) ?>"
                         >
-                            &rarr;
+                            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="m10 6 6 6-6 6"></path></svg>
                         </button>
                     </div>
 
@@ -1674,7 +1708,12 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                         data-omo-calendar-day="<?= omoApiEscape($timelineDay['date']->format('Y-m-d')) ?>"
                                     >
                                         <strong><?= omoApiEscape((string)$timelineDay['label']) ?></strong>
-                                        <span><?= omoApiEscape(omoCalendarT('calendar.summary.day_column', ['count' => (string)(count($timelineDay['allDay']) + count($timelineDay['timed']))])) ?></span>
+                                        <?php $timelineDayCount = count($timelineDay['allDay']) + count($timelineDay['timed']); ?>
+                                        <span
+                                            class="omo-calendar__timeline-count-badge"
+                                            aria-label="<?= omoApiEscape(omoCalendarT('calendar.summary.day_column', ['count' => (string)$timelineDayCount])) ?>"
+                                            title="<?= omoApiEscape(omoCalendarT('calendar.summary.day_column', ['count' => (string)$timelineDayCount])) ?>"
+                                        ><?= (int)$timelineDayCount ?></span>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -1735,6 +1774,13 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                                     data-omo-calendar-time-column-day="<?= omoApiEscape($timelineDay['date']->format('Y-m-d')) ?>"
                                 >
                                     <div class="omo-calendar__time-column-grid"></div>
+                                    <div
+                                        class="omo-calendar__now-indicator"
+                                        data-omo-calendar-now-indicator
+                                        data-omo-calendar-now-day="<?= omoApiEscape($timelineDay['date']->format('Y-m-d')) ?>"
+                                        title="<?= omoApiEscape(omoCalendarT('calendar.axis.now')) ?>"
+                                        hidden
+                                    ><span aria-hidden="true"></span></div>
                                     <?php foreach ($timelineDay['timed'] as $item): ?>
                                         <?php
                                         $columnCount = max(1, (int)($item['columnCount'] ?? 1));
@@ -1936,6 +1982,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         var defaultDrawerDescription = drawerDescription ? drawerDescription.textContent : '';
         var currentUrl = root.getAttribute('data-omo-calendar-current-url') || '';
         var currentView = root.getAttribute('data-omo-calendar-view') || 'month';
+        var calendarTimezone = root.getAttribute('data-omo-calendar-timezone') || '';
         function normalizeScopeName(scopeName) {
             var normalizedScope = String(scopeName || '').trim().toLowerCase();
             if (normalizedScope === 'global') {
@@ -2027,17 +2074,12 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         var calendarHeaderMenuToggle = root.querySelector('[data-omo-calendar-header-menu-toggle]');
         var calendarHeaderMenuPanel = root.querySelector('[data-omo-calendar-header-menu-panel]');
 
+        var calendarMobileMenu = window.matchMedia('(max-width: 768px)');
+
         function closeCalendarHeaderMenu() {
-            if (calendarHeaderMenu) {
-                calendarHeaderMenu.classList.remove('is-open');
-            }
-            if (calendarHeaderMenuToggle) {
-                calendarHeaderMenuToggle.setAttribute('aria-expanded', 'false');
-            }
-            if (calendarHeaderMenuPanel) {
-                calendarHeaderMenuPanel.hidden = true;
-            }
+            window.resetGenericExpandedMenu(calendarHeaderMenu);
         }
+        closeCalendarHeaderMenu();
 
         function openCalendarConnectPopup(externalTab) {
             if (!connectUrl || typeof window.commonTopbarOpenModal !== 'function') {
@@ -2154,6 +2196,30 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     calendarHeaderMenu.classList.add('is-open');
                     calendarHeaderMenuToggle.setAttribute('aria-expanded', 'true');
                     calendarHeaderMenuPanel.hidden = false;
+                }
+            });
+        }
+
+        if (calendarHeaderMenu) {
+            calendarHeaderMenu.addEventListener('keydown', function (event) {
+                if (calendarMobileMenu.matches) { return; }
+                var items = Array.from(calendarHeaderMenuPanel.querySelectorAll('[role="menuitem"]'));
+                var index = items.indexOf(document.activeElement);
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeCalendarHeaderMenu();
+                    calendarHeaderMenuToggle.focus();
+                } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(event.key) >= 0) {
+                    event.preventDefault();
+                    calendarHeaderMenu.classList.add('is-open');
+                    calendarHeaderMenuToggle.setAttribute('aria-expanded', 'true');
+                    calendarHeaderMenuPanel.hidden = false;
+                    var next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+                        : (index + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
+                    if (index < 0 && event.key === 'ArrowUp') { next = items.length - 1; }
+                    if (items[next]) { items[next].focus(); }
+                } else if (event.key === 'Tab') {
+                    closeCalendarHeaderMenu();
                 }
             });
         }
@@ -3609,7 +3675,48 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             root.removeAttribute('aria-busy');
         }
 
-        function scrollTimelineToBusinessStart(viewName) {
+        function getCalendarNow() {
+            var now = new Date();
+            try {
+                var values = {};
+                new Intl.DateTimeFormat('en-CA', {
+                    timeZone: calendarTimezone,
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+                }).formatToParts(now).forEach(function (part) {
+                    if (part.type !== 'literal') { values[part.type] = part.value; }
+                });
+                return {
+                    day: values.year + '-' + values.month + '-' + values.day,
+                    minute: Number(values.hour) * 60 + Number(values.minute) + Number(values.second) / 60
+                };
+            } catch (error) {
+                return {
+                    day: String(now.getFullYear()).padStart(4, '0') + '-'
+                        + String(now.getMonth() + 1).padStart(2, '0') + '-'
+                        + String(now.getDate()).padStart(2, '0'),
+                    minute: now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60
+                };
+            }
+        }
+
+        function updateCurrentTimeIndicators() {
+            var calendarNow = getCalendarNow();
+            root.querySelectorAll('[data-omo-calendar-now-indicator]').forEach(function (indicator) {
+                var visible = indicator.getAttribute('data-omo-calendar-now-day') === calendarNow.day;
+                indicator.hidden = !visible;
+                if (!visible) {
+                    indicator.classList.remove('is-moving');
+                    return;
+                }
+                indicator.style.top = String(Math.max(0, Math.min(100, calendarNow.minute / 1440 * 100))) + '%';
+                if (!indicator.classList.contains('is-moving')) {
+                    window.requestAnimationFrame(function () { indicator.classList.add('is-moving'); });
+                }
+            });
+        }
+
+        function scrollTimelineToRelevantTime(viewName) {
             if (viewName !== 'week' && viewName !== 'day') {
                 return;
             }
@@ -3626,17 +3733,23 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 return;
             }
 
-            var targetHour = timeView.querySelector('[data-omo-calendar-hour-index="7"]');
-            if (!targetHour) {
-                return;
-            }
-
             var stickyBlock = timeView.querySelector('[data-omo-calendar-time-sticky]');
             var stickyHeight = stickyBlock ? stickyBlock.offsetHeight : 0;
-            var targetTop = Math.max(0, targetHour.offsetTop - stickyHeight - 8);
+            var nowIndicator = timeView.querySelector('[data-omo-calendar-now-indicator]:not([hidden])');
+            var targetTop;
+            if (nowIndicator) {
+                var availableHeight = Math.max(0, timeView.clientHeight - stickyHeight);
+                targetTop = timeView.scrollTop
+                    + nowIndicator.getBoundingClientRect().top - timeView.getBoundingClientRect().top
+                    - stickyHeight - availableHeight / 2;
+            } else {
+                var targetHour = timeView.querySelector('[data-omo-calendar-hour-index="7"]');
+                if (!targetHour) { return; }
+                targetTop = targetHour.offsetTop - stickyHeight - 8;
+            }
 
             timeView.scrollTo({
-                top: targetTop,
+                top: Math.max(0, Math.min(targetTop, timeView.scrollHeight - timeView.clientHeight)),
                 behavior: 'auto'
             });
         }
@@ -3743,7 +3856,8 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             }
 
             window.requestAnimationFrame(function () {
-                scrollTimelineToBusinessStart(nextView);
+                updateCurrentTimeIndicators();
+                scrollTimelineToRelevantTime(nextView);
                 if (initialOpenEventId > 0) {
                     focusRouteTargetEvent('auto');
                 }
@@ -4265,6 +4379,15 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
         initializeCalendarViewFilter();
 
+        updateCurrentTimeIndicators();
+        var calendarNowIndicatorTimer = window.setInterval(function () {
+            if (!document.body.contains(root)) {
+                window.clearInterval(calendarNowIndicatorTimer);
+                return;
+            }
+            updateCurrentTimeIndicators();
+        }, 30000);
+
         if (!root.__omoCalendarRouteHandler) {
             root.__omoCalendarRouteHandler = function (routeEvent) {
                 if (!document.body.contains(root)) {
@@ -4288,7 +4411,8 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
         }
 
         window.requestAnimationFrame(function () {
-            scrollTimelineToBusinessStart(currentView);
+            updateCurrentTimeIndicators();
+            scrollTimelineToRelevantTime(currentView);
             if (initialOpenEventId > 0) {
                 focusRouteTargetEvent('auto');
                 maybeOpenInitialEventDetail();
@@ -4297,1058 +4421,3 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     })();
     </script>
 </div>
-
-<style>
-.omo-calendar {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    min-height: 100%;
-}
-
-.omo-calendar__delete-documents-dialog {
-    display: grid;
-    gap: 18px;
-}
-
-.omo-calendar__delete-documents-dialog p {
-    margin: 0;
-    color: var(--color-text, #1f2937);
-    line-height: 1.5;
-}
-
-.omo-calendar__delete-documents-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.omo-calendar > .omo-panel-view__body {
-    gap: 0;
-    overflow: hidden;
-    min-height: 0;
-}
-
-.omo-calendar__header {
-    display: block;
-    width: 100%;
-    min-width: 0;
-    justify-content: stretch;
-    align-items: initial;
-    z-index: 100;
-    overflow: visible;
-}
-
-.omo-calendar__header-main,
-.omo-calendar__header-secondary {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    min-width: 0;
-}
-
-.omo-calendar__header-secondary {
-    margin-top: 5px;
-}
-
-.omo-calendar__title-cluster {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
-}
-
-.omo-calendar__app-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: var(--radius-md);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 11%, var(--color-surface, #ffffff) 89%);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #dbe2ea));
-}
-
-.omo-calendar__app-icon svg {
-    width: 20px;
-    height: 20px;
-    stroke: var(--color-primary, #2563eb);
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    fill: none;
-}
-
-.omo-calendar__title-row {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-}
-
-.omo-calendar__count {
-    min-width: 0;
-}
-
-.omo-calendar__header-menu {
-    position: relative;
-    flex: 0 0 auto;
-}
-
-.omo-calendar__header-menu-panel {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    z-index: 60;
-}
-
-.omo-calendar__header-text {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
-    line-height: 1.6;
-}
-
-.omo-calendar__meta-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.omo-calendar__context-badge,
-.omo-calendar__summary-badge {
-    display: inline-flex;
-    align-items: center;
-    min-height: 30px;
-    padding: 0 12px;
-    border-radius: 999px;
-    font-size: 0.84rem;
-    font-weight: 700;
-}
-
-.omo-calendar__context-badge {
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, var(--color-surface, #ffffff));
-    color: var(--color-text, #1f2937);
-}
-
-.omo-calendar__summary-badge {
-    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 82%, var(--color-surface, #ffffff) 18%);
-    color: var(--color-text-light, #64748b);
-}
-
-.omo-calendar__header-actions {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 12px;
-}
-
-.omo-calendar__today-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.omo-calendar__new-button {
-    flex: 0 0 auto;
-}
-
-.omo-calendar__panel {
-    gap: 14px;
-    min-width: 0;
-    min-height: 0;
-}
-
-.omo-calendar__panel--month {
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    gap: 0;
-}
-
-.omo-calendar__month-scroll {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: auto;
-    margin: 0;
-    padding: 0;
-}
-
-.omo-calendar__month-sticky {
-    position: sticky;
-    top: 0;
-    z-index: 14;
-    display: grid;
-    gap: 0;
-    background: var(--color-surface, #ffffff);
-}
-
-.omo-calendar__panel--month .omo-calendar__toolbar {
-    padding-block: 6px;
-    background: var(--color-surface, #ffffff);
-    box-shadow: 0 10px 18px -18px rgba(15, 23, 42, 0.4);
-}
-
-.omo-calendar__panel--timeline {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    min-height: 0;
-    overflow: hidden;
-}
-
-.omo-calendar__view-panel.is-active {
-    display: block;
-}
-
-.omo-calendar__panel--month.omo-calendar__view-panel.is-active {
-    display: flex;
-    flex: 1 1 auto;
-}
-
-.omo-calendar__panel--timeline.omo-calendar__view-panel.is-active {
-    display: flex;
-    flex: 1 1 auto;
-}
-
-.omo-calendar__view-panel[hidden] {
-    display: none !important;
-}
-
-[data-omo-calendar-search-item][hidden],
-[data-omo-calendar-search-group][hidden],
-[data-omo-calendar-default-empty][hidden],
-.omo-calendar__search-empty[hidden],
-[data-omo-calendar-more][hidden] {
-    display: none !important;
-}
-
-.omo-calendar__search-empty {
-    margin: 16px;
-}
-
-.omo-calendar__view-panel--list {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: auto;
-}
-
-.omo-calendar__view-panel--list.omo-calendar__view-panel.is-active {
-    display: block;
-}
-
-.omo-calendar__today-actions .is-hidden {
-    display: none;
-}
-
-.omo-calendar__toolbar {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 12px;
-    align-items: center;
-}
-
-.omo-calendar__panel--timeline .omo-calendar__toolbar {
-    position: sticky;
-    top: 0;
-    z-index: 14;
-    padding-block: 6px;
-    background: var(--color-surface, #ffffff);
-}
-
-.omo-calendar__period-title,
-.omo-calendar__month-title {
-    display: grid;
-    gap: 4px;
-    text-align: center;
-}
-
-.omo-calendar__period-title strong,
-.omo-calendar__month-title strong {
-    font-size: 1.15rem;
-    color: var(--color-text, #1f2937);
-}
-
-.omo-calendar__period-title span,
-.omo-calendar__month-title span {
-    color: var(--color-text-light, #64748b);
-    font-size: 0.95rem;
-}
-
-.omo-calendar__weekday-row,
-.omo-calendar__grid {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 0;
-}
-
-.omo-calendar__weekday-row {
-    border: 1px solid var(--color-border, #dbe2ea);
-    border-bottom: 0;
-    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 86%, var(--color-surface, #ffffff) 14%);
-}
-
-.omo-calendar__grid {
-    border: 1px solid var(--color-border, #dbe2ea);
-    border-top: 0;
-}
-
-.omo-calendar__weekday {
-    padding: 12px 8px;
-    text-align: center;
-    font-size: 0.84rem;
-    font-weight: 700;
-    color: var(--color-text-light, #64748b);
-    border-right: 1px solid var(--color-border, #dbe2ea);
-}
-
-.omo-calendar__weekday:nth-child(7n) {
-    border-right: 0;
-}
-
-.omo-calendar__cell {
-    min-height: 138px;
-    padding: 10px;
-    border-right: 1px solid var(--color-border, #dbe2ea);
-    border-bottom: 1px solid var(--color-border, #dbe2ea);
-    border-radius: 0;
-    background: var(--color-surface, #ffffff);
-    display: grid;
-    gap: 10px;
-    align-content: start;
-}
-
-.omo-calendar__cell:nth-child(7n) {
-    border-right: 0;
-}
-
-.omo-calendar__cell:nth-last-child(-n + 7) {
-    border-bottom: 0;
-}
-
-.omo-calendar__cell.is-outside {
-    opacity: 0.58;
-    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 78%, var(--color-surface, #ffffff) 22%);
-}
-
-.omo-calendar__cell.is-today {
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 32%, var(--color-border, #dbe2ea));
-    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-primary, #2563eb) 12%, transparent);
-}
-
-.omo-calendar__cell-head {
-    display: flex;
-    justify-content: flex-end;
-}
-
-.omo-calendar__cell-day {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 32px;
-    min-height: 32px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-text-light, #64748b) 14%, transparent);
-    color: var(--color-text, #1f2937);
-    font-weight: 700;
-}
-
-.omo-calendar__cell.is-today .omo-calendar__cell-day {
-    background: var(--color-primary, #2563eb);
-    color: var(--color-text-inverse, #ffffff);
-}
-
-.omo-calendar__cell-items {
-    display: grid;
-    gap: 8px;
-}
-
-.omo-calendar__event-chip {
-    display: grid;
-    gap: 4px;
-    padding: 8px 9px;
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
-    border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #dbe2ea));
-}
-
-.omo-calendar__event-chip.is-status-draft,
-.omo-calendar__item-shell.is-status-draft .omo-calendar__list-item {
-    background: color-mix(in srgb, #64748b 7%, var(--color-surface, #ffffff));
-    border-color: color-mix(in srgb, #64748b 22%, var(--color-border, #dbe2ea));
-}
-
-.omo-calendar__event-chip.is-status-option,
-.omo-calendar__time-all-day-chip.is-status-option,
-.omo-calendar__time-event.is-status-option,
-.omo-calendar__item-shell.is-status-option .omo-calendar__list-item {
-    border-inline-start: 4px solid #eab308;
-    background: color-mix(in srgb, #eab308 8%, var(--color-surface, #ffffff));
-}
-
-.omo-calendar__event-chip.is-status-confirmed,
-.omo-calendar__time-all-day-chip.is-status-confirmed,
-.omo-calendar__time-event.is-status-confirmed,
-.omo-calendar__item-shell.is-status-confirmed .omo-calendar__list-item {
-    border-inline-start: 4px solid #16a34a;
-    background: color-mix(in srgb, #16a34a 7%, var(--color-surface, #ffffff));
-}
-
-.omo-calendar__event-chip.is-status-cancelled,
-.omo-calendar__item-shell.is-status-cancelled .omo-calendar__list-item {
-    background: color-mix(in srgb, #ef4444 8%, var(--color-surface, #ffffff));
-    border-color: color-mix(in srgb, #ef4444 20%, var(--color-border, #dbe2ea));
-}
-
-.omo-calendar__event-chip.is-faded,
-.omo-calendar__time-all-day-chip.is-faded,
-.omo-calendar__time-event.is-faded,
-.omo-calendar__item-shell.is-faded .omo-calendar__list-item {
-    opacity: 0.58;
-    filter: saturate(0.72);
-}
-
-.omo-calendar__event-chip.is-route-target,
-.omo-calendar__time-all-day-chip.is-route-target,
-.omo-calendar__time-event.is-route-target,
-.omo-calendar__item-shell.is-route-target .omo-calendar__list-item {
-    scroll-margin-top: 96px;
-    scroll-margin-bottom: 32px;
-    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 42%, var(--color-border, #dbe2ea));
-    box-shadow:
-        0 0 0 2px color-mix(in srgb, var(--color-primary, #2563eb) 16%, transparent),
-        0 14px 28px -24px rgba(37, 99, 235, 0.55);
-}
-
-.omo-calendar__event-chip.is-route-target-active,
-.omo-calendar__time-all-day-chip.is-route-target-active,
-.omo-calendar__time-event.is-route-target-active,
-.omo-calendar__item-shell.is-route-target-active .omo-calendar__list-item {
-    animation: omo-calendar-route-target-pulse 1.35s ease-out 1;
-}
-
-@keyframes omo-calendar-route-target-pulse {
-    0% {
-        box-shadow:
-            0 0 0 0 color-mix(in srgb, var(--color-primary, #2563eb) 22%, transparent),
-            0 14px 28px -24px rgba(37, 99, 235, 0.28);
-    }
-    100% {
-        box-shadow:
-            0 0 0 14px rgba(37, 99, 235, 0),
-            0 14px 28px -24px rgba(37, 99, 235, 0);
-    }
-}
-
-.omo-calendar__event-time,
-.omo-calendar__event-holon,
-.omo-calendar__more {
-    color: var(--color-text-light, #64748b);
-    font-size: 0.78rem;
-}
-
-.omo-calendar__event-time-row,
-.omo-calendar__time-event-time-row,
-.omo-calendar__list-time-row,
-.omo-calendar__time-all-day-title-row {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    min-width: 0;
-}
-
-.omo-calendar__document-link {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    margin-inline-start: 3px;
-    padding: 2px;
-    border: 0;
-    border-radius: 4px;
-    background: transparent;
-    color: currentColor;
-    cursor: pointer;
-    font: inherit;
-    vertical-align: middle;
-}
-
-.omo-calendar__document-link svg {
-    width: 16px;
-    height: 16px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.omo-calendar__document-link:hover,
-.omo-calendar__document-link:focus-visible {
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 12%, transparent);
-    color: var(--color-primary, #2563eb);
-}
-
-.omo-calendar__event-title {
-    color: var(--color-text, #1f2937);
-    font-size: 0.9rem;
-    font-weight: 700;
-    line-height: 1.35;
-}
-
-.omo-calendar__time-view {
-    --omo-calendar-hour-height: 58px;
-    --omo-calendar-time-axis-width: 76px;
-    --omo-calendar-time-day-min-width: 180px;
-    display: grid;
-    flex: 1 1 auto;
-    gap: 0;
-    min-height: 0;
-    max-height: none;
-    overflow: auto;
-    overscroll-behavior: contain;
-    border: 1px solid color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%);
-    border-radius: var(--radius-md);
-    background: var(--color-surface, #ffffff);
-}
-
-.omo-calendar__time-view[data-omo-calendar-time-view="week"] {
-    --omo-calendar-time-day-min-width: 124px;
-}
-
-.omo-calendar__time-view[data-omo-calendar-time-view="day"] {
-    --omo-calendar-time-day-min-width: 220px;
-}
-
-.omo-calendar__time-sticky {
-    position: sticky;
-    top: 0;
-    z-index: 12;
-    background: var(--color-surface, #ffffff);
-    box-shadow: 0 10px 18px -18px rgba(15, 23, 42, 0.4);
-}
-
-.omo-calendar__time-head,
-.omo-calendar__time-all-day,
-.omo-calendar__time-body {
-    display: grid;
-    grid-template-columns:
-        var(--omo-calendar-time-axis-width)
-        repeat(var(--omo-calendar-time-columns, 1), minmax(var(--omo-calendar-time-day-min-width), 1fr));
-}
-
-.omo-calendar__time-axis-spacer,
-.omo-calendar__time-axis-label {
-    padding: 12px 10px;
-    border-right: 1px solid color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%);
-    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 86%, white 14%);
-    color: var(--color-text-light, #64748b);
-    font-size: 0.78rem;
-    font-weight: 700;
-}
-
-.omo-calendar__time-day-header {
-    padding: 12px 14px;
-    border-right: 1px solid color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%);
-    border-bottom: 1px solid color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%);
-    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 82%, white 18%);
-    display: grid;
-    gap: 4px;
-}
-
-.omo-calendar__time-day-header strong {
-    color: var(--color-text, #1f2937);
-    font-size: 0.92rem;
-}
-
-.omo-calendar__time-day-header span {
-    color: var(--color-text-light, #64748b);
-    font-size: 0.78rem;
-}
-
-.omo-calendar__time-day-header.is-today,
-.omo-calendar__time-all-day-cell.is-today,
-.omo-calendar__time-column.is-today {
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 7%, var(--color-surface, #ffffff));
-}
-
-.omo-calendar__time-all-day-cell {
-    min-height: 56px;
-    padding: 10px 8px;
-    border-right: 1px solid color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%);
-    border-bottom: 1px solid color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%);
-    display: grid;
-    gap: 8px;
-    align-content: start;
-    background: var(--color-surface, #ffffff);
-}
-
-.omo-calendar__time-empty {
-    color: var(--color-text-light, #94a3b8);
-    font-size: 0.76rem;
-}
-
-.omo-calendar__time-all-day-chip {
-    display: grid;
-    gap: 3px;
-    padding: 8px 9px;
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
-    border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 16%, var(--color-border, #dbe2ea));
-}
-
-.omo-calendar__time-all-day-chip strong {
-    font-size: 0.82rem;
-    line-height: 1.3;
-}
-
-.omo-calendar__time-all-day-chip span {
-    color: var(--color-text-light, #64748b);
-    font-size: 0.74rem;
-}
-
-.omo-calendar__time-body {
-    align-items: start;
-}
-
-.omo-calendar__time-axis {
-    position: relative;
-    height: calc(var(--omo-calendar-hour-height) * 24);
-    background:
-        repeating-linear-gradient(
-            to bottom,
-            color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%) 0,
-            color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%) 1px,
-            transparent 1px,
-            transparent var(--omo-calendar-hour-height)
-        );
-    border-right: 1px solid color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%);
-}
-
-.omo-calendar__time-hour-label {
-    height: var(--omo-calendar-hour-height);
-    padding: 0 10px;
-    transform: translateY(-0.5em);
-    color: var(--color-text-light, #64748b);
-    font-size: 0.76rem;
-    font-weight: 700;
-}
-
-.omo-calendar__time-column {
-    position: relative;
-    height: calc(var(--omo-calendar-hour-height) * 24);
-    border-right: 1px solid color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%);
-    background: var(--color-surface, #ffffff);
-    overflow: hidden;
-}
-
-.omo-calendar__time-column-grid {
-    position: absolute;
-    inset: 0;
-    background:
-        repeating-linear-gradient(
-            to bottom,
-            color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%) 0,
-            color-mix(in srgb, var(--color-border, #dbe2ea) 82%, white 18%) 1px,
-            transparent 1px,
-            transparent var(--omo-calendar-hour-height)
-        );
-    pointer-events: none;
-}
-
-.omo-calendar__time-event {
-    position: absolute;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    align-content: flex-start;
-    column-gap: 8px;
-    row-gap: 2px;
-    padding: 7px 8px;
-    min-height: 34px;
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 9%, var(--color-surface, #ffffff));
-    border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 18%, var(--color-border, #dbe2ea));
-    box-shadow: 0 8px 20px -18px rgba(15, 23, 42, 0.32);
-    overflow: hidden;
-}
-
-.omo-calendar__time-event.is-status-draft,
-.omo-calendar__time-all-day-chip.is-status-draft {
-    background: color-mix(in srgb, #64748b 7%, var(--color-surface, #ffffff));
-    border-color: color-mix(in srgb, #64748b 22%, var(--color-border, #dbe2ea));
-}
-
-.omo-calendar__time-event.is-status-cancelled,
-.omo-calendar__time-all-day-chip.is-status-cancelled {
-    background: color-mix(in srgb, #ef4444 8%, var(--color-surface, #ffffff));
-    border-color: color-mix(in srgb, #ef4444 20%, var(--color-border, #dbe2ea));
-}
-
-.omo-calendar__time-event-time,
-.omo-calendar__time-event-context {
-    min-width: 0;
-    color: var(--color-text-light, #64748b);
-    font-size: 0.72rem;
-    line-height: 1.25;
-}
-
-.omo-calendar__time-event-time-row {
-    flex: 0 1 auto;
-    white-space: nowrap;
-}
-
-.omo-calendar__time-event-title {
-    flex: 1 1 120px;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--color-text, #1f2937);
-    font-size: 0.82rem;
-    line-height: 1.28;
-}
-
-.omo-calendar__time-event-context {
-    flex: 0 1 auto;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.omo-calendar__results {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.omo-calendar__results.generic-file-list {
-    --generic-file-list-columns: minmax(106px, 0.78fr) minmax(0, 2.4fr) minmax(150px, 1.1fr) minmax(140px, 1fr);
-    --generic-file-list-title-gap: 18px;
-    --generic-file-list-table-margin-inline: 12px;
-    --generic-file-list-padding-inline-start: 16px;
-    --generic-file-list-padding-inline-end: 18px;
-    --generic-file-list-header-padding-block: 14px;
-    --generic-file-list-row-padding-block: 12px;
-    --generic-file-list-menu-space: 44px;
-    display: grid;
-}
-
-.omo-calendar__results.generic-file-list .generic-file-list__group-title {
-    padding: 15px 12px;
-}
-
-.omo-calendar__group {
-    display: grid;
-    gap: 12px;
-    position: relative;
-}
-
-.omo-calendar__list {
-    display: grid;
-    gap: 0;
-}
-
-.omo-calendar__list-header {
-    display: grid;
-}
-
-.omo-calendar__list-header-cell {
-    min-width: 0;
-}
-
-.omo-calendar__item-shell {
-    position: relative;
-}
-
-.omo-calendar__list-item {
-    display: grid;
-    align-items: center;
-    transition: background-color 140ms ease;
-}
-
-.omo-calendar__list-cell {
-    min-width: 0;
-}
-
-.omo-calendar__list-cell--name {
-    align-items: flex-start;
-}
-
-.omo-calendar__list-date {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: flex-end;
-    min-width: 0;
-}
-
-.omo-calendar__list-weekday {
-    color: var(--color-text-light, #64748b);
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-}
-
-.omo-calendar__list-date strong {
-    color: var(--color-text, #1f2937);
-    font-size: 1rem;
-    line-height: 1.2;
-}
-
-.omo-calendar__list-name-main {
-    display: flex;
-    align-items: flex-start;
-    gap: 0;
-    min-width: 0;
-}
-
-.omo-calendar__list-title-block {
-    display: grid;
-    gap: 6px;
-    min-width: 0;
-}
-
-.omo-calendar__list-title-row {
-    display: flex;
-    align-items: center;
-    gap: 8px 10px;
-    min-width: 0;
-    flex-wrap: wrap;
-}
-
-.omo-calendar__list-time,
-.omo-calendar__list-holon {
-    display: inline-flex;
-    align-items: center;
-    min-height: 24px;
-    padding: 0 10px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 82%, white 18%);
-}
-
-.omo-calendar__list-time {
-    font-weight: 600;
-}
-
-.omo-calendar__list-status {
-    white-space: nowrap;
-}
-
-.omo-calendar__list-context {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.omo-calendar__list-title {
-    color: var(--color-text, #1f2937);
-    font-size: 0.98rem;
-}
-
-.omo-calendar__list-description {
-    color: var(--color-text-light, #64748b);
-    line-height: 1.55;
-}
-
-.omo-calendar__editor-drawer .omo-overlay-drawer__body {
-    display: flex;
-    min-height: 0;
-    overflow: hidden;
-    padding: 0;
-}
-
-.omo-calendar__editor-drawer {
-    z-index: 120;
-}
-
-.omo-calendar__drawer-custom-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-@media (max-width: 920px) {
-    .omo-calendar__weekday-row,
-    .omo-calendar__grid {
-        gap: 8px;
-    }
-
-    .omo-calendar__cell {
-        min-height: 122px;
-        padding: 8px;
-    }
-
-    .omo-calendar__time-view {
-        --omo-calendar-time-axis-width: 62px;
-        --omo-calendar-time-day-min-width: 150px;
-    }
-
-    .omo-calendar__time-view[data-omo-calendar-time-view="week"] {
-        --omo-calendar-time-day-min-width: 112px;
-    }
-
-}
-
-@media (max-width: 768px) {
-    .omo-calendar__header-main,
-    .omo-calendar__header-secondary {
-        grid-template-columns: 1fr;
-    }
-
-    .omo-calendar__header-actions {
-        justify-content: flex-start;
-    }
-
-    .omo-calendar__header-actions,
-    .omo-calendar__today-actions {
-        width: 100%;
-    }
-
-    .omo-calendar__new-button,
-    .omo-calendar__today-actions .generic-action-button {
-        justify-self: stretch;
-    }
-
-    .omo-calendar__today-actions .generic-action-button {
-        width: 100%;
-    }
-
-    .omo-calendar__weekday-row {
-        display: none;
-    }
-
-    .omo-calendar__grid {
-        grid-template-columns: 1fr;
-    }
-
-    .omo-calendar__cell {
-        min-height: 0;
-    }
-
-    .omo-calendar__cell-head {
-        justify-content: flex-start;
-    }
-
-    .omo-calendar__list-item {
-        align-items: start;
-    }
-
-    .omo-calendar__list-date {
-        align-items: flex-start;
-    }
-
-    .omo-calendar__results.generic-file-list {
-        --generic-file-list-table-margin-inline: 0px;
-    }
-
-    .omo-calendar__time-view {
-        --omo-calendar-time-axis-width: 56px;
-        --omo-calendar-time-day-min-width: 160px;
-    }
-
-    .omo-calendar__toolbar {
-        grid-template-columns: 16px minmax(0, 1fr) 16px;
-        gap: 6px;
-        align-items: stretch;
-    }
-
-    .omo-calendar__toolbar > .generic-action-button {
-        min-width: 16px;
-        width: 16px;
-        min-height: 100%;
-        padding: 0;
-        border-radius: var(--radius-md);
-        font-size: 14px;
-        line-height: 1;
-        overflow: hidden;
-    }
-
-    .omo-calendar__time-view[data-omo-calendar-time-view="week"] {
-        --omo-calendar-time-day-min-width: 96px;
-    }
-
-    .omo-calendar__panel--timeline .omo-calendar__toolbar {
-        z-index: 18;
-    }
-
-    .omo-calendar__time-day-header {
-        padding: 10px 8px;
-    }
-
-    .omo-calendar__time-day-header strong {
-        font-size: 0.84rem;
-    }
-
-    .omo-calendar__time-day-header span,
-    .omo-calendar__time-hour-label,
-    .omo-calendar__time-axis-label {
-        font-size: 0.72rem;
-    }
-
-}
-
-@media (max-width: 1024px) {
-    .omo-calendar__header {
-        position: sticky;
-    }
-
-    .omo-calendar__new-button.omo-mobile-corner-action {
-        border-radius: 0 0 0 var(--radius-md) !important;
-    }
-
-    .omo-calendar__header-secondary {
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: flex-start;
-        gap: 10px;
-    }
-
-}
-
-@media (max-height: 560px) {
-    .omo-calendar__month-sticky,
-    .omo-calendar__panel--timeline .omo-calendar__toolbar,
-    .omo-calendar__time-sticky {
-        position: static;
-        top: auto;
-    }
-}
-.omo-calendar__event-chip.is-external-calendar,
-.omo-calendar__time-all-day-chip.is-external-calendar,
-.omo-calendar__time-event.is-external-calendar {
-    border-color: var(--param-external-calendar-color, #0f766e);
-    background: color-mix(in srgb, var(--param-external-calendar-color, #0f766e) 16%, var(--color-surface, #ffffff));
-}
-
-.omo-calendar__event-chip.is-external-calendar {
-    border-inline-start: 4px solid var(--param-external-calendar-color, #0f766e);
-}
-
-.omo-calendar__item-shell.is-external-calendar .omo-calendar__list-item {
-    border-inline-start: 4px solid var(--param-external-calendar-color, #0f766e);
-}
-.omo-calendar__time-event.is-other-organization,
-.omo-calendar__time-all-day-chip.is-other-organization {
-    background: var(--color-surface-muted, #edf0f3);
-    border-color: var(--color-border, #cbd2da);
-    color: var(--color-text-muted, #667085);
-    cursor: default;
-    box-shadow: none;
-}
-.omo-calendar__time-event.is-other-organization .omo-calendar__time-event-title {
-    color: inherit;
-    font-style: italic;
-    font-weight: 500;
-}
-.omo-calendar__time-all-day-chip.is-other-organization strong {
-    font-style: italic;
-    font-weight: 500;
-}
-</style>

@@ -777,7 +777,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <title><?= htmlspecialchars(t('app.directory.page_title')) ?></title>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260913-dashboard-module-list-flex">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260917-button-hover-halo">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page auth-state-page--scrollable auth-state-page--themed auth-state-page--with-topbar">
@@ -1473,7 +1473,7 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     <title><?= htmlspecialchars(t('app.main.page_title', ['organizationName' => (($organizationContext['name'] ?? '') ?: 'OMO')])) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260913-dashboard-module-list-flex">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260917-button-hover-halo">
     <style>
         html[data-omo-organization-accent] {
             --omo-organization-accent: <?= $omoOrganizationAccentColorCss ?>;
@@ -1646,7 +1646,7 @@ window.omoConfig = <?=
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
 <script src="assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
-<script src="assets/js/app.js?v=20260916-structure-render-cache"></script>
+<script src="assets/js/app.js?v=20260917-button-hover-halo"></script>
 <script src="assets/js/structure-mini-map.js?v=20260916-structure-render-cache"></script>
 
 <script>

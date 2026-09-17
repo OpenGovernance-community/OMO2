@@ -83,7 +83,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
 
                     <form id="omo-holon-create-form" class="omo-holon-create__form generic-form-stack">
                         <div class="omo-panel-view__body_content">
-                        <section class="omo-holon-create__section generic-section generic-section--stack generic-form-section">
+                        <section class="omo-holon-create__section generic-section generic-section--stack generic-form-section generic-form-section--divided">
                             <div class="omo-holon-create__grid generic-form-grid">
                                 <label class="omo-holon-create__field generic-form-field">
                                     <span class="generic-form-label">Nom</span>
@@ -104,7 +104,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
 
                             </div>
                         </section>
-                        <section class="omo-holon-create__section omo-holon-create__section--separated generic-section generic-section--stack generic-form-section">
+                        <section class="omo-holon-create__section omo-holon-create__section--separated generic-section generic-section--stack generic-form-section generic-form-section--divided">
                             <div class="omo-holon-create__section-head generic-form-section__heading">
                                 <div class="generic-form-section__copy">
                                     <div class="omo-holon-create__section-title generic-title generic-title--medium">Propriétés</div>
@@ -124,7 +124,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
 
                         <?php if ($canEditHolonPermissions): ?>
                         <section
-                            class="omo-holon-create__section omo-holon-create__section--separated generic-section generic-section--stack generic-form-section generic-accordion generic-accordion--card generic-accordion--collapsible<?= $hasDirectHolonPermissions ? '' : ' is-collapsed' ?>"
+                            class="omo-holon-create__section omo-holon-create__section--separated generic-section generic-section--stack generic-form-section generic-form-section--divided generic-accordion generic-accordion--card generic-accordion--collapsible<?= $hasDirectHolonPermissions ? '' : ' is-collapsed' ?>"
                             data-generic-accordion
                             id="omo-holon-create-permissions-section"
                         >
@@ -167,7 +167,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
                         <?php endif; ?>
                         <?php if ($canEditHolonAdminBounds): ?>
                         <section
-                            class="omo-holon-create__section omo-holon-create__section--separated generic-section generic-section--stack generic-form-section generic-accordion generic-accordion--card generic-accordion--collapsible<?= $hasCustomHolonAdminBounds ? '' : ' is-collapsed' ?>"
+                            class="omo-holon-create__section omo-holon-create__section--separated generic-section generic-section--stack generic-form-section generic-form-section--divided generic-accordion generic-accordion--card generic-accordion--collapsible<?= $hasCustomHolonAdminBounds ? '' : ' is-collapsed' ?>"
                             data-generic-accordion
                             id="omo-holon-create-admin-bounds-section"
                         >
@@ -213,7 +213,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
                         </div>
                         <?php if ($canEditHolonColor): ?>
                         <section
-                            class="omo-holon-create__section generic-section generic-section--stack generic-form-section generic-accordion generic-accordion--card generic-accordion--collapsible<?= $hasCustomHolonAppearance ? '' : ' is-collapsed' ?>"
+                            class="omo-holon-create__section generic-section generic-section--stack generic-form-section generic-form-section--divided generic-accordion generic-accordion--card generic-accordion--collapsible<?= $hasCustomHolonAppearance ? '' : ' is-collapsed' ?>"
                             data-generic-accordion
                             id="omo-holon-create-appearance"
                         >
@@ -248,12 +248,12 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
                                 <div class="omo-holon-create__field omo-holon-create__field--full generic-form-field generic-form-field--full">
                                     <span class="generic-form-label">Illustrations</span>
                                     <div class="omo-holon-create__media-grid">
-                                        <div class="omo-holon-create__media-card generic-soft-panel generic-soft-panel--stack">
-                                            <div class="omo-holon-create__media-label">Icone</div>
+                                        <div class="omo-holon-create__media-card generic-form-field">
+                                            <div class="generic-form-label">Icone</div>
                                             <div id="omo-holon-create-icon-field"></div>
                                         </div>
-                                        <div class="omo-holon-create__media-card generic-soft-panel generic-soft-panel--stack">
-                                            <div class="omo-holon-create__media-label">Banniere</div>
+                                        <div class="omo-holon-create__media-card generic-form-field">
+                                            <div class="generic-form-label">Banniere</div>
                                             <div id="omo-holon-create-banner-field"></div>
                                         </div>
                                     </div>
@@ -1182,9 +1182,9 @@ function renderSimpleListRow(listItemType, value) {
             + '      <input type="text" class="omo-holon-create__property-value-item omo-holon-create__property-value-item--detail-title generic-form-control" value="' + escapeHtml(detailItem.title) + '" placeholder="Titre">'
             + '      <textarea class="omo-holon-create__property-value-item omo-holon-create__property-value-item--detail-description generic-form-control" rows="3" placeholder="Description">' + escapeHtml(detailItem.description) + '</textarea>'
             + '  </div>'
-            + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost omo-holon-create__list-move" data-list-move="-1" aria-label="Monter">&#8593;</button>'
-            + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost omo-holon-create__list-move" data-list-move="1" aria-label="Descendre">&#8595;</button>'
-            + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost omo-holon-create__list-remove" data-list-remove="1" aria-label="Retirer">&times;</button>'
+            + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-move" data-list-move="-1" aria-label="Monter">&#8593;</button>'
+            + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-move" data-list-move="1" aria-label="Descendre">&#8595;</button>'
+            + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-remove" data-list-remove="1" aria-label="Retirer">&times;</button>'
             + '</div>';
     }
 
@@ -1193,9 +1193,9 @@ function renderSimpleListRow(listItemType, value) {
     return ''
         + '<div class="omo-holon-create__list-row">'
         + '  <input type="' + inputType + '" class="omo-holon-create__property-value-item generic-form-control" value="' + escapeHtml(value !== undefined && value !== null ? value : '') + '"' + stepAttribute + '>'
-        + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost omo-holon-create__list-move" data-list-move="-1" aria-label="Monter">&#8593;</button>'
-        + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost omo-holon-create__list-move" data-list-move="1" aria-label="Descendre">&#8595;</button>'
-        + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost omo-holon-create__list-remove" data-list-remove="1" aria-label="Retirer">&times;</button>'
+        + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-move" data-list-move="-1" aria-label="Monter">&#8593;</button>'
+        + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-move" data-list-move="1" aria-label="Descendre">&#8595;</button>'
+        + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only omo-holon-create__list-remove" data-list-remove="1" aria-label="Retirer">&times;</button>'
         + '</div>';
 }
 
@@ -1209,7 +1209,7 @@ function renderSimpleListInput(listItemType, values) {
             return renderSimpleListRow(listItemType, item);
         }).join('')
         + '  </div>'
-        + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--secondary omo-holon-create__list-add" data-list-add="1">Ajouter une valeur</button>'
+        + '  <button type="button" class="generic-action-button generic-action-button--secondary omo-holon-create__list-add" data-list-add="1">Ajouter une valeur</button>'
         + '</div>';
 }
 
@@ -1390,7 +1390,7 @@ function renderAuthorityListRow(value) {
             + (isManagedTemplateAuthority
                 ? '  <div class="omo-holon-create__authority-edit" aria-disabled="true">' + labelMarkup + (details ? '<small>' + escapeHtml(details) + '</small>' : '') + '</div>'
                 : '  <button type="button" class="omo-holon-create__authority-edit" data-authority-edit="1">' + labelMarkup + (details ? '<small>' + escapeHtml(details) + '</small>' : '') + '</button>')
-            + (isManagedTemplateAuthority ? '' : '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost" data-authority-delete="1" aria-label="Supprimer l’autorité">&times;</button>')
+            + (isManagedTemplateAuthority ? '' : '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" data-authority-delete="1" aria-label="Supprimer l’autorité">&times;</button>')
             + (isManagedTemplateAuthority ? '' : renderAuthorityDeletionChoices(authorityId, draft))
             + '</div>';
     }
@@ -1440,7 +1440,7 @@ function renderAuthorityListRow(value) {
         + delegationField
         + authorityDetails
         + '  </div>'
-        + '  <button type="button" class="omo-holon-create__button omo-holon-create__button--ghost" ' + (authorityId > 0 ? 'data-authority-delete="1" aria-label="Supprimer l’autorité"' : 'data-authority-remove="1" aria-label="Retirer"') + '>&times;</button>'
+        + '  <button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" ' + (authorityId > 0 ? 'data-authority-delete="1" aria-label="Supprimer l’autorité"' : 'data-authority-remove="1" aria-label="Retirer"') + '>&times;</button>'
         + (authorityId > 0 ? renderAuthorityDeletionChoices(authorityId, draft) : '')
         + '</div>';
 }
@@ -1457,7 +1457,7 @@ function renderAuthorityListInput(values) {
         + '<div class="omo-holon-create__authority-list">'
         + '  <div class="omo-holon-create__authority-items">' + rows.map(renderAuthorityListRow).join('') + '</div>'
         + (canCreateAuthority
-            ? '  <button type="button" class="omo-holon-create__button omo-holon-create__button--secondary" data-authority-add="1">Ajouter une autorité</button>'
+            ? '  <button type="button" class="generic-action-button generic-action-button--secondary" data-authority-add="1">Ajouter une autorité</button>'
             : '  <div class="omo-holon-create__empty-note generic-description generic-description--compact">Les autorités existantes restent disponibles, mais une autorité parente est nécessaire pour en créer une nouvelle.</div>')
         + '</div>';
 }
@@ -1595,7 +1595,7 @@ function renderPropertyInput(property) {
         return '<div class="omo-holon-create__html-editor"></div>';
     }
 
-    return '<textarea class="omo-holon-create__property-value" rows="4" placeholder="Renseignez une valeur locale si nécessaire.">' + escapeHtml(localValue) + '</textarea>';
+    return '<textarea class="omo-holon-create__property-value generic-form-control" rows="4" placeholder="Renseignez une valeur locale si nécessaire.">' + escapeHtml(localValue) + '</textarea>';
 }
 
 // Formate holon hérité
@@ -1803,7 +1803,7 @@ function renderDirectPropertyListConfig(property, disabled) {
         : '';
 
     return ''
-        + '<label class="omo-holon-create__field">'
+        + '<label class="omo-holon-create__field generic-form-field">'
         + '  <span>Type des elements</span>'
         + '  <select class="omo-holon-create__direct-property-list-type generic-form-control"' + disabledAttribute + '>' + itemTypeOptions + '</select>'
         + '</label>'
@@ -1821,8 +1821,8 @@ function renderDirectPropertyDefinition(property) {
     return ''
         + '<div class="omo-holon-create__direct-property-definition generic-soft-panel">'
         + '  <div class="omo-holon-create__grid">'
-        + '    <label class="omo-holon-create__field"><span>Nom de la propriété</span><input type="text" class="omo-holon-create__direct-property-name generic-form-control" maxlength="255" value="' + escapeHtml(property.name || '') + '"' + disabledAttribute + '></label>'
-        + '    <label class="omo-holon-create__field"><span>Format</span><select class="omo-holon-create__direct-property-format generic-form-control"' + disabledAttribute + '>' + getPropertyFormatOptions(property.formatId) + '</select></label>'
+        + '    <label class="omo-holon-create__field generic-form-field"><span>Nom de la propriété</span><input type="text" class="omo-holon-create__direct-property-name generic-form-control" maxlength="255" value="' + escapeHtml(property.name || '') + '"' + disabledAttribute + '></label>'
+        + '    <label class="omo-holon-create__field generic-form-field"><span>Format</span><select class="omo-holon-create__direct-property-format generic-form-control"' + disabledAttribute + '>' + getPropertyFormatOptions(property.formatId) + '</select></label>'
         +      renderDirectPropertyListConfig(property, disabled)
         + '  </div>'
         + '  <button type="button" class="generic-action-button generic-action-button--secondary" data-direct-property-remove="1"' + deleteDisabled + '>Retirer cette propriété</button>'
@@ -1831,7 +1831,7 @@ function renderDirectPropertyDefinition(property) {
 
 function createPropertyRow(property, index) {
     const row = document.createElement('div');
-    row.className = 'omo-holon-create__property generic-section';
+    row.className = 'omo-holon-create__property generic-section generic-section--plain generic-section--flush';
     row.dataset.propertyId = Number(property.id || 0);
     row.dataset.holonPropertyId = Number(property.holonPropertyId || 0);
     row.dataset.formatId = Number(property.formatId || 0);
@@ -1876,7 +1876,7 @@ function createPropertyRow(property, index) {
         + '  </div>'
         + renderDirectPropertyDefinition(property)
         + renderInheritedValue(property)
-        + '  <' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 ? 'div' : 'label') + ' class="omo-holon-create__field">'
+        + '  <' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 ? 'div' : 'label') + ' class="omo-holon-create__field generic-form-field">'
         + '      <span>Valeur locale</span>'
         + '      <div class="omo-holon-create__property-input">' + renderPropertyInput(property) + '</div>'
         + '  </' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 ? 'div' : 'label') + '>'
@@ -2928,843 +2928,4 @@ root.addEventListener('click', function (event) {
 </script>
 <?php endif; ?>
 
-<style>
-.omo-holon-create__layout {
-    display: block;
-}
-
-.omo-holon-create__panel {
-    --generic-drawer-content-gap: var(--generic-space-4, 16px);
-}
-
-.omo-holon-create__section {
-    --generic-section-gap: var(--generic-space-4, 16px);
-}
-
-.omo-holon-create__section--separated {
-    margin-top: var(--generic-space-4, 16px);
-}
-
-.omo-holon-create__property {
-    --generic-section-padding-block: 12px;
-    --generic-section-padding-inline: 12px;
-}
-
-.omo-holon-create__status {
-    padding: 12px 14px;
-    border-radius: var(--radius-md);
-    border: 1px solid transparent;
-    box-shadow: var(--shadow-sm);
-}
-
-.omo-holon-create__status[hidden] {
-    display: none !important;
-}
-
-.omo-holon-create__status.is-error {
-    color: #991b1b;
-    background: color-mix(in srgb, #dc2626 10%, white);
-    border-color: color-mix(in srgb, #dc2626 22%, transparent);
-}
-
-.omo-holon-create__properties {
-    display: grid;
-    gap: var(--generic-space-4, 16px);
-}
-
-.omo-holon-create__grid {
-    --generic-form-grid-min: 260px;
-}
-
-.omo-holon-create__grid > [hidden] {
-    display: none !important;
-}
-
-.omo-holon-create__field {
-    display: grid;
-    align-content: start;
-    gap: var(--generic-form-field-gap, var(--generic-space-2, 8px));
-}
-
-.omo-holon-create__field--full {
-    grid-column: 1 / -1;
-}
-
-.omo-holon-create__accordion-header-toggle {
-    width: 100%;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-}
-
-.omo-holon-create__color-head {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 12px;
-}
-
-.omo-holon-create__color-body[hidden] {
-    display: none !important;
-}
-
-.omo-holon-create__color-body {
-    display: inline-flex;
-    align-items: center;
-}
-
-.omo-holon-create__color-body input[type="color"] {
-    width: 34px;
-    height: 28px;
-    padding: 0;
-    border: 0;
-    background: transparent;
-}
-
-.omo-holon-create__color-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.88rem;
-    font-weight: 500;
-    color: var(--color-text-light);
-}
-
-.omo-holon-create__color-toggle input {
-    width: 16px;
-    height: 16px;
-    margin: 0;
-    accent-color: var(--color-primary);
-}
-
-.omo-holon-create__field > span {
-    display: block;
-    color: var(--color-text, #1f2937);
-    font-size: var(--generic-type-size-sm, 0.875rem);
-    font-weight: 700;
-    line-height: var(--generic-type-line-title, 1.3);
-}
-
-.omo-holon-create__media-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 14px;
-    margin-top: 8px;
-}
-
-.omo-holon-create__permissions[hidden] {
-    display: none !important;
-}
-
-.omo-holon-create__permission-summary {
-    color: var(--color-text);
-}
-
-.omo-holon-create__permission-summary-line + .omo-holon-create__permission-summary-line {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid color-mix(in srgb, var(--color-border) 78%, transparent);
-}
-
-.omo-holon-create__permission-summary-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 8px;
-}
-
-.omo-holon-create__permission-summary-label {
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: var(--color-text);
-    margin-bottom: 8px;
-}
-
-.omo-holon-create__permission-summary-heading .omo-holon-create__permission-summary-label {
-    margin-bottom: 0;
-}
-
-.omo-holon-create__permission-summary-capsules {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.omo-holon-create__permission-summary-empty {
-    color: var(--color-text-light);
-    line-height: 1.45;
-}
-
-.omo-holon-create__permission-pill {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
-    padding: 8px 10px;
-    border-radius: var(--radius-md);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
-    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
-    min-width: 120px;
-    max-width: 100%;
-}
-
-.omo-holon-create__permission-pill-title {
-    font-size: 0.86rem;
-    font-weight: 700;
-    color: var(--color-text);
-    line-height: 1.25;
-}
-
-.omo-holon-create__permission-pill-scope {
-    font-size: 0.68rem;
-    color: var(--color-text-light);
-    line-height: 1.2;
-}
-
-.omo-holon-create__permission-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.omo-holon-create__permission-tab {
-    border: 0;
-    border-bottom: 2px solid transparent;
-    padding: 9px 12px;
-    background: transparent;
-    color: var(--color-text-light);
-    cursor: pointer;
-    font: inherit;
-    font-weight: 700;
-}
-
-.omo-holon-create__permission-tab.is-active {
-    border-bottom-color: var(--color-primary);
-    color: var(--color-primary);
-}
-
-.omo-holon-create__permission-panel[hidden] {
-    display: none !important;
-}
-
-.omo-holon-create__permission-table {
-    display: grid;
-    gap: 12px;
-}
-
-.omo-holon-create__permission-group {
-    display: grid;
-    gap: 10px;
-}
-
-.omo-holon-create__permission-group + .omo-holon-create__permission-group {
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
-}
-
-.omo-holon-create__permission-group-title {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    padding: 7px 10px;
-    border: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
-    border-radius: var(--radius-sm);
-    background: color-mix(in srgb, var(--color-surface) 96%, var(--color-surface-alt));
-    color: var(--color-text-light);
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
-
-.omo-holon-create__permission-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(240px, 0.9fr);
-    gap: 12px;
-    align-items: start;
-    padding: 14px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-alt);
-}
-
-.omo-holon-create__permission-main {
-    display: grid;
-    gap: 6px;
-}
-
-.omo-holon-create__permission-title {
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--color-text);
-}
-
-.omo-holon-create__permission-meta,
-.omo-holon-create__permission-description,
-.omo-holon-create__permission-empty {
-    color: var(--color-text-light);
-    line-height: 1.45;
-}
-
-.omo-holon-create__permission-picker,
-.omo-holon-create__permission-tokens {
-    display: grid;
-    gap: 8px;
-}
-
-.omo-holon-create__permission-token {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    width: fit-content;
-    max-width: 100%;
-    padding: 7px 10px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
-    border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
-    color: var(--color-text);
-}
-
-.omo-holon-create__permission-token-remove {
-    border: 0;
-    background: transparent;
-    color: var(--color-text-light);
-    cursor: pointer;
-    font: inherit;
-    line-height: 1;
-    padding: 0;
-}
-
-.omo-holon-create__media-card {
-    --generic-soft-panel-padding-block: 14px;
-    --generic-soft-panel-padding-inline: 14px;
-    --generic-soft-panel-radius: var(--radius-md);
-    --generic-soft-panel-background: var(--color-surface);
-}
-
-.omo-holon-create__media-label {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--color-text);
-}
-
-textarea.omo-holon-create__property-value {
-    display: block;
-    width: 100%;
-    min-height: 110px;
-    padding: 11px 12px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-alt);
-    color: var(--color-text);
-    font: inherit;
-    box-sizing: border-box;
-    resize: vertical;
-}
-
-textarea.omo-holon-create__property-value:focus {
-    outline: none;
-    border-color: color-mix(in srgb, var(--color-primary) 52%, var(--color-border));
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 14%, transparent);
-    background: var(--color-surface);
-}
-
-.omo-holon-create__property-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.omo-holon-create__admin-bounds {
-    --generic-form-grid-min: 260px;
-}
-
-.omo-holon-create__admin-bound-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-}
-
-#omo-holon-create-admin-bounds-help {
-    color: var(--color-text-light);
-    line-height: 1.4;
-}
-
-.omo-holon-create__chip {
-    display: inline-flex;
-    align-items: center;
-    min-height: 24px;
-    padding: 0 8px;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    border: 1px solid color-mix(in srgb, var(--color-border) 84%, transparent);
-    background: var(--color-surface-alt);
-    color: var(--color-text-light);
-}
-
-.omo-holon-create__chip--accent {
-    color: var(--color-primary);
-    border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
-    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
-}
-
-.omo-holon-create__property {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 12px;
-}
-
-.omo-holon-create__property-index {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 40px;
-    min-height: 40px;
-    padding: 0 8px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
-    color: var(--color-primary);
-    font-size: 0.8rem;
-    font-weight: 700;
-}
-
-.omo-holon-create__property-body {
-    display: grid;
-    gap: 12px;
-    min-width: 0;
-}
-
-.omo-holon-create__property-input {
-    display: grid;
-    gap: 8px;
-    min-width: 0;
-}
-
-.omo-holon-create__readonly-value .omo-holon-create__inherited-list {
-    margin-top: 0;
-}
-
-.omo-holon-create__property-head {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    align-items: flex-start;
-}
-
-.omo-holon-create__property-name {
-    font-weight: 700;
-    line-height: 1.35;
-}
-
-.omo-holon-create__property-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 34px;
-    padding: 6px 10px;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    background: var(--color-surface-alt);
-    color: var(--color-text);
-    font-size: 0.82rem;
-}
-
-.omo-holon-create__property-toggle input {
-    width: 15px;
-    height: 15px;
-    margin: 0;
-    accent-color: var(--color-primary);
-}
-
-.omo-holon-create__property-toggle input:disabled + span {
-    opacity: 0.65;
-}
-
-.omo-holon-create__inherited {
-    padding: 14px;
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-surface-alt) 80%, var(--color-surface));
-}
-
-.omo-holon-create__inherited-list {
-    margin: 8px 0 0;
-    padding-left: 20px;
-    display: grid;
-    gap: 6px;
-    color: var(--color-text-light);
-}
-
-.omo-holon-create__permission-note,
-.omo-holon-create__empty-note {
-    padding: 12px;
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-alt);
-}
-
-.omo-holon-create__check-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 8px;
-}
-
-.omo-holon-create__check-option {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 10px 12px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
-}
-
-.omo-holon-create__check-option small {
-    display: block;
-    color: var(--color-text-light);
-    line-height: 1.35;
-}
-
-.omo-holon-create__project-picker {
-    display: grid;
-    gap: 8px;
-}
-
-.omo-holon-create__project-toolbar {
-    min-width: 0;
-}
-
-.omo-holon-create__project-search {
-    position: relative;
-    background: transparent;
-}
-
-.omo-holon-create__project-search img {
-    position: absolute;
-    z-index: 1;
-    top: 50%;
-    left: 10px;
-    width: 15px;
-    height: 15px;
-    opacity: 0.6;
-    pointer-events: none;
-    transform: translateY(-50%);
-}
-
-.omo-holon-create__project-search .generic-form-control {
-    min-width: 0;
-    min-height: 32px !important;
-    height: 32px !important;
-    padding: 3px 12px 3px 42px !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-}
-
-.omo-holon-create__project-list {
-    display: grid;
-    align-content: start;
-    max-height: 50vh;
-    overflow-y: auto;
-    border-top: 1px solid var(--color-border);
-    border-bottom: 1px solid var(--color-border);
-}
-
-.omo-holon-create__project-option {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    padding: 7px 4px;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
-    cursor: pointer;
-}
-
-.omo-holon-create__project-option[hidden] {
-    display: none;
-}
-
-.omo-holon-create__project-option:last-child {
-    border-bottom: 0;
-}
-
-.omo-holon-create__project-option > span {
-    min-width: 0;
-}
-
-.omo-holon-create__project-option small {
-    color: var(--color-text-light);
-}
-
-.omo-holon-create__list,
-.omo-holon-create__list-items {
-    display: grid;
-    gap: 8px;
-}
-
-.omo-holon-create__authority-list,
-.omo-holon-create__authority-items {
-    display: grid;
-    gap: 8px;
-}
-
-.omo-holon-create__authority-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
-    align-items: start;
-    padding: 10px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-alt);
-}
-
-.omo-holon-create__authority-row--existing {
-    align-items: center;
-}
-
-.omo-holon-create__authority-row.is-needs-parent {
-    border-color: color-mix(in srgb, var(--color-danger, #dc2626) 55%, var(--color-border));
-    background: color-mix(in srgb, var(--color-danger, #dc2626) 10%, var(--color-surface-alt));
-    color: var(--color-danger, #dc2626);
-}
-
-.omo-holon-create__authority-row.is-template-instance {
-    border-style: dashed;
-    background: color-mix(in srgb, var(--color-accent-soft, #e9f4f5) 68%, var(--color-surface-alt));
-}
-
-.omo-holon-create__authority-row.is-template-instance .omo-holon-create__authority-edit {
-    font-style: italic;
-    cursor: default;
-}
-
-.omo-holon-create__authority-row.is-template-origin-lost {
-    border-color: color-mix(in srgb, var(--color-warning, #d97706) 55%, var(--color-border));
-    background: color-mix(in srgb, var(--color-warning, #d97706) 10%, var(--color-surface-alt));
-}
-
-.omo-holon-create__authority-edit {
-    border: 0;
-    padding: 0;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    text-align: left;
-}
-
-.omo-holon-create__authority-row.is-pending-delete {
-    color: var(--color-text-light);
-    background: color-mix(in srgb, var(--color-danger, #dc2626) 6%, var(--color-surface-alt));
-    border-style: dashed;
-}
-
-.omo-holon-create__authority-row.is-pending-delete .omo-holon-create__authority-edit,
-.omo-holon-create__authority-row.is-pending-delete .omo-holon-create__authority-fields {
-    pointer-events: none;
-    text-decoration: line-through;
-    opacity: 0.62;
-}
-
-.omo-holon-create__authority-deletion {
-    display: none;
-    grid-column: 1 / -1;
-    gap: 10px;
-    padding: 12px;
-    border: 1px solid color-mix(in srgb, var(--color-danger, #dc2626) 35%, var(--color-border));
-    border-radius: var(--radius-sm);
-    background: var(--color-surface);
-    color: var(--color-text);
-}
-
-.omo-holon-create__authority-row.is-pending-delete .omo-holon-create__authority-deletion {
-    display: grid;
-}
-
-.omo-holon-create__authority-deletion p,
-.omo-holon-create__authority-deletion fieldset {
-    margin: 0;
-}
-
-.omo-holon-create__authority-deletion fieldset {
-    display: grid;
-    gap: 6px;
-    min-width: 0;
-    padding: 8px 10px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-}
-
-.omo-holon-create__authority-deletion fieldset[hidden] {
-    display: none;
-}
-
-.omo-holon-create__authority-deletion legend {
-    padding: 0 4px;
-    font-weight: 700;
-}
-
-.omo-holon-create__authority-deletion label {
-    display: flex;
-    align-items: flex-start;
-    gap: 7px;
-    font-size: 0.9rem;
-    line-height: 1.35;
-}
-
-.omo-holon-create__authority-row strong,
-.omo-holon-create__authority-row small {
-    display: block;
-}
-
-.omo-holon-create__authority-row small {
-    color: var(--color-text-light);
-    font-size: 0.82rem;
-    line-height: 1.35;
-}
-
-.omo-holon-create__authority-fields {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-}
-
-.omo-holon-create__authority-description {
-    grid-column: 1 / -1;
-    min-height: 76px;
-    resize: vertical;
-}
-
-.omo-holon-create__authority-complete-note {
-    grid-column: 1 / -1;
-    padding: 10px;
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-light);
-}
-
-.omo-holon-create__list-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 42px 42px 42px;
-    gap: 8px;
-    align-items: center;
-}
-
-.omo-holon-create__list-row--detail {
-    align-items: start;
-}
-
-.omo-holon-create__list-detail-fields {
-    display: grid;
-    gap: 8px;
-}
-
-.omo-holon-create__property-value-item--detail-description {
-    min-height: 88px;
-    resize: vertical;
-}
-
-.omo-holon-create__inherited-detail-list {
-    display: grid;
-    gap: 8px;
-}
-
-.omo-holon-create__detail-card {
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-surface-alt) 65%, var(--color-surface));
-    overflow: hidden;
-}
-
-.omo-holon-create__detail-card summary {
-    cursor: pointer;
-    padding: 10px 12px;
-    font-weight: 600;
-}
-
-.omo-holon-create__detail-body {
-    padding: 0 12px 12px;
-    color: var(--color-text-light);
-    line-height: 1.5;
-    white-space: pre-line;
-}
-
-.omo-holon-create__footer {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    align-items: center;
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
-    padding: 16px;
-    margin-top: 8px;
-    border-top: 1px solid color-mix(in srgb, var(--color-border) 86%, transparent);
-    background: color-mix(in srgb, var(--color-surface) 92%, var(--color-surface-alt));
-    box-shadow: 0 -8px 24px color-mix(in srgb, var(--color-shadow) 8%, transparent);
-    backdrop-filter: blur(6px);
-}
-
-.omo-holon-create__actions {
-    --generic-action-row-gap: var(--generic-space-2, 8px);
-}
-
-.omo-holon-create__button {
-    min-height: 40px;
-    padding: 8px 14px;
-    border-radius: 999px;
-    border: 1px solid var(--color-border);
-    background: var(--color-surface-alt);
-    color: var(--color-text);
-    cursor: pointer;
-    font: inherit;
-}
-
-.omo-holon-create__button--secondary {
-    color: var(--color-primary);
-    border-color: color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
-    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
-}
-
-.omo-holon-create__button--ghost {
-    background: var(--color-surface);
-}
-
-@media (max-width: 1024px) {
-    .omo-holon-create__layout,
-    .omo-holon-create__grid {
-        grid-template-columns: 1fr;
-    }
-
-    .omo-holon-create__permission-row {
-        grid-template-columns: 1fr;
-    }
-
-    .omo-holon-create__authority-fields {
-        grid-template-columns: 1fr;
-    }
-
-    .omo-holon-create__footer,
-    .omo-holon-create__section-head {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .omo-holon-create__section-head.generic-accordion__header {
-        flex-direction: row;
-        align-items: center;
-    }
-
-    .omo-holon-create__property {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
+<link rel="stylesheet" href="/omo/api/holons/editor.css?v=20260917-style-review-final">

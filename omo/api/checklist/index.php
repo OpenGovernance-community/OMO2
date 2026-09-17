@@ -136,7 +136,7 @@ $texts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<link rel="stylesheet" href="/omo/api/checklist/checklist.css?v=20260805-checklist-list-menu">
+<link rel="stylesheet" href="/omo/api/checklist/checklist.css?v=20260917-style-review-final">
 <div
     class="omo-checklist omo-panel-view"
     id="omo-checklist-root"

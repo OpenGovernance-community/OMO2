@@ -107,7 +107,7 @@ $texts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260901-timeline-fluid-4">
+<link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260917-style-review-final">
 <div
     class="omo-activities omo-panel-view"
     id="omo-activities-root"
@@ -237,7 +237,7 @@ $texts = [
                                             <div class="generic-file-list__cell omo-activity-row__status-cell" data-label="<?= omoApiEscape(omoActivityT('activity.column.status')) ?>">
                                                 <span class="omo-activity-badge omo-activity-badge--<?= omoApiEscape($stateKey) ?>"><?= omoApiEscape(omoActivityStateLabel($row['state'], $now)) ?></span>
                                                 <?php if (in_array($stateKey, ['due', 'missed'], true)): ?>
-                                                    <button type="button" class="generic-action-button generic-action-button--main omo-activity-row__check" data-activity-post-action="check_activity" data-activity-id="<?= (int)$activity->getId() ?>" data-activity-list-check><?= omoApiEscape(omoActivityT('activity.done')) ?></button>
+                                                    <button type="button" class="generic-action-button generic-action-button--main generic-action-button--compact omo-activity-row__check" data-activity-post-action="check_activity" data-activity-id="<?= (int)$activity->getId() ?>" data-activity-list-check><?= omoApiEscape(omoActivityT('activity.done')) ?></button>
                                                 <?php endif; ?>
                                             </div>
                                         </article>
