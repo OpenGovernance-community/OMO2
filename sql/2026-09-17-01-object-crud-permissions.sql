@@ -36,13 +36,3 @@ INNER JOIN (
     UNION ALL SELECT 'CAN_CREATE_FAQ' AS source_key, 'CAN_DELETE_FAQ' AS target_key
 ) mapping ON mapping.source_key = source.`permission_key`
 INNER JOIN `permission` target ON target.`permission_key` = mapping.target_key;
-
--- Unconfigured rights retain the existing organization-member default.
--- Do not infer rule/member scopes from the unrelated structural-edit permission.
-UPDATE `permission`
-SET `title` = CASE `permission_key`
-    WHEN 'CAN_CREATE_CONTROL_LIST' THEN 'Creer des listes de controle (ancien module)'
-    WHEN 'CAN_EDIT_CONTROL_LIST' THEN 'Modifier des listes de controle (ancien module)'
-    WHEN 'CAN_DELETE_CONTROL_LIST' THEN 'Supprimer des listes de controle (ancien module)'
-END
-WHERE `permission_key` IN ('CAN_CREATE_CONTROL_LIST', 'CAN_EDIT_CONTROL_LIST', 'CAN_DELETE_CONTROL_LIST');

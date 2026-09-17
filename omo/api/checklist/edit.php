@@ -61,7 +61,7 @@ $frequency = $trigger instanceof ChecklistTrigger ? RecurrenceSchedule::normaliz
 $schedule = $trigger instanceof ChecklistTrigger ? RecurrenceSchedule::normalizeSchedule($frequency, $trigger->get('schedule')) : null;
 $overlapPolicy = $trigger instanceof ChecklistTrigger
     ? ChecklistTrigger::normalizeOverlapPolicy($trigger->get('overlap_policy'))
-    : ChecklistTrigger::OVERLAP_REUSE_OPEN;
+    : ChecklistTrigger::OVERLAP_BLOCK;
 $scheduleOptions = [];
 foreach (RecurrenceSchedule::getFrequencyCatalog() as $frequencyKey) {
     $scheduleOptions[$frequencyKey] = omoChecklistScheduleOptions($frequencyKey);
@@ -172,7 +172,7 @@ if ($isEdit) {
                 <label class="omo-checklist-field" data-checklist-overlap-field<?= $triggerType === ChecklistTrigger::TYPE_CONTAINER ? ' hidden' : '' ?>>
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.overlap')) ?></span>
                     <select class="generic-form-control" name="overlap_policy">
-                        <?php foreach ([ChecklistTrigger::OVERLAP_REUSE_OPEN, ChecklistTrigger::OVERLAP_CREATE_NEW, ChecklistTrigger::OVERLAP_SKIP, ChecklistTrigger::OVERLAP_ASK] as $policy): ?>
+                        <?php foreach ([ChecklistTrigger::OVERLAP_CREATE_NEW, ChecklistTrigger::OVERLAP_BLOCK, ChecklistTrigger::OVERLAP_RESTART] as $policy): ?>
                             <option value="<?= omoApiEscape($policy) ?>"<?= $overlapPolicy === $policy ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.overlap.' . $policy)) ?></option>
                         <?php endforeach; ?>
                     </select>
