@@ -166,6 +166,9 @@ $currentVoteConfig = $decision instanceof DecisionProcess
         'vote_weight_question' => (string)$voteWeightConfig['question'],
         'vote_weight_options' => (array)$voteWeightConfig['options'],
     ];
+if ($consultationOnly && $decision instanceof DecisionProcess) {
+    $isAnonymous = !empty($currentVoteConfig['is_anonymous']);
+}
 if (!$consultationOnly && $decision instanceof DecisionProcess
     && $coreLocked
     && (
@@ -177,7 +180,7 @@ if (!$consultationOnly && $decision instanceof DecisionProcess
         'message' => 'Les conditions d anonymat ne peuvent plus etre modifiees apres le debut du vote.',
     ]);
 }
-if ($decision instanceof DecisionProcess
+if (!$consultationOnly && $decision instanceof DecisionProcess
     && !$coreLocked
     && !empty($currentVoteConfig['is_anonymous'])
     && !$isAnonymous
