@@ -7513,6 +7513,17 @@
 			}
 
 			$templateRootHolonId = (int)$templateRootHolonId;
+			if (
+				$templateRootHolonId <= 0
+				&& $this->isDiscoveryMode()
+				&& count($this->getStructuralInitializationTemplates()) > 0
+			) {
+				return array(
+					'status' => false,
+					'message' => 'Choisissez un modele predefini pour initialiser cette organisation.',
+				);
+			}
+
 			$pdo = \dbObject\DbObject::getPdo();
 			if (!$pdo) {
 				return array(
@@ -15237,8 +15248,9 @@
 				return array();
 			}
 
+			$organizationId = (int)$this->getId();
 			$params = array(
-				'organization_id' => (int)$this->getId(),
+				'organization_id' => $organizationId,
 				'project_kind' => \dbObject\Project::KIND_STANDARD,
 			);
 			$titleExpr = "LOWER(COALESCE(p.title, ''))";
@@ -15279,7 +15291,6 @@
 			}
 
 			$results = array();
-			$statusCatalog = \dbObject\Project::getStatusCatalog();
 			foreach ($rows as $row) {
 				$holonId = (int)($row['IDholon'] ?? 0);
 				$subtitleParts = array();
@@ -15291,9 +15302,7 @@
 					$subtitleParts[] = trim((string)$holon->getDisplayName());
 				}
 				$status = \dbObject\Project::normalizeStatus($row['status'] ?? '');
-				if (!empty($statusCatalog[$status]['label'])) {
-					$subtitleParts[] = (string)$statusCatalog[$status]['label'];
-				}
+				$subtitleParts[] = \dbObject\Project::getOrganizationStatusLabel($organizationId, $status);
 				if ((int)($row['priority'] ?? 0) > 0) {
 					$subtitleParts[] = 'P' . (int)$row['priority'];
 				}

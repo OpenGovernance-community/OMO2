@@ -368,6 +368,22 @@
             });
         }
 
+        function projectStatusLabel(statusValue) {
+            var organization = findOrganization(state.organizationId) || {};
+            var labels = organization.projectStatusLabels || {};
+            var customLabel = String(labels[statusValue] || '').trim();
+            return customLabel || String((translations.projectStatuses || {})[statusValue] || statusValue);
+        }
+
+        function updateProjectStatusLabels() {
+            if (!projectStatus) {
+                return;
+            }
+            Array.prototype.forEach.call(projectStatus.options || [], function (option) {
+                option.textContent = projectStatusLabel(String(option.value || ''));
+            });
+        }
+
         function updateTopbarBrand() {
             var organization = findOrganization(state.organizationId);
             if (!organization) {
@@ -660,6 +676,7 @@
                 state.selectedHolonId = normalizeId(state.activeEntry.holonId);
                 state.selectedProjectId = normalizeId(state.activeEntry.projectId);
                 updateOrganizationButtons();
+                updateProjectStatusLabels();
             }
             if (options.loadWorkLabel && state.activeEntry) {
                 setWorkLabel(state.activeEntry.label);
@@ -883,6 +900,7 @@
             state.selectedProjectId = keepHolon ? state.selectedProjectId : 0;
             state.selectedProjectName = '';
             updateOrganizationButtons();
+            updateProjectStatusLabels();
             updateTopbarBrand();
             renderTarget();
             mountPicker(initialHolonId);

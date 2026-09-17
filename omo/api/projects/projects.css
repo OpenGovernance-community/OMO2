@@ -1476,7 +1476,8 @@
 }
 
 .omo-project-detail__tab-content {
-    min-height: 100%;
+    min-height: 0;
+    align-content: start;
 }
 
 .omo-project-detail__documents-empty,

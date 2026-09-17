@@ -924,10 +924,13 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
 }
 
 if (!function_exists('omoProjectsStatusLabel')) {
-    function omoProjectsStatusLabel($status)
+    function omoProjectsStatusLabel($status, ?int $organizationId = null)
     {
         $status = Project::normalizeStatus($status);
-        return omoProjectsT('projects.status.' . $status);
+        $organizationId = $organizationId ?? (int)($_SESSION['currentOrganization'] ?? 0);
+        $customLabels = Project::getOrganizationStatusLabels($organizationId);
+        $customLabel = trim((string)($customLabels[$status] ?? ''));
+        return $customLabel !== '' ? $customLabel : omoProjectsT('projects.status.' . $status);
     }
 }
 
@@ -1048,6 +1051,7 @@ if (!function_exists('omoProjectsDefaultDisplayConfig')) {
     {
         return [
             'enabledStatuses' => omoProjectsStatusDisplayOrder(),
+            'statusLabels' => [],
             'usePriority' => true,
             'useImportance' => true,
             'useSize' => true,
@@ -1076,6 +1080,7 @@ if (!function_exists('omoProjectsNormalizeDisplayConfig')) {
 
         return [
             'enabledStatuses' => $enabledStatuses,
+            'statusLabels' => Project::normalizeStatusLabels($value['statusLabels'] ?? []),
             'usePriority' => array_key_exists('usePriority', $value) ? !empty($value['usePriority']) : true,
             'useImportance' => array_key_exists('useImportance', $value) ? !empty($value['useImportance']) : true,
             'useSize' => array_key_exists('useSize', $value) ? !empty($value['useSize']) : true,

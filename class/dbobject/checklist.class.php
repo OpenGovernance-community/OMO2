@@ -261,7 +261,6 @@ class Checklist extends DbObject
         ], 0);
         $overdueCount = 0;
         $today = new \DateTimeImmutable('today');
-        $statusCatalog = Project::getStatusCatalog();
         $entries = [];
         foreach ($projects as $projectEntry) {
             $project = $projectEntry['project'];
@@ -277,7 +276,7 @@ class Checklist extends DbObject
                 'runId' => (int)($projectEntry['runId'] ?? 0),
                 'title' => trim((string)$project->get('title')),
                 'status' => $status,
-                'statusLabel' => (string)($statusCatalog[$status]['label'] ?? $status),
+                'statusLabel' => Project::getOrganizationStatusLabel((int)$project->get('IDorganization'), $status),
                 'size' => Project::normalizeSize($project->get('project_size')),
                 'weight' => Project::getSizeWeight($project->get('project_size')),
                 'holonLabel' => (string)($metadata['holonLabel'] ?? ''),

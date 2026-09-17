@@ -785,7 +785,7 @@ $projectTexts = [
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">
 <link rel="stylesheet" href="/common/chat/thread.css?v=20260910-project-chat">
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260917-detail-blocked-info">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260917-detail-tab-icons-generic">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"

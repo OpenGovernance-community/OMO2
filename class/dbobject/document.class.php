@@ -3339,13 +3339,12 @@
 			);
 		}
 
-		protected static function buildProjectStatusBarDisplayHtml(array $summary): string
+		protected static function buildProjectStatusBarDisplayHtml(array $summary, int $organizationId = 0): string
 		{
 			if ((int)($summary['total'] ?? 0) <= 0 || empty($summary['leaves'])) {
 				return '';
 			}
 
-			$statusCatalog = \dbObject\Project::getStatusCatalog();
 			$weightsByStatus = array_fill_keys(self::getProjectStatusDisplayOrder(), 0.0);
 			foreach ($summary['leaves'] as $leaf) {
 				$status = \dbObject\Project::normalizeStatus($leaf['status'] ?? '');
@@ -3360,7 +3359,7 @@
 				$count = (int)($summary['counts'][$status] ?? 0);
 				if ($count > 0) {
 					$percentage = rtrim(rtrim(number_format($weightsByStatus[$status] * 100, 1, '.', ''), '0'), '.');
-					$labelParts[] = (string)($statusCatalog[$status]['label'] ?? $status) . ': ' . $count . ' (' . $percentage . '%)';
+					$labelParts[] = \dbObject\Project::getOrganizationStatusLabel($organizationId, $status) . ': ' . $count . ' (' . $percentage . '%)';
 				}
 			}
 			$label = 'Etat des sous-projets: ' . implode(', ', $labelParts);
@@ -3386,7 +3385,7 @@
 			$title = $title !== '' ? $title : ($fallbackTitle !== '' ? $fallbackTitle : ('Projet #' . $projectId));
 			$projectUrl = '#projects-d' . $projectId;
 			$status = \dbObject\Project::normalizeStatus($project->get('status'));
-			$statusCatalog = \dbObject\Project::getStatusCatalog();
+			$organizationId = (int)$project->get('IDorganization');
 			$projectHolon = $project->getHolon();
 			$contextLabel = $projectHolon instanceof \dbObject\Holon
 				? trim((string)$projectHolon->getDisplayName())
@@ -3416,7 +3415,7 @@
 			$html .= '<a class="omo-project-embed__external" href="' . htmlspecialchars($projectUrl, ENT_QUOTES, 'UTF-8')
 				. '" target="_blank" rel="noopener noreferrer" aria-label="Ouvrir le projet dans une nouvelle fenetre" title="Ouvrir le projet dans une nouvelle fenetre">&#8599;</a>';
 			$html .= '<span class="omo-project-embed__status omo-project-embed__status--' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '">'
-				. htmlspecialchars((string)($statusCatalog[$status]['label'] ?? $status), ENT_QUOTES, 'UTF-8') . '</span>';
+				. htmlspecialchars(\dbObject\Project::getOrganizationStatusLabel($organizationId, $status), ENT_QUOTES, 'UTF-8') . '</span>';
 			if ($priority !== null) {
 				$html .= '<span class="omo-project-embed__priority">P' . (int)$priority . '</span>';
 			}
@@ -3430,7 +3429,7 @@
 			if ($hasDirectChildren) {
 				$html .= '<button type="button" class="omo-project-embed__toggle" data-omo-project-embed-toggle aria-expanded="false" aria-label="Afficher les sous-projets de '
 					. htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '"><span class="omo-project-embed__toggle-label">Sous-projets</span>'
-					. self::buildProjectStatusBarDisplayHtml($summary) . '</button>';
+					. self::buildProjectStatusBarDisplayHtml($summary, $organizationId) . '</button>';
 				$html .= '<div class="omo-project-embed__children" data-omo-project-embed-children hidden></div>';
 			}
 			return $html . '</div>';
