@@ -1368,7 +1368,11 @@
 					), 256) AS row_version,
 					COALESCE(IDuser_editing, 0) AS editing_user_id,
 					COALESCE(edit_lock_token, '') AS edit_lock_token,
-					dateedition
+					dateedition,
+					COALESCE(IDuser_edit_takeover_request, 0) AS takeover_user_id,
+					COALESCE(edit_takeover_request_token, '') AS takeover_request_token,
+					COALESCE(edit_takeover_target_token, '') AS takeover_target_token,
+					date_edit_takeover_request
 				FROM document_pv_point
 				WHERE IDdocument = :document_id
 				ORDER BY id ASC",
@@ -1386,7 +1390,27 @@
 				$pointRow['lock_token'] = $lockActive
 					? hash('sha256', (string)$pointRow['edit_lock_token'])
 					: '';
-				unset($pointRow['editing_user_id'], $pointRow['edit_lock_token'], $pointRow['dateedition']);
+				$takeoverTimestamp = strtotime((string)($pointRow['date_edit_takeover_request'] ?? ''));
+				$takeoverActive = (int)($pointRow['takeover_user_id'] ?? 0) > 0
+					&& trim((string)($pointRow['takeover_request_token'] ?? '')) !== ''
+					&& trim((string)($pointRow['takeover_target_token'] ?? '')) !== ''
+					&& $takeoverTimestamp !== false
+					&& ($takeoverTimestamp + \dbObject\DocumentPvPoint::EDIT_TAKEOVER_REQUEST_TIMEOUT_SECONDS) >= time();
+				$pointRow['takeover_user_id'] = $takeoverActive ? (int)$pointRow['takeover_user_id'] : 0;
+				$pointRow['takeover_request'] = $takeoverActive
+					? hash('sha256', (string)$pointRow['takeover_request_token'])
+					: '';
+				$pointRow['takeover_target'] = $takeoverActive
+					? hash('sha256', (string)$pointRow['takeover_target_token'])
+					: '';
+				unset(
+					$pointRow['editing_user_id'],
+					$pointRow['edit_lock_token'],
+					$pointRow['dateedition'],
+					$pointRow['takeover_request_token'],
+					$pointRow['takeover_target_token'],
+					$pointRow['date_edit_takeover_request']
+				);
 			}
 			unset($pointRow);
 
@@ -1525,13 +1549,17 @@
 
 		public function canUserManagePvDocument(int $userId): bool
 		{
-			if (!$this->isPvDocument() || $this->isPvValidated() || $userId <= 0
-				|| !$this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId)) {
+			if (!$this->isPvDocument() || $this->isPvValidated() || $userId <= 0) {
+				return false;
+			}
+			if ($this->isPvEditor($userId)) {
+				return true;
+			}
+			if (!$this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId)) {
 				return false;
 			}
 
 			return \commonUserHasAdminOverride($userId, (int)$this->get('IDorganization'))
-				|| $this->isPvEditor($userId)
 				|| ($this->getPvEditorUserId() <= 0 && $userId === $this->getCreatedByUserId());
 		}
 

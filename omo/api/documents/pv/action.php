@@ -966,7 +966,7 @@ if ($action === 'unlock_point') {
     }
 
     $isPublicParticipation ? $point->releasePublicEditLock($editorToken) : $point->releaseEditLock($currentUserId, $editorToken);
-    $point->load($pointId);
+    $point->load($pointId, true);
 
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
@@ -1001,8 +1001,20 @@ if ($action === 'take_over_point_lock') {
         ], 400);
     }
 
+    if (!empty($lockResult['pending'])) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => true,
+            'pending' => true,
+            'retryAfterMs' => max(250, min(1000, (int)($lockResult['retryAfterMs'] ?? 600))),
+            'message' => trim((string)($lockResult['text'] ?? '')),
+        ]);
+    }
+
+    $point->load($pointId, true);
+
     omoDocumentsPvEditorJsonResponse([
         'status' => true,
+        'pending' => false,
         'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
     ]);
 }
@@ -1032,18 +1044,6 @@ if ($action === 'save_point') {
             'status' => false,
             'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
         ], 403);
-    }
-
-    $lockResult = $isPublicParticipation
-        ? $point->touchPublicEditLock($organizationId, $editorToken)
-        : $point->touchEditLock($organizationId, $currentUserId, $editorToken);
-    if (!is_array($lockResult) || ($lockResult['status'] ?? false) !== true) {
-        omoDocumentsPvEditorJsonResponse([
-            'status' => false,
-            'message' => trim((string)($lockResult['text'] ?? omoDocumentsPvEditorActionT('documents.pv_editor.state.locked'))),
-            'lock' => is_array($lockResult['lock'] ?? null) ? $lockResult['lock'] : null,
-            'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId, $publicParticipationLink),
-        ], 423);
     }
 
     if ($isPublicParticipation) {
@@ -1127,16 +1127,19 @@ if ($action === 'save_point') {
         ? ($publicParticipationLink->getRecipientUserId() ?: null)
         : ($currentUserId > 0 ? $currentUserId : null));
 
-    $saveResult = $point->save();
+    $saveResult = $point->saveForEditSession($currentUserId, $editorToken, $isPublicParticipation);
     if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+        $lockLost = !empty($saveResult['lockLost']);
+        $point->load($pointId, true);
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
             'message' => trim((string)($saveResult['text'] ?? omoDocumentsPvEditorActionT('documents.pv_editor.error.operation_failed'))),
-        ], 400);
+            'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId, $publicParticipationLink),
+        ], $lockLost ? 423 : 400);
     }
 
     $isPublicParticipation ? $point->releasePublicEditLock($editorToken) : $point->releaseEditLock($currentUserId, $editorToken);
-    $point->load($pointId);
+    $point->load($pointId, true);
 
     if (!$document->canUserViewPvPoint($point, $currentUserId)) {
         omoDocumentsPvEditorJsonResponse([
@@ -1200,6 +1203,14 @@ if ($action === 'toggle_handled') {
             'status' => false,
             'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
         ], 403);
+    }
+
+    if ($point->isLockedByOtherSession($currentUserId, $editorToken)) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.state.locked'),
+            'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
+        ], 423);
     }
 
     $point->set('is_handled', !empty($_POST['is_handled']) ? 1 : 0);
