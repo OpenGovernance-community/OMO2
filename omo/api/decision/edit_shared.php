@@ -1456,9 +1456,10 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                 openEditorUrl(activeRedirectUrl || lastRedirectUrl, 'Prises de decision');
             })
             .catch(function (error) {
-                if (feedback) {
-                    feedback.textContent = error && error.message ? error.message : (root.getAttribute('data-error-message') || 'Erreur.');
-                }
+                notifyQuestionSwitch(
+                    error && error.message ? error.message : (root.getAttribute('data-error-message') || 'Erreur.'),
+                    'error'
+                );
             })
             .finally(function () {
                 root.removeAttribute('aria-busy');
