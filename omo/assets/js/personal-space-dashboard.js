@@ -499,6 +499,7 @@
             filter = metric.getAttribute('data-omo-dashboard-filter') || '';
             metric.parentNode.querySelectorAll('[data-omo-dashboard-filter]').forEach(function (button) {
                 button.classList.toggle('is-active', button === metric && !metric.classList.contains('is-active'));
+                button.setAttribute('aria-pressed', button.classList.contains('is-active') ? 'true' : 'false');
             });
             filter = metric.classList.contains('is-active') ? filter : '';
             updateModuleList(module, filter);

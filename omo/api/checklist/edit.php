@@ -82,7 +82,7 @@ if ($isEdit) {
         <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
         <?php if ($isEdit): ?><input type="hidden" name="id" value="<?= (int)$checklistId ?>"><?php endif; ?>
 
-        <section class="generic-section generic-section--stack generic-form-section omo-checklist-editor__section">
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided omo-checklist-editor__section">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoChecklistT('checklist.form.identity')) ?></h3>
             <div class="omo-checklist-form-grid generic-form-grid">
                 <label class="omo-checklist-field omo-checklist-field--wide">
@@ -115,7 +115,7 @@ if ($isEdit) {
             </div>
         </section>
 
-        <section class="generic-section generic-section--stack generic-form-section omo-checklist-editor__section" data-checklist-trigger-section>
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided omo-checklist-editor__section" data-checklist-trigger-section>
             <div class="omo-checklist-editor__section-heading generic-form-section__heading">
                 <div class="generic-form-section__copy">
                     <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoChecklistT('checklist.form.trigger')) ?></h3>

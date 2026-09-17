@@ -430,7 +430,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 <input type="hidden" name="id" value="<?= (int)$document->getId() ?>">
             <?php endif; ?>
 
-            <div class="omo-document-editor__grid generic-section generic-section--stack generic-form-section">
+            <div class="omo-document-editor__grid generic-section generic-section--stack generic-form-section generic-form-section--divided">
                 <fieldset class="omo-document-editor__metadata"<?= $isEditing && !$canManageDocument ? ' disabled' : '' ?>>
                 <div class="omo-document-editor__meta-row generic-form-grid">
                     <label class="omo-document-editor__field generic-form-field">
@@ -559,7 +559,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
                 <div class="omo-document-editor__field generic-form-field">
                     <span class="omo-document-editor__label generic-form-label"><?= $escape(omoDocumentsCreateT('documents.create.field.tags')) ?></span>
                     <input type="hidden" name="keywords" value="<?= $escape($documentKeywords) ?>" data-omo-document-tags-hidden>
-                    <div class="omo-document-editor__tag-editor generic-form-control" data-omo-document-tags-editor>
+                    <div class="omo-document-editor__tag-editor generic-form-control generic-form-control--composite" data-omo-document-tags-editor>
                         <div class="omo-document-editor__tag-list" data-omo-document-tags-list></div>
                         <input
                             type="text"
@@ -732,212 +732,7 @@ if ($organizationId > 0 && $currentUserId > 0 && commonCurrentUserHasOrganizatio
     <?php endif; ?>
 </div>
 
-<style>
-.omo-document-editor__meta-row {
-    --generic-form-grid-min: 230px;
-}
-
-.omo-document-editor [hidden] {
-    display: none !important;
-}
-
-.omo-document-editor__metadata {
-    display: contents;
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    border: 0;
-}
-
-.omo-document-editor__metadata:disabled .generic-form-label,
-.omo-document-editor__metadata:disabled .generic-help-text {
-    color: var(--color-text-light);
-    opacity: 0.72;
-}
-
-.omo-document-editor__metadata:disabled .generic-form-control,
-.omo-document-editor__metadata:disabled .omo-document-editor__tag-editor,
-.omo-document-editor__metadata:disabled .omo-visibility-choice {
-    border-color: color-mix(in srgb, var(--color-border, #d1d5db) 72%, var(--color-text-light, #64748b));
-    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 86%, var(--color-text-light, #64748b) 14%);
-    color: var(--color-text-light);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border, #d1d5db) 70%, var(--color-text-light, #64748b));
-}
-
-.omo-document-editor__metadata:disabled .generic-form-control,
-.omo-document-editor__metadata:disabled .omo-document-editor__tag-editor,
-.omo-document-editor__metadata:disabled .omo-visibility-choice,
-.omo-document-editor__metadata:disabled .omo-visibility-choice__button,
-.omo-document-editor__metadata:disabled .omo-document-editor__tag-input,
-.omo-document-editor__metadata:disabled .omo-document-editor__tag-remove {
-    cursor: not-allowed !important;
-}
-
-.omo-document-editor__metadata:disabled .omo-document-editor__tag-editor {
-    cursor: not-allowed;
-}
-
-.omo-document-editor__metadata:disabled .omo-document-editor__tag {
-    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 80%, var(--color-text-light, #64748b) 20%);
-    color: var(--color-text-light);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border, #d1d5db) 68%, var(--color-text-light, #64748b));
-}
-
-.omo-document-editor__metadata:disabled .omo-visibility-choice {
-    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 78%, var(--color-text-light, #64748b) 22%);
-}
-
-.omo-document-editor__metadata:disabled .omo-visibility-choice::before {
-    background: color-mix(in srgb, var(--color-surface, #ffffff) 78%, var(--color-text-light, #64748b) 22%);
-    box-shadow: none;
-}
-
-.omo-document-editor__metadata:disabled .omo-visibility-choice__button {
-    color: var(--color-text-light);
-    opacity: 0.58;
-}
-
-.omo-document-editor__metadata:disabled .omo-visibility-choice__input:checked + .omo-visibility-choice__button {
-    color: var(--color-text-light);
-    opacity: 0.9;
-}
-
-.omo-document-editor__content-readonly {
-    min-height: 160px;
-    color: var(--color-text-light);
-    opacity: 0.7;
-}
-
-.omo-document-editor__tag-editor {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    cursor: text;
-}
-
-.omo-document-editor__tag-editor:focus-within {
-    border-color: var(--generic-form-control-border-focus);
-    box-shadow: var(--generic-form-control-focus-shadow);
-    background: var(--generic-form-control-background-focus);
-}
-
-.omo-document-editor__tag-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.omo-document-editor__tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 26px;
-    padding: 0 10px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 82%, white 18%);
-    color: color-mix(in srgb, var(--color-primary, #2563eb) 78%, #334155 22%);
-    font-size: 0.8rem;
-    line-height: 1;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-border, #d1d5db) 82%, white 18%);
-}
-
-.omo-document-editor__tag-remove {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    padding: 0;
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    line-height: 1;
-    cursor: pointer;
-}
-
-.omo-document-editor__tag-remove:hover,
-.omo-document-editor__tag-remove:focus-visible {
-    background: color-mix(in srgb, currentColor 12%, transparent);
-    outline: none;
-}
-
-.omo-document-editor__tag-input {
-    flex: 1 1 140px;
-    min-width: 140px;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: var(--color-text);
-    font: inherit;
-    outline: none;
-    box-shadow: none;
-}
-
-.omo-document-editor__tag-input::placeholder {
-    color: var(--color-text-light);
-}
-
-.omo-document-editor__upload-current {
-    --generic-soft-panel-gap: 4px;
-}
-
-.omo-document-editor__upload-current-title {
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    color: var(--color-text-light);
-}
-
-.omo-document-editor__upload-current-name {
-    font-weight: 600;
-    color: var(--color-text);
-    word-break: break-word;
-}
-
-.omo-document-editor__upload-current-meta {
-    font-size: 0.84rem;
-    color: var(--color-text-light);
-}
-
-.omo-document-editor__status {
-    --generic-soft-panel-border: color-mix(in srgb, #dc2626 25%, var(--color-border));
-    --generic-soft-panel-background: color-mix(in srgb, #fef2f2 88%, var(--color-surface));
-    color: #991b1b;
-}
-
-.omo-document-editor__dictation-status {
-    --generic-soft-panel-gap: 0;
-    --generic-soft-panel-border: color-mix(in srgb, var(--color-border) 85%, #38bdf8 15%);
-    --generic-soft-panel-background: color-mix(in srgb, var(--color-surface) 88%, #eff6ff 12%);
-    margin-top: 10px;
-    color: var(--color-text-light);
-    font-size: 0.84rem;
-    line-height: 1.45;
-}
-
-.omo-document-editor__dictation-status.is-live {
-    --generic-soft-panel-border: color-mix(in srgb, #f59e0b 35%, var(--color-border));
-    --generic-soft-panel-background: color-mix(in srgb, #fffbeb 82%, var(--color-surface));
-    color: #92400e;
-}
-
-.omo-document-editor__dictation-status.is-error {
-    --generic-soft-panel-border: color-mix(in srgb, #dc2626 28%, var(--color-border));
-    --generic-soft-panel-background: color-mix(in srgb, #fef2f2 88%, var(--color-surface));
-    color: #991b1b;
-}
-
-.omo-document-editor__dictation-status.is-success {
-    --generic-soft-panel-border: color-mix(in srgb, #16a34a 26%, var(--color-border));
-    --generic-soft-panel-background: color-mix(in srgb, #f0fdf4 88%, var(--color-surface));
-    color: #166534;
-}
-
-</style>
+<link rel="stylesheet" href="/omo/api/documents/editor.css?v=20260917-style-review-final">
 
 <script>
 (function () {

@@ -60,7 +60,7 @@ $drawerTitle = omoActivityT($activityId > 0 ? 'activity.editor.edit_title' : 'ac
         <?php endif; ?>
         <?php if ($activityId > 0): ?><input type="hidden" name="id" value="<?= (int)$activityId ?>"><?php endif; ?>
 
-        <section class="generic-section generic-section--stack generic-form-section">
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoActivityT('activity.editor.identity')) ?></h3>
             <div class="omo-activity-form-grid generic-form-grid">
                 <label class="omo-activity-field omo-activity-field--wide">
@@ -77,7 +77,7 @@ $drawerTitle = omoActivityT($activityId > 0 ? 'activity.editor.edit_title' : 'ac
             </div>
         </section>
 
-        <section class="generic-section generic-section--stack generic-form-section">
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoActivityT('activity.frequency')) ?></h3>
             <div class="omo-activity-form-grid generic-form-grid">
                 <label class="omo-activity-field">
@@ -95,7 +95,7 @@ $drawerTitle = omoActivityT($activityId > 0 ? 'activity.editor.edit_title' : 'ac
             </div>
         </section>
 
-        <section class="generic-section generic-section--stack generic-form-section">
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoActivityT('activity.editor.window')) ?></h3>
             <div class="omo-activity-form-grid generic-form-grid">
                 <label class="omo-activity-field">

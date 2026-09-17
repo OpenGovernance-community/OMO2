@@ -785,7 +785,7 @@ $projectTexts = [
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">
 <link rel="stylesheet" href="/common/chat/thread.css?v=20260910-project-chat">
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260910-project-event-card">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260917-detail-blocked-info">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
@@ -825,7 +825,7 @@ $projectTexts = [
                 </div>
             </div>
             <div class="omo-projects__header-actions" data-omo-header-actions>
-                <div class="generic-menu omo-projects__header-menu" data-omo-projects-header-menu>
+                <div class="generic-menu generic-menu--expanded-mobile omo-projects__header-menu" data-omo-projects-header-menu>
                     <button
                         type="button"
                         class="generic-menu-toggle omo-projects__header-menu-toggle"
@@ -912,11 +912,6 @@ $projectTexts = [
                     </div>
                 </section>
             </div>
-            <div class="omo-projects__mobile-column-nav" aria-label="<?= omoApiEscape(omoProjectsT('projects.title')) ?>"<?= $projectView === 'kanban' ? '' : ' hidden' ?>>
-                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-column-prev aria-label="<?= omoApiEscape(omoProjectsT('projects.column.previous')) ?>">&lsaquo;</button>
-                <span data-omo-projects-column-label></span>
-                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-column-next aria-label="<?= omoApiEscape(omoProjectsT('projects.column.next')) ?>">&rsaquo;</button>
-            </div>
         </div>
     </header>
 
@@ -930,8 +925,12 @@ $projectTexts = [
                         <?php $columnItems = $projectsByStatus[$status] ?? []; ?>
                         <section class="omo-projects__kanban-grid-header-cell" data-omo-projects-column="<?= omoApiEscape($status) ?>">
                             <div class="omo-projects__kanban-grid-header-title">
-                                <h3><?= omoApiEscape(omoProjectsStatusLabel($status)) ?></h3>
-                                <span class="omo-projects__column-count omo-projects__column-count--<?= omoApiEscape($status) ?>" data-omo-projects-column-count><?= count($columnItems) ?></span>
+                                <button type="button" class="generic-action-button generic-action-button--icon-only generic-action-button--quiet-icon omo-projects__column-nav-button" data-omo-projects-column-prev aria-label="<?= omoApiEscape(omoProjectsT('projects.column.previous')) ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6" /></svg></button>
+                                <div class="generic-title-row generic-title-row--center omo-projects__column-heading">
+                                    <h3><?= omoApiEscape(omoProjectsStatusLabel($status)) ?></h3>
+                                    <span class="omo-projects__column-count omo-projects__column-count--<?= omoApiEscape($status) ?>" data-omo-projects-column-count><?= count($columnItems) ?></span>
+                                </div>
+                                <button type="button" class="generic-action-button generic-action-button--icon-only generic-action-button--quiet-icon omo-projects__column-nav-button" data-omo-projects-column-next aria-label="<?= omoApiEscape(omoProjectsT('projects.column.next')) ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6" /></svg></button>
                             </div>
                         </section>
                     <?php endforeach; ?>
@@ -972,10 +971,12 @@ $projectTexts = [
                     <?php $columnItems = $projectsByStatus[$status] ?? []; ?>
                     <section class="omo-projects__column" data-omo-projects-column="<?= omoApiEscape($status) ?>">
                         <header class="omo-projects__column-header">
-                            <div>
+                            <button type="button" class="generic-action-button generic-action-button--icon-only generic-action-button--quiet-icon omo-projects__column-nav-button" data-omo-projects-column-prev aria-label="<?= omoApiEscape(omoProjectsT('projects.column.previous')) ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6" /></svg></button>
+                            <div class="generic-title-row generic-title-row--center omo-projects__column-heading">
                                 <h3><?= omoApiEscape(omoProjectsStatusLabel($status)) ?></h3>
+                                <span class="omo-projects__column-count omo-projects__column-count--<?= omoApiEscape($status) ?>" data-omo-projects-column-count><?= count($columnItems) ?></span>
                             </div>
-                            <span class="omo-projects__column-count omo-projects__column-count--<?= omoApiEscape($status) ?>" data-omo-projects-column-count><?= count($columnItems) ?></span>
+                            <button type="button" class="generic-action-button generic-action-button--icon-only generic-action-button--quiet-icon omo-projects__column-nav-button" data-omo-projects-column-next aria-label="<?= omoApiEscape(omoProjectsT('projects.column.next')) ?>"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6" /></svg></button>
                         </header>
                         <div class="omo-projects__column-cards" data-omo-projects-cards="<?= omoApiEscape($status) ?>" data-status="<?= omoApiEscape($status) ?>">
                             <?php
@@ -1239,4 +1240,4 @@ $projectTexts = [
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="/common/choice/change-details.js?v=20260816-governance-details"></script>
 <script src="/common/chat/thread.js?v=20260910-project-chat"></script>
-<script src="/omo/api/projects/projects.js?v=20260916-view-save-menu"></script>
+<script src="/omo/api/projects/projects.js?v=20260917-mobile-actions"></script>
