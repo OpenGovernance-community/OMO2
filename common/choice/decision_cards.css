@@ -60,7 +60,7 @@
     position: absolute;
     top: calc(100% + var(--generic-space-1, 4px));
     right: 0;
-    z-index: 5;
+    z-index: 7;
     display: grid;
     min-width: 180px;
     gap: var(--generic-space-1, 4px);
