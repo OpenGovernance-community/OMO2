@@ -275,7 +275,7 @@ if ($action === 'save_checklist') {
             omoChecklistActionRespond(false, omoChecklistT('checklist.error.schedule'), [], 422);
         }
     }
-    $overlapPolicy = ChecklistTrigger::normalizeOverlapPolicy($_POST['overlap_policy'] ?? ChecklistTrigger::OVERLAP_REUSE_OPEN);
+    $overlapPolicy = ChecklistTrigger::normalizeOverlapPolicy($_POST['overlap_policy'] ?? ChecklistTrigger::OVERLAP_BLOCK);
     $responsibleUserId = isset($_POST['IDuser_responsible']) && is_numeric($_POST['IDuser_responsible'])
         ? (int)$_POST['IDuser_responsible']
         : 0;
@@ -399,24 +399,8 @@ if ($action === 'activate_checklist') {
         }
     }
     $overlapPolicy = ChecklistTrigger::normalizeOverlapPolicy($trigger->get('overlap_policy'));
-    if (count($openRuns) > 0) {
-        if ($overlapPolicy === ChecklistTrigger::OVERLAP_REUSE_OPEN) {
-            omoChecklistActionRespond(true, omoChecklistT('checklist.success.reused'), [
-                'id' => $checklistId,
-                'runId' => (int)$openRuns[0]->getId(),
-                'reused' => true,
-                'detailUrl' => omoChecklistActionDetailUrl($organizationId, $checklistId, $currentHolonId),
-            ]);
-        }
-        if ($overlapPolicy === ChecklistTrigger::OVERLAP_SKIP) {
-            omoChecklistActionRespond(false, omoChecklistT('checklist.error.open_instance'), [], 409);
-        }
-        if (
-            $overlapPolicy === ChecklistTrigger::OVERLAP_ASK
-            && trim((string)($_POST['overlap_decision'] ?? '')) !== 'create_new'
-        ) {
-            omoChecklistActionRespond(false, omoChecklistT('checklist.error.open_instance'), [], 409);
-        }
+    if (count($openRuns) > 0 && $overlapPolicy === ChecklistTrigger::OVERLAP_BLOCK) {
+        omoChecklistActionRespond(false, omoChecklistT('checklist.error.open_instance'), [], 409);
     }
 
     $templateRoot = $checklist->getTemplateRoot();
@@ -436,6 +420,14 @@ if ($action === 'activate_checklist') {
         if ($pdo && !$pdo->inTransaction()) {
             $pdo->beginTransaction();
             $startedTransaction = true;
+        }
+
+        if ($overlapPolicy === ChecklistTrigger::OVERLAP_RESTART) {
+            foreach ($openRuns as $openRun) {
+                if (!$openRun->cancelAndArchive()) {
+                    throw new RuntimeException(omoChecklistT('checklist.error.save'));
+                }
+            }
         }
 
         $rootProject = omoChecklistActionCloneProject($templateRoot, 0, $referenceAt, $instanceTitle);
@@ -739,7 +731,7 @@ if (in_array($action, ['delete_item', 'move_item', 'extract_item'], true)) {
             $trigger->set('trigger_type', ChecklistTrigger::TYPE_SCHEDULED);
             $trigger->set('frequency', $frequency);
             $trigger->set('schedule', $schedule);
-            $trigger->set('overlap_policy', ChecklistTrigger::OVERLAP_REUSE_OPEN);
+            $trigger->set('overlap_policy', ChecklistTrigger::OVERLAP_BLOCK);
             $trigger->set('enabled', 1);
             $trigger->set('next_trigger_at', RecurrenceSchedule::getNextOccurrence($frequency, $schedule, new DateTimeImmutable()));
             omoChecklistActionSaveObject($trigger);

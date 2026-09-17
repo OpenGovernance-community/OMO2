@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS `checklist_trigger` (
     `frequency` varchar(20) DEFAULT NULL,
     `schedule` varchar(20) DEFAULT NULL,
     `next_trigger_at` datetime DEFAULT NULL,
-    `overlap_policy` varchar(20) NOT NULL DEFAULT 'create_new',
+    `overlap_policy` varchar(20) NOT NULL DEFAULT 'block',
     `enabled` tinyint(1) NOT NULL DEFAULT 1,
     `created_at` datetime NOT NULL DEFAULT current_timestamp(),
     `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
