@@ -66,6 +66,39 @@ $sourceLang = [
         'text' => 'Nouveau',
         'context' => 'Primary action used to create a new document.',
     ],
+    'documents.upload.drop_root' => [
+        'text' => 'Deposez les fichiers pour les televerser dans cette liste.',
+        'context' => 'Feedback shown while files are dragged over the root document list.',
+    ],
+    'documents.upload.drop_folder' => [
+        'text' => 'Deposez les fichiers dans ce dossier.',
+        'context' => 'Feedback shown while files are dragged over an uploadable document folder.',
+    ],
+    'documents.upload.success' => [
+        'one' => '{count} fichier televerse.',
+        'other' => '{count} fichiers televerses.',
+        'context' => 'Confirmation displayed after files dropped into the documents list have been uploaded.',
+    ],
+    'documents.upload.error' => [
+        'text' => 'Le televersement des fichiers a echoue.',
+        'context' => 'Fallback error displayed when a file dropped into the documents list cannot be uploaded.',
+    ],
+    'documents.upload.forbidden' => [
+        'text' => 'Vous n avez pas le droit de creation de fichier ici.',
+        'context' => 'Feedback shown when files are dragged over a document list or folder where the user cannot create files.',
+    ],
+    'documents.move.drop_root' => [
+        'text' => 'Deposez le document pour le deplacer a la racine de cette liste.',
+        'context' => 'Feedback shown while a document is dragged over the root document list.',
+    ],
+    'documents.move.drop_folder' => [
+        'text' => 'Deposez le document pour le deplacer dans ce dossier.',
+        'context' => 'Feedback shown while a document is dragged over a folder that can receive it.',
+    ],
+    'documents.move.drop_forbidden' => [
+        'text' => 'Vous n avez pas le droit de deplacer ce document ici.',
+        'context' => 'Feedback shown while a document is dragged over a destination where moving is forbidden.',
+    ],
     'documents.controls.sort.aria' => [
         'text' => 'Tri des documents',
         'context' => 'Accessible label for the documents sort control.',
@@ -432,6 +465,8 @@ $canCreateDocument = $organization->getId() > 0
         0,
         true
     );
+$canDirectUploadToCurrentContext = $canCreateDocument && $organization->hasDocumentStorage();
+$canMoveToCurrentContext = $canCreateDocument;
 $newDocumentUrl = '/omo/api/documents/create.php?oid=' . $currentOrganizationId . ($effectiveCurrentHolonId > 0 ? '&cid=' . $effectiveCurrentHolonId : '');
 
 $documents = new \dbObject\ArrayDocument();
@@ -651,6 +686,23 @@ foreach ($documents as $document) {
     $canOpenInPvApplicationTab = !$isPvDocument || $isPvValidated;
     $canOpenInCurrentView = !$isPvApplicationTab || $canOpenInPvApplicationTab;
     $isFolder = $document->isFolder();
+    $canUploadToFolder = $isFolder
+        && !$document->isNextcloudFolder()
+        && $organization->hasDocumentStorage()
+        && Document::canCreateInOrganizationContext(
+            $documentOrganizationId,
+            $documentHolonId > 0 ? $documentHolonId : null,
+            $currentUserId,
+            $documentId,
+            true
+        );
+    $canMoveToFolder = $isFolder && Document::canCreateInOrganizationContext(
+        $documentOrganizationId,
+        $documentHolonId > 0 ? $documentHolonId : null,
+        $currentUserId,
+        $documentId,
+        true
+    );
     $isExternalLink = $document->isExternalLink();
     $canShareDocument = !$isFolder && $document->supportsHtmlContent();
     $documentTitle = (string)$document->get('title');
@@ -667,6 +719,7 @@ foreach ($documents as $document) {
 
     $documentEntries[] = [
         'id' => $documentId,
+        'holonId' => $documentHolonId,
         'href' => '/memo/' . $documentId,
         'title' => $documentTitle,
         'listTitle' => $listTitle,
@@ -681,7 +734,9 @@ foreach ($documents as $document) {
                 . '&oid=' . rawurlencode((string)$currentOrganizationId)
             : '',
         'isFolder' => $isFolder,
-		'isNextcloudFolder' => $document->isNextcloudFolder(),
+        'isNextcloudFolder' => $document->isNextcloudFolder(),
+        'canUpload' => $canUploadToFolder,
+        'canMoveInto' => $canMoveToFolder,
         'isExternalLink' => $isExternalLink,
         'externalUrl' => $document->getExternalUrl(),
         'openInNewWindow' => $document->shouldOpenExternalLinkInNewWindow(),
@@ -885,6 +940,8 @@ if (!is_string($documentsPayload)) {
     data-omo-document-scope="<?= $escape($documentScope) ?>"
     data-omo-document-oid="<?= (int)$currentOrganizationId ?>"
     data-omo-document-cid="<?= (int)$effectiveCurrentHolonId ?>"
+    data-omo-document-can-upload="<?= $canDirectUploadToCurrentContext ? '1' : '0' ?>"
+    data-omo-document-can-move-here="<?= $canMoveToCurrentContext ? '1' : '0' ?>"
     data-omo-app-view-preferences="<?= $escape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     data-omo-document-open-id="<?= (int)$initialOpenDocumentId ?>"
     data-omo-document-sort="updated"
@@ -1589,6 +1646,22 @@ if (!is_string($documentsPayload)) {
                             }
 
                             const documents = Array.isArray(payload.documents) ? payload.documents.slice() : [];
+                            const canUploadToCurrentContext = panel.getAttribute('data-omo-document-can-upload') === '1';
+                            const canMoveToCurrentContext = panel.getAttribute('data-omo-document-can-move-here') === '1';
+                            const directUploadEndpoint = '/omo/api/documents/save.php';
+                            const directMoveEndpoint = '/omo/api/documents/move_action.php';
+                            const directUploadTexts = {
+                                root: <?= json_encode(omoDocumentsScopeT('documents.upload.drop_root'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                                folder: <?= json_encode(omoDocumentsScopeT('documents.upload.drop_folder'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                                success: <?= json_encode(omoDocumentsScopeT('documents.upload.success'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                                error: <?= json_encode(omoDocumentsScopeT('documents.upload.error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                                forbidden: <?= json_encode(omoDocumentsScopeT('documents.upload.forbidden'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                            };
+                            const directMoveTexts = {
+                                root: <?= json_encode(omoDocumentsScopeT('documents.move.drop_root'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                                folder: <?= json_encode(omoDocumentsScopeT('documents.move.drop_folder'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                                forbidden: <?= json_encode(omoDocumentsScopeT('documents.move.drop_forbidden'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                            };
                             const isPvApplicationTab = <?= $isPvApplicationTab ? 'true' : 'false' ?>
                                 || (
                                     typeof window.omoIsPvApplicationTabContext === 'function'
@@ -1623,6 +1696,9 @@ if (!is_string($documentsPayload)) {
                             let detailRequestToken = 0;
                             let pendingDisplayFilters = null;
                             let filterPanelOpen = false;
+                            let directUploadInProgress = false;
+                            let directMoveInProgress = false;
+                            let draggedDocumentId = 0;
 
                             const collator = typeof Intl !== 'undefined' && typeof Intl.Collator === 'function'
                                 ? new Intl.Collator('fr', { sensitivity: 'base', numeric: true })
@@ -2049,6 +2125,12 @@ if (!is_string($documentsPayload)) {
 									}
                                 }
 
+                                if (documentItem.canMove === true && !documentItem.isRemoteFile) {
+                                    container.classList.add('omo-documents__item--draggable');
+                                    container.setAttribute('draggable', 'true');
+                                    container.setAttribute('data-omo-document-drag-id', String(documentItem.id || '0'));
+                                }
+
                                 container.classList.add(
                                     documentItem.isFolder
                                         ? 'omo-documents__item--folder-card'
@@ -2424,6 +2506,12 @@ if (!is_string($documentsPayload)) {
                                         + (isExpanded ? '' : ' is-collapsed');
                                     accordion.setAttribute('data-generic-accordion', '1');
                                     accordion.setAttribute('data-omo-document-folder', String(documentItem.id || '0'));
+									if (documentItem.canUpload === true) {
+										accordion.setAttribute('data-omo-document-can-upload', '1');
+									}
+									if (documentItem.canMoveInto === true) {
+										accordion.setAttribute('data-omo-document-can-move-into', '1');
+									}
 									if (isNextcloudFolder && Number.isInteger(nextcloudFolderId) && nextcloudFolderId > 0) {
 										accordion.setAttribute('data-omo-nextcloud-folder-id', String(nextcloudFolderId));
 										accordion.setAttribute('data-omo-nextcloud-path', nextcloudPath);
@@ -2586,6 +2674,434 @@ if (!is_string($documentsPayload)) {
 									})
 									.catch(function (error) { content.textContent = String(error && error.message || omoDocumentsNextcloudErrorLabel); });
 							};
+
+                            const getDroppedFiles = function (event) {
+                                const transfer = event && event.dataTransfer ? event.dataTransfer : null;
+                                if (!transfer || !transfer.files || transfer.files.length === 0) {
+                                    return [];
+                                }
+
+                                return Array.prototype.slice.call(transfer.files).filter(function (file) {
+                                    return file instanceof File;
+                                });
+                            };
+
+                            const isFileDrag = function (event) {
+                                const transfer = event && event.dataTransfer ? event.dataTransfer : null;
+                                if (!transfer) {
+                                    return false;
+                                }
+
+                                return Array.prototype.indexOf.call(transfer.types || [], 'Files') !== -1
+                                    || (transfer.files && transfer.files.length > 0);
+                            };
+
+                            const getDirectUploadTarget = function (event) {
+                                const folder = event.target instanceof Element
+                                    ? event.target.closest('[data-omo-document-folder]')
+                                    : null;
+                                if (folder && panel.contains(folder)) {
+                                    const parentDocumentId = Number(folder.getAttribute('data-omo-document-folder') || 0);
+                                    if (Number.isInteger(parentDocumentId) && parentDocumentId > 0) {
+                                        return {
+                                            element: folder,
+                                            parentDocumentId: parentDocumentId,
+                                            allowed: folder.getAttribute('data-omo-document-can-upload') === '1',
+                                            label: folder.getAttribute('data-omo-document-can-upload') === '1'
+                                                ? directUploadTexts.folder
+                                                : directUploadTexts.forbidden
+                                        };
+                                    }
+                                }
+
+                                if (results.contains(event.target)) {
+                                    return {
+                                        element: results,
+                                        parentDocumentId: 0,
+                                        allowed: canUploadToCurrentContext,
+                                        label: canUploadToCurrentContext
+                                            ? directUploadTexts.root
+                                            : directUploadTexts.forbidden
+                                    };
+                                }
+
+                                return null;
+                            };
+
+                            const clearDirectUploadTarget = function () {
+                                results.querySelectorAll('.is-file-drop-target').forEach(function (element) {
+                                    element.classList.remove('is-file-drop-target');
+                                    element.removeAttribute('data-file-drop-message');
+                                    element.removeAttribute('data-file-drop-state');
+                                });
+                                results.classList.remove('is-file-drop-target');
+                                results.removeAttribute('data-file-drop-message');
+                                results.removeAttribute('data-file-drop-state');
+                            };
+
+                            const getDirectUploadTitle = function (file) {
+                                const name = String(file && file.name || '').trim();
+                                return (name !== '' ? name : 'Fichier').slice(0, 100);
+                            };
+
+                            const formatDirectUploadText = function (template, count) {
+                                return String(template || '').replace('{count}', String(count));
+                            };
+
+                            const notifyDirectUpload = function (message, type) {
+                                if (typeof window.omoNotify === 'function') {
+                                    window.omoNotify(message, type);
+                                }
+                            };
+
+                            const uploadDroppedFiles = async function (files, target) {
+                                if (directUploadInProgress || !target || files.length === 0) {
+                                    return;
+                                }
+
+                                const organizationId = Number(panel.getAttribute('data-omo-document-oid') || 0);
+                                const holonId = Number(panel.getAttribute('data-omo-document-cid') || 0);
+                                if (!Number.isInteger(organizationId) || organizationId <= 0) {
+                                    notifyDirectUpload(directUploadTexts.error, 'error');
+                                    return;
+                                }
+
+                                directUploadInProgress = true;
+                                const errors = [];
+                                let uploadedCount = 0;
+
+                                for (const file of files) {
+                                    const body = new FormData();
+                                    body.set('oid', String(organizationId));
+                                    if (Number.isInteger(holonId) && holonId > 0) {
+                                        body.set('cid', String(holonId));
+                                    }
+                                    body.set('title', getDirectUploadTitle(file));
+                                    body.set('document_type', 'uploaded_file');
+                                    if (target.parentDocumentId > 0) {
+                                        body.set('parent_document_id', String(target.parentDocumentId));
+                                    }
+                                    body.set('uploaded_file', file, file.name || getDirectUploadTitle(file));
+
+                                    try {
+                                        const response = await fetch(directUploadEndpoint, {
+                                            method: 'POST',
+                                            credentials: 'same-origin',
+                                            headers: {'X-Requested-With': 'XMLHttpRequest'},
+                                            body: body,
+                                            cache: 'no-store'
+                                        });
+                                        const responsePayload = await response.json().catch(function () { return null; });
+                                        if (!response.ok || !responsePayload || responsePayload.status !== true) {
+                                            throw new Error(String(responsePayload && responsePayload.message || directUploadTexts.error));
+                                        }
+                                        uploadedCount++;
+                                    } catch (error) {
+                                        errors.push(String(error && error.message || directUploadTexts.error));
+                                    }
+                                }
+
+                                directUploadInProgress = false;
+                                if (uploadedCount > 0 && typeof window.omoRefreshDocumentsPanel === 'function') {
+                                    await window.omoRefreshDocumentsPanel();
+                                }
+                                if (uploadedCount > 0) {
+                                    notifyDirectUpload(formatDirectUploadText(directUploadTexts.success, uploadedCount), 'success');
+                                }
+                                if (errors.length > 0) {
+                                    notifyDirectUpload(errors[0], 'error');
+                                }
+                            };
+
+                            const getDraggedDocumentId = function (event) {
+                                const transfer = event && event.dataTransfer ? event.dataTransfer : null;
+                                const transferredId = transfer ? Number(transfer.getData('application/x-omo-document-id') || 0) : 0;
+                                return Number.isInteger(transferredId) && transferredId > 0
+                                    ? transferredId
+                                    : draggedDocumentId;
+                            };
+
+                            const isInternalDocumentDrag = function (event) {
+                                const transfer = event && event.dataTransfer ? event.dataTransfer : null;
+                                if (!transfer) {
+                                    return false;
+                                }
+
+                                return draggedDocumentId > 0
+                                    || Array.prototype.indexOf.call(transfer.types || [], 'application/x-omo-document-id') !== -1;
+                            };
+
+                            const wouldMoveIntoOwnDescendant = function (documentItem, targetParentDocumentId) {
+                                if (!documentItem || !documentItem.isFolder || targetParentDocumentId <= 0) {
+                                    return false;
+                                }
+
+                                let candidateParentId = targetParentDocumentId;
+                                const visitedParentIds = new Set();
+                                while (candidateParentId > 0 && !visitedParentIds.has(candidateParentId)) {
+                                    if (candidateParentId === Number(documentItem.id || 0)) {
+                                        return true;
+                                    }
+                                    visitedParentIds.add(candidateParentId);
+                                    const parent = documents.find(function (candidate) {
+                                        return Number(candidate && candidate.id || 0) === candidateParentId;
+                                    });
+                                    candidateParentId = Number(parent && parent.parentDocumentId || 0);
+                                }
+
+                                return false;
+                            };
+
+                            const getDirectMoveTarget = function (event, documentItem) {
+                                const folder = event.target instanceof Element
+                                    ? event.target.closest('[data-omo-document-folder]')
+                                    : null;
+                                if (folder && panel.contains(folder)) {
+                                    const parentDocumentId = Number(folder.getAttribute('data-omo-document-folder') || 0);
+                                    if (!Number.isInteger(parentDocumentId) || parentDocumentId <= 0) {
+                                        return null;
+                                    }
+                                    if (parentDocumentId === Number(documentItem && documentItem.parentDocumentId || 0)) {
+                                        return null;
+                                    }
+                                    const canMoveIntoFolder = folder.getAttribute('data-omo-document-can-move-into') === '1'
+                                        && !wouldMoveIntoOwnDescendant(documentItem, parentDocumentId);
+                                    return {
+                                        element: folder,
+                                        parentDocumentId: parentDocumentId,
+                                        holonId: 0,
+                                        allowed: canMoveIntoFolder,
+                                        label: canMoveIntoFolder ? directMoveTexts.folder : directMoveTexts.forbidden
+                                    };
+                                }
+
+                                const itemShell = event.target instanceof Element
+                                    ? event.target.closest('.omo-documents__item-shell')
+                                    : null;
+                                if (itemShell || !results.contains(event.target)) {
+                                    return null;
+                                }
+
+                                const targetHolonId = Number(panel.getAttribute('data-omo-document-cid') || 0);
+                                if (
+                                    Number(documentItem && documentItem.parentDocumentId || 0) === 0
+                                    && Number(documentItem && documentItem.holonId || 0) === targetHolonId
+                                ) {
+                                    return null;
+                                }
+
+                                return {
+                                    element: results,
+                                    parentDocumentId: 0,
+                                    holonId: Number.isInteger(targetHolonId) && targetHolonId > 0 ? targetHolonId : 0,
+                                    allowed: canMoveToCurrentContext,
+                                    label: canMoveToCurrentContext ? directMoveTexts.root : directMoveTexts.forbidden
+                                };
+                            };
+
+                            const clearDirectMoveTarget = function () {
+                                results.querySelectorAll('.is-document-move-target').forEach(function (element) {
+                                    element.classList.remove('is-document-move-target');
+                                    element.removeAttribute('data-document-move-message');
+                                    element.removeAttribute('data-document-move-state');
+                                });
+                                results.classList.remove('is-document-move-target');
+                                results.removeAttribute('data-document-move-message');
+                                results.removeAttribute('data-document-move-state');
+                            };
+
+                            const moveDraggedDocument = async function (documentItem, target) {
+                                if (directMoveInProgress || !documentItem || !target) {
+                                    return;
+                                }
+
+                                directMoveInProgress = true;
+                                try {
+                                    const response = await fetch(directMoveEndpoint, {
+                                        method: 'POST',
+                                        credentials: 'same-origin',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-Requested-With': 'XMLHttpRequest'
+                                        },
+                                        body: JSON.stringify({
+                                            id: Number(documentItem.id || 0),
+                                            targetHolonId: target.holonId,
+                                            targetParentDocumentId: target.parentDocumentId
+                                        }),
+                                        cache: 'no-store'
+                                    });
+                                    const responsePayload = await response.json().catch(function () { return null; });
+                                    if (!response.ok || !responsePayload || responsePayload.status !== 'ok') {
+                                        throw new Error(String(responsePayload && responsePayload.message || directMoveTexts.forbidden));
+                                    }
+                                    if (Number(responsePayload.movedCount || 0) > 0) {
+                                        if (typeof window.omoRefreshDocumentsPanel === 'function') {
+                                            await window.omoRefreshDocumentsPanel();
+                                        } else {
+                                            window.location.reload();
+                                            return;
+                                        }
+                                    }
+                                    notifyDirectUpload(String(responsePayload.message || ''), 'success');
+                                } catch (error) {
+                                    notifyDirectUpload(String(error && error.message || directMoveTexts.forbidden), 'error');
+                                } finally {
+                                    directMoveInProgress = false;
+                                }
+                            };
+
+                            results.addEventListener('dragstart', function (event) {
+                                const card = event.target instanceof Element
+                                    ? event.target.closest('[data-omo-document-drag-id]')
+                                    : null;
+                                if (!card || !results.contains(card) || !event.dataTransfer) {
+                                    return;
+                                }
+                                const documentId = Number(card.getAttribute('data-omo-document-drag-id') || 0);
+                                if (!Number.isInteger(documentId) || documentId <= 0) {
+                                    return;
+                                }
+                                draggedDocumentId = documentId;
+                                event.dataTransfer.effectAllowed = 'move';
+                                event.dataTransfer.setData('application/x-omo-document-id', String(documentId));
+                                event.dataTransfer.setData('text/plain', String(documentId));
+                                card.classList.add('is-document-dragging');
+                            });
+
+                            results.addEventListener('dragend', function () {
+                                draggedDocumentId = 0;
+                                results.querySelectorAll('.is-document-dragging').forEach(function (element) {
+                                    element.classList.remove('is-document-dragging');
+                                });
+                                clearDirectMoveTarget();
+                            });
+
+                            results.addEventListener('dragenter', function (event) {
+                                if (!isInternalDocumentDrag(event)) {
+                                    return;
+                                }
+                                const documentItem = documents.find(function (candidate) {
+                                    return Number(candidate && candidate.id || 0) === getDraggedDocumentId(event);
+                                });
+                                const target = getDirectMoveTarget(event, documentItem);
+                                if (!documentItem || !target) {
+                                    return;
+                                }
+                                event.preventDefault();
+                                clearDirectMoveTarget();
+                                target.element.classList.add('is-document-move-target');
+                                target.element.setAttribute('data-document-move-message', target.label);
+                                target.element.setAttribute('data-document-move-state', target.allowed ? 'allowed' : 'forbidden');
+                            });
+
+                            results.addEventListener('dragover', function (event) {
+                                if (!isInternalDocumentDrag(event)) {
+                                    return;
+                                }
+                                const documentItem = documents.find(function (candidate) {
+                                    return Number(candidate && candidate.id || 0) === getDraggedDocumentId(event);
+                                });
+                                const target = getDirectMoveTarget(event, documentItem);
+                                if (!documentItem || !target) {
+                                    return;
+                                }
+                                event.preventDefault();
+                                if (event.dataTransfer) {
+                                    event.dataTransfer.dropEffect = target.allowed ? 'move' : 'none';
+                                }
+                                clearDirectMoveTarget();
+                                target.element.classList.add('is-document-move-target');
+                                target.element.setAttribute('data-document-move-message', target.label);
+                                target.element.setAttribute('data-document-move-state', target.allowed ? 'allowed' : 'forbidden');
+                            });
+
+                            results.addEventListener('dragleave', function (event) {
+                                if (!isInternalDocumentDrag(event)) {
+                                    return;
+                                }
+                                const relatedTarget = event.relatedTarget;
+                                if (relatedTarget instanceof Node && results.contains(relatedTarget)) {
+                                    return;
+                                }
+                                clearDirectMoveTarget();
+                            });
+
+                            results.addEventListener('drop', function (event) {
+                                if (!isInternalDocumentDrag(event)) {
+                                    return;
+                                }
+                                const documentItem = documents.find(function (candidate) {
+                                    return Number(candidate && candidate.id || 0) === getDraggedDocumentId(event);
+                                });
+                                const target = getDirectMoveTarget(event, documentItem);
+                                clearDirectMoveTarget();
+                                if (!documentItem || !target) {
+                                    return;
+                                }
+                                event.preventDefault();
+                                if (!target.allowed) {
+                                    notifyDirectUpload(directMoveTexts.forbidden, 'error');
+                                    return;
+                                }
+                                moveDraggedDocument(documentItem, target);
+                            });
+
+                            results.addEventListener('dragenter', function (event) {
+                                if (!isFileDrag(event)) {
+                                    return;
+                                }
+                                const target = getDirectUploadTarget(event);
+                                if (!target) {
+                                    return;
+                                }
+                                event.preventDefault();
+                                clearDirectUploadTarget();
+                                target.element.classList.add('is-file-drop-target');
+                                target.element.setAttribute('data-file-drop-message', target.label);
+                                target.element.setAttribute('data-file-drop-state', target.allowed ? 'allowed' : 'forbidden');
+                            });
+
+                            results.addEventListener('dragover', function (event) {
+                                if (!isFileDrag(event)) {
+                                    return;
+                                }
+                                const target = getDirectUploadTarget(event);
+                                if (!target) {
+                                    return;
+                                }
+                                event.preventDefault();
+                                if (event.dataTransfer) {
+                                    event.dataTransfer.dropEffect = target.allowed ? 'copy' : 'none';
+                                }
+                                clearDirectUploadTarget();
+                                target.element.classList.add('is-file-drop-target');
+                                target.element.setAttribute('data-file-drop-message', target.label);
+                                target.element.setAttribute('data-file-drop-state', target.allowed ? 'allowed' : 'forbidden');
+                            });
+
+                            results.addEventListener('dragleave', function (event) {
+                                const relatedTarget = event.relatedTarget;
+                                if (relatedTarget instanceof Node && results.contains(relatedTarget)) {
+                                    return;
+                                }
+                                clearDirectUploadTarget();
+                            });
+
+                            results.addEventListener('drop', function (event) {
+                                const files = getDroppedFiles(event);
+                                const target = getDirectUploadTarget(event);
+                                clearDirectUploadTarget();
+                                if (!target || files.length === 0) {
+                                    return;
+                                }
+                                event.preventDefault();
+                                if (!target.allowed) {
+                                    notifyDirectUpload(directUploadTexts.forbidden, 'error');
+                                    return;
+                                }
+                                uploadDroppedFiles(files, target);
+                            });
 
                             const persistOpenFolderState = function () {
                                 omoDocumentsWriteSessionCookie(
@@ -5638,6 +6154,91 @@ if (!is_string($documentsPayload)) {
     display: flex;
     flex-direction: column;
     gap: 20px;
+}
+
+.omo-documents__results.is-file-drop-target,
+.omo-documents__folder.is-file-drop-target {
+    outline: 2px dashed color-mix(in srgb, #16a34a 72%, transparent);
+    outline-offset: 4px;
+}
+
+.omo-documents__results.is-file-drop-target::before,
+.omo-documents__folder.is-file-drop-target::before {
+    content: attr(data-file-drop-message);
+    display: block;
+    position: sticky;
+    top: 8px;
+    z-index: 20;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, #16a34a 14%, var(--color-surface, #fff));
+    color: #166534;
+    font-size: .86rem;
+    font-weight: 800;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+}
+
+.omo-documents__folder.is-file-drop-target::before {
+    margin: 6px 8px;
+}
+
+.omo-documents__item--draggable {
+    cursor: grab;
+}
+
+.omo-documents__item--draggable.is-document-dragging {
+    cursor: grabbing;
+    opacity: .52;
+}
+
+.omo-documents__results.is-document-move-target,
+.omo-documents__folder.is-document-move-target {
+    outline: 2px dashed color-mix(in srgb, #16a34a 72%, transparent);
+    outline-offset: 4px;
+}
+
+.omo-documents__results.is-document-move-target::before,
+.omo-documents__folder.is-document-move-target::before {
+    content: attr(data-document-move-message);
+    display: block;
+    position: sticky;
+    top: 8px;
+    z-index: 20;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, #16a34a 14%, var(--color-surface, #fff));
+    color: #166534;
+    font-size: .86rem;
+    font-weight: 800;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+}
+
+.omo-documents__folder.is-document-move-target::before {
+    margin: 6px 8px;
+}
+
+.omo-documents__results.is-file-drop-target[data-file-drop-state="forbidden"],
+.omo-documents__folder.is-file-drop-target[data-file-drop-state="forbidden"] {
+    outline-color: color-mix(in srgb, #dc2626 76%, transparent);
+}
+
+.omo-documents__results.is-file-drop-target[data-file-drop-state="forbidden"]::before,
+.omo-documents__folder.is-file-drop-target[data-file-drop-state="forbidden"]::before {
+    background: color-mix(in srgb, #dc2626 13%, var(--color-surface, #fff));
+    color: #991b1b;
+}
+
+.omo-documents__results.is-document-move-target[data-document-move-state="forbidden"],
+.omo-documents__folder.is-document-move-target[data-document-move-state="forbidden"] {
+    outline-color: color-mix(in srgb, #dc2626 76%, transparent);
+}
+
+.omo-documents__results.is-document-move-target[data-document-move-state="forbidden"]::before,
+.omo-documents__folder.is-document-move-target[data-document-move-state="forbidden"]::before {
+    background: color-mix(in srgb, #dc2626 13%, var(--color-surface, #fff));
+    color: #991b1b;
 }
 
 .omo-documents__results.generic-file-list {

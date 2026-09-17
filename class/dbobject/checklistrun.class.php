@@ -279,6 +279,25 @@ class ChecklistRun extends DbObject
         return is_array($result) && !empty($result['status']);
     }
 
+    public function cancelAndArchive()
+    {
+        if (self::normalizeStatus($this->get('status')) !== self::STATUS_RUNNING) {
+            return false;
+        }
+
+        $rootProject = $this->getRootProject();
+        if ($rootProject instanceof Project && (int)$rootProject->get('active') === 1) {
+            $archiveResult = $rootProject->completeAndArchiveActiveTree();
+            if (empty($archiveResult['status'])) {
+                return false;
+            }
+        }
+
+        $this->set('status', self::STATUS_CANCELLED);
+        $result = $this->save();
+        return is_array($result) && !empty($result['status']);
+    }
+
     public static function syncRunningBatch($limit = 100)
     {
         $runs = new ArrayChecklistRun();

@@ -833,7 +833,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         height: 15px;
     }
 
-    .omo-pv-editor__document-meta-save {
+    .omo-pv-editor__document-meta-save,
+    .omo-pv-editor__group-title-save {
         min-height: 28px;
         height: 28px;
         padding: 4px 9px;
@@ -1832,35 +1833,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         justify-content: center;
     }
 
-    .omo-pv-editor__auto-save {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        color: var(--color-text-light, #64748b);
-        font-size: 0.82rem;
-        font-weight: 700;
-        line-height: 1.2;
-        cursor: pointer;
-    }
-
-    .omo-pv-editor__auto-save input {
-        width: 16px;
-        height: 16px;
-        margin: 0;
-        accent-color: var(--color-primary, #2563eb);
-        cursor: inherit;
-    }
-
-    .omo-pv-editor__auto-save input:disabled {
-        cursor: not-allowed;
-    }
-
-    .omo-pv-editor__secretary-actions .omo-pv-editor__auto-save {
-        flex-basis: 100%;
-        justify-content: flex-end;
-        margin-top: 2px;
-    }
-
     .omo-pv-editor__delete-dropzone {
         display: none;
         width: 42px;
@@ -2627,10 +2599,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             justify-content: flex-start;
         }
 
-        .omo-pv-editor__secretary-actions .omo-pv-editor__auto-save {
-            justify-content: flex-start;
-        }
-
         .omo-pv-editor__nav {
             max-height: none;
         }
@@ -3169,12 +3137,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                             <?php endif; ?>
                         </div>
                     </details>
-                    <?php if (!$isPvReview): ?>
-                        <label class="omo-pv-editor__auto-save">
-                            <input type="checkbox" data-omo-pv-auto-save checked<?= $isPvValidated ? ' disabled' : '' ?>>
-                            <span><?= $escape(omoDocumentsPvEditorT('documents.pv_editor.field.auto_save')) ?></span>
-                        </label>
-                    <?php endif; ?>
                 </div>
             </div>
             </div>
@@ -3258,7 +3220,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     const sortMenu = root.querySelector('[data-omo-pv-sort-menu]');
     const sortForm = root.querySelector('[data-omo-pv-sort-form]');
     const sortSubmitButton = root.querySelector('[data-omo-pv-sort-submit]');
-    const autoSaveToggle = root.querySelector('[data-omo-pv-auto-save]');
     const deleteDropzone = root.querySelector('[data-omo-pv-delete-dropzone]');
     const resizer = root.querySelector('[data-omo-pv-editor-resizer]');
     const stageButtons = Array.from(root.querySelectorAll('[data-omo-pv-stage-option]'));
@@ -3335,6 +3296,10 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     const saveLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.action.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const savingLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.action.saving'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const savedLabel = <?= json_encode(omoDocumentsPvEditorT('documents.pv_editor.state.saved'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const takeOverLockLabel = <?= json_encode((string)$uiText['takeOverLock'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const takeOverWaitingLabel = <?= json_encode((string)$uiText['takeOverWaiting'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const takeoverDraftCopiedMessage = <?= json_encode((string)$uiText['takeoverDraftCopied'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const takeoverDraftCopyFailedMessage = <?= json_encode((string)$uiText['takeoverDraftCopyFailed'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const autoSummaryLoadingLabel = <?= json_encode((string)$uiText['autoSummaryLoading'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const autoSummaryReadyLabel = <?= json_encode((string)$uiText['autoSummaryReady'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const autoSummaryAvailable = <?= $canUseAiTools ? 'true' : 'false' ?>;
@@ -3351,13 +3316,9 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     const overrunLegendLabel = <?= json_encode((string)$uiText['overrunLegend'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const groupPointsLabel = <?= json_encode((string)$uiText['groupPoints'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const groupMinutesLabel = <?= json_encode((string)$uiText['groupMinutes'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-    const autoSaveDelayMs = 10000;
     const activeSyncPollDelayMs = 5000;
     const idleSyncPollDelayMs = 15000;
-    const autoSaveTimers = new Map();
     const pointChangeVersions = new Map();
-    let documentMetadataAutoSaveTimer = null;
-    let documentMetadataChangeVersion = 0;
     let documentMetadataSaving = false;
     const canEmbedDocuments = <?= $hasDocumentsApplication ? 'true' : 'false' ?>;
     const resourcePickerOrganizationId = <?= (int)$organizationId ?>;
@@ -3552,6 +3513,12 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     const activeLockPointIds = new Set();
     const pendingLockPointIds = new Set();
     const pendingUnlockPointIds = new Set();
+    const locallyEngagedPointIds = new Set();
+    const pendingTakeoverPointIds = new Set();
+    const yieldingTakeoverPointIds = new Set();
+    const recoveredTakeoverDraftPointIds = new Set();
+    const preMountEditorDrafts = new Map();
+    const preMountEditorFocusPointIds = new Set();
     let knownPointSignatures = {};
     let currentPointPayloads = {};
     let currentDocumentPayload = initialDocumentPayload && typeof initialDocumentPayload === 'object'
@@ -3973,10 +3940,50 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             const card = target ? target.closest('[data-omo-pv-point-card]') : null;
             const pointId = card ? Number(card.getAttribute('data-omo-pv-point-card') || 0) : 0;
             if (pointId > 0) {
+                locallyEngagedPointIds.add(pointId);
+                if (
+                    target instanceof HTMLTextAreaElement
+                    && target.closest('[data-omo-pv-point-editor-host]')
+                ) {
+                    preMountEditorFocusPointIds.add(pointId);
+                }
                 setFocusedPoint(pointId);
                 syncPointLockState(pointId);
             }
         }, true);
+
+        const protectImmediatePointInput = function (event) {
+            if (event.isTrusted !== true) {
+                return;
+            }
+            const target = event.target instanceof Element ? event.target : null;
+            if (target && target.closest('[data-omo-pv-point-handled]')) {
+                return;
+            }
+            const card = target ? target.closest('[data-omo-pv-point-card][data-omo-pv-point-editable="1"]') : null;
+            const pointId = card ? Number(card.getAttribute('data-omo-pv-point-card') || 0) : 0;
+            if (pointId <= 0) {
+                return;
+            }
+
+            locallyEngagedPointIds.add(pointId);
+            if (
+                event.type === 'input'
+                && target instanceof HTMLTextAreaElement
+                && target.closest('[data-omo-pv-point-editor-host]')
+            ) {
+                preMountEditorDrafts.set(pointId, String(target.value || ''));
+            }
+            if (card.getAttribute('data-omo-pv-point-dirty') === '1') {
+                return;
+            }
+            setPointDirtySuppressed(pointId, false);
+            ensurePointLock(pointId);
+            markPointDirty(pointId, true);
+        };
+        root.addEventListener('beforeinput', protectImmediatePointInput, true);
+        root.addEventListener('input', protectImmediatePointInput, true);
+        root.addEventListener('change', protectImmediatePointInput, true);
 
         root.addEventListener('focusout', function (event) {
             const target = event.target instanceof Element ? event.target : null;
@@ -3993,6 +4000,13 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     : null;
                 const activePointId = activeCard ? Number(activeCard.getAttribute('data-omo-pv-point-card') || 0) : 0;
                 if (pointId > 0 && activePointId !== pointId) {
+                    const focusTemporarilyLostDuringLock = pendingLockPointIds.has(pointId)
+                        && (activeElement === document.body || activeElement === document.documentElement);
+                    if (focusTemporarilyLostDuringLock) {
+                        return;
+                    }
+                    locallyEngagedPointIds.delete(pointId);
+                    preMountEditorFocusPointIds.delete(pointId);
                     clearFocusedPoint(pointId);
                     syncPointLockState(pointId);
                 }
@@ -4042,6 +4056,26 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             event.stopPropagation();
             openPvEmbeddedResourceByHash(resourceHash);
         }, true);
+    }
+
+    function insertPvEmbedIntoField(field, targetNode, markerNode, embedHtml) {
+        if (!field || String(embedHtml || '').trim() === '') {
+            return false;
+        }
+
+        if (targetNode instanceof Element && typeof field.replaceNodeWithHtml === 'function') {
+            return String(field.replaceNodeWithHtml(targetNode, embedHtml) || '') !== '';
+        }
+
+        if (typeof field.replaceMarkerWithHtml === 'function') {
+            return String(field.replaceMarkerWithHtml(markerNode || null, embedHtml) || '') !== '';
+        }
+
+        if (typeof field.insertHtmlAtCursor === 'function') {
+            return String(field.insertHtmlAtCursor(embedHtml) || '') !== '';
+        }
+
+        return false;
     }
 
     function buildPvDocumentEmbedHtml(documentItem) {
@@ -4177,12 +4211,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         });
         if (insertButton) insertButton.addEventListener('click', function () {
             const embedHtml = buildPvDocumentEmbedHtml(selectedItem);
-            if (embedHtml !== '' && targetNode && typeof field.replaceNodeWithHtml === 'function') {
-                resolved = true;
-                field.replaceNodeWithHtml(targetNode, embedHtml);
-            } else if (embedHtml !== '' && marker) {
-                resolved = true;
-                field.replaceMarkerWithHtml(marker, embedHtml);
+            resolved = insertPvEmbedIntoField(field, targetNode, marker, embedHtml);
+            if (resolved) {
                 marker = null;
             }
             if (typeof window.commonTopbarCloseModal === 'function') window.commonTopbarCloseModal();
@@ -4273,7 +4303,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         if (selectNode) selectNode.addEventListener('change', updatePreview);
         if (cancelButton) cancelButton.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); });
         if (removeButton) removeButton.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
-        if (insertButton) insertButton.addEventListener('click', function () { const embedHtml = buildPvDecisionEmbedHtml(selectedItem); if (embedHtml !== '' && targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embedHtml); } else if (embedHtml !== '' && marker) { resolved = true; field.replaceMarkerWithHtml(marker, embedHtml); marker = null; } window.commonTopbarCloseModal(); });
+        if (insertButton) insertButton.addEventListener('click', function () { const embedHtml = buildPvDecisionEmbedHtml(selectedItem); resolved = insertPvEmbedIntoField(field, targetNode, marker, embedHtml); if (resolved) marker = null; window.commonTopbarCloseModal(); });
         render();
     }
 
@@ -4302,7 +4332,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         scopePicker = mountPvResourceScopePicker(body, '[data-omo-pv-checklist-scope]', render);
         body.querySelectorAll('[data-omo-pv-checklist-cancel]').forEach(function (button) { button.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); }); });
         const remove = body.querySelector('[data-omo-pv-checklist-remove]'); if (remove) remove.addEventListener('click', function () { if (targetNode) resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
-        if (search) search.addEventListener('input', render); if (select) select.addEventListener('change', update); if (insert) insert.addEventListener('click', function () { const embed = buildPvChecklistEmbedHtml(selected); if (!embed) return; if (targetNode) resolved = field.replaceNodeWithHtml(targetNode, embed); else if (marker) { resolved = field.replaceMarkerWithHtml(marker, embed); marker = null; } if (resolved) window.setTimeout(function () { refreshPvChecklistEmbedReviews(field); }, 0); window.commonTopbarCloseModal(); });
+        if (search) search.addEventListener('input', render); if (select) select.addEventListener('change', update); if (insert) insert.addEventListener('click', function () { const embed = buildPvChecklistEmbedHtml(selected); if (!embed) return; resolved = insertPvEmbedIntoField(field, targetNode, marker, embed); if (resolved) marker = null; if (resolved) window.setTimeout(function () { refreshPvChecklistEmbedReviews(field); }, 0); window.commonTopbarCloseModal(); });
         window.addEventListener('common-topbar-modal-close', function () { if (!resolved) cleanup(); }, {once: true}); render();
     }
 
@@ -4492,7 +4522,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             createForm.__omoPvProjectLoadMembers = loadMembers;
         }
         const cleanup = function () { if (marker) field.removeTemporaryMarker(marker); marker = null; };
-        const insertProject = function (project) { const embed = buildPvProjectEmbedHtml(project); if (!embed) return false; if (targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embed); } else if (marker && typeof field.replaceMarkerWithHtml === 'function') { resolved = true; field.replaceMarkerWithHtml(marker, embed); marker = null; } else return false; window.setTimeout(function () { refreshPvProjectEmbedReviews(field); }, 0); window.commonTopbarCloseModal(); return true; };
+        const insertProject = function (project) { const embed = buildPvProjectEmbedHtml(project); if (!embed) return false; resolved = insertPvEmbedIntoField(field, targetNode, marker, embed); if (!resolved) return false; marker = null; window.setTimeout(function () { refreshPvProjectEmbedReviews(field); }, 0); window.commonTopbarCloseModal(); return true; };
         const update = function () { if (select && select.value) selected = embeddableProjects.find(function (item) { return String(item.id) === String(select.value); }) || null; if (preview) preview.innerHTML = selected ? buildPvProjectEmbedHtml(selected) : escapeDocumentEmbedHtml(projectEmbedUi.none || ''); if (insert) insert.disabled = !selected; };
         const render = function () { const query = String(search && search.value || '').trim().toLowerCase(), selectedHolonId = scopePicker && typeof scopePicker.getSelectedHolonId === 'function' ? Number(scopePicker.getSelectedHolonId() || 0) : 0, matches = embeddableProjects.filter(function (item) { const itemHolonId = Number(item.contextHolonId || 0); const matchesScope = !scopePicker || scopePicker.matches(itemHolonId) || (selectedHolonId > 0 && itemHolonId === selectedHolonId); return matchesScope && (query === '' || [item.title, item.contextLabel, item.summary].join(' ').toLowerCase().indexOf(query) >= 0); }); if (select) { select.innerHTML = ''; matches.forEach(function (item) { const option = document.createElement('option'); option.value = String(item.id); option.textContent = String(item.title || '').trim() || String(projectEmbedUi.fallbackTitle || '').replace('{id}', String(item.id)); select.appendChild(option); }); } selected = matches.find(function (item) { return Number(item.id) === currentProjectId; }) || matches[0] || null; if (select && selected) select.value = String(selected.id); update(); };
         if (projectScopeHost instanceof Element && typeof window.omoMountHolonScopePicker === 'function') {
@@ -4594,16 +4624,11 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         const insertEvent = function (eventItem) {
             const embedHtml = buildPvEventEmbedHtml(eventItem);
             if (embedHtml === '') return false;
-            if (targetNode && typeof field.replaceNodeWithHtml === 'function') {
-                resolved = true;
-                field.replaceNodeWithHtml(targetNode, embedHtml);
-            } else if (marker) {
-                resolved = true;
-                field.replaceMarkerWithHtml(marker, embedHtml);
-                marker = null;
-            } else {
+            resolved = insertPvEmbedIntoField(field, targetNode, marker, embedHtml);
+            if (!resolved) {
                 return false;
             }
+            marker = null;
             window.commonTopbarCloseModal();
             return true;
         };
@@ -5358,7 +5383,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         if (selectNode) selectNode.addEventListener('change', updatePreview);
         if (cancelButton) cancelButton.addEventListener('click', function () { cleanup(); window.commonTopbarCloseModal(); });
         if (removeButton) removeButton.addEventListener('click', function () { if (targetNode && typeof field.removeNode === 'function') resolved = field.removeNode(targetNode); window.commonTopbarCloseModal(); });
-        if (insertButton) insertButton.addEventListener('click', function () { const embedHtml = buildPvIndicatorEmbedHtml(selectedItem); if (embedHtml !== '' && targetNode && typeof field.replaceNodeWithHtml === 'function') { resolved = true; field.replaceNodeWithHtml(targetNode, embedHtml); } else if (embedHtml !== '' && marker) { resolved = true; field.replaceMarkerWithHtml(marker, embedHtml); marker = null; } window.commonTopbarCloseModal(); });
+        if (insertButton) insertButton.addEventListener('click', function () { const embedHtml = buildPvIndicatorEmbedHtml(selectedItem); resolved = insertPvEmbedIntoField(field, targetNode, marker, embedHtml); if (resolved) marker = null; window.commonTopbarCloseModal(); });
         render();
     }
 
@@ -5786,12 +5811,17 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     function pointWantsLock(pointId) {
+        if (yieldingTakeoverPointIds.has(pointId)) {
+            return false;
+        }
+
         const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
         if (!card) {
             return false;
         }
 
-        return card.getAttribute('data-omo-pv-point-dirty') === '1'
+        return locallyEngagedPointIds.has(pointId)
+            || card.getAttribute('data-omo-pv-point-dirty') === '1'
             || card.contains(document.activeElement);
     }
 
@@ -5814,28 +5844,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         });
     }
 
-    function isAutoSaveEnabled() {
-        return autoSaveToggle instanceof HTMLInputElement
-            && autoSaveToggle.checked
-            && !autoSaveToggle.disabled
-            && currentDocumentPayload.isPvValidated !== true
-            && String(currentDocumentPayload.pvStage || '') !== 'review';
-    }
-
-    function clearDocumentMetadataAutoSave() {
-        if (documentMetadataAutoSaveTimer !== null) {
-            window.clearTimeout(documentMetadataAutoSaveTimer);
-            documentMetadataAutoSaveTimer = null;
-        }
-    }
-
     function stopPvEditorBackgroundWork() {
-        autoSaveTimers.forEach(function (timerId) {
-            window.clearTimeout(timerId);
-        });
-        autoSaveTimers.clear();
-        clearDocumentMetadataAutoSave();
-
         if (syncPollTimer !== null) {
             window.clearTimeout(syncPollTimer);
             syncPollTimer = null;
@@ -5853,68 +5862,19 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         activeLockPointIds.clear();
         pendingLockPointIds.clear();
         pendingUnlockPointIds.clear();
+        locallyEngagedPointIds.clear();
+        pendingTakeoverPointIds.clear();
+        yieldingTakeoverPointIds.clear();
+        recoveredTakeoverDraftPointIds.clear();
+        preMountEditorDrafts.clear();
+        preMountEditorFocusPointIds.clear();
     }
 
-    function scheduleDocumentMetadataAutoSave() {
-        clearDocumentMetadataAutoSave();
-        if (!isAutoSaveEnabled() || !root.isConnected || documentMetadataSaving || !documentMetadataIsDirty()) {
-            return;
-        }
-
-        documentMetadataAutoSaveTimer = window.setTimeout(function () {
-            documentMetadataAutoSaveTimer = null;
-            if (!isAutoSaveEnabled() || documentMetadataSaving || !documentMetadataIsDirty()) {
-                return;
-            }
-
-            saveDocumentMetadata();
-        }, autoSaveDelayMs);
-    }
-
-    function markDocumentMetadataDirty(scheduleAutoSave = true) {
-        documentMetadataChangeVersion += 1;
+    function markDocumentMetadataDirty() {
         syncDocumentMetadataUi();
-        if (scheduleAutoSave) {
-            scheduleDocumentMetadataAutoSave();
-        }
     }
 
-    function clearPointAutoSave(pointId) {
-        const timerId = autoSaveTimers.get(pointId);
-        if (timerId !== undefined) {
-            window.clearTimeout(timerId);
-            autoSaveTimers.delete(pointId);
-        }
-    }
-
-    function schedulePointAutoSave(pointId) {
-        clearPointAutoSave(pointId);
-        if (!isAutoSaveEnabled() || !root.isConnected) {
-            return;
-        }
-
-        const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
-        if (!card || card.getAttribute('data-omo-pv-point-dirty') !== '1') {
-            return;
-        }
-
-        autoSaveTimers.set(pointId, window.setTimeout(function () {
-            autoSaveTimers.delete(pointId);
-            const currentCard = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
-            if (!isAutoSaveEnabled() || !currentCard || currentCard.getAttribute('data-omo-pv-point-dirty') !== '1') {
-                return;
-            }
-
-            if (currentCard.getAttribute('data-omo-pv-point-saving') === '1') {
-                schedulePointAutoSave(pointId);
-                return;
-            }
-
-            savePoint(pointId, true);
-        }, autoSaveDelayMs));
-    }
-
-    function markPointDirty(pointId, isDirty, scheduleAutoSave = true) {
+    function markPointDirty(pointId, isDirty) {
         if (isDirty && isPointDirtySuppressed(pointId)) {
             return;
         }
@@ -5924,10 +5884,8 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             card.setAttribute('data-omo-pv-point-dirty', isDirty ? '1' : '0');
             if (!isDirty) {
                 card.removeAttribute('data-omo-pv-point-saving');
-                clearPointAutoSave(pointId);
-            } else if (scheduleAutoSave) {
+            } else {
                 pointChangeVersions.set(pointId, (pointChangeVersions.get(pointId) || 0) + 1);
-                schedulePointAutoSave(pointId);
             }
         }
 
@@ -5947,12 +5905,17 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             }
 
             const lock = pointPayload.lock && typeof pointPayload.lock === 'object' ? pointPayload.lock : {};
+            const takeover = pointPayload.takeover && typeof pointPayload.takeover === 'object' ? pointPayload.takeover : {};
             signatures[String(pointPayload.id)] = [
                 String(pointPayload.syncVersion || ''),
                 lock.isActive ? 1 : 0,
                 Number(lock.userId || 0),
                 lock.isOwnedByCurrentSession ? 1 : 0,
                 String(lock.token || ''),
+                takeover.isActive ? 1 : 0,
+                takeover.isRequestedByCurrentSession ? 1 : 0,
+                takeover.mustYield ? 1 : 0,
+                String(takeover.requestedAtIso || ''),
                 Number(pointPayload.discussionMessageCount || 0)
             ].join('|');
         });
@@ -6150,17 +6113,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         if (addButton instanceof HTMLButtonElement) {
             addButton.disabled = documentPayload.isPvValidated === true;
         }
-        if (autoSaveToggle instanceof HTMLInputElement) {
-            const autoSaveAvailable = documentPayload.isPvValidated !== true
-                && String(documentPayload.pvStage || '') !== 'review';
-            autoSaveToggle.disabled = !autoSaveAvailable;
-            if (!autoSaveAvailable) {
-                autoSaveToggle.checked = false;
-                getDirtyPointIds().forEach(clearPointAutoSave);
-                clearDocumentMetadataAutoSave();
-            }
-        }
-
         if (templateToggleButton instanceof HTMLButtonElement) {
             const isTemplate = documentPayload.isPvTemplate === true;
             templateToggleButton.dataset.omoPvTemplateState = isTemplate ? '1' : '0';
@@ -6719,6 +6671,36 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                         refreshPvIndicatorEmbedSnapshots(api);
                         refreshPvProjectEmbedReviews(api);
                         refreshPvChecklistEmbedReviews(api);
+                        const preMountDraft = preMountEditorDrafts.get(pointId);
+                        const shouldRestoreInitialFocus = preMountEditorFocusPointIds.has(pointId);
+                        preMountEditorDrafts.delete(pointId);
+                        preMountEditorFocusPointIds.delete(pointId);
+                        if (preMountDraft !== undefined && api && typeof api.setValue === 'function') {
+                            api.setValue(String(preMountDraft || ''));
+                        }
+                        if (shouldRestoreInitialFocus && api) {
+                            window.requestAnimationFrame(function () {
+                                const activeElement = document.activeElement;
+                                const currentCard = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+                                const currentEditorHost = currentCard instanceof Element
+                                    ? currentCard.querySelector('[data-omo-pv-point-editor-host="' + pointId + '"]')
+                                    : null;
+                                if (!(currentEditorHost instanceof Element) || currentEditorHost.__omoPvPointField !== api) {
+                                    return;
+                                }
+                                const mayRestoreFocus = activeElement === document.body
+                                    || activeElement === document.documentElement
+                                    || (currentCard instanceof Element && currentCard.contains(activeElement));
+                                if (!mayRestoreFocus) {
+                                    return;
+                                }
+                                if (typeof api.focusForInsertion === 'function') {
+                                    api.focusForInsertion();
+                                } else if (typeof api.focus === 'function') {
+                                    api.focus();
+                                }
+                            });
+                        }
                     },
                     onDoubleClick: function (context) {
                         const targetNode = context && context.target && context.target.closest
@@ -7234,6 +7216,17 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         });
     }
 
+    function syncPendingTakeoverUi(pointId) {
+        const button = root.querySelector('[data-omo-pv-point-take-over-lock="' + pointId + '"]');
+        if (!(button instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        const isPending = pendingTakeoverPointIds.has(pointId);
+        button.disabled = isPending;
+        button.textContent = isPending ? takeOverWaitingLabel : takeOverLockLabel;
+    }
+
     function replacePointHtml(pointPayload) {
         if (!pointPayload || !pointPayload.id) {
             return null;
@@ -7269,6 +7262,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             if (navContentMayHaveChanged) {
                 replacePointNavHtml(pointPayload);
             }
+            syncPendingTakeoverUi(pointId);
             renderTimingSummary();
             return currentCard;
         }
@@ -7283,8 +7277,14 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 
         syncEmptyNavState();
         mountEditableCard(nextCard);
+        if (!(nextCard.querySelector('[data-omo-pv-point-editor-host]') instanceof Element)) {
+            locallyEngagedPointIds.delete(pointId);
+            preMountEditorDrafts.delete(pointId);
+            preMountEditorFocusPointIds.delete(pointId);
+        }
         mergeKnownPointSignature(pointPayload);
         mergeCurrentPointPayload(pointPayload);
+        syncPendingTakeoverUi(pointId);
         renderTimingSummary();
         return nextCard;
     }
@@ -7518,7 +7518,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         const pointId = Number(card.getAttribute('data-omo-pv-point-card') || 0);
         return Number.isInteger(pointId)
             && pointId > 0
-            && activeLockPointIds.has(pointId)
+            && (activeLockPointIds.has(pointId) || card.querySelector('[data-omo-pv-point-editor-host]') instanceof Element)
             && pointPayload.lock.isLockedByOther === true;
     }
 
@@ -7527,9 +7527,100 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             return false;
         }
 
+        if (isPointLockTakenOverRemotely(card, pointPayload)) {
+            return false;
+        }
+
         return card.getAttribute('data-omo-pv-point-dirty') === '1'
             || card.getAttribute('data-omo-pv-point-saving') === '1'
-            || (card.contains(document.activeElement) && !isPointLockTakenOverRemotely(card, pointPayload));
+            || locallyEngagedPointIds.has(Number(card.getAttribute('data-omo-pv-point-card') || 0))
+            || card.contains(document.activeElement);
+    }
+
+    function captureTakeoverDraft(card, pointId) {
+        const titleField = card.querySelector('[data-omo-pv-point-title="' + pointId + '"]');
+        const editorHost = card.querySelector('[data-omo-pv-point-editor-host="' + pointId + '"]');
+        const htmlField = editorHost && editorHost.__omoPvPointField ? editorHost.__omoPvPointField : null;
+        const title = titleField instanceof HTMLInputElement ? String(titleField.value || '').trim() : '';
+        const contentHtml = htmlField && typeof htmlField.getValue === 'function'
+            ? String(htmlField.getValue() || '')
+            : '';
+        const textContainer = document.createElement('div');
+        textContainer.innerHTML = contentHtml;
+        const contentText = String(textContainer.innerText || textContainer.textContent || '').trim();
+        const plainText = [title, contentText].filter(function (value) {
+            return value !== '';
+        }).join('\n\n');
+        const clipboardHtml = (title !== '' ? '<h1>' + escapeDocumentEmbedHtml(title) + '</h1>' : '') + contentHtml;
+
+        return {
+            plainText: plainText,
+            html: clipboardHtml
+        };
+    }
+
+    function copyTakeoverDraftToClipboard(draft) {
+        const plainText = String(draft && draft.plainText || '');
+        const html = String(draft && draft.html || '');
+
+        const copyPlainText = function () {
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                return navigator.clipboard.writeText(plainText).then(function () { return true; });
+            }
+
+            const textarea = document.createElement('textarea');
+            textarea.value = plainText;
+            textarea.setAttribute('readonly', 'readonly');
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            let copied = false;
+            try {
+                copied = document.execCommand('copy');
+            } catch (error) {
+                copied = false;
+            }
+            textarea.remove();
+            return Promise.resolve(copied);
+        };
+
+        if (
+            navigator.clipboard
+            && typeof navigator.clipboard.write === 'function'
+            && typeof window.ClipboardItem === 'function'
+            && typeof window.Blob === 'function'
+        ) {
+            const clipboardItem = new window.ClipboardItem({
+                'text/plain': new window.Blob([plainText], {type: 'text/plain'}),
+                'text/html': new window.Blob([html], {type: 'text/html'})
+            });
+            return navigator.clipboard.write([clipboardItem])
+                .then(function () { return true; })
+                .catch(copyPlainText);
+        }
+
+        return copyPlainText();
+    }
+
+    function preserveDraftBeforeRemoteTakeover(card, pointId) {
+        if (!(card instanceof Element) || recoveredTakeoverDraftPointIds.has(pointId)) {
+            return;
+        }
+
+        recoveredTakeoverDraftPointIds.add(pointId);
+        const draft = captureTakeoverDraft(card, pointId);
+        copyTakeoverDraftToClipboard(draft)
+            .then(function (copied) {
+                if (copied) {
+                    window.alert(takeoverDraftCopiedMessage);
+                    return;
+                }
+                window.prompt(takeoverDraftCopyFailedMessage, draft.plainText);
+            })
+            .catch(function () {
+                window.prompt(takeoverDraftCopyFailedMessage, draft.plainText);
+            });
     }
 
     function pointHasRemoteChange(pointPayload) {
@@ -7949,9 +8040,17 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             }
 
             if (isPointLockTakenOverRemotely(currentCard, pointPayload)) {
+                if (
+                    currentCard.getAttribute('data-omo-pv-point-dirty') === '1'
+                    || currentCard.getAttribute('data-omo-pv-point-saving') === '1'
+                ) {
+                    preserveDraftBeforeRemoteTakeover(currentCard, pointId);
+                }
                 activeLockPointIds.delete(pointId);
                 pendingLockPointIds.delete(pointId);
                 pendingUnlockPointIds.delete(pointId);
+                locallyEngagedPointIds.delete(pointId);
+                yieldingTakeoverPointIds.delete(pointId);
             }
 
             replacePointHtml(pointPayload);
@@ -7989,6 +8088,43 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         }
     }
 
+    function restorePointFocusAfterLock(pointId, focusState) {
+        if (!locallyEngagedPointIds.has(pointId)) {
+            return;
+        }
+
+        window.requestAnimationFrame(function () {
+            if (!locallyEngagedPointIds.has(pointId)) {
+                return;
+            }
+            const activeElement = document.activeElement;
+            if (activeElement !== document.body && activeElement !== document.documentElement) {
+                return;
+            }
+
+            if (focusState && focusState.element instanceof Element && focusState.element.isConnected) {
+                const editorHost = focusState.element.closest('[data-omo-pv-point-editor-host]');
+                if (!(editorHost instanceof Element) || !editorHost.querySelector('.note-editable')) {
+                    restoreFocusedEditor(focusState);
+                    return;
+                }
+            }
+
+            const currentCard = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+            const currentEditorHost = currentCard instanceof Element
+                ? currentCard.querySelector('[data-omo-pv-point-editor-host="' + pointId + '"]')
+                : null;
+            const field = currentEditorHost && currentEditorHost.__omoPvPointField
+                ? currentEditorHost.__omoPvPointField
+                : null;
+            if (field && typeof field.focusForInsertion === 'function') {
+                field.focusForInsertion();
+            } else if (field && typeof field.focus === 'function') {
+                field.focus();
+            }
+        });
+    }
+
     function ensurePointLock(pointId) {
         if (!Number.isInteger(pointId) || pointId <= 0 || !editorToken || !pointWantsLock(pointId)) {
             return Promise.resolve(null);
@@ -7998,11 +8134,13 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             return Promise.resolve(null);
         }
 
+        const focusStateAtRequest = captureFocusedEditor();
         pendingLockPointIds.add(pointId);
         return postPointAction('lock_point', pointId)
             .then(function (payload) {
                 pendingLockPointIds.delete(pointId);
                 activeLockPointIds.add(pointId);
+                recoveredTakeoverDraftPointIds.delete(pointId);
                 if (payload && payload.point) {
                     mergeKnownPointSignature(payload.point);
                 } else if (payload && payload.lock && currentPointPayloads[String(pointId)]) {
@@ -8011,6 +8149,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     });
                     mergeKnownPointSignature(pointPayload);
                 }
+                restorePointFocusAfterLock(pointId, focusStateAtRequest);
                 if (!pointWantsLock(pointId)) {
                     return releasePointLock(pointId);
                 }
@@ -8054,22 +8193,117 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             });
     }
 
+    function pointHasTakeoverYieldRequest(pointPayload) {
+        return Boolean(
+            pointPayload
+            && pointPayload.takeover
+            && pointPayload.takeover.mustYield === true
+        );
+    }
+
+    function yieldPointLockForTakeover(pointPayload) {
+        const pointId = Number(pointPayload && pointPayload.id ? pointPayload.id : 0);
+        if (!Number.isInteger(pointId) || pointId <= 0 || !pointHasTakeoverYieldRequest(pointPayload)) {
+            return Promise.resolve(false);
+        }
+        if (yieldingTakeoverPointIds.has(pointId)) {
+            return Promise.resolve(false);
+        }
+
+        const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+        if (!(card instanceof Element) || !(card.querySelector('[data-omo-pv-point-editor-host]') instanceof Element)) {
+            return Promise.resolve(false);
+        }
+
+        yieldingTakeoverPointIds.add(pointId);
+        card.setAttribute('inert', '');
+        card.setAttribute('aria-busy', 'true');
+        let yieldRequest;
+        if (card.getAttribute('data-omo-pv-point-saving') === '1') {
+            yieldRequest = Promise.resolve(false);
+        } else if (card.getAttribute('data-omo-pv-point-dirty') === '1') {
+            yieldRequest = savePoint(pointId);
+        } else if (activeLockPointIds.has(pointId)) {
+            yieldRequest = releasePointLock(pointId).then(function () { return true; });
+        } else {
+            yieldRequest = postPointAction('unlock_point', pointId)
+                .then(function (payload) {
+                    if (payload && payload.point) {
+                        replacePointHtml(payload.point);
+                    }
+                    return true;
+                })
+                .catch(function () { return false; });
+        }
+
+        return Promise.resolve(yieldRequest)
+            .finally(function () {
+                yieldingTakeoverPointIds.delete(pointId);
+                const currentCard = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+                if (currentCard instanceof Element) {
+                    currentCard.removeAttribute('inert');
+                    currentCard.removeAttribute('aria-busy');
+                }
+                scheduleNextSyncPoll(0);
+            });
+    }
+
+    function processIncomingTakeoverRequests(pointPayloads) {
+        if (!Array.isArray(pointPayloads)) {
+            return Promise.resolve([]);
+        }
+
+        return Promise.all(pointPayloads.map(function (pointPayload) {
+            if (!pointHasTakeoverYieldRequest(pointPayload)) {
+                return Promise.resolve(pointPayload);
+            }
+
+            return yieldPointLockForTakeover(pointPayload).then(function () {
+                const currentPayload = currentPointPayloads[String(pointPayload.id)] || null;
+                if (
+                    currentPayload
+                    && (pointHasTakeoverYieldRequest(currentPayload)
+                        || (currentPayload.lock && currentPayload.lock.isLockedByOther === true))
+                ) {
+                    return currentPayload;
+                }
+                return pointPayload;
+            });
+        }));
+    }
+
     function takeOverPointLock(pointId, triggerButton) {
-        if (!Number.isInteger(pointId) || pointId <= 0) {
+        if (!Number.isInteger(pointId) || pointId <= 0 || pendingTakeoverPointIds.has(pointId)) {
             return;
         }
 
+        pendingTakeoverPointIds.add(pointId);
         if (triggerButton instanceof HTMLButtonElement) {
             triggerButton.disabled = true;
+            triggerButton.textContent = takeOverWaitingLabel;
         }
 
-        postPointAction('take_over_point_lock', pointId)
+        const requestTakeover = function () {
+            return postPointAction('take_over_point_lock', pointId)
+                .then(function (payload) {
+                    if (payload && payload.pending === true) {
+                        const retryAfterMs = Math.max(250, Math.min(1000, Number(payload.retryAfterMs || 600)));
+                        return new Promise(function (resolve) {
+                            window.setTimeout(resolve, retryAfterMs);
+                        }).then(requestTakeover);
+                    }
+                    return payload;
+                });
+        };
+
+        return requestTakeover()
             .then(function (payload) {
                 if (!payload || !payload.point) {
                     throw new Error('take_over_lock_failed');
                 }
 
                 activeLockPointIds.add(pointId);
+                recoveredTakeoverDraftPointIds.delete(pointId);
                 const nextCard = replacePointHtml(payload.point);
                 const titleField = nextCard
                     ? nextCard.querySelector('[data-omo-pv-point-title="' + pointId + '"]')
@@ -8087,25 +8321,25 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                 window.alert(message);
             })
             .finally(function () {
+                pendingTakeoverPointIds.delete(pointId);
                 const currentButton = root.querySelector('[data-omo-pv-point-take-over-lock="' + pointId + '"]');
                 if (currentButton instanceof HTMLButtonElement) {
                     currentButton.disabled = false;
+                    currentButton.textContent = takeOverLockLabel;
                 }
             });
     }
 
-    function savePoint(pointId, preserveEditor) {
-        preserveEditor = preserveEditor === true;
+    function savePoint(pointId) {
         const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
         if (
             !card
             || card.getAttribute('data-omo-pv-point-dirty') !== '1'
             || card.getAttribute('data-omo-pv-point-saving') === '1'
         ) {
-            return;
+            return Promise.resolve(false);
         }
 
-        clearPointAutoSave(pointId);
         const savedChangeVersion = pointChangeVersions.get(pointId) || 0;
 
         const titleField = card.querySelector('[data-omo-pv-point-title="' + pointId + '"]');
@@ -8140,7 +8374,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             statusNode.textContent = savingLabel;
         }
 
-        fetch(actionUrl, {
+        return fetch(actionUrl, {
             method: 'POST',
             credentials: 'same-origin',
             body: formData
@@ -8162,21 +8396,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     pendingLockPointIds.delete(pointId);
                     pendingUnlockPointIds.delete(pointId);
                     renderPointCollection(Array.isArray(payload.points) ? payload.points : [], true);
-                    return;
-                }
-                if (preserveEditor) {
-                    mergeKnownPointSignature(payload.point);
-                    if (hasChangesAfterSaveStarted) {
-                        schedulePointAutoSave(pointId);
-                        return;
-                    }
-                    markPointDirty(pointId, false);
-                    const currentStatus = card.querySelector('[data-omo-pv-point-status="' + pointId + '"]');
-                    if (currentStatus) {
-                        currentStatus.textContent = payload.message || savedLabel;
-                    }
-                    syncPointLockState(pointId);
-                    return;
+                    return true;
                 }
                 const nextCard = replacePointHtml(payload.point);
                 if (hasChangesAfterSaveStarted && drafts && drafts[pointId]) {
@@ -8189,24 +8409,34 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     nextStatus.textContent = payload.message || savedLabel;
                 }
                 syncPointLockState(pointId);
+                return !hasChangesAfterSaveStarted;
             })
             .catch(function (error) {
-                if (!preserveEditor && error && error.point) {
+                const lockWasTakenOver = error && error.point && isPointLockTakenOverRemotely(card, error.point);
+                if (lockWasTakenOver) {
+                    preserveDraftBeforeRemoteTakeover(card, pointId);
+                    activeLockPointIds.delete(pointId);
+                    pendingLockPointIds.delete(pointId);
+                    pendingUnlockPointIds.delete(pointId);
+                    locallyEngagedPointIds.delete(pointId);
+                    yieldingTakeoverPointIds.delete(pointId);
+                }
+                if (error && error.point) {
                     replacePointHtml(error.point);
                 }
-                markPointDirty(pointId, true, false);
-                if (statusNode) {
+                if (!lockWasTakenOver) {
+                    markPointDirty(pointId, true);
+                }
+                if (!lockWasTakenOver && statusNode) {
                     statusNode.textContent = error && error.message ? String(error.message) : (error && error.text ? String(error.text) : String(editorClientUi.genericError || ''));
                 }
+                return false;
             })
             .finally(function () {
                 const currentCard = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
                 if (currentCard) {
                     currentCard.removeAttribute('data-omo-pv-point-saving');
                     syncPointDirtyUi(pointId);
-                    if (preserveEditor && currentCard.getAttribute('data-omo-pv-point-dirty') === '1') {
-                        schedulePointAutoSave(pointId);
-                    }
                 }
             });
     }
@@ -8223,6 +8453,10 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         activeLockPointIds.delete(pointId);
         pendingLockPointIds.delete(pointId);
         pendingUnlockPointIds.delete(pointId);
+        locallyEngagedPointIds.delete(pointId);
+        pendingTakeoverPointIds.delete(pointId);
+        preMountEditorDrafts.delete(pointId);
+        preMountEditorFocusPointIds.delete(pointId);
         delete knownPointSignatures[String(pointId)];
         delete currentPointPayloads[String(pointId)];
         syncEmptyNavState();
@@ -8263,13 +8497,30 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             input.disabled = true;
         }
 
-        postPointAction('toggle_handled', pointId, { is_handled: isHandled ? '1' : '0' })
+        const card = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+        const saveBeforeHandling = isHandled
+            && card instanceof Element
+            && card.getAttribute('data-omo-pv-point-dirty') === '1';
+        const toggleRequest = saveBeforeHandling
+            ? savePoint(pointId).then(function (wasSaved) {
+                const currentCard = root.querySelector('[data-omo-pv-point-card="' + pointId + '"]');
+                if (!wasSaved || !(currentCard instanceof Element) || currentCard.getAttribute('data-omo-pv-point-dirty') === '1') {
+                    throw new Error('point_save_required');
+                }
+                return postPointAction('toggle_handled', pointId, { is_handled: '1' });
+            })
+            : postPointAction('toggle_handled', pointId, { is_handled: isHandled ? '1' : '0' });
+
+        toggleRequest
             .then(function (payload) {
                 if (payload && payload.point) {
                     replacePointHtml(payload.point);
                 }
             })
-            .catch(function () {
+            .catch(function (error) {
+                if (error && error.point) {
+                    replacePointHtml(error.point);
+                }
                 if (input) {
                     input.checked = !isHandled;
                 }
@@ -8559,9 +8810,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             return;
         }
 
-        clearDocumentMetadataAutoSave();
-        const savedChangeVersion = documentMetadataChangeVersion;
-        let hasChangesAfterSaveStarted = false;
         documentMetadataSaving = true;
         syncDocumentMetadataUi();
         if (documentMetaStatus instanceof Element) {
@@ -8574,7 +8822,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             visibility_type: getDocumentVisibilityValue()
             })
             .then(function (payload) {
-                hasChangesAfterSaveStarted = documentMetadataChangeVersion !== savedChangeVersion;
                 mergeCurrentDocumentPayload(payload && payload.document ? payload.document : {});
                 if (documentMetaStatus instanceof Element) {
                     documentMetaStatus.textContent = savedLabel;
@@ -8588,9 +8835,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             .finally(function () {
                 documentMetadataSaving = false;
                 syncDocumentMetadataUi();
-                if (hasChangesAfterSaveStarted) {
-                    scheduleDocumentMetadataAutoSave();
-                }
         });
     }
 
@@ -8843,6 +9087,16 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             return;
         }
 
+        const groupTitleSaveButton = event.target.closest('[data-omo-pv-group-title-save]');
+        if (groupTitleSaveButton && nav.contains(groupTitleSaveButton)) {
+            const groupId = Number(groupTitleSaveButton.getAttribute('data-omo-pv-group-title-save') || 0);
+            const groupTitleInput = groupId > 0 ? nav.querySelector('[data-omo-pv-group-title="' + groupId + '"]') : null;
+            if (groupTitleInput instanceof HTMLInputElement) {
+                saveGroupTitle(groupTitleInput);
+            }
+            return;
+        }
+
         const claimSecretaryButton = event.target.closest('[data-omo-pv-claim-secretary]');
         if (claimSecretaryButton && root.contains(claimSecretaryButton)) {
             const secretaryAction = String(claimSecretaryButton.dataset.omoPvSecretaryAction || 'claim_pv_editor');
@@ -8865,12 +9119,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     });
 
     root.addEventListener('change', function (event) {
-        const groupTitleInput = event.target.closest('[data-omo-pv-group-title]');
-        if (groupTitleInput && nav.contains(groupTitleInput)) {
-            saveGroupTitle(groupTitleInput);
-            return;
-        }
-
         const attendanceInput = event.target.closest('[data-omo-pv-attendance-toggle]');
         if (attendanceInput && root.contains(attendanceInput)) {
             toggleAttendance(
@@ -9313,7 +9561,10 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     renderAttendancePayload(payload && payload.attendance ? payload.attendance : null);
                 }
                 if (payload && Array.isArray(payload.points) && pointCollectionHasRemoteChanges(payload.points)) {
-                    renderPointCollection(payload.points);
+                    return processIncomingTakeoverRequests(payload.points).then(function (pointPayloads) {
+                        renderPointCollection(pointPayloads);
+                        return payload;
+                    });
                 }
                 return payload;
             })
@@ -9383,22 +9634,6 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
     }
 
     mountEditableCards(root);
-    if (autoSaveToggle instanceof HTMLInputElement) {
-        autoSaveToggle.addEventListener('change', function () {
-            getDirtyPointIds().forEach(function (pointId) {
-                if (autoSaveToggle.checked) {
-                    schedulePointAutoSave(pointId);
-                } else {
-                    clearPointAutoSave(pointId);
-                }
-            });
-            if (autoSaveToggle.checked) {
-                scheduleDocumentMetadataAutoSave();
-            } else {
-                clearDocumentMetadataAutoSave();
-            }
-        });
-    }
     [documentTitleInput, documentDescriptionInput].forEach(function (input) {
         if (!(input instanceof Element)) {
             return;

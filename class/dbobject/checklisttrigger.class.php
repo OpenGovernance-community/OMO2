@@ -8,9 +8,8 @@ class ChecklistTrigger extends DbObject
     public const TYPE_CONTAINER = 'container';
 
     public const OVERLAP_CREATE_NEW = 'create_new';
-    public const OVERLAP_REUSE_OPEN = 'reuse_open';
-    public const OVERLAP_SKIP = 'skip';
-    public const OVERLAP_ASK = 'ask';
+    public const OVERLAP_BLOCK = 'block';
+    public const OVERLAP_RESTART = 'restart';
 
     public static function tableName()
     {
@@ -74,9 +73,8 @@ class ChecklistTrigger extends DbObject
             'frequency' => $frequencyValues,
             'overlap_policy' => [
                 [self::OVERLAP_CREATE_NEW, 'Creer une nouvelle execution'],
-                [self::OVERLAP_REUSE_OPEN, 'Reutiliser l execution ouverte'],
-                [self::OVERLAP_SKIP, 'Ignorer la nouvelle occurrence'],
-                [self::OVERLAP_ASK, 'Demander'],
+                [self::OVERLAP_BLOCK, 'Ne pas creer de nouvelle execution'],
+                [self::OVERLAP_RESTART, 'Effacer les executions precedentes et recommencer'],
             ],
         ];
     }
@@ -90,9 +88,8 @@ class ChecklistTrigger extends DbObject
     {
         return [
             self::OVERLAP_CREATE_NEW,
-            self::OVERLAP_REUSE_OPEN,
-            self::OVERLAP_SKIP,
-            self::OVERLAP_ASK,
+            self::OVERLAP_BLOCK,
+            self::OVERLAP_RESTART,
         ];
     }
 
@@ -105,7 +102,13 @@ class ChecklistTrigger extends DbObject
     public static function normalizeOverlapPolicy($value)
     {
         $value = trim(mb_strtolower((string)$value, 'UTF-8'));
-        return in_array($value, self::overlapPolicies(), true) ? $value : self::OVERLAP_CREATE_NEW;
+        if (in_array($value, self::overlapPolicies(), true)) {
+            return $value;
+        }
+        if (in_array($value, ['reuse_open', 'skip', 'ask'], true)) {
+            return self::OVERLAP_BLOCK;
+        }
+        return self::OVERLAP_BLOCK;
     }
 
     public static function getOrder()

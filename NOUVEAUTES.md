@@ -4,6 +4,26 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-17
 
+- Editeur de PV : correction du faux refus de verrou au premier clic, notamment apres une sauvegarde. La verification relit maintenant le verrou en base au lieu de son ancien etat en cache, pour eviter le remplacement du champ et la perte de selection et de focus.
+
+- Editeur de PV : reprendre un point demande maintenant a la session qui le verrouille d enregistrer, attend brievement sa reponse, puis transfere le verrou meme si cette session ne repond plus. Une sauvegarde tardive de l ancienne session ne peut plus ecraser le point. Si un brouillon local doit malgre tout etre ecarte, son titre et son contenu sont copies dans le presse-papiers, avec une copie manuelle proposee si le navigateur refuse cet acces. Le bouton conserve son etat d attente pendant toute la reprise. Le premier clic et une saisie commencee pendant le chargement de Summernote conservent maintenant le focus et le contenu local.
+
+- Editeur de PV : les messages en lecture seule distinguent maintenant clairement un point appartenant a un autre auteur, un point traite, un verrou pose par une autre personne ou un verrou conserve dans une autre session du meme compte. La mention trompeuse avant la reunion a ete retiree.
+
+- Documents : les fichiers peuvent maintenant etre deposes depuis l explorateur directement sur la liste, ou sur un dossier local. Les documents de la liste peuvent aussi etre glisses dans un dossier ou remis a la racine du contexte. Une bande sticky verte confirme la destination disponible ; une bande rouge explique le manque de droit de creation ou de deplacement. Les controles serveur habituels restent appliques.
+
+- Editeur de PV : l insertion d un bloc provenant d une application fonctionne maintenant des la premiere action dans un nouveau point vide, meme si le marqueur de curseur initial a ete perdu lors de l ouverture du selecteur.
+
+- Editeur de PV : la sauvegarde automatique est supprimee pour les points et les titres. Les modifications sont maintenant conservees uniquement apres une action explicite sur Enregistrer.
+
+- Editeur de PV : terminer un point sauvegarde d abord ses modifications. Un point verrouille par une autre session ne peut pas etre termine, y compris depuis un autre navigateur du meme utilisateur.
+
+- Editeur de PV : la personne qui reprend temporairement la main dispose maintenant immediatement des droits de modification des points, meme si elle n est pas l editeur original du document.
+
+- Processus : le choix lorsqu une execution est encore ouverte comporte maintenant trois comportements explicites : creer une instance en parallele, bloquer jusqu a la fin de l instance ouverte, ou archiver les projets de ces instances puis recommencer. Les anciennes executions restent tracees comme annulees.
+
+- Activités : le module historique de listes de contrôle a été retiré. Les Activités récurrentes et les Processus restent distincts ; les anciennes tâches sont conservées comme Activités avec leur contexte direct.
+
 - Filtres des applications OMO : les vues suivent maintenant la priorite temporaire de session, personnelle, holon, modele de holon, organisation, type de holon puis globale. Chaque niveau autorise peut enregistrer et effacer son propre defaut. En mode Decouverte, les membres et admins de holon restent sur une vue temporaire, sans preference persistante, tandis que les admins d organisation et super admins conservent leurs portees administratives.
 
 - Activités : une personne en charge peut maintenant être attribuée en complément du rôle. Les vues compacte, fiche et détail affichent En charge : Rôle (personne ou Non attribué), et le filtre Moi du tableau de pilotage tient compte de cette attribution.

@@ -16,9 +16,9 @@ class ControlTask extends DbObject
     public static function rules()
     {
         return [
-            [['IDcontrollist', 'title', 'frequency', 'schedule'], 'required'],
+            [['IDorganization', 'IDholon', 'title', 'frequency', 'schedule'], 'required'],
             [['id', 'display_lead_value', 'execution_duration_value', 'position'], 'integer'],
-            [['IDcontrollist', 'IDuser_responsible'], 'fk'],
+            [['IDorganization', 'IDholon', 'IDuser_responsible'], 'fk'],
             [['title', 'frequency', 'schedule', 'display_lead_unit', 'execution_duration_unit'], 'string'],
             [['description'], 'text'],
             [['active'], 'boolean'],
@@ -31,7 +31,8 @@ class ControlTask extends DbObject
     {
         return [
             'id' => 'ID',
-            'IDcontrollist' => 'Liste de controle',
+            'IDorganization' => 'Organisation',
+            'IDholon' => 'Holon',
             'IDuser_responsible' => 'Personne en charge',
             'title' => 'Titre',
             'description' => 'Description',
@@ -108,12 +109,6 @@ class ControlTask extends DbObject
         }
         $this->set('updated_at', $now);
         return parent::save();
-    }
-
-    public function getList()
-    {
-        $list = new ControlList();
-        return $list->load((int)$this->get('IDcontrollist')) ? $list : null;
     }
 
     public function getChecks($from = null, $to = null)

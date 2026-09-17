@@ -9,6 +9,8 @@ class DocumentPvPoint extends DbObject
     public const ITEM_TYPE_POINT = 'point';
     public const ITEM_TYPE_GROUP = 'group';
     public const EDIT_LOCK_TIMEOUT_SECONDS = 120;
+    public const EDIT_TAKEOVER_GRACE_SECONDS = 8;
+    public const EDIT_TAKEOVER_REQUEST_TIMEOUT_SECONDS = 20;
 
     public static function tableName()
     {
@@ -20,11 +22,11 @@ class DocumentPvPoint extends DbObject
         return [
             [['IDdocument', 'title', 'pointtype'], 'required'],
             [['id', 'position', 'priority', 'desired_duration_minutes', 'actual_duration_minutes'], 'integer'],
-            [['IDdocument', 'IDparent', 'IDuser_author', 'IDholon_concerned', 'IDuser_modification', 'IDuser_editing'], 'fk'],
-            [['title', 'item_type', 'author_email', 'pointtype', 'edit_lock_token'], 'string'],
+            [['IDdocument', 'IDparent', 'IDuser_author', 'IDholon_concerned', 'IDuser_modification', 'IDuser_editing', 'IDuser_edit_takeover_request'], 'fk'],
+            [['title', 'item_type', 'author_email', 'pointtype', 'edit_lock_token', 'edit_takeover_request_token', 'edit_takeover_target_token'], 'string'],
             [['content'], 'html'],
             [['active', 'is_handled', 'is_confidential'], 'boolean'],
-            [['datecreation', 'datemodification', 'dateedition'], 'datetime'],
+            [['datecreation', 'datemodification', 'dateedition', 'date_edit_takeover_request'], 'datetime'],
             [['id'], 'safe'],
         ];
     }
@@ -49,6 +51,10 @@ class DocumentPvPoint extends DbObject
             'IDuser_modification' => 'Derniere modification',
             'IDuser_editing' => 'Edition en cours',
             'edit_lock_token' => 'Jeton de verrou',
+            'IDuser_edit_takeover_request' => 'Demandeur de reprise du verrou',
+            'edit_takeover_request_token' => 'Jeton de reprise du verrou',
+            'edit_takeover_target_token' => 'Jeton du verrou a reprendre',
+            'date_edit_takeover_request' => 'Date de demande de reprise',
             'is_handled' => 'Traite',
             'is_confidential' => 'Confidentiel',
             'active' => 'Actif',
@@ -76,6 +82,10 @@ class DocumentPvPoint extends DbObject
             'IDuser_modification' => 'Derniere personne ayant change ce point, son ordre ou son statut.',
             'IDuser_editing' => 'Personne qui detient actuellement le verrou d edition.',
             'edit_lock_token' => 'Jeton technique de verrouillage d une session d edition.',
+            'IDuser_edit_takeover_request' => 'Editeur du PV qui demande le transfert du verrou.',
+            'edit_takeover_request_token' => 'Session a laquelle le verrou doit etre transfere.',
+            'edit_takeover_target_token' => 'Session invitee a enregistrer avant le transfert.',
+            'date_edit_takeover_request' => 'Debut du delai laisse a la session actuelle pour enregistrer.',
             'is_handled' => 'Indique si le point a deja ete traite en reunion.',
             'is_confidential' => 'Reserve ce point aux personnes presentes a la reunion, a l editeur du PV et a la personne qui le porte.',
         ];
@@ -89,6 +99,8 @@ class DocumentPvPoint extends DbObject
             'author_email' => 250,
             'pointtype' => 20,
             'edit_lock_token' => 80,
+            'edit_takeover_request_token' => 80,
+            'edit_takeover_target_token' => 80,
         ];
     }
 
@@ -751,6 +763,64 @@ class DocumentPvPoint extends DbObject
         return trim((string)$this->get('edit_lock_token'));
     }
 
+    public function getEditTakeoverRequestUserId(): int
+    {
+        return (int)$this->get('IDuser_edit_takeover_request');
+    }
+
+    public function getEditTakeoverRequestToken(): string
+    {
+        return trim((string)$this->get('edit_takeover_request_token'));
+    }
+
+    public function getEditTakeoverTargetToken(): string
+    {
+        return trim((string)$this->get('edit_takeover_target_token'));
+    }
+
+    public function isEditTakeoverRequestActive(?\DateTimeInterface $referenceDate = null): bool
+    {
+        $requestedAt = $this->get('date_edit_takeover_request');
+        if (
+            $this->getEditTakeoverRequestUserId() <= 0
+            || $this->getEditTakeoverRequestToken() === ''
+            || $this->getEditTakeoverTargetToken() === ''
+            || !($requestedAt instanceof \DateTimeInterface)
+        ) {
+            return false;
+        }
+
+        $referenceTimestamp = $referenceDate instanceof \DateTimeInterface
+            ? (int)$referenceDate->getTimestamp()
+            : time();
+
+        return ((int)$requestedAt->getTimestamp() + self::EDIT_TAKEOVER_REQUEST_TIMEOUT_SECONDS) >= $referenceTimestamp;
+    }
+
+    public function buildEditTakeoverData(int $currentUserId = 0, string $currentLockToken = ''): array
+    {
+        $currentLockToken = trim($currentLockToken);
+        $requestedAt = $this->get('date_edit_takeover_request');
+        $isActive = $this->isEditTakeoverRequestActive();
+        $isRequestedByCurrentSession = $isActive
+            && $currentUserId > 0
+            && $currentUserId === $this->getEditTakeoverRequestUserId()
+            && $currentLockToken !== ''
+            && hash_equals($this->getEditTakeoverRequestToken(), $currentLockToken);
+        $mustYield = $isActive
+            && !$isRequestedByCurrentSession
+            && $currentLockToken !== ''
+            && hash_equals($this->getEditTakeoverTargetToken(), $currentLockToken);
+
+        return [
+            'isActive' => $isActive,
+            'isRequestedByCurrentSession' => $isRequestedByCurrentSession,
+            'mustYield' => $mustYield,
+            'requestedAtIso' => $isActive && $requestedAt instanceof \DateTimeInterface ? $requestedAt->format(DATE_ATOM) : '',
+            'graceSeconds' => self::EDIT_TAKEOVER_GRACE_SECONDS,
+        ];
+    }
+
     public function getEditingUserDisplayName(int $organizationId = 0): string
     {
         return self::resolveUserDisplayNameById($this->getEditingUserId(), $organizationId);
@@ -787,8 +857,7 @@ class DocumentPvPoint extends DbObject
             return false;
         }
 
-        $userId = (int)$userId;
-        return $this->getEditingUserId() <= 0 || $userId <= 0 || $this->getEditingUserId() !== $userId;
+        return true;
     }
 
     public function isEditLockOwnedByUserSession(int $userId, string $lockToken): bool
@@ -861,21 +930,37 @@ class DocumentPvPoint extends DbObject
         if (
             $this->isEditLockActive($now)
             && $this->getEditingLockToken() !== $lockToken
-            && $this->getEditingUserId() !== $userId
         ) {
             return $this->buildEditLockConflictResult($userId, $lockToken, $organizationId);
         }
 
         $result = self::execute(
             "UPDATE document_pv_point
-            SET IDuser_editing = :user_id,
+            SET IDuser_edit_takeover_request = CASE WHEN edit_lock_token = :takeover_lock_token_1 THEN IDuser_edit_takeover_request ELSE NULL END,
+                edit_takeover_request_token = CASE WHEN edit_lock_token = :takeover_lock_token_2 THEN edit_takeover_request_token ELSE NULL END,
+                edit_takeover_target_token = CASE WHEN edit_lock_token = :takeover_lock_token_3 THEN edit_takeover_target_token ELSE NULL END,
+                date_edit_takeover_request = CASE WHEN edit_lock_token = :takeover_lock_token_4 THEN date_edit_takeover_request ELSE NULL END,
+                IDuser_editing = :user_id,
                 edit_lock_token = :lock_token,
                 dateedition = :editing_date
-            WHERE id = :point_id",
+            WHERE id = :point_id
+              AND (
+                  edit_lock_token = :current_lock_token
+                  OR edit_lock_token IS NULL
+                  OR edit_lock_token = ''
+                  OR dateedition IS NULL
+                  OR dateedition < :expired_before
+              )",
             [
                 'user_id' => $userId,
                 'lock_token' => $lockToken,
+                'takeover_lock_token_1' => $lockToken,
+                'takeover_lock_token_2' => $lockToken,
+                'takeover_lock_token_3' => $lockToken,
+                'takeover_lock_token_4' => $lockToken,
+                'current_lock_token' => $lockToken,
                 'editing_date' => $now->format('Y-m-d H:i:s'),
+                'expired_before' => $now->modify('-' . self::EDIT_LOCK_TIMEOUT_SECONDS . ' seconds')->format('Y-m-d H:i:s'),
                 'point_id' => (int)$this->getId(),
             ]
         );
@@ -884,6 +969,11 @@ class DocumentPvPoint extends DbObject
                 'status' => false,
                 'text' => 'Impossible de verrouiller ce point.',
             ];
+        }
+        // The conditional UPDATE bypasses the object cache; verify its database result.
+        $this->load((int)$this->getId(), true);
+        if (!$this->isEditLockOwnedByUserSession($userId, $lockToken)) {
+            return $this->buildEditLockConflictResult($userId, $lockToken, $organizationId);
         }
         $this->set('IDuser_editing', $userId);
         $this->set('edit_lock_token', $lockToken);
@@ -916,18 +1006,44 @@ class DocumentPvPoint extends DbObject
         }
         $result = self::execute(
             "UPDATE document_pv_point
-            SET IDuser_editing = NULL,
+            SET IDuser_edit_takeover_request = CASE WHEN edit_lock_token = :takeover_lock_token_1 THEN IDuser_edit_takeover_request ELSE NULL END,
+                edit_takeover_request_token = CASE WHEN edit_lock_token = :takeover_lock_token_2 THEN edit_takeover_request_token ELSE NULL END,
+                edit_takeover_target_token = CASE WHEN edit_lock_token = :takeover_lock_token_3 THEN edit_takeover_target_token ELSE NULL END,
+                date_edit_takeover_request = CASE WHEN edit_lock_token = :takeover_lock_token_4 THEN date_edit_takeover_request ELSE NULL END,
+                IDuser_editing = NULL,
                 edit_lock_token = :lock_token,
                 dateedition = :editing_date
-            WHERE id = :point_id",
+            WHERE id = :point_id
+              AND (
+                  edit_lock_token = :current_lock_token
+                  OR edit_lock_token IS NULL
+                  OR edit_lock_token = ''
+                  OR dateedition IS NULL
+                  OR dateedition < :expired_before
+              )",
             [
                 'lock_token' => $lockToken,
+                'takeover_lock_token_1' => $lockToken,
+                'takeover_lock_token_2' => $lockToken,
+                'takeover_lock_token_3' => $lockToken,
+                'takeover_lock_token_4' => $lockToken,
+                'current_lock_token' => $lockToken,
                 'editing_date' => $now->format('Y-m-d H:i:s'),
+                'expired_before' => $now->modify('-' . self::EDIT_LOCK_TIMEOUT_SECONDS . ' seconds')->format('Y-m-d H:i:s'),
                 'point_id' => (int)$this->getId(),
             ]
         );
         if (!$result) {
             return ['status' => false, 'text' => 'Impossible de verrouiller ce point.'];
+        }
+        // The conditional UPDATE bypasses the object cache; verify its database result.
+        $this->load((int)$this->getId(), true);
+        if (
+            !$this->isEditLockActive()
+            || $this->getEditingUserId() > 0
+            || !hash_equals($this->getEditingLockToken(), $lockToken)
+        ) {
+            return $this->buildEditLockConflictResult(0, $lockToken, $organizationId);
         }
         $this->set('IDuser_editing', null);
         $this->set('edit_lock_token', $lockToken);
@@ -973,42 +1089,245 @@ class DocumentPvPoint extends DbObject
             ];
         }
 
-        $now = new \DateTimeImmutable();
-        $result = self::execute(
-            "UPDATE document_pv_point
-            SET IDuser_editing = :user_id,
-                edit_lock_token = :lock_token,
-                dateedition = :editing_date
-            WHERE id = :point_id",
-            [
-                'user_id' => $userId,
-                'lock_token' => $lockToken,
-                'editing_date' => $now->format('Y-m-d H:i:s'),
-                'point_id' => (int)$this->getId(),
-            ]
-        );
-        if (!$result) {
-            return [
-                'status' => false,
-                'text' => 'Impossible de reprendre le verrou d edition.',
-            ];
+        $pdo = self::getPdo();
+        if (!$pdo) {
+            return ['status' => false, 'text' => 'Connexion a la base impossible.'];
         }
-        $this->set('IDuser_editing', $userId);
-        $this->set('edit_lock_token', $lockToken);
-        $this->set('dateedition', $now);
 
-        return [
-            'status' => true,
-            'text' => 'Verrou d edition repris.',
-            'lock' => [
-                'userId' => $userId,
-                'userName' => $this->getEditingUserDisplayName($organizationId),
-                'date' => $now,
-                'isOwnedByCurrentUser' => true,
-                'isOwnedByCurrentSession' => true,
-                'timeoutSeconds' => self::getEditLockTimeoutSeconds(),
-            ],
-        ];
+        $startedTransaction = false;
+        try {
+            $startedTransaction = !$pdo->inTransaction();
+            if ($startedTransaction) {
+                $pdo->beginTransaction();
+            }
+
+            $row = self::fetchRow(
+                "SELECT IDuser_editing, edit_lock_token, dateedition,
+                        IDuser_edit_takeover_request, edit_takeover_request_token,
+                        edit_takeover_target_token, date_edit_takeover_request
+                 FROM document_pv_point
+                 WHERE id = :point_id
+                 FOR UPDATE",
+                ['point_id' => (int)$this->getId()]
+            );
+            if (!is_array($row)) {
+                throw new \RuntimeException('pv_point_takeover_target_missing');
+            }
+
+            $now = new \DateTimeImmutable();
+            $currentLockToken = trim((string)($row['edit_lock_token'] ?? ''));
+            $editingTimestamp = strtotime((string)($row['dateedition'] ?? ''));
+            $lockIsActive = $currentLockToken !== ''
+                && $editingTimestamp !== false
+                && ($editingTimestamp + self::EDIT_LOCK_TIMEOUT_SECONDS) >= $now->getTimestamp();
+            $requestTimestamp = strtotime((string)($row['date_edit_takeover_request'] ?? ''));
+            $requestMatches = (int)($row['IDuser_edit_takeover_request'] ?? 0) === $userId
+                && trim((string)($row['edit_takeover_request_token'] ?? '')) !== ''
+                && hash_equals(trim((string)$row['edit_takeover_request_token']), $lockToken)
+                && trim((string)($row['edit_takeover_target_token'] ?? '')) !== ''
+                && hash_equals(trim((string)$row['edit_takeover_target_token']), $currentLockToken)
+                && $requestTimestamp !== false
+                && ($requestTimestamp + self::EDIT_TAKEOVER_REQUEST_TIMEOUT_SECONDS) >= $now->getTimestamp();
+
+            if ($lockIsActive && !hash_equals($currentLockToken, $lockToken) && !$requestMatches) {
+                $result = self::execute(
+                    "UPDATE document_pv_point
+                     SET IDuser_edit_takeover_request = :user_id,
+                         edit_takeover_request_token = :request_token,
+                         edit_takeover_target_token = :target_token,
+                         date_edit_takeover_request = :requested_at
+                     WHERE id = :point_id",
+                    [
+                        'user_id' => $userId,
+                        'request_token' => $lockToken,
+                        'target_token' => $currentLockToken,
+                        'requested_at' => $now->format('Y-m-d H:i:s'),
+                        'point_id' => (int)$this->getId(),
+                    ]
+                );
+                if (!$result) {
+                    throw new \RuntimeException('pv_point_takeover_request_failed');
+                }
+
+                if ($startedTransaction && $pdo->inTransaction()) {
+                    $pdo->commit();
+                }
+                $this->set('IDuser_edit_takeover_request', $userId);
+                $this->set('edit_takeover_request_token', $lockToken);
+                $this->set('edit_takeover_target_token', $currentLockToken);
+                $this->set('date_edit_takeover_request', $now);
+                return [
+                    'status' => true,
+                    'pending' => true,
+                    'retryAfterMs' => 600,
+                    'text' => 'Demande d enregistrement envoyee a la session actuelle.',
+                ];
+            }
+
+            if ($lockIsActive && !hash_equals($currentLockToken, $lockToken) && $requestMatches) {
+                $elapsedSeconds = max(0, $now->getTimestamp() - (int)$requestTimestamp);
+                if ($elapsedSeconds < self::EDIT_TAKEOVER_GRACE_SECONDS) {
+                    if ($startedTransaction && $pdo->inTransaction()) {
+                        $pdo->commit();
+                    }
+                    return [
+                        'status' => true,
+                        'pending' => true,
+                        'retryAfterMs' => min(1000, max(250, (self::EDIT_TAKEOVER_GRACE_SECONDS - $elapsedSeconds) * 1000)),
+                        'text' => 'Attente de la sauvegarde de la session actuelle.',
+                    ];
+                }
+            }
+
+            $result = self::execute(
+                "UPDATE document_pv_point
+                 SET IDuser_editing = :user_id,
+                     edit_lock_token = :lock_token,
+                     dateedition = :editing_date,
+                     IDuser_edit_takeover_request = NULL,
+                     edit_takeover_request_token = NULL,
+                     edit_takeover_target_token = NULL,
+                     date_edit_takeover_request = NULL
+                 WHERE id = :point_id",
+                [
+                    'user_id' => $userId,
+                    'lock_token' => $lockToken,
+                    'editing_date' => $now->format('Y-m-d H:i:s'),
+                    'point_id' => (int)$this->getId(),
+                ]
+            );
+            if (!$result) {
+                throw new \RuntimeException('pv_point_takeover_failed');
+            }
+
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+            $this->set('IDuser_editing', $userId);
+            $this->set('edit_lock_token', $lockToken);
+            $this->set('dateedition', $now);
+            $this->set('IDuser_edit_takeover_request', null);
+            $this->set('edit_takeover_request_token', null);
+            $this->set('edit_takeover_target_token', null);
+            $this->set('date_edit_takeover_request', null);
+
+            return [
+                'status' => true,
+                'pending' => false,
+                'text' => 'Verrou d edition repris.',
+                'lock' => [
+                    'userId' => $userId,
+                    'userName' => $this->getEditingUserDisplayName($organizationId),
+                    'date' => $now,
+                    'isOwnedByCurrentUser' => true,
+                    'isOwnedByCurrentSession' => true,
+                    'timeoutSeconds' => self::getEditLockTimeoutSeconds(),
+                ],
+            ];
+        } catch (\Throwable $exception) {
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return ['status' => false, 'text' => 'Impossible de reprendre le verrou d edition.'];
+        }
+    }
+
+    public function saveForEditSession(int $userId, string $lockToken, bool $isPublicParticipation = false): array
+    {
+        $userId = (int)$userId;
+        $lockToken = trim($lockToken);
+        if ((int)$this->getId() <= 0 || $lockToken === '' || (!$isPublicParticipation && $userId <= 0)) {
+            return ['status' => false, 'lockLost' => true, 'text' => 'Verrou d edition invalide.'];
+        }
+
+        $pdo = self::getPdo();
+        if (!$pdo) {
+            return ['status' => false, 'text' => 'Connexion a la base impossible.'];
+        }
+
+        $startedTransaction = false;
+        try {
+            $startedTransaction = !$pdo->inTransaction();
+            if ($startedTransaction) {
+                $pdo->beginTransaction();
+            }
+
+            $lockRow = self::fetchRow(
+                "SELECT IDuser_editing, edit_lock_token, dateedition,
+                        IDuser_edit_takeover_request, edit_takeover_request_token,
+                        edit_takeover_target_token, date_edit_takeover_request
+                 FROM document_pv_point
+                 WHERE id = :point_id
+                 FOR UPDATE",
+                ['point_id' => (int)$this->getId()]
+            );
+            if (!is_array($lockRow)) {
+                throw new \RuntimeException('pv_point_save_target_missing');
+            }
+            $now = new \DateTimeImmutable();
+            $currentLockToken = trim((string)($lockRow['edit_lock_token'] ?? ''));
+            $editingTimestamp = strtotime((string)($lockRow['dateedition'] ?? ''));
+            $lockIsActive = $currentLockToken !== ''
+                && $editingTimestamp !== false
+                && ($editingTimestamp + self::EDIT_LOCK_TIMEOUT_SECONDS) >= $now->getTimestamp();
+            $ownsLock = $lockIsActive
+                && hash_equals($currentLockToken, $lockToken)
+                && ($isPublicParticipation
+                    ? (int)($lockRow['IDuser_editing'] ?? 0) <= 0
+                    : (int)($lockRow['IDuser_editing'] ?? 0) === $userId);
+            if (!$lockIsActive) {
+                $ownsLock = true;
+                $lockRow['IDuser_editing'] = $isPublicParticipation ? null : $userId;
+                $lockRow['edit_lock_token'] = $lockToken;
+                $lockRow['dateedition'] = $now->format('Y-m-d H:i:s');
+                $lockRow['IDuser_edit_takeover_request'] = null;
+                $lockRow['edit_takeover_request_token'] = null;
+                $lockRow['edit_takeover_target_token'] = null;
+                $lockRow['date_edit_takeover_request'] = null;
+            }
+            if (!$ownsLock) {
+                if ($startedTransaction && $pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                return [
+                    'status' => false,
+                    'lockLost' => true,
+                    'text' => 'Le verrou d edition a ete repris par une autre session.',
+                ];
+            }
+
+            foreach ([
+                'IDuser_editing',
+                'edit_lock_token',
+                'dateedition',
+                'IDuser_edit_takeover_request',
+                'edit_takeover_request_token',
+                'edit_takeover_target_token',
+                'date_edit_takeover_request',
+            ] as $field) {
+                $this->set($field, $lockRow[$field] ?? null);
+            }
+
+            $saveResult = $this->save();
+            if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+                if ($startedTransaction && $pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                return is_array($saveResult)
+                    ? $saveResult
+                    : ['status' => false, 'text' => 'Impossible de sauvegarder le point.'];
+            }
+
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->commit();
+            }
+            return $saveResult;
+        } catch (\Throwable $exception) {
+            if ($startedTransaction && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            return ['status' => false, 'text' => 'Impossible de sauvegarder le point.'];
+        }
     }
 
     public function releaseEditLock(int $userId, string $lockToken = ''): array
@@ -1048,8 +1367,14 @@ class DocumentPvPoint extends DbObject
             SET IDuser_editing = NULL,
                 edit_lock_token = NULL,
                 dateedition = NULL
-            WHERE id = :point_id",
-            ['point_id' => (int)$this->getId()]
+            WHERE id = :point_id
+              AND IDuser_editing = :user_id
+              AND edit_lock_token = :lock_token",
+            [
+                'point_id' => (int)$this->getId(),
+                'user_id' => $userId,
+                'lock_token' => $lockToken,
+            ]
         );
         if (!$result) {
             return [
@@ -1078,8 +1403,13 @@ class DocumentPvPoint extends DbObject
             SET IDuser_editing = NULL,
                 edit_lock_token = NULL,
                 dateedition = NULL
-            WHERE id = :point_id",
-            ['point_id' => (int)$this->getId()]
+            WHERE id = :point_id
+              AND IDuser_editing IS NULL
+              AND edit_lock_token = :lock_token",
+            [
+                'point_id' => (int)$this->getId(),
+                'lock_token' => $lockToken,
+            ]
         );
         if (!$result) {
             return ['status' => false, 'text' => 'Impossible de liberer le verrou d edition.'];
@@ -1116,6 +1446,7 @@ class DocumentPvPoint extends DbObject
         $isLockOwnedByCurrentUser = $isLockActive
             && $currentUserId > 0
             && $this->getEditingUserId() === $currentUserId;
+        $takeoverData = $this->buildEditTakeoverData($currentUserId, $currentLockToken);
         $syncVersion = hash('sha256', (string)json_encode([
             'item_type' => self::normalizeItemType($this->get('item_type')),
             'parent_id' => (int)$this->get('IDparent'),
@@ -1172,6 +1503,7 @@ class DocumentPvPoint extends DbObject
                 'dateIso' => $editingDate instanceof \DateTimeInterface ? $editingDate->format(DATE_ATOM) : '',
                 'timestamp' => $editingDate instanceof \DateTimeInterface ? (int)$editingDate->getTimestamp() : 0,
             ],
+            'takeover' => $takeoverData,
             'contentHtml' => $this->getRenderedContentForViewer($organizationId),
         ];
     }
@@ -1274,6 +1606,10 @@ class DocumentPvPoint extends DbObject
             $this->set('IDuser_editing', null);
             $this->set('edit_lock_token', null);
             $this->set('dateedition', null);
+            $this->set('IDuser_edit_takeover_request', null);
+            $this->set('edit_takeover_request_token', null);
+            $this->set('edit_takeover_target_token', null);
+            $this->set('date_edit_takeover_request', null);
         }
 
         if ((int)$this->get('IDuser_author') <= 0) {
@@ -1303,6 +1639,16 @@ class DocumentPvPoint extends DbObject
 
         if (trim((string)$this->get('edit_lock_token')) === '') {
             $this->set('edit_lock_token', null);
+        }
+
+        if ((int)$this->get('IDuser_edit_takeover_request') <= 0) {
+            $this->set('IDuser_edit_takeover_request', null);
+        }
+        if (trim((string)$this->get('edit_takeover_request_token')) === '') {
+            $this->set('edit_takeover_request_token', null);
+        }
+        if (trim((string)$this->get('edit_takeover_target_token')) === '') {
+            $this->set('edit_takeover_target_token', null);
         }
 
         if ((int)$this->get('IDholon_concerned') <= 0) {
