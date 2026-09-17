@@ -4,6 +4,10 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-17
 
+- Decisions : une consultation deja utilisee peut de nouveau etre modifiee, par exemple pour corriger son titre. Sa valeur de confidentialite existante est conservee et ne peut plus etre confondue avec l activation d un vote nominatif.
+
+- Decisions : les erreurs de sauvegarde de l editeur multi-questions, notamment l activation tardive du vote nominatif, s affichent maintenant dans la notification temporaire de la topbar.
+
 - Editeur de PV : correction du faux refus de verrou au premier clic, notamment apres une sauvegarde. La verification relit maintenant le verrou en base au lieu de son ancien etat en cache, pour eviter le remplacement du champ et la perte de selection et de focus.
 
 - Editeur de PV : reprendre un point demande maintenant a la session qui le verrouille d enregistrer, attend brievement sa reponse, puis transfere le verrou meme si cette session ne repond plus. Une sauvegarde tardive de l ancienne session ne peut plus ecraser le point. Si un brouillon local doit malgre tout etre ecarte, son titre et son contenu sont copies dans le presse-papiers, avec une copie manuelle proposee si le navigateur refuse cet acces. Le bouton conserve son etat d attente pendant toute la reprise. Le premier clic et une saisie commencee pendant le chargement de Summernote conservent maintenant le focus et le contenu local.
