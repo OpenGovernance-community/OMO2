@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS `control_list` (
 CREATE TABLE IF NOT EXISTS `control_task` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
     `IDcontrollist` int(11) NOT NULL,
+    `IDuser_responsible` int(11) DEFAULT NULL,
     `title` varchar(255) NOT NULL,
     `description` mediumtext DEFAULT NULL,
     `frequency` varchar(20) NOT NULL,
@@ -33,7 +34,9 @@ CREATE TABLE IF NOT EXISTS `control_task` (
     PRIMARY KEY (`id`),
     KEY `idx_control_task_list_position` (`IDcontrollist`, `position`),
     KEY `idx_control_task_active` (`active`),
-    CONSTRAINT `fk_control_task_list` FOREIGN KEY (`IDcontrollist`) REFERENCES `control_list` (`id`) ON DELETE CASCADE
+    KEY `idx_control_task_responsible` (`IDuser_responsible`),
+    CONSTRAINT `fk_control_task_list` FOREIGN KEY (`IDcontrollist`) REFERENCES `control_list` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_control_task_responsible` FOREIGN KEY (`IDuser_responsible`) REFERENCES `user` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `control_task_check` (

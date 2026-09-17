@@ -3,6 +3,13 @@ namespace dbObject;
 
 class Permission extends DbObject
 {
+    public static function userCanInOrganization(string $permissionKey, int $organizationId, int $userId): bool
+    {
+        if ($userId <= 0 || $organizationId <= 0) return false;
+        if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)) return true;
+        return HolonPermission::userHasPermissionForHolonContext($userId, $organizationId, $permissionKey, 0);
+    }
+
     public static function tableName()
     {
         return 'permission';
@@ -77,6 +84,114 @@ class Permission extends DbObject
     public static function getBuiltInCatalog()
     {
         return [
+            'CAN_EDIT_PROJECT' => [
+                'title' => 'Modifier des projets',
+                'description' => 'Autorise la modification des projets et de leurs taches.',
+                'iscontextual' => true,
+                'group' => 'projects',
+            ],
+            'CAN_CREATE_RULE' => [
+                'title' => 'Creer des regles',
+                'description' => 'Autorise la creation de regles dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'policy',
+            ],
+            'CAN_EDIT_RULE' => [
+                'title' => 'Modifier des regles',
+                'description' => 'Autorise la modification des regles dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'policy',
+            ],
+            'CAN_DELETE_RULE' => [
+                'title' => 'Supprimer des regles',
+                'description' => 'Autorise la suppression des regles dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'policy',
+            ],
+            'CAN_EDIT_INDICATOR' => [
+                'title' => 'Modifier des indicateurs',
+                'description' => 'Autorise la modification des indicateurs, de leurs valeurs, groupes et imports.',
+                'iscontextual' => true,
+                'group' => 'stats',
+            ],
+            'CAN_DELETE_INDICATOR' => [
+                'title' => 'Supprimer des indicateurs',
+                'description' => 'Autorise le retrait des indicateurs, groupes et imports du contexte cible.',
+                'iscontextual' => true,
+                'group' => 'stats',
+            ],
+            'CAN_EDIT_DOCUMENT' => [
+                'title' => 'Modifier des documents',
+                'description' => 'Autorise la modification des documents dans le respect de leur portee d edition.',
+                'iscontextual' => true,
+                'group' => 'documents',
+            ],
+            'CAN_DELETE_DOCUMENT' => [
+                'title' => 'Supprimer des documents',
+                'description' => 'Autorise la suppression des documents dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'documents',
+            ],
+            'CAN_EDIT_MEMBER_ASSIGNMENT' => [
+                'title' => 'Modifier les affectations',
+                'description' => 'Autorise la modification du focus et de la date de revue des affectations.',
+                'iscontextual' => true,
+                'group' => 'members',
+            ],
+            'CAN_DELETE_MEMBER' => [
+                'title' => 'Retirer des membres',
+                'description' => 'Autorise le retrait des membres et l annulation de leurs invitations, sans supprimer leur compte.',
+                'iscontextual' => true,
+                'group' => 'members',
+            ],
+            'CAN_EDIT_DECISION' => [
+                'title' => 'Modifier des decisions',
+                'description' => 'Autorise la gestion des prises de decision dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'decisions',
+            ],
+            'CAN_DELETE_DECISION' => [
+                'title' => 'Supprimer des decisions',
+                'description' => 'Autorise la suppression des prises de decision dans le respect de leur cycle de vie.',
+                'iscontextual' => true,
+                'group' => 'decisions',
+            ],
+            'CAN_EDIT_FAQ' => [
+                'title' => 'Modifier des FAQ',
+                'description' => 'Autorise la modification des FAQ dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'faq',
+            ],
+            'CAN_DELETE_FAQ' => [
+                'title' => 'Supprimer des FAQ',
+                'description' => 'Autorise la suppression des FAQ dans le contexte cible.',
+                'iscontextual' => true,
+                'group' => 'faq',
+            ],
+            'CAN_PROPOSE_PROJECT' => [
+                'title' => 'Proposer des projets',
+                'description' => 'Autorise la proposition de projets au role ou cercle cible.',
+                'iscontextual' => true,
+                'group' => 'projects',
+            ],
+            'CAN_CREATE_CONTROL_LIST' => [
+                'title' => 'Creer des listes de controle',
+                'description' => 'Droit du module historique de listes de controle.',
+                'iscontextual' => true,
+                'group' => 'legacy_control_lists',
+            ],
+            'CAN_EDIT_CONTROL_LIST' => [
+                'title' => 'Modifier des listes de controle',
+                'description' => 'Droit du module historique de listes de controle.',
+                'iscontextual' => true,
+                'group' => 'legacy_control_lists',
+            ],
+            'CAN_DELETE_CONTROL_LIST' => [
+                'title' => 'Supprimer des listes de controle',
+                'description' => 'Droit du module historique de listes de controle.',
+                'iscontextual' => true,
+                'group' => 'legacy_control_lists',
+            ],
             'CAN_ADD_HOLON' => [
                 'title' => 'Ajouter un holon',
                 'description' => 'Autorise l ajout d un holon dans le contexte cible.',
@@ -123,43 +238,43 @@ class Permission extends DbObject
                 'title' => 'Creer des fichiers',
                 'description' => 'Autorise la creation de fichiers dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'content',
+                'group' => 'documents',
             ],
             'CAN_CREATE_DECISION' => [
                 'title' => 'Creer des prises de decision',
                 'description' => 'Autorise la creation de prises de decision dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'content',
+                'group' => 'decisions',
             ],
             'CAN_CREATE_EVENT' => [
                 'title' => 'Creer des dates',
                 'description' => 'Autorise la creation de dates dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'content',
+                'group' => 'calendar',
             ],
             'CAN_EDIT_EVENT' => [
                 'title' => 'Modifier des dates',
                 'description' => 'Autorise la modification de dates dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'content',
+                'group' => 'calendar',
             ],
             'CAN_DELETE_EVENT' => [
                 'title' => 'Supprimer des dates',
                 'description' => 'Autorise la suppression de dates dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'content',
+                'group' => 'calendar',
             ],
             'CAN_CLAIM_PV' => [
                 'title' => 'Devenir secretaire de PV',
                 'description' => 'Autorise a prendre le role de secretaire pendant une reunion associee a un PV.',
                 'iscontextual' => true,
-                'group' => 'content',
+                'group' => 'documents',
             ],
             'CAN_CREATE_FAQ' => [
                 'title' => 'Creer des FAQ',
                 'description' => 'Autorise la creation de FAQ dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'content',
+                'group' => 'faq',
             ],
             'CAN_CREATE_CHECKLIST' => [
                 'title' => 'Creer des processus',
@@ -183,37 +298,37 @@ class Permission extends DbObject
                 'title' => 'Creer des activites recurrentes',
                 'description' => 'Autorise la creation d activites recurrentes dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'control_lists',
+                'group' => 'activities',
             ],
             'CAN_EDIT_CONTROL_ACTIVITY' => [
                 'title' => 'Modifier des activites recurrentes',
                 'description' => 'Autorise la modification des activites recurrentes dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'control_lists',
+                'group' => 'activities',
             ],
             'CAN_DELETE_CONTROL_ACTIVITY' => [
                 'title' => 'Supprimer des activites recurrentes',
                 'description' => 'Autorise la suppression des activites recurrentes dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'control_lists',
+                'group' => 'activities',
             ],
             'CAN_CREATE_PROJECT' => [
                 'title' => 'Creer des projets',
                 'description' => 'Autorise la creation de projets dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'steering',
+                'group' => 'projects',
             ],
             'CAN_DELETE_PROJECT' => [
                 'title' => 'Supprimer des projets',
                 'description' => 'Autorise la suppression de projets dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'steering',
+                'group' => 'projects',
             ],
             'CAN_CREATE_INDICATOR' => [
                 'title' => 'Creer des indicateurs',
                 'description' => 'Autorise la creation d indicateurs dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'steering',
+                'group' => 'stats',
             ],
             'CAN_EDIT_TEMPLATE_PROPERTIES' => [
                 'title' => 'Modifier les proprietes de templates',
@@ -261,13 +376,13 @@ class Permission extends DbObject
                 'title' => 'Creer des parcours',
                 'description' => 'Autorise la creation, l import, la suppression et le detachement de parcours dans le contexte cible.',
                 'iscontextual' => false,
-                'group' => 'steering',
+                'group' => 'lms',
             ],
             'CAN_EDIT_PARCOURS' => [
                 'title' => 'Editer des parcours',
                 'description' => 'Autorise la modification du contenu des parcours proprietaires et de leurs missions dans le contexte cible.',
                 'iscontextual' => false,
-                'group' => 'steering',
+                'group' => 'lms',
             ],
         ];
     }
@@ -279,8 +394,16 @@ class Permission extends DbObject
             'members' => ['title' => 'Membres et roles', 'order' => 10],
             'content' => ['title' => 'Contenus et reunions', 'order' => 20],
             'checklists' => ['title' => 'Processus', 'order' => 25],
-            'control_lists' => ['title' => 'Activites recurrentes', 'order' => 26],
-            'steering' => ['title' => 'Pilotage', 'order' => 30],
+            'activities' => ['title' => 'Activites recurrentes', 'order' => 26],
+            'legacy_control_lists' => ['title' => 'Listes de controle (ancien module)', 'order' => 990],
+            'projects' => ['title' => 'Projets', 'order' => 20],
+            'policy' => ['title' => 'Reglement', 'order' => 21],
+            'stats' => ['title' => 'Indicateurs', 'order' => 30],
+            'documents' => ['title' => 'Documents et PV', 'order' => 40],
+            'decisions' => ['title' => 'Decisions', 'order' => 45],
+            'calendar' => ['title' => 'Calendrier', 'order' => 50],
+            'faq' => ['title' => 'FAQ', 'order' => 60],
+            'lms' => ['title' => 'Parcours', 'order' => 65],
             'budget' => ['title' => 'Budget', 'order' => 35],
             'properties' => ['title' => 'Proprietes', 'order' => 40],
             'organization' => ['title' => 'Organisation', 'order' => 50],
@@ -440,6 +563,15 @@ class Permission extends DbObject
             if ($groupOrderComparison !== 0) {
                 return $groupOrderComparison;
             }
+
+            $actionOrder = static function ($key) {
+                if (str_starts_with($key, 'CAN_CREATE_') || str_starts_with($key, 'CAN_ADD_')) return 10;
+                if (str_starts_with($key, 'CAN_EDIT_')) return 20;
+                if (str_starts_with($key, 'CAN_DELETE_')) return 30;
+                return 40;
+            };
+            $actionComparison = $actionOrder($left['key']) <=> $actionOrder($right['key']);
+            if ($actionComparison !== 0) return $actionComparison;
 
             $titleComparison = strcasecmp((string)$left['title'], (string)$right['title']);
             if ($titleComparison !== 0) {

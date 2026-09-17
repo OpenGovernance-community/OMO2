@@ -142,8 +142,9 @@ if (in_array($action, ['bulk_archive_projects', 'bulk_delete_projects'], true)) 
 
     foreach ($projectsToProcess as $treeProject) {
         if (
-            !omoProjectsCanManageProject($treeProject, $context)
-            || ($action === 'bulk_delete_projects' && !omoProjectsCanDeleteProject($treeProject, $context))
+            ($action === 'bulk_delete_projects'
+                ? !omoProjectsCanDeleteProject($treeProject, $context)
+                : !omoProjectsCanManageProject($treeProject, $context))
         ) {
             omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
         }
@@ -233,9 +234,11 @@ if (in_array($action, ['accept_project_proposal', 'refuse_project_proposal'], tr
 if (
     $currentUserId <= 0
     || ($existingProject instanceof Project
-        ? (in_array($action, ['attach_document', 'remove_document'], true)
+        ? ($action === 'attach_document'
             ? !omoProjectsCanCreateDocument($existingProject, $currentUserId)
-            : (!$canDeletePendingProposal && !omoProjectsCanManageProject($existingProject, $context)))
+            : ($action === 'delete_project'
+                ? !omoProjectsCanDeleteProject($existingProject, $context)
+                : !omoProjectsCanManageProject($existingProject, $context)))
         : ($action !== 'save_project' && !$canCreateProject && !$canProposeProject))
 ) {
     omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
@@ -317,7 +320,7 @@ if ($action === 'remove_document') {
     $shouldDetach = $hasOtherProject
         || $document->isVisibleInHolonWhenProjectDocument()
         || !$document->canDeleteDocument()
-        || !$document->canManageLifecycle($organizationId, $currentUserId);
+        || !$document->canDeleteInOrganizationContext($organizationId, $currentUserId);
     if ($shouldDetach) {
         if (!$projectDocument->delete()) {
             omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
@@ -355,7 +358,9 @@ if ($action === 'update_kanban_position') {
             || !$targetHolon->load($targetHolonId)
             || !($rootHolon instanceof Holon)
             || !$targetHolon->isDescendantOf((int)$rootHolon->getId(), true)
-            || !$targetHolon->canEdit()
+            || !$targetHolon->canViewDetail()
+            || ($targetHolonId !== (int)$existingProject->get('IDholon')
+                && !omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context))
         ) {
             omoProjectsActionRespond(false, omoProjectsT('projects.error.holon'), [], 422);
         }
@@ -457,7 +462,8 @@ if ($action === 'move_project') {
         || !$targetHolon->load($targetHolonId)
         || !($rootHolon instanceof Holon)
         || !$targetHolon->isDescendantOf((int)$rootHolon->getId(), true)
-        || !$targetHolon->canEdit()
+        || !$targetHolon->canViewDetail()
+        || !omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context)
     ) {
         omoProjectsActionRespond(false, omoProjectsT('projects.error.holon'), [], 422);
     }
@@ -508,8 +514,7 @@ if ($action === 'delete_project') {
         if (
             !$isPendingProposalDelete
             && (
-                !omoProjectsCanManageProject($treeProject, $context)
-                || !omoProjectsCanDeleteProject($treeProject, $context)
+                !omoProjectsCanDeleteProject($treeProject, $context)
             )
         ) {
             omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
@@ -547,9 +552,13 @@ if (
     || !$targetHolon->load($targetHolonId)
     || !($rootHolon instanceof Holon)
     || !$targetHolon->isDescendantOf((int)$rootHolon->getId(), true)
-    || !$targetHolon->canEdit()
+    || !$targetHolon->canViewDetail()
 ) {
     omoProjectsActionRespond(false, omoProjectsT('projects.error.holon'), [], 422);
+}
+if ($projectId > 0 && $targetHolonId !== (int)$project->get('IDholon')
+    && !omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context)) {
+    omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
 }
 if ($projectId <= 0) {
     $canCreateTarget = omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context);

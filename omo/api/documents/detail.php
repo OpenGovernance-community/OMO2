@@ -188,7 +188,7 @@ $canEditDocumentContent = !$document->isPvDocument()
     && $document->canEditInOrganizationContext($organizationId, $currentUserId, false);
 $canEditDocument = !$document->isPvDocument()
     && ($canManageDocument || (!$document->isEtherpadDocument() && !$document->isEthercalcDocument() && !$document->isWhiteboardDocument() && $canEditDocumentContent));
-$canDeleteDocument = $document->canManageLifecycle($organizationId, $currentUserId)
+$canDeleteDocument = $document->canDeleteInOrganizationContext($organizationId, $currentUserId)
     && $document->canDeleteDocument(true);
 $editUrl = $canEditDocument
     ? '/omo/api/documents/create.php?oid=' . rawurlencode((string)$organizationId)

@@ -23,9 +23,11 @@ if (!empty($enabledAppHashes['activities']) && $scopeReferenceHolon instanceof H
         if (!($activityHolon instanceof Holon) || !$activityHolon->canViewDetail()) {
             continue;
         }
+        $responsibleUserId = (int)$activity->get('IDuser_responsible');
         if (
             $dashboardModuleAudience === 'mine'
-            && !omoDashboardUserIsAssociatedWithHolon($currentUserId, $currentOrganizationId, $activityHolon)
+            && $responsibleUserId !== $currentUserId
+            && ($responsibleUserId > 0 || !omoDashboardUserIsAssociatedWithHolon($currentUserId, $currentOrganizationId, $activityHolon))
         ) {
             continue;
         }
@@ -59,6 +61,7 @@ if (!empty($enabledAppHashes['activities']) && $scopeReferenceHolon instanceof H
                 : 'Activité #' . (int)$activity->getId(),
             'holonId' => (int)$activityHolon->getId(),
             'holonLabel' => trim((string)$activityHolon->getDisplayName()),
+            'responsibilityLabel' => omoActivityResponsibleAssignmentLabel($activity),
             'metric' => $metricKey,
             'occurrenceAt' => $effectiveOccurrenceAt,
             'deadlineAt' => $effectiveDeadlineAt,

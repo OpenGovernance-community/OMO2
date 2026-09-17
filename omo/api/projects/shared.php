@@ -439,12 +439,12 @@ if (!function_exists('omoProjectsCanManageContext')) {
     {
         $currentHolon = $context['currentHolon'] ?? null;
         if ($currentHolon instanceof Holon) {
-            return $currentHolon->canEdit()
+            return omoProjectsCanUsePermission($currentHolon, 'CAN_EDIT_PROJECT', $context)
                 || omoProjectsCanUsePermission($currentHolon, 'CAN_CREATE_PROJECT', $context);
         }
 
         $organization = $context['organization'] ?? null;
-        return $organization instanceof Organization && $organization->canEdit();
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_EDIT_PROJECT', (int)$organization->getId(), (int)commonGetCurrentUserId()) || \dbObject\Permission::userCanInOrganization('CAN_CREATE_PROJECT', (int)$organization->getId(), (int)commonGetCurrentUserId()));
     }
 }
 
@@ -494,7 +494,7 @@ if (!function_exists('omoProjectsCanCreateContext')) {
             return omoProjectsCanUsePermission($rootHolon, 'CAN_CREATE_PROJECT', $context);
         }
 
-        return $organization instanceof Organization && $organization->canEdit();
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_CREATE_PROJECT', (int)$organization->getId(), $currentUserId));
     }
 }
 
@@ -590,6 +590,7 @@ if (!function_exists('omoProjectsCanViewProject')) {
 if (!function_exists('omoProjectsCanManageProject')) {
     function omoProjectsCanManageProject(Project $project, array $context)
     {
+        if (commonUserHasAdminOverride((int)commonGetCurrentUserId(), (int)$project->get('IDorganization'))) return true;
         if ($project->isPendingProposal()) {
             // When somebody is both proposer and recipient, the recipient
             // workflow has priority: they can accept or refuse, not edit.
@@ -608,7 +609,7 @@ if (!function_exists('omoProjectsCanManageProject')) {
                 return false;
             }
 
-            return omoProjectsCanUsePermission($projectHolon, 'CAN_CREATE_PROJECT', $context);
+            return omoProjectsCanUsePermission($projectHolon, 'CAN_EDIT_PROJECT', $context);
         }
 
         // A task without its own holon inherits the management right of its
@@ -626,7 +627,7 @@ if (!function_exists('omoProjectsCanManageProject')) {
         }
 
         $organization = $context['organization'] ?? null;
-        return $organization instanceof Organization && $organization->canEdit();
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_EDIT_PROJECT', (int)$organization->getId(), (int)commonGetCurrentUserId()));
     }
 }
 
@@ -643,13 +644,14 @@ if (!function_exists('omoProjectsCanCreateDocument')) {
             return $projectHolon->isAllowed('CAN_CREATE_DOCUMENT', true, $currentUserId);
         }
 
-        return commonCurrentUserHasOrganizationAccess((int)$project->get('IDorganization'));
+        return Document::canCreateInOrganizationContext((int)$project->get('IDorganization'), null, $currentUserId, 0, false);
     }
 }
 
 if (!function_exists('omoProjectsCanDeleteProject')) {
     function omoProjectsCanDeleteProject(Project $project, array $context)
     {
+        if (commonUserHasAdminOverride((int)commonGetCurrentUserId(), (int)$project->get('IDorganization'))) return true;
         $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
         if ($currentUserId <= 0) {
             return false;
@@ -678,7 +680,7 @@ if (!function_exists('omoProjectsCanDeleteProject')) {
         }
 
         $organization = $context['organization'] ?? null;
-        return $organization instanceof Organization && $organization->canEdit();
+        return $organization instanceof Organization && (\dbObject\Permission::userCanInOrganization('CAN_DELETE_PROJECT', (int)$organization->getId(), $currentUserId));
     }
 }
 
@@ -914,7 +916,7 @@ if (!function_exists('omoProjectsGetVisibleDocuments')) {
                 'visibleInHolon' => $document->isVisibleInHolonWhenProjectDocument(),
                 'otherProjectCount' => $otherProjectCount,
                 'canDelete' => $document->canDeleteDocument(),
-                'canManageLifecycle' => $document->canManageLifecycle((int)$organizationId, (int)commonGetCurrentUserId()),
+                'canDeleteInContext' => $document->canDeleteInOrganizationContext((int)$organizationId, (int)commonGetCurrentUserId()),
                 'addedAt' => $createdAt instanceof \DateTimeInterface ? $createdAt->format('d.m.Y') : '',
             ];
         }

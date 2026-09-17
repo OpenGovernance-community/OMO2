@@ -638,9 +638,7 @@ foreach ($documents as $document) {
     $canMergeDocument = $document->supportsHtmlContent()
         && $canManageDocument
         && $document->canEditInOrganizationContext($documentOrganizationId, $currentUserId, false);
-    $canManageLifecycle = $document->isPvDocument()
-        ? $document->isPvCreatorOrEditor($currentUserId)
-        : $canManageDocument;
+    $canManageLifecycle = $document->canManageLifecycle($documentOrganizationId, $currentUserId);
     $associatedEvent = $pvEventsById[(int)$document->get('IDevent')] ?? null;
     $hasUpcomingPvEvent = $document->isPvDocument()
         && $associatedEvent instanceof \dbObject\Event
@@ -714,7 +712,7 @@ foreach ($documents as $document) {
         'canMove' => $canMoveDocument,
         'canMerge' => $canMergeDocument,
         'canArchive' => $canManageLifecycle && !$document->isArchived(),
-        'canDelete' => $canManageLifecycle
+        'canDelete' => $document->canDeleteInOrganizationContext($documentOrganizationId, $currentUserId)
             && (int)$document->get('IDevent') <= 0
             && !isset($documentListMetadata['documentsWithChildren'][$documentId]),
         'canEdit' => $document->isPvDocument()
@@ -987,10 +985,10 @@ if (!is_string($documentsPayload)) {
                     </div>
                     <div class="omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-omo-documents-filter-apply><?= $escape(omoDocumentsScopeT('documents.filters.apply')) ?></button>
-                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-documents-filter-save data-omo-app-view-save-scope="personal"><?= $escape(omoDocumentsScopeT('documents.filters.save_view')) ?></button>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal']) || !empty($applicationViewPreferences['canSaveTemporary'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary"<?= !empty($applicationViewPreferences['canSavePersonal']) ? ' data-omo-documents-filter-save' : '' ?> data-omo-app-view-save-scope="<?= $escape($applicationViewPreferences['primarySaveScope']) ?>"><?= $escape(omoDocumentsScopeT('documents.filters.save_view')) ?></button>
                         <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= $escape($applicationViewPreferences['primarySaveScope']) ?>"><?= $escape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= $escape($applicationViewPreferences['primarySaveScope']) ?>"><?= $escape($applicationViewPreferences['primarySaveLabel'] ?? '') ?></button>
                         <?php endif; ?>
                         <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
@@ -1165,7 +1163,7 @@ if (!is_string($documentsPayload)) {
 
             <script type="application/json" data-omo-documents-data><?= $documentsPayload ?></script>
             <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
-            <script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
+            <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
             <script>
             (function () {
                 window.omoDocumentsFindRoot = function () {
@@ -1469,8 +1467,10 @@ if (!is_string($documentsPayload)) {
                         omoDocumentsSessionViewsStorageKey,
                         panel
                     );
-                    const saved = omoDocumentsGetStoredPreferences(panel);
-                    const defaultView = omoDocumentsGetDefaultPreferences();
+                    const canUseLegacyPersonal = typeof window.omoApplicationViewPreferencesCanUseLegacyPersonal === 'function'
+                        && window.omoApplicationViewPreferencesCanUseLegacyPersonal(panel);
+                    const saved = canUseLegacyPersonal ? omoDocumentsGetStoredPreferences(panel) : null;
+                    const defaultView = canUseLegacyPersonal ? omoDocumentsGetDefaultPreferences() : null;
                     const serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
                         ? window.omoApplicationViewPreferencesGetDefault(panel)
                         : null;

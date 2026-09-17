@@ -26,6 +26,11 @@
 
     function readContext(root) {
         if (!root) return null;
+        if (!root.hasAttribute || !root.hasAttribute('data-omo-app-view-preferences')) {
+            root = (root.closest && root.closest('[data-omo-app-view-preferences]'))
+                || (root.querySelector && root.querySelector('[data-omo-app-view-preferences]'));
+        }
+        if (!root) return null;
         try {
             var value = JSON.parse(root.getAttribute('data-omo-app-view-preferences') || '{}');
             return value && typeof value === 'object' ? value : null;
@@ -128,7 +133,14 @@
     };
     window.omoApplicationViewPreferencesGetPersonal = function (root) {
         var context = readContext(root);
+        if (context && context.temporaryView && typeof context.temporaryView === 'object') {
+            return context.temporaryView;
+        }
         return context && context.personalView && typeof context.personalView === 'object' ? context.personalView : null;
+    };
+    window.omoApplicationViewPreferencesCanUseLegacyPersonal = function (root) {
+        var context = readContext(root);
+        return Boolean(context && context.canSavePersonal);
     };
     window.omoApplicationViewPreferencesGetStorageContextKey = function (root, regularKey) {
         var contextRoot = root;
@@ -170,17 +182,12 @@
         var context = readContext(root);
         var application = context ? context.application : '';
         var view = readActiveView(root, application);
-        var saveOperation = Promise.resolve();
         if (scope !== 'personal' && operation === 'save') {
             // The choices in the filter panel are pending until Apply is pressed.
-            // Apply them before saving the shared default, then remove this user's
-            // stored override so the just-saved default is effective on reopening.
+            // Apply them before saving, without erasing a closer personal scope.
             applyPendingView(root, application);
-            saveOperation = save(root, 'personal', {}, 'clear');
         }
-        saveOperation.then(function () {
-            return save(root, scope, view, operation);
-        }).catch(function (error) {
+        save(root, scope, view, operation).catch(function (error) {
             window.alert(error && error.message ? error.message : 'Impossible d enregistrer cette vue par defaut.');
         }).finally(function () {
             saveButton.disabled = false;

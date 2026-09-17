@@ -91,7 +91,7 @@ if ($deleteDocuments) {
     foreach ($associatedDocuments as $associatedDocument) {
         if (
             !($associatedDocument instanceof \dbObject\Document)
-            || !$associatedDocument->canManageLifecycle($organizationId, $currentUserId)
+            || !$associatedDocument->canDeleteInOrganizationContext($organizationId, $currentUserId)
             || !$associatedDocument->canDeleteDocument(true)
         ) {
             omoCalendarDeleteResponse([

@@ -100,7 +100,8 @@ $proposer = $project->get('IDuser_proposed') ? (new \dbObject\User()) : null;
 if ($proposer instanceof \dbObject\User && !$proposer->load((int)$project->get('IDuser_proposed'))) {
     $proposer = null;
 }
-$canCreateSubproject = !$isArchivedProject && !$isPendingProposal && $canEdit;
+$canCreateSubproject = !$isArchivedProject && !$isPendingProposal && $canEdit
+    && omoProjectsCanCreateContext(array_replace($context, ['currentHolon' => $projectHolon]));
 $editUrl = '/omo/api/projects/create.php?oid=' . rawurlencode((string)$organizationId) . '&id=' . rawurlencode((string)$projectId);
 if ((int)($_GET['cid'] ?? 0) > 0) {
     $editUrl .= '&cid=' . rawurlencode((string)(int)$_GET['cid']);
@@ -478,13 +479,13 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                         </div>
                         <?php if ($subprojectIsProject): ?>
                             <?= omoProjectsRenderStatusBar($subprojectSummary, 'omo-project-detail__subproject-bar') ?>
-                        <?php elseif ($subprojectCanEdit && in_array($subprojectStatus, $detailStatusOptions, true)): ?>
+                        <?php elseif (($subprojectCanEdit || $subprojectCanDelete) && in_array($subprojectStatus, $detailStatusOptions, true)): ?>
                             <select class="generic-form-control omo-project-detail__subproject-status-select" data-omo-project-detail-status-select data-project-id="<?= (int)$subproject->getId() ?>" data-previous-status="<?= omoApiEscape($subprojectStatus) ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.status_move')) ?>">
-                                <?php foreach ($detailStatusOptions as $statusOption): ?>
+                                <?php foreach ($subprojectCanEdit ? $detailStatusOptions : [$subprojectStatus] as $statusOption): ?>
                                     <option value="<?= omoApiEscape($statusOption) ?>"<?= $statusOption === $subprojectStatus ? ' selected' : '' ?>><?= omoApiEscape(omoProjectsStatusLabel($statusOption)) ?></option>
                                 <?php endforeach; ?>
                                 <option disabled>──────────</option>
-                                <option value="__archive__"><?= omoApiEscape(omoProjectsT('projects.detail.task.archive')) ?></option>
+                                <?php if ($subprojectCanEdit): ?><option value="__archive__"><?= omoApiEscape(omoProjectsT('projects.detail.task.archive')) ?></option><?php endif; ?>
                                 <?php if ($subprojectCanDelete): ?><option value="__delete__"><?= omoApiEscape(omoProjectsT('projects.detail.task.delete')) ?></option><?php endif; ?>
                             </select>
                         <?php endif; ?>

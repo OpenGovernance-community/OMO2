@@ -112,9 +112,11 @@
 
     function getNodeDisplayColor(node, fallbackColor) {
         var color = String(node && node.mycolor || fallbackColor || '').trim();
-        return node && node.ignoreAssignmentColor
-            ? color
-            : (roleHasAttachedUsers(node) ? color : colorToDesaturatedGray(color, fallbackColor));
+        if ((node && node.ignoreAssignmentColor) || roleHasAttachedUsers(node)) {
+            return color;
+        }
+        var unassignedColor = String(node && node.unassignedColor || '').trim();
+        return unassignedColor || colorToDesaturatedGray(color, fallbackColor);
     }
 
     function getNodeVisualOpacity(node, currentNode, rootNode) {
@@ -158,6 +160,7 @@
             name: String(node && node.name || ''),
             type: String(node && node.type || ''),
             mycolor: String(node && node.mycolor || ''),
+            unassignedColor: String(node && node.unassignedColor || ''),
             userIds: Array.isArray(node && node.userIds) ? node.userIds.slice() : [],
             size: 1,
             children: []

@@ -18,7 +18,7 @@ if ($ruleId > 0) {
     $currentHolonId = (int)$candidateRule->getHolon()->getId();
 }
 $context = omoPolicyResolveContext($organizationId, $currentHolonId);
-if (empty($context['status']) || !omoPolicyCanCreateLocalRule($context) || ($editingRule instanceof \dbObject\Rule && !$editingRule->canEdit())) {
+if (empty($context['status']) || ($editingRule instanceof \dbObject\Rule ? !$editingRule->canEdit() : !omoPolicyCanCreateLocalRule($context))) {
     http_response_code(403);
     ?><div class="omo-empty-state"><?= omoApiEscape(omoPolicyT('policy.error.forbidden')) ?></div><?php
     exit;

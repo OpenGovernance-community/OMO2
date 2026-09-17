@@ -932,9 +932,11 @@ foreach ($decisionRows as $row) {
     $hasUserParticipation = (int)($row['has_user_participation'] ?? 0) > 0;
     $hasEmailParticipation = !$hasUserParticipation && (int)($row['has_email_participation'] ?? 0) > 0;
 
-    $canManage = $isOwner;
+    $canManage = $decision->canUseManagementPermission('CAN_EDIT_DECISION', $currentUserId);
+    $canDelete = $decision->canUseManagementPermission('CAN_DELETE_DECISION', $currentUserId);
 
     $canView = $canManage
+        || $canDelete
         || $isOwner
         || $hasUserParticipation
         || $hasEmailParticipation
@@ -1165,12 +1167,12 @@ foreach ($decisionRows as $row) {
         }
     }
 
-    if ($canManage && $actionUrl !== '') {
+    if (($canManage || $canDelete) && $actionUrl !== '') {
         $canDeleteDecision = !$hasSubmittedResponses
             && $status !== DecisionProcess::STATUS_RESULTS
             && $status !== DecisionProcess::STATUS_ARCHIVED;
 
-        if ($canDeleteDecision) {
+        if ($canDeleteDecision && $canDelete) {
             $menuActions[] = [
                 'label' => t('decisions.index.action.delete', [], $lang, $sourceLang),
                 'behavior' => 'mutation',
@@ -1185,7 +1187,7 @@ foreach ($decisionRows as $row) {
                 ],
                 'confirmMessage' => t('decisions.index.action.confirm_delete', [], $lang, $sourceLang),
             ];
-        } else {
+        } elseif (!$canDeleteDecision && $canManage) {
             $menuActions[] = [
                 'label' => t('decisions.index.action.archive', [], $lang, $sourceLang),
                 'behavior' => 'mutation',
@@ -1472,10 +1474,10 @@ if (!is_string($payloadJson)) {
                     </div>
                     <div class="omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-omo-decisions-filter-apply><?= $escape(t('decisions.index.view_filter.apply', [], $lang, $sourceLang)) ?></button>
-                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decisions-filter-save data-omo-app-view-save-scope="personal"><?= $escape(t('decisions.index.view_filter.save', [], $lang, $sourceLang)) ?></button>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal']) || !empty($applicationViewPreferences['canSaveTemporary'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary"<?= !empty($applicationViewPreferences['canSavePersonal']) ? ' data-omo-decisions-filter-save' : '' ?> data-omo-app-view-save-scope="<?= $escape($applicationViewPreferences['primarySaveScope']) ?>"><?= $escape(t('decisions.index.view_filter.save', [], $lang, $sourceLang)) ?></button>
                         <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= $escape($applicationViewPreferences['primarySaveScope']) ?>"><?= $escape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= $escape($applicationViewPreferences['primarySaveScope']) ?>"><?= $escape($applicationViewPreferences['primarySaveLabel'] ?? '') ?></button>
                         <?php endif; ?>
                         <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
@@ -1521,7 +1523,7 @@ if (!is_string($payloadJson)) {
 </div>
 
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
 <link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260813-decision-uniformity">
 <script src="/common/choice/decision_cards.js"></script>
 
@@ -2247,8 +2249,10 @@ function omoDecisionsNormalizeViewPreferences(preferences) {
 
 function omoDecisionsReadViewPreferences() {
     const temporary = omoDecisionsReadStoredValue(window.sessionStorage, omoDecisionsSessionViewsStorageKey);
-    const saved = omoDecisionsGetStoredViewPreferences();
-    const defaultView = omoDecisionsGetDefaultViewPreferences();
+    const canUseLegacyPersonal = typeof window.omoApplicationViewPreferencesCanUseLegacyPersonal === 'function'
+        && window.omoApplicationViewPreferencesCanUseLegacyPersonal(root);
+    const saved = canUseLegacyPersonal ? omoDecisionsGetStoredViewPreferences() : null;
+    const defaultView = canUseLegacyPersonal ? omoDecisionsGetDefaultViewPreferences() : null;
     const serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
         ? window.omoApplicationViewPreferencesGetDefault(root)
         : null;

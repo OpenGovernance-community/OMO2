@@ -44,6 +44,7 @@ if ($indicator->isEthercalcSource() || $indicator->isSpreadsheetSource()) {
     }
 }
 $contextLabel = omoStatsContextLabel($indicator);
+$responsibilityLabel = omoStatsResponsibleAssignmentLabel($indicator);
 $measurementFrequency = $indicator->getEffectiveMeasurementFrequency();
 $measurementSchedule = omoStatsMeasurementScheduleLabel($measurementFrequency, $indicator->get('measurement_schedule'));
 $chartMinValue = is_numeric($indicator->get('chart_min_value')) ? (float)$indicator->get('chart_min_value') : null;
@@ -93,6 +94,7 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
 
     <div class="omo-stats-detail__meta omo-stats-detail__meta--compact generic-meta">
         <span><strong><?= omoApiEscape(omoStatsT('stats.card.context')) ?> :</strong> <?= omoApiEscape($contextLabel) ?></span>
+        <span><strong><?= omoApiEscape(omoStatsT('stats.responsibility.label')) ?> :</strong> <?= omoApiEscape($responsibilityLabel) ?></span>
             <?php if ($overdueSeverity === 'warning'): ?>
                 <span class="omo-stats-overdue-label omo-stats-overdue-label--warning"><?= omoApiEscape(omoStatsT('stats.card.to_complete')) ?></span>
             <?php elseif ($overdueSeverity === 'error'): ?>

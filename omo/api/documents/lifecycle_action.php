@@ -48,7 +48,9 @@ foreach ($documentIds as $requestedDocumentId) {
         $error('Les documents doivent appartenir a la meme organisation.', 422);
     }
     $expectedOrganizationId = $organizationId;
-    if (!commonCurrentUserHasOrganizationAccess($organizationId) || !$document->canManageLifecycle($organizationId, $userId)) {
+    if (!commonCurrentUserHasOrganizationAccess($organizationId) || ($action === 'delete'
+        ? !$document->canDeleteInOrganizationContext($organizationId, $userId)
+        : !$document->canManageLifecycle($organizationId, $userId))) {
         $error('Accès refusé.', 403);
     }
 

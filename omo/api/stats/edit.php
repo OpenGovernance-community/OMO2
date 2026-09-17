@@ -6,7 +6,9 @@ require_once dirname(__DIR__, 3) . '/common/spreadsheet.php';
 use dbObject\StatIndicator;
 use dbObject\StatIndicatorReferencePoint;
 use dbObject\ArrayDocument;
+use dbObject\ArrayUserOrganization;
 use dbObject\Document;
+use dbObject\DocumentPvPoint;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
@@ -39,6 +41,39 @@ if ($indicatorId <= 0 && !omoStatsCanCreateContext($context)) {
 
 if ($indicatorId <= 0) {
     $indicator->set('reference_type', StatIndicator::REFERENCE_NONE);
+}
+
+$indicatorResponsibleOptions = [];
+$organizationMembers = new ArrayUserOrganization();
+$organizationMembers->loadActiveForOrganization($organizationId);
+foreach ($organizationMembers as $membership) {
+    $userId = (int)$membership->get('IDuser');
+    if ($userId > 0) {
+        $indicatorResponsibleOptions[] = [
+            'id' => $userId,
+            'label' => DocumentPvPoint::getUserDisplayNameForOrganization($userId, $organizationId),
+        ];
+    }
+}
+
+if (!function_exists('fct_IDuser_responsible')) {
+    function fct_IDuser_responsible($object, $field, $default = null)
+    {
+        global $indicatorResponsibleOptions;
+        $selectedUserId = (int)$object->get($field);
+        $html = '<select class="admin-edit__control generic-form-control" name="IDuser_responsible" id="IDuser_responsible">';
+        $html .= '<option value="">' . omoApiEscape(omoStatsT('stats.form.responsible_none')) . '</option>';
+        foreach ($indicatorResponsibleOptions as $option) {
+            $userId = (int)($option['id'] ?? 0);
+            if ($userId <= 0) {
+                continue;
+            }
+            $html .= '<option value="' . $userId . '"' . ($selectedUserId === $userId ? ' selected' : '') . '>'
+                . omoApiEscape((string)($option['label'] ?? '')) . '</option>';
+        }
+        $html .= '</select><small class="generic-help-text">' . omoApiEscape(omoStatsT('stats.form.responsible_help')) . '</small>';
+        return [omoApiEscape(omoStatsT('stats.form.responsible')), $html];
+    }
 }
 
 if (!function_exists('fct_reference_type')) {
@@ -404,7 +439,7 @@ ob_start();
 <?php
 $afterTableHtml = ob_get_clean();
 $params = [
-    'fields' => ['name', 'description', 'source_url', 'chart_min_value', 'show_cumulative', 'reference_type'],
+    'fields' => ['name', 'description', 'IDuser_responsible', 'source_url', 'chart_min_value', 'show_cumulative', 'reference_type'],
     'buttons' => false,
     'action' => '/omo/api/stats/action.php',
     'success' => 'omoStatsAfterIndicatorSave()',

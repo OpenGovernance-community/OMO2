@@ -41,8 +41,7 @@ if ($organizationId <= 0) {
 	$canAddHolonProperties = !empty($editorData['canAddHolonProperties']);
 	$editedHolonData = is_array($editorData['holon'] ?? null) ? $editorData['holon'] : array();
 	$hasCustomHolonAppearance = trim((string)($editedHolonData['color'] ?? '')) !== ''
-		|| trim((string)($editedHolonData['icon'] ?? '')) !== ''
-		|| trim((string)($editedHolonData['banner'] ?? '')) !== '';
+		|| trim((string)($editedHolonData['icon'] ?? '')) !== '';
 	$hasCustomHolonAdminBounds = !empty($editedHolonData['adminMinOverride'])
 		|| !empty($editedHolonData['adminMaxOverride']);
 	$hasDirectHolonPermissions = !empty($editedHolonData['permissionAssignments']);
@@ -252,10 +251,6 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
                                             <div class="generic-form-label">Icone</div>
                                             <div id="omo-holon-create-icon-field"></div>
                                         </div>
-                                        <div class="omo-holon-create__media-card generic-form-field">
-                                            <div class="generic-form-label">Banniere</div>
-                                            <div id="omo-holon-create-banner-field"></div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -281,6 +276,8 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
 <script src="/omo/assets/js/sized-image-field.js"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
+<link rel="stylesheet" href="/common/permissions/editor.css?v=20260917-crud-3">
+<script src="/common/permissions/editor.js?v=20260917-crud-3"></script>
 <script>
 (() => {
 const state = {
@@ -302,7 +299,6 @@ if (governanceInitialPayload) {
         fullName: String(governanceInitialPayload.fullName || ''),
         color: String(governanceInitialPayload.color || ''),
         icon: String(governanceInitialPayload.icon || ''),
-        banner: String(governanceInitialPayload.banner || ''),
         templateId: Number(governanceInitialPayload.templateId || 0),
         adminMin: governanceInitialPayload.adminMin,
         adminMax: governanceInitialPayload.adminMax,
@@ -335,7 +331,6 @@ const elements = {
 	adminMaxOverride: root.querySelector('#omo-holon-create-admin-max-override'),
 	adminBoundsHelp: root.querySelector('#omo-holon-create-admin-bounds-help'),
     iconField: root.querySelector('#omo-holon-create-icon-field'),
-    bannerField: root.querySelector('#omo-holon-create-banner-field'),
     properties: root.querySelector('#omo-holon-create-properties'),
     addProperty: root.querySelector('#omo-holon-create-add-property'),
     permissions: root.querySelector('#omo-holon-create-permissions-editor'),
@@ -346,8 +341,7 @@ const elements = {
 };
 
 const mediaFields = {
-    icon: null,
-    banner: null
+    icon: null
 };
 
 const editorAccordions = [
@@ -855,6 +849,7 @@ function renderPermissions(permissionAssignments) {
         setPermissionRowRanges(row, assignments[profileKey][permissionKey], allPermissionRangeOptions);
     });
 
+    window.omoPermissionEditorEnhance(elements.permissions, getInheritedPermissions());
     syncPermissionSummary();
 }
 
@@ -1071,17 +1066,7 @@ function syncAdminBounds(template) {
     }
 }
 
-function getMediaDisplayConfig(kind) {
-    if (kind === 'banner') {
-        return {
-            displayWidth: 360,
-            displayHeight: 202,
-            targetWidth: 960,
-            targetHeight: 540,
-            emptyText: 'Aucune bannière définie pour ce holon.'
-        };
-    }
-
+function getMediaDisplayConfig() {
     return {
         displayWidth: 160,
         displayHeight: 160,
@@ -1093,7 +1078,7 @@ function getMediaDisplayConfig(kind) {
 
 function resolveMediaState(kind, template) {
     const editingHolon = getEditingHolon();
-    const suffix = kind === 'icon' ? 'Icon' : 'Banner';
+    const suffix = 'Icon';
     const locked = Boolean(template && template['effectiveLocked' + suffix]);
     const currentController = mediaFields[kind];
     const fallbackLocalValue = editingHolon && !locked
@@ -1115,8 +1100,7 @@ function renderMediaFields(template) {
     }
 
     [
-        ['icon', elements.iconField, 'Icône'],
-        ['banner', elements.bannerField, 'Bannière']
+        ['icon', elements.iconField, 'Icône']
     ].forEach(function (entry) {
         const kind = entry[0];
         const target = entry[1];
@@ -1126,7 +1110,7 @@ function renderMediaFields(template) {
         }
 
         const mediaState = resolveMediaState(kind, template);
-        const config = getMediaDisplayConfig(kind);
+        const config = getMediaDisplayConfig();
         mediaFields[kind] = window.omoSizedImageField.mount(target, {
             inputName: 'holon_' + kind,
             uploadFieldName: kind,
@@ -2397,9 +2381,6 @@ function saveHolon(event) {
     if (mediaFields.icon && typeof mediaFields.icon.flushPending === 'function') {
         pendingMediaFlushes.push(mediaFields.icon.flushPending());
     }
-    if (mediaFields.banner && typeof mediaFields.banner.flushPending === 'function') {
-        pendingMediaFlushes.push(mediaFields.banner.flushPending());
-    }
 
     Promise.all(pendingMediaFlushes)
         .then(function () {
@@ -2416,9 +2397,6 @@ function saveHolon(event) {
                 icon: mediaFields.icon
                     ? mediaFields.icon.getValue()
                     : String((getEditingHolon() || {}).icon || ''),
-                banner: mediaFields.banner
-                    ? mediaFields.banner.getValue()
-                    : String((getEditingHolon() || {}).banner || ''),
                 adminMin: elements.adminMin
                     ? normalizeAdminBound(elements.adminMin.value, false)
                     : normalizeAdminBound(editingHolon.adminMin, false),
@@ -2461,9 +2439,6 @@ function saveHolon(event) {
             formData.append('payload', JSON.stringify(payload));
             if (mediaFields.icon) {
                 mediaFields.icon.appendToFormData(formData);
-            }
-            if (mediaFields.banner) {
-                mediaFields.banner.appendToFormData(formData);
             }
 
             return fetch(saveUrl, {

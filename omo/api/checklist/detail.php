@@ -166,6 +166,7 @@ foreach ($projectInstancesByItem as &$itemInstances) {
 unset($itemInstances);
 $rootHolon = $templateRoot->getHolon();
 $rootHolonLabel = $rootHolon instanceof Holon ? trim((string)$rootHolon->getDisplayName()) : '';
+$responsibilityLabel = omoChecklistResponsibleAssignmentLabel($checklist);
 $updatedAt = $checklist->get('updated_at');
 $canActivate = omoChecklistCanActivate($checklist, $trigger);
 $editUrl = '/omo/api/checklist/edit.php?oid=' . rawurlencode((string)$organizationId) . '&id=' . rawurlencode((string)$checklistId);
@@ -231,6 +232,7 @@ $formatDelay = static function ($value, $unit) {
         </div>
         <dl class="omo-checklist-detail__summary">
             <div><dt><?= omoApiEscape(omoChecklistT('checklist.detail.context')) ?></dt><dd><?= omoApiEscape($rootHolonLabel) ?></dd></div>
+            <div><dt><?= omoApiEscape(omoChecklistT('checklist.responsibility.label')) ?></dt><dd><?= omoApiEscape($responsibilityLabel) ?></dd></div>
             <div><dt><?= omoApiEscape(omoChecklistT('checklist.detail.trigger')) ?></dt><dd><?= omoApiEscape(omoChecklistTriggerLabel($trigger)) ?></dd></div>
             <div><dt><?= omoApiEscape(omoChecklistT('checklist.detail.updated')) ?></dt><dd><?= omoApiEscape($updatedAt instanceof DateTimeInterface ? $updatedAt->format('d.m.Y H:i') : '') ?></dd></div>
         </dl>

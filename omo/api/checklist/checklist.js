@@ -349,7 +349,10 @@
             search.value = currentSearch;
         }
         var temporary = readStoredValue(window.sessionStorage, checklistSessionViewsStorageKey);
-        var saved = readStoredValue(window.localStorage, checklistSavedViewsStorageKey);
+        var saved = typeof window.omoApplicationViewPreferencesCanUseLegacyPersonal === 'function'
+            && window.omoApplicationViewPreferencesCanUseLegacyPersonal(root)
+            ? readStoredValue(window.localStorage, checklistSavedViewsStorageKey)
+            : null;
         var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
             ? window.omoApplicationViewPreferencesGetDefault(root)
             : null;

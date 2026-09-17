@@ -17,11 +17,11 @@
 				[['id', 'admin_min', 'admin_max'], 'integer'],
 				[['name','nomcomplet','templatename','accesskey','time_budget_recurrence','money_budget_recurrence'], 'string'],			// Texte libre
 				[['time_budget_hours','money_budget'], 'float'],
-				[['icon','banner'], 'sizedimage'],			// Images illustratives
+				[['icon'], 'sizedimage'],			// Images illustratives
 				[['datecreation','datemodification'], 'datetime'],	// Date avec precision des heures
 				[['IDuser','IDtypeholon','IDholon_parent','IDholon_template','IDorganization','IDholon_org'], 'fk'],				// Cle etrangeres
-				[['lockedname','lockedicon','lockedbanner','lockedadminmin','lockedadminmax','adminminoverride','adminmaxoverride','active','visible','mandatory','unique','link','adminparent'], 'boolean'],				// Cle etrangeres
-				[['color'], 'color'],				// Couleur au format hexadecimal
+				[['lockedname','lockedicon','lockedadminmin','lockedadminmax','adminminoverride','adminmaxoverride','active','visible','mandatory','unique','link','adminparent'], 'boolean'],				// Cle etrangeres
+				[['color', 'color_unassigned'], 'color'],				// Couleur au format hexadecimal
 				[['parameters'], 'parameters'],
 				[['id'], 'safe'],								// Champs proteges (n'apparaissent pas dans les formulaires)
 			];
@@ -41,13 +41,13 @@
 				'active' => 'Actif ?',
 				'visible' => 'Visible ?',
 				'color' => 'Couleur',
+				'color_unassigned' => 'Couleur non attribuee',
 				'templatename' => 'Nom de template',
 				'IDorganization' => 'Organisation',
 				'IDtypeholon' => 'Type de holon',
 				'IDholon_parent' => 'Parent',
 				'IDholon_template' => 'Template',
 				'icon' => 'Icône',
-				'banner' => 'Bannière',
 				'accesskey' => 'Cle acces',
 				'time_budget_hours' => 'Budget temps',
 				'time_budget_recurrence' => 'Recurrence du budget temps',
@@ -57,7 +57,6 @@
 				'mandatory' => 'Obligatoire ?',
 				'lockedname' => 'Nom verrouille ?',
 				'lockedicon' => 'Icône verrouillée ?',
-				'lockedbanner' => 'Bannière verrouillée ?',
 				'unique' => 'Unique ?',
 				'link' => 'Lien ?',
 				'adminparent' => 'Admin parent ?',
@@ -86,7 +85,6 @@
 				'time_budget_recurrence' => 10,
 				'money_budget_recurrence' => 10,
 				'icon' => [[320, 320], [160, 160]],
-				'banner' => [[960, 540], [480, 270]],
 			];
 		}
 
@@ -228,6 +226,58 @@
 			$parameters = $this->getParametersArray();
 			unset($parameters[UserHolon::DASHBOARD_DEFAULT_LAYOUT_PARAMETER]);
 			$this->setParametersArray($parameters);
+		}
+
+		public function getApplicationViewDefault($applicationKey): ?array
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			if ($applicationKey === '') {
+				return null;
+			}
+
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_HOLON_DEFAULTS_PARAMETER] ?? array()
+			);
+			return $views[$applicationKey] ?? null;
+		}
+
+		public function setApplicationViewDefault($applicationKey, array $view): bool
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			if ($applicationKey === '') {
+				return false;
+			}
+
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_HOLON_DEFAULTS_PARAMETER] ?? array()
+			);
+			$views[$applicationKey] = UserHolon::normalizeApplicationView($view);
+			$parameters[UserHolon::APPLICATION_VIEW_HOLON_DEFAULTS_PARAMETER] = $views;
+			$this->setParametersArray($parameters);
+			return true;
+		}
+
+		public function clearApplicationViewDefault($applicationKey): bool
+		{
+			$applicationKey = UserHolon::normalizeApplicationViewKey($applicationKey);
+			if ($applicationKey === '') {
+				return false;
+			}
+
+			$parameters = $this->getParametersArray();
+			$views = UserHolon::normalizeApplicationViewDefaults(
+				$parameters[UserHolon::APPLICATION_VIEW_HOLON_DEFAULTS_PARAMETER] ?? array()
+			);
+			unset($views[$applicationKey]);
+			if ($views === array()) {
+				unset($parameters[UserHolon::APPLICATION_VIEW_HOLON_DEFAULTS_PARAMETER]);
+			} else {
+				$parameters[UserHolon::APPLICATION_VIEW_HOLON_DEFAULTS_PARAMETER] = $views;
+			}
+			$this->setParametersArray($parameters);
+			return true;
 		}
 
 		public function getDashboardTemplateLayoutKeys(): array
@@ -538,24 +588,9 @@
 			return $this->getEffectiveTemplateStringField('icon');
 		}
 
-		public function getInheritedBanner()
-		{
-			return $this->getInheritedTemplateStringField('banner');
-		}
-
-		public function getEffectiveBanner()
-		{
-			return $this->getEffectiveTemplateStringField('banner');
-		}
-
 		public function isIconLockedByTemplate()
 		{
 			return $this->getInheritedTemplateBooleanField('lockedicon');
-		}
-
-		public function isBannerLockedByTemplate()
-		{
-			return $this->getInheritedTemplateBooleanField('lockedbanner');
 		}
 
 		// Compte instances soeurs
@@ -812,6 +847,11 @@
 				$node['mycolor'] = $color;
 			}
 
+			$unassignedColor = $this->getEffectiveUnassignedColor();
+			if ($unassignedColor !== '') {
+				$node['unassignedColor'] = $unassignedColor;
+			}
+
 			$visibleTemplateAncestorId = $this->getVisibleTemplateAncestorId();
 			if ($visibleTemplateAncestorId > 0) {
 				$node['visibleTemplateAncestorId'] = (string)$visibleTemplateAncestorId;
@@ -872,6 +912,7 @@
 			$options = array_merge(array(
 				'representation' => 'circle',
 				'includeMemberUserIds' => false,
+				'includeMemberCards' => false,
 				'organizationId' => 0,
 				'organizationRootHolonId' => 0,
 			), $options);
@@ -897,6 +938,14 @@
 					$structureHolonIds
 				);
 				$organizationMemberUserIds = \dbObject\UserOrganization::fetchStructureUserIds((int)$options['organizationId']);
+			}
+
+			if (!empty($options['includeMemberCards'])) {
+				$terminalHolonIds = self::collectBulkStructureTerminalHolonIds($holonRows, $structureHolonIds);
+				$options['memberCardsByHolonId'] = \dbObject\UserHolon::fetchStructureMemberCardsForHolonIds(
+					(int)$options['organizationId'],
+					$terminalHolonIds
+				);
 			}
 
 			return self::buildBulkStructureRepresentationFromRows(
@@ -958,6 +1007,43 @@
 			return array_values(array_map('intval', array_keys($ids)));
 		}
 
+		protected static function collectBulkStructureTerminalHolonIds(array $holonRows, array $structureHolonIds): array
+		{
+			$structureHolonIdMap = array_fill_keys(array_map('intval', $structureHolonIds), true);
+			$childrenByParentId = array();
+			$rowsById = array();
+			foreach ($holonRows as $row) {
+				$holonId = (int)($row['id'] ?? 0);
+				if ($holonId <= 0 || !isset($structureHolonIdMap[$holonId])) {
+					continue;
+				}
+
+				$rowsById[$holonId] = $row;
+				if (!(bool)($row['active'] ?? false) || !(bool)($row['visible'] ?? false)) {
+					continue;
+				}
+
+				$parentId = (int)($row['IDholon_parent'] ?? 0);
+				if ($parentId > 0 && isset($structureHolonIdMap[$parentId])) {
+					$childrenByParentId[$parentId][] = $holonId;
+				}
+			}
+
+			$terminalIds = array();
+			foreach ($rowsById as $holonId => $row) {
+				$typeId = (int)($row['IDtypeholon'] ?? 0);
+				if (!in_array($typeId, array(1, 2, 3), true)) {
+					continue;
+				}
+
+				if ($typeId === 1 || empty($childrenByParentId[$holonId])) {
+					$terminalIds[] = (int)$holonId;
+				}
+			}
+
+			return $terminalIds;
+		}
+
 		public static function buildBulkStructureRepresentationFromRows(
 			array $holonRows,
 			$navigationRootId,
@@ -969,6 +1055,8 @@
 			$options = array_merge(array(
 				'representation' => 'circle',
 				'includeMemberUserIds' => false,
+				'includeMemberCards' => false,
+				'memberCardsByHolonId' => array(),
 				'leafSize' => 10,
 				'containerSize' => 20,
 			), $options);
@@ -1076,6 +1164,9 @@
 			};
 
 			$memberUserIdsByHolonId = array();
+			$memberCardsByHolonId = is_array($options['memberCardsByHolonId'])
+				? $options['memberCardsByHolonId']
+				: array();
 			if (!empty($options['includeMemberUserIds'])) {
 				foreach ($memberRows as $memberRow) {
 					$holonId = (int)($memberRow['IDholon'] ?? 0);
@@ -1157,6 +1248,7 @@
 				$childrenByParentId,
 				$propertyRowsByHolonId,
 				$memberUserIdsByHolonId,
+				$memberCardsByHolonId,
 				$resolveEffectiveString,
 				$resolveVisibleTemplateAncestorId,
 				$options
@@ -1185,6 +1277,11 @@
 					$node['mycolor'] = $color;
 				}
 
+				$unassignedColor = $resolveEffectiveString($holonId, 'color_unassigned');
+				if ($unassignedColor !== '') {
+					$node['unassignedColor'] = $unassignedColor;
+				}
+
 				$visibleTemplateAncestorId = $resolveVisibleTemplateAncestorId($holonId);
 				if ($visibleTemplateAncestorId > 0) {
 					$node['visibleTemplateAncestorId'] = (string)$visibleTemplateAncestorId;
@@ -1193,6 +1290,15 @@
 
 				if (!empty($options['includeMemberUserIds']) && !empty($memberUserIdsByHolonId[$holonId])) {
 					$node['userIds'] = array_values(array_map('intval', $memberUserIdsByHolonId[$holonId]));
+				}
+
+				if (
+					!empty($options['includeMemberCards'])
+					&& in_array($typeId, array(1, 2, 3), true)
+					&& ($typeId === 1 || empty($childrenByParentId[$holonId]))
+					&& !empty($memberCardsByHolonId[$holonId])
+				) {
+					$node['memberCards'] = array_values($memberCardsByHolonId[$holonId]);
 				}
 
 				$data = array();
@@ -1375,6 +1481,30 @@
 			}
 
 			return $template->getEffectiveColor($guard + 1);
+		}
+
+		public function getEffectiveUnassignedColor($guard = 0)
+		{
+			$color = trim((string)$this->get('color_unassigned'));
+			if ($color !== '') {
+				return $color;
+			}
+
+			if ($guard >= 20) {
+				return '';
+			}
+
+			$templateId = (int)$this->get('IDholon_template');
+			if ($templateId <= 0) {
+				return '';
+			}
+
+			$template = new self();
+			if (!$template->load($templateId)) {
+				return '';
+			}
+
+			return $template->getEffectiveUnassignedColor($guard + 1);
 		}
 
 		public function getVisibleTemplateAncestorId($guard = 0)
@@ -1646,10 +1776,6 @@
 				$record['lockedIcon'] = true;
 			}
 
-			if ((bool)$this->get('lockedbanner')) {
-				$record['lockedBanner'] = true;
-			}
-
 			if ((bool)$this->get('unique')) {
 				$record['unique'] = true;
 			}
@@ -1690,12 +1816,12 @@
 				$record['color'] = (string)$this->get('color');
 			}
 
-			if (trim((string)$this->get('icon')) !== '') {
-				$record['icon'] = (string)$this->get('icon');
+			if (trim((string)$this->get('color_unassigned')) !== '') {
+				$record['unassignedColor'] = (string)$this->get('color_unassigned');
 			}
 
-			if (trim((string)$this->get('banner')) !== '') {
-				$record['banner'] = (string)$this->get('banner');
+			if (trim((string)$this->get('icon')) !== '') {
+				$record['icon'] = (string)$this->get('icon');
 			}
 
 			if (trim((string)$this->get('accesskey')) !== '') {
@@ -2559,7 +2685,7 @@
 					'timeBudgetRecurrence' => trim((string)($row['holon_time_budget_recurrence'] ?? '')),
 					'moneyBudget' => $row['holon_money_budget'] ?? null,
 					'moneyBudgetRecurrence' => trim((string)($row['holon_money_budget_recurrence'] ?? '')),
-					'canEditAssignment' => $roleHolon->canEdit(),
+					'canEditAssignment' => $roleHolon->isAllowed('CAN_EDIT_MEMBER_ASSIGNMENT') || $roleHolon->isAllowed('CAN_EDIT_AFFECTATION_BUDGET'),
 					'parentLabel' => $parentHolon ? trim((string)$parentHolon->getDisplayName()) : '',
 					'circleId' => $assignmentCircle ? (int)$assignmentCircle->getId() : 0,
 					'circleLabel' => $assignmentCircleLabel,
@@ -3025,7 +3151,7 @@
 			), $options);
 			$organizationId = (int)$options['organizationId'];
 
-			if (!$this->canEdit()) {
+			if (!$this->isAllowed('CAN_DELETE_MEMBER', false)) {
 				return array(
 					'status' => false,
 					'message' => "Vous n'avez pas le droit de modifier ce contexte.",
@@ -3050,6 +3176,15 @@
 				$scopeHolon = (int)$this->getId() === $scopeHolonId ? $this : new self();
 				if ($scopeHolon !== $this && !$scopeHolon->load($scopeHolonId)) {
 					continue;
+				}
+
+				$affectedMembership = new \dbObject\UserHolon();
+				if ($affectedMembership->load(array(
+					array('IDuser', $userId),
+					array('IDholon', $scopeHolonId),
+					array('is_membership', 1),
+				)) && !$scopeHolon->isAllowed('CAN_DELETE_MEMBER', false)) {
+					return array('status' => false, 'message' => 'Droit de retrait insuffisant dans un contexte descendant.');
 				}
 
 				$adminConstraintResult = $scopeHolon->validateDirectMemberRemovalAdminBounds($userId, $organizationId);
@@ -4282,21 +4417,16 @@
 				'typeId' => (int)$this->get('IDtypeholon'),
 				'typeLabel' => $this->getTypeLabel(),
 				'color' => (string)$this->get('color'),
+				'unassignedColor' => (string)$this->get('color_unassigned'),
 				'icon' => (string)$this->get('icon'),
 				'inheritedIcon' => $this->getInheritedIcon(),
 				'effectiveIcon' => $this->getEffectiveIcon(),
-				'banner' => (string)$this->get('banner'),
-				'inheritedBanner' => $this->getInheritedBanner(),
-				'effectiveBanner' => $this->getEffectiveBanner(),
 				'visible' => (bool)$this->get('visible'),
 				'mandatory' => (bool)$this->get('mandatory'),
 				'lockedName' => (bool)$this->get('lockedname'),
 				'lockedIcon' => (bool)$this->get('lockedicon'),
 				'inheritedLockedIcon' => $this->isIconLockedByTemplate(),
 				'effectiveLockedIcon' => (bool)$this->get('lockedicon') || $this->isIconLockedByTemplate(),
-				'lockedBanner' => (bool)$this->get('lockedbanner'),
-				'inheritedLockedBanner' => $this->isBannerLockedByTemplate(),
-				'effectiveLockedBanner' => (bool)$this->get('lockedbanner') || $this->isBannerLockedByTemplate(),
 				'unique' => (bool)$this->get('unique'),
 				'link' => (bool)$this->get('link'),
 				'adminParent' => (bool)$this->get('adminparent'),
@@ -4337,21 +4467,16 @@
 				'typeId' => (int)$this->get('IDtypeholon'),
 				'typeLabel' => $this->getTypeLabel(),
 				'color' => (string)$this->get('color'),
+				'unassignedColor' => (string)$this->get('color_unassigned'),
 				'icon' => (string)$this->get('icon'),
 				'inheritedIcon' => $this->getInheritedIcon(),
 				'effectiveIcon' => $this->getEffectiveIcon(),
-				'banner' => (string)$this->get('banner'),
-				'inheritedBanner' => $this->getInheritedBanner(),
-				'effectiveBanner' => $this->getEffectiveBanner(),
 				'visible' => (bool)$this->get('visible'),
 				'mandatory' => (bool)$this->get('mandatory'),
 				'lockedName' => (bool)$this->get('lockedname'),
 				'lockedIcon' => (bool)$this->get('lockedicon'),
 				'inheritedLockedIcon' => $this->isIconLockedByTemplate(),
 				'effectiveLockedIcon' => (bool)$this->get('lockedicon') || $this->isIconLockedByTemplate(),
-				'lockedBanner' => (bool)$this->get('lockedbanner'),
-				'inheritedLockedBanner' => $this->isBannerLockedByTemplate(),
-				'effectiveLockedBanner' => (bool)$this->get('lockedbanner') || $this->isBannerLockedByTemplate(),
 				'unique' => (bool)$this->get('unique'),
 				'link' => (bool)$this->get('link'),
 				'adminParent' => (bool)$this->get('adminparent'),

@@ -4,6 +4,26 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-17
 
+- Filtres des applications OMO : les vues suivent maintenant la priorite temporaire de session, personnelle, holon, modele de holon, organisation, type de holon puis globale. Chaque niveau autorise peut enregistrer et effacer son propre defaut. En mode Decouverte, les membres et admins de holon restent sur une vue temporaire, sans preference persistante, tandis que les admins d organisation et super admins conservent leurs portees administratives.
+
+- Activités : une personne en charge peut maintenant être attribuée en complément du rôle. Les vues compacte, fiche et détail affichent En charge : Rôle (personne ou Non attribué), et le filtre Moi du tableau de pilotage tient compte de cette attribution.
+
+- Indicateurs et processus : les vues compactes, les fiches et les details affichent maintenant la responsabilite sous la forme En charge : Role (personne ou Non attribue).
+
+- Tableau de pilotage : un module Video autonome peut maintenant etre place dans les vues par defaut d un type, d un modele, d un holon ou d une organisation. Sa configuration accepte les liens Vimeo, YouTube et Infomaniak, affiches dans un lecteur integre sans activer une application.
+
+- Tableau de pilotage : les vues suivent maintenant la priorite temporaire de session, personnelle, holon, modele d organisation, type de holon puis defaut global. Le super admin peut enregistrer ou effacer le defaut global meme sans structure ; le repli integre est vide. En mode Decouverte, membres et admins de holon ne conservent qu une vue temporaire de session, tandis que les niveaux administratifs superieurs gardent leurs options de modele, type et global.
+
+- Modèles de holons : les bannières propres aux holons ont été retirées. Les modèles publics reprennent maintenant le logo et la bannière de leur organisation source.
+
+- Modèles de holons : une couleur facultative peut maintenant être définie pour les rôles non attribués. Lorsqu elle reste vide, la structure conserve le gris calculé depuis la couleur principale ; la valeur peut être héritée par les modèles enfants.
+
+- Droits : ajout des permissions de modification et suppression manquantes pour les projets, regles, indicateurs, documents, membres, decisions et FAQ. Les controles serveur distinguent les operations ; seuls les modes admin actives donnent une derogation. Les editeurs de holons et de templates regroupent les droits par application, avec recherche, filtres, groupes repliables et distinction des portees locales et heritees.
+
+- Indicateurs et processus : une personne en charge peut maintenant etre choisie en complement du role ou holon responsable. Le tableau de pilotage propose aussi le module Processus et les modules Indicateurs et Processus peuvent etre regles sur Tous ou Moi. Moi affiche les elements attribues a la personne, ainsi que ceux sans attribution individuelle pour lesquels elle fait partie du role.
+
+- Structure : une option d affichage permet maintenant de montrer les personnes des cercles, roles et elements de liaison terminaux selectionnes. Les admins occupent le demi-cercle superieur et les autres membres le demi-cercle inferieur, avec photo ou initiales et un espacement adapte ; les membres simples ne depassent pas 80 % de la taille des admins. Leur survol affiche le nom et le focus eventuel ; un element sans personne affiche Non attribué. Les roles selectionnes utilisent aussi un libelle en arc lorsque cette option est activee. Le menu Actions propose Rafraichir pour vider les caches puis recharger la structure. Les donnees personnes ne sont chargees que lorsque cette option est activee.
+
 - Paramètres Projets : fieldsets harmonisés avec OMO et documentés dans le guide de styles partagé. Calcul de l’importance stratégique réorganisé autour de deux réglages expliqués — le poids local et la pénalité de profondeur —, avec un exemple sur trois niveaux actualisé pendant la saisie, des règles de calcul dépliables et une sauvegarde sans quitter le tiroir.
 
 - Projets : les colonnes du Kanban peuvent maintenant recevoir un libelle propre a chaque organisation. Dans les parametres de l application, chaque statut conserve son nom par defaut en placeholder ; un champ renseigne le remplace dans le Kanban, les formulaires, les details, les recherches, les projets integres aux PV et les processus relies. La sauvegarde reste dans le panneau des parametres et affiche son retour sans ouvrir la reponse JSON.

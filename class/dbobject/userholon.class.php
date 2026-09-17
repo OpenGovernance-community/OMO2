@@ -7,9 +7,12 @@
 		public const DASHBOARD_DEFAULT_LAYOUT_PARAMETER = 'dashboardDefaultLayoutV1';
 		public const DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER = 'dashboardTemplateLayoutsV1';
 		public const DASHBOARD_BASE_TYPE_LAYOUTS_PARAMETER = 'dashboardBaseTypeLayoutsV1';
+		public const DASHBOARD_GLOBAL_LAYOUT_PARAMETER = 'dashboardGlobalLayoutV1';
 		public const APPLICATION_VIEW_DEFAULTS_PARAMETER = 'applicationViewDefaultsV1';
 		public const APPLICATION_VIEW_BASE_TYPE_DEFAULTS_PARAMETER = 'applicationViewBaseTypeDefaultsV1';
 		public const APPLICATION_VIEW_TEMPLATE_DEFAULTS_PARAMETER = 'applicationViewTemplateDefaultsV1';
+		public const APPLICATION_VIEW_ORGANIZATION_DEFAULTS_PARAMETER = 'applicationViewOrganizationDefaultsV1';
+		public const APPLICATION_VIEW_HOLON_DEFAULTS_PARAMETER = 'applicationViewHolonDefaultsV1';
 		public const APPLICATION_VIEW_PERSONAL_PARAMETER = 'applicationViewPersonalV1';
 		public const DASHBOARD_MAX_MODULES = 40;
 		public const DASHBOARD_MAX_ROWS = 100;
@@ -146,6 +149,7 @@
 		public static function getDashboardModuleCatalog()
 		{
 			return array(
+				'video' => array('standalone' => true, 'settings' => array('video' => true)),
 				'rules' => array('app' => 'policy', 'settings' => array('scope' => true)),
 				'projects' => array('app' => 'projects', 'settings' => array('scope' => true, 'audience' => true)),
 				'team' => array('app' => 'team', 'settings' => array('scope' => true)),
@@ -153,6 +157,7 @@
 				'event' => array('app' => 'calendar', 'settings' => array('scope' => true)),
 				'structure' => array('app' => 'structure', 'settings' => array('scope' => true)),
 				'stats' => array('app' => 'stats', 'settings' => array('scope' => true, 'audience' => true)),
+				'checklist' => array('app' => 'checklist', 'settings' => array('scope' => true, 'audience' => true)),
 				'activities' => array('app' => 'activities', 'settings' => array('scope' => true, 'audience' => true)),
 			);
 		}
@@ -253,16 +258,7 @@
 
 		public static function getDefaultDashboardLayout()
 		{
-			return array(
-				array('id' => 'rules-1', 'type' => 'rules', 'row' => 0, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
-				array('id' => 'projects-1', 'type' => 'projects', 'row' => 0, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
-				array('id' => 'team-1', 'type' => 'team', 'row' => 1, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
-				array('id' => 'documents-1', 'type' => 'documents', 'row' => 1, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
-				array('id' => 'event-1', 'type' => 'event', 'row' => 2, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
-				array('id' => 'structure-1', 'type' => 'structure', 'row' => 2, 'column' => 1, 'rowSpan' => 1, 'columnSpan' => 1, 'settings' => array('scope' => 'contextual')),
-				array('id' => 'stats-1', 'type' => 'stats', 'row' => 3, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 2, 'settings' => array('scope' => 'contextual')),
-				array('id' => 'activities-1', 'type' => 'activities', 'row' => 4, 'column' => 0, 'rowSpan' => 1, 'columnSpan' => 2, 'settings' => array('scope' => 'contextual')),
-			);
+			return array();
 		}
 
 		public static function normalizeDashboardModuleSettings($type, $settings): array
@@ -284,6 +280,11 @@
 
 			if (!empty($configuration['audience'])) {
 				$normalized['audience'] = self::normalizeDashboardModuleAudience($settings['audience'] ?? 'all');
+			}
+
+			if (!empty($configuration['video'])) {
+				$videoUrl = mb_substr(trim((string)($settings['video'] ?? '')), 0, 2000, 'UTF-8');
+				$normalized['video'] = VideoEmbedHelper::buildEmbedUrl($videoUrl);
 			}
 
 			return $normalized;
@@ -983,6 +984,141 @@
 
 			$rows = self::fetchAll($query, $params);
 			return is_array($rows) ? $rows : array();
+		}
+
+		/**
+		 * Returns the direct member cards needed by the structure canvas. Keeping
+		 * this query here makes the structure representation independent from UI
+		 * tables while preserving the usual person visibility checks.
+		 */
+		public static function fetchStructureMemberCardsForHolonIds($organizationId, array $holonIds): array
+		{
+			$organizationId = (int)$organizationId;
+			$holonIds = array_values(array_unique(array_filter(array_map('intval', $holonIds), static function ($holonId) {
+				return $holonId > 0;
+			})));
+
+			if ($organizationId <= 0 || count($holonIds) === 0) {
+				return array();
+			}
+
+			$params = array(
+				'organization_id' => $organizationId,
+				'invitation_organization_id' => $organizationId,
+			);
+			$placeholders = array();
+			foreach ($holonIds as $index => $holonId) {
+				$key = 'terminal_holon_' . $index;
+				$params[$key] = $holonId;
+				$placeholders[] = ':' . $key;
+			}
+
+			$rows = self::fetchAll(
+				"SELECT
+					uh.IDholon AS holon_id,
+					uh.IDuser AS user_id,
+					uh.focus AS holon_focus,
+					uh.parameters AS holon_parameters,
+					u.firstname AS user_firstname,
+					u.lastname AS user_lastname,
+					u.username AS user_username,
+					u.email AS user_email,
+					u.image AS user_image,
+					uo.username AS membership_username,
+					uo.email AS membership_email,
+					uo.image AS membership_image,
+					uo.parameters AS membership_parameters
+				FROM user_holon uh
+				INNER JOIN `user` u ON u.id = uh.IDuser
+				LEFT JOIN user_organization uo
+					ON uo.IDuser = uh.IDuser
+					AND uo.IDorganization = :organization_id
+				LEFT JOIN invitation inv
+					ON inv.IDorganization = :invitation_organization_id
+					AND inv.IDuser = uh.IDuser
+					AND inv.status = 'pending'
+					AND inv.active = 1
+					AND (inv.dateexpiration IS NULL OR inv.dateexpiration > NOW())
+				WHERE uh.IDholon IN (" . implode(', ', $placeholders) . ")
+					AND uh.is_membership = 1
+					AND (
+						uh.active = 1
+						OR inv.id IS NOT NULL
+						OR (uo.id IS NOT NULL AND uo.active = 0)
+					)
+				ORDER BY uh.IDholon ASC, u.id ASC",
+				$params
+			);
+
+			if (!is_array($rows)) {
+				return array();
+			}
+
+			$cardsByHolonId = array();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['holon_id'] ?? 0);
+				$userId = (int)($row['user_id'] ?? 0);
+				if ($holonId <= 0 || $userId <= 0) {
+					continue;
+				}
+
+				$user = new \dbObject\User();
+				$user->loadFromArray(array(
+					'id' => $userId,
+					'firstname' => $row['user_firstname'] ?? '',
+					'lastname' => $row['user_lastname'] ?? '',
+					'username' => $row['user_username'] ?? '',
+					'email' => $row['user_email'] ?? '',
+					'image' => $row['user_image'] ?? '',
+				));
+				if (!$user->canView()) {
+					continue;
+				}
+
+				$membership = new \dbObject\UserOrganization();
+				$membership->loadFromArray(array(
+					'IDuser' => $userId,
+					'IDorganization' => $organizationId,
+					'username' => $row['membership_username'] ?? '',
+					'email' => $row['membership_email'] ?? '',
+					'image' => $row['membership_image'] ?? '',
+					'parameters' => $row['membership_parameters'] ?? '',
+				));
+				$membership->set('user', $user);
+
+				$parameters = json_decode((string)($row['holon_parameters'] ?? ''), true);
+				$card = array(
+					'userId' => $userId,
+					'displayName' => $membership->getUserDisplayName(),
+					'photoUrl' => $membership->getProfilePhotoUrl(),
+					'initials' => $membership->getUserInitials(),
+					'avatarSeed' => \commonBuildAvatarSeedLabel(
+						$membership->getUserDisplayName(),
+						$membership->getScopedEmail()
+					),
+					'focus' => trim((string)($row['holon_focus'] ?? '')),
+					'isAdmin' => is_array($parameters) && !empty($parameters['isAdmin']),
+				);
+
+				if (!isset($cardsByHolonId[$holonId])) {
+					$cardsByHolonId[$holonId] = array();
+				}
+				$cardsByHolonId[$holonId][$userId] = $card;
+			}
+
+			foreach ($cardsByHolonId as &$cardsByUserId) {
+				$cardsByUserId = array_values($cardsByUserId);
+				usort($cardsByUserId, static function (array $left, array $right) {
+					if ((bool)$left['isAdmin'] !== (bool)$right['isAdmin']) {
+						return !empty($left['isAdmin']) ? -1 : 1;
+					}
+
+					return strcasecmp((string)$left['displayName'], (string)$right['displayName']);
+				});
+			}
+			unset($cardsByUserId);
+
+			return $cardsByHolonId;
 		}
 
 		public static function fetchRawRowsForUserAndHolonIds($userId, array $holonIds)

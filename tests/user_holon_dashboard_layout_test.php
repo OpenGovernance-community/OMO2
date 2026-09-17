@@ -3,12 +3,18 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/class/dbobject/dbobject.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/holon.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/organization.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/videoembedhelper.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/userholon.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/applicationsetting.class.php';
 require_once dirname(__DIR__) . '/omo/api/dashboard/modules/registry.php';
 require_once dirname(__DIR__) . '/common/application_view_preferences.php';
+require_once dirname(__DIR__) . '/common/dashboard_view_preferences.php';
 
 use dbObject\UserHolon;
 use dbObject\Holon;
+use dbObject\ApplicationSetting;
+use dbObject\Organization;
 
 function assertDashboardLayout(bool $condition, string $message): void
 {
@@ -39,8 +45,115 @@ assertDashboardLayout($scopedLayout[0]['settings']['scope'] === 'descendants', '
 assertDashboardLayout($scopedLayout[0]['settings']['audience'] === 'mine', 'A valid module audience must be stored in the layout.');
 assertDashboardLayout($scopedLayout[1]['settings']['scope'] === 'contextual', 'An invalid module scope must fall back to the local scope.');
 assertDashboardLayout(UserHolon::normalizeDashboardModuleSettings('stats', array('audience' => 'unsupported'))['audience'] === 'all', 'An invalid module audience must fall back to all items.');
-assertDashboardLayout(count(UserHolon::getDefaultDashboardLayout()) === 8, 'The default layout must expose the eight initial modules.');
+assertDashboardLayout(UserHolon::getDefaultDashboardLayout() === array(), 'The built-in dashboard fallback must be empty.');
+assertDashboardLayout(method_exists(ApplicationSetting::class, 'getDashboardGlobalDefaultLayout'), 'The global dashboard default must be readable from application settings.');
+assertDashboardLayout(method_exists(ApplicationSetting::class, 'saveDashboardGlobalDefaultLayout'), 'The global dashboard default must be writable through application settings.');
+assertDashboardLayout(method_exists(ApplicationSetting::class, 'clearDashboardGlobalDefaultLayout'), 'The global dashboard default must be removable through application settings.');
 assertDashboardLayout(array_keys(UserHolon::getDashboardModuleCatalog()) === array_keys(omoDashboardGetModuleDefinitions()), 'The persistence catalog and UI registry must expose the same module identifiers.');
+assertDashboardLayout(
+    UserHolon::normalizeDashboardModuleSettings('video', array('video' => 'https://youtu.be/dQw4w9WgXcQ'))['video'] === 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    'A supported dashboard video URL must be converted to a safe embed URL.'
+);
+assertDashboardLayout(
+    UserHolon::normalizeDashboardModuleSettings('video', array('video' => 'https://example.com/video'))['video'] === '',
+    'An unsupported dashboard video URL must not be persisted.'
+);
+
+$layoutPriorityFixtures = array(
+    'temporary' => array(array('id' => 'temporary')),
+    'personal' => array(array('id' => 'personal')),
+    'holon' => array(array('id' => 'holon')),
+    'organizationTemplate' => array(array('id' => 'organization-template')),
+    'applicationType' => array(array('id' => 'application-type')),
+    'global' => array(array('id' => 'global')),
+);
+assertDashboardLayout(
+    omoDashboardViewPreferencesResolveLayout($layoutPriorityFixtures)[0]['id'] === 'temporary',
+    'A temporary discovery layout must take priority for the current session.'
+);
+unset($layoutPriorityFixtures['temporary'], $layoutPriorityFixtures['personal'], $layoutPriorityFixtures['holon']);
+assertDashboardLayout(
+    omoDashboardViewPreferencesResolveLayout($layoutPriorityFixtures)[0]['id'] === 'organization-template',
+    'An organization template layout must take priority over application defaults.'
+);
+assertDashboardLayout(
+    omoDashboardViewPreferencesResolveLayout(array('personal' => array(), 'global' => array(array('id' => 'global')))) === array(),
+    'An explicitly empty closer layout must stop fallback resolution.'
+);
+assertDashboardLayout(
+    omoDashboardViewPreferencesResolveLayout(array()) === array(),
+    'A missing global dashboard layout must resolve to the empty built-in fallback.'
+);
+$discoveryMemberCapabilities = omoDashboardViewPreferencesResolveCapabilities(
+    Organization::INTERFACE_LEVEL_DISCOVERY,
+    12,
+    '',
+    'type:2',
+    array('isMember' => true)
+);
+assertDashboardLayout(
+    $discoveryMemberCapabilities['canSaveTemporary']
+        && !$discoveryMemberCapabilities['canSavePersonal']
+        && !$discoveryMemberCapabilities['canSaveHolon'],
+    'A discovery member must only save a temporary session layout.'
+);
+$discoveryAdminCapabilities = omoDashboardViewPreferencesResolveCapabilities(
+    Organization::INTERFACE_LEVEL_DISCOVERY,
+    12,
+    'template:2:0123456789abcdef01234567',
+    'type:2',
+    array('isMember' => true, 'isHolonAdmin' => true, 'isOrganizationAdmin' => true, 'isSiteAdmin' => true)
+);
+assertDashboardLayout(
+    $discoveryAdminCapabilities['canSaveTemporary']
+        && !$discoveryAdminCapabilities['canSaveHolon']
+        && $discoveryAdminCapabilities['canSaveOrganizationTemplate']
+        && $discoveryAdminCapabilities['canSaveApplicationType']
+        && $discoveryAdminCapabilities['canSaveGlobal'],
+    'Discovery mode must keep holon changes temporary while preserving higher administrator defaults.'
+);
+$siteWithoutStructureCapabilities = omoDashboardViewPreferencesResolveCapabilities(
+    Organization::INTERFACE_LEVEL_DISCOVERY,
+    0,
+    '',
+    '',
+    array('isSiteAdmin' => true)
+);
+assertDashboardLayout(
+    $siteWithoutStructureCapabilities['canSaveGlobal'] && $siteWithoutStructureCapabilities['canEdit'],
+    'An active site administrator must edit the global dashboard even without a structure.'
+);
+$expertAllCapabilities = omoDashboardViewPreferencesResolveCapabilities(
+    Organization::INTERFACE_LEVEL_EXPERT,
+    12,
+    'template:2:0123456789abcdef01234567',
+    'type:2',
+    array('isMember' => true, 'isHolonAdmin' => true, 'isOrganizationAdmin' => true, 'isSiteAdmin' => true)
+);
+assertDashboardLayout(
+    omoDashboardViewPreferencesGetOrderedSaveScopes($expertAllCapabilities) === array('personal', 'holon', 'organization_template', 'application_type', 'global'),
+    'Persistent dashboard save options must be ordered from the closest scope to the global scope.'
+);
+assertDashboardLayout(
+    omoDashboardViewPreferencesGetOrderedSaveScopes(array(
+        'canSaveTemporary' => true,
+        'canSaveOrganizationTemplate' => true,
+        'canSaveApplicationType' => true,
+        'canSaveGlobal' => true,
+    )) === array('temporary', 'organization_template', 'application_type', 'global'),
+    'Discovery mode must put the temporary session view before administrator defaults.'
+);
+$_SESSION = array();
+omoDashboardViewPreferencesSaveTemporaryLayout(7, 11, 0, array());
+assertDashboardLayout(
+    omoDashboardViewPreferencesGetTemporaryLayout(7, 11, 0) === array(),
+    'A temporary empty discovery layout must be preserved for the current session.'
+);
+omoDashboardViewPreferencesClearTemporaryLayout(7, 11, 0);
+assertDashboardLayout(
+    omoDashboardViewPreferencesGetTemporaryLayout(7, 11, 0) === null,
+    'Clearing a temporary discovery layout must restore default resolution.'
+);
 
 $templateKey = UserHolon::makeDashboardTemplateKey(1, 'Facilitateur');
 $templateLayouts = UserHolon::normalizeDashboardTemplateLayouts(array(
@@ -88,5 +201,112 @@ assertDashboardLayout(
     omoApplicationViewPreferencesGetEffectiveView($applicationViewContext) === array('scope' => 'descendants', 'sort' => 'alpha'),
     'An application default must be used when no personal view exists.'
 );
+
+$applicationViewLayers = array(
+    'temporary' => array('scope' => 'temporary'),
+    'personal' => array('scope' => 'personal'),
+    'holon' => array('scope' => 'holon'),
+    'organizationTemplate' => array('scope' => 'organization-template'),
+    'organization' => array('scope' => 'organization'),
+    'applicationType' => array('scope' => 'application-type'),
+    'global' => array('scope' => 'global'),
+);
+assertDashboardLayout(
+    omoApplicationViewPreferencesResolveView($applicationViewLayers)['scope'] === 'temporary',
+    'A temporary discovery filter view must take priority over every persistent scope.'
+);
+unset($applicationViewLayers['temporary'], $applicationViewLayers['personal'], $applicationViewLayers['holon']);
+assertDashboardLayout(
+    omoApplicationViewPreferencesResolveView($applicationViewLayers)['scope'] === 'organization-template',
+    'An organization template filter view must take priority over the organization-wide view.'
+);
+assertDashboardLayout(
+    omoApplicationViewPreferencesResolveView(array('holon' => array(), 'global' => array('scope' => 'global'))) === array(),
+    'An explicitly empty closer filter view must stop fallback resolution.'
+);
+
+$discoveryFilterMemberCapabilities = omoApplicationViewPreferencesResolveCapabilities(
+    Organization::INTERFACE_LEVEL_DISCOVERY,
+    12,
+    '',
+    'type:2',
+    array('isMember' => true, 'isHolonAdmin' => true)
+);
+assertDashboardLayout(
+    $discoveryFilterMemberCapabilities['canSaveTemporary']
+        && !$discoveryFilterMemberCapabilities['canSavePersonal']
+        && !$discoveryFilterMemberCapabilities['canSaveHolon'],
+    'Discovery members and holon administrators must only keep a temporary local filter view.'
+);
+$expertFilterCapabilities = omoApplicationViewPreferencesResolveCapabilities(
+    Organization::INTERFACE_LEVEL_EXPERT,
+    12,
+    'template:2:0123456789abcdef01234567',
+    'type:2',
+    array('isMember' => true, 'isHolonAdmin' => true, 'isOrganizationAdmin' => true, 'isSiteAdmin' => true)
+);
+assertDashboardLayout(
+    omoApplicationViewPreferencesGetOrderedSaveScopes($expertFilterCapabilities) === array(
+        'personal',
+        'holon',
+        'organization_template',
+        'organization',
+        'application_type',
+        'global',
+    ),
+    'Filter save options must be ordered from the member preference to the global default.'
+);
+$discoveryFilterAdminCapabilities = omoApplicationViewPreferencesResolveCapabilities(
+    Organization::INTERFACE_LEVEL_DISCOVERY,
+    12,
+    'template:2:0123456789abcdef01234567',
+    'type:2',
+    array('isMember' => true, 'isHolonAdmin' => true, 'isOrganizationAdmin' => true, 'isSiteAdmin' => true)
+);
+assertDashboardLayout(
+    omoApplicationViewPreferencesGetOrderedSaveScopes($discoveryFilterAdminCapabilities) === array(
+        'temporary',
+        'organization_template',
+        'organization',
+        'application_type',
+        'global',
+    ),
+    'Discovery mode must keep temporary filters first while preserving broader administrator defaults.'
+);
+
+$_SESSION = array();
+omoApplicationViewPreferencesSaveTemporaryView(7, 11, 12, 'projects', array('scope' => 'children'));
+assertDashboardLayout(
+    omoApplicationViewPreferencesGetTemporaryView(7, 11, 12, 'projects') === array('scope' => 'children'),
+    'A temporary filter view must be retained for the current session and context.'
+);
+omoApplicationViewPreferencesClearTemporaryView(7, 11, 12, 'projects');
+assertDashboardLayout(
+    omoApplicationViewPreferencesGetTemporaryView(7, 11, 12, 'projects') === null,
+    'Clearing a temporary filter view must restore persistent resolution.'
+);
+
+$holon->setApplicationViewDefault('projects', array('scope' => 'children'));
+assertDashboardLayout(
+    $holon->getApplicationViewDefault('projects') === array('scope' => 'children'),
+    'A holon filter default must be stored in holon parameters.'
+);
+$holon->clearApplicationViewDefault('projects');
+assertDashboardLayout($holon->getApplicationViewDefault('projects') === null, 'A holon filter default must be removable.');
+$organization = new class extends Organization {
+    public function canViewDetail()
+    {
+        return true;
+    }
+};
+$organization->setApplicationViewDefault('projects', array('scope' => 'descendants'));
+assertDashboardLayout(
+    $organization->getApplicationViewDefault('projects') === array('scope' => 'descendants'),
+    'An organization-wide filter default must be stored in organization parameters.'
+);
+$organization->clearApplicationViewDefault('projects');
+assertDashboardLayout($organization->getApplicationViewDefault('projects') === null, 'An organization-wide filter default must be removable.');
+assertDashboardLayout(method_exists(ApplicationSetting::class, 'saveApplicationViewGlobalDefault'), 'A global filter default must be writable.');
+assertDashboardLayout(method_exists(ApplicationSetting::class, 'clearApplicationViewGlobalDefault'), 'A global filter default must be removable.');
 
 echo "user_holon_dashboard_layout_test: OK\n";
