@@ -51,7 +51,13 @@ $viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext ?: array());
 $canManageFaqCollection = !empty($viewerAccess['canManageAllFaqs']) || !empty($viewerAccess['canManageOrganizationFaqs']);
 $canManageParcoursFaqs = \dbObject\FAQ::canManageParcoursInContext($faqContext ?: array(), (int)($viewerAccess['userId'] ?? 0), false);
 
-$scope = faqPopupResolveSubmittedScope($faqContext ?: array(), $_POST, array(
+// Ordinary editors change content, never the attachment or application.
+$scope = !$canManageFaqCollection ? array(
+	'status' => true,
+	'organizationId' => $faq->get('IDorganization'),
+	'holonId' => $faq->get('IDholon'),
+	'parcoursId' => $faq->get('IDparcours'),
+) : faqPopupResolveSubmittedScope($faqContext ?: array(), $_POST, array(
 	'allowParcoursCreate' => $canManageParcoursFaqs,
 ));
 if (empty($scope['status'])) {

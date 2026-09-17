@@ -593,12 +593,12 @@ if ($teamScope === 'children') {
 }
 
 $canAddCurrentHolonMembers = $hasStructureContext ? $currentHolon->isAllowed('CAN_ADD_MEMBER') : false;
-$canRemoveCurrentHolonMembers = $hasStructureContext ? $currentHolon->canEdit() : false;
+$canRemoveCurrentHolonMembers = $hasStructureContext ? $currentHolon->isAllowed('CAN_DELETE_MEMBER') : false;
 $canGrantCurrentHolonAdmin = $hasStructureContext ? $currentHolon->isAllowed('CAN_ADD_ADMIN') : false;
 $canManageCurrentHolonMembers = $canRemoveCurrentHolonMembers || $canGrantCurrentHolonAdmin;
 $canEditCurrentMemberAssignments = $hasStructureContext
     && !$currentHolon->isOrganizationHolon()
-    && ($currentHolon->canEdit() || $currentHolon->isAllowed('CAN_EDIT_AFFECTATION_BUDGET'));
+    && ($currentHolon->isAllowed('CAN_EDIT_MEMBER_ASSIGNMENT') || $currentHolon->isAllowed('CAN_EDIT_AFFECTATION_BUDGET'));
 $leafletMapsEnabled = function_exists('commonLeafletMapsEnabled') && commonLeafletMapsEnabled();
 $mapMembers = array_values(array_filter($memberCards, static function (array $card): bool {
     return is_array($card['latlong'] ?? null);
@@ -706,10 +706,10 @@ if ($leafletMapsEnabled) {
                     </div>
                     <div class="omo-team__filter-actions omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-team-filter-apply><?= omoApiEscape(omoTeamT('team.filters.apply', [], $lang, $sourceLang)) ?></button>
-                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-team-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoTeamT('team.filters.save_view', [], $lang, $sourceLang)) ?></button>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal']) || !empty($applicationViewPreferences['canSaveTemporary'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary"<?= !empty($applicationViewPreferences['canSavePersonal']) ? ' data-team-filter-save' : '' ?> data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoTeamT('team.filters.save_view', [], $lang, $sourceLang)) ?></button>
                         <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape($applicationViewPreferences['primarySaveLabel'] ?? '') ?></button>
                         <?php endif; ?>
                         <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
@@ -1982,7 +1982,7 @@ $teamJsTranslations = [
     'mapSummaryOther' => omoTeamT('team.map.summary_other', ['count' => '{count}'], $lang, $sourceLang),
 ];
 ?>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
 <script>
 var omoTeamSavedViewsStorageKey = 'omo.team.saved-views.v2';
 var omoTeamLegacySavedViewsStorageKey = 'omo.team.saved-views.v1';
@@ -2572,8 +2572,10 @@ function omoTeamInitializeFilters() {
         return;
     }
     const temporary = omoTeamReadViewPreferences(window.sessionStorage, omoTeamSessionViewsStorageKey);
-    const saved = omoTeamGetStoredViewPreferences();
-    const defaultView = omoTeamGetDefaultViewPreferences();
+    const canUseLegacyPersonal = typeof window.omoApplicationViewPreferencesCanUseLegacyPersonal === 'function'
+        && window.omoApplicationViewPreferencesCanUseLegacyPersonal(root);
+    const saved = canUseLegacyPersonal ? omoTeamGetStoredViewPreferences() : null;
+    const defaultView = canUseLegacyPersonal ? omoTeamGetDefaultViewPreferences() : null;
     const serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
         ? window.omoApplicationViewPreferencesGetDefault(root)
         : null;

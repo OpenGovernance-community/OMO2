@@ -1156,7 +1156,13 @@
         var personalView = typeof window.omoApplicationViewPreferencesGetPersonal === 'function'
             ? window.omoApplicationViewPreferencesGetPersonal(root)
             : null;
-        var preferences = getTemporaryDisplayPreferences() || personalView || serverDefault || getStoredDisplayPreferences() || getDefaultDisplayPreferences();
+        var canUseLegacyPersonal = typeof window.omoApplicationViewPreferencesCanUseLegacyPersonal === 'function'
+            && window.omoApplicationViewPreferencesCanUseLegacyPersonal(root);
+        var preferences = getTemporaryDisplayPreferences()
+            || personalView
+            || serverDefault
+            || (canUseLegacyPersonal ? getStoredDisplayPreferences() : null)
+            || (canUseLegacyPersonal ? getDefaultDisplayPreferences() : null);
         if (!preferences) {
             return false;
         }

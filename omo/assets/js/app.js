@@ -4548,6 +4548,18 @@ $(document).on('click', '[data-omo-personal-space-indicator-id]', function (e) {
     window.omoOpenSearchStatIndicatorResult(indicatorId, holonId);
 });
 
+$(document).on('click', '[data-omo-personal-space-checklist-id]', function (e) {
+    e.preventDefault();
+
+    const checklistId = Number($(this).attr('data-omo-personal-space-checklist-id') || 0);
+    const holonId = Number($(this).attr('data-omo-personal-space-checklist-holon-id') || 0);
+    if (!Number.isInteger(checklistId) || checklistId <= 0 || typeof window.omoOpenSearchChecklistResult !== 'function') {
+        return;
+    }
+
+    window.omoOpenSearchChecklistResult(checklistId, holonId);
+});
+
 $(document).on('click', '[data-omo-personal-space-user-id]', function (e) {
     e.preventDefault();
 
@@ -5735,6 +5747,28 @@ function omoOpenSearchStatIndicatorResult(indicatorId, holonId) {
     return true;
 }
 
+function omoOpenSearchChecklistResult(checklistId, holonId) {
+    const checklistRouteToken = omoBuildChecklistRouteToken(checklistId);
+    if (!checklistRouteToken) {
+        return false;
+    }
+
+    omoClosePopupModalFromRoute();
+
+    const route = parseUrl();
+    if (!Number.isInteger(Number(route.oid)) || Number(route.oid) <= 0) {
+        return false;
+    }
+
+    const resolvedHolonId = Number(holonId);
+    const targetCid = Number.isInteger(resolvedHolonId) && resolvedHolonId > 0
+        ? resolvedHolonId
+        : null;
+
+    navigate(route.oid, targetCid, checklistRouteToken);
+    return true;
+}
+
 function omoFindApplicationRoot(rootId) {
     const normalizedRootId = String(rootId || '').trim();
     if (normalizedRootId === '') {
@@ -6026,6 +6060,7 @@ window.omoOpenSearchDecisionResult = omoOpenSearchDecisionResult;
 window.omoOpenSearchProjectResult = omoOpenSearchProjectResult;
 window.omoOpenSearchActivityResult = omoOpenSearchActivityResult;
 window.omoOpenSearchStatIndicatorResult = omoOpenSearchStatIndicatorResult;
+window.omoOpenSearchChecklistResult = omoOpenSearchChecklistResult;
 window.omoBuildDocumentRouteToken = omoBuildDocumentRouteToken;
 window.omoOpenSearchDocumentResult = omoOpenSearchDocumentResult;
 window.omoOpenAssociatedDocumentResult = omoOpenAssociatedDocumentResult;

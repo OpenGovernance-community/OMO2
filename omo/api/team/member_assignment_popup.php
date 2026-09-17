@@ -28,7 +28,8 @@ if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organi
     $renderError(404, omoTeamT('team.popup.context_not_found', [], $lang, $sourceLang));
 }
 
-if (!$holon->canViewDetail() || !$holon->canEdit()) {
+$canEditAssignment = $holon->isAllowed('CAN_EDIT_MEMBER_ASSIGNMENT', false);
+if (!$holon->canViewDetail() || (!$canEditAssignment && !$holon->isAllowed('CAN_EDIT_AFFECTATION_BUDGET', false))) {
     $renderError(403, omoTeamT('team.api.no_right_modify_context', [], $lang, $sourceLang));
 }
 
@@ -62,8 +63,8 @@ $reasonMessages = array(
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=UTF-8');
     $assignmentDetails = array(
-        'focus' => $_POST['focus'] ?? '',
-        'assignment_review_date' => $_POST['assignment_review_date'] ?? '',
+        'focus' => $canEditAssignment ? ($_POST['focus'] ?? '') : $assignment->get('focus'),
+        'assignment_review_date' => $canEditAssignment ? ($_POST['assignment_review_date'] ?? '') : $assignment->get('assignment_review_date'),
         'time_budget_hours' => $canEditAssignmentBudget ? ($_POST['time_budget_hours'] ?? '') : $assignment->get('time_budget_hours'),
         'time_budget_recurrence' => $canEditAssignmentBudget ? ($_POST['time_budget_recurrence'] ?? '') : $assignment->get('time_budget_recurrence'),
         'money_budget' => $canEditAssignmentBudget ? ($_POST['money_budget'] ?? '') : $assignment->get('money_budget'),
@@ -132,13 +133,13 @@ $canReturnToUserPopup = is_array($returnPopupParts)
     <div class="omo-team-assignment-editor__focus-deadline">
         <label class="omo-team-assignment-editor__field generic-form-label">
             <span><?= omoApiEscape(omoTeamT('team.member.focus', [], $lang, $sourceLang)) ?></span>
-            <input type="text" name="focus" class="generic-form-control" maxlength="<?= (int)(UserHolon::attributeLength()['focus'] ?? 250) ?>" value="<?= omoApiEscape((string)$assignment->get('focus')) ?>">
+            <input type="text" name="focus" <?= $canEditAssignment ? '' : 'readonly' ?> class="generic-form-control" maxlength="<?= (int)(UserHolon::attributeLength()['focus'] ?? 250) ?>" value="<?= omoApiEscape((string)$assignment->get('focus')) ?>">
             <small><?= omoApiEscape(omoTeamT('team.assignment_popup.focus.help', [], $lang, $sourceLang)) ?></small>
         </label>
 
         <label class="omo-team-assignment-editor__field generic-form-label">
             <span><?= omoApiEscape(omoTeamT('team.assignment_popup.review_date', [], $lang, $sourceLang)) ?></span>
-            <input type="date" name="assignment_review_date" class="generic-form-control" value="<?= omoApiEscape($formatDateInput($assignment->get('assignment_review_date'))) ?>">
+            <input type="date" name="assignment_review_date" <?= $canEditAssignment ? '' : 'readonly' ?> class="generic-form-control" value="<?= omoApiEscape($formatDateInput($assignment->get('assignment_review_date'))) ?>">
             <small><?= omoApiEscape(omoTeamT('team.assignment_popup.review_date.help', [], $lang, $sourceLang)) ?></small>
         </label>
     </div>

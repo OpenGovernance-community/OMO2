@@ -29,6 +29,7 @@ DEALLOCATE PREPARE stmt;
 CREATE TABLE IF NOT EXISTS `checklist` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
     `IDorganization` int(11) NOT NULL,
+    `IDuser_responsible` int(11) DEFAULT NULL,
     `IDchecklist_previous` int(11) DEFAULT NULL,
     `IDproject_template_root` int(11) NOT NULL,
     `IDdocument` int(11) DEFAULT NULL,
@@ -42,10 +43,13 @@ CREATE TABLE IF NOT EXISTS `checklist` (
     UNIQUE KEY `uniq_checklist_previous` (`IDchecklist_previous`),
     UNIQUE KEY `uniq_checklist_template_root` (`IDproject_template_root`),
     KEY `idx_checklist_organization` (`IDorganization`),
+    KEY `idx_checklist_responsible` (`IDuser_responsible`),
     KEY `idx_checklist_document` (`IDdocument`),
     KEY `idx_checklist_status_active` (`status`, `active`),
     CONSTRAINT `fk_checklist_organization`
         FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_checklist_responsible`
+        FOREIGN KEY (`IDuser_responsible`) REFERENCES `user` (`id`) ON DELETE SET NULL,
     CONSTRAINT `fk_checklist_previous`
         FOREIGN KEY (`IDchecklist_previous`) REFERENCES `checklist` (`id`) ON DELETE RESTRICT,
     CONSTRAINT `fk_checklist_template_root`

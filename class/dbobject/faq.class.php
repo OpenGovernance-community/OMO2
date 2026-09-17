@@ -941,6 +941,11 @@ class FAQ extends DbObject
 
 	public function canBeEditedInContext(array $context = array())
 	{
+		return $this->canUseContextPermission('CAN_EDIT_FAQ', $context);
+	}
+
+	protected function canUseContextPermission(string $permissionKey, array $context): bool
+	{
 		$viewerAccess = self::resolveViewerAccess($context);
 		if (!empty($viewerAccess['canManageAllFaqs'])) {
 			return true;
@@ -958,7 +963,18 @@ class FAQ extends DbObject
 
 		$parcoursId = self::hasParcoursColumn() ? (int)$this->get('IDparcours') : 0;
 		$contextOrganizationId = (int)($context['organizationId'] ?? 0);
-		if ($parcoursId <= 0 || $contextOrganizationId <= 0 || $organizationId !== $contextOrganizationId) {
+		if ($organizationId !== $contextOrganizationId) return false;
+		$holonId = (int)$this->get('IDholon');
+		$organization = $this->getResolvedOrganization();
+		$holon = $holonId > 0 ? new Holon() : ($organization ? $organization->getEnabledStructuralRootHolon() : null);
+		if ($holonId > 0 && !$holon->load($holonId)) return false;
+		$userId = (int)($viewerAccess['userId'] ?? 0);
+		$allowed = $holon instanceof Holon
+			? $holon->isAllowed($permissionKey, false, $userId)
+			: Permission::userCanInOrganization($permissionKey, $organizationId, $userId);
+		if (!$allowed) return false;
+		if ($parcoursId <= 0) return true;
+		if ($contextOrganizationId <= 0) {
 			return false;
 		}
 
@@ -1001,7 +1017,7 @@ class FAQ extends DbObject
 
 	public function canBeDeletedInContext(array $context = array())
 	{
-		return $this->canBeEditedInContext($context);
+		return $this->canUseContextPermission('CAN_DELETE_FAQ', $context);
 	}
 
 	public function delete()

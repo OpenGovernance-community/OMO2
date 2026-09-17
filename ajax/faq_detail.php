@@ -27,6 +27,7 @@ if (!$faq->canBeViewedInContext($faqContext ?: array(), $faqScope)) {
 
 $isEditMode = !empty($_GET['edit']) && $_GET['edit'] !== '0';
 $canEditFaq = $faq->canBeEditedInContext($faqContext ?: array());
+$canEditFaqScope = \dbObject\FAQ::currentViewerHasOrganizationAdminAccess($faq->getResolvedOrganizationId());
 $canDeleteFaq = $faq->canBeDeletedInContext($faqContext ?: array());
 $canManageParcoursFaqs = \dbObject\FAQ::canManageParcoursInContext($faqContext ?: array(), 0, true);
 $scopeInfo = faqPopupDescribeScope($faq);
@@ -59,7 +60,7 @@ if ($isEditMode) {
 				<?= htmlspecialchars($editorStatus, ENT_QUOTES, 'UTF-8') ?>
 			</div>
 			<?php faqPopupRenderScopeFields($faq, $faqContext ?: array(), array(
-				'allowScopeEditing' => true,
+				'allowScopeEditing' => $canEditFaqScope,
 				'allowGeneric' => $allowGeneric,
 				'allowParcoursAttachment' => $canManageParcoursFaqs,
 			)); ?>

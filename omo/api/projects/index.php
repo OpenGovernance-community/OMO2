@@ -903,10 +903,10 @@ $projectTexts = [
                     </div>
                     <div class="omo-projects__filter-panel-actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-omo-projects-filter-apply><?= omoApiEscape(omoProjectsT('projects.filters.apply')) ?></button>
-                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-projects-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoProjectsT('projects.filters.save_view')) ?></button>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal']) || !empty($applicationViewPreferences['canSaveTemporary'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary"<?= !empty($applicationViewPreferences['canSavePersonal']) ? ' data-omo-projects-filter-save' : '' ?> data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoProjectsT('projects.filters.save_view')) ?></button>
                         <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape($applicationViewPreferences['primarySaveLabel'] ?? '') ?></button>
                         <?php endif; ?>
                         <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
@@ -1236,8 +1236,8 @@ $projectTexts = [
 <link rel="stylesheet" href="/common/calendar/availability.css?v=20260916-conflict">
 <script src="/common/calendar/availability.js?v=20260916-conflict"></script>
 <script src="/common/calendar/event-editor.js?v=20260916-refresh"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="/common/choice/change-details.js?v=20260816-governance-details"></script>
 <script src="/common/chat/thread.js?v=20260910-project-chat"></script>
-<script src="/omo/api/projects/projects.js?v=20260917-mobile-actions"></script>
+<script src="/omo/api/projects/projects.js?v=20260917-filter-hierarchy"></script>

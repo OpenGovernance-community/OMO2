@@ -539,7 +539,10 @@
 
     function initializeViewFilter() {
         var temporary = readStoredValue(window.sessionStorage, sessionViewsStorageKey);
-        var saved = readStoredValue(window.localStorage, savedViewsStorageKey);
+        var saved = typeof window.omoApplicationViewPreferencesCanUseLegacyPersonal === 'function'
+            && window.omoApplicationViewPreferencesCanUseLegacyPersonal(root)
+            ? readStoredValue(window.localStorage, savedViewsStorageKey)
+            : null;
         var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
             ? window.omoApplicationViewPreferencesGetDefault(root)
             : null;

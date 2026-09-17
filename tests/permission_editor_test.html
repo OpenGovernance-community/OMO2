@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Permission editor regression test</title>
+<link rel="stylesheet" href="/common/assets/components.css">
+<link rel="stylesheet" href="/common/permissions/editor.css">
+<main class="generic-section">
+    <h1 class="generic-card-title">Permission editor regression test</h1>
+    <p id="result" role="status">Running...</p>
+    <div id="permissions">
+        <div data-permission-profile-panel="member">
+            <section data-permission-group="projects">
+                <h2>Projets</h2>
+                <div>
+                    <div data-permission-profile="member" data-permission-key="CAN_CREATE_PROJECT">
+                        <div><strong>Creer des projets</strong><code>CAN_CREATE_PROJECT</code><p>Description</p></div>
+                        <div><div data-permission-tokens><span data-permission-token="organization">Organisation</span><span data-permission-token="children">Enfants</span></div><select data-permission-select><option>Ajouter une portee</option></select></div>
+                    </div>
+                    <div data-permission-profile="member" data-permission-key="CAN_DELETE_PROJECT">
+                        <div><strong>Supprimer des projets</strong><code>CAN_DELETE_PROJECT</code><p>Description</p></div>
+                        <div><div data-permission-tokens></div><select data-permission-select><option>Ajouter une portee</option></select></div>
+                    </div>
+                </div>
+            </section>
+            <section data-permission-group="documents">
+                <h2>Documents</h2>
+                <div><div data-permission-profile="member" data-permission-key="CAN_EDIT_DOCUMENT">
+                    <div><strong>Modifier des documents</strong><code>CAN_EDIT_DOCUMENT</code><p>Description</p></div>
+                    <div><div data-permission-tokens></div><select data-permission-select><option>Ajouter une portee</option></select></div>
+                </div></div>
+            </section>
+        </div>
+        <div data-permission-profile-panel="admin" hidden>
+            <section data-permission-group="projects">
+                <h2>Projets</h2>
+                <div><div data-permission-profile="admin" data-permission-key="CAN_EDIT_PROJECT">
+                    <div><strong>Modifier des projets</strong><code>CAN_EDIT_PROJECT</code><p>Description</p></div>
+                    <div><div data-permission-tokens></div><select data-permission-select><option>Ajouter une portee</option></select></div>
+                </div></div>
+            </section>
+        </div>
+    </div>
+</main>
+<script src="/common/permissions/editor.js"></script>
+<script>
+(async function () {
+    const root = document.getElementById('permissions');
+    const result = document.getElementById('result');
+    const assert = (condition, message) => { if (!condition) throw new Error(message); };
+    try {
+        window.omoPermissionEditorEnhance(root, {member: {CAN_EDIT_DOCUMENT: {visibleItems: [{label: 'Organisation'}]}}});
+        const search = root.querySelector('input[type="search"]');
+        const assigned = root.querySelector('input[type="checkbox"]');
+        const rows = Array.from(root.querySelectorAll('[data-permission-key]'));
+        const count = () => root.querySelectorAll('[data-permission-token]').length;
+        assert(rows.length === 4 && count() === 2, 'Enhancement must preserve rows and assignments');
+        assert(root.querySelectorAll('details[data-permission-group]').length === 3, 'Application accordions missing');
+        assert(rows.every(row => row.classList.contains('omo-permission-editor__row')), 'Permission rows must use the full-width layout');
+        assert(!rows[0].textContent.includes('Local'), 'The redundant local label must not be rendered');
+        assert(getComputedStyle(rows[0].querySelector('[data-permission-tokens]')).flexWrap === 'wrap', 'Ranges must share a row when space allows');
+        assert(rows[0].querySelector('[data-permission-select]').parentElement.contains(rows[0].querySelector('details.generic-meta--compact')), 'Permission details must be below the range picker');
+        assert(root.querySelector('[data-permission-key="CAN_EDIT_DOCUMENT"]').textContent.includes('Organisation'), 'Inherited scope missing');
+        search.value = 'CAN_DELETE_PROJECT'; search.dispatchEvent(new Event('input'));
+        assert(rows.filter(row => !row.hidden).length === 1, 'Search must match permission codes');
+        assert(count() === 2, 'Filtering must preserve configured scopes for saving');
+        search.value = ''; search.dispatchEvent(new Event('input'));
+        assigned.checked = true; assigned.dispatchEvent(new Event('change'));
+        assert(rows.filter(row => !row.hidden).length === 2, 'Assigned filter must include inherited scopes');
+        const token = document.createElement('span'); token.dataset.permissionToken = 'context';
+        rows[1].querySelector('[data-permission-tokens]').append(token);
+        await new Promise(resolve => setTimeout(resolve, 0));
+        assert(!rows[1].hidden, 'Filter must react to new assignments');
+        token.remove();
+        await new Promise(resolve => setTimeout(resolve, 0));
+        assert(rows[1].hidden, 'Filter must react to removed assignments');
+        assigned.checked = false; assigned.dispatchEvent(new Event('change'));
+        assert(rows.every(row => !row.hidden), 'Clearing filters must restore every permission');
+        assert(root.querySelector('[data-permission-profile-panel="admin"]').hidden, 'Filters must preserve active profile');
+        result.textContent = 'PASS: grouping, search, inheritance, scope preservation, dynamic assignments, profile isolation';
+    } catch (error) {
+        result.textContent = 'FAIL: ' + error.message;
+        throw error;
+    }
+})();
+</script>
+</html>

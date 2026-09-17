@@ -18,6 +18,7 @@ use dbObject\Holon;
 use dbObject\Project;
 use dbObject\PropertyFormat;
 use dbObject\RecurrenceSchedule;
+use dbObject\UserOrganization;
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -151,6 +152,7 @@ function omoChecklistActionConvertItemToActivity(Checklist $checklist, Checklist
     $activity = new ControlActivity();
     $activity->set('IDorganization', (int)$organizationId);
     $activity->set('IDholon', (int)$holon->getId());
+    $activity->set('IDuser_responsible', (int)$checklist->get('IDuser_responsible') > 0 ? (int)$checklist->get('IDuser_responsible') : null);
     $activity->set('title', mb_substr(trim((string)$project->get('title')) ?: ('Activite de processus #' . (int)$item->getId()), 0, 255, 'UTF-8'));
     $activity->set('description', trim(strip_tags((string)$project->get('description'))) ?: null);
     $activity->set('frequency', $frequency);
@@ -274,6 +276,12 @@ if ($action === 'save_checklist') {
         }
     }
     $overlapPolicy = ChecklistTrigger::normalizeOverlapPolicy($_POST['overlap_policy'] ?? ChecklistTrigger::OVERLAP_REUSE_OPEN);
+    $responsibleUserId = isset($_POST['IDuser_responsible']) && is_numeric($_POST['IDuser_responsible'])
+        ? (int)$_POST['IDuser_responsible']
+        : 0;
+    if ($responsibleUserId > 0 && !UserOrganization::hasActiveMembership($responsibleUserId, $organizationId)) {
+        $responsibleUserId = 0;
+    }
 
     $pdo = DbObject::getPdo();
     $startedTransaction = false;
@@ -314,6 +322,7 @@ if ($action === 'save_checklist') {
             $checklist->set('IDdocument', null);
         }
         $checklist->set('status', $status);
+        $checklist->set('IDuser_responsible', $responsibleUserId > 0 ? $responsibleUserId : null);
         $checklist->set('revision_note', trim((string)($_POST['revision_note'] ?? '')) ?: null);
         $checklist->set('active', 1);
         omoChecklistActionSaveObject($checklist);

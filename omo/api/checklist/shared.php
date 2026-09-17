@@ -120,6 +120,9 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.form.description_placeholder' => ['text' => 'Saisissez la description du processus.', 'context' => 'Placeholder for the process HTML description editor.'],
             'checklist.form.status' => ['text' => 'État', 'context' => 'Checklist publication status field.'],
             'checklist.form.revision_note' => ['text' => 'Note interne', 'context' => 'Checklist revision note field.'],
+            'checklist.form.responsible' => ['text' => 'Personne en charge', 'context' => 'Directly assigned person for a process.'],
+            'checklist.form.responsible_none' => ['text' => 'Aucune personne', 'context' => 'Empty direct responsible person option for a process.'],
+            'checklist.form.responsible_help' => ['text' => 'Si aucune personne n est choisie, la responsabilité reste portée par le rôle ou holon associé.', 'context' => 'Help text for the process responsible user selector.'],
             'checklist.form.trigger' => ['text' => 'Planification du processus', 'context' => 'Process scheduling form section.'],
             'checklist.form.trigger_help' => ['text' => 'Le processus peut être lancé à la demande, suivant une récurrence, ou regrouper des activités planifiées indépendamment.', 'context' => 'Process scheduling help.'],
             'checklist.form.trigger_type' => ['text' => 'Mode', 'context' => 'Checklist trigger type field.'],
@@ -209,6 +212,8 @@ if (!function_exists('omoChecklistSourceLang')) {
             'checklist.detail.items' => ['text' => 'Structure', 'context' => 'Checklist detail item section.'],
             'checklist.detail.trigger' => ['text' => 'Déclenchement', 'context' => 'Checklist detail trigger section.'],
             'checklist.detail.context' => ['text' => 'Contexte', 'context' => 'Checklist detail context section.'],
+            'checklist.responsibility.label' => ['text' => 'En charge', 'context' => 'Label preceding the role and directly assigned person for a process.'],
+            'checklist.responsibility.unassigned' => ['text' => 'Non attribué', 'context' => 'Direct responsible person fallback for a process.'],
             'checklist.detail.updated' => ['text' => 'Mise à jour', 'context' => 'Checklist last update label.'],
             'checklist.detail.no_description' => ['text' => 'Aucune description.', 'context' => 'Missing checklist description.'],
             'checklist.detail.root' => ['text' => 'Projet racine', 'context' => 'Checklist root project label.'],
@@ -560,5 +565,21 @@ if (!function_exists('omoChecklistTriggerLabel')) {
         $frequencyLabel = omoChecklistFrequencyLabel($trigger->get('frequency'));
         $scheduleLabel = omoChecklistScheduleLabel($trigger->get('frequency'), $trigger->get('schedule'));
         return trim($frequencyLabel . ($scheduleLabel !== '' ? ' · ' . $scheduleLabel : ''));
+    }
+}
+
+if (!function_exists('omoChecklistResponsibleAssignmentLabel')) {
+    function omoChecklistResponsibleAssignmentLabel(Checklist $checklist): string
+    {
+        $holon = $checklist->getHolon();
+        $roleLabel = $holon instanceof Holon
+            ? trim((string)$holon->getDisplayName())
+            : '';
+        $responsibleUserId = (int)$checklist->get('IDuser_responsible');
+        $personLabel = $responsibleUserId > 0
+            ? \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($responsibleUserId, (int)$checklist->get('IDorganization'))
+            : omoChecklistT('checklist.responsibility.unassigned');
+
+        return trim($roleLabel) . ' (' . trim($personLabel) . ')';
     }
 }

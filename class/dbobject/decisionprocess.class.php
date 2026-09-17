@@ -3,6 +3,31 @@ namespace dbObject;
 
 class DecisionProcess extends DbObject
 {
+    public function canUseManagementPermission(string $permissionKey, int $userId): bool
+    {
+        if ($userId <= 0 || !in_array($permissionKey, ['CAN_EDIT_DECISION', 'CAN_DELETE_DECISION'], true)) {
+            return false;
+        }
+        $organizationId = (int)$this->get('IDorganization');
+        if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)) return true;
+        if ($organizationId <= 0) {
+            return (int)$this->get('IDuser') === $userId;
+        }
+        $organization = new Organization();
+        if (!$organization->load($organizationId)
+            || !\commonUserHasOrganizationAccess($userId, $organizationId)) {
+            return false;
+        }
+        $holonId = (int)$this->get('IDholon');
+        $holon = $holonId > 0 ? new Holon() : $organization->getEnabledStructuralRootHolon();
+        if ($holonId > 0 && (!$holon->load($holonId) || !$organization->containsHolon($holon))) {
+            return false;
+        }
+        return $holon instanceof Holon
+            ? $holon->isAllowed($permissionKey, false, $userId)
+            : Permission::userCanInOrganization($permissionKey, $organizationId, $userId);
+    }
+
     const WORKFLOW_GOVERNANCE = 'out_of_gouv';
 
     const TYPE_DECISION = 'decision';
@@ -341,14 +366,7 @@ class DecisionProcess extends DbObject
             return false;
         }
 
-        if ($userId === (int)$this->get('IDuser')) {
-            return true;
-        }
-
-        $participant = \dbObject\DecisionParticipant::findByDecisionAndUser((int)$this->getId(), $userId);
-        return $participant instanceof \dbObject\DecisionParticipant
-            && (int)$participant->get('active') === 1
-            && \dbObject\DecisionParticipant::normalizeRole($participant->get('role')) === \dbObject\DecisionParticipant::ROLE_OWNER;
+        return $this->canUseManagementPermission('CAN_EDIT_DECISION', $userId);
     }
 
     public function moveToHolonContext(int $organizationId, int $targetHolonId, int $userId): array

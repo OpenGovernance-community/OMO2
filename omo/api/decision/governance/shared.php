@@ -158,7 +158,6 @@ if (!function_exists('omoDecisionGovernanceBuildRoleClientData')) {
                     'fullName' => (string)($holon['fullName'] ?? ''),
                     'color' => (string)($holon['color'] ?? ''),
                     'icon' => (string)($holon['icon'] ?? ''),
-                    'banner' => (string)($holon['banner'] ?? ''),
                     'adminMin' => $holon['adminMin'] ?? 0,
                     'adminMax' => $holon['adminMax'] ?? null,
                     'adminMinOverride' => !empty($holon['adminMinOverride']),

@@ -262,8 +262,7 @@ if (!function_exists('omoDecisionCanCreateAtOrganizationLevel')) {
             return $rootHolon->isAllowed('CAN_CREATE_DECISION', (bool)$useSessionCache, $userId);
         }
 
-        return function_exists('commonUserHasOrganizationMembership')
-            && commonUserHasOrganizationMembership($userId, $organizationId);
+        return \dbObject\Permission::userCanInOrganization('CAN_CREATE_DECISION', $organizationId, $userId);
     }
 }
 
@@ -532,13 +531,19 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
         $canCreate = $effectiveHolon
             ? $effectiveHolon->isAllowed('CAN_CREATE_DECISION', $usePermissionSessionCache, $currentUserId)
             : omoDecisionCanCreateAtOrganizationLevel($organization, $currentUserId, $usePermissionSessionCache);
-        $canManage = $decision instanceof DecisionProcess ? $isOwner : $canCreate;
+        $canManage = $decision instanceof DecisionProcess
+            ? $decision->canUseManagementPermission('CAN_EDIT_DECISION', $currentUserId)
+            : $canCreate;
+        $canDelete = $decision instanceof DecisionProcess
+            && $decision->canUseManagementPermission('CAN_DELETE_DECISION', $currentUserId);
         $visibilityAccess = $decision instanceof DecisionProcess
             ? $decision->currentViewerCanAccessVisibility($organizationId)
             : false;
         $canView = $decision instanceof DecisionProcess
             ? (
                 $canManage
+                || $canDelete
+                || $isOwner
                 || $hasParticipation
                 || (
                     DecisionProcess::normalizeStatus($decision->get('status')) !== DecisionProcess::STATUS_DRAFT
@@ -667,6 +672,7 @@ if (!function_exists('omoDecisionResolveEditorContext')) {
             'intent' => $intent,
             'canCreate' => $canCreate,
             'canManage' => $canManage,
+            'canDelete' => $canDelete,
             'canView' => $canView,
             'canParticipate' => $canParticipate,
             'hasParticipation' => $hasParticipation,

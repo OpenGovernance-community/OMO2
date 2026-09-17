@@ -27,6 +27,7 @@ $suffix = ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . omoActivityPv
 $editUrl = '/omo/api/activities/edit.php?oid=' . $organizationId . '&id=' . (int)$activity->getId() . $suffix;
 $history = $activity->getRegularity(12, $now);
 $holon = $activity->getHolon();
+$responsibilityLabel = omoActivityResponsibleAssignmentLabel($activity);
 $descriptionHtml = omoActivityDescriptionHtml($activity->get('description'));
 $timelineEntries = [];
 $timelineStart = null;
@@ -121,6 +122,7 @@ if ($stateKey === 'due') {
                 <?php if ($holon instanceof Holon): ?><span class="omo-pill"><?= omoApiEscape($holon->getDisplayName()) ?></span><?php endif; ?>
             </div>
             <h3 class="generic-card-title generic-card-title--large"><?= omoApiEscape((string)$activity->get('title')) ?></h3>
+            <p class="generic-description"><?= omoApiEscape(omoActivityT('activity.responsibility.label')) ?> : <?= omoApiEscape($responsibilityLabel) ?></p>
             <?php if ($stateDetail !== ''): ?><p class="omo-activity-detail__state-copy omo-activity-detail__state-copy--<?= omoApiEscape($stateKey) ?>"><?= omoApiEscape($stateDetail) ?></p><?php endif; ?>
             <?php if ($descriptionHtml !== ''): ?><div class="omo-simple-html-render generic-description generic-description--relaxed"><?= $descriptionHtml ?></div><?php endif; ?>
         </div>

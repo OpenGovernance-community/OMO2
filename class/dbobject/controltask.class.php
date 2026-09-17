@@ -18,7 +18,7 @@ class ControlTask extends DbObject
         return [
             [['IDcontrollist', 'title', 'frequency', 'schedule'], 'required'],
             [['id', 'display_lead_value', 'execution_duration_value', 'position'], 'integer'],
-            [['IDcontrollist'], 'fk'],
+            [['IDcontrollist', 'IDuser_responsible'], 'fk'],
             [['title', 'frequency', 'schedule', 'display_lead_unit', 'execution_duration_unit'], 'string'],
             [['description'], 'text'],
             [['active'], 'boolean'],
@@ -32,6 +32,7 @@ class ControlTask extends DbObject
         return [
             'id' => 'ID',
             'IDcontrollist' => 'Liste de controle',
+            'IDuser_responsible' => 'Personne en charge',
             'title' => 'Titre',
             'description' => 'Description',
             'frequency' => 'Frequence',

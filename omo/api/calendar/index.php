@@ -1557,10 +1557,10 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     </div>
                     <div class="omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-omo-calendar-filter-apply><?= omoApiEscape(omoCalendarT('calendar.filters.apply')) ?></button>
-                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-calendar-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoCalendarT('calendar.filters.save_view')) ?></button>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal']) || !empty($applicationViewPreferences['canSaveTemporary'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary"<?= !empty($applicationViewPreferences['canSavePersonal']) ? ' data-omo-calendar-filter-save' : '' ?> data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoCalendarT('calendar.filters.save_view')) ?></button>
                         <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape($applicationViewPreferences['primarySaveLabel'] ?? '') ?></button>
                         <?php endif; ?>
                         <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
@@ -1958,7 +1958,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
     <link rel="stylesheet" href="/common/calendar/availability.css?v=20260916-conflict">
     <script src="/common/calendar/availability.js?v=20260916-conflict"></script>
     <script src="/common/calendar/share.js?v=20260916"></script>
-    <script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
+    <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
     <script>
     (function () {
         var root = typeof window.omoFindApplicationRoot === 'function'
@@ -3656,8 +3656,10 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 return;
             }
             var temporary = readCalendarStoredValue(window.sessionStorage, calendarSessionViewsStorageKey);
-            var saved = getCalendarStoredPreferences();
-            var defaultView = getCalendarDefaultPreferences();
+            var canUseLegacyPersonal = typeof window.omoApplicationViewPreferencesCanUseLegacyPersonal === 'function'
+                && window.omoApplicationViewPreferencesCanUseLegacyPersonal(root);
+            var saved = canUseLegacyPersonal ? getCalendarStoredPreferences() : null;
+            var defaultView = canUseLegacyPersonal ? getCalendarDefaultPreferences() : null;
             var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
                 ? window.omoApplicationViewPreferencesGetDefault(root)
                 : null;

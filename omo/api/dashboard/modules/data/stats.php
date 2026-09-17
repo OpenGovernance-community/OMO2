@@ -43,8 +43,9 @@ if (!empty($enabledAppHashes['stats'])) {
         $indicatorHolon = $indicator->getHolon();
         $isMine = $currentUserId > 0
             && (
-                (int)$indicator->get('IDuser') === $currentUserId
-                || ($indicatorHolon instanceof \dbObject\Holon
+                (int)$indicator->get('IDuser_responsible') === $currentUserId
+                || ((int)$indicator->get('IDuser_responsible') <= 0
+                    && $indicatorHolon instanceof \dbObject\Holon
                     && omoDashboardUserIsAssociatedWithHolon($currentUserId, $currentOrganizationId, $indicatorHolon))
             );
         if ($dashboardModuleAudience === 'mine' && !$isMine) {
@@ -61,6 +62,7 @@ if (!empty($enabledAppHashes['stats'])) {
                 : 'Indicateur #' . (int)$indicator->getId(),
             'holonId' => $indicatorHolon instanceof \dbObject\Holon ? (int)$indicatorHolon->getId() : 0,
             'contextLabel' => omoStatsContextLabel($indicator),
+            'responsibilityLabel' => omoStatsResponsibleAssignmentLabel($indicator),
             'severity' => (string)($overdueInfo['severity'] ?? 'error'),
             'overdueDays' => (int)($overdueInfo['overdue_days'] ?? 0),
         ];

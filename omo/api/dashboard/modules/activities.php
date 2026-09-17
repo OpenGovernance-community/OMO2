@@ -29,6 +29,7 @@ $formatActivityDate = static function ($value) use ($lang, $sourceLang): string 
         <button type="button" class="omo-personal-space__item-button" data-omo-dashboard-filter-item="<?= omoApiEscape((string)$activityItem['metric']) ?>" data-omo-personal-space-activity-id="<?= (int)$activityItem['id'] ?>" data-omo-personal-space-activity-holon-id="<?= (int)$activityItem['holonId'] ?>">
             <span class="omo-personal-space__item-title"><?= omoApiEscape($activityItem['title']) ?></span>
             <span class="omo-personal-space__item-meta"><?= omoApiEscape($activityItem['holonLabel']) ?></span>
+            <span class="omo-personal-space__item-meta"><?= omoApiEscape(omoActivityT('activity.responsibility.label')) ?> : <?= omoApiEscape($activityItem['responsibilityLabel']) ?></span>
             <span class="omo-personal-space__item-meta"><?= omoApiEscape(t($dateTextKey, array('date' => $formatActivityDate($date)), $lang, $sourceLang)) ?></span>
         </button>
     <?php endforeach; ?>

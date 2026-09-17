@@ -3,6 +3,8 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 
 use dbObject\ControlActivity;
+use dbObject\ArrayUserOrganization;
+use dbObject\DocumentPvPoint;
 use dbObject\RecurrenceSchedule;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
@@ -30,6 +32,18 @@ $backUrl = $activityId > 0
     ? '/omo/api/activities/detail.php?oid=' . $organizationId . '&id=' . $activityId . $suffix
     : '';
 $drawerTitle = omoActivityT($activityId > 0 ? 'activity.editor.edit_title' : 'activity.editor.create_title');
+$activityResponsibleOptions = [];
+$organizationMembers = new ArrayUserOrganization();
+$organizationMembers->loadActiveForOrganization($organizationId);
+foreach ($organizationMembers as $membership) {
+    $userId = (int)$membership->get('IDuser');
+    if ($userId > 0) {
+        $activityResponsibleOptions[] = [
+            'id' => $userId,
+            'label' => DocumentPvPoint::getUserDisplayNameForOrganization($userId, $organizationId),
+        ];
+    }
+}
 ?>
 <div class="omo-activity-detail generic-drawer-content">
     <div
@@ -74,6 +88,16 @@ $drawerTitle = omoActivityT($activityId > 0 ? 'activity.editor.edit_title' : 'ac
                         <textarea name="description" hidden aria-hidden="true" data-activity-html-value><?= omoApiEscape((string)$activity->get('description')) ?></textarea>
                     </div>
                 </div>
+                <label class="omo-activity-field">
+                    <span><?= omoApiEscape(omoActivityT('activity.editor.responsible')) ?></span>
+                    <select class="generic-form-control" name="IDuser_responsible">
+                        <option value=""><?= omoApiEscape(omoActivityT('activity.editor.responsible_none')) ?></option>
+                        <?php foreach ($activityResponsibleOptions as $responsible): ?>
+                            <option value="<?= (int)$responsible['id'] ?>"<?= (int)$activity->get('IDuser_responsible') === (int)$responsible['id'] ? ' selected' : '' ?>><?= omoApiEscape((string)$responsible['label']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small class="generic-help-text"><?= omoApiEscape(omoActivityT('activity.editor.responsible_help')) ?></small>
+                </label>
             </div>
         </section>
 
