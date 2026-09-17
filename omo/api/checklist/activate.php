@@ -28,7 +28,6 @@ $projectAttributeLength = Project::attributeLength();
 $instanceTitleMaxLength = (int)($projectAttributeLength['title'] ?? 255);
 
 $openRunCount = count($checklist->getOpenRuns());
-$overlapPolicy = ChecklistTrigger::normalizeOverlapPolicy($trigger->get('overlap_policy'));
 $detailUrl = '/omo/api/checklist/detail.php?oid=' . rawurlencode((string)$organizationId)
     . '&id=' . rawurlencode((string)$checklistId);
 if ($currentHolonId > 0) {
@@ -65,12 +64,6 @@ if ($currentHolonId > 0) {
                     <input class="generic-form-control" type="date" name="reference_date" value="<?= omoApiEscape((new DateTimeImmutable())->format('Y-m-d')) ?>" required>
                     <small><?= omoApiEscape(omoChecklistT('checklist.form.reference_help')) ?></small>
                 </label>
-                <?php if ($openRunCount > 0 && $overlapPolicy === ChecklistTrigger::OVERLAP_ASK): ?>
-                    <label class="omo-checklist-activation__confirmation omo-checklist-field--wide">
-                        <input type="checkbox" name="overlap_decision" value="create_new" required>
-                        <span><?= omoApiEscape(omoChecklistT('checklist.form.confirm_overlap')) ?></span>
-                    </label>
-                <?php endif; ?>
             </div>
             <?php if ($openRunCount > 0): ?>
                 <p class="omo-checklist-activation__notice generic-description"><?= omoApiEscape(omoChecklistT('checklist.detail.open_run_count', ['count' => $openRunCount])) ?></p>

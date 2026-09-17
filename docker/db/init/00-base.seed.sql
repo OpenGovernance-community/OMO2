@@ -519,7 +519,7 @@ CREATE TABLE `checklist_trigger` (
   `frequency` varchar(20) DEFAULT NULL,
   `schedule` varchar(20) DEFAULT NULL,
   `next_trigger_at` datetime DEFAULT NULL,
-  `overlap_policy` varchar(20) NOT NULL DEFAULT 'create_new',
+  `overlap_policy` varchar(20) NOT NULL DEFAULT 'block',
   `enabled` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -539,41 +539,8 @@ LOCK TABLES `checklist_trigger` WRITE;
 /*!40000 ALTER TABLE `checklist_trigger` DISABLE KEYS */;
 INSERT INTO `checklist_trigger` VALUES
 (1,1,'primary','manual',NULL,NULL,NULL,'create_new',1,'2026-07-23 15:52:32','2026-07-24 09:32:36'),
-(2,2,'primary','container',NULL,NULL,NULL,'reuse_open',0,'2026-07-24 09:20:19','2026-07-24 09:22:38');
+(2,2,'primary','container',NULL,NULL,NULL,'block',0,'2026-07-24 09:20:19','2026-07-24 09:22:38');
 /*!40000 ALTER TABLE `checklist_trigger` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `control_list`
---
-
-DROP TABLE IF EXISTS `control_list`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE `control_list` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `IDorganization` int(11) NOT NULL,
-  `IDholon` int(11) NOT NULL,
-  `title` varchar(255) NOT NULL,
-  `description` mediumtext DEFAULT NULL,
-  `active` tinyint(1) NOT NULL DEFAULT 1,
-  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  KEY `idx_control_list_organization_holon` (`IDorganization`,`IDholon`),
-  KEY `idx_control_list_active` (`active`),
-  CONSTRAINT `fk_control_list_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_control_list_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `control_list`
---
-
-LOCK TABLES `control_list` WRITE;
-/*!40000 ALTER TABLE `control_list` DISABLE KEYS */;
-/*!40000 ALTER TABLE `control_list` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -585,7 +552,6 @@ DROP TABLE IF EXISTS `control_task`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `control_task` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `IDcontrollist` int(11) DEFAULT NULL,
   `IDorganization` int(11) DEFAULT NULL,
   `IDholon` int(11) DEFAULT NULL,
   `IDuser_responsible` int(11) DEFAULT NULL,
@@ -602,12 +568,10 @@ CREATE TABLE `control_task` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
-  KEY `idx_control_task_list_position` (`IDcontrollist`,`position`),
   KEY `idx_control_task_active` (`active`),
   KEY `idx_control_task_context` (`IDorganization`,`IDholon`),
   KEY `fk_control_task_holon` (`IDholon`),
   KEY `idx_control_task_responsible` (`IDuser_responsible`),
-  CONSTRAINT `fk_control_task_list` FOREIGN KEY (`IDcontrollist`) REFERENCES `control_list` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_control_task_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_control_task_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_control_task_responsible` FOREIGN KEY (`IDuser_responsible`) REFERENCES `user` (`id`) ON DELETE SET NULL
@@ -2685,9 +2649,6 @@ INSERT INTO `permission` VALUES (15,'CAN_EDIT_HOLON_PROPERTIES','Modifier les pr
 INSERT INTO `permission` VALUES (16,'CAN_ADD_HOLON_PROPERTIES','Ajouter des proprietes de holons','Autorise l ajout de proprietes directement sur un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05');
 INSERT INTO `permission` VALUES (17,'CAN_DELETE_HOLON_PROPERTIES','Supprimer les proprietes de holons','Autorise le retrait des proprietes ajoutees directement a un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05');
 INSERT INTO `permission` VALUES (24,'CAN_DELETE_PROJECT','Supprimer des projets','Autorise la suppression de projets dans le contexte cible.',1,'2026-08-07 00:00:00','2026-08-07 00:00:00');
-INSERT INTO `permission` VALUES (25,'CAN_CREATE_CONTROL_LIST','Creer des listes de controle (ancien module)','Autorise la creation d activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-09-17 08:29:31');
-INSERT INTO `permission` VALUES (26,'CAN_EDIT_CONTROL_LIST','Modifier des listes de controle (ancien module)','Autorise la modification des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-09-17 08:29:31');
-INSERT INTO `permission` VALUES (27,'CAN_DELETE_CONTROL_LIST','Supprimer des listes de controle (ancien module)','Autorise la suppression des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-09-17 08:29:31');
 INSERT INTO `permission` VALUES (28,'CAN_CREATE_CONTROL_ACTIVITY','Creer des activites recurrentes','Autorise la creation d activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00');
 INSERT INTO `permission` VALUES (29,'CAN_EDIT_CONTROL_ACTIVITY','Modifier des activites recurrentes','Autorise la modification des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00');
 INSERT INTO `permission` VALUES (30,'CAN_DELETE_CONTROL_ACTIVITY','Supprimer des activites recurrentes','Autorise la suppression des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00');
