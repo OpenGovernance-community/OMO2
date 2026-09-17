@@ -675,7 +675,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
     }
 }
 ?>
-<link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260915-general-settings">
+<link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260917-proposal-menu-layer">
 <div class="omo-decision-edit omo-panel-view">
     <div class="omo-panel-view__body">
         <div class="omo-panel-view__body_content omo-decision-edit__stack generic-drawer-content generic-form-stack">
