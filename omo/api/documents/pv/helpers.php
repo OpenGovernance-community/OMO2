@@ -55,7 +55,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.action.resize_timing' => ['text' => 'Redimensionner le compteur de temps', 'context' => 'Accessible label for the handle that resizes the PV timing panel.'],
         'documents.pv_editor.action.save' => ['text' => 'Enregistrer', 'context' => 'Button used to save a PV point.'],
         'documents.pv_editor.action.take_over_lock' => ['text' => 'Reprendre l’édition', 'context' => 'Button allowing the PV editor to take over a point editing lock.'],
-        'documents.pv_editor.field.auto_save' => ['text' => 'Enregistrer automatiquement', 'context' => 'Checkbox enabling automatic saving of PV points after inactivity.'],
+        'documents.pv_editor.action.take_over_waiting' => ['text' => 'Demande d’enregistrement…', 'context' => 'Temporary button label while the current PV point editor is asked to save before a lock takeover.'],
         'documents.pv_editor.action.auto_summary' => ['text' => 'Résumé auto', 'context' => 'Button generating an automatic summary of the complete PV.'],
         'documents.pv_editor.action.auto_summary_loading' => ['text' => 'Résumé en cours…', 'context' => 'Temporary label while generating the automatic PV summary.'],
         'documents.pv_editor.state.auto_summary_ready' => ['text' => 'Résumé généré. Enregistrez le PV pour le conserver.', 'context' => 'Status shown after the automatic PV summary has been generated locally.'],
@@ -259,11 +259,19 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.notice.move_up' => ['text' => 'Monter', 'context' => 'Title for the touch-friendly move up button.'],
         'documents.pv_editor.notice.move_down' => ['text' => 'Descendre', 'context' => 'Title for the touch-friendly move down button.'],
         'documents.pv_editor.notice.owner_only' => ['text' => 'Vous pouvez modifier ce point car vous en êtes l’auteur.', 'context' => 'Helper text shown on editable PV points.'],
-        'documents.pv_editor.notice.readonly' => ['text' => 'Vous pouvez consulter ce point, mais seul son auteur peut le modifier avant la réunion.', 'context' => 'Helper text shown on read-only PV points.'],
-        'documents.pv_editor.notice.locked_other' => ['text' => 'Édition en cours par {user}.', 'context' => 'Helper text shown when another session currently locks a PV point.'],
+        'documents.pv_editor.notice.not_author' => ['text' => 'Vous pouvez consulter ce point, mais seul son auteur peut le modifier.', 'context' => 'Helper text shown when a PV point belongs to another author.'],
+        'documents.pv_editor.notice.handled_readonly' => ['text' => 'Ce point est traité et ne peut plus être modifié.', 'context' => 'Helper text shown when a handled PV point is read only.'],
+        'documents.pv_editor.notice.locked_own_session' => ['text' => 'Ce point est déjà en cours d’édition dans une autre de vos sessions et ne peut pas être modifié ici pour le moment.', 'context' => 'Helper text shown when another session of the current user locks a PV point.'],
+        'documents.pv_editor.notice.locked_by_other' => ['text' => 'Ce point est en cours d’édition par {user} et ne peut pas être modifié pour le moment.', 'context' => 'Helper text shown when another session currently locks a PV point.'],
+        'documents.pv_editor.notice.locked_unknown' => ['text' => 'Ce point est en cours d’édition dans une autre session et ne peut pas être modifié pour le moment.', 'context' => 'Helper text shown when another session locks a PV point without a known user label.'],
+        'documents.pv_editor.notice.takeover_yielded' => ['text' => 'L’éditeur du PV reprend ce point. L’édition est maintenant fermée dans cette session.', 'context' => 'Helper text shown after the PV editor asks the current browser session to yield its point lock.'],
+        'documents.pv_editor.state.locked_own_session' => ['text' => 'Verrouillé dans une autre session', 'context' => 'Compact state shown when another session of the current user locks a PV point.'],
+        'documents.pv_editor.state.locked_by_user' => ['text' => 'Verrouillé par {user}', 'context' => 'Compact state shown in the PV agenda navigation when another user locks a point.'],
         'documents.pv_editor.notice.updated_by' => ['text' => 'Mis à jour par {user}.', 'context' => 'Short helper shown when a point was last updated by another user.'],
         'documents.pv_editor.notice.stage_readonly' => ['text' => 'Seules les personnes qui peuvent éditer le document peuvent changer cette étape.', 'context' => 'Helper shown below the PV stage selector when it is read only.'],
         'documents.pv_editor.warning.unsaved_close' => ['text' => 'Des modifications non enregistrées n’ont pas été sauvegardées. Fermer quand même ?', 'context' => 'Browser confirmation shown before closing the PV editor with unsaved changes.'],
+        'documents.pv_editor.warning.takeover_draft_copied' => ['text' => 'L’éditeur du PV a repris ce point avant que vos modifications puissent être enregistrées. Votre contenu local a été copié dans le presse-papiers.', 'context' => 'Alert shown when an unsaved PV point draft is preserved in the clipboard after a forced takeover.'],
+        'documents.pv_editor.warning.takeover_draft_copy_failed' => ['text' => 'L’éditeur du PV a repris ce point avant que vos modifications puissent être enregistrées. La copie automatique a échoué : copiez maintenant le contenu local affiché ci-dessous.', 'context' => 'Prompt shown with the lost local PV point draft when automatic clipboard access failed.'],
         'documents.pv_editor.warning.review_irreversible' => ['text' => 'Passer ce PV en relecture est définitif. Il ne sera plus possible de revenir en préparation ou en réunion. Continuer ?', 'context' => 'Confirmation shown before changing a PV stage to review.'],
         'documents.pv_editor.warning.validate_irreversible' => ['text' => 'Valider ce PV est irréversible. Il ne sera plus possible de le modifier. Continuer ?', 'context' => 'Confirmation shown before changing a PV stage to validated.'],
         'documents.pv_editor.summary.meeting_duration' => ['text' => 'Durée de la réunion', 'context' => 'Label for the total meeting duration in the PV editor timing summary.'],
@@ -359,6 +367,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
         'reviewReadonly' => $resolve('documents.pv_editor.notice.review_readonly', 'Ce point est verrouillé pendant la relecture. Utilisez la discussion pour signaler une correction.'),
         'save' => $resolve('documents.pv_editor.action.save', 'Enregistrer'),
         'takeOverLock' => $resolve('documents.pv_editor.action.take_over_lock', 'Reprendre l’édition'),
+        'takeOverWaiting' => $resolve('documents.pv_editor.action.take_over_waiting', 'Demande d’enregistrement…'),
         'deletePoint' => $resolve('documents.pv_editor.action.delete_point', 'Supprimer le point'),
         'deleteItem' => $resolve('documents.pv_editor.action.delete_item', 'Supprimer l’élément'),
         'deleteItemMessage' => $resolve('documents.pv_editor.warning.delete_item', 'Supprimer cet élément ? Les points d’un groupe seront conservés.'),
@@ -410,6 +419,8 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
         'reclaimPvEditor' => $resolve('documents.pv_editor.action.reclaim_pv_editor', 'Reprendre la main'),
         'pvEditorHandoverWaiting' => $resolve('documents.pv_editor.state.pv_editor_handover_waiting', 'En attente d’un remplaçant'),
         'unsavedHandover' => $resolve('documents.pv_editor.warning.unsaved_handover', 'Enregistrez toutes les modifications avant de passer la main.'),
+        'takeoverDraftCopied' => $resolve('documents.pv_editor.warning.takeover_draft_copied', 'L’éditeur du PV a repris ce point avant que vos modifications puissent être enregistrées. Votre contenu local a été copié dans le presse-papiers.'),
+        'takeoverDraftCopyFailed' => $resolve('documents.pv_editor.warning.takeover_draft_copy_failed', 'L’éditeur du PV a repris ce point avant que vos modifications puissent être enregistrées. La copie automatique a échoué : copiez maintenant le contenu local affiché ci-dessous.'),
         'invite' => $resolve('documents.pv_editor.action.invite', 'Inviter'),
         'sendInvitations' => $resolve('documents.pv_editor.action.send_invitations', 'Envoyer les invitations'),
         'invitationOptions' => $resolve('documents.pv_editor.action.invitation_options', 'Options des invitations'),
@@ -457,8 +468,14 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
         'moveUp' => $resolve('documents.pv_editor.notice.move_up', 'Monter'),
         'moveDown' => $resolve('documents.pv_editor.notice.move_down', 'Descendre'),
         'ownerOnly' => $resolve('documents.pv_editor.notice.owner_only', 'Vous pouvez modifier ce point car vous en êtes l’auteur.'),
-        'readonlyNotice' => $resolve('documents.pv_editor.notice.readonly', 'Vous pouvez consulter ce point, mais seul son auteur peut le modifier avant la réunion.'),
-        'lockedOther' => $resolve('documents.pv_editor.notice.locked_other', 'Édition en cours par {user}.'),
+        'notAuthorNotice' => $resolve('documents.pv_editor.notice.not_author', 'Vous pouvez consulter ce point, mais seul son auteur peut le modifier.'),
+        'handledReadonly' => $resolve('documents.pv_editor.notice.handled_readonly', 'Ce point est traité et ne peut plus être modifié.'),
+        'lockedOwnSession' => $resolve('documents.pv_editor.notice.locked_own_session', 'Ce point est déjà en cours d’édition dans une autre de vos sessions et ne peut pas être modifié ici pour le moment.'),
+        'lockedOther' => $resolve('documents.pv_editor.notice.locked_by_other', 'Ce point est en cours d’édition par {user} et ne peut pas être modifié pour le moment.'),
+        'lockedOtherUnknown' => $resolve('documents.pv_editor.notice.locked_unknown', 'Ce point est en cours d’édition dans une autre session et ne peut pas être modifié pour le moment.'),
+        'takeoverYielded' => $resolve('documents.pv_editor.notice.takeover_yielded', 'L’éditeur du PV reprend ce point. L’édition est maintenant fermée dans cette session.'),
+        'lockedOwnSessionState' => $resolve('documents.pv_editor.state.locked_own_session', 'Verrouillé dans une autre session'),
+        'lockedByUserState' => $resolve('documents.pv_editor.state.locked_by_user', 'Verrouillé par {user}'),
         'updatedBy' => $resolve('documents.pv_editor.notice.updated_by', 'Mis à jour par {user}.'),
         'stageReadonly' => $resolve('documents.pv_editor.notice.stage_readonly', 'Seules les personnes qui peuvent éditer le document peuvent changer cette étape.'),
         'meetingDuration' => $resolve('documents.pv_editor.summary.meeting_duration', 'Durée de la réunion'),
@@ -483,6 +500,37 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
 function omoDocumentsPvEditorEscape($value): string
 {
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
+
+function omoDocumentsPvEditorReadonlyNotice(array $pointData, array $uiText): string
+{
+    if (!empty($pointData['isReview'])) {
+        return (string)($uiText['reviewReadonly'] ?? 'Ce point est verrouillé pendant la relecture.');
+    }
+    if (!empty($pointData['isHandled'])) {
+        return (string)($uiText['handledReadonly'] ?? 'Ce point est traité et ne peut plus être modifié.');
+    }
+    if (!empty($pointData['takeover']['mustYield'])) {
+        return (string)($uiText['takeoverYielded'] ?? 'L’éditeur du PV reprend ce point. L’édition est maintenant fermée dans cette session.');
+    }
+    if (!empty($pointData['lock']['isLockedByOther'])) {
+        if (!empty($pointData['lock']['isOwnedByCurrentUser'])) {
+            return (string)($uiText['lockedOwnSession'] ?? 'Ce point est déjà en cours d’édition dans une autre de vos sessions et ne peut pas être modifié ici pour le moment.');
+        }
+
+        $lockUserLabel = trim((string)($pointData['lock']['userLabel'] ?? ''));
+        if ($lockUserLabel === '') {
+            return (string)($uiText['lockedOtherUnknown'] ?? 'Ce point est en cours d’édition dans une autre session et ne peut pas être modifié pour le moment.');
+        }
+
+        return str_replace(
+            '{user}',
+            $lockUserLabel,
+            (string)($uiText['lockedOther'] ?? 'Ce point est en cours d’édition par {user} et ne peut pas être modifié pour le moment.')
+        );
+    }
+
+    return (string)($uiText['notAuthorNotice'] ?? 'Vous pouvez consulter ce point, mais seul son auteur peut le modifier.');
 }
 
 function omoDocumentsPvEditorDurationLabel(?int $minutes, array $uiText): string
@@ -618,6 +666,9 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     $pointData['organizationId'] = $organizationId;
     $pointData['isEditable'] = $document->canUserEditPvPoint($point, $currentUserId);
     $pointData['canEditNow'] = !empty($pointData['isEditable']) && empty($pointData['lock']['isLockedByOther']);
+    if (!empty($pointData['takeover']['mustYield'])) {
+        $pointData['canEditNow'] = false;
+    }
     $pointData['canReorder'] = $document->canUserReorderPvItem($point, $currentUserId);
     $pointData['canEditGroup'] = $point->isGroup() && $document->canUserCreatePvGroups($currentUserId);
     $pointData['isReview'] = $document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW;
@@ -631,7 +682,9 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     $pointData['canTakeOverLock'] = $pointData['isPvEditor']
         && $document->canUserManagePvDocument($currentUserId)
         && !empty($pointData['lock']['isLockedByOther']);
-    $pointData['canToggleHandled'] = !$pointData['isReview'] && $document->canUserManagePvDocument($currentUserId);
+    $pointData['canToggleHandled'] = !$pointData['isReview']
+        && $document->canUserManagePvDocument($currentUserId)
+        && empty($pointData['lock']['isLockedByOther']);
     $pointData['canAssignAuthor'] = !$pointData['isHandled']
         && $document->canUserManagePvDocument($currentUserId);
     $pointData['hasStructureApplication'] = $hasStructureApplication;
@@ -643,6 +696,9 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
         $publicParticipantCanUseStructure = commonPvParticipationRecipientCanUseStructure($publicParticipationLink, $organizationId);
         $pointData['isEditable'] = $canEditOwnPoint;
         $pointData['canEditNow'] = $canEditOwnPoint && empty($pointData['lock']['isLockedByOther']);
+        if (!empty($pointData['takeover']['mustYield'])) {
+            $pointData['canEditNow'] = false;
+        }
         $pointData['canReorder'] = false;
         $pointData['canEditGroup'] = false;
         $pointData['canDelete'] = !$pointData['isReview'] && !$pointData['isHandled'] && $pointData['canEditNow'];
@@ -861,7 +917,7 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
             ? '<span class="omo-pv-editor__nav-handle generic-drag-handle generic-drag-handle--static" draggable="true" data-omo-pv-point-drag-handle="' . $pointId . '" title="' . omoDocumentsPvEditorEscape((string)($uiText['reorder'] ?? 'Reordonner les points')) . '">::</span>'
             : '<span class="omo-pv-editor__nav-handle omo-pv-editor__nav-handle--disabled" aria-hidden="true"></span>';
         $titleHtml = !empty($pointData['canEditGroup'])
-            ? '<input type="text" class="omo-pv-editor__group-title-input" maxlength="80" value="' . omoDocumentsPvEditorEscape($title) . '" data-omo-pv-group-title="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['title'] ?? 'Titre')) . '">'
+            ? '<input type="text" class="omo-pv-editor__group-title-input" maxlength="80" value="' . omoDocumentsPvEditorEscape($title) . '" data-omo-pv-group-title="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['title'] ?? 'Titre')) . '"><button type="button" class="generic-action-button omo-pv-editor__group-title-save" data-omo-pv-group-title-save="' . $pointId . '">' . omoDocumentsPvEditorEscape((string)($uiText['save'] ?? 'Enregistrer')) . '</button>'
             : '<strong class="omo-pv-editor__group-title">' . omoDocumentsPvEditorEscape($title) . '</strong>';
         $groupPointCount = (int)($pointData['groupPointCount'] ?? 0);
         $groupPointCountLabel = $groupPointCount . ' ' . (string)($uiText['groupPoints'] ?? 'points');
@@ -891,8 +947,15 @@ function omoDocumentsPvEditorRenderNavItem(array $pointData, array $uiText): str
         isset($pointData['desiredDurationMinutes']) ? (int)$pointData['desiredDurationMinutes'] : null,
         $uiText
     );
-    if (!empty($pointData['lock']['isLockedByOther']) && trim((string)($pointData['lock']['userLabel'] ?? '')) !== '') {
-        $metaParts[] = str_replace('{user}', trim((string)$pointData['lock']['userLabel']), (string)($uiText['lockedOther'] ?? 'Édition en cours par {user}.'));
+    if (!empty($pointData['lock']['isLockedByOther'])) {
+        $lockUserLabel = trim((string)($pointData['lock']['userLabel'] ?? ''));
+        if (!empty($pointData['lock']['isOwnedByCurrentUser'])) {
+            $metaParts[] = (string)($uiText['lockedOwnSessionState'] ?? 'Verrouillé dans une autre session');
+        } else {
+            $metaParts[] = $lockUserLabel !== ''
+                ? str_replace('{user}', $lockUserLabel, (string)($uiText['lockedByUserState'] ?? 'Verrouillé par {user}'))
+                : (string)($uiText['lockedState'] ?? 'Verrouillé');
+        }
     }
 
     $reorderHandle = !empty($pointData['canReorder'])
@@ -1185,19 +1248,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     } else {
         $html .= '<div class="omo-document-pv__point-content prose omo-simple-html-render">' . (string)($pointData['contentHtml'] ?? '') . '</div>';
         $html .= '<div class="omo-pv-editor__point-footer omo-pv-editor__point-footer--readonly">';
-        if (!empty($pointData['isReview'])) {
-            $readonlyNote = (string)$uiText['reviewReadonly'];
-        } elseif (!empty($pointData['isHandled'])) {
-            $readonlyNote = (string)$uiText['handledState'];
-        } elseif (!empty($pointData['lock']['isLockedByOther'])) {
-            $readonlyNote = str_replace(
-                '{user}',
-                trim((string)($pointData['lock']['userLabel'] ?? '')) !== '' ? trim((string)$pointData['lock']['userLabel']) : (string)($uiText['readonly'] ?? 'Lecture seule'),
-                (string)($uiText['lockedOther'] ?? 'Édition en cours par {user}.')
-            );
-        } else {
-            $readonlyNote = (string)$uiText['readonlyNotice'];
-        }
+        $readonlyNote = omoDocumentsPvEditorReadonlyNotice($pointData, $uiText);
         if ($updateInfo !== '') {
             $readonlyNote .= ' | ' . $updateInfo;
         }
@@ -1217,6 +1268,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
 function omoDocumentsPvEditorBuildPointPayload(array $pointData, array $uiText): array
 {
     $lockData = is_array($pointData['lock'] ?? null) ? $pointData['lock'] : [];
+    $takeoverData = is_array($pointData['takeover'] ?? null) ? $pointData['takeover'] : [];
     $authorOptionValues = [];
     foreach ((array)($pointData['authorOptions'] ?? []) as $authorOption) {
         $authorOptionValues[] = trim((string)($authorOption['value'] ?? ''));
@@ -1249,6 +1301,10 @@ function omoDocumentsPvEditorBuildPointPayload(array $pointData, array $uiText):
             !empty($pointData['canToggleHandled']) ? '1' : '0',
             !empty($pointData['canAssignAuthor']) ? '1' : '0',
             !empty($pointData['isPvEditor']) ? '1' : '0',
+            !empty($takeoverData['isActive']) ? '1' : '0',
+            !empty($takeoverData['isRequestedByCurrentSession']) ? '1' : '0',
+            !empty($takeoverData['mustYield']) ? '1' : '0',
+            (string)($takeoverData['requestedAtIso'] ?? ''),
         ])),
         'lastModifiedAtIso' => (string)($pointData['lastModifiedAtIso'] ?? ''),
         'lastModifiedAtTimestamp' => (int)($pointData['lastModifiedAtTimestamp'] ?? 0),
@@ -1262,6 +1318,13 @@ function omoDocumentsPvEditorBuildPointPayload(array $pointData, array $uiText):
             'userLabel' => (string)($lockData['userLabel'] ?? ''),
             'dateIso' => (string)($lockData['dateIso'] ?? ''),
             'timestamp' => (int)($lockData['timestamp'] ?? 0),
+        ],
+        'takeover' => [
+            'isActive' => !empty($takeoverData['isActive']),
+            'isRequestedByCurrentSession' => !empty($takeoverData['isRequestedByCurrentSession']),
+            'mustYield' => !empty($takeoverData['mustYield']),
+            'requestedAtIso' => (string)($takeoverData['requestedAtIso'] ?? ''),
+            'graceSeconds' => (int)($takeoverData['graceSeconds'] ?? \dbObject\DocumentPvPoint::EDIT_TAKEOVER_GRACE_SECONDS),
         ],
         'cardHtml' => omoDocumentsPvEditorRenderPointCard($pointData, $uiText),
         'navHtml' => omoDocumentsPvEditorRenderNavItem($pointData, $uiText),
