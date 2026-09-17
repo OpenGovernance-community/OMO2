@@ -4,6 +4,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-17
 
+- Decisions : les menus d actions des propositions s affichent maintenant au-dessus des barres d outils Summernote.
+
 - Decisions : une consultation deja utilisee peut de nouveau etre modifiee, par exemple pour corriger son titre. Sa valeur de confidentialite existante est conservee et ne peut plus etre confondue avec l activation d un vote nominatif.
 
 - Decisions : les erreurs de sauvegarde de l editeur multi-questions, notamment l activation tardive du vote nominatif, s affichent maintenant dans la notification temporaire de la topbar.
