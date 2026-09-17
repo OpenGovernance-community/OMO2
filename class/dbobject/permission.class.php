@@ -174,24 +174,6 @@ class Permission extends DbObject
                 'iscontextual' => true,
                 'group' => 'projects',
             ],
-            'CAN_CREATE_CONTROL_LIST' => [
-                'title' => 'Creer des listes de controle',
-                'description' => 'Droit du module historique de listes de controle.',
-                'iscontextual' => true,
-                'group' => 'legacy_control_lists',
-            ],
-            'CAN_EDIT_CONTROL_LIST' => [
-                'title' => 'Modifier des listes de controle',
-                'description' => 'Droit du module historique de listes de controle.',
-                'iscontextual' => true,
-                'group' => 'legacy_control_lists',
-            ],
-            'CAN_DELETE_CONTROL_LIST' => [
-                'title' => 'Supprimer des listes de controle',
-                'description' => 'Droit du module historique de listes de controle.',
-                'iscontextual' => true,
-                'group' => 'legacy_control_lists',
-            ],
             'CAN_ADD_HOLON' => [
                 'title' => 'Ajouter un holon',
                 'description' => 'Autorise l ajout d un holon dans le contexte cible.',
@@ -395,7 +377,6 @@ class Permission extends DbObject
             'content' => ['title' => 'Contenus et reunions', 'order' => 20],
             'checklists' => ['title' => 'Processus', 'order' => 25],
             'activities' => ['title' => 'Activites recurrentes', 'order' => 26],
-            'legacy_control_lists' => ['title' => 'Listes de controle (ancien module)', 'order' => 990],
             'projects' => ['title' => 'Projets', 'order' => 20],
             'policy' => ['title' => 'Reglement', 'order' => 21],
             'stats' => ['title' => 'Indicateurs', 'order' => 30],

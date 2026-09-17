@@ -392,7 +392,7 @@ class OrganizationExport
                 'trigger' => [
                     'type' => $triggerType,
                     'stableKey' => $trigger instanceof ChecklistTrigger ? (string)$trigger->get('stable_key') : 'primary',
-                    'overlapPolicy' => $trigger instanceof ChecklistTrigger ? (string)$trigger->get('overlap_policy') : ChecklistTrigger::OVERLAP_REUSE_OPEN,
+                    'overlapPolicy' => $trigger instanceof ChecklistTrigger ? (string)$trigger->get('overlap_policy') : ChecklistTrigger::OVERLAP_BLOCK,
                     'enabled' => $trigger instanceof ChecklistTrigger && (bool)$trigger->get('enabled'),
                 ],
                 'items' => $items,

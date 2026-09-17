@@ -4,6 +4,10 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-17
 
+- Processus : le choix lorsqu une execution est encore ouverte comporte maintenant trois comportements explicites : creer une instance en parallele, bloquer jusqu a la fin de l instance ouverte, ou archiver les projets de ces instances puis recommencer. Les anciennes executions restent tracees comme annulees.
+
+- Activités : le module historique de listes de contrôle a été retiré. Les Activités récurrentes et les Processus restent distincts ; les anciennes tâches sont conservées comme Activités avec leur contexte direct.
+
 - Filtres des applications OMO : les vues suivent maintenant la priorite temporaire de session, personnelle, holon, modele de holon, organisation, type de holon puis globale. Chaque niveau autorise peut enregistrer et effacer son propre defaut. En mode Decouverte, les membres et admins de holon restent sur une vue temporaire, sans preference persistante, tandis que les admins d organisation et super admins conservent leurs portees administratives.
 
 - Activités : une personne en charge peut maintenant être attribuée en complément du rôle. Les vues compacte, fiche et détail affichent En charge : Rôle (personne ou Non attribué), et le filtre Moi du tableau de pilotage tient compte de cette attribution.

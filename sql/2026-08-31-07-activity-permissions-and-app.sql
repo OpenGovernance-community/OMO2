@@ -10,9 +10,3 @@ VALUES
     ('CAN_DELETE_CONTROL_ACTIVITY', 'Supprimer des activites recurrentes', 'Autorise la suppression des activites recurrentes dans le contexte cible.', 1, NOW(), NOW())
 ON DUPLICATE KEY UPDATE
     `title` = VALUES(`title`), `description` = VALUES(`description`), `iscontextual` = VALUES(`iscontextual`), `updated_at` = NOW();
-
-UPDATE `permission`
-SET `title` = REPLACE(`title`, 'listes de controle', 'activites recurrentes'),
-    `description` = REPLACE(`description`, 'listes de controle', 'activites recurrentes'),
-    `updated_at` = NOW()
-WHERE `permission_key` IN ('CAN_CREATE_CONTROL_LIST', 'CAN_EDIT_CONTROL_LIST', 'CAN_DELETE_CONTROL_LIST');
