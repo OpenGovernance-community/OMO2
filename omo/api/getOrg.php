@@ -386,8 +386,7 @@ function omoRenderProjectReferenceItem($item, $source = '')
 
 	$priority = Project::normalizeLevel($project->get('priority'));
 	$status = Project::normalizeStatus($project->get('status'));
-	$statusCatalog = Project::getStatusCatalog();
-	$statusLabel = (string)($statusCatalog[$status]['label'] ?? $status);
+	$statusLabel = omoProjectsStatusLabel($status, (int)$project->get('IDorganization'));
 	$hasDirectChildren = !empty($referenceData['hasDirectChildren']);
     $className = 'section-project-reference';
     if ($source !== '') {

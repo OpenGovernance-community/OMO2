@@ -5,7 +5,7 @@ if (!isset($dashboardProjectItems, $dashboardProjectCounts, $dashboardMetricLabe
 ?>
 <div class="omo-dashboard-metrics" role="group">
     <?php foreach ($dashboardProjectCounts as $metricKey => $metricCount): ?>
-        <button type="button" class="omo-dashboard-metric" data-omo-dashboard-filter="<?= omoApiEscape($metricKey) ?>"><strong><?= (int)$metricCount ?></strong><span><?= omoApiEscape($dashboardMetricLabels['projects'][$metricKey] ?? $metricKey) ?></span></button>
+        <button type="button" class="omo-dashboard-metric generic-action-button generic-action-button--metric generic-action-button--no-lift<?= $metricKey === 'late' && (int)$metricCount > 0 ? ' generic-action-button--metric-alert' : '' ?>" aria-pressed="false" data-omo-dashboard-filter="<?= omoApiEscape($metricKey) ?>"><strong><?= (int)$metricCount ?></strong><span><?= omoApiEscape($dashboardMetricLabels['projects'][$metricKey] ?? $metricKey) ?></span></button>
     <?php endforeach; ?>
 </div>
 <div class="omo-personal-space__item-list omo-dashboard-module__list">

@@ -1166,12 +1166,12 @@ if ($isEditMode) {
                 <input type="hidden" name="editor_host" value="project">
             <?php endif; ?>
 
-            <div class="generic-tabs omo-calendar-create__tabs" data-generic-tabs>
+            <div class="generic-tabs generic-tabs--embedded omo-calendar-create__tabs" data-generic-tabs>
                 <div class="generic-tabs__list" aria-label="<?= omoApiEscape(omoCalendarCreateT('calendar.create.tabs_aria')) ?>">
                     <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="omoCalendarCreateTabEvent"><?= omoApiEscape(omoCalendarCreateT('calendar.create.tab.event')) ?></button>
                     <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="omoCalendarCreateTabInvites"><?= omoApiEscape(omoCalendarCreateT('calendar.create.tab.invites')) ?></button>
                 </div>
-                <div class="generic-tabs__panels" style="padding:0px;">
+                <div class="generic-tabs__panels">
                     <div id="omoCalendarCreateTabEvent" class="generic-tabs__panel omo-calendar-create__tab-panel" data-generic-tab-panel>
                         <div class="omo-calendar-create__grid generic-form-grid">
                             <label class="omo-calendar-create__field generic-form-field">
@@ -1250,7 +1250,7 @@ if ($isEditMode) {
                             <span><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.all_day')) ?></span>
                         </label>
 
-                        <section class="generic-section generic-section--stack generic-form-section omo-calendar-create__block">
+                        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided omo-calendar-create__block">
                             <div class="omo-calendar-create__block-head generic-form-section__heading">
                                 <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.location_mode')) ?></h3>
                             </div>
@@ -1291,7 +1291,7 @@ if ($isEditMode) {
                             </div>
                         </section>
 
-                        <section class="generic-section generic-section--stack generic-form-section omo-calendar-create__block" data-omo-calendar-document-block>
+                        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided omo-calendar-create__block" data-omo-calendar-document-block>
                             <div class="omo-calendar-create__block-head generic-form-section__heading">
                                 <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?></h3>
                                 <?php if ($associatedDocument instanceof Document): ?>
@@ -1383,195 +1383,4 @@ if ($isEditMode) {
     </div>
 </div>
 
-<style>
-.omo-calendar-create [hidden] {
-    display: none !important;
-}
-
-.omo-calendar-create {
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    min-height: 0;
-}
-
-.omo-calendar-create__shell,
-.omo-calendar-create__form,
-.omo-calendar-create__tabs,
-.omo-calendar-create__tabs .generic-tabs__panels {
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    min-height: 0;
-}
-
-.omo-calendar-create__shell,
-.omo-calendar-create__form {
-    gap: 0;
-}
-
-.omo-calendar-create__tabs .generic-tabs__list {
-    flex: 0 0 auto;
-    padding-top: var(--generic-space-4);
-}
-
-.omo-calendar-create__tabs .generic-tabs__panels {
-    overflow: hidden;
-    padding: var(--generic-space-4);
-}
-
-.omo-calendar-create__tab-panel {
-    align-content: start;
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: auto;
-    padding: var(--generic-space-4) var(--generic-container-padding-inline);
-}
-
-.omo-calendar-create__tab-panel {
-    display: grid;
-    gap: 14px;
-}
-
-.omo-calendar-create__pill {
-    display: inline-flex;
-    align-items: center;
-    min-height: 28px;
-    padding: 0 10px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface, #ffffff));
-    color: var(--color-text, #1f2937);
-    font-size: 0.85rem;
-    font-weight: 700;
-}
-
-.omo-calendar-create__document-summary {
-    display: grid;
-    gap: 8px;
-}
-
-.omo-calendar-create__document-title {
-    color: var(--color-text, #1f2937);
-    font-size: 1rem;
-}
-
-.omo-calendar-create__check {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--color-text, #1f2937);
-    font-weight: 600;
-}
-
-.omo-calendar-create__notice {
-    margin: 0;
-    color: var(--color-text-light, #64748b);
-    font-size: 0.92rem;
-}
-
-.omo-calendar-create__footer {
-    display: flex;
-    flex-direction: column;
-    flex: 0 0 auto;
-    justify-content: space-between;
-    gap: 12px;
-    align-items: stretch;
-    padding: 0;
-}
-
-.omo-calendar-create__feedback {
-    min-height: 0;
-    margin: 0;
-    color: var(--color-text-light, #64748b);
-}
-
-
-.omo-calendar-create__feedback.is-error {
-    color: var(--color-danger, #b42318);
-}
-
-.omo-calendar-invitations-editor {
-    display: grid;
-    gap: 12px;
-}
-
-.omo-calendar-invitations-editor [hidden] {
-    display: none !important;
-}
-
-.omo-calendar-invitations-editor__tab-panel,
-.omo-calendar-invitations-editor__checklist,
-.omo-calendar-invitations-editor__member-list,
-.omo-calendar-invitations-editor__check-meta,
-.omo-calendar-invitations-editor__tree-node,
-.omo-calendar-invitations-editor__tree-children {
-    display: grid;
-    gap: 8px;
-}
-
-.omo-calendar-invitations-editor__filter {
-    width: 100%;
-}
-
-.omo-calendar-invitations-editor__empty {
-    font-style: italic;
-}
-
-.omo-calendar-invitations-editor__tree-row,
-.omo-calendar-invitations-editor__check {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-}
-
-.omo-calendar-invitations-editor__tree-toggle,
-.omo-calendar-invitations-editor__tree-spacer {
-    width: 28px;
-    min-width: 28px;
-    height: 28px;
-    margin-top: 2px;
-}
-
-.omo-calendar-invitations-editor__tree-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 0;
-    border-radius: 999px;
-    background: rgba(148, 163, 184, 0.12);
-    color: inherit;
-    cursor: pointer;
-}
-
-.omo-calendar-invitations-editor__tree-toggle span {
-    display: inline-block;
-    transition: transform 0.18s ease;
-}
-
-.omo-calendar-invitations-editor__tree-toggle[aria-expanded="false"] span {
-    transform: rotate(-90deg);
-}
-
-.omo-calendar-invitations-editor__tree-children {
-    margin-left: 18px;
-    padding-left: 14px;
-    border-left: 1px solid var(--topbar-panel-border, #dbe3ef);
-}
-
-.omo-calendar-invitations-editor__check-type,
-.omo-calendar-invitations-editor__member-email {
-    color: var(--color-text-light, #64748b);
-    font-size: 0.9rem;
-}
-
-.omo-calendar-invitations-editor__textarea {
-    min-height: 120px;
-}
-
-@media (max-width: 720px) {
-    .omo-calendar-create__footer {
-        flex-direction: column;
-        align-items: stretch;
-    }
-}
-</style>
+<link rel="stylesheet" href="/omo/api/calendar/editor.css?v=20260917-style-review-final">

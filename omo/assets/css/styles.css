@@ -1,4 +1,4 @@
-@import url('/common/assets/components.css');
+@import url('/common/assets/components.css?v=20260917-monochrome-tab-state');
 
 :root {
     /* SIDEBAR */
@@ -857,12 +857,14 @@ body {
 }
 
 .omo-dashboard-module {
+    /* Keep spacing when another fragment reloads the shared section styles. */
+    --param-section-gap: var(--generic-space-4);
     grid-row: var(--omo-dashboard-row) / span var(--omo-dashboard-row-span);
     grid-column: var(--omo-dashboard-column) / span var(--omo-dashboard-column-span);
     min-width: 0;
     min-height: 220px;
     align-content: start;
-    gap: var(--generic-space-3);
+    gap: var(--param-section-gap);
     overflow: hidden;
     container-type: inline-size;
 }
@@ -903,7 +905,7 @@ body {
 .omo-dashboard-module__more {
     margin: 0;
     padding: 2px 4px;
-    color: var(--color-text-soft, #64748b);
+    color: var(--color-text-light, #64748b);
     font-size: 0.82rem;
     font-weight: 600;
     text-align: center;
@@ -912,47 +914,33 @@ body {
 .omo-dashboard-metrics {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--generic-space-1);
+    gap: var(--generic-space-2);
 }
 
 .omo-dashboard-metrics--two {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.omo-dashboard-metric {
-    display: flex;
-    min-width: 0;
-    min-height: 48px;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 1px;
-    border: 1px solid color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+.omo-dashboard-video {
+    width: 100%;
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
     border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
-    color: var(--color-text);
-    cursor: pointer;
-    font: inherit;
-    padding: 4px 6px;
+    background: #000;
 }
 
-.omo-dashboard-metric strong {
-    font-size: clamp(1.05rem, 1.6vw, 1.4rem);
-    line-height: 1;
+.omo-dashboard-video > iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
 }
 
-.omo-dashboard-metric span {
-    color: var(--color-text-soft);
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-align: center;
-}
-
-.omo-dashboard-metric:hover,
-.omo-dashboard-metric:focus-visible,
-.omo-dashboard-metric.is-active {
-    border-color: var(--color-primary);
-    background: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface));
+.omo-dashboard-module--video.omo-dashboard-module--tall .omo-dashboard-video {
+    flex: 1 1 auto;
+    min-height: 160px;
+    aspect-ratio: auto;
 }
 
 .omo-personal-space > .omo-dashboard-editor {
@@ -1063,7 +1051,7 @@ body {
 }
 
 .omo-dashboard-editor__module > span {
-    color: var(--color-text-soft);
+    color: var(--color-text-light, #64748b);
     font-size: 0.8rem;
 }
 
@@ -1178,14 +1166,9 @@ body {
 }
 
 .omo-personal-space__card--overdue {
-    --generic-section-background: color-mix(in srgb, var(--color-danger, #dc2626) 9%, var(--color-surface, #ffffff));
-    --generic-section-border: color-mix(in srgb, var(--color-danger, #dc2626) 38%, var(--color-border, #d1d5db));
-    --generic-section-shadow: 0 14px 28px color-mix(in srgb, var(--color-danger, #dc2626) 14%, transparent);
+    --param-section-background: color-mix(in srgb, var(--color-danger, #dc2626) 9%, var(--color-surface, #ffffff));
+    --param-section-border: color-mix(in srgb, var(--color-danger, #dc2626) 38%, var(--color-border, #d1d5db));
     border-inline-start: 4px solid color-mix(in srgb, var(--color-danger, #dc2626) 62%, var(--color-border, #d1d5db));
-}
-
-.omo-personal-space__item-button--overdue {
-    border-color: color-mix(in srgb, var(--color-danger, #dc2626) 32%, var(--color-border, #d1d5db));
 }
 
 .omo-personal-space__tag--danger {
@@ -1199,12 +1182,6 @@ body {
     }
 }
 
-.omo-personal-space__hero,
-.omo-personal-space__card {
-    --generic-section-radius: var(--radius-md);
-    --generic-section-shadow: 0 14px 28px color-mix(in srgb, var(--color-primary) 12%, transparent);
-}
-
 .omo-personal-space__hero {
     gap: 8px;
     background:
@@ -1214,7 +1191,7 @@ body {
 .omo-personal-space__hero-text,
 .omo-personal-space__empty {
     margin: 0;
-    color: var(--color-text-soft, #475569);
+    color: var(--color-text-light, #64748b);
     line-height: 1.6;
 }
 
@@ -1223,25 +1200,6 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-}
-
-.omo-personal-space__section-action {
-    border: 0;
-    border-radius: var(--radius-md);
-    background: 
-color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
-    color: var(--color-text, #0f172a);
-    font: inherit;
-    font-weight: 600;
-    padding: 8px 14px;
-    cursor: pointer;
-    transition: transform 0.18s ease, background 0.18s ease;
-    margin: -5px -9px 10px 0px;
-}
-
-.omo-dashboard-module .omo-personal-space__section-action {
-    margin: 0;
-    padding: 5px 10px;
 }
 
 .omo-dashboard-module__scope {
@@ -1256,8 +1214,6 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
     letter-spacing: 0.025em;
 }
 
-.omo-personal-space__section-action:hover,
-.omo-personal-space__section-action:focus-visible,
 .omo-personal-space__item-button:hover,
 .omo-personal-space__item-button:focus-visible {
     transform: translateY(-1px);
@@ -1288,9 +1244,9 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
     align-items: flex-start;
     gap: 6px;
     width: 100%;
-    border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent);
+    border: 0;
     border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-surface) 84%, transparent);
+    background: var(--color-surface-alt);
     padding: 14px 15px;
     text-align: left;
 }
@@ -1299,6 +1255,10 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
     cursor: pointer;
     font: inherit;
     color: inherit;
+}
+
+.omo-personal-space__item-button--overdue {
+    border-inline-start: 3px solid var(--color-danger, #dc2626);
 }
 
 .omo-dashboard-module .omo-personal-space__item-button,
@@ -1520,7 +1480,7 @@ color-mix(in srgb, var(--color-primary) 14%, var(--color-surface-alt));
 
 .omo-personal-space__item-meta,
 .omo-personal-space__item-copy {
-    color: var(--color-text-soft, #475569);
+    color: var(--color-text-light, #64748b);
     line-height: 1.5;
 }
 
@@ -1975,11 +1935,8 @@ html[data-theme] .common-help-card p {
 .omo-profile-details,
 .omo-profile-actions {
     height: 100%;
-    --generic-section-padding-block: 16px;
-    --generic-section-padding-inline: 16px;
-    --generic-section-border: var(--topbar-menu-border);
-    --generic-section-background: var(--topbar-menu-item-bg);
-    --generic-section-radius: 0px;
+    --param-section-border: var(--topbar-menu-border);
+    --param-section-background: var(--topbar-menu-item-bg);
 }
 
 .omo-profile-card {
@@ -2237,13 +2194,6 @@ html[data-theme] .common-help-card p {
     flex: 0 0 auto;
 }
 
-.omo-panel-view__header > .omo-panel-view__header-main .generic-action-button {
-    min-height: 34px;
-    padding-block: 5px;
-    padding-inline: 12px;
-    line-height: 1.2;
-}
-
 .omo-panel-view__mobile-actions-menu {
     display: contents;
 }
@@ -2377,7 +2327,7 @@ html[data-theme] .common-help-card p {
 }
 
 .omo-policy__rule-card {
-    --generic-section-gap: var(--generic-space-2);
+    --param-section-gap: var(--generic-space-2);
     margin-inline: var(--generic-container-gap);
     border: 0;
     box-shadow: none;
@@ -2424,14 +2374,14 @@ html[data-theme] .common-help-card p {
 }
 
 .omo-policy .omo-policy__rule-card--expired {
-    --generic-section-border: color-mix(in srgb, var(--color-danger, #dc2626) 42%, var(--color-border, #dbe3ef));
-    --generic-section-background: color-mix(in srgb, var(--color-danger, #dc2626) 8%, var(--color-surface, #ffffff));
+    --param-section-border: color-mix(in srgb, var(--color-danger, #dc2626) 42%, var(--color-border, #dbe3ef));
+    --param-section-background: color-mix(in srgb, var(--color-danger, #dc2626) 8%, var(--color-surface, #ffffff));
     border-inline-start: 4px solid var(--color-danger, #dc2626);
 }
 
 .omo-policy .omo-policy__rule-card--review {
-    --generic-section-border: color-mix(in srgb, var(--color-warning, #f59e0b) 48%, var(--color-border, #dbe3ef));
-    --generic-section-background: color-mix(in srgb, var(--color-warning, #f59e0b) 9%, var(--color-surface, #ffffff));
+    --param-section-border: color-mix(in srgb, var(--color-warning, #f59e0b) 48%, var(--color-border, #dbe3ef));
+    --param-section-background: color-mix(in srgb, var(--color-warning, #f59e0b) 9%, var(--color-surface, #ffffff));
     border-inline-start: 4px solid var(--color-warning, #f59e0b);
 }
 
@@ -2465,11 +2415,10 @@ html[data-theme] .common-help-card p {
 }
 
 .omo-policy__rule-details {
-    --generic-section-padding-block: var(--generic-space-2);
-    --generic-section-padding-inline: var(--generic-space-3);
-    --generic-section-border: color-mix(in srgb, var(--color-border) 72%, transparent);
-    --generic-section-background: color-mix(in srgb, var(--color-surface-alt) 58%, transparent);
-    --generic-section-shadow: none;
+    --param-section-padding-block: var(--generic-space-2);
+    --param-section-padding-inline: var(--generic-space-3);
+    --param-section-border: color-mix(in srgb, var(--color-border) 72%, transparent);
+    --param-section-background: color-mix(in srgb, var(--color-surface-alt) 58%, transparent);
     font-size: 0.8rem;
 }
 
@@ -2824,14 +2773,6 @@ html[data-theme] .common-help-card p {
         box-sizing: border-box;
     }
 
-    .omo-panel-view__mobile-actions-toggle:hover,
-    .omo-panel-view__mobile-actions-toggle:focus-visible,
-    [data-omo-header-actions].is-mobile-menu-open .omo-panel-view__mobile-actions-toggle {
-        border-color: color-mix(in srgb, var(--color-primary, #2563eb) 42%, var(--color-border, #d1d5db));
-        background: color-mix(in srgb, var(--color-primary, #2563eb) 8%, var(--color-surface, #ffffff));
-        outline: none;
-    }
-
     .omo-panel-view__mobile-actions-toggle span {
         display: block;
         width: 16px;
@@ -2846,7 +2787,7 @@ html[data-theme] .common-help-card p {
         right: 0;
         z-index: 70;
         display: none;
-        min-width: 190px;
+        min-width: min(220px, calc(100vw - 24px));
         max-width: min(280px, calc(100vw - 24px));
         gap: 6px;
         padding: 6px;
@@ -2870,13 +2811,9 @@ html[data-theme] .common-help-card p {
         width: 100%;
         height: auto;
         min-width: 0;
-        min-height: 34px;
         max-width: none;
-        padding: 5px 12px;
         border: 1px solid var(--color-border, #d1d5db);
         border-radius: var(--radius-md) !important;
-        font-size: inherit;
-        line-height: 1.2;
         overflow: visible;
     }
 
@@ -2897,10 +2834,10 @@ html[data-theme] .common-help-card p {
     }
 
     .omo-panel-view__header > .omo-panel-view__header-main > .omo-mobile-corner-action {
-        width: 42px;
-        height: 42px;
-        min-width: 42px;
-        min-height: 42px;
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+        min-height: 34px;
         padding: 0;
         line-height: 0;
     }
@@ -2909,10 +2846,10 @@ html[data-theme] .common-help-card p {
         position: absolute;
         top: 0;
         right: 0;
-        width: 42px;
-        height: 42px;
-        min-width: 42px;
-        min-height: 42px;
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+        min-height: 34px;
         padding: 0;
         border-radius: 0 0 0 var(--radius-md) !important;
         border-top: 0;
@@ -2925,17 +2862,6 @@ html[data-theme] .common-help-card p {
         line-height: 0;
         box-shadow: none;
         overflow: hidden;
-    }
-
-    .omo-mobile-corner-action.generic-action-button,
-    .omo-mobile-corner-action.generic-action-button--main {
-        box-shadow: none;
-    }
-
-    .omo-mobile-corner-action.generic-action-button:not(:disabled):hover,
-    .omo-mobile-corner-action.generic-action-button--main:not(:disabled):hover {
-        transform: none;
-        box-shadow: none;
     }
 
     .omo-mobile-corner-action::before {
@@ -3377,6 +3303,10 @@ html[data-theme] .common-help-card p {
 
 .omo-overlay-drawer__close {
     flex: 0 0 auto;
+}
+
+/* Compatibility for other apps that still use the legacy drawer markup. */
+.omo-overlay-drawer__close:not(.generic-action-button) {
     min-height: 36px;
     padding: 0 14px;
     border: 1px solid var(--color-border);
@@ -3388,15 +3318,9 @@ html[data-theme] .common-help-card p {
     transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
-.omo-overlay-drawer__close:hover {
+.omo-overlay-drawer__close:not(.generic-action-button):hover {
     border-color: var(--color-primary);
     color: var(--color-primary);
-}
-
-.omo-overlay-drawer__close.generic-action-button {
-    min-height: 42px;
-    padding: 10px 16px;
-    border-radius: var(--radius-md);
 }
 
 .omo-overlay-drawer__body {

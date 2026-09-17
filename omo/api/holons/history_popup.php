@@ -1010,12 +1010,10 @@ if ($requestFragment === 'items') {
 				name: 'Nom',
 				color: 'Couleur',
 				icon: 'Icone',
-				banner: 'Banniere',
 				visible: 'Visible',
 				mandatory: 'Obligatoire',
 				lockedName: 'Nom verrouille',
 				lockedIcon: 'Icone verrouillee',
-				lockedBanner: 'Banniere verrouillee',
 				unique: 'Unique',
 				link: 'Lien',
 				inheritsFromName: 'Modele parent'
@@ -1025,7 +1023,6 @@ if ($requestFragment === 'items') {
 				mandatory: true,
 				lockedName: true,
 				lockedIcon: true,
-				lockedBanner: true,
 				unique: true,
 				link: true
 			};
@@ -1386,16 +1383,16 @@ if ($requestFragment === 'items') {
 			var afterHolon = safeObject(afterRoot.holon);
 			var hasHolonSnapshot = Object.keys(beforeHolon).length > 0 || Object.keys(afterHolon).length > 0;
 			var fieldLabels = {
-				name: 'Nom', fullName: 'Nom complet', color: 'Couleur', icon: 'Icone', banner: 'Banniere',
+				name: 'Nom', fullName: 'Nom complet', color: 'Couleur', icon: 'Icone',
 				visible: 'Visible', mandatory: 'Obligatoire', lockedName: 'Nom verrouille',
-				lockedIcon: 'Icone verrouillee', lockedBanner: 'Banniere verrouillee',
+				lockedIcon: 'Icone verrouillee',
 				lockedAdminMin: 'Minimum d admins verrouille', lockedAdminMax: 'Maximum d admins verrouille',
 				adminMinOverride: 'Minimum d admins redefini', adminMaxOverride: 'Maximum d admins redefini',
 				unique: 'Unique', link: 'Lien', adminParent: 'Admin parent',
 				adminMin: 'Nombre minimum d admins', adminMax: 'Nombre maximum d admins',
 				inheritsFromName: 'Modele parent'
 			};
-			var booleanFields = {visible:true, mandatory:true, lockedName:true, lockedIcon:true, lockedBanner:true, lockedAdminMin:true, lockedAdminMax:true, adminMinOverride:true, adminMaxOverride:true, unique:true, link:true, adminParent:true};
+			var booleanFields = {visible:true, mandatory:true, lockedName:true, lockedIcon:true, lockedAdminMin:true, lockedAdminMax:true, adminMinOverride:true, adminMaxOverride:true, unique:true, link:true, adminParent:true};
 
 			if (hasHolonSnapshot) {
 				Object.keys(fieldLabels).forEach(function (field) {

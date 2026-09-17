@@ -70,6 +70,7 @@ foreach ($activities as $activity) {
         'deadlineAt' => $deadlineAt instanceof DateTimeInterface ? $deadlineAt : null,
         'occurrenceAt' => $occurrenceAt instanceof DateTimeInterface ? $occurrenceAt : null,
         'overdueLabel' => omoActivityOverdueLabel($state, $now),
+        'responsibilityLabel' => omoActivityResponsibleAssignmentLabel($activity),
         'detailUrl' => $detailUrl,
     ];
     $activityCount++;
@@ -107,7 +108,7 @@ $texts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260901-timeline-fluid-4">
+<link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260917-style-review-final">
 <div
     class="omo-activities omo-panel-view"
     id="omo-activities-root"
@@ -171,10 +172,10 @@ $texts = [
                     </div>
                     <div class="omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--secondary" data-activity-filter-apply><?= omoApiEscape(omoActivityT('activity.filters.apply')) ?></button>
-                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
-                            <button type="button" class="generic-action-button generic-action-button--main" data-activity-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoActivityT('activity.filters.save_view')) ?></button>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal']) || !empty($applicationViewPreferences['canSaveTemporary'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--main"<?= !empty($applicationViewPreferences['canSavePersonal']) ? ' data-activity-filter-save' : '' ?> data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoActivityT('activity.filters.save_view')) ?></button>
                         <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
-                            <button type="button" class="generic-action-button generic-action-button--main" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                            <button type="button" class="generic-action-button generic-action-button--main" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape($applicationViewPreferences['primarySaveLabel'] ?? '') ?></button>
                         <?php endif; ?>
                         <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
@@ -228,7 +229,7 @@ $texts = [
                                                     <span class="generic-file-list__title-block">
                                                         <span class="generic-file-list__title-row"><strong class="generic-file-list__title"><?= omoApiEscape((string)$activity->get('title')) ?></strong></span>
                                                         <?php $descriptionPreview = omoActivityDescriptionText($activity->get('description'), 85); ?>
-                                                        <span class="generic-file-list__meta-line"><?= omoApiEscape(omoActivityScheduleLabel($frequency, $activity->get('schedule'))) ?><?php if ($descriptionPreview !== ''): ?> · <?= omoApiEscape($descriptionPreview) ?><?php endif; ?></span>
+                                                        <span class="generic-file-list__meta-line"><?= omoApiEscape(omoActivityScheduleLabel($frequency, $activity->get('schedule'))) ?> · <?= omoApiEscape(omoActivityT('activity.responsibility.label')) ?> : <?= omoApiEscape($row['responsibilityLabel']) ?><?php if ($descriptionPreview !== ''): ?> · <?= omoApiEscape($descriptionPreview) ?><?php endif; ?></span>
                                                     </span>
                                                 </div>
                                             </div>
@@ -237,7 +238,7 @@ $texts = [
                                             <div class="generic-file-list__cell omo-activity-row__status-cell" data-label="<?= omoApiEscape(omoActivityT('activity.column.status')) ?>">
                                                 <span class="omo-activity-badge omo-activity-badge--<?= omoApiEscape($stateKey) ?>"><?= omoApiEscape(omoActivityStateLabel($row['state'], $now)) ?></span>
                                                 <?php if (in_array($stateKey, ['due', 'missed'], true)): ?>
-                                                    <button type="button" class="generic-action-button generic-action-button--main omo-activity-row__check" data-activity-post-action="check_activity" data-activity-id="<?= (int)$activity->getId() ?>" data-activity-list-check><?= omoApiEscape(omoActivityT('activity.done')) ?></button>
+                                                    <button type="button" class="generic-action-button generic-action-button--main generic-action-button--compact omo-activity-row__check" data-activity-post-action="check_activity" data-activity-id="<?= (int)$activity->getId() ?>" data-activity-list-check><?= omoApiEscape(omoActivityT('activity.done')) ?></button>
                                                 <?php endif; ?>
                                             </div>
                                         </article>
@@ -271,5 +272,5 @@ $texts = [
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260912-toolbar-always-visible"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
-<script src="/omo/api/activities/activities.js?v=20260916-html-description"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
+<script src="/omo/api/activities/activities.js?v=20260917-filter-hierarchy"></script>

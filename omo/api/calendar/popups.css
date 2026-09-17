@@ -1,0 +1,44 @@
+.omo-calendar-connect__summary, .omo-calendar-connect__external-list { display: grid; gap: 10px; }
+.omo-calendar-connect__summary strong { color: var(--color-text, #1f2937); }
+.omo-calendar-connect__message { margin: 0; color: var(--color-text, #1f2937); line-height: 1.55; }
+.omo-calendar-connect__external-form { margin-top: 4px; }
+.omo-calendar-connect__external-item { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding-block: 12px; border-bottom: 1px solid var(--color-border, #d1d5db); }
+.omo-calendar-connect__external-color { align-self: stretch; border-radius: 999px; background: var(--param-external-calendar-color); }
+.omo-calendar-connect__external-item > div:nth-child(2) { display: grid; gap: 3px; min-width: 0; }
+.omo-calendar-connect__external-item > div:nth-child(2) span { color: var(--color-text-light, #64748b); font-size: 0.82rem; overflow-wrap: anywhere; }
+.omo-calendar-connect__external-error { color: var(--color-danger, #b91c1c) !important; }
+.omo-calendar-connect__external-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.omo-calendar-connect__summary { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.omo-calendar-connect__summary > div { display: grid; gap: 4px; }
+.omo-calendar-meeting__day {
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr);
+    align-items: start;
+    gap: 12px;
+    padding-block: 14px;
+    border-top: 1px solid var(--color-border, #e5e7eb);
+}
+.omo-calendar-meeting__day-name { display: grid; gap: 8px; padding-top: 4px; }
+.omo-calendar-meeting__times {
+    display: grid;
+    grid-template-columns: repeat(2, 104px);
+    gap: 8px;
+}
+.omo-calendar-meeting__hours {
+    display: grid;
+    grid-template-columns: 104px 216px 104px;
+    gap: 12px;
+    align-items: end;
+}
+.omo-calendar-meeting__hours > div { align-self: start; }
+.omo-calendar-meeting__times[hidden],
+.omo-calendar-meeting__hours[hidden] { display: none; }
+@media (max-width: 700px) {
+    .omo-calendar-meeting__day { grid-template-columns: minmax(0, 1fr); }
+    .omo-calendar-meeting__day-name { display: flex; justify-content: space-between; align-items: center; }
+    .omo-calendar-meeting__hours { grid-template-columns: repeat(2, 104px); }
+    .omo-calendar-meeting__hours > :nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+    .omo-calendar-meeting__hours > :last-child { grid-column: 2; grid-row: 1; }
+    .omo-calendar-connect__external-item { grid-template-columns: 8px minmax(0, 1fr); }
+    .omo-calendar-connect__external-item .omo-calendar-connect__external-actions { grid-column: 2; }
+}

@@ -38,7 +38,7 @@ $expectedCsrfToken = trim((string)($_SESSION['omo_application_view_preferences_c
 if ($currentUserId <= 0) {
     $respond(false, 'Connexion requise.', array(), 401);
 }
-if ($applicationKey === '' || !in_array($scope, array('personal', 'organization_template', 'application_type'), true) || !in_array($operation, array('save', 'clear'), true)) {
+if ($applicationKey === '' || !in_array($scope, array('temporary', 'personal', 'holon', 'organization_template', 'organization', 'application_type', 'global'), true) || !in_array($operation, array('save', 'clear'), true)) {
     $respond(false, 'Configuration de vue invalide.', array(), 400);
 }
 if ($csrfToken === '' || $expectedCsrfToken === '' || !hash_equals($expectedCsrfToken, $csrfToken)) {
@@ -65,12 +65,6 @@ if ($holonId > 0) {
     $holon = $candidate;
 }
 
-$membership = $organization->getMembership($currentUserId, true);
-$isOrganizationAdmin = $membership !== null
-    && $membership->isOrganizationAdmin()
-    && function_exists('commonCurrentUserIsAdminModeEnabled')
-    && commonCurrentUserIsAdminModeEnabled($organizationId);
-$isSiteAdmin = function_exists('commonUserHasSiteAdminOverride') && commonUserHasSiteAdminOverride($currentUserId);
 $typeId = $holon instanceof Holon ? (int)$holon->get('IDtypeholon') : 0;
 $templateKey = $holon instanceof Holon ? $holon->getDashboardDirectTemplateLayoutKey() : '';
 $view = UserHolon::normalizeApplicationView($payload['view'] ?? array());
@@ -102,36 +96,35 @@ if ($pvApplicationTabId > 0) {
     ));
 }
 
-if (
-    $scope === 'personal'
-    && (
-        ($organization->getInterfaceLevel() === Organization::INTERFACE_LEVEL_DISCOVERY && !($isOrganizationAdmin || $isSiteAdmin))
-        || !($holon instanceof Holon)
-        || ($membership === null && !$isSiteAdmin)
-    )
-) {
-    $respond(false, 'Preference personnelle indisponible.', array(), 403);
-}
-if ($scope === 'organization_template' && !($isOrganizationAdmin || $isSiteAdmin)) {
-    $respond(false, 'Droits administrateur d organisation requis.', array(), 403);
-}
-if ($scope === 'application_type' && !$isSiteAdmin) {
-    $respond(false, 'Droits administrateur du serveur requis.', array(), 403);
-}
-if ($scope === 'organization_template' && $templateKey === '') {
-    $respond(false, 'Modele de holon introuvable.', array(), 400);
-}
-if ($scope === 'application_type' && $typeId <= 0) {
-    $respond(false, 'Type de holon introuvable.', array(), 400);
-}
-if ($scope === 'application_type' && $operation === 'clear') {
-    $respond(false, 'Le defaut global ne peut pas etre efface.', array(), 403);
+$access = omoApplicationViewPreferencesGetAccess($currentUserId, $organization, $holon);
+$scopePermissions = array(
+    'temporary' => 'canSaveTemporary',
+    'personal' => 'canSavePersonal',
+    'holon' => 'canSaveHolon',
+    'organization_template' => 'canSaveOrganizationTemplate',
+    'organization' => 'canSaveOrganization',
+    'application_type' => 'canSaveApplicationType',
+    'global' => 'canSaveGlobal',
+);
+if (empty($access[$scopePermissions[$scope]])) {
+    $respond(false, 'Droits insuffisants pour cette portee.', array(), 403);
 }
 
-if ($scope === 'personal') {
+if ($scope === 'temporary') {
+    $result = $operation === 'clear'
+        ? omoApplicationViewPreferencesClearTemporaryView($currentUserId, $organizationId, $holonId, $applicationKey)
+        : omoApplicationViewPreferencesSaveTemporaryView($currentUserId, $organizationId, $holonId, $applicationKey, $view);
+} elseif ($scope === 'personal') {
     $result = $operation === 'clear'
         ? UserHolon::clearApplicationViewForUser($currentUserId, $holonId, $applicationKey)
         : UserHolon::saveApplicationViewForUser($currentUserId, $holonId, $applicationKey, $view);
+} elseif ($scope === 'holon') {
+    if ($operation === 'clear') {
+        $holon->clearApplicationViewDefault($applicationKey);
+    } else {
+        $holon->setApplicationViewDefault($applicationKey, $view);
+    }
+    $result = $holon->save();
 } elseif ($scope === 'organization_template') {
     if ($operation === 'clear') {
         $organization->clearApplicationViewTemplateDefault($applicationKey, $templateKey);
@@ -139,10 +132,21 @@ if ($scope === 'personal') {
         $organization->setApplicationViewTemplateDefault($applicationKey, $templateKey, $view);
     }
     $result = $organization->save();
-} else {
+} elseif ($scope === 'organization') {
+    if ($operation === 'clear') {
+        $organization->clearApplicationViewDefault($applicationKey);
+    } else {
+        $organization->setApplicationViewDefault($applicationKey, $view);
+    }
+    $result = $organization->save();
+} elseif ($scope === 'application_type') {
     $result = $operation === 'clear'
         ? ApplicationSetting::clearApplicationViewBaseTypeDefault($applicationKey, $typeId)
         : ApplicationSetting::saveApplicationViewBaseTypeDefault($applicationKey, $typeId, $view);
+} else {
+    $result = $operation === 'clear'
+        ? ApplicationSetting::clearApplicationViewGlobalDefault($applicationKey)
+        : ApplicationSetting::saveApplicationViewGlobalDefault($applicationKey, $view);
 }
 
 if (!is_array($result) || empty($result['status'])) {

@@ -75,12 +75,12 @@ if (count($documents) === 0) {
 <div class="omo-project-detail__documents-list">
     <?php foreach ($documents as $documentItem): ?>
         <?php
-        $canRemoveDocument = !$isArchivedProject && $canCreateDocument;
+        $canRemoveDocument = !$isArchivedProject && omoProjectsCanManageProject($project, $context);
         $shouldDeleteDocument = $canRemoveDocument
             && empty($documentItem['visibleInHolon'])
             && (int)($documentItem['otherProjectCount'] ?? 0) === 0
             && !empty($documentItem['canDelete'])
-            && !empty($documentItem['canManageLifecycle']);
+            && !empty($documentItem['canDeleteInContext']);
         $removeLabel = omoProjectsT($shouldDeleteDocument
             ? 'projects.detail.documents.delete'
             : 'projects.detail.documents.detach');

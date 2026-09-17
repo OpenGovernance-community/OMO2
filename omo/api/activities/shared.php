@@ -2,6 +2,7 @@
 require_once dirname(__DIR__, 3) . '/common/pv_meeting_permissions.php';
 
 use dbObject\ControlActivity;
+use dbObject\DocumentPvPoint;
 use dbObject\Holon;
 use dbObject\Organization;
 use dbObject\RecurrenceSchedule;
@@ -49,6 +50,11 @@ function omoActivitySourceLang()
         'activity.reference' => ['text' => 'Référence', 'context' => 'Reference field.'],
         'activity.title_field' => ['text' => 'Titre', 'context' => 'Title field.'],
         'activity.description_field' => ['text' => 'Description', 'context' => 'Description field.'],
+        'activity.responsibility.label' => ['text' => 'En charge', 'context' => 'Activity responsibility label.'],
+        'activity.responsibility.unassigned' => ['text' => 'Non attribué', 'context' => 'Activity without a directly assigned person.'],
+        'activity.editor.responsible' => ['text' => 'Personne en charge', 'context' => 'Activity responsible person field.'],
+        'activity.editor.responsible_none' => ['text' => 'Aucune personne', 'context' => 'Activity responsible person empty option.'],
+        'activity.editor.responsible_help' => ['text' => 'Cette personne est responsable en complément du rôle porteur de l’activité.', 'context' => 'Activity responsible person field help.'],
         'activity.display_lead' => ['text' => 'Afficher en avance', 'context' => 'Advance field.'],
         'activity.overdue_after' => ['text' => 'En retard après', 'context' => 'Delay field.'],
         'activity.unit' => ['text' => 'Unité', 'context' => 'Unit field.'],
@@ -178,6 +184,17 @@ function omoActivityCanDelete(ControlActivity $activity)
 {
     $holon = $activity->getHolon();
     return $holon instanceof Holon && omoActivityCanUsePermission($holon, 'CAN_DELETE_CONTROL_ACTIVITY');
+}
+
+function omoActivityResponsibleAssignmentLabel(ControlActivity $activity)
+{
+    $holon = $activity->getHolon();
+    $roleLabel = $holon instanceof Holon ? trim((string)$holon->getDisplayName()) : '';
+    $responsibleUserId = (int)$activity->get('IDuser_responsible');
+    $responsibleLabel = $responsibleUserId > 0
+        ? DocumentPvPoint::getUserDisplayNameForOrganization($responsibleUserId, (int)$activity->get('IDorganization'))
+        : omoActivityT('activity.responsibility.unassigned');
+    return trim($roleLabel) . ' (' . trim((string)$responsibleLabel) . ')';
 }
 
 function omoActivityFrequencyLabel($frequency)

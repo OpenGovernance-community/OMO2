@@ -787,9 +787,36 @@
         };
     }
 
+    var expandedMenuMedia = window.matchMedia('(max-width: 768px)');
+
+    // Reset a responsive header menu while retaining its inline mobile actions.
+    function resetExpandedMenu(menu) {
+        if (!menu || !menu.classList.contains('generic-menu--expanded-mobile')) { return false; }
+        var expanded = expandedMenuMedia.matches;
+        var panel = menu.querySelector('.generic-menu-panel');
+        var toggle = menu.querySelector('.generic-menu-toggle');
+        menu.classList.remove('is-open');
+        if (toggle) { toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false'); }
+        if (panel) {
+            panel.hidden = !expanded;
+            panel.setAttribute('role', expanded ? 'group' : 'menu');
+            panel.querySelectorAll('button').forEach(function (button) {
+                if (expanded) { button.removeAttribute('role'); }
+                else { button.setAttribute('role', 'menuitem'); }
+            });
+        }
+        return expanded;
+    }
+
+    expandedMenuMedia.addEventListener('change', function () {
+        document.querySelectorAll('.generic-menu--expanded-mobile').forEach(resetExpandedMenu);
+    });
+    window.resetGenericExpandedMenu = resetExpandedMenu;
+
     function initGenericComponents(root) {
         var scope = root || document;
 
+        scope.querySelectorAll('.generic-menu--expanded-mobile').forEach(resetExpandedMenu);
         initFileLists(scope);
         initEditableSelects(scope);
         positionOpenContextHelps(scope);

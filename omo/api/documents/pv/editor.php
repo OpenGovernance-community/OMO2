@@ -338,7 +338,6 @@ foreach ($embeddableProjects as $embeddableProject) {
     $projectSummary = trim(preg_replace('/\s+/', ' ', strip_tags((string)$embeddableProject->get('description'))));
     $projectResponsibleId = (int)$embeddableProject->get('IDuser');
     $projectStatus = \dbObject\Project::normalizeStatus($embeddableProject->get('status'));
-    $projectStatusCatalog = \dbObject\Project::getStatusCatalog();
     $embeddableProjectsPayload[] = [
         'id' => (int)$embeddableProject->getId(),
         'contextHolonId' => (int)$embeddableProject->get('IDholon'),
@@ -349,7 +348,7 @@ foreach ($embeddableProjects as $embeddableProject) {
             ? trim((string)\dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($projectResponsibleId, $organizationId))
             : '',
         'status' => $projectStatus,
-        'statusLabel' => trim((string)($projectStatusCatalog[$projectStatus]['label'] ?? $projectStatus)),
+        'statusLabel' => \dbObject\Project::getOrganizationStatusLabel($organizationId, $projectStatus),
         'priorityLabel' => \dbObject\Project::normalizeLevel($embeddableProject->get('priority')) !== null
             ? 'P' . (string)\dbObject\Project::normalizeLevel($embeddableProject->get('priority'))
             : '',
@@ -3442,7 +3441,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         'fallbackTitle' => omoDocumentsPvEditorT('documents.pv_editor.project.fallback', ['id' => '{id}']),
         'toolbarLabel' => omoDocumentsPvEditorT('documents.pv_editor.toolbar.project'),
         'reviewLoadError' => omoDocumentsPvEditorT('documents.pv_editor.project.review_load_error'),
-        'statusOptions' => array_map(static fn ($status, $definition) => ['value' => $status, 'label' => (string)($definition['label'] ?? $status)], array_keys(\dbObject\Project::getStatusCatalog()), \dbObject\Project::getStatusCatalog()),
+        'statusOptions' => array_map(static fn (string $status): array => ['value' => $status, 'label' => \dbObject\Project::getOrganizationStatusLabel($organizationId, $status)], \dbObject\Project::statuses()),
         'sizeOptions' => \dbObject\Project::sizes(),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const projectEmbedCreateContext = <?= json_encode([

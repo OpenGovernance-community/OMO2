@@ -13,7 +13,7 @@ class ControlActivity extends ControlTask
         return [
             [['IDorganization', 'IDholon', 'title', 'frequency', 'schedule'], 'required'],
             [['id', 'display_lead_value', 'execution_duration_value', 'position'], 'integer'],
-            [['IDorganization', 'IDholon'], 'fk'],
+            [['IDorganization', 'IDholon', 'IDuser_responsible'], 'fk'],
             [['title', 'frequency', 'schedule', 'display_lead_unit', 'execution_duration_unit'], 'string'],
             [['description'], 'html'],
             [['active'], 'boolean'],
@@ -32,6 +32,14 @@ class ControlActivity extends ControlTask
     {
         $organization = new Organization();
         return $organization->load((int)$this->get('IDorganization')) ? $organization : null;
+    }
+
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute(
+            'UPDATE control_task SET IDuser_responsible = NULL WHERE IDorganization = :organization_id AND IDuser_responsible = :user_id',
+            array('organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+        );
     }
 
     public function getAttributionWindow(\DateTimeImmutable $occurrenceAt)

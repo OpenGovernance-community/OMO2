@@ -782,7 +782,7 @@ if ($action === 'add_indicator_value') {
         && commonPvMeetingCanUseCollectivePermission(
             commonResolvePvMeetingPermissionContext($organizationId),
             $indicatorHolon,
-            'CAN_CREATE_INDICATOR'
+            'CAN_EDIT_INDICATOR'
         );
     if (!$indicator->canEdit() && !$canUseCollectiveIndicatorPermission) {
         omoDocumentsPvEditorJsonResponse([

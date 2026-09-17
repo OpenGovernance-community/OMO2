@@ -304,6 +304,27 @@
 			return $this->save();
 		}
 
+		public function hasObjectPermission(string $permissionKey, int $userId, bool $useSessionCache = false): bool
+		{
+			$organizationId = (int)$this->get('IDorganization');
+			if ($userId <= 0) return false;
+			if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)) return true;
+			if ($organizationId <= 0) return $userId === (int)$this->get('IDuser');
+			$holonId = $this->isPvDocument() ? $this->getPvContextHolonId() : (int)$this->get('IDholon');
+			$holon = self::resolveCreationPermissionHolon($organizationId, $holonId ?: null, (int)$this->get('IDdocument_parent'));
+			if ($holon instanceof Holon) return $holon->isAllowed($permissionKey, $useSessionCache, $userId);
+			return $holonId <= 0 && (int)$this->get('IDdocument_parent') <= 0
+				&& Permission::userCanInOrganization($permissionKey, $organizationId, $userId);
+		}
+
+		public function canDeleteInOrganizationContext(int $organizationId, int $userId): bool
+		{
+			return $organizationId === (int)$this->get('IDorganization')
+				&& $this->hasObjectPermission('CAN_DELETE_DOCUMENT', $userId)
+				&& ((function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId))
+					|| $this->currentViewerCanAccessVisibility($organizationId, null, $userId));
+		}
+
 		public function canManageLifecycle(int $organizationId, int $userId): bool
 		{
 			$organizationId = (int)$organizationId;
@@ -313,7 +334,8 @@
 			}
 
 			if ($this->isPvDocument()) {
-				return $this->isPvCreatorOrEditor($userId);
+				return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId)
+					&& ($this->isPvCreatorOrEditor($userId) || \commonUserHasAdminOverride($userId, $organizationId));
 			}
 
 			return $this->canManageInOrganizationContext($organizationId, $userId, false);
@@ -863,6 +885,7 @@
 		public function canEdit()
 		{
 			$organizationId = (int)$this->get('IDorganization');
+			if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride((int)($_SESSION['currentUser'] ?? 0), $organizationId)) return true;
 			return $organizationId > 0
 				? $this->canEditInOrganizationContext($organizationId, null, false)
 				: (
@@ -902,7 +925,8 @@
 				return false;
 			}
 
-			return $this->currentViewerCanAccessEditVisibility($documentOrganizationId, null, $userId);
+			return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId, $useSessionCache)
+				&& $this->currentViewerCanAccessEditVisibility($documentOrganizationId, null, $userId);
 		}
 
 		public function canManageInOrganizationContext(int $organizationId, ?int $userId = null, bool $useSessionCache = true): bool
@@ -934,13 +958,7 @@
 				return false;
 			}
 
-			return self::canCreateInOrganizationContext(
-				$documentOrganizationId,
-				(int)$this->get('IDholon') > 0 ? (int)$this->get('IDholon') : null,
-				$userId,
-				(int)$this->get('IDdocument_parent'),
-				$useSessionCache
-			);
+			return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId, $useSessionCache);
 		}
 
 		public function canManageInOrganizationContextWithVisibilityRule(int $organizationId, int $userId, ?array $visibilityRule, array &$viewerContext, bool $useSessionCache = true): bool
@@ -962,13 +980,7 @@
 				return false;
 			}
 
-			return self::canCreateInOrganizationContext(
-				$documentOrganizationId,
-				(int)$this->get('IDholon') > 0 ? (int)$this->get('IDholon') : null,
-				$userId,
-				(int)$this->get('IDdocument_parent'),
-				$useSessionCache
-			);
+			return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId, $useSessionCache);
 		}
 
 		public function canEditInOrganizationContextWithVisibilityRules(int $organizationId, int $userId, ?array $visibilityRule, ?array $editVisibilityRule, array &$viewerContext): bool
@@ -989,7 +1001,8 @@
 				return false;
 			}
 
-			return \dbObject\ObjectVisibility::viewerCanAccessRule(
+			return $this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId)
+				&& \dbObject\ObjectVisibility::viewerCanAccessRule(
 				$editVisibilityRule,
 				$viewerContext,
 				array(
@@ -1074,7 +1087,7 @@
 					$editVisibilityRank = $documentEditVisibilityRank;
 					$editVisibilityType = $documentEditVisibilityType;
 				}
-				if (!$document->canManageLifecycle($documentOrganizationId, $userId) || !$document->canDeleteDocument(false)) {
+				if (!$document->canDeleteInOrganizationContext($documentOrganizationId, $userId) || !$document->canDeleteDocument(false)) {
 					$canDeleteSources = false;
 				}
 				$description = trim((string)$document->get('description'));
@@ -1237,7 +1250,7 @@
 						$sourceDocument = new self();
 						if (
 							!$sourceDocument->load((int)($sourceData['id'] ?? 0))
-							|| !$sourceDocument->canManageLifecycle((int)$mergeData['organizationId'], $userId)
+							|| !$sourceDocument->canDeleteInOrganizationContext((int)$mergeData['organizationId'], $userId)
 							|| !$sourceDocument->canDeleteDocument(false)
 							|| !$sourceDocument->delete()
 						) {
@@ -1512,11 +1525,13 @@
 
 		public function canUserManagePvDocument(int $userId): bool
 		{
-			if (!$this->isPvDocument() || $this->isPvValidated() || $userId <= 0) {
+			if (!$this->isPvDocument() || $this->isPvValidated() || $userId <= 0
+				|| !$this->hasObjectPermission('CAN_EDIT_DOCUMENT', $userId)) {
 				return false;
 			}
 
-			return $this->isPvEditor($userId)
+			return \commonUserHasAdminOverride($userId, (int)$this->get('IDorganization'))
+				|| $this->isPvEditor($userId)
 				|| ($this->getPvEditorUserId() <= 0 && $userId === $this->getCreatedByUserId());
 		}
 
@@ -3339,13 +3354,12 @@
 			);
 		}
 
-		protected static function buildProjectStatusBarDisplayHtml(array $summary): string
+		protected static function buildProjectStatusBarDisplayHtml(array $summary, int $organizationId = 0): string
 		{
 			if ((int)($summary['total'] ?? 0) <= 0 || empty($summary['leaves'])) {
 				return '';
 			}
 
-			$statusCatalog = \dbObject\Project::getStatusCatalog();
 			$weightsByStatus = array_fill_keys(self::getProjectStatusDisplayOrder(), 0.0);
 			foreach ($summary['leaves'] as $leaf) {
 				$status = \dbObject\Project::normalizeStatus($leaf['status'] ?? '');
@@ -3360,7 +3374,7 @@
 				$count = (int)($summary['counts'][$status] ?? 0);
 				if ($count > 0) {
 					$percentage = rtrim(rtrim(number_format($weightsByStatus[$status] * 100, 1, '.', ''), '0'), '.');
-					$labelParts[] = (string)($statusCatalog[$status]['label'] ?? $status) . ': ' . $count . ' (' . $percentage . '%)';
+					$labelParts[] = \dbObject\Project::getOrganizationStatusLabel($organizationId, $status) . ': ' . $count . ' (' . $percentage . '%)';
 				}
 			}
 			$label = 'Etat des sous-projets: ' . implode(', ', $labelParts);
@@ -3386,7 +3400,7 @@
 			$title = $title !== '' ? $title : ($fallbackTitle !== '' ? $fallbackTitle : ('Projet #' . $projectId));
 			$projectUrl = '#projects-d' . $projectId;
 			$status = \dbObject\Project::normalizeStatus($project->get('status'));
-			$statusCatalog = \dbObject\Project::getStatusCatalog();
+			$organizationId = (int)$project->get('IDorganization');
 			$projectHolon = $project->getHolon();
 			$contextLabel = $projectHolon instanceof \dbObject\Holon
 				? trim((string)$projectHolon->getDisplayName())
@@ -3416,7 +3430,7 @@
 			$html .= '<a class="omo-project-embed__external" href="' . htmlspecialchars($projectUrl, ENT_QUOTES, 'UTF-8')
 				. '" target="_blank" rel="noopener noreferrer" aria-label="Ouvrir le projet dans une nouvelle fenetre" title="Ouvrir le projet dans une nouvelle fenetre">&#8599;</a>';
 			$html .= '<span class="omo-project-embed__status omo-project-embed__status--' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '">'
-				. htmlspecialchars((string)($statusCatalog[$status]['label'] ?? $status), ENT_QUOTES, 'UTF-8') . '</span>';
+				. htmlspecialchars(\dbObject\Project::getOrganizationStatusLabel($organizationId, $status), ENT_QUOTES, 'UTF-8') . '</span>';
 			if ($priority !== null) {
 				$html .= '<span class="omo-project-embed__priority">P' . (int)$priority . '</span>';
 			}
@@ -3430,7 +3444,7 @@
 			if ($hasDirectChildren) {
 				$html .= '<button type="button" class="omo-project-embed__toggle" data-omo-project-embed-toggle aria-expanded="false" aria-label="Afficher les sous-projets de '
 					. htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '"><span class="omo-project-embed__toggle-label">Sous-projets</span>'
-					. self::buildProjectStatusBarDisplayHtml($summary) . '</button>';
+					. self::buildProjectStatusBarDisplayHtml($summary, $organizationId) . '</button>';
 				$html .= '<div class="omo-project-embed__children" data-omo-project-embed-children hidden></div>';
 			}
 			return $html . '</div>';
@@ -5352,9 +5366,7 @@
 				return false;
 			}
 
-			return function_exists('commonUserHasOrganizationAccess')
-				? \commonUserHasOrganizationAccess($userId, $organizationId)
-				: false;
+			return Permission::userCanInOrganization('CAN_CREATE_DOCUMENT', $organizationId, $userId);
 		}
 
 		protected static function extractValidUploadedFile($uploadedFile): ?array

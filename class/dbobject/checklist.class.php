@@ -17,7 +17,7 @@ class Checklist extends DbObject
         return [
             [['IDorganization', 'IDproject_template_root', 'status'], 'required'],
             [['id'], 'integer'],
-            [['IDorganization', 'IDchecklist_previous', 'IDproject_template_root', 'IDdocument'], 'fk'],
+            [['IDorganization', 'IDuser_responsible', 'IDchecklist_previous', 'IDproject_template_root', 'IDdocument'], 'fk'],
             [['status'], 'string'],
             [['revision_note'], 'text'],
             [['active'], 'boolean'],
@@ -31,6 +31,7 @@ class Checklist extends DbObject
         return [
             'id' => 'ID',
             'IDorganization' => 'Organisation',
+            'IDuser_responsible' => 'Personne en charge',
             'IDchecklist_previous' => 'Processus precedent',
             'IDproject_template_root' => 'Projet modele racine',
             'IDdocument' => 'Documentation',
@@ -73,6 +74,14 @@ class Checklist extends DbObject
     public static function getOrder()
     {
         return 'updated_at DESC, id DESC';
+    }
+
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute(
+            'UPDATE checklist SET IDuser_responsible = NULL WHERE IDorganization = :organization_id AND IDuser_responsible = :user_id',
+            array('organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+        );
     }
 
     public function save()
@@ -261,7 +270,6 @@ class Checklist extends DbObject
         ], 0);
         $overdueCount = 0;
         $today = new \DateTimeImmutable('today');
-        $statusCatalog = Project::getStatusCatalog();
         $entries = [];
         foreach ($projects as $projectEntry) {
             $project = $projectEntry['project'];
@@ -277,7 +285,7 @@ class Checklist extends DbObject
                 'runId' => (int)($projectEntry['runId'] ?? 0),
                 'title' => trim((string)$project->get('title')),
                 'status' => $status,
-                'statusLabel' => (string)($statusCatalog[$status]['label'] ?? $status),
+                'statusLabel' => Project::getOrganizationStatusLabel((int)$project->get('IDorganization'), $status),
                 'size' => Project::normalizeSize($project->get('project_size')),
                 'weight' => Project::getSizeWeight($project->get('project_size')),
                 'holonLabel' => (string)($metadata['holonLabel'] ?? ''),

@@ -7,6 +7,7 @@ $dashboardTemplateSource = (string)file_get_contents(dirname(__DIR__) . '/omo/ap
 $sharedPermissionSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/permissions_shared.php');
 $calendarDetailSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/detail.php');
 $documentLifecycleSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/lifecycle_action.php');
+$calendarStyles = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/calendar.css');
 $appSource = (string)file_get_contents(dirname(__DIR__) . '/omo/assets/js/app.js');
 
 function assertCalendarEventDocument(bool $condition, string $message): void
@@ -55,9 +56,9 @@ assertCalendarEventDocument(
     'Timed calendar events must render the title before the schedule block.'
 );
 assertCalendarEventDocument(
-    strpos($calendarSource, 'display: flex;') !== false
-        && strpos($calendarSource, 'flex-wrap: wrap;') !== false
-        && strpos($calendarSource, 'min-height: 34px;') !== false,
+    strpos($calendarStyles, 'display: flex;') !== false
+        && strpos($calendarStyles, 'flex-wrap: wrap;') !== false
+        && strpos($calendarStyles, 'min-height: 34px;') !== false,
     'Timed calendar events must wrap their blocks while keeping short titles visible.'
 );
 

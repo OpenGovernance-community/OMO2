@@ -588,6 +588,7 @@ CREATE TABLE `control_task` (
   `IDcontrollist` int(11) DEFAULT NULL,
   `IDorganization` int(11) DEFAULT NULL,
   `IDholon` int(11) DEFAULT NULL,
+  `IDuser_responsible` int(11) DEFAULT NULL,
   `title` varchar(255) NOT NULL,
   `description` mediumtext DEFAULT NULL,
   `frequency` varchar(20) NOT NULL,
@@ -605,9 +606,11 @@ CREATE TABLE `control_task` (
   KEY `idx_control_task_active` (`active`),
   KEY `idx_control_task_context` (`IDorganization`,`IDholon`),
   KEY `fk_control_task_holon` (`IDholon`),
+  KEY `idx_control_task_responsible` (`IDuser_responsible`),
   CONSTRAINT `fk_control_task_list` FOREIGN KEY (`IDcontrollist`) REFERENCES `control_list` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_control_task_organization` FOREIGN KEY (`IDorganization`) REFERENCES `organization` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_control_task_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_control_task_holon` FOREIGN KEY (`IDholon`) REFERENCES `holon` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_control_task_responsible` FOREIGN KEY (`IDuser_responsible`) REFERENCES `user` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1822,7 +1825,7 @@ CREATE TABLE `holon_permission` (
   UNIQUE KEY `uniq_holon_permission_profile_range` (`IDholon`,`IDpermission`,`member_type`,`range`),
   KEY `idx_holon_permission_permission` (`IDpermission`),
   KEY `idx_holon_permission_range` (`range`)
-) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=108 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1831,51 +1834,85 @@ CREATE TABLE `holon_permission` (
 
 LOCK TABLES `holon_permission` WRITE;
 /*!40000 ALTER TABLE `holon_permission` DISABLE KEYS */;
-INSERT INTO `holon_permission` VALUES
-(1,710,1,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21'),
-(2,710,5,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21'),
-(3,710,8,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21'),
-(4,710,3,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21'),
-(5,710,10,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21'),
-(6,710,4,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21'),
-(7,710,9,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21'),
-(8,675,5,'member','self','2026-07-28 08:53:42','2026-07-28 08:53:42'),
-(9,675,8,'member','self','2026-07-28 08:53:42','2026-07-28 08:53:42'),
-(10,675,3,'member','self','2026-07-28 08:53:42','2026-07-28 08:53:42'),
-(11,675,9,'member','self','2026-07-28 08:53:42','2026-07-28 08:53:42'),
-(12,675,7,'member','self','2026-07-28 08:53:42','2026-07-28 08:53:42'),
-(13,675,16,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42'),
-(14,675,1,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42'),
-(15,675,10,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42'),
-(16,675,4,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42'),
-(17,675,15,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42'),
-(18,675,6,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42'),
-(19,675,17,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42'),
-(20,682,16,'member','parent_circle_elements','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(21,682,16,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(22,682,5,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(23,682,3,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(24,682,10,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(25,682,4,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(26,682,7,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(27,682,7,'member','parent_circle_elements','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(28,682,15,'member','parent_circle_elements','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(29,682,15,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(30,682,6,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(31,682,6,'member','parent_circle_elements','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(32,682,17,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(33,682,17,'member','parent_circle_elements','2026-07-28 09:00:45','2026-07-28 09:00:45'),
-(34,680,1,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15'),
-(35,680,1,'member','parent_circle_elements','2026-07-28 09:05:15','2026-07-28 09:05:15'),
-(36,680,5,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15'),
-(37,680,8,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15'),
-(38,680,3,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15'),
-(39,680,10,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15'),
-(40,680,10,'member','parent_circle_elements','2026-07-28 09:05:15','2026-07-28 09:05:15'),
-(41,680,4,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15'),
-(42,680,9,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15'),
-(43,680,2,'member','parent_circle_elements','2026-07-28 09:05:15','2026-07-28 09:05:15'),
-(44,833,11,'member','organization','2026-07-28 09:07:42','2026-07-28 09:07:42');
+INSERT INTO `holon_permission` VALUES (1,710,1,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21');
+INSERT INTO `holon_permission` VALUES (2,710,5,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21');
+INSERT INTO `holon_permission` VALUES (3,710,8,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21');
+INSERT INTO `holon_permission` VALUES (4,710,3,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21');
+INSERT INTO `holon_permission` VALUES (5,710,10,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21');
+INSERT INTO `holon_permission` VALUES (6,710,4,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21');
+INSERT INTO `holon_permission` VALUES (7,710,9,'member','self','2026-07-25 10:29:21','2026-07-25 10:29:21');
+INSERT INTO `holon_permission` VALUES (8,675,5,'member','self','2026-07-28 08:53:42','2026-07-28 08:53:42');
+INSERT INTO `holon_permission` VALUES (9,675,8,'member','self','2026-07-28 08:53:42','2026-07-28 08:53:42');
+INSERT INTO `holon_permission` VALUES (10,675,3,'member','self','2026-07-28 08:53:42','2026-07-28 08:53:42');
+INSERT INTO `holon_permission` VALUES (11,675,9,'member','self','2026-07-28 08:53:42','2026-07-28 08:53:42');
+INSERT INTO `holon_permission` VALUES (12,675,7,'member','self','2026-07-28 08:53:42','2026-07-28 08:53:42');
+INSERT INTO `holon_permission` VALUES (13,675,16,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42');
+INSERT INTO `holon_permission` VALUES (14,675,1,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42');
+INSERT INTO `holon_permission` VALUES (15,675,10,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42');
+INSERT INTO `holon_permission` VALUES (16,675,4,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42');
+INSERT INTO `holon_permission` VALUES (17,675,15,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42');
+INSERT INTO `holon_permission` VALUES (18,675,6,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42');
+INSERT INTO `holon_permission` VALUES (19,675,17,'admin','self','2026-07-28 08:53:42','2026-07-28 08:53:42');
+INSERT INTO `holon_permission` VALUES (20,682,16,'member','parent_circle_elements','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (21,682,16,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (22,682,5,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (23,682,3,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (24,682,10,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (25,682,4,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (26,682,7,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (27,682,7,'member','parent_circle_elements','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (28,682,15,'member','parent_circle_elements','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (29,682,15,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (30,682,6,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (31,682,6,'member','parent_circle_elements','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (32,682,17,'member','parent_circle','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (33,682,17,'member','parent_circle_elements','2026-07-28 09:00:45','2026-07-28 09:00:45');
+INSERT INTO `holon_permission` VALUES (34,680,1,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15');
+INSERT INTO `holon_permission` VALUES (35,680,1,'member','parent_circle_elements','2026-07-28 09:05:15','2026-07-28 09:05:15');
+INSERT INTO `holon_permission` VALUES (36,680,5,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15');
+INSERT INTO `holon_permission` VALUES (37,680,8,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15');
+INSERT INTO `holon_permission` VALUES (38,680,3,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15');
+INSERT INTO `holon_permission` VALUES (39,680,10,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15');
+INSERT INTO `holon_permission` VALUES (40,680,10,'member','parent_circle_elements','2026-07-28 09:05:15','2026-07-28 09:05:15');
+INSERT INTO `holon_permission` VALUES (41,680,4,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15');
+INSERT INTO `holon_permission` VALUES (42,680,9,'member','parent_circle','2026-07-28 09:05:15','2026-07-28 09:05:15');
+INSERT INTO `holon_permission` VALUES (43,680,2,'member','parent_circle_elements','2026-07-28 09:05:15','2026-07-28 09:05:15');
+INSERT INTO `holon_permission` VALUES (44,833,11,'member','organization','2026-07-28 09:07:42','2026-07-28 09:07:42');
+INSERT INTO `holon_permission` VALUES (45,710,34,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (46,675,34,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (47,680,34,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (48,710,38,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (49,675,38,'admin','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (50,682,38,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (51,680,38,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (52,680,38,'member','parent_circle_elements','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (53,710,39,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (54,675,39,'admin','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (55,682,39,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (56,680,39,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (57,680,39,'member','parent_circle_elements','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (58,710,40,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (59,675,40,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (60,682,40,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (61,680,40,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (62,710,41,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (63,675,41,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (64,682,41,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (65,680,41,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (66,710,44,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (67,675,44,'admin','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (68,682,44,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (69,680,44,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (70,710,45,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (71,675,45,'admin','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (72,682,45,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (73,680,45,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (74,710,46,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (75,675,46,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (76,680,46,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (77,710,47,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (78,675,47,'member','self','2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `holon_permission` VALUES (79,680,47,'member','parent_circle','2026-09-17 08:29:31','2026-09-17 08:29:31');
 /*!40000 ALTER TABLE `holon_permission` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -2621,7 +2658,7 @@ CREATE TABLE `permission` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_permission_key` (`permission_key`),
   KEY `idx_permission_title` (`title`)
-) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=48 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2630,34 +2667,47 @@ CREATE TABLE `permission` (
 
 LOCK TABLES `permission` WRITE;
 /*!40000 ALTER TABLE `permission` DISABLE KEYS */;
-INSERT INTO `permission` VALUES
-(1,'CAN_ADD_MEMBER','Ajouter un membre','Autorise l ajout d un membre dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:18'),
-(2,'CAN_ADD_ADMIN','Definir un admin de contexte','Autorise l attribution ou le retrait du statut admin dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:18'),
-(3,'CAN_CREATE_DOCUMENT','Creer des fichiers','Autorise la creation de fichiers dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:18'),
-(4,'CAN_CREATE_DECISION','Creer des prises de decision','Autorise la creation de prises de decision dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:18'),
-(5,'CAN_CREATE_EVENT','Creer des dates','Autorise la creation de dates dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:18'),
-(6,'CAN_DELETE_EVENT','Supprimer des dates','Autorise la suppression de dates dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:23'),
-(7,'CAN_CLAIM_PV','Devenir secretaire de PV','Autorise a prendre le role de secretaire pendant une reunion associee a un PV.',1,'2026-07-23 11:51:18','2026-07-23 11:51:22'),
-(8,'CAN_CREATE_FAQ','Creer des FAQ','Autorise la creation de FAQ dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:18'),
-(9,'CAN_CREATE_PROJECT','Creer des projets','Autorise la creation de projets dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:24'),
-(10,'CAN_CREATE_INDICATOR','Creer des indicateurs','Autorise la creation d indicateurs dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:24'),
-(11,'CAN_ADD_APP','Gerer les applications','Autorise la gestion des applications actives et de leur ordre dans l organisation.',0,'2026-07-23 11:51:22','2026-07-23 11:51:22'),
-(12,'CAN_EDIT_TEMPLATE_PROPERTIES','Modifier les proprietes de templates','Autorise la modification des proprietes definies par les templates dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05'),
-(13,'CAN_ADD_TEMPLATE_PROPERTIES','Ajouter des proprietes de templates','Autorise l ajout de proprietes definies par les templates dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05'),
-(14,'CAN_DELETE_TEMPLATE_PROPERTIES','Supprimer les proprietes de templates','Autorise le retrait des proprietes definies par les templates dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05'),
-(15,'CAN_EDIT_HOLON_PROPERTIES','Modifier les proprietes de holons','Autorise la modification des proprietes ajoutees directement a un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05'),
-(16,'CAN_ADD_HOLON_PROPERTIES','Ajouter des proprietes de holons','Autorise l ajout de proprietes directement sur un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05'),
-(17,'CAN_DELETE_HOLON_PROPERTIES','Supprimer les proprietes de holons','Autorise le retrait des proprietes ajoutees directement a un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05'),
-(24,'CAN_DELETE_PROJECT','Supprimer des projets','Autorise la suppression de projets dans le contexte cible.',1,'2026-08-07 00:00:00','2026-08-07 00:00:00'),
-(25,'CAN_CREATE_CONTROL_LIST','Creer des activites recurrentes','Autorise la creation d activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
-(26,'CAN_EDIT_CONTROL_LIST','Modifier des activites recurrentes','Autorise la modification des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
-(27,'CAN_DELETE_CONTROL_LIST','Supprimer des activites recurrentes','Autorise la suppression des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
-(28,'CAN_CREATE_CONTROL_ACTIVITY','Creer des activites recurrentes','Autorise la creation d activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
-(29,'CAN_EDIT_CONTROL_ACTIVITY','Modifier des activites recurrentes','Autorise la modification des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
-(30,'CAN_DELETE_CONTROL_ACTIVITY','Supprimer des activites recurrentes','Autorise la suppression des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00'),
-(31,'CAN_EDIT_HOLON_BUDGET','Modifier les budgets de holons','Autorise la modification des budgets temps et argent des holons dans le contexte cible.',1,'2026-09-07 00:00:00','2026-09-07 00:00:00'),
-(32,'CAN_EDIT_AFFECTATION_BUDGET','Modifier les budgets des affectations','Autorise la modification des budgets temps et argent des affectations dans le contexte cible.',1,'2026-09-07 00:00:00','2026-09-07 00:00:00'),
-(33,'CAN_PROPOSE_PROJECT','Proposer des projets','Autorise la proposition de projets au role ou cercle cible.',1,'2026-09-09 00:00:00','2026-09-09 00:00:00');
+INSERT INTO `permission` VALUES (1,'CAN_ADD_MEMBER','Ajouter un membre','Autorise l ajout d un membre dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:18');
+INSERT INTO `permission` VALUES (2,'CAN_ADD_ADMIN','Definir un admin de contexte','Autorise l attribution ou le retrait du statut admin dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:18');
+INSERT INTO `permission` VALUES (3,'CAN_CREATE_DOCUMENT','Creer des fichiers','Autorise la creation de fichiers dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:18');
+INSERT INTO `permission` VALUES (4,'CAN_CREATE_DECISION','Creer des prises de decision','Autorise la creation de prises de decision dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:18');
+INSERT INTO `permission` VALUES (5,'CAN_CREATE_EVENT','Creer des dates','Autorise la creation de dates dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:18');
+INSERT INTO `permission` VALUES (6,'CAN_DELETE_EVENT','Supprimer des dates','Autorise la suppression de dates dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:23');
+INSERT INTO `permission` VALUES (7,'CAN_CLAIM_PV','Devenir secretaire de PV','Autorise a prendre le role de secretaire pendant une reunion associee a un PV.',1,'2026-07-23 11:51:18','2026-07-23 11:51:22');
+INSERT INTO `permission` VALUES (8,'CAN_CREATE_FAQ','Creer des FAQ','Autorise la creation de FAQ dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:18');
+INSERT INTO `permission` VALUES (9,'CAN_CREATE_PROJECT','Creer des projets','Autorise la creation de projets dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:24');
+INSERT INTO `permission` VALUES (10,'CAN_CREATE_INDICATOR','Creer des indicateurs','Autorise la creation d indicateurs dans le contexte cible.',1,'2026-07-23 11:51:18','2026-07-23 11:51:24');
+INSERT INTO `permission` VALUES (11,'CAN_ADD_APP','Gerer les applications','Autorise la gestion des applications actives et de leur ordre dans l organisation.',0,'2026-07-23 11:51:22','2026-07-23 11:51:22');
+INSERT INTO `permission` VALUES (12,'CAN_EDIT_TEMPLATE_PROPERTIES','Modifier les proprietes de templates','Autorise la modification des proprietes definies par les templates dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05');
+INSERT INTO `permission` VALUES (13,'CAN_ADD_TEMPLATE_PROPERTIES','Ajouter des proprietes de templates','Autorise l ajout de proprietes definies par les templates dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05');
+INSERT INTO `permission` VALUES (14,'CAN_DELETE_TEMPLATE_PROPERTIES','Supprimer les proprietes de templates','Autorise le retrait des proprietes definies par les templates dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05');
+INSERT INTO `permission` VALUES (15,'CAN_EDIT_HOLON_PROPERTIES','Modifier les proprietes de holons','Autorise la modification des proprietes ajoutees directement a un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05');
+INSERT INTO `permission` VALUES (16,'CAN_ADD_HOLON_PROPERTIES','Ajouter des proprietes de holons','Autorise l ajout de proprietes directement sur un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05');
+INSERT INTO `permission` VALUES (17,'CAN_DELETE_HOLON_PROPERTIES','Supprimer les proprietes de holons','Autorise le retrait des proprietes ajoutees directement a un holon dans le contexte cible.',1,'2026-07-27 12:00:00','2026-07-28 08:32:05');
+INSERT INTO `permission` VALUES (24,'CAN_DELETE_PROJECT','Supprimer des projets','Autorise la suppression de projets dans le contexte cible.',1,'2026-08-07 00:00:00','2026-08-07 00:00:00');
+INSERT INTO `permission` VALUES (25,'CAN_CREATE_CONTROL_LIST','Creer des listes de controle (ancien module)','Autorise la creation d activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (26,'CAN_EDIT_CONTROL_LIST','Modifier des listes de controle (ancien module)','Autorise la modification des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (27,'CAN_DELETE_CONTROL_LIST','Supprimer des listes de controle (ancien module)','Autorise la suppression des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (28,'CAN_CREATE_CONTROL_ACTIVITY','Creer des activites recurrentes','Autorise la creation d activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00');
+INSERT INTO `permission` VALUES (29,'CAN_EDIT_CONTROL_ACTIVITY','Modifier des activites recurrentes','Autorise la modification des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00');
+INSERT INTO `permission` VALUES (30,'CAN_DELETE_CONTROL_ACTIVITY','Supprimer des activites recurrentes','Autorise la suppression des activites recurrentes dans le contexte cible.',1,'2026-08-31 00:00:00','2026-08-31 00:00:00');
+INSERT INTO `permission` VALUES (31,'CAN_EDIT_HOLON_BUDGET','Modifier les budgets de holons','Autorise la modification des budgets temps et argent des holons dans le contexte cible.',1,'2026-09-07 00:00:00','2026-09-07 00:00:00');
+INSERT INTO `permission` VALUES (32,'CAN_EDIT_AFFECTATION_BUDGET','Modifier les budgets des affectations','Autorise la modification des budgets temps et argent des affectations dans le contexte cible.',1,'2026-09-07 00:00:00','2026-09-07 00:00:00');
+INSERT INTO `permission` VALUES (33,'CAN_PROPOSE_PROJECT','Proposer des projets','Autorise la proposition de projets au role ou cercle cible.',1,'2026-09-09 00:00:00','2026-09-09 00:00:00');
+INSERT INTO `permission` VALUES (34,'CAN_EDIT_PROJECT','Modifier des projets','Autorise la modification des projets et de leurs taches.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (35,'CAN_CREATE_RULE','Creer des regles','Autorise la creation de regles dans le contexte cible.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (36,'CAN_EDIT_RULE','Modifier des regles','Autorise la modification des regles dans le contexte cible.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (37,'CAN_DELETE_RULE','Supprimer des regles','Autorise la suppression des regles dans le contexte cible.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (38,'CAN_EDIT_INDICATOR','Modifier des indicateurs','Autorise la modification des indicateurs, de leurs valeurs, groupes et imports.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (39,'CAN_DELETE_INDICATOR','Supprimer des indicateurs','Autorise le retrait des indicateurs, groupes et imports du contexte cible.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (40,'CAN_EDIT_DOCUMENT','Modifier des documents','Autorise la modification des documents dans le respect de leur portee d edition.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (41,'CAN_DELETE_DOCUMENT','Supprimer des documents','Autorise la suppression des documents dans le contexte cible.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (42,'CAN_EDIT_MEMBER_ASSIGNMENT','Modifier les affectations','Autorise la modification du focus et de la date de revue des affectations.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (43,'CAN_DELETE_MEMBER','Retirer des membres','Autorise le retrait des membres et l annulation de leurs invitations, sans supprimer leur compte.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (44,'CAN_EDIT_DECISION','Modifier des decisions','Autorise la gestion des prises de decision dans le contexte cible.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (45,'CAN_DELETE_DECISION','Supprimer des decisions','Autorise la suppression des prises de decision dans le respect de leur cycle de vie.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (46,'CAN_EDIT_FAQ','Modifier des FAQ','Autorise la modification des FAQ dans le contexte cible.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
+INSERT INTO `permission` VALUES (47,'CAN_DELETE_FAQ','Supprimer des FAQ','Autorise la suppression des FAQ dans le contexte cible.',1,'2026-09-17 08:29:31','2026-09-17 08:29:31');
 /*!40000 ALTER TABLE `permission` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -3348,6 +3398,7 @@ INSERT INTO `sql_migration` VALUES
 ('2026-07-28-01-holon-admin-bounds.sql','2eb1d7f42962c6f0d2e3015348a03675c5125b2b51e972608546e83f20a2b00b','2026-07-28 08:32:05'),
 ('2026-07-28-02-holon-admin-bound-locks.sql','272303e70b952fbf16342dc4eea4d9ddc1ab6730c9c1182fe4105caea21b413c','2026-07-28 08:32:05'),
 ('2026-07-28-03-holon-admin-parent-and-inheritance.sql','0c1b53be2bc5c921125d8ff1e1cd2ac122d59c3e0ba3f900a108bc29741246f','2026-07-28 08:32:05');
+INSERT INTO `sql_migration` VALUES ('2026-09-17-01-object-crud-permissions.sql','55cf5d6caca461bf1f68a678602c02cf0237c2222f31f171f753c58f1bb05938','2026-09-17 00:00:00');
 /*!40000 ALTER TABLE `sql_migration` ENABLE KEYS */;
 UNLOCK TABLES;
 

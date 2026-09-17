@@ -282,13 +282,14 @@ class Rule extends DbObject
 
     public function canEdit()
     {
-        $authority = $this->getAuthority();
-        if ($authority instanceof Authority) {
-            return $authority->canEdit();
-        }
-
         $holon = $this->getHolon();
-        return $holon instanceof Holon && $holon->canEdit();
+        return $holon instanceof Holon && $holon->isAllowed('CAN_EDIT_RULE', false);
+    }
+
+    public function canDelete()
+    {
+        $holon = $this->getHolon();
+        return $holon instanceof Holon && $holon->isAllowed('CAN_DELETE_RULE', false);
     }
 
     public function isReviewDue(?\DateTimeInterface $date = null)

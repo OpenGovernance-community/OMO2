@@ -271,6 +271,7 @@ foreach ($accessibleOrganizations as $organization) {
         'shortname' => trim((string)$organization->get('shortname')),
         'logo' => trim((string)$organization->get('logo')),
         'color' => trim((string)$organization->get('color')),
+        'projectStatusLabels' => \dbObject\Project::getOrganizationStatusLabels($organizationId),
     ];
     $organizationById[$organizationId] = $organization;
 }
@@ -306,6 +307,12 @@ $organizationContext = [
 if ($selectedOrganization instanceof \dbObject\Organization) {
     $_SESSION['currentOrganization'] = $selectedOrganizationId;
 }
+
+$timerProjectStatusLabel = static function (string $status) use ($selectedOrganizationId): string {
+    $labels = \dbObject\Project::getOrganizationStatusLabels($selectedOrganizationId);
+    $customLabel = trim((string)($labels[$status] ?? ''));
+    return $customLabel !== '' ? $customLabel : t('timer.project.status.' . $status);
+};
 
 $activeEntryData = $activeEntry instanceof \dbObject\WorkTime ? $activeEntry->toTimerArray() : null;
 $currentUserName = commonGetCurrentUserDisplayName();
@@ -373,10 +380,10 @@ commonRenderTopbar([
                     <label class="timer-project-filter">
                         <span><?= htmlspecialchars(t('timer.project.status_label')) ?></span>
                         <select class="generic-form-control" data-timer-project-status>
-                            <option value="ready"><?= htmlspecialchars(t('timer.project.status.ready')) ?></option>
-                            <option value="in_progress" selected><?= htmlspecialchars(t('timer.project.status.in_progress')) ?></option>
-                            <option value="blocked"><?= htmlspecialchars(t('timer.project.status.blocked')) ?></option>
-                            <option value="review"><?= htmlspecialchars(t('timer.project.status.review')) ?></option>
+                            <option value="ready"><?= htmlspecialchars($timerProjectStatusLabel('ready')) ?></option>
+                            <option value="in_progress" selected><?= htmlspecialchars($timerProjectStatusLabel('in_progress')) ?></option>
+                            <option value="blocked"><?= htmlspecialchars($timerProjectStatusLabel('blocked')) ?></option>
+                            <option value="review"><?= htmlspecialchars($timerProjectStatusLabel('review')) ?></option>
                         </select>
                     </label>
                     <div class="timer-project-list" data-timer-project-list aria-live="polite"></div>
@@ -443,6 +450,12 @@ window.timerConfig = <?= json_encode([
         'projectLoading' => t('timer.project.loading'),
         'projectEmpty' => t('timer.project.empty'),
         'projectNone' => t('timer.project.none'),
+        'projectStatuses' => [
+            'ready' => t('timer.project.status.ready'),
+            'in_progress' => t('timer.project.status.in_progress'),
+            'blocked' => t('timer.project.status.blocked'),
+            'review' => t('timer.project.status.review'),
+        ],
         'selectionNone' => t('timer.selection.none'),
         'selectionOrganization' => t('timer.selection.organization', ['organizationName' => '{organizationName}']),
         'selectionHolon' => t('timer.selection.holon', ['organizationName' => '{organizationName}', 'holonName' => '{holonName}']),

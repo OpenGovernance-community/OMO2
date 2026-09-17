@@ -11,6 +11,7 @@ use dbObject\StatIndicatorGroupItem;
 use dbObject\StatIndicatorImport;
 use dbObject\StatIndicatorReferencePoint;
 use dbObject\StatIndicatorValue;
+use dbObject\UserOrganization;
 
 // adminEdit expects a JSON string while fetch callers can still parse this body as JSON.
 header('Content-Type: text/plain; charset=UTF-8');
@@ -448,6 +449,12 @@ if ($action === 'save_indicator') {
     }
 
     $referenceType = StatIndicator::normalizeReferenceType($_POST['reference_type'] ?? StatIndicator::REFERENCE_NONE);
+    $responsibleUserId = isset($_POST['IDuser_responsible']) && is_numeric($_POST['IDuser_responsible'])
+        ? (int)$_POST['IDuser_responsible']
+        : 0;
+    if ($responsibleUserId > 0 && !UserOrganization::hasActiveMembership($responsibleUserId, $organizationId)) {
+        $responsibleUserId = 0;
+    }
     $rawMeasurementFrequency = trim((string)($_POST['measurement_frequency'] ?? ''));
     $measurementFrequency = StatIndicator::normalizeMeasurementFrequency($rawMeasurementFrequency);
     if ($rawMeasurementFrequency !== '' && $measurementFrequency === null) {
@@ -478,6 +485,7 @@ if ($action === 'save_indicator') {
         $indicator->set('active', 1);
     }
     $indicator->set('name', $name);
+    $indicator->set('IDuser_responsible', $responsibleUserId > 0 ? $responsibleUserId : null);
     $indicator->set('description', trim((string)($_POST['description'] ?? '')));
     $indicator->set('source_url', $sourceUrl !== null && $sourceUrl !== '' ? $sourceUrl : null);
     $indicator->set('source_type', $requestedSourceType);
@@ -745,7 +753,7 @@ if ($action === 'delete_indicator') {
     if (!($indicator instanceof StatIndicator)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.not_found'), [], 404);
     }
-    if (!omoStatsCanEditIndicator($indicator, $context)) {
+    if (!omoStatsCanDeleteIndicator($indicator, $context)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
     $indicator->set('active', 0);
@@ -1072,7 +1080,7 @@ if ($action === 'create_ethercalc_indicator') {
 }
 
 if ($action === 'import_indicator') {
-    if (!omoStatsCanManageContext($context)) {
+    if (!omoStatsCanCreateContext($context)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
     $indicatorId = isset($_POST['indicator_id']) && is_numeric($_POST['indicator_id']) ? (int)$_POST['indicator_id'] : 0;
@@ -1139,7 +1147,7 @@ if ($action === 'update_import') {
 if ($action === 'delete_import') {
     $importId = isset($_POST['import_id']) && is_numeric($_POST['import_id']) ? (int)$_POST['import_id'] : 0;
     $import = omoStatsLoadImport($importId, $organizationId);
-    if (!($import instanceof StatIndicatorImport) || !omoStatsCanEditContextResource($import, $context)) {
+    if (!($import instanceof StatIndicatorImport) || !omoStatsCanDeleteContextResource($import, $context)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
     $import->set('active', 0);
@@ -1247,7 +1255,7 @@ if ($action === 'update_group') {
 if ($action === 'delete_group') {
     $groupId = isset($_POST['group_id']) && is_numeric($_POST['group_id']) ? (int)$_POST['group_id'] : 0;
     $group = omoStatsLoadGroup($groupId, $organizationId);
-    if (!($group instanceof StatIndicatorGroup) || !omoStatsCanEditContextResource($group, $context)) {
+    if (!($group instanceof StatIndicatorGroup) || !omoStatsCanDeleteContextResource($group, $context)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
     $group->set('active', 0);
@@ -1259,7 +1267,7 @@ if ($action === 'delete_group') {
 }
 
 if ($action === 'create_group') {
-    if (!omoStatsCanManageContext($context)) {
+    if (!omoStatsCanCreateContext($context)) {
         omoStatsActionRespond(false, omoStatsT('stats.error.forbidden'), [], 403);
     }
     $name = trim((string)($_POST['name'] ?? ''));

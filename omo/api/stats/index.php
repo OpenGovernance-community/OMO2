@@ -100,6 +100,7 @@ foreach ($imports as $import) {
     $importedIndicatorLabels[$sourceId] = omoStatsT('stats.card.imported');
     $importedIndicatorIds[$sourceId] = (int)$import->getId();
     $importedIndicatorEditable[$sourceId] = omoStatsCanEditContextResource($import, $context);
+    $importedIndicatorDeletable[$sourceId] = omoStatsCanDeleteContextResource($import, $context);
 }
 
 $groups = new ArrayStatIndicatorGroup();
@@ -110,7 +111,7 @@ $groups->loadForContext(
     $scopeHolonIds
 );
 $groupItems = omoStatsCollectionItems($groups, StatIndicatorGroup::class);
-$canManage = omoStatsCanManageContext($context);
+$canManage = omoStatsCanCreateContext($context);
 $canCreateIndicator = omoStatsCanCreateContext($context);
 $emptyKey = $statsScope === 'children'
     ? 'stats.empty.children'
@@ -154,9 +155,12 @@ foreach ($indicatorItems as $indicator) {
         'latestValue' => $latestValue,
         'referencePercentage' => omoStatsGetIndicatorReferencePercentage($indicator, $latestValue, $referencePoints),
         'contextLabel' => $importedIndicatorLabels[(int)$indicator->getId()] ?? omoStatsContextLabel($indicator),
+        'responsibilityLabel' => omoStatsResponsibleAssignmentLabel($indicator),
         'isImported' => isset($importedIndicatorLabels[(int)$indicator->getId()]),
         'importId' => $importedIndicatorIds[(int)$indicator->getId()] ?? 0,
         'canEditImport' => $importedIndicatorEditable[(int)$indicator->getId()] ?? false,
+        'canDeleteImport' => $importedIndicatorDeletable[(int)$indicator->getId()] ?? false,
+        'canDelete' => omoStatsCanDeleteIndicator($indicator, $context),
         'canEdit' => omoStatsCanEditIndicator($indicator, $context),
         'isOverdue' => (bool)$overdueInfo['is_overdue'],
         'overdueSeverity' => (string)$overdueInfo['severity'],
@@ -196,6 +200,7 @@ foreach ($groupItems as $group) {
         'chartMinValue' => is_numeric($group->get('chart_min_value')) ? (float)$group->get('chart_min_value') : null,
         'hideSameHolonSources' => (int)$group->get('hide_same_holon_sources') === 1,
         'canEdit' => omoStatsCanEditContextResource($group, $context),
+        'canDelete' => omoStatsCanDeleteContextResource($group, $context),
         'overdueSeverity' => omoStatsGetGroupOverdueInfo($group)['severity'],
     ];
 }
@@ -367,10 +372,10 @@ $displayItemCount = count($statsEntries);
                     </div>
                     <div class="omo-view-filter__actions">
                         <button type="button" class="generic-action-button generic-action-button--main" data-omo-stats-filter-apply><?= omoApiEscape(omoStatsT('stats.filters.apply')) ?></button>
-                        <?php if (!empty($applicationViewPreferences['canSavePersonal'])): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-filter-save data-omo-app-view-save-scope="personal"><?= omoApiEscape(omoStatsT('stats.filters.save_view')) ?></button>
+                        <?php if (!empty($applicationViewPreferences['canSavePersonal']) || !empty($applicationViewPreferences['canSaveTemporary'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--secondary"<?= !empty($applicationViewPreferences['canSavePersonal']) ? ' data-omo-stats-filter-save' : '' ?> data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoStatsT('stats.filters.save_view')) ?></button>
                         <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
-                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoApplicationViewPreferencesT('app_view.save_organization_template', array('templateName' => $applicationViewPreferences['templateLabel'] ?? ''))) ?></button>
+                            <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape($applicationViewPreferences['primarySaveLabel'] ?? '') ?></button>
                         <?php endif; ?>
                         <?= omoApplicationViewPreferencesRenderMenu($applicationViewPreferences) ?>
                     </div>
@@ -421,13 +426,13 @@ $displayItemCount = count($statsEntries);
                                         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape((string)$group->get('name')) ?></h3>
                                     </div>
                                     <span class="omo-stats-card__value-count<?= $groupItem['canEdit'] ? ' omo-stats-card__value-count--with-menu' : '' ?>"><?= omoApiEscape(omoStatsT('stats.card.member_count', ['count' => $groupItem['memberCount']])) ?></span>
-                                    <?php if ($groupItem['canEdit']): ?>
+                                    <?php if ($groupItem['canEdit'] || $groupItem['canDelete']): ?>
                                         <div class="omo-stats-item-menu generic-menu" data-omo-stats-item-menu>
                                             <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
                                             <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
                                                 <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($groupDetailBaseUrl . '&id=' . rawurlencode((string)$group->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
-                                                <button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-hide-same-holon-sources="<?= $groupItem['hideSameHolonSources'] ? '1' : '0' ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>" data-omo-stats-group-ceiling-value="<?= omoApiEscape((string)($groupItem['ceilingValue'] ?? '')) ?>" data-omo-stats-group-chart-min-value="<?= omoApiEscape((string)($groupItem['chartMinValue'] ?? '')) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
-                                                <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-group="<?= (int)$group->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_group')) ?></button>
+                                                <?php if ($groupItem['canEdit']): ?><button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-hide-same-holon-sources="<?= $groupItem['hideSameHolonSources'] ? '1' : '0' ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>" data-omo-stats-group-ceiling-value="<?= omoApiEscape((string)($groupItem['ceilingValue'] ?? '')) ?>" data-omo-stats-group-chart-min-value="<?= omoApiEscape((string)($groupItem['chartMinValue'] ?? '')) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button><?php endif; ?>
+                                                <?php if ($groupItem['canDelete']): ?><button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-group="<?= (int)$group->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_group')) ?></button><?php endif; ?>
                                             </div>
                                         </div>
                                     <?php endif; ?>
@@ -470,19 +475,20 @@ $displayItemCount = count($statsEntries);
                                     <div>
                                         <span class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape((string)$item['contextLabel']) ?></span>
                                         <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape($indicatorName) ?></h3>
+                                        <span class="generic-meta generic-meta--small"><?= omoApiEscape(omoStatsT('stats.responsibility.label')) ?> : <?= omoApiEscape((string)$item['responsibilityLabel']) ?></span>
                                     </div>
                                     <span class="omo-stats-card__value-count<?= $item['canEdit'] ? ' omo-stats-card__value-count--with-menu' : '' ?>"><?= omoApiEscape(omoStatsT('stats.card.value_count', ['count' => count($item['values'])])) ?></span>
-                                    <?php if ($item['isImported'] ? $item['canEditImport'] : $item['canEdit']): ?>
+                                    <?php if ($item['isImported'] ? ($item['canEditImport'] || $item['canDeleteImport']) : ($item['canEdit'] || $item['canDelete'])): ?>
                                         <div class="omo-stats-item-menu generic-menu" data-omo-stats-item-menu>
                                             <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
                                             <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
                                                 <?php if ($item['isImported']): ?>
-                                                    <button type="button" class="generic-menu-item" data-omo-stats-edit-import="<?= (int)$item['importId'] ?>" data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_import')) ?></button>
-                                                    <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-import="<?= (int)$item['importId'] ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_import')) ?></button>
+                                                    <?php if ($item['canEditImport']): ?><button type="button" class="generic-menu-item" data-omo-stats-edit-import="<?= (int)$item['importId'] ?>" data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_import')) ?></button><?php endif; ?>
+                                                    <?php if ($item['canDeleteImport']): ?><button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-import="<?= (int)$item['importId'] ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_import')) ?></button><?php endif; ?>
                                                 <?php else: ?>
                                                     <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($detailBaseUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
-                                                    <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($createUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit')) ?></button>
-                                                    <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-indicator="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_indicator')) ?></button>
+                                                    <?php if ($item['canEdit']): ?><button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($createUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit')) ?></button><?php endif; ?>
+                                                    <?php if ($item['canDelete']): ?><button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-indicator="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_indicator')) ?></button><?php endif; ?>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -564,13 +570,13 @@ $displayItemCount = count($statsEntries);
                                     role="button"
                                     aria-label="<?= omoApiEscape(omoStatsT('stats.card.open', ['name' => (string)$group->get('name')])) ?>"
                                 >
-                                    <?php if ($groupItem['canEdit']): ?>
+                                    <?php if ($groupItem['canEdit'] || $groupItem['canDelete']): ?>
                                         <div class="omo-stats-item-menu generic-menu" data-omo-stats-item-menu>
                                             <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
                                             <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
                                                 <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($groupDetailBaseUrl . '&id=' . rawurlencode((string)$group->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
-                                                <button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-hide-same-holon-sources="<?= $groupItem['hideSameHolonSources'] ? '1' : '0' ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>" data-omo-stats-group-ceiling-value="<?= omoApiEscape((string)($groupItem['ceilingValue'] ?? '')) ?>" data-omo-stats-group-chart-min-value="<?= omoApiEscape((string)($groupItem['chartMinValue'] ?? '')) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button>
-                                                <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-group="<?= (int)$group->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_group')) ?></button>
+                                                <?php if ($groupItem['canEdit']): ?><button type="button" class="generic-menu-item" data-omo-stats-edit-group="<?= (int)$group->getId() ?>" data-omo-stats-group-name="<?= omoApiEscape((string)$group->get('name')) ?>" data-omo-stats-group-mode="<?= omoApiEscape((string)$group->get('display_mode')) ?>" data-omo-stats-group-hide-same-holon-sources="<?= $groupItem['hideSameHolonSources'] ? '1' : '0' ?>" data-omo-stats-group-indicators="<?= omoApiEscape(json_encode($groupItem['indicatorIds'])) ?>" data-omo-stats-group-reference-type="<?= omoApiEscape($groupItem['referenceType']) ?>" data-omo-stats-group-reference-points="<?= omoApiEscape(json_encode($groupItem['referencePoints'])) ?>" data-omo-stats-group-ceiling-value="<?= omoApiEscape((string)($groupItem['ceilingValue'] ?? '')) ?>" data-omo-stats-group-chart-min-value="<?= omoApiEscape((string)($groupItem['chartMinValue'] ?? '')) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_group')) ?></button><?php endif; ?>
+                                                <?php if ($groupItem['canDelete']): ?><button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-group="<?= (int)$group->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_group')) ?></button><?php endif; ?>
                                             </div>
                                         </div>
                                     <?php endif; ?>
@@ -616,17 +622,17 @@ $displayItemCount = count($statsEntries);
                                     role="button"
                                     aria-label="<?= omoApiEscape(omoStatsT('stats.card.open', ['name' => $indicatorName])) ?>"
                                 >
-                                    <?php if ($item['isImported'] ? $item['canEditImport'] : $item['canEdit']): ?>
+                                    <?php if ($item['isImported'] ? ($item['canEditImport'] || $item['canDeleteImport']) : ($item['canEdit'] || $item['canDelete'])): ?>
                                         <div class="omo-stats-item-menu generic-menu" data-omo-stats-item-menu>
                                             <button type="button" class="omo-stats-item-menu__toggle generic-menu-toggle" data-omo-stats-item-menu-toggle aria-label="<?= omoApiEscape(omoStatsT('stats.action.more')) ?>" aria-expanded="false">...</button>
                                             <div class="omo-stats-item-menu__panel generic-menu-panel generic-menu-panel--wide" data-omo-stats-item-menu-panel hidden>
                                                 <?php if ($item['isImported']): ?>
-                                                    <button type="button" class="generic-menu-item" data-omo-stats-edit-import="<?= (int)$item['importId'] ?>" data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_import')) ?></button>
-                                                    <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-import="<?= (int)$item['importId'] ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_import')) ?></button>
+                                                    <?php if ($item['canEditImport']): ?><button type="button" class="generic-menu-item" data-omo-stats-edit-import="<?= (int)$item['importId'] ?>" data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.edit_import')) ?></button><?php endif; ?>
+                                                    <?php if ($item['canDeleteImport']): ?><button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-import="<?= (int)$item['importId'] ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_import')) ?></button><?php endif; ?>
                                                 <?php else: ?>
                                                     <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($detailBaseUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.detail')) ?></button>
-                                                    <button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($createUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit')) ?></button>
-                                                    <button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-indicator="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_indicator')) ?></button>
+                                                    <?php if ($item['canEdit']): ?><button type="button" class="generic-menu-item" data-omo-stats-open-editor-url="<?= omoApiEscape($createUrl . '&id=' . rawurlencode((string)$indicator->getId())) ?>"><?= omoApiEscape(omoStatsT('stats.action.edit')) ?></button><?php endif; ?>
+                                                    <?php if ($item['canDelete']): ?><button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-stats-delete-indicator="<?= (int)$indicator->getId() ?>"><?= omoApiEscape(omoStatsT('stats.action.delete_indicator')) ?></button><?php endif; ?>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -636,7 +642,7 @@ $displayItemCount = count($statsEntries);
                                             <span class="omo-stats-compact__dot" aria-hidden="true"></span>
                                             <div class="generic-file-list__title-block">
                                                 <strong class="generic-file-list__title"><?= omoApiEscape($indicatorName) ?></strong>
-                                                <span class="generic-file-list__meta-line"><?= omoApiEscape(omoStatsT('stats.card.value_count', ['count' => count($item['values'])])) ?></span>
+                                                <span class="generic-file-list__meta-line"><?= omoApiEscape(omoStatsT('stats.card.value_count', ['count' => count($item['values'])])) ?> · <?= omoApiEscape(omoStatsT('stats.responsibility.label')) ?> : <?= omoApiEscape((string)$item['responsibilityLabel']) ?></span>
                                             </div>
                                         </div>
                                     </div>
@@ -690,7 +696,7 @@ $displayItemCount = count($statsEntries);
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/api/stats/reference-editor.js?v=20260724-ceiling"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260916-apply-shared-view"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
 <script>
 (function () {
     var root = typeof window.omoFindApplicationRoot === 'function'
@@ -1408,8 +1414,10 @@ $displayItemCount = count($statsEntries);
             quickSearch.value = currentSearch;
         }
         var temporary = readStoredValue(window.sessionStorage, sessionViewsStorageKey);
-        var saved = getStoredFilters();
-        var defaultFilters = getDefaultStoredFilters();
+        var canUseLegacyPersonal = typeof window.omoApplicationViewPreferencesCanUseLegacyPersonal === 'function'
+            && window.omoApplicationViewPreferencesCanUseLegacyPersonal(root);
+        var saved = canUseLegacyPersonal ? getStoredFilters() : null;
+        var defaultFilters = canUseLegacyPersonal ? getDefaultStoredFilters() : null;
         var serverDefault = typeof window.omoApplicationViewPreferencesGetDefault === 'function'
             ? window.omoApplicationViewPreferencesGetDefault(root)
             : null;

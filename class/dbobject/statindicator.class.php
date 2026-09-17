@@ -42,7 +42,7 @@ class StatIndicator extends DbObject
         return [
             [['IDorganization', 'name', 'reference_type'], 'required'],
             [['id'], 'integer'],
-            [['IDorganization', 'IDholon', 'IDuser', 'IDdocument'], 'fk'],
+            [['IDorganization', 'IDholon', 'IDuser', 'IDuser_responsible', 'IDdocument'], 'fk'],
             [['name', 'source_url', 'reference_type', 'measurement_frequency', 'measurement_schedule', 'source_type', 'ethercalc_cell', 'ethercalc_frequency', 'ethercalc_range', 'ethercalc_date_column', 'ethercalc_value_column', 'spreadsheet_sheet', 'spreadsheet_cell', 'spreadsheet_frequency', 'spreadsheet_range', 'spreadsheet_date_column', 'spreadsheet_value_column'], 'string'],
             [['description'], 'text'],
             [['chart_min_value'], 'float'],
@@ -59,6 +59,7 @@ class StatIndicator extends DbObject
             'IDorganization' => 'Organisation',
             'IDholon' => 'Cercle ou rôle',
             'IDuser' => 'Créateur',
+            'IDuser_responsible' => 'Personne en charge',
             'name' => 'Nom',
             'description' => 'Description',
             'source_url' => 'URL de la source',
@@ -131,7 +132,21 @@ class StatIndicator extends DbObject
 
     public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
     {
-        return self::execute("UPDATE stat_indicator SET IDuser = CASE WHEN active = 1 THEN NULL ELSE :ghost_user_id END WHERE IDorganization = :organization_id AND IDuser = :user_id", array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId));
+        return self::execute(
+            "UPDATE stat_indicator
+            SET IDuser = CASE WHEN IDuser = :creator_user_id THEN CASE WHEN active = 1 THEN NULL ELSE :ghost_user_id END ELSE IDuser END,
+                IDuser_responsible = CASE WHEN IDuser_responsible = :responsible_user_id THEN NULL ELSE IDuser_responsible END
+            WHERE IDorganization = :organization_id
+              AND (IDuser = :creator_filter_user_id OR IDuser_responsible = :responsible_filter_user_id)",
+            array(
+                'ghost_user_id' => (int)$ghostUserId,
+                'organization_id' => (int)$organizationId,
+                'creator_user_id' => (int)$userId,
+                'responsible_user_id' => (int)$userId,
+                'creator_filter_user_id' => (int)$userId,
+                'responsible_filter_user_id' => (int)$userId,
+            )
+        );
     }
 
     public static function getReferenceTypeCatalog()
@@ -831,6 +846,16 @@ class StatIndicator extends DbObject
 
     public function canEdit()
     {
+        return $this->canUsePermission('CAN_EDIT_INDICATOR');
+    }
+
+    public function canDelete()
+    {
+        return $this->canUsePermission('CAN_DELETE_INDICATOR');
+    }
+
+    protected function canUsePermission(string $permissionKey): bool
+    {
         $currentUserId = function_exists('commonGetCurrentUserId')
             ? (int)\commonGetCurrentUserId()
             : (int)($_SESSION['currentUser'] ?? 0);
@@ -838,17 +863,16 @@ class StatIndicator extends DbObject
             return false;
         }
 
-        if ((int)$this->get('IDuser') === $currentUserId) {
-            return true;
-        }
-
-        $holon = $this->getHolon();
-        if ($holon instanceof \dbObject\Holon) {
-            return $holon->canEdit();
-        }
-
         $organization = $this->getOrganization();
-        return $organization instanceof \dbObject\Organization && $organization->canEdit();
+        $holon = $this->getHolon();
+        if (!($holon instanceof Holon) && $organization instanceof Organization) {
+            $holon = $organization->getEnabledStructuralRootHolon();
+        }
+        if ($holon instanceof Holon) {
+            return $holon->isAllowed($permissionKey, false, $currentUserId);
+        }
+        return $organization instanceof Organization
+            && Permission::userCanInOrganization($permissionKey, (int)$organization->getId(), $currentUserId);
     }
 }
 
