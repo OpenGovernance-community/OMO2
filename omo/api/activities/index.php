@@ -96,7 +96,7 @@ unset($groupRows);
 
 $baseUrl = '/omo/api/activities/index.php?oid=' . $organizationId
     . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . $pvMeetingQuery;
-$currentUrl = $baseUrl . ($scope !== 'contextual' ? '&activity_scope=' . rawurlencode($scope) : '');
+$currentUrl = $baseUrl . '&activity_scope=' . rawurlencode($scope);
 $createUrl = '/omo/api/activities/edit.php?oid=' . $organizationId
     . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . $pvMeetingQuery;
 $canCreate = omoActivityCanUsePermission($currentHolon, 'CAN_CREATE_CONTROL_ACTIVITY');

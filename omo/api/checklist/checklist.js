@@ -173,9 +173,7 @@
         if (routeCid > 0) {
             query.push('cid=' + encodeURIComponent(String(routeCid)));
         }
-        if (normalizedScope !== 'contextual') {
-            query.push('checklist_scope=' + encodeURIComponent(normalizedScope));
-        }
+        query.push('checklist_scope=' + encodeURIComponent(normalizedScope));
         return '/omo/api/checklist/index.php?' + query.join('&');
     }
 

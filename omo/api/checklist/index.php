@@ -119,9 +119,7 @@ $currentUrl = '/omo/api/checklist/index.php?oid=' . rawurlencode((string)$organi
 if ($currentHolonId > 0) {
     $currentUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
 }
-if ($checklistScope !== 'contextual') {
-    $currentUrl .= '&checklist_scope=' . rawurlencode($checklistScope);
-}
+$currentUrl .= '&checklist_scope=' . rawurlencode($checklistScope);
 $createUrl = '/omo/api/checklist/edit.php?oid=' . rawurlencode((string)$organizationId);
 if ($currentHolonId > 0) {
     $createUrl .= '&cid=' . rawurlencode((string)$currentHolonId);

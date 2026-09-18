@@ -373,7 +373,7 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
     };
     var policyViewUrl = function (view) {
         var url = root.dataset.policyIndexUrl;
-        if (view.scope !== 'contextual') url += '&policy_scope=' + encodeURIComponent(view.scope);
+        url += '&policy_scope=' + encodeURIComponent(view.scope);
         if (view.sort !== 'alpha') url += '&policy_sort=' + encodeURIComponent(view.sort);
         if (view.group !== 'holon') url += '&policy_group=' + encodeURIComponent(view.group);
         return url;

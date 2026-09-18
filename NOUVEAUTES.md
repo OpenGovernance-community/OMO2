@@ -4,6 +4,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-18
 
+- Vues : le perimetre Local est maintenant transmis explicitement lors des rafraichissements des Documents, Activites, Checklists, Projets, Indicateurs, Equipe et Reglement. Cela evite une boucle de chargement lorsqu une vue par defaut choisit les enfants directs.
+
 - Rendez-vous : le partage d un lien public affiche maintenant un apercu explicite avec le nom complet de la personne, sa photo lorsqu elle est definie et un resume de la prise de rendez-vous. Le nom court reste reserve a l adresse publique.
 
 - Projets : chaque personne peut suivre ou ne plus suivre un projet depuis son menu. Une etoile plus visible devant le holon indique le suivi, en jaune pour la personne courante et en gris pour les autres, avec la liste des personnes au survol.
