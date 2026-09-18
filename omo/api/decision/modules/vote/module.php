@@ -1002,7 +1002,6 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     <?php endif; ?>
                                         </div>
                                     </section>
-                                    <?php if (!$embeddedQuestion): ?>
                                     <section class="omo-decision-settings-overview__group">
                                         <span class="omo-decision-settings-overview__title"><?= $escape(t('decisions.edit.settings.participation', [], $lang, $sourceLang)) ?></span>
                                         <div class="omo-decision-settings-overview__items">
@@ -1010,7 +1009,6 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                             <span class="omo-decision-vote__readonly-stat"><strong><?= $escape(t('decisions.vote.field.allow_proposal_discussions', [], $lang, $sourceLang)) ?></strong><span data-omo-decision-vote-discussions-summary data-yes-label="<?= $escape(t('decisions.vote.option.common.yes', [], $lang, $sourceLang)) ?>" data-no-label="<?= $escape(t('decisions.vote.option.common.no', [], $lang, $sourceLang)) ?>"><?= $escape($allowProposalDiscussions ? t('decisions.vote.option.common.yes', [], $lang, $sourceLang) : t('decisions.vote.option.common.no', [], $lang, $sourceLang)) ?></span></span>
                                         </div>
                                     </section>
-                                    <?php endif; ?>
                                     <?php if (!$consultationOnly): ?>
                                     <section class="omo-decision-settings-overview__group">
                                         <span class="omo-decision-settings-overview__title"><?= $escape(t('decisions.edit.settings.presentation', [], $lang, $sourceLang)) ?></span>
@@ -1020,7 +1018,6 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                         </div>
                                     </section>
                                     <?php endif; ?>
-                                    <?php if (!$embeddedQuestion): ?>
                                     <section class="omo-decision-settings-overview__group">
                                         <span class="omo-decision-settings-overview__title"><?= $escape(t('decisions.edit.settings.privacy', [], $lang, $sourceLang)) ?></span>
                                         <div class="omo-decision-settings-overview__items">
@@ -1030,7 +1027,6 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                             <?php endif; ?>
                                         </div>
                                     </section>
-                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -1057,7 +1053,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     </section>
                                     <?php endif; ?>
 
-                                <section class="omo-decision-settings-popup__group"<?= $embeddedQuestion ? ' hidden' : '' ?>>
+                                <section class="omo-decision-settings-popup__group">
                                     <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.participation', [], $lang, $sourceLang)) ?></span>
                                         <div class="omo-decision-settings-popup__options">
                                             <label class="omo-decision-settings-popup__option">
@@ -1086,7 +1082,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     </section>
                                     <?php endif; ?>
 
-                                <section class="omo-decision-settings-popup__group"<?= $embeddedQuestion ? ' hidden' : '' ?>>
+                                <section class="omo-decision-settings-popup__group">
                                     <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.privacy', [], $lang, $sourceLang)) ?></span>
                                         <div class="omo-decision-settings-popup__options">
                                             <label class="omo-decision-settings-popup__option">
@@ -1104,6 +1100,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                                     <div class="generic-context-help__content"><?= $escape(t('decisions.vote.field.allow_anonymous_votes_help', [], $lang, $sourceLang)) ?></div>
                                                 </details>
                                             </div>
+                                            <div<?= $embeddedQuestion ? ' hidden' : '' ?>>
                                             <label class="omo-decision-settings-popup__option omo-decision-settings-popup__option--wide">
                                                 <input type="checkbox" data-omo-decision-vote-popup-owner-intermediate-results <?= $ownerIntermediateResultsAccess ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
                                                 <span><?= $escape(t('decisions.edit.owner_intermediate_results_access_explicit', [], $lang, $sourceLang)) ?></span>
@@ -1116,6 +1113,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                                 <input type="checkbox" data-omo-decision-vote-popup-participant-responses-editable <?= $participantResponsesEditable ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
                                                 <span><?= $escape(t('decisions.edit.participant_responses_editable', [], $lang, $sourceLang)) ?></span>
                                             </label>
+                                            </div>
                                             <?php endif; ?>
                                         </div>
                                     </section>
@@ -1991,7 +1989,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             }
 
                             popupApply.addEventListener('click', function () {
-                                if (!embeddedQuestion && hiddenAnonymousInput) {
+                                if (hiddenAnonymousInput) {
                                     hiddenAnonymousInput.value = popupAnonymous.checked ? '' : '1';
                                 }
                                 if (!isConsultationOnly) {
@@ -2008,7 +2006,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                     if (hiddenMaxChoicesInput) {
                                         hiddenMaxChoicesInput.value = String(isMultiple ? normalizedMaxChoices : 1);
                                     }
-                                    if (!embeddedQuestion && hiddenAllowAnonymousVotesInput) {
+                                    if (hiddenAllowAnonymousVotesInput) {
                                         hiddenAllowAnonymousVotesInput.value = popupAllowAnonymousVotes.checked ? '1' : '';
                                     }
                                     const settingsForm = form.closest('[data-omo-decision-multi-editor]')
@@ -2033,10 +2031,10 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                                         hiddenOneProposalAtATimeInput.value = popupOneProposalAtATime.checked ? '1' : '';
                                     }
                                 }
-                                if (!embeddedQuestion && hiddenConsultationProposalsInput) {
+                                if (hiddenConsultationProposalsInput) {
                                     hiddenConsultationProposalsInput.value = popupConsultationProposals.checked ? '1' : '';
                                 }
-                                if (!embeddedQuestion && hiddenProposalDiscussionsInput) {
+                                if (hiddenProposalDiscussionsInput) {
                                     hiddenProposalDiscussionsInput.value = popupProposalDiscussions.checked ? '1' : '';
                                 }
                                 if (hiddenProposalContentTitleInput) {

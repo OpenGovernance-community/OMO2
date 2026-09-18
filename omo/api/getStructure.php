@@ -2888,6 +2888,116 @@ $(document)
       ctx.restore();
     }
 
+    function getTerminalMemberRows(cardCount) {
+      if (cardCount <= 3) {
+        return [{cards: cardCount, slots: cardCount}];
+      }
+
+      if (cardCount <= 5) {
+        return [
+          {cards: 3, slots: 3},
+          {cards: cardCount - 3, slots: cardCount === 4 ? 1 : 2}
+        ];
+      }
+
+      if (cardCount <= 7) {
+        return [
+          {cards: 4, slots: 4},
+          {cards: cardCount - 4, slots: 3}
+        ];
+      }
+
+      const rows = [
+        {cards: 5, slots: 5},
+        {cards: Math.min(4, cardCount - 5), slots: 4}
+      ];
+      if (cardCount > 9) {
+        rows.push({cards: cardCount - 9, slots: 3});
+      }
+      return rows;
+    }
+
+    function getTerminalMemberSlotIndexes(cardCount, slotCount) {
+      if (cardCount >= slotCount) {
+        return Array.from({length: slotCount}, function (_, index) {
+          return index;
+        });
+      }
+
+      if (cardCount === 1) {
+        return [Math.floor(slotCount / 2)];
+      }
+
+      if (cardCount === 2 && slotCount === 3) {
+        return [0, 2];
+      }
+
+      const firstSlot = (slotCount - cardCount) / 2;
+      return Array.from({length: cardCount}, function (_, index) {
+        return firstSlot + index;
+      });
+    }
+
+    function getTerminalMemberPatternMetrics(rows, nodeR, avatarRadius, devicePixelRatio) {
+      const edgeInset = Math.max(6 * devicePixelRatio, nodeR * 0.045);
+      const axisGap = Math.max(4 * devicePixelRatio, nodeR * 0.04);
+      const horizontalGap = Math.max(5 * devicePixelRatio, avatarRadius * 0.22);
+      const minimumAvatarClearance = Math.max(3 * devicePixelRatio, avatarRadius * 0.08);
+      const maximumCenterDistance = nodeR - edgeInset - avatarRadius;
+      const rowCenterDistances = [];
+
+      if (maximumCenterDistance <= 0) {
+        return null;
+      }
+
+      for (let row = 0; row < rows.length; row += 1) {
+        let centerDistanceFromAxis = axisGap + avatarRadius;
+        if (row > 0) {
+          const previousRow = rows[row - 1];
+          const previousSlotIndexes = getTerminalMemberSlotIndexes(previousRow.cards, previousRow.slots);
+          const currentSlotIndexes = getTerminalMemberSlotIndexes(rows[row].cards, rows[row].slots);
+          const horizontalPitch = (avatarRadius * 2) + horizontalGap;
+          let closestHorizontalDistance = Number.POSITIVE_INFINITY;
+          previousSlotIndexes.forEach(function (previousSlotIndex) {
+            currentSlotIndexes.forEach(function (currentSlotIndex) {
+              const previousHorizontalPosition = previousSlotIndex - ((previousRow.slots - 1) / 2);
+              const currentHorizontalPosition = currentSlotIndex - ((rows[row].slots - 1) / 2);
+              closestHorizontalDistance = Math.min(
+                closestHorizontalDistance,
+                Math.abs(previousHorizontalPosition - currentHorizontalPosition) * horizontalPitch
+              );
+            });
+          });
+          const requiredCenterDistance = (avatarRadius * 2) + minimumAvatarClearance;
+          const rowStep = Math.sqrt(Math.max(
+            0,
+            (requiredCenterDistance * requiredCenterDistance)
+              - (closestHorizontalDistance * closestHorizontalDistance)
+          ));
+          centerDistanceFromAxis = rowCenterDistances[row - 1] + rowStep;
+        }
+        if (centerDistanceFromAxis > maximumCenterDistance) {
+          return null;
+        }
+
+        rowCenterDistances.push(centerDistanceFromAxis);
+
+        const maximumHalfRowWidth = Math.sqrt(
+          Math.max(0, (maximumCenterDistance * maximumCenterDistance) - (centerDistanceFromAxis * centerDistanceFromAxis))
+        );
+        const requiredHalfRowWidth = (rows[row].slots - 1) * (avatarRadius + (horizontalGap / 2));
+        if (requiredHalfRowWidth > maximumHalfRowWidth) {
+          return null;
+        }
+      }
+
+      return {
+        axisGap: axisGap,
+        horizontalGap: horizontalGap,
+        rowCenterDistances: rowCenterDistances
+      };
+    }
+
     function getTerminalMemberLayout(cards, nodeR, maximumAvatarRadius) {
       if (!Array.isArray(cards) || cards.length === 0) {
         return null;
@@ -2897,33 +3007,53 @@ $(document)
       const visibleCards = cards.length > maximumVisibleCards
         ? cards.slice(0, maximumVisibleCards - 1).concat([{moreCount: cards.length - maximumVisibleCards + 1}])
         : cards;
-      const columns = visibleCards.length <= 4
-        ? visibleCards.length
-        : Math.ceil(visibleCards.length / 2);
-      const rows = Math.ceil(visibleCards.length / columns);
       const devicePixelRatio = window.devicePixelRatio || 1;
-      const horizontalGap = Math.max(8 * devicePixelRatio, nodeR * 0.055);
-      const availableWidth = nodeR * 1.68;
-      const widthRadius = (availableWidth - (horizontalGap * Math.max(0, columns - 1))) / (2 * columns);
-      const heightRadius = rows === 1 ? nodeR * 0.29 : nodeR * 0.18;
-      const avatarRadius = Math.min(
+      const minimumAvatarRadius = 10 * devicePixelRatio;
+      const maximumRadius = Math.min(
         52 * devicePixelRatio,
-        widthRadius,
-        heightRadius,
+        nodeR * 0.29,
         Number.isFinite(maximumAvatarRadius) ? maximumAvatarRadius : Number.POSITIVE_INFINITY
       );
+      if (maximumRadius < minimumAvatarRadius) {
+        return null;
+      }
 
-      if (avatarRadius < 10 * devicePixelRatio) {
+      const rows = getTerminalMemberRows(visibleCards.length);
+      let lowerBound = minimumAvatarRadius;
+      let upperBound = maximumRadius;
+      let bestRadius = 0;
+      let metrics = null;
+
+      for (let iteration = 0; iteration < 20; iteration += 1) {
+        const candidateRadius = (lowerBound + upperBound) / 2;
+        const candidateMetrics = getTerminalMemberPatternMetrics(
+          rows,
+          nodeR,
+          candidateRadius,
+          devicePixelRatio
+        );
+        if (candidateMetrics) {
+          bestRadius = candidateRadius;
+          metrics = candidateMetrics;
+          lowerBound = candidateRadius;
+        } else {
+          upperBound = candidateRadius;
+        }
+      }
+
+      const safeRadius = bestRadius * 0.94;
+      metrics = getTerminalMemberPatternMetrics(rows, nodeR, safeRadius, devicePixelRatio);
+      if (safeRadius < minimumAvatarRadius || !metrics) {
         return null;
       }
 
       return {
         cards: visibleCards,
-        columns: columns,
         rows: rows,
-        radius: avatarRadius,
-        horizontalGap: horizontalGap,
-        rowGap: Math.max(8 * devicePixelRatio, avatarRadius * 0.28)
+        radius: safeRadius,
+        axisGap: metrics.axisGap,
+        horizontalGap: metrics.horizontalGap,
+        rowCenterDistances: metrics.rowCenterDistances
       };
     }
 
@@ -2933,39 +3063,43 @@ $(document)
         return 0;
       }
 
-      const firstRowY = layout.rows === 1
-        ? nodeY + (isAdmin ? -(nodeR * 0.48) : nodeR * 0.48)
-        : nodeY + (isAdmin ? -(nodeR * 0.59) : nodeR * 0.18);
+      let cardIndex = 0;
+      layout.rows.forEach(function (rowDefinition, row) {
+        const cardsInRow = rowDefinition.cards;
+        const slotIndexes = getTerminalMemberSlotIndexes(cardsInRow, rowDefinition.slots);
+        const centerDistanceFromAxis = layout.rowCenterDistances[row];
+        const avatarY = nodeY + (isAdmin ? -centerDistanceFromAxis : centerDistanceFromAxis);
+        const rowWidth = (rowDefinition.slots * layout.radius * 2) + (Math.max(0, rowDefinition.slots - 1) * layout.horizontalGap);
 
-      layout.cards.forEach(function (member, index) {
-        const row = Math.floor(index / layout.columns);
-        const column = index % layout.columns;
-        const cardsInRow = Math.min(layout.columns, layout.cards.length - (row * layout.columns));
-        const rowWidth = (cardsInRow * layout.radius * 2) + (Math.max(0, cardsInRow - 1) * layout.horizontalGap);
-        const avatarX = nodeX - (rowWidth / 2) + layout.radius + (column * ((layout.radius * 2) + layout.horizontalGap));
-        const avatarY = firstRowY + (row * ((layout.radius * 2) + layout.rowGap));
+        for (let column = 0; column < cardsInRow; column += 1) {
+          const member = layout.cards[cardIndex];
+          cardIndex += 1;
+          const avatarX = nodeX - (rowWidth / 2)
+            + layout.radius
+            + (slotIndexes[column] * ((layout.radius * 2) + layout.horizontalGap));
 
-        if (member.moreCount) {
-          drawStructureMemberAvatar(
-            ctx,
-            {userId: 0, displayName: "", initials: "", avatarSeed: "more"},
-            "+" + String(member.moreCount),
-            avatarX,
-            avatarY,
-            layout.radius,
-            opacity
-          );
-          return;
+          if (member.moreCount) {
+            drawStructureMemberAvatar(
+              ctx,
+              {userId: 0, displayName: "", initials: "", avatarSeed: "more"},
+              "+" + String(member.moreCount),
+              avatarX,
+              avatarY,
+              layout.radius,
+              opacity
+            );
+            continue;
+          }
+
+          const initials = String(member.initials || member.displayName || "P").trim().slice(0, 2).toUpperCase();
+          drawStructureMemberAvatar(ctx, member, initials || "P", avatarX, avatarY, layout.radius, opacity);
+          structureMemberAvatarHitAreas.push({
+            x: avatarX,
+            y: avatarY,
+            radius: layout.radius,
+            member: member
+          });
         }
-
-        const initials = String(member.initials || member.displayName || "P").trim().slice(0, 2).toUpperCase();
-        drawStructureMemberAvatar(ctx, member, initials || "P", avatarX, avatarY, layout.radius, opacity);
-        structureMemberAvatarHitAreas.push({
-          x: avatarX,
-          y: avatarY,
-          radius: layout.radius,
-          member: member
-        });
       });
 
       return layout.radius;
