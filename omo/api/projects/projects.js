@@ -61,7 +61,11 @@
     var routeCid = Number(root.getAttribute('data-omo-projects-cid') || 0);
     var declaredView = root.getAttribute('data-omo-projects-view');
     var currentView = declaredView === 'list' || declaredView === 'gantt' ? declaredView : 'kanban';
-    var currentAssignment = root.getAttribute('data-omo-projects-assignment') === 'mine' ? 'mine' : 'all';
+    function normalizeProjectAssignment(assignment) {
+        var normalized = String(assignment || '');
+        return normalized === 'mine' || normalized === 'followed' ? normalized : 'all';
+    }
+    var currentAssignment = normalizeProjectAssignment(root.getAttribute('data-omo-projects-assignment'));
     var currentQuickSearch = root.getAttribute('data-omo-projects-query') || '';
     var availableListSorts = ['planned', 'priority', 'importance', 'holon'];
     var defaultListSort = root.getAttribute('data-omo-projects-default-sort') || 'importance';
@@ -973,7 +977,7 @@
         var nextScope = scope === 'global' ? 'descendants' : (scope === 'descendants' || scope === 'children' ? scope : 'contextual');
         var nextView = view === 'list' || view === 'gantt' ? view : 'kanban';
         var nextListSort = normalizeProjectSort(listSort, nextScope);
-        var nextAssignment = assignment === 'mine' ? 'mine' : 'all';
+        var nextAssignment = normalizeProjectAssignment(assignment);
         var nextQuickSearch = String(quickSearch || '').trim();
         if (routeCid > 0) {
             query.push('cid=' + encodeURIComponent(String(routeCid)));
@@ -987,8 +991,8 @@
         if (nextListSort !== 'importance') {
             query.push('project_sort=' + encodeURIComponent(nextListSort));
         }
-        if (nextAssignment === 'mine') {
-            query.push('project_assignment=mine');
+        if (nextAssignment !== 'all') {
+            query.push('project_assignment=' + encodeURIComponent(nextAssignment));
         }
         if (nextQuickSearch !== '') {
             query.push('project_query=' + encodeURIComponent(nextQuickSearch));
@@ -1006,8 +1010,8 @@
         if (scope !== 'contextual') {
             query.push('project_scope=' + encodeURIComponent(scope));
         }
-        if (currentAssignment === 'mine') {
-            query.push('project_assignment=mine');
+        if (currentAssignment !== 'all') {
+            query.push('project_assignment=' + encodeURIComponent(currentAssignment));
         }
         if (String(currentQuickSearch || '').trim() !== '') {
             query.push('project_query=' + encodeURIComponent(String(currentQuickSearch).trim()));
@@ -1061,7 +1065,7 @@
             scope: scope === 'global' ? 'descendants' : (scope === 'descendants' || scope === 'children' ? scope : 'contextual'),
             view: view === 'list' || view === 'gantt' ? view : 'kanban',
             sort: normalizeProjectSort(listSort, scope),
-            assignment: assignment === 'mine' ? 'mine' : 'all'
+            assignment: normalizeProjectAssignment(assignment)
         };
     }
 
@@ -1168,7 +1172,7 @@
         }
 
         var currentScope = root.getAttribute('data-omo-projects-scope') || 'contextual';
-        var currentAssignmentValue = root.getAttribute('data-omo-projects-assignment') === 'mine' ? 'mine' : 'all';
+        var currentAssignmentValue = normalizeProjectAssignment(root.getAttribute('data-omo-projects-assignment'));
         currentAssignment = currentAssignmentValue;
         var rawPreferredScope = String(preferences.scope || '');
         var preferredScope = ['contextual', 'children', 'descendants', 'global'].indexOf(rawPreferredScope) !== -1
@@ -1183,7 +1187,7 @@
         }
         var nextView = preferences.view === 'list' || preferences.view === 'gantt' ? preferences.view : currentView;
         var rawPreferredAssignment = String(preferences.assignment || '');
-        var nextAssignment = rawPreferredAssignment === 'mine' || rawPreferredAssignment === 'all'
+        var nextAssignment = rawPreferredAssignment === 'mine' || rawPreferredAssignment === 'followed' || rawPreferredAssignment === 'all'
             ? rawPreferredAssignment
             : currentAssignment;
         var preferredSort = String(preferences.sort || '');
@@ -1352,7 +1356,7 @@
     function getActiveDisplayFilters() {
         return {
             scope: root.getAttribute('data-omo-projects-scope') || 'contextual',
-            assignment: root.getAttribute('data-omo-projects-assignment') === 'mine' ? 'mine' : 'all',
+            assignment: normalizeProjectAssignment(root.getAttribute('data-omo-projects-assignment')),
             sort: currentListSort,
             view: currentView
         };
@@ -1365,7 +1369,7 @@
         if (!filterPanel || !filterPanel.querySelector('[data-omo-projects-scope="' + scope + '"]')) {
             scope = active.scope;
         }
-        var assignment = next.assignment === 'mine' ? 'mine' : 'all';
+        var assignment = normalizeProjectAssignment(next.assignment);
         var view = next.view === 'list' || next.view === 'gantt' ? next.view : 'kanban';
         var sort = normalizeProjectSort(next.sort, scope);
         return {scope: scope, assignment: assignment, sort: sort, view: view};
@@ -2196,6 +2200,17 @@
             openMoveDialog(card);
             return;
         }
+        if (action === 'toggle-follow' && projectId > 0) {
+            postProjectAction(projectId, 'toggle_follow').then(function () {
+                refreshRoot(currentUrl, {
+                    preserveScroll: true,
+                    revealProjectId: projectId
+                });
+            }).catch(function (actionError) {
+                window.omoNotify(actionError.message || texts.actionError, 'error');
+            });
+            return;
+        }
         if (action === 'delete' && !window.confirm(formatText(texts.deleteConfirm, {count: subprojectCount}))) {
             return;
         }
@@ -2261,7 +2276,7 @@
             if (button.hasAttribute('data-omo-projects-scope')) {
                 pendingDisplayFilters.scope = button.getAttribute('data-omo-projects-scope') || 'contextual';
             } else if (button.hasAttribute('data-omo-projects-assignment')) {
-                pendingDisplayFilters.assignment = button.getAttribute('data-omo-projects-assignment') === 'mine' ? 'mine' : 'all';
+                pendingDisplayFilters.assignment = normalizeProjectAssignment(button.getAttribute('data-omo-projects-assignment'));
             } else if (button.hasAttribute('data-omo-projects-sort')) {
                 pendingDisplayFilters.sort = button.getAttribute('data-omo-projects-sort') || 'importance';
             } else if (button.hasAttribute('data-omo-projects-view')) {

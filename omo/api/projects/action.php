@@ -3,6 +3,7 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
 
 use dbObject\Project;
+use dbObject\ProjectFollower;
 use dbObject\ArrayProject;
 use dbObject\Holon;
 use dbObject\Document;
@@ -50,6 +51,20 @@ function omoProjectsApplyBlockedFields(Project $project, $status, array $input)
     $project->set('blocked_until', trim((string)($input['blocked_until'] ?? '')));
     $project->set('blocked_auto_reactivate', (string)($input['blocked_auto_reactivate'] ?? '') === '1');
     $project->set('blocked_reactivate_status', Project::normalizeBlockedReactivateStatus($input['blocked_reactivate_status'] ?? Project::STATUS_READY));
+}
+
+function omoProjectsDispatchStatusChangeNotification(Project $project, $previousStatus, $actorUserId): void
+{
+    if (Project::normalizeStatus($previousStatus) === Project::normalizeStatus($project->get('status'))) {
+        return;
+    }
+
+    try {
+        require_once dirname(__DIR__, 3) . '/common/notification_center.php';
+        notificationCenterDispatchProjectStatusChange($project, $previousStatus, (int)$actorUserId);
+    } catch (\Throwable $exception) {
+        error_log('project_status_notification_failed: ' . $exception->getMessage());
+    }
 }
 
 function omoProjectsGetProjectTree(Project $project, $organizationId, $includeInactive = false)
@@ -111,6 +126,33 @@ foreach ((array)($_POST['project_ids'] ?? []) as $bulkProjectId) {
     }
 }
 $bulkProjectIds = array_keys($bulkProjectIds);
+
+if ($action === 'toggle_follow') {
+    $projectId = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : 0;
+    $project = new Project();
+    if (
+        $currentUserId <= 0
+        || $projectId <= 0
+        || !$project->load($projectId)
+        || (int)$project->get('IDorganization') !== $organizationId
+        || (int)$project->get('active') !== 1
+    ) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.not_found'), [], 404);
+    }
+    if (!omoProjectsCanViewProject($project, $context)) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
+    }
+
+    $followersByProjectId = ProjectFollower::getFollowerCardsByProjectIds([$projectId]);
+    $following = !in_array($currentUserId, array_map(static function (array $follower): int {
+            return (int)($follower['userId'] ?? 0);
+        }, $followersByProjectId[$projectId] ?? []), true);
+    if (!ProjectFollower::setFollowing($projectId, $currentUserId, $following)) {
+        omoProjectsActionRespond(false, omoProjectsT('projects.error.save'), [], 422);
+    }
+
+    omoProjectsActionRespond(true, '', ['following' => $following]);
+}
 
 if (in_array($action, ['bulk_archive_projects', 'bulk_delete_projects'], true)) {
     if ($currentUserId <= 0 || count($bulkProjectIds) === 0) {
@@ -360,7 +402,8 @@ if ($action === 'update_kanban_position') {
             || !$targetHolon->isDescendantOf((int)$rootHolon->getId(), true)
             || !$targetHolon->canViewDetail()
             || ($targetHolonId !== (int)$existingProject->get('IDholon')
-                && !omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context))
+                && !omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context)
+                && (int)$existingProject->get('IDuser') !== $currentUserId)
         ) {
             omoProjectsActionRespond(false, omoProjectsT('projects.error.holon'), [], 422);
         }
@@ -375,12 +418,14 @@ if ($action === 'update_kanban_position') {
         omoProjectsActionRespond(false, omoProjectsT('projects.error.action'), [], 422);
     }
 
+    $previousStatus = Project::normalizeStatus($existingProject->get('status'));
     $existingProject->set('status', $status);
     omoProjectsApplyBlockedFields($existingProject, $status, $_POST);
     $saveResult = $existingProject->save();
     if (!is_array($saveResult) || empty($saveResult['status'])) {
         omoProjectsActionRespond(false, omoProjectsSaveFailureMessage($saveResult), [], 422);
     }
+    omoProjectsDispatchStatusChangeNotification($existingProject, $previousStatus, $currentUserId);
 
     omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), [
         'id' => (int)$existingProject->getId(),
@@ -402,12 +447,14 @@ if ($action === 'update_status') {
         omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
     }
 
+    $previousStatus = Project::normalizeStatus($project->get('status'));
     $project->set('status', $status);
     omoProjectsApplyBlockedFields($project, $status, $_POST);
     $saveResult = $project->save();
     if (!is_array($saveResult) || empty($saveResult['status'])) {
         omoProjectsActionRespond(false, omoProjectsSaveFailureMessage($saveResult), [], 422);
     }
+    omoProjectsDispatchStatusChangeNotification($project, $previousStatus, $currentUserId);
 
     omoProjectsActionRespond(true, omoProjectsT('projects.success.status'), [
         'id' => (int)$project->getId(),
@@ -542,6 +589,7 @@ if ($title === '') {
 }
 
 $project = $existingProject instanceof Project ? $existingProject : new Project();
+$previousStatus = $projectId > 0 ? Project::normalizeStatus($project->get('status')) : '';
 $targetHolonId = isset($_POST['IDholon']) && is_numeric($_POST['IDholon'])
     ? (int)$_POST['IDholon']
     : (int)($project->get('IDholon') ?: ($context['currentHolon'] instanceof Holon ? $context['currentHolon']->getId() : 0));
@@ -557,7 +605,8 @@ if (
     omoProjectsActionRespond(false, omoProjectsT('projects.error.holon'), [], 422);
 }
 if ($projectId > 0 && $targetHolonId !== (int)$project->get('IDholon')
-    && !omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context)) {
+    && !omoProjectsCanUsePermission($targetHolon, 'CAN_CREATE_PROJECT', $context)
+    && (int)$project->get('IDuser') !== $currentUserId) {
     omoProjectsActionRespond(false, omoProjectsT('projects.error.forbidden'), [], 403);
 }
 if ($projectId <= 0) {
@@ -659,6 +708,9 @@ $project->set('active', 1);
 $saveResult = $project->save();
 if (!is_array($saveResult) || empty($saveResult['status']) || (int)$project->getId() <= 0) {
     omoProjectsActionRespond(false, omoProjectsSaveFailureMessage($saveResult), [], 422);
+}
+if ($projectId > 0) {
+    omoProjectsDispatchStatusChangeNotification($project, $previousStatus, $currentUserId);
 }
 
 omoProjectsActionRespond(true, omoProjectsT('projects.success.save'), [

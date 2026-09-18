@@ -33,6 +33,7 @@ foreach (notificationCenterGetActiveEventGroups($organizationId, $userId) as $ev
 foreach (array_values(array_unique($eventKeys)) as $eventKey) {
     $values = isset($preferences[$eventKey]) && is_array($preferences[$eventKey]) ? $preferences[$eventKey] : [];
     $channels = \dbObject\NotificationPreference::getChannelsFor($userId, $organizationId, $eventKey);
+    $channels['in_app'] = !empty($values['in_app']);
     if ($pushConfigured) {
         $channels['push'] = !empty($values['push']);
     }

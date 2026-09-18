@@ -7,6 +7,7 @@ use dbObject\ArrayHolon;
 use dbObject\ArrayUser;
 use dbObject\Holon;
 use dbObject\Project;
+use dbObject\ProjectFollower;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
@@ -44,7 +45,7 @@ $projectAssignment = strtolower(trim((string)omoApplicationViewPreferencesGetIni
     'assignment',
     'all'
 )));
-$projectAssignment = $projectAssignment === 'mine' ? 'mine' : 'all';
+$projectAssignment = in_array($projectAssignment, ['mine', 'followed'], true) ? $projectAssignment : 'all';
 $canUseHolonSort = in_array($projectScope, ['children', 'descendants'], true);
 $availableProjectSorts = ['planned'];
 if ($usesPriority) {
@@ -97,10 +98,13 @@ $allProjects->loadForOrganization($organizationId, true, Project::KIND_STANDARD,
 $projectIdsReferencedByProperties = array_fill_keys(Project::getIdsReferencedByProjectProperties($organizationId), true);
 $projectHolonIds = [];
 $projectResponsibleIds = [];
+$viewableProjectIds = [];
 foreach ($allProjects as $allProject) {
     if (!($allProject instanceof Project) || !omoProjectsCanViewProject($allProject, $context)) {
         continue;
     }
+
+    $viewableProjectIds[(int)$allProject->getId()] = true;
 
     $projectHolonId = (int)$allProject->get('IDholon');
     if ($projectHolonId > 0) {
@@ -112,6 +116,7 @@ foreach ($allProjects as $allProject) {
         $projectResponsibleIds[$projectResponsibleId] = $projectResponsibleId;
     }
 }
+$followedProjectIds = ProjectFollower::getActiveProjectIds(array_keys($viewableProjectIds));
 
 $projectHolonsById = [];
 if (count($projectHolonIds) > 0) {
@@ -153,6 +158,7 @@ foreach ($allProjects as $allProject) {
         || !omoProjectsCanViewProject($allProject, $context)
         || !omoProjectsScopeContainsProject($allProject, $projectScope, $scopeCurrentHolonId, $scopeHolonIds)
         || ($projectAssignment === 'mine' && (int)$allProject->get('IDuser') !== $currentUserId)
+        || ($projectAssignment === 'followed' && !isset($followedProjectIds[(int)$allProject->getId()]))
     ) {
         continue;
     }
@@ -181,6 +187,7 @@ foreach ($projects as $project) {
         $visibleProjectIds[(int)$project->getId()] = true;
     }
 }
+$projectFollowersByProjectId = ProjectFollower::getFollowerCardsByProjectIds(array_keys($visibleProjectIds));
 
 foreach ($projects as $project) {
     if (!($project instanceof Project)) {
@@ -204,6 +211,7 @@ foreach ($projects as $project) {
     $plannedEnd = $project->get('planned_end_date');
     $subprojectSummary = omoProjectsBuildStatusBar($project, $projectsByParent, $subprojectSummaryMemo);
     $projectSize = Project::normalizeSize($project->get('project_size'));
+    $followers = $projectFollowersByProjectId[(int)$project->getId()] ?? [];
     $projectsByStatus[$status][] = [
         'project' => $project,
         'contextLabel' => $contextLabel,
@@ -220,6 +228,10 @@ foreach ($projects as $project) {
         'calculatedImportance' => max(0.0, min(1.0, (float)$project->get('calculated_importance'))),
         'subprojectSummary' => $subprojectSummary,
         'projectSize' => $projectSize,
+        'followers' => $followers,
+        'isFollowedByCurrentUser' => in_array($currentUserId, array_map(static function (array $follower): int {
+            return (int)($follower['userId'] ?? 0);
+        }, $followers), true),
         'isStandalone' => (int)$project->get('IDproject_parent') <= 0 && !isset($projectIdsReferencedByProperties[(int)$project->getId()]),
     ];
     $projectCount++;
@@ -232,6 +244,7 @@ foreach ($projects as $project) {
     }
 
     $projectHolon = $projectHolonsById[(int)$project->get('IDholon')] ?? null;
+    $followers = $projectFollowersByProjectId[(int)$project->getId()] ?? [];
     $listProjectItems[] = [
         'project' => $project,
         'holonLabel' => $projectHolon instanceof Holon
@@ -251,6 +264,10 @@ foreach ($projects as $project) {
         'priority' => Project::normalizeLevel($project->get('priority')),
         'calculatedImportance' => max(0.0, min(1.0, (float)$project->get('calculated_importance'))),
         'projectSize' => Project::normalizeSize($project->get('project_size')),
+        'followers' => $followers,
+        'isFollowedByCurrentUser' => in_array($currentUserId, array_map(static function (array $follower): int {
+            return (int)($follower['userId'] ?? 0);
+        }, $followers), true),
         'isStandalone' => (int)$project->get('IDproject_parent') <= 0 && !isset($projectIdsReferencedByProperties[(int)$project->getId()]),
     ];
 }
@@ -465,7 +482,25 @@ $kanbanGroups = array_values(array_filter($kanbanGroups, static function (array 
     return false;
 }));
 
-$renderKanbanCard = static function (array $item, string $status) use ($context, $projectsByParent, $columns, $usesPriority, $usesSize): string {
+$renderProjectFollowerMarker = static function (array $item): string {
+    $followers = array_values(array_filter((array)($item['followers'] ?? []), static function ($follower): bool {
+        return is_array($follower) && trim((string)($follower['label'] ?? '')) !== '';
+    }));
+    if (count($followers) === 0) {
+        return '';
+    }
+
+    $followerNames = implode(', ', array_map(static function (array $follower): string {
+        return trim((string)$follower['label']);
+    }, $followers));
+    $tooltip = omoProjectsT('projects.follow.tooltip', ['names' => $followerNames]);
+    $isFollowedByCurrentUser = !empty($item['isFollowedByCurrentUser']);
+
+    return '<span class="omo-project-follower-star' . ($isFollowedByCurrentUser ? ' is-followed-by-current-user' : '')
+        . '" role="img" aria-label="' . omoApiEscape($tooltip) . '" title="' . omoApiEscape($tooltip) . '">&#9733;</span>';
+};
+
+$renderKanbanCard = static function (array $item, string $status) use ($context, $projectsByParent, $columns, $usesPriority, $usesSize, $currentUserId, $renderProjectFollowerMarker): string {
     $project = $item['project'];
     $projectTitle = trim((string)$project->get('title'));
     $responsibleLabel = $item['responsibleLabel'];
@@ -504,14 +539,17 @@ $renderKanbanCard = static function (array $item, string $status) use ($context,
                     <input type="checkbox" data-omo-project-select data-project-can-delete="<?= $canDeleteProject ? '1' : '0' ?>" value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>">
                 </label>
             <?php endif; ?>
-            <span class="omo-project-card__context generic-meta generic-meta--compact"><?= omoApiEscape($item['contextLabel']) ?></span>
+            <span class="omo-project-card__context generic-meta generic-meta--compact"><?= $renderProjectFollowerMarker($item) ?><?= omoApiEscape($item['contextLabel']) ?></span>
             <span class="omo-project-card__topline-actions">
                 <?php if ($usesSize): ?><span class="omo-project-card__size" title="<?= omoApiEscape(omoProjectsT('projects.detail.size')) ?>"><?= omoApiEscape($projectSize) ?></span><?php endif; ?>
                 <?php if ($usesPriority && $item['priority'] !== null): ?><span class="generic-project-priority generic-project-priority--p<?= (int)$item['priority'] ?>" title="<?= omoApiEscape(omoProjectsT('projects.detail.priority')) ?>">P<?= (int)$item['priority'] ?></span><?php endif; ?>
-                <?php if ($canManageProject || $canDeleteProject): ?>
+                <?php if ($currentUserId > 0 || $canManageProject || $canDeleteProject): ?>
                     <div class="generic-menu omo-project-card__menu" data-omo-project-menu>
                         <button type="button" class="generic-menu-toggle omo-project-card__menu-toggle" data-omo-project-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape($projectTitle) ?>">&#8942;</button>
                         <div class="generic-menu-panel omo-project-card__menu-panel" data-omo-project-menu-panel role="menu" hidden>
+                            <?php if ($currentUserId > 0): ?>
+                                <button type="button" class="generic-menu-item" data-omo-project-action="toggle-follow" role="menuitem"><?= omoApiEscape(!empty($item['isFollowedByCurrentUser']) ? omoProjectsT('projects.follow.action.unfollow') : omoProjectsT('projects.follow.action.follow')) ?></button>
+                            <?php endif; ?>
                             <?php if ($canManageProject): ?>
                                 <button type="button" class="generic-menu-item" data-omo-project-action="edit" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.edit')) ?></button>
                                 <button type="button" class="generic-menu-item" data-omo-project-action="move" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.move')) ?></button>
@@ -562,6 +600,7 @@ foreach ($projects as $project) {
         $effectiveEnd = $effectiveStart;
     }
     $projectHolon = $projectHolonsById[(int)$project->get('IDholon')] ?? null;
+    $followers = $projectFollowersByProjectId[$projectId] ?? [];
     $ganttItemsById[$projectId] = [
         'project' => $project,
         'status' => Project::normalizeStatus($project->get('status')),
@@ -571,6 +610,10 @@ foreach ($projects as $project) {
         'responsibleLabel' => omoProjectsGetUserLabel($projectResponsiblesById[(int)$project->get('IDuser')] ?? null),
         'priority' => Project::normalizeLevel($project->get('priority')),
         'calculatedImportance' => max(0.0, min(1.0, (float)$project->get('calculated_importance'))),
+        'followers' => $followers,
+        'isFollowedByCurrentUser' => in_array($currentUserId, array_map(static function (array $follower): int {
+            return (int)($follower['userId'] ?? 0);
+        }, $followers), true),
         'plannedEnd' => $resolvedDates['end'] instanceof \DateTimeImmutable ? $resolvedDates['end'] : null,
         'effectiveStart' => $effectiveStart,
         'effectiveEnd' => $effectiveEnd,
@@ -700,8 +743,8 @@ if ($projectView !== 'kanban') {
 if ($projectListSort !== 'importance') {
     $currentUrl .= '&project_sort=' . rawurlencode($projectListSort);
 }
-if ($projectAssignment === 'mine') {
-    $currentUrl .= '&project_assignment=mine';
+if ($projectAssignment !== 'all') {
+    $currentUrl .= '&project_assignment=' . rawurlencode($projectAssignment);
 }
 if ($projectQuickSearch !== '') {
     $currentUrl .= '&project_query=' . rawurlencode($projectQuickSearch);
@@ -723,7 +766,12 @@ $canPropose = omoProjectsCanProposeContext($context);
 $emptyKey = 'projects.empty.' . $projectScope;
 if ($projectAssignment === 'mine') {
     $emptyKey = 'projects.empty.mine';
+} elseif ($projectAssignment === 'followed') {
+    $emptyKey = 'projects.empty.followed';
 }
+$projectAssignmentLabelKey = $projectAssignment === 'mine'
+    ? 'mine'
+    : ($projectAssignment === 'followed' ? 'followed' : 'everyone');
 $projectTexts = [
     'loading' => omoProjectsT('projects.loading'),
     'loadingError' => omoProjectsT('projects.loading_error'),
@@ -785,7 +833,7 @@ $projectTexts = [
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
 <link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">
 <link rel="stylesheet" href="/common/chat/thread.css?v=20260910-project-chat">
-<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260917-detail-tab-icons-generic">
+<link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260918-project-followers-star-size">
 <div
     class="omo-projects omo-panel-view"
     id="omo-projects-root"
@@ -856,7 +904,7 @@ $projectTexts = [
                 <div class="omo-projects__filter-input" aria-label="<?= omoApiEscape(omoProjectsT('projects.filters.aria')) ?>">
                     <div class="omo-projects__filter-chips">
                         <button type="button" class="omo-projects__filter-chip" data-omo-projects-filter-toggle aria-expanded="false" aria-controls="omo-projects-filter-panel"><?= omoApiEscape(omoProjectsT('projects.scope.' . $projectScope)) ?></button>
-                        <button type="button" class="omo-projects__filter-chip" data-omo-projects-filter-toggle aria-expanded="false" aria-controls="omo-projects-filter-panel"><?= omoApiEscape(omoProjectsT('projects.assignment.' . ($projectAssignment === 'mine' ? 'mine' : 'everyone'))) ?></button>
+                        <button type="button" class="omo-projects__filter-chip" data-omo-projects-filter-toggle aria-expanded="false" aria-controls="omo-projects-filter-panel"><?= omoApiEscape(omoProjectsT('projects.assignment.' . $projectAssignmentLabelKey)) ?></button>
                         <button type="button" class="omo-projects__filter-chip" data-omo-projects-filter-toggle aria-expanded="false" aria-controls="omo-projects-filter-panel"><?= omoApiEscape(omoProjectsT('projects.sort.' . $projectListSort)) ?></button>
                         <button type="button" class="omo-projects__filter-chip" data-omo-projects-filter-toggle aria-expanded="false" aria-controls="omo-projects-filter-panel"><?= omoApiEscape(omoProjectsT('projects.view.' . $projectView)) ?></button>
                     </div>
@@ -878,6 +926,7 @@ $projectTexts = [
                             <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoProjectsT('projects.filters.assignment')) ?></span>
                             <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoProjectsT('projects.assignment.aria')) ?>">
                                 <button type="button" class="omo-segmented__button<?= $projectAssignment === 'mine' ? ' is-active' : '' ?>" data-omo-projects-assignment="mine" aria-pressed="<?= $projectAssignment === 'mine' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.assignment.mine')) ?></button>
+                                <button type="button" class="omo-segmented__button<?= $projectAssignment === 'followed' ? ' is-active' : '' ?>" data-omo-projects-assignment="followed" aria-pressed="<?= $projectAssignment === 'followed' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.assignment.followed')) ?></button>
                                 <button type="button" class="omo-segmented__button<?= $projectAssignment === 'all' ? ' is-active' : '' ?>" data-omo-projects-assignment="all" aria-pressed="<?= $projectAssignment === 'all' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.assignment.everyone')) ?></button>
                             </div>
                         </div>
@@ -1037,14 +1086,17 @@ $projectTexts = [
                                                 <input type="checkbox" data-omo-project-select data-project-can-delete="<?= $canDeleteProject ? '1' : '0' ?>" value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>">
                                             </label>
                                         <?php endif; ?>
-                                        <span class="omo-project-card__context generic-meta generic-meta--compact"><?= omoApiEscape($item['contextLabel']) ?></span>
+                                        <span class="omo-project-card__context generic-meta generic-meta--compact"><?= $renderProjectFollowerMarker($item) ?><?= omoApiEscape($item['contextLabel']) ?></span>
                                         <span class="omo-project-card__topline-actions">
                                             <?php if ($usesSize): ?><span class="omo-project-card__size" title="<?= omoApiEscape(omoProjectsT('projects.detail.size')) ?>"><?= omoApiEscape($projectSize) ?></span><?php endif; ?>
                                             <?php if ($usesPriority && $item['priority'] !== null): ?><span class="generic-project-priority generic-project-priority--p<?= (int)$item['priority'] ?>" title="<?= omoApiEscape(omoProjectsT('projects.detail.priority')) ?>">P<?= (int)$item['priority'] ?></span><?php endif; ?>
-                                            <?php if ($canManageProject || $canDeleteProject): ?>
+                                            <?php if ($currentUserId > 0 || $canManageProject || $canDeleteProject): ?>
                                                 <div class="generic-menu omo-project-card__menu" data-omo-project-menu>
                                                     <button type="button" class="generic-menu-toggle omo-project-card__menu-toggle" data-omo-project-menu-toggle aria-expanded="false" aria-label="<?= omoApiEscape($projectTitle) ?>">&#8942;</button>
                                                     <div class="generic-menu-panel omo-project-card__menu-panel" data-omo-project-menu-panel role="menu" hidden>
+                                                        <?php if ($currentUserId > 0): ?>
+                                                            <button type="button" class="generic-menu-item" data-omo-project-action="toggle-follow" role="menuitem"><?= omoApiEscape(!empty($item['isFollowedByCurrentUser']) ? omoProjectsT('projects.follow.action.unfollow') : omoProjectsT('projects.follow.action.follow')) ?></button>
+                                                        <?php endif; ?>
                                                         <?php if ($canManageProject): ?>
                                                             <button type="button" class="generic-menu-item" data-omo-project-action="edit" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.edit')) ?></button>
                                                             <button type="button" class="generic-menu-item" data-omo-project-action="move" role="menuitem"><?= omoApiEscape(omoProjectsT('projects.action.move')) ?></button>
@@ -1114,7 +1166,7 @@ $projectTexts = [
                                                 <strong><?= omoApiEscape((string)$project->get('title')) ?></strong>
                                                 <?php if ($isProposal): ?><span class="omo-project-proposal-badge"><?= omoApiEscape(omoProjectsT('projects.proposal.badge')) ?></span><?php endif; ?>
                                                 <div class="omo-project-list-item__meta">
-                                                    <span><?= omoApiEscape($item['holonLabel']) ?></span>
+                                                    <span><?= $renderProjectFollowerMarker($item) ?><?= omoApiEscape($item['holonLabel']) ?></span>
                                                     <span><?= omoApiEscape($item['responsibleLabel']) ?></span>
                                                     <span class="omo-project-status omo-project-status--<?= omoApiEscape($item['status']) ?>"><?= omoApiEscape(omoProjectsStatusLabel($item['status'])) ?></span>
                                                     <?php if ($usesSize): ?><span class="omo-project-detail__subproject-size"><?= omoApiEscape($item['projectSize']) ?></span><?php endif; ?>
@@ -1177,7 +1229,7 @@ $projectTexts = [
                                         <?php if ($canManageProject): ?><label class="omo-project-selection-control"><input type="checkbox" data-omo-project-select data-project-can-delete="<?= $canDeleteProject ? '1' : '0' ?>" value="<?= (int)$project->getId() ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.selection.toggle')) ?>"></label><?php endif; ?>
                                             <strong><?= omoApiEscape($projectTitle) ?></strong>
                                             <?php if ($isProposal): ?><span class="omo-project-proposal-badge"><?= omoApiEscape(omoProjectsT('projects.proposal.badge')) ?></span><?php endif; ?>
-                                            <span><?= omoApiEscape($item['holonLabel']) ?> · <?= omoApiEscape($item['responsibleLabel']) ?></span>
+                                            <span><?= $renderProjectFollowerMarker($item) ?><?= omoApiEscape($item['holonLabel']) ?> · <?= omoApiEscape($item['responsibleLabel']) ?></span>
                                             <?= omoProjectsRenderBlockedInfo($project, 'omo-project-gantt-row__blocked-info') ?>
                                         </div>
                                         <div class="omo-projects__gantt-timeline omo-project-gantt-row__timeline" data-omo-project-gantt-timeline>
@@ -1240,4 +1292,4 @@ $projectTexts = [
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="/common/choice/change-details.js?v=20260816-governance-details"></script>
 <script src="/common/chat/thread.js?v=20260910-project-chat"></script>
-<script src="/omo/api/projects/projects.js?v=20260917-filter-hierarchy"></script>
+<script src="/omo/api/projects/projects.js?v=20260918-project-followed-filter"></script>

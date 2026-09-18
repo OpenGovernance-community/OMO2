@@ -2792,6 +2792,38 @@ LOCK TABLES `project_document` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `project_follower`
+--
+
+DROP TABLE IF EXISTS `project_follower`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_follower` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `IDproject` int(11) NOT NULL,
+  `IDuser` int(11) NOT NULL,
+  `datecreation` datetime NOT NULL DEFAULT current_timestamp(),
+  `active` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_project_follower` (`IDproject`,`IDuser`),
+  KEY `idx_project_follower_project` (`IDproject`),
+  KEY `idx_project_follower_user` (`IDuser`),
+  KEY `idx_project_follower_active` (`active`),
+  CONSTRAINT `fk_project_follower_project` FOREIGN KEY (`IDproject`) REFERENCES `project` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_project_follower_user` FOREIGN KEY (`IDuser`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_follower`
+--
+
+LOCK TABLES `project_follower` WRITE;
+/*!40000 ALTER TABLE `project_follower` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_follower` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `project_user`
 --
 

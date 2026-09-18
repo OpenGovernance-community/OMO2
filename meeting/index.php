@@ -45,8 +45,10 @@ try {
     $ownerName = (string)$profile->get('slug');
     $owner = new User();
     if ($owner->load($userId)) {
+        $displayName = trim((string)$owner->getScopedDisplayName());
+        if ($displayName !== '') { $ownerName = $displayName; }
         $photo = $owner->getProfilePhotoUrl();
-        // Only image URLs, never executable schemes. The public name stays the configured slug.
+        // Only image URLs, never executable schemes.
         if (preg_match('~^(?:https?://|/(?!/))~i', $photo)) { $ownerPhoto = $photo; }
     }
     $path = '/meeting/' . rawurlencode($profile->get('slug'));
