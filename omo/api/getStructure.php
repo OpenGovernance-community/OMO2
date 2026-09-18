@@ -2888,45 +2888,57 @@ $(document)
       ctx.restore();
     }
 
-    function getTerminalMemberRowPatterns(cardCount) {
-      const patterns = [];
-      const maximumRows = Math.min(4, cardCount);
-      const maximumRowSize = Math.min(4, cardCount);
-
-      function addPatterns(remainingCards, remainingRows, maximumRowSize, rows) {
-        if (remainingRows === 0) {
-          if (remainingCards === 0) {
-            patterns.push(rows.slice());
-          }
-          return;
-        }
-
-        const minimumRowSize = Math.ceil(remainingCards / remainingRows);
-        const maximumPossibleRowSize = Math.min(
-          maximumRowSize,
-          remainingCards - (remainingRows - 1)
-        );
-        for (let rowSize = maximumPossibleRowSize; rowSize >= minimumRowSize; rowSize -= 1) {
-          rows.push(rowSize);
-          addPatterns(remainingCards - rowSize, remainingRows - 1, rowSize, rows);
-          rows.pop();
-        }
+    function getTerminalMemberRows(cardCount) {
+      if (cardCount <= 3) {
+        return [{cards: cardCount, slots: cardCount}];
       }
 
-      for (let rowCount = 1; rowCount <= maximumRows; rowCount += 1) {
-        addPatterns(cardCount, rowCount, maximumRowSize, []);
+      if (cardCount <= 5) {
+        return [
+          {cards: 3, slots: 3},
+          {cards: cardCount - 3, slots: cardCount === 4 ? 1 : 2}
+        ];
       }
 
-      return patterns;
+      if (cardCount <= 7) {
+        return [
+          {cards: 4, slots: 4},
+          {cards: cardCount - 4, slots: 3}
+        ];
+      }
+
+      const rows = [
+        {cards: 5, slots: 5},
+        {cards: Math.min(4, cardCount - 5), slots: 4}
+      ];
+      if (cardCount > 9) {
+        rows.push({cards: cardCount - 9, slots: 3});
+      }
+      return rows;
     }
 
-    function isTerminalMemberRowPatternBalanced(rowCounts) {
-      return rowCounts.every(function (rowCount, index) {
-        return index === 0 || rowCounts[index - 1] - rowCount <= 1;
+    function getTerminalMemberSlotIndexes(cardCount, slotCount) {
+      if (cardCount >= slotCount) {
+        return Array.from({length: slotCount}, function (_, index) {
+          return index;
+        });
+      }
+
+      if (cardCount === 1) {
+        return [Math.floor(slotCount / 2)];
+      }
+
+      if (cardCount === 2 && slotCount === 3) {
+        return [0, 2];
+      }
+
+      const firstSlot = (slotCount - cardCount) / 2;
+      return Array.from({length: cardCount}, function (_, index) {
+        return firstSlot + index;
       });
     }
 
-    function getTerminalMemberPatternMetrics(rowCounts, nodeR, avatarRadius, devicePixelRatio) {
+    function getTerminalMemberPatternMetrics(rows, nodeR, avatarRadius, devicePixelRatio) {
       const edgeInset = Math.max(2 * devicePixelRatio, nodeR * 0.025);
       const axisGap = Math.max(4 * devicePixelRatio, nodeR * 0.04);
       const horizontalGap = Math.max(5 * devicePixelRatio, avatarRadius * 0.22);
@@ -2937,7 +2949,7 @@ $(document)
         return null;
       }
 
-      for (let row = 0; row < rowCounts.length; row += 1) {
+      for (let row = 0; row < rows.length; row += 1) {
         const centerDistanceFromAxis = axisGap + avatarRadius + (row * ((avatarRadius * 2) + rowGap));
         if (centerDistanceFromAxis > maximumCenterDistance) {
           return null;
@@ -2946,7 +2958,7 @@ $(document)
         const maximumHalfRowWidth = Math.sqrt(
           Math.max(0, (maximumCenterDistance * maximumCenterDistance) - (centerDistanceFromAxis * centerDistanceFromAxis))
         );
-        const requiredHalfRowWidth = (rowCounts[row] - 1) * (avatarRadius + (horizontalGap / 2));
+        const requiredHalfRowWidth = (rows[row].slots - 1) * (avatarRadius + (horizontalGap / 2));
         if (requiredHalfRowWidth > maximumHalfRowWidth) {
           return null;
         }
@@ -2975,56 +2987,45 @@ $(document)
         nodeR * 0.29,
         Number.isFinite(maximumAvatarRadius) ? maximumAvatarRadius : Number.POSITIVE_INFINITY
       );
-      let bestLayout = null;
+      if (maximumRadius < minimumAvatarRadius) {
+        return null;
+      }
 
-      getTerminalMemberRowPatterns(visibleCards.length).forEach(function (rowCounts) {
-        if (!isTerminalMemberRowPatternBalanced(rowCounts)) {
-          return;
+      const rows = getTerminalMemberRows(visibleCards.length);
+      let lowerBound = minimumAvatarRadius;
+      let upperBound = maximumRadius;
+      let bestRadius = 0;
+      let metrics = null;
+
+      for (let iteration = 0; iteration < 20; iteration += 1) {
+        const candidateRadius = (lowerBound + upperBound) / 2;
+        const candidateMetrics = getTerminalMemberPatternMetrics(
+          rows,
+          nodeR,
+          candidateRadius,
+          devicePixelRatio
+        );
+        if (candidateMetrics) {
+          bestRadius = candidateRadius;
+          metrics = candidateMetrics;
+          lowerBound = candidateRadius;
+        } else {
+          upperBound = candidateRadius;
         }
+      }
 
-        let lowerBound = minimumAvatarRadius;
-        let upperBound = maximumRadius;
-        let bestRadius = 0;
-        let metrics = null;
+      if (bestRadius < minimumAvatarRadius || !metrics) {
+        return null;
+      }
 
-        for (let iteration = 0; iteration < 20; iteration += 1) {
-          const candidateRadius = (lowerBound + upperBound) / 2;
-          const candidateMetrics = getTerminalMemberPatternMetrics(
-            rowCounts,
-            nodeR,
-            candidateRadius,
-            devicePixelRatio
-          );
-          if (candidateMetrics) {
-            bestRadius = candidateRadius;
-            metrics = candidateMetrics;
-            lowerBound = candidateRadius;
-          } else {
-            upperBound = candidateRadius;
-          }
-        }
-
-        if (bestRadius < minimumAvatarRadius || !metrics) {
-          return;
-        }
-
-        if (
-          !bestLayout
-          || bestRadius > bestLayout.radius + 0.01
-          || (Math.abs(bestRadius - bestLayout.radius) <= 0.01 && rowCounts.length < bestLayout.rowCounts.length)
-        ) {
-          bestLayout = {
-            cards: visibleCards,
-            rowCounts: rowCounts,
-            radius: bestRadius,
-            axisGap: metrics.axisGap,
-            horizontalGap: metrics.horizontalGap,
-            rowGap: metrics.rowGap
-          };
-        }
-      });
-
-      return bestLayout;
+      return {
+        cards: visibleCards,
+        rows: rows,
+        radius: bestRadius,
+        axisGap: metrics.axisGap,
+        horizontalGap: metrics.horizontalGap,
+        rowGap: metrics.rowGap
+      };
     }
 
     function drawTerminalMemberGroup(ctx, cards, nodeX, nodeY, nodeR, isAdmin, opacity, maximumAvatarRadius) {
@@ -3034,17 +3035,21 @@ $(document)
       }
 
       let cardIndex = 0;
-      layout.rowCounts.forEach(function (cardsInRow, row) {
+      layout.rows.forEach(function (rowDefinition, row) {
+        const cardsInRow = rowDefinition.cards;
+        const slotIndexes = getTerminalMemberSlotIndexes(cardsInRow, rowDefinition.slots);
         const centerDistanceFromAxis = layout.axisGap
           + layout.radius
           + (row * ((layout.radius * 2) + layout.rowGap));
         const avatarY = nodeY + (isAdmin ? -centerDistanceFromAxis : centerDistanceFromAxis);
-        const rowWidth = (cardsInRow * layout.radius * 2) + (Math.max(0, cardsInRow - 1) * layout.horizontalGap);
+        const rowWidth = (rowDefinition.slots * layout.radius * 2) + (Math.max(0, rowDefinition.slots - 1) * layout.horizontalGap);
 
         for (let column = 0; column < cardsInRow; column += 1) {
           const member = layout.cards[cardIndex];
           cardIndex += 1;
-          const avatarX = nodeX - (rowWidth / 2) + layout.radius + (column * ((layout.radius * 2) + layout.horizontalGap));
+          const avatarX = nodeX - (rowWidth / 2)
+            + layout.radius
+            + (slotIndexes[column] * ((layout.radius * 2) + layout.horizontalGap));
 
           if (member.moreCount) {
             drawStructureMemberAvatar(
