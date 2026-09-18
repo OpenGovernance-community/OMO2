@@ -984,6 +984,27 @@
 		{
 			self::accountMergeExecute(
 				$pdo,
+				"UPDATE project_follower target
+				 INNER JOIN project_follower source
+					ON target.IDproject = source.IDproject
+				   AND target.IDuser = :kept_user_id
+				 SET target.active = GREATEST(target.active, source.active),
+					 target.datecreation = LEAST(target.datecreation, source.datecreation)
+				 WHERE source.IDuser = :removed_user_id",
+				array('kept_user_id' => $keptUserId, 'removed_user_id' => $removedUserId)
+			);
+			$summary['deduplicated'] += self::accountMergeExecute(
+				$pdo,
+				"DELETE source FROM project_follower source
+				 INNER JOIN project_follower target
+					ON target.IDproject = source.IDproject
+				   AND target.IDuser = :kept_user_id
+				 WHERE source.IDuser = :removed_user_id",
+				array('kept_user_id' => $keptUserId, 'removed_user_id' => $removedUserId)
+			);
+
+			self::accountMergeExecute(
+				$pdo,
 				"UPDATE project_user target
 				 INNER JOIN project_user source
 					ON target.IDproject = source.IDproject

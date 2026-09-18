@@ -605,6 +605,19 @@
     white-space: nowrap;
 }
 
+.omo-project-follower-star {
+    display: inline-block;
+    margin-right: 3px;
+    color: var(--color-text-light, #64748b);
+    font-size: 1.1em;
+    line-height: 1;
+    vertical-align: -.03em;
+}
+
+.omo-project-follower-star.is-followed-by-current-user {
+    color: #eab308;
+}
+
 .omo-project-card__grip {
     color: var(--color-text-light, #64748b);
     font-size: 1.1rem;

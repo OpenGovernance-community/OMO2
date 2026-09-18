@@ -17,7 +17,15 @@ function meetingIcon(string $name): string
     return '<svg class="meeting-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' . ($paths[$name] ?? $paths['calendar']) . '</svg>';
 }
 $formatDay = static fn(DateTimeInterface $date): string => $date->format('j') . ' ' . mb_strtolower(meetingT($monthKeys[(int)$date->format('n')])) . ' ' . $date->format('Y');
-$displayName = $ownerName === '' ? '' : mb_strtoupper(mb_substr($ownerName, 0, 1)) . mb_substr($ownerName, 1);
+$displayName = trim($ownerName);
+$shareTitle = $displayName !== '' ? meetingT('share_title', ['name' => $displayName]) : meetingT('title');
+$shareDescription = $displayName !== '' ? meetingT('share_description', ['name' => $displayName]) : meetingT('title');
+$siteBaseUrl = rtrim((string)appGetCurrentSiteBaseUrl(), '/');
+$shareUrl = $siteBaseUrl !== '' ? $siteBaseUrl . $path : $path;
+$shareImageUrl = $ownerPhoto;
+if ($shareImageUrl !== '' && str_starts_with($shareImageUrl, '/') && $siteBaseUrl !== '') {
+    $shareImageUrl = $siteBaseUrl . $shareImageUrl;
+}
 $activeStep = $receipt || $draft ? 3 : ($selectedSlot ? 2 : 1);
 $currentMonth = $now->modify('first day of this month')->setTime(0, 0);
 ?>
@@ -25,7 +33,22 @@ $currentMonth = $now->modify('first day of this month')->setTime(0, 0);
 <html lang="fr">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow">
-    <title><?= meetingEscape(meetingT('title')) ?> - OMO</title>
+    <title><?= meetingEscape($shareTitle) ?> - OMO</title>
+    <meta name="description" content="<?= meetingEscape($shareDescription) ?>">
+    <link rel="canonical" href="<?= meetingEscape($shareUrl) ?>">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="OMO2 · OpenMyOrganization">
+    <meta property="og:title" content="<?= meetingEscape($shareTitle) ?>">
+    <meta property="og:description" content="<?= meetingEscape($shareDescription) ?>">
+    <meta property="og:url" content="<?= meetingEscape($shareUrl) ?>">
+    <?php if ($shareImageUrl !== ''): ?>
+        <meta property="og:image" content="<?= meetingEscape($shareImageUrl) ?>">
+        <meta property="og:image:alt" content="<?= meetingEscape(meetingT('share_image_alt', ['name' => $displayName])) ?>">
+    <?php endif; ?>
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="<?= meetingEscape($shareTitle) ?>">
+    <meta name="twitter:description" content="<?= meetingEscape($shareDescription) ?>">
+    <?php if ($shareImageUrl !== ''): ?><meta name="twitter:image" content="<?= meetingEscape($shareImageUrl) ?>"><?php endif; ?>
     <link rel="stylesheet" href="/common/assets/components.css?v=<?= (int)filemtime(dirname(__DIR__) . '/common/assets/components.css') ?>"><link rel="stylesheet" href="/meeting/meeting.css?v=<?= (int)filemtime(__DIR__ . '/meeting.css') ?>">
 </head>
 <body class="meeting-page">

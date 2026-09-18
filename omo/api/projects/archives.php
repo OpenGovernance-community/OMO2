@@ -5,6 +5,7 @@ require_once __DIR__ . '/shared.php';
 use dbObject\ArrayProject;
 use dbObject\Holon;
 use dbObject\Project;
+use dbObject\ProjectFollower;
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $projectId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -24,7 +25,7 @@ if ($projectId <= 0) {
     );
     $projectScope = omoApiNormalizeContextScope($_GET['project_scope'] ?? 'contextual', $availableScopes);
     $projectAssignment = strtolower(trim((string)($_GET['project_assignment'] ?? 'all')));
-    $projectAssignment = $projectAssignment === 'mine' ? 'mine' : 'all';
+    $projectAssignment = in_array($projectAssignment, ['mine', 'followed'], true) ? $projectAssignment : 'all';
     $projectQuickSearch = trim((string)($_GET['project_query'] ?? ''));
     $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
     $currentHolon = $context['currentHolon'];
@@ -58,6 +59,13 @@ if ($projectId <= 0) {
 
     $archivedProjects = new ArrayProject();
     $archivedProjects->loadArchivedForOrganization($organizationId);
+    $archivedProjectIds = [];
+    foreach ($archivedProjects as $archivedProject) {
+        if ($archivedProject instanceof Project && (int)$archivedProject->getId() > 0) {
+            $archivedProjectIds[] = (int)$archivedProject->getId();
+        }
+    }
+    $followedArchivedProjectIds = ProjectFollower::getActiveProjectIds($archivedProjectIds);
     foreach ($archivedProjects as $archivedProject) {
         if (!($archivedProject instanceof Project) || !omoProjectsCanViewProject($archivedProject, $context)) {
             continue;
@@ -66,6 +74,9 @@ if ($projectId <= 0) {
             continue;
         }
         if ($projectAssignment === 'mine' && (int)$archivedProject->get('IDuser') !== $currentUserId) {
+            continue;
+        }
+        if ($projectAssignment === 'followed' && !isset($followedArchivedProjectIds[(int)$archivedProject->getId()])) {
             continue;
         }
 
