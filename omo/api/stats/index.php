@@ -121,9 +121,7 @@ $currentUrl = '/omo/api/stats/index.php?oid=' . rawurlencode((string)$organizati
 if ($currentHolonId > 0) {
     $currentUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
 }
-if ($statsScope !== 'contextual') {
-    $currentUrl .= '&stats_scope=' . rawurlencode($statsScope);
-}
+$currentUrl .= '&stats_scope=' . rawurlencode($statsScope);
 $currentUrl .= '&stats_sort=' . rawurlencode($statsSort);
 $currentUrl .= $pvMeetingQuery;
 $createUrl = '/omo/api/stats/edit.php?oid=' . rawurlencode((string)$organizationId);
@@ -1098,9 +1096,7 @@ $displayItemCount = count($statsEntries);
         if (routeCid > 0) {
             query.push('cid=' + encodeURIComponent(String(routeCid)));
         }
-        if (nextScope !== 'contextual') {
-            query.push('stats_scope=' + encodeURIComponent(nextScope));
-        }
+        query.push('stats_scope=' + encodeURIComponent(nextScope));
         query.push('stats_sort=' + encodeURIComponent(nextSort));
         return '/omo/api/stats/index.php?' + query.join('&');
     }
