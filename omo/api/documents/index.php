@@ -6,6 +6,8 @@ use dbObject\Holon;
 use dbObject\ObjectVisibility;
 use dbObject\Organization;
 
+require_once __DIR__ . '/list_entries.php';
+
 $sourceLang = [
     'documents.scope.toggle_aria' => [
         'text' => 'Portée des documents',
@@ -355,43 +357,25 @@ $sourceLang = [
         'text' => 'Modifié le',
         'context' => 'Compact column label used when sorting by updated date.',
     ],
-    'documents.group.today' => [
-        'text' => "Aujourd'hui",
-        'context' => 'Relative date group title for documents updated today.',
+    'documents.folder.unloaded' => [
+        'text' => 'Ouvrir pour afficher le contenu.',
+        'context' => 'Placeholder shown before a local document folder is loaded.',
     ],
-    'documents.group.yesterday' => [
-        'text' => 'Hier',
-        'context' => 'Relative date group title for documents updated yesterday.',
+    'documents.folder.loading' => [
+        'text' => 'Chargement du dossier...',
+        'context' => 'Placeholder shown while a local document folder is loading.',
     ],
-    'documents.group.this_week' => [
-        'text' => 'Cette semaine',
-        'context' => 'Relative date group title for documents updated earlier this week.',
+    'documents.folder.empty' => [
+        'text' => 'Dossier vide.',
+        'context' => 'Message shown for a loaded local document folder without children.',
     ],
-    'documents.group.last_week' => [
-        'text' => 'Semaine dernière',
-        'context' => 'Relative date group title for documents updated last week.',
-    ],
-    'documents.group.this_month' => [
-        'text' => 'Ce mois',
-        'context' => 'Relative date group title for documents updated earlier this month.',
-    ],
-    'documents.group.last_month' => [
-        'text' => 'Mois dernier',
-        'context' => 'Relative date group title for documents updated last month.',
-    ],
-    'documents.group.this_year' => [
-        'text' => 'Cette année',
-        'context' => 'Relative date group title for documents updated earlier this year.',
-    ],
-    'documents.group.earlier' => [
-        'text' => 'Plus ancien',
-        'context' => 'Relative date group title for older documents.',
-    ],
-    'documents.group.too_far' => [
-        'text' => 'Date inconnue',
-        'context' => 'Fallback relative date group title for documents with missing or invalid dates.',
+    'documents.folder.error' => [
+        'text' => 'Impossible de charger ce dossier.',
+        'context' => 'Fallback error shown when loading a local document folder fails.',
     ],
 ];
+
+$sourceLang = array_merge(omoDocumentsGetListGroupSourceLang(), $sourceLang);
 
 $lang = omoLoadTranslationBundle('omo_documents_index', $sourceLang);
 
@@ -637,6 +621,10 @@ if ($hiddenDocumentsCount > 0) {
 $documentEntries = [];
 
 foreach ($documents as $document) {
+    if ((int)$document->get('IDdocument_parent') > 0) {
+        continue;
+    }
+
     $createdAt = $document->get('datecreation');
     $documentId = (int)$document->getId();
     $activityMetadata = $documentListMetadata['activityByDocumentId'][$documentId] ?? array();
@@ -735,6 +723,7 @@ foreach ($documents as $document) {
             : '',
         'isFolder' => $isFolder,
         'isNextcloudFolder' => $document->isNextcloudFolder(),
+        'childrenLoaded' => !$isFolder,
         'canUpload' => $canUploadToFolder,
         'canMoveInto' => $canMoveToFolder,
         'isExternalLink' => $isExternalLink,
@@ -940,6 +929,7 @@ if (!is_string($documentsPayload)) {
     data-omo-document-scope="<?= $escape($documentScope) ?>"
     data-omo-document-oid="<?= (int)$currentOrganizationId ?>"
     data-omo-document-cid="<?= (int)$effectiveCurrentHolonId ?>"
+    data-omo-document-pv-application-tab="<?= $isPvApplicationTab ? '1' : '0' ?>"
     data-omo-document-can-upload="<?= $canDirectUploadToCurrentContext ? '1' : '0' ?>"
     data-omo-document-can-move-here="<?= $canMoveToCurrentContext ? '1' : '0' ?>"
     data-omo-app-view-preferences="<?= $escape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
@@ -1260,6 +1250,10 @@ if (!is_string($documentsPayload)) {
 				const omoDocumentsNextcloudErrorLabel = <?= json_encode(omoDocumentsScopeT('documents.nextcloud.error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 				const omoDocumentsNextcloudEmptyLabel = <?= json_encode(omoDocumentsScopeT('documents.nextcloud.empty'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 				const omoDocumentsNextcloudFolderLabel = <?= json_encode(omoDocumentsScopeT('documents.nextcloud.remote_folder'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                const omoDocumentsFolderUnloadedLabel = <?= json_encode(omoDocumentsScopeT('documents.folder.unloaded'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                const omoDocumentsFolderLoadingLabel = <?= json_encode(omoDocumentsScopeT('documents.folder.loading'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                const omoDocumentsFolderEmptyLabel = <?= json_encode(omoDocumentsScopeT('documents.folder.empty'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+                const omoDocumentsFolderErrorLabel = <?= json_encode(omoDocumentsScopeT('documents.folder.error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                  const omoDocumentsEtherpadIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.etherpad'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                  const omoDocumentsEthercalcIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.ethercalc'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
                  const omoDocumentsWhiteboardIconLabel = <?= json_encode(omoDocumentsScopeT('documents.icon.whiteboard'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -1688,6 +1682,7 @@ if (!is_string($documentsPayload)) {
                                 openFolderIds: omoDocumentsParseFolderState(
                                     omoDocumentsReadSessionCookie(folderStateCookieName)
                                 ),
+                                loadingFolderIds: new Set(),
                                 selectedDocumentIds: new Set(),
                                 activeDocumentId: detailDrawer && detailDrawer.dataset.omoDocumentActiveId
                                     ? Number(detailDrawer.dataset.omoDocumentActiveId)
@@ -1922,6 +1917,17 @@ if (!is_string($documentsPayload)) {
 
                                 childrenByParentId.get(normalizedParentDocumentId).push(documentItem);
                             });
+
+                            const findDocumentItemById = function (documentId) {
+                                const resolvedDocumentId = Number(documentId || 0);
+                                if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
+                                    return null;
+                                }
+
+                                return documents.find(function (documentItem) {
+                                    return Number(documentItem && documentItem.id || 0) === resolvedDocumentId;
+                                }) || null;
+                            };
 
                             const getSortedTree = function (sortMode, parentDocumentId) {
                                 const normalizedParentDocumentId = Number(parentDocumentId || 0) > 0
@@ -2210,13 +2216,16 @@ if (!is_string($documentsPayload)) {
 
                                     if (documentItem.isFolder) {
                                         const count = Array.isArray(documentItem.children) ? documentItem.children.length : 0;
+                                        const childrenLoaded = documentItem.childrenLoaded === true;
                                         const compactCount = document.createElement('span');
                                         compactCount.className = 'omo-documents__compact-count generic-file-list__count';
 										compactCount.textContent = documentItem.isNextcloudFolder
 											? omoDocumentsNextcloudFolderLabel
-											: (count > 0
+											: (!childrenLoaded
+												? omoDocumentsFolderUnloadedLabel
+												: (count > 0
                                             ? String(count) + ' element' + (count > 1 ? 's' : '')
-												: 'Vide');
+													: omoDocumentsFolderEmptyLabel));
                                         compactTitleStack.appendChild(compactCount);
                                     }
 
@@ -2316,13 +2325,16 @@ if (!is_string($documentsPayload)) {
 
                                 if (documentItem.isFolder) {
                                     const count = Array.isArray(documentItem.children) ? documentItem.children.length : 0;
+                                    const childrenLoaded = documentItem.childrenLoaded === true;
                                     const countLabel = document.createElement('span');
                                     countLabel.className = 'omo-documents__kind-detail';
 									countLabel.textContent = documentItem.isNextcloudFolder
 										? omoDocumentsNextcloudFolderLabel
-										: (count > 0
+										: (!childrenLoaded
+											? omoDocumentsFolderUnloadedLabel
+											: (count > 0
                                         ? String(count) + ' element' + (count > 1 ? 's' : '')
-											: 'Vide');
+												: omoDocumentsFolderEmptyLabel));
                                     eyebrow.appendChild(countLabel);
                                 } else if (String(documentItem.documentType || '').trim().toLowerCase() === omoDocumentsPvType) {
                                     const countLabel = document.createElement('span');
@@ -2555,6 +2567,12 @@ if (!is_string($documentsPayload)) {
 										remoteLoading.setAttribute('data-omo-nextcloud-folder-content', '1');
 										remoteLoading.textContent = omoDocumentsNextcloudInitialLabel;
 										content.appendChild(remoteLoading);
+									} else if (documentItem.childrenLoaded !== true) {
+										const localLoading = document.createElement('div');
+										localLoading.className = 'omo-documents__folder-empty generic-file-list__empty';
+										localLoading.setAttribute('data-omo-document-folder-content', '1');
+										localLoading.textContent = omoDocumentsFolderUnloadedLabel;
+										content.appendChild(localLoading);
 									} else if (Array.isArray(documentItem.children) && documentItem.children.length > 0) {
                                         const childList = document.createElement('div');
                                         childList.className = 'omo-documents__folder-children generic-file-list__children';
@@ -2571,7 +2589,7 @@ if (!is_string($documentsPayload)) {
                                     } else {
                                         const emptyFolder = document.createElement('div');
                                         emptyFolder.className = 'omo-documents__folder-empty generic-file-list__empty';
-                                        emptyFolder.textContent = 'Dossier vide.';
+                                        emptyFolder.textContent = omoDocumentsFolderEmptyLabel;
                                         content.appendChild(emptyFolder);
                                     }
 
@@ -2674,6 +2692,92 @@ if (!is_string($documentsPayload)) {
 									})
 									.catch(function (error) { content.textContent = String(error && error.message || omoDocumentsNextcloudErrorLabel); });
 							};
+
+                            const loadDocumentFolder = function (accordion) {
+                                if (!(accordion instanceof HTMLElement)) {
+                                    return;
+                                }
+
+                                const folderId = Number(accordion.getAttribute('data-omo-document-folder') || 0);
+                                const content = accordion.querySelector('[data-omo-document-folder-content]');
+                                const folder = findDocumentItemById(folderId);
+                                if (
+                                    !Number.isInteger(folderId)
+                                    || folderId <= 0
+                                    || !folder
+                                    || folder.isFolder !== true
+                                    || folder.childrenLoaded === true
+                                    || state.loadingFolderIds.has(folderId)
+                                    || !(content instanceof HTMLElement)
+                                ) {
+                                    return;
+                                }
+
+                                state.loadingFolderIds.add(folderId);
+                                content.textContent = omoDocumentsFolderLoadingLabel;
+
+                                const endpoint = new URL('/omo/api/documents/children.php', window.location.origin);
+                                endpoint.searchParams.set('id', String(folderId));
+                                endpoint.searchParams.set('oid', String(panel.getAttribute('data-omo-document-oid') || '0'));
+                                endpoint.searchParams.set('cid', String(panel.getAttribute('data-omo-document-cid') || '0'));
+                                endpoint.searchParams.set(
+                                    'document_scope',
+                                    String(panel.getAttribute('data-omo-document-scope') || 'contextual')
+                                );
+                                endpoint.searchParams.set(
+                                    'is_pv_application_tab',
+                                    panel.getAttribute('data-omo-document-pv-application-tab') === '1' ? '1' : '0'
+                                );
+
+                                fetch(endpoint.toString(), {credentials: 'same-origin', cache: 'no-store'})
+                                    .then(function (response) {
+                                        return response.json().catch(function () { return null; }).then(function (payload) {
+                                            if (!response.ok || !payload || payload.status !== true) {
+                                                throw new Error(String(payload && payload.message || omoDocumentsFolderErrorLabel));
+                                            }
+                                            return payload;
+                                        });
+                                    })
+                                    .then(function (responsePayload) {
+                                        const entries = Array.isArray(responsePayload.entries) ? responsePayload.entries : [];
+                                        const childItems = [];
+
+                                        entries.forEach(function (entry) {
+                                            if (!entry || Number(entry.parentDocumentId || 0) !== folderId) {
+                                                return;
+                                            }
+                                            const entryId = Number(entry.id || 0);
+                                            if (!Number.isInteger(entryId) || entryId <= 0 || findDocumentItemById(entryId)) {
+                                                return;
+                                            }
+                                            if (entry.isFolder === true) {
+                                                entry.childrenLoaded = false;
+                                            }
+                                            documents.push(entry);
+                                            childItems.push(entry);
+                                        });
+
+                                        childrenByParentId.set(folderId, childItems);
+                                        folder.childrenLoaded = true;
+                                        state.loadingFolderIds.delete(folderId);
+                                        state.openFolderIds.add(folderId);
+                                        render();
+                                        results.querySelectorAll('[data-generic-accordion]:not(.is-collapsed)').forEach(function (expandedAccordion) {
+                                            if (!(expandedAccordion instanceof HTMLElement)) {
+                                                return;
+                                            }
+                                            if (expandedAccordion.hasAttribute('data-omo-nextcloud-folder-id')) {
+                                                loadNextcloudFolder(expandedAccordion);
+                                            } else {
+                                                loadDocumentFolder(expandedAccordion);
+                                            }
+                                        });
+                                    })
+                                    .catch(function (error) {
+                                        state.loadingFolderIds.delete(folderId);
+                                        content.textContent = String(error && error.message || omoDocumentsFolderErrorLabel);
+                                    });
+                            };
 
                             const getDroppedFiles = function (event) {
                                 const transfer = event && event.dataTransfer ? event.dataTransfer : null;
@@ -3112,6 +3216,7 @@ if (!is_string($documentsPayload)) {
 
                             const syncFolderAccordionState = function (persistState) {
                                 const nextOpenFolderIds = new Set();
+                                const renderedFolderIds = new Set();
 
                                 results.querySelectorAll('[data-omo-document-folder-toggle]').forEach(function (toggle) {
                                     const accordion = toggle.closest('[data-generic-accordion]');
@@ -3130,9 +3235,17 @@ if (!is_string($documentsPayload)) {
                                     if (isExpanded && Number.isInteger(folderId) && folderId > 0) {
                                         nextOpenFolderIds.add(folderId);
                                     }
+                                    if (Number.isInteger(folderId) && folderId > 0) {
+                                        renderedFolderIds.add(folderId);
+                                    }
                                 });
 
                                 if (normalizeQuickSearch(state.query) === '') {
+                                    state.openFolderIds.forEach(function (folderId) {
+                                        if (!renderedFolderIds.has(folderId)) {
+                                            nextOpenFolderIds.add(folderId);
+                                        }
+                                    });
                                     state.openFolderIds = nextOpenFolderIds;
                                 }
 
@@ -3764,17 +3877,6 @@ if (!is_string($documentsPayload)) {
                                 }
                             };
 
-                            const findDocumentItemById = function (documentId) {
-                                const resolvedDocumentId = Number(documentId || 0);
-                                if (!Number.isInteger(resolvedDocumentId) || resolvedDocumentId <= 0) {
-                                    return null;
-                                }
-
-                                return documents.find(function (item) {
-                                    return Number(item.id || 0) === resolvedDocumentId;
-                                }) || null;
-                            };
-
                             const normalizeDocumentOpenMode = function (value) {
                                 return String(value || '').trim().toLowerCase() === 'edit'
                                     ? 'edit'
@@ -4347,10 +4449,14 @@ if (!is_string($documentsPayload)) {
                                 const folderToggle = event.target.closest('[data-omo-document-folder-toggle]');
                                 if (folderToggle && panel.contains(folderToggle)) {
                                     window.setTimeout(function () {
-										const accordion = folderToggle.closest('[data-generic-accordion][data-omo-nextcloud-folder-id]');
-										if (accordion instanceof HTMLElement && !accordion.classList.contains('is-collapsed')) {
-											loadNextcloudFolder(accordion);
-										}
+                                        const accordion = folderToggle.closest('[data-generic-accordion]');
+                                        if (accordion instanceof HTMLElement && !accordion.classList.contains('is-collapsed')) {
+                                            if (accordion.hasAttribute('data-omo-nextcloud-folder-id')) {
+                                                loadNextcloudFolder(accordion);
+                                            } else {
+                                                loadDocumentFolder(accordion);
+                                            }
+                                        }
                                         syncFolderAccordionState(true);
                                     }, 0);
                                     return;
@@ -4449,9 +4555,16 @@ if (!is_string($documentsPayload)) {
                             });
 
                             render();
-							results.querySelectorAll('[data-generic-accordion][data-omo-nextcloud-folder-id]:not(.is-collapsed)').forEach(function (accordion) {
-								loadNextcloudFolder(accordion);
-							});
+                            results.querySelectorAll('[data-generic-accordion]:not(.is-collapsed)').forEach(function (accordion) {
+                                if (!(accordion instanceof HTMLElement)) {
+                                    return;
+                                }
+                                if (accordion.hasAttribute('data-omo-nextcloud-folder-id')) {
+                                    loadNextcloudFolder(accordion);
+                                } else {
+                                    loadDocumentFolder(accordion);
+                                }
+                            });
                             window.setTimeout(function () {
                                 retryInitialDocumentOpen(0);
                             }, 0);

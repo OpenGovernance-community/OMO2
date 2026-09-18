@@ -1285,7 +1285,7 @@ $projectTexts = [
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <link rel="stylesheet" href="/common/calendar/availability.css?v=20260916-conflict">
 <script src="/common/calendar/availability.js?v=20260916-conflict"></script>
-<script src="/common/calendar/event-editor.js?v=20260916-refresh"></script>
+<script src="/common/calendar/event-editor.js?v=20260918-pv-template-visibility"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="/common/choice/change-details.js?v=20260816-governance-details"></script>

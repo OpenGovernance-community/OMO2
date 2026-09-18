@@ -286,6 +286,63 @@
 				&& $this->canViewDirectlyInOrganization($organizationId);
 		}
 
+		/**
+		 * A PV template is selected for the target of the new event, not for the
+		 * current viewer. A circle template can therefore be reused by every
+		 * descendant circle or role, while a role template remains local to that
+		 * exact role.
+		 */
+		public function canUseAsPvTemplateInOrganizationContext(int $organizationId, ?int $contextHolonId): bool
+		{
+			$organizationId = (int)$organizationId;
+			$contextHolonId = $contextHolonId !== null ? (int)$contextHolonId : 0;
+			if (
+				(int)$this->getId() <= 0
+				|| $this->isArchived()
+				|| !$this->isPvTemplate()
+				|| (int)$this->get('IDorganization') !== $organizationId
+			) {
+				return false;
+			}
+
+			$visibilityRule = $this->getPrimaryVisibilityRuleRow();
+			$visibilityType = \dbObject\ObjectVisibility::normalizeVisibilityType(
+				(string)($visibilityRule['visibility_type'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION)
+			);
+			$targetHolonId = (int)($visibilityRule['IDholon'] ?? 0);
+
+			if (in_array($visibilityType, [
+				\dbObject\ObjectVisibility::TYPE_EVERYONE,
+				\dbObject\ObjectVisibility::TYPE_ORGANIZATION,
+			], true)) {
+				return true;
+			}
+
+			if ($contextHolonId <= 0 || $targetHolonId <= 0) {
+				return false;
+			}
+
+			$contextHolon = new \dbObject\Holon();
+			if (
+				!$contextHolon->load($contextHolonId)
+				|| !(bool)$contextHolon->get('active')
+				|| !(bool)$contextHolon->get('visible')
+			) {
+				return false;
+			}
+			$organization = new \dbObject\Organization();
+			if (!$organization->load($organizationId) || !$organization->containsHolon($contextHolon)) {
+				return false;
+			}
+
+			if ($visibilityType === \dbObject\ObjectVisibility::TYPE_CIRCLE) {
+				return $contextHolon->isDescendantOf($targetHolonId, true);
+			}
+
+			return $visibilityType === \dbObject\ObjectVisibility::TYPE_ROLE
+				&& (int)$contextHolon->getId() === $targetHolonId;
+		}
+
 		public function updatePvTemplateState(int $organizationId, int $userId, bool $isTemplate): array
 		{
 			if (
@@ -4310,13 +4367,13 @@
 			return array('status' => true, 'copiedCount' => $copiedCount);
 		}
 
-		public function copyPvAgendaFromTemplate(\dbObject\Document $template, int $organizationId, int $userId): array
+		public function copyPvAgendaFromTemplate(\dbObject\Document $template, int $organizationId, int $userId, ?int $contextHolonId = null): array
 		{
 			if (
 				(int)$this->getId() <= 0
 				|| !$this->isPvDocument()
 				|| (int)$this->get('IDorganization') !== $organizationId
-				|| !$template->canUseAsPvTemplate($organizationId)
+				|| !$template->canUseAsPvTemplateInOrganizationContext($organizationId, $contextHolonId)
 			) {
 				return array('status' => false, 'text' => 'Modele de PV invalide ou inaccessible.');
 			}
@@ -5890,7 +5947,7 @@
 						return array('status' => false, 'text' => 'Modele de PV introuvable.');
 					}
 
-					$templateCopyResult = $this->copyPvAgendaFromTemplate($pvTemplate, $organizationId, $userId);
+					$templateCopyResult = $this->copyPvAgendaFromTemplate($pvTemplate, $organizationId, $userId, $resolvedHolonId);
 					if (!is_array($templateCopyResult) || ($templateCopyResult['status'] ?? false) !== true) {
 						if ($startedTransaction && $pdo->inTransaction()) {
 							$pdo->rollBack();

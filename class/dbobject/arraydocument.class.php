@@ -380,7 +380,7 @@
 			return $this->filterVisibleForCurrentViewer($organizationId);
 		}
 
-		public function loadVisiblePvTemplatesForOrganization(int $organizationId): void
+		public function loadPvTemplatesForOrganization(int $organizationId): void
 		{
 			$this->exchangeArray([]);
 			if ($organizationId <= 0) {
@@ -400,6 +400,11 @@
 					array('field' => 'id', 'dir' => 'ASC'),
 				),
 			));
+		}
+
+		public function loadVisiblePvTemplatesForOrganization(int $organizationId): void
+		{
+			$this->loadPvTemplatesForOrganization($organizationId);
 
 			$visibleTemplates = array_values(array_filter($this->getArrayCopy(), static function ($document) use ($organizationId): bool {
 				return $document instanceof \dbObject\Document
