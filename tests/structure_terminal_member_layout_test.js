@@ -16,7 +16,7 @@ const context = {
 };
 vm.runInNewContext(
   source.slice(start, end)
-    + '\nthis.testApi = { getTerminalMemberLayout, getTerminalMemberPatternMetrics };',
+    + '\nthis.testApi = { getTerminalMemberLayout, getTerminalMemberPatternMetrics, getTerminalMemberSlotIndexes };',
   context
 );
 
@@ -40,17 +40,12 @@ function verifyLayout(cardCount, nodeRadius, maximumAvatarRadius = Number.POSITI
   assert(metrics, 'The selected layout must fit inside its half-circle.');
   assert.equal(layout.axisGap, metrics.axisGap);
 
+  const avatarPositions = [];
   layout.rows.forEach((rowDefinition, row) => {
     const cardsInRow = rowDefinition.cards;
-    const y = layout.axisGap + layout.radius + (row * ((layout.radius * 2) + layout.rowGap));
+    const y = layout.rowCenterDistances[row];
     const rowWidth = (rowDefinition.slots * layout.radius * 2) + ((rowDefinition.slots - 1) * layout.horizontalGap);
-    const slotIndexes = cardsInRow === rowDefinition.slots
-      ? Array.from({ length: cardsInRow }, (_, index) => index)
-      : cardsInRow === 1
-        ? [Math.floor(rowDefinition.slots / 2)]
-        : cardsInRow === 2 && rowDefinition.slots === 3
-          ? [0, 2]
-          : Array.from({ length: cardsInRow }, (_, index) => (rowDefinition.slots - cardsInRow) / 2 + index);
+    const slotIndexes = context.testApi.getTerminalMemberSlotIndexes(cardsInRow, rowDefinition.slots);
     for (let column = 0; column < cardsInRow; column += 1) {
       const x = -(rowWidth / 2) + layout.radius + (slotIndexes[column] * ((layout.radius * 2) + layout.horizontalGap));
       assert(
@@ -58,7 +53,17 @@ function verifyLayout(cardCount, nodeRadius, maximumAvatarRadius = Number.POSITI
         'Each avatar must stay completely inside the holon circle.'
       );
       assert(y - layout.radius >= layout.axisGap - 0.001, 'Each avatar must stay in its own half-circle.');
+      avatarPositions.push({ x, y });
     }
+  });
+
+  avatarPositions.forEach((position, index) => {
+    avatarPositions.slice(index + 1).forEach(otherPosition => {
+      assert(
+        Math.hypot(position.x - otherPosition.x, position.y - otherPosition.y) >= (layout.radius * 2) - 0.001,
+        'Avatars must not overlap.'
+      );
+    });
   });
 
   return layout;

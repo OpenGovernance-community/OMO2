@@ -2939,21 +2939,48 @@ $(document)
     }
 
     function getTerminalMemberPatternMetrics(rows, nodeR, avatarRadius, devicePixelRatio) {
-      const edgeInset = Math.max(2 * devicePixelRatio, nodeR * 0.025);
+      const edgeInset = Math.max(6 * devicePixelRatio, nodeR * 0.045);
       const axisGap = Math.max(4 * devicePixelRatio, nodeR * 0.04);
       const horizontalGap = Math.max(5 * devicePixelRatio, avatarRadius * 0.22);
-      const rowGap = Math.max(4 * devicePixelRatio, avatarRadius * 0.22);
+      const minimumAvatarClearance = Math.max(3 * devicePixelRatio, avatarRadius * 0.08);
       const maximumCenterDistance = nodeR - edgeInset - avatarRadius;
+      const rowCenterDistances = [];
 
       if (maximumCenterDistance <= 0) {
         return null;
       }
 
       for (let row = 0; row < rows.length; row += 1) {
-        const centerDistanceFromAxis = axisGap + avatarRadius + (row * ((avatarRadius * 2) + rowGap));
+        let centerDistanceFromAxis = axisGap + avatarRadius;
+        if (row > 0) {
+          const previousRow = rows[row - 1];
+          const previousSlotIndexes = getTerminalMemberSlotIndexes(previousRow.cards, previousRow.slots);
+          const currentSlotIndexes = getTerminalMemberSlotIndexes(rows[row].cards, rows[row].slots);
+          const horizontalPitch = (avatarRadius * 2) + horizontalGap;
+          let closestHorizontalDistance = Number.POSITIVE_INFINITY;
+          previousSlotIndexes.forEach(function (previousSlotIndex) {
+            currentSlotIndexes.forEach(function (currentSlotIndex) {
+              const previousHorizontalPosition = previousSlotIndex - ((previousRow.slots - 1) / 2);
+              const currentHorizontalPosition = currentSlotIndex - ((rows[row].slots - 1) / 2);
+              closestHorizontalDistance = Math.min(
+                closestHorizontalDistance,
+                Math.abs(previousHorizontalPosition - currentHorizontalPosition) * horizontalPitch
+              );
+            });
+          });
+          const requiredCenterDistance = (avatarRadius * 2) + minimumAvatarClearance;
+          const rowStep = Math.sqrt(Math.max(
+            0,
+            (requiredCenterDistance * requiredCenterDistance)
+              - (closestHorizontalDistance * closestHorizontalDistance)
+          ));
+          centerDistanceFromAxis = rowCenterDistances[row - 1] + rowStep;
+        }
         if (centerDistanceFromAxis > maximumCenterDistance) {
           return null;
         }
+
+        rowCenterDistances.push(centerDistanceFromAxis);
 
         const maximumHalfRowWidth = Math.sqrt(
           Math.max(0, (maximumCenterDistance * maximumCenterDistance) - (centerDistanceFromAxis * centerDistanceFromAxis))
@@ -2967,7 +2994,7 @@ $(document)
       return {
         axisGap: axisGap,
         horizontalGap: horizontalGap,
-        rowGap: rowGap
+        rowCenterDistances: rowCenterDistances
       };
     }
 
@@ -3014,17 +3041,19 @@ $(document)
         }
       }
 
-      if (bestRadius < minimumAvatarRadius || !metrics) {
+      const safeRadius = bestRadius * 0.94;
+      metrics = getTerminalMemberPatternMetrics(rows, nodeR, safeRadius, devicePixelRatio);
+      if (safeRadius < minimumAvatarRadius || !metrics) {
         return null;
       }
 
       return {
         cards: visibleCards,
         rows: rows,
-        radius: bestRadius,
+        radius: safeRadius,
         axisGap: metrics.axisGap,
         horizontalGap: metrics.horizontalGap,
-        rowGap: metrics.rowGap
+        rowCenterDistances: metrics.rowCenterDistances
       };
     }
 
@@ -3038,9 +3067,7 @@ $(document)
       layout.rows.forEach(function (rowDefinition, row) {
         const cardsInRow = rowDefinition.cards;
         const slotIndexes = getTerminalMemberSlotIndexes(cardsInRow, rowDefinition.slots);
-        const centerDistanceFromAxis = layout.axisGap
-          + layout.radius
-          + (row * ((layout.radius * 2) + layout.rowGap));
+        const centerDistanceFromAxis = layout.rowCenterDistances[row];
         const avatarY = nodeY + (isAdmin ? -centerDistanceFromAxis : centerDistanceFromAxis);
         const rowWidth = (rowDefinition.slots * layout.radius * 2) + (Math.max(0, rowDefinition.slots - 1) * layout.horizontalGap);
 
