@@ -3810,9 +3810,7 @@ if (!is_string($documentsPayload)) {
                                     query.push('open_document_mode=edit');
                                 }
 
-                                if (normalizedScope !== 'contextual') {
-                                    query.push('document_scope=' + encodeURIComponent(normalizedScope));
-                                }
+                                query.push('document_scope=' + encodeURIComponent(normalizedScope));
 
                                 return '/omo/api/documents/index.php' + (query.length > 0 ? '?' + query.join('&') : '');
                             };
@@ -4667,9 +4665,7 @@ if (!is_string($documentsPayload)) {
                     query.push('cid=' + encodeURIComponent(String(holonId)));
                 }
 
-                if (resolvedScope !== 'contextual') {
-                    query.push('document_scope=' + encodeURIComponent(resolvedScope));
-                }
+                query.push('document_scope=' + encodeURIComponent(resolvedScope));
 
                 return '/omo/api/documents/index.php' + (query.length > 0 ? '?' + query.join('&') : '');
             };
@@ -4860,9 +4856,7 @@ if (!is_string($documentsPayload)) {
                     query.push('cid=' + encodeURIComponent(String(holonId)));
                 }
 
-                if (scope !== 'contextual') {
-                    query.push('document_scope=' + encodeURIComponent(scope));
-                }
+                query.push('document_scope=' + encodeURIComponent(scope));
 
                 query.push('_=' + String(Date.now()));
 

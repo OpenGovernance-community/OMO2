@@ -982,9 +982,7 @@
         if (routeCid > 0) {
             query.push('cid=' + encodeURIComponent(String(routeCid)));
         }
-        if (nextScope !== 'contextual') {
-            query.push('project_scope=' + encodeURIComponent(nextScope));
-        }
+        query.push('project_scope=' + encodeURIComponent(nextScope));
         if (nextView !== 'kanban') {
             query.push('project_view=' + encodeURIComponent(nextView));
         }
@@ -1007,9 +1005,7 @@
         if (routeCid > 0) {
             query.push('cid=' + encodeURIComponent(String(routeCid)));
         }
-        if (scope !== 'contextual') {
-            query.push('project_scope=' + encodeURIComponent(scope));
-        }
+        query.push('project_scope=' + encodeURIComponent(scope));
         if (currentAssignment !== 'all') {
             query.push('project_assignment=' + encodeURIComponent(currentAssignment));
         }
