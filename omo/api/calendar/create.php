@@ -502,25 +502,6 @@ if ($isDuplicateMode) {
 }
 
 $associatedDocument = $isEditMode ? $event->getAssociatedDocument() : null;
-$pvTemplatesPayload = [];
-if (!$isEditMode || !($associatedDocument instanceof Document)) {
-    $pvTemplates = new \dbObject\ArrayDocument();
-    $pvTemplates->loadVisiblePvTemplatesForOrganization($organizationId);
-    foreach ($pvTemplates as $pvTemplate) {
-        if (!($pvTemplate instanceof Document) || (int)$pvTemplate->getId() <= 0) {
-            continue;
-        }
-        $templateLabel = trim((string)$pvTemplate->get('title'));
-        $templateParent = $pvTemplate->getParentDocument();
-        if ($templateParent instanceof Document && trim((string)$templateParent->get('title')) !== '') {
-            $templateLabel = trim((string)$templateParent->get('title')) . ' / ' . $templateLabel;
-        }
-        $pvTemplatesPayload[] = [
-            'id' => (int)$pvTemplate->getId(),
-            'label' => $templateLabel !== '' ? $templateLabel : ('PV #' . (int)$pvTemplate->getId()),
-        ];
-    }
-}
 
 $holons = new ArrayHolon();
 $holonOptions = [];
@@ -529,10 +510,18 @@ if ($hasStructureApplication) {
     $holonOptions = $holons->buildVisibilityTargetOptions();
 }
 $allowedHolonIds = [];
+$holonContextPaths = [];
 
 foreach (['circle', 'role'] as $typeKey) {
     foreach (($holonOptions[$typeKey] ?? []) as $option) {
-        $allowedHolonIds[(int)($option['id'] ?? 0)] = $option;
+        $holonId = (int)($option['id'] ?? 0);
+        $allowedHolonIds[$holonId] = $option;
+        $holon = new Holon();
+        if ($holonId > 0 && $holon->load($holonId)) {
+            $holonContextPaths[$holonId] = implode(',', array_map(static function ($pathHolon): int {
+                return (int)$pathHolon->getId();
+            }, $holon->getPathHolons(true)));
+        }
     }
 }
 
@@ -581,15 +570,54 @@ if ($isEditMode) {
     }
 }
 
+$pvTemplatesPayload = [];
+if (!$isEditMode || !($associatedDocument instanceof Document)) {
+    $pvTemplates = new \dbObject\ArrayDocument();
+    $pvTemplates->loadPvTemplatesForOrganization($organizationId);
+    foreach ($pvTemplates as $pvTemplate) {
+        if (!($pvTemplate instanceof Document) || (int)$pvTemplate->getId() <= 0) {
+            continue;
+        }
+
+        $visibilityRule = $pvTemplate->getPrimaryVisibilityRuleRow();
+        $visibilityType = \dbObject\ObjectVisibility::normalizeVisibilityType(
+            (string)($visibilityRule['visibility_type'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION)
+        );
+        if (!in_array($visibilityType, [
+            \dbObject\ObjectVisibility::TYPE_EVERYONE,
+            \dbObject\ObjectVisibility::TYPE_ORGANIZATION,
+            \dbObject\ObjectVisibility::TYPE_CIRCLE,
+            \dbObject\ObjectVisibility::TYPE_ROLE,
+        ], true)) {
+            continue;
+        }
+
+        $templateLabel = trim((string)$pvTemplate->get('title'));
+        $templateParent = $pvTemplate->getParentDocument();
+        if ($templateParent instanceof Document && trim((string)$templateParent->get('title')) !== '') {
+            $templateLabel = trim((string)$templateParent->get('title')) . ' / ' . $templateLabel;
+        }
+        $pvTemplatesPayload[] = [
+            'id' => (int)$pvTemplate->getId(),
+            'label' => $templateLabel !== '' ? $templateLabel : ('PV #' . (int)$pvTemplate->getId()),
+            'visibilityType' => $visibilityType,
+            'targetHolonId' => (int)($visibilityRule['IDholon'] ?? 0),
+        ];
+    }
+}
+
 $prefillEvent = $isEditMode ? $event : $duplicateEvent;
+$defaultInvitationHolonId = $project instanceof Project ? 0 : $defaultHolonId;
+$defaultInvitationUserId = !$isEditMode && $project instanceof Project ? (int)$project->get('IDuser') : 0;
 $invitationEditorState = omoCalendarBuildInvitationEditorState(
     $prefillEvent,
     $organization,
     $organizationId,
     $currentContextHolon,
     $defaultHolonId > 0 ? $defaultHolonId : $currentHolonId,
-    $defaultHolonId,
-    true
+    $defaultInvitationHolonId,
+    true,
+    $defaultInvitationUserId
 );
 
 $documentCreationHolonId = $defaultHolonId > 0
@@ -1202,7 +1230,7 @@ if ($isEditMode) {
                                     <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.none')) ?></option>
                                     <?php foreach (['circle', 'role'] as $typeKey): ?>
                                         <?php foreach (($holonOptions[$typeKey] ?? []) as $option): ?>
-                                            <option value="<?= (int)$option['id'] ?>"<?= (int)$option['id'] === $defaultHolonId ? ' selected' : '' ?>>
+                                            <option value="<?= (int)$option['id'] ?>" data-omo-calendar-context-path="<?= omoApiEscape((string)($holonContextPaths[(int)$option['id']] ?? '')) ?>"<?= (int)$option['id'] === $defaultHolonId ? ' selected' : '' ?>>
                                                 <?= omoApiEscape((string)$option['label']) ?>
                                             </option>
                                         <?php endforeach; ?>
@@ -1349,7 +1377,7 @@ if ($isEditMode) {
                                             <select name="pv_template_id" class="generic-form-control">
                                                 <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template_none')) ?></option>
                                                 <?php foreach ($pvTemplatesPayload as $pvTemplateOption): ?>
-                                                    <option value="<?= (int)$pvTemplateOption['id'] ?>"><?= omoApiEscape((string)$pvTemplateOption['label']) ?></option>
+                                                    <option value="<?= (int)$pvTemplateOption['id'] ?>" data-omo-calendar-pv-template-scope="<?= omoApiEscape((string)$pvTemplateOption['visibilityType']) ?>" data-omo-calendar-pv-template-target="<?= (int)$pvTemplateOption['targetHolonId'] ?>"><?= omoApiEscape((string)$pvTemplateOption['label']) ?></option>
                                                 <?php endforeach; ?>
                                             </select>
                                             <span class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template_hint')) ?></span>
