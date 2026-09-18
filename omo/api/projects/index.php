@@ -734,9 +734,7 @@ $currentUrl = '/omo/api/projects/index.php?oid=' . rawurlencode((string)$organiz
 if ($currentHolonId > 0) {
     $currentUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
 }
-if ($projectScope !== 'contextual') {
-    $currentUrl .= '&project_scope=' . rawurlencode($projectScope);
-}
+$currentUrl .= '&project_scope=' . rawurlencode($projectScope);
 if ($projectView !== 'kanban') {
     $currentUrl .= '&project_view=' . rawurlencode($projectView);
 }

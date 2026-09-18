@@ -2186,9 +2186,7 @@ function omoTeamBuildScopeUrl(scopeValue) {
         query.push('cid=' + encodeURIComponent(String(holonId)));
     }
 
-    if (resolvedScope !== 'contextual') {
-        query.push('team_scope=' + encodeURIComponent(resolvedScope));
-    }
+    query.push('team_scope=' + encodeURIComponent(resolvedScope));
     const quickSearch = root ? String(root.getAttribute('data-team-query') || '').trim() : '';
     if (quickSearch !== '') {
         query.push('team_query=' + encodeURIComponent(quickSearch));
@@ -3093,9 +3091,7 @@ $(document)
             if (currentHolonId > 0 && currentHolonId !== rootHolonId) {
                 drawerUrl += '&cid=' + currentHolonId;
             }
-            if (currentTeamScope !== 'contextual') {
-                drawerUrl += '&team_scope=' + encodeURIComponent(currentTeamScope);
-            }
+            drawerUrl += '&team_scope=' + encodeURIComponent(currentTeamScope);
             const currentTeamQuery = teamRoot ? String(teamRoot.getAttribute('data-team-query') || '').trim() : '';
             if (currentTeamQuery !== '') {
                 drawerUrl += '&team_query=' + encodeURIComponent(currentTeamQuery);

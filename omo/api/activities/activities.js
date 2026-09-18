@@ -155,9 +155,8 @@
 
     function buildScopeUrl(scope) {
         var normalized = normalizeScope(scope);
-        var url = baseUrl + (normalized !== 'contextual'
-            ? (baseUrl.indexOf('?') === -1 ? '?' : '&') + 'activity_scope=' + encodeURIComponent(normalized)
-            : '');
+        var url = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&')
+            + 'activity_scope=' + encodeURIComponent(normalized);
         if (Number.isInteger(initialOpenActivityId) && initialOpenActivityId > 0) {
             url += (url.indexOf('?') === -1 ? '?' : '&') + 'open_activity_id=' + encodeURIComponent(String(initialOpenActivityId));
         }
