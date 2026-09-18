@@ -2888,6 +2888,77 @@ $(document)
       ctx.restore();
     }
 
+    function getTerminalMemberRowPatterns(cardCount) {
+      const patterns = [];
+      const maximumRows = Math.min(4, cardCount);
+      const maximumRowSize = Math.min(4, cardCount);
+
+      function addPatterns(remainingCards, remainingRows, maximumRowSize, rows) {
+        if (remainingRows === 0) {
+          if (remainingCards === 0) {
+            patterns.push(rows.slice());
+          }
+          return;
+        }
+
+        const minimumRowSize = Math.ceil(remainingCards / remainingRows);
+        const maximumPossibleRowSize = Math.min(
+          maximumRowSize,
+          remainingCards - (remainingRows - 1)
+        );
+        for (let rowSize = maximumPossibleRowSize; rowSize >= minimumRowSize; rowSize -= 1) {
+          rows.push(rowSize);
+          addPatterns(remainingCards - rowSize, remainingRows - 1, rowSize, rows);
+          rows.pop();
+        }
+      }
+
+      for (let rowCount = 1; rowCount <= maximumRows; rowCount += 1) {
+        addPatterns(cardCount, rowCount, maximumRowSize, []);
+      }
+
+      return patterns;
+    }
+
+    function isTerminalMemberRowPatternBalanced(rowCounts) {
+      return rowCounts.every(function (rowCount, index) {
+        return index === 0 || rowCounts[index - 1] - rowCount <= 1;
+      });
+    }
+
+    function getTerminalMemberPatternMetrics(rowCounts, nodeR, avatarRadius, devicePixelRatio) {
+      const edgeInset = Math.max(2 * devicePixelRatio, nodeR * 0.025);
+      const axisGap = Math.max(4 * devicePixelRatio, nodeR * 0.04);
+      const horizontalGap = Math.max(5 * devicePixelRatio, avatarRadius * 0.22);
+      const rowGap = Math.max(4 * devicePixelRatio, avatarRadius * 0.22);
+      const maximumCenterDistance = nodeR - edgeInset - avatarRadius;
+
+      if (maximumCenterDistance <= 0) {
+        return null;
+      }
+
+      for (let row = 0; row < rowCounts.length; row += 1) {
+        const centerDistanceFromAxis = axisGap + avatarRadius + (row * ((avatarRadius * 2) + rowGap));
+        if (centerDistanceFromAxis > maximumCenterDistance) {
+          return null;
+        }
+
+        const maximumHalfRowWidth = Math.sqrt(
+          Math.max(0, (maximumCenterDistance * maximumCenterDistance) - (centerDistanceFromAxis * centerDistanceFromAxis))
+        );
+        const requiredHalfRowWidth = (rowCounts[row] - 1) * (avatarRadius + (horizontalGap / 2));
+        if (requiredHalfRowWidth > maximumHalfRowWidth) {
+          return null;
+        }
+      }
+
+      return {
+        axisGap: axisGap,
+        horizontalGap: horizontalGap,
+        rowGap: rowGap
+      };
+    }
+
     function getTerminalMemberLayout(cards, nodeR, maximumAvatarRadius) {
       if (!Array.isArray(cards) || cards.length === 0) {
         return null;
@@ -2897,34 +2968,63 @@ $(document)
       const visibleCards = cards.length > maximumVisibleCards
         ? cards.slice(0, maximumVisibleCards - 1).concat([{moreCount: cards.length - maximumVisibleCards + 1}])
         : cards;
-      const columns = visibleCards.length <= 4
-        ? visibleCards.length
-        : Math.ceil(visibleCards.length / 2);
-      const rows = Math.ceil(visibleCards.length / columns);
       const devicePixelRatio = window.devicePixelRatio || 1;
-      const horizontalGap = Math.max(8 * devicePixelRatio, nodeR * 0.055);
-      const availableWidth = nodeR * 1.68;
-      const widthRadius = (availableWidth - (horizontalGap * Math.max(0, columns - 1))) / (2 * columns);
-      const heightRadius = rows === 1 ? nodeR * 0.29 : nodeR * 0.18;
-      const avatarRadius = Math.min(
+      const minimumAvatarRadius = 10 * devicePixelRatio;
+      const maximumRadius = Math.min(
         52 * devicePixelRatio,
-        widthRadius,
-        heightRadius,
+        nodeR * 0.29,
         Number.isFinite(maximumAvatarRadius) ? maximumAvatarRadius : Number.POSITIVE_INFINITY
       );
+      let bestLayout = null;
 
-      if (avatarRadius < 10 * devicePixelRatio) {
-        return null;
-      }
+      getTerminalMemberRowPatterns(visibleCards.length).forEach(function (rowCounts) {
+        if (!isTerminalMemberRowPatternBalanced(rowCounts)) {
+          return;
+        }
 
-      return {
-        cards: visibleCards,
-        columns: columns,
-        rows: rows,
-        radius: avatarRadius,
-        horizontalGap: horizontalGap,
-        rowGap: Math.max(8 * devicePixelRatio, avatarRadius * 0.28)
-      };
+        let lowerBound = minimumAvatarRadius;
+        let upperBound = maximumRadius;
+        let bestRadius = 0;
+        let metrics = null;
+
+        for (let iteration = 0; iteration < 20; iteration += 1) {
+          const candidateRadius = (lowerBound + upperBound) / 2;
+          const candidateMetrics = getTerminalMemberPatternMetrics(
+            rowCounts,
+            nodeR,
+            candidateRadius,
+            devicePixelRatio
+          );
+          if (candidateMetrics) {
+            bestRadius = candidateRadius;
+            metrics = candidateMetrics;
+            lowerBound = candidateRadius;
+          } else {
+            upperBound = candidateRadius;
+          }
+        }
+
+        if (bestRadius < minimumAvatarRadius || !metrics) {
+          return;
+        }
+
+        if (
+          !bestLayout
+          || bestRadius > bestLayout.radius + 0.01
+          || (Math.abs(bestRadius - bestLayout.radius) <= 0.01 && rowCounts.length < bestLayout.rowCounts.length)
+        ) {
+          bestLayout = {
+            cards: visibleCards,
+            rowCounts: rowCounts,
+            radius: bestRadius,
+            axisGap: metrics.axisGap,
+            horizontalGap: metrics.horizontalGap,
+            rowGap: metrics.rowGap
+          };
+        }
+      });
+
+      return bestLayout;
     }
 
     function drawTerminalMemberGroup(ctx, cards, nodeX, nodeY, nodeR, isAdmin, opacity, maximumAvatarRadius) {
@@ -2933,39 +3033,41 @@ $(document)
         return 0;
       }
 
-      const firstRowY = layout.rows === 1
-        ? nodeY + (isAdmin ? -(nodeR * 0.48) : nodeR * 0.48)
-        : nodeY + (isAdmin ? -(nodeR * 0.59) : nodeR * 0.18);
-
-      layout.cards.forEach(function (member, index) {
-        const row = Math.floor(index / layout.columns);
-        const column = index % layout.columns;
-        const cardsInRow = Math.min(layout.columns, layout.cards.length - (row * layout.columns));
+      let cardIndex = 0;
+      layout.rowCounts.forEach(function (cardsInRow, row) {
+        const centerDistanceFromAxis = layout.axisGap
+          + layout.radius
+          + (row * ((layout.radius * 2) + layout.rowGap));
+        const avatarY = nodeY + (isAdmin ? -centerDistanceFromAxis : centerDistanceFromAxis);
         const rowWidth = (cardsInRow * layout.radius * 2) + (Math.max(0, cardsInRow - 1) * layout.horizontalGap);
-        const avatarX = nodeX - (rowWidth / 2) + layout.radius + (column * ((layout.radius * 2) + layout.horizontalGap));
-        const avatarY = firstRowY + (row * ((layout.radius * 2) + layout.rowGap));
 
-        if (member.moreCount) {
-          drawStructureMemberAvatar(
-            ctx,
-            {userId: 0, displayName: "", initials: "", avatarSeed: "more"},
-            "+" + String(member.moreCount),
-            avatarX,
-            avatarY,
-            layout.radius,
-            opacity
-          );
-          return;
+        for (let column = 0; column < cardsInRow; column += 1) {
+          const member = layout.cards[cardIndex];
+          cardIndex += 1;
+          const avatarX = nodeX - (rowWidth / 2) + layout.radius + (column * ((layout.radius * 2) + layout.horizontalGap));
+
+          if (member.moreCount) {
+            drawStructureMemberAvatar(
+              ctx,
+              {userId: 0, displayName: "", initials: "", avatarSeed: "more"},
+              "+" + String(member.moreCount),
+              avatarX,
+              avatarY,
+              layout.radius,
+              opacity
+            );
+            continue;
+          }
+
+          const initials = String(member.initials || member.displayName || "P").trim().slice(0, 2).toUpperCase();
+          drawStructureMemberAvatar(ctx, member, initials || "P", avatarX, avatarY, layout.radius, opacity);
+          structureMemberAvatarHitAreas.push({
+            x: avatarX,
+            y: avatarY,
+            radius: layout.radius,
+            member: member
+          });
         }
-
-        const initials = String(member.initials || member.displayName || "P").trim().slice(0, 2).toUpperCase();
-        drawStructureMemberAvatar(ctx, member, initials || "P", avatarX, avatarY, layout.radius, opacity);
-        structureMemberAvatarHitAreas.push({
-          x: avatarX,
-          y: avatarY,
-          radius: layout.radius,
-          member: member
-        });
       });
 
       return layout.radius;
