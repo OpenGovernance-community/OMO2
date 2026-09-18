@@ -2,6 +2,10 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-18
+
+- Decisions : les reglages enregistres dans chaque question, dont l autorisation de proposer pendant la consultation, les discussions et l anonymat, sont a nouveau configures et sauvegardes depuis cette question. Les parametres generaux ne conservent que les reglages communs au scrutin.
+
 ## 2026-09-17
 
 - Structure : les vignettes des personnes sont maintenant reparties en rangees decalees adaptees a chaque demi-cercle, avec un calcul qui garantit qu elles restent entierement dans le holon.
