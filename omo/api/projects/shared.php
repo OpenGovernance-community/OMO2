@@ -19,6 +19,9 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.action.new' => ['text' => 'Nouveau projet', 'context' => 'Primary action opening project creation.'],
             'projects.action.propose' => ['text' => 'Proposer', 'context' => 'Primary action opening a project proposal.'],
             'projects.action.edit' => ['text' => 'Modifier', 'context' => 'Button opening project edition from the detail header.'],
+            'projects.follow.action.follow' => ['text' => 'Suivre', 'context' => 'Context menu action following a project.'],
+            'projects.follow.action.unfollow' => ['text' => 'Ne plus suivre', 'context' => 'Context menu action stopping project follow-up.'],
+            'projects.follow.tooltip' => ['text' => 'Suivi par : {names}', 'context' => 'Tooltip listing the people following a project.'],
             'projects.action.accept_proposal' => ['text' => 'Accepter le projet', 'context' => 'Action accepting a pending project proposal.'],
             'projects.action.refuse_proposal' => ['text' => 'Refuser le projet', 'context' => 'Action refusing a pending project proposal.'],
             'projects.action.discuss' => ['text' => 'Discussion', 'context' => 'Button opening the project discussion.'],
@@ -38,6 +41,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.scope.descendants' => ['text' => 'Descendants', 'context' => 'Scope showing projects attached to the current holon and its descendants.'],
             'projects.assignment.aria' => ['text' => 'Projets affichés', 'context' => 'Accessible label for the project assignment filter.'],
             'projects.assignment.mine' => ['text' => 'Moi', 'context' => 'Project assignment filter showing projects assigned to the current user.'],
+            'projects.assignment.followed' => ['text' => 'Suivi', 'context' => 'Project assignment filter showing projects followed by at least one person.'],
             'projects.assignment.everyone' => ['text' => 'Tout le monde', 'context' => 'Project assignment filter showing projects assigned to anyone.'],
             'projects.filters.aria' => ['text' => 'Filtres des projets', 'context' => 'Accessible label for the compact project filters control.'],
             'projects.filters.scope' => ['text' => 'Contexte', 'context' => 'Heading for the project scope choices in the filters panel.'],
@@ -79,6 +83,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.empty.children' => ['text' => 'Aucun projet dans ce contexte ou ses enfants directs.', 'context' => 'Empty state for the direct child holon scope.'],
             'projects.empty.descendants' => ['text' => 'Aucun projet dans ce contexte ou ses descendants.', 'context' => 'Empty state for the descendant project scope.'],
             'projects.empty.mine' => ['text' => 'Aucun projet qui vous est attribué dans ce périmètre.', 'context' => 'Empty state when the current user has no assigned project in the selected scope.'],
+            'projects.empty.followed' => ['text' => 'Aucun projet suivi dans ce périmètre.', 'context' => 'Empty state when no project in the selected scope has a follower.'],
             'projects.empty.column' => ['text' => 'Aucun projet dans cette colonne.', 'context' => 'Empty state for one empty Kanban column.'],
             'projects.loading' => ['text' => 'Chargement du projet…', 'context' => 'Loading message shown inside the project subdrawer.'],
             'projects.loading_error' => ['text' => 'Impossible de charger ce projet.', 'context' => 'Error shown when a project drawer cannot be loaded.'],
@@ -590,7 +595,8 @@ if (!function_exists('omoProjectsCanViewProject')) {
 if (!function_exists('omoProjectsCanManageProject')) {
     function omoProjectsCanManageProject(Project $project, array $context)
     {
-        if (commonUserHasAdminOverride((int)commonGetCurrentUserId(), (int)$project->get('IDorganization'))) return true;
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        if (commonUserHasAdminOverride($currentUserId, (int)$project->get('IDorganization'))) return true;
         if ($project->isPendingProposal()) {
             // When somebody is both proposer and recipient, the recipient
             // workflow has priority: they can accept or refuse, not edit.
@@ -598,13 +604,17 @@ if (!function_exists('omoProjectsCanManageProject')) {
                 return false;
             }
 
-            $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
             return $currentUserId > 0 && (int)$project->get('IDuser_proposed') === $currentUserId;
+        }
+
+        // A person directly responsible for a project can manage it even
+        // without the project-edit permission on its holon.
+        if ($currentUserId > 0 && (int)$project->get('IDuser') === $currentUserId) {
+            return true;
         }
 
         $projectHolon = $project->getHolon();
         if ($projectHolon instanceof Holon) {
-            $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
             if ($currentUserId <= 0) {
                 return false;
             }

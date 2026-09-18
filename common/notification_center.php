@@ -21,6 +21,7 @@ if (!function_exists('notificationCenterEventCatalog')) {
             'calendar_event_schedule_changed' => 'Modification de l horaire d un evenement',
             'calendar_event_starting' => 'Debut prochain d un evenement',
             'project_proposal_refused' => 'Refus de mes propositions de projet',
+            'project_status_changed' => 'Changement de statut des projets suivis',
             'project_chat_owner' => 'Nouveau commentaire sur mes projets ou propositions',
             'project_chat_participant' => 'Nouveau commentaire dans une discussion de projet a laquelle je participe',
         ];
@@ -59,6 +60,7 @@ if (!function_exists('notificationCenterEventGroupCatalog')) {
                 'applicationHash' => 'projects',
                 'eventKeys' => [
                     'project_proposal_refused',
+                    'project_status_changed',
                     'project_chat_owner',
                     'project_chat_participant',
                 ],
@@ -234,12 +236,19 @@ if (!function_exists('notificationCenterCreateForUsers')) {
             if ($excludedUserId > 0 && $userId === $excludedUserId) {
                 continue;
             }
+            $channels = \dbObject\NotificationPreference::getChannelsFor($userId, $organizationId, $eventKey);
+            $hasExternalChannel = !empty($channels['push']) || !empty($channels['telegram']) || !empty($channels['email']);
+            if (empty($channels['in_app']) && !$hasExternalChannel) {
+                continue;
+            }
             $notification = \dbObject\Notification::createForUser($userId, $organizationId, $eventKey, $sourceKey, $title, $body, $url, $dedupeKey);
             if (!($notification instanceof \dbObject\Notification)) {
                 continue;
             }
             $deliveryUrl = $notification->getOpenUrl();
-            $channels = \dbObject\NotificationPreference::getChannelsFor($userId, $organizationId, $eventKey);
+            if (empty($channels['in_app'])) {
+                \dbObject\Notification::markReadForUser($userId, $organizationId, (int)$notification->getId());
+            }
             $user = new \dbObject\User();
             if (!$user->load($userId)) {
                 continue;
@@ -582,6 +591,46 @@ if (!function_exists('notificationCenterDispatchProjectChatMessage')) {
             'PROJECT_CHAT_' . $organizationId . '_' . $messageId,
             $actorUserId
         );
+    }
+}
+
+if (!function_exists('notificationCenterDispatchProjectStatusChange')) {
+    function notificationCenterDispatchProjectStatusChange(\dbObject\Project $project, $previousStatus, $actorUserId = 0)
+    {
+        $organizationId = (int)$project->get('IDorganization');
+        $projectId = (int)$project->getId();
+        $previousStatus = \dbObject\Project::normalizeStatus($previousStatus);
+        $currentStatus = \dbObject\Project::normalizeStatus($project->get('status'));
+        if ($organizationId <= 0 || $projectId <= 0 || $previousStatus === $currentStatus) {
+            return 0;
+        }
+
+        $followerUserIds = \dbObject\ProjectFollower::getActiveUserIdsForProject($projectId);
+        if ($followerUserIds === []) {
+            return 0;
+        }
+
+        $projectTitle = mb_substr(trim((string)$project->get('title')), 0, 120, 'UTF-8');
+        if ($projectTitle === '') {
+            $projectTitle = 'ce projet';
+        }
+        $previousLabel = \dbObject\Project::getOrganizationStatusLabel($organizationId, $previousStatus);
+        $currentLabel = \dbObject\Project::getOrganizationStatusLabel($organizationId, $currentStatus);
+        $sourceKey = 'project-status-changed-' . $projectId . '-' . str_replace('.', '-', uniqid('', true));
+
+        notificationCenterCreateForUsers(
+            $organizationId,
+            'project_status_changed',
+            $followerUserIds,
+            $sourceKey,
+            'Statut modifie - ' . $projectTitle,
+            'Le statut du projet "' . $projectTitle . '" est passe de "' . $previousLabel . '" a "' . $currentLabel . '".',
+            notificationCenterBuildProjectUrl($organizationId, $projectId),
+            '',
+            (int)$actorUserId
+        );
+
+        return count($followerUserIds);
     }
 }
 

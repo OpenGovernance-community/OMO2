@@ -976,6 +976,9 @@ class Project extends DbObject
         }
 
         $this->recordHistory($historyBeforeState, $historyActionOverride);
+        if ((int)$this->get('active') !== 1 && !ProjectFollower::deleteForProjectIds([(int)$this->getId()])) {
+            error_log('project_follower_cleanup_failed: ' . (int)$this->getId());
+        }
         return $result;
     }
 
@@ -1009,10 +1012,17 @@ class Project extends DbObject
                 continue;
             }
 
+            $previousStatus = self::normalizeStatus($project->get('status'));
             $project->set('status', self::normalizeBlockedReactivateStatus($project->get('blocked_reactivate_status')));
             $saveResult = $project->saveWithHistoryAction(self::HISTORY_ACTION_AUTO_REACTIVATED);
             if (is_array($saveResult) && !empty($saveResult['status'])) {
                 $reactivated++;
+                try {
+                    require_once dirname(__DIR__, 2) . '/common/notification_center.php';
+                    \notificationCenterDispatchProjectStatusChange($project, $previousStatus);
+                } catch (\Throwable $exception) {
+                    error_log('project_status_notification_failed: ' . $exception->getMessage());
+                }
             }
         }
 

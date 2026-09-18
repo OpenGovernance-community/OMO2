@@ -18,7 +18,7 @@ $sourceLang = [
     'notifications.status.brave_push' => ['text' => 'Brave bloque son service Push. Ouvrez Parametres > Confidentialite et securite, puis activez "Utiliser les services Google pour les messages Push" avant de reessayer.', 'context' => 'Help shown only in Brave when the browser push service rejects a subscription.'],
     'notifications.status.error' => ['text' => 'Impossible de modifier les notifications pour cet appareil.', 'context' => 'Fallback error while subscribing or unsubscribing.'],
     'notifications.preferences.title' => ['text' => 'Evenements et canaux', 'context' => 'Title of the notification preference form.'],
-    'notifications.preferences.description' => ['text' => 'Ces reglages s appliquent uniquement a cette organisation. La cloche conserve toujours les notifications recues.', 'context' => 'Description of the organization notification preference form.'],
+    'notifications.preferences.description' => ['text' => 'Ces reglages s appliquent uniquement a cette organisation. Desactivez tous les canaux pour ne rien recevoir.', 'context' => 'Description of the organization notification preference form.'],
     'notifications.preferences.group.decisions' => ['text' => 'Decisions', 'context' => 'Title of the decision notification preference group.'],
     'notifications.preferences.group.calendar' => ['text' => 'Calendrier', 'context' => 'Title of the calendar notification preference group.'],
     'notifications.preferences.group.projects' => ['text' => 'Projets', 'context' => 'Title of the project notification preference group.'],
@@ -34,6 +34,7 @@ $sourceLang = [
     'notifications.preferences.event.decision_consultation_finished' => ['text' => 'Fin de la consultation de mes scrutins : me rappeler de traiter les propositions et la suite', 'context' => 'Preference label for consultation completion notifications sent to the decision owner.'],
     'notifications.preferences.event.decision_evaluation_finished' => ['text' => 'Fin du vote de mes scrutins : me rappeler de traiter ou publier la suite du scrutin', 'context' => 'Preference label for voting completion notifications sent to the decision owner.'],
     'notifications.preferences.event.project_proposal_refused' => ['text' => 'Refus de mes propositions de projet', 'context' => 'Preference label for refused project proposals.'],
+    'notifications.preferences.event.project_status_changed' => ['text' => 'Changement de statut des projets que je suis', 'context' => 'Preference label for status changes on followed projects.'],
     'notifications.preferences.event.project_chat_owner' => ['text' => 'Commentaire sur mes projets ou propositions de projet', 'context' => 'Preference label for comments on projects the viewer is responsible for or proposed.'],
     'notifications.preferences.event.project_chat_participant' => ['text' => 'Commentaire dans une discussion de projet a laquelle je participe', 'context' => 'Preference label for comments in project chats where the viewer has posted.'],
     'notifications.preferences.event.calendar_event_invited' => ['text' => 'Invitation a un nouvel evenement', 'context' => 'Preference label for event creation or first invitation.'],
@@ -53,6 +54,7 @@ $sourceLang = [
     'notifications.preferences.reminder_option.2d' => ['text' => '2 jours avant', 'context' => 'Event notification reminder lead time.'],
     'notifications.preferences.reminder_option.3d' => ['text' => '3 jours avant', 'context' => 'Event notification reminder lead time.'],
     'notifications.preferences.reminder_option.5d' => ['text' => '5 jours avant', 'context' => 'Event notification reminder lead time.'],
+    'notifications.preferences.channel.in_app' => ['text' => 'Dans OMO', 'context' => 'Preference channel label for the OMO notification inbox.'],
     'notifications.preferences.channel.push' => ['text' => 'Notification', 'context' => 'Preference channel label for browser push.'],
     'notifications.preferences.channel.telegram' => ['text' => 'Telegram', 'context' => 'Preference channel label for Telegram.'],
     'notifications.preferences.channel.email' => ['text' => 'E-mail', 'context' => 'Preference channel label for email.'],
@@ -98,7 +100,7 @@ $currentUser = new \dbObject\User();
 $telegramAvailable = $telegramConfigured
     && $currentUser->load($userId)
     && trim((string)$currentUser->get('telegramID')) !== '';
-$preferenceChannels = [];
+$preferenceChannels = ['in_app'];
 if ($pushConfigured) {
     $preferenceChannels[] = 'push';
 }
@@ -176,7 +178,7 @@ $configuration = [
                 </div>
                 <?php foreach ($eventGroup['eventKeys'] as $eventKey): ?>
                 <?php
-                    $channels = $preferenceSettings[$eventKey] ?? ['push' => false, 'telegram' => false, 'email' => false];
+                    $channels = $preferenceSettings[$eventKey] ?? ['in_app' => true, 'push' => false, 'telegram' => false, 'email' => false];
                     $eventLabel = $translate('notifications.preferences.event.' . $eventKey);
                 ?>
                 <div class="omo-notification-preferences-grid__row" role="row">

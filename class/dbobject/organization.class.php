@@ -2208,7 +2208,7 @@
 				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
 					throw new \RuntimeException('Les portees des documents lies a ce membre n ont pas pu etre mises a jour.');
 				}
-				$handlers = array('Project', 'ProjectUser', 'StatIndicator', 'StatIndicatorValue', 'Checklist', 'ControlActivity', 'Document', 'DocumentPvPoint', 'Event', 'History', 'Tension');
+				$handlers = array('Project', 'ProjectUser', 'ProjectFollower', 'StatIndicator', 'StatIndicatorValue', 'Checklist', 'ControlActivity', 'Document', 'DocumentPvPoint', 'Event', 'History', 'Tension');
 				foreach ($handlers as $handler) {
 					$className = '\\dbObject\\' . $handler;
 					if (!$className::handleUserDeparture($organizationId, $userId, (int)$ghostUser->getId())) {

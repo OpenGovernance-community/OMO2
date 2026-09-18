@@ -8,6 +8,7 @@ use dbObject\ExternalCalendarEvent;
 use dbObject\ArrayExternalCalendar;
 use dbObject\ArrayExternalCalendarEvent;
 use dbObject\ArrayEvent;
+use dbObject\User;
 
 function meetingSlug(string $value): string
 {
@@ -262,6 +263,11 @@ function meetingBook(int $userId, array $draft, ?callable $request = null, ?call
                 if (!$slot) { throw new RuntimeException('slot_taken'); }
                 if (!$existing) {
                     $ownerName = (string)$profile->get('slug');
+                    $owner = new User();
+                    if ($owner->load($userId)) {
+                        $displayName = trim((string)$owner->getScopedDisplayName());
+                        if ($displayName !== '') { $ownerName = $displayName; }
+                    }
                     $ics = meetingIcs($draft['token'], $slot['start'], $slot['end'], meetingT('event_title', ['owner' => $ownerName, 'guest' => $draft['name']]),
                         $draft['name'] . "\n" . $draft['email'] . "\n\n" . $draft['reason']);
                     foreach (['IDuser' => $userId, 'IDexternalcalendar' => $calendar->getId(), 'token' => $draft['token'],

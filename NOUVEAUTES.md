@@ -4,6 +4,20 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-18
 
+- Rendez-vous : le partage d un lien public affiche maintenant un apercu explicite avec le nom complet de la personne, sa photo lorsqu elle est definie et un resume de la prise de rendez-vous. Le nom court reste reserve a l adresse publique.
+
+- Projets : chaque personne peut suivre ou ne plus suivre un projet depuis son menu. Une etoile plus visible devant le holon indique le suivi, en jaune pour la personne courante et en gris pour les autres, avec la liste des personnes au survol.
+
+- Projets : les personnes qui suivent un projet recoivent une notification lorsque son statut change. Le canal de reception se choisit dans Parametres > Notifications.
+
+- Projets : une personne directement responsable peut maintenant modifier son projet, y compris le glisser-deposer dans le Kanban, meme sans droit d edition sur le holon associe.
+
+- Projets : le filtre Suivi affiche les projets suivis par au moins une personne, dans les vues Projets et dans le selecteur de projets des proces-verbaux.
+
+- Projets : les liens de suivi sont maintenant supprimes lorsqu un projet est archive ou efface, apres que son traitement a ete enregistre.
+
+- Les preferences de notifications proposent maintenant le canal Dans OMO, actif par defaut. Lorsqu il est desactive mais qu un canal externe reste actif, la notification est conservee comme lue afin de ne pas alimenter le compteur de la cloche ; desactiver tous les canaux ne cree aucune notification.
+
 - Decisions : les reglages enregistres dans chaque question, dont l autorisation de proposer pendant la consultation, les discussions et l anonymat, sont a nouveau configures et sauvegardes depuis cette question. Les parametres generaux ne conservent que les reglages communs au scrutin.
 
 ## 2026-09-17
