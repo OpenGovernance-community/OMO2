@@ -1817,6 +1817,12 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     display: grid;
 }
 
+.generic-file-list--structured.generic-file-list--stacked-sticky {
+    position: relative;
+    z-index: 0;
+    isolation: isolate;
+}
+
 .generic-file-list__group-title {
     position: sticky;
     top: 0;
