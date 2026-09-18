@@ -4,6 +4,12 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-18
 
+- Calendrier : les modeles de PV proposes lors de la creation d un evenement suivent maintenant la portee du rendez-vous. Les modeles d organisation sont disponibles partout, ceux d un cercle dans ce cercle et ses enfants, et ceux d un role uniquement dans ce role.
+
+- Projets : les nouveaux evenements preselectionnent desormais le responsable du projet comme invite, plutot que le holon rattache au projet.
+
+- Documents : les dossiers internes sont maintenant charges a la demande. La liste initiale ne contient que les documents a la racine et chaque dossier recupere son contenu uniquement lorsqu il est ouvert, y compris les dossiers Nextcloud reouverts dans cette arborescence.
+
 - Vues : le perimetre Local est maintenant transmis explicitement lors des rafraichissements des Documents, Activites, Checklists, Projets, Indicateurs, Equipe et Reglement. Cela evite une boucle de chargement lorsqu une vue par defaut choisit les enfants directs.
 
 - Rendez-vous : le partage d un lien public affiche maintenant un apercu explicite avec le nom complet de la personne, sa photo lorsqu elle est definie et un resume de la prise de rendez-vous. Le nom court reste reserve a l adresse publique.
