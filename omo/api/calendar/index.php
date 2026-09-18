@@ -2774,6 +2774,44 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
             if (pvTemplateField) {
                 pvTemplateField.hidden = documentType !== 'pv';
             }
+
+            syncPvTemplateOptions(form);
+        }
+
+        function syncPvTemplateOptions(form) {
+            if (!form) {
+                return;
+            }
+
+            var contextField = form.querySelector('[data-omo-calendar-context-holon]');
+            var templateField = form.querySelector('select[name="pv_template_id"]');
+            if (!contextField || !templateField) {
+                return;
+            }
+
+            var contextId = Number(contextField.value || '0');
+            var contextOption = contextField.options[contextField.selectedIndex];
+            var contextPath = String(contextOption ? contextOption.getAttribute('data-omo-calendar-context-path') || '' : '')
+                .split(',')
+                .map(function (value) { return Number(value); });
+
+            Array.prototype.forEach.call(templateField.options, function (option) {
+                if (String(option.value || '0') === '0') {
+                    return;
+                }
+
+                var scope = String(option.getAttribute('data-omo-calendar-pv-template-scope') || '');
+                var targetId = Number(option.getAttribute('data-omo-calendar-pv-template-target') || '0');
+                var isAvailable = scope === 'organization' || scope === 'everyone'
+                    || (scope === 'circle' && targetId > 0 && contextPath.indexOf(targetId) !== -1)
+                    || (scope === 'role' && targetId > 0 && contextId === targetId);
+                option.hidden = !isAvailable;
+                option.disabled = !isAvailable;
+            });
+
+            if (templateField.selectedOptions.length > 0 && templateField.selectedOptions[0].disabled) {
+                templateField.value = '0';
+            }
         }
 
         function syncInvitationDefaultHolonSelection(editor, nextHolonId) {

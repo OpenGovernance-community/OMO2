@@ -331,7 +331,8 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
         ?Holon $effectiveHolon,
         int $targetHolonId,
         int $defaultHolonId = 0,
-        bool $preferDefaultHolonSelection = true
+        bool $preferDefaultHolonSelection = true,
+        int $defaultUserId = 0
     ) {
         $selectionState = is_object($event) && method_exists($event, 'getInvitations')
             ? omoCalendarExtractInvitationSelections($event)
@@ -342,6 +343,14 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
         $memberships = new ArrayUserOrganization();
         if ($organizationId > 0) {
             $memberships->loadActiveForOrganization($organizationId);
+        }
+
+        $activeMemberUserIds = [];
+        foreach ($memberships as $membership) {
+            $memberUserId = (int)$membership->get('IDuser');
+            if ($memberUserId > 0) {
+                $activeMemberUserIds[$memberUserId] = true;
+            }
         }
 
         $selectedHolonIds = $hasStructureApplication ? $selectionState['holon_ids'] : [];
@@ -355,7 +364,14 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
         }
 
         $selectedUserIds = $selectionState['user_ids'];
-        if (!$hasStructureApplication && $selectionState['count'] === 0) {
+        $usesDefaultUserSelection = $selectionState['count'] === 0
+            && $defaultUserId > 0
+            && isset($activeMemberUserIds[$defaultUserId]);
+        if ($usesDefaultUserSelection) {
+            $selectedHolonIds = [];
+            $selectedUserIds = [$defaultUserId];
+        }
+        if (!$hasStructureApplication && $selectionState['count'] === 0 && !$usesDefaultUserSelection) {
             $selectedUserIds = [];
             foreach ($memberships as $membership) {
                 $userId = (int)$membership->get('IDuser');
@@ -379,11 +395,14 @@ if (!function_exists('omoCalendarBuildInvitationEditorState')) {
             'selectedUserIds' => $selectedUserIds,
             'selectedEmails' => $selectionState['emails'],
             'hasExplicitInvitations' => $selectionState['count'] > 0,
-            'usesDefaultHolonSelection' => $hasStructureApplication && $selectionState['count'] === 0 && $defaultHolonId > 0,
+            'usesDefaultHolonSelection' => $hasStructureApplication && $selectionState['count'] === 0 && $defaultHolonId > 0 && !$usesDefaultUserSelection,
+            'usesDefaultUserSelection' => $usesDefaultUserSelection,
+            'preferredTab' => $usesDefaultUserSelection ? 'members' : 'holons',
             'holonTree' => $holonTree,
             'hasHolonStructure' => $hasStructureApplication && is_array($holonTree),
             'memberships' => $memberships,
             'defaultHolonId' => $defaultHolonId,
+            'defaultUserId' => $usesDefaultUserSelection ? $defaultUserId : 0,
         ];
     }
 }
@@ -712,6 +731,9 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
         $selectedUserIds = (array)$editorState['selectedUserIds'];
         $selectedEmails = (array)$editorState['selectedEmails'];
         $defaultHolonId = (int)($editorState['defaultHolonId'] ?? 0);
+        $defaultUserId = (int)($editorState['defaultUserId'] ?? 0);
+        $preferredTab = (string)($editorState['preferredTab'] ?? 'holons');
+        $membersTabIsActive = $preferredTab === 'members' || !$hasHolonStructure;
         $holonsTabId = $instanceId . 'Holons';
         $membersTabId = $instanceId . 'Members';
         $guestsTabId = $instanceId . 'Guests';
@@ -722,6 +744,7 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
             class="omo-calendar-invitations-editor"
             data-omo-calendar-invitations-editor
             data-omo-calendar-default-holon-id="<?= (int)$defaultHolonId ?>"
+            data-omo-calendar-default-user-id="<?= (int)$defaultUserId ?>"
             data-omo-calendar-uses-default-selection="<?= !empty($editorState['usesDefaultHolonSelection']) ? '1' : '0' ?>"
         >
             <?php if (!$hasHolonStructure): ?>
@@ -731,8 +754,8 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
             <div class="generic-tabs omo-calendar-invitations-editor__tabs" data-generic-tabs>
                 <div class="generic-tabs__list" aria-label="<?= $escape(t('calendar.invitations.tabs_aria', [], $lang, $sourceLang)) ?>">
                     <?php if ($hasHolonStructure): ?>
-                    <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="<?= $escape($holonsTabId) ?>"><?= $escape(t('calendar.invitations.tab.holons', [], $lang, $sourceLang)) ?></button>
-                    <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="<?= $escape($membersTabId) ?>"><?= $escape(t('calendar.invitations.tab.members', [], $lang, $sourceLang)) ?></button>
+                    <button type="button" class="generic-tabs__tab<?= $membersTabIsActive ? '' : ' is-active' ?>" data-generic-tab data-generic-tab-target="<?= $escape($holonsTabId) ?>"><?= $escape(t('calendar.invitations.tab.holons', [], $lang, $sourceLang)) ?></button>
+                    <button type="button" class="generic-tabs__tab<?= $membersTabIsActive ? ' is-active' : '' ?>" data-generic-tab data-generic-tab-target="<?= $escape($membersTabId) ?>"><?= $escape(t('calendar.invitations.tab.members', [], $lang, $sourceLang)) ?></button>
                     <button type="button" class="generic-tabs__tab" data-generic-tab data-generic-tab-target="<?= $escape($guestsTabId) ?>"><?= $escape(t('calendar.invitations.tab.guests', [], $lang, $sourceLang)) ?></button>
                     <?php else: ?>
                     <button type="button" class="generic-tabs__tab is-active" data-generic-tab data-generic-tab-target="<?= $escape($membersTabId) ?>"><?= $escape(t('calendar.invitations.tab.members', [], $lang, $sourceLang)) ?></button>
@@ -741,7 +764,7 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
                 </div>
                 <div class="generic-tabs__panels">
                     <?php if ($hasHolonStructure): ?>
-                    <div id="<?= $escape($holonsTabId) ?>" class="generic-tabs__panel omo-calendar-invitations-editor__tab-panel" data-generic-tab-panel>
+                    <div id="<?= $escape($holonsTabId) ?>" class="generic-tabs__panel omo-calendar-invitations-editor__tab-panel" data-generic-tab-panel<?= $membersTabIsActive ? ' hidden' : '' ?>>
                         <strong><?= $escape(t('calendar.invitations.holons_title', [], $lang, $sourceLang)) ?></strong>
                         <p class="omo-calendar-invitations-editor__hint"><?= $escape(t('calendar.invitations.holons_hint', [], $lang, $sourceLang)) ?></p>
                         <input
@@ -759,7 +782,7 @@ if (!function_exists('omoCalendarRenderInvitationEditor')) {
                     </div>
                     <?php endif; ?>
 
-                    <div id="<?= $escape($membersTabId) ?>" class="generic-tabs__panel omo-calendar-invitations-editor__tab-panel" data-generic-tab-panel<?= $hasHolonStructure ? ' hidden' : '' ?>>
+                    <div id="<?= $escape($membersTabId) ?>" class="generic-tabs__panel omo-calendar-invitations-editor__tab-panel" data-generic-tab-panel<?= $membersTabIsActive ? '' : ' hidden' ?>>
                         <strong><?= $escape(t('calendar.invitations.members_title', [], $lang, $sourceLang)) ?></strong>
                         <input
                             type="search"
