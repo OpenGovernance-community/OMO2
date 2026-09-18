@@ -513,11 +513,15 @@ $invitationContext = [
     <style>
     .omo-calendar-detail {
         display: grid;
+        flex: 1 1 100%;
+        width: 100%;
         gap: 0;
+        align-content: start;
     }
 
     .omo-calendar-detail__shell {
         gap: 18px;
+        align-content: start;
     }
 
     .omo-calendar-detail__overview,
