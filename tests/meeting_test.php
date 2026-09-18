@@ -91,7 +91,8 @@ if (!MeetingProfile::isStorageAvailable()) { throw new RuntimeException('Run mee
 $user = new User();
 $nonce = bin2hex(random_bytes(6));
 $user->set('email', 'meeting-test-' . $nonce . '@example.invalid');
-$user->set('firstname', 'Meeting fixture');
+$user->set('firstname', 'Meeting');
+$user->set('lastname', 'Fixture');
 meetingSave($user);
 $uid = (int)$user->getId();
 try {
@@ -148,6 +149,7 @@ try {
     $reportError = false;
     $booking = meetingBook($uid, $draft, $request, fn() => false);
     meetingExpect($booking->get('status') === 'confirmed' && !$booking->get('email_sent_at') && $puts === 1, 'Failed email does not cancel reservation');
+    meetingExpect(str_contains((string)$booking->get('calendar_data'), 'SUMMARY:Rendez-vous : Meeting Fixture / Test visitor'), 'Calendar event uses the owner full name instead of the public slug');
     $mailCount = 0;
     $mailer = static function () use (&$mailCount) { $mailCount++; return true; };
     $booking = meetingBook($uid, $draft, $request, $mailer);
@@ -183,6 +185,13 @@ try {
     $dom = new DOMDocument();
     @$dom->loadHTML($page);
     $xpath = new DOMXPath($dom);
+    $expectedShareTitle = meetingT('share_title', ['name' => 'Meeting Fixture']);
+    meetingExpect(trim((string)$xpath->evaluate('string(//title)')) === $expectedShareTitle . ' - OMO', 'Browser title uses the owner full name');
+    meetingExpect(trim((string)$xpath->evaluate('string(//h1)')) === meetingT('book_with', ['name' => 'Meeting Fixture']), 'Booking heading uses the owner full name');
+    meetingExpect($xpath->evaluate('string(//meta[@property="og:title"]/@content)') === $expectedShareTitle, 'Open Graph title describes the booking link');
+    meetingExpect($xpath->evaluate('string(//meta[@property="og:description"]/@content)') === meetingT('share_description', ['name' => 'Meeting Fixture']), 'Open Graph description explains the booking link');
+    meetingExpect($xpath->evaluate('string(//meta[@property="og:url"]/@content)') === 'https://localhost' . $path, 'Open Graph URL is absolute and canonical');
+    meetingExpect($xpath->query('//meta[@property="og:image"]')->length === 0, 'Open Graph image is omitted when the owner has no photo');
     foreach ($xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " meeting-calendar__day ")]') as $cell) {
         meetingExpect(ctype_digit(trim($cell->textContent)) && $cell->getAttribute('aria-label') !== '', 'Day cells only show numbers and keep accessible availability');
     }
@@ -192,9 +201,14 @@ try {
     $user->set('image', '/common/assets/icon-topbar-help.png'); meetingSave($user);
     [$code, $page] = $http($path);
     meetingExpect(str_contains($page, 'src="/common/assets/icon-topbar-help.png"') && str_contains($page, ' data-meeting-avatar '), 'Global OMO photo renders publicly');
+    $photoDom = new DOMDocument();
+    @$photoDom->loadHTML($page);
+    $photoXpath = new DOMXPath($photoDom);
+    meetingExpect($photoXpath->evaluate('string(//meta[@property="og:image"]/@content)') === 'https://localhost/common/assets/icon-topbar-help.png', 'Relative profile photo becomes an absolute Open Graph image');
+    meetingExpect($photoXpath->evaluate('string(//meta[@name="twitter:image"]/@content)') === 'https://localhost/common/assets/icon-topbar-help.png', 'Relative profile photo becomes an absolute card image');
     $user->set('image', 'javascript:alert(1)'); meetingSave($user);
     [$code, $page] = $http($path);
-    meetingExpect(!str_contains($page, 'javascript:') && !str_contains($page, ' data-meeting-avatar '), 'Unsafe photo URL falls back to initials');
+    meetingExpect(!str_contains($page, 'javascript:') && !str_contains($page, ' data-meeting-avatar ') && !str_contains($page, 'property="og:image"'), 'Unsafe photo URL falls back to initials and is not shared');
     $user->set('image', ''); meetingSave($user);
     [$code, $page] = $http($path . '?receipt=' . $draft['token']);
     meetingExpect(!str_contains($page, 'visitor@example.invalid'), 'Receipt is bound to visitor session');
