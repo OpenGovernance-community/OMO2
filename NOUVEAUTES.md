@@ -4,6 +4,24 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-18
 
+- Calendrier : les jours charges de la vue mois peuvent afficher leurs rendez-vous supplementaires a la demande. Les titres des blocs sont limites a deux lignes.
+
+- Calendrier : un double-clic sur un rendez-vous issu d un agenda connecte ouvre ses informations importees dans un drawer en lecture seule, avec horaire, agenda externe, lieu et description lorsqu ils sont disponibles.
+
+- Calendrier : les cartes de detail des rendez-vous OMO conservent leur hauteur naturelle dans le drawer, sans grands espaces etires.
+
+- Calendrier : la vue liste ne contient que les rendez-vous OMO du perimetre selectionne ; les agendas externes restent visibles dans les autres vues.
+
+- Listes : les entetes temporels sticky restent dans leur propre plan d empilement et ne peuvent plus recouvrir les menus.
+
+- Calendrier : l enregistrement d une vue applique maintenant les choix en attente dans le filtre pour tous les niveaux, y compris le holon de base de type organisation.
+
+- Calendrier : une ancienne position temporaire ne peut plus remplacer une preference durable de l appareil ou un defaut enregistre au rechargement.
+
+- Calendrier : Appliquer garde une vue temporaire pendant la session, tandis que Enregistrer cree une preference durable sur l appareil. Les defaults de holon et d organisation restent fournis par le serveur.
+
+- Calendrier : les vues semaine et jour affichent maintenant en gris les rendez-vous personnels situes hors du perimetre selectionne. Les vues mois et planning restent limitees au perimetre choisi, et les agendas externes conservent leur apparence.
+
 - Calendrier : les modeles de PV proposes lors de la creation d un evenement suivent maintenant la portee du rendez-vous. Les modeles d organisation sont disponibles partout, ceux d un cercle dans ce cercle et ses enfants, et ceux d un role uniquement dans ce role.
 
 - Projets : les nouveaux evenements preselectionnent desormais le responsable du projet comme invite, plutot que le holon rattache au projet.
