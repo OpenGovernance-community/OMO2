@@ -19,7 +19,7 @@ function omoStructureDisplaySourceLang(): array
         'parameters.structure_display.section.labels' => array('text' => 'Libelles', 'context' => 'Section heading for structure display label settings.'),
         'parameters.structure_display.section.members' => array('text' => 'Personnes', 'context' => 'Section heading for terminal structure member display settings.'),
         'parameters.structure_display.field.label_auto_radius.label' => array('text' => 'Rayon minimal pour afficher un texte automatiquement', 'context' => 'Label for the minimum rendered holon radius for automatic labels.'),
-        'parameters.structure_display.field.label_auto_radius.help' => array('text' => 'S applique aux textes affiches dans les roles et cercles. Valeur par defaut : 18 px.', 'context' => 'Help text for the automatic label threshold input.'),
+        'parameters.structure_display.field.label_auto_radius.help' => array('text' => 'S applique aux textes affiches dans les espaces. Valeur par defaut : 18 px.', 'context' => 'Help text for the automatic label threshold input.'),
         'parameters.structure_display.field.label_hover_radius.label' => array('text' => 'Rayon minimal pour afficher un texte au survol', 'context' => 'Label for the minimum rendered holon radius for hover labels.'),
             'parameters.structure_display.field.label_hover_radius.help' => array('text' => 'S’applique au texte révélé lorsque le pointeur passe sur un espace. Valeur par défaut : 18 px.', 'context' => 'Help text for the hover label threshold input.'),
         'parameters.structure_display.field.label_font_size.label' => array('text' => 'Taille minimale de police', 'context' => 'Label for the minimum font size input.'),

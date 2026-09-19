@@ -44,7 +44,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.sort.order.priority' => ['text' => 'Par priorité', 'context' => 'PV agenda sorting option.'],
         'documents.pv_editor.sort.order.creation' => ['text' => 'Par date de création', 'context' => 'PV agenda sorting option.'],
         'documents.pv_editor.sort.order.person' => ['text' => 'Par personne', 'context' => 'PV agenda sorting option.'],
-        'documents.pv_editor.sort.order.role' => ['text' => 'Par rôle', 'context' => 'PV agenda sorting option grouping points by their associated role.'],
+        'documents.pv_editor.sort.order.role' => ['text' => 'Par espace', 'context' => 'PV agenda sorting option grouping points by their associated space.'],
         'documents.pv_editor.sort.order.duration' => ['text' => 'Par durée', 'context' => 'PV agenda sorting option ordering points by increasing desired duration.'],
         'documents.pv_editor.sort.randomize_ties' => ['text' => 'Mélanger les éléments à égalité', 'context' => 'PV agenda sorting option that randomizes items sharing the same sort value.'],
         'documents.pv_editor.sort.handled_last' => ['text' => 'Déplacer les points traités à la fin', 'context' => 'PV agenda sorting option.'],
@@ -138,7 +138,7 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.field.author' => ['text' => 'Porté par', 'context' => 'Label of the person assigned to a PV point.'],
         'documents.pv_editor.field.handled' => ['text' => 'Traité', 'context' => 'Label for the handled checkbox of a PV point.'],
         'documents.pv_editor.field.concerned_holon' => ['text' => 'Espace concerné', 'context' => 'Label showing the main space concerned by a PV point.'],
-        'documents.pv_editor.field.concerned_holon_empty' => ['text' => 'Sans rôle', 'context' => 'Empty option for the concerned role selector of a PV point.'],
+        'documents.pv_editor.field.concerned_holon_empty' => ['text' => 'Sans espace', 'context' => 'Empty option for the concerned space selector of a PV point.'],
         'documents.pv_editor.field.addressed_holons' => ['text' => 'Espaces adressés', 'context' => 'Label showing the addressed spaces of a PV point.'],
         'documents.pv_editor.field.tensions' => ['text' => 'Tensions', 'context' => 'Label showing the tensions attached to a PV point.'],
         'documents.pv_editor.field.content' => ['text' => 'Contenu', 'context' => 'Label shown above the HTML content editor of a PV point.'],
@@ -382,7 +382,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
         'sortPriority' => $resolve('documents.pv_editor.sort.order.priority', 'Par priorité'),
         'sortCreation' => $resolve('documents.pv_editor.sort.order.creation', 'Par date de création'),
         'sortPerson' => $resolve('documents.pv_editor.sort.order.person', 'Par personne'),
-        'sortRole' => $resolve('documents.pv_editor.sort.order.role', 'Par rôle'),
+        'sortRole' => $resolve('documents.pv_editor.sort.order.role', 'Par espace'),
         'sortDuration' => $resolve('documents.pv_editor.sort.order.duration', 'Par durée'),
         'sortRandomizeTies' => $resolve('documents.pv_editor.sort.randomize_ties', 'Mélanger les éléments à égalité'),
         'sortHandledLast' => $resolve('documents.pv_editor.sort.handled_last', 'Déplacer les points traités à la fin'),
@@ -460,7 +460,7 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
         'author' => $resolve('documents.pv_editor.field.author', 'Porté par'),
         'handled' => $resolve('documents.pv_editor.field.handled', 'Traité'),
         'concernedHolon' => $resolve('documents.pv_editor.field.concerned_holon', 'Espace concerné'),
-        'concernedHolonEmpty' => $resolve('documents.pv_editor.field.concerned_holon_empty', 'Sans rôle'),
+        'concernedHolonEmpty' => $resolve('documents.pv_editor.field.concerned_holon_empty', 'Sans espace'),
         'addressedHolons' => $resolve('documents.pv_editor.field.addressed_holons', 'Espaces adressés'),
         'tensions' => $resolve('documents.pv_editor.field.tensions', 'Tensions'),
         'content' => $resolve('documents.pv_editor.field.content', 'Contenu'),
@@ -1187,7 +1187,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '      <label class="omo-pv-editor__point-concerned">';
         $html .= '          <span class="omo-pv-editor__point-concerned-label">' . omoDocumentsPvEditorEscape((string)$uiText['concernedHolon']) . '</span>';
         $html .= '          <select class="omo-pv-editor__point-concerned-select" data-omo-pv-point-concerned-holon="' . $pointId . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['concernedHolon']) . '">';
-        $html .= '              <option value="0">' . omoDocumentsPvEditorEscape((string)($uiText['concernedHolonEmpty'] ?? 'Sans rôle')) . '</option>';
+        $html .= '              <option value="0">' . omoDocumentsPvEditorEscape((string)($uiText['concernedHolonEmpty'] ?? 'Sans espace')) . '</option>';
         $localConcernedHolonCount = count(array_filter($concernedHolonOptions, static function (array $option): bool {
             return !empty($option['isLocal']);
         }));

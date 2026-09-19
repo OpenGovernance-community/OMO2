@@ -10,6 +10,10 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 - Tableau de pilotage : projets, indicateurs et checklists peuvent etre limites a Moi, Mes espaces ou Tous dans la configuration de chaque module.
 
+- Projets : le libelle Cercle ou role associe devient Espace associe.
+
+- Interface : les libelles de rattachement et les aides de travail parlent maintenant d espaces plutot que de cercles ou roles.
+
 - Indicateurs : nouvel ecran d edition organise en identite, source des mesures et graphique. Les reglages conditionnels sont regroupes, les choix d echelle sont illustres et les points de reference s adaptent aux petits ecrans.
 
 ## 2026-09-18

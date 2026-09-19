@@ -81,8 +81,8 @@ $sourceLang = array_merge([
         'context' => 'Label of the event end date time field.',
     ],
     'calendar.create.field.holon' => [
-        'text' => 'Cercle ou rôle',
-        'context' => 'Label of the optional holon association field.',
+        'text' => 'Espace associé',
+        'context' => 'Label of the optional space association field.',
     ],
     'calendar.create.field.all_day' => [
         'text' => 'Journée entière',

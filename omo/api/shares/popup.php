@@ -346,7 +346,7 @@ $popupUrl = 'api/shares/popup.php?oid=' . rawurlencode((string)$organizationId) 
                     <input type="checkbox" name="allow_structure" id="omoSharePopupAllowStructure" checked>
                     <span>
                         <strong>Voir la structure</strong>
-                        <span>Autorise l affichage de la structure et du detail des cercles et roles.</span>
+                        <span>Autorise l affichage de la structure et du detail des espaces.</span>
                     </span>
                 </label>
 

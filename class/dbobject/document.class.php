@@ -6755,8 +6755,8 @@
 				return array(
 					'status' => false,
 					'text' => $visibilityType === \dbObject\ObjectVisibility::TYPE_ROLE
-						? 'La visibilite role demande un document lie a un role.'
-						: 'La visibilite cercle demande un document lie a un cercle ou a un role.',
+                        ? 'La visibilite role demande un document lie a un role.'
+                        : 'La visibilite cercle demande un document lie a un cercle ou a un role.',
 				);
 			}
 
@@ -6776,7 +6776,7 @@
 				if ((int)$holon->get('IDtypeholon') !== 1) {
 					return array(
 						'status' => false,
-						'text' => 'La visibilite role demande un document lie a un role.',
+                        'text' => 'La visibilite role demande un document lie a un role.',
 					);
 				}
 
@@ -6797,7 +6797,7 @@
 			if ($circleId <= 0) {
 				return array(
 					'status' => false,
-					'text' => 'La visibilite cercle demande un document place dans un cercle ou dans un role de cercle.',
+                    'text' => 'La visibilite cercle demande un document place dans un cercle ou dans un role de cercle.',
 				);
 			}
 

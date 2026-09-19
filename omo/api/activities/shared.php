@@ -58,7 +58,7 @@ function omoActivitySourceLang()
         'activity.responsibility.unassigned' => ['text' => 'Non attribué', 'context' => 'Activity without a directly assigned person.'],
         'activity.editor.responsible' => ['text' => 'Personne en charge', 'context' => 'Activity responsible person field.'],
         'activity.editor.responsible_none' => ['text' => 'Aucune personne', 'context' => 'Activity responsible person empty option.'],
-        'activity.editor.responsible_help' => ['text' => 'Cette personne est responsable en complément du rôle porteur de la tâche récurrente.', 'context' => 'Recurring task responsible person field help.'],
+        'activity.editor.responsible_help' => ['text' => 'Cette personne est responsable en complément de l espace porteur de la tâche récurrente.', 'context' => 'Recurring task responsible person field help.'],
         'activity.display_lead' => ['text' => 'Afficher en avance', 'context' => 'Advance field.'],
         'activity.overdue_after' => ['text' => 'En retard après', 'context' => 'Delay field.'],
         'activity.unit' => ['text' => 'Unité', 'context' => 'Unit field.'],
