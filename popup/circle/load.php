@@ -30,7 +30,7 @@
 		
 	} else {
 		// Affiche un bouton pour soit se connecter, soit s'inscrire
-		echo T_("Vous devez être connecté pour pouvoir charger une structure en cercles et rôles.");
+		echo T_("Vous devez être connecté pour pouvoir charger une structure en espaces.");
 		echo T_("Se connecter");
 		echo T_("Créer un compte");
 		

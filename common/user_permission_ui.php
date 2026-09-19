@@ -55,7 +55,7 @@ if (!function_exists('commonUserPermissionFormatHolonLabel')) {
     {
         $holonId = (int)$holonId;
         if ($holonId <= 0) {
-            return 'Holon inconnu';
+            return 'Espace inconnu';
         }
 
         $name = $labelsById[$holonId] ?? ('Holon #' . $holonId);

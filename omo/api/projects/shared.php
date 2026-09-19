@@ -40,7 +40,8 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.scope.children' => ['text' => 'Enfants directs', 'context' => 'Scope showing projects attached to the current holon and its direct children.'],
             'projects.scope.descendants' => ['text' => 'Descendants', 'context' => 'Scope showing projects attached to the current holon and its descendants.'],
             'projects.assignment.aria' => ['text' => 'Projets affichés', 'context' => 'Accessible label for the project assignment filter.'],
-            'projects.assignment.mine' => ['text' => 'Moi', 'context' => 'Project assignment filter showing projects assigned to the current user.'],
+            'projects.assignment.mine' => ['text' => 'Moi', 'context' => 'Project assignment filter showing projects directly assigned to the current user or unassigned projects in their spaces.'],
+            'projects.assignment.spaces' => ['text' => 'Mes espaces', 'context' => 'Project assignment filter showing projects in the current user spaces regardless of direct assignment.'],
             'projects.assignment.followed' => ['text' => 'Suivi', 'context' => 'Project assignment filter showing projects followed by at least one person.'],
             'projects.assignment.everyone' => ['text' => 'Tout le monde', 'context' => 'Project assignment filter showing projects assigned to anyone.'],
             'projects.filters.aria' => ['text' => 'Filtres des projets', 'context' => 'Accessible label for the compact project filters control.'],
@@ -68,7 +69,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.sort.planned' => ['text' => 'Planification', 'context' => 'Project list sort button.'],
             'projects.sort.priority' => ['text' => 'Priorité', 'context' => 'Project list sort button.'],
             'projects.sort.importance' => ['text' => 'Importance stratégique', 'context' => 'Project list sort button.'],
-            'projects.sort.holon' => ['text' => 'Holon', 'context' => 'Project list sort button.'],
+            'projects.sort.holon' => ['text' => 'Espace', 'context' => 'Project list sort button.'],
             'projects.list.planned.overdue' => ['text' => 'En retard', 'context' => 'Project list planned group for past dates.'],
             'projects.list.planned.in_progress' => ['text' => 'En cours', 'context' => 'Project list planned group for projects currently within their planned dates.'],
             'projects.list.planned.tomorrow' => ['text' => 'Demain', 'context' => 'Project list planned group for tomorrow.'],
@@ -83,6 +84,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.empty.children' => ['text' => 'Aucun projet dans ce contexte ou ses enfants directs.', 'context' => 'Empty state for the direct child holon scope.'],
             'projects.empty.descendants' => ['text' => 'Aucun projet dans ce contexte ou ses descendants.', 'context' => 'Empty state for the descendant project scope.'],
             'projects.empty.mine' => ['text' => 'Aucun projet qui vous est attribué dans ce périmètre.', 'context' => 'Empty state when the current user has no assigned project in the selected scope.'],
+            'projects.empty.spaces' => ['text' => 'Aucun projet dans vos espaces pour ce périmètre.', 'context' => 'Empty state when the current user has no project in their associated spaces in the selected scope.'],
             'projects.empty.followed' => ['text' => 'Aucun projet suivi dans ce périmètre.', 'context' => 'Empty state when no project in the selected scope has a follower.'],
             'projects.empty.column' => ['text' => 'Aucun projet dans cette colonne.', 'context' => 'Empty state for one empty Kanban column.'],
             'projects.loading' => ['text' => 'Chargement du projet…', 'context' => 'Loading message shown inside the project subdrawer.'],
@@ -109,9 +111,9 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.archive.confirm_selected' => ['text' => 'Archiver les {count} projets sélectionnés et leurs sous-projets ?', 'context' => 'Confirmation before bulk project archiving.'],
             'projects.delete.confirm_selected' => ['text' => 'Supprimer définitivement les {count} projets sélectionnés et leurs sous-projets ? Cette action est irréversible.', 'context' => 'Confirmation before bulk project deletion.'],
             'projects.move.title' => ['text' => 'Déplacer le projet', 'context' => 'Title of the project holon move dialog.'],
-            'projects.move.hint' => ['text' => 'Choisissez le holon de destination dans la structure.', 'context' => 'Instruction in the project holon move dialog.'],
+            'projects.move.hint' => ['text' => 'Choisissez l’espace de destination dans la structure.', 'context' => 'Instruction in the project space move dialog.'],
             'projects.move.submit' => ['text' => 'Déplacer ici', 'context' => 'Submit button in the project holon move dialog.'],
-            'projects.move.select_required' => ['text' => 'Choisissez un holon de destination.', 'context' => 'Validation message when no target holon is selected.'],
+            'projects.move.select_required' => ['text' => 'Choisissez un espace de destination.', 'context' => 'Validation message when no target space is selected.'],
             'projects.column.previous' => ['text' => 'Colonne précédente', 'context' => 'Accessible label for the previous mobile Kanban column button.'],
             'projects.column.next' => ['text' => 'Colonne suivante', 'context' => 'Accessible label for the next mobile Kanban column button.'],
             'projects.error.organization' => ['text' => 'Organisation invalide ou inaccessible.', 'context' => 'Error for an invalid organization context.'],
@@ -127,7 +129,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.error.parent_someday' => ['text' => 'Un sous-projet dont le parent a une date de fin ne peut pas être placé dans « Un jour peut-être ».', 'context' => 'Validation error when a dated parent project has a someday subproject.'],
             'projects.error.parent_end_date' => ['text' => 'La date de fin du sous-projet ne peut pas dépasser celle du projet parent.', 'context' => 'Validation error when a subproject end date exceeds its parent end date.'],
             'projects.error.save' => ['text' => "Impossible d'enregistrer le projet.", 'context' => 'Generic project persistence error.'],
-            'projects.error.holon' => ['text' => 'Le holon de destination est invalide ou inaccessible.', 'context' => 'Error for an invalid project move target holon.'],
+            'projects.error.holon' => ['text' => 'L’espace de destination est invalide ou inaccessible.', 'context' => 'Error for an invalid project move target space.'],
             'projects.success.save' => ['text' => 'Projet enregistré.', 'context' => 'Success message after project creation.'],
             'projects.success.status' => ['text' => 'Statut mis à jour.', 'context' => 'Success message after changing project status.'],
             'projects.drawer.title' => ['text' => 'Projet', 'context' => 'Default title of the project subdrawer.'],
@@ -301,7 +303,7 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.field.start_date' => ['text' => 'Début planifié', 'context' => 'Project planned start date field label.'],
             'projects.field.end_date' => ['text' => 'Fin planifiée', 'context' => 'Project planned end date field label.'],
             'projects.field.parent' => ['text' => 'Projet parent', 'context' => 'Project parent field label.'],
-            'projects.field.holon' => ['text' => 'Cercle ou rôle associé', 'context' => 'Project assignment holon field label.'],
+            'projects.field.holon' => ['text' => 'Espace associé', 'context' => 'Project assignment holon field label.'],
             'projects.field.responsible' => ['text' => 'Responsable', 'context' => 'Project responsible user field label.'],
             'projects.field.title' => ['text' => 'Titre du projet', 'context' => 'Project title field label.'],
             'projects.field.description' => ['text' => 'Description', 'context' => 'Project description field label.'],
@@ -323,9 +325,9 @@ if (!function_exists('omoProjectsSourceLang')) {
             'projects.parent_picker.scope_local' => ['text' => 'Local', 'context' => 'Local scope label in the parent project picker structure navigation.'],
             'projects.parent_picker.scope_children' => ['text' => 'Enfants directs', 'context' => 'Direct child scope label in the parent project picker structure navigation.'],
             'projects.parent_picker.scope_descendants' => ['text' => 'Descendants', 'context' => 'Descendant scope label in the parent project picker structure navigation.'],
-            'projects.holon.choose' => ['text' => 'Choisir un cercle ou rôle', 'context' => 'Button opening the project holon picker.'],
-            'projects.holon_picker.title' => ['text' => 'Choisir le cercle ou rôle', 'context' => 'Modal title for selecting the project assignment holon.'],
-            'projects.holon_picker.hint' => ['text' => 'Choisissez le cercle ou le rôle auquel confier ce projet.', 'context' => 'Instruction in the project holon picker modal.'],
+            'projects.holon.choose' => ['text' => 'Choisir un espace', 'context' => 'Button opening the project space picker.'],
+            'projects.holon_picker.title' => ['text' => 'Choisir un espace', 'context' => 'Modal title for selecting the project assignment space.'],
+            'projects.holon_picker.hint' => ['text' => 'Choisissez l espace auquel confier ce projet.', 'context' => 'Instruction in the project space picker modal.'],
             'projects.holon_picker.confirm' => ['text' => 'Utiliser ce contexte', 'context' => 'Confirmation button in the project holon picker modal.'],
             'projects.attach.title' => ['text' => 'Attacher un projet', 'context' => 'Modal title for attaching an orphan project as a subproject.'],
             'projects.attach.hint' => ['text' => 'Choisissez un projet sans parent dans la structure.', 'context' => 'Instruction in the attach existing project modal.'],
@@ -1017,6 +1019,61 @@ if (!function_exists('omoProjectsScopeContainsProject')) {
             return in_array($projectHolonId, array_map('intval', $descendantHolonIds), true);
         }
         return $projectHolonId === (int)$currentHolonId || ($projectHolonId === 0 && (int)$currentHolonId === 0);
+    }
+}
+
+if (!function_exists('omoProjectsUserIsAssociatedWithHolon')) {
+    function omoProjectsUserIsAssociatedWithHolon($userId, $organizationId, Holon $holon): bool
+    {
+        static $cache = [];
+
+        $userId = (int)$userId;
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holon->getId();
+        if ($userId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+            return false;
+        }
+
+        $cacheKey = $organizationId . ':' . $userId . ':' . $holonId;
+        if (!array_key_exists($cacheKey, $cache)) {
+            $cache[$cacheKey] = in_array(
+                $userId,
+                $holon->getAssociatedMemberUserIds([
+                    'organizationId' => $organizationId,
+                    'skipPermissionFilter' => true,
+                ]),
+                true
+            );
+        }
+
+        return $cache[$cacheKey];
+    }
+}
+
+if (!function_exists('omoProjectsMatchesAssignment')) {
+    function omoProjectsMatchesAssignment(Project $project, $assignment, $currentUserId, $organizationId): bool
+    {
+        $assignment = strtolower(trim((string)$assignment));
+        if ($assignment === 'all' || $assignment === 'followed') {
+            return true;
+        }
+
+        $currentUserId = (int)$currentUserId;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $responsibleUserId = (int)$project->get('IDuser');
+        if ($assignment === 'mine' && $responsibleUserId === $currentUserId) {
+            return true;
+        }
+        if ($assignment === 'mine' && $responsibleUserId > 0) {
+            return false;
+        }
+
+        $projectHolon = $project->getHolon();
+        return $projectHolon instanceof Holon
+            && omoProjectsUserIsAssociatedWithHolon($currentUserId, $organizationId, $projectHolon);
     }
 }
 

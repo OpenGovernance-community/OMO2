@@ -23,7 +23,7 @@ $holon = new Holon();
 if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organization->containsHolon($holon)) {
     http_response_code(404);
     ?>
-    <div class="omo-holon-member-popup__empty generic-description">Le holon demandé est introuvable.</div>
+    <div class="omo-holon-member-popup__empty generic-description">L’espace demandé est introuvable.</div>
     <?php
     exit;
 }

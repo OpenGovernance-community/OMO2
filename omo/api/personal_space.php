@@ -225,7 +225,7 @@ $sourceLang = [
     'personal_space.module.structure' => ['text' => 'Structure', 'context' => 'Dashboard structure module title.'],
     'personal_space.module.stats' => ['text' => 'Indicateurs', 'context' => 'Dashboard overdue stats module title.'],
     'personal_space.module.checklist' => ['text' => 'Processus', 'context' => 'Dashboard process module title.'],
-    'personal_space.module.activities' => ['text' => 'Activités', 'context' => 'Dashboard recurring activities module title.'],
+    'personal_space.module.activities' => ['text' => 'Tâches récurrentes', 'context' => 'Dashboard recurring tasks module title.'],
     'personal_space.module.video' => ['text' => 'Vidéo', 'context' => 'Dashboard embedded video module title.'],
     'personal_space.metric.modified' => ['text' => 'Modifiées', 'context' => 'Recently modified rules metric.'],
     'personal_space.metric.review' => ['text' => 'À revoir', 'context' => 'Rules due for review metric.'],
@@ -245,6 +245,7 @@ $sourceLang = [
     'personal_space.activities.overdue_for' => ['text' => 'En retard depuis le {date}', 'context' => 'Date shown for an overdue recurring activity.'],
     'personal_space.audience.all' => ['text' => 'Tous', 'context' => 'Dashboard module audience showing items for everyone.'],
     'personal_space.audience.mine' => ['text' => 'Moi', 'context' => 'Dashboard module audience showing items assigned to the current member.'],
+    'personal_space.audience.roles' => ['text' => 'Mes espaces', 'context' => 'Dashboard indicators module audience showing items attached to the current member spaces.'],
     'personal_space.module.empty' => ['text' => 'Aucun élément à afficher.', 'context' => 'Empty dashboard module fallback.'],
     'personal_space.video.empty' => ['text' => 'Aucune vidéo n est configurée pour ce module.', 'context' => 'Empty state for an unconfigured dashboard video module.'],
     'personal_space.video.player_title' => ['text' => 'Vidéo de présentation', 'context' => 'Title of the embedded video player in the dashboard.'],
@@ -559,6 +560,7 @@ $dashboardMetricLabels = array(
         'audienceLabels' => array(
             'all' => t('personal_space.audience.all', [], $lang, $sourceLang),
             'mine' => t('personal_space.audience.mine', [], $lang, $sourceLang),
+            'roles' => t('personal_space.audience.roles', [], $lang, $sourceLang),
         ),
         'saveError' => t('personal_space.editor.save_error', [], $lang, $sourceLang),
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
@@ -729,4 +731,4 @@ $dashboardMetricLabels = array(
     </div>
     <?php endif; ?>
 </div>
-<script src="/omo/assets/js/personal-space-dashboard.js?v=20260917-dashboard-default-scopes"></script>
+<script src="/omo/assets/js/personal-space-dashboard.js?v=20260919-dashboard-audience-modules"></script>

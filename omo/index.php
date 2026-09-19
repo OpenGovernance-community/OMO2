@@ -156,11 +156,11 @@ $sourceLang = [
         'context' => 'Fallback organization name used in JavaScript confirmation dialogs when the name is missing.',
     ],
     'app.directory.js.delete_confirm' => [
-        'text' => "Supprimer {organizationName} ?\n\nLa structure, les membres, les cercles, les rôles, les partages et les documents liés seront supprimés.",
+        'text' => "Supprimer {organizationName} ?\n\nLa structure, les membres, les espaces, les partages et les documents liés seront supprimés.",
         'context' => 'Confirmation dialog shown before deleting an organization from the directory page.',
     ],
     'app.directory.js.leave_confirm' => [
-        'text' => "Quitter {organizationName} ?\n\nVos liens avec l'organisation, ses cercles et ses rôles seront retirés.",
+        'text' => "Quitter {organizationName} ?\n\nVos liens avec l'organisation et ses espaces seront retirés.",
         'context' => 'Confirmation dialog shown before leaving an organization from the directory page.',
     ],
     'app.directory.menu.actions_aria_label' => [
@@ -1518,7 +1518,7 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
             'logoutReturnTo' => '/omo/',
             'search' => [
                 'enabled' => true,
-                'placeholder' => 'Rechercher un cercle, un role ou un outil',
+                'placeholder' => 'Rechercher un espace ou un outil',
                 'buttonLabel' => 'Recherche',
                 'callback' => 'omoHandleTopbarSearch',
             ],

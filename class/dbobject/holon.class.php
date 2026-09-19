@@ -44,7 +44,7 @@
 				'color_unassigned' => 'Couleur non attribuee',
 				'templatename' => 'Nom de template',
 				'IDorganization' => 'Organisation',
-				'IDtypeholon' => 'Type de holon',
+				'IDtypeholon' => 'Type d’espace',
 				'IDholon_parent' => 'Parent',
 				'IDholon_template' => 'Template',
 				'icon' => 'Icône',
@@ -72,9 +72,9 @@
 			return [
 				'name' => 'Nom court utilise dans la representation graphique, les chemins et les choix de contexte.',
 				'nomcomplet' => 'Nom complet facultatif utilise dans les vues textuelles.',
-				'time_budget_hours' => 'Temps prevu directement pour ce holon, exprime en heures.',
-				'money_budget' => 'Montant prevu directement pour ce holon.',
-				'parameters' => 'Parametres techniques du holon.',
+				'time_budget_hours' => 'Temps prévu directement pour cet espace, exprimé en heures.',
+				'money_budget' => 'Montant prévu directement pour cet espace.',
+				'parameters' => 'Paramètres techniques de l’espace.',
 			];
 		}
 
@@ -1442,7 +1442,7 @@
 				case 1:
 					return 'Role';
 				default:
-					return 'Holon';
+					return 'Espace';
 			}
 		}
 
@@ -1853,7 +1853,7 @@
 				return $templateName;
 			}
 
-			return 'Holon ' . (int)$this->getId();
+			return 'Espace ' . (int)$this->getId();
 		}
 
 		public function getFullDisplayName()
@@ -3401,7 +3401,7 @@
 		protected function ensureHolonMembership(\dbObject\User $user, $isActive = true, $focus = '')
 		{
 			if ((int)$user->getId() <= 0 || (int)$this->getId() <= 0) {
-				throw new \RuntimeException('Le lien vers ce holon est invalide.');
+				throw new \RuntimeException('Le lien vers cet espace est invalide.');
 			}
 
 			$link = new \dbObject\UserHolon();
@@ -3417,7 +3417,7 @@
 			$link->set('active', (bool)$isActive);
 			$saveResult = $link->save();
 			if (!is_array($saveResult) || empty($saveResult['status'])) {
-				throw new \RuntimeException("Impossible d'attacher cette personne à ce holon.");
+				throw new \RuntimeException("Impossible d'attacher cette personne à cet espace.");
 			}
 
 			if (!$isActive) {
@@ -3529,7 +3529,7 @@
 			}
 
 			$holon = new \dbObject\Holon();
-			$holonLabel = 'Holon ' . $holonId;
+			$holonLabel = 'Espace ' . $holonId;
 			if ($holon->load($holonId)) {
 				$holonLabel = $holon->getHistoryReferenceLabel();
 			}
@@ -3631,7 +3631,7 @@
 					. '.';
 			} else {
 				$content = \dbObject\History::buildReferenceToken('user', (int)$memberUser->getId(), $memberLabel)
-					. ' a ete retire des holons suivants par '
+					. ' a été retiré des espaces suivants par '
 					. \dbObject\History::buildReferenceToken('user', $authorUserId, $authorLabel)
 					. ' : '
 					. implode(', ', $holonTokens)
@@ -3724,7 +3724,7 @@
 			if ($organizationId <= 0) {
 				return array(
 					'status' => false,
-					'message' => "L'organisation liée à ce holon est introuvable.",
+					'message' => "L'organisation liée à cet espace est introuvable.",
 				);
 			}
 

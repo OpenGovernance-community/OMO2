@@ -131,7 +131,7 @@ $baseSourceLang = [
         'context' => 'Summary value when editing a decision.',
     ],
     'decisions.edit.summary.no_holon' => [
-        'text' => 'Sans holon',
+            'text' => 'Sans espace',
         'context' => 'Summary fallback when the decision is attached only to the organization.',
     ],
     'decisions.edit.context.organization_invalid' => [
@@ -151,15 +151,15 @@ $baseSourceLang = [
         'context' => 'Error when the user cannot create an organization-level decision.',
     ],
     'decisions.edit.context.holon_not_found' => [
-        'text' => 'Holon introuvable pour cette organisation.',
+            'text' => 'Espace introuvable pour cette organisation.',
         'context' => 'Error when the requested holon is invalid.',
     ],
     'decisions.edit.context.holon_denied' => [
-        'text' => 'Accès refusé à ce holon.',
+            'text' => 'Accès refusé à cet espace.',
         'context' => 'Error when the user cannot view the requested holon.',
     ],
     'decisions.edit.context.holon_manage_denied' => [
-        'text' => 'Vous n’avez pas les droits nécessaires pour créer une prise de décision dans ce holon.',
+            'text' => 'Vous n’avez pas les droits nécessaires pour créer une prise de décision dans cet espace.',
         'context' => 'Error when the user cannot create a holon-level decision.',
     ],
     'decisions.edit.context.decision_not_found' => [

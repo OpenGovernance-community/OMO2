@@ -22,6 +22,7 @@
     var filterPanelOpen = false;
     var pendingFilters = null;
     var currentScope = normalizeScope(root.getAttribute('data-activity-scope'));
+    var currentAssignment = normalizeAssignment(root.getAttribute('data-activity-assignment'));
     var currentState = 'all';
     var currentSearch = '';
     var currentUrl = root.getAttribute('data-activity-current-url') || '';
@@ -31,8 +32,8 @@
     var sessionViewsStorageKey = 'omo.activities.session-views.v1';
     var searchStorageKey = 'omo.activities.quick-search.v1';
     var texts = {
-        loading: 'Chargement de l’activité...',
-        loadingError: 'Impossible de charger cette activité.',
+        loading: 'Chargement de la tâche récurrente...',
+        loadingError: 'Impossible de charger cette tâche récurrente.',
         actionError: 'Action impossible.'
     };
 
@@ -73,6 +74,11 @@
             value = 'missed';
         }
         return ['all', 'attention', 'missed', 'checked', 'upcoming'].indexOf(value) !== -1 ? value : 'all';
+    }
+
+    function normalizeAssignment(value) {
+        value = String(value || '').trim().toLowerCase();
+        return ['mine', 'spaces'].indexOf(value) !== -1 ? value : 'all';
     }
 
     function normalizeSearch(value) {
@@ -128,7 +134,7 @@
 
     function setRootLoading(loading) {
         root.classList.toggle('is-loading', Boolean(loading));
-        root.querySelectorAll('[data-activity-filter-toggle], [data-activity-filter-apply], [data-activity-filter-save], [data-activity-scope-option], [data-activity-state-option]').forEach(function (button) {
+        root.querySelectorAll('[data-activity-filter-toggle], [data-activity-filter-apply], [data-activity-filter-save], [data-activity-scope-option], [data-activity-assignment-option], [data-activity-state-option]').forEach(function (button) {
             button.disabled = Boolean(loading);
         });
     }
@@ -153,10 +159,12 @@
         });
     }
 
-    function buildScopeUrl(scope) {
-        var normalized = normalizeScope(scope);
+    function buildFilterUrl(scope, assignment) {
+        var normalizedScope = normalizeScope(scope);
+        var normalizedAssignment = normalizeAssignment(assignment);
         var url = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&')
-            + 'activity_scope=' + encodeURIComponent(normalized);
+            + 'activity_scope=' + encodeURIComponent(normalizedScope)
+            + '&activity_assignment=' + encodeURIComponent(normalizedAssignment);
         if (Number.isInteger(initialOpenActivityId) && initialOpenActivityId > 0) {
             url += (url.indexOf('?') === -1 ? '?' : '&') + 'open_activity_id=' + encodeURIComponent(String(initialOpenActivityId));
         }
@@ -220,12 +228,18 @@
             return;
         }
         pendingFilters.scope = normalizeScope(pendingFilters.scope);
+        pendingFilters.assignment = normalizeAssignment(pendingFilters.assignment);
         pendingFilters.state = normalizeState(pendingFilters.state);
         if (!root.querySelector('[data-activity-scope-option="' + pendingFilters.scope + '"]')) {
             pendingFilters.scope = currentScope;
         }
         root.querySelectorAll('[data-activity-scope-option]').forEach(function (button) {
             var active = normalizeScope(button.getAttribute('data-activity-scope-option')) === pendingFilters.scope;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        root.querySelectorAll('[data-activity-assignment-option]').forEach(function (button) {
+            var active = normalizeAssignment(button.getAttribute('data-activity-assignment-option')) === pendingFilters.assignment;
             button.classList.toggle('is-active', active);
             button.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
@@ -239,10 +253,15 @@
     function syncFilterChips() {
         var scopeChip = root.querySelector('[data-activity-scope-chip]');
         var scopeButton = root.querySelector('[data-activity-scope-option="' + currentScope + '"]');
+        var assignmentChip = root.querySelector('[data-activity-assignment-chip]');
+        var assignmentButton = root.querySelector('[data-activity-assignment-option="' + currentAssignment + '"]');
         var stateChip = root.querySelector('[data-activity-state-chip]');
         var stateButton = root.querySelector('[data-activity-state-option="' + currentState + '"]');
         if (scopeChip && scopeButton) {
             scopeChip.textContent = scopeButton.textContent.trim();
+        }
+        if (assignmentChip && assignmentButton) {
+            assignmentChip.textContent = assignmentButton.textContent.trim();
         }
         if (stateChip && stateButton) {
             stateChip.textContent = stateButton.textContent.trim();
@@ -261,7 +280,7 @@
         if (!panel || filterPanelOpen) {
             return;
         }
-        pendingFilters = {scope: currentScope, state: currentState};
+        pendingFilters = {scope: currentScope, assignment: currentAssignment, state: currentState};
         syncFilterChoices();
         panel.hidden = false;
         filterPanelOpen = true;
@@ -290,18 +309,20 @@
             return;
         }
         var nextScope = normalizeScope(pendingFilters.scope);
+        var nextAssignment = normalizeAssignment(pendingFilters.assignment);
         var nextState = normalizeState(pendingFilters.state);
         pendingFilters = null;
         if (saveView) {
-            writeStoredValue(window.localStorage, savedViewsStorageKey, {scope: nextScope, state: nextState});
+            writeStoredValue(window.localStorage, savedViewsStorageKey, {scope: nextScope, assignment: nextAssignment, state: nextState});
             clearTemporaryFilters();
         } else {
-            writeStoredValue(window.sessionStorage, sessionViewsStorageKey, {scope: nextScope, state: nextState});
+            writeStoredValue(window.sessionStorage, sessionViewsStorageKey, {scope: nextScope, assignment: nextAssignment, state: nextState});
         }
         currentState = nextState;
-        if (nextScope !== currentScope) {
+        if (nextScope !== currentScope || nextAssignment !== currentAssignment) {
             currentScope = nextScope;
-            refreshRoot(buildScopeUrl(nextScope));
+            currentAssignment = nextAssignment;
+            refreshRoot(buildFilterUrl(nextScope, nextAssignment));
             return;
         }
         syncFilterChips();
@@ -550,6 +571,7 @@
             : null;
         var preferences = temporary || personalView || serverDefault || saved || {};
         var preferredScope = normalizeScope(preferences.scope || currentScope);
+        var preferredAssignment = normalizeAssignment(preferences.assignment || currentAssignment);
         currentState = normalizeState(preferences.state || 'all');
         currentSearch = String(readStoredValue(window.sessionStorage, searchStorageKey) || '');
         var search = root.querySelector('[data-activity-quick-search]');
@@ -559,9 +581,10 @@
         if (!root.querySelector('[data-activity-scope-option="' + preferredScope + '"]')) {
             preferredScope = currentScope;
         }
-        if (preferredScope !== currentScope) {
+        if (preferredScope !== currentScope || preferredAssignment !== currentAssignment) {
             currentScope = preferredScope;
-            refreshRoot(buildScopeUrl(preferredScope));
+            currentAssignment = preferredAssignment;
+            refreshRoot(buildFilterUrl(preferredScope, preferredAssignment));
             return;
         }
         syncFilterChips();
@@ -616,6 +639,12 @@
             syncFilterChoices();
             return;
         }
+        var assignmentOption = event.target.closest('[data-activity-assignment-option]');
+        if (assignmentOption && pendingFilters) {
+            pendingFilters.assignment = normalizeAssignment(assignmentOption.getAttribute('data-activity-assignment-option'));
+            syncFilterChoices();
+            return;
+        }
         var stateOption = event.target.closest('[data-activity-state-option]');
         if (stateOption && pendingFilters) {
             pendingFilters.state = normalizeState(stateOption.getAttribute('data-activity-state-option'));
@@ -641,13 +670,15 @@
                 ? window.omoApplicationViewPreferencesGetDefault(root)
                 : null;
             var nextScope = normalizeScope((serverDefault && serverDefault.scope) || currentScope);
+            var nextAssignment = normalizeAssignment((serverDefault && serverDefault.assignment) || 'all');
             currentState = normalizeState((serverDefault && serverDefault.state) || 'all');
             if (!root.querySelector('[data-activity-scope-option="' + nextScope + '"]')) {
                 nextScope = currentScope;
             }
-            if (nextScope !== currentScope) {
+            if (nextScope !== currentScope || nextAssignment !== currentAssignment) {
                 currentScope = nextScope;
-                refreshRoot(buildScopeUrl(nextScope));
+                currentAssignment = nextAssignment;
+                refreshRoot(buildFilterUrl(nextScope, nextAssignment));
                 return;
             }
             syncFilterChips();

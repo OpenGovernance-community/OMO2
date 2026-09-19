@@ -2,7 +2,29 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-19
+
+- Indicateurs : formulaire compact, choix sans encadrement et explications accessibles via les icones d aide au survol ou au clic.
+
+- Indicateurs : l edition des groupes adopte le meme formulaire compact, avec aides contextuelles et reglages regroupes.
+
+- Tableau de pilotage : projets, indicateurs et checklists peuvent etre limites a Moi, Mes espaces ou Tous dans la configuration de chaque module.
+
+- Projets : le libelle Cercle ou role associe devient Espace associe.
+
+- Interface : les libelles de rattachement et les aides de travail parlent maintenant d espaces plutot que de cercles ou roles.
+
+- Indicateurs : nouvel ecran d edition organise en identite, source des mesures et graphique. Les reglages conditionnels sont regroupes, les choix d echelle sont illustres et les points de reference s adaptent aux petits ecrans.
+
 ## 2026-09-18
+
+- Indicateurs : en affichage cumule, chaque plafond ou courbe de reference peut maintenant etre place sur l echelle des valeurs ou sur celle du cumul. Les references existantes restent sur l echelle du cumul.
+
+- Indicateurs : le filtre de l application et le module du tableau de pilotage proposent maintenant Moi, Mes espaces et Tous. Moi combine l affectation nominative avec les espaces non attribues ; Mes espaces conserve aussi les indicateurs attribues a une autre personne.
+
+- Projets : le filtre Attribution propose maintenant Moi, Mes espaces, Suivi et Tous. Moi inclut les projets nommement attribues et ceux non attribues de vos espaces ; Mes espaces conserve aussi ceux attribues a une autre personne.
+
+- Taches recurrentes : le filtre Attribution propose maintenant Moi, Mes espaces et Tous. Moi inclut les taches nommement attribuees et celles non attribuees de vos espaces ; Mes espaces conserve aussi celles attribuees a une autre personne. L application Activites porte desormais le nom Taches recurrentes dans l interface.
 
 - Calendrier : les jours charges de la vue mois peuvent afficher leurs rendez-vous supplementaires a la demande. Les titres des blocs sont limites a deux lignes.
 
@@ -2451,3 +2473,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 
 - L agenda OMO peut maintenant importer en lecture seule un agenda Nextcloud CalDAV personnel depuis le menu Connecter, avec couleur propre, synchronisation manuelle et synchronisation periodique securisee.
 - Les synchronisations automatiques des agendas Nextcloud utilisent maintenant leur version CalDAV et ne rechargent les evenements qu apres un changement ; leur cadence normale est de deux heures.
+
+# 2026-09-19
+
+- Les libellés, formulaires et messages visibles remplacent maintenant le terme `holon` par `espace`, tout en conservant les identifiants techniques et la structure SQL existants.

@@ -151,7 +151,7 @@ if (!function_exists('omoTeamSourceLang')) {
             'team.holon_type.group' => ['text' => 'groupe', 'context' => 'Fallback holon type label used in the team module for a group.'],
             'team.holon_type.circle' => ['text' => 'cercle', 'context' => 'Fallback holon type label used in the team module for a circle.'],
             'team.holon_type.role' => ['text' => 'rôle', 'context' => 'Fallback holon type label used in the team module for a role.'],
-            'team.holon_type.holon' => ['text' => 'holon', 'context' => 'Fallback holon type label used in the team module when no specific type matches.'],
+            'team.holon_type.holon' => ['text' => 'espace', 'context' => 'Fallback space type label used in the team module when no specific type matches.'],
             'team.holon_type.context' => ['text' => 'contexte', 'context' => 'Fallback holon type label used in the team module for a generic context.'],
         ];
 

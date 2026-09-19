@@ -10,30 +10,31 @@ use dbObject\RecurrenceSchedule;
 function omoActivitySourceLang()
 {
     return [
-        'activity.title' => ['text' => 'Activités', 'context' => 'Activity application title.'],
-        'activity.description' => ['text' => 'Activités récurrentes à valider, sans créer de projet.', 'context' => 'Activity drawer description.'],
-        'activity.new' => ['text' => 'Ajouter une activité', 'context' => 'Create activity action.'],
+        'activity.title' => ['text' => 'Tâches récurrentes', 'context' => 'Recurring tasks application title.'],
+        'activity.description' => ['text' => 'Tâches récurrentes à valider, sans créer de projet.', 'context' => 'Recurring task drawer description.'],
+        'activity.new' => ['text' => 'Ajouter une tâche récurrente', 'context' => 'Create recurring task action.'],
         'activity.edit' => ['text' => 'Modifier', 'context' => 'Edit activity action.'],
         'activity.delete' => ['text' => 'Supprimer', 'context' => 'Delete activity action.'],
         'activity.check' => ['text' => 'Valider', 'context' => 'Validate activity action.'],
         'activity.done' => ['text' => 'Fait', 'context' => 'Direct completion action in the activity list.'],
         'activity.save' => ['text' => 'Enregistrer', 'context' => 'Save activity action.'],
         'activity.cancel' => ['text' => 'Annuler', 'context' => 'Cancel editing action.'],
-        'activity.editor.create_title' => ['text' => 'Nouvelle activité', 'context' => 'Create activity drawer title.'],
-        'activity.editor.edit_title' => ['text' => 'Modifier l’activité', 'context' => 'Edit activity drawer title.'],
-        'activity.editor.identity' => ['text' => 'L’activité', 'context' => 'Activity identity form section.'],
+        'activity.editor.create_title' => ['text' => 'Nouvelle tâche récurrente', 'context' => 'Create recurring task drawer title.'],
+        'activity.editor.edit_title' => ['text' => 'Modifier la tâche récurrente', 'context' => 'Edit recurring task drawer title.'],
+        'activity.editor.identity' => ['text' => 'La tâche récurrente', 'context' => 'Recurring task identity form section.'],
         'activity.editor.window' => ['text' => 'Fenêtre de réalisation', 'context' => 'Activity execution window form section.'],
         'activity.close' => ['text' => 'Fermer', 'context' => 'Close drawer action.'],
-        'activity.back' => ['text' => 'Retour aux activités', 'context' => 'Back action.'],
+        'activity.back' => ['text' => 'Retour aux tâches récurrentes', 'context' => 'Back action.'],
         'activity.scope.contextual' => ['text' => 'Local', 'context' => 'Current holon scope.'],
         'activity.scope.children' => ['text' => 'Enfants directs', 'context' => 'Children scope.'],
         'activity.scope.descendants' => ['text' => 'Descendants', 'context' => 'Descendant scope.'],
-        'activity.empty' => ['text' => 'Aucune activité dans cette portée.', 'context' => 'Empty state.'],
-        'activity.search.placeholder' => ['text' => 'Rechercher une activité...', 'context' => 'Activity search placeholder.'],
-        'activity.search.aria' => ['text' => 'Rechercher dans les activités', 'context' => 'Activity search accessible label.'],
-        'activity.search.empty' => ['text' => 'Aucune activité ne correspond à la recherche.', 'context' => 'Empty search result.'],
-        'activity.filters.aria' => ['text' => 'Filtres des activités', 'context' => 'Activity filters accessible label.'],
+        'activity.empty' => ['text' => 'Aucune tâche récurrente dans cette portée.', 'context' => 'Empty state.'],
+        'activity.search.placeholder' => ['text' => 'Rechercher une tâche récurrente...', 'context' => 'Recurring task search placeholder.'],
+        'activity.search.aria' => ['text' => 'Rechercher dans les tâches récurrentes', 'context' => 'Recurring task search accessible label.'],
+        'activity.search.empty' => ['text' => 'Aucune tâche récurrente ne correspond à la recherche.', 'context' => 'Empty search result.'],
+        'activity.filters.aria' => ['text' => 'Filtres des tâches récurrentes', 'context' => 'Recurring task filters accessible label.'],
         'activity.filters.scope' => ['text' => 'Portée', 'context' => 'Scope filter heading.'],
+        'activity.filters.assignment' => ['text' => 'Attribution', 'context' => 'Recurring task assignment filter heading.'],
         'activity.filters.state' => ['text' => 'État', 'context' => 'State filter heading.'],
         'activity.filters.apply' => ['text' => 'Appliquer', 'context' => 'Apply filters action.'],
         'activity.filters.save_view' => ['text' => 'Enregistrer cette vue', 'context' => 'Save filters action.'],
@@ -42,8 +43,11 @@ function omoActivitySourceLang()
         'activity.filter.missed' => ['text' => 'Non faites', 'context' => 'Missed state filter.'],
         'activity.filter.checked' => ['text' => 'Faites', 'context' => 'Checked state filter.'],
         'activity.filter.upcoming' => ['text' => 'À venir', 'context' => 'Upcoming state filter.'],
-        'activity.column.activity' => ['text' => 'Activité', 'context' => 'Activity list title column.'],
-        'activity.column.context' => ['text' => 'Holon', 'context' => 'Activity list context column.'],
+        'activity.assignment.mine' => ['text' => 'Moi', 'context' => 'Recurring tasks directly assigned to the user or unassigned in their spaces.'],
+        'activity.assignment.spaces' => ['text' => 'Mes espaces', 'context' => 'Recurring tasks belonging to the user spaces.'],
+        'activity.assignment.all' => ['text' => 'Tous', 'context' => 'All recurring tasks in the visible scope.'],
+        'activity.column.activity' => ['text' => 'Tâche récurrente', 'context' => 'Recurring task list title column.'],
+            'activity.column.context' => ['text' => 'Espace', 'context' => 'Activity list context column.'],
         'activity.column.next' => ['text' => 'Échéance', 'context' => 'Activity list due date column.'],
         'activity.column.status' => ['text' => 'État', 'context' => 'Activity list state column.'],
         'activity.frequency' => ['text' => 'Récurrence', 'context' => 'Frequency field.'],
@@ -54,7 +58,7 @@ function omoActivitySourceLang()
         'activity.responsibility.unassigned' => ['text' => 'Non attribué', 'context' => 'Activity without a directly assigned person.'],
         'activity.editor.responsible' => ['text' => 'Personne en charge', 'context' => 'Activity responsible person field.'],
         'activity.editor.responsible_none' => ['text' => 'Aucune personne', 'context' => 'Activity responsible person empty option.'],
-        'activity.editor.responsible_help' => ['text' => 'Cette personne est responsable en complément du rôle porteur de l’activité.', 'context' => 'Activity responsible person field help.'],
+        'activity.editor.responsible_help' => ['text' => 'Cette personne est responsable en complément de l espace porteur de la tâche récurrente.', 'context' => 'Recurring task responsible person field help.'],
         'activity.display_lead' => ['text' => 'Afficher en avance', 'context' => 'Advance field.'],
         'activity.overdue_after' => ['text' => 'En retard après', 'context' => 'Delay field.'],
         'activity.unit' => ['text' => 'Unité', 'context' => 'Unit field.'],
@@ -93,17 +97,17 @@ function omoActivitySourceLang()
         'activity.delay.week' => ['text' => 'semaine(s)', 'context' => 'Week unit.'],
         'activity.delay.month' => ['text' => 'mois', 'context' => 'Month unit.'],
         'activity.error.context' => ['text' => 'Contexte invalide ou inaccessible.', 'context' => 'Context error.'],
-        'activity.error.not_found' => ['text' => 'Activité introuvable.', 'context' => 'Not found error.'],
+        'activity.error.not_found' => ['text' => 'Tâche récurrente introuvable.', 'context' => 'Not found error.'],
         'activity.error.forbidden' => ['text' => 'Cette action n est pas autorisée.', 'context' => 'Forbidden error.'],
         'activity.error.title' => ['text' => 'Le titre est obligatoire.', 'context' => 'Title error.'],
         'activity.error.schedule' => ['text' => 'La récurrence ou sa référence est invalide.', 'context' => 'Schedule error.'],
-        'activity.error.save' => ['text' => 'Impossible d enregistrer cette activité.', 'context' => 'Save error.'],
-        'activity.error.load' => ['text' => 'Impossible de charger cette activité.', 'context' => 'Activity load error.'],
+        'activity.error.save' => ['text' => 'Impossible d enregistrer cette tâche récurrente.', 'context' => 'Save error.'],
+        'activity.error.load' => ['text' => 'Impossible de charger cette tâche récurrente.', 'context' => 'Recurring task load error.'],
         'activity.error.action' => ['text' => 'Action impossible.', 'context' => 'Generic activity action error.'],
-        'activity.loading' => ['text' => 'Chargement de l’activité...', 'context' => 'Activity loading message.'],
-        'activity.confirm.delete' => ['text' => 'Supprimer cette activité et son historique ?', 'context' => 'Activity deletion confirmation.'],
-        'activity.success.saved' => ['text' => 'Activité enregistrée.', 'context' => 'Save success.'],
-        'activity.success.checked' => ['text' => 'Activité validée.', 'context' => 'Check success.'],
+        'activity.loading' => ['text' => 'Chargement de la tâche récurrente...', 'context' => 'Recurring task loading message.'],
+        'activity.confirm.delete' => ['text' => 'Supprimer cette tâche récurrente et son historique ?', 'context' => 'Recurring task deletion confirmation.'],
+        'activity.success.saved' => ['text' => 'Tâche récurrente enregistrée.', 'context' => 'Save success.'],
+        'activity.success.checked' => ['text' => 'Tâche récurrente validée.', 'context' => 'Check success.'],
     ];
 }
 
@@ -172,6 +176,69 @@ function omoActivityCanView(ControlActivity $activity)
 {
     $holon = $activity->getHolon();
     return $holon instanceof Holon && $holon->canViewDetail();
+}
+
+if (!function_exists('omoActivityNormalizeAssignment')) {
+    function omoActivityNormalizeAssignment($assignment): string
+    {
+        $assignment = strtolower(trim((string)$assignment));
+        return in_array($assignment, ['mine', 'spaces'], true) ? $assignment : 'all';
+    }
+}
+
+if (!function_exists('omoActivityUserIsAssociatedWithHolon')) {
+    function omoActivityUserIsAssociatedWithHolon($userId, $organizationId, Holon $holon): bool
+    {
+        static $associationCache = [];
+
+        $userId = (int)$userId;
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holon->getId();
+        if ($userId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+            return false;
+        }
+
+        $cacheKey = $userId . ':' . $organizationId . ':' . $holonId;
+        if (!array_key_exists($cacheKey, $associationCache)) {
+            $associationCache[$cacheKey] = in_array(
+                $userId,
+                $holon->getAssociatedMemberUserIds([
+                    'organizationId' => $organizationId,
+                    'skipPermissionFilter' => true,
+                ]),
+                true
+            );
+        }
+
+        return $associationCache[$cacheKey];
+    }
+}
+
+if (!function_exists('omoActivityMatchesAssignment')) {
+    function omoActivityMatchesAssignment(ControlActivity $activity, $assignment, $currentUserId, $organizationId): bool
+    {
+        $assignment = omoActivityNormalizeAssignment($assignment);
+        if ($assignment === 'all') {
+            return true;
+        }
+
+        $currentUserId = (int)$currentUserId;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $responsibleUserId = (int)$activity->get('IDuser_responsible');
+        if ($assignment === 'mine' && $responsibleUserId === $currentUserId) {
+            return true;
+        }
+        if ($assignment === 'mine' && $responsibleUserId > 0) {
+            return false;
+        }
+
+        $holon = $activity->getHolon();
+        return $holon instanceof Holon
+            && omoActivityUserIsAssociatedWithHolon($currentUserId, $organizationId, $holon);
+    }
 }
 
 function omoActivityCanEdit(ControlActivity $activity)

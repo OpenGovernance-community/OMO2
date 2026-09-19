@@ -227,11 +227,11 @@ $sourceLang = [
         'context' => 'Error message when the current user cannot view the organization.',
     ],
     'decisions.index.context.holon_not_found' => [
-        'text' => 'Holon introuvable pour cette organisation.',
+            'text' => 'Espace introuvable pour cette organisation.',
         'context' => 'Error message when the requested holon context cannot be loaded.',
     ],
     'decisions.index.context.holon_denied' => [
-        'text' => 'Accès refusé à ce holon.',
+            'text' => 'Accès refusé à cet espace.',
         'context' => 'Error message when the user cannot access the requested holon context.',
     ],
     'decisions.index.scope.contextual' => [

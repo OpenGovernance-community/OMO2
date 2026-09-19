@@ -24,11 +24,13 @@ if (!empty($enabledAppHashes['activities']) && $scopeReferenceHolon instanceof H
             continue;
         }
         $responsibleUserId = (int)$activity->get('IDuser_responsible');
-        if (
-            $dashboardModuleAudience === 'mine'
+        if ($dashboardModuleAudience === 'mine'
             && $responsibleUserId !== $currentUserId
-            && ($responsibleUserId > 0 || !omoDashboardUserIsAssociatedWithHolon($currentUserId, $currentOrganizationId, $activityHolon))
-        ) {
+            && ($responsibleUserId > 0 || !omoDashboardUserIsAssociatedWithHolon($currentUserId, $currentOrganizationId, $activityHolon))) {
+            continue;
+        }
+        if ($dashboardModuleAudience === 'roles'
+            && !omoDashboardUserIsAssociatedWithHolon($currentUserId, $currentOrganizationId, $activityHolon)) {
             continue;
         }
 
@@ -58,7 +60,7 @@ if (!empty($enabledAppHashes['activities']) && $scopeReferenceHolon instanceof H
             'id' => (int)$activity->getId(),
             'title' => trim((string)$activity->get('title')) !== ''
                 ? trim((string)$activity->get('title'))
-                : 'Activité #' . (int)$activity->getId(),
+                : 'Tâche récurrente #' . (int)$activity->getId(),
             'holonId' => (int)$activityHolon->getId(),
             'holonLabel' => trim((string)$activityHolon->getDisplayName()),
             'responsibilityLabel' => omoActivityResponsibleAssignmentLabel($activity),

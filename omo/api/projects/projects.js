@@ -63,7 +63,7 @@
     var currentView = declaredView === 'list' || declaredView === 'gantt' ? declaredView : 'kanban';
     function normalizeProjectAssignment(assignment) {
         var normalized = String(assignment || '');
-        return normalized === 'mine' || normalized === 'followed' ? normalized : 'all';
+        return normalized === 'mine' || normalized === 'spaces' || normalized === 'followed' ? normalized : 'all';
     }
     var currentAssignment = normalizeProjectAssignment(root.getAttribute('data-omo-projects-assignment'));
     var currentQuickSearch = root.getAttribute('data-omo-projects-query') || '';
@@ -113,9 +113,9 @@
         deleteConfirm: 'Supprimer définitivement ce projet et ses {count} sous-projets ? Cette action est irréversible.',
         archiveConfirm: "Ce projet n'est pas terminé. L'archiver quand même ?",
         moveTitle: 'Déplacer le projet',
-        moveHint: 'Choisissez le holon de destination dans la structure.',
+  moveHint: 'Choisissez l’espace de destination dans la structure.',
         moveSubmit: 'Déplacer ici',
-        moveSelectRequired: 'Choisissez un holon de destination.',
+  moveSelectRequired: 'Choisissez un espace de destination.',
         attachTitle: 'Attacher un projet',
         attachHint: 'Choisissez un projet sans parent dans la structure.',
         attachSearch: 'Rechercher un projet',
@@ -1183,7 +1183,7 @@
         }
         var nextView = preferences.view === 'list' || preferences.view === 'gantt' ? preferences.view : currentView;
         var rawPreferredAssignment = String(preferences.assignment || '');
-        var nextAssignment = rawPreferredAssignment === 'mine' || rawPreferredAssignment === 'followed' || rawPreferredAssignment === 'all'
+        var nextAssignment = rawPreferredAssignment === 'mine' || rawPreferredAssignment === 'spaces' || rawPreferredAssignment === 'followed' || rawPreferredAssignment === 'all'
             ? rawPreferredAssignment
             : currentAssignment;
         var preferredSort = String(preferences.sort || '');

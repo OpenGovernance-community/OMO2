@@ -17,7 +17,6 @@ if (!empty($enabledAppHashes['projects'])) {
             || empty($dashboardProjectContext['status'])
             || !omoProjectsCanViewProject($project, $dashboardProjectContext)
             || Project::normalizeStatus($project->get('status')) === Project::STATUS_DONE
-            || ($dashboardModuleAudience === 'mine' && (int)$project->get('IDuser') !== $currentUserId)
             || !omoProjectsScopeContainsProject(
                 $project,
                 $dashboardModuleScope,
@@ -35,6 +34,15 @@ if (!empty($enabledAppHashes['projects'])) {
             : null;
         $isLate = $plannedEndDate instanceof DateTimeImmutable && $plannedEndDate < $today;
         $projectHolon = $project->getHolon();
+        if (!omoDashboardMatchesResponsibleAudience(
+            $dashboardModuleAudience,
+            $project->get('IDuser'),
+            $projectHolon instanceof Holon ? $projectHolon : null,
+            $currentUserId,
+            $currentOrganizationId
+        )) {
+            continue;
+        }
         $responsible = $project->getResponsible();
         $responsibleLabel = is_object($responsible) ? omoProjectsGetUserLabel($responsible) : '';
         $projectItem = [

@@ -395,7 +395,7 @@ class ChatMessage extends DbObject
                     return $label;
                 }
             }
-            return 'Holon #' . $holonId;
+            return 'Espace #' . $holonId;
         };
         $authorLabel = static function (array $values) use ($userLabel): string {
             $user = $userLabel($values['author_user_id'] ?? 0);

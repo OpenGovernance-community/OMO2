@@ -51,7 +51,7 @@ if (!function_exists('commonOmoPublicPagesGetSourceLang')) {
                 'context' => 'Short description of the public help entry explaining OpenMyOrganization.',
             ],
             'common.public_help.omo.paragraph_1' => [
-                'text' => 'OpenMyOrganization (OMO) est un logiciel collaboratif conçu pour aider une organisation à rendre sa structure, ses responsabilités et son fonctionnement plus clairs. Il permet de représenter les organisations, groupes, cercles, rôles et responsabilités, puis de centraliser les informations utiles au travail collectif.',
+                'text' => 'OpenMyOrganization (OMO) est un logiciel collaboratif conçu pour aider une organisation à rendre sa structure, ses responsabilités et son fonctionnement plus clairs. Il permet de représenter les organisations, groupes, espaces et responsabilités, puis de centraliser les informations utiles au travail collectif.',
                 'context' => 'First paragraph explaining the purpose and organizational structure of OpenMyOrganization.',
             ],
             'common.public_help.omo.paragraph_2' => [
@@ -59,7 +59,7 @@ if (!function_exists('commonOmoPublicPagesGetSourceLang')) {
                 'context' => 'Second paragraph listing the main OpenMyOrganization applications and access model.',
             ],
             'common.public_help.omo.paragraph_3' => [
-                'text' => 'En rassemblant ces éléments dans leur contexte, OMO facilite la coopération au quotidien : les rôles et les responsabilités de chacun sont plus clairs, les décisions peuvent être préparées et suivies collectivement, et les règles, processus et projets restent documentés et accessibles.',
+                'text' => 'En rassemblant ces éléments dans leur contexte, OMO facilite la coopération au quotidien : les espaces et les responsabilités de chacun sont plus clairs, les décisions peuvent être préparées et suivies collectivement, et les règles, processus et projets restent documentés et accessibles.',
                 'context' => 'Third paragraph presenting the practical collaborative value of OpenMyOrganization.',
             ],
             'common.public_help.page.title' => [
@@ -99,7 +99,7 @@ if (!function_exists('commonOmoPublicPagesGetSourceLang')) {
                 'context' => 'Short description of the public structure page help entry.',
             ],
             'common.public_help.page.share_paragraph_1' => [
-                'text' => 'Cette page sert à parcourir une structure organisationnelle partagée publiquement par {organization}. Vous pouvez y explorer les cercles, les rôles et les relations visibles dans le périmètre partagé.',
+                'text' => 'Cette page sert à parcourir une structure organisationnelle partagée publiquement par {organization}. Vous pouvez y explorer les espaces et les relations visibles dans le périmètre partagé.',
                 'context' => 'First paragraph explaining the public shared structure page.',
             ],
             'common.public_help.page.share_paragraph_2' => [

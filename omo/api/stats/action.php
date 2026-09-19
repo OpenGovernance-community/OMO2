@@ -449,6 +449,7 @@ if ($action === 'save_indicator') {
     }
 
     $referenceType = StatIndicator::normalizeReferenceType($_POST['reference_type'] ?? StatIndicator::REFERENCE_NONE);
+    $referenceScale = StatIndicator::normalizeReferenceScale($_POST['reference_scale'] ?? StatIndicator::REFERENCE_SCALE_CUMULATIVE);
     $responsibleUserId = isset($_POST['IDuser_responsible']) && is_numeric($_POST['IDuser_responsible'])
         ? (int)$_POST['IDuser_responsible']
         : 0;
@@ -500,6 +501,7 @@ if ($action === 'save_indicator') {
         }
     }
     $indicator->set('reference_type', $referenceType);
+    $indicator->set('reference_scale', $referenceScale);
     $indicator->set('measurement_frequency', $measurementFrequency);
     $indicator->set('measurement_schedule', $measurementSchedule);
     $indicator->set('chart_min_value', $chartMinValue);
@@ -563,6 +565,7 @@ if ($action === 'save_indicator') {
             $additionalIndicator->set('ethercalc_value_column', $valueColumn);
             $additionalIndicator->set('ethercalc_frequency', $ethercalcSourceUpdate['ethercalc_frequency']);
             $additionalIndicator->set('reference_type', $referenceType);
+            $additionalIndicator->set('reference_scale', $referenceScale);
             $additionalIndicator->set('measurement_frequency', $measurementFrequency);
             $additionalIndicator->set('measurement_schedule', $measurementSchedule);
             $additionalIndicator->set('chart_min_value', $chartMinValue);
@@ -604,6 +607,7 @@ if ($action === 'save_indicator') {
             $additionalIndicator->set('spreadsheet_date_column', $spreadsheetSourceUpdate['spreadsheet_date_column']);
             $additionalIndicator->set('spreadsheet_value_column', $valueColumn);
             $additionalIndicator->set('reference_type', $referenceType);
+            $additionalIndicator->set('reference_scale', $referenceScale);
             $additionalIndicator->set('measurement_frequency', $measurementFrequency);
             $additionalIndicator->set('measurement_schedule', $measurementSchedule);
             $additionalIndicator->set('chart_min_value', $chartMinValue);

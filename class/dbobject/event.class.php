@@ -36,7 +36,7 @@ class Event extends DbObject
         return [
             'id' => 'ID',
             'IDorganization' => 'Organisation',
-            'IDholon' => 'Cercle ou rôle',
+            'IDholon' => 'Espace associé',
             'IDproject' => 'Projet',
             'IDuser' => 'Créateur',
             'title' => 'Titre',
@@ -59,7 +59,7 @@ class Event extends DbObject
     public static function attributeDescriptions()
     {
         return [
-            'IDholon' => "Holon optionnel pour rattacher l'événement à un cercle ou à un rôle.",
+            'IDholon' => "Espace optionnel pour rattacher l'événement.",
             'IDproject' => "Projet optionnel auquel l'événement est associé.",
             'IDuser' => "Utilisateur qui a créé l'événement.",
             'status' => "Cycle de vie simple avant l'ajout des invitations et réponses.",
