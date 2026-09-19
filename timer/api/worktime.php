@@ -170,7 +170,7 @@ if ($action === 'projects') {
     $holonId = (int)($_GET['holon_id'] ?? 0);
     $status = \dbObject\Project::normalizeStatus($_GET['status'] ?? \dbObject\Project::STATUS_IN_PROGRESS);
     if (!timerApiValidateTarget($userId, $organizationId, $holonId)) {
-        timerApiReply(array('error' => true, 'message' => 'Le holon choisi n est pas accessible.'), 422);
+timerApiReply(array('error' => true, 'message' => 'L’espace choisi n’est pas accessible.'), 422);
     }
     if (!in_array($status, \dbObject\Project::getWorkTimeStatuses(), true)) {
         timerApiReply(array('error' => true, 'message' => 'Le statut choisi ne peut pas etre suivi.'), 422);
@@ -216,7 +216,7 @@ if (in_array($action, array('start', 'switch'), true)) {
         timerApiReply(array('error' => true, 'message' => 'La legende est trop longue.'), 422);
     }
     if (!timerApiValidateTarget($userId, $organizationId, $holonId, $projectId)) {
-        timerApiReply(array('error' => true, 'message' => 'Le holon choisi n est pas accessible.'), 422);
+timerApiReply(array('error' => true, 'message' => 'L’espace choisi n’est pas accessible.'), 422);
     }
 
     $active = \dbObject\WorkTime::startOrSwitch($userId, $organizationId, $holonId, $projectId, $label['value']);
@@ -289,7 +289,7 @@ if ($action === 'create') {
         timerApiReply(array('error' => true, 'message' => 'La legende est trop longue.'), 422);
     }
     if (!timerApiValidateTarget($userId, $organizationId, $holonId, $projectId)) {
-        timerApiReply(array('error' => true, 'message' => 'Le holon choisi n est pas accessible.'), 422);
+timerApiReply(array('error' => true, 'message' => 'L’espace choisi n’est pas accessible.'), 422);
     }
 
     $created = \dbObject\WorkTime::createClosedForUser(

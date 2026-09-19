@@ -481,6 +481,7 @@ input:focus-visible + .generic-choice-card,
 .generic-form-stack--compact {
     --generic-form-gap: 10px;
     --generic-form-field-gap: 5px;
+    --generic-form-grid-gap: 10px;
 }
 
 .generic-form-grid {
@@ -588,6 +589,14 @@ input:focus-visible + .generic-choice-card,
 .generic-form-section--divided:first-child {
     padding-top: 0;
     border-top: 0;
+}
+
+.generic-form-section--compact {
+    --generic-section-gap: var(--generic-space-2);
+}
+
+.generic-form-section--divided.generic-form-section--compact {
+    padding-block: var(--generic-space-2);
 }
 
 .generic-form-section__heading {
@@ -806,6 +815,12 @@ input:focus-visible + .generic-choice-card,
 
 .generic-context-help > summary::-webkit-details-marker {
     display: none;
+}
+
+.generic-context-help--compact > summary {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
 }
 
 .generic-context-help > summary:hover,

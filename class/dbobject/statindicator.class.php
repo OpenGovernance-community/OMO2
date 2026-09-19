@@ -6,6 +6,8 @@ class StatIndicator extends DbObject
     const REFERENCE_NONE = 'none';
     const REFERENCE_CEILING = 'ceiling';
     const REFERENCE_OBJECTIVE = 'objective';
+    const REFERENCE_SCALE_VALUE = 'value';
+    const REFERENCE_SCALE_CUMULATIVE = 'cumulative';
     const FREQUENCY_DAILY = RecurrenceSchedule::FREQUENCY_DAILY;
     const FREQUENCY_WEEKLY = RecurrenceSchedule::FREQUENCY_WEEKLY;
     const FREQUENCY_MONTHLY = RecurrenceSchedule::FREQUENCY_MONTHLY;
@@ -43,7 +45,7 @@ class StatIndicator extends DbObject
             [['IDorganization', 'name', 'reference_type'], 'required'],
             [['id'], 'integer'],
             [['IDorganization', 'IDholon', 'IDuser', 'IDuser_responsible', 'IDdocument'], 'fk'],
-            [['name', 'source_url', 'reference_type', 'measurement_frequency', 'measurement_schedule', 'source_type', 'ethercalc_cell', 'ethercalc_frequency', 'ethercalc_range', 'ethercalc_date_column', 'ethercalc_value_column', 'spreadsheet_sheet', 'spreadsheet_cell', 'spreadsheet_frequency', 'spreadsheet_range', 'spreadsheet_date_column', 'spreadsheet_value_column'], 'string'],
+            [['name', 'source_url', 'reference_type', 'reference_scale', 'measurement_frequency', 'measurement_schedule', 'source_type', 'ethercalc_cell', 'ethercalc_frequency', 'ethercalc_range', 'ethercalc_date_column', 'ethercalc_value_column', 'spreadsheet_sheet', 'spreadsheet_cell', 'spreadsheet_frequency', 'spreadsheet_range', 'spreadsheet_date_column', 'spreadsheet_value_column'], 'string'],
             [['description'], 'text'],
             [['chart_min_value'], 'float'],
             [['show_cumulative', 'active'], 'boolean'],
@@ -57,13 +59,14 @@ class StatIndicator extends DbObject
         return [
             'id' => 'ID',
             'IDorganization' => 'Organisation',
-            'IDholon' => 'Cercle ou rôle',
+            'IDholon' => 'Espace associé',
             'IDuser' => 'Créateur',
             'IDuser_responsible' => 'Personne en charge',
             'name' => 'Nom',
             'description' => 'Description',
             'source_url' => 'URL de la source',
             'reference_type' => 'Type de référence',
+            'reference_scale' => 'Échelle de la référence',
             'measurement_frequency' => 'Fréquence de mesure',
             'measurement_schedule' => 'Moment attendu',
             'source_type' => 'Type de source',
@@ -95,6 +98,7 @@ class StatIndicator extends DbObject
             'IDholon' => 'Contexte dans lequel cet indicateur est défini.',
             'source_url' => 'Lien vers la donnée, le rapport ou l outil à l origine de la mesure.',
             'reference_type' => 'Un plafond reste horizontal. Un objectif peut suivre une trajectoire composée de plusieurs points.',
+            'reference_scale' => 'Choisit si la référence est placée sur l échelle des valeurs ou celle du cumul.',
             'measurement_frequency' => 'Cadence attendue pour la saisie des valeurs.',
             'measurement_schedule' => 'Heure, jour ou mois attendu selon la cadence. Cette information est facultative.',
             'chart_min_value' => 'Borne facultative incluse dans l échelle verticale du graphique.',
@@ -108,6 +112,7 @@ class StatIndicator extends DbObject
             'name' => 190,
             'source_url' => 2000,
             'reference_type' => 20,
+            'reference_scale' => 20,
             'measurement_frequency' => 20,
             'measurement_schedule' => 20,
             'source_type' => 30,
@@ -164,6 +169,22 @@ class StatIndicator extends DbObject
         return array_key_exists($value, self::getReferenceTypeCatalog())
             ? $value
             : self::REFERENCE_NONE;
+    }
+
+    public static function getReferenceScaleCatalog()
+    {
+        return [
+            self::REFERENCE_SCALE_VALUE => 'Valeur',
+            self::REFERENCE_SCALE_CUMULATIVE => 'Cumul',
+        ];
+    }
+
+    public static function normalizeReferenceScale($value)
+    {
+        $value = trim(mb_strtolower((string)$value, 'UTF-8'));
+        return array_key_exists($value, self::getReferenceScaleCatalog())
+            ? $value
+            : self::REFERENCE_SCALE_CUMULATIVE;
     }
 
     public static function getMeasurementFrequencyCatalog()
@@ -298,6 +319,7 @@ class StatIndicator extends DbObject
     public function save()
     {
         $this->set('reference_type', self::normalizeReferenceType($this->get('reference_type')));
+        $this->set('reference_scale', self::normalizeReferenceScale($this->get('reference_scale')));
         $this->set('show_cumulative', (int)$this->get('show_cumulative') > 0 ? 1 : 0);
         $measurementFrequency = self::normalizeMeasurementFrequency($this->get('measurement_frequency'));
         $this->set('measurement_frequency', $measurementFrequency);

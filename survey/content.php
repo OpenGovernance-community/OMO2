@@ -94,7 +94,7 @@ $sourceLang = [
         'context' => 'Organization field label in the survey invitation dialog.',
     ],
     'survey.invite.holons' => [
-        'text' => 'Holons',
+            'text' => 'Espaces',
         'context' => 'Holon selector tab in the survey invitation dialog.',
     ],
     'survey.invite.members' => [

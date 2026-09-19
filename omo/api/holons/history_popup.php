@@ -92,7 +92,7 @@ $holon = new Holon();
 if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organization->containsHolon($holon)) {
 	http_response_code(404);
 	?>
-	<div class="omo-holon-history-popup__empty">Le holon demande est introuvable.</div>
+    <div class="omo-holon-history-popup__empty">L’espace demandé est introuvable.</div>
 	<?php
 	exit;
 }
@@ -100,7 +100,7 @@ if (!$organization->load($organizationId) || !$holon->load($holonId) || !$organi
 if (!$holon->canViewDetail()) {
 	http_response_code(403);
 	?>
-	<div class="omo-holon-history-popup__empty">Vous n'avez pas le droit de consulter l'historique de ce holon.</div>
+    <div class="omo-holon-history-popup__empty">Vous n'avez pas le droit de consulter l'historique de cet espace.</div>
 	<?php
 	exit;
 }
@@ -1026,7 +1026,7 @@ if ($requestFragment === 'items') {
 				unique: true,
 				link: true
 			};
-			var section = createSection('Holon');
+    var section = createSection('Espace');
 			var hasChanges = false;
 
 			Object.keys(fieldLabels).forEach(function (field) {
@@ -1310,8 +1310,8 @@ if ($requestFragment === 'items') {
 
 			if (Object.keys(deletionPlan).length > 0) {
 				var planLines = [
-					'Autorite : ' + (deletionPlan.authority === 'reassign' ? 'remontee au holon parent' : 'supprimee'),
-					'Sous-autorites : ' + (deletionPlan.children === 'reassign' ? 'remontees au holon parent' : 'supprimees'),
+        'Autorité : ' + (deletionPlan.authority === 'reassign' ? 'remontée à l’espace parent' : 'supprimée'),
+        'Sous-autorités : ' + (deletionPlan.children === 'reassign' ? 'remontées à l’espace parent' : 'supprimées'),
 					'Regles concernees : ' + (deletionPlan.rules === 'reassign' ? 'remontees et a revoir sous 2 mois' : 'supprimees')
 				];
 				hasChanges = true;
@@ -1436,8 +1436,8 @@ if ($requestFragment === 'items') {
 				var deletionPlan = safeObject(payload.deletionPlan);
 				if (Object.keys(deletionPlan).length) {
 					appendGenericChange(changes, 'Traitement choisi', '', [
-						'Autorite : ' + (deletionPlan.authority === 'reassign' ? 'remontee au holon parent' : 'supprimee'),
-						'Sous-autorites : ' + (deletionPlan.children === 'reassign' ? 'remontees au holon parent' : 'supprimees'),
+        'Autorité : ' + (deletionPlan.authority === 'reassign' ? 'remontée à l’espace parent' : 'supprimée'),
+        'Sous-autorités : ' + (deletionPlan.children === 'reassign' ? 'remontées à l’espace parent' : 'supprimées'),
 						'Regles concernees : ' + (deletionPlan.rules === 'reassign' ? 'remontees et a revoir sous 2 mois' : 'supprimees')
 					].join('\n'));
 				}

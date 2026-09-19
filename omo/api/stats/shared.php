@@ -25,6 +25,11 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.view.compact' => ['text' => 'Compact', 'context' => 'Button switching the indicator list to compact rows.'],
             'stats.filters.aria' => ['text' => 'Filtres des indicateurs', 'context' => 'Accessible label for the compact indicator filters control.'],
             'stats.filters.scope' => ['text' => 'Contexte', 'context' => 'Heading for indicator scope choices in the filters panel.'],
+            'stats.filters.assignment' => ['text' => 'Attribution', 'context' => 'Heading for indicator responsibility filter choices in the filters panel.'],
+            'stats.assignment.aria' => ['text' => 'Indicateurs affiches', 'context' => 'Accessible label for the indicator responsibility filter.'],
+            'stats.assignment.mine' => ['text' => 'Moi', 'context' => 'Indicator filter showing indicators directly assigned to the current user or unassigned indicators attached to their roles.'],
+            'stats.assignment.roles' => ['text' => 'Mes espaces', 'context' => 'Indicator filter showing indicators attached to the current user spaces, regardless of direct person assignment.'],
+            'stats.assignment.all' => ['text' => 'Tous', 'context' => 'Indicator filter showing every indicator in the selected context scope.'],
             'stats.filters.sort' => ['text' => 'Classement', 'context' => 'Heading for indicator sorting choices in the filters panel.'],
             'stats.filters.view' => ['text' => 'Représentation', 'context' => 'Heading for indicator representation choices in the filters panel.'],
             'stats.filters.apply' => ['text' => 'Appliquer', 'context' => 'Button applying temporary indicator filter choices.'],
@@ -150,7 +155,7 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.form.intro' => ['text' => 'Définissez la série et, si nécessaire, sa courbe de référence.', 'context' => 'Introductory copy in the indicator form.'],
             'stats.form.responsible' => ['text' => 'Personne en charge', 'context' => 'Directly assigned person for an indicator.'],
             'stats.form.responsible_none' => ['text' => 'Aucune personne', 'context' => 'Empty direct responsible person option for an indicator.'],
-            'stats.form.responsible_help' => ['text' => 'Si aucune personne n est choisie, la responsabilité reste portée par le rôle ou holon associé.', 'context' => 'Help text for the indicator responsible user selector.'],
+            'stats.form.responsible_help' => ['text' => 'Si aucune personne n est choisie, la responsabilité reste portée par l espace associé.', 'context' => 'Help text for the indicator responsible user selector.'],
             'stats.form.source_title' => ['text' => 'Source des valeurs', 'context' => 'Heading of the source choice in the indicator creation form.'],
             'stats.form.source_help' => ['text' => 'Choisissez une saisie manuelle ou une source automatique.', 'context' => 'Help text for the source choice in the indicator creation form.'],
             'stats.form.source_type' => ['text' => 'Type de source', 'context' => 'Label for the source type selector in the indicator creation form.'],
@@ -205,6 +210,9 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.form.reference_none' => ['text' => 'Aucune référence', 'context' => 'Reference type select option for none.'],
             'stats.form.reference_ceiling' => ['text' => 'Plafond horizontal', 'context' => 'Reference type select option for ceiling.'],
             'stats.form.reference_objective' => ['text' => 'Objectif ou trajectoire', 'context' => 'Reference type select option for objective.'],
+            'stats.form.reference_scale' => ['text' => 'Échelle de la référence', 'context' => 'Label for the reference scale choice shown with cumulative indicators.'],
+            'stats.form.reference_scale_value' => ['text' => 'Valeurs', 'context' => 'Reference scale option placing the reference on the measured values axis.'],
+            'stats.form.reference_scale_cumulative' => ['text' => 'Cumul', 'context' => 'Reference scale option placing the reference on the cumulative values axis.'],
             'stats.form.ceiling_title' => ['text' => 'Plafond', 'context' => 'Heading of the simple ceiling reference editor.'],
             'stats.form.ceiling_help' => ['text' => 'Saisissez une valeur unique. Le repère sera affiché sur toute la période visible du graphique.', 'context' => 'Help text for the simple ceiling reference editor.'],
             'stats.form.ceiling_value' => ['text' => 'Valeur du plafond', 'context' => 'Label for the simple ceiling value input.'],
@@ -282,8 +290,17 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.group.title' => ['text' => 'Grouper des indicateurs', 'context' => 'Title of the indicator group picker modal.'],
             'stats.group.edit_title' => ['text' => 'Modifier le groupe', 'context' => 'Title of the indicator group edit picker modal.'],
             'stats.group.name' => ['text' => 'Nom du groupe', 'context' => 'Label for the indicator group name.'],
+            'stats.group.name_help' => ['text' => 'Donnez un nom qui permet de comprendre rapidement ce que les indicateurs ont en commun.', 'context' => 'Help for the indicator group name.'],
+            'stats.group.indicators' => ['text' => 'Indicateurs du groupe', 'context' => 'Heading for the indicator selection in a group editor.'],
+            'stats.group.indicators_help' => ['text' => 'Recherchez puis selectionnez les indicateurs a afficher ensemble. Utilisez Ctrl ou Cmd pour modifier plusieurs choix.', 'context' => 'Help for selecting group indicators.'],
             'stats.group.mode' => ['text' => 'Affichage', 'context' => 'Label for the group chart display mode.'],
-            'stats.group.hide_same_holon_sources' => ['text' => 'Masquer les indicateurs dans le même holon', 'context' => 'Checkbox hiding a group sources only when they belong to the group holon.'],
+            'stats.group.mode_help' => ['text' => 'Superpose les courbes pour les comparer, ou additionne les valeurs pour afficher un total.', 'context' => 'Help for the group display mode.'],
+            'stats.group.hide_same_holon_sources' => ['text' => 'Masquer les indicateurs dans le même espace', 'context' => 'Checkbox hiding a group sources only when they belong to the group space.'],
+            'stats.group.hide_same_holon_sources_help' => ['text' => 'Masque les courbes individuelles lorsque le groupe et ses indicateurs appartiennent au même espace.', 'context' => 'Help for hiding same space group sources.'],
+            'stats.group.chart' => ['text' => 'Graphique', 'context' => 'Heading for the group chart settings.'],
+            'stats.group.chart_min_value_help' => ['text' => 'Laissez vide pour que la valeur basse soit calculée automatiquement.', 'context' => 'Help for the group chart lower value.'],
+            'stats.group.reference_type' => ['text' => 'Référence', 'context' => 'Label for the group reference type.'],
+            'stats.group.reference_type_help' => ['text' => 'Choisissez un plafond horizontal ou une courbe objectif a suivre dans le graphique.', 'context' => 'Help for the group reference type.'],
             'stats.group.mode.overlay' => ['text' => 'Courbes superposées', 'context' => 'Group chart mode drawing one curve per indicator.'],
             'stats.group.mode.sum' => ['text' => 'Somme des valeurs', 'context' => 'Group chart mode aggregating indicator values.'],
             'stats.group.detail.sources' => ['text' => 'Indicateurs sources', 'context' => 'Heading above the source indicator legend in a group detail.'],
@@ -1475,6 +1492,7 @@ if (!function_exists('omoStatsBuildIndicatorChartData')) {
             'label' => (string)$indicator->get('name'),
             'showCumulative' => (int)$indicator->get('show_cumulative') > 0,
             'referenceType' => StatIndicator::normalizeReferenceType($indicator->get('reference_type')),
+            'referenceScale' => StatIndicator::normalizeReferenceScale($indicator->get('reference_scale')),
             'measure' => $series['measure'],
             'reference' => $series['reference'],
             'ceiling' => $series['ceiling'],
@@ -1664,6 +1682,61 @@ if (!function_exists('omoStatsResponsibleAssignmentLabel')) {
     }
 }
 
+if (!function_exists('omoStatsUserIsAssociatedWithHolon')) {
+    function omoStatsUserIsAssociatedWithHolon($userId, $organizationId, Holon $holon): bool
+    {
+        static $cache = [];
+
+        $userId = (int)$userId;
+        $organizationId = (int)$organizationId;
+        $holonId = (int)$holon->getId();
+        if ($userId <= 0 || $organizationId <= 0 || $holonId <= 0) {
+            return false;
+        }
+
+        $cacheKey = $organizationId . ':' . $userId . ':' . $holonId;
+        if (!array_key_exists($cacheKey, $cache)) {
+            $cache[$cacheKey] = in_array(
+                $userId,
+                $holon->getAssociatedMemberUserIds([
+                    'organizationId' => $organizationId,
+                    'skipPermissionFilter' => true,
+                ]),
+                true
+            );
+        }
+
+        return $cache[$cacheKey];
+    }
+}
+
+if (!function_exists('omoStatsMatchesAssignment')) {
+    function omoStatsMatchesAssignment(StatIndicator $indicator, $assignment, $currentUserId, $organizationId): bool
+    {
+        $assignment = strtolower(trim((string)$assignment));
+        if ($assignment === 'all') {
+            return true;
+        }
+
+        $currentUserId = (int)$currentUserId;
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        $responsibleUserId = (int)$indicator->get('IDuser_responsible');
+        if ($assignment === 'mine' && $responsibleUserId === $currentUserId) {
+            return true;
+        }
+        if ($assignment === 'mine' && $responsibleUserId > 0) {
+            return false;
+        }
+
+        $holon = $indicator->getHolon();
+        return $holon instanceof Holon
+            && omoStatsUserIsAssociatedWithHolon($currentUserId, $organizationId, $holon);
+    }
+}
+
 if (!function_exists('omoStatsAppendSimpleChartScale')) {
     function omoStatsAppendSimpleChartScale(string &$svg, string $variant, int $width, int $height, int $paddingLeft, int $paddingRight, int $paddingTop, int $paddingBottom, $minValue, $maxValue, $rightMinValue = null, $rightMaxValue = null): void
     {
@@ -1703,6 +1776,8 @@ if (!function_exists('omoStatsRenderChart')) {
         $ceilingValue = is_numeric($chartSeries['ceiling'] ?? null) ? (float)$chartSeries['ceiling'] : null;
         $minimumValue = is_numeric($indicator->get('chart_min_value')) ? (float)$indicator->get('chart_min_value') : null;
         $showCumulative = (int)$indicator->get('show_cumulative') > 0;
+        $referenceUsesCumulativeScale = $showCumulative
+            && StatIndicator::normalizeReferenceScale($indicator->get('reference_scale')) === StatIndicator::REFERENCE_SCALE_CUMULATIVE;
 
         if (count($measureSeries) === 0 && count($referenceSeries) === 0) {
             return '<div class="omo-stats-chart-empty">' . omoApiEscape(omoStatsT('stats.chart.empty')) . '</div>';
@@ -1753,8 +1828,13 @@ if (!function_exists('omoStatsRenderChart')) {
         }
 
         $numbers = array_column($showCumulative ? $measureSeries : $allSeries, 'value');
-        if (!$showCumulative && $ceilingValue !== null) {
-            $numbers[] = $ceilingValue;
+        if (!$showCumulative || !$referenceUsesCumulativeScale) {
+            if ($showCumulative) {
+                $numbers = array_merge($numbers, array_column($referenceSeries, 'value'));
+            }
+            if ($ceilingValue !== null) {
+                $numbers[] = $ceilingValue;
+            }
         }
         if ($minimumValue !== null) {
             $numbers[] = $minimumValue;
@@ -1768,8 +1848,11 @@ if (!function_exists('omoStatsRenderChart')) {
 
         $cumulativeScale = null;
         if ($showCumulative) {
-            $cumulativeNumbers = array_column(array_merge($cumulativeSeries, $referenceSeries), 'value');
-            if ($ceilingValue !== null) {
+            $cumulativeNumbers = array_column($cumulativeSeries, 'value');
+            if ($referenceUsesCumulativeScale) {
+                $cumulativeNumbers = array_merge($cumulativeNumbers, array_column($referenceSeries, 'value'));
+            }
+            if ($referenceUsesCumulativeScale && $ceilingValue !== null) {
                 $cumulativeNumbers[] = $ceilingValue;
             }
             if (count($cumulativeNumbers) === 0) {
@@ -1794,7 +1877,8 @@ if (!function_exists('omoStatsRenderChart')) {
 
         $measureCoordinates = array_map($mapPoint, $measureSeries);
         $cumulativeCoordinates = array_map($mapCumulativePoint, $cumulativeSeries);
-        $referenceCoordinates = array_map($mapCumulativePoint, $referenceSeries);
+        $mapReferencePoint = $referenceUsesCumulativeScale ? $mapCumulativePoint : $mapPoint;
+        $referenceCoordinates = array_map($mapReferencePoint, $referenceSeries);
         $measureValueRange = omoStatsGetSeriesValueRange($measureSeries);
         $minimumLineValue = $minimumValue !== null
             && $measureValueRange !== null
@@ -1896,7 +1980,7 @@ if (!function_exists('omoStatsRenderChart')) {
             $svg .= '<polyline class="omo-stats-chart__reference" points="' . $coordinateString($referenceCoordinates) . '"/>';
         }
         if ($ceilingValue !== null) {
-            $ceilingY = $mapCumulativePoint(['timestamp' => $minTimestamp, 'value' => $ceilingValue])[1];
+            $ceilingY = $mapReferencePoint(['timestamp' => $minTimestamp, 'value' => $ceilingValue])[1];
             $svg .= '<line class="omo-stats-chart__reference omo-stats-chart__reference--ceiling" x1="' . $paddingLeft . '" y1="' . $ceilingY . '" x2="' . ($width - $paddingRight) . '" y2="' . $ceilingY . '"/>';
         }
         if ($minimumLineValue !== null) {

@@ -332,12 +332,59 @@
         var summary = event.target.closest('.generic-context-help > summary');
         var details = summary ? summary.parentElement : null;
 
+        toArray(document.querySelectorAll('[data-generic-context-help-hover][open]')).forEach(function (other) {
+            if (!other.contains(event.target)) {
+                other.open = false;
+                other.__contextHelpPinned = false;
+            }
+        });
+
         if (!details) {
             return;
         }
 
+        if (details.hasAttribute('data-generic-context-help-hover')) {
+            event.preventDefault();
+            window.clearTimeout(details.__contextHelpCloseTimer);
+            details.__contextHelpPinned = !details.__contextHelpPinned;
+            details.open = details.__contextHelpPinned;
+        }
+
         window.requestAnimationFrame(function () {
             positionContextHelp(details);
+        });
+    }
+
+    // Opt-in hover keeps existing click-only help controls unchanged.
+    function handleContextHelpPointer(event) {
+        if (event.pointerType !== 'mouse') {
+            return;
+        }
+        var details = event.target.closest('[data-generic-context-help-hover]');
+        if (!details || (event.relatedTarget && details.contains(event.relatedTarget))) {
+            return;
+        }
+        window.clearTimeout(details.__contextHelpCloseTimer);
+        if (event.type === 'pointerover') {
+            details.open = true;
+            positionContextHelp(details);
+        } else if (!details.__contextHelpPinned) {
+            details.__contextHelpCloseTimer = window.setTimeout(function () {
+                if (!details.__contextHelpPinned) {
+                    details.open = false;
+                }
+            }, 180);
+        }
+    }
+
+    function handleContextHelpEscape(event) {
+        if (event.key !== 'Escape') {
+            return;
+        }
+        toArray(document.querySelectorAll('[data-generic-context-help-hover][open]')).forEach(function (details) {
+            window.clearTimeout(details.__contextHelpCloseTimer);
+            details.open = false;
+            details.__contextHelpPinned = false;
         });
     }
 
@@ -1148,6 +1195,9 @@
     document.addEventListener('keydown', handleGenericTabKeydown);
     document.addEventListener('toggle', handleContextHelpToggle, true);
     document.addEventListener('click', handleContextHelpClick);
+    document.addEventListener('pointerover', handleContextHelpPointer);
+    document.addEventListener('pointerout', handleContextHelpPointer);
+    document.addEventListener('keydown', handleContextHelpEscape);
     window.addEventListener('resize', scheduleOpenContextHelpPositioning);
     window.addEventListener('scroll', scheduleOpenContextHelpPositioning, true);
 

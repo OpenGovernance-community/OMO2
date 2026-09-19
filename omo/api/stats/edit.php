@@ -56,44 +56,6 @@ foreach ($organizationMembers as $membership) {
     }
 }
 
-if (!function_exists('fct_IDuser_responsible')) {
-    function fct_IDuser_responsible($object, $field, $default = null)
-    {
-        global $indicatorResponsibleOptions;
-        $selectedUserId = (int)$object->get($field);
-        $html = '<select class="admin-edit__control generic-form-control" name="IDuser_responsible" id="IDuser_responsible">';
-        $html .= '<option value="">' . omoApiEscape(omoStatsT('stats.form.responsible_none')) . '</option>';
-        foreach ($indicatorResponsibleOptions as $option) {
-            $userId = (int)($option['id'] ?? 0);
-            if ($userId <= 0) {
-                continue;
-            }
-            $html .= '<option value="' . $userId . '"' . ($selectedUserId === $userId ? ' selected' : '') . '>'
-                . omoApiEscape((string)($option['label'] ?? '')) . '</option>';
-        }
-        $html .= '</select><small class="generic-help-text">' . omoApiEscape(omoStatsT('stats.form.responsible_help')) . '</small>';
-        return [omoApiEscape(omoStatsT('stats.form.responsible')), $html];
-    }
-}
-
-if (!function_exists('fct_reference_type')) {
-    function fct_reference_type($object, $field, $default = null)
-    {
-        $selected = StatIndicator::normalizeReferenceType($object->get($field));
-        $options = [
-            StatIndicator::REFERENCE_NONE => omoStatsT('stats.form.reference_none'),
-            StatIndicator::REFERENCE_CEILING => omoStatsT('stats.form.reference_ceiling'),
-            StatIndicator::REFERENCE_OBJECTIVE => omoStatsT('stats.form.reference_objective'),
-        ];
-        $html = '<select class="admin-edit__control generic-form-control" name="reference_type" id="reference_type" data-omo-stats-reference-type>';
-        foreach ($options as $value => $label) {
-            $html .= '<option value="' . omoApiEscape($value) . '"' . ($selected === $value ? ' selected' : '') . '>' . omoApiEscape($label) . '</option>';
-        }
-        $html .= '</select>';
-        return $html;
-    }
-}
-
 if (!function_exists('omoStatsEditInputNumber')) {
     function omoStatsEditInputNumber($value)
     {
@@ -187,18 +149,82 @@ usort($referencePoints, static function (StatIndicatorReferencePoint $left, Stat
     return (float)$left->get('position_percent') <=> (float)$right->get('position_percent');
 });
 
-ob_start();
+
+$sourceLang = [
+    'editor.identity' => ['text' => 'Votre indicateur', 'context' => 'Heading for indicator identity fields.'],
+    'editor.identity_help' => ['text' => 'Donnez un nom clair a la mesure et indiquez qui en assure le suivi.', 'context' => 'Indicator identity help.'],
+    'editor.name' => ['text' => 'Nom de l indicateur', 'context' => 'Required indicator name field.'],
+    'editor.name_placeholder' => ['text' => 'Ex. Chiffre d affaires mensuel', 'context' => 'Example indicator name.'],
+    'editor.description' => ['text' => 'Description', 'context' => 'Indicator description field.'],
+    'editor.description_placeholder' => ['text' => 'Que mesure cet indicateur ? Dans quelle unite ?', 'context' => 'Description prompt.'],
+    'editor.source_url' => ['text' => 'Lien vers la source', 'context' => 'Optional measurement source URL field.'],
+    'editor.chart' => ['text' => 'Graphique et reference', 'context' => 'Heading for indicator chart settings.'],
+    'editor.chart_help' => ['text' => 'Choisissez comment lire vos mesures et les comparer a votre objectif.', 'context' => 'Chart settings help.'],
+    'editor.cumulative' => ['text' => 'Afficher le cumul', 'context' => 'Cumulative display checkbox.'],
+    'editor.cumulative_help' => ['text' => 'Les valeurs en barres, leur cumul sur une seconde echelle.', 'context' => 'Explanation of cumulative display.'],
+    'editor.minimum' => ['text' => 'Valeur basse du graphique', 'context' => 'Optional chart lower scale value.'],
+    'editor.minimum_help' => ['text' => 'Laissez vide pour une echelle automatique.', 'context' => 'Help for chart lower scale value.'],
+    'editor.reference_type' => ['text' => 'Type de reference', 'context' => 'Indicator reference type field.'],
+    'editor.scale_value_help' => ['text' => 'Ex. 10 000 de chiffre d affaires par mois.', 'context' => 'Example of a reference on the independent values axis.'],
+    'editor.scale_cumulative_help' => ['text' => 'Ex. 120 000 de chiffre d affaires sur l annee.', 'context' => 'Example of a reference on the cumulative axis.'],
+    'editor.saving' => ['text' => 'Enregistrement...', 'context' => 'Save action while an indicator request is pending.'],
+    'editor.saved' => ['text' => 'Indicateur enregistre.', 'context' => 'Successful indicator save feedback.'],
+];
+$editorBundle = omoLoadTranslationBundle('omo_stats_editor', $sourceLang);
+$editT = static function ($key) use ($editorBundle, $sourceLang) {
+    return t($key, [], $editorBundle, $sourceLang);
+};
+
+$editHelp = static function ($label, $text) {
+    return '<details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>'
+        . '<summary aria-label="' . omoApiEscape($label) . '">?</summary>'
+        . '<div class="generic-context-help__content">' . omoApiEscape($text) . '</div></details>';
+};
+$fieldLengths = StatIndicator::attributeLength();
+$referenceScale = StatIndicator::normalizeReferenceScale($indicator->get('reference_scale'));
+$showCumulative = (int)$indicator->get('show_cumulative') > 0;
 ?>
-    <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided">
+<link rel="stylesheet" href="/common/assets/components.css?v=20260919-compact-help">
+<div class="omo-stats-editor generic-drawer-content" data-omo-stats-editor data-indicator-id="<?= (int)$indicatorId ?>">
+    <div hidden data-omo-subdrawer-header
+        data-omo-subdrawer-title="<?= omoApiEscape(omoStatsT($indicatorId > 0 ? 'stats.form.edit_title' : 'stats.form.create_title')) ?>"
+        data-omo-subdrawer-description="<?= omoApiEscape(omoStatsT('stats.form.intro')) ?>"></div>
+    <form id="omoStatsIndicatorForm" class="generic-form-stack generic-form-stack--compact" action="/omo/api/stats/action.php" method="post">
+        <section class="generic-form-grid generic-form-grid--pair" aria-label="<?= omoApiEscape($editT('editor.identity')) ?>">
+            <div class="generic-form-field">
+                <div class="generic-inline-help">
+                    <label class="generic-form-label" for="stats-editor-name"><?= omoApiEscape($editT('editor.name')) ?> *</label>
+                    <?= $editHelp($editT('editor.name'), $editT('editor.identity_help')) ?>
+                </div>
+                <input id="stats-editor-name" class="generic-form-control generic-form-control--compact" type="text" name="name" value="<?= omoApiEscape((string)$indicator->get('name')) ?>" maxlength="<?= (int)$fieldLengths['name'] ?>" placeholder="<?= omoApiEscape($editT('editor.name_placeholder')) ?>" required>
+            </div>
+            <div class="generic-form-field">
+                <div class="generic-inline-help">
+                    <label class="generic-form-label" for="stats-editor-responsible"><?= omoApiEscape(omoStatsT('stats.form.responsible')) ?></label>
+                    <?= $editHelp(omoStatsT('stats.form.responsible'), omoStatsT('stats.form.responsible_help')) ?>
+                </div>
+                <select id="stats-editor-responsible" class="generic-form-control generic-form-control--compact" name="IDuser_responsible">
+                    <option value=""><?= omoApiEscape(omoStatsT('stats.form.responsible_none')) ?></option>
+                    <?php foreach ($indicatorResponsibleOptions as $option): ?>
+                        <option value="<?= (int)$option['id'] ?>"<?= (int)$indicator->get('IDuser_responsible') === (int)$option['id'] ? ' selected' : '' ?>><?= omoApiEscape($option['label']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <label class="generic-form-field generic-form-field--full">
+                <span class="generic-form-label"><?= omoApiEscape($editT('editor.description')) ?></span>
+                <textarea class="generic-form-control generic-form-control--compact" name="description" rows="2" placeholder="<?= omoApiEscape($editT('editor.description_placeholder')) ?>"><?= omoApiEscape((string)$indicator->get('description')) ?></textarea>
+            </label>
+        </section>
+
+    <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
         <div class="generic-form-section__heading">
             <div class="generic-form-section__copy">
-                <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.form.source_title')) ?></h3>
-                <p class="generic-description"><?= omoApiEscape(omoStatsT('stats.form.source_help')) ?></p>
+                <div class="generic-heading-with-help"><h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoStatsT('stats.form.source_title')) ?></h3><?= $editHelp(omoStatsT('stats.form.source_title'), omoStatsT('stats.form.source_help')) ?></div>
             </div>
         </div>
         <label class="omo-stats-field generic-form-field">
             <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.form.source_type')) ?></span>
-            <select class="generic-form-control" name="source_type" data-omo-stats-source-type>
+            <select class="generic-form-control generic-form-control--compact" name="source_type" data-omo-stats-source-type>
                 <option value="<?= StatIndicator::SOURCE_MANUAL ?>"<?= $selectedSourceType === StatIndicator::SOURCE_MANUAL ? ' selected' : '' ?>><?= omoApiEscape(omoStatsT('stats.form.source_manual')) ?></option>
                 <option value="<?= StatIndicator::SOURCE_ETHERCALC_CELL ?>"<?= $selectedSourceType === StatIndicator::SOURCE_ETHERCALC_CELL ? ' selected' : '' ?>><?= omoApiEscape(omoStatsT('stats.form.source_ethercalc_cell')) ?></option>
                 <option value="<?= StatIndicator::SOURCE_ETHERCALC_TABLE ?>"<?= $selectedSourceType === StatIndicator::SOURCE_ETHERCALC_TABLE ? ' selected' : '' ?>><?= omoApiEscape(omoStatsT('stats.form.source_ethercalc_table')) ?></option>
@@ -206,21 +232,15 @@ ob_start();
                 <option value="<?= StatIndicator::SOURCE_SPREADSHEET_TABLE ?>"<?= $selectedSourceType === StatIndicator::SOURCE_SPREADSHEET_TABLE ? ' selected' : '' ?>><?= omoApiEscape(omoStatsT('stats.form.source_spreadsheet_table')) ?></option>
             </select>
         </label>
-    </section>
     <section
-        class="generic-section generic-section--stack generic-form-section generic-form-section--divided"
+        class="generic-form-stack generic-form-stack--compact"
         data-omo-stats-source-panel="ethercalc_cell ethercalc_table"
         <?= $isEthercalcSource ? '' : ' hidden' ?>
     >
-        <div class="generic-form-section__heading">
-            <div class="generic-form-section__copy">
-                <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.source_title')) ?></h3>
-            </div>
-        </div>
         <div class="generic-form-grid">
             <label class="omo-stats-field generic-form-field">
                 <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.document')) ?></span>
-                <select class="generic-form-control" name="ethercalc_document_id" required>
+                <select class="generic-form-control generic-form-control--compact" name="ethercalc_document_id" required>
                     <?php foreach ($ethercalcDocuments as $document): ?>
                         <option value="<?= (int)$document->getId() ?>"<?= (int)$document->getId() === $selectedSourceDocumentId ? ' selected' : '' ?>><?= omoApiEscape((string)$document->get('title')) ?></option>
                     <?php endforeach; ?>
@@ -228,11 +248,11 @@ ob_start();
             </label>
                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="ethercalc_cell"<?= $isEthercalcCellSource ? '' : ' hidden' ?>>
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.cell')) ?></span>
-                    <input type="text" class="generic-form-control" name="ethercalc_cell" value="<?= omoApiEscape((string)($indicator->get('ethercalc_cell') ?: 'A1')) ?>" placeholder="A1" required>
+                    <input type="text" class="generic-form-control generic-form-control--compact" name="ethercalc_cell" value="<?= omoApiEscape((string)($indicator->get('ethercalc_cell') ?: 'A1')) ?>" placeholder="A1" required>
                 </label>
                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="ethercalc_cell"<?= $isEthercalcCellSource ? '' : ' hidden' ?>>
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.frequency_measurement')) ?></span>
-                    <select class="generic-form-control" name="ethercalc_frequency">
+                    <select class="generic-form-control generic-form-control--compact" name="ethercalc_frequency">
                         <?php foreach (StatIndicator::getEthercalcFrequencyCatalog() as $frequency => $label): ?>
                             <option value="<?= omoApiEscape($frequency) ?>"<?= $frequency === StatIndicator::normalizeEthercalcFrequency($indicator->get('ethercalc_frequency')) ? ' selected' : '' ?>><?= omoApiEscape(omoStatsT('stats.import.ethercalc.frequency_' . $frequency)) ?></option>
                         <?php endforeach; ?>
@@ -240,19 +260,19 @@ ob_start();
                 </label>
                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="ethercalc_table"<?= $isEthercalcCellSource ? ' hidden' : '' ?>>
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.range')) ?></span>
-                    <input type="text" class="generic-form-control" name="ethercalc_range" value="<?= omoApiEscape((string)($indicator->get('ethercalc_range') ?: 'A1:C100')) ?>" placeholder="A1:C100" required>
+                    <input type="text" class="generic-form-control generic-form-control--compact" name="ethercalc_range" value="<?= omoApiEscape((string)($indicator->get('ethercalc_range') ?: 'A1:C100')) ?>" placeholder="A1:C100" required>
                 </label>
                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="ethercalc_table"<?= $isEthercalcCellSource ? ' hidden' : '' ?>>
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.date_column')) ?></span>
-                    <input type="text" class="generic-form-control" name="ethercalc_date_column" value="<?= omoApiEscape((string)($indicator->get('ethercalc_date_column') ?: 'A')) ?>" placeholder="A" required>
+                    <input type="text" class="generic-form-control generic-form-control--compact" name="ethercalc_date_column" value="<?= omoApiEscape((string)($indicator->get('ethercalc_date_column') ?: 'A')) ?>" placeholder="A" required>
                 </label>
                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="ethercalc_table"<?= $isEthercalcCellSource ? ' hidden' : '' ?>>
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.value_columns')) ?></span>
-                    <input type="text" class="generic-form-control" name="ethercalc_value_columns" value="<?= omoApiEscape((string)($indicator->get('ethercalc_value_column') ?: 'B')) ?>" placeholder="B,C" required>
+                    <input type="text" class="generic-form-control generic-form-control--compact" name="ethercalc_value_columns" value="<?= omoApiEscape((string)($indicator->get('ethercalc_value_column') ?: 'B')) ?>" placeholder="B,C" required>
                 </label>
                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="ethercalc_table"<?= $isEthercalcCellSource ? ' hidden' : '' ?>>
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.frequency_sync')) ?></span>
-                    <select class="generic-form-control" name="ethercalc_frequency">
+                    <select class="generic-form-control generic-form-control--compact" name="ethercalc_frequency">
                         <?php foreach (StatIndicator::getEthercalcFrequencyCatalog() as $frequency => $label): ?>
                             <option value="<?= omoApiEscape($frequency) ?>"<?= $frequency === StatIndicator::normalizeEthercalcFrequency($indicator->get('ethercalc_frequency')) ? ' selected' : '' ?>><?= omoApiEscape(omoStatsT('stats.import.ethercalc.frequency_' . $frequency)) ?></option>
                         <?php endforeach; ?>
@@ -261,19 +281,14 @@ ob_start();
         </div>
     </section>
     <section
-        class="generic-section generic-section--stack generic-form-section generic-form-section--divided"
+        class="generic-form-stack generic-form-stack--compact"
         data-omo-stats-source-panel="spreadsheet_cell spreadsheet_table"
         <?= $isSpreadsheetSource ? '' : ' hidden' ?>
     >
-        <div class="generic-form-section__heading">
-            <div class="generic-form-section__copy">
-                <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.source_title')) ?></h3>
-            </div>
-        </div>
         <div class="generic-form-grid">
             <label class="omo-stats-field generic-form-field">
                 <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.document')) ?></span>
-                <select class="generic-form-control" name="spreadsheet_document_id" required>
+                <select class="generic-form-control generic-form-control--compact" name="spreadsheet_document_id" required>
                     <?php foreach ($spreadsheetDocuments as $document): ?>
                         <option value="<?= (int)$document->getId() ?>"<?= (int)$document->getId() === $selectedSourceDocumentId ? ' selected' : '' ?>><?= omoApiEscape((string)$document->get('title')) ?></option>
                     <?php endforeach; ?>
@@ -281,27 +296,27 @@ ob_start();
             </label>
             <label class="omo-stats-field generic-form-field">
                 <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.sheet')) ?></span>
-                <input type="text" class="generic-form-control" name="spreadsheet_sheet" value="<?= omoApiEscape((string)$indicator->get('spreadsheet_sheet')) ?>" placeholder="Feuille1">
+                <input type="text" class="generic-form-control generic-form-control--compact" name="spreadsheet_sheet" value="<?= omoApiEscape((string)$indicator->get('spreadsheet_sheet')) ?>" placeholder="Feuille1">
             </label>
                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="spreadsheet_cell"<?= $isSpreadsheetCellSource ? '' : ' hidden' ?>>
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.cell')) ?></span>
-                    <input type="text" class="generic-form-control" name="spreadsheet_cell" value="<?= omoApiEscape((string)($indicator->get('spreadsheet_cell') ?: 'A1')) ?>" placeholder="A1" required>
+                    <input type="text" class="generic-form-control generic-form-control--compact" name="spreadsheet_cell" value="<?= omoApiEscape((string)($indicator->get('spreadsheet_cell') ?: 'A1')) ?>" placeholder="A1" required>
                 </label>
                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="spreadsheet_table"<?= $isSpreadsheetCellSource ? ' hidden' : '' ?>>
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.range')) ?></span>
-                    <input type="text" class="generic-form-control" name="spreadsheet_range" value="<?= omoApiEscape((string)($indicator->get('spreadsheet_range') ?: 'A1:C100')) ?>" placeholder="A1:C100" required>
+                    <input type="text" class="generic-form-control generic-form-control--compact" name="spreadsheet_range" value="<?= omoApiEscape((string)($indicator->get('spreadsheet_range') ?: 'A1:C100')) ?>" placeholder="A1:C100" required>
                 </label>
                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="spreadsheet_table"<?= $isSpreadsheetCellSource ? ' hidden' : '' ?>>
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.date_column')) ?></span>
-                    <input type="text" class="generic-form-control" name="spreadsheet_date_column" value="<?= omoApiEscape((string)($indicator->get('spreadsheet_date_column') ?: 'A')) ?>" placeholder="A" required>
+                    <input type="text" class="generic-form-control generic-form-control--compact" name="spreadsheet_date_column" value="<?= omoApiEscape((string)($indicator->get('spreadsheet_date_column') ?: 'A')) ?>" placeholder="A" required>
                 </label>
                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="spreadsheet_table"<?= $isSpreadsheetCellSource ? ' hidden' : '' ?>>
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.value_columns')) ?></span>
-                    <input type="text" class="generic-form-control" name="spreadsheet_value_columns" value="<?= omoApiEscape((string)($indicator->get('spreadsheet_value_column') ?: 'B')) ?>" placeholder="B,C" required>
+                    <input type="text" class="generic-form-control generic-form-control--compact" name="spreadsheet_value_columns" value="<?= omoApiEscape((string)($indicator->get('spreadsheet_value_column') ?: 'B')) ?>" placeholder="B,C" required>
                 </label>
             <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="spreadsheet_cell"<?= $isSpreadsheetCellSource ? '' : ' hidden' ?>>
                 <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.frequency_measurement')) ?></span>
-                <select class="generic-form-control" name="spreadsheet_frequency">
+                <select class="generic-form-control generic-form-control--compact" name="spreadsheet_frequency">
                     <?php foreach (StatIndicator::getSpreadsheetFrequencyCatalog() as $frequency => $label): ?>
                         <option value="<?= omoApiEscape($frequency) ?>"<?= $frequency === StatIndicator::normalizeSpreadsheetFrequency($indicator->get('spreadsheet_frequency')) ? ' selected' : '' ?>><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.frequency_' . $frequency)) ?></option>
                     <?php endforeach; ?>
@@ -309,7 +324,7 @@ ob_start();
             </label>
             <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="spreadsheet_table"<?= $isSpreadsheetCellSource ? ' hidden' : '' ?>>
                 <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.frequency_sync')) ?></span>
-                <select class="generic-form-control" name="spreadsheet_frequency">
+                <select class="generic-form-control generic-form-control--compact" name="spreadsheet_frequency">
                     <?php foreach (StatIndicator::getSpreadsheetFrequencyCatalog() as $frequency => $label): ?>
                         <option value="<?= omoApiEscape($frequency) ?>"<?= $frequency === StatIndicator::normalizeSpreadsheetFrequency($indicator->get('spreadsheet_frequency')) ? ' selected' : '' ?>><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.frequency_' . $frequency)) ?></option>
                     <?php endforeach; ?>
@@ -318,54 +333,89 @@ ob_start();
         </div>
     </section>
 <section
-    class="generic-section generic-section--stack generic-form-section generic-form-section--divided omo-stats-schedule"
+    class="generic-form-grid omo-stats-schedule"
     data-omo-stats-source-panel="manual"
     <?= $isAutomaticSource ? ' hidden' : '' ?>
 >
-    <div class="omo-stats-schedule__heading generic-form-section__heading">
-        <div class="generic-form-section__copy">
-            <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.form.schedule_title')) ?></h3>
-            <p class="generic-description"><?= omoApiEscape(omoStatsT('stats.form.schedule_help')) ?></p>
-        </div>
-    </div>
-    <div class="omo-stats-schedule__fields generic-form-grid">
-        <label class="omo-stats-field generic-form-field">
-            <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.form.frequency')) ?></span>
-            <select class="generic-form-control" name="measurement_frequency" data-omo-stats-measurement-frequency>
+
+    <label class="generic-form-field">
+        <span class="generic-form-label"><?= omoApiEscape($editT('editor.source_url')) ?></span>
+        <input type="url" class="generic-form-control generic-form-control--compact" name="source_url" maxlength="<?= (int)$fieldLengths['source_url'] ?>" value="<?= omoApiEscape((string)$indicator->get('source_url')) ?>" placeholder="https://">
+    </label>
+
+        <div class="generic-form-field">
+            <div class="generic-inline-help">
+                <label class="generic-form-label" for="stats-editor-frequency"><?= omoApiEscape(omoStatsT('stats.form.frequency')) ?></label>
+                <?= $editHelp(omoStatsT('stats.form.frequency'), omoStatsT('stats.form.schedule_help')) ?>
+            </div>
+            <select id="stats-editor-frequency" class="generic-form-control generic-form-control--compact" name="measurement_frequency" data-omo-stats-measurement-frequency>
                 <?php foreach ($measurementFrequencyOptions as $option): ?>
                     <option value="<?= omoApiEscape((string)$option['value']) ?>"<?= (string)$option['value'] === (string)$measurementFrequency ? ' selected' : '' ?>><?= omoApiEscape((string)$option['label']) ?></option>
                 <?php endforeach; ?>
             </select>
-        </label>
+        </div>
         <label class="omo-stats-field generic-form-field" data-omo-stats-measurement-schedule-field>
             <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.form.schedule')) ?></span>
-            <select class="generic-form-control" name="measurement_schedule" data-omo-stats-measurement-schedule data-selected-schedule="<?= omoApiEscape((string)$measurementSchedule) ?>"></select>
+            <select class="generic-form-control generic-form-control--compact" name="measurement_schedule" data-omo-stats-measurement-schedule data-selected-schedule="<?= omoApiEscape((string)$measurementSchedule) ?>"></select>
         </label>
-    </div>
 </section>
-<section class="generic-section generic-section--stack generic-form-section generic-form-section--divided omo-stats-ceiling-editor" data-omo-stats-ceiling-editor hidden>
-    <div class="omo-stats-ceiling-editor__heading generic-form-section__copy">
-        <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.form.ceiling_title')) ?></h3>
-        <p class="generic-description"><?= omoApiEscape(omoStatsT('stats.form.ceiling_help')) ?></p>
-    </div>
-    <label class="omo-stats-field generic-form-field">
-        <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.form.ceiling_value')) ?></span>
-        <input
-            type="number"
-            class="generic-form-control"
-            name="ceiling_value"
-            value="<?= omoApiEscape(omoStatsEditInputNumber($ceilingValue)) ?>"
-            step="any"
-            required
-            data-omo-stats-ceiling-value
-        >
-    </label>
-</section>
-<div class="omo-stats-reference-editor generic-section generic-section--stack generic-form-section generic-form-section--divided" data-omo-stats-reference-editor>
+
+    </section>
+    <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact" aria-labelledby="stats-editor-chart">
+        <div class="generic-form-section__copy">
+            <div class="generic-heading-with-help"><h3 id="stats-editor-chart" class="generic-card-title generic-card-title--small"><?= omoApiEscape($editT('editor.chart')) ?></h3><?= $editHelp($editT('editor.chart'), $editT('editor.chart_help')) ?></div>
+        </div>
+        <div class="generic-form-grid">
+            <div class="generic-form-field">
+                <div class="generic-inline-help">
+                    <label class="generic-form-label" for="stats-editor-minimum"><?= omoApiEscape($editT('editor.minimum')) ?></label>
+                    <?= $editHelp($editT('editor.minimum'), $editT('editor.minimum_help')) ?>
+                </div>
+                <input id="stats-editor-minimum" type="number" class="generic-form-control generic-form-control--compact" name="chart_min_value" step="any" value="<?= omoApiEscape(omoStatsEditInputNumber($indicator->get('chart_min_value'))) ?>">
+            </div>
+        <label class="generic-form-field">
+            <span class="generic-form-label"><?= omoApiEscape($editT('editor.reference_type')) ?></span>
+            <select class="generic-form-control generic-form-control--compact" name="reference_type" data-omo-stats-reference-type>
+                <?php foreach (['none', 'ceiling', 'objective'] as $type): ?>
+                    <option value="<?= $type ?>"<?= $referenceType === $type ? ' selected' : '' ?>><?= omoApiEscape(omoStatsT('stats.form.reference_' . $type)) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </label>
+            <div class="generic-form-field" data-omo-stats-ceiling-editor hidden>
+                <div class="generic-inline-help">
+                    <label class="generic-form-label" for="stats-editor-ceiling"><?= omoApiEscape(omoStatsT('stats.form.ceiling_value')) ?></label>
+                    <?= $editHelp(omoStatsT('stats.form.ceiling_value'), omoStatsT('stats.form.ceiling_help')) ?>
+                </div>
+                <input id="stats-editor-ceiling" type="number" class="generic-form-control generic-form-control--compact" name="ceiling_value" value="<?= omoApiEscape(omoStatsEditInputNumber($ceilingValue)) ?>" step="any" required data-omo-stats-ceiling-value>
+            </div>
+        </div>
+        <div class="generic-title-row generic-title-row--center">
+            <div class="generic-inline-help">
+                <label class="generic-checkbox">
+                    <input type="checkbox" name="show_cumulative" value="1"<?= $showCumulative ? ' checked' : '' ?>>
+                    <span><?= omoApiEscape($editT('editor.cumulative')) ?></span>
+                </label>
+                <?= $editHelp($editT('editor.cumulative'), $editT('editor.cumulative_help')) ?>
+            </div>
+            <div class="generic-form-field" data-omo-stats-reference-scale<?= $showCumulative && $referenceType !== StatIndicator::REFERENCE_NONE ? '' : ' hidden' ?>>
+                <div class="generic-title-row generic-title-row--center" role="radiogroup" aria-labelledby="stats-editor-scale-label">
+                    <span id="stats-editor-scale-label" class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.form.reference_scale')) ?> :</span>
+                    <?php foreach (['value', 'cumulative'] as $scale): ?>
+                        <div class="generic-inline-help">
+                            <label class="generic-checkbox">
+                                <input type="radio" name="reference_scale" value="<?= $scale ?>"<?= $referenceScale === $scale ? ' checked' : '' ?>>
+                                <span><?= omoApiEscape(omoStatsT('stats.form.reference_scale_' . $scale)) ?></span>
+                            </label>
+                            <?= $editHelp(omoStatsT('stats.form.reference_scale_' . $scale), $editT('editor.scale_' . $scale . '_help')) ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+<div class="omo-stats-reference-editor generic-form-stack generic-form-stack--compact" data-omo-stats-reference-editor>
     <div class="omo-stats-reference-editor__heading generic-form-section__heading">
         <div class="generic-form-section__copy">
-            <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoStatsT('stats.form.reference_title')) ?></h3>
-            <p class="generic-description"><?= omoApiEscape(omoStatsT('stats.form.reference_help')) ?></p>
+            <div class="generic-heading-with-help"><h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoStatsT('stats.form.reference_title')) ?></h3><?= $editHelp(omoStatsT('stats.form.reference_title'), omoStatsT('stats.form.reference_help')) ?></div>
         </div>
         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-add-reference-point><?= omoApiEscape(omoStatsT('stats.form.add_point')) ?></button>
     </div>
@@ -383,7 +433,7 @@ ob_start();
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.form.position')) ?></span>
                     <input
                         type="number"
-                        class="generic-form-control"
+                        class="generic-form-control generic-form-control--compact"
                         name="reference_points[<?= (int)$pointIndex ?>][position_percent]"
                         value="<?= omoApiEscape(omoStatsEditInputNumber($position)) ?>"
                         min="0"
@@ -398,7 +448,7 @@ ob_start();
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT($isEndpoint ? 'stats.form.point_date' : 'stats.form.point_date_auto')) ?></span>
                     <input
                         type="datetime-local"
-                        class="generic-form-control"
+                        class="generic-form-control generic-form-control--compact"
                         name="reference_points[<?= (int)$pointIndex ?>][point_at]"
                         value="<?= $pointAt instanceof DateTimeInterface ? omoApiEscape($pointAt->format('Y-m-d\TH:i')) : '' ?>"
                         data-omo-stats-point-date
@@ -410,7 +460,7 @@ ob_start();
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.form.point_value')) ?></span>
                     <input
                         type="number"
-                        class="generic-form-control"
+                        class="generic-form-control generic-form-control--compact"
                         name="reference_points[<?= (int)$pointIndex ?>][value]"
                         value="<?= omoApiEscape(omoStatsEditInputNumber($point->get('value'))) ?>"
                         step="any"
@@ -425,6 +475,8 @@ ob_start();
         <?php endforeach; ?>
     </div>
 </div>
+</section>
+<input type="hidden" name="id" value="<?= (int)$indicatorId ?>">
 <input type="hidden" name="stats_action" value="save_indicator">
 <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
 <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
@@ -432,31 +484,14 @@ ob_start();
     <input type="hidden" name="pv_meeting_document_id" value="<?= (int)($context['pvMeetingPermission']['documentId'] ?? 0) ?>">
     <input type="hidden" name="pv_meeting_editor_token" value="<?= omoApiEscape((string)($_GET['pv_meeting_editor_token'] ?? '')) ?>">
 <?php endif; ?>
+<div class="generic-feedback generic-feedback--collapse-empty" data-omo-stats-editor-feedback role="status" aria-live="polite"></div>
 <div class="omo-stats-editor__actions generic-form-actions generic-form-actions--stack-mobile">
     <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-cancel-editor data-indicator-id="<?= (int)$indicatorId ?>"><?= omoApiEscape(omoStatsT('stats.action.cancel')) ?></button>
     <button type="submit" class="generic-action-button generic-action-button--main" data-omo-stats-save-editor><?= omoApiEscape(omoStatsT('stats.action.save')) ?></button>
 </div>
-<?php
-$afterTableHtml = ob_get_clean();
-$params = [
-    'fields' => ['name', 'description', 'IDuser_responsible', 'source_url', 'chart_min_value', 'show_cumulative', 'reference_type'],
-    'buttons' => false,
-    'action' => '/omo/api/stats/action.php',
-    'success' => 'omoStatsAfterIndicatorSave()',
-    'afterTableHtml' => $afterTableHtml,
-];
-?>
-<div class="omo-stats-editor generic-drawer-content" data-omo-stats-editor data-indicator-id="<?= (int)$indicatorId ?>">
-    <div
-        hidden
-        data-omo-subdrawer-header
-        data-omo-subdrawer-title="<?= omoApiEscape(omoStatsT($indicatorId > 0 ? 'stats.form.edit_title' : 'stats.form.create_title')) ?>"
-        data-omo-subdrawer-description="<?= omoApiEscape(omoStatsT('stats.form.intro')) ?>"
-    ></div>
-
-    <?php $indicator->display('adminEdit.php', $params); ?>
+</form>
 </div>
-<script src="/omo/api/stats/reference-editor.js?v=20260724-ceiling"></script>
+<script src="/omo/api/stats/reference-editor.js?v=20260919-reference-scale"></script>
 <script>
 (function () {
     var editor = document.querySelector('[data-omo-stats-editor]');
@@ -469,7 +504,6 @@ $params = [
     var selectedSourceType = <?= json_encode($selectedSourceType, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     var sourcePanels = Array.prototype.slice.call(editor.querySelectorAll('[data-omo-stats-source-panel]'));
     var sourceModeFields = Array.prototype.slice.call(editor.querySelectorAll('[data-omo-stats-source-mode-field]'));
-    var sourceUrlRow = editor.querySelector('tr#source_url');
 
     function setSourceFieldsDisabled(container, disabled) {
         Array.prototype.forEach.call(container.querySelectorAll('input, select, textarea'), function (field) {
@@ -493,12 +527,6 @@ $params = [
             field.hidden = !isActive;
             setSourceFieldsDisabled(field, !isActive);
         });
-
-        if (sourceUrlRow instanceof HTMLElement) {
-            var isManualSource = sourceType === 'manual';
-            sourceUrlRow.hidden = !isManualSource;
-            setSourceFieldsDisabled(sourceUrlRow, !isManualSource);
-        }
 
         if (sourceType === 'manual' && typeof syncMeasurementSchedule === 'function') {
             syncMeasurementSchedule(false);
@@ -541,17 +569,60 @@ $params = [
         });
     }
 
+
+    var feedback = editor.querySelector('[data-omo-stats-editor-feedback]');
+    var saving = false;
+    var saveLabel = saveEditorButton.textContent;
+    var saveError = <?= json_encode(omoStatsT('stats.error.save'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    editorForm.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        if (saving || !editorForm.reportValidity()) {
+            return;
+        }
+        var formData = new FormData(editorForm);
+        saving = true;
+        editorForm.setAttribute('aria-busy', 'true');
+        saveEditorButton.disabled = true;
+        cancelEditorButton.disabled = true;
+        saveEditorButton.textContent = <?= json_encode($editT('editor.saving'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        feedback.textContent = '';
+        feedback.classList.remove('is-success');
+        try {
+            var response = await fetch(editorForm.action, {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin',
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            });
+            var result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || saveError);
+            }
+            editorForm.elements.namedItem('id').value = String(result.id);
+            if (typeof window.omoStatsAfterIndicatorSave === 'function') {
+                window.omoStatsAfterIndicatorSave();
+            } else {
+                feedback.classList.add('is-success');
+                feedback.textContent = <?= json_encode($editT('editor.saved'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+            }
+        } catch (error) {
+            feedback.textContent = error.message || saveError;
+            feedback.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+        } finally {
+            saving = false;
+            editorForm.removeAttribute('aria-busy');
+            saveEditorButton.disabled = false;
+            cancelEditorButton.disabled = false;
+            saveEditorButton.textContent = saveLabel;
+        }
+    });
+
     var typeField = editor.querySelector('[data-omo-stats-reference-type]');
+    var showCumulativeField = editor.querySelector('input[type="checkbox"][name="show_cumulative"]');
+    var referenceScaleRow = editor.querySelector('[data-omo-stats-reference-scale]');
     var measurementFrequencyField = editor.querySelector('[data-omo-stats-measurement-frequency]');
     var measurementScheduleField = editor.querySelector('[data-omo-stats-measurement-schedule]');
     var measurementScheduleWrapper = editor.querySelector('[data-omo-stats-measurement-schedule-field]');
-    var referenceEditor = editor.querySelector('[data-omo-stats-reference-editor]');
-    var ceilingEditor = editor.querySelector('[data-omo-stats-ceiling-editor]');
-    var ceilingValueField = editor.querySelector('[data-omo-stats-ceiling-value]');
-    var referenceRail = editor.querySelector('[data-omo-stats-reference-rail]');
-    var pointList = editor.querySelector('[data-omo-stats-reference-points]');
-    var addButton = editor.querySelector('[data-omo-stats-add-reference-point]');
-    var referencePositionStep = 0.2;
     var labels = <?= json_encode([
         'endpoint' => omoStatsT('stats.form.endpoint'),
         'intermediate' => omoStatsT('stats.form.intermediate'),
@@ -562,6 +633,22 @@ $params = [
         'remove' => omoStatsT('stats.form.remove_point'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     var measurementScheduleOptions = <?= json_encode($measurementScheduleOptions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+
+    function syncReferenceScale() {
+        if (!referenceScaleRow) {
+            return;
+        }
+        var isVisible = Boolean(showCumulativeField && showCumulativeField.checked)
+            && Boolean(typeField && typeField.value !== 'none');
+        referenceScaleRow.hidden = !isVisible;
+    }
+
+    if (showCumulativeField) {
+        showCumulativeField.addEventListener('change', syncReferenceScale);
+    }
+    if (typeField) {
+        typeField.addEventListener('change', syncReferenceScale);
+    }
 
     function syncMeasurementSchedule(resetSelection) {
         if (!measurementScheduleField || !measurementFrequencyField) {
@@ -598,401 +685,7 @@ $params = [
         });
     }
 
-    if (!useSharedReferenceEditor) {
-    function rows() {
-        return Array.prototype.slice.call(editor.querySelectorAll('[data-omo-stats-reference-point]'));
-    }
-
-    function reindexRows() {
-        rows().forEach(function (row, index) {
-            Array.prototype.forEach.call(row.querySelectorAll('[name]'), function (field) {
-                field.name = field.name.replace(/reference_points\[\d+\]/, 'reference_points[' + String(index) + ']');
-            });
-        });
-    }
-
-    function sortPointRows() {
-        if (!pointList) {
-            return;
-        }
-        rows().sort(function (left, right) {
-            var leftField = left.querySelector('[data-omo-stats-point-position]');
-            var rightField = right.querySelector('[data-omo-stats-point-position]');
-            return Number(leftField ? leftField.value : 0) - Number(rightField ? rightField.value : 0);
-        }).forEach(function (row) {
-            pointList.appendChild(row);
-        });
-        reindexRows();
-    }
-
-    function getEndpointDates() {
-        var endpointRows = rows().filter(function (row) {
-            return row.getAttribute('data-endpoint') === '1';
-        }).sort(function (left, right) {
-            var leftPosition = left.querySelector('[data-omo-stats-point-position]');
-            var rightPosition = right.querySelector('[data-omo-stats-point-position]');
-            return Number(leftPosition ? leftPosition.value : 0) - Number(rightPosition ? rightPosition.value : 0);
-        });
-        if (endpointRows.length < 2) {
-            return null;
-        }
-
-        var startField = endpointRows[0].querySelector('[data-omo-stats-point-date]');
-        var endField = endpointRows[endpointRows.length - 1].querySelector('[data-omo-stats-point-date]');
-        var startAt = startField && startField.value ? new Date(startField.value) : null;
-        var endAt = endField && endField.value ? new Date(endField.value) : null;
-        if (!(startAt instanceof Date) || Number.isNaN(startAt.getTime()) || !(endAt instanceof Date) || Number.isNaN(endAt.getTime()) || endAt <= startAt) {
-            return null;
-        }
-        return {startAt: startAt, endAt: endAt};
-    }
-
-    function formatDateTimeLocal(date) {
-        function pad(value) {
-            return String(value).padStart(2, '0');
-        }
-        return String(date.getFullYear())
-            + '-' + pad(date.getMonth() + 1)
-            + '-' + pad(date.getDate())
-            + 'T' + pad(date.getHours())
-            + ':' + pad(date.getMinutes());
-    }
-
-    function syncIntermediateDates() {
-        var endpoints = getEndpointDates();
-        rows().forEach(function (row) {
-            if (row.getAttribute('data-endpoint') === '1') {
-                return;
-            }
-            var positionField = row.querySelector('[data-omo-stats-point-position]');
-            var dateField = row.querySelector('[data-omo-stats-point-date]');
-            if (!positionField || !dateField || !endpoints) {
-                if (dateField) {
-                    dateField.value = '';
-                }
-                return;
-            }
-            var position = Number(positionField.value || 0);
-            if (!Number.isFinite(position)) {
-                dateField.value = '';
-                return;
-            }
-            var timestamp = endpoints.startAt.getTime() + ((endpoints.endAt.getTime() - endpoints.startAt.getTime()) * (Math.max(0, Math.min(100, position)) / 100));
-            timestamp = Math.round(timestamp / 60000) * 60000;
-            dateField.value = formatDateTimeLocal(new Date(timestamp));
-        });
-    }
-
-    function getSliderBounds(row) {
-        var pointRows = rows().sort(function (left, right) {
-            var leftPosition = left.querySelector('[data-omo-stats-point-position]');
-            var rightPosition = right.querySelector('[data-omo-stats-point-position]');
-            return Number(leftPosition ? leftPosition.value : 0) - Number(rightPosition ? rightPosition.value : 0);
-        });
-        var rowIndex = pointRows.indexOf(row);
-        var previousPosition = rowIndex > 0 ? Number(pointRows[rowIndex - 1].querySelector('[data-omo-stats-point-position]').value || 0) : 0;
-        var nextPosition = rowIndex >= 0 && rowIndex < pointRows.length - 1 ? Number(pointRows[rowIndex + 1].querySelector('[data-omo-stats-point-position]').value || 100) : 100;
-        return {
-            min: row.getAttribute('data-endpoint') === '1' ? 0 : previousPosition + referencePositionStep,
-            max: row.getAttribute('data-endpoint') === '1' ? 100 : nextPosition - referencePositionStep,
-        };
-    }
-
-    function setRowPosition(row, position, shouldRenderRail) {
-        var positionField = row ? row.querySelector('[data-omo-stats-point-position]') : null;
-        if (!positionField || row.getAttribute('data-endpoint') === '1') {
-            return;
-        }
-        var bounds = getSliderBounds(row);
-        position = Math.max(bounds.min, Math.min(bounds.max, position));
-        position = Math.round(position / referencePositionStep) * referencePositionStep;
-        position = Math.max(bounds.min, Math.min(bounds.max, position));
-        position = Math.round(position * 10) / 10;
-        positionField.value = String(position);
-        syncIntermediateDates();
-        if (shouldRenderRail !== false) {
-            renderReferenceRail();
-        }
-    }
-
-    function renderReferenceRail() {
-        if (!referenceRail) {
-            return;
-        }
-        referenceRail.innerHTML = '';
-        rows().forEach(function (row, rowIndex) {
-            var positionField = row.querySelector('[data-omo-stats-point-position]');
-            var valueField = row.querySelector('[data-omo-stats-point-value]');
-            var position = positionField ? Number(positionField.value || 0) : 0;
-            if (!Number.isFinite(position)) {
-                position = 0;
-            }
-            position = Math.max(0, Math.min(100, position));
-            var isEndpoint = row.getAttribute('data-endpoint') === '1';
-            var stop = document.createElement('span');
-            stop.className = 'omo-stats-reference-editor__stop' + (isEndpoint ? ' is-endpoint' : '');
-            stop.style.left = String(position) + '%';
-            stop.title = String(position) + ' % · ' + String(valueField ? valueField.value : '');
-            if (!isEndpoint) {
-                stop.setAttribute('data-omo-stats-reference-slider', '');
-                stop.setAttribute('data-omo-stats-reference-slider-index', String(rowIndex));
-                stop.setAttribute('role', 'slider');
-                stop.setAttribute('tabindex', '0');
-                stop.setAttribute('aria-valuemin', '0');
-                stop.setAttribute('aria-valuemax', '100');
-                stop.setAttribute('aria-valuenow', String(position));
-                stop.setAttribute('aria-label', labels.position + ' ' + String(position) + ' %');
-            }
-            referenceRail.appendChild(stop);
-        });
-    }
-
-    function syncCeilingValues(sourceField) {
-        if (ceilingEditor || !typeField || typeField.value !== 'ceiling') {
-            return;
-        }
-        var pointRows = rows();
-        var firstValue = pointRows.length > 0 ? pointRows[0].querySelector('[data-omo-stats-point-value]') : null;
-        if (!firstValue) {
-            return;
-        }
-        var sharedValue = sourceField ? sourceField.value : firstValue.value;
-        pointRows.forEach(function (row) {
-            var valueField = row.querySelector('[data-omo-stats-point-value]');
-            if (valueField) {
-                valueField.value = sharedValue;
-            }
-        });
-    }
-
-    function syncReferenceType() {
-        var type = typeField ? typeField.value : 'none';
-        if (referenceEditor) {
-            referenceEditor.hidden = ceilingEditor ? type !== 'objective' : type === 'none';
-            Array.prototype.forEach.call(referenceEditor.querySelectorAll('input, button'), function (field) {
-                field.disabled = ceilingEditor ? type !== 'objective' : type === 'none';
-            });
-        }
-        if (ceilingEditor) {
-            ceilingEditor.hidden = type !== 'ceiling';
-            Array.prototype.forEach.call(ceilingEditor.querySelectorAll('input, button'), function (field) {
-                field.disabled = type !== 'ceiling';
-            });
-            if (ceilingValueField) {
-                ceilingValueField.required = type === 'ceiling';
-            }
-        }
-        if (addButton) {
-            addButton.hidden = type !== 'objective';
-            addButton.disabled = type !== 'objective';
-        }
-        if (!ceilingEditor) {
-            syncCeilingValues();
-        }
-        renderReferenceRail();
-    }
-
-    function suggestPosition() {
-        var positions = rows().map(function (row) {
-            var field = row.querySelector('[data-omo-stats-point-position]');
-            return field ? Number(field.value || 0) : 0;
-        }).filter(function (value) {
-            return Number.isFinite(value);
-        }).sort(function (left, right) {
-            return left - right;
-        });
-        if (positions.length < 2) {
-            return 50;
-        }
-        var bestStart = positions[0];
-        var bestGap = 0;
-        for (var index = 1; index < positions.length; index += 1) {
-            var gap = positions[index] - positions[index - 1];
-            if (gap > bestGap) {
-                bestGap = gap;
-                bestStart = positions[index - 1];
-            }
-        }
-        return Math.round((bestStart + (bestGap / 2)) * 10000) / 10000;
-    }
-
-    function addIntermediatePoint() {
-        if (!pointList) {
-            return;
-        }
-        var row = document.createElement('div');
-        row.className = 'omo-stats-reference-point generic-soft-panel';
-        row.setAttribute('data-omo-stats-reference-point', '');
-        row.setAttribute('data-endpoint', '0');
-        row.innerHTML = ''
-            + '<div class="omo-stats-reference-point__badge"></div>'
-            + '<label class="omo-stats-field generic-form-field"><span class="generic-form-label"></span><input type="number" class="generic-form-control" name="reference_points[0][position_percent]" min="0" max="100" step="0.2" data-omo-stats-point-position required></label>'
-            + '<label class="omo-stats-field generic-form-field omo-stats-field--date"><span class="generic-form-label"></span><input type="datetime-local" class="generic-form-control" name="reference_points[0][point_at]" data-omo-stats-point-date readonly aria-readonly="true"></label>'
-            + '<label class="omo-stats-field generic-form-field"><span class="generic-form-label"></span><input type="number" class="generic-form-control" name="reference_points[0][value]" step="any" data-omo-stats-point-value required></label>'
-            + '<button type="button" class="generic-action-button generic-action-button--danger omo-stats-reference-point__remove" data-omo-stats-remove-reference-point></button>';
-        row.querySelector('.omo-stats-reference-point__badge').textContent = labels.intermediate;
-        row.querySelectorAll('.omo-stats-field span')[0].textContent = labels.position;
-        row.querySelectorAll('.omo-stats-field span')[1].textContent = labels.dateAuto;
-        row.querySelectorAll('.omo-stats-field span')[2].textContent = labels.value;
-        row.querySelector('[data-omo-stats-remove-reference-point]').textContent = labels.remove;
-        row.querySelector('[data-omo-stats-point-position]').value = String(suggestPosition());
-        row.querySelector('[data-omo-stats-point-value]').value = '';
-        pointList.appendChild(row);
-        sortPointRows();
-        syncIntermediateDates();
-        renderReferenceRail();
-        row.querySelector('[data-omo-stats-point-value]').focus();
-    }
-
-    if (typeField) {
-        typeField.addEventListener('change', syncReferenceType);
-    }
-    if (addButton) {
-        addButton.addEventListener('click', addIntermediatePoint);
-    }
-    if (pointList) {
-        pointList.addEventListener('click', function (event) {
-            var removeButton = event.target.closest('[data-omo-stats-remove-reference-point]');
-            if (!removeButton) {
-                return;
-            }
-            var row = removeButton.closest('[data-omo-stats-reference-point]');
-            if (row && row.getAttribute('data-endpoint') !== '1') {
-                row.remove();
-                reindexRows();
-                syncIntermediateDates();
-                renderReferenceRail();
-            }
-        });
-        pointList.addEventListener('input', function (event) {
-            if (event.target.matches('[data-omo-stats-point-value]')) {
-                syncCeilingValues(event.target);
-            }
-            syncIntermediateDates();
-            renderReferenceRail();
-        });
-        pointList.addEventListener('change', function (event) {
-            if (event.target.matches('[data-omo-stats-point-position]')) {
-                var positionRow = event.target.closest('[data-omo-stats-reference-point]');
-                sortPointRows();
-                if (positionRow && positionRow.getAttribute('data-endpoint') !== '1') {
-                    setRowPosition(positionRow, Number(event.target.value || 0), false);
-                }
-                syncIntermediateDates();
-                renderReferenceRail();
-            }
-        });
-    }
-
-    var activeReferenceSlider = null;
-    var activeReferencePointerId = null;
-
-    function getReferenceSliderRow(slider) {
-        var rowIndex = Number(slider ? slider.getAttribute('data-omo-stats-reference-slider-index') : -1);
-        var pointRows = rows();
-        return Number.isInteger(rowIndex) && rowIndex >= 0 && rowIndex < pointRows.length ? pointRows[rowIndex] : null;
-    }
-
-    function updateReferenceSliderFromPointer(slider, event) {
-        var row = getReferenceSliderRow(slider);
-        if (!row) {
-            return;
-        }
-        var railRect = referenceRail.getBoundingClientRect();
-        var position = ((event.clientX - railRect.left) / railRect.width) * 100;
-        setRowPosition(row, position, false);
-        var positionField = row.querySelector('[data-omo-stats-point-position]');
-        var valueField = row.querySelector('[data-omo-stats-point-value]');
-        var currentPosition = positionField ? positionField.value : '0';
-        slider.style.left = currentPosition + '%';
-        slider.title = currentPosition + ' % - ' + String(valueField ? valueField.value : '');
-        slider.setAttribute('aria-valuenow', currentPosition);
-        slider.setAttribute('aria-label', labels.position + ' ' + currentPosition + ' %');
-    }
-
-    function stopReferenceSliderDrag() {
-        if (!activeReferenceSlider) {
-            return;
-        }
-        if (activeReferencePointerId !== null && activeReferenceSlider.hasPointerCapture(activeReferencePointerId)) {
-            activeReferenceSlider.releasePointerCapture(activeReferencePointerId);
-        }
-        activeReferenceSlider.classList.remove('is-dragging');
-        activeReferenceSlider = null;
-        activeReferencePointerId = null;
-        renderReferenceRail();
-    }
-
-    if (referenceRail) {
-        referenceRail.addEventListener('pointerdown', function (event) {
-            var slider = event.target.closest('[data-omo-stats-reference-slider]');
-            if (!slider) {
-                return;
-            }
-            event.preventDefault();
-            activeReferenceSlider = slider;
-            activeReferencePointerId = event.pointerId;
-            slider.classList.add('is-dragging');
-            if (typeof slider.setPointerCapture === 'function') {
-                slider.setPointerCapture(event.pointerId);
-            }
-        });
-        document.addEventListener('pointermove', function (event) {
-            if (!activeReferenceSlider || activeReferencePointerId !== event.pointerId) {
-                return;
-            }
-            updateReferenceSliderFromPointer(activeReferenceSlider, event);
-        });
-        document.addEventListener('pointerup', function (event) {
-            if (activeReferencePointerId === event.pointerId) {
-                stopReferenceSliderDrag();
-            }
-        });
-        document.addEventListener('pointercancel', function (event) {
-            if (activeReferencePointerId === event.pointerId) {
-                stopReferenceSliderDrag();
-            }
-        });
-        referenceRail.addEventListener('keydown', function (event) {
-            var slider = event.target.closest('[data-omo-stats-reference-slider]');
-            if (!slider) {
-                return;
-            }
-            var row = getReferenceSliderRow(slider);
-            var positionField = row ? row.querySelector('[data-omo-stats-point-position]') : null;
-            if (!row || !positionField) {
-                return;
-            }
-            var delta = event.shiftKey ? 5 : 1;
-            if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
-                event.preventDefault();
-                setRowPosition(row, Number(positionField.value || 0) - delta);
-            } else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
-                event.preventDefault();
-                setRowPosition(row, Number(positionField.value || 0) + delta);
-            } else if (event.key === 'Home') {
-                event.preventDefault();
-                setRowPosition(row, 0);
-            } else if (event.key === 'End') {
-                event.preventDefault();
-                setRowPosition(row, 100);
-            }
-        });
-    }
-
-    var saveButton = document.getElementById('btn_submit');
-    if (saveButton) {
-        saveButton.addEventListener('click', function (event) {
-            saveButton.disabled = true;
-            saveButton.setAttribute('aria-busy', 'true');
-        }, true);
-    }
-
-    reindexRows();
-    syncReferenceType();
-    syncIntermediateDates();
-    renderReferenceRail();
-    }
     syncSourceType();
+    syncReferenceScale();
 })();
 </script>

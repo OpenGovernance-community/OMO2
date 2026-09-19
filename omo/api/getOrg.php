@@ -104,7 +104,7 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Fallback shown when an authority has no parent authority.',
         ],
         'leftbar.empty.message' => [
-            'text' => 'Aucun contenu n est encore renseigne pour ce holon.',
+            'text' => 'Aucun contenu n’est encore renseigné pour cet espace.',
             'context' => 'Message shown in the left panel when the current holon has no visible content.',
         ],
         'leftbar.empty.section_title' => [
@@ -112,11 +112,11 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Section title shown in the left panel when the current holon has no visible content.',
         ],
         'leftbar.error.holon_access_denied' => [
-            'text' => 'Acces refuse a ce holon.',
+            'text' => 'Accès refusé à cet espace.',
             'context' => 'Error message shown in the left panel when the current holon cannot be viewed.',
         ],
         'leftbar.error.holon_not_found' => [
-            'text' => 'Holon introuvable pour cette organisation.',
+            'text' => 'Espace introuvable pour cette organisation.',
             'context' => 'Error message shown in the left panel when the requested holon cannot be found.',
         ],
         'leftbar.error.organization_access_denied' => [

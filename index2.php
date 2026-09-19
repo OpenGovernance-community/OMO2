@@ -50,7 +50,7 @@ $sourceLang = [
     'home.cap.structure.title' => ['text' => 'Clarifier sans rigidifier.', 'context' => 'Structure capability subheading.'],
     'home.cap.structure.body' => ['text' => 'Qui porte quoi, et dans quel but ? Rendez visibles les équipes, les rôles et leurs responsabilités. Votre structure peut évoluer avec la vie du collectif.', 'context' => 'Structure capability body.'],
     'home.cap.share.title' => ['text' => 'Le bon contexte pour agir.', 'context' => 'Sharing capability subheading.'],
-    'home.cap.share.body' => ['text' => 'Retrouvez les projets, les activités, les documents et les rendez-vous dans leur contexte. Chacun accède à ce dont il a besoin pour contribuer.', 'context' => 'Sharing capability body.'],
+    'home.cap.share.body' => ['text' => 'Retrouvez les projets, les tâches récurrentes, les documents et les rendez-vous dans leur contexte. Chacun accède à ce dont il a besoin pour contribuer.', 'context' => 'Sharing capability body.'],
     'home.cap.decide.title' => ['text' => 'Faire une place aux bonnes voix.', 'context' => 'Decision capability subheading.'],
     'home.cap.decide.body' => ['text' => 'Partagez une proposition, recueillez les avis, puis choisissez comment décider : consentement, vote ou jugement majoritaire. Le collectif contribue et les responsabilités restent claires.', 'context' => 'Decision capability body.'],
     'home.cap.document.title' => ['text' => 'Garder le fil de votre histoire.', 'context' => 'Documentation capability subheading.'],
