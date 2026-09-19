@@ -11,11 +11,11 @@ $holon = new Holon();
 $errorMessage = '';
 
 if ($organizationId <= 0 || $holonId <= 0) {
-    $errorMessage = "Le holon a supprimer est invalide.";
+$errorMessage = "L’espace à supprimer est invalide.";
 } elseif (!$organization->load($organizationId) || !$holon->load($holonId) || !$organization->containsHolon($holon)) {
-    $errorMessage = 'Le holon demande est introuvable.';
+$errorMessage = 'L’espace demandé est introuvable.';
 } elseif (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete() || !in_array((int)$holon->get('IDtypeholon'), array(1, 2, 3), true)) {
-    $errorMessage = "Vous n'avez pas les droits pour supprimer ce holon.";
+$errorMessage = "Vous n'avez pas les droits pour supprimer cet espace.";
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(422);
         echo json_encode(array(
             'status' => false,
-            'message' => (string)($result['message'] ?? "Le holon n'a pas pu etre supprime."),
+        'message' => (string)($result['message'] ?? "L’espace n’a pas pu être supprimé."),
             'parent' => $result['parent'] ?? null,
             'holon' => $result['holon'] ?? null,
         ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     echo json_encode(array(
         'status' => true,
-        'message' => (string)($result['message'] ?? 'Holon supprime.'),
+        'message' => (string)($result['message'] ?? 'Espace supprimé.'),
         'parent' => $result['parent'] ?? null,
         'holon' => $result['holon'] ?? null,
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -69,7 +69,7 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
         <div class="omo-holon-delete__header generic-drawer-header generic-drawer-header--sticky">
             <div class="generic-drawer-header__copy omo-holon-delete__header-copy">
                 <div class="generic-card-title generic-card-title--eyebrow">Suppression</div>
-                <h3 class="generic-card-title generic-card-title--medium">Supprimer un holon</h3>
+    <h3 class="generic-card-title generic-card-title--medium">Supprimer un espace</h3>
             </div>
         </div>
         <div class="omo-holon-delete__shell generic-drawer-content">
@@ -196,7 +196,7 @@ $typeLabel = strtolower((string)$holon->getTemplateLabel(true));
                     }
                 })
                 .catch(function () {
-                    feedback.textContent = 'Impossible de supprimer ce holon pour le moment.';
+feedback.textContent = 'Impossible de supprimer cet espace pour le moment.';
                     submitButton.disabled = false;
                 });
         });

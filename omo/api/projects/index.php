@@ -45,7 +45,7 @@ $projectAssignment = strtolower(trim((string)omoApplicationViewPreferencesGetIni
     'assignment',
     'all'
 )));
-$projectAssignment = in_array($projectAssignment, ['mine', 'followed'], true) ? $projectAssignment : 'all';
+$projectAssignment = in_array($projectAssignment, ['mine', 'spaces', 'followed'], true) ? $projectAssignment : 'all';
 $canUseHolonSort = in_array($projectScope, ['children', 'descendants'], true);
 $availableProjectSorts = ['planned'];
 if ($usesPriority) {
@@ -157,7 +157,7 @@ foreach ($allProjects as $allProject) {
         !($allProject instanceof Project)
         || !omoProjectsCanViewProject($allProject, $context)
         || !omoProjectsScopeContainsProject($allProject, $projectScope, $scopeCurrentHolonId, $scopeHolonIds)
-        || ($projectAssignment === 'mine' && (int)$allProject->get('IDuser') !== $currentUserId)
+        || !omoProjectsMatchesAssignment($allProject, $projectAssignment, $currentUserId, $organizationId)
         || ($projectAssignment === 'followed' && !isset($followedProjectIds[(int)$allProject->getId()]))
     ) {
         continue;
@@ -764,12 +764,14 @@ $canPropose = omoProjectsCanProposeContext($context);
 $emptyKey = 'projects.empty.' . $projectScope;
 if ($projectAssignment === 'mine') {
     $emptyKey = 'projects.empty.mine';
+} elseif ($projectAssignment === 'spaces') {
+    $emptyKey = 'projects.empty.spaces';
 } elseif ($projectAssignment === 'followed') {
     $emptyKey = 'projects.empty.followed';
 }
 $projectAssignmentLabelKey = $projectAssignment === 'mine'
     ? 'mine'
-    : ($projectAssignment === 'followed' ? 'followed' : 'everyone');
+    : ($projectAssignment === 'spaces' ? 'spaces' : ($projectAssignment === 'followed' ? 'followed' : 'everyone'));
 $projectTexts = [
     'loading' => omoProjectsT('projects.loading'),
     'loadingError' => omoProjectsT('projects.loading_error'),
@@ -924,6 +926,7 @@ $projectTexts = [
                             <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoProjectsT('projects.filters.assignment')) ?></span>
                             <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoProjectsT('projects.assignment.aria')) ?>">
                                 <button type="button" class="omo-segmented__button<?= $projectAssignment === 'mine' ? ' is-active' : '' ?>" data-omo-projects-assignment="mine" aria-pressed="<?= $projectAssignment === 'mine' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.assignment.mine')) ?></button>
+                                <button type="button" class="omo-segmented__button<?= $projectAssignment === 'spaces' ? ' is-active' : '' ?>" data-omo-projects-assignment="spaces" aria-pressed="<?= $projectAssignment === 'spaces' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.assignment.spaces')) ?></button>
                                 <button type="button" class="omo-segmented__button<?= $projectAssignment === 'followed' ? ' is-active' : '' ?>" data-omo-projects-assignment="followed" aria-pressed="<?= $projectAssignment === 'followed' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.assignment.followed')) ?></button>
                                 <button type="button" class="omo-segmented__button<?= $projectAssignment === 'all' ? ' is-active' : '' ?>" data-omo-projects-assignment="all" aria-pressed="<?= $projectAssignment === 'all' ? 'true' : 'false' ?>"><?= omoApiEscape(omoProjectsT('projects.assignment.everyone')) ?></button>
                             </div>
@@ -1290,4 +1293,4 @@ $projectTexts = [
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="/common/choice/change-details.js?v=20260816-governance-details"></script>
 <script src="/common/chat/thread.js?v=20260910-project-chat"></script>
-<script src="/omo/api/projects/projects.js?v=20260918-project-followed-filter"></script>
+<script src="/omo/api/projects/projects.js?v=20260919-project-spaces-filter"></script>

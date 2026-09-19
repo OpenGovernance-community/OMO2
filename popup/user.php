@@ -213,7 +213,7 @@ function omoUserContextRenderRightsFragment($targetUserId, $organizationId)
         <div class="omo-user-context__pane-copy">
             <div class="omo-user-context__section-kicker generic-card-title generic-card-title--eyebrow">Droits</div>
             <div class="generic-card-title generic-card-title--medium">Droits effectifs dans l'organisation</div>
-            <div class="omo-user-context__section-copy">Chaque droit est affiche avec sa portee calculee et le holon source quand il peut etre retrouve.</div>
+            <div class="omo-user-context__section-copy">Chaque droit est affiché avec sa portée calculée et l’espace source quand il peut être retrouvé.</div>
         </div>
 
         <?php if (count($groupedRights) === 0): ?>
@@ -503,7 +503,7 @@ function omoUserContextRenderPendingInvitationFragment(array $context)
                     <?php endforeach; ?>
                 </ul>
             <?php elseif ($hasPendingInvitation): ?>
-                <div class="omo-user-pending-invitation__empty">Cette invitation attend encore une reponse, mais aucun holon detaille n a pu etre liste.</div>
+                <div class="omo-user-pending-invitation__empty">Cette invitation attend encore une réponse, mais aucun espace détaillé n’a pu être listé.</div>
             <?php else: ?>
                 <div class="omo-user-pending-invitation__empty"><?= omoApiEscape($missingInvitationCopy !== '' ? $missingInvitationCopy : 'Aucune invitation active n a ete retrouvee pour ce membre. La vue affichera le profil normal des que la situation sera regularisee.') ?></div>
             <?php endif; ?>

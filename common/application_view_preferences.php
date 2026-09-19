@@ -11,17 +11,17 @@ if (!function_exists('omoApplicationViewPreferencesSourceLang')) {
     {
         return array(
             'app_view.save_options' => array('text' => 'Autres options d’enregistrement', 'context' => 'Accessible label for the application view save options menu.'),
-            'app_view.save_holon' => array('text' => 'Enregistrer par défaut pour ce holon', 'context' => 'Save the current application view as the default for one holon.'),
-            'app_view.save_organization_template' => array('text' => 'Enregistrer pour tous les holons du modèle {templateName}', 'context' => 'Save the current application view for holons directly inheriting one organization template.'),
+			'app_view.save_holon' => array('text' => 'Enregistrer par défaut pour cet espace', 'context' => 'Save the current application view as the default for one space.'),
+			'app_view.save_organization_template' => array('text' => 'Enregistrer pour tous les espaces du modèle {templateName}', 'context' => 'Save the current application view for spaces directly inheriting one organization template.'),
             'app_view.save_organization' => array('text' => 'Enregistrer par défaut pour cette organisation', 'context' => 'Save the current application view as the organization-wide default.'),
-            'app_view.save_application_type' => array('text' => 'Enregistrer pour tous les holons de type {typeName}', 'context' => 'Save the current application view for one base holon type in all organizations.'),
+			'app_view.save_application_type' => array('text' => 'Enregistrer pour tous les espaces de type {typeName}', 'context' => 'Save the current application view for one base space type in all organizations.'),
             'app_view.save_global' => array('text' => 'Enregistrer par défaut global', 'context' => 'Save the current application view as the global default.'),
             'app_view.clear_temporary' => array('text' => 'Restaurer la vue par défaut', 'context' => 'Remove the temporary discovery application view.'),
             'app_view.clear_personal' => array('text' => 'Effacer ma préférence personnelle', 'context' => 'Remove the personal application view and restore the configured default.'),
-            'app_view.clear_holon' => array('text' => 'Effacer le défaut de ce holon', 'context' => 'Remove the holon application view default.'),
+			'app_view.clear_holon' => array('text' => 'Effacer le défaut de cet espace', 'context' => 'Remove the space application view default.'),
             'app_view.clear_organization_template' => array('text' => 'Effacer le défaut du modèle {templateName}', 'context' => 'Remove the organization template application view default.'),
             'app_view.clear_organization' => array('text' => 'Effacer le défaut de cette organisation', 'context' => 'Remove the organization-wide application view default.'),
-            'app_view.clear_application_type' => array('text' => 'Effacer le défaut du type {typeName}', 'context' => 'Remove the base holon type application view default.'),
+			'app_view.clear_application_type' => array('text' => 'Effacer le défaut du type {typeName}', 'context' => 'Remove the base space type application view default.'),
             'app_view.clear_global' => array('text' => 'Effacer le défaut global', 'context' => 'Remove the global application view default.'),
             'app_view.save_error' => array('text' => 'Impossible d’enregistrer cette vue par défaut.', 'context' => 'Error shown when a default application view cannot be saved.'),
         );

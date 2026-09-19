@@ -47,3 +47,24 @@ if (!function_exists('omoDashboardUserIsAssociatedWithHolon')) {
         return $cache[$cacheKey];
     }
 }
+
+if (!function_exists('omoDashboardMatchesResponsibleAudience')) {
+    function omoDashboardMatchesResponsibleAudience($audience, $responsibleUserId, ?\dbObject\Holon $holon, $userId, $organizationId): bool
+    {
+        $audience = trim(mb_strtolower((string)$audience, 'UTF-8'));
+        if ($audience === 'all') {
+            return true;
+        }
+
+        $userId = (int)$userId;
+        $responsibleUserId = (int)$responsibleUserId;
+        $isAssociated = $holon instanceof \dbObject\Holon
+            && omoDashboardUserIsAssociatedWithHolon($userId, $organizationId, $holon);
+
+        if ($audience === 'mine') {
+            return $userId > 0 && ($responsibleUserId === $userId || ($responsibleUserId <= 0 && $isAssociated));
+        }
+
+        return $audience === 'roles' && $isAssociated;
+    }
+}

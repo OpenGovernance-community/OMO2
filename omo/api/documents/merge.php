@@ -11,7 +11,7 @@ $sourceLang = [
     'documents.merge.field.title' => ['text' => 'Titre', 'context' => 'Label of the merged document title.'],
     'documents.merge.field.visibility' => ['text' => 'Lecture', 'context' => 'Label of the merged document read visibility selector.'],
     'documents.merge.field.edit_visibility' => ['text' => 'Modification', 'context' => 'Label of the merged document edit visibility selector.'],
-    'documents.merge.visibility.help_no_holon' => ['text' => 'Ce document n’est pas lié à un holon. Les portées cercle et rôle ne sont pas disponibles.', 'context' => 'Visibility help shown when the merged document has no holon context.'],
+    'documents.merge.visibility.help_no_holon' => ['text' => 'Ce document n’est pas lié à un espace. Les portées cercle et rôle ne sont pas disponibles.', 'context' => 'Visibility help shown when the merged document has no space context.'],
     'documents.merge.field.tags' => ['text' => 'Tags', 'context' => 'Heading above tags inherited by the merged document.'],
     'documents.merge.field.documents' => ['text' => 'Documents à fusionner', 'context' => 'Heading above the ordered source document list.'],
     'documents.merge.help.order' => ['text' => 'Utilisez les flèches ou glissez les documents pour définir l’ordre de leur contenu.', 'context' => 'Help text explaining how to reorder merge sources.'],

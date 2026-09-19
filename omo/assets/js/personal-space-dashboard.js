@@ -87,7 +87,13 @@
     }
 
     function normalizeAudience(audience) {
-        return audience === 'mine' ? 'mine' : 'all';
+        return audience === 'mine' || audience === 'roles' ? audience : 'all';
+    }
+
+    function moduleAudiences(type) {
+        return ['projects', 'stats', 'checklist', 'activities'].indexOf(type) !== -1
+            ? ['all', 'mine', 'roles']
+            : ['all', 'mine'];
     }
 
     function normalizeVideo(video) {
@@ -319,7 +325,7 @@
         if (configuratorAudiences) {
             configuratorAudiences.innerHTML = '';
             if (moduleHasAudienceSetting(module.type)) {
-                ['all', 'mine'].forEach(function (audience) {
+                moduleAudiences(module.type).forEach(function (audience) {
                     var button = document.createElement('button');
                     var active = audience === pendingAudience;
                     button.type = 'button';

@@ -21,14 +21,13 @@ if (!empty($enabledAppHashes['checklist']) && $scopeReferenceHolon instanceof Ho
 
         $templateRoot = $checklist->getTemplateRoot();
         $checklistHolon = $templateRoot instanceof Project ? $templateRoot->getHolon() : null;
-        $isMine = $currentUserId > 0
-            && (
-                (int)$checklist->get('IDuser_responsible') === $currentUserId
-                || ((int)$checklist->get('IDuser_responsible') <= 0
-                    && $checklistHolon instanceof Holon
-                    && omoDashboardUserIsAssociatedWithHolon($currentUserId, $currentOrganizationId, $checklistHolon))
-            );
-        if ($dashboardModuleAudience === 'mine' && !$isMine) {
+        if (!omoDashboardMatchesResponsibleAudience(
+            $dashboardModuleAudience,
+            $checklist->get('IDuser_responsible'),
+            $checklistHolon instanceof Holon ? $checklistHolon : null,
+            $currentUserId,
+            $currentOrganizationId
+        )) {
             continue;
         }
 

@@ -15,7 +15,7 @@ $sourceLang = [
         'context' => 'Main heading for the work time tracker.',
     ],
     'timer.page.intro' => [
-        'text' => 'Choisissez une organisation et le holon dans lequel vous travaillez, puis lancez le chronometre.',
+            'text' => 'Choisissez une organisation et l’espace dans lequel vous travaillez, puis lancez le chronomètre.',
         'context' => 'Introductory text for the work time tracker.',
     ],
     'timer.organization.heading' => [
@@ -35,7 +35,7 @@ $sourceLang = [
         'context' => 'Loading label for the holon structure picker.',
     ],
     'timer.structure.select_holon' => [
-        'text' => 'Touchez un holon pour le choisir.',
+            'text' => 'Touchez un espace pour le choisir.',
         'context' => 'Instruction shown below the holon structure picker.',
     ],
     'timer.project.heading' => [
@@ -67,7 +67,7 @@ $sourceLang = [
         'context' => 'Loading message for the project list.',
     ],
     'timer.project.empty' => [
-        'text' => 'Aucun projet pour ce holon avec ce statut.',
+            'text' => 'Aucun projet pour cet espace avec ce statut.',
         'context' => 'Empty message for the project list.',
     ],
     'timer.project.none' => [
@@ -79,7 +79,7 @@ $sourceLang = [
         'context' => 'Label for the organization selection view.',
     ],
     'timer.navigation.holon' => [
-        'text' => 'Holons',
+            'text' => 'Espaces',
         'context' => 'Label for the holon selection view.',
     ],
     'timer.navigation.project' => [
@@ -107,7 +107,7 @@ $sourceLang = [
         'context' => 'Feedback shown when the holon view is unavailable.',
     ],
     'timer.navigation.need_holon' => [
-        'text' => 'Choisissez d abord un holon.',
+            'text' => 'Choisissez d’abord un espace.',
         'context' => 'Feedback shown when the project view is unavailable.',
     ],
     'timer.control.start' => [
@@ -183,7 +183,7 @@ $sourceLang = [
         'context' => 'Confirmation before deleting a work time entry.',
     ],
     'timer.control.no_holon' => [
-        'text' => 'Choisissez d abord un holon.',
+            'text' => 'Choisissez d’abord un espace.',
         'context' => 'Message shown when the user tries to start without a holon.',
     ],
     'timer.status.ready' => [

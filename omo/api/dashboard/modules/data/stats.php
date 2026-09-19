@@ -41,14 +41,13 @@ if (!empty($enabledAppHashes['stats'])) {
 
     foreach ($indicatorById as $indicator) {
         $indicatorHolon = $indicator->getHolon();
-        $isMine = $currentUserId > 0
-            && (
-                (int)$indicator->get('IDuser_responsible') === $currentUserId
-                || ((int)$indicator->get('IDuser_responsible') <= 0
-                    && $indicatorHolon instanceof \dbObject\Holon
-                    && omoDashboardUserIsAssociatedWithHolon($currentUserId, $currentOrganizationId, $indicatorHolon))
-            );
-        if ($dashboardModuleAudience === 'mine' && !$isMine) {
+        if (!omoDashboardMatchesResponsibleAudience(
+            $dashboardModuleAudience,
+            $indicator->get('IDuser_responsible'),
+            $indicatorHolon instanceof \dbObject\Holon ? $indicatorHolon : null,
+            $currentUserId,
+            $currentOrganizationId
+        )) {
             continue;
         }
         $overdueInfo = omoStatsGetIndicatorOverdueInfo($indicator);

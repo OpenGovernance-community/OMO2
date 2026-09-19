@@ -101,6 +101,23 @@
     min-height: 240px;
 }
 
+.omo-stats-group-editor {
+    padding: 0;
+}
+
+.omo-stats-group-editor__sources {
+    min-width: 0;
+}
+
+.omo-stats-group-editor__source-option {
+    align-self: end;
+    min-height: var(--generic-form-control-min-height, 40px);
+}
+
+.omo-stats-group-editor .omo-stats-picker__select {
+    min-height: 168px;
+}
+
 .omo-stats-picker__actions {
     display: flex;
     justify-content: flex-end;
@@ -939,13 +956,8 @@ button.omo-stats-group-detail__legend-item:focus-visible {
     gap: 8px;
 }
 
-.omo-stats-editor .admin-edit,
-.omo-stats-editor .admin-edit__panel {
-    margin: 0;
-}
-
 .omo-stats-schedule__fields {
-    --generic-form-grid-min: 240px;
+    --param-form-grid-min: 240px;
 }
 
 .omo-stats-reference-editor {
@@ -1047,18 +1059,14 @@ button.omo-stats-group-detail__legend-item:focus-visible {
 
 .omo-stats-reference-editor .omo-stats-reference-point {
     display: grid;
-    grid-template-columns: minmax(90px, 0.65fr) minmax(170px, 1fr) minmax(100px, 0.75fr) auto;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
     gap: 10px;
     align-items: end;
-    position: relative;
-    min-width: 520px;
-    padding-top: 32px;
+    min-width: 0;
 }
 
 .omo-stats-reference-point__badge {
-    position: absolute;
-    top: 8px;
-    left: 14px;
+    grid-column: 1 / -1;
     color: var(--color-text-light, #64748b);
     font-size: 0.72rem;
     font-weight: 800;

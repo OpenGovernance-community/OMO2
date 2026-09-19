@@ -42,7 +42,7 @@ if ($holonId <= 0) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => 'Le holon à supprimer est invalide.',
+        'message' => 'L’espace à supprimer est invalide.',
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -55,7 +55,7 @@ if (!($result['status'] ?? false)) {
     echo json_encode(
         array(
             'status' => 'error',
-            'message' => (string)($result['message'] ?? "Le holon n'a pas pu être supprimé."),
+        'message' => (string)($result['message'] ?? "L’espace n’a pas pu être supprimé."),
         ),
         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
     );
@@ -65,7 +65,7 @@ if (!($result['status'] ?? false)) {
 echo json_encode(
     array(
         'status' => 'ok',
-        'message' => (string)($result['message'] ?? 'Holon supprimé.'),
+        'message' => (string)($result['message'] ?? 'Espace supprimé.'),
         'holon' => $result['holon'] ?? null,
         'parent' => $result['parent'] ?? null,
     ),

@@ -40,7 +40,7 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.action.choose' => ['text' => 'Choisissez une modification', 'context' => 'Governance action chooser title.'],
             'governance.action.rule' => ['text' => 'Règle', 'context' => 'Rule selection field.'],
             'governance.action.authority' => ['text' => 'Domaine d’autorité', 'context' => 'Rule authority field.'],
-            'governance.action.local_rule' => ['text' => 'Règle locale au holon', 'context' => 'Local holon rule option.'],
+            'governance.action.local_rule' => ['text' => 'Règle locale à l’espace', 'context' => 'Local space rule option.'],
             'governance.action.intention' => ['text' => 'Intention', 'context' => 'Rule intention field.'],
             'governance.action.content' => ['text' => 'Règle', 'context' => 'Rule content field.'],
             'governance.action.review_date' => ['text' => 'Date de requestionnement', 'context' => 'Rule review date field.'],

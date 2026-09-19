@@ -11,7 +11,7 @@ $sourceLang = [
     'calendar.connect.popup.title' => ['text' => 'Connecter le calendrier', 'context' => 'Title of the calendar connection popup.'],
     'calendar.connect.tab.omo' => ['text' => 'Connecter OMO', 'context' => 'Tab with OMO CalDAV details.'],
     'calendar.connect.tab.external' => ['text' => 'Ajouter un agenda externe', 'context' => 'Tab used to connect a personal external CalDAV calendar.'],
-    'calendar.connect.context' => ['text' => 'Holon de base', 'context' => 'Label for the base holon of a scoped CalDAV calendar.'],
+    'calendar.connect.context' => ['text' => 'Espace de base', 'context' => 'Label for the base space of a scoped CalDAV calendar.'],
     'calendar.connect.visibility' => ['text' => 'Visibilite', 'context' => 'Label for the visibility range of a scoped CalDAV calendar.'],
     'calendar.connect.scope.contextual' => ['text' => 'Contexte courant', 'context' => 'CalDAV range label for the current holon only.'],
     'calendar.connect.scope.children' => ['text' => 'Enfants directs', 'context' => 'CalDAV range label for the current holon and its direct children.'],

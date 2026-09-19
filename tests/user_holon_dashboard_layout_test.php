@@ -44,7 +44,15 @@ $scopedLayout = UserHolon::normalizeDashboardLayout(array(
 assertDashboardLayout($scopedLayout[0]['settings']['scope'] === 'descendants', 'A valid module scope must be stored in the layout.');
 assertDashboardLayout($scopedLayout[0]['settings']['audience'] === 'mine', 'A valid module audience must be stored in the layout.');
 assertDashboardLayout($scopedLayout[1]['settings']['scope'] === 'contextual', 'An invalid module scope must fall back to the local scope.');
+assertDashboardLayout(UserHolon::normalizeDashboardModuleSettings('stats', array('audience' => 'roles'))['audience'] === 'roles', 'The indicators dashboard module must retain the roles audience.');
+assertDashboardLayout(UserHolon::normalizeDashboardModuleSettings('activities', array('audience' => 'roles'))['audience'] === 'roles', 'The recurring tasks dashboard module must retain the spaces audience.');
+assertDashboardLayout(UserHolon::normalizeDashboardModuleSettings('projects', array('audience' => 'roles'))['audience'] === 'roles', 'The projects dashboard module must retain the spaces audience.');
+assertDashboardLayout(UserHolon::normalizeDashboardModuleSettings('checklist', array('audience' => 'roles'))['audience'] === 'roles', 'The checklists dashboard module must retain the spaces audience.');
 assertDashboardLayout(UserHolon::normalizeDashboardModuleSettings('stats', array('audience' => 'unsupported'))['audience'] === 'all', 'An invalid module audience must fall back to all items.');
+assertDashboardLayout(!isset(UserHolon::getDashboardModuleCatalog()['event']['settings']['audience']), 'The event module keeps its own filtering without a dashboard audience setting.');
+assertDashboardLayout(omoDashboardMatchesResponsibleAudience('all', 0, null, 0, 0), 'The all audience must not exclude an item.');
+assertDashboardLayout(omoDashboardMatchesResponsibleAudience('mine', 42, null, 42, 1), 'The mine audience must keep directly assigned items.');
+assertDashboardLayout(!omoDashboardMatchesResponsibleAudience('roles', 42, null, 42, 1), 'The spaces audience must require an associated space.');
 assertDashboardLayout(UserHolon::getDefaultDashboardLayout() === array(), 'The built-in dashboard fallback must be empty.');
 assertDashboardLayout(method_exists(ApplicationSetting::class, 'getDashboardGlobalDefaultLayout'), 'The global dashboard default must be readable from application settings.');
 assertDashboardLayout(method_exists(ApplicationSetting::class, 'saveDashboardGlobalDefaultLayout'), 'The global dashboard default must be writable through application settings.');

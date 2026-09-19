@@ -176,7 +176,7 @@ class DecisionProcess extends DbObject
             'evaluation_method' => 'Cle technique de la methode modulaire utilisee.',
             'visibility_type' => 'Controle qui peut voir la decision hors participants et proprietaires.',
             'parameters' => 'Configuration method-specific et options complementaires.',
-            'IDholon' => 'Contexte holon optionnel si la prise de decision est rattachee a un groupe.',
+            'IDholon' => 'Contexte espace optionnel si la prise de décision est rattachée à un groupe.',
         ];
     }
 
@@ -685,7 +685,7 @@ class DecisionProcess extends DbObject
         $organizationId = (int)$organizationId;
         $holonId = (int)$holonId;
         $disabledTypes = array();
-        $helpText = 'Les portees cercle et role suivent automatiquement le holon de la decision.';
+            $helpText = 'Les portées cercle et rôle suivent automatiquement l’espace de la décision.';
 
         if ($organizationId <= 0) {
             return array(
@@ -702,7 +702,7 @@ class DecisionProcess extends DbObject
         if ($holonId <= 0) {
             $disabledTypes[\dbObject\ObjectVisibility::TYPE_CIRCLE] = true;
             $disabledTypes[\dbObject\ObjectVisibility::TYPE_ROLE] = true;
-            $helpText = 'Cette decision n est pas liee a un holon. Les portees cercle et role ne sont pas disponibles.';
+            $helpText = 'Cette décision n’est pas liée à un espace. Les portées cercle et rôle ne sont pas disponibles.';
         } else {
             $holon = new \dbObject\Holon();
             if (
@@ -712,7 +712,7 @@ class DecisionProcess extends DbObject
             ) {
                 $disabledTypes[\dbObject\ObjectVisibility::TYPE_CIRCLE] = true;
                 $disabledTypes[\dbObject\ObjectVisibility::TYPE_ROLE] = true;
-                $helpText = 'Le holon de cette decision est introuvable. Les portees cercle et role ne sont pas disponibles.';
+            $helpText = 'L’espace de cette décision est introuvable. Les portées cercle et rôle ne sont pas disponibles.';
             } else {
                 if ((int)$holon->get('IDtypeholon') !== 1) {
                     $disabledTypes[\dbObject\ObjectVisibility::TYPE_ROLE] = true;
@@ -762,7 +762,7 @@ class DecisionProcess extends DbObject
         ) {
             return array(
                 'status' => false,
-                'text' => 'Holon de la decision introuvable.',
+                'text' => 'Espace de la décision introuvable.',
             );
         }
 

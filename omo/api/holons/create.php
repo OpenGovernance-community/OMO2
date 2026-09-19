@@ -19,7 +19,7 @@ $canAddHolonProperties = false;
 $hasCustomHolonAppearance = false;
 $hasCustomHolonAdminBounds = false;
 $hasDirectHolonPermissions = false;
-$directPermissionLabel = 'Droits associés au holon';
+$directPermissionLabel = 'Droits associés à l’espace';
 
 if ($organizationId <= 0) {
     $errorMessage = "Aucune organisation n'est actuellement sélectionnée.";
@@ -49,18 +49,18 @@ if ($organizationId <= 0) {
 		$directPermissionLabel = 'Droits associés au modèle';
 	}
     if ($holonId > 0 && (($editorData['mode'] ?? 'create') !== 'edit')) {
-        $errorMessage = "Le holon demandé est introuvable.";
+        $errorMessage = "L’espace demandé est introuvable.";
     } elseif (($editorData['mode'] ?? 'create') === 'edit' && !($editorData['canEdit'] ?? false)) {
-        $errorMessage = "Ce holon ne peut pas être édité avec ce formulaire.";
+        $errorMessage = "Cet espace ne peut pas être édité avec ce formulaire.";
     } elseif (($editorData['mode'] ?? 'create') !== 'edit' && !($editorData['canCreate'] ?? false)) {
-        $errorMessage = "Ce holon n'autorise pas l'ajout d'enfant.";
+        $errorMessage = "Cet espace n'autorise pas l'ajout d'enfant.";
     } elseif (count($editorData['templateCatalog'] ?? array()) === 0) {
         $errorMessage = ($editorData['mode'] ?? 'create') === 'edit'
             ? "Aucun modèle n'est disponible dans le contexte de ce holon."
-            : "Aucun modèle n'est disponible dans ce contexte pour créer un nouveau holon.";
+            : "Aucun modèle n'est disponible dans ce contexte pour créer un nouvel espace.";
     }
 }
-$drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le holon' : 'Nouveau holon';
+$drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’espace' : 'Nouvel espace';
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260807-project-picker-search">
 <div class="omo-holon-create omo-panel-view">
@@ -262,7 +262,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier le hol
                             <div class="omo-holon-create__hint generic-help-text" id="omo-holon-create-hint"></div>
                             <div class="omo-holon-create__actions generic-form-actions generic-form-actions--stack-mobile">
                                 <button type="button" class="generic-action-button generic-action-button--secondary" id="omo-holon-create-cancel">Fermer</button>
-                                <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Enregistrer' : 'Créer le holon') ?></button>
+                                <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Enregistrer' : 'Créer l’espace') ?></button>
                             </div>
                         </div>
                     </form>
@@ -542,10 +542,10 @@ function buildPermissionSummary(assignments) {
     });
 
     if (!titles.length) {
-        return 'Droits associes au holon: aucun';
+        return 'Droits associés à l’espace : aucun';
     }
 
-    return 'Droits associes au holon: ' + titles.join(', ');
+    return 'Droits associés à l’espace : ' + titles.join(', ');
 }
 
 function getPermissionTitle(permissionKey) {
@@ -1335,11 +1335,11 @@ function renderAuthorityDeletionChoices(authorityId, draft) {
         + '  <p>Choisissez ce qui doit etre conserve avant validation.</p>'
         + '  <fieldset><legend>Cette autorité</legend>'
         + '    <label><input type="radio" name="' + prefix + '-authority" value="delete" data-authority-deletion-choice="authority"' + checked('authority', 'delete', 'reassign') + '> Supprimer definitivement</label>'
-        + '    <label><input type="radio" name="' + prefix + '-authority" value="reassign" data-authority-deletion-choice="authority"' + checked('authority', 'reassign', 'reassign') + '> Remonter au holon parent</label>'
+            + '    <label><input type="radio" name="' + prefix + '-authority" value="reassign" data-authority-deletion-choice="authority"' + checked('authority', 'reassign', 'reassign') + '> Remonter à l’espace parent</label>'
         + '  </fieldset>'
         + (impact.descendants > 0 ? '  <fieldset data-authority-deletion-group="children"><legend>Sous-autorités</legend>'
         + '    <label><input type="radio" name="' + prefix + '-children" value="delete" data-authority-deletion-choice="children"' + checked('children', 'delete', 'reassign') + '> Supprimer les branches<span data-authority-deletion-count="children">' + formatAuthorityDeletionCount(impact.descendants, 'sous-autorité', 'sous-autorités') + '</span></label>'
-        + '    <label><input type="radio" name="' + prefix + '-children" value="reassign" data-authority-deletion-choice="children"' + checked('children', 'reassign', 'reassign') + '> Remonter les branches au holon parent<span data-authority-deletion-count="children">' + formatAuthorityDeletionCount(impact.descendants, 'sous-autorite', 'sous-autorites') + '</span></label>'
+            + '    <label><input type="radio" name="' + prefix + '-children" value="reassign" data-authority-deletion-choice="children"' + checked('children', 'reassign', 'reassign') + '> Remonter les branches à l’espace parent<span data-authority-deletion-count="children">' + formatAuthorityDeletionCount(impact.descendants, 'sous-autorité', 'sous-autorités') + '</span></label>'
         + '  </fieldset>' : '')
         + '  <fieldset data-authority-deletion-group="rules"' + (impact.rules <= 0 ? ' hidden' : '') + '><legend>Règles des autorités supprimées</legend>'
         + '    <label><input type="radio" name="' + prefix + '-rules" value="delete" data-authority-deletion-choice="rules"' + checked('rules', 'delete', 'reassign') + '> Supprimer les regles<span data-authority-deletion-count="rules">' + formatAuthorityDeletionCount(impact.rules, 'regle concernee', 'regles concernees') + '</span></label>'
@@ -1528,7 +1528,7 @@ function renderPropertyInput(property) {
             const selectedIds = parseStoredListValue(localValue).map(Number);
 
             if (!holonOptions.length) {
-                return '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Aucun holon disponible pour les types autorisés.</div>';
+        return '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Aucun espace disponible pour les types autorisés.</div>';
             }
 
             return '<div class="omo-holon-create__check-grid">'
@@ -2462,7 +2462,7 @@ function saveHolon(event) {
                 return;
             }
             if (!result.ok || !result.data || result.data.status !== 'ok') {
-                throw new Error(result.data && result.data.message ? result.data.message : (getMode() === 'edit' ? "Impossible d'enregistrer le holon." : "Impossible de créer le holon."));
+        throw new Error(result.data && result.data.message ? result.data.message : (getMode() === 'edit' ? "Impossible d’enregistrer l’espace." : "Impossible de créer l’espace."));
             }
 
             const hashManagedEditorDrawer = isHashManagedHolonEditorDrawer();
@@ -2581,7 +2581,7 @@ function saveHolon(event) {
             }
         })
         .catch(function (error) {
-            showStatus(error && error.message ? error.message : (getMode() === 'edit' ? "Impossible d'enregistrer le holon." : "Impossible de créer le holon."), 'error');
+        showStatus(error && error.message ? error.message : (getMode() === 'edit' ? "Impossible d’enregistrer l’espace." : "Impossible de créer l’espace."), 'error');
         })
         .finally(function () {
             if (elements.form && typeof window.omoEndPendingAction === 'function') {

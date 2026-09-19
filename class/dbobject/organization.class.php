@@ -4846,7 +4846,7 @@
 			if (count($records) === 0) {
 				return array(
 					'status' => false,
-					'message' => "Le fichier d'import ne contient pas de holons valides.",
+'message' => "Le fichier d’import ne contient pas d’espaces valides.",
 				);
 			}
 
@@ -7394,7 +7394,7 @@
 			if (count($importedHolonRecords) === 0) {
 				return array(
 					'status' => false,
-					'message' => "Le fichier d'import ne contient pas de holons dans le format compact attendu.",
+'message' => "Le fichier d’import ne contient pas d’espaces dans le format compact attendu.",
 				);
 			}
 
@@ -7456,7 +7456,7 @@
 			if (!$targetRootHolon) {
 				return array(
 					'status' => false,
-					'message' => "Le holon racine n'a pas pu etre cree.",
+'message' => "L’espace racine n’a pas pu être créé.",
 				);
 			}
 
@@ -8707,7 +8707,7 @@
 
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas les droits pour modifier ce holon.",
+'message' => "Vous n’avez pas les droits pour modifier cet espace.",
 				);
 			}
 
@@ -11658,7 +11658,7 @@
 						) {
 							return array(
 								'status' => false,
-								'message' => 'Cette autorite ne peut pas etre modifiee depuis ce holon.',
+'message' => 'Cette autorité ne peut pas être modifiée depuis cet espace.',
 							);
 						}
 
@@ -11921,7 +11921,7 @@
 				) {
 					return array(
 						'status' => false,
-						'message' => 'Le holon a modifier est introuvable.',
+'message' => 'L’espace à modifier est introuvable.',
 					);
 				}
 
@@ -11929,14 +11929,14 @@
 				if ($isTemplateEditing && $this->isDiscoveryMode()) {
 					return array(
 						'status' => false,
-						'message' => 'Les modeles de holons ne sont pas disponibles en mode decouverte.',
+'message' => 'Les modèles d’espaces ne sont pas disponibles en mode découverte.',
 					);
 				}
 
 				if (!$collectiveGovernance && !$isTemplateEditing && !$holon->isAllowed('CAN_EDIT_HOLON')) {
 					return array(
 						'status' => false,
-						'message' => "Vous n'avez pas les droits pour modifier ce holon.",
+'message' => "Vous n’avez pas les droits pour modifier cet espace.",
 					);
 				}
 
@@ -11960,7 +11960,7 @@
 			if (!$rootHolon) {
 				return array(
 					'status' => false,
-					'message' => "Aucun holon racine n'a ete trouve pour cette organisation.",
+'message' => "Aucun espace racine n’a été trouvé pour cette organisation.",
 				);
 			}
 
@@ -12048,7 +12048,7 @@
 					if ((int)$template->get('IDtypeholon') !== $typeId) {
 						return array(
 							'status' => false,
-							'message' => "Le modele parent doit etre du meme type que ce holon template.",
+'message' => "Le modèle parent doit être du même type que cet espace modèle.",
 						);
 					}
 
@@ -12220,7 +12220,7 @@
 			if ($name === '') {
 				return array(
 					'status' => false,
-					'message' => 'Le nom du holon est obligatoire.',
+'message' => 'Le nom de l’espace est obligatoire.',
 				);
 			}
 
@@ -12282,7 +12282,7 @@
 			if ((int)$holon->getId() <= 0) {
 				return array(
 					'status' => false,
-					'message' => "Le holon n'a pas pu etre enregistre.",
+'message' => "L’espace n’a pas pu être enregistré.",
 				);
 			}
 
@@ -12327,7 +12327,7 @@
 				)) {
 					return array(
 						'status' => false,
-						'message' => "Les droits du holon n'ont pas pu etre enregistres.",
+'message' => "Les droits de l’espace n’ont pas pu être enregistrés.",
 					);
 				}
 
@@ -12353,7 +12353,7 @@
 
 			return array(
 				'status' => true,
-				'message' => $isEditing ? 'Holon enregistre.' : 'Holon cree.',
+'message' => $isEditing ? 'Espace enregistré.' : 'Espace créé.',
 				'holon' => array(
 					'id' => (int)$holon->getId(),
 					'name' => $holon->getDisplayName(),
@@ -12374,7 +12374,7 @@
 			if (!$rootHolon || $holonId <= 0) {
 				return array(
 					'status' => false,
-					'message' => 'Le holon a supprimer est invalide.',
+'message' => 'L’espace à supprimer est invalide.',
 				);
 			}
 
@@ -12387,14 +12387,14 @@
 			) {
 				return array(
 					'status' => false,
-					'message' => 'Le holon a supprimer est introuvable.',
+'message' => 'L’espace à supprimer est introuvable.',
 				);
 			}
 
 			if (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete()) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas les droits pour supprimer ce holon.",
+'message' => "Vous n’avez pas les droits pour supprimer cet espace.",
 				);
 			}
 
@@ -12402,7 +12402,7 @@
 			if (!$parentHolon) {
 				return array(
 					'status' => false,
-					'message' => 'Le parent de ce holon est introuvable.',
+'message' => 'Le parent de cet espace est introuvable.',
 				);
 			}
 
@@ -12413,13 +12413,13 @@
 			if (!$holon->delete()) {
 				return array(
 					'status' => false,
-					'message' => "Le holon n'a pas pu etre supprime.",
+'message' => "L’espace n’a pas pu être supprimé.",
 				);
 			}
 
 			return array(
 				'status' => true,
-				'message' => 'Holon supprime.',
+'message' => 'Espace supprimé.',
 				'holon' => array(
 					'id' => $holonId,
 					'name' => $holonName,
@@ -12455,7 +12455,7 @@
 			) {
 				return array(
 					'status' => false,
-					'message' => 'Le holon a deplacer est introuvable.',
+'message' => 'L’espace à déplacer est introuvable.',
 				);
 			}
 
@@ -12463,7 +12463,7 @@
 			if (!$currentParent) {
 				return array(
 					'status' => false,
-					'message' => 'Le parent actuel de ce holon est introuvable.',
+'message' => 'Le parent actuel de cet espace est introuvable.',
 				);
 			}
 
@@ -12481,14 +12481,14 @@
 			if ((int)$currentParent->getId() === $targetParentId) {
 				return array(
 					'status' => false,
-					'message' => 'Ce holon est deja rattache a cet emplacement.',
+'message' => 'Cet espace est déjà rattaché à cet emplacement.',
 				);
 			}
 
 			if (!$holon->canEdit() || !$currentParent->canEdit() || !$targetParent->canEdit()) {
 				return array(
 					'status' => false,
-					'message' => "Vous n'avez pas les droits pour deplacer ce holon.",
+'message' => "Vous n’avez pas les droits pour déplacer cet espace.",
 				);
 			}
 
@@ -12506,7 +12506,7 @@
 			if ((int)$holon->get('IDholon_parent') !== $targetParentId) {
 				return array(
 					'status' => false,
-					'message' => "Le holon n'a pas pu etre deplace.",
+'message' => "L’espace n’a pas pu être déplacé.",
 				);
 			}
 
@@ -12520,7 +12520,7 @@
 
 			return array(
 				'status' => true,
-				'message' => 'Holon deplace.',
+'message' => 'Espace déplacé.',
 				'holon' => array(
 					'id' => (int)$holon->getId(),
 					'name' => $holon->getDisplayName(),
@@ -12590,7 +12590,7 @@
 			if (!$type->load($typeId)) {
 				return array(
 					'status' => false,
-					'message' => 'Le type de holon demande est introuvable.',
+'message' => 'Le type d’espace demandé est introuvable.',
 				);
 			}
 
@@ -12633,7 +12633,7 @@
 				if ($definitionHolonId <= 0 || !isset($availableDestinationIds[$definitionHolonId])) {
 					return array(
 						'status' => false,
-						'message' => "Le holon choisi ne peut pas accueillir ce modele sans depasser une instance existante.",
+'message' => "L’espace choisi ne peut pas accueillir ce modèle sans dépasser une instance existante.",
 					);
 				}
 
@@ -12641,7 +12641,7 @@
 				if (!$definitionHolon->load($definitionHolonId) || !$this->containsHolon($definitionHolon) || !$definitionHolon->canEdit()) {
 					return array(
 						'status' => false,
-						'message' => "Vous n'avez pas les droits pour modifier les modeles de ce holon.",
+'message' => "Vous n’avez pas les droits pour modifier les modèles de cet espace.",
 					);
 				}
 
@@ -12996,7 +12996,7 @@
 			if (!$rootHolon || $holonId <= 0) {
 				return array(
 					'status' => false,
-					'message' => "Le holon d'organisation a modifier est invalide.",
+'message' => "L’espace d’organisation à modifier est invalide.",
 				);
 			}
 
@@ -13009,7 +13009,7 @@
 			) {
 				return array(
 					'status' => false,
-					'message' => "Le holon d'organisation a modifier est introuvable.",
+'message' => "L’espace d’organisation à modifier est introuvable.",
 				);
 			}
 

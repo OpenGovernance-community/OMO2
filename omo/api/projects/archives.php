@@ -25,7 +25,7 @@ if ($projectId <= 0) {
     );
     $projectScope = omoApiNormalizeContextScope($_GET['project_scope'] ?? 'contextual', $availableScopes);
     $projectAssignment = strtolower(trim((string)($_GET['project_assignment'] ?? 'all')));
-    $projectAssignment = in_array($projectAssignment, ['mine', 'followed'], true) ? $projectAssignment : 'all';
+    $projectAssignment = in_array($projectAssignment, ['mine', 'spaces', 'followed'], true) ? $projectAssignment : 'all';
     $projectQuickSearch = trim((string)($_GET['project_query'] ?? ''));
     $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
     $currentHolon = $context['currentHolon'];
@@ -73,7 +73,7 @@ if ($projectId <= 0) {
         if (!omoProjectsScopeContainsProject($archivedProject, $projectScope, $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0, $scopeHolonIds)) {
             continue;
         }
-        if ($projectAssignment === 'mine' && (int)$archivedProject->get('IDuser') !== $currentUserId) {
+        if (!omoProjectsMatchesAssignment($archivedProject, $projectAssignment, $currentUserId, $organizationId)) {
             continue;
         }
         if ($projectAssignment === 'followed' && !isset($followedArchivedProjectIds[(int)$archivedProject->getId()])) {

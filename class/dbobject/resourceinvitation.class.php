@@ -48,7 +48,7 @@ class ResourceInvitation extends DbObject
             'id' => 'ID',
             'resource_type' => 'Type de ressource',
             'resource_id' => 'Ressource',
-            'IDholon' => 'Holon',
+			'IDholon' => 'Espace',
             'IDuser' => 'Utilisateur',
             'email' => 'E-mail',
             'display_name' => 'Nom affiche',
@@ -66,7 +66,7 @@ class ResourceInvitation extends DbObject
     {
         return [
             'resource_type' => 'Identifie le type d objet invite sans imposer de cle etrangere polymorphe.',
-            'invitation_type' => 'Precise si l invitation vise un holon, un membre ou une adresse e-mail externe.',
+			'invitation_type' => 'Précise si l’invitation vise un espace, un membre ou une adresse e-mail externe.',
         ];
     }
 
@@ -104,7 +104,7 @@ class ResourceInvitation extends DbObject
 
     public static function getTypeCatalog()
     {
-        return [self::TYPE_HOLON => 'Holon', self::TYPE_USER => 'Utilisateur', self::TYPE_EMAIL => 'E-mail'];
+		return [self::TYPE_HOLON => 'Espace', self::TYPE_USER => 'Utilisateur', self::TYPE_EMAIL => 'E-mail'];
     }
 
     public static function getStatusCatalog()

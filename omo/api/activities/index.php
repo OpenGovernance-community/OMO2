@@ -29,6 +29,9 @@ $scope = omoApiNormalizeContextScope(
     omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'activity_scope', 'scope', 'contextual'),
     $scopes
 );
+$assignment = omoActivityNormalizeAssignment(
+    omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'activity_assignment', 'assignment', 'all')
+);
 $holonIds = $scope === 'children'
     ? omoApiGetDirectChildScopeHolonIds($currentHolon)
     : ($scope === 'descendants' ? omoApiGetDescendantHolonIds($currentHolon) : [(int)$currentHolon->getId()]);
@@ -42,6 +45,9 @@ $activityCount = 0;
 
 foreach ($activities as $activity) {
     if (!($activity instanceof ControlActivity) || !omoActivityCanView($activity)) {
+        continue;
+    }
+    if (!omoActivityMatchesAssignment($activity, $assignment, $currentUserId, $organizationId)) {
         continue;
     }
     $frequency = RecurrenceSchedule::normalizeFrequency($activity->get('frequency'));
@@ -96,7 +102,9 @@ unset($groupRows);
 
 $baseUrl = '/omo/api/activities/index.php?oid=' . $organizationId
     . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . $pvMeetingQuery;
-$currentUrl = $baseUrl . '&activity_scope=' . rawurlencode($scope);
+$currentUrl = $baseUrl
+    . '&activity_scope=' . rawurlencode($scope)
+    . '&activity_assignment=' . rawurlencode($assignment);
 $createUrl = '/omo/api/activities/edit.php?oid=' . $organizationId
     . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . $pvMeetingQuery;
 $canCreate = omoActivityCanUsePermission($currentHolon, 'CAN_CREATE_CONTROL_ACTIVITY');
@@ -116,6 +124,7 @@ $texts = [
     data-activity-cid="<?= (int)$currentHolonId ?>"
     data-activity-open-id="<?= (int)$openActivityId ?>"
     data-activity-scope="<?= omoApiEscape($scope) ?>"
+    data-activity-assignment="<?= omoApiEscape($assignment) ?>"
     data-activity-current-url="<?= omoApiEscape($currentUrl) ?>"
     data-activity-base-url="<?= omoApiEscape($baseUrl) ?>"
     data-activity-texts="<?= omoApiEscape(json_encode($texts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
@@ -145,6 +154,7 @@ $texts = [
                 <div class="omo-view-filter__input">
                     <div class="omo-view-filter__chips">
                         <button type="button" class="omo-view-filter__chip" data-activity-filter-toggle data-activity-scope-chip aria-expanded="false" aria-controls="omo-activity-filter-panel"><?= omoApiEscape(omoActivityT('activity.scope.' . $scope)) ?></button>
+                        <button type="button" class="omo-view-filter__chip" data-activity-filter-toggle data-activity-assignment-chip aria-expanded="false" aria-controls="omo-activity-filter-panel"><?= omoApiEscape(omoActivityT('activity.assignment.' . $assignment)) ?></button>
                         <button type="button" class="omo-view-filter__chip" data-activity-filter-toggle data-activity-state-chip aria-expanded="false" aria-controls="omo-activity-filter-panel"><?= omoApiEscape(omoActivityT('activity.filter.all')) ?></button>
                     </div>
                     <label class="omo-view-filter__search">
@@ -158,6 +168,14 @@ $texts = [
                             <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoActivityT('activity.filters.scope')) ?>">
                                 <?php foreach ($scopes as $option): ?>
                                     <button type="button" class="omo-segmented__button<?= $scope === $option ? ' is-active' : '' ?>" data-activity-scope-option="<?= omoApiEscape($option) ?>" aria-pressed="<?= $scope === $option ? 'true' : 'false' ?>"><?= omoApiEscape(omoActivityT('activity.scope.' . $option)) ?></button>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <div class="omo-view-filter__group">
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoActivityT('activity.filters.assignment')) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoActivityT('activity.filters.assignment')) ?>">
+                                <?php foreach (['mine', 'spaces', 'all'] as $assignmentOption): ?>
+                                    <button type="button" class="omo-segmented__button<?= $assignment === $assignmentOption ? ' is-active' : '' ?>" data-activity-assignment-option="<?= omoApiEscape($assignmentOption) ?>" aria-pressed="<?= $assignment === $assignmentOption ? 'true' : 'false' ?>"><?= omoApiEscape(omoActivityT('activity.assignment.' . $assignmentOption)) ?></button>
                                 <?php endforeach; ?>
                             </div>
                         </div>
@@ -272,5 +290,5 @@ $texts = [
 </div>
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260912-toolbar-always-visible"></script>
-<script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
-<script src="/omo/api/activities/activities.js?v=20260917-filter-hierarchy"></script>
+<script src="/omo/assets/js/application-view-preferences.js?v=20260919-activity-assignment"></script>
+<script src="/omo/api/activities/activities.js?v=20260919-assignment-and-name"></script>

@@ -137,7 +137,7 @@
 			if ($holonId <= 0) {
 				return [
 					'status' => false,
-					'text' => 'Le holon de visibilite est obligatoire.',
+            'text' => 'L’espace de visibilité est obligatoire.',
 				];
 			}
 
@@ -150,7 +150,7 @@
 			) {
 				return [
 					'status' => false,
-					'text' => 'Holon de visibilite introuvable pour cette organisation.',
+            'text' => 'Espace de visibilité introuvable pour cette organisation.',
 				];
 			}
 
