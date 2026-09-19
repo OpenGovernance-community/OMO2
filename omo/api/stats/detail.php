@@ -233,4 +233,4 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         });
     }());
 </script>
-<script src="/omo/api/stats/chart.js?v=20260807-range-handles"></script>
+<script src="/omo/api/stats/chart.js?v=20260919-reference-scale"></script>

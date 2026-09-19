@@ -53,6 +53,15 @@ $requestedStatsSort = (string)omoApplicationViewPreferencesGetInitialValue(
 $statsSort = in_array($requestedStatsSort, ['temporal', 'alpha'], true)
     ? $requestedStatsSort
     : 'temporal';
+$requestedStatsAssignment = strtolower(trim((string)omoApplicationViewPreferencesGetInitialValue(
+    $applicationViewPreferences,
+    'stats_assignment',
+    'assignment',
+    'all'
+)));
+$statsAssignment = in_array($requestedStatsAssignment, ['mine', 'roles'], true)
+    ? $requestedStatsAssignment
+    : 'all';
 $scopeLabels = [
     'contextual' => omoStatsT('stats.scope.contextual'),
     'children' => omoStatsT('stats.scope.children'),
@@ -111,6 +120,18 @@ $groups->loadForContext(
     $scopeHolonIds
 );
 $groupItems = omoStatsCollectionItems($groups, StatIndicatorGroup::class);
+$indicatorItems = array_values(array_filter($indicatorItems, static function (StatIndicator $indicator) use ($statsAssignment, $currentUserId, $organizationId): bool {
+    return omoStatsMatchesAssignment($indicator, $statsAssignment, $currentUserId, $organizationId);
+}));
+$groupItems = array_values(array_filter($groupItems, static function (StatIndicatorGroup $group) use ($statsAssignment, $currentUserId, $organizationId): bool {
+    if ($statsAssignment === 'all') {
+        return true;
+    }
+
+    $groupHolon = $group->getHolon();
+    return $groupHolon instanceof Holon
+        && omoStatsUserIsAssociatedWithHolon($currentUserId, $organizationId, $groupHolon);
+}));
 $canManage = omoStatsCanCreateContext($context);
 $canCreateIndicator = omoStatsCanCreateContext($context);
 $emptyKey = $statsScope === 'children'
@@ -123,6 +144,7 @@ if ($currentHolonId > 0) {
 }
 $currentUrl .= '&stats_scope=' . rawurlencode($statsScope);
 $currentUrl .= '&stats_sort=' . rawurlencode($statsSort);
+$currentUrl .= '&stats_assignment=' . rawurlencode($statsAssignment);
 $currentUrl .= $pvMeetingQuery;
 $createUrl = '/omo/api/stats/edit.php?oid=' . rawurlencode((string)$organizationId);
 if ($currentHolonId > 0) {
@@ -279,7 +301,7 @@ foreach ($pickerItems as $indicator) {
 $displayItemCount = count($statsEntries);
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260824-source-fields">
+<link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260919-group-editor">
 <div
     class="omo-stats omo-panel-view"
     id="omo-stats-root"
@@ -290,6 +312,7 @@ $displayItemCount = count($statsEntries);
     data-omo-stats-root-hid="<?= $rootHolon instanceof Holon ? (int)$rootHolon->getId() : 0 ?>"
     data-omo-stats-current-scope="<?= omoApiEscape($statsScope) ?>"
     data-omo-stats-current-sort="<?= omoApiEscape($statsSort) ?>"
+    data-omo-stats-current-assignment="<?= omoApiEscape($statsAssignment) ?>"
     data-omo-stats-current-view="cards"
     data-omo-view-filter-pending="1"
     aria-busy="true"
@@ -336,6 +359,7 @@ $displayItemCount = count($statsEntries);
                 <div class="omo-view-filter__input">
                     <div class="omo-view-filter__chips">
                         <button type="button" class="omo-view-filter__chip" data-omo-stats-filter-toggle data-omo-stats-scope-chip aria-expanded="false" aria-controls="omo-stats-filter-panel"><?= omoApiEscape((string)($scopeLabels[$statsScope] ?? $statsScope)) ?></button>
+                        <button type="button" class="omo-view-filter__chip" data-omo-stats-filter-toggle data-omo-stats-assignment-chip aria-expanded="false" aria-controls="omo-stats-filter-panel"><?= omoApiEscape(omoStatsT('stats.assignment.' . $statsAssignment)) ?></button>
                         <button type="button" class="omo-view-filter__chip" data-omo-stats-filter-toggle data-omo-stats-sort-chip aria-expanded="false" aria-controls="omo-stats-filter-panel"><?= omoApiEscape(omoStatsT('stats.controls.sort.' . $statsSort)) ?></button>
                         <button type="button" class="omo-view-filter__chip" data-omo-stats-filter-toggle data-omo-stats-view-chip aria-expanded="false" aria-controls="omo-stats-filter-panel"><?= omoApiEscape(omoStatsT('stats.view.cards')) ?></button>
                     </div>
@@ -351,6 +375,14 @@ $displayItemCount = count($statsEntries);
                                 <?php foreach ($availableScopes as $scopeKey): ?>
                                     <button type="button" class="omo-segmented__button<?= $statsScope === $scopeKey ? ' is-active' : '' ?>" data-omo-stats-scope="<?= omoApiEscape($scopeKey) ?>" aria-pressed="<?= $statsScope === $scopeKey ? 'true' : 'false' ?>"><?= omoApiEscape((string)($scopeLabels[$scopeKey] ?? $scopeKey)) ?></button>
                                 <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <div class="omo-view-filter__group">
+                            <span class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoStatsT('stats.filters.assignment')) ?></span>
+                            <div class="omo-segmented" role="group" aria-label="<?= omoApiEscape(omoStatsT('stats.assignment.aria')) ?>">
+                                <button type="button" class="omo-segmented__button<?= $statsAssignment === 'mine' ? ' is-active' : '' ?>" data-omo-stats-assignment="mine" aria-pressed="<?= $statsAssignment === 'mine' ? 'true' : 'false' ?>"><?= omoApiEscape(omoStatsT('stats.assignment.mine')) ?></button>
+                                <button type="button" class="omo-segmented__button<?= $statsAssignment === 'roles' ? ' is-active' : '' ?>" data-omo-stats-assignment="roles" aria-pressed="<?= $statsAssignment === 'roles' ? 'true' : 'false' ?>"><?= omoApiEscape(omoStatsT('stats.assignment.roles')) ?></button>
+                                <button type="button" class="omo-segmented__button<?= $statsAssignment === 'all' ? ' is-active' : '' ?>" data-omo-stats-assignment="all" aria-pressed="<?= $statsAssignment === 'all' ? 'true' : 'false' ?>"><?= omoApiEscape(omoStatsT('stats.assignment.all')) ?></button>
                             </div>
                         </div>
                         <div class="omo-view-filter__group">
@@ -722,6 +754,7 @@ $displayItemCount = count($statsEntries);
     var detailBaseUrl = root.getAttribute('data-omo-stats-detail-url') || '';
     var groupDetailBaseUrl = root.getAttribute('data-omo-stats-group-detail-url') || '';
     var currentScope = root.getAttribute('data-omo-stats-current-scope') || 'contextual';
+    var currentAssignment = root.getAttribute('data-omo-stats-current-assignment') || 'all';
     var routeCid = Number(root.getAttribute('data-omo-stats-route-cid') || 0);
     var initialIndicatorId = Number(root.getAttribute('data-omo-stats-open-indicator-id') || 0);
     var initialGroupId = Number(root.getAttribute('data-omo-stats-open-group-id') || 0);
@@ -799,8 +832,17 @@ $displayItemCount = count($statsEntries);
         'spreadsheetTableHelp' => omoStatsT('stats.import.spreadsheet.table_help'),
         'spreadsheetCreateAction' => omoStatsT('stats.import.spreadsheet.create_action'),
         'groupName' => omoStatsT('stats.group.name'),
+        'groupNameHelp' => omoStatsT('stats.group.name_help'),
+        'groupIndicators' => omoStatsT('stats.group.indicators'),
+        'groupIndicatorsHelp' => omoStatsT('stats.group.indicators_help'),
         'groupMode' => omoStatsT('stats.group.mode'),
+        'groupModeHelp' => omoStatsT('stats.group.mode_help'),
         'groupHideSameHolonSources' => omoStatsT('stats.group.hide_same_holon_sources'),
+        'groupHideSameHolonSourcesHelp' => omoStatsT('stats.group.hide_same_holon_sources_help'),
+        'groupChart' => omoStatsT('stats.group.chart'),
+        'groupChartMinValueHelp' => omoStatsT('stats.group.chart_min_value_help'),
+        'groupReferenceType' => omoStatsT('stats.group.reference_type'),
+        'groupReferenceTypeHelp' => omoStatsT('stats.group.reference_type_help'),
         'overlay' => omoStatsT('stats.group.mode.overlay'),
         'sum' => omoStatsT('stats.group.mode.sum'),
         'cancel' => omoStatsT('stats.action.cancel'),
@@ -946,6 +988,10 @@ $displayItemCount = count($statsEntries);
         return sortName === 'alpha' ? 'alpha' : 'temporal';
     }
 
+    function normalizeAssignment(assignment) {
+        return assignment === 'mine' || assignment === 'roles' ? assignment : 'all';
+    }
+
     function normalizeView(viewName) {
         return viewName === 'compact' ? 'compact' : 'cards';
     }
@@ -961,6 +1007,7 @@ $displayItemCount = count($statsEntries);
     function createStoredFilters(filters) {
         return {
             scope: normalizeScope(filters && filters.scope),
+            assignment: normalizeAssignment(filters && filters.assignment),
             sort: normalizeSort(filters && filters.sort),
             view: normalizeView(filters && filters.view)
         };
@@ -1088,15 +1135,17 @@ $displayItemCount = count($statsEntries);
         }
     }
 
-    function buildScopeUrl(scope, sortName) {
+    function buildScopeUrl(scope, assignment, sortName) {
         var organizationId = Number(root.getAttribute('data-omo-stats-oid') || 0);
         var query = ['oid=' + encodeURIComponent(String(organizationId))];
         var nextScope = normalizeScope(scope);
+        var nextAssignment = normalizeAssignment(assignment);
         var nextSort = normalizeSort(sortName);
         if (routeCid > 0) {
             query.push('cid=' + encodeURIComponent(String(routeCid)));
         }
         query.push('stats_scope=' + encodeURIComponent(nextScope));
+        query.push('stats_assignment=' + encodeURIComponent(nextAssignment));
         query.push('stats_sort=' + encodeURIComponent(nextSort));
         return '/omo/api/stats/index.php?' + query.join('&');
     }
@@ -1109,7 +1158,7 @@ $displayItemCount = count($statsEntries);
             });
         }
         Array.prototype.forEach.call(root.querySelectorAll(
-            '[data-omo-stats-filter-toggle], [data-omo-stats-scope], [data-omo-stats-sort], '
+            '[data-omo-stats-filter-toggle], [data-omo-stats-scope], [data-omo-stats-assignment], [data-omo-stats-sort], '
             + '[data-omo-stats-view], [data-omo-stats-filter-apply], [data-omo-stats-filter-save], '
             + '[data-omo-stats-filter-more-toggle], [data-omo-stats-filter-more-action]'
         ), function (button) {
@@ -1225,6 +1274,7 @@ $displayItemCount = count($statsEntries);
     function getActiveFilters() {
         return {
             scope: normalizeScope(currentScope),
+            assignment: normalizeAssignment(currentAssignment),
             sort: normalizeSort(currentSort),
             view: normalizeView(currentView)
         };
@@ -1238,6 +1288,7 @@ $displayItemCount = count($statsEntries);
         }
         return {
             scope: scope,
+            assignment: normalizeAssignment(filters && filters.assignment),
             sort: normalizeSort(filters && filters.sort),
             view: normalizeView(filters && filters.view)
         };
@@ -1250,6 +1301,7 @@ $displayItemCount = count($statsEntries);
         pendingFilters = normalizeFilters(pendingFilters);
         [
             {selector: '[data-omo-stats-scope]', attribute: 'data-omo-stats-scope', value: pendingFilters.scope},
+            {selector: '[data-omo-stats-assignment]', attribute: 'data-omo-stats-assignment', value: pendingFilters.assignment},
             {selector: '[data-omo-stats-sort]', attribute: 'data-omo-stats-sort', value: pendingFilters.sort},
             {selector: '[data-omo-stats-view]', attribute: 'data-omo-stats-view', value: pendingFilters.view}
         ].forEach(function (choice) {
@@ -1264,10 +1316,11 @@ $displayItemCount = count($statsEntries);
     function applyFilters(filters, active) {
         var next = normalizeFilters(filters);
         var previous = active || getActiveFilters();
-        if (next.scope !== previous.scope || next.sort !== previous.sort) {
+        if (next.scope !== previous.scope || next.assignment !== previous.assignment || next.sort !== previous.sort) {
             currentScope = next.scope;
+            currentAssignment = next.assignment;
             currentSort = next.sort;
-            refreshRoot(buildScopeUrl(next.scope, next.sort), { preserveScroll: false });
+            refreshRoot(buildScopeUrl(next.scope, next.assignment, next.sort), { preserveScroll: false });
             return;
         }
         applyView(next.view);
@@ -1383,6 +1436,7 @@ $displayItemCount = count($statsEntries);
                 : null;
             applyFilters(serverDefault || {
                 scope: 'contextual',
+                assignment: 'all',
                 sort: 'temporal',
                 view: 'cards'
             }, active);
@@ -1392,6 +1446,7 @@ $displayItemCount = count($statsEntries);
     function syncFilterChips() {
         [
             {button: '[data-omo-stats-scope="' + currentScope + '"]', chip: '[data-omo-stats-scope-chip]'},
+            {button: '[data-omo-stats-assignment="' + currentAssignment + '"]', chip: '[data-omo-stats-assignment-chip]'},
             {button: '[data-omo-stats-sort="' + currentSort + '"]', chip: '[data-omo-stats-sort-chip]'},
             {button: '[data-omo-stats-view="' + currentView + '"]', chip: '[data-omo-stats-view-chip]'}
         ].forEach(function (entry) {
@@ -1423,12 +1478,14 @@ $displayItemCount = count($statsEntries);
         var preferences = normalizeFilters(temporary || personalView || serverDefault || saved || defaultFilters || getActiveFilters());
         if ((Number.isInteger(initialIndicatorId) && initialIndicatorId > 0) || (Number.isInteger(initialGroupId) && initialGroupId > 0)) {
             preferences.scope = currentScope;
+            preferences.assignment = currentAssignment;
             preferences.sort = currentSort;
         }
-        if (preferences.scope !== currentScope || preferences.sort !== currentSort) {
+        if (preferences.scope !== currentScope || preferences.assignment !== currentAssignment || preferences.sort !== currentSort) {
             currentScope = preferences.scope;
+            currentAssignment = preferences.assignment;
             currentSort = preferences.sort;
-            refreshRoot(buildScopeUrl(preferences.scope, preferences.sort), { preserveScroll: false }).catch(function () {
+            refreshRoot(buildScopeUrl(preferences.scope, preferences.assignment, preferences.sort), { preserveScroll: false }).catch(function () {
                 root.removeAttribute('data-omo-view-filter-pending');
                 root.removeAttribute('aria-busy');
             });
@@ -1647,6 +1704,12 @@ $displayItemCount = count($statsEntries);
         });
     }
 
+    function contextHelp(label, text) {
+        return '<details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>'
+            + '<summary aria-label="' + escapeHtml(label) + '">?</summary>'
+            + '<div class="generic-context-help__content">' + escapeHtml(text) + '</div></details>';
+    }
+
     function getPickerItems() {
         try {
             var raw = root.getAttribute('data-omo-stats-picker') || '[]';
@@ -1669,22 +1732,30 @@ $displayItemCount = count($statsEntries);
             : [];
         var formId = 'omoStatsGroupEditorForm';
         var items = getPickerItems();
-        var formHtml = '<form id="' + formId + '" class="omo-stats-picker omo-stats-group-editor" data-omo-stats-group-editor-form>'
-            + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.groupName) + '</span><input type="text" class="generic-form-control" data-omo-stats-group-editor-name required></label>'
-            + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.search) + '</span><input type="search" class="generic-form-control" data-omo-stats-group-editor-search placeholder="' + escapeHtml(texts.searchPlaceholder) + '"></label>'
-            + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.visible) + '</span><select class="generic-form-control omo-stats-picker__select" data-omo-stats-group-editor-select size="10" multiple></select></label>'
-            + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.groupMode) + '</span><select class="generic-form-control" data-omo-stats-group-editor-mode><option value="overlay">' + escapeHtml(texts.overlay) + '</option><option value="sum">' + escapeHtml(texts.sum) + '</option></select></label>'
-            + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.groupHideSameHolonSources) + '</span><input type="checkbox" data-omo-stats-group-editor-hide-sources></label>'
-            + '<label class="omo-stats-picker__field"><span>' + escapeHtml(texts.chartMinValue) + '</span><input type="number" class="generic-form-control" data-omo-stats-group-editor-chart-min-value step="any"></label>'
-            + '<div class="omo-stats-group-reference-editor" data-omo-stats-reference-editor>'
-            + '<label class="omo-stats-field"><span>' + escapeHtml(texts.referenceTitle) + '</span><select class="generic-form-control" name="reference_type" data-omo-stats-reference-type><option value="none">' + escapeHtml(texts.referenceNone) + '</option><option value="ceiling">' + escapeHtml(texts.referenceCeiling) + '</option><option value="objective">' + escapeHtml(texts.referenceObjective) + '</option></select></label>'
-            + '<section class="generic-soft-panel omo-stats-ceiling-editor" data-omo-stats-ceiling-editor hidden><div class="omo-stats-ceiling-editor__heading"><h3 class="generic-card-title generic-card-title--big">' + escapeHtml(texts.ceilingTitle) + '</h3><p>' + escapeHtml(texts.ceilingHelp) + '</p></div><label class="omo-stats-field"><span>' + escapeHtml(texts.ceilingValue) + '</span><input type="number" class="generic-form-control" name="ceiling_value" data-omo-stats-ceiling-value step="any"></label></section>'
-            + '<section class="omo-stats-reference-editor" data-omo-stats-reference-panel>'
-            + '<div class="omo-stats-reference-editor__heading"><div><h3 class="generic-card-title generic-card-title--big">' + escapeHtml(texts.referenceTitle) + '</h3><p>' + escapeHtml(texts.referenceHelp) + '</p></div><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-add-reference-point>' + escapeHtml(texts.addReferencePoint) + '</button></div>'
+        var formHtml = '<form id="' + formId + '" class="omo-stats-picker omo-stats-group-editor generic-form-stack generic-form-stack--compact" data-omo-stats-group-editor-form>'
+            + '<div class="generic-form-grid generic-form-grid--pair">'
+            + '<div class="generic-form-field"><div class="generic-inline-help"><label class="generic-form-label" for="omo-stats-group-name">' + escapeHtml(texts.groupName) + '</label>' + contextHelp(texts.groupName, texts.groupNameHelp) + '</div><input id="omo-stats-group-name" type="text" class="generic-form-control generic-form-control--compact" data-omo-stats-group-editor-name required></div>'
+            + '<div class="generic-form-field"><div class="generic-inline-help"><label class="generic-form-label" for="omo-stats-group-mode">' + escapeHtml(texts.groupMode) + '</label>' + contextHelp(texts.groupMode, texts.groupModeHelp) + '</div><select id="omo-stats-group-mode" class="generic-form-control generic-form-control--compact" data-omo-stats-group-editor-mode><option value="overlay">' + escapeHtml(texts.overlay) + '</option><option value="sum">' + escapeHtml(texts.sum) + '</option></select></div>'
+            + '</div>'
+            + '<section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-stats-group-editor__sources">'
+            + '<div class="generic-heading-with-help"><h3 class="generic-card-title generic-card-title--small">' + escapeHtml(texts.groupIndicators) + '</h3>' + contextHelp(texts.groupIndicators, texts.groupIndicatorsHelp) + '</div>'
+            + '<div class="generic-form-grid generic-form-grid--pair"><div class="generic-form-field"><label class="generic-form-label" for="omo-stats-group-search">' + escapeHtml(texts.search) + '</label><input id="omo-stats-group-search" type="search" class="generic-form-control generic-form-control--compact" data-omo-stats-group-editor-search placeholder="' + escapeHtml(texts.searchPlaceholder) + '"></div>'
+            + '<div class="generic-inline-help omo-stats-group-editor__source-option"><label class="generic-checkbox"><input type="checkbox" data-omo-stats-group-editor-hide-sources><span>' + escapeHtml(texts.groupHideSameHolonSources) + '</span></label>' + contextHelp(texts.groupHideSameHolonSources, texts.groupHideSameHolonSourcesHelp) + '</div></div>'
+            + '<div class="generic-form-field"><label class="generic-form-label" for="omo-stats-group-select">' + escapeHtml(texts.visible) + '</label><select id="omo-stats-group-select" class="generic-form-control generic-form-control--compact omo-stats-picker__select" data-omo-stats-group-editor-select size="7" multiple></select></div>'
+            + '</section>'
+            + '<section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">'
+            + '<div class="generic-heading-with-help"><h3 class="generic-card-title generic-card-title--small">' + escapeHtml(texts.groupChart) + '</h3></div>'
+            + '<div class="generic-form-grid">'
+            + '<div class="generic-form-field"><div class="generic-inline-help"><label class="generic-form-label" for="omo-stats-group-chart-min">' + escapeHtml(texts.chartMinValue) + '</label>' + contextHelp(texts.chartMinValue, texts.groupChartMinValueHelp) + '</div><input id="omo-stats-group-chart-min" type="number" class="generic-form-control generic-form-control--compact" data-omo-stats-group-editor-chart-min-value step="any"></div>'
+            + '<div class="generic-form-field"><div class="generic-inline-help"><label class="generic-form-label" for="omo-stats-group-reference-type">' + escapeHtml(texts.groupReferenceType) + '</label>' + contextHelp(texts.groupReferenceType, texts.groupReferenceTypeHelp) + '</div><select id="omo-stats-group-reference-type" class="generic-form-control generic-form-control--compact" name="reference_type" data-omo-stats-reference-type><option value="none">' + escapeHtml(texts.referenceNone) + '</option><option value="ceiling">' + escapeHtml(texts.referenceCeiling) + '</option><option value="objective">' + escapeHtml(texts.referenceObjective) + '</option></select></div>'
+            + '<div class="generic-form-field" data-omo-stats-ceiling-editor hidden><div class="generic-inline-help"><label class="generic-form-label" for="omo-stats-group-ceiling">' + escapeHtml(texts.ceilingValue) + '</label>' + contextHelp(texts.ceilingValue, texts.ceilingHelp) + '</div><input id="omo-stats-group-ceiling" type="number" class="generic-form-control generic-form-control--compact" name="ceiling_value" data-omo-stats-ceiling-value step="any"></div>'
+            + '</div>'
+            + '<section class="omo-stats-reference-editor generic-form-stack generic-form-stack--compact" data-omo-stats-reference-editor data-omo-stats-reference-panel>'
+            + '<div class="omo-stats-reference-editor__heading generic-form-section__heading"><div class="generic-heading-with-help"><h3 class="generic-card-title generic-card-title--small">' + escapeHtml(texts.referenceTitle) + '</h3>' + contextHelp(texts.referenceTitle, texts.referenceHelp) + '</div><button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-add-reference-point>' + escapeHtml(texts.addReferencePoint) + '</button></div>'
             + '<div class="omo-stats-reference-editor__rail" data-omo-stats-reference-rail></div>'
             + '<div class="omo-stats-reference-editor__points" data-omo-stats-reference-points></div>'
             + '</section>'
-            + '</div>'
+            + '</section>'
             + '<div class="omo-stats-feedback" data-omo-stats-group-editor-feedback role="status"></div>'
             + '</form>';
 
@@ -2270,6 +2341,12 @@ $displayItemCount = count($statsEntries);
             var scopeButton = event.target.closest('[data-omo-stats-scope]');
             if (scopeButton && pendingFilters) {
                 pendingFilters.scope = normalizeScope(scopeButton.getAttribute('data-omo-stats-scope') || '');
+                syncFilterChoices();
+                return;
+            }
+            var assignmentButton = event.target.closest('[data-omo-stats-assignment]');
+            if (assignmentButton && pendingFilters) {
+                pendingFilters.assignment = normalizeAssignment(assignmentButton.getAttribute('data-omo-stats-assignment') || '');
                 syncFilterChoices();
                 return;
             }

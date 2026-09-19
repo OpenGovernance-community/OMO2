@@ -99,7 +99,7 @@
         }
 
         if (String(value || '').trim() !== '') {
-            return 'Une image locale est définie pour ce holon.';
+        return 'Une image locale est définie pour cet espace.';
         }
 
         if (String(inheritedValue || '').trim() !== '') {

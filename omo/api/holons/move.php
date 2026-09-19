@@ -12,16 +12,16 @@ $errorMessage = '';
 if ($organizationId <= 0) {
     $errorMessage = "Aucune organisation n'est actuellement selectionnee.";
 } elseif ($holonId <= 0) {
-    $errorMessage = 'Le holon a deplacer est invalide.';
+$errorMessage = 'L’espace à déplacer est invalide.';
 } elseif (!$organization->load($organizationId)) {
     $errorMessage = "L'organisation demandee est introuvable.";
 } else {
     $moveData = $organization->getHolonMoveEditorData($holonId);
 
     if (($moveData['holonId'] ?? 0) !== $holonId || !is_array($moveData['holon'] ?? null)) {
-        $errorMessage = 'Le holon demande est introuvable.';
+$errorMessage = 'L’espace demandé est introuvable.';
     } elseif (empty($moveData['canMove'])) {
-        $errorMessage = "Vous n'avez pas les droits pour deplacer ce holon.";
+$errorMessage = "Vous n’avez pas les droits pour déplacer cet espace.";
     } else {
         $alternativeCount = 0;
         foreach (($moveData['destinations'] ?? array()) as $destination) {
@@ -31,7 +31,7 @@ if ($organizationId <= 0) {
         }
 
         if ($alternativeCount <= 0) {
-            $errorMessage = 'Aucune destination compatible n a ete trouvee pour ce holon.';
+$errorMessage = 'Aucune destination compatible n’a été trouvée pour cet espace.';
         }
     }
 }
@@ -42,8 +42,8 @@ if ($organizationId <= 0) {
     <form id="omo-holon-move-form" class="omo-holon-move generic-stack generic-stack--flush">
         <div class="omo-holon-move__header generic-drawer-header generic-drawer-header--sticky">
             <div class="generic-drawer-header__copy omo-holon-move__header-copy">
-                <div class="generic-card-title generic-card-title--eyebrow">Holon</div>
-                <h3 class="generic-card-title generic-card-title--medium">Deplacer un holon</h3>
+        <div class="generic-card-title generic-card-title--eyebrow">Espace</div>
+        <h3 class="generic-card-title generic-card-title--medium">Déplacer un espace</h3>
             </div>
         </div>
         <div class="omo-holon-move__shell generic-drawer-content">
@@ -228,7 +228,7 @@ function submitMove(event) {
     }
 
     if (targetParentId === currentParentId) {
-        showStatus('Selectionnez un autre parent avant de deplacer ce holon.', 'error');
+showStatus('Sélectionnez un autre parent avant de déplacer cet espace.', 'error');
         return;
     }
 
@@ -258,7 +258,7 @@ function submitMove(event) {
         })
         .then(function (result) {
             if (!result.ok || !result.data || result.data.status !== 'ok') {
-                throw new Error(result.data && result.data.message ? result.data.message : "Impossible de deplacer le holon.");
+throw new Error(result.data && result.data.message ? result.data.message : "Impossible de déplacer l’espace.");
             }
 
             const movedHolonId = Number(result.data.holon && result.data.holon.id || state.data.holonId || 0);
@@ -296,7 +296,7 @@ function submitMove(event) {
                 elements.submit.disabled = false;
             }
 
-            showStatus(error && error.message ? error.message : "Impossible de deplacer le holon.", 'error');
+showStatus(error && error.message ? error.message : "Impossible de déplacer l’espace.", 'error');
         });
 }
 

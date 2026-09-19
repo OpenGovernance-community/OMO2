@@ -243,6 +243,7 @@
         var height = 340;
         var paddingLeft = 64;
         var showCumulative = Boolean(data.showCumulative);
+        var referenceUsesCumulativeScale = showCumulative && data.referenceScale !== 'value';
         var paddingRight = showCumulative ? 64 : 24;
         var paddingTop = 24;
         var paddingBottom = 42;
@@ -287,11 +288,23 @@
             ? null
             : Number(data.minimumValue);
         minimumValue = Number.isFinite(minimumValue) ? minimumValue : null;
-        var scale = resolveScale(showCumulative ? measure : measure.concat(reference), showCumulative ? [minimumValue] : [ceilingValue, minimumValue]);
+        var valueScalePoints = showCumulative && referenceUsesCumulativeScale
+            ? measure
+            : measure.concat(reference);
+        var valueScaleExtras = [minimumValue];
+        if (!showCumulative || !referenceUsesCumulativeScale) {
+            valueScaleExtras.push(ceilingValue);
+        }
+        var scale = resolveScale(valueScalePoints, valueScaleExtras);
         if (!scale) {
             scale = resolveScale([{value: 0}], []);
         }
-        var cumulativeScale = showCumulative ? resolveScale(cumulative.concat(reference), [ceilingValue]) : null;
+        var cumulativeScale = showCumulative
+            ? resolveScale(
+                referenceUsesCumulativeScale ? cumulative.concat(reference) : cumulative,
+                referenceUsesCumulativeScale ? [ceilingValue] : []
+            )
+            : null;
         if (showCumulative && !cumulativeScale) {
             cumulativeScale = resolveScale([{value: 0}], []);
         }
@@ -307,7 +320,8 @@
         } : mapPoint;
         var measureCoordinates = measure.map(mapPoint);
         var cumulativeCoordinates = cumulative.map(mapCumulativePoint);
-        var referenceCoordinates = reference.map(mapCumulativePoint);
+        var mapReferencePoint = referenceUsesCumulativeScale ? mapCumulativePoint : mapPoint;
+        var referenceCoordinates = reference.map(mapReferencePoint);
         var minimumLineValue = getVisibleMinimumLineValue(minimumValue, measure);
         var chartId = 'omo-stats-interactive-' + (++chartSequence);
         var overdueClass = data.overdueSeverity === 'warning'
@@ -357,7 +371,7 @@
             svg += '<polyline class="omo-stats-chart__reference" points="' + coordinateString(referenceCoordinates) + '"/>';
         }
         if (ceilingValue !== null) {
-            var ceilingY = mapCumulativePoint({timestamp: startTimestamp, value: ceilingValue})[1];
+            var ceilingY = mapReferencePoint({timestamp: startTimestamp, value: ceilingValue})[1];
             svg += '<line class="omo-stats-chart__reference omo-stats-chart__reference--ceiling" x1="' + paddingLeft + '" y1="' + ceilingY + '" x2="' + (width - paddingRight) + '" y2="' + ceilingY + '"/>';
         }
         if (minimumLineValue !== null) {

@@ -59,7 +59,7 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Accessible label for the invitation popup tabs.',
         ],
         'decisions.invitations_popup.tab.holons' => [
-            'text' => 'Holons',
+            'text' => 'Espaces',
             'context' => 'Tab label for invited holons.',
         ],
         'decisions.invitations_popup.tab.members' => [
@@ -75,11 +75,11 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Tab label for public participation settings and public-link additions.',
         ],
         'decisions.invitations_popup.holons_title' => [
-            'text' => 'Holons invités',
+            'text' => 'Espaces invités',
             'context' => 'Section title for invited holons in the invitation popup.',
         ],
         'decisions.invitations_popup.holons_hint' => [
-            'text' => 'Le holon courant apparaît ici comme n’importe quel autre. S’il n’est pas coché, ses membres ne seront plus inclus dès qu’une invitation explicite existe.',
+            'text' => 'L’espace courant apparaît ici comme n’importe quel autre. S’il n’est pas coché, ses membres ne seront plus inclus dès qu’une invitation explicite existe.',
             'context' => 'Hint shown under the invited holons section.',
         ],
         'decisions.invitations_popup.members_title' => [
@@ -87,7 +87,7 @@ function omoDecisionInvitationsPopupSourceLang()
             'context' => 'Section title for invited organization members.',
         ],
         'decisions.invitations_popup.members_hint_structure' => [
-            'text' => 'Cochez les membres à inviter individuellement, en plus des holons sélectionnés.',
+            'text' => 'Cochez les membres à inviter individuellement, en plus des espaces sélectionnés.',
             'context' => 'Hint shown below invited members when a holon structure exists.',
         ],
         'decisions.invitations_popup.members_hint_flat' => [

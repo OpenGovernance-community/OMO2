@@ -279,7 +279,8 @@
 			}
 
 			if (!empty($configuration['audience'])) {
-				$normalized['audience'] = self::normalizeDashboardModuleAudience($settings['audience'] ?? 'all');
+				$audience = self::normalizeDashboardModuleAudience($settings['audience'] ?? 'all');
+				$normalized['audience'] = $audience;
 			}
 
 			if (!empty($configuration['video'])) {
@@ -293,7 +294,7 @@
 		public static function normalizeDashboardModuleAudience($value): string
 		{
 			$value = trim(mb_strtolower((string)$value, 'UTF-8'));
-			return in_array($value, array('all', 'mine'), true) ? $value : 'all';
+			return in_array($value, array('all', 'mine', 'roles'), true) ? $value : 'all';
 		}
 
 		public static function normalizeDashboardLayout($layout)

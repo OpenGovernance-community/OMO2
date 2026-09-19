@@ -40,7 +40,7 @@
 				'shortname' => 'Nom court',
 				'IDpropertyformat' => 'Format',
 				'listitemtype' => "Type d'éléments de liste",
-				'listholontypeids' => 'Types de holons autorisés',
+				'listholontypeids' => 'Types d’espaces autorisés',
 				'IDholon_organization' => 'Organisation',
 				'datecreation' => 'Date de création',
 				'position' => 'Position',
@@ -83,7 +83,7 @@
 				array('id' => self::LIST_ITEM_NUMBER, 'name' => 'Chiffre'),
 				array('id' => self::LIST_ITEM_DATE, 'name' => 'Date'),
 				array('id' => self::LIST_ITEM_DETAIL, 'name' => 'Liste detaillee'),
-				array('id' => self::LIST_ITEM_HOLON, 'name' => 'Holon'),
+				array('id' => self::LIST_ITEM_HOLON, 'name' => 'Espace'),
 				array('id' => self::LIST_ITEM_PROJECT, 'name' => 'Projet'),
 				array('id' => self::LIST_ITEM_AUTHORITY, 'name' => 'Autorite'),
 			);

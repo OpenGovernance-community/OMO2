@@ -7,7 +7,7 @@
     window.omoApplicationViewPreferencesReady = true;
 
     var viewFieldsByApplication = {
-        activities: ['scope', 'state'],
+        activities: ['scope', 'assignment', 'state'],
         calendar: ['scope', 'view'],
         checklist: ['scope'],
         decision: ['scope', 'status', 'type', 'method', 'sort', 'density'],

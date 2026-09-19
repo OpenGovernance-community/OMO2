@@ -29,7 +29,7 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'context' => 'Accessible label used by the event invitation tabs.',
             ],
             'calendar.invitations.tab.holons' => [
-                'text' => 'Holons',
+            'text' => 'Espaces',
                 'context' => 'Tab label for holon invitations in calendar.',
             ],
             'calendar.invitations.tab.members' => [
@@ -49,15 +49,15 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'context' => 'Hint shown when no holon structure is available for the event invitation editor.',
             ],
             'calendar.invitations.holons_title' => [
-                'text' => 'Holons invités',
+            'text' => 'Espaces invités',
                 'context' => 'Section title for invited holons in the event invitation editor.',
             ],
             'calendar.invitations.holons_hint' => [
-                'text' => "Le holon de contexte est coché par défaut pour éviter une exclusion involontaire. Dès qu'une sélection explicite existe, seule cette liste fait foi.",
+            'text' => "L’espace de contexte est coché par défaut pour éviter une exclusion involontaire. Dès qu’une sélection explicite existe, seule cette liste fait foi.",
                 'context' => 'Hint shown below the invited holons list in the event invitation editor.',
             ],
             'calendar.invitations.holons_filter_placeholder' => [
-                'text' => 'Filtrer les holons...',
+            'text' => 'Filtrer les espaces...',
                 'context' => 'Placeholder shown in the quick filter for the invited holons tree.',
             ],
             'calendar.invitations.members_title' => [
@@ -69,7 +69,7 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'context' => 'Placeholder shown in the quick filter for individually invited members.',
             ],
             'calendar.invitations.members_hint_structure' => [
-                'text' => 'Cochez ici les membres à ajouter en plus des holons sélectionnés.',
+            'text' => 'Cochez ici les membres à ajouter en plus des espaces sélectionnés.',
                 'context' => 'Hint shown below invited members when a holon structure exists.',
             ],
             'calendar.invitations.members_hint_flat' => [
@@ -131,7 +131,7 @@ if (!function_exists('omoCalendarInvitationSourceLang')) {
                 'context' => 'Error returned when the invitation popup cannot access the database.',
             ],
             'calendar.invitations.invalid_holon' => [
-                'text' => 'Un holon sélectionné est invalide.',
+            'text' => 'Un espace sélectionné est invalide.',
                 'context' => 'Validation error returned when a selected holon is invalid for the event invitation editor.',
             ],
             'calendar.invitations.invalid_member' => [
@@ -435,7 +435,7 @@ if (!function_exists('omoCalendarPrepareInvitationSelections')) {
             if (!$holon->load($holonId) || !$organization->containsHolon($holon) || !$holon->canViewDetail()) {
                 return [
                     'status' => false,
-                    'message' => 'Un holon sélectionné est invalide.',
+        'message' => 'Un espace sélectionné est invalide.',
                 ];
             }
 
