@@ -42,7 +42,7 @@ function omoParametersIndexSourceLang()
         'parameters.index.card.holon_templates.discovery_mode_cta' => ['text' => 'Mode Autonome requis', 'context' => 'Disabled card action shown for the holon template editor in discovery mode.'],
         'parameters.index.card.structure_display.title' => ['text' => 'Affichage de la structure', 'context' => 'Card title used to open the organization structure display settings.'],
         'parameters.index.card.structure_display.eyebrow' => ['text' => 'Architecture', 'context' => 'Small eyebrow label shown on the structure display settings card.'],
-        'parameters.index.card.structure_display.description' => ['text' => 'Regler la profondeur, les libelles et l estompage de la carte des cercles et roles.', 'context' => 'Card description used to open the organization structure display settings.'],
+        'parameters.index.card.structure_display.description' => ['text' => 'Regler la profondeur, les libelles et l estompage de la carte des espaces.', 'context' => 'Card description used to open the organization structure display settings.'],
         'parameters.index.card.structure_display.admin_mode_required' => ['text' => 'Activez le mode {adminLabel} dans votre profil pour modifier cet affichage.', 'context' => 'Card description shown when admin mode is required for structure display settings.'],
         'parameters.index.card.structure_display.admin_mode_cta' => ['text' => 'Mode {adminLabel} requis', 'context' => 'Card action shown when admin mode is required for structure display settings.'],
         'parameters.index.card.server_admin.title' => ['text' => 'Admin du serveur', 'context' => 'Card title used to open the server administration settings popup from the settings hub.'],

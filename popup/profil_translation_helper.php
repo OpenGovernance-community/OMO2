@@ -59,7 +59,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'Title of the account merge tool.',
         ],
         'profile.popup.merge.intro' => [
-            'text' => "Rassemblez dans un seul profil les organisations, rôles, documents, décisions, validations et autres actions de deux comptes qui vous appartiennent.",
+            'text' => "Rassemblez dans un seul profil les organisations, espaces, documents, décisions, validations et autres actions de deux comptes qui vous appartiennent.",
             'context' => 'Introductory text for the account merge tool.',
         ],
         'profile.popup.merge.current_email' => [

@@ -54,7 +54,7 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.update' => ['text' => 'Enregistrer les modifications', 'context' => 'Governance decision update button.'],
             'governance.saving' => ['text' => 'Enregistrement…', 'context' => 'Governance decision saving label.'],
             'governance.error.generic' => ['text' => 'Impossible d’enregistrer cette prise de décision.', 'context' => 'Governance editor generic error.'],
-            'governance.error.holon' => ['text' => 'Une décision hors réorg doit être créée dans un cercle ou un rôle.', 'context' => 'Governance editor invalid holon error.'],
+            'governance.error.holon' => ['text' => 'Une décision hors réorg doit être créée dans un espace.', 'context' => 'Governance editor invalid space error.'],
             'governance.error.disabled' => ['text' => 'Les décisions hors réorg ne sont pas activées dans les paramètres de cette organisation.', 'context' => 'Governance workflow disabled error.'],
             'governance.error.owner' => ['text' => 'Seul le créateur peut modifier les propositions de cette prise de décision.', 'context' => 'Governance editor owner error.'],
             'governance.error.locked' => ['text' => 'Les propositions sont verrouillées depuis la fin de la consultation.', 'context' => 'Governance editor locked error.'],

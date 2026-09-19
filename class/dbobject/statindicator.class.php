@@ -59,7 +59,7 @@ class StatIndicator extends DbObject
         return [
             'id' => 'ID',
             'IDorganization' => 'Organisation',
-            'IDholon' => 'Cercle ou rôle',
+            'IDholon' => 'Espace associé',
             'IDuser' => 'Créateur',
             'IDuser_responsible' => 'Personne en charge',
             'name' => 'Nom',
