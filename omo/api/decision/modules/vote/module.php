@@ -86,6 +86,14 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'text' => 'Statut',
                 'context' => 'Label for the status field.',
             ],
+            'decisions.vote.field.schedule' => [
+                'text' => 'Planification',
+                'context' => 'Heading for the optional process schedule fields.',
+            ],
+            'decisions.vote.field.schedule_help' => [
+                'text' => 'Vous pouvez laisser ces réglages par défaut et planifier le scrutin plus tard.',
+                'context' => 'Help for the optional process schedule fields.',
+            ],
             'decisions.vote.field.consultation_start' => [
             'text' => 'Début de la consultation',
                 'context' => 'Label for the consultation start date field.',
@@ -728,7 +736,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                 <?php $manageFormId = !$embeddedQuestion ? 'omoDecisionVoteManageForm' : ''; ?>
                 <form
                     <?= $manageFormId !== '' ? 'id="' . $escape($manageFormId) . '"' : '' ?>
-                    class="omo-decision-vote__form generic-form-stack"
+                    class="omo-decision-vote__form generic-form-stack generic-form-stack--compact"
                     action="<?= $escape($saveUrl) ?>"
                     method="post"
                     data-omo-decision-vote-form
@@ -749,7 +757,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     <input type="hidden" name="evaluation_method" value="<?= $escape($methodKey) ?>">
 
                     <?php if (!$embeddedQuestion): ?>
-                    <section class="generic-section generic-section--stack generic-form-section omo-decision-edit__process-settings">
+                    <section class="generic-section generic-section--stack generic-form-section generic-form-section--compact omo-decision-edit__process-settings">
                     <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.multi.process_title', [], $lang, $sourceLang)) ?></h3>
 
                     <label class="omo-decision-vote__field">
@@ -757,7 +765,7 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         <input
                             type="text"
                             name="process_title"
-                            class="generic-form-control"
+                            class="generic-form-control generic-form-control--compact"
                             required
                             maxlength="190"
                             value="<?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('title')) : '') ?>"
@@ -770,13 +778,22 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.process_description', [], $lang, $sourceLang)) ?></span>
                         <textarea
                             name="process_description"
-                            class="generic-form-control omo-decision-vote__textarea"
-                            rows="3"
+                            class="generic-form-control generic-form-control--compact omo-decision-vote__textarea"
+                            rows="2"
                             placeholder="<?= $escape(t('decisions.vote.placeholder.process_description', [], $lang, $sourceLang)) ?>"
                             <?= $canEditStructure ? '' : 'disabled' ?>
                         ><?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('description')) : '') ?></textarea>
                     </label>
 
+                    <div class="generic-accordion generic-accordion--card generic-accordion--collapsible<?= $decision instanceof DecisionProcess && !$isDuplicate && (int)$decision->getId() > 0 ? '' : ' is-collapsed' ?>" data-generic-accordion>
+                        <div class="generic-accordion__header">
+                            <div class="generic-heading-with-help">
+                                <h4 class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.schedule', [], $lang, $sourceLang)) ?></h4>
+                                <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover><summary aria-label="<?= $escape(t('decisions.vote.field.schedule_help', [], $lang, $sourceLang)) ?>">?</summary><div class="generic-context-help__content"><?= $escape(t('decisions.vote.field.schedule_help', [], $lang, $sourceLang)) ?></div></details>
+                            </div>
+                            <button type="button" class="generic-accordion__toggle" data-generic-accordion-toggle aria-expanded="<?= $decision instanceof DecisionProcess && !$isDuplicate && (int)$decision->getId() > 0 ? 'true' : 'false' ?>" aria-label="<?= $escape(t('decisions.vote.field.schedule', [], $lang, $sourceLang)) ?>">&#9662;</button>
+                        </div>
+                        <div class="generic-accordion__content generic-form-stack generic-form-stack--compact">
                     <div class="omo-decision-vote__grid omo-decision-schedule__primary">
                     <div class="omo-decision-vote__field">
                         <div class="generic-heading-with-help">
@@ -859,6 +876,8 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             >
                         </label>
                         <?php endif; ?>
+                    </div>
+                        </div>
                     </div>
 
                     <?= omoDecisionRenderInvitationSection($decision, array_merge($context, ['method' => $methodKey]), $lang, $sourceLang, $escape, 'omo-decision-vote__invitation-summary') ?>

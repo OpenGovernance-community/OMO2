@@ -29,6 +29,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleGetSourceLang')) {
             'decisions.majority_judgment.field.group_section' => ['text' => 'Question de ce groupe', 'context' => 'Section title for group-level question fields.'],
             'decisions.majority_judgment.field.type' => ['text' => 'Type de prise de décision', 'context' => 'Label for the decision type field.'],
             'decisions.majority_judgment.field.status' => ['text' => 'Statut', 'context' => 'Label for the status field.'],
+            'decisions.majority_judgment.field.schedule' => ['text' => 'Planification', 'context' => 'Heading for the optional process schedule fields.'],
+            'decisions.majority_judgment.field.schedule_help' => ['text' => 'Vous pouvez laisser ces réglages par défaut et planifier le scrutin plus tard.', 'context' => 'Help for the optional process schedule fields.'],
             'decisions.majority_judgment.field.consultation_start' => ['text' => 'Début de la consultation', 'context' => 'Label for the consultation start field.'],
             'decisions.majority_judgment.field.consultation_end' => ['text' => 'Fin de la consultation', 'context' => 'Label for the consultation end field.'],
             'decisions.majority_judgment.field.evaluation_start' => ['text' => 'Début du vote', 'context' => 'Label for the evaluation start field.'],
@@ -433,7 +435,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                 <?php $manageFormId = !$embeddedQuestion ? 'omoDecisionMajorityJudgmentManageForm' : ''; ?>
                 <form
                     <?= $manageFormId !== '' ? 'id="' . $escape($manageFormId) . '"' : '' ?>
-                    class="omo-decision-majority-judgment__form generic-form-stack"
+                    class="omo-decision-majority-judgment__form generic-form-stack generic-form-stack--compact"
                     action="/omo/api/decision/modules/majority_judgment/save.php"
                     method="post"
                     data-omo-decision-majority-judgment-form
@@ -454,18 +456,27 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <input type="hidden" name="evaluation_method" value="<?= $escape(DecisionProcess::METHOD_MAJORITY_JUDGMENT) ?>">
 
                     <?php if (!$embeddedQuestion): ?>
-                    <section class="generic-section generic-section--stack generic-form-section omo-decision-edit__process-settings">
+                    <section class="generic-section generic-section--stack generic-form-section generic-form-section--compact omo-decision-edit__process-settings">
                     <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.multi.process_title', [], $lang, $sourceLang)) ?></h3>
 
                     <label class="omo-decision-majority-judgment__field">
-                        <input type="text" name="process_title" class="generic-form-control" required maxlength="190" value="<?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('title')) : '') ?>" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.process_title', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>>
+                        <input type="text" name="process_title" class="generic-form-control generic-form-control--compact" required maxlength="190" value="<?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('title')) : '') ?>" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.process_title', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>>
                     </label>
 
                     <label class="omo-decision-majority-judgment__field">
                         <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.process_description', [], $lang, $sourceLang)) ?></span>
-                        <textarea name="process_description" class="generic-form-control omo-decision-majority-judgment__textarea" rows="3" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.process_description', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>><?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('description')) : '') ?></textarea>
+                        <textarea name="process_description" class="generic-form-control generic-form-control--compact omo-decision-majority-judgment__textarea" rows="2" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.process_description', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>><?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('description')) : '') ?></textarea>
                     </label>
 
+                    <div class="generic-accordion generic-accordion--card generic-accordion--collapsible<?= $decision instanceof DecisionProcess && !$isDuplicate && (int)$decision->getId() > 0 ? '' : ' is-collapsed' ?>" data-generic-accordion>
+                        <div class="generic-accordion__header">
+                            <div class="generic-heading-with-help">
+                                <h4 class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.schedule', [], $lang, $sourceLang)) ?></h4>
+                                <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover><summary aria-label="<?= $escape(t('decisions.majority_judgment.field.schedule_help', [], $lang, $sourceLang)) ?>">?</summary><div class="generic-context-help__content"><?= $escape(t('decisions.majority_judgment.field.schedule_help', [], $lang, $sourceLang)) ?></div></details>
+                            </div>
+                            <button type="button" class="generic-accordion__toggle" data-generic-accordion-toggle aria-expanded="<?= $decision instanceof DecisionProcess && !$isDuplicate && (int)$decision->getId() > 0 ? 'true' : 'false' ?>" aria-label="<?= $escape(t('decisions.majority_judgment.field.schedule', [], $lang, $sourceLang)) ?>">&#9662;</button>
+                        </div>
+                        <div class="generic-accordion__content generic-form-stack generic-form-stack--compact">
                     <div class="omo-decision-majority-judgment__grid omo-decision-schedule__primary">
                     <div class="omo-decision-majority-judgment__field">
                         <div class="generic-heading-with-help">
@@ -522,6 +533,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.evaluation_end', [], $lang, $sourceLang)) ?></span>
                             <input type="datetime-local" name="evaluation_end_at" class="generic-form-control" value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionMajorityJudgmentFormatDateTimeLocal($decision->get('evaluation_end_at')) : '') ?>" <?= $isEditable ? '' : 'disabled' ?>>
                         </label>
+                    </div>
+                        </div>
                     </div>
 
                     <?= omoDecisionRenderInvitationSection($decision, array_merge($context, ['method' => DecisionProcess::METHOD_MAJORITY_JUDGMENT]), $lang, $sourceLang, $escape, 'omo-decision-majority-judgment__invitation-summary') ?>

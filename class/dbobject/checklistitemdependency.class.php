@@ -5,7 +5,7 @@ class ChecklistItemDependency extends DbObject
 {
     public static function tableName()
     {
-        return 'checklist_item_dependency';
+        return 'process_item_dependency';
     }
 
     public static function rules()

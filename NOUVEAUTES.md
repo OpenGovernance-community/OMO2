@@ -6,11 +6,33 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 - Les FAQ rattachees a un parcours sont maintenant aussi accessibles lorsqu il est fourni par un pack de parcours de l organisation.
 
+- Lexique : les noms affichés pour les espaces, cercles, rôles et groupes peuvent désormais être personnalisés par organisation.
+
+- Lexique : l’éditeur adopte un formulaire compact, avec des sections séparées par des traits légers et des aides accessibles par « ? ».
+
+- Modèles de structure : les types affichés suivent le lexique de l’organisation et les aides utilisent des formulations neutres.
+
+- Paramètres : les cartes Notifications et Affichage de la structure utilisent maintenant leurs icônes dédiées.
+
 ## 2026-09-19
 
 - Indicateurs : formulaire compact, choix sans encadrement et explications accessibles via les icones d aide au survol ou au clic.
 
 - Indicateurs : l edition des groupes adopte le meme formulaire compact, avec aides contextuelles et reglages regroupes.
+
+- Taches recurrentes : formulaire de creation et d edition aligne sur les indicateurs, avec champs compacts, aides contextuelles et en-tete epure.
+
+- Documents : formulaire de creation et d edition compacte, avec aides contextuelles pour les reglages secondaires.
+
+- Documents : type, visibilite et edition sont regroupes sur une ligne ; le titre et les tags partagent une ligne 60/40, tandis que le resume occupe toute la largeur.
+
+- Documents et processus : les explications secondaires des formulaires sont maintenant rassemblees dans des aides `?`, pour laisser les champs utiles visibles en premier.
+
+- Projets et evenements : les formulaires de creation et de modification utilisent a leur tour une mise en page compacte et des sections partagees avec les taches recurrentes.
+
+- Processus : le routeur utilise maintenant l entree technique checklist pendant le chargement initial, meme si la route publique est nommee processus.
+
+- Technique : les tables des processus et des taches recurrentes portent maintenant des noms distincts (`process*` et `recurring_task*`). Les nouveaux dbObjects `Process` et `RecurringTask` sont disponibles pour les futurs developpements.
 
 - Tableau de pilotage : projets, indicateurs et checklists peuvent etre limites a Moi, Mes espaces ou Tous dans la configuration de chaque module.
 

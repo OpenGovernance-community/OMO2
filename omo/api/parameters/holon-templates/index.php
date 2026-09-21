@@ -1650,7 +1650,7 @@ function omoHolonTemplateApplyInheritedMediaState(template) {
 }
 
 function omoHolonTemplateBuildDraft(inheritsFromId, definitionHolonId) {
-    const firstType = (omoHolonTemplateState.data.types || [])[0] || { id: 1, name: 'Holon' };
+    const firstType = (omoHolonTemplateState.data.types || [])[0] || { id: 1, name: 'Élément' };
     const suggestedInheritanceId = Number(inheritsFromId || 0);
     const inheritedTemplate = omoHolonTemplateFind(suggestedInheritanceId);
     const suggestedDefinitionHolonId = Number(
@@ -1669,7 +1669,7 @@ function omoHolonTemplateBuildDraft(inheritsFromId, definitionHolonId) {
         inheritedIcon: '',
         effectiveIcon: '',
         typeId: effectiveTypeId,
-        typeLabel: omoHolonTemplateGetTypeLabel(effectiveTypeId) || String(firstType.name || 'Holon'),
+        typeLabel: omoHolonTemplateGetTypeLabel(effectiveTypeId) || String(firstType.name || 'Élément'),
         visible: false,
         mandatory: false,
         lockedName: false,

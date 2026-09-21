@@ -116,7 +116,7 @@ $texts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260917-style-review-final">
+<link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260921-compact-editor">
 <div
     class="omo-activities omo-panel-view"
     id="omo-activities-root"
@@ -277,7 +277,7 @@ $texts = [
             <div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky">
                 <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
                     <h3 data-omo-subdrawer-title><?= omoApiEscape(omoActivityT('activity.title')) ?></h3>
-                    <p data-omo-subdrawer-description><?= omoApiEscape(omoActivityT('activity.description')) ?></p>
+                    <p data-omo-subdrawer-description hidden></p>
                 </div>
                 <div class="generic-drawer-header__actions">
                     <div data-omo-subdrawer-actions></div>
