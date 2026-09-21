@@ -24,6 +24,8 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 - Organisations : une organisation structuree peut maintenant etre partagee comme modele public. Un nouvel espace peut etre cree a partir de ce modele, sans membres, historique, rendez-vous, valeurs d indicateurs ni donnees budgetaires historiques. Les applications conservent aussi leur etat d activation et leurs reglages.
 
+- Modèles d’organisation : la création depuis un modèle reprend maintenant le formulaire complet de définition de l’organisation. Le nom, les images, la couleur, la position et les réglages choisis remplacent ceux du modèle ; les routes restent à définir pour la nouvelle organisation.
+
 - Projets : les barres d etat des sous-projets affichent leur nombre dans une capsule, y compris dans les listes de la structure, et utilisent un curseur d aide pour signaler le detail disponible au survol.
 
 - Les FAQ rattachees a un parcours sont maintenant aussi accessibles lorsqu il est fourni par un pack de parcours de l organisation.

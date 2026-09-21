@@ -411,15 +411,16 @@ function omoBuildDirectoryCardData(array $directoryEntry, $currentUserId)
     }
 
     $organizationMembership = $pendingInvitation ? null : $accessibleOrganization->getMembership($currentUserId, true);
+    $organizationId = (int)$accessibleOrganization->getId();
     $organizationShortname = trim((string)$accessibleOrganization->get('shortname'));
     $organizationUrl = $pendingInvitation
         ? $pendingInvitation->getInvitationUrl()
-        : commonBuildOrganizationHomeUrl((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
+        : commonBuildOrganizationHomeUrl($organizationId, $organizationShortname, commonGetRootHost());
     $organizationDomain = trim((string)$accessibleOrganization->get('domain'));
     $organizationInitial = function_exists('mb_substr')
         ? mb_strtoupper(mb_substr($organizationName, 0, 1))
         : strtoupper(substr($organizationName, 0, 1));
-    $organizationHostLabel = commonBuildOrganizationAccessLabel((int)$accessibleOrganization->getId(), $organizationShortname, commonGetRootHost());
+    $organizationHostLabel = commonBuildOrganizationAccessLabel($organizationId, $organizationShortname, commonGetRootHost());
     $invitationPendingHolons = $pendingInvitation ? $pendingInvitation->getPendingHolons() : [];
     $isTemplateOrganization = $accessibleOrganization->isSharedAsTemplate();
     $isSystemOrganization = $accessibleOrganization->isSystemOrganization();

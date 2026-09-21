@@ -4,14 +4,12 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 use dbObject\Organization;
 
 $sourceLang = array(
-    'organization_model.action.submit' => array('text' => 'Creer depuis ce modele', 'context' => 'Submit button in the create-from-model popup.'),
-    'organization_model.description' => array('text' => 'Choisissez un modele public. Sa structure, ses reglages et ses contenus reutilisables seront copies dans une nouvelle organisation privee.', 'context' => 'Description in the create-from-model popup.'),
-    'organization_model.empty' => array('text' => 'Aucun modele public n est disponible pour le moment.', 'context' => 'Empty state in the create-from-model popup.'),
-    'organization_model.field.model' => array('text' => 'Modele', 'context' => 'Model selector label in the create-from-model popup.'),
-    'organization_model.field.model_empty' => array('text' => 'Choisir un modele...', 'context' => 'Empty model selector option in the create-from-model popup.'),
-    'organization_model.field.name' => array('text' => 'Nom de la nouvelle organisation', 'context' => 'Organization name input label in the create-from-model popup.'),
-    'organization_model.loading' => array('text' => 'Creation en cours...', 'context' => 'Loading state in the create-from-model popup.'),
-    'organization_model.error.generic' => array('text' => 'Creation impossible.', 'context' => 'Fallback creation error in the create-from-model popup.'),
+    'organization_model.action.submit' => array('text' => 'Continuer', 'context' => 'Submit button in the create-from-model popup.'),
+    'organization_model.description' => array('text' => 'Choisissez un modèle public, puis renseignez les informations de votre nouvelle organisation.', 'context' => 'Description in the create-from-model popup.'),
+    'organization_model.empty' => array('text' => 'Aucun modèle public n’est disponible pour le moment.', 'context' => 'Empty state in the create-from-model popup.'),
+    'organization_model.field.model' => array('text' => 'Modèle', 'context' => 'Model selector label in the create-from-model popup.'),
+    'organization_model.field.model_empty' => array('text' => 'Choisir un modèle...', 'context' => 'Empty model selector option in the create-from-model popup.'),
+    'organization_model.loading' => array('text' => 'Ouverture du formulaire...', 'context' => 'Loading state in the create-from-model popup.'),
 );
 $lang = translationBundleInit('omo_organization_model_popup', omoGetTranslationLocale(), $sourceLang);
 $models = Organization::getPublicModelCatalog();
@@ -31,10 +29,6 @@ $models = Organization::getPublicModelCatalog();
                     <?php endforeach; ?>
                 </select>
             </label>
-            <label class="omo-field">
-                <span><?= htmlspecialchars(t('organization_model.field.name', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></span>
-                <input class="generic-form-control" type="text" name="organization_name" maxlength="100" required>
-            </label>
             <div id="omo-create-from-model-feedback" class="generic-help-text" role="status"></div>
             <div class="generic-actions generic-actions--end">
                 <button class="generic-action-button generic-action-button--primary" type="submit"><?= htmlspecialchars(t('organization_model.action.submit', array(), $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
@@ -50,16 +44,13 @@ $models = Organization::getPublicModelCatalog();
                 var button = form.querySelector('button[type="submit"]');
                 if (button) { button.disabled = true; }
                 feedback.textContent = <?= json_encode(t('organization_model.loading', array(), $lang, $sourceLang), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-                fetch('/omo/api/organizations/model_create.php', { method: 'POST', body: new FormData(form) })
-                    .then(function (response) { return response.json(); })
-                    .then(function (data) {
-                        if (!data || !data.status) { throw new Error(data && data.message ? data.message : <?= json_encode(t('organization_model.error.generic', array(), $lang, $sourceLang), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>); }
-                        window.location.href = data.redirect || '/omo/';
-                    })
-                    .catch(function (error) {
-                        feedback.textContent = error.message || <?= json_encode(t('organization_model.error.generic', array(), $lang, $sourceLang), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-                        if (button) { button.disabled = false; }
-                    });
+                var modelId = String(new FormData(form).get('model_id') || '');
+                var url = '/popup/organization_create.php?model_id=' + encodeURIComponent(modelId);
+                if (typeof window.commonTopbarOpenModal === 'function') {
+                    window.commonTopbarOpenModal('Créer à partir d’un modèle', url, 'fetch');
+                    return;
+                }
+                window.location.href = url;
             });
         }());
         </script>
