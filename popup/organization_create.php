@@ -16,8 +16,10 @@ if ($currentUserId <= 0) {
 }
 
 $organizationId = isset($_GET['oid']) && is_numeric($_GET['oid']) ? (int)$_GET['oid'] : 0;
+$modelOrganizationId = isset($_GET['model_id']) && is_numeric($_GET['model_id']) ? (int)$_GET['model_id'] : 0;
 $organization = new \dbObject\Organization();
 $isEditMode = false;
+$isModelCreateMode = false;
 
 if ($organizationId > 0) {
     if (!$organization->load($organizationId) || (int)$organization->getId() <= 0) {
@@ -31,11 +33,30 @@ if ($organizationId > 0) {
     $isEditMode = true;
 }
 
-$pageTitle = $isEditMode ? "Modifier une organisation" : "Creer une organisation";
-$submitLabel = $isEditMode ? "Enregistrer les modifications" : "Creer l'organisation";
-$pendingLabel = $isEditMode ? "Enregistrement en cours..." : "Creation en cours...";
-$successLabel = $isEditMode ? "Organisation enregistree." : "Organisation creee.";
+if (!$isEditMode && $modelOrganizationId > 0) {
+    $modelOrganization = new \dbObject\Organization();
+    if (!$modelOrganization->load($modelOrganizationId) || !$modelOrganization->isSharedAsTemplate()) {
+        die("Modèle public introuvable");
+    }
+
+    foreach (array('color', 'latlong', 'interface_level', 'logo', 'banner') as $field) {
+        $organization->set($field, $modelOrganization->get($field));
+    }
+    $organization->set('name', '');
+    // Routes must remain unique to the newly created organization.
+    $organization->set('shortname', '');
+    $organization->set('domain', '');
+    $isModelCreateMode = true;
+}
+
+$pageTitle = $isEditMode ? "Modifier une organisation" : ($isModelCreateMode ? "Créer à partir d'un modèle" : "Creer une organisation");
+$submitLabel = $isEditMode ? "Enregistrer les modifications" : ($isModelCreateMode ? "Créer depuis ce modèle" : "Creer l'organisation");
+$pendingLabel = $isEditMode ? "Enregistrement en cours..." : "Création en cours...";
+$successLabel = $isEditMode ? "Organisation enregistree." : ($isModelCreateMode ? "Organisation créée depuis le modèle." : "Organisation creee.");
 $errorLabel = $isEditMode ? "Impossible d'enregistrer l'organisation." : "Impossible de creer l'organisation.";
+$formAction = $isEditMode
+    ? '/ajax/saveorganization.php?oid=' . (int)$organization->getId()
+    : ($isModelCreateMode ? '/omo/api/organizations/model_create.php' : '/ajax/saveorganization.php');
 $refreshApplicationPrompt = "Les modifications de l organisation seront visibles apres un rechargement de l application. Recharger maintenant ?";
 $shortnamePreviewScheme = commonGetRequestScheme();
 $shortnamePreviewHost = commonGetRootHost();
@@ -324,9 +345,12 @@ $organizationBannerPreviewWidth = max(1, (int)round(
     <div class="organization-create-shell">
 
     <section class="organization-create-card generic-stack">
-        <form id="organization_create_form" class="generic-form-stack" action="<?= $isEditMode ? '/ajax/saveorganization.php?oid=' . (int)$organization->getId() : '/ajax/saveorganization.php' ?>" method="post" enctype="multipart/form-data">
+        <form id="organization_create_form" class="generic-form-stack" action="<?= htmlspecialchars($formAction, ENT_QUOTES, 'UTF-8') ?>" method="post" enctype="multipart/form-data">
 <?php if ($isEditMode) { ?>
             <input type="hidden" name="id" value="<?= (int)$organization->getId() ?>">
+<?php } ?>
+<?php if ($isModelCreateMode) { ?>
+            <input type="hidden" name="model_id" value="<?= (int)$modelOrganizationId ?>">
 <?php } ?>
             <section class="generic-form-section generic-section generic-section--stack">
                 <div class="generic-form-grid">
@@ -471,6 +495,7 @@ $organizationBannerPreviewWidth = max(1, (int)round(
         var root = document.getElementById('organizationCreateRoot');
         var isEditMode = <?= $isEditMode ? 'true' : 'false' ?>;
         var organizationId = <?= (int)$organization->getId() ?>;
+        var formAction = <?= json_encode($formAction, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var shortnamePreviewScheme = <?= json_encode($shortnamePreviewScheme, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var shortnamePreviewHost = <?= json_encode($shortnamePreviewHost, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         var shortnamePreviewPath = <?= json_encode($shortnamePreviewPath, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -568,7 +593,7 @@ $organizationBannerPreviewWidth = max(1, (int)round(
         }
 
         if (form) {
-            form.setAttribute('action', isEditMode ? ('/ajax/saveorganization.php?oid=' + encodeURIComponent(String(organizationId))) : '/ajax/saveorganization.php');
+            form.setAttribute('action', formAction);
             form.setAttribute('method', 'post');
             form.setAttribute('enctype', 'multipart/form-data');
             applyRoutingRestrictions();

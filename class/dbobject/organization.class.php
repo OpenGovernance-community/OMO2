@@ -7656,20 +7656,30 @@
 		 * Creates a private organization from a public model. The model is read on
 		 * the server only: a browser can never supply an arbitrary export payload.
 		 */
-		public static function createFromPublicModel($modelOrganizationId, $actorUserId, $organizationName = '')
+		public static function createFromPublicModel($modelOrganizationId, $actorUserId, $organizationName = '', array $definitionOverrides = array())
 		{
 			$modelOrganizationId = (int)$modelOrganizationId;
 			$actorUserId = (int)$actorUserId;
 			$organizationName = trim((string)$organizationName);
+			$definitionOverrides = array_intersect_key($definitionOverrides, array_flip(array(
+				'name',
+				'shortname',
+				'domain',
+				'color',
+				'latlong',
+				'interface_level',
+				'logo',
+				'banner',
+			)));
 			$model = new self();
 			if ($modelOrganizationId <= 0 || !$model->load($modelOrganizationId) || !$model->isSharedAsTemplate()) {
-				return array('status' => false, 'message' => 'Le modele public selectionne est introuvable.');
+				return array('status' => false, 'message' => 'Le modèle public sélectionné est introuvable.');
 			}
 			if ($actorUserId <= 0) {
 				return array('status' => false, 'message' => 'Connexion requise.');
 			}
 			if ($organizationName === '') {
-				$organizationName = trim((string)$model->get('name')) . ' - copie';
+				return array('status' => false, 'message' => 'Le nom de l’organisation est obligatoire.');
 			}
 
 			$selectedModules = array(
@@ -7711,7 +7721,24 @@
 				return array('status' => false, 'message' => (string)$copyResult['message'], 'organization' => $result['organization']);
 			}
 
-			$result['message'] = 'Organisation creee depuis le modele public.';
+			if (count($definitionOverrides) > 0) {
+				$target = $result['organization'];
+				$target->loadFromArray($definitionOverrides);
+				$target->set('isModel', false);
+				if (trim((string)$target->get('name')) === '') {
+					return array('status' => false, 'message' => 'Le nom de l’organisation est obligatoire.', 'organization' => $target);
+				}
+				$definitionSave = $target->save();
+				if (!is_array($definitionSave) || empty($definitionSave['status'])) {
+					return array(
+						'status' => false,
+						'message' => (string)($definitionSave['text'] ?? 'La definition de l organisation n a pas pu etre enregistree.'),
+						'organization' => $target,
+					);
+				}
+			}
+
+			$result['message'] = 'Organisation créée depuis le modèle public.';
 			return $result;
 		}
 
