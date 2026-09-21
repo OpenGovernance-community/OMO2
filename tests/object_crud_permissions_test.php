@@ -59,7 +59,7 @@ namespace {
     $expected = [
         'PROJECT' => 'projects', 'RULE' => 'policy', 'INDICATOR' => 'stats',
         'DOCUMENT' => 'documents', 'DECISION' => 'decisions', 'FAQ' => 'faq',
-        'EVENT' => 'calendar', 'CHECKLIST' => 'checklists', 'CONTROL_ACTIVITY' => 'activities',
+        'EVENT' => 'calendar', 'PROCESS' => 'processes', 'RECURRING_TASK' => 'recurring_tasks',
     ];
     foreach ($expected as $object => $group) {
         foreach (['CREATE', 'EDIT', 'DELETE'] as $action) {

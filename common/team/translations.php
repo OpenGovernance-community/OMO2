@@ -147,12 +147,6 @@ if (!function_exists('omoTeamSourceLang')) {
             'team.api.invitation_send_failed' => ['text' => "L'invitation n'a pas pu être envoyée.", 'context' => 'JSON error message returned when an invitation email cannot be sent.'],
             'team.api.unknown_action' => ['text' => 'Action inconnue.', 'context' => 'JSON error message returned by the team member action endpoint when the requested action is unknown.'],
             'team.api.action_completed' => ['text' => 'Action terminée.', 'context' => 'Fallback JSON message returned by the team member action endpoint when a member action completed without a specific message.'],
-            'team.holon_type.organization' => ['text' => 'organisation', 'context' => 'Fallback holon type label used in the team module for an organization.'],
-            'team.holon_type.group' => ['text' => 'groupe', 'context' => 'Fallback holon type label used in the team module for a group.'],
-            'team.holon_type.circle' => ['text' => 'cercle', 'context' => 'Fallback holon type label used in the team module for a circle.'],
-            'team.holon_type.role' => ['text' => 'rôle', 'context' => 'Fallback holon type label used in the team module for a role.'],
-            'team.holon_type.holon' => ['text' => 'espace', 'context' => 'Fallback space type label used in the team module when no specific type matches.'],
-            'team.holon_type.context' => ['text' => 'contexte', 'context' => 'Fallback holon type label used in the team module for a generic context.'],
         ];
 
         return $sourceLang;
@@ -180,24 +174,6 @@ if (!function_exists('omoTeamT')) {
         $bundle = $bundle ?? omoTeamLoadTranslationBundle();
 
         return t($key, $variables, $bundle, $sourceLang);
-    }
-}
-
-if (!function_exists('omoTeamHolonTypeLabelByTypeId')) {
-    function omoTeamHolonTypeLabelByTypeId(int $typeId, ?array $bundle = null, ?array $sourceLang = null): string
-    {
-        switch ($typeId) {
-            case 4:
-                return omoTeamT('team.holon_type.organization', [], $bundle, $sourceLang);
-            case 3:
-                return omoTeamT('team.holon_type.group', [], $bundle, $sourceLang);
-            case 2:
-                return omoTeamT('team.holon_type.circle', [], $bundle, $sourceLang);
-            case 1:
-                return omoTeamT('team.holon_type.role', [], $bundle, $sourceLang);
-            default:
-                return omoTeamT('team.holon_type.holon', [], $bundle, $sourceLang);
-        }
     }
 }
 

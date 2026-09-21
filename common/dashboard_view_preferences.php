@@ -5,7 +5,7 @@ use dbObject\Organization;
 use dbObject\UserHolon;
 
 if (!function_exists('omoDashboardViewPreferencesResolveCapabilities')) {
-    function omoDashboardViewPreferencesResolveCapabilities($interfaceLevel, $holonId, $templateKey, $baseTypeKey, array $roles): array
+    function omoDashboardViewPreferencesResolveCapabilities($interfaceLevel, $holonId, $templateKey, $baseTypeKey, array $roles, $isOrganizationHolon = false): array
     {
         $interfaceLevel = (int)$interfaceLevel;
         $holonId = (int)$holonId;
@@ -15,12 +15,14 @@ if (!function_exists('omoDashboardViewPreferencesResolveCapabilities')) {
         $isHolonAdmin = !empty($roles['isHolonAdmin']);
         $isOrganizationAdmin = !empty($roles['isOrganizationAdmin']);
         $isSiteAdmin = !empty($roles['isSiteAdmin']);
+        $isOrganizationHolon = (bool)$isOrganizationHolon;
 
         $capabilities = array(
             'canSavePersonal' => false,
             'canSaveTemporary' => false,
             'canSaveHolon' => false,
             'canSaveOrganizationTemplate' => false,
+            'canSaveOrganizationModel' => ($isOrganizationAdmin || $isSiteAdmin) && $isOrganizationHolon,
             'canSaveApplicationType' => false,
             'canSaveGlobal' => $isSiteAdmin,
         );
@@ -62,6 +64,10 @@ if (!function_exists('omoDashboardViewPreferencesGetAccess')) {
             && UserHolon::canUserManageDashboardHolonDefault($userId, $organizationId, $holonId);
         $templateKey = $holon instanceof Holon ? $holon->getDashboardDirectTemplateLayoutKey() : '';
         $baseTypeKey = $holon instanceof Holon ? $holon->getDashboardBaseTypeLayoutKey() : '';
+        $rootHolon = $organization->getEnabledStructuralRootHolon();
+        $isOrganizationHolon = $holon instanceof Holon
+            && $rootHolon instanceof Holon
+            && (int)$holon->getId() === (int)$rootHolon->getId();
 
         return array_merge(array(
             'interfaceLevel' => $interfaceLevel,
@@ -69,6 +75,7 @@ if (!function_exists('omoDashboardViewPreferencesGetAccess')) {
             'isOrganizationAdmin' => $isOrganizationAdmin,
             'isHolonAdmin' => $isHolonAdmin,
             'isSiteAdmin' => $isSiteAdmin,
+            'isOrganizationHolon' => $isOrganizationHolon,
         ), omoDashboardViewPreferencesResolveCapabilities(
             $interfaceLevel,
             $holonId,
@@ -79,7 +86,8 @@ if (!function_exists('omoDashboardViewPreferencesGetAccess')) {
                 'isOrganizationAdmin' => $isOrganizationAdmin,
                 'isHolonAdmin' => $isHolonAdmin,
                 'isSiteAdmin' => $isSiteAdmin,
-            )
+            ),
+            $isOrganizationHolon
         ));
     }
 }
@@ -87,7 +95,7 @@ if (!function_exists('omoDashboardViewPreferencesGetAccess')) {
 if (!function_exists('omoDashboardViewPreferencesResolveLayout')) {
     function omoDashboardViewPreferencesResolveLayout(array $layouts): array
     {
-        foreach (array('temporary', 'personal', 'holon', 'organizationTemplate', 'applicationType', 'global') as $scope) {
+        foreach (array('temporary', 'personal', 'holon', 'organizationTemplate', 'organizationModel', 'applicationType', 'global') as $scope) {
             if (isset($layouts[$scope]) && is_array($layouts[$scope])) {
                 return $layouts[$scope];
             }
@@ -106,6 +114,7 @@ if (!function_exists('omoDashboardViewPreferencesGetOrderedSaveScopes')) {
             'personal' => 'canSavePersonal',
             'holon' => 'canSaveHolon',
             'organization_template' => 'canSaveOrganizationTemplate',
+            'organization_model' => 'canSaveOrganizationModel',
             'application_type' => 'canSaveApplicationType',
             'global' => 'canSaveGlobal',
         ) as $scope => $permission) {

@@ -1,6 +1,9 @@
 .omo-calendar-connect__summary, .omo-calendar-connect__external-list { display: grid; gap: 10px; }
 .omo-calendar-connect__summary strong { color: var(--color-text, #1f2937); }
 .omo-calendar-connect__message { margin: 0; color: var(--color-text, #1f2937); line-height: 1.55; }
+.generic-control-action > .omo-calendar-connect__color-control { flex: 0 0 44px; width: 44px; min-width: 44px; min-height: 44px; padding: 4px; }
+.generic-control-action > [data-omo-calendar-connect-copy-target="caldav"],
+.generic-control-action > [data-omo-calendar-connect-copy-target="ics"] { min-height: 44px; }
 .omo-calendar-connect__external-form { margin-top: 4px; }
 .omo-calendar-connect__external-item { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding-block: 12px; border-bottom: 1px solid var(--color-border, #d1d5db); }
 .omo-calendar-connect__external-color { align-self: stretch; border-radius: 999px; background: var(--param-external-calendar-color); }

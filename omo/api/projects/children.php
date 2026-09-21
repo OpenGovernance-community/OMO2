@@ -131,7 +131,7 @@ foreach ($children as $child) {
     $html .= '</div>';
     if ($hasDirectChildren) {
         $html .= '<button type="button" class="section-project-reference__status-toggle" data-omo-project-reference-toggle aria-expanded="false" aria-label="' . omoApiEscape(omoProjectsT('projects.children.show_subprojects', ['title' => $title])) . '">';
-        $html .= omoProjectsRenderStatusBar($summary, 'section-project-reference__status-bar');
+        $html .= omoProjectsRenderStatusBar($summary, 'section-project-reference__status-bar', 'div', !$renderJson && !$renderInline);
         $html .= '</button>';
         $html .= '<div class="section-project-reference__children" data-omo-project-reference-children hidden></div>';
     }

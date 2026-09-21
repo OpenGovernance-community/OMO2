@@ -7,6 +7,7 @@ use dbObject\ArrayProject;
 use dbObject\Authority;
 use dbObject\Holon;
 use dbObject\HolonPermission;
+use dbObject\Organization;
 use dbObject\Permission;
 use dbObject\PropertyFormat;
 use dbObject\Project;
@@ -34,13 +35,13 @@ function omoGetOrgPanelSourceLang(): array
             'text' => 'Deplacer',
             'context' => 'Action menu label to move the current holon in the left panel.',
         ],
-        'leftbar.children.circles' => [
-            'text' => 'Cercles',
-            'context' => 'Subtitle for child circles listed in the left panel navigation.',
+        'leftbar.actions.share_as_model' => [
+            'text' => 'Partager comme modele',
+            'context' => 'Action menu label to publish the current organization as a public model.',
         ],
-        'leftbar.children.roles' => [
-            'text' => 'Roles',
-            'context' => 'Subtitle for child roles listed in the left panel navigation.',
+        'leftbar.actions.stop_sharing_as_model' => [
+            'text' => 'Ne plus partager comme modele',
+            'context' => 'Action menu label to unpublish the current organization model.',
         ],
         'leftbar.children.section_title' => [
             'text' => 'Dependances',
@@ -104,7 +105,7 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Fallback shown when an authority has no parent authority.',
         ],
         'leftbar.empty.message' => [
-            'text' => 'Aucun contenu n’est encore renseigné pour cet espace.',
+            'text' => 'Aucun contenu n’est encore renseigné pour cet élément.',
             'context' => 'Message shown in the left panel when the current holon has no visible content.',
         ],
         'leftbar.empty.section_title' => [
@@ -112,11 +113,11 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Section title shown in the left panel when the current holon has no visible content.',
         ],
         'leftbar.error.holon_access_denied' => [
-            'text' => 'Accès refusé à cet espace.',
+            'text' => 'Accès refusé à cet élément.',
             'context' => 'Error message shown in the left panel when the current holon cannot be viewed.',
         ],
         'leftbar.error.holon_not_found' => [
-            'text' => 'Espace introuvable pour cette organisation.',
+            'text' => 'Élément introuvable pour cette organisation.',
             'context' => 'Error message shown in the left panel when the requested holon cannot be found.',
         ],
         'leftbar.error.organization_access_denied' => [
@@ -404,7 +405,7 @@ function omoRenderProjectReferenceItem($item, $source = '')
 	$html .= '</div>';
 	if ($hasDirectChildren) {
 		$html .= '<button type="button" class="section-project-reference__status-toggle" data-omo-project-reference-toggle aria-expanded="false" aria-label="Afficher les sous-projets de ' . omoApiEscape($title) . '">';
-		$html .= omoProjectsRenderStatusBar($referenceData['statusSummary'], 'section-project-reference__status-bar');
+		$html .= omoProjectsRenderStatusBar($referenceData['statusSummary'], 'section-project-reference__status-bar', 'div', true);
 		$html .= '</button>';
 		$html .= '<div class="section-project-reference__children" data-omo-project-reference-children hidden></div>';
 	}
@@ -953,7 +954,8 @@ function omoBuildSections(Holon $holon)
 function omoBuildChildNavigation(Holon $holon)
 {
     $items = array(
-        'containers' => array(),
+        'circles' => array(),
+        'groups' => array(),
         'roles' => array(),
     );
 
@@ -971,8 +973,10 @@ function omoBuildChildNavigation(Holon $holon)
 
         if ($entry['type'] === 1) {
             $items['roles'][] = $entry;
+        } elseif ($entry['type'] === 3) {
+            $items['groups'][] = $entry;
         } else {
-            $items['containers'][] = $entry;
+            $items['circles'][] = $entry;
         }
     }
 
@@ -1023,6 +1027,9 @@ if (!$canViewOrganization) {
 
 $organizationLexicon = $organization->getLexicon();
 $adminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
+$childCircleLabel = Organization::getLexiconLabel($organizationLexicon, 'circle', true);
+$childGroupLabel = Organization::getLexiconLabel($organizationLexicon, 'group', true);
+$childRoleLabel = Organization::getLexiconLabel($organizationLexicon, 'role', true);
 
 $root = $organization->getEnabledStructuralRootHolon();
 if ($root === null) {
@@ -1125,11 +1132,16 @@ $canEditHolon = $currentHolon->isAllowed('CAN_EDIT_HOLON') && in_array((int)$cur
 $canMoveHolon = !$isCurrentTemplateHolon && $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
 $canDeleteHolon = $currentHolon->isAllowed('CAN_DELETE_HOLON') && $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
 $canViewHolonHistory = $currentHolon->canViewDetail();
+$activeOrganizationMembership = $organization->getMembership((int)commonGetCurrentUserId(), true);
+$canManageOrganizationModel = $isOrganizationDefinitionHolon
+    && $activeOrganizationMembership
+    && $activeOrganizationMembership->isOrganizationAdmin()
+    && commonCurrentUserIsAdminModeEnabled($organizationId);
 $deleteDescendantCount = $canDeleteHolon ? (int)$currentHolon->countVisibleDescendants() : 0;
 $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null;
 $deleteParentId = $parentHolonForDelete ? (int)$parentHolonForDelete->getId() : 0;
 $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('IDtypeholon') === 4) : false;
-$hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon || $canViewHolonHistory;
+$hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon || $canViewHolonHistory || $canManageOrganizationModel;
 $debugPermissionCatalog = Permission::getEditorCatalog();
 $debugPermissionEntries = array();
 foreach ($debugPermissionCatalog as $permissionEntry) {
@@ -1208,6 +1220,14 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                         aria-expanded="false"
                     >...</button>
                     <div class="circle-menu__panel" data-holon-menu-panel="1" hidden>
+                        <?php if ($canManageOrganizationModel): ?>
+                            <button
+                                type="button"
+                                class="circle-menu__item"
+                                data-toggle-organization-model="1"
+                                data-oid="<?= (int)$organizationId ?>"
+                            ><?= omoApiEscape($organization->isSharedAsTemplate() ? t('leftbar.actions.stop_sharing_as_model') : t('leftbar.actions.share_as_model')) ?></button>
+                        <?php endif; ?>
                         <?php if ($canCreateChildHolon): ?>
                             <button
                                 type="button"
@@ -1381,18 +1401,32 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
             </div>
         </div>
     <?php endforeach; ?>
-    <?php if (count($childNavigation['containers']) > 0 || count($childNavigation['roles']) > 0): ?>
+    <?php if (count($childNavigation['circles']) > 0 || count($childNavigation['groups']) > 0 || count($childNavigation['roles']) > 0): ?>
         <div class="circle-section circle-section--navigation generic-section generic-accordion generic-accordion--card generic-accordion--collapsible" data-section-key="dependencies">
             <div class="generic-accordion__header">
                 <span class="generic-accordion__title generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.section_title')) ?></span>
                 <span class="generic-accordion__toggle">&#9662;</span>
             </div>
             <div class="generic-accordion__content">
-                <?php if (count($childNavigation['containers']) > 0): ?>
+                <?php if (count($childNavigation['circles']) > 0): ?>
                     <div class="child-nav-group">
-                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.circles')) ?></div>
+                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape($childCircleLabel) ?></div>
                         <div class="child-nav-list">
-                            <?php foreach ($childNavigation['containers'] as $child): ?>
+                            <?php foreach ($childNavigation['circles'] as $child): ?>
+                                <button type="button" class="child-nav-item" data-cid="<?= (int)$child['id'] ?>">
+                                    <span class="child-nav-dot child-nav-dot--container"></span>
+                                    <span class="child-nav-label"><?= omoApiEscape($child['name']) ?></span>
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (count($childNavigation['groups']) > 0): ?>
+                    <div class="child-nav-group">
+                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape($childGroupLabel) ?></div>
+                        <div class="child-nav-list">
+                            <?php foreach ($childNavigation['groups'] as $child): ?>
                                 <button type="button" class="child-nav-item" data-cid="<?= (int)$child['id'] ?>">
                                     <span class="child-nav-dot child-nav-dot--container"></span>
                                     <span class="child-nav-label"><?= omoApiEscape($child['name']) ?></span>
@@ -1404,7 +1438,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
                 <?php if (count($childNavigation['roles']) > 0): ?>
                     <div class="child-nav-group">
-                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.roles')) ?></div>
+                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape($childRoleLabel) ?></div>
                         <div class="child-nav-list">
                             <?php foreach ($childNavigation['roles'] as $child): ?>
                                 <button type="button" class="child-nav-item child-nav-item--role" data-cid="<?= (int)$child['id'] ?>">
@@ -2035,12 +2069,36 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
 .section-project-reference__status-bar {
     display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
     width: 100%;
     height: 6px;
     min-height: 6px;
     overflow: hidden;
     border-radius: 999px;
     background: var(--color-border, #e5e7eb);
+    cursor: help;
+}
+
+.section-project-reference__status-toggle .omo-project-status-summary {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 6px;
+}
+
+.section-project-reference__status-toggle .omo-project-status-summary__count {
+    flex: 0 0 auto;
+    min-width: 1.6em;
+    padding: 3px 5px;
+    border-radius: 999px;
+    background: var(--color-background-soft, #eef0f2);
+    color: var(--color-text-light, #6b7280);
+    font-size: .75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    text-align: center;
 }
 
 .section-project-reference__status-toggle {
@@ -2570,6 +2628,36 @@ $(document)
     if (typeof window.omoOpenDrawerHashState === 'function') {
         window.omoOpenDrawerHashState('holon-create-' + cid);
     }
+  });
+
+$(document)
+  .off('click.omoOrgToggleOrganizationModel', '#panel-left [data-toggle-organization-model="1"]')
+  .on('click.omoOrgToggleOrganizationModel', '#panel-left [data-toggle-organization-model="1"]', function () {
+    const button = $(this);
+    const organizationId = Number(button.data('oid'));
+    if (!organizationId) {
+        return;
+    }
+    button.prop('disabled', true);
+    const data = new FormData();
+    data.append('oid', String(organizationId));
+    data.append('action', 'toggle-model');
+    fetch('/omo/api/organizations/card_action.php', { method: 'POST', body: data, credentials: 'same-origin' })
+      .then(function (response) { return response.json(); })
+      .then(function (result) {
+        if (!result || !result.status) {
+            throw new Error(result && result.message ? result.message : 'Action impossible.');
+        }
+        if (typeof window.omoLoadLeft === 'function') {
+            window.omoLoadLeft();
+        } else {
+            window.location.reload();
+        }
+      })
+      .catch(function (error) {
+        button.prop('disabled', false);
+        window.alert(error && error.message ? error.message : 'Action impossible.');
+      });
   });
 
 $(document)

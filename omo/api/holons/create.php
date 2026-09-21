@@ -19,7 +19,7 @@ $canAddHolonProperties = false;
 $hasCustomHolonAppearance = false;
 $hasCustomHolonAdminBounds = false;
 $hasDirectHolonPermissions = false;
-$directPermissionLabel = 'Droits associés à l’espace';
+$directPermissionLabel = 'Droits associés à l’élément';
 
 if ($organizationId <= 0) {
     $errorMessage = "Aucune organisation n'est actuellement sélectionnée.";
@@ -49,18 +49,18 @@ if ($organizationId <= 0) {
 		$directPermissionLabel = 'Droits associés au modèle';
 	}
     if ($holonId > 0 && (($editorData['mode'] ?? 'create') !== 'edit')) {
-        $errorMessage = "L’espace demandé est introuvable.";
+        $errorMessage = "L’élément demandé est introuvable.";
     } elseif (($editorData['mode'] ?? 'create') === 'edit' && !($editorData['canEdit'] ?? false)) {
-        $errorMessage = "Cet espace ne peut pas être édité avec ce formulaire.";
+        $errorMessage = "Cet élément ne peut pas être édité avec ce formulaire.";
     } elseif (($editorData['mode'] ?? 'create') !== 'edit' && !($editorData['canCreate'] ?? false)) {
-        $errorMessage = "Cet espace n'autorise pas l'ajout d'enfant.";
+        $errorMessage = "Cet élément n'autorise pas l'ajout d'enfant.";
     } elseif (count($editorData['templateCatalog'] ?? array()) === 0) {
         $errorMessage = ($editorData['mode'] ?? 'create') === 'edit'
             ? "Aucun modèle n'est disponible dans le contexte de ce holon."
-            : "Aucun modèle n'est disponible dans ce contexte pour créer un nouvel espace.";
+            : "Aucun modèle n'est disponible dans ce contexte pour créer un nouvel élément.";
     }
 }
-$drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’espace' : 'Nouvel espace';
+$drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’élément' : 'Nouvel élément';
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260807-project-picker-search">
 <div class="omo-holon-create omo-panel-view">
@@ -262,7 +262,7 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’es
                             <div class="omo-holon-create__hint generic-help-text" id="omo-holon-create-hint"></div>
                             <div class="omo-holon-create__actions generic-form-actions generic-form-actions--stack-mobile">
                                 <button type="button" class="generic-action-button generic-action-button--secondary" id="omo-holon-create-cancel">Fermer</button>
-                                <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Enregistrer' : 'Créer l’espace') ?></button>
+                                <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape((($editorData['mode'] ?? 'create') === 'edit') ? 'Enregistrer' : 'Créer un élément') ?></button>
                             </div>
                         </div>
                     </form>
@@ -337,7 +337,8 @@ const elements = {
     permissionSummary: root.querySelector('#omo-holon-create-permissions-summary'),
     hint: root.querySelector('#omo-holon-create-hint'),
     nameHelp: root.querySelector('#omo-holon-create-name-help'),
-    cancel: root.querySelector('#omo-holon-create-cancel')
+    cancel: root.querySelector('#omo-holon-create-cancel'),
+    submit: root.querySelector('button[type="submit"]')
 };
 
 const mediaFields = {
@@ -542,10 +543,10 @@ function buildPermissionSummary(assignments) {
     });
 
     if (!titles.length) {
-        return 'Droits associés à l’espace : aucun';
+        return 'Droits associés à l’élément : aucun';
     }
 
-    return 'Droits associés à l’espace : ' + titles.join(', ');
+    return 'Droits associés à l’élément : ' + titles.join(', ');
 }
 
 function getPermissionTitle(permissionKey) {
@@ -1528,7 +1529,7 @@ function renderPropertyInput(property) {
             const selectedIds = parseStoredListValue(localValue).map(Number);
 
             if (!holonOptions.length) {
-        return '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Aucun espace disponible pour les types autorisés.</div>';
+        return '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Aucun élément disponible pour les types autorisés.</div>';
             }
 
             return '<div class="omo-holon-create__check-grid">'
@@ -1983,7 +1984,7 @@ function renderTemplateOptions(preferredTemplateId) {
         if (groupId !== currentGroupId) {
             currentGroupId = groupId;
             currentGroup = document.createElement('optgroup');
-            currentGroup.label = contextName || 'Espace';
+            currentGroup.label = contextName || 'Élément';
             elements.template.appendChild(currentGroup);
         }
 
@@ -2000,6 +2001,22 @@ function renderTemplateOptions(preferredTemplateId) {
     }
 
     elements.template.required = true;
+}
+
+function syncSubmitLabel(template) {
+    if (!elements.submit) {
+        return;
+    }
+
+    if (getMode() === 'edit') {
+        elements.submit.textContent = 'Enregistrer l’élément';
+        return;
+    }
+
+    const typeLabel = String(template && template.typeLabel ? template.typeLabel : '').trim();
+    elements.submit.textContent = typeLabel !== ''
+        ? 'Créer un élément de type ' + typeLabel
+        : 'Créer un élément';
 }
 
 // Synchronise modèle courant
@@ -2029,6 +2046,7 @@ function renderEditorMeta(template, sourceProperties) {
     syncColorField();
 	 syncAdminBounds(template);
     renderMediaFields(template);
+    syncSubmitLabel(template);
 }
 
 function syncTemplateSelection(preferredTemplateId, sourceProperties) {
@@ -2462,7 +2480,7 @@ function saveHolon(event) {
                 return;
             }
             if (!result.ok || !result.data || result.data.status !== 'ok') {
-        throw new Error(result.data && result.data.message ? result.data.message : (getMode() === 'edit' ? "Impossible d’enregistrer l’espace." : "Impossible de créer l’espace."));
+        throw new Error(result.data && result.data.message ? result.data.message : (getMode() === 'edit' ? "Impossible d’enregistrer l’élément." : "Impossible de créer l’élément."));
             }
 
             const hashManagedEditorDrawer = isHashManagedHolonEditorDrawer();
@@ -2581,7 +2599,7 @@ function saveHolon(event) {
             }
         })
         .catch(function (error) {
-        showStatus(error && error.message ? error.message : (getMode() === 'edit' ? "Impossible d’enregistrer l’espace." : "Impossible de créer l’espace."), 'error');
+        showStatus(error && error.message ? error.message : (getMode() === 'edit' ? "Impossible d’enregistrer l’élément." : "Impossible de créer l’élément."), 'error');
         })
         .finally(function () {
             if (elements.form && typeof window.omoEndPendingAction === 'function') {

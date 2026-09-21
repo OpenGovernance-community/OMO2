@@ -22,6 +22,7 @@ if (!function_exists('commonRenderObjectVisibilitySelector')) {
         $fieldLabel = trim((string)($config['fieldLabel'] ?? ''));
         $ariaLabel = trim((string)($config['ariaLabel'] ?? ''));
         $hint = trim((string)($config['hint'] ?? ''));
+        $hintAsContextHelp = !empty($config['hintAsContextHelp']);
         $selectedValue = \dbObject\ObjectVisibility::normalizeVisibilityType((string)($config['selectedValue'] ?? ''));
         $optionLabels = is_array($config['optionLabels'] ?? null)
             ? $config['optionLabels']
@@ -53,7 +54,17 @@ if (!function_exists('commonRenderObjectVisibilitySelector')) {
         ?>
         <div class="omo-visibility-choice-field">
             <?php if ($fieldLabel !== ''): ?>
-                <span class="omo-visibility-choice-field__label"><?= $escape($fieldLabel) ?></span>
+                <?php if ($hintAsContextHelp && $hint !== ''): ?>
+                    <div class="generic-inline-help">
+                        <span class="omo-visibility-choice-field__label"><?= $escape($fieldLabel) ?></span>
+                        <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
+                            <summary aria-label="<?= $escape($fieldLabel) ?>">?</summary>
+                            <div class="generic-context-help__content"><?= $escape($hint) ?></div>
+                        </details>
+                    </div>
+                <?php else: ?>
+                    <span class="omo-visibility-choice-field__label"><?= $escape($fieldLabel) ?></span>
+                <?php endif; ?>
             <?php endif; ?>
             <div
                 class="omo-visibility-choice"
@@ -98,7 +109,7 @@ if (!function_exists('commonRenderObjectVisibilitySelector')) {
                     </label>
                 <?php endforeach; ?>
             </div>
-            <?php if ($hint !== ''): ?>
+            <?php if ($hint !== '' && !$hintAsContextHelp): ?>
                 <span class="omo-visibility-choice-field__hint"><?= $escape($hint) ?></span>
             <?php endif; ?>
         </div>

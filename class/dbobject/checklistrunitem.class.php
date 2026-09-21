@@ -13,7 +13,7 @@ class ChecklistRunItem extends DbObject
 
     public static function tableName()
     {
-        return 'checklist_run_item';
+        return 'process_run_item';
     }
 
     public static function rules()

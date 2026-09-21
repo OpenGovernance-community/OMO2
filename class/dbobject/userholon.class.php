@@ -6,6 +6,7 @@
 		public const DASHBOARD_LAYOUT_PARAMETER = 'dashboardLayoutV1';
 		public const DASHBOARD_DEFAULT_LAYOUT_PARAMETER = 'dashboardDefaultLayoutV1';
 		public const DASHBOARD_TEMPLATE_LAYOUTS_PARAMETER = 'dashboardTemplateLayoutsV1';
+		public const DASHBOARD_ORGANIZATION_DEFAULT_LAYOUT_PARAMETER = 'dashboardOrganizationDefaultLayoutV1';
 		public const DASHBOARD_BASE_TYPE_LAYOUTS_PARAMETER = 'dashboardBaseTypeLayoutsV1';
 		public const DASHBOARD_GLOBAL_LAYOUT_PARAMETER = 'dashboardGlobalLayoutV1';
 		public const APPLICATION_VIEW_DEFAULTS_PARAMETER = 'applicationViewDefaultsV1';

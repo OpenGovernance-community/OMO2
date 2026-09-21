@@ -2708,6 +2708,18 @@ function getSidebarMenuConfig(hash = null, oid = null, cid = null, options = {})
     const item = getSidebarMenuItem(omoGetMenuHashForRouteToken(route));
 
     if (!item.length) {
+        // The Processus route is named after the user-facing application, while
+        // its implementation remains in the checklist module. This fallback is
+        // needed during the initial load, before the sidebar has been rendered.
+        if (omoGetMenuHashForRouteToken(route) === 'processus') {
+            return {
+                drawer: 'drawer_checklist',
+                url: 'api/processes/index.php',
+                navigationMode: 'drawer',
+                routeOptions: routeOptions
+            };
+        }
+
         return null;
     }
 

@@ -622,7 +622,7 @@ if (in_array($action, ['delete_item', 'move_item', 'extract_item'], true)) {
     $canManage = omoChecklistCanManage($checklist);
     $checklistHolon = $checklist->getHolon();
     $canCreate = $checklistHolon instanceof Holon
-        && omoChecklistCanUsePermission($checklistHolon, 'CAN_CREATE_CHECKLIST');
+        && omoChecklistCanUsePermission($checklistHolon, 'CAN_CREATE_PROCESS');
     if (
         !$canManage
         || ($action === 'extract_item' && !$canCreate)

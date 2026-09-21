@@ -4,13 +4,59 @@ Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angl
 
 ## 2026-09-21
 
+- Le menu Connecter du Calendrier propose maintenant un lien ICS dédié au contexte courant, copiable et compatible avec un abonnement Google Calendar. Il ne contient que les événements OMO visibles dans la portée choisie.
+- Le contexte et la visibilité choisis dans ce menu sont maintenant regroupés dans un panneau teinté.
+- Le choix de couleur CalDAV est maintenant placé directement avant son adresse, dans un carré à la hauteur du champ. Les boutons Copier ICS et CalDAV sont plus grands ; celui de CalDAV utilise la couleur principale.
+- Les liens ICS et CalDAV proposent chacun une marche à suivre détaillée dans un accordéon placé sous leur adresse.
+- Les consignes de contribution précisent maintenant la gestion UTF-8 des accents français et les précautions de lecture sous Windows PowerShell.
+
+- Modeles d organisation : les processus et les taches recurrentes sont maintenant recrees separement lors de la creation d une organisation depuis un modele.
+
+- Tableau de pilotage : en mode Decouverte, un admin d organisation peut maintenant enregistrer ou effacer un defaut sous le modele Organisation. Il sert uniquement au tableau du holon racine.
+
+- Indicateurs : les erreurs d enregistrement d un indicateur, d un groupe ou d une valeur sont maintenant relayees vers les alertes de la topbar, sans doublon local.
+
+- Taches recurrentes : une mise a niveau de la table conserve maintenant la personne responsable apres le renommage. Les erreurs d enregistrement sont aussi affichees dans la topbar.
+
+- Droits : les codes des droits de processus et de taches recurrentes suivent maintenant le vocabulaire actuel. Les attributions existantes sont conservees pendant la migration.
+
+- Taches recurrentes : les boutons de creation, modification et suppression verifient maintenant les droits a jour, comme l enregistrement, pour ne plus proposer une action qui serait refusee apres une modification de droits.
+
+- Organisations : une organisation structuree peut maintenant etre partagee comme modele public. Un nouvel espace peut etre cree a partir de ce modele, sans membres, historique, rendez-vous, valeurs d indicateurs ni donnees budgetaires historiques. Les applications conservent aussi leur etat d activation et leurs reglages.
+
+- Modèles d’organisation : la création depuis un modèle reprend maintenant le formulaire complet de définition de l’organisation. Le nom, les images, la couleur, la position et les réglages choisis remplacent ceux du modèle ; les routes restent à définir pour la nouvelle organisation.
+
+- Projets : les barres d etat des sous-projets affichent leur nombre dans une capsule, y compris dans les listes de la structure, et utilisent un curseur d aide pour signaler le detail disponible au survol.
+
 - Les FAQ rattachees a un parcours sont maintenant aussi accessibles lorsqu il est fourni par un pack de parcours de l organisation.
+
+- Lexique : les noms affichés pour les espaces, cercles, rôles et groupes peuvent désormais être personnalisés par organisation.
+
+- Lexique : l’éditeur adopte un formulaire compact, avec des sections séparées par des traits légers et des aides accessibles par « ? ».
+
+- Modèles de structure : les types affichés suivent le lexique de l’organisation et les aides utilisent des formulations neutres.
+
+- Paramètres : les cartes Notifications et Affichage de la structure utilisent maintenant leurs icônes dédiées.
 
 ## 2026-09-19
 
 - Indicateurs : formulaire compact, choix sans encadrement et explications accessibles via les icones d aide au survol ou au clic.
 
 - Indicateurs : l edition des groupes adopte le meme formulaire compact, avec aides contextuelles et reglages regroupes.
+
+- Taches recurrentes : formulaire de creation et d edition aligne sur les indicateurs, avec champs compacts, aides contextuelles et en-tete epure.
+
+- Documents : formulaire de creation et d edition compacte, avec aides contextuelles pour les reglages secondaires.
+
+- Documents : type, visibilite et edition sont regroupes sur une ligne ; le titre et les tags partagent une ligne 60/40, tandis que le resume occupe toute la largeur.
+
+- Documents et processus : les explications secondaires des formulaires sont maintenant rassemblees dans des aides `?`, pour laisser les champs utiles visibles en premier.
+
+- Projets et evenements : les formulaires de creation et de modification utilisent a leur tour une mise en page compacte et des sections partagees avec les taches recurrentes.
+
+- Processus : le routeur utilise maintenant l entree technique checklist pendant le chargement initial, meme si la route publique est nommee processus.
+
+- Technique : les tables des processus et des taches recurrentes portent maintenant des noms distincts (`process*` et `recurring_task*`). Les nouveaux dbObjects `Process` et `RecurringTask` sont disponibles pour les futurs developpements.
 
 - Tableau de pilotage : projets, indicateurs et checklists peuvent etre limites a Moi, Mes espaces ou Tous dans la configuration de chaque module.
 
