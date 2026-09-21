@@ -5,7 +5,7 @@ class ControlActivity extends ControlTask
 {
     public static function tableName()
     {
-        return 'control_task';
+        return 'recurring_task';
     }
 
     public static function rules()
@@ -37,7 +37,7 @@ class ControlActivity extends ControlTask
     public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
     {
         return self::execute(
-            'UPDATE control_task SET IDuser_responsible = NULL WHERE IDorganization = :organization_id AND IDuser_responsible = :user_id',
+            'UPDATE recurring_task SET IDuser_responsible = NULL WHERE IDorganization = :organization_id AND IDuser_responsible = :user_id',
             array('organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
         );
     }

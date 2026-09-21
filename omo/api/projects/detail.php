@@ -431,7 +431,7 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                 <?php endif; ?>
             </div>
             <?php if (count($subprojects) > 0): ?>
-                <?= omoProjectsRenderStatusBar($projectStatusSummary, 'omo-project-detail__subprojects-bar') ?>
+                <?= omoProjectsRenderStatusBar($projectStatusSummary, 'omo-project-detail__subprojects-bar', 'div', true) ?>
                 <div class="omo-project-detail__subprojects-list">
                     <?php foreach ($subprojects as $subproject): ?>
                     <?php
@@ -478,7 +478,7 @@ if ((int)($_GET['cid'] ?? 0) > 0) {
                             </div>
                         </div>
                         <?php if ($subprojectIsProject): ?>
-                            <?= omoProjectsRenderStatusBar($subprojectSummary, 'omo-project-detail__subproject-bar') ?>
+                            <?= omoProjectsRenderStatusBar($subprojectSummary, 'omo-project-detail__subproject-bar', 'div', true) ?>
                         <?php elseif (($subprojectCanEdit || $subprojectCanDelete) && in_array($subprojectStatus, $detailStatusOptions, true)): ?>
                             <select class="generic-form-control omo-project-detail__subproject-status-select" data-omo-project-detail-status-select data-project-id="<?= (int)$subproject->getId() ?>" data-previous-status="<?= omoApiEscape($subprojectStatus) ?>" aria-label="<?= omoApiEscape(omoProjectsT('projects.status_move')) ?>">
                                 <?php foreach ($subprojectCanEdit ? $detailStatusOptions : [$subprojectStatus] as $statusOption): ?>

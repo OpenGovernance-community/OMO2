@@ -56,6 +56,33 @@ $response = array(
 );
 
 switch ($action) {
+	case 'toggle-model':
+		$membership = $organization->getMembership($currentUserId, true);
+		if (
+			!$membership
+			|| !$membership->isOrganizationAdmin()
+			|| !commonCurrentUserIsAdminModeEnabled($organizationId)
+			|| !$organization->getStructuralRootHolon()
+		) {
+			http_response_code(403);
+			$response = array(
+				'status' => false,
+				'message' => 'Le partage comme modele requiert une organisation structuree et le mode administrateur actif.',
+			);
+			break;
+		}
+
+		$willShareAsModel = !$organization->isSharedAsTemplate();
+		$organization->set('isModel', $willShareAsModel);
+		$saveResult = $organization->save();
+		$response = array(
+			'status' => is_array($saveResult) && !empty($saveResult['status']),
+			'message' => $willShareAsModel
+				? 'Organisation partagee comme modele public.'
+				: 'Organisation retiree des modeles publics.',
+		);
+		break;
+
 	case 'leave':
 		$membership = $organization->getMembership($currentUserId, true);
 		if ($organization->isSystemOrganization() && $membership && $membership->isOrganizationAdmin()) {

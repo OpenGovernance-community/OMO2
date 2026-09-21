@@ -107,7 +107,7 @@ $currentUrl = $baseUrl
     . '&activity_assignment=' . rawurlencode($assignment);
 $createUrl = '/omo/api/activities/edit.php?oid=' . $organizationId
     . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . $pvMeetingQuery;
-$canCreate = omoActivityCanUsePermission($currentHolon, 'CAN_CREATE_CONTROL_ACTIVITY');
+$canCreate = omoActivityCanUsePermission($currentHolon, 'CAN_CREATE_RECURRING_TASK');
 $stateFilters = ['all', 'attention', 'missed', 'checked', 'upcoming'];
 $texts = [
     'loading' => omoActivityT('activity.loading'),
@@ -116,7 +116,7 @@ $texts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260917-style-review-final">
+<link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260921-compact-editor">
 <div
     class="omo-activities omo-panel-view"
     id="omo-activities-root"
@@ -277,7 +277,7 @@ $texts = [
             <div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky">
                 <div class="omo-overlay-drawer__header-copy generic-drawer-header__copy">
                     <h3 data-omo-subdrawer-title><?= omoApiEscape(omoActivityT('activity.title')) ?></h3>
-                    <p data-omo-subdrawer-description><?= omoApiEscape(omoActivityT('activity.description')) ?></p>
+                    <p data-omo-subdrawer-description hidden></p>
                 </div>
                 <div class="generic-drawer-header__actions">
                     <div data-omo-subdrawer-actions></div>
@@ -291,4 +291,4 @@ $texts = [
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260912-toolbar-always-visible"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260919-activity-assignment"></script>
-<script src="/omo/api/activities/activities.js?v=20260919-assignment-and-name"></script>
+<script src="/omo/api/activities/activities.js?v=20260921-topbar-feedback"></script>

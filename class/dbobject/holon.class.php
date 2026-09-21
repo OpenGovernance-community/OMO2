@@ -1431,19 +1431,27 @@
 			return array_reverse($path);
 		}
 
-		public function getTypeLabel() {
+		public function getTypeLexiconKey(): string
+		{
 			switch ((int)$this->get('IDtypeholon')) {
-				case 4:
-					return 'Organisation';
 				case 3:
-					return 'Groupe';
+					return 'group';
 				case 2:
-					return 'Cercle';
+					return 'circle';
 				case 1:
-					return 'Role';
+					return 'role';
 				default:
-					return 'Espace';
+					return 'space';
 			}
+		}
+
+		public function getTypeLabel() {
+			if ((int)$this->get('IDtypeholon') === 4) {
+				return 'Organisation';
+			}
+
+			$lexicon = Organization::getLexiconForOrganizationId($this->resolveOrganizationId());
+			return Organization::getLexiconLabel($lexicon, $this->getTypeLexiconKey());
 		}
 
 		public function getTemplateLabel($fallbackToType = true)
@@ -3454,18 +3462,10 @@
 
 		protected function getHistoryTypeLabel()
 		{
-			switch ((int)$this->get('IDtypeholon')) {
-				case 4:
-					return 'organisation';
-				case 3:
-					return 'groupe';
-				case 2:
-					return 'cercle';
-				case 1:
-					return 'rôle';
-				default:
-					return 'holon';
-			}
+			$label = $this->getTypeLabel();
+			return function_exists('mb_strtolower')
+				? mb_strtolower($label, 'UTF-8')
+				: strtolower($label);
 		}
 
 		protected function getHistoryReferenceLabel()

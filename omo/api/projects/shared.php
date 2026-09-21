@@ -1191,7 +1191,7 @@ if (!function_exists('omoProjectsStatusSummaryLabel')) {
 }
 
 if (!function_exists('omoProjectsRenderStatusBar')) {
-    function omoProjectsRenderStatusBar(array $summary, $extraClass = '', $elementTag = 'div')
+    function omoProjectsRenderStatusBar(array $summary, $extraClass = '', $elementTag = 'div', $showTotal = false)
     {
         if ((int)($summary['total'] ?? 0) <= 0 || empty($summary['leaves'])) {
             return '';
@@ -1216,6 +1216,12 @@ if (!function_exists('omoProjectsRenderStatusBar')) {
             }
             $html .= '<span class="omo-project-status-bar__segment omo-project-status-bar__segment--' . omoApiEscape($status) . '" style="flex: 0 0 ' . omoApiEscape(number_format($segmentWidth, 6, '.', '')) . '%;" aria-hidden="true"></span>';
         }
-        return $html . '</' . $elementTag . '>';
+        $html .= '</' . $elementTag . '>';
+        if (!$showTotal) {
+            return $html;
+        }
+
+        return '<' . $elementTag . ' class="omo-project-status-summary"><span class="omo-project-status-summary__count" aria-hidden="true">'
+            . (int)$summary['total'] . '</span>' . $html . '</' . $elementTag . '>';
     }
 }

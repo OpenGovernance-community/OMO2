@@ -568,7 +568,7 @@ $renderKanbanCard = static function (array $item, string $status) use ($context,
             <?php if ($plannedEnd !== ''): ?><time datetime="<?= omoApiEscape((string)$plannedEnd) ?>"><?= omoApiEscape($plannedEnd) ?></time><?php endif; ?>
         </div>
         <?= omoProjectsRenderBlockedInfo($project, 'omo-project-card__blocked-info') ?>
-        <?= omoProjectsRenderStatusBar($subprojectSummary, 'omo-project-card__subprojects') ?>
+        <?= omoProjectsRenderStatusBar($subprojectSummary, 'omo-project-card__subprojects', 'div', true) ?>
         <?php if ($canManageProject): ?>
             <label class="omo-project-card__status-control">
                 <span class="sr-only"><?= omoApiEscape(omoProjectsT('projects.status_move')) ?></span>
@@ -1116,7 +1116,7 @@ $projectTexts = [
                                         <?php if ($plannedEnd !== ''): ?><time datetime="<?= omoApiEscape((string)$plannedEnd) ?>"><?= omoApiEscape($plannedEnd) ?></time><?php endif; ?>
                                     </div>
                                     <?= omoProjectsRenderBlockedInfo($project, 'omo-project-card__blocked-info') ?>
-                                    <?= omoProjectsRenderStatusBar($subprojectSummary, 'omo-project-card__subprojects') ?>
+                                    <?= omoProjectsRenderStatusBar($subprojectSummary, 'omo-project-card__subprojects', 'div', true) ?>
                                     <?php if ($canManageProject): ?>
                                         <label class="omo-project-card__status-control">
                                             <span class="sr-only"><?= omoApiEscape(omoProjectsT('projects.status_move')) ?></span>

@@ -37,6 +37,12 @@
         actionError: 'Action impossible.'
     };
 
+    function notify(message, type) {
+        if (typeof window.commonNotify === 'function') {
+            window.commonNotify(String(message || ''), type || 'error');
+        }
+    }
+
     try {
         texts = Object.assign(texts, JSON.parse(root.getAttribute('data-activity-texts') || '{}'));
     } catch (error) {
@@ -493,7 +499,7 @@
             window.omoSimpleHtmlField.mount(editorHost, {
                 value: valueField.value || '',
                 placeholder: '',
-                minHeight: 180,
+                minHeight: 120,
                 simpleOnly: true,
                 onChange: function (value) {
                     valueField.value = String(value || '');
@@ -553,7 +559,7 @@
             }
         }).catch(function (error) {
             element.disabled = false;
-            window.alert(error && error.message ? error.message : texts.actionError);
+            notify(error && error.message ? error.message : texts.actionError, 'error');
         });
     }
 
@@ -733,6 +739,10 @@
                 feedback.textContent = result.message || '';
                 feedback.classList.toggle('is-error', !result.status);
             }
+            if (!result.status) {
+                notify(result.message || texts.actionError, 'error');
+                return;
+            }
             if (result.status && result.detailUrl) {
                 rootNeedsRefresh = true;
                 openDrawer(result.detailUrl);
@@ -742,6 +752,7 @@
                 feedback.textContent = texts.actionError;
                 feedback.classList.add('is-error');
             }
+            notify(texts.actionError, 'error');
         }).finally(function () {
             if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') {
                 window.omoEndPendingAction(form);

@@ -9,7 +9,7 @@ class Checklist extends DbObject
 
     public static function tableName()
     {
-        return 'checklist';
+        return 'process';
     }
 
     public static function rules()
@@ -79,7 +79,7 @@ class Checklist extends DbObject
     public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
     {
         return self::execute(
-            'UPDATE checklist SET IDuser_responsible = NULL WHERE IDorganization = :organization_id AND IDuser_responsible = :user_id',
+            'UPDATE process SET IDuser_responsible = NULL WHERE IDorganization = :organization_id AND IDuser_responsible = :user_id',
             array('organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
         );
     }

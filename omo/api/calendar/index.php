@@ -4168,8 +4168,10 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     return;
                 }
 
-                var connectDetails = copyButton.closest('[data-omo-calendar-connect-details]');
-                var urlField = connectDetails ? connectDetails.querySelector('[data-omo-calendar-connect-url]') : null;
+                var copyTarget = copyButton.getAttribute('data-omo-calendar-connect-copy-target') || 'caldav';
+                var urlField = copyTarget === 'ics'
+                    ? container.querySelector('[data-omo-calendar-connect-ics-url]')
+                    : container.querySelector('[data-omo-calendar-connect-url]');
                 if (!urlField) {
                     return;
                 }

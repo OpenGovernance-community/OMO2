@@ -295,7 +295,7 @@ window.omoConfig = <?= json_encode(array(
     'shareAllowsPeopleDetail' => $shareLink->allowsPeopleDetail(),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
-<script src="/omo/assets/js/app.js?v=20260916-structure-render-cache"></script>
+<script src="/omo/assets/js/app.js?v=20260921-process-route"></script>
 <script src="/omo/assets/js/structure-mini-map.js?v=20260916-structure-render-cache"></script>
 <script>
 $(document).ready(function () {
