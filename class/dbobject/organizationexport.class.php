@@ -351,7 +351,10 @@ class OrganizationExport
                 $recurrence = $item->getRecurrence();
                 $itemRecord = [
                     'sourceId' => (int)$item->getId(),
+					'sourceProjectId' => (int)$itemTemplate->getId(),
                     'sourceUserId' => (int)$itemTemplate->get('IDuser'),
+					'sourceHolonId' => (int)$itemTemplate->get('IDholon'),
+					'sourceParentProjectId' => (int)$itemTemplate->get('IDproject_parent'),
                     'stableKey' => (string)$item->get('stable_key'),
                     'title' => (string)$itemTemplate->get('title'),
                     'description' => (string)$itemTemplate->get('description'),
@@ -367,6 +370,20 @@ class OrganizationExport
                         'executionDurationUnit' => (string)$item->get('execution_duration_unit'),
                     ],
                 ];
+				$dependencies = [];
+				foreach ($item->getDependencies() as $dependency) {
+					if (!($dependency instanceof ChecklistItemDependency)) {
+						continue;
+					}
+					$dependencies[] = [
+						'sourceRequiredItemId' => (int)$dependency->get('IDchecklistitem_required'),
+						'delayValue' => (int)$dependency->get('delay_value'),
+						'delayUnit' => (string)$dependency->get('delay_unit'),
+					];
+				}
+				if ($dependencies !== []) {
+					$itemRecord['dependencies'] = $dependencies;
+				}
                 if ($recurrence instanceof ChecklistItemRecurrence) {
                     $itemRecord['recurrence'] = [
                         'frequency' => (string)$recurrence->get('frequency'),
@@ -380,8 +397,11 @@ class OrganizationExport
                 $items[] = $itemRecord;
             }
             $records[] = [
+				'recordType' => 'process',
                 'sourceId' => (int)$checklist->getId(),
                 'sourceUserId' => (int)$rootTemplate->get('IDuser'),
+				'sourceRootProjectId' => (int)$rootTemplate->getId(),
+				'sourceResponsibleUserId' => (int)$checklist->get('IDuser_responsible'),
                 'sourceHolonId' => (int)$rootTemplate->get('IDholon'),
                 'title' => (string)$rootTemplate->get('title'),
                 'description' => (string)$rootTemplate->get('description'),
@@ -392,12 +412,43 @@ class OrganizationExport
                 'trigger' => [
                     'type' => $triggerType,
                     'stableKey' => $trigger instanceof ChecklistTrigger ? (string)$trigger->get('stable_key') : 'primary',
+					'frequency' => $trigger instanceof ChecklistTrigger ? (string)$trigger->get('frequency') : '',
+					'schedule' => $trigger instanceof ChecklistTrigger ? (string)$trigger->get('schedule') : '',
                     'overlapPolicy' => $trigger instanceof ChecklistTrigger ? (string)$trigger->get('overlap_policy') : ChecklistTrigger::OVERLAP_BLOCK,
                     'enabled' => $trigger instanceof ChecklistTrigger && (bool)$trigger->get('enabled'),
                 ],
                 'items' => $items,
             ];
         }
+
+		$activities = self::loadCollection('\\dbObject\\ArrayControlActivity', [
+			['field' => 'IDorganization', 'value' => (int)$organization->getId()],
+		], [
+			['field' => 'position', 'dir' => 'ASC'],
+			['field' => 'id', 'dir' => 'ASC'],
+		]);
+		foreach ($activities as $activity) {
+			$records[] = [
+				'recordType' => 'recurring_activity',
+				'sourceId' => (int)$activity->getId(),
+				'sourceHolonId' => (int)$activity->get('IDholon'),
+				'active' => (bool)$activity->get('active'),
+				'items' => [[
+					'sourceId' => (int)$activity->getId(),
+					'title' => (string)$activity->get('title'),
+					'description' => (string)$activity->get('description'),
+					'active' => (bool)$activity->get('active'),
+					'recurrence' => [
+						'frequency' => (string)$activity->get('frequency'),
+						'schedule' => (string)$activity->get('schedule'),
+						'displayLeadValue' => (int)$activity->get('display_lead_value'),
+						'displayLeadUnit' => (string)$activity->get('display_lead_unit'),
+						'executionDurationValue' => (int)$activity->get('execution_duration_value'),
+						'executionDurationUnit' => (string)$activity->get('execution_duration_unit'),
+					],
+				]],
+			];
+		}
         return $records;
     }
 

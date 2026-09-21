@@ -606,8 +606,13 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
                 feedback.textContent = <?= json_encode($editT('editor.saved'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
             }
         } catch (error) {
-            feedback.textContent = error.message || saveError;
-            feedback.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+            var message = error.message || saveError;
+            if (typeof window.omoNotify === 'function') {
+                window.omoNotify(message, 'error');
+            } else {
+                feedback.textContent = message;
+                feedback.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+            }
         } finally {
             saving = false;
             editorForm.removeAttribute('aria-busy');

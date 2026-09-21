@@ -157,7 +157,7 @@ function omoActivityCanUsePermission(Holon $holon, $permissionKey)
         return false;
     }
 
-    return $holon->isAllowed((string)$permissionKey, strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST', $userId)
+    return $holon->isAllowed((string)$permissionKey, false, $userId)
         || commonPvMeetingCanUseCollectivePermission(
             commonResolvePvMeetingPermissionContext(commonResolveHolonOrganizationId($holon)),
             $holon,
@@ -248,13 +248,13 @@ if (!function_exists('omoActivityMatchesAssignment')) {
 function omoActivityCanEdit(ControlActivity $activity)
 {
     $holon = $activity->getHolon();
-    return $holon instanceof Holon && omoActivityCanUsePermission($holon, 'CAN_EDIT_CONTROL_ACTIVITY');
+    return $holon instanceof Holon && omoActivityCanUsePermission($holon, 'CAN_EDIT_RECURRING_TASK');
 }
 
 function omoActivityCanDelete(ControlActivity $activity)
 {
     $holon = $activity->getHolon();
-    return $holon instanceof Holon && omoActivityCanUsePermission($holon, 'CAN_DELETE_CONTROL_ACTIVITY');
+    return $holon instanceof Holon && omoActivityCanUsePermission($holon, 'CAN_DELETE_RECURRING_TASK');
 }
 
 function omoActivityResponsibleAssignmentLabel(ControlActivity $activity)

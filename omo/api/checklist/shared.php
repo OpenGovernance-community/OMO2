@@ -302,7 +302,7 @@ if (!function_exists('omoChecklistCanCreateContext')) {
     {
         $currentHolon = $context['currentHolon'] ?? null;
         return $currentHolon instanceof Holon
-            && omoChecklistCanUsePermission($currentHolon, 'CAN_CREATE_CHECKLIST');
+            && omoChecklistCanUsePermission($currentHolon, 'CAN_CREATE_PROCESS');
     }
 }
 
@@ -313,8 +313,7 @@ if (!function_exists('omoChecklistCanUsePermission')) {
         if ($currentUserId <= 0) {
             return false;
         }
-        $useSessionCache = strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST';
-        return $holon->isAllowed((string)$permissionKey, $useSessionCache, $currentUserId);
+        return $holon->isAllowed((string)$permissionKey, false, $currentUserId);
     }
 }
 
@@ -333,7 +332,7 @@ if (!function_exists('omoChecklistCanManage')) {
         $templateRoot = $checklist->getTemplateRoot();
         $holon = $templateRoot instanceof Project ? $templateRoot->getHolon() : null;
         return $holon instanceof Holon
-            && omoChecklistCanUsePermission($holon, 'CAN_EDIT_CHECKLIST');
+            && omoChecklistCanUsePermission($holon, 'CAN_EDIT_PROCESS');
     }
 }
 
@@ -342,7 +341,7 @@ if (!function_exists('omoChecklistCanDelete')) {
     {
         $holon = $checklist->getHolon();
         return $holon instanceof Holon
-            && omoChecklistCanUsePermission($holon, 'CAN_DELETE_CHECKLIST');
+            && omoChecklistCanUsePermission($holon, 'CAN_DELETE_PROCESS');
     }
 }
 
@@ -398,7 +397,7 @@ if (!function_exists('omoChecklistCanConvertItemToActivity')) {
         $holon = omoChecklistGetItemActivityHolon($checklist, $item);
         return omoChecklistGetTemporalItemRecurrence($item) instanceof \dbObject\ChecklistItemRecurrence
             && $holon instanceof Holon
-            && omoChecklistCanUsePermission($holon, 'CAN_CREATE_CONTROL_ACTIVITY');
+            && omoChecklistCanUsePermission($holon, 'CAN_CREATE_RECURRING_TASK');
     }
 }
 

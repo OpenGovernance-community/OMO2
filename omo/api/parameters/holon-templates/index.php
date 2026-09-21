@@ -387,37 +387,6 @@ $omoHolonTemplateTexts = [
                             </div>
                         </section>
 
-                        <?php if ($isHolonDefinitionMode): ?>
-                        <section class="omo-template-section generic-section generic-section--stack generic-section--roomy">
-                            <div class="omo-template-section__head">
-                                <div>
-                                    <div class="omo-template-section__title generic-title generic-title--subsection"><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.section.public_share'), ENT_QUOTES, 'UTF-8') ?></div>
-                                    <p class="omo-template-section__description generic-description">
-                                        <?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.section.public_share_description'), ENT_QUOTES, 'UTF-8') ?>
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="omo-template-form__grid">
-                                <label class="omo-template-flags__option generic-soft-panel generic-stack generic-stack--compact omo-field--full">
-                                    <input type="checkbox" id="omo-template-share-public">
-                                    <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.share_public'), ENT_QUOTES, 'UTF-8') ?></span>
-                                    <small><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.share_public_help'), ENT_QUOTES, 'UTF-8') ?></small>
-                                </label>
-
-                                <div class="omo-field omo-field--full" id="omo-template-public-share-fields" hidden>
-                                    <div class="omo-template-form__grid">
-                                        <label class="omo-field omo-field--full">
-                                            <span><?= htmlspecialchars(omoHolonTemplateT('parameters.holon_templates.field.public_model_name'), ENT_QUOTES, 'UTF-8') ?></span>
-                                            <input type="text" id="omo-template-public-name" maxlength="255">
-                                        </label>
-
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-                        <?php endif; ?>
-
                         <div class="omo-template-form__footer">
                             <div class="omo-template-form__hint generic-help-text generic-help-text--regular" id="omo-template-selection-hint"></div>
                             <?php if (!$isHolonDefinitionMode): ?>
@@ -606,9 +575,6 @@ const omoHolonTemplateElements = {
     unassignedColorBody: omoHolonTemplateRoot.querySelector('#omo-template-unassigned-color-body'),
     unassignedColor: omoHolonTemplateRoot.querySelector('#omo-template-unassigned-color'),
     iconField: omoHolonTemplateRoot.querySelector('#omo-template-icon-field'),
-    sharePublic: omoHolonTemplateRoot.querySelector('#omo-template-share-public'),
-    publicShareFields: omoHolonTemplateRoot.querySelector('#omo-template-public-share-fields'),
-    publicName: omoHolonTemplateRoot.querySelector('#omo-template-public-name'),
     mandatory: omoHolonTemplateRoot.querySelector('#omo-template-mandatory'),
     lockedName: omoHolonTemplateRoot.querySelector('#omo-template-locked-name'),
     lockedIcon: omoHolonTemplateRoot.querySelector('#omo-template-locked-icon'),
@@ -972,23 +938,6 @@ function omoHolonTemplateSyncUnassignedColorField() {
 
     if (omoHolonTemplateElements.unassignedColorOverrideLabel) {
         omoHolonTemplateElements.unassignedColorOverrideLabel.hidden = isEnabled;
-    }
-}
-
-function omoHolonTemplateSyncPublicShareFields() {
-    if (!omoHolonTemplateIsHolonDefinitionMode()) {
-        return;
-    }
-
-    const isEnabled = Boolean(omoHolonTemplateElements.sharePublic && omoHolonTemplateElements.sharePublic.checked);
-
-    if (omoHolonTemplateElements.publicShareFields) {
-        omoHolonTemplateElements.publicShareFields.hidden = !isEnabled;
-    }
-
-    if (omoHolonTemplateElements.publicName) {
-        omoHolonTemplateElements.publicName.disabled = !isEnabled;
-        omoHolonTemplateElements.publicName.required = isEnabled;
     }
 }
 
@@ -3340,12 +3289,6 @@ function omoHolonTemplateFillForm(template, options) {
     }
     omoHolonTemplateSyncRoleFlags();
     omoHolonTemplateSyncAdminBounds(current);
-    if (omoHolonTemplateElements.sharePublic) {
-        omoHolonTemplateElements.sharePublic.checked = Boolean(current.shareAsTemplate);
-    }
-    if (omoHolonTemplateElements.publicName) {
-        omoHolonTemplateElements.publicName.value = String(current.publicTemplateName || '');
-    }
     if (isHolonDefinitionMode) {
         omoHolonTemplateElements.selectionHint.textContent = omoHolonTemplateTexts.selectionHintDefinition || '';
         omoHolonTemplateElements.formTitle.textContent = current.name || (omoHolonTemplateTexts.formOrganization || '');
@@ -3369,7 +3312,6 @@ function omoHolonTemplateFillForm(template, options) {
     omoHolonTemplateRenderPermissions(current.permissionAssignments || {});
     omoHolonTemplateRenderProperties(current.properties || []);
     omoHolonTemplateRenderMediaFields(current, Boolean(settings.preserveMediaState));
-    omoHolonTemplateSyncPublicShareFields();
 }
 
 function omoHolonTemplateSelect(templateId) {
@@ -3514,17 +3456,6 @@ function omoHolonTemplateSave(event) {
                 properties: omoHolonTemplateReadProperties()
             };
 
-            if (omoHolonTemplateIsHolonDefinitionMode()) {
-                payload.shareAsTemplate = Boolean(omoHolonTemplateElements.sharePublic && omoHolonTemplateElements.sharePublic.checked);
-                payload.publicTemplateName = payload.shareAsTemplate && omoHolonTemplateElements.publicName
-                    ? String(omoHolonTemplateElements.publicName.value || '').trim()
-                    : '';
-
-                if (!payload.shareAsTemplate) {
-                    payload.icon = '';
-                }
-            }
-
             const saveUrl = '/omo/api/parameters/holon-templates/save.php'
                 + (function () {
                     const query = [];
@@ -3654,12 +3585,6 @@ if (omoHolonTemplateElements.cancel) {
 
 if (omoHolonTemplateElements.deleteButton) {
     omoHolonTemplateElements.deleteButton.addEventListener('click', omoHolonTemplateDelete);
-}
-
-if (omoHolonTemplateElements.sharePublic) {
-    omoHolonTemplateElements.sharePublic.addEventListener('change', function () {
-        omoHolonTemplateSyncPublicShareFields();
-    });
 }
 
 if (omoHolonTemplateElements.definitionHolon) {

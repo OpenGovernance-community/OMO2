@@ -5,20 +5,85 @@ use dbObject\ArrayEvent;
 use dbObject\ArrayExternalCalendarEvent;
 use dbObject\CalendarShare;
 use dbObject\Event;
+use dbObject\Holon;
+use dbObject\Organization;
+use dbObject\UserOrganization;
+
+function calendarShareLoadScopedOmoEvents(CalendarShare $share, array $scope): array
+{
+    $userId = (int)$share->get('IDuser');
+    $organizationId = (int)($scope['organizationId'] ?? 0);
+    $holonId = (int)($scope['holonId'] ?? 0);
+    $range = (string)($scope['range'] ?? '');
+    if (
+        $userId <= 0
+        || $organizationId <= 0
+        || $holonId <= 0
+        || !UserOrganization::hasActiveMembership($userId, $organizationId)
+    ) {
+        return [];
+    }
+
+    $organization = new Organization();
+    if (!$organization->load($organizationId) || !$organization->isApplicationEnabled('calendar', $userId)) {
+        return [];
+    }
+
+    $rootHolon = $organization->getEnabledStructuralRootHolon();
+    $holon = new Holon();
+    if (
+        !($rootHolon instanceof Holon)
+        || !$holon->load($holonId)
+        || !$holon->isDescendantOf((int)$rootHolon->getId(), true)
+    ) {
+        return [];
+    }
+
+    $visibleHolonIds = [(int)$holon->getId() => true];
+    if ($range === 'children') {
+        $visibleHolonIds += omoApiGetDirectChildHolonIdMap($holon);
+    } elseif ($range === 'descendants') {
+        $visibleHolonIds += omoApiGetDescendantHolonIdMap($holon);
+    }
+
+    $events = new ArrayEvent();
+    $events->loadForOrganization($organizationId, false, true);
+    $visibleEvents = [];
+    foreach ($events as $event) {
+        if (!($event instanceof Event) || !$event->isVisibleToInvitationViewer($userId, $organizationId)) {
+            continue;
+        }
+
+        $eventHolonId = (int)$event->get('IDholon');
+        if ($eventHolonId > 0 && !isset($visibleHolonIds[$eventHolonId])) {
+            continue;
+        }
+
+        $visibleEvents[] = $event;
+    }
+
+    return $visibleEvents;
+}
 
 /** Export normalized local instances only: no remote requests, alarms or attendee addresses. */
 function calendarShareBuildFeed(CalendarShare $share, ?DateTimeImmutable $now = null): string
 {
     [$start, $end] = $share->visibilityRange($now);
     $userId = (int)$share->get('IDuser');
-    $omo = new ArrayEvent();
-    $omo->loadBusyForUserDateRange($userId, $start, $end);
-    $external = new ArrayExternalCalendarEvent();
-    $external->loadActiveForUserDateRange($userId, $start, $end);
+    $scope = $share->getScopedCalendarConfig();
+    if (is_array($scope)) {
+        $eventGroups = [calendarShareLoadScopedOmoEvents($share, $scope)];
+    } else {
+        $omo = new ArrayEvent();
+        $omo->loadBusyForUserDateRange($userId, $start, $end);
+        $external = new ArrayExternalCalendarEvent();
+        $external->loadActiveForUserDateRange($userId, $start, $end);
+        $eventGroups = [$omo, $external];
+    }
     $details = (bool)$share->get('details');
     $lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//OpenMyOrganization//Calendar Share//EN',
         'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Agenda partage', 'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H'];
-    foreach ([$omo, $external] as $events) {
+    foreach ($eventGroups as $events) {
         foreach ($events as $event) {
             $isOmo = $event instanceof Event;
             $busy = $isOmo || (bool)$event->get('is_busy');

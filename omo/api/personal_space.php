@@ -195,11 +195,13 @@ $sourceLang = [
 	'personal_space.editor.reset_default' => ['text' => 'Effacer une vue par défaut', 'context' => 'Fallback action label when no personal dashboard preference can be removed.'],
 	'personal_space.editor.reset_holon_default' => ['text' => 'Effacer la vue par défaut de ce holon', 'context' => 'Remove the default dashboard layout stored on the current holon.'],
 	'personal_space.editor.reset_organization_template_default' => ['text' => 'Effacer la vue par défaut du modèle {templateName}', 'context' => 'Remove the organization dashboard layout stored for the directly inherited template.'],
+	'personal_space.editor.reset_organization_model_default' => ['text' => 'Effacer la vue par défaut du modèle Organisation', 'context' => 'Remove the organization dashboard layout stored for the organization holon.'],
 	'personal_space.editor.reset_application_type_default' => ['text' => 'Effacer la vue par défaut de tous les {typeName}', 'context' => 'Remove the application dashboard layout stored for the current base holon type.'],
 	'personal_space.editor.reset_global_default' => ['text' => 'Effacer la vue par défaut globale', 'context' => 'Remove the global dashboard layout stored for all organizations.'],
     'personal_space.editor.save_options' => ['text' => 'Autres options d enregistrement', 'context' => 'Accessible label for dashboard default save options.'],
     'personal_space.editor.save_holon_default' => ['text' => 'Enregistrer par défaut pour ce holon', 'context' => 'Save the current dashboard layout as the default for this holon.'],
     'personal_space.editor.save_organization_template_default' => ['text' => 'Enregistrer par défaut pour le modèle {templateName}', 'context' => 'Save the current dashboard layout as the organization default for the template inherited by the current holon.'],
+    'personal_space.editor.save_organization_model_default' => ['text' => 'Enregistrer par défaut pour le modèle Organisation', 'context' => 'Save the current dashboard layout as the default for the organization holon.'],
     'personal_space.editor.save_application_type_default' => ['text' => 'Enregistrer par défaut pour tous les {typeName}', 'context' => 'Save the current dashboard layout as the application default for the current base holon type.'],
     'personal_space.editor.save_global_default' => ['text' => 'Enregistrer par défaut global', 'context' => 'Save the global dashboard layout for every organization without a more specific view.'],
     'personal_space.editor.close' => ['text' => 'Fermer', 'context' => 'Close dashboard layout editor action.'],
@@ -391,6 +393,9 @@ $dashboardTemplateKey = $scopeReferenceHolon instanceof Holon
 $dashboardTemplateLabel = $scopeReferenceHolon instanceof Holon
     ? $scopeReferenceHolon->getDashboardTemplateLayoutLabel()
     : '';
+$dashboardIsOrganizationHolon = $scopeReferenceHolon instanceof Holon
+    && $organizationRootHolon instanceof Holon
+    && (int)$scopeReferenceHolon->getId() === (int)$organizationRootHolon->getId();
 $dashboardBaseTypeKey = $scopeReferenceHolon instanceof Holon
     ? $scopeReferenceHolon->getDashboardBaseTypeLayoutKey()
     : '';
@@ -399,6 +404,9 @@ $dashboardBaseTypeLabel = $scopeReferenceHolon instanceof Holon
     : '';
 $dashboardOrganizationTemplateLayout = $scopeReferenceHolon instanceof Holon
     ? $organization->getDashboardTemplateDefaultLayoutForHolon($scopeReferenceHolon)
+    : null;
+$dashboardOrganizationModelLayout = $dashboardIsOrganizationHolon
+    ? $organization->getDashboardOrganizationDefaultLayout()
     : null;
 $dashboardApplicationBaseTypeLayout = $scopeReferenceHolon instanceof Holon
     ? ApplicationSetting::getDashboardBaseTypeDefaultLayoutForHolon($scopeReferenceHolon)
@@ -412,6 +420,7 @@ $dashboardLayout = omoDashboardViewPreferencesResolveLayout(array(
     'personal' => $dashboardPersonalLayout,
     'holon' => $dashboardHolonDefaultLayout,
     'organizationTemplate' => $dashboardOrganizationTemplateLayout,
+    'organizationModel' => $dashboardOrganizationModelLayout,
     'applicationType' => $dashboardApplicationBaseTypeLayout,
     'global' => $dashboardGlobalLayout,
 ));
@@ -420,6 +429,7 @@ $dashboardInterfaceLevel = (int)$dashboardAccess['interfaceLevel'];
 $canEditDashboard = !empty($dashboardAccess['canEdit']);
 $canSaveDashboardHolonDefault = !empty($dashboardAccess['canSaveHolon']);
 $canSaveDashboardOrganizationTemplateDefault = !empty($dashboardAccess['canSaveOrganizationTemplate']);
+$canSaveDashboardOrganizationModelDefault = !empty($dashboardAccess['canSaveOrganizationModel']);
 $canSaveDashboardApplicationBaseTypeDefault = !empty($dashboardAccess['canSaveApplicationType']);
 $canSaveDashboardGlobalDefault = !empty($dashboardAccess['canSaveGlobal']);
 $dashboardSaveDefinitions = array(
@@ -427,6 +437,7 @@ $dashboardSaveDefinitions = array(
     'personal' => array('textKey' => 'personal_space.editor.save', 'templateKey' => ''),
     'holon' => array('textKey' => 'personal_space.editor.save_holon_default', 'templateKey' => ''),
     'organization_template' => array('textKey' => 'personal_space.editor.save_organization_template_default', 'templateKey' => $dashboardTemplateKey),
+    'organization_model' => array('textKey' => 'personal_space.editor.save_organization_model_default', 'templateKey' => ''),
     'application_type' => array('textKey' => 'personal_space.editor.save_application_type_default', 'templateKey' => $dashboardBaseTypeKey),
     'global' => array('textKey' => 'personal_space.editor.save_global_default', 'templateKey' => ''),
 );
@@ -455,6 +466,9 @@ if ($canSaveDashboardHolonDefault && $dashboardHolonDefaultLayout !== null) {
 }
 if ($canSaveDashboardOrganizationTemplateDefault && $dashboardOrganizationTemplateLayout !== null) {
     $dashboardResetOptions[] = array('scope' => 'organization_template_reset', 'textKey' => 'personal_space.editor.reset_organization_template_default', 'templateKey' => $dashboardTemplateKey);
+}
+if ($canSaveDashboardOrganizationModelDefault && $dashboardOrganizationModelLayout !== null) {
+    $dashboardResetOptions[] = array('scope' => 'organization_model_reset', 'textKey' => 'personal_space.editor.reset_organization_model_default', 'templateKey' => '');
 }
 if ($canSaveDashboardApplicationBaseTypeDefault && $dashboardApplicationBaseTypeLayout !== null) {
     $dashboardResetOptions[] = array('scope' => 'application_type_reset', 'textKey' => 'personal_space.editor.reset_application_type_default', 'templateKey' => $dashboardBaseTypeKey);
@@ -731,4 +745,4 @@ $dashboardMetricLabels = array(
     </div>
     <?php endif; ?>
 </div>
-<script src="/omo/assets/js/personal-space-dashboard.js?v=20260919-dashboard-audience-modules"></script>
+<script src="/omo/assets/js/personal-space-dashboard.js?v=20260921-organization-model"></script>

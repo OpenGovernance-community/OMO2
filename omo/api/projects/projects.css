@@ -780,12 +780,36 @@
 
 .omo-project-status-bar {
     display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
     width: 100%;
     height: 6px;
     min-height: 6px;
     overflow: hidden;
     border-radius: 999px;
     background: var(--color-border, #e5e7eb);
+    cursor: help;
+}
+
+.omo-project-status-summary {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 6px;
+}
+
+.omo-project-status-summary__count {
+    flex: 0 0 auto;
+    color: var(--color-text-light, #6b7280);
+    font-size: .75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    min-width: 1.6em;
+    padding: 3px 5px;
+    border-radius: 999px;
+    background: var(--color-background-soft, #eef0f2);
+    text-align: center;
 }
 
 .omo-project-status-bar__segment {

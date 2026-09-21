@@ -35,6 +35,14 @@ function omoGetOrgPanelSourceLang(): array
             'text' => 'Deplacer',
             'context' => 'Action menu label to move the current holon in the left panel.',
         ],
+        'leftbar.actions.share_as_model' => [
+            'text' => 'Partager comme modele',
+            'context' => 'Action menu label to publish the current organization as a public model.',
+        ],
+        'leftbar.actions.stop_sharing_as_model' => [
+            'text' => 'Ne plus partager comme modele',
+            'context' => 'Action menu label to unpublish the current organization model.',
+        ],
         'leftbar.children.section_title' => [
             'text' => 'Dependances',
             'context' => 'Accordion title for child navigation in the left panel.',
@@ -397,7 +405,7 @@ function omoRenderProjectReferenceItem($item, $source = '')
 	$html .= '</div>';
 	if ($hasDirectChildren) {
 		$html .= '<button type="button" class="section-project-reference__status-toggle" data-omo-project-reference-toggle aria-expanded="false" aria-label="Afficher les sous-projets de ' . omoApiEscape($title) . '">';
-		$html .= omoProjectsRenderStatusBar($referenceData['statusSummary'], 'section-project-reference__status-bar');
+		$html .= omoProjectsRenderStatusBar($referenceData['statusSummary'], 'section-project-reference__status-bar', 'div', true);
 		$html .= '</button>';
 		$html .= '<div class="section-project-reference__children" data-omo-project-reference-children hidden></div>';
 	}
@@ -1124,11 +1132,15 @@ $canEditHolon = $currentHolon->isAllowed('CAN_EDIT_HOLON') && in_array((int)$cur
 $canMoveHolon = !$isCurrentTemplateHolon && $currentHolon->canEdit() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
 $canDeleteHolon = $currentHolon->isAllowed('CAN_DELETE_HOLON') && $currentHolon->canDelete() && in_array((int)$currentHolon->get('IDtypeholon'), array(1, 2, 3), true);
 $canViewHolonHistory = $currentHolon->canViewDetail();
+$activeOrganizationMembership = $organization->getMembership((int)commonGetCurrentUserId(), true);
+$canManageOrganizationModel = $isOrganizationDefinitionHolon
+    && $activeOrganizationMembership
+    && $activeOrganizationMembership->isOrganizationAdmin();
 $deleteDescendantCount = $canDeleteHolon ? (int)$currentHolon->countVisibleDescendants() : 0;
 $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null;
 $deleteParentId = $parentHolonForDelete ? (int)$parentHolonForDelete->getId() : 0;
 $deleteParentIsRoot = $parentHolonForDelete ? ((int)$parentHolonForDelete->get('IDtypeholon') === 4) : false;
-$hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon || $canViewHolonHistory;
+$hasHolonActions = $canCreateChildHolon || $canEditHolon || $canMoveHolon || $canDeleteHolon || $canViewHolonHistory || $canManageOrganizationModel;
 $debugPermissionCatalog = Permission::getEditorCatalog();
 $debugPermissionEntries = array();
 foreach ($debugPermissionCatalog as $permissionEntry) {
@@ -1207,6 +1219,14 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
                         aria-expanded="false"
                     >...</button>
                     <div class="circle-menu__panel" data-holon-menu-panel="1" hidden>
+                        <?php if ($canManageOrganizationModel): ?>
+                            <button
+                                type="button"
+                                class="circle-menu__item"
+                                data-toggle-organization-model="1"
+                                data-oid="<?= (int)$organizationId ?>"
+                            ><?= omoApiEscape($organization->isSharedAsTemplate() ? t('leftbar.actions.stop_sharing_as_model') : t('leftbar.actions.share_as_model')) ?></button>
+                        <?php endif; ?>
                         <?php if ($canCreateChildHolon): ?>
                             <button
                                 type="button"
@@ -2048,12 +2068,36 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
 .section-project-reference__status-bar {
     display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
     width: 100%;
     height: 6px;
     min-height: 6px;
     overflow: hidden;
     border-radius: 999px;
     background: var(--color-border, #e5e7eb);
+    cursor: help;
+}
+
+.section-project-reference__status-toggle .omo-project-status-summary {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 6px;
+}
+
+.section-project-reference__status-toggle .omo-project-status-summary__count {
+    flex: 0 0 auto;
+    min-width: 1.6em;
+    padding: 3px 5px;
+    border-radius: 999px;
+    background: var(--color-background-soft, #eef0f2);
+    color: var(--color-text-light, #6b7280);
+    font-size: .75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    text-align: center;
 }
 
 .section-project-reference__status-toggle {
@@ -2583,6 +2627,36 @@ $(document)
     if (typeof window.omoOpenDrawerHashState === 'function') {
         window.omoOpenDrawerHashState('holon-create-' + cid);
     }
+  });
+
+$(document)
+  .off('click.omoOrgToggleOrganizationModel', '#panel-left [data-toggle-organization-model="1"]')
+  .on('click.omoOrgToggleOrganizationModel', '#panel-left [data-toggle-organization-model="1"]', function () {
+    const button = $(this);
+    const organizationId = Number(button.data('oid'));
+    if (!organizationId) {
+        return;
+    }
+    button.prop('disabled', true);
+    const data = new FormData();
+    data.append('oid', String(organizationId));
+    data.append('action', 'toggle-model');
+    fetch('/omo/api/organizations/card_action.php', { method: 'POST', body: data, credentials: 'same-origin' })
+      .then(function (response) { return response.json(); })
+      .then(function (result) {
+        if (!result || !result.status) {
+            throw new Error(result && result.message ? result.message : 'Action impossible.');
+        }
+        if (typeof window.omoLoadLeft === 'function') {
+            window.omoLoadLeft();
+        } else {
+            window.location.reload();
+        }
+      })
+      .catch(function (error) {
+        button.prop('disabled', false);
+        window.alert(error && error.message ? error.message : 'Action impossible.');
+      });
   });
 
 $(document)
