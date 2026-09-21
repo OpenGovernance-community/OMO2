@@ -258,41 +258,41 @@ class Permission extends DbObject
                 'iscontextual' => true,
                 'group' => 'faq',
             ],
-            'CAN_CREATE_CHECKLIST' => [
+            'CAN_CREATE_PROCESS' => [
                 'title' => 'Creer des processus',
                 'description' => 'Autorise la creation de processus dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'checklists',
+                'group' => 'processes',
             ],
-            'CAN_EDIT_CHECKLIST' => [
+            'CAN_EDIT_PROCESS' => [
                 'title' => 'Modifier des processus',
                 'description' => 'Autorise l ajout, la modification et la suppression des etapes et activites de processus dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'checklists',
+                'group' => 'processes',
             ],
-            'CAN_DELETE_CHECKLIST' => [
+            'CAN_DELETE_PROCESS' => [
                 'title' => 'Supprimer des processus',
                 'description' => 'Autorise la suppression de processus dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'checklists',
+                'group' => 'processes',
             ],
-            'CAN_CREATE_CONTROL_ACTIVITY' => [
+            'CAN_CREATE_RECURRING_TASK' => [
                 'title' => 'Creer des taches recurrentes',
                 'description' => 'Autorise la creation de taches recurrentes dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'activities',
+                'group' => 'recurring_tasks',
             ],
-            'CAN_EDIT_CONTROL_ACTIVITY' => [
+            'CAN_EDIT_RECURRING_TASK' => [
                 'title' => 'Modifier des taches recurrentes',
                 'description' => 'Autorise la modification des taches recurrentes dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'activities',
+                'group' => 'recurring_tasks',
             ],
-            'CAN_DELETE_CONTROL_ACTIVITY' => [
+            'CAN_DELETE_RECURRING_TASK' => [
                 'title' => 'Supprimer des taches recurrentes',
                 'description' => 'Autorise la suppression des taches recurrentes dans le contexte cible.',
                 'iscontextual' => true,
-                'group' => 'activities',
+                'group' => 'recurring_tasks',
             ],
             'CAN_CREATE_PROJECT' => [
                 'title' => 'Creer des projets',
@@ -375,8 +375,8 @@ class Permission extends DbObject
             'holons' => ['title' => 'Holons', 'order' => 5],
             'members' => ['title' => 'Membres et roles', 'order' => 10],
             'content' => ['title' => 'Contenus et reunions', 'order' => 20],
-            'checklists' => ['title' => 'Processus', 'order' => 25],
-            'activities' => ['title' => 'Taches recurrentes', 'order' => 26],
+            'processes' => ['title' => 'Processus', 'order' => 25],
+            'recurring_tasks' => ['title' => 'Taches recurrentes', 'order' => 26],
             'projects' => ['title' => 'Projets', 'order' => 20],
             'policy' => ['title' => 'Reglement', 'order' => 21],
             'stats' => ['title' => 'Indicateurs', 'order' => 30],

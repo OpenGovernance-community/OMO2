@@ -94,6 +94,30 @@ $sourceLang = [
         'text' => 'Importer une organisation',
         'context' => 'Title shown on the organization import card.',
     ],
+    'app.directory.model.action' => [
+        'text' => 'Choisir un modele',
+        'context' => 'Action label displayed on the public organization model card.',
+    ],
+    'app.directory.model.aria_label' => [
+        'text' => 'Creer une organisation a partir d un modele',
+        'context' => 'Aria label for the public organization model card.',
+    ],
+    'app.directory.model.badge' => [
+        'text' => 'Communaute',
+        'context' => 'Badge displayed on the public organization model card.',
+    ],
+    'app.directory.model.description' => [
+        'text' => 'Reprendre une structure et des reglages partages',
+        'context' => 'Subtitle displayed on the public organization model card.',
+    ],
+    'app.directory.model.modal_title' => [
+        'text' => 'Creer a partir d un modele',
+        'context' => 'Title shown in the create-from-model popup.',
+    ],
+    'app.directory.model.title' => [
+        'text' => 'Creer a partir d un modele',
+        'context' => 'Title displayed on the public organization model card.',
+    ],
     'app.directory.description.empty.patreon_connect' => [
         'text' => "Votre compte est bien connecté, mais il n'est rattaché à aucune organisation pour le moment. Connectez Patreon ci-dessous pour pouvoir en créer une nouvelle.",
         'context' => 'Message shown on the organization directory when no organization is available and Patreon must be connected before creating one.',
@@ -178,6 +202,14 @@ $sourceLang = [
     'app.directory.menu.leave' => [
         'text' => 'Quitter',
         'context' => 'Menu item label used to leave an organization from the directory page.',
+    ],
+    'app.directory.menu.share_as_model' => [
+        'text' => 'Partager comme modele',
+        'context' => 'Menu item used to publish an organization as a public model.',
+    ],
+    'app.directory.menu.stop_sharing_as_model' => [
+        'text' => 'Ne plus partager comme modele',
+        'context' => 'Menu item used to unpublish an organization model.',
     ],
     'app.directory.modal.close' => [
         'text' => 'Fermer',
@@ -400,6 +432,7 @@ function omoBuildDirectoryCardData(array $directoryEntry, $currentUserId)
         'pendingInvitation' => $pendingInvitation,
         'organizationMembership' => $organizationMembership,
         'canDeleteOrganization' => $accessibleOrganization->canDelete(),
+        'canManageModelSharing' => $organizationMembership && $organizationMembership->isOrganizationAdmin() && $accessibleOrganization->getStructuralRootHolon() !== null,
         'isSystemOrganization' => $isSystemOrganization,
         'isSystemOrganizationAdmin' => $isSystemOrganizationAdmin,
         'organizationName' => $organizationName,
@@ -436,6 +469,7 @@ function omoRenderDirectoryCard(array $directoryCardData)
     $pendingInvitation = $directoryCardData['pendingInvitation'];
     $organizationMembership = $directoryCardData['organizationMembership'];
     $canDeleteOrganization = !empty($directoryCardData['canDeleteOrganization']);
+    $canManageModelSharing = !empty($directoryCardData['canManageModelSharing']);
     $isSystemOrganization = !empty($directoryCardData['isSystemOrganization']);
     $isSystemOrganizationAdmin = !empty($directoryCardData['isSystemOrganizationAdmin']);
     $organizationName = (string)$directoryCardData['organizationName'];
@@ -476,6 +510,11 @@ function omoRenderDirectoryCard(array $directoryCardData)
                         data-organization-id="<?= (int)$accessibleOrganization->getId() ?>"
                         data-organization-name="<?= htmlspecialchars($organizationName, ENT_QUOTES, 'UTF-8') ?>"
                     >
+                        <?php if ($canManageModelSharing) { ?>
+                        <button type="button" class="omo-org-card-menu__item" data-omo-org-action="toggle-model">
+                            <?= htmlspecialchars($accessibleOrganization->isSharedAsTemplate() ? t('app.directory.menu.stop_sharing_as_model') : t('app.directory.menu.share_as_model')) ?>
+                        </button>
+                        <?php } ?>
                         <?php if (!$isSystemOrganizationAdmin) { ?>
                         <button
                             type="button"
@@ -532,6 +571,7 @@ function omoRenderDirectoryActionCard(array $actionCardData)
     $cardActionLabel = trim((string)($actionCardData['actionLabel'] ?? ''));
     $cardBadge = trim((string)($actionCardData['badge'] ?? ''));
     $cardImageUrl = trim((string)($actionCardData['imageUrl'] ?? ''));
+	$cardIconUrl = trim((string)($actionCardData['iconUrl'] ?? ''));
     $cardAccentColor = trim((string)($actionCardData['accentColor'] ?? '')) ?: '#2563eb';
     $cardInitial = trim((string)($actionCardData['initial'] ?? '+'));
     ?>
@@ -549,7 +589,13 @@ function omoRenderDirectoryActionCard(array $actionCardData)
                 ></div>
                 <div class="auth-org-card__body">
                     <div class="auth-org-card__header">
-                        <div class="auth-org-logo-placeholder auth-org-logo-placeholder--directory auth-org-logo-placeholder--action" aria-hidden="true"><?= htmlspecialchars($cardInitial, ENT_QUOTES, 'UTF-8') ?></div>
+                        <div class="auth-org-logo-placeholder auth-org-logo-placeholder--directory auth-org-logo-placeholder--action" aria-hidden="true">
+                            <?php if ($cardIconUrl !== ''): ?>
+                                <img class="auth-org-action-card-icon" src="<?= htmlspecialchars($cardIconUrl, ENT_QUOTES, 'UTF-8') ?>" alt="">
+                            <?php else: ?>
+                                <?= htmlspecialchars($cardInitial, ENT_QUOTES, 'UTF-8') ?>
+                            <?php endif; ?>
+                        </div>
                         <div class="auth-org-info auth-org-info--directory">
                             <strong class="auth-org-title auth-org-title--directory"><?= htmlspecialchars($cardTitle, ENT_QUOTES, 'UTF-8') ?></strong>
                             <span class="auth-org-meta auth-org-meta--directory"><?= htmlspecialchars($cardDescription, ENT_QUOTES, 'UTF-8') ?></span>
@@ -747,8 +793,21 @@ if ($isOrganizationHub && !$isDemoGuest) {
             'actionLabel' => t('app.directory.create.action'),
             'badge' => t('app.directory.create.badge'),
             'imageUrl' => '/omo/assets/images/directory/new-organization.png',
+			'iconUrl' => '/omo/assets/images/directory/new-organization-icon.png',
             'accentColor' => '#2563eb',
             'initial' => '+',
+        ], [
+            'id' => 'omoCreateFromModelCard',
+            'cardAction' => 'model',
+            'ariaLabel' => t('app.directory.model.aria_label'),
+            'title' => t('app.directory.model.title'),
+            'description' => t('app.directory.model.description'),
+            'actionLabel' => t('app.directory.model.action'),
+            'badge' => t('app.directory.model.badge'),
+            'imageUrl' => '/omo/assets/images/directory/create-from-model.png',
+			'iconUrl' => '/omo/assets/images/directory/create-from-model-icon.png',
+            'accentColor' => '#525252',
+            'initial' => 'M',
         ], [
             'id' => 'omoImportOrganizationCard',
             'cardAction' => 'import',
@@ -758,6 +817,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
             'actionLabel' => t('app.directory.import.action'),
             'badge' => t('app.directory.import.badge'),
             'imageUrl' => '/omo/assets/images/directory/import-organization.png',
+			'iconUrl' => '/omo/assets/images/directory/import-organization-icon.png',
             'accentColor' => '#0f766e',
             'initial' => 'I',
         ]];
@@ -988,6 +1048,13 @@ if ($isOrganizationHub && !$isDemoGuest) {
             color: color-mix(in srgb, var(--auth-org-accent, var(--color-primary, #2563eb)) 80%, var(--color-text, #0f172a));
         }
 
+        .auth-org-action-card-icon {
+            display: block;
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+        }
+
         .auth-org-badge--action {
             background: color-mix(in srgb, var(--auth-org-accent, var(--color-primary, #2563eb)) 12%, var(--color-surface, #ffffff));
             color: color-mix(in srgb, var(--auth-org-accent, var(--color-primary, #2563eb)) 80%, var(--color-text, #0f172a));
@@ -999,6 +1066,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
         (function () {
             var createButton = document.getElementById('omoCreateOrganizationCard');
             var importButton = document.getElementById('omoImportOrganizationCard');
+            var modelButton = document.getElementById('omoCreateFromModelCard');
             var patreonConnectButton = document.getElementById('omoPatreonConnectCard');
             var organizationActionUrl = '/omo/api/organizations/card_action.php';
             var organizationCreateUrl = <?= json_encode($organizationCreateUrl, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
@@ -1006,6 +1074,8 @@ if ($isOrganizationHub && !$isDemoGuest) {
             var organizationCreateModalTitle = <?= json_encode(t('app.directory.create.modal_title'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
             var organizationImportUrl = '/omo/api/organizations/create_import_popup.php';
             var organizationImportModalTitle = <?= json_encode(t('app.directory.import.modal_title'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+            var organizationModelUrl = '/omo/api/organizations/model_popup.php';
+            var organizationModelModalTitle = <?= json_encode(t('app.directory.model.modal_title'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
             var shouldAutoOpenOrganizationCreateModal = <?= $shouldAutoOpenOrganizationCreateModal ? 'true' : 'false' ?>;
             var patreonConnectUrl = '/common/patreon_connect.php';
 
@@ -1127,6 +1197,14 @@ if ($isOrganizationHub && !$isDemoGuest) {
                 window.location.href = organizationImportUrl;
             }
 
+            function openModelModal() {
+                if (typeof window.commonTopbarOpenModal === 'function') {
+                    window.commonTopbarOpenModal(organizationModelModalTitle, organizationModelUrl, 'fetch');
+                    return;
+                }
+                window.location.href = organizationModelUrl;
+            }
+
             function consumeOrganizationCreateTopbarRoute() {
                 if (!shouldAutoOpenOrganizationCreateModal || typeof window.history.replaceState !== 'function') {
                     return;
@@ -1179,6 +1257,10 @@ if ($isOrganizationHub && !$isDemoGuest) {
 
             if (importButton) {
                 importButton.addEventListener('click', openImportModal);
+            }
+
+            if (modelButton) {
+                modelButton.addEventListener('click', openModelModal);
             }
 
             if (patreonConnectButton) {
@@ -1238,7 +1320,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
                         });
                     }
 
-                    if (confirmMessage === '' || !window.confirm(confirmMessage)) {
+                    if ((confirmMessage !== '' && !window.confirm(confirmMessage)) || (confirmMessage === '' && action !== 'toggle-model')) {
                         closeMenus();
                         return;
                     }

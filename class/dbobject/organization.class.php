@@ -28,6 +28,7 @@
 				[['datecreation'], 'datetime'],
 				[['name','shortname','domain'], 'string'],	// Chaines de caractere
 				[['interface_level'], 'integer'],
+				[['isModel'], 'boolean'],
 				[['latlong'], 'latlong'],
 				[['parameters'], 'parameters'],
 				[['shortname'], 'unique'],
@@ -46,6 +47,7 @@
 				'shortname' => 'Nom court',
 				'domain' => 'Domaine',
 				'interface_level' => 'Niveau d utilisation',
+				'isModel' => 'Modele public',
 				'latlong' => 'Position geographique',
 				'logo' => 'Logo',
 				'banner' => 'Banniere',
@@ -529,6 +531,32 @@
 			}
 			$this->setParametersArray($parameters);
 			return true;
+		}
+
+		public function getDashboardOrganizationDefaultLayout(): ?array
+		{
+			$parameters = $this->getParametersArray();
+			if (!array_key_exists(UserHolon::DASHBOARD_ORGANIZATION_DEFAULT_LAYOUT_PARAMETER, $parameters)) {
+				return null;
+			}
+
+			return UserHolon::normalizeDashboardLayout(
+				$parameters[UserHolon::DASHBOARD_ORGANIZATION_DEFAULT_LAYOUT_PARAMETER]
+			);
+		}
+
+		public function setDashboardOrganizationDefaultLayout(array $layout): void
+		{
+			$parameters = $this->getParametersArray();
+			$parameters[UserHolon::DASHBOARD_ORGANIZATION_DEFAULT_LAYOUT_PARAMETER] = UserHolon::normalizeDashboardLayout($layout);
+			$this->setParametersArray($parameters);
+		}
+
+		public function clearDashboardOrganizationDefaultLayout(): void
+		{
+			$parameters = $this->getParametersArray();
+			unset($parameters[UserHolon::DASHBOARD_ORGANIZATION_DEFAULT_LAYOUT_PARAMETER]);
+			$this->setParametersArray($parameters);
 		}
 
 
@@ -3020,46 +3048,59 @@
 		public function getStructuralInitializationTemplates()
 		{
 			$templates = array();
-			$holons = new \dbObject\ArrayHolon();
-			$holons->load(array(
-				'filter' => 'active = 1'
-					. ' and IDtypeholon = 4'
-					. ' and templatename is not null'
-					. ' and templatename != ""'
-					. ' and (IDholon_parent is null or IDholon_parent = 0)',
-				'orderBy' => array(
-					array('field' => 'templatename', 'dir' => 'ASC'),
-					array('field' => 'name', 'dir' => 'ASC'),
-					array('field' => 'id', 'dir' => 'ASC'),
-				),
-			));
-
-			foreach ($holons as $holon) {
-				$sourceOrganizationName = '';
-				$sourceOrganizationLogo = '';
-				$sourceOrganizationBanner = '';
-				$sourceOrganizationId = (int)$holon->get('IDorganization');
-				if ($sourceOrganizationId > 0) {
-					$sourceOrganization = new self();
-					if ($sourceOrganization->load($sourceOrganizationId)) {
-						$sourceOrganizationName = trim((string)$sourceOrganization->get('name'));
-						$sourceOrganizationLogo = trim((string)$sourceOrganization->get('logo'));
-						$sourceOrganizationBanner = trim((string)$sourceOrganization->get('banner'));
-					}
-				}
-
+			foreach (self::getPublicModelCatalog() as $model) {
 				$templates[] = array(
-					'id' => (int)$holon->getId(),
-					'name' => $this->getStructuralInitializationTemplateName($holon),
-					'sourceOrganizationId' => $sourceOrganizationId,
-					'sourceOrganizationName' => $sourceOrganizationName,
-					'color' => trim((string)$holon->getEffectiveColor()),
-					'icon' => $sourceOrganizationLogo,
-					'banner' => $sourceOrganizationBanner,
+					'id' => (int)$model['rootHolonId'],
+					'name' => (string)$model['name'],
+					'sourceOrganizationId' => (int)$model['id'],
+					'sourceOrganizationName' => (string)$model['name'],
+					'color' => (string)$model['color'],
+					'icon' => (string)$model['logo'],
+					'banner' => (string)$model['banner'],
 				);
 			}
 
 			return $templates;
+		}
+
+		public static function getPublicModelCatalog(): array
+		{
+			$rows = self::fetchAll(
+				"SELECT o.id, o.name, o.color, o.logo, o.banner, h.id AS root_holon_id
+				FROM organization o
+				INNER JOIN holon h ON h.IDorganization = o.id
+					AND h.IDtypeholon = 4
+					AND h.active = 1
+					AND h.visible = 1
+					AND (h.IDholon_parent IS NULL OR h.IDholon_parent = 0)
+				WHERE o.isModel = 1
+				ORDER BY o.name ASC, o.id ASC"
+			);
+			if (!is_array($rows)) {
+				return array();
+			}
+
+			return array_map(static function (array $row): array {
+				return array(
+					'id' => (int)($row['id'] ?? 0),
+					'name' => trim((string)($row['name'] ?? '')),
+					'color' => trim((string)($row['color'] ?? '')),
+					'logo' => trim((string)($row['logo'] ?? '')),
+					'banner' => trim((string)($row['banner'] ?? '')),
+					'rootHolonId' => (int)($row['root_holon_id'] ?? 0),
+				);
+			}, $rows);
+		}
+
+		public static function isPublicModelRootHolon(\dbObject\Holon $holon): bool
+		{
+			if ((int)$holon->get('IDtypeholon') !== 4 || !(bool)$holon->get('active')) {
+				return false;
+			}
+			$organization = new self();
+			return $organization->load((int)$holon->get('IDorganization'))
+				&& $organization->isSharedAsTemplate()
+				&& (int)($organization->getSharedTemplateRootHolon() ? $organization->getSharedTemplateRootHolon()->getId() : 0) === (int)$holon->getId();
 		}
 
 		public function getStructuralInitializationData()
@@ -3085,20 +3126,14 @@
 				return $cache[$organizationId] ?: null;
 			}
 
+			if (!(bool)$this->get('isModel')) {
+				$cache[$organizationId] = false;
+				return null;
+			}
+
 			$row = self::fetchRow(
-				"SELECT id
-				FROM holon
-				WHERE IDorganization = :organization_id
-				  AND IDtypeholon = 4
-				  AND active = 1
-				  AND templatename IS NOT NULL
-				  AND templatename != ''
-				  AND (IDholon_parent IS NULL OR IDholon_parent = 0)
-				ORDER BY id ASC
-				LIMIT 1",
-				array(
-					'organization_id' => $organizationId,
-				)
+				"SELECT id FROM holon WHERE IDorganization = :organization_id AND IDtypeholon = 4 AND active = 1 AND visible = 1 AND (IDholon_parent IS NULL OR IDholon_parent = 0) ORDER BY id ASC LIMIT 1",
+				array('organization_id' => $organizationId)
 			);
 
 			$holonId = $row !== false ? (int)($row['id'] ?? 0) : 0;
@@ -3115,14 +3150,12 @@
 
 		public function isSharedAsTemplate()
 		{
-			return $this->getSharedTemplateRootHolon() !== null;
+			return (bool)$this->get('isModel') && $this->getSharedTemplateRootHolon() !== null;
 		}
 
 		public function getSharedTemplateName()
 		{
-			$templateHolon = $this->getSharedTemplateRootHolon();
-
-			return $templateHolon ? $this->getStructuralInitializationTemplateName($templateHolon) : '';
+			return $this->isSharedAsTemplate() ? trim((string)$this->get('name')) : '';
 		}
 
 		protected function createStructuralRootHolon($userId = 0, ?\dbObject\Holon $sourceTemplate = null)
@@ -3807,7 +3840,7 @@
 
 			$targetHolon->set('nomcomplet', $fullName !== '' ? $fullName : null);
 			$templateName = trim((string)($record['templateName'] ?? ''));
-			$targetHolon->set('templatename', $templateName !== '' ? $templateName : null);
+			$targetHolon->set('templatename', $isOrganizationRoot ? null : ($templateName !== '' ? $templateName : null));
 			$targetHolon->set('IDtypeholon', $isOrganizationRoot ? 4 : max(1, (int)($record['typeId'] ?? 1)));
 			$targetHolon->set('IDuser', (int)$userId > 0 ? (int)$userId : (int)$targetHolon->get('IDuser'));
 			$targetHolon->set('active', true);
@@ -4658,7 +4691,7 @@
 				!$templateRootHolon->load($templateRootHolonId)
 				|| (int)$templateRootHolon->get('IDtypeholon') !== 4
 				|| !(bool)$templateRootHolon->get('active')
-				|| trim((string)$templateRootHolon->get('templatename')) === ''
+				|| !self::isPublicModelRootHolon($templateRootHolon)
 			) {
 				throw new \RuntimeException("Le modele d'organisation selectionne est introuvable.");
 			}
@@ -6587,6 +6620,175 @@
 			}
 		}
 
+		protected static function omo1ImportProcesses(\dbObject\Organization $organization, array $records, array $userIdMap, array $holonIdMap, array &$stats)
+		{
+			foreach ($records as $record) {
+				if (!is_array($record) || (int)($record['sourceId'] ?? 0) <= 0) {
+					continue;
+				}
+				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
+				$targetHolonId = (int)($holonIdMap[$sourceHolonId] ?? 0);
+				if ($targetHolonId <= 0) {
+					continue;
+				}
+
+				$rootProject = new \dbObject\Project();
+				$rootProject->set('IDorganization', (int)$organization->getId());
+				$rootProject->set('IDholon', $targetHolonId);
+				$rootProject->set('IDuser', null);
+				$rootProject->set('IDproject_parent', null);
+				$rootProject->set('title', self::omo1ImportLimitText($record['title'] ?? '', 255) ?: ('Processus #' . (int)$record['sourceId']));
+				$rootProject->set('description', $record['description'] ?? null);
+				$rootProject->set('status', \dbObject\Project::STATUS_SOMEDAY);
+				$rootProject->set('capture_mode', \dbObject\Project::CAPTURE_MULTIPLE_DOCUMENTS);
+				$rootProject->set('project_size', \dbObject\Project::SIZE_M);
+				$rootProject->set('project_kind', \dbObject\Project::KIND_CHECKLIST_TEMPLATE);
+				$rootProject->set('IDproject_template', null);
+				$rootProject->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
+				self::omo1ImportSave($rootProject, 'Le projet modele d un processus n a pas pu etre cree');
+
+				$checklist = new \dbObject\Checklist();
+				$checklist->set('IDorganization', (int)$organization->getId());
+				$sourceResponsibleUserId = (int)($record['sourceResponsibleUserId'] ?? 0);
+				$checklist->set('IDuser_responsible', (int)($userIdMap[$sourceResponsibleUserId] ?? 0) ?: null);
+				$checklist->set('IDchecklist_previous', null);
+				$checklist->set('IDproject_template_root', (int)$rootProject->getId());
+				$checklist->set('IDdocument', null);
+				$checklist->set('status', \dbObject\Checklist::normalizeStatus($record['status'] ?? \dbObject\Checklist::STATUS_DRAFT));
+				$checklist->set('revision_note', self::omo1ImportLimitText($record['revisionNote'] ?? '', 4000) ?: null);
+				$checklist->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
+				self::omo1ImportSave($checklist, 'Un processus n a pas pu etre cree');
+
+				$triggerData = is_array($record['trigger'] ?? null) ? $record['trigger'] : array();
+				$triggerType = \dbObject\ChecklistTrigger::normalizeTriggerType($triggerData['type'] ?? \dbObject\ChecklistTrigger::TYPE_CONTAINER);
+				$frequency = $triggerType === \dbObject\ChecklistTrigger::TYPE_SCHEDULED
+					? \dbObject\RecurrenceSchedule::normalizeFrequency($triggerData['frequency'] ?? null)
+					: null;
+				$schedule = $triggerType === \dbObject\ChecklistTrigger::TYPE_SCHEDULED
+					? \dbObject\RecurrenceSchedule::normalizeSchedule($frequency, $triggerData['schedule'] ?? null)
+					: null;
+				if ($triggerType === \dbObject\ChecklistTrigger::TYPE_SCHEDULED && ($frequency === null || $schedule === null)) {
+					$triggerType = \dbObject\ChecklistTrigger::TYPE_MANUAL;
+					$frequency = null;
+					$schedule = null;
+				}
+				$trigger = new \dbObject\ChecklistTrigger();
+				$trigger->set('IDchecklist', (int)$checklist->getId());
+				$trigger->set('stable_key', self::omo1ImportLimitText($triggerData['stableKey'] ?? 'primary', 64) ?: 'primary');
+				$trigger->set('trigger_type', $triggerType);
+				$trigger->set('frequency', $frequency);
+				$trigger->set('schedule', $schedule);
+				$trigger->set('overlap_policy', \dbObject\ChecklistTrigger::normalizeOverlapPolicy($triggerData['overlapPolicy'] ?? null));
+				$trigger->set('enabled', $triggerType !== \dbObject\ChecklistTrigger::TYPE_CONTAINER && (!array_key_exists('enabled', $triggerData) || (bool)$triggerData['enabled']));
+				$trigger->set('next_trigger_at', $triggerType === \dbObject\ChecklistTrigger::TYPE_SCHEDULED
+					? \dbObject\RecurrenceSchedule::getNextOccurrence($frequency, $schedule, new \DateTimeImmutable())
+					: null);
+				self::omo1ImportSave($trigger, 'Le declenchement d un processus n a pas pu etre cree');
+
+				$itemIdMap = array();
+				$projectIdMap = array((int)($record['sourceRootProjectId'] ?? 0) => (int)$rootProject->getId());
+				$items = is_array($record['items'] ?? null) ? $record['items'] : array();
+				foreach ($items as $itemIndex => $itemRecord) {
+					if (!is_array($itemRecord) || (int)($itemRecord['sourceId'] ?? 0) <= 0) {
+						continue;
+					}
+					$sourceItemId = (int)$itemRecord['sourceId'];
+					$itemHolonId = (int)($holonIdMap[(int)($itemRecord['sourceHolonId'] ?? 0)] ?? $targetHolonId);
+					if ($itemHolonId <= 0) {
+						$itemHolonId = $targetHolonId;
+					}
+					$template = new \dbObject\Project();
+					$template->set('IDorganization', (int)$organization->getId());
+					$template->set('IDholon', $itemHolonId);
+					$template->set('IDuser', null);
+					$template->set('IDproject_parent', (int)$rootProject->getId());
+					$template->set('title', self::omo1ImportLimitText($itemRecord['title'] ?? '', 255) ?: ('Etape #' . $sourceItemId));
+					$template->set('description', $itemRecord['description'] ?? null);
+					$template->set('status', \dbObject\Project::STATUS_SOMEDAY);
+					$template->set('capture_mode', \dbObject\Project::CAPTURE_MULTIPLE_DOCUMENTS);
+					$template->set('project_size', \dbObject\Project::SIZE_M);
+					$template->set('project_kind', \dbObject\Project::KIND_CHECKLIST_TEMPLATE);
+					$template->set('IDproject_template', null);
+					$template->set('active', !array_key_exists('active', $itemRecord) || (bool)$itemRecord['active']);
+					self::omo1ImportSave($template, 'Le modele d une etape de processus n a pas pu etre cree');
+
+					$activation = is_array($itemRecord['activation'] ?? null) ? $itemRecord['activation'] : array();
+					$item = new \dbObject\ChecklistItem();
+					$item->set('IDchecklist', (int)$checklist->getId());
+					$item->set('IDproject_template', (int)$template->getId());
+					$item->set('stable_key', self::omo1ImportLimitText($itemRecord['stableKey'] ?? ('item_' . $sourceItemId), 64) ?: ('item_' . $sourceItemId));
+					$item->set('activation_type', \dbObject\ChecklistItem::normalizeActivationType($activation['type'] ?? null));
+					$item->set('delay_value', (int)($activation['delayValue'] ?? 0));
+					$item->set('delay_unit', \dbObject\ChecklistItem::normalizeDelayUnit($activation['delayUnit'] ?? null));
+					$item->set('display_lead_value', max(0, (int)($activation['displayLeadValue'] ?? 0)));
+					$item->set('display_lead_unit', \dbObject\ChecklistItem::normalizeDelayUnit($activation['displayLeadUnit'] ?? null));
+					$item->set('execution_duration_value', max(0, (int)($activation['executionDurationValue'] ?? 0)));
+					$item->set('execution_duration_unit', \dbObject\ChecklistItem::normalizeDelayUnit($activation['executionDurationUnit'] ?? null));
+					$item->set('position', max(0, (int)($itemRecord['position'] ?? $itemIndex)));
+					$item->set('active', !array_key_exists('active', $itemRecord) || (bool)$itemRecord['active']);
+					self::omo1ImportSave($item, 'Une etape de processus n a pas pu etre creee');
+					$itemIdMap[$sourceItemId] = (int)$item->getId();
+					$projectIdMap[(int)($itemRecord['sourceProjectId'] ?? 0)] = (int)$template->getId();
+
+					$recurrenceData = is_array($itemRecord['recurrence'] ?? null) ? $itemRecord['recurrence'] : null;
+					if ($recurrenceData !== null) {
+						$recurrenceFrequency = \dbObject\RecurrenceSchedule::normalizeFrequency($recurrenceData['frequency'] ?? null);
+						$recurrenceSchedule = \dbObject\RecurrenceSchedule::normalizeSchedule($recurrenceFrequency, $recurrenceData['schedule'] ?? null);
+						if ($recurrenceFrequency !== null && $recurrenceSchedule !== null) {
+							$recurrence = new \dbObject\ChecklistItemRecurrence();
+							$recurrence->set('IDchecklistitem', (int)$item->getId());
+							$recurrence->set('frequency', $recurrenceFrequency);
+							$recurrence->set('schedule', $recurrenceSchedule);
+							$recurrence->set('display_lead_value', max(0, (int)($recurrenceData['displayLeadValue'] ?? 0)));
+							$recurrence->set('display_lead_unit', \dbObject\ChecklistItem::normalizeDelayUnit($recurrenceData['displayLeadUnit'] ?? null));
+							$recurrence->set('execution_duration_value', max(0, (int)($recurrenceData['executionDurationValue'] ?? 0)));
+							$recurrence->set('execution_duration_unit', \dbObject\ChecklistItem::normalizeDelayUnit($recurrenceData['executionDurationUnit'] ?? null));
+							$recurrence->set('enabled', 1);
+							$nextOccurrence = \dbObject\RecurrenceSchedule::getNextOccurrence($recurrenceFrequency, $recurrenceSchedule, new \DateTimeImmutable());
+							$recurrence->set('next_trigger_at', $nextOccurrence instanceof \DateTimeImmutable ? $recurrence->getDisplayTriggerAt($nextOccurrence) : null);
+							self::omo1ImportSave($recurrence, 'La recurrence d une activite de processus n a pas pu etre creee');
+						}
+					}
+				}
+
+				foreach ($items as $itemRecord) {
+					if (!is_array($itemRecord)) {
+						continue;
+					}
+					$sourceItemId = (int)($itemRecord['sourceId'] ?? 0);
+					$itemId = (int)($itemIdMap[$sourceItemId] ?? 0);
+					if ($itemId <= 0) {
+						continue;
+					}
+					$template = new \dbObject\Project();
+					$sourceProjectId = (int)($itemRecord['sourceProjectId'] ?? 0);
+					if ($template->load((int)($projectIdMap[$sourceProjectId] ?? 0))) {
+						$sourceParentProjectId = (int)($itemRecord['sourceParentProjectId'] ?? 0);
+						$template->set('IDproject_parent', (int)($projectIdMap[$sourceParentProjectId] ?? $rootProject->getId()));
+						self::omo1ImportSave($template, 'La hierarchie des etapes de processus n a pas pu etre recreee');
+					}
+					foreach ((array)($itemRecord['dependencies'] ?? array()) as $dependencyRecord) {
+						if (!is_array($dependencyRecord)) {
+							continue;
+						}
+						$requiredItemId = (int)($itemIdMap[(int)($dependencyRecord['sourceRequiredItemId'] ?? 0)] ?? 0);
+						if ($requiredItemId <= 0 || $requiredItemId === $itemId) {
+							continue;
+						}
+						$dependency = new \dbObject\ChecklistItemDependency();
+						$dependency->set('IDchecklistitem', $itemId);
+						$dependency->set('IDchecklistitem_required', $requiredItemId);
+						$dependency->set('delay_value', max(0, (int)($dependencyRecord['delayValue'] ?? 0)));
+						$dependency->set('delay_unit', \dbObject\ChecklistItem::normalizeDelayUnit($dependencyRecord['delayUnit'] ?? null));
+						self::omo1ImportSave($dependency, 'Une dependance de processus n a pas pu etre creee');
+					}
+				}
+
+				$stats['processes'] = (int)($stats['processes'] ?? 0) + 1;
+				$stats['processItems'] = (int)($stats['processItems'] ?? 0) + count($itemIdMap);
+			}
+		}
+
 		protected static function omo1ImportIndicatorRecurrence(array $record)
 		{
 			$legacyRecurrence = isset($record['legacyRecurrence']) && is_array($record['legacyRecurrence'])
@@ -7269,7 +7471,7 @@
 				$eventIdMap = array();
 				$pendingUserIds = array();
 				$pendingInvitations = array();
-				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'authorities' => 0, 'rules' => 0, 'documents' => 0, 'projects' => 0, 'tasks' => 0, 'activities' => 0, 'skippedActivities' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
+				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'authorities' => 0, 'rules' => 0, 'documents' => 0, 'projects' => 0, 'tasks' => 0, 'activities' => 0, 'skippedActivities' => 0, 'processes' => 0, 'processItems' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
 				$warnings = array_merge(
 					$mediaWarnings,
 					isset($structureResult['warnings']) && is_array($structureResult['warnings'])
@@ -7351,10 +7553,23 @@
 				$organization->remapImportedProjectPropertyValues($projectIdMap, $taskIdMap);
 				if ($selectedModules['checklists']) {
 					self::omo1ImportJournalWrite('module_activities_started');
-					self::omo1ImportActivities($organization, self::omo1ImportModuleRecords($payload, 'checklists'), $holonIdMap, $stats);
+					$checklistRecords = self::omo1ImportModuleRecords($payload, 'checklists');
+					$processRecords = array();
+					$legacyActivityRecords = array();
+					foreach ($checklistRecords as $checklistRecord) {
+						if (is_array($checklistRecord) && (($checklistRecord['recordType'] ?? '') === 'process' || isset($checklistRecord['kind'], $checklistRecord['trigger']))) {
+							$processRecords[] = $checklistRecord;
+						} else {
+							$legacyActivityRecords[] = $checklistRecord;
+						}
+					}
+					self::omo1ImportProcesses($organization, $processRecords, $userIdMap, $holonIdMap, $stats);
+					self::omo1ImportActivities($organization, $legacyActivityRecords, $holonIdMap, $stats);
 					self::omo1ImportJournalWrite('module_activities_completed', array(
 						'activities' => (int)$stats['activities'],
 						'skippedActivities' => (int)$stats['skippedActivities'],
+						'processes' => (int)$stats['processes'],
+						'processItems' => (int)$stats['processItems'],
 					));
 				}
 				if ($selectedModules['indicators']) {
@@ -7409,6 +7624,7 @@
 					'message' => 'La nouvelle organisation a ete importee.',
 					'organization' => $organization,
 					'rootHolon' => $structureResult['rootHolon'],
+					'holonIdMap' => $holonIdMap,
 					'stats' => $stats,
 					'warnings' => array_values(array_unique($warnings)),
 					'applications' => $applicationSync['activeApplications'] ?? array(),
@@ -7433,6 +7649,155 @@
 					'organization' => $organization,
 					'importJournalReference' => $importJournalReference,
 				);
+			}
+		}
+
+		/**
+		 * Creates a private organization from a public model. The model is read on
+		 * the server only: a browser can never supply an arbitrary export payload.
+		 */
+		public static function createFromPublicModel($modelOrganizationId, $actorUserId, $organizationName = '')
+		{
+			$modelOrganizationId = (int)$modelOrganizationId;
+			$actorUserId = (int)$actorUserId;
+			$organizationName = trim((string)$organizationName);
+			$model = new self();
+			if ($modelOrganizationId <= 0 || !$model->load($modelOrganizationId) || !$model->isSharedAsTemplate()) {
+				return array('status' => false, 'message' => 'Le modele public selectionne est introuvable.');
+			}
+			if ($actorUserId <= 0) {
+				return array('status' => false, 'message' => 'Connexion requise.');
+			}
+			if ($organizationName === '') {
+				$organizationName = trim((string)$model->get('name')) . ' - copie';
+			}
+
+			$selectedModules = array(
+				'structure' => true,
+				'rules' => false,
+				'members' => false,
+				'documents' => true,
+				'projects' => true,
+				'tasks' => true,
+				'checklists' => true,
+				'indicators' => true,
+				'calendar' => false,
+				'pv' => false,
+			);
+			$payload = \dbObject\OrganizationExport::build($model, $selectedModules);
+			// A model contains definitions, never its temporal observations.
+			foreach ((array)($payload['modules']['indicators']['records'] ?? array()) as $index => $indicator) {
+				$payload['modules']['indicators']['records'][$index]['values'] = array();
+			}
+
+			$result = self::importOmo1ExportAsNewOrganization(
+				$payload,
+				$selectedModules,
+				$actorUserId,
+				$organizationName,
+				array(),
+				array('sendMemberInvitationEmails' => false)
+			);
+			if (empty($result['status']) || !($result['organization'] ?? null) instanceof self) {
+				return $result;
+			}
+
+			$copyResult = self::copyPublicModelConfiguration(
+				$model,
+				$result['organization'],
+				is_array($result['holonIdMap'] ?? null) ? $result['holonIdMap'] : array()
+			);
+			if (empty($copyResult['status'])) {
+				return array('status' => false, 'message' => (string)$copyResult['message'], 'organization' => $result['organization']);
+			}
+
+			$result['message'] = 'Organisation creee depuis le modele public.';
+			return $result;
+		}
+
+		protected static function copyPublicModelConfiguration(self $source, self $target, array $holonIdMap): array
+		{
+			$sourceId = (int)$source->getId();
+			$targetId = (int)$target->getId();
+			if ($sourceId <= 0 || $targetId <= 0) {
+				return array('status' => false, 'message' => 'Configuration de modele invalide.');
+			}
+			$pdo = \dbObject\DbObject::getPdo();
+			if (!$pdo) {
+				return array('status' => false, 'message' => 'La connexion a la base de donnees est indisponible.');
+			}
+
+			try {
+				$pdo->beginTransaction();
+				// Parameters contain the lexicon and the organization-level dashboard
+				// and application-view defaults. They do not contain activity history.
+				$target->set('parameters', $source->getParametersArray());
+				$target->set('isModel', false);
+				$targetSave = $target->save();
+				if (!is_array($targetSave) || empty($targetSave['status'])) {
+					throw new \RuntimeException('Les reglages de l organisation du modele n ont pas pu etre copies.');
+				}
+
+				$sourceLinks = new \dbObject\ArrayOrganizationApplication();
+				$sourceLinks->load(array('where' => array(array('field' => 'IDorganization', 'value' => $sourceId))));
+				foreach ($sourceLinks as $sourceLink) {
+					$link = new \dbObject\OrganizationApplication();
+					if (!$link->load(array(
+						array('IDorganization', $targetId),
+						array('IDapplication', (int)$sourceLink->get('IDapplication')),
+					))) {
+						$link->set('IDorganization', $targetId);
+						$link->set('IDapplication', (int)$sourceLink->get('IDapplication'));
+					}
+					$link->set('position', (int)$sourceLink->get('position'));
+					$link->set('active', (bool)$sourceLink->get('active'));
+					$link->set('parameters', $sourceLink->getParametersArray());
+					$linkSave = $link->save();
+					if (!is_array($linkSave) || empty($linkSave['status'])) {
+						throw new \RuntimeException('L etat d activation dune application du modele n a pas pu etre copie.');
+					}
+				}
+
+				$sourceParcours = new \dbObject\ArrayOrganizationParcours();
+				$sourceParcours->load(array('where' => array(array('field' => 'IDorganization', 'value' => $sourceId))));
+				foreach ($sourceParcours as $sourceParcoursLink) {
+					$attached = \dbObject\OrganizationParcours::attachParcoursToOrganization($targetId, (int)$sourceParcoursLink->get('IDparcours'), array(
+						'position' => (int)$sourceParcoursLink->get('position'),
+						'everybody' => (bool)$sourceParcoursLink->get('everybody'),
+						'anonymous' => (bool)$sourceParcoursLink->get('anonymous'),
+					));
+					if (empty($attached['status'])) {
+						throw new \RuntimeException('Un parcours du modele n a pas pu etre rattache.');
+					}
+				}
+
+				if (\dbObject\FAQ::hasFaqTable()) {
+					$faqs = new \dbObject\ArrayFAQ();
+					$faqs->load(array('where' => array(array('field' => 'IDorganization', 'value' => $sourceId))));
+					foreach ($faqs as $sourceFaq) {
+						$faq = new \dbObject\FAQ();
+						$sourceHolonId = (int)$sourceFaq->get('IDholon');
+						$faq->set('IDorganization', $targetId);
+						$faq->set('IDholon', $sourceHolonId > 0 && isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null);
+						$faq->set('IDparcours', $sourceFaq->get('IDparcours'));
+						$faq->set('IDapplication', $sourceFaq->get('IDapplication'));
+						$faq->set('question', $sourceFaq->get('question'));
+						$faq->set('answer', $sourceFaq->get('answer'));
+						$faq->set('detail', $sourceFaq->get('detail'));
+						$faq->set('image', $sourceFaq->get('image'));
+						$faq->set('video', $sourceFaq->get('video'));
+						$faq->set('displayorder', $sourceFaq->get('displayorder'));
+						$faq->set('isactive', (bool)$sourceFaq->get('isactive'));
+						$faq->save();
+					}
+				}
+				$pdo->commit();
+				return array('status' => true);
+			} catch (\Throwable $exception) {
+				if ($pdo->inTransaction()) {
+					$pdo->rollBack();
+				}
+				return array('status' => false, 'message' => $exception->getMessage());
 			}
 		}
 
@@ -7668,7 +8033,7 @@
 						!$templateRootHolon->load($templateRootHolonId)
 						|| (int)$templateRootHolon->get('IDtypeholon') !== 4
 						|| !(bool)$templateRootHolon->get('active')
-						|| trim((string)$templateRootHolon->get('templatename')) === ''
+						|| !self::isPublicModelRootHolon($templateRootHolon)
 					) {
 						throw new \RuntimeException("Le modele d'organisation demande est introuvable.");
 					}
@@ -8611,8 +8976,6 @@
 				return $property;
 			}, $holon->getTemplatePropertyDefinitions());
 			$node['children'] = array();
-			$node['shareAsTemplate'] = trim((string)$holon->get('templatename')) !== '';
-			$node['publicTemplateName'] = trim((string)$holon->get('templatename'));
 			$node['canAddProperties'] = $holon->isAllowed('CAN_ADD_HOLON_PROPERTIES');
 
 			return $node;
@@ -13111,8 +13474,6 @@
 			}
 
 			$color = trim((string)($payload['color'] ?? ''));
-			$shareAsTemplate = !empty($payload['shareAsTemplate']);
-			$publicTemplateName = trim((string)($payload['publicTemplateName'] ?? ''));
 			$definitions = is_array($payload['properties'] ?? null)
 				? array_map(function ($definition) {
 					if (!is_array($definition)) {
@@ -13143,15 +13504,7 @@
 				return $propertyPermissionResult;
 			}
 
-			if ($shareAsTemplate && $publicTemplateName === '') {
-				return array(
-					'status' => false,
-					'message' => "Le nom public du modele d'organisation est obligatoire.",
-				);
-			}
-
 			$holon->set('name', $name);
-			$holon->set('templatename', $shareAsTemplate ? $publicTemplateName : null);
 			$holon->set('color', $color !== '' ? $color : null);
 			$holon->save();
 

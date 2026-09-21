@@ -72,6 +72,7 @@ $layoutPriorityFixtures = array(
     'personal' => array(array('id' => 'personal')),
     'holon' => array(array('id' => 'holon')),
     'organizationTemplate' => array(array('id' => 'organization-template')),
+    'organizationModel' => array(array('id' => 'organization-model')),
     'applicationType' => array(array('id' => 'application-type')),
     'global' => array(array('id' => 'global')),
 );
@@ -83,6 +84,11 @@ unset($layoutPriorityFixtures['temporary'], $layoutPriorityFixtures['personal'],
 assertDashboardLayout(
     omoDashboardViewPreferencesResolveLayout($layoutPriorityFixtures)[0]['id'] === 'organization-template',
     'An organization template layout must take priority over application defaults.'
+);
+unset($layoutPriorityFixtures['organizationTemplate']);
+assertDashboardLayout(
+    omoDashboardViewPreferencesResolveLayout($layoutPriorityFixtures)[0]['id'] === 'organization-model',
+    'The organization model layout must take priority over application defaults for the organization holon.'
 );
 assertDashboardLayout(
     omoDashboardViewPreferencesResolveLayout(array('personal' => array(), 'global' => array(array('id' => 'global')))) === array(),
@@ -110,12 +116,14 @@ $discoveryAdminCapabilities = omoDashboardViewPreferencesResolveCapabilities(
     12,
     'template:2:0123456789abcdef01234567',
     'type:2',
-    array('isMember' => true, 'isHolonAdmin' => true, 'isOrganizationAdmin' => true, 'isSiteAdmin' => true)
+    array('isMember' => true, 'isHolonAdmin' => true, 'isOrganizationAdmin' => true, 'isSiteAdmin' => true),
+    true
 );
 assertDashboardLayout(
     $discoveryAdminCapabilities['canSaveTemporary']
         && !$discoveryAdminCapabilities['canSaveHolon']
         && $discoveryAdminCapabilities['canSaveOrganizationTemplate']
+        && $discoveryAdminCapabilities['canSaveOrganizationModel']
         && $discoveryAdminCapabilities['canSaveApplicationType']
         && $discoveryAdminCapabilities['canSaveGlobal'],
     'Discovery mode must keep holon changes temporary while preserving higher administrator defaults.'
@@ -146,9 +154,10 @@ assertDashboardLayout(
     omoDashboardViewPreferencesGetOrderedSaveScopes(array(
         'canSaveTemporary' => true,
         'canSaveOrganizationTemplate' => true,
+        'canSaveOrganizationModel' => true,
         'canSaveApplicationType' => true,
         'canSaveGlobal' => true,
-    )) === array('temporary', 'organization_template', 'application_type', 'global'),
+    )) === array('temporary', 'organization_template', 'organization_model', 'application_type', 'global'),
     'Discovery mode must put the temporary session view before administrator defaults.'
 );
 $_SESSION = array();
@@ -314,6 +323,16 @@ assertDashboardLayout(
 );
 $organization->clearApplicationViewDefault('projects');
 assertDashboardLayout($organization->getApplicationViewDefault('projects') === null, 'An organization-wide filter default must be removable.');
+$organization->setDashboardOrganizationDefaultLayout(array());
+assertDashboardLayout(
+    $organization->getDashboardOrganizationDefaultLayout() === array(),
+    'An empty organization model dashboard layout must be preserved as an explicit preference.'
+);
+$organization->clearDashboardOrganizationDefaultLayout();
+assertDashboardLayout(
+    $organization->getDashboardOrganizationDefaultLayout() === null,
+    'Clearing the organization model dashboard layout must restore fallback resolution.'
+);
 assertDashboardLayout(method_exists(ApplicationSetting::class, 'saveApplicationViewGlobalDefault'), 'A global filter default must be writable.');
 assertDashboardLayout(method_exists(ApplicationSetting::class, 'clearApplicationViewGlobalDefault'), 'A global filter default must be removable.');
 

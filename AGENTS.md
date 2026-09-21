@@ -3,10 +3,11 @@
 - All text files must use UTF-8 without BOM.
 - All text files must use LF line endings.
 - Never add invisible characters such as BOM, zero-width spaces, or directional markers.
-- Default to ASCII only for code, comments, and string literals unless the user explicitly asks for non-ASCII content.
 - Keep UTF-8 intact across the project.
 - Keep French accents in user-visible strings when the product copy is meant to display them.
 - Do not replace intended visible accents with ASCII unless explicitly requested.
+- Write French user-visible copy with its normal accents, apostrophes, quotation marks, and punctuation.
+- When reading or checking UTF-8 text with Windows PowerShell, use an explicit UTF-8 encoding (for example `Get-Content -Encoding utf8`) or PowerShell 7. Do not treat mojibake in a legacy console as proof that a UTF-8 file is corrupted; verify its bytes before changing it.
 - Prefer the existing dbObject autoload over direct `require_once` of dbObject class files. Only add a direct class include when a file is intentionally isolated from the shared bootstrap that normally initializes autoloading.
 - In `dbObject::rules()`, never declare a foreign key field in an `integer` rule. Foreign keys must live only in their `fk` rule, otherwise `adminEdit` can render them as plain text inputs instead of automatic selects.
 - Name SQL migrations with an explicit sortable sequence when several files share the same date, using `YYYY-MM-DD-NN-description.sql`, so dependency order is guaranteed by filename sorting.

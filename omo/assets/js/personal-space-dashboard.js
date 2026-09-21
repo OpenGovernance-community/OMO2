@@ -450,7 +450,7 @@
 
     function saveLayout(scope, templateKey) {
         var saveButtons = root.querySelectorAll('[data-omo-dashboard-editor-save], [data-omo-dashboard-editor-reset], [data-omo-dashboard-save-scope], [data-omo-dashboard-save-menu-toggle]');
-        scope = scope === 'temporary' || scope === 'personal' || scope === 'holon' || scope === 'organization_template' || scope === 'application_type' || scope === 'global' || scope === 'temporary_reset' || scope === 'personal_reset' || scope === 'holon_reset' || scope === 'organization_template_reset' || scope === 'application_type_reset' || scope === 'global_reset'
+        scope = scope === 'temporary' || scope === 'personal' || scope === 'holon' || scope === 'organization_template' || scope === 'organization_model' || scope === 'application_type' || scope === 'global' || scope === 'temporary_reset' || scope === 'personal_reset' || scope === 'holon_reset' || scope === 'organization_template_reset' || scope === 'organization_model_reset' || scope === 'application_type_reset' || scope === 'global_reset'
             ? scope
             : 'personal';
         saveButtons.forEach(function (button) { button.disabled = true; });

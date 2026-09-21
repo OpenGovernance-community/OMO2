@@ -41,7 +41,7 @@ if ($currentUserId <= 0) {
 if ($csrfToken === '' || $expectedCsrfToken === '' || !hash_equals($expectedCsrfToken, $csrfToken)) {
     $respond(false, 'Jeton de securite invalide.', array(), 403);
 }
-if (!in_array($scope, array('temporary', 'temporary_reset', 'personal', 'personal_reset', 'holon', 'holon_reset', 'organization_template', 'organization_template_reset', 'application_type', 'application_type_reset', 'global', 'global_reset'), true)) {
+if (!in_array($scope, array('temporary', 'temporary_reset', 'personal', 'personal_reset', 'holon', 'holon_reset', 'organization_template', 'organization_template_reset', 'organization_model', 'organization_model_reset', 'application_type', 'application_type_reset', 'global', 'global_reset'), true)) {
     $respond(false, 'Portee d enregistrement invalide.', array(), 400);
 }
 
@@ -91,12 +91,14 @@ $canSaveTemporary = !empty($dashboardAccess['canSaveTemporary']);
 $canSavePersonalLayout = !empty($dashboardAccess['canSavePersonal']);
 $canSaveHolonDefault = !empty($dashboardAccess['canSaveHolon']);
 $canSaveOrganizationTemplateDefault = !empty($dashboardAccess['canSaveOrganizationTemplate']);
+$canSaveOrganizationModelDefault = !empty($dashboardAccess['canSaveOrganizationModel']);
 $canSaveApplicationBaseTypeDefault = !empty($dashboardAccess['canSaveApplicationType']);
 $canSaveGlobalDefault = !empty($dashboardAccess['canSaveGlobal']);
 $canResetTemporaryLayout = $canSaveTemporary;
 $canResetPersonalLayout = $canSavePersonalLayout;
 $canResetHolonDefault = $canSaveHolonDefault;
 $canResetOrganizationTemplateDefault = $canSaveOrganizationTemplateDefault;
+$canResetOrganizationModelDefault = $canSaveOrganizationModelDefault;
 $canResetApplicationBaseTypeDefault = $canSaveApplicationBaseTypeDefault;
 $directTemplateKey = $holon instanceof Holon ? $holon->getDashboardDirectTemplateLayoutKey() : '';
 $baseTypeKey = $holon instanceof Holon ? $holon->getDashboardBaseTypeLayoutKey() : '';
@@ -111,6 +113,8 @@ if (
     || ($scope === 'holon_reset' && !$canResetHolonDefault)
     || ($scope === 'organization_template' && !$canSaveOrganizationTemplateDefault)
     || ($scope === 'organization_template_reset' && !$canResetOrganizationTemplateDefault)
+    || ($scope === 'organization_model' && !$canSaveOrganizationModelDefault)
+    || ($scope === 'organization_model_reset' && !$canResetOrganizationModelDefault)
     || ($scope === 'application_type' && !$canSaveApplicationBaseTypeDefault)
     || ($scope === 'application_type_reset' && !$canResetApplicationBaseTypeDefault)
     || ($scope === 'global' && !$canSaveGlobalDefault)
@@ -141,6 +145,12 @@ if ($scope === 'temporary') {
         $saveResult = $organization->save();
     } elseif ($scope === 'organization_template_reset') {
         $organization->clearDashboardTemplateDefaultLayout($templateKey);
+        $saveResult = $organization->save();
+    } elseif ($scope === 'organization_model') {
+        $organization->setDashboardOrganizationDefaultLayout($layout);
+        $saveResult = $organization->save();
+    } elseif ($scope === 'organization_model_reset') {
+        $organization->clearDashboardOrganizationDefaultLayout();
         $saveResult = $organization->save();
     } elseif ($scope === 'application_type') {
         $saveResult = ApplicationSetting::saveDashboardBaseTypeDefaultLayout((int)$holon->get('IDtypeholon'), $layout);

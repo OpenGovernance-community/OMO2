@@ -9,7 +9,7 @@ class CalendarShare extends DbObject
         return [
             [['IDuser', 'label', 'token', 'months'], 'required'],
             [['id', 'months'], 'integer'], [['id'], 'safe'], [['IDuser'], 'fk'],
-            [['label', 'token'], 'string'], [['details', 'active'], 'boolean'],
+            [['label', 'token', 'scope_key'], 'string'], [['details', 'active'], 'boolean'],
             [['expires_at', 'created_at'], 'datetime'],
         ];
     }
@@ -17,9 +17,9 @@ class CalendarShare extends DbObject
     {
         return ['IDuser' => 'Utilisateur', 'label' => 'Nom du partage', 'months' => 'Mois visibles',
             'details' => 'Afficher les details', 'expires_at' => 'Expiration', 'active' => 'Actif',
-            'token' => 'Jeton secret', 'created_at' => 'Creation'];
+            'token' => 'Jeton secret', 'scope_key' => 'Portee du calendrier', 'created_at' => 'Creation'];
     }
-    public static function attributeLength() { return ['label' => 100, 'token' => 64]; }
+    public static function attributeLength() { return ['label' => 100, 'token' => 64, 'scope_key' => 100]; }
     public function canView() { return (int)$this->get('IDuser') > 0 && (int)$this->get('IDuser') === (int)($_SESSION['currentUser'] ?? 0); }
     public function canViewDetail() { return $this->canView(); }
     public static function isStorageAvailable() { return self::tableExists(self::tableName()); }
@@ -61,6 +61,69 @@ class CalendarShare extends DbObject
         return $share;
     }
 
+    public static function buildScopedCalendarKey(int $organizationId, int $holonId, string $range): string
+    {
+        $range = strtolower(trim($range));
+        if (
+            $organizationId <= 0
+            || $holonId <= 0
+            || !in_array($range, ['contextual', 'children', 'descendants'], true)
+        ) {
+            return '';
+        }
+
+        return 'omo:' . $organizationId . ':' . $holonId . ':' . $range;
+    }
+
+    public static function parseScopedCalendarKey($scopeKey): ?array
+    {
+        $scopeKey = trim((string)$scopeKey);
+        if (!preg_match('#^omo:(\d+):(\d+):(contextual|children|descendants)$#', $scopeKey, $matches)) {
+            return null;
+        }
+
+        return [
+            'organizationId' => (int)$matches[1],
+            'holonId' => (int)$matches[2],
+            'range' => (string)$matches[3],
+        ];
+    }
+
+    public static function findOrCreateScopedCalendarForUser(
+        int $userId,
+        int $organizationId,
+        int $holonId,
+        string $range,
+        string $label
+    ): ?self {
+        $scopeKey = self::buildScopedCalendarKey($organizationId, $holonId, $range);
+        $label = trim($label);
+        if ($userId <= 0 || $scopeKey === '' || $label === '' || mb_strlen($label) > 100) {
+            return null;
+        }
+
+        $share = new self();
+        $existingShare = $share->load([['IDuser', $userId], ['scope_key', $scopeKey]]);
+        if (!$existingShare) {
+            $share->set('IDuser', $userId);
+            $share->set('scope_key', $scopeKey);
+            $share->set('token', bin2hex(random_bytes(32)));
+            $share->set('created_at', new \DateTimeImmutable());
+        } elseif (!(bool)$share->get('active')) {
+            // A revoked capability must stay revoked. Reconnecting creates a new capability.
+            $share->set('token', bin2hex(random_bytes(32)));
+        }
+
+        $share->set('label', $label);
+        $share->set('months', 12);
+        $share->set('details', 1);
+        $share->set('active', 1);
+        $share->set('expires_at', null);
+        $saved = $share->save();
+
+        return is_array($saved) && !empty($saved['status']) ? $share : null;
+    }
+
     public static function revokeForUser(int $id, int $userId): void
     {
         $share = new self();
@@ -91,5 +154,10 @@ class CalendarShare extends DbObject
         $month = $start->modify('first day of this month')->modify('+' . max(1, min(12, (int)$this->get('months'))) . ' months');
         $end = $month->setDate((int)$month->format('Y'), (int)$month->format('m'), min((int)$start->format('d'), (int)$month->format('t')));
         return [$start, $end];
+    }
+
+    public function getScopedCalendarConfig(): ?array
+    {
+        return self::parseScopedCalendarKey($this->get('scope_key'));
     }
 }

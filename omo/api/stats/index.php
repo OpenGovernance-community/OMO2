@@ -1932,8 +1932,11 @@ $displayItemCount = count($statsEntries);
                 }
                 closeDrawer({ force: true });
             }).catch(function (error) {
-                if (feedback) {
-                    feedback.textContent = error.message || texts.loadError;
+                var message = error.message || texts.loadError;
+                if (typeof window.omoNotify === 'function') {
+                    window.omoNotify(message, 'error');
+                } else if (feedback) {
+                    feedback.textContent = message;
                     feedback.className = 'omo-stats-feedback is-error';
                 }
             }).finally(function () {
@@ -2688,8 +2691,11 @@ $displayItemCount = count($statsEntries);
                 listNeedsRefresh = true;
                 return openDrawerWithUrl(detail ? detail.getAttribute('data-detail-url') : '');
             }).catch(function (error) {
-                if (feedback) {
-                    feedback.textContent = error.message || texts.loadError;
+                var message = error.message || texts.loadError;
+                if (typeof window.omoNotify === 'function') {
+                    window.omoNotify(message, 'error');
+                } else if (feedback) {
+                    feedback.textContent = message;
                     feedback.className = 'omo-stats-feedback is-error';
                 }
             }).finally(function () {

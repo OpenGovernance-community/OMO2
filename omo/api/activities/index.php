@@ -107,7 +107,7 @@ $currentUrl = $baseUrl
     . '&activity_assignment=' . rawurlencode($assignment);
 $createUrl = '/omo/api/activities/edit.php?oid=' . $organizationId
     . ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . $pvMeetingQuery;
-$canCreate = omoActivityCanUsePermission($currentHolon, 'CAN_CREATE_CONTROL_ACTIVITY');
+$canCreate = omoActivityCanUsePermission($currentHolon, 'CAN_CREATE_RECURRING_TASK');
 $stateFilters = ['all', 'attention', 'missed', 'checked', 'upcoming'];
 $texts = [
     'loading' => omoActivityT('activity.loading'),
@@ -291,4 +291,4 @@ $texts = [
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260912-toolbar-always-visible"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260919-activity-assignment"></script>
-<script src="/omo/api/activities/activities.js?v=20260919-assignment-and-name"></script>
+<script src="/omo/api/activities/activities.js?v=20260921-topbar-feedback"></script>
