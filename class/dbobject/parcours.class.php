@@ -1195,19 +1195,44 @@
 				return [];
 			}
 
+			$packTargetsSql = '';
+			$params = array(
+				'organization_id' => $organizationId,
+			);
+			if (self::tableExists('parcours_parcours')) {
+				$packTargetsSql = "
+					UNION
+					SELECT
+						child.id,
+						child.title
+					FROM organization_parcours op_pack
+					INNER JOIN parcours parent
+						ON parent.id = op_pack.IDparcours
+					INNER JOIN parcours_parcours pp
+						ON pp.IDparcours_parent = parent.id
+					INNER JOIN parcours child
+						ON child.id = pp.IDparcours_child
+					WHERE op_pack.IDorganization = :pack_organization_id
+					  AND " . (self::hasIsPackColumn() ? "COALESCE(parent.ispack, 0) = 1" : "1=1") . "
+					  AND " . (self::hasIsPackColumn() ? "COALESCE(child.ispack, 0) = 0" : "1=1");
+				$params['pack_organization_id'] = $organizationId;
+			}
+
 			$rows = self::fetchAll(
-				"SELECT
-					p.id,
-					p.title
-				FROM organization_parcours op
-				INNER JOIN parcours p
-					ON p.id = op.IDparcours
-				WHERE op.IDorganization = :organization_id
-				  AND " . (self::hasIsPackColumn() ? "COALESCE(p.ispack, 0) = 0" : "1=1") . "
-				ORDER BY p.title ASC, p.id ASC",
-				[
-					'organization_id' => $organizationId,
-				]
+				"SELECT available_targets.id, available_targets.title
+				FROM (
+					SELECT
+						p.id,
+						p.title
+					FROM organization_parcours op
+					INNER JOIN parcours p
+						ON p.id = op.IDparcours
+					WHERE op.IDorganization = :organization_id
+					  AND " . (self::hasIsPackColumn() ? "COALESCE(p.ispack, 0) = 0" : "1=1") . "
+					" . $packTargetsSql . "
+				) available_targets
+				ORDER BY available_targets.title ASC, available_targets.id ASC",
+				$params
 			);
 
 			return is_array($rows) ? $rows : [];

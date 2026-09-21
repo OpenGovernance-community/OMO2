@@ -2,6 +2,10 @@
 
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
+## 2026-09-21
+
+- Les FAQ rattachees a un parcours sont maintenant aussi accessibles lorsqu il est fourni par un pack de parcours de l organisation.
+
 ## 2026-09-19
 
 - Indicateurs : formulaire compact, choix sans encadrement et explications accessibles via les icones d aide au survol ou au clic.
