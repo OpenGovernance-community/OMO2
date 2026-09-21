@@ -1135,7 +1135,8 @@ $canViewHolonHistory = $currentHolon->canViewDetail();
 $activeOrganizationMembership = $organization->getMembership((int)commonGetCurrentUserId(), true);
 $canManageOrganizationModel = $isOrganizationDefinitionHolon
     && $activeOrganizationMembership
-    && $activeOrganizationMembership->isOrganizationAdmin();
+    && $activeOrganizationMembership->isOrganizationAdmin()
+    && commonCurrentUserIsAdminModeEnabled($organizationId);
 $deleteDescendantCount = $canDeleteHolon ? (int)$currentHolon->countVisibleDescendants() : 0;
 $parentHolonForDelete = $canDeleteHolon ? $currentHolon->getParentHolon() : null;
 $deleteParentId = $parentHolonForDelete ? (int)$parentHolonForDelete->getId() : 0;

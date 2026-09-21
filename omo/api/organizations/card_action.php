@@ -58,11 +58,16 @@ $response = array(
 switch ($action) {
 	case 'toggle-model':
 		$membership = $organization->getMembership($currentUserId, true);
-		if (!$membership || !$membership->isOrganizationAdmin() || !$organization->getStructuralRootHolon()) {
+		if (
+			!$membership
+			|| !$membership->isOrganizationAdmin()
+			|| !commonCurrentUserIsAdminModeEnabled($organizationId)
+			|| !$organization->getStructuralRootHolon()
+		) {
 			http_response_code(403);
 			$response = array(
 				'status' => false,
-				'message' => 'Le partage comme modele requiert une organisation structuree et un acces administrateur.',
+				'message' => 'Le partage comme modele requiert une organisation structuree et le mode administrateur actif.',
 			);
 			break;
 		}

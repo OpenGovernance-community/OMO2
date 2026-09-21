@@ -432,7 +432,10 @@ function omoBuildDirectoryCardData(array $directoryEntry, $currentUserId)
         'pendingInvitation' => $pendingInvitation,
         'organizationMembership' => $organizationMembership,
         'canDeleteOrganization' => $accessibleOrganization->canDelete(),
-        'canManageModelSharing' => $organizationMembership && $organizationMembership->isOrganizationAdmin() && $accessibleOrganization->getStructuralRootHolon() !== null,
+        'canManageModelSharing' => $organizationMembership
+            && $organizationMembership->isOrganizationAdmin()
+            && commonCurrentUserIsAdminModeEnabled($organizationId)
+            && $accessibleOrganization->getStructuralRootHolon() !== null,
         'isSystemOrganization' => $isSystemOrganization,
         'isSystemOrganizationAdmin' => $isSystemOrganizationAdmin,
         'organizationName' => $organizationName,
