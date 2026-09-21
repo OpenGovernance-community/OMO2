@@ -33,6 +33,18 @@ if (!$organization->canEdit()) {
 }
 
 $organization->setLexicon(array(
+	'space' => array(
+		'label' => (string)($_POST['space_label'] ?? ''),
+	),
+	'circle' => array(
+		'label' => (string)($_POST['circle_label'] ?? ''),
+	),
+	'role' => array(
+		'label' => (string)($_POST['role_label'] ?? ''),
+	),
+	'group' => array(
+		'label' => (string)($_POST['group_label'] ?? ''),
+	),
     'tension' => array(
         'label' => (string)($_POST['tension_label'] ?? ''),
         'article' => (string)($_POST['tension_article'] ?? ''),

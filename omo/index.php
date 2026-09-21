@@ -1646,7 +1646,7 @@ window.omoConfig = <?=
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
 <script src="assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
-<script src="assets/js/app.js?v=20260917-button-hover-halo"></script>
+<script src="assets/js/app.js?v=20260921-process-route"></script>
 <script src="assets/js/structure-mini-map.js?v=20260916-structure-render-cache"></script>
 
 <script>

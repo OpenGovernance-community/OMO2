@@ -1139,7 +1139,7 @@ $locationModeOptions = array_merge(
 );
 $calendarFormId = 'omoCalendarCreateForm' . ucfirst($editorHost);
 $drawerTitle = omoCalendarCreateT($isEditMode ? 'calendar.edit.title' : 'calendar.create.title');
-$drawerDescription = omoCalendarCreateT($isEditMode ? 'calendar.edit.description' : 'calendar.create.description');
+$drawerDescription = '';
 $drawerSubmitLabel = omoCalendarCreateT($isEditMode ? 'calendar.edit.submit' : 'calendar.create.submit');
 $cancelDetailUrl = '';
 if ($isEditMode) {
@@ -1177,10 +1177,10 @@ if ($isEditMode) {
         ><?= omoApiEscape($drawerSubmitLabel) ?></button>
     </div>
 
-    <div class="omo-calendar-create__shell generic-form-stack">
+    <div class="omo-calendar-create__shell generic-form-stack generic-form-stack--compact">
         <form
             id="<?= omoApiEscape($calendarFormId) ?>"
-            class="omo-calendar-create__form generic-form-stack"
+            class="omo-calendar-create__form generic-form-stack generic-form-stack--compact"
             method="post"
             action="/omo/api/calendar/create.php?oid=<?= (int)$organizationId ?><?= $currentHolonId > 0 ? '&cid=' . (int)$currentHolonId : '' ?><?= $isEditMode ? '&id=' . (int)$event->getId() : '' ?><?= $project instanceof Project ? '&project_id=' . (int)$project->getId() . '&editor_host=project' : '' ?>"
             data-omo-calendar-create-form
@@ -1278,7 +1278,7 @@ if ($isEditMode) {
                             <span><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.all_day')) ?></span>
                         </label>
 
-                        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided omo-calendar-create__block">
+                        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-calendar-create__block">
                             <div class="omo-calendar-create__block-head generic-form-section__heading">
                                 <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.location_mode')) ?></h3>
                             </div>
@@ -1319,7 +1319,7 @@ if ($isEditMode) {
                             </div>
                         </section>
 
-                        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided omo-calendar-create__block" data-omo-calendar-document-block>
+                        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-calendar-create__block" data-omo-calendar-document-block>
                             <div class="omo-calendar-create__block-head generic-form-section__heading">
                                 <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_type')) ?></h3>
                                 <?php if ($associatedDocument instanceof Document): ?>

@@ -12,7 +12,7 @@ use dbObject\UserOrganization;
 
 function omoTeamHolonTypeLabel(Holon $holon, ?array $lang = null, ?array $sourceLang = null)
 {
-    return omoTeamHolonTypeLabelByTypeId((int)$holon->get('IDtypeholon'), $lang, $sourceLang);
+    return $holon->getTypeLabel();
 }
 
 function omoTeamNormalizeLatLong($value)

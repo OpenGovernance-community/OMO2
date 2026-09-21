@@ -15,7 +15,7 @@ class ChecklistItem extends DbObject
 
     public static function tableName()
     {
-        return 'checklist_item';
+        return 'process_item';
     }
 
     public static function rules()

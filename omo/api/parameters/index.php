@@ -15,9 +15,13 @@ $organizationName = '';
 $isSiteAdmin = commonCurrentUserIsSiteAdminModeEnabled();
 $applicationSettingsCards = [];
 $organizationAdminLabel = 'Admin';
+$organizationLexicon = \dbObject\Organization::getDefaultLexicon();
+$spaceLabels = \dbObject\Organization::getLexiconLabel($organizationLexicon, 'space', true);
 if ($currentOrganizationId > 0) {
     $organization = new \dbObject\Organization();
     if ($organization->load($currentOrganizationId)) {
+        $organizationLexicon = $organization->getLexicon();
+        $spaceLabels = \dbObject\Organization::getLexiconLabel($organizationLexicon, 'space', true);
         $isOrganizationAdmin = commonCurrentUserCanUseAdminMode($currentOrganizationId)
             || commonCurrentUserIsSiteAdminModeEnabled();
         $isOrganizationAdminModeEnabled = commonCurrentUserIsAdminModeEnabled($currentOrganizationId)
@@ -42,14 +46,25 @@ if ($organizationName === '') {
     $organizationName = omoParametersIndexT('parameters.index.card.organization.fallback_name');
 }
 
+$spaceLabelsForTitle = function_exists('mb_strtolower')
+    ? mb_strtolower($spaceLabels, 'UTF-8')
+    : strtolower($spaceLabels);
+
+$holonTemplateEditorTitle = omoParametersIndexT(
+    'parameters.index.card.holon_templates.title',
+    ['spaceLabels' => $spaceLabelsForTitle]
+);
+
 $parametersIndexClientTexts = [
     'title' => omoParametersIndexT('parameters.index.title'),
     'loading' => omoParametersIndexT('parameters.index.drawer.loading'),
     'loadError' => omoParametersIndexT('parameters.index.drawer.error'),
 ];
 $profileCardIconUrl = '/img/omo-parameters/profile.png';
+$notificationCardIconUrl = '/img/omo-parameters/notification.png';
 $organizationCardIconUrl = '/img/omo-parameters/organization.png';
 $lexiconCardIconUrl = '/img/omo-parameters/dictionnaire.png';
+$structureDisplayCardIconUrl = '/img/omo-parameters/connection.png';
 $exportCardIconUrl = '/img/download.png';
 $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
 ?>
@@ -93,8 +108,8 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                 data-omo-settings-drawer-mode="fetch"
             >
                 <span class="omo-settings__card-head">
-                    <span class="omo-settings__card-icon-shell omo-settings__card-icon-shell--fallback">
-                        <span class="omo-settings__card-fallback-icon">PUSH</span>
+                    <span class="omo-settings__card-icon-shell">
+                        <img class="omo-settings__card-icon black-icon" src="<?= htmlspecialchars($notificationCardIconUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy">
                     </span>
                     <span class="omo-settings__card-title-wrap">
                         <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.notifications.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
@@ -231,8 +246,8 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                 <?= $isOrganizationAdminModeEnabled ? '' : 'disabled aria-disabled="true"' ?>
             >
                 <span class="omo-settings__card-head">
-                    <span class="omo-settings__card-icon-shell omo-settings__card-icon-shell--fallback">
-                        <span class="omo-settings__card-fallback-icon">MAP</span>
+                    <span class="omo-settings__card-icon-shell">
+                        <img class="omo-settings__card-icon black-icon" src="<?= htmlspecialchars($structureDisplayCardIconUrl, ENT_QUOTES, 'UTF-8') ?>" alt="" loading="lazy">
                     </span>
                     <span class="omo-settings__card-title-wrap">
                         <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.structure_display.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
@@ -254,7 +269,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
             <button
                 type="button"
                 class="omo-settings__card omo-card omo-card--interactive omo-settings__card--admin-mode-required noMobile"
-                data-omo-settings-drawer-title="<?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.title'), ENT_QUOTES, 'UTF-8') ?>"
+                data-omo-settings-drawer-title="<?= htmlspecialchars($holonTemplateEditorTitle, ENT_QUOTES, 'UTF-8') ?>"
                 data-omo-settings-drawer-url="/omo/api/parameters/holon-templates/index.php"
                 data-omo-settings-drawer-mode="fetch"
                 <?= $canUseHolonTemplateEditor ? '' : 'disabled aria-disabled="true"' ?>
@@ -265,7 +280,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
                     </span>
                     <span class="omo-settings__card-title-wrap">
                         <span class="generic-card-title generic-card-title--eyebrow"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.eyebrow'), ENT_QUOTES, 'UTF-8') ?></span>
-                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoParametersIndexT('parameters.index.card.holon_templates.title'), ENT_QUOTES, 'UTF-8') ?></strong>
+                        <strong class="generic-card-title generic-card-title--big"><?= htmlspecialchars($holonTemplateEditorTitle, ENT_QUOTES, 'UTF-8') ?></strong>
                     </span>
                 </span>
                 <span class="omo-settings__card-description generic-description"><?= htmlspecialchars(

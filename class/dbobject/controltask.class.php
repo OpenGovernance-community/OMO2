@@ -10,7 +10,7 @@ class ControlTask extends DbObject
 
     public static function tableName()
     {
-        return 'control_task';
+        return 'recurring_task';
     }
 
     public static function rules()

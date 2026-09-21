@@ -493,7 +493,7 @@
             window.omoSimpleHtmlField.mount(editorHost, {
                 value: valueField.value || '',
                 placeholder: '',
-                minHeight: 180,
+                minHeight: 120,
                 simpleOnly: true,
                 onChange: function (value) {
                     valueField.value = String(value || '');

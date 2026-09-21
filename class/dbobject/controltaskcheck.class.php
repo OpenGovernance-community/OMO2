@@ -5,7 +5,7 @@ class ControlTaskCheck extends DbObject
 {
     public static function tableName()
     {
-        return 'control_task_check';
+        return 'recurring_task_check';
     }
 
     public static function rules()

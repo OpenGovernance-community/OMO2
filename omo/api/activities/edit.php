@@ -44,13 +44,18 @@ foreach ($organizationMembers as $membership) {
         ];
     }
 }
+$activityHelp = static function ($label, $text) {
+    return '<details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>'
+        . '<summary aria-label="' . omoApiEscape($label) . '">?</summary>'
+        . '<div class="generic-context-help__content">' . omoApiEscape($text) . '</div></details>';
+};
 ?>
 <div class="omo-activity-detail generic-drawer-content">
     <div
         hidden
         data-omo-subdrawer-header
         data-omo-subdrawer-title="<?= omoApiEscape($drawerTitle) ?>"
-        data-omo-subdrawer-description="<?= omoApiEscape(omoActivityT('activity.description')) ?>"
+        data-omo-subdrawer-description=""
     >
         <button type="submit" form="omo-activity-editor-form" class="generic-action-button generic-action-button--main" data-omo-subdrawer-action><?= omoApiEscape(omoActivityT('activity.save')) ?></button>
         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-activity-editor-cancel<?= $backUrl !== '' ? ' data-activity-open-url="' . omoApiEscape($backUrl) . '"' : '' ?>><?= omoApiEscape(omoActivityT('activity.cancel')) ?></button>
@@ -58,7 +63,7 @@ foreach ($organizationMembers as $membership) {
 
     <form
         id="omo-activity-editor-form"
-        class="generic-form-stack"
+        class="generic-form-stack generic-form-stack--compact"
         action="/omo/api/activities/action.php"
         method="post"
         data-activity-form
@@ -74,78 +79,93 @@ foreach ($organizationMembers as $membership) {
         <?php endif; ?>
         <?php if ($activityId > 0): ?><input type="hidden" name="id" value="<?= (int)$activityId ?>"><?php endif; ?>
 
-        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided">
-            <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoActivityT('activity.editor.identity')) ?></h3>
-            <div class="omo-activity-form-grid generic-form-grid">
-                <label class="omo-activity-field omo-activity-field--wide">
-                    <span><?= omoApiEscape(omoActivityT('activity.title_field')) ?></span>
-                    <input class="generic-form-control" type="text" name="title" maxlength="255" required autofocus value="<?= omoApiEscape((string)$activity->get('title')) ?>">
-                </label>
-                <div class="omo-activity-field omo-activity-field--wide">
-                    <span><?= omoApiEscape(omoActivityT('activity.description_field')) ?></span>
-                    <div data-activity-html-editor-container>
-                        <div data-activity-html-editor></div>
-                        <textarea name="description" hidden aria-hidden="true" data-activity-html-value><?= omoApiEscape((string)$activity->get('description')) ?></textarea>
-                    </div>
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
+            <div class="generic-heading-with-help">
+                <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoActivityT('activity.editor.identity')) ?></h3>
+                <?= $activityHelp(omoActivityT('activity.editor.identity'), omoActivityT('activity.editor.identity_help')) ?>
+            </div>
+            <div class="generic-form-grid generic-form-grid--pair">
+                <div class="generic-form-field">
+                    <label class="generic-form-label" for="activity-editor-title"><?= omoApiEscape(omoActivityT('activity.title_field')) ?></label>
+                    <input id="activity-editor-title" class="generic-form-control generic-form-control--compact" type="text" name="title" maxlength="255" required autofocus value="<?= omoApiEscape((string)$activity->get('title')) ?>">
                 </div>
-                <label class="omo-activity-field">
-                    <span><?= omoApiEscape(omoActivityT('activity.editor.responsible')) ?></span>
-                    <select class="generic-form-control" name="IDuser_responsible">
+                <div class="generic-form-field">
+                    <div class="generic-inline-help">
+                        <label class="generic-form-label" for="activity-editor-responsible"><?= omoApiEscape(omoActivityT('activity.editor.responsible')) ?></label>
+                        <?= $activityHelp(omoActivityT('activity.editor.responsible'), omoActivityT('activity.editor.responsible_help')) ?>
+                    </div>
+                    <select id="activity-editor-responsible" class="generic-form-control generic-form-control--compact" name="IDuser_responsible">
                         <option value=""><?= omoApiEscape(omoActivityT('activity.editor.responsible_none')) ?></option>
                         <?php foreach ($activityResponsibleOptions as $responsible): ?>
                             <option value="<?= (int)$responsible['id'] ?>"<?= (int)$activity->get('IDuser_responsible') === (int)$responsible['id'] ? ' selected' : '' ?>><?= omoApiEscape((string)$responsible['label']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <small class="generic-help-text"><?= omoApiEscape(omoActivityT('activity.editor.responsible_help')) ?></small>
-                </label>
+                </div>
+                <div class="generic-form-field generic-form-field--full">
+                    <span class="generic-form-label"><?= omoApiEscape(omoActivityT('activity.description_field')) ?></span>
+                    <div data-activity-html-editor-container>
+                        <div data-activity-html-editor></div>
+                        <textarea name="description" hidden aria-hidden="true" data-activity-html-value><?= omoApiEscape((string)$activity->get('description')) ?></textarea>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided">
-            <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoActivityT('activity.frequency')) ?></h3>
-            <div class="omo-activity-form-grid generic-form-grid">
-                <label class="omo-activity-field">
-                    <span><?= omoApiEscape(omoActivityT('activity.frequency')) ?></span>
-                    <select class="generic-form-control" name="frequency" data-activity-frequency>
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
+            <div class="generic-heading-with-help">
+                <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoActivityT('activity.frequency')) ?></h3>
+                <?= $activityHelp(omoActivityT('activity.frequency'), omoActivityT('activity.editor.recurrence_help')) ?>
+            </div>
+            <div class="generic-form-grid generic-form-grid--pair">
+                <div class="generic-form-field">
+                    <label class="generic-form-label" for="activity-editor-frequency"><?= omoApiEscape(omoActivityT('activity.frequency')) ?></label>
+                    <select id="activity-editor-frequency" class="generic-form-control generic-form-control--compact" name="frequency" data-activity-frequency>
                         <?php foreach (RecurrenceSchedule::getFrequencyCatalog() as $option): ?>
                             <option value="<?= omoApiEscape($option) ?>"<?= $option === $frequency ? ' selected' : '' ?>><?= omoApiEscape(omoActivityFrequencyLabel($option)) ?></option>
                         <?php endforeach; ?>
                     </select>
-                </label>
-                <label class="omo-activity-field">
-                    <span><?= omoApiEscape(omoActivityT('activity.reference')) ?></span>
-                    <select class="generic-form-control" name="schedule" data-activity-schedule data-selected-value="<?= omoApiEscape($schedule) ?>"></select>
-                </label>
+                </div>
+                <div class="generic-form-field">
+                    <label class="generic-form-label" for="activity-editor-schedule"><?= omoApiEscape(omoActivityT('activity.reference')) ?></label>
+                    <select id="activity-editor-schedule" class="generic-form-control generic-form-control--compact" name="schedule" data-activity-schedule data-selected-value="<?= omoApiEscape($schedule) ?>"></select>
+                </div>
             </div>
         </section>
 
-        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided">
-            <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoActivityT('activity.editor.window')) ?></h3>
-            <div class="omo-activity-form-grid generic-form-grid">
-                <label class="omo-activity-field">
-                    <span><?= omoApiEscape(omoActivityT('activity.display_lead')) ?></span>
-                    <input class="generic-form-control" type="number" name="display_lead_value" min="0" max="3650" value="<?= (int)$activity->get('display_lead_value') ?>">
-                </label>
-                <label class="omo-activity-field">
-                    <span><?= omoApiEscape(omoActivityT('activity.unit')) ?></span>
-                    <select class="generic-form-control" name="display_lead_unit">
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
+            <div class="generic-heading-with-help">
+                <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoActivityT('activity.editor.window')) ?></h3>
+                <?= $activityHelp(omoActivityT('activity.editor.window'), omoActivityT('activity.editor.window_help')) ?>
+            </div>
+            <div class="generic-form-grid generic-form-grid--pair">
+                <div class="generic-form-field">
+                    <div class="generic-inline-help">
+                        <label class="generic-form-label" for="activity-editor-display-lead"><?= omoApiEscape(omoActivityT('activity.display_lead')) ?></label>
+                        <?= $activityHelp(omoActivityT('activity.display_lead'), omoActivityT('activity.display_lead_help')) ?>
+                    </div>
+                    <div class="generic-setting-row">
+                        <input id="activity-editor-display-lead" class="generic-form-control generic-form-control--compact" type="number" name="display_lead_value" min="0" max="3650" value="<?= (int)$activity->get('display_lead_value') ?>">
+                        <select class="generic-form-control generic-form-control--compact" name="display_lead_unit" aria-label="<?= omoApiEscape(omoActivityT('activity.unit')) ?>">
                         <?php foreach (ControlActivity::delayUnits() as $unit): ?>
                             <option value="<?= omoApiEscape($unit) ?>"<?= $unit === (string)$activity->get('display_lead_unit') ? ' selected' : '' ?>><?= omoApiEscape(omoActivityT('activity.delay.' . $unit)) ?></option>
                         <?php endforeach; ?>
                     </select>
-                </label>
-                <label class="omo-activity-field">
-                    <span><?= omoApiEscape(omoActivityT('activity.overdue_after')) ?></span>
-                    <input class="generic-form-control" type="number" name="execution_duration_value" min="1" max="3650" value="<?= max(1, (int)$activity->get('execution_duration_value')) ?>">
-                </label>
-                <label class="omo-activity-field">
-                    <span><?= omoApiEscape(omoActivityT('activity.unit')) ?></span>
-                    <select class="generic-form-control" name="execution_duration_unit">
+                    </div>
+                </div>
+                <div class="generic-form-field">
+                    <div class="generic-inline-help">
+                        <label class="generic-form-label" for="activity-editor-overdue-after"><?= omoApiEscape(omoActivityT('activity.overdue_after')) ?></label>
+                        <?= $activityHelp(omoActivityT('activity.overdue_after'), omoActivityT('activity.overdue_after_help')) ?>
+                    </div>
+                    <div class="generic-setting-row">
+                        <input id="activity-editor-overdue-after" class="generic-form-control generic-form-control--compact" type="number" name="execution_duration_value" min="1" max="3650" value="<?= max(1, (int)$activity->get('execution_duration_value')) ?>">
+                        <select class="generic-form-control generic-form-control--compact" name="execution_duration_unit" aria-label="<?= omoApiEscape(omoActivityT('activity.unit')) ?>">
                         <?php foreach (ControlActivity::delayUnits() as $unit): ?>
                             <option value="<?= omoApiEscape($unit) ?>"<?= $unit === ((string)$activity->get('execution_duration_unit') ?: 'day') ? ' selected' : '' ?>><?= omoApiEscape(omoActivityT('activity.delay.' . $unit)) ?></option>
                         <?php endforeach; ?>
                     </select>
-                </label>
+                    </div>
+                </div>
             </div>
         </section>
 

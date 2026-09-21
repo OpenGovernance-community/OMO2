@@ -11,7 +11,6 @@ function omoActivitySourceLang()
 {
     return [
         'activity.title' => ['text' => 'Tâches récurrentes', 'context' => 'Recurring tasks application title.'],
-        'activity.description' => ['text' => 'Tâches récurrentes à valider, sans créer de projet.', 'context' => 'Recurring task drawer description.'],
         'activity.new' => ['text' => 'Ajouter une tâche récurrente', 'context' => 'Create recurring task action.'],
         'activity.edit' => ['text' => 'Modifier', 'context' => 'Edit activity action.'],
         'activity.delete' => ['text' => 'Supprimer', 'context' => 'Delete activity action.'],
@@ -22,7 +21,10 @@ function omoActivitySourceLang()
         'activity.editor.create_title' => ['text' => 'Nouvelle tâche récurrente', 'context' => 'Create recurring task drawer title.'],
         'activity.editor.edit_title' => ['text' => 'Modifier la tâche récurrente', 'context' => 'Edit recurring task drawer title.'],
         'activity.editor.identity' => ['text' => 'La tâche récurrente', 'context' => 'Recurring task identity form section.'],
+        'activity.editor.identity_help' => ['text' => 'Donnez un titre clair, une description utile et, si besoin, une personne responsable.', 'context' => 'Help for the recurring task identity section.'],
+        'activity.editor.recurrence_help' => ['text' => 'Choisissez la fréquence, puis le jour, la date ou le mois auquel la tâche doit revenir.', 'context' => 'Help for the recurring task schedule section.'],
         'activity.editor.window' => ['text' => 'Fenêtre de réalisation', 'context' => 'Activity execution window form section.'],
+        'activity.editor.window_help' => ['text' => 'Définissez quand la tâche devient visible et après quel délai elle est considérée en retard.', 'context' => 'Help for the recurring task execution window.'],
         'activity.close' => ['text' => 'Fermer', 'context' => 'Close drawer action.'],
         'activity.back' => ['text' => 'Retour aux tâches récurrentes', 'context' => 'Back action.'],
         'activity.scope.contextual' => ['text' => 'Local', 'context' => 'Current holon scope.'],
@@ -60,7 +62,9 @@ function omoActivitySourceLang()
         'activity.editor.responsible_none' => ['text' => 'Aucune personne', 'context' => 'Activity responsible person empty option.'],
         'activity.editor.responsible_help' => ['text' => 'Cette personne est responsable en complément de l espace porteur de la tâche récurrente.', 'context' => 'Recurring task responsible person field help.'],
         'activity.display_lead' => ['text' => 'Afficher en avance', 'context' => 'Advance field.'],
+        'activity.display_lead_help' => ['text' => 'La tâche apparaît ce nombre d unités avant sa date prévue.', 'context' => 'Help for the activity advance display field.'],
         'activity.overdue_after' => ['text' => 'En retard après', 'context' => 'Delay field.'],
+        'activity.overdue_after_help' => ['text' => 'La tâche est signalée en retard après ce délai suivant sa date prévue.', 'context' => 'Help for the activity overdue delay field.'],
         'activity.unit' => ['text' => 'Unité', 'context' => 'Unit field.'],
         'activity.regularity' => ['text' => 'Régularité des 12 dernières occurrences', 'context' => 'Regularity heading.'],
         'activity.timeline.description' => ['text' => 'Les validations sont placées à leur date réelle. Les absences restent positionnées à la date attendue.', 'context' => 'Timeline explanation.'],

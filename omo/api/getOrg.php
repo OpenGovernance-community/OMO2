@@ -7,6 +7,7 @@ use dbObject\ArrayProject;
 use dbObject\Authority;
 use dbObject\Holon;
 use dbObject\HolonPermission;
+use dbObject\Organization;
 use dbObject\Permission;
 use dbObject\PropertyFormat;
 use dbObject\Project;
@@ -33,14 +34,6 @@ function omoGetOrgPanelSourceLang(): array
         'leftbar.actions.move' => [
             'text' => 'Deplacer',
             'context' => 'Action menu label to move the current holon in the left panel.',
-        ],
-        'leftbar.children.circles' => [
-            'text' => 'Cercles',
-            'context' => 'Subtitle for child circles listed in the left panel navigation.',
-        ],
-        'leftbar.children.roles' => [
-            'text' => 'Roles',
-            'context' => 'Subtitle for child roles listed in the left panel navigation.',
         ],
         'leftbar.children.section_title' => [
             'text' => 'Dependances',
@@ -104,7 +97,7 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Fallback shown when an authority has no parent authority.',
         ],
         'leftbar.empty.message' => [
-            'text' => 'Aucun contenu n’est encore renseigné pour cet espace.',
+            'text' => 'Aucun contenu n’est encore renseigné pour cet élément.',
             'context' => 'Message shown in the left panel when the current holon has no visible content.',
         ],
         'leftbar.empty.section_title' => [
@@ -112,11 +105,11 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Section title shown in the left panel when the current holon has no visible content.',
         ],
         'leftbar.error.holon_access_denied' => [
-            'text' => 'Accès refusé à cet espace.',
+            'text' => 'Accès refusé à cet élément.',
             'context' => 'Error message shown in the left panel when the current holon cannot be viewed.',
         ],
         'leftbar.error.holon_not_found' => [
-            'text' => 'Espace introuvable pour cette organisation.',
+            'text' => 'Élément introuvable pour cette organisation.',
             'context' => 'Error message shown in the left panel when the requested holon cannot be found.',
         ],
         'leftbar.error.organization_access_denied' => [
@@ -953,7 +946,8 @@ function omoBuildSections(Holon $holon)
 function omoBuildChildNavigation(Holon $holon)
 {
     $items = array(
-        'containers' => array(),
+        'circles' => array(),
+        'groups' => array(),
         'roles' => array(),
     );
 
@@ -971,8 +965,10 @@ function omoBuildChildNavigation(Holon $holon)
 
         if ($entry['type'] === 1) {
             $items['roles'][] = $entry;
+        } elseif ($entry['type'] === 3) {
+            $items['groups'][] = $entry;
         } else {
-            $items['containers'][] = $entry;
+            $items['circles'][] = $entry;
         }
     }
 
@@ -1023,6 +1019,9 @@ if (!$canViewOrganization) {
 
 $organizationLexicon = $organization->getLexicon();
 $adminLabel = trim((string)($organizationLexicon['admin']['label'] ?? '')) ?: 'Admin';
+$childCircleLabel = Organization::getLexiconLabel($organizationLexicon, 'circle', true);
+$childGroupLabel = Organization::getLexiconLabel($organizationLexicon, 'group', true);
+$childRoleLabel = Organization::getLexiconLabel($organizationLexicon, 'role', true);
 
 $root = $organization->getEnabledStructuralRootHolon();
 if ($root === null) {
@@ -1381,18 +1380,32 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
             </div>
         </div>
     <?php endforeach; ?>
-    <?php if (count($childNavigation['containers']) > 0 || count($childNavigation['roles']) > 0): ?>
+    <?php if (count($childNavigation['circles']) > 0 || count($childNavigation['groups']) > 0 || count($childNavigation['roles']) > 0): ?>
         <div class="circle-section circle-section--navigation generic-section generic-accordion generic-accordion--card generic-accordion--collapsible" data-section-key="dependencies">
             <div class="generic-accordion__header">
                 <span class="generic-accordion__title generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.section_title')) ?></span>
                 <span class="generic-accordion__toggle">&#9662;</span>
             </div>
             <div class="generic-accordion__content">
-                <?php if (count($childNavigation['containers']) > 0): ?>
+                <?php if (count($childNavigation['circles']) > 0): ?>
                     <div class="child-nav-group">
-                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.circles')) ?></div>
+                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape($childCircleLabel) ?></div>
                         <div class="child-nav-list">
-                            <?php foreach ($childNavigation['containers'] as $child): ?>
+                            <?php foreach ($childNavigation['circles'] as $child): ?>
+                                <button type="button" class="child-nav-item" data-cid="<?= (int)$child['id'] ?>">
+                                    <span class="child-nav-dot child-nav-dot--container"></span>
+                                    <span class="child-nav-label"><?= omoApiEscape($child['name']) ?></span>
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (count($childNavigation['groups']) > 0): ?>
+                    <div class="child-nav-group">
+                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape($childGroupLabel) ?></div>
+                        <div class="child-nav-list">
+                            <?php foreach ($childNavigation['groups'] as $child): ?>
                                 <button type="button" class="child-nav-item" data-cid="<?= (int)$child['id'] ?>">
                                     <span class="child-nav-dot child-nav-dot--container"></span>
                                     <span class="child-nav-label"><?= omoApiEscape($child['name']) ?></span>
@@ -1404,7 +1417,7 @@ $debugPermissionRebuild = HolonPermission::buildPermissionDebugForOrganization(
 
                 <?php if (count($childNavigation['roles']) > 0): ?>
                     <div class="child-nav-group">
-                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape(t('leftbar.children.roles')) ?></div>
+                        <div class="child-nav-subtitle generic-card-title generic-card-title--small"><?= omoApiEscape($childRoleLabel) ?></div>
                         <div class="child-nav-list">
                             <?php foreach ($childNavigation['roles'] as $child): ?>
                                 <button type="button" class="child-nav-item child-nav-item--role" data-cid="<?= (int)$child['id'] ?>">

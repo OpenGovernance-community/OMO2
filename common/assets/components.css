@@ -494,8 +494,20 @@ input:focus-visible + .generic-choice-card,
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.generic-form-grid--trio {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.generic-form-grid--main-aside {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+}
+
 @media (max-width: 480px) {
-    .generic-form-grid--pair { grid-template-columns: minmax(0, 1fr); }
+    .generic-form-grid--pair,
+    .generic-form-grid--trio,
+    .generic-form-grid--main-aside {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 .generic-form-stack[hidden],

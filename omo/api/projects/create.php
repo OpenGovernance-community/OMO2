@@ -190,13 +190,13 @@ $formTexts = [
         hidden
         data-omo-subdrawer-header
         data-omo-subdrawer-title="<?= omoApiEscape(omoProjectsT($isEdit ? 'projects.form.edit_title' : 'projects.form.title')) ?>"
-        data-omo-subdrawer-description="<?= omoApiEscape(omoProjectsT($isEdit ? 'projects.form.edit_description' : 'projects.form.description')) ?>"
+        data-omo-subdrawer-description=""
     >
         <button type="submit" form="<?= $formId ?>" class="generic-action-button generic-action-button--main" data-omo-subdrawer-action data-omo-project-form-submit><?= omoApiEscape(omoProjectsT($isEdit ? 'projects.form.edit_submit' : ($isProposalForm ? 'projects.action.propose' : 'projects.form.submit'))) ?></button>
         <button type="button" form="<?= $formId ?>" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-omo-projects-cancel-create><?= omoApiEscape(omoProjectsT('projects.action.cancel')) ?></button>
     </div>
 
-    <form id="<?= $formId ?>" class="omo-project-form__fields generic-form-stack" action="/omo/api/projects/action.php" method="post" novalidate>
+    <form id="<?= $formId ?>" class="omo-project-form__fields generic-form-stack generic-form-stack--compact" action="/omo/api/projects/action.php" method="post" novalidate>
         <input type="hidden" name="project_action" value="save_project">
         <?php if (omoProjectsPvMeetingQuery($organizationId) !== ''): ?>
             <input type="hidden" name="pv_meeting_document_id" value="<?= (int)($_GET['pv_meeting_document_id'] ?? 0) ?>">
@@ -206,19 +206,19 @@ $formTexts = [
         <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
         <?php if ($isEdit): ?><input type="hidden" name="id" value="<?= (int)$projectId ?>"><?php endif; ?>
 
-        <section class="generic-section generic-section--stack generic-form-section omo-project-form__section">
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-project-form__section">
             <div class="omo-project-form__field generic-form-field">
                 <label class="generic-form-label" for="omo-project-title"><?= omoApiEscape(omoProjectsT('projects.field.title')) ?></label>
-                <input id="omo-project-title" class="generic-form-control" type="text" name="title" maxlength="255" required autofocus value="<?= omoApiEscape((string)$project->get('title')) ?>" autocomplete="off">
+                <input id="omo-project-title" class="generic-form-control generic-form-control--compact" type="text" name="title" maxlength="255" required autofocus value="<?= omoApiEscape((string)$project->get('title')) ?>" autocomplete="off">
             </div>
             <div class="omo-project-form__field generic-form-field">
                 <label class="generic-form-label" for="omo-project-description"><?= omoApiEscape(omoProjectsT('projects.field.description')) ?></label>
-                <textarea id="omo-project-description" class="generic-form-control" name="description" rows="5" placeholder="<?= omoApiEscape(omoProjectsT('projects.field.description_placeholder')) ?>"><?= omoApiEscape((string)$project->get('description')) ?></textarea>
+                <textarea id="omo-project-description" class="generic-form-control generic-form-control--compact" name="description" rows="2" placeholder="<?= omoApiEscape(omoProjectsT('projects.field.description_placeholder')) ?>"><?= omoApiEscape((string)$project->get('description')) ?></textarea>
             </div>
         </section>
 
-        <section class="generic-section generic-section--stack generic-form-section omo-project-form__section">
-            <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoProjectsT('projects.form.assignment')) ?></h3>
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-project-form__section">
+            <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoProjectsT('projects.form.assignment')) ?></h3>
             <div class="omo-project-form__grid omo-project-form__grid--assignment generic-form-grid">
                 <div class="omo-project-form__field generic-form-field">
                     <label class="generic-form-label" for="omo-project-holon-label"><?= omoApiEscape(omoProjectsT('projects.field.holon')) ?></label>
@@ -229,14 +229,13 @@ $formTexts = [
                     </div>
                 </div>
                 <div class="omo-project-form__field generic-form-field">
-                    <label class="generic-form-label" for="omo-project-responsible"><?= omoApiEscape(omoProjectsT('projects.field.responsible')) ?></label>
+                    <span class="generic-inline-help"><label class="generic-form-label" for="omo-project-responsible"><?= omoApiEscape(omoProjectsT('projects.field.responsible')) ?></label><details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover><summary aria-label="<?= omoApiEscape(omoProjectsT('projects.responsible.help')) ?>">?</summary><div class="generic-context-help__content"><?= omoApiEscape(omoProjectsT('projects.responsible.help')) ?></div></details></span>
                     <select id="omo-project-responsible" class="generic-form-control" name="IDuser">
                         <option value=""><?= omoApiEscape(omoProjectsT('projects.responsible.none')) ?></option>
                         <?php foreach ($responsibleOptions as $responsible): ?>
                             <option value="<?= (int)$responsible['id'] ?>"<?= (int)$project->get('IDuser') === (int)$responsible['id'] ? ' selected' : '' ?>><?= omoApiEscape($responsible['label']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <small class="generic-help-text"><?= omoApiEscape(omoProjectsT('projects.responsible.help')) ?></small>
                 </div>
                 <div class="omo-project-form__field generic-form-field">
                     <label class="generic-form-label" for="omo-project-parent-label"><?= omoApiEscape(omoProjectsT('projects.field.parent')) ?></label>
@@ -249,8 +248,8 @@ $formTexts = [
             </div>
         </section>
 
-        <section class="generic-section generic-section--stack generic-form-section omo-project-form__section">
-            <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoProjectsT('projects.form.planning')) ?></h3>
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-project-form__section">
+            <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoProjectsT('projects.form.planning')) ?></h3>
             <div class="omo-project-form__grid generic-form-grid">
                 <?php if ($statusIsConfigurable): ?>
                     <div class="omo-project-form__field generic-form-field">
@@ -287,8 +286,8 @@ $formTexts = [
             </div>
         </section>
 
-        <section class="generic-section generic-section--stack generic-form-section omo-project-form__section omo-project-form__blocked-section" data-omo-project-blocked-section<?= $selectedStatus === Project::STATUS_BLOCKED ? '' : ' hidden' ?>>
-            <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoProjectsT('projects.form.blocked')) ?></h3>
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-project-form__section omo-project-form__blocked-section" data-omo-project-blocked-section<?= $selectedStatus === Project::STATUS_BLOCKED ? '' : ' hidden' ?>>
+            <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoProjectsT('projects.form.blocked')) ?></h3>
             <div class="omo-project-form__grid generic-form-grid">
                 <div class="omo-project-form__field generic-form-field">
                     <label class="generic-form-label" for="omo-project-blocked-reason"><?= omoApiEscape(omoProjectsT('projects.blocked.reason')) ?></label>
@@ -316,8 +315,8 @@ $formTexts = [
         </section>
 
         <?php if ($usesPriority || $usesImportance): ?>
-        <section class="generic-section generic-section--stack generic-form-section omo-project-form__section">
-            <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(omoProjectsT('projects.form.attention')) ?></h3>
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-project-form__section">
+            <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoProjectsT('projects.form.attention')) ?></h3>
             <div class="omo-project-form__grid generic-form-grid">
                 <?php foreach (array_filter(['priority', 'importance'], static fn (string $field): bool => $field === 'priority' ? $usesPriority : $usesImportance) as $levelField): ?>
                     <?php

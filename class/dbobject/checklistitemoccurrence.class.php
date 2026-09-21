@@ -5,7 +5,7 @@ class ChecklistItemOccurrence extends DbObject
 {
     public static function tableName()
     {
-        return 'checklist_item_occurrence';
+        return 'process_item_occurrence';
     }
 
     public static function rules()

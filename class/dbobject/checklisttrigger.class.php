@@ -13,7 +13,7 @@ class ChecklistTrigger extends DbObject
 
     public static function tableName()
     {
-        return 'checklist_trigger';
+        return 'process_trigger';
     }
 
     public static function rules()

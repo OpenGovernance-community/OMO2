@@ -535,6 +535,18 @@
 		public static function getDefaultLexicon(): array
 		{
 			return array(
+				'space' => array(
+					'label' => 'Espace',
+				),
+				'circle' => array(
+					'label' => 'Cercle',
+				),
+				'role' => array(
+					'label' => 'Rôle',
+				),
+				'group' => array(
+					'label' => 'Groupe',
+				),
 				'tension' => array(
 					'label' => 'Tension',
 					'article' => 'une',
@@ -587,11 +599,70 @@
 			return self::normalizeLexicon(is_array($lexicon) ? $lexicon : array());
 		}
 
+		protected function getHolonTypeLabelForEditor(int $typeId): string
+		{
+			if ($typeId === 4) {
+				return 'Organisation';
+			}
+
+			switch ($typeId) {
+				case 3:
+					$lexiconKey = 'group';
+					break;
+				case 2:
+					$lexiconKey = 'circle';
+					break;
+				case 1:
+					$lexiconKey = 'role';
+					break;
+				default:
+					$lexiconKey = 'space';
+					break;
+			}
+
+			return self::getLexiconLabel($this->getLexicon(), $lexiconKey);
+		}
+
 		public function setLexicon(array $lexicon): void
 		{
 			$parameters = $this->getParametersArray();
 			$parameters['lexicon'] = self::normalizeLexicon($lexicon);
 			$this->setParametersArray($parameters);
+		}
+
+		public static function getLexiconForOrganizationId($organizationId): array
+		{
+			static $lexiconsByOrganizationId = array();
+
+			$organizationId = (int)$organizationId;
+			if ($organizationId <= 0) {
+				return self::getDefaultLexicon();
+			}
+
+			if (!array_key_exists($organizationId, $lexiconsByOrganizationId)) {
+				$organization = new self();
+				$lexiconsByOrganizationId[$organizationId] = $organization->load($organizationId)
+					? $organization->getLexicon()
+					: self::getDefaultLexicon();
+			}
+
+			return $lexiconsByOrganizationId[$organizationId];
+		}
+
+		public static function getLexiconLabel(array $lexicon, string $key, bool $plural = false): string
+		{
+			$defaults = self::getDefaultLexicon();
+			$defaultLabel = (string)($defaults[$key]['label'] ?? '');
+			$label = trim((string)($lexicon[$key]['label'] ?? $defaultLabel));
+			if ($label === '') {
+				$label = $defaultLabel;
+			}
+
+			if ($plural && $label !== '' && !preg_match('/[sxz]$/iu', $label)) {
+				$label .= 's';
+			}
+
+			return $label;
 		}
 
 		public function getApplicationLinkByDirectory(string $directory, bool $activeOnly = false): ?\dbObject\OrganizationApplication
@@ -2318,9 +2389,9 @@
 				);
 				if (!self::execute(
 					"DELETE run_item
-					FROM checklist_run_item run_item
-					INNER JOIN checklist_run run ON run.id = run_item.IDchecklistrun
-					LEFT JOIN checklist checklist ON checklist.id = run.IDchecklist
+					FROM process_run_item run_item
+					INNER JOIN process_run run ON run.id = run_item.IDchecklistrun
+					LEFT JOIN process checklist ON checklist.id = run.IDchecklist
 					WHERE run.IDorganization = :run_organization_id
 					   OR checklist.IDorganization = :checklist_organization_id",
 					$runItemParams
@@ -2332,9 +2403,9 @@
 			if (self::tableExists('checklist_item_occurrence') && self::tableExists('checklist_item')) {
 				if (!self::execute(
 					"DELETE occurrence
-					FROM checklist_item_occurrence occurrence
-					INNER JOIN checklist_item item ON item.id = occurrence.IDchecklistitem
-					INNER JOIN checklist checklist ON checklist.id = item.IDchecklist
+					FROM process_item_occurrence occurrence
+					INNER JOIN process_item item ON item.id = occurrence.IDchecklistitem
+					INNER JOIN process checklist ON checklist.id = item.IDchecklist
 					WHERE checklist.IDorganization = :organization_id",
 					$params
 				)) {
@@ -2349,8 +2420,8 @@
 				);
 				if (!self::execute(
 					"DELETE run
-					FROM checklist_run run
-					LEFT JOIN checklist checklist ON checklist.id = run.IDchecklist
+					FROM process_run run
+					LEFT JOIN process checklist ON checklist.id = run.IDchecklist
 					WHERE run.IDorganization = :run_organization_id
 					   OR checklist.IDorganization = :checklist_organization_id",
 					$runParams
@@ -2360,8 +2431,8 @@
 			}
 
 			if (!self::execute(
-				"UPDATE checklist current_checklist
-				INNER JOIN checklist previous_checklist ON previous_checklist.id = current_checklist.IDchecklist_previous
+				"UPDATE process current_checklist
+				INNER JOIN process previous_checklist ON previous_checklist.id = current_checklist.IDchecklist_previous
 				SET current_checklist.IDchecklist_previous = NULL
 				WHERE previous_checklist.IDorganization = :organization_id",
 				$params
@@ -2370,7 +2441,7 @@
 			}
 
 			return self::execute(
-				"DELETE FROM checklist
+				"DELETE FROM process
 				WHERE IDorganization = :organization_id",
 				$params
 			);
@@ -8362,9 +8433,10 @@
 			);
 
 			foreach ($types as $type) {
+				$typeId = (int)$type->getId();
 				$data['types'][] = array(
-					'id' => (int)$type->getId(),
-					'name' => (string)$type->get('name'),
+					'id' => $typeId,
+					'name' => $this->getHolonTypeLabelForEditor($typeId),
 					'hasTemplate' => (bool)$type->get('hastemplate'),
 					'hasChild' => (bool)$type->get('haschild'),
 				);
@@ -8773,9 +8845,10 @@
 			);
 
 			foreach ($types as $type) {
+				$typeId = (int)$type->getId();
 				$data['types'][] = array(
-					'id' => (int)$type->getId(),
-					'name' => (string)$type->get('name'),
+					'id' => $typeId,
+					'name' => $this->getHolonTypeLabelForEditor($typeId),
 					'hasTemplate' => (bool)$type->get('hastemplate'),
 					'hasChild' => (bool)$type->get('haschild'),
 				);
