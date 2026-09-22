@@ -136,17 +136,17 @@ $sourceLang = array_merge([
         'text' => 'Nom du document',
         'context' => 'Optional label of the linked document title field.',
     ],
-    'calendar.create.field.pv_template' => [
-        'text' => 'Modèle de PV',
-        'context' => 'Label of the optional PV template selector in event creation.',
+    'calendar.create.field.document_template' => [
+        'text' => 'Modèle',
+        'context' => 'Label of the optional document template selector in event creation.',
     ],
-    'calendar.create.field.pv_template_none' => [
-        'text' => 'PV vide',
-        'context' => 'Empty option of the PV template selector in event creation.',
+    'calendar.create.field.document_template_none' => [
+        'text' => 'Document vide',
+        'context' => 'Empty option of the document template selector in event creation.',
     ],
-    'calendar.create.field.pv_template_hint' => [
-        'text' => 'Les groupes, points et contenus du modèle seront copiés sans leurs auteurs ni leurs invités.',
-        'context' => 'Help text below the PV template selector in event creation.',
+    'calendar.create.field.document_template_hint' => [
+        'text' => 'Le contenu du modèle est copié dans le nouveau document. Pour un PV, les groupes et points sont copiés sans leurs auteurs ni leurs invités.',
+        'context' => 'Help text below the document template selector in event creation.',
     ],
     'calendar.create.document.help_create' => [
         'text' => "Si vous choisissez un type, un document vide sera créé automatiquement avec le titre de l'événement, sa description et des tags par défaut. Vous pourrez ensuite le modifier depuis le module Documents.",
@@ -570,16 +570,16 @@ if ($isEditMode) {
     }
 }
 
-$pvTemplatesPayload = [];
+$documentTemplatesPayload = [];
 if (!$isEditMode || !($associatedDocument instanceof Document)) {
-    $pvTemplates = new \dbObject\ArrayDocument();
-    $pvTemplates->loadPvTemplatesForOrganization($organizationId);
-    foreach ($pvTemplates as $pvTemplate) {
-        if (!($pvTemplate instanceof Document) || (int)$pvTemplate->getId() <= 0) {
+    $documentTemplates = new \dbObject\ArrayDocument();
+    $documentTemplates->loadDocumentTemplatesForOrganization($organizationId);
+    foreach ($documentTemplates as $documentTemplate) {
+        if (!($documentTemplate instanceof Document) || (int)$documentTemplate->getId() <= 0) {
             continue;
         }
 
-        $visibilityRule = $pvTemplate->getPrimaryVisibilityRuleRow();
+        $visibilityRule = $documentTemplate->getPrimaryVisibilityRuleRow();
         $visibilityType = \dbObject\ObjectVisibility::normalizeVisibilityType(
             (string)($visibilityRule['visibility_type'] ?? \dbObject\ObjectVisibility::TYPE_ORGANIZATION)
         );
@@ -592,19 +592,44 @@ if (!$isEditMode || !($associatedDocument instanceof Document)) {
             continue;
         }
 
-        $templateLabel = trim((string)$pvTemplate->get('title'));
-        $templateParent = $pvTemplate->getParentDocument();
+        $templateLabel = trim((string)$documentTemplate->get('title'));
+        $templateParent = $documentTemplate->getParentDocument();
         if ($templateParent instanceof Document && trim((string)$templateParent->get('title')) !== '') {
             $templateLabel = trim((string)$templateParent->get('title')) . ' / ' . $templateLabel;
         }
-        $pvTemplatesPayload[] = [
-            'id' => (int)$pvTemplate->getId(),
-            'label' => $templateLabel !== '' ? $templateLabel : ('PV #' . (int)$pvTemplate->getId()),
+        $documentTemplatesPayload[] = [
+            'id' => (int)$documentTemplate->getId(),
+            'label' => $templateLabel !== '' ? $templateLabel : ('Document #' . (int)$documentTemplate->getId()),
+            'documentType' => $documentTemplate->getDocumentType(),
             'visibilityType' => $visibilityType,
             'targetHolonId' => (int)($visibilityRule['IDholon'] ?? 0),
+            'groupKey' => (int)$documentTemplate->get('IDholon') > 0
+                ? 'holon-' . (int)$documentTemplate->get('IDholon')
+                : 'organization',
+            'groupLabel' => $documentTemplate->getTemplateGroupLabel(),
         ];
     }
 }
+$documentTemplateGroups = [];
+foreach ($documentTemplatesPayload as $documentTemplateOption) {
+    $groupKey = (string)($documentTemplateOption['groupKey'] ?? 'organization');
+    if (!isset($documentTemplateGroups[$groupKey])) {
+        $documentTemplateGroups[$groupKey] = [
+            'label' => trim((string)($documentTemplateOption['groupLabel'] ?? '')),
+            'templates' => [],
+        ];
+    }
+    $documentTemplateGroups[$groupKey]['templates'][] = $documentTemplateOption;
+}
+uasort($documentTemplateGroups, static function (array $left, array $right): int {
+    return strnatcasecmp((string)$left['label'], (string)$right['label']);
+});
+foreach ($documentTemplateGroups as &$documentTemplateGroup) {
+    usort($documentTemplateGroup['templates'], static function (array $left, array $right): int {
+        return strnatcasecmp((string)$left['label'], (string)$right['label']);
+    });
+}
+unset($documentTemplateGroup);
 
 $prefillEvent = $isEditMode ? $event : $duplicateEvent;
 $defaultInvitationHolonId = $project instanceof Project ? 0 : $defaultHolonId;
@@ -667,7 +692,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $requestedDocumentType = trim((string)($_POST['document_type'] ?? ''));
     $documentTitle = trim((string)($_POST['document_title'] ?? ''));
-    $pvTemplateId = isset($_POST['pv_template_id']) ? max(0, (int)$_POST['pv_template_id']) : 0;
+    $documentTemplateId = isset($_POST['document_template_id']) ? max(0, (int)$_POST['document_template_id']) : 0;
     $selectedInvitationHolonIds = $hasStructureApplication ? array_values(array_unique(array_filter(array_map('intval', $_POST['invitation_holon_ids'] ?? []), static function ($holonId) {
         return $holonId > 0;
     }))) : [];
@@ -810,6 +835,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    $selectedDocumentTemplate = null;
+    if ($willCreateDocument && $documentTemplateId > 0) {
+        $selectedDocumentTemplate = new Document();
+        if (
+            !$selectedDocumentTemplate->load($documentTemplateId)
+            || $selectedDocumentTemplate->getDocumentType() !== $resolvedDocumentType
+            || !$selectedDocumentTemplate->canUseAsDocumentTemplateInOrganizationContext($organizationId, $selectedHolonId > 0 ? $selectedHolonId : null)
+        ) {
+            echo json_encode([
+                'status' => false,
+                'message' => 'Modèle de document invalide ou inaccessible.',
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
+    }
+
     if (!$isEditMode) {
         $event = new Event();
         $event->set('IDuser', $currentUserId);
@@ -925,20 +966,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $resolvedDocumentType,
                 $documentTitle
             );
-            $documentCreateResult = $linkedDocument->createInOrganizationContext(
-                $organizationId,
-                $selectedHolonId > 0 ? $selectedHolonId : null,
-                $currentUserId,
-                [
+            $documentValues = [
                     'title' => $defaultDocumentValues['title'],
                     'description' => $defaultDocumentValues['description'],
                     'keywords' => $defaultDocumentValues['keywords'],
                     'document_type' => $resolvedDocumentType,
                     'event_id' => (int)$event->getId(),
-                    'pv_template_id' => $pvTemplateId,
                     'allow_empty_type_payload' => 1,
-                ]
-            );
+                ];
+            $documentCreateResult = $selectedDocumentTemplate instanceof Document
+                ? $linkedDocument->createFromDocumentTemplateInOrganizationContext(
+                    $selectedDocumentTemplate,
+                    $organizationId,
+                    $selectedHolonId > 0 ? $selectedHolonId : null,
+                    $currentUserId,
+                    $documentValues
+                )
+                : $linkedDocument->createInOrganizationContext(
+                    $organizationId,
+                    $selectedHolonId > 0 ? $selectedHolonId : null,
+                    $currentUserId,
+                    $documentValues
+                );
             if (!is_array($documentCreateResult) || empty($documentCreateResult['status'])) {
                 if ($startedTransaction && $pdo instanceof \PDO && $pdo->inTransaction()) {
                     $pdo->rollBack();
@@ -1372,15 +1421,19 @@ if ($isEditMode) {
                                                 maxlength="255"
                                             >
                                         </label>
-                                        <label class="omo-calendar-create__field generic-form-field" data-omo-calendar-pv-template-field<?= $documentTypeDefault === Document::TYPE_PV ? '' : ' hidden' ?>>
-                                            <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template')) ?></span>
-                                            <select name="pv_template_id" class="generic-form-control">
-                                                <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template_none')) ?></option>
-                                                <?php foreach ($pvTemplatesPayload as $pvTemplateOption): ?>
-                                                    <option value="<?= (int)$pvTemplateOption['id'] ?>" data-omo-calendar-pv-template-scope="<?= omoApiEscape((string)$pvTemplateOption['visibilityType']) ?>" data-omo-calendar-pv-template-target="<?= (int)$pvTemplateOption['targetHolonId'] ?>"><?= omoApiEscape((string)$pvTemplateOption['label']) ?></option>
+                                        <label class="omo-calendar-create__field generic-form-field" data-omo-calendar-document-template-field<?= $documentTypeDefault !== '' ? '' : ' hidden' ?>>
+                                            <span class="omo-calendar-create__label generic-form-label"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_template')) ?></span>
+                                            <select name="document_template_id" class="generic-form-control">
+                                                <option value="0"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_template_none')) ?></option>
+                                                <?php foreach ($documentTemplateGroups as $documentTemplateGroup): ?>
+                                                    <optgroup label="<?= omoApiEscape((string)$documentTemplateGroup['label']) ?>">
+                                                        <?php foreach ($documentTemplateGroup['templates'] as $documentTemplateOption): ?>
+                                                            <option value="<?= (int)$documentTemplateOption['id'] ?>" data-omo-calendar-document-template-type="<?= omoApiEscape((string)$documentTemplateOption['documentType']) ?>" data-omo-calendar-document-template-scope="<?= omoApiEscape((string)$documentTemplateOption['visibilityType']) ?>" data-omo-calendar-document-template-target="<?= (int)$documentTemplateOption['targetHolonId'] ?>"><?= omoApiEscape((string)$documentTemplateOption['label']) ?></option>
+                                                        <?php endforeach; ?>
+                                                    </optgroup>
                                                 <?php endforeach; ?>
                                             </select>
-                                            <span class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.pv_template_hint')) ?></span>
+                                            <span class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.field.document_template_hint')) ?></span>
                                         </label>
                                         <p class="omo-calendar-create__hint generic-description generic-description--relaxed"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.help_create')) ?></p>
                                         <p class="omo-calendar-create__notice"><?= omoApiEscape(omoCalendarCreateT('calendar.create.document.created_notice')) ?></p>

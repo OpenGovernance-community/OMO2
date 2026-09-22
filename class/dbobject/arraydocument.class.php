@@ -413,6 +413,32 @@
 			$this->exchangeArray($visibleTemplates);
 		}
 
+		public function loadDocumentTemplatesForOrganization(int $organizationId): void
+		{
+			$this->exchangeArray([]);
+			if ($organizationId <= 0) {
+				return;
+			}
+
+			$this->load(array(
+				'where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+					array('field' => 'active', 'value' => 1),
+					array('field' => 'is_template', 'value' => 1),
+				),
+				'hydrate' => \dbObject\Document::getCollectionHydrationFields(),
+				'orderBy' => array(
+					array('field' => 'title', 'dir' => 'ASC'),
+					array('field' => 'id', 'dir' => 'ASC'),
+				),
+			));
+
+			$this->exchangeArray(array_values(array_filter($this->getArrayCopy(), static function ($document) use ($organizationId): bool {
+				return $document instanceof \dbObject\Document
+					&& $document->canUseAsDocumentTemplate($organizationId);
+			})));
+		}
+
 		public function loadRecentForOrganizationContext($organizationId, $holonId = 0, $limit = 5, $documentScope = 'contextual', array $descendantHolonIds = array())
 		{
 			$organizationId = (int)$organizationId;

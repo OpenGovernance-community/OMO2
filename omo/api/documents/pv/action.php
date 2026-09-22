@@ -450,6 +450,68 @@ if ($document->getPvStage() === \dbObject\Document::PV_STAGE_REVIEW) {
     }
 }
 
+if ($action === 'refresh_point') {
+    $pointId = (int)($_POST['point_id'] ?? 0);
+    $point = new \dbObject\DocumentPvPoint();
+    if (
+        $pointId <= 0
+        || !$point->load($pointId)
+        || (int)$point->get('IDdocument') !== (int)$document->getId()
+        || !$document->canUserManagePvDocument($currentUserId)
+        || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
+    ]);
+}
+
+if ($action === 'remove_deferred_proposal') {
+    $pointId = (int)($_POST['point_id'] ?? 0);
+    $proposalId = (int)($_POST['proposal_id'] ?? 0);
+    $point = new \dbObject\DocumentPvPoint();
+    $proposal = new \dbObject\DeferredProposal();
+    if (
+        $pointId <= 0
+        || $proposalId <= 0
+        || !$point->load($pointId)
+        || (int)$point->get('IDdocument') !== (int)$document->getId()
+        || $point->isHandled()
+        || !$proposal->load($proposalId)
+        || (int)$proposal->get('IDdocument_pv_point') !== $pointId
+        || (int)$proposal->get('IDorganization') !== $organizationId
+        || (string)$proposal->get('status') !== \dbObject\DeferredProposal::STATUS_PENDING
+        || !$document->canUserManagePvDocument($currentUserId)
+        || !omoDocumentsPvEditorHasValidSessionToken($organizationId, $documentId, $currentUserId, $editorToken)
+    ) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.forbidden'),
+        ], 403);
+    }
+
+    $proposal->set('status', \dbObject\DeferredProposal::STATUS_REMOVED);
+    $proposal->set('status_message', 'Proposition supprimée avant validation.');
+    $proposal->set('updated_at', new \DateTimeImmutable('now'));
+    $result = $proposal->save();
+    if (!is_array($result) || empty($result['status'])) {
+        omoDocumentsPvEditorJsonResponse([
+            'status' => false,
+            'message' => omoDocumentsPvEditorActionT('documents.pv_editor.error.operation_failed'),
+        ], 500);
+    }
+
+    omoDocumentsPvEditorJsonResponse([
+        'status' => true,
+        'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
+    ]);
+}
+
 if ($action === 'poll_updates') {
     $knownPollingRevision = trim((string)($_POST['poll_revision'] ?? ''));
     $pollingRevision = $document->getPvEditorPollingRevision($organizationId);
@@ -1213,14 +1275,41 @@ if ($action === 'toggle_handled') {
         ], 423);
     }
 
+    $proposalTransaction = null;
+    if (!empty($_POST['is_handled'])) {
+        $proposalTransaction = \dbObject\DbObject::getPdo();
+        if (!$proposalTransaction || $proposalTransaction->inTransaction()) {
+            $proposalTransaction = null;
+        } else {
+            $proposalTransaction->beginTransaction();
+        }
+        $proposalResult = \dbObject\DeferredProposal::applyForPvPoint($point, $currentUserId);
+        if (empty($proposalResult['status'])) {
+            if ($proposalTransaction && $proposalTransaction->inTransaction()) {
+                $proposalTransaction->rollBack();
+            }
+            omoDocumentsPvEditorJsonResponse([
+                'status' => false,
+                'message' => trim((string)($proposalResult['message'] ?? 'Les propositions de ce point ne peuvent pas etre appliquees.')),
+                'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
+            ], !empty($proposalResult['conflict']) ? 409 : 400);
+        }
+    }
+
     $point->set('is_handled', !empty($_POST['is_handled']) ? 1 : 0);
     $point->set('IDuser_modification', $currentUserId);
     $saveResult = $point->save();
     if (!is_array($saveResult) || ($saveResult['status'] ?? false) !== true) {
+        if ($proposalTransaction && $proposalTransaction->inTransaction()) {
+            $proposalTransaction->rollBack();
+        }
         omoDocumentsPvEditorJsonResponse([
             'status' => false,
             'message' => trim((string)($saveResult['text'] ?? omoDocumentsPvEditorActionT('documents.pv_editor.error.operation_failed'))),
         ], 400);
+    }
+    if ($proposalTransaction && $proposalTransaction->inTransaction()) {
+        $proposalTransaction->commit();
     }
 
     omoDocumentsPvEditorJsonResponse([

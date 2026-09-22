@@ -9298,6 +9298,7 @@
 				$catalog[] = array(
 					'id' => $projectId,
 					'title' => trim((string)$project->get('title')),
+					'holonId' => $holon ? (int)$holon->getId() : 0,
 					'holonLabel' => $holon ? $holon->getFullDisplayName() : '',
 					'calculatedImportance' => max(0.0, min(1.0, (float)$project->get('calculated_importance'))),
 					'priority' => \dbObject\Project::normalizeLevel($project->get('priority')),
@@ -12829,7 +12830,7 @@
 		}
 
 		// Supprime holon cible
-		public function deleteHolonDefinition($holonId = 0, $userId = 0)
+		public function deleteHolonDefinition($holonId = 0, $userId = 0, $collectiveGovernance = false)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
@@ -12854,7 +12855,7 @@
 				);
 			}
 
-			if (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete()) {
+			if (!$collectiveGovernance && (!$holon->isAllowed('CAN_DELETE_HOLON') || !$holon->canDelete())) {
 				return array(
 					'status' => false,
 'message' => "Vous n’avez pas les droits pour supprimer cet espace.",

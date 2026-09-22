@@ -192,6 +192,33 @@ if (!function_exists('omoEthercalcCreateDocumentSheet')) {
     }
 }
 
+if (!function_exists('omoEthercalcCopyDocumentSheetContents')) {
+    /**
+     * Copies the SocialCalc snapshot into an already-provisioned destination
+     * sheet. The two rooms remain fully independent afterwards.
+     */
+    function omoEthercalcCopyDocumentSheetContents(string $sourceRoomId, string $targetRoomId): array
+    {
+        if (!omoEthercalcIsValidRoomId($sourceRoomId) || !omoEthercalcIsValidRoomId($targetRoomId)) {
+            return array('status' => false, 'text' => 'Identifiant EtherCalc invalide.');
+        }
+
+        $sourceResult = omoEthercalcRequest('GET', '/_/' . rawurlencode($sourceRoomId));
+        if (!($sourceResult['status'] ?? false)) {
+            return $sourceResult;
+        }
+
+        $payload = json_encode(array(
+            'snapshot' => (string)($sourceResult['body'] ?? ''),
+        ), JSON_UNESCAPED_SLASHES);
+        if (!is_string($payload)) {
+            return array('status' => false, 'text' => 'Impossible de préparer le contenu EtherCalc.');
+        }
+
+        return omoEthercalcRequest('PUT', '/_/' . rawurlencode($targetRoomId), array(), $payload);
+    }
+}
+
 if (!function_exists('omoEthercalcDeleteDocumentSheet')) {
     function omoEthercalcDeleteDocumentSheet(string $roomId): array
     {

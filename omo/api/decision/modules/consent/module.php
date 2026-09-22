@@ -76,6 +76,8 @@ if (!function_exists('omoDecisionConsentModuleGetSourceLang')) {
             'decisions.consent.option.status.evaluation' => ['text' => 'En évaluation', 'context' => 'Evaluation status option.'],
             'decisions.consent.option.status.results' => ['text' => 'Résultats', 'context' => 'Results status option.'],
             'decisions.consent.option.status.archived' => ['text' => 'Archivée', 'context' => 'Archived status option.'],
+            'decisions.consent.lifecycle.evaluation_start_confirmation' => ['text' => 'Le statut « En évaluation » n’est pas compatible avec la date de début d’évaluation définie au {date}. Voulez-vous vraiment commencer maintenant ? Les dates des phases d’élaboration et d’évaluation seront ajustées.', 'context' => 'Confirmation before manually starting a consent vote before its scheduled date.'],
+            'decisions.consent.lifecycle.consultation_start_confirmation' => ['text' => 'Le statut « En élaboration » n’est pas compatible avec la date de début d’élaboration définie au {date}. Voulez-vous vraiment commencer maintenant ? La date de début de la phase d’élaboration sera ajustée.', 'context' => 'Confirmation before manually starting a consent consultation before its scheduled date.'],
             'decisions.consent.option.common.yes' => ['text' => 'Oui', 'context' => 'Generic yes option label.'],
             'decisions.consent.option.common.no' => ['text' => 'Non', 'context' => 'Generic no option label.'],
             'decisions.consent.option.choice.favor' => ['text' => 'Pour', 'context' => 'Consent choice label meaning support.'],
@@ -241,6 +243,10 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
         $hasSubmittedResponses = $decision instanceof DecisionProcess ? $decision->hasSubmittedResponses() : false;
         $resultsMode = $decision instanceof DecisionProcess
             && in_array($status, [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
+        $isConsultationPhase = $decision instanceof DecisionProcess
+            && $consultationStarted
+            && !$evaluationStarted
+            && !$resultsMode;
         $liveResultsMode = false;
         $showOwnerIntermediateResults = $isManageMode
             && !empty($context['isOwner'])
@@ -373,10 +379,13 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 data-omo-decision-embedded-question="<?= $embeddedQuestion ? '1' : '0' ?>"
                 <?php if ($manageFormId !== ''): ?>
                 data-omo-decision-editor-header-form
+                data-omo-decision-lifecycle-confirm-template="<?= $escape(t('decisions.consent.lifecycle.evaluation_start_confirmation', [], $lang, $sourceLang)) ?>"
+                data-omo-decision-lifecycle-consultation-confirm-template="<?= $escape(t('decisions.consent.lifecycle.consultation_start_confirmation', [], $lang, $sourceLang)) ?>"
                 data-omo-decision-editor-header-title="<?= $escape(t($decision instanceof DecisionProcess ? 'decisions.edit.edit_title' : 'decisions.edit.create_title', [], $lang, $sourceLang)) ?>"
                 data-omo-decision-editor-header-submit-label="<?= $isEditable ? $escape($decision instanceof DecisionProcess ? t('decisions.consent.action.save', [], $lang, $sourceLang) : t('decisions.consent.action.create', [], $lang, $sourceLang)) : '' ?>"
                 <?php endif; ?>
             >
+                <script src="/omo/api/decision/modules/lifecycle_status.js"></script>
                 <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                 <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                 <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
@@ -744,6 +753,9 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                 <?php endif; ?>
 
                 <?php if ($isParticipateMode): ?>
+                <?php if ($isConsultationPhase): ?>
+                <div class="omo-decision-consent__form generic-form-stack">
+                <?php else: ?>
                 <form class="omo-decision-consent__form generic-form-stack" action="/omo/api/decision/modules/consent/respond.php" method="post" data-omo-decision-consent-response-form>
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
@@ -752,10 +764,15 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                     <input type="hidden" name="method" value="<?= $escape(DecisionProcess::METHOD_CONSENT) ?>">
                     <input type="hidden" name="intent" value="participate">
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
+                <?php endif; ?>
 
+                    <?php if ($isConsultationPhase): ?>
+                    <div class="omo-decision-consent__fieldset">
+                    <?php else: ?>
                     <fieldset class="omo-decision-consent__fieldset"<?= !$canEditSubmittedResponse ? ' disabled' : '' ?>>
                         <legend class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.your_choices', [], $lang, $sourceLang)) ?></legend>
                         <p class="omo-decision-consent__text"><?= $escape(t('decisions.consent.field.select_all', [], $lang, $sourceLang)) ?></p>
+                    <?php endif; ?>
 
                         <?php if (count($proposalObjects) === 0): ?>
                         <p class="omo-decision-consent__text"><?= $escape(t('decisions.consent.empty_proposals', [], $lang, $sourceLang)) ?></p>
@@ -770,7 +787,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                                     <?= omoDecisionRenderGovernanceChanges($proposal, $escape) ?>
                                     <?= omoDecisionRenderProposalDiscussionActions($proposal, $context, $escape) ?>
                                 </div>
-                                <div class="omo-decision-consent__choice-scale">
+                                <?php if (!$isConsultationPhase): ?><div class="omo-decision-consent__choice-scale">
                                     <?php foreach ($renderChoices as $choiceKey => $choiceLabel): ?>
                                     <?php
                                     $choiceUi = $choiceUiMap[$choiceKey] ?? [];
@@ -788,7 +805,7 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                                         </button>
                                     </div>
                                     <?php endforeach; ?>
-                                </div>
+                                </div><?php endif; ?>
                             </div>
                             <?php endforeach; ?>
                             <?php if ($oneProposalAtATime && $evaluationStarted): ?>
@@ -800,22 +817,34 @@ if (!function_exists('omoDecisionConsentModuleRender')) {
                             <?php endif; ?>
                         </div>
                         <?php endif; ?>
+                    <?php if ($isConsultationPhase): ?>
+                    </div>
+                    <?php else: ?>
                     </fieldset>
+                    <?php endif; ?>
+                    <?php if (!$isConsultationPhase): ?>
                     <label class="omo-decision-consent__modal-option">
                         <input type="checkbox" name="is_anonymous" value="1"<?= $anonymousVoteChecked ? ' checked' : '' ?><?= $anonymousVoteDisabled || !$canEditSubmittedResponse ? ' disabled' : '' ?>>
                         <span><?= $escape(t('decisions.consent.field.anonymous', [], $lang, $sourceLang)) ?></span>
                     </label>
+                    <?php endif; ?>
                     <?php if ($consultationProposalPanel !== ''): ?>
                     <?= $consultationProposalPanel ?>
                     <?php endif; ?>
 
+                    <?php if (!$isConsultationPhase): ?>
                     <div class="omo-decision-consent__footer">
                         <button type="submit" class="generic-action-button generic-action-button--main" data-omo-decision-consent-response-submit<?= $canEditSubmittedResponse ? '' : ' disabled' ?>><?= $escape($selectedResponse instanceof DecisionResponse ? t('decisions.consent.action.update_response', [], $lang, $sourceLang) : t('decisions.consent.action.submit_response', [], $lang, $sourceLang)) ?></button>
                         <div class="omo-decision-consent__feedback" data-omo-decision-consent-response-feedback aria-live="polite"></div>
                     </div>
 
                     <script type="application/json" data-omo-decision-consent-response-data><?= $responsePayloadJson ?></script>
+                    <?php endif; ?>
+                <?php if ($isConsultationPhase): ?>
+                </div>
+                <?php else: ?>
                 </form>
+                <?php endif; ?>
                 <?php if ($liveResultsMode): ?>
                 <section class="generic-soft-panel generic-soft-panel--stack">
                     <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.consent.field.live_results', [], $lang, $sourceLang)) ?></span>

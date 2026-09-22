@@ -3,7 +3,23 @@ require_once dirname(__DIR__) . '/bootstrap.php';
 
 use dbObject\Organization;
 
-$organizationId = (int)($_SESSION['currentOrganization'] ?? 0);
+$holonCreateSourceLang = [
+    'project_picker.add' => ['text' => 'Ajouter', 'context' => 'Button opening the project selector for a holon property'],
+    'project_picker.title' => ['text' => 'Ajouter des projets', 'context' => 'Project selector title in the holon editor'],
+    'project_picker.search' => ['text' => 'Rechercher un projet…', 'context' => 'Project selector search placeholder in the holon editor'],
+    'project_picker.empty' => ['text' => 'Aucun projet disponible dans cet espace.', 'context' => 'Empty project selector state in the holon editor'],
+    'project_picker.selected_empty' => ['text' => 'Aucun projet sélectionné.', 'context' => 'Empty selected project list in the holon editor'],
+    'project_picker.cancel' => ['text' => 'Annuler', 'context' => 'Project selector cancel button in the holon editor'],
+    'project_picker.confirm' => ['text' => 'Ajouter la sélection', 'context' => 'Project selector confirmation button in the holon editor'],
+    'project_picker.remove' => ['text' => 'Retirer {project}', 'context' => 'Accessible label for removing a selected project from a holon property'],
+    'project_picker.scope_local' => ['text' => 'Local', 'context' => 'Project selector scope limited to the selected holon'],
+    'project_picker.scope_children' => ['text' => 'Enfants', 'context' => 'Project selector scope including direct child holons'],
+    'project_picker.scope_descendants' => ['text' => 'Descendants', 'context' => 'Project selector scope including every descendant holon'],
+];
+$holonCreateLang = omoLoadTranslationBundle('omo_holon_create', $holonCreateSourceLang);
+$holonCreateT = static fn (string $key, array $variables = []): string => t($key, $variables, $holonCreateLang, $holonCreateSourceLang);
+
+$organizationId = (int)($_GET['oid'] ?? ($_SESSION['currentOrganization'] ?? 0));
 $contextHolonId = (int)($_GET['cid'] ?? 0);
 $holonId = (int)($_GET['hid'] ?? 0);
 $governanceCapture = !empty($_GET['governance_capture']);
@@ -62,8 +78,7 @@ if ($organizationId <= 0) {
 }
 $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’élément' : 'Nouvel élément';
 ?>
-<link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260807-project-picker-search">
-<div class="omo-holon-create omo-panel-view">
+<div class="omo-holon-create omo-panel-view<?= $governanceCapture ? ' omo-holon-create--governance-capture' : '' ?>">
     <?php if ($errorMessage === ''): ?>
     <div
         hidden
@@ -288,8 +303,24 @@ const adminLexiconLabel = <?= json_encode($adminLabel, JSON_UNESCAPED_UNICODE | 
 const directPermissionLabel = <?= json_encode($directPermissionLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 const canEditHolonColor = <?= $canEditHolonColor ? 'true' : 'false' ?>;
 const governanceCapture = <?= $governanceCapture ? 'true' : 'false' ?>;
-const governanceInitialPayload = governanceCapture && window.omoHolonGovernanceInitialPayload && typeof window.omoHolonGovernanceInitialPayload === 'object'
+const projectPickerTexts = <?= json_encode([
+    'add' => $holonCreateT('project_picker.add'),
+    'title' => $holonCreateT('project_picker.title'),
+    'search' => $holonCreateT('project_picker.search'),
+    'empty' => $holonCreateT('project_picker.empty'),
+    'selectedEmpty' => $holonCreateT('project_picker.selected_empty'),
+    'cancel' => $holonCreateT('project_picker.cancel'),
+    'confirm' => $holonCreateT('project_picker.confirm'),
+    'remove' => $holonCreateT('project_picker.remove'),
+    'scopeLocal' => $holonCreateT('project_picker.scope_local'),
+    'scopeChildren' => $holonCreateT('project_picker.scope_children'),
+    'scopeDescendants' => $holonCreateT('project_picker.scope_descendants'),
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+const governanceInitialPayloadCandidate = governanceCapture && window.omoHolonGovernanceInitialPayload && typeof window.omoHolonGovernanceInitialPayload === 'object'
     ? window.omoHolonGovernanceInitialPayload
+    : null;
+const governanceInitialPayload = governanceInitialPayloadCandidate && Object.keys(governanceInitialPayloadCandidate).length > 0
+    ? governanceInitialPayloadCandidate
     : null;
 
 if (governanceInitialPayload) {
@@ -880,7 +911,7 @@ function groupPermissionCatalog(permissionCatalog) {
 function getTemplates() {
     const templates = Array.isArray(state.data.templateCatalog) ? state.data.templateCatalog : [];
     return governanceCapture ? templates.filter(function (template) {
-        return Number(template && template.typeId ? template.typeId : 0) === 1;
+        return [1, 2, 3].indexOf(Number(template && template.typeId ? template.typeId : 0)) !== -1;
     }) : templates;
 }
 
@@ -1462,47 +1493,187 @@ function readProjectPickerSelectedIds(projectPicker) {
     return projectPicker
         ? String(projectPicker.dataset.selectedIds || '').split(',').map(function (value) {
             return Number(value || 0);
-        }).filter(Boolean)
+        }).filter(function (value, index, values) {
+            return value > 0 && values.indexOf(value) === index;
+        })
         : [];
 }
 
+function compareProjectsByTitle(left, right) {
+    const leftTitle = String(left && left.title || '').trim();
+    const rightTitle = String(right && right.title || '').trim();
+    const titleComparison = leftTitle.localeCompare(rightTitle, 'fr', {
+        sensitivity: 'base',
+        numeric: true
+    });
+
+    return titleComparison !== 0
+        ? titleComparison
+        : Number(left && left.id || 0) - Number(right && right.id || 0);
+}
+
+function getProjectPickerCandidates(projectPicker) {
+    const globalCatalog = getProjectCatalog('global');
+    const catalog = globalCatalog.length > 0
+        ? globalCatalog
+        : getProjectCatalog(String(projectPicker && projectPicker.dataset.projectScope || 'local'));
+
+    return catalog.slice().sort(compareProjectsByTitle);
+}
+
+function renderSelectedProjectRows(selectedIds) {
+    if (!selectedIds.length) {
+        return '<div class="omo-holon-create__project-selected-empty generic-description generic-description--compact">' + escapeHtml(projectPickerTexts.selectedEmpty) + '</div>';
+    }
+
+    return selectedIds.map(function (projectId) {
+        return {
+            id: Number(projectId),
+            project: findProject(projectId)
+        };
+    }).sort(function (left, right) {
+        return compareProjectsByTitle(
+            left.project || { id: left.id, title: '#' + String(left.id) },
+            right.project || { id: right.id, title: '#' + String(right.id) }
+        );
+    }).map(function (entry) {
+        const projectId = entry.id;
+        const project = entry.project;
+        const title = project ? String(project.title || '') : ('#' + String(projectId));
+        const removeLabel = String(projectPickerTexts.remove || '').replace('{project}', title);
+        return ''
+            + '<div class="omo-holon-create__project-selected-row" data-selected-project-id="' + Number(projectId) + '">'
+            + '  <span class="omo-holon-create__project-selected-copy"><strong>' + escapeHtml(title) + '</strong>'
+            + (project && project.holonLabel ? '<small>' + escapeHtml(project.holonLabel) + '</small>' : '') + '</span>'
+            + '  <button type="button" class="generic-action-button generic-action-button--quiet-icon generic-action-button--icon-only" data-project-remove="' + Number(projectId) + '" aria-label="' + escapeHtml(removeLabel) + '">&times;</button>'
+            + '</div>';
+    }).join('');
+}
+
 function renderProjectPicker(property, selectedIds, scope) {
-    const selectedIdMap = new Set(selectedIds);
     const projectScope = ['local', 'children', 'descendants', 'global'].indexOf(String(scope || '')) >= 0
         ? String(scope)
         : 'local';
-    const projects = getProjectCatalog(projectScope);
-    const scopeButtons = [
-        ['local', 'Local'],
-        ['children', 'Enfants directs'],
-        ['descendants', 'Descendants'],
-        ['global', 'Global']
-    ].map(function (option) {
-        const isActive = projectScope === option[0];
-        return '<button type="button" class="omo-segmented__button omo-holon-create__project-scope-button'
-            + (isActive ? ' is-active' : '') + '" data-project-scope="' + option[0]
-            + '" aria-pressed="' + (isActive ? 'true' : 'false') + '">' + option[1] + '</button>';
-    }).join('');
-    const searchHtml = '<label class="omo-view-filter__search omo-holon-create__project-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" placeholder="Rechercher un projet..." aria-label="Rechercher un projet"></label>';
-    const listHtml = projects.length === 0
-        ? '<div class="omo-holon-create__empty-note generic-description generic-description--compact">Aucun projet disponible.</div>'
-        : projects.map(function (project) {
-            const checked = selectedIdMap.has(Number(project.id || 0)) ? ' checked' : '';
-            return ''
-                + '<label class="omo-holon-create__project-option">'
-                + '  <input type="checkbox" class="omo-holon-create__property-value omo-holon-create__property-value--project" value="' + Number(project.id || 0) + '"' + checked + '>'
-                + '  <span>' + escapeHtml(project.title || '') + (project.holonLabel ? '<small>' + escapeHtml(project.holonLabel) + '</small>' : '') + '</span>'
-                + '</label>';
-        }).join('');
 
     return ''
-        + '<div class="omo-holon-create__project-picker" data-project-picker data-selected-ids="' + selectedIds.join(',') + '">'
-        + '  <div class="omo-view-filter__input omo-holon-create__project-toolbar">'
-        + '  <div class="omo-segmented omo-holon-create__project-scopes" role="group" aria-label="Portée des projets">' + scopeButtons + '</div>'
-        + searchHtml
-        + '  </div>'
-        + '  <div class="omo-holon-create__project-list">' + listHtml + '</div>'
+        + '<div class="omo-holon-create__project-picker" data-project-picker data-project-scope="' + projectScope + '" data-selected-ids="' + selectedIds.join(',') + '">'
+        + '  <div class="omo-holon-create__project-selected-list" data-project-selected-list>' + renderSelectedProjectRows(selectedIds) + '</div>'
+        + '  <div><button type="button" class="generic-action-button generic-action-button--secondary" data-project-picker-open>' + escapeHtml(projectPickerTexts.add) + '</button></div>'
         + '</div>';
+}
+
+function syncProjectPickerSelectedList(projectPicker) {
+    const selectedList = projectPicker ? projectPicker.querySelector('[data-project-selected-list]') : null;
+    if (selectedList) {
+        selectedList.innerHTML = renderSelectedProjectRows(readProjectPickerSelectedIds(projectPicker));
+    }
+}
+
+function destroyProjectPickerController(projectPicker) {
+    if (projectPicker && projectPicker.__omoProjectPickerController && typeof projectPicker.__omoProjectPickerController.destroy === 'function') {
+        projectPicker.__omoProjectPickerController.destroy();
+    }
+    if (projectPicker) {
+        projectPicker.__omoProjectPickerController = null;
+    }
+}
+
+function openProjectPicker(projectPicker) {
+    if (!projectPicker || typeof window.commonTopbarPushModal !== 'function' || typeof window.commonTopbarPopModal !== 'function') {
+        return;
+    }
+
+    const selectedIds = readProjectPickerSelectedIds(projectPicker);
+    const selectedProject = selectedIds.map(findProject).find(function (project) {
+        return project && Number(project.holonId || 0) > 0;
+    });
+    let initialHolonId = Number(projectPicker.dataset.projectPickerHolonId || (selectedProject && selectedProject.holonId) || state.data.holonId || state.data.contextHolonId || 0);
+
+    projectPicker.dataset.projectPickerHolonId = String(initialHolonId || 0);
+    const modalHtml = ''
+        + '<div class="omo-document-embed-picker omo-resource-picker omo-holon-create__project-picker-content generic-drawer-content" data-holon-project-picker-modal data-topbar-modal-max-width="1100px">'
+        + '  <aside class="omo-resource-picker__navigation" data-project-holon-scope></aside>'
+        + '  <div class="omo-resource-picker__content omo-holon-create__project-picker-results">'
+        + '    <label class="omo-resource-picker__quick-search"><img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true"><input type="search" class="generic-form-control" data-project-picker-search placeholder="' + escapeHtml(projectPickerTexts.search) + '" aria-label="' + escapeHtml(projectPickerTexts.search) + '"></label>'
+        + '    <div class="omo-document-embed-picker__field"><select class="generic-form-control omo-document-embed-picker__select omo-holon-create__project-choice-select" data-project-choice-select size="10" multiple></select></div>'
+        + '    <p class="generic-description generic-description--compact" data-project-picker-empty hidden>' + escapeHtml(projectPickerTexts.empty) + '</p>'
+        + '    <div class="omo-document-embed-picker__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-project-picker-cancel>' + escapeHtml(projectPickerTexts.cancel) + '</button><button type="button" class="generic-action-button generic-action-button--main" data-project-picker-confirm>' + escapeHtml(projectPickerTexts.confirm) + '</button></div>'
+        + '  </div>'
+        + '</div>';
+
+    if (!window.commonTopbarPushModal(projectPickerTexts.title, modalHtml, 'html')) {
+        return;
+    }
+    const modalBody = document.getElementById('commonTopbarModalBody');
+    const modalRoot = modalBody ? modalBody.querySelector('[data-holon-project-picker-modal]') : null;
+    const search = modalRoot ? modalRoot.querySelector('[data-project-picker-search]') : null;
+    const cancelButton = modalRoot ? modalRoot.querySelector('[data-project-picker-cancel]') : null;
+    const confirmButton = modalRoot ? modalRoot.querySelector('[data-project-picker-confirm]') : null;
+    let closed = false;
+
+    const cleanup = function () {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        window.removeEventListener('common-topbar-modal-pop', handleModalPop);
+        destroyProjectPickerController(projectPicker);
+    };
+    const closeAndRestoreEditor = function () {
+        cleanup();
+        window.commonTopbarPopModal();
+    };
+    const handleModalPop = function () {
+        cleanup();
+    };
+
+    window.addEventListener('common-topbar-modal-pop', handleModalPop);
+
+    if (modalRoot && typeof window.commonMountProjectPicker === 'function') {
+        projectPicker.__omoProjectPickerController = window.commonMountProjectPicker({
+            root: modalRoot,
+            scopeHost: '[data-project-holon-scope]',
+            searchInput: '[data-project-picker-search]',
+            selectElement: '[data-project-choice-select]',
+            emptyElement: '[data-project-picker-empty]',
+            projects: getProjectPickerCandidates(projectPicker),
+            organizationId: <?= $organizationId ?>,
+            initialHolonId: initialHolonId,
+            initialScope: 'local',
+            selectedIds: selectedIds,
+            multiple: true,
+            showModes: true,
+            scopeLabels: {
+                local: projectPickerTexts.scopeLocal,
+                children: projectPickerTexts.scopeChildren,
+                descendants: projectPickerTexts.scopeDescendants
+            },
+            labelMode: 'context',
+            getHolonId: function (project) { return Number(project.holonId || 0); },
+            getSearchText: function (project) { return [project.title, project.holonLabel].join(' '); },
+            getOptionLabel: function (project) {
+                return String(project.title || '') + (project.holonLabel ? ' — ' + String(project.holonLabel) : '');
+            },
+            onHolonChange: function (holonId) {
+                projectPicker.dataset.projectPickerHolonId = String(Number(holonId || 0));
+            }
+        });
+    }
+    if (cancelButton) {
+        cancelButton.addEventListener('click', closeAndRestoreEditor);
+    }
+    if (confirmButton) {
+        confirmButton.addEventListener('click', function () {
+            if (projectPicker.__omoProjectPickerController && typeof projectPicker.__omoProjectPickerController.getSelectedIds === 'function') {
+                projectPicker.dataset.selectedIds = projectPicker.__omoProjectPickerController.getSelectedIds().join(',');
+                syncProjectPickerSelectedList(projectPicker);
+            }
+            closeAndRestoreEditor();
+        });
+    }
+    if (search) {
+        search.focus();
+    }
 }
 
 function renderPropertyInput(property) {
@@ -2693,28 +2864,6 @@ elements.cancel.addEventListener('click', function () {
 });
 
 root.addEventListener('change', function (event) {
-    if (event.target.matches('.omo-holon-create__property-value--project')) {
-        const projectPicker = event.target.closest('[data-project-picker]');
-        if (!projectPicker) {
-            return;
-        }
-
-        const selectedIds = new Set(readProjectPickerSelectedIds(projectPicker));
-        Array.from(projectPicker.querySelectorAll('.omo-holon-create__property-value--project')).forEach(function (projectInput) {
-            const projectId = Number(projectInput.value || 0);
-            if (projectId <= 0) {
-                return;
-            }
-            if (projectInput.checked) {
-                selectedIds.add(projectId);
-            } else {
-                selectedIds.delete(projectId);
-            }
-        });
-        projectPicker.dataset.selectedIds = Array.from(selectedIds).join(',');
-        return;
-    }
-
     if (event.target.matches('.omo-holon-create__direct-property-format, .omo-holon-create__direct-property-list-type')) {
         const propertyRow = event.target.closest('.omo-holon-create__property');
         if (!propertyRow) {
@@ -2750,18 +2899,6 @@ root.addEventListener('change', function (event) {
 });
 
 root.addEventListener('input', function (event) {
-    if (event.target.matches('.omo-holon-create__project-search')) {
-        const projectPicker = event.target.closest('[data-project-picker]');
-        if (projectPicker) {
-            const searchValue = String(event.target.value || '').trim().toLocaleLowerCase();
-            Array.from(projectPicker.querySelectorAll('.omo-holon-create__project-option')).forEach(function (option) {
-                option.hidden = searchValue !== ''
-                    && !String(option.textContent || '').toLocaleLowerCase().includes(searchValue);
-            });
-        }
-        return;
-    }
-
     if (!event.target.matches('.omo-holon-create__direct-property-name')) {
         return;
     }
@@ -2773,19 +2910,22 @@ root.addEventListener('input', function (event) {
 });
 
 root.addEventListener('click', function (event) {
-    const projectScopeButton = event.target.closest('.omo-holon-create__project-scope-button');
-    if (projectScopeButton) {
-        const projectPicker = projectScopeButton.closest('[data-project-picker]');
-        if (!projectPicker || projectScopeButton.getAttribute('aria-pressed') === 'true') {
-            return;
-        }
+    const projectPickerOpen = event.target.closest('[data-project-picker-open]');
+    if (projectPickerOpen) {
+        openProjectPicker(projectPickerOpen.closest('[data-project-picker]'));
+        return;
+    }
 
-        const selectedIds = readProjectPickerSelectedIds(projectPicker);
-        projectPicker.outerHTML = renderProjectPicker(
-            { listItemType: 'project' },
-            selectedIds,
-            String(projectScopeButton.getAttribute('data-project-scope') || 'local')
-        );
+    const projectRemove = event.target.closest('[data-project-remove]');
+    if (projectRemove) {
+        const projectPicker = projectRemove.closest('[data-project-picker]');
+        const projectId = Number(projectRemove.getAttribute('data-project-remove') || 0);
+        if (projectPicker && projectId > 0) {
+            projectPicker.dataset.selectedIds = readProjectPickerSelectedIds(projectPicker).filter(function (selectedId) {
+                return selectedId !== projectId;
+            }).join(',');
+            syncProjectPickerSelectedList(projectPicker);
+        }
         return;
     }
 
@@ -2921,4 +3061,4 @@ root.addEventListener('click', function (event) {
 </script>
 <?php endif; ?>
 
-<link rel="stylesheet" href="/omo/api/holons/editor.css?v=20260917-style-review-final">
+<link rel="stylesheet" href="/omo/api/holons/editor.css?v=20260922-shared-project-selector">

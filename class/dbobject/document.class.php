@@ -75,7 +75,7 @@
 				'codeedit' => 'Code d edition',
 				'documenttype' => 'Type de document',
 				'pvstage' => 'Etape du PV',
-				'is_template' => 'Modele de PV',
+				'is_template' => 'Modele de document',
 				'externalurl' => 'URL externe',
 				'openinnewwindow' => 'Ouvrir dans une nouvelle fenetre',
 				'project_visible_in_holon' => 'Afficher dans le holon si le document est lie a un projet',
@@ -113,7 +113,7 @@
 				'datecontentedition' => 'Date de mise a jour du brouillon temporaire',
 				'documenttype' => 'Permet de distinguer les documents HTML, les liens externes, les telechargements, les documents collaboratifs, les tableurs collaboratifs, les PV et les dossiers',
 				'pvstage' => 'Etape actuelle du flux d un document PV: preparation, reunion, relecture ou valide',
-				'is_template' => 'Permet d utiliser la structure et le contenu de ce PV lors d une nouvelle creation',
+				'is_template' => 'Permet d utiliser le contenu de ce document lors d une nouvelle creation',
 				'IDuser_pv_editor' => 'Personne qui tient le PV pendant la reunion et peut modifier tous les points.',
 				'IDuser_pv_official_editor' => 'Derniere personne officielle a tenir le PV, utilisee pour le retour en relecture.',
 				'pv_editor_handover_open' => 'Indique que le secretaire actuel autorise un invite a reprendre son role.',
@@ -272,34 +272,61 @@
 				: array('status' => false, 'text' => 'Impossible de modifier la visibilite du document.');
 		}
 
+		public function isDocumentTemplate(): bool
+		{
+			return (int)$this->getId() > 0
+				&& !$this->isArchived()
+				&& (int)$this->get('is_template') === 1
+				&& $this->isTemplateEligible();
+		}
+
+		public function isTemplateEligible(): bool
+		{
+			return $this->isPvDocument()
+				|| $this->supportsHtmlContent()
+				|| $this->isExternalLink()
+				|| ($this->isFolder() && !$this->isNextcloudFolder())
+				|| ($this->isUploadedFile() && $this->hasStoredFile())
+				|| ($this->isEtherpadDocument() && $this->getEtherpadPadId() !== '')
+				|| ($this->isEthercalcDocument() && $this->getEthercalcRoomId() !== '');
+		}
+
 		public function isPvTemplate(): bool
 		{
-			return $this->isPvDocument() && (int)$this->get('is_template') === 1;
+			return $this->isPvDocument() && $this->isDocumentTemplate();
 		}
 
 		public function canUseAsPvTemplate(int $organizationId): bool
 		{
-			return (int)$this->getId() > 0
-				&& !$this->isArchived()
-				&& $this->isPvTemplate()
-				&& (int)$this->get('IDorganization') === (int)$organizationId
-				&& $this->canViewDirectlyInOrganization($organizationId);
+			return $this->isPvTemplate() && $this->canUseAsDocumentTemplate($organizationId);
+		}
+
+		public function canUseAsDocumentTemplate(int $organizationId): bool
+		{
+			return $this->isDocumentTemplate()
+				&& (int)$this->get('IDorganization') === (int)$organizationId;
 		}
 
 		/**
 		 * A PV template is selected for the target of the new event, not for the
-		 * current viewer. A circle template can therefore be reused by every
-		 * descendant circle or role, while a role template remains local to that
-		 * exact role.
+		 * current viewer. Its availability is governed by the target context: a
+		 * circle template can therefore be reused by every descendant circle or
+		 * role, while a role template remains local to that exact role.
 		 */
 		public function canUseAsPvTemplateInOrganizationContext(int $organizationId, ?int $contextHolonId): bool
+		{
+			return $this->isPvTemplate()
+				&& $this->canUseAsDocumentTemplateInOrganizationContext($organizationId, $contextHolonId);
+		}
+
+		public function canUseAsDocumentTemplateInOrganizationContext(int $organizationId, ?int $contextHolonId): bool
 		{
 			$organizationId = (int)$organizationId;
 			$contextHolonId = $contextHolonId !== null ? (int)$contextHolonId : 0;
 			if (
 				(int)$this->getId() <= 0
 				|| $this->isArchived()
-				|| !$this->isPvTemplate()
+				|| !$this->isDocumentTemplate()
 				|| (int)$this->get('IDorganization') !== $organizationId
 			) {
 				return false;
@@ -345,11 +372,18 @@
 
 		public function updatePvTemplateState(int $organizationId, int $userId, bool $isTemplate): array
 		{
+			return $this->updateDocumentTemplateState($organizationId, $userId, $isTemplate);
+		}
+
+		public function updateDocumentTemplateState(int $organizationId, int $userId, bool $isTemplate): array
+		{
 			if (
 				(int)$this->getId() <= 0
 				|| (int)$this->get('IDorganization') !== (int)$organizationId
-				|| !$this->isPvDocument()
-				|| !$this->canUserManagePvDocument($userId)
+				|| !$this->isTemplateEligible()
+				|| ($this->isPvDocument()
+					? !$this->canUserManagePvDocument($userId)
+					: !$this->canManageInOrganizationContext($organizationId, $userId, false))
 			) {
 				return array('status' => false, 'text' => 'Acces refuse.');
 			}
@@ -6062,6 +6096,169 @@
 			}
 		}
 
+		public function createFromDocumentTemplateInOrganizationContext(
+			\dbObject\Document $template,
+			int $organizationId,
+			?int $holonId,
+			int $userId,
+			array $overrides = array()
+		): array {
+			if (!$template->canUseAsDocumentTemplateInOrganizationContext($organizationId, $holonId)) {
+				return array('status' => false, 'text' => 'Modele de document invalide ou inaccessible.');
+			}
+
+			$sourceDocumentIds = array();
+			return $this->copyDocumentTemplateInOrganizationContext($template, $organizationId, $holonId, $userId, $overrides, $sourceDocumentIds);
+		}
+
+		protected function copyDocumentTemplateInOrganizationContext(
+			\dbObject\Document $template,
+			int $organizationId,
+			?int $holonId,
+			int $userId,
+			array $overrides,
+			array &$sourceDocumentIds
+		): array {
+			$templateId = (int)$template->getId();
+			if ($templateId <= 0 || isset($sourceDocumentIds[$templateId])) {
+				return array('status' => false, 'text' => 'La structure du dossier modele est invalide.');
+			}
+			$sourceDocumentIds[$templateId] = true;
+
+			$templateType = $template->getDocumentType();
+			$values = array(
+				'title' => trim((string)($overrides['title'] ?? $template->get('title'))),
+				'description' => trim((string)($overrides['description'] ?? $template->get('description'))),
+				'keywords' => trim((string)($overrides['keywords'] ?? $template->get('keywords'))),
+				'document_type' => $templateType,
+			);
+			foreach (array('event_id', 'allow_empty_type_payload', 'parent_document_id', 'visibility_type', 'edit_visibility_type') as $overrideKey) {
+				if (array_key_exists($overrideKey, $overrides)) {
+					$values[$overrideKey] = $overrides[$overrideKey];
+				}
+			}
+
+			$temporaryFile = '';
+			if ($template->isFolder() && !$template->isNextcloudFolder()) {
+				$values['document_type'] = self::TYPE_FOLDER;
+				$values['is_folder'] = true;
+			} elseif ($templateType === self::TYPE_PV) {
+				$values['pv_template_id'] = (int)$template->getId();
+			} elseif ($templateType === self::TYPE_HTML) {
+				$values['content'] = (string)$template->get('content');
+			} elseif ($templateType === self::TYPE_EXTERNAL_LINK) {
+				$values['external_url'] = $template->getExternalUrl();
+				$values['open_in_new_window'] = $template->shouldOpenExternalLinkInNewWindow();
+			} elseif ($templateType === self::TYPE_UPLOADED_FILE && $template->hasStoredFile()) {
+				$organization = new \dbObject\Organization();
+				if (!$organization->load($organizationId)) {
+					return array('status' => false, 'text' => 'Organisation introuvable.');
+				}
+				$downloadResult = $organization->downloadDocumentFileFromStorage((string)$template->get('storedfilepath'));
+				if (!is_array($downloadResult) || empty($downloadResult['status'])) {
+					return is_array($downloadResult)
+						? $downloadResult
+						: array('status' => false, 'text' => 'Impossible de récupérer le fichier du modèle.');
+				}
+
+				$temporaryFile = tempnam(sys_get_temp_dir(), 'omo-document-template-');
+				$fileContents = (string)($downloadResult['body'] ?? '');
+				if ($temporaryFile === false || file_put_contents($temporaryFile, $fileContents) !== strlen($fileContents)) {
+					if (is_string($temporaryFile) && $temporaryFile !== '') {
+						@unlink($temporaryFile);
+					}
+					return array('status' => false, 'text' => 'Impossible de préparer le fichier du modèle.');
+				}
+
+				$values['uploaded_file'] = array(
+					'error' => UPLOAD_ERR_OK,
+					'tmp_name' => $temporaryFile,
+					'name' => $template->getStoredFileDownloadName(),
+					'type' => $template->getStoredFileMimeType(),
+					'size' => strlen($fileContents),
+				);
+			} elseif ($templateType !== self::TYPE_ETHERPAD && $templateType !== self::TYPE_ETHERCALC) {
+				return array('status' => false, 'text' => 'Ce type de document ne peut pas etre utilise comme modele.');
+			}
+
+			try {
+				$createResult = $this->createInOrganizationContext($organizationId, $holonId, $userId, $values);
+			} finally {
+				if ($temporaryFile !== '') {
+					@unlink($temporaryFile);
+				}
+			}
+			if (!is_array($createResult) || empty($createResult['status'])) {
+				return $createResult;
+			}
+
+			if ($template->isFolder()) {
+				$visibilityRule = $this->getPrimaryVisibilityRuleRow();
+				$editVisibilityRule = $this->getPrimaryEditVisibilityRuleRow();
+				$childOverrides = array(
+					'parent_document_id' => (int)$this->getId(),
+					'visibility_type' => (string)($visibilityRule['visibility_type'] ?? self::getDefaultVisibilityTypeForOrganization($organizationId)),
+					'edit_visibility_type' => (string)($editVisibilityRule['visibility_type'] ?? self::getDefaultEditVisibilityTypeForOrganization($organizationId)),
+				);
+				foreach ($template->getDirectChildren() as $templateChild) {
+					if (!($templateChild instanceof \dbObject\Document) || $templateChild->isArchived()) {
+						continue;
+					}
+
+					$childCopy = new \dbObject\Document();
+					$childCopyResult = $childCopy->copyDocumentTemplateInOrganizationContext(
+						$templateChild,
+						$organizationId,
+						$holonId,
+						$userId,
+						$childOverrides,
+						$sourceDocumentIds
+					);
+					if (!is_array($childCopyResult) || empty($childCopyResult['status'])) {
+						$this->deleteDocumentTree();
+						return is_array($childCopyResult)
+							? $childCopyResult
+							: array('status' => false, 'text' => 'Impossible de copier le contenu du dossier modele.');
+					}
+				}
+
+				return $createResult;
+			}
+
+			if ($templateType === self::TYPE_ETHERPAD) {
+				require_once dirname(__DIR__, 2) . '/common/etherpad.php';
+				$organization = new \dbObject\Organization();
+				$copyResult = $organization->load($organizationId)
+					? omoEtherpadCopyDocumentPadContents($organization, $template->getEtherpadPadId(), $this->getEtherpadPadId())
+					: array('status' => false, 'text' => 'Organisation introuvable.');
+			} elseif ($templateType === self::TYPE_ETHERCALC) {
+				require_once dirname(__DIR__, 2) . '/common/ethercalc.php';
+				$copyResult = omoEthercalcCopyDocumentSheetContents($template->getEthercalcRoomId(), $this->getEthercalcRoomId());
+			} else {
+				return $createResult;
+			}
+
+			if (is_array($copyResult) && !empty($copyResult['status'])) {
+				return $createResult;
+			}
+
+			$this->delete();
+			return is_array($copyResult)
+				? $copyResult
+				: array('status' => false, 'text' => 'Impossible de copier le contenu du modèle.');
+		}
+
+		protected function deleteDocumentTree(): bool
+		{
+			foreach ($this->getDirectChildren() as $child) {
+				if ($child instanceof \dbObject\Document && !$child->deleteDocumentTree()) {
+					return false;
+				}
+			}
+
+			return (bool)$this->delete();
+		}
+
 		public function updateInOrganizationContext(int $organizationId, int $userId, array $values = array())
 		{
 			$organizationId = (int)$organizationId;
@@ -7013,6 +7210,34 @@
 			}
 
 			return count($labels) > 0 ? implode(" > ", $labels) : '';
+		}
+
+		public function getTemplateGroupLabel(): string
+		{
+			static $labels = array();
+
+			$organizationId = (int)$this->get('IDorganization');
+			$holonId = (int)$this->get('IDholon');
+			$cacheKey = $organizationId . ':' . $holonId;
+			if (array_key_exists($cacheKey, $labels)) {
+				return $labels[$cacheKey];
+			}
+
+			if ($holonId > 0) {
+				$holon = new \dbObject\Holon();
+				if ($holon->load($holonId)) {
+					$label = trim((string)$holon->get('name'));
+					if ($label !== '') {
+						return $labels[$cacheKey] = $label;
+					}
+				}
+			}
+
+			$organization = new \dbObject\Organization();
+			$labels[$cacheKey] = $organizationId > 0 && $organization->load($organizationId)
+				? trim((string)$organization->get('name'))
+				: '';
+			return $labels[$cacheKey];
 		}
 	}
 
