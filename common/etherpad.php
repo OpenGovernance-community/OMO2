@@ -206,6 +206,33 @@ if (!function_exists('omoEtherpadCreateDocumentPad')) {
     }
 }
 
+if (!function_exists('omoEtherpadCopyDocumentPadContents')) {
+    /**
+     * Copies the current rendered content into a distinct document pad. The
+     * destination is deliberately a new pad: its revisions and authors stay
+     * independent from the source template.
+     */
+    function omoEtherpadCopyDocumentPadContents(\dbObject\Organization $organization, string $sourcePadId, string $targetPadId): array
+    {
+        $sourcePadId = trim($sourcePadId);
+        $targetPadId = trim($targetPadId);
+        if ($sourcePadId === '' || $targetPadId === '') {
+            return array('status' => false, 'text' => 'Identifiant Etherpad invalide.');
+        }
+
+        $sourceResult = omoEtherpadApiRequest($organization, 'getHTML', array('padID' => $sourcePadId));
+        if (!($sourceResult['status'] ?? false)) {
+            return $sourceResult;
+        }
+
+        $targetResult = omoEtherpadApiRequest($organization, 'setHTML', array(
+            'padID' => $targetPadId,
+            'html' => (string)($sourceResult['data']['html'] ?? ''),
+        ));
+        return !($targetResult['status'] ?? false) ? $targetResult : array('status' => true);
+    }
+}
+
 if (!function_exists('omoEtherpadDeleteDocumentPad')) {
     function omoEtherpadDeleteDocumentPad(\dbObject\Organization $organization, string $padId): array
     {

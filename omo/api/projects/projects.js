@@ -11,6 +11,15 @@
 
     var useLocalDrawerNavigation = typeof window.omoIsPvApplicationTabContext === 'function'
         && window.omoIsPvApplicationTabContext(root);
+    var isPvApplicationTab = useLocalDrawerNavigation;
+    if (!isPvApplicationTab) {
+        try {
+            var declaredViewPreferences = JSON.parse(root.getAttribute('data-omo-app-view-preferences') || '{}');
+            isPvApplicationTab = Boolean(declaredViewPreferences && declaredViewPreferences.isPvApplicationTab);
+        } catch (error) {
+            // The regular application behavior remains available when the context cannot be read.
+        }
+    }
 
     if (!window.omoProjectArchiveLinksBound) {
         document.addEventListener('click', function (event) {
@@ -134,7 +143,10 @@
         documentsPickerSelectRequired: 'Choisissez un document à associer.',
         documentsPickerError: 'Impossible de charger les documents disponibles.',
         documentsPickerAttachError: "Impossible d'associer ce document au projet.",
-        documentsPickerCreateError: 'Impossible de créer ce document.'
+        documentsPickerCreateError: 'Impossible de créer ce document.',
+        documentsPickerTemplateHint: 'Choisissez un modèle ou créez un document vide.',
+        documentsPickerBlank: 'Créer un document vide',
+        documentsPickerTemplateError: 'Impossible de créer le document depuis ce modèle.'
     };
     var mobileColumnIndex = 0;
     var requestToken = 0;
@@ -778,6 +790,7 @@
             var selectedDocumentId = 0;
             var scopePicker = null;
             var documents = Array.isArray(data.documents) ? data.documents : [];
+            var documentTemplates = Array.isArray(data.templates) ? data.templates : [];
 
             function showError(target, message) {
                 if (target) {
@@ -914,8 +927,111 @@
                 });
             }
 
+            function createDocumentFromTemplate(templateId, button, errorTarget) {
+                if (!Number.isInteger(templateId) || templateId <= 0) {
+                    return;
+                }
+
+                if (button) {
+                    button.disabled = true;
+                }
+                fetch('/omo/api/documents/template_action.php', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        id: templateId,
+                        action: 'duplicate',
+                        oid: Number(root.getAttribute('data-omo-projects-oid') || 0),
+                        cid: Number(data.projectHolonId || 0),
+                        project_id: Number(data.projectId || 0)
+                    })
+                }).then(function (response) {
+                    return response.json().then(function (payload) {
+                        if (!response.ok || !payload || payload.status !== true) {
+                            throw new Error(String(payload && payload.message || texts.documentsPickerTemplateError));
+                        }
+                        return payload;
+                    });
+                }).then(function (result) {
+                    window.dispatchEvent(new CustomEvent('omo-project-document-saved', {
+                        detail: {
+                            projectId: Number(result.projectId || data.projectId || 0),
+                            documentId: Number(result.id || 0)
+                        }
+                    }));
+                    window.commonTopbarCloseModal();
+                }).catch(function (templateError) {
+                    if (button) {
+                        button.disabled = false;
+                    }
+                    showError(errorTarget, templateError.message || texts.documentsPickerTemplateError);
+                });
+            }
+
+            function renderCreateChoices() {
+                if (!createContent || createContent.dataset.omoProjectDocumentCreateLoaded === '1') {
+                    return;
+                }
+                if (documentTemplates.length === 0) {
+                    loadCreateForm();
+                    return;
+                }
+
+                var templateGroups = {};
+                documentTemplates.forEach(function (template) {
+                    var templateId = Number(template && template.id || 0);
+                    var title = String(template && template.title || '');
+                    var groupKey = String(template && template.groupKey || 'organization');
+                    var groupLabel = String(template && template.groupLabel || '');
+                    if (templateId <= 0 || title === '' || groupLabel === '') {
+                        return;
+                    }
+                    if (!templateGroups[groupKey]) {
+                        templateGroups[groupKey] = {label: groupLabel, templates: []};
+                    }
+                    templateGroups[groupKey].templates.push({id: templateId, title: title});
+                });
+                var templateGroupsHtml = Object.keys(templateGroups).map(function (groupKey) {
+                    return templateGroups[groupKey];
+                }).sort(function (left, right) {
+                    return left.label.localeCompare(right.label, undefined, {sensitivity: 'base'});
+                }).map(function (group) {
+                    var buttons = group.templates.sort(function (left, right) {
+                        return left.title.localeCompare(right.title, undefined, {sensitivity: 'base'});
+                    }).map(function (template) {
+                        return '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-document-template-id="'
+                            + String(template.id) + '">' + escapeHtml(template.title) + '</button>';
+                    }).join('');
+                    return '<div class="generic-menu-group" role="group" aria-label="' + escapeHtml(group.label) + '">'
+                        + '<span class="generic-menu-group-label">' + escapeHtml(group.label) + '</span>'
+                        + '<div class="generic-form-stack generic-form-stack--compact">' + buttons + '</div></div>';
+                }).join('');
+                if (templateGroupsHtml === '') {
+                    loadCreateForm();
+                    return;
+                }
+
+                createContent.innerHTML = '<div class="generic-section generic-section--stack">'
+                    + '<p class="generic-description generic-description--small">' + escapeHtml(texts.documentsPickerTemplateHint || '') + '</p>'
+                    + '<div class="generic-menu">' + templateGroupsHtml + '</div>'
+                    + '<button type="button" class="generic-action-button generic-action-button--main" data-omo-project-document-create-blank>'
+                    + escapeHtml(texts.documentsPickerBlank || 'Créer un document vide') + '</button>'
+                    + '<p class="omo-project-document-picker__error" data-omo-project-document-template-error hidden></p></div>';
+                var templateError = createContent.querySelector('[data-omo-project-document-template-error]');
+                createContent.querySelectorAll('[data-omo-project-document-template-id]').forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        createDocumentFromTemplate(Number(button.getAttribute('data-omo-project-document-template-id') || 0), button, templateError);
+                    });
+                });
+                var blankButton = createContent.querySelector('[data-omo-project-document-create-blank]');
+                if (blankButton) {
+                    blankButton.addEventListener('click', loadCreateForm);
+                }
+            }
+
             if (newTabButton) {
-                newTabButton.addEventListener('click', loadCreateForm);
+                newTabButton.addEventListener('click', renderCreateChoices);
             }
             renderDocuments();
         }).catch(function (error) {
@@ -1158,11 +1274,13 @@
             : null;
         var canUseLegacyPersonal = typeof window.omoApplicationViewPreferencesCanUseLegacyPersonal === 'function'
             && window.omoApplicationViewPreferencesCanUseLegacyPersonal(root);
-        var preferences = getTemporaryDisplayPreferences()
-            || personalView
-            || serverDefault
-            || (canUseLegacyPersonal ? getStoredDisplayPreferences() : null)
-            || (canUseLegacyPersonal ? getDefaultDisplayPreferences() : null);
+        var preferences = isPvApplicationTab
+            ? personalView
+            : (getTemporaryDisplayPreferences()
+                || personalView
+                || serverDefault
+                || (canUseLegacyPersonal ? getStoredDisplayPreferences() : null)
+                || (canUseLegacyPersonal ? getDefaultDisplayPreferences() : null));
         if (!preferences) {
             return false;
         }
@@ -1440,7 +1558,7 @@
         removeProjectFilterOutsideHandler();
         closeProjectFilterMoreMenu();
 
-        if (!applyChanges || !pendingDisplayFilters) {
+        if (!applyChanges || !pendingDisplayFilters || (isPvApplicationTab && !saveView)) {
             pendingDisplayFilters = null;
             return;
         }
@@ -2232,6 +2350,35 @@
     });
 
     if (filterPanel) {
+        filterPanel.addEventListener('click', function (event) {
+            var saveButton = event.target.closest('[data-omo-projects-filter-save]');
+            if (!isPvApplicationTab || !saveButton) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            if (!filterPanelIsOpen || !pendingDisplayFilters || typeof window.omoApplicationViewPreferencesSave !== 'function') {
+                return;
+            }
+
+            var next = normalizeDisplayFilters(pendingDisplayFilters);
+            closeProjectFilterPanel(false, false);
+            saveButton.disabled = true;
+            window.omoApplicationViewPreferencesSave(root, 'personal', next, 'save').then(function () {
+                return refreshRoot(buildProjectsUrl(next.scope, next.view, next.sort, next.assignment, currentQuickSearch));
+            }).catch(function (error) {
+                var message = error && error.message ? error.message : 'Impossible d’enregistrer cette vue.';
+                if (typeof window.omoNotify === 'function') {
+                    window.omoNotify(message, 'error');
+                } else {
+                    window.alert(message);
+                }
+            }).finally(function () {
+                saveButton.disabled = false;
+            });
+        }, true);
+
         filterPanel.addEventListener('click', function (event) {
             var moreToggle = event.target.closest('[data-omo-projects-filter-more-toggle]');
             if (moreToggle) {

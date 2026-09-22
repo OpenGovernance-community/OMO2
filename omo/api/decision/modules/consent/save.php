@@ -129,6 +129,28 @@ if ($decision instanceof DecisionProcess) {
     $decision->set('evaluation_method', DecisionProcess::METHOD_CONSENT);
 }
 
+$consultationStartConflict = !$startDatesLocked
+    ? DecisionProcess::getManualConsultationStartConflict($status, $consultationStartAt)
+    : null;
+if ($consultationStartConflict instanceof \DateTimeInterface || ($status === DecisionProcess::STATUS_CONSULTATION && trim($consultationStartAt) === '')) {
+    omoDecisionModuleJsonResponse(422, [
+        'status' => false,
+        'message' => 'Le statut « En élaboration » doit correspondre à une date de début d élaboration déjà atteinte.',
+        'requiresLifecycleConfirmation' => true,
+    ]);
+}
+
+$evaluationStartConflict = !$startDatesLocked
+    ? DecisionProcess::getManualEvaluationStartConflict($status, $evaluationStartAt)
+    : null;
+if ($evaluationStartConflict instanceof \DateTimeInterface || ($status === DecisionProcess::STATUS_EVALUATION && trim($evaluationStartAt) === '')) {
+    omoDecisionModuleJsonResponse(422, [
+        'status' => false,
+        'message' => 'Le statut « En évaluation » doit correspondre à une date de début d évaluation déjà atteinte.',
+        'requiresLifecycleConfirmation' => true,
+    ]);
+}
+
 $resolvedVisibility = $decision->resolveVisibilityRuleInput($visibilityType);
 if (!$coreLocked && ($resolvedVisibility['status'] ?? false) !== true) {
     omoDecisionModuleJsonResponse(400, [
