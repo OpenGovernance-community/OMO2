@@ -120,6 +120,7 @@ if (!function_exists('omoDocumentsBuildListEntries')) {
                 true
             );
             $isExternalLink = $document->isExternalLink();
+            $isDocumentTemplate = $document->isDocumentTemplate();
             $canShareDocument = !$isFolder && $document->supportsHtmlContent();
             $documentTitle = (string)$document->get('title');
             $listTitle = $documentTitle;
@@ -140,6 +141,10 @@ if (!function_exists('omoDocumentsBuildListEntries')) {
                 'title' => $documentTitle,
                 'listTitle' => $listTitle,
                 'documentType' => $document->getDocumentType(),
+                'isTemplate' => $isDocumentTemplate,
+                'canManageTemplate' => $document->isTemplateEligible() && ($document->isPvDocument()
+                    ? $document->canUserManagePvDocument($currentUserId)
+                    : $canManageDocument),
                 'isPvValidated' => $isPvValidated,
                 'canOpenInPvApplicationTab' => $canOpenInPvApplicationTab,
                 'storedFileKind' => $document->isUploadedFile() ? $document->getStoredFileKind() : '',

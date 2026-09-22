@@ -257,6 +257,51 @@ class DecisionGovernanceAction extends DbObject
         ];
     }
 
+    /**
+     * Deferred proposals use the same structural state for roles and
+     * circles. Keep the historical role method for decision compatibility.
+     */
+    public static function captureHolonState(Holon $holon)
+    {
+        return self::captureRoleState($holon);
+    }
+
+    /**
+     * Snapshot the standard structural editor so deferred proposals can show
+     * property-level differences in the shared change-detail renderer.
+     */
+    public static function captureHolonEditorState(Holon $holon, Organization $organization): array
+    {
+        $state = self::captureHolonState($holon);
+        $parentHolon = $holon->getParentHolon();
+        if (!$parentHolon instanceof Holon) {
+            return $state;
+        }
+        $editorData = $organization->getHolonCreationEditorData(
+            (int)$parentHolon->getId(),
+            (int)$holon->getId(),
+            true
+        );
+        $editorHolon = is_array($editorData['holon'] ?? null) ? $editorData['holon'] : [];
+        if (count($editorHolon) === 0) {
+            return $state;
+        }
+        $state['editor_payload'] = [
+            'templateId' => (int)($editorHolon['templateId'] ?? 0),
+            'name' => (string)($editorHolon['name'] ?? ''),
+            'fullName' => (string)($editorHolon['fullName'] ?? ''),
+            'color' => (string)($editorHolon['color'] ?? ''),
+            'icon' => (string)($editorHolon['icon'] ?? ''),
+            'adminMin' => $editorHolon['adminMin'] ?? 0,
+            'adminMax' => $editorHolon['adminMax'] ?? null,
+            'adminMinOverride' => !empty($editorHolon['adminMinOverride']),
+            'adminMaxOverride' => !empty($editorHolon['adminMaxOverride']),
+            'permissions' => is_array($editorHolon['permissionAssignments'] ?? null) ? $editorHolon['permissionAssignments'] : [],
+            'properties' => is_array($editorHolon['properties'] ?? null) ? array_values($editorHolon['properties']) : [],
+        ];
+        return $state;
+    }
+
     public static function findRolesInGovernanceContext(Holon $contextHolon)
     {
         $roles = [];
@@ -325,15 +370,25 @@ class DecisionGovernanceAction extends DbObject
             return ['status' => false, 'message' => 'Le nom du role est trop long.'];
         }
         if ($role === null && $state['template_id'] <= 0) {
-            return ['status' => false, 'message' => 'Le modele du role est obligatoire.'];
+            return ['status' => false, 'message' => 'Le modèle de l espace est obligatoire.'];
         }
         if ($state['template_id'] > 0) {
             $template = new Holon();
-            if (!$template->load($state['template_id']) || (int)$template->get('IDtypeholon') !== 1) {
-                return ['status' => false, 'message' => 'Le modele de role choisi est invalide.'];
+            if (!$template->load($state['template_id']) || !in_array((int)$template->get('IDtypeholon'), [1, 2, 3], true)) {
+                return ['status' => false, 'message' => 'Le modèle d espace choisi est invalide.'];
             }
         }
         return ['status' => true, 'state' => $state];
+    }
+
+    public static function normalizeHolonState(array $state, ?Holon $holon = null)
+    {
+        return self::normalizeRoleState($state, $holon);
+    }
+
+    public static function validateHolonState(array $state, Holon $contextHolon, ?Holon $holon = null)
+    {
+        return self::validateRoleState($state, $contextHolon, $holon);
     }
 
     public static function buildRoleStateDescription(array $state)
@@ -618,11 +673,40 @@ class DecisionGovernanceAction extends DbObject
         }
     }
 
+    /**
+     * Compatibility executor used by the generic DeferredProposal store.
+     * Keeping the rule and role application code here avoids two divergent
+     * implementations during the migration away from decision-only actions.
+     */
+    public static function applyDeferredProposal(DeferredProposal $proposal, int $contextHolonId): array
+    {
+        $targetType = trim((string)$proposal->get('target_type'));
+        $operation = trim((string)$proposal->get('operation'));
+        $actionType = $targetType . '.' . $operation;
+        if (!self::isImplementedType($actionType)) {
+            return ['status' => false, 'message' => 'Type de proposition invalide.'];
+        }
+        $action = new self();
+        $action->set('action_type', $actionType);
+        $action->set('target_type', $targetType);
+        $action->set('target_id', (int)$proposal->get('target_id'));
+        $action->set('before_state', DeferredProposal::normalizeState($proposal->get('before_state')));
+        $action->set('after_state', DeferredProposal::normalizeState($proposal->get('after_state')));
+        $decision = new DecisionProcess();
+        $decision->set('IDorganization', (int)$proposal->get('IDorganization'));
+        $decision->set('IDholon', $contextHolonId > 0 ? $contextHolonId : (int)$proposal->get('IDholon'));
+        $result = $action->applyOne($decision);
+        if (!empty($result['created_id'])) {
+            $result['target_id'] = (int)$result['created_id'];
+        }
+        return $result;
+    }
+
     protected function applyOne(DecisionProcess $decision)
     {
         $actionType = trim((string)$this->get('action_type'));
         if (in_array($actionType, [self::TYPE_HOLON_CREATE, self::TYPE_HOLON_UPDATE, self::TYPE_HOLON_DELETE], true)) {
-            return $this->applyRoleAction($decision, $actionType);
+            return $this->applyHolonAction($decision, $actionType);
         }
         if (!in_array($actionType, [self::TYPE_RULE_CREATE, self::TYPE_RULE_UPDATE, self::TYPE_RULE_DELETE], true)) {
             return ['status' => false, 'message' => 'Ce type d action n est pas encore executable.'];
@@ -690,82 +774,96 @@ class DecisionGovernanceAction extends DbObject
         return $rule->applyGovernanceState((array)$validation['state'], 0);
     }
 
-    protected function applyRoleAction(DecisionProcess $decision, $actionType)
+    protected function applyHolonAction(DecisionProcess $decision, $actionType)
     {
         $context = new Holon();
         if (!$context->load((int)$decision->get('IDholon'))) {
-            return ['status' => false, 'conflict' => true, 'message' => 'Le cercle de la decision n existe plus.'];
+            return ['status' => false, 'conflict' => true, 'message' => 'Le contexte de la proposition n existe plus.'];
+        }
+        $organization = new Organization();
+        if (!$organization->load((int)$decision->get('IDorganization'))) {
+            return ['status' => false, 'message' => 'L organisation de la proposition est introuvable.'];
         }
         if ($actionType === self::TYPE_HOLON_CREATE) {
-            $validation = self::validateRoleState(self::normalizeState($this->get('after_state')), $context);
+            $validation = self::validateHolonState(self::normalizeState($this->get('after_state')), $context);
             if (empty($validation['status'])) return $validation;
             $existingTargetId = (int)$this->get('target_id');
             if ($existingTargetId > 0) {
-                $existingRole = new Holon();
-                if ($existingRole->load($existingTargetId)
-                    && (int)$existingRole->get('IDtypeholon') === 1
-                    && (int)$existingRole->get('IDholon_parent') === (int)$context->getId()
-                    && self::captureRoleState($existingRole) === array_diff_key((array)$validation['state'], ['editor_payload' => true])) {
+                $existingHolon = new Holon();
+                if ($existingHolon->load($existingTargetId)
+                    && (int)$existingHolon->get('IDholon_parent') === (int)$context->getId()
+                    && self::captureHolonState($existingHolon) === array_diff_key((array)$validation['state'], ['editor_payload' => true])) {
                     return ['status' => true, 'already_applied' => true];
                 }
-                return ['status' => false, 'conflict' => true, 'message' => 'La creation du role est dans un etat incoherent.'];
+                return ['status' => false, 'conflict' => true, 'message' => 'La création de l espace est dans un état incohérent.'];
             }
-            $role = new Holon();
+            $holon = new Holon();
             $state = $validation['state'];
             if (is_array($state['editor_payload'] ?? null)) {
-                $organization = new Organization();
-                if (!$organization->load((int)$decision->get('IDorganization'))) {
-                    return ['status' => false, 'message' => 'L organisation de la decision est introuvable.'];
-                }
                 $result = $organization->saveHolonEditorDefinition($state['editor_payload'], 0, (int)$context->getId(), 0, true);
                 if (empty($result['status'])) return $result;
                 $createdId = (int)($result['holon']['id'] ?? 0);
-                if ($createdId <= 0) return ['status' => false, 'message' => 'Le role ne peut pas etre cree.'];
+                if ($createdId <= 0) return ['status' => false, 'message' => 'L espace ne peut pas être créé.'];
                 $this->set('target_id', $createdId);
                 return ['status' => true, 'created_id' => $createdId];
             }
-            $role->set('name', $state['name']);
-            $role->set('nomcomplet', $state['full_name'] !== '' ? $state['full_name'] : null);
-            $role->set('color', $state['color'] !== '' ? $state['color'] : null);
-            $role->set('IDtypeholon', 1);
-            $role->set('IDholon_parent', (int)$context->getId());
-            $role->set('IDholon_template', $state['template_id']);
-            $role->set('IDholon_org', (int)$context->get('IDholon_org'));
-            $role->set('IDuser', (int)$context->get('IDuser'));
-            $role->set('active', true);
-            $role->set('visible', true);
-            $role->save();
-            if ((int)$role->getId() <= 0) return ['status' => false, 'message' => 'Le role ne peut pas etre cree.'];
-            $this->set('target_id', (int)$role->getId());
-            return ['status' => true, 'created_id' => (int)$role->getId()];
+            // Older hors-reorg decisions only store the compact role state.
+            // Keep that format executable while new deferred proposals always
+            // carry the full editor payload.
+            $holon->set('name', $state['name']);
+            $holon->set('nomcomplet', $state['full_name'] !== '' ? $state['full_name'] : null);
+            $holon->set('color', $state['color'] !== '' ? $state['color'] : null);
+            $holon->set('IDtypeholon', 1);
+            $holon->set('IDholon_parent', (int)$context->getId());
+            $holon->set('IDholon_template', $state['template_id']);
+            $holon->set('IDholon_org', (int)$context->get('IDholon_org'));
+            $holon->set('IDuser', (int)$context->get('IDuser'));
+            $holon->set('active', true);
+            $holon->set('visible', true);
+            $holon->save();
+            if ((int)$holon->getId() <= 0) return ['status' => false, 'message' => 'Le rôle ne peut pas être créé.'];
+            $this->set('target_id', (int)$holon->getId());
+            return ['status' => true, 'created_id' => (int)$holon->getId()];
         }
-        $role = new Holon();
-        if (!$role->load((int)$this->get('target_id')) || !self::roleBelongsToGovernanceContext($role, $context)) {
-            return ['status' => false, 'conflict' => true, 'message' => 'Le role cible n appartient plus a ce cercle.'];
+        $holon = new Holon();
+        $rootHolon = $organization->getStructuralRootHolon();
+        if (!$rootHolon instanceof Holon
+            || !$holon->load((int)$this->get('target_id'))
+            || !$holon->isDescendantOf($rootHolon, true)
+            || $holon->isTemplateNode((int)$rootHolon->getId())
+            || !in_array((int)$holon->get('IDtypeholon'), [1, 2, 3], true)) {
+            return ['status' => false, 'conflict' => true, 'message' => 'L espace cible n appartient plus a cette organisation.'];
+        }
+        // A persisted hors-reorg decision retains its historic role-only
+        // boundary. DeferredProposal builds an unsaved decision adapter and
+        // deliberately permits any structural holon selected by the PV.
+        if ((int)$decision->getId() > 0 && !self::roleBelongsToGovernanceContext($holon, $context)) {
+            return ['status' => false, 'conflict' => true, 'message' => 'Le rôle cible n appartient plus à ce cercle.'];
         }
         $before = self::normalizeRoleState(self::normalizeState($this->get('before_state')));
-        $current = self::captureRoleState($role);
+        $current = self::captureHolonState($holon);
         $beforeComparable = array_diff_key($before, ['editor_payload' => true]);
         if ($actionType === self::TYPE_HOLON_DELETE) {
-            if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'Le role a ete modifie depuis la proposition.'];
-            return $role->delete() ? ['status' => true, 'deleted_id' => (int)$role->getId()] : ['status' => false, 'message' => 'Le role ne peut pas etre supprime.'];
+            if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'L espace a été modifié depuis la proposition.'];
+            $result = $organization->deleteHolonDefinition((int)$holon->getId(), 0, true);
+            return !empty($result['status'])
+                ? ['status' => true, 'deleted_id' => (int)$holon->getId()]
+                : ['status' => false, 'message' => (string)($result['message'] ?? 'L espace ne peut pas être supprimé.')];
         }
-        $after = self::normalizeRoleState(self::normalizeState($this->get('after_state')), $role);
+        $after = self::normalizeHolonState(self::normalizeState($this->get('after_state')), $holon);
         if ($current === $after) return ['status' => true, 'already_applied' => true];
-        if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'Le role a ete modifie depuis la proposition.'];
-        $validation = self::validateRoleState($after, $context, $role);
+        if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'L espace a été modifié depuis la proposition.'];
+        $parentHolon = $holon->getParentHolon();
+        if (!$parentHolon instanceof Holon) return ['status' => false, 'conflict' => true, 'message' => 'Le parent de l espace cible est introuvable.'];
+        $validation = self::validateHolonState($after, $parentHolon, $holon);
         if (empty($validation['status'])) return $validation;
         if (is_array($validation['state']['editor_payload'] ?? null)) {
-            $organization = new Organization();
-            if (!$organization->load((int)$decision->get('IDorganization'))) {
-                return ['status' => false, 'message' => 'L organisation de la decision est introuvable.'];
-            }
-            return $organization->saveHolonEditorDefinition($validation['state']['editor_payload'], 0, (int)$context->getId(), (int)$role->getId(), true);
+            return $organization->saveHolonEditorDefinition($validation['state']['editor_payload'], 0, (int)$parentHolon->getId(), (int)$holon->getId(), true);
         }
-        $role->set('name', $validation['state']['name']);
-        $role->set('nomcomplet', $validation['state']['full_name'] !== '' ? $validation['state']['full_name'] : null);
-        $role->set('color', $validation['state']['color'] !== '' ? $validation['state']['color'] : null);
-        return $role->save();
+        $holon->set('name', $validation['state']['name']);
+        $holon->set('nomcomplet', $validation['state']['full_name'] !== '' ? $validation['state']['full_name'] : null);
+        $holon->set('color', $validation['state']['color'] !== '' ? $validation['state']['color'] : null);
+        return $holon->save();
     }
 
     protected static function normalizeDateValue($value)

@@ -2251,6 +2251,19 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     background: var(--generic-menu-border, var(--color-border, #d1d5db));
 }
 
+.generic-menu-group + .generic-menu-group {
+    border-top: 1px solid var(--generic-menu-border, var(--color-border, #d1d5db));
+}
+
+.generic-menu-group-label {
+    display: block;
+    padding: 10px 12px 7px;
+    color: var(--generic-menu-muted-text, var(--color-text-muted, #6b7280));
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
 .generic-file-list--structured .generic-file-list__menu {
     position: absolute;
     top: 50%;

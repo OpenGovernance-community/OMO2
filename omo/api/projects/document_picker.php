@@ -84,6 +84,26 @@ usort($payload, static function (array $left, array $right): int {
     return strnatcasecmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
 });
 
+$templates = new ArrayDocument();
+$templates->loadDocumentTemplatesForOrganization($organizationId);
+$templatePayload = [];
+foreach ($templates as $template) {
+    if (!($template instanceof \dbObject\Document)
+        || !$template->canUseAsDocumentTemplateInOrganizationContext($organizationId, (int)$projectHolon->getId())) {
+        continue;
+    }
+
+    $templatePayload[] = [
+        'id' => (int)$template->getId(),
+        'title' => trim((string)$template->get('title')),
+        'documentType' => $template->getDocumentType(),
+        'groupKey' => (int)$template->get('IDholon') > 0
+            ? 'holon-' . (int)$template->get('IDholon')
+            : 'organization',
+        'groupLabel' => $template->getTemplateGroupLabel(),
+    ];
+}
+
 $respond(true, [
     'projectId' => $projectId,
     'projectHolonId' => (int)$projectHolon->getId(),
@@ -93,6 +113,7 @@ $respond(true, [
         . '&project_id=' . rawurlencode((string)$projectId)
         . '&editor_host=project_picker',
     'documents' => $payload,
+    'templates' => $templatePayload,
     'scopeLabels' => [
         'local' => omoProjectsT('projects.scope.contextual'),
         'children' => omoProjectsT('projects.scope.children'),

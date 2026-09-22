@@ -38,6 +38,26 @@ function omoDocumentsPvEditorSourceLang(): array
         'documents.pv_editor.error.forbidden' => ['text' => 'Vous ne pouvez pas ouvrir cet éditeur de PV.', 'context' => 'Error shown when the current viewer cannot use the PV editor.'],
         'documents.pv_editor.error.invalid_request' => ['text' => 'Demande invalide.', 'context' => 'Error shown when the PV editor action endpoint receives an unsupported request method.'],
         'documents.pv_editor.action.add_point' => ['text' => 'Ajouter un point', 'context' => 'Button used to add a new agenda point in the PV editor.'],
+        'documents.pv_editor.action.add_proposal' => ['text' => 'Ajouter une proposition', 'context' => 'Button used to attach a deferred proposal to a PV point.'],
+        'documents.pv_editor.proposals.title' => ['text' => 'Propositions', 'context' => 'Heading above the deferred proposals attached to a PV point.'],
+        'documents.pv_editor.proposals.operation.create' => ['text' => 'Création', 'context' => 'Operation label for a deferred object creation.'],
+        'documents.pv_editor.proposals.operation.update' => ['text' => 'Modification', 'context' => 'Operation label for a deferred object update.'],
+        'documents.pv_editor.proposals.operation.delete' => ['text' => 'Suppression', 'context' => 'Operation label for a deferred object deletion.'],
+        'documents.pv_editor.proposals.holon_summary' => ['text' => '{operation} d’un élément de type {type}', 'context' => 'Summary of a deferred structural object action.'],
+        'documents.pv_editor.proposals.status.pending' => ['text' => 'En attente', 'context' => 'Status of a deferred proposal waiting for validation.'],
+        'documents.pv_editor.proposals.status.validated' => ['text' => 'Validée', 'context' => 'Status of a validated deferred proposal.'],
+        'documents.pv_editor.proposals.status.applied' => ['text' => 'Appliquée', 'context' => 'Status of an applied deferred proposal.'],
+        'documents.pv_editor.proposals.status.rejected' => ['text' => 'Refusée', 'context' => 'Status of a rejected deferred proposal.'],
+        'documents.pv_editor.proposals.status.removed' => ['text' => 'Retirée', 'context' => 'Status of a removed deferred proposal.'],
+        'documents.pv_editor.proposals.status.conflict' => ['text' => 'Conflit', 'context' => 'Status of a deferred proposal that could not be applied due to a conflict.'],
+        'documents.pv_editor.proposals.status.failed' => ['text' => 'Échec', 'context' => 'Status of a deferred proposal that failed during application.'],
+        'documents.pv_editor.proposals.changed_fields' => ['text' => 'Champs modifiés : {count}', 'context' => 'Count of fields changed by an update proposal.'],
+        'documents.pv_editor.proposals.action.more' => ['text' => 'Actions de la proposition', 'context' => 'Accessible label for the deferred proposal overflow menu.'],
+        'documents.pv_editor.proposals.action.edit' => ['text' => 'Éditer', 'context' => 'Action editing a pending deferred proposal.'],
+        'documents.pv_editor.proposals.edit_title' => ['text' => 'Éditer une proposition', 'context' => 'Title of the modal editing a deferred proposal.'],
+        'documents.pv_editor.proposals.action.delete' => ['text' => 'Supprimer', 'context' => 'Action removing a pending deferred proposal.'],
+        'documents.pv_editor.proposals.action.delete_confirm' => ['text' => 'Supprimer cette proposition ?', 'context' => 'Confirmation shown before removing a pending deferred proposal.'],
+        'documents.pv_editor.proposals.detail' => ['text' => 'Afficher le détail de la proposition', 'context' => 'Accessible label for the deferred proposal accordion toggle.'],
         'documents.pv_editor.action.add_group' => ['text' => 'Ajouter un groupe', 'context' => 'Button used to add a thematic group in the PV agenda.'],
         'documents.pv_editor.action.sort' => ['text' => 'Classer les points', 'context' => 'Button opening the agenda sorting menu in the PV editor.'],
         'documents.pv_editor.sort.order.none' => ['text' => 'Sans tri', 'context' => 'PV agenda sorting option that keeps the current order.'],
@@ -370,6 +390,26 @@ function omoDocumentsPvEditorBuildUiText(?callable $translate = null, array $pri
     $uiText = [
         'reviewReadonly' => $resolve('documents.pv_editor.notice.review_readonly', 'Ce point est verrouillé pendant la relecture. Utilisez la discussion pour signaler une correction.'),
         'save' => $resolve('documents.pv_editor.action.save', 'Enregistrer'),
+        'addProposal' => $resolve('documents.pv_editor.action.add_proposal', 'Ajouter une proposition'),
+        'proposalsTitle' => $resolve('documents.pv_editor.proposals.title', 'Propositions'),
+        'proposalOperationCreate' => $resolve('documents.pv_editor.proposals.operation.create', 'Création'),
+        'proposalOperationUpdate' => $resolve('documents.pv_editor.proposals.operation.update', 'Modification'),
+        'proposalOperationDelete' => $resolve('documents.pv_editor.proposals.operation.delete', 'Suppression'),
+        'proposalHolonSummary' => $resolve('documents.pv_editor.proposals.holon_summary', '{operation} d’un élément de type {type}'),
+        'proposalStatusPending' => $resolve('documents.pv_editor.proposals.status.pending', 'En attente'),
+        'proposalStatusValidated' => $resolve('documents.pv_editor.proposals.status.validated', 'Validée'),
+        'proposalStatusApplied' => $resolve('documents.pv_editor.proposals.status.applied', 'Appliquée'),
+        'proposalStatusRejected' => $resolve('documents.pv_editor.proposals.status.rejected', 'Refusée'),
+        'proposalStatusRemoved' => $resolve('documents.pv_editor.proposals.status.removed', 'Retirée'),
+        'proposalStatusConflict' => $resolve('documents.pv_editor.proposals.status.conflict', 'Conflit'),
+        'proposalStatusFailed' => $resolve('documents.pv_editor.proposals.status.failed', 'Échec'),
+        'proposalChangedFields' => $resolve('documents.pv_editor.proposals.changed_fields', 'Champs modifiés : {count}'),
+        'proposalMore' => $resolve('documents.pv_editor.proposals.action.more', 'Actions de la proposition'),
+        'proposalEdit' => $resolve('documents.pv_editor.proposals.action.edit', 'Éditer'),
+        'proposalEditTitle' => $resolve('documents.pv_editor.proposals.edit_title', 'Éditer une proposition'),
+        'proposalDelete' => $resolve('documents.pv_editor.proposals.action.delete', 'Supprimer'),
+        'proposalDeleteConfirm' => $resolve('documents.pv_editor.proposals.action.delete_confirm', 'Supprimer cette proposition ?'),
+        'proposalDetail' => $resolve('documents.pv_editor.proposals.detail', 'Afficher le détail de la proposition'),
         'takeOverLock' => $resolve('documents.pv_editor.action.take_over_lock', 'Reprendre l’édition'),
         'takeOverWaiting' => $resolve('documents.pv_editor.action.take_over_waiting', 'Demande d’enregistrement…'),
         'deletePoint' => $resolve('documents.pv_editor.action.delete_point', 'Supprimer le point'),
@@ -692,6 +732,20 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
     $pointData['canAssignAuthor'] = !$pointData['isHandled']
         && $document->canUserManagePvDocument($currentUserId);
     $pointData['hasStructureApplication'] = $hasStructureApplication;
+    $pointData['deferredProposals'] = [];
+    foreach (\dbObject\DeferredProposal::getForPvPoint((int)$point->getId()) as $deferredProposal) {
+        if ($deferredProposal instanceof \dbObject\DeferredProposal
+            && (string)$deferredProposal->get('status') !== \dbObject\DeferredProposal::STATUS_REMOVED) {
+            $pointData['deferredProposals'][] = $deferredProposal->buildPresentationData();
+        }
+    }
+    $pointData['deferredProposalCount'] = count($pointData['deferredProposals']);
+    $pointData['canAddDeferredProposal'] = !$pointData['isReview']
+        && !$pointData['isHandled']
+        && !empty($pointData['canEditNow'])
+        && $document->canUserManagePvDocument($currentUserId)
+        && $hasStructureApplication;
+    $pointData['canManageDeferredProposals'] = $pointData['canAddDeferredProposal'];
     $pointData['authorOptions'] = $authorOptions;
     $pointData['authorHolonOptions'] = $authorHolonOptions;
 
@@ -710,6 +764,8 @@ function omoDocumentsPvEditorBuildContextualPointPayload(
         $pointData['canTakeOverLock'] = false;
         $pointData['canToggleHandled'] = false;
         $pointData['canAssignAuthor'] = false;
+        $pointData['canAddDeferredProposal'] = false;
+        $pointData['canManageDeferredProposals'] = false;
         $pointData['hasStructureApplication'] = $publicParticipantCanUseStructure && $hasStructureApplication;
         $pointData['authorOptions'] = [[
             'value' => $publicParticipationLink->getRecipientUserId() > 0
@@ -1043,6 +1099,126 @@ function omoDocumentsPvEditorRenderPointDiscussionTrigger(array $pointData, arra
         . '</button></div>';
 }
 
+function omoDocumentsPvEditorRenderDeferredProposals(array $pointData, array $uiText): string
+{
+    $proposals = is_array($pointData['deferredProposals'] ?? null) ? $pointData['deferredProposals'] : [];
+    $canAdd = !empty($pointData['canAddDeferredProposal']);
+    $canManage = !empty($pointData['canManageDeferredProposals']);
+    if (!$proposals && !$canAdd) {
+        return '';
+    }
+
+    $operationLabels = [
+        \dbObject\DeferredProposal::OPERATION_CREATE => (string)($uiText['proposalOperationCreate'] ?? 'Création'),
+        \dbObject\DeferredProposal::OPERATION_UPDATE => (string)($uiText['proposalOperationUpdate'] ?? 'Modification'),
+        \dbObject\DeferredProposal::OPERATION_DELETE => (string)($uiText['proposalOperationDelete'] ?? 'Suppression'),
+    ];
+    $statusLabels = [
+        \dbObject\DeferredProposal::STATUS_PENDING => (string)($uiText['proposalStatusPending'] ?? 'En attente'),
+        \dbObject\DeferredProposal::STATUS_VALIDATED => (string)($uiText['proposalStatusValidated'] ?? 'Validée'),
+        \dbObject\DeferredProposal::STATUS_APPLIED => (string)($uiText['proposalStatusApplied'] ?? 'Appliquée'),
+        \dbObject\DeferredProposal::STATUS_REJECTED => (string)($uiText['proposalStatusRejected'] ?? 'Refusée'),
+        \dbObject\DeferredProposal::STATUS_REMOVED => (string)($uiText['proposalStatusRemoved'] ?? 'Retirée'),
+        \dbObject\DeferredProposal::STATUS_CONFLICT => (string)($uiText['proposalStatusConflict'] ?? 'Conflit'),
+        \dbObject\DeferredProposal::STATUS_FAILED => (string)($uiText['proposalStatusFailed'] ?? 'Échec'),
+    ];
+
+    $pointId = (int)($pointData['id'] ?? 0);
+    $organizationId = (int)($pointData['organizationId'] ?? 0);
+    $html = '<section class="omo-pv-editor__deferred-proposals generic-stack generic-stack--compact" data-omo-pv-point-proposals>';
+    $html .= '<h4 class="generic-card-title generic-card-title--medium">' . omoDocumentsPvEditorEscape((string)($uiText['proposalsTitle'] ?? 'Propositions')) . '</h4>';
+    if ($proposals) {
+        $html .= '<div class="omo-pv-editor__deferred-proposal-list">';
+        foreach ($proposals as $proposal) {
+            if (!is_array($proposal)) continue;
+            $proposalId = (int)($proposal['id'] ?? 0);
+            $operation = trim((string)($proposal['operation'] ?? ''));
+            $status = trim((string)($proposal['status'] ?? ''));
+            $operationLabel = $operationLabels[$operation] ?? $operation;
+            $statusLabel = $statusLabels[$status] ?? $status;
+            $targetLabel = trim((string)($proposal['targetLabel'] ?? ''));
+            $targetType = trim((string)($proposal['targetType'] ?? ''));
+            $objectTypeLabel = trim((string)($proposal['objectTypeLabel'] ?? ''));
+            $holonLabel = trim((string)($proposal['holonLabel'] ?? ''));
+            $title = trim((string)($proposal['title'] ?? ''));
+            if ($targetType === \dbObject\DeferredProposal::TARGET_HOLON && $objectTypeLabel !== '') {
+                $normalizedTypeLabel = function_exists('mb_strtolower')
+                    ? mb_strtolower($objectTypeLabel, 'UTF-8')
+                    : strtolower($objectTypeLabel);
+                $summary = str_replace(
+                    ['{operation}', '{type}'],
+                    [$operationLabel, $normalizedTypeLabel],
+                    (string)($uiText['proposalHolonSummary'] ?? '{operation} d’un élément de type {type}')
+                );
+            } else {
+                $summary = $operationLabel . ($targetLabel !== '' ? ' : ' . $targetLabel : '');
+            }
+            if ($title !== '' && $title !== $targetLabel) {
+                $summary .= ' « ' . $title . ' »';
+            }
+            if ($holonLabel !== '') {
+                $summary .= ' — ' . $holonLabel;
+            }
+            $detailId = 'omo-pv-deferred-proposal-detail-' . $proposalId;
+            $changePayload = base64_encode((string)json_encode([
+                'governanceAction' => [
+                    'type' => (string)($proposal['changeType'] ?? ''),
+                    'before' => is_array($proposal['beforeState'] ?? null) ? $proposal['beforeState'] : [],
+                    'after' => is_array($proposal['afterState'] ?? null) ? $proposal['afterState'] : [],
+                ],
+                'authorities' => is_array($proposal['authorities'] ?? null) ? $proposal['authorities'] : [],
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+            $html .= '<article class="omo-pv-editor__deferred-proposal generic-soft-panel" data-deferred-proposal-id="' . $proposalId . '">';
+            $html .= '<button type="button" class="omo-pv-editor__deferred-proposal-toggle" data-omo-deferred-proposal-toggle aria-expanded="false" aria-controls="' . $detailId . '" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['proposalDetail'] ?? 'Afficher le détail de la proposition')) . '">';
+            $html .= '<strong class="omo-pv-editor__deferred-proposal-summary">' . omoDocumentsPvEditorEscape($summary) . '</strong>';
+            $html .= '<span class="omo-pv-editor__deferred-proposal-status">' . omoDocumentsPvEditorEscape($statusLabel) . '</span>';
+            $html .= '</button>';
+            if ($canManage && $status === \dbObject\DeferredProposal::STATUS_PENDING) {
+                if ($targetType === \dbObject\DeferredProposal::TARGET_HOLON) {
+                    $editUrl = '/omo/api/deferred_proposals/pv_holon_editor.php?stage=capture&direct=1&oid=' . $organizationId . '&point_id=' . $pointId . '&proposal_id=' . $proposalId;
+                } elseif ($targetType === \dbObject\DeferredProposal::TARGET_PROJECT) {
+                    $editUrl = '/omo/api/deferred_proposals/pv_project_editor.php?stage=capture&direct=1&oid=' . $organizationId . '&point_id=' . $pointId . '&proposal_id=' . $proposalId;
+                } else {
+                    $editUrl = '/omo/api/deferred_proposals/pv_rule_editor.php?workflow=1&direct=1&oid=' . $organizationId . '&point_id=' . $pointId . '&proposal_id=' . $proposalId;
+                }
+                $html .= '<div class="omo-pv-editor__deferred-proposal-menu generic-menu" data-omo-deferred-proposal-menu>';
+                $html .= '<button type="button" class="generic-menu-toggle" data-omo-deferred-proposal-menu-toggle aria-haspopup="menu" aria-expanded="false" aria-label="' . omoDocumentsPvEditorEscape((string)($uiText['proposalMore'] ?? 'Actions de la proposition')) . '">...</button>';
+                $html .= '<div class="generic-menu-panel generic-menu-panel--wide" data-omo-deferred-proposal-menu-panel role="menu" hidden>';
+                $html .= '<button type="button" class="generic-menu-item" data-omo-deferred-proposal-edit data-omo-deferred-proposal-edit-url="' . omoDocumentsPvEditorEscape($editUrl) . '" data-omo-deferred-proposal-edit-title="' . omoDocumentsPvEditorEscape((string)($uiText['proposalEditTitle'] ?? 'Éditer une proposition')) . '" role="menuitem">' . omoDocumentsPvEditorEscape((string)($uiText['proposalEdit'] ?? 'Éditer')) . '</button>';
+                $html .= '<button type="button" class="generic-menu-item generic-menu-item--danger" data-omo-deferred-proposal-delete="' . $proposalId . '" data-omo-deferred-proposal-point-id="' . $pointId . '" data-omo-deferred-proposal-delete-confirm="' . omoDocumentsPvEditorEscape((string)($uiText['proposalDeleteConfirm'] ?? 'Supprimer cette proposition ?')) . '" role="menuitem">' . omoDocumentsPvEditorEscape((string)($uiText['proposalDelete'] ?? 'Supprimer')) . '</button>';
+                $html .= '</div></div>';
+            }
+            $html .= '<div id="' . $detailId . '" class="omo-pv-editor__deferred-proposal-detail omo-change-details" data-omo-change-details-payload="' . omoDocumentsPvEditorEscape($changePayload) . '" hidden>';
+            $excerpt = trim((string)($proposal['excerpt'] ?? ''));
+            if ($excerpt !== '') {
+                $html .= '<p class="generic-meta">' . omoDocumentsPvEditorEscape($excerpt) . '</p>';
+            }
+            $changedFieldCount = (int)($proposal['changedFieldCount'] ?? 0);
+            if ($operation === \dbObject\DeferredProposal::OPERATION_UPDATE && $changedFieldCount > 0) {
+                $changedFields = str_replace('{count}', (string)$changedFieldCount, (string)($uiText['proposalChangedFields'] ?? 'Champs modifiés : {count}'));
+                $html .= '<p class="generic-meta generic-meta--compact">' . omoDocumentsPvEditorEscape($changedFields) . '</p>';
+            }
+            $statusMessage = trim((string)($proposal['statusMessage'] ?? ''));
+            if ($statusMessage !== '') {
+                $html .= '<p class="generic-feedback">' . omoDocumentsPvEditorEscape($statusMessage) . '</p>';
+            }
+            $html .= '<div data-omo-change-details-container></div></div>';
+            $html .= '</article>';
+        }
+        $html .= '</div>';
+    }
+    if ($canAdd) {
+        $addUrl = '/omo/api/deferred_proposals/pv_proposal_picker.php?oid=' . $organizationId . '&point_id=' . $pointId;
+        $html .= '<div class="omo-pv-editor__deferred-proposal-add">';
+        $html .= '<button type="button" class="generic-action-button generic-action-button--secondary" data-omo-pv-point-add-proposal="' . $pointId . '" data-omo-pv-point-proposal-url="' . omoDocumentsPvEditorEscape($addUrl) . '" data-omo-pv-point-proposal-title="' . omoDocumentsPvEditorEscape((string)($uiText['addProposal'] ?? 'Ajouter une proposition')) . '">' . omoDocumentsPvEditorEscape((string)($uiText['addProposal'] ?? 'Ajouter une proposition')) . '</button>';
+        $html .= '</div>';
+    }
+    $html .= '</section>';
+
+    return $html;
+}
+
 function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): string
 {
     if (!empty($pointData['isGroup'])) {
@@ -1092,6 +1268,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
     ) {
         $updateInfo = str_replace('{user}', trim((string)$pointData['lastModifiedByLabel']), (string)($uiText['updatedBy'] ?? 'Mis à jour par {user}.'));
     }
+    $deferredProposalHtml = omoDocumentsPvEditorRenderDeferredProposals($pointData, $uiText);
 
     $html = '<article class="omo-pv-editor__point-card omo-document-pv__point' . ($canEditNow ? ' is-editable' : ' is-readonly') . '"'
         . ' id="omo-pv-editor-point-' . $pointId . '"'
@@ -1240,6 +1417,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '  <div class="omo-pv-editor__editor-host" data-omo-pv-point-editor-host="' . $pointId . '"></div>';
         $html .= '  <textarea hidden data-omo-pv-point-content-source="' . $pointId . '">' . omoDocumentsPvEditorEscape((string)($pointData['contentRaw'] ?? '')) . '</textarea>';
         $html .= '</div>';
+        $html .= $deferredProposalHtml;
         $html .= '<div class="omo-pv-editor__point-footer">';
         $footerNoteParts = [(!empty($pointData['isPvEditor']) || !empty($pointData['canAssignAuthor']))
             ? (string)$uiText['pvEditorCanEdit']
@@ -1251,6 +1429,7 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
         $html .= '</div>';
     } else {
         $html .= '<div class="omo-document-pv__point-content prose omo-simple-html-render">' . (string)($pointData['contentHtml'] ?? '') . '</div>';
+        $html .= $deferredProposalHtml;
         $html .= '<div class="omo-pv-editor__point-footer omo-pv-editor__point-footer--readonly">';
         $readonlyNote = omoDocumentsPvEditorReadonlyNotice($pointData, $uiText);
         if ($updateInfo !== '') {
@@ -1309,6 +1488,7 @@ function omoDocumentsPvEditorBuildPointPayload(array $pointData, array $uiText):
             !empty($takeoverData['isRequestedByCurrentSession']) ? '1' : '0',
             !empty($takeoverData['mustYield']) ? '1' : '0',
             (string)($takeoverData['requestedAtIso'] ?? ''),
+            (string)json_encode($pointData['deferredProposals'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ])),
         'lastModifiedAtIso' => (string)($pointData['lastModifiedAtIso'] ?? ''),
         'lastModifiedAtTimestamp' => (int)($pointData['lastModifiedAtTimestamp'] ?? 0),

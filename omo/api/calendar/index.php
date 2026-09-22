@@ -2835,7 +2835,7 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
 
             var typeField = form.querySelector('[data-omo-calendar-document-type]');
             var allDocumentFields = form.querySelector('[data-omo-calendar-document-fields]');
-            var pvTemplateField = form.querySelector('[data-omo-calendar-pv-template-field]');
+            var documentTemplateField = form.querySelector('[data-omo-calendar-document-template-field]');
             var documentType = typeField ? String(typeField.value || '').trim() : '';
             var hasDocument = documentType !== '';
 
@@ -2843,25 +2843,27 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                 allDocumentFields.hidden = !hasDocument;
             }
 
-            if (pvTemplateField) {
-                pvTemplateField.hidden = documentType !== 'pv';
+            if (documentTemplateField) {
+                documentTemplateField.hidden = !hasDocument;
             }
 
-            syncPvTemplateOptions(form);
+            syncDocumentTemplateOptions(form);
         }
 
-        function syncPvTemplateOptions(form) {
+        function syncDocumentTemplateOptions(form) {
             if (!form) {
                 return;
             }
 
             var contextField = form.querySelector('[data-omo-calendar-context-holon]');
-            var templateField = form.querySelector('select[name="pv_template_id"]');
+            var typeField = form.querySelector('[data-omo-calendar-document-type]');
+            var templateField = form.querySelector('select[name="document_template_id"]');
             if (!contextField || !templateField) {
                 return;
             }
 
             var contextId = Number(contextField.value || '0');
+            var documentType = typeField ? String(typeField.value || '').trim() : '';
             var contextOption = contextField.options[contextField.selectedIndex];
             var contextPath = String(contextOption ? contextOption.getAttribute('data-omo-calendar-context-path') || '' : '')
                 .split(',')
@@ -2872,13 +2874,19 @@ $headerSummary = (string)($viewSummariesByScope[$calendarScope][$viewMode] ?? ''
                     return;
                 }
 
-                var scope = String(option.getAttribute('data-omo-calendar-pv-template-scope') || '');
-                var targetId = Number(option.getAttribute('data-omo-calendar-pv-template-target') || '0');
-                var isAvailable = scope === 'organization' || scope === 'everyone'
+                var templateType = String(option.getAttribute('data-omo-calendar-document-template-type') || '');
+                var scope = String(option.getAttribute('data-omo-calendar-document-template-scope') || '');
+                var targetId = Number(option.getAttribute('data-omo-calendar-document-template-target') || '0');
+                var isAvailable = templateType === documentType && (scope === 'organization' || scope === 'everyone'
                     || (scope === 'circle' && targetId > 0 && contextPath.indexOf(targetId) !== -1)
-                    || (scope === 'role' && targetId > 0 && contextId === targetId);
+                    || (scope === 'role' && targetId > 0 && contextId === targetId));
                 option.hidden = !isAvailable;
                 option.disabled = !isAvailable;
+            });
+            Array.prototype.forEach.call(templateField.querySelectorAll('optgroup'), function (group) {
+                group.hidden = !Array.prototype.some.call(group.querySelectorAll('option'), function (option) {
+                    return !option.hidden;
+                });
             });
 
             if (templateField.selectedOptions.length > 0 && templateField.selectedOptions[0].disabled) {

@@ -424,11 +424,12 @@ function commonRenderTopbar(array $options = [])
         echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260921-document-layout">' . PHP_EOL;
         echo '<script src="/common/assets/components.js?v=20260919-context-help-hover" defer></script>' . PHP_EOL;
         echo '<script src="/common/holon_scope_picker.js?v=20260908-picker-resize" defer></script>' . PHP_EOL;
+        echo '<script src="/common/project-picker/project-picker.js?v=20260922-shared" defer></script>' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/assets/topbar.css?v=20260821-notification-mark-all-read">' . PHP_EOL;
         echo '<link rel="stylesheet" href="/common/notifications/notifications.css">' . PHP_EOL;
         echo '<script src="/common/notifications/notifications.js" defer></script>' . PHP_EOL;
         echo '<script src="/common/notifications/inbox.js?v=20260821-mark-all-read" defer></script>' . PHP_EOL;
-        echo '<script src="/common/assets/topbar.js?v=20260731-drawer-load-error" defer></script>' . PHP_EOL;
+        echo '<script src="/common/assets/topbar.js?v=20260922-modal-stack-scroll" defer></script>' . PHP_EOL;
         $assetsLoaded = true;
     }
     ?>

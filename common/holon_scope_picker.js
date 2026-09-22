@@ -504,7 +504,9 @@
                 hoveredNodeId = nextHoveredNodeId;
                 draw();
             }
-            canvas.style.cursor = node ? 'pointer' : 'default';
+            canvas.style.cursor = node
+                ? (node.isSelectable === false ? 'not-allowed' : 'pointer')
+                : 'default';
         });
         canvas.addEventListener('mouseleave', function () {
             canvas.style.cursor = 'default';
@@ -515,7 +517,7 @@
         });
         canvas.addEventListener('click', function (event) {
             var node = getNodeAt(event);
-            if (node && typeof onSelect === 'function') {
+            if (node && node.isSelectable !== false && typeof onSelect === 'function') {
                 onSelect(node.ID);
             }
         });

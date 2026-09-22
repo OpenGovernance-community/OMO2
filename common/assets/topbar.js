@@ -7,6 +7,7 @@
         offsetX: 0,
         offsetY: 0
     };
+    var modalStack = [];
 
     function getConfig() {
         return window.commonTopbarConfig || {};
@@ -578,6 +579,9 @@
             return;
         }
 
+        while (modalStack.length > 0) {
+            popModal();
+        }
         closeModal();
         closeDrawer();
 
@@ -611,6 +615,9 @@
         }
 
         closeDrawer();
+        while (modalStack.length > 0) {
+            popModal();
+        }
         closeModal();
         resetModalPanelOffset();
         syncModalPanelPreferredWidth(null);
@@ -638,6 +645,165 @@
         }));
     }
 
+    function getModalBodyDynamicAttributes(body) {
+        var attributes = {};
+
+        if (!body) {
+            return attributes;
+        }
+
+        Array.prototype.forEach.call(body.attributes, function (attribute) {
+            if (attribute.name !== 'id' && attribute.name !== 'class') {
+                attributes[attribute.name] = attribute.value;
+            }
+        });
+
+        return attributes;
+    }
+
+    function clearModalBodyDynamicAttributes(body) {
+        if (!body) {
+            return;
+        }
+
+        Array.prototype.slice.call(body.attributes).forEach(function (attribute) {
+            if (attribute.name !== 'id' && attribute.name !== 'class') {
+                body.removeAttribute(attribute.name);
+            }
+        });
+    }
+
+    function restoreModalBodyDynamicAttributes(body, attributes) {
+        clearModalBodyDynamicAttributes(body);
+        Object.keys(attributes || {}).forEach(function (name) {
+            body.setAttribute(name, attributes[name]);
+        });
+    }
+
+    function pushModal(title, content, mode) {
+        var modal = document.getElementById('commonTopbarModal');
+        var body = document.getElementById('commonTopbarModalBody');
+        var titleNode = document.getElementById('commonTopbarModalTitle');
+        var panel = getModalPanel();
+        var resolvedContent = mode === 'iframe' && typeof window.omoResolveAppUrl === 'function'
+            ? window.omoResolveAppUrl(content)
+            : content;
+        var fragment;
+        var currentScrollTop;
+        var currentScrollLeft;
+
+        if (!modal || !body || !titleNode) {
+            return false;
+        }
+        if (modal.hidden) {
+            openModal(title, content, mode);
+            return true;
+        }
+
+        currentScrollTop = body.scrollTop;
+        currentScrollLeft = body.scrollLeft;
+        fragment = document.createDocumentFragment();
+        while (body.firstChild) {
+            fragment.appendChild(body.firstChild);
+        }
+        modalStack.push({
+            fragment: fragment,
+            title: titleNode.textContent,
+            attributes: getModalBodyDynamicAttributes(body),
+            remoteRequestId: body.__commonTopbarRemoteRequestId,
+            scrollTop: currentScrollTop,
+            scrollLeft: currentScrollLeft,
+            closeGuard: window.commonTopbarModalCanClose,
+            popupCleanup: window.__omoPopupCleanup,
+            faqPopupCleanup: window.__omoFaqPopupCleanup,
+            panelWidth: panel ? panel.style.getPropertyValue('--common-topbar-modal-max-width') : '',
+            offsetX: modalDragState.offsetX,
+            offsetY: modalDragState.offsetY
+        });
+
+        window.commonTopbarModalCanClose = null;
+        window.__omoPopupCleanup = null;
+        window.__omoFaqPopupCleanup = null;
+        body.__commonTopbarRemoteRequestId = String(Date.now()) + '_stacked';
+        clearModalBodyDynamicAttributes(body);
+        resetModalPanelOffset();
+        syncModalPanelPreferredWidth(null);
+        body.setAttribute('data-topbar-modal-url', String(content || ''));
+        titleNode.textContent = title || getConfigTextValue('modal.defaultTitle', 'Panneau');
+
+        if (mode === 'iframe') {
+            body.innerHTML = '<iframe class="common-topbar-modal__iframe" src="' + resolvedContent + '"></iframe>';
+            bindIframeThemeSync(body.querySelector('iframe'));
+        } else if (mode === 'fetch') {
+            renderRemoteContent(body, content);
+        } else {
+            body.innerHTML = content || '';
+            enhanceScrollablePanel(body);
+            syncModalPanelPreferredWidth(body);
+        }
+        body.scrollTop = 0;
+        body.scrollLeft = 0;
+
+        window.dispatchEvent(new CustomEvent('common-topbar-modal-open', {
+            detail: {
+                title: title || getConfigTextValue('modal.defaultTitle', 'Panneau'),
+                content: content,
+                mode: mode || 'html',
+                stacked: true
+            }
+        }));
+        return true;
+    }
+
+    function popModal() {
+        var modal = document.getElementById('commonTopbarModal');
+        var body = document.getElementById('commonTopbarModalBody');
+        var titleNode = document.getElementById('commonTopbarModalTitle');
+        var panel = getModalPanel();
+        var state = modalStack.pop();
+        var childUrl;
+        var restoredRoot;
+
+        if (!state || !modal || !body || !titleNode) {
+            return false;
+        }
+
+        childUrl = body.getAttribute('data-topbar-modal-url') || '';
+        window.dispatchEvent(new CustomEvent('common-topbar-modal-pop', {
+            detail: { url: childUrl }
+        }));
+        runContainerCleanup(body);
+        body.__commonTopbarRemoteRequestId = String(Date.now()) + '_popped';
+        body.innerHTML = '';
+        restoreModalBodyDynamicAttributes(body, state.attributes);
+        body.appendChild(state.fragment);
+        body.__commonTopbarRemoteRequestId = state.remoteRequestId;
+        titleNode.textContent = state.title || getConfigTextValue('modal.defaultTitle', 'Panneau');
+        window.commonTopbarModalCanClose = state.closeGuard || null;
+        window.__omoPopupCleanup = state.popupCleanup || null;
+        window.__omoFaqPopupCleanup = state.faqPopupCleanup || null;
+        if (panel) {
+            panel.style.removeProperty('--common-topbar-modal-max-width');
+            if (state.panelWidth) {
+                panel.style.setProperty('--common-topbar-modal-max-width', state.panelWidth);
+            }
+        }
+        applyModalPanelOffset(state.offsetX, state.offsetY);
+        modal.hidden = false;
+        document.body.classList.add('common-topbar-modal-open');
+        enhanceScrollablePanel(body);
+        restoredRoot = body.firstElementChild;
+        var restoreScrollPosition = function () {
+            if (!restoredRoot || body.contains(restoredRoot)) {
+                body.scrollTop = Number(state.scrollTop) || 0;
+                body.scrollLeft = Number(state.scrollLeft) || 0;
+            }
+        };
+        restoreScrollPosition();
+        window.requestAnimationFrame(restoreScrollPosition);
+        return true;
+    }
+
     function closeDrawer() {
         var drawer = document.getElementById('commonTopbarDrawer');
         var body = document.getElementById('commonTopbarDrawerBody');
@@ -661,6 +827,10 @@
             return;
         }
         if (!wasHidden && typeof closeGuard === 'function' && closeGuard() === false) {
+            return;
+        }
+        if (!wasHidden && modalStack.length > 0) {
+            popModal();
             return;
         }
         stopModalDrag();
@@ -1587,6 +1757,8 @@
 
     window.commonTopbarOpenModal = openModal;
     window.commonTopbarCloseModal = closeModal;
+    window.commonTopbarPushModal = pushModal;
+    window.commonTopbarPopModal = popModal;
     window.commonTopbarOpenDrawer = openDrawer;
     window.commonTopbarCloseDrawer = closeDrawer;
     window.commonTopbarRefreshUserProfile = notifyUserProfileChanged;
