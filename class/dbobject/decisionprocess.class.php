@@ -595,6 +595,7 @@ class DecisionProcess extends DbObject
         }
         try {
             \dbObject\DecisionGovernanceAction::applyAcceptedForDecision($this);
+            \dbObject\DeferredProposal::applyAcceptedForDecision($this);
         } catch (\Throwable $exception) {
             error_log('decision_governance_application_failed: ' . $exception->getMessage());
         }
@@ -1163,6 +1164,44 @@ class DecisionProcess extends DbObject
         } catch (\Throwable $exception) {
             return null;
         }
+    }
+
+    public static function getManualEvaluationStartConflict($status, $evaluationStartAt, $referenceDateTime = null)
+    {
+        if (self::normalizeStatus($status) !== self::STATUS_EVALUATION) {
+            return null;
+        }
+
+        $referenceDateTime = self::normalizeDateTimeValue($referenceDateTime);
+        if (!$referenceDateTime instanceof \DateTimeInterface) {
+            $referenceDateTime = new \DateTimeImmutable('now');
+        }
+
+        $evaluationStartAt = self::normalizeDateTimeValue($evaluationStartAt);
+        if (!$evaluationStartAt instanceof \DateTimeInterface || $evaluationStartAt > $referenceDateTime) {
+            return $evaluationStartAt;
+        }
+
+        return null;
+    }
+
+    public static function getManualConsultationStartConflict($status, $consultationStartAt, $referenceDateTime = null)
+    {
+        if (self::normalizeStatus($status) !== self::STATUS_CONSULTATION) {
+            return null;
+        }
+
+        $referenceDateTime = self::normalizeDateTimeValue($referenceDateTime);
+        if (!$referenceDateTime instanceof \DateTimeInterface) {
+            $referenceDateTime = new \DateTimeImmutable('now');
+        }
+
+        $consultationStartAt = self::normalizeDateTimeValue($consultationStartAt);
+        if (!$consultationStartAt instanceof \DateTimeInterface || $consultationStartAt > $referenceDateTime) {
+            return $consultationStartAt;
+        }
+
+        return null;
     }
 
     public function getSubmittedResponseCount()
@@ -2689,7 +2728,6 @@ class DecisionProcess extends DbObject
     {
         $status = self::normalizeStatus($this->get('status'));
         if (in_array($status, [
-            self::STATUS_CONSULTATION,
             self::STATUS_EVALUATION,
             self::STATUS_RESULTS,
             self::STATUS_ARCHIVED,
@@ -2698,16 +2736,12 @@ class DecisionProcess extends DbObject
         }
 
         $consultationStart = self::normalizeDateTimeValue($this->get('consultation_start_at'));
-        if (!$consultationStart instanceof \DateTimeInterface) {
-            return false;
-        }
-
         $referenceDateTime = self::normalizeDateTimeValue($referenceDateTime);
         if (!$referenceDateTime instanceof \DateTimeInterface) {
             $referenceDateTime = new \DateTimeImmutable('now');
         }
 
-        return $consultationStart <= $referenceDateTime;
+        return $consultationStart instanceof \DateTimeInterface && $consultationStart <= $referenceDateTime;
     }
 
     public function hasConsultationEnded($referenceDateTime = null)
@@ -2765,25 +2799,21 @@ class DecisionProcess extends DbObject
     public function hasEvaluationStarted($referenceDateTime = null)
     {
         $status = self::normalizeStatus($this->get('status'));
-        if (in_array($status, [
-            self::STATUS_EVALUATION,
-            self::STATUS_RESULTS,
-            self::STATUS_ARCHIVED,
-        ], true)) {
+        if (in_array($status, [self::STATUS_RESULTS, self::STATUS_ARCHIVED], true)) {
             return true;
         }
 
         $evaluationStart = self::normalizeDateTimeValue($this->get('evaluation_start_at'));
-        if (!$evaluationStart instanceof \DateTimeInterface) {
-            return false;
-        }
-
         $referenceDateTime = self::normalizeDateTimeValue($referenceDateTime);
         if (!$referenceDateTime instanceof \DateTimeInterface) {
             $referenceDateTime = new \DateTimeImmutable('now');
         }
 
-        return $evaluationStart <= $referenceDateTime;
+        if ($status === self::STATUS_EVALUATION) {
+            return $evaluationStart instanceof \DateTimeInterface && $evaluationStart <= $referenceDateTime;
+        }
+
+        return $evaluationStart instanceof \DateTimeInterface && $evaluationStart <= $referenceDateTime;
     }
 
     public static function fetchListRowsForOrganization($organizationId, $userId = 0, $userEmail = '')

@@ -96,6 +96,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleGetSourceLang')) {
             'decisions.majority_judgment.option.status.evaluation' => ['text' => 'En évaluation', 'context' => 'Evaluation status option.'],
             'decisions.majority_judgment.option.status.results' => ['text' => 'Résultats', 'context' => 'Results status option.'],
             'decisions.majority_judgment.option.status.archived' => ['text' => 'Archivée', 'context' => 'Archived status option.'],
+            'decisions.majority_judgment.lifecycle.evaluation_start_confirmation' => ['text' => 'Le statut « En évaluation » n’est pas compatible avec la date de début d’évaluation définie au {date}. Voulez-vous vraiment commencer maintenant ? Les dates des phases d’élaboration et d’évaluation seront ajustées.', 'context' => 'Confirmation before manually starting a majority judgment before its scheduled date.'],
+            'decisions.majority_judgment.lifecycle.consultation_start_confirmation' => ['text' => 'Le statut « En élaboration » n’est pas compatible avec la date de début d’élaboration définie au {date}. Voulez-vous vraiment commencer maintenant ? La date de début de la phase d’élaboration sera ajustée.', 'context' => 'Confirmation before manually starting a majority judgment consultation before its scheduled date.'],
             'decisions.majority_judgment.option.common.yes' => ['text' => 'Oui', 'context' => 'Generic yes option label.'],
             'decisions.majority_judgment.option.common.no' => ['text' => 'Non', 'context' => 'Generic no option label.'],
             'decisions.majority_judgment.placeholder.title' => ['text' => 'Ex. Quelle option préférez-vous ?', 'context' => 'Placeholder for the group title field.'],
@@ -442,10 +444,13 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     data-omo-decision-embedded-question="<?= $embeddedQuestion ? '1' : '0' ?>"
                     <?php if ($manageFormId !== ''): ?>
                     data-omo-decision-editor-header-form
+                    data-omo-decision-lifecycle-confirm-template="<?= $escape(t('decisions.majority_judgment.lifecycle.evaluation_start_confirmation', [], $lang, $sourceLang)) ?>"
+                    data-omo-decision-lifecycle-consultation-confirm-template="<?= $escape(t('decisions.majority_judgment.lifecycle.consultation_start_confirmation', [], $lang, $sourceLang)) ?>"
                     data-omo-decision-editor-header-title="<?= $escape(t($decision instanceof DecisionProcess ? 'decisions.edit.edit_title' : 'decisions.edit.create_title', [], $lang, $sourceLang)) ?>"
                     data-omo-decision-editor-header-submit-label="<?= $isEditable ? $escape($decision instanceof DecisionProcess ? t('decisions.majority_judgment.action.save', [], $lang, $sourceLang) : t('decisions.majority_judgment.action.create', [], $lang, $sourceLang)) : '' ?>"
                     <?php endif; ?>
                 >
+                    <script src="/omo/api/decision/modules/lifecycle_status.js"></script>
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($isDuplicate ? 0 : ($decision instanceof DecisionProcess ? (int)$decision->getId() : 0)) ?>">

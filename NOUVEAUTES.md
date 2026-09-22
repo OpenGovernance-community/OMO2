@@ -1,5 +1,19 @@
 # Journal Des Nouveautes
 
+- Decisions : choisir manuellement les statuts En elaboration ou En evaluation avant leur date de debut demande confirmation et recale les dates des phases a maintenant. Un statut incoherent ne peut plus ouvrir la contribution ni le vote.
+
+- Decisions : pendant la phase d elaboration, les interfaces de vote simple et de consentement n affichent plus de choix ni de bouton de vote. Seules les contributions autorisees restent visibles jusqu au debut effectif du vote.
+
+- Documents : un document HTML, un lien externe, un PV, un fichier (dont ODT), un Etherpad/EtherCalc ou un dossier peut maintenant etre ajoute ou retire de la liste des modeles. Une etoile identifie les modeles, la fleche a cote de Nouveau cree un duplicata visible dans le contexte courant, et les reunions ainsi que les projets proposent les modeles compatibles avec le type et la portee du contexte choisi. Les modeles sont regroupes par espace et affichent leur icone de type pour les retrouver plus facilement. Les fichiers et les outils collaboratifs recopient leur contenu dans une ressource independante ; un dossier reprend aussi toute son arborescence.
+
+- Propositions différées : les projets peuvent maintenant être créés, modifiés ou supprimés depuis un point de PV. Ils suivent le même choix d’objet, d’action et de contexte que les règles et les éléments de structure, en vérifiant les droits collectifs du PV avant leur application. Le droit collectif de proposition de projet ouvre aussi la création, explicitement libellée « Proposer un projet ».
+
+- Propriétés de structure : les listes de projets, y compris dans le format « HTML + liste », affichent seulement les projets retenus et les classent alphabétiquement. Le bouton « Ajouter » ouvre désormais le sélecteur des éditeurs Summernote dans la popup de la topbar, avec navigation circulaire et portée Local / Enfants / Descendants, puis restaure l’éditeur, ses valeurs et sa position de défilement.
+- Propositions différées : l’éditeur de règle permet maintenant de choisir un autre espace dans la navigation circulaire de la structure. Les espaces sans droit collectif du holon porteur du PV sont visibles mais désactivés, et chaque proposition conserve son propre espace cible jusqu’à son application.
+- Propositions différées : règles et éléments de structure suivent désormais le même parcours dans une popup unique : choix compact du type, de l’action et du contexte, sélection éventuelle de l’élément, puis remplacement du contenu par l’éditeur sans rechargement. Le menu Éditer ouvre directement cet éditeur, les résumés structurels précisent le type concret de l’élément et le formulaire de structure conserve le fond de la popup. Lors d’une modification, les données actuelles du rôle ou du cercle initialisent correctement les champs. Le registre de types permet d’ajouter ensuite d’autres objets sans multiplier les écrans.
+- Propositions différées : un point de PV affiche maintenant les propositions qui lui sont liées sur des lignes compactes, avec résumé, statut, détail avant/après en accordéon et menu pour éditer ou retirer les propositions en attente. L’édition d’une règle initialise désormais aussi tous ses champs depuis la règle choisie.
+- Socle des propositions différées : un nouvel objet `DeferredProposal` conserve une modification avant son application collective et peut être lié à une alternative de décision ou à un point de PV.
+
 Ce fichier garde une vue d ensemble courte des evolutions recentes, avec un angle plus fonctionnel que technique.
 
 ## 2026-09-21
@@ -2527,3 +2541,7 @@ Une partie importante du travail a aussi porte sur la fiabilite: meilleurs compo
 # 2026-09-19
 
 - Les libellés, formulaires et messages visibles remplacent maintenant le terme `holon` par `espace`, tout en conservant les identifiants techniques et la structure SQL existants.
+# 2026-09-22
+
+- Dans les projets intégrés aux PV, la vue est maintenant exclusivement celle enregistrée par l’éditeur : les préférences locales, temporaires et les paramètres d’URL ne peuvent plus la remplacer. Le bouton « Appliquer » est retiré ; l’éditeur conserve « Enregistrer la vue » pour mettre à jour la vue commune.
+- Propositions différées : les points de PV peuvent maintenant préparer la création, la modification ou la suppression de rôles et de cercles avec l’éditeur structure habituel. Le sélecteur applique exclusivement les droits collectifs du holon porteur du PV, et l’espace reste inchangé jusqu’à la validation du point.

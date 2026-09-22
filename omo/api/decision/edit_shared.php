@@ -276,6 +276,14 @@ $baseSourceLang = [
     'decisions.edit.multi.status.evaluation' => ['text' => 'En évaluation', 'context' => 'Evaluation decision status.'],
     'decisions.edit.multi.status.results' => ['text' => 'Résultats', 'context' => 'Results decision status.'],
     'decisions.edit.multi.status.archived' => ['text' => 'Archivée', 'context' => 'Archived decision status.'],
+    'decisions.edit.lifecycle.evaluation_start_confirmation' => [
+        'text' => 'Le statut « En évaluation » n’est pas compatible avec la date de début d’évaluation définie au {date}. Voulez-vous vraiment commencer maintenant ? Les dates des phases d’élaboration et d’évaluation seront ajustées.',
+        'context' => 'Confirmation before manually starting a multi-question decision before its scheduled date.',
+    ],
+    'decisions.edit.lifecycle.consultation_start_confirmation' => [
+        'text' => 'Le statut « En élaboration » n’est pas compatible avec la date de début d’élaboration définie au {date}. Voulez-vous vraiment commencer maintenant ? La date de début de la phase d’élaboration sera ajustée.',
+        'context' => 'Confirmation before manually starting a multi-question decision consultation before its scheduled date.',
+    ],
     'decisions.edit.multi.consultation_start' => [
         'text' => 'Début de la phase d’élaboration',
         'context' => 'Label for the shared consultation start date.',
@@ -816,7 +824,10 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                     data-saved-message="<?= $escape(t('decisions.edit.multi.saved', [], $lang, $baseSourceLang)) ?>"
                     data-error-message="<?= $escape(t('decisions.edit.multi.save_error', [], $lang, $baseSourceLang)) ?>"
                     data-unsaved-warning="<?= $escape(t('decisions.edit.multi.unsaved_warning', [], $lang, $baseSourceLang)) ?>"
+                    data-omo-decision-lifecycle-confirm-template="<?= $escape(t('decisions.edit.lifecycle.evaluation_start_confirmation', [], $lang, $baseSourceLang)) ?>"
+                    data-omo-decision-lifecycle-consultation-confirm-template="<?= $escape(t('decisions.edit.lifecycle.consultation_start_confirmation', [], $lang, $baseSourceLang)) ?>"
                 >
+                    <script src="/omo/api/decision/modules/lifecycle_status.js"></script>
                     <section class="generic-section generic-section--stack generic-form-section omo-decision-edit__process-settings">
                         <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.multi.process_title', [], $lang, $baseSourceLang)) ?></h3>
                         <form class="generic-form-stack" data-omo-decision-process-form>
@@ -1349,6 +1360,10 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
 
     function saveMultiEditor(root) {
         if (root.getAttribute('aria-busy') === 'true' || !validateMultiEditor(root)) {
+            return;
+        }
+        if (typeof window.omoDecisionEnsureLifecycleStatusConsistency === 'function'
+            && !window.omoDecisionEnsureLifecycleStatusConsistency(root)) {
             return;
         }
         const processForm = root.querySelector('[data-omo-decision-process-form]');

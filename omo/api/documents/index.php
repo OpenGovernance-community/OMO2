@@ -68,6 +68,22 @@ $sourceLang = [
         'text' => 'Nouveau',
         'context' => 'Primary action used to create a new document.',
     ],
+    'documents.action.create_from_template' => [
+        'text' => 'Créer depuis un modèle',
+        'context' => 'Accessible label for the document template menu beside the new document action.',
+    ],
+    'documents.template.mark' => [
+        'text' => 'Ajouter à la liste des modèles',
+        'context' => 'Menu action that makes a document reusable as a template.',
+    ],
+    'documents.template.unmark' => [
+        'text' => 'Retirer de la liste des modèles',
+        'context' => 'Menu action that stops exposing a document as a template.',
+    ],
+    'documents.template.badge' => [
+        'text' => 'Modèle',
+        'context' => 'Accessible label shown beside document titles that are reusable templates.',
+    ],
     'documents.upload.drop_root' => [
         'text' => 'Deposez les fichiers pour les televerser dans cette liste.',
         'context' => 'Feedback shown while files are dragged over the root document list.',
@@ -452,6 +468,68 @@ $canCreateDocument = $organization->getId() > 0
 $canDirectUploadToCurrentContext = $canCreateDocument && $organization->hasDocumentStorage();
 $canMoveToCurrentContext = $canCreateDocument;
 $newDocumentUrl = '/omo/api/documents/create.php?oid=' . $currentOrganizationId . ($effectiveCurrentHolonId > 0 ? '&cid=' . $effectiveCurrentHolonId : '');
+$resolveDocumentTemplateIconUrl = static function (Document $document): string {
+    if ($document->isFolder()) {
+        return '/omo/assets/images/documents/folder.png';
+    }
+
+    return match ($document->getDocumentType()) {
+        Document::TYPE_EXTERNAL_LINK => '/omo/assets/images/documents/link.png',
+        Document::TYPE_UPLOADED_FILE => match ($document->getStoredFileKind()) {
+            'image' => '/omo/assets/images/documents/image.png',
+            'video' => '/omo/assets/images/documents/video.png',
+            'audio' => '/omo/assets/images/documents/audio.png',
+            'text' => '/omo/assets/images/documents/text.png',
+            'spreadsheet' => '/omo/assets/images/documents/spreadsheet-kind.png',
+            'presentation' => '/omo/assets/images/documents/presentation.png',
+            'drawing' => '/omo/assets/images/documents/drawing.png',
+            default => '/omo/assets/images/documents/download.png',
+        },
+        Document::TYPE_PV => '/omo/assets/images/documents/pv.png',
+        Document::TYPE_ETHERPAD => '/omo/assets/images/documents/collaborative.png',
+        Document::TYPE_ETHERCALC => '/omo/assets/images/documents/spreadsheet.png',
+        default => '/omo/assets/images/documents/file.png',
+    };
+};
+$documentTemplateGroups = [];
+if ($canCreateDocument) {
+    $documentTemplates = new \dbObject\ArrayDocument();
+    $documentTemplates->loadDocumentTemplatesForOrganization($currentOrganizationId);
+    foreach ($documentTemplates as $documentTemplate) {
+        if (!($documentTemplate instanceof Document)
+            || !$documentTemplate->canUseAsDocumentTemplateInOrganizationContext($currentOrganizationId, $effectiveCurrentHolonId > 0 ? $effectiveCurrentHolonId : null)) {
+            continue;
+        }
+        $templateHolonId = (int)$documentTemplate->get('IDholon');
+        $templateGroupKey = $templateHolonId > 0 ? 'holon-' . $templateHolonId : 'organization';
+        $templateGroupLabel = $documentTemplate->getTemplateGroupLabel();
+        if ($templateGroupLabel === '') {
+            $templateGroupLabel = trim((string)$organization->get('name'));
+        }
+        if (!isset($documentTemplateGroups[$templateGroupKey])) {
+            $documentTemplateGroups[$templateGroupKey] = [
+                'label' => $templateGroupLabel,
+                'templates' => [],
+            ];
+        }
+
+        $templateTitle = trim((string)$documentTemplate->get('title'));
+        $documentTemplateGroups[$templateGroupKey]['templates'][] = [
+            'id' => (int)$documentTemplate->getId(),
+            'label' => $templateTitle !== '' ? $templateTitle : ('Document #' . (int)$documentTemplate->getId()),
+            'iconUrl' => $resolveDocumentTemplateIconUrl($documentTemplate),
+        ];
+    }
+}
+uasort($documentTemplateGroups, static function (array $left, array $right): int {
+    return strnatcasecmp((string)$left['label'], (string)$right['label']);
+});
+foreach ($documentTemplateGroups as &$documentTemplateGroup) {
+    usort($documentTemplateGroup['templates'], static function (array $left, array $right): int {
+        return strnatcasecmp((string)$left['label'], (string)$right['label']);
+    });
+}
+unset($documentTemplateGroup);
 
 $documents = new \dbObject\ArrayDocument();
 $documentVisibilityRuleMap = array();
@@ -692,6 +770,7 @@ foreach ($documents as $document) {
         true
     );
     $isExternalLink = $document->isExternalLink();
+    $isDocumentTemplate = $document->isDocumentTemplate();
     $canShareDocument = !$isFolder && $document->supportsHtmlContent();
     $documentTitle = (string)$document->get('title');
     $listTitle = $documentTitle;
@@ -712,6 +791,10 @@ foreach ($documents as $document) {
         'title' => $documentTitle,
         'listTitle' => $listTitle,
         'documentType' => $document->getDocumentType(),
+        'isTemplate' => $isDocumentTemplate,
+        'canManageTemplate' => $document->isTemplateEligible() && ($document->isPvDocument()
+            ? $document->canUserManagePvDocument($currentUserId)
+            : $canManageDocument),
         'isPvValidated' => $isPvValidated,
         'canOpenInPvApplicationTab' => $canOpenInPvApplicationTab,
         'storedFileKind' => $document->isUploadedFile() ? $document->getStoredFileKind() : '',
@@ -981,13 +1064,30 @@ if (!is_string($documentsPayload)) {
                     </button>
                 </div>
                 <?php if ($canCreateDocument): ?>
-                    <button
-                        type="button"
-                        class="generic-action-button generic-action-button--main omo-documents__new-button omo-mobile-corner-action"
-                        aria-label="<?= $escape(omoDocumentsScopeT('documents.action.new')) ?>"
-                        data-omo-documents-new
-                        data-omo-documents-new-url="<?= $escape($newDocumentUrl) ?>"
-                    ><span class="omo-mobile-corner-action__text"><?= $escape(omoDocumentsScopeT('documents.action.new')) ?></span></button>
+                    <div class="omo-documents__new-actions">
+                        <button
+                            type="button"
+                            class="generic-action-button generic-action-button--main omo-documents__new-button omo-mobile-corner-action"
+                            aria-label="<?= $escape(omoDocumentsScopeT('documents.action.new')) ?>"
+                            data-omo-documents-new
+                            data-omo-documents-new-url="<?= $escape($newDocumentUrl) ?>"
+                        ><span class="omo-mobile-corner-action__text"><?= $escape(omoDocumentsScopeT('documents.action.new')) ?></span></button>
+                        <?php if (count($documentTemplateGroups) > 0): ?>
+                            <div class="omo-documents__template-picker generic-menu" data-omo-document-template-picker>
+                                <button type="button" class="generic-action-button generic-action-button--main omo-documents__template-picker-toggle" data-omo-document-template-picker-toggle aria-label="<?= $escape(omoDocumentsScopeT('documents.action.create_from_template')) ?>" aria-haspopup="menu" aria-expanded="false">&#9662;</button>
+                                <div class="omo-documents__template-picker-panel generic-menu-panel" data-omo-document-template-picker-panel role="menu" hidden>
+                                    <?php foreach ($documentTemplateGroups as $documentTemplateGroup): ?>
+                                        <div class="generic-menu-group" role="group" aria-label="<?= $escape((string)$documentTemplateGroup['label']) ?>">
+                                            <span class="generic-menu-group-label"><?= $escape((string)$documentTemplateGroup['label']) ?></span>
+                                            <?php foreach ($documentTemplateGroup['templates'] as $documentTemplateOption): ?>
+                                                <button type="button" class="generic-menu-item omo-documents__template-menu-item" role="menuitem" data-omo-document-template-create="<?= (int)$documentTemplateOption['id'] ?>"><img class="omo-documents__template-menu-icon black-icon" src="<?= $escape((string)$documentTemplateOption['iconUrl']) ?>" alt="" aria-hidden="true"><span><?= $escape($documentTemplateOption['label']) ?></span></button>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -2203,6 +2303,14 @@ if (!is_string($documentsPayload)) {
                                     compactTitle.className = 'omo-documents__compact-title generic-file-list__title';
                                     compactTitle.textContent = documentItem.listTitle || documentItem.title || '';
                                     compactTitleStack.appendChild(compactTitle);
+                                    if (documentItem.isTemplate) {
+                                        const templateBadge = document.createElement('span');
+                                        templateBadge.className = 'omo-documents__template-star';
+                                        templateBadge.textContent = '★';
+                                        templateBadge.setAttribute('title', <?= json_encode(omoDocumentsScopeT('documents.template.badge'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);
+                                        templateBadge.setAttribute('aria-label', <?= json_encode(omoDocumentsScopeT('documents.template.badge'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);
+                                        compactTitleStack.appendChild(templateBadge);
+                                    }
                                     if (documentItem.isMissingUploadedFile) {
                                         const compactMissingUpload = document.createElement('span');
                                         compactMissingUpload.className = 'omo-documents__missing-upload-badge';
@@ -2353,6 +2461,14 @@ if (!is_string($documentsPayload)) {
                                 title.className = 'omo-documents__title generic-title generic-title--item';
                                 title.textContent = documentItem.listTitle || documentItem.title || '';
                                 titleLine.appendChild(title);
+                                if (documentItem.isTemplate) {
+                                    const templateBadge = document.createElement('span');
+                                    templateBadge.className = 'omo-documents__template-star';
+                                    templateBadge.textContent = '★';
+                                    templateBadge.setAttribute('title', <?= json_encode(omoDocumentsScopeT('documents.template.badge'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);
+                                    templateBadge.setAttribute('aria-label', <?= json_encode(omoDocumentsScopeT('documents.template.badge'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);
+                                    titleLine.appendChild(templateBadge);
+                                }
                                 if (documentItem.isMissingUploadedFile) {
                                     const missingUpload = document.createElement('span');
                                     missingUpload.className = 'omo-documents__missing-upload-badge';
@@ -2440,6 +2556,7 @@ if (!is_string($documentsPayload)) {
                                     && !documentItem.canDelete
                                     && !documentItem.canShare
                                     && !documentItem.canExportPdf
+                                    && !documentItem.canManageTemplate
                                 ) {
                                     return null;
                                 }
@@ -2463,6 +2580,8 @@ if (!is_string($documentsPayload)) {
                                 toggle.setAttribute('data-omo-document-menu-can-share', documentItem.canShare ? '1' : '0');
                                 toggle.setAttribute('data-omo-document-menu-can-export-pdf', documentItem.canExportPdf ? '1' : '0');
                                 toggle.setAttribute('data-omo-document-menu-pdf-url', String(documentItem.pdfExportUrl || ''));
+                                toggle.setAttribute('data-omo-document-menu-can-manage-template', documentItem.canManageTemplate ? '1' : '0');
+                                toggle.setAttribute('data-omo-document-menu-is-template', documentItem.isTemplate ? '1' : '0');
                                 toggle.setAttribute('aria-haspopup', 'menu');
                                 toggle.setAttribute('aria-expanded', 'false');
                                 toggle.setAttribute('aria-label', 'Actions pour ' + String(documentItem.title || 'ce document'));
@@ -5780,6 +5899,8 @@ if (!is_string($documentsPayload)) {
                 const canShare = String(toggle && toggle.getAttribute('data-omo-document-menu-can-share') || '') === '1';
                 const canExportPdf = String(toggle && toggle.getAttribute('data-omo-document-menu-can-export-pdf') || '') === '1';
                 const pdfExportUrl = String(toggle && toggle.getAttribute('data-omo-document-menu-pdf-url') || '').trim();
+                const canManageTemplate = String(toggle && toggle.getAttribute('data-omo-document-menu-can-manage-template') || '') === '1';
+                const isTemplate = String(toggle && toggle.getAttribute('data-omo-document-menu-is-template') || '') === '1';
                 const fragment = ownerDocument.createDocumentFragment();
 
                 if (canEdit && editUrl !== '') {
@@ -5813,6 +5934,19 @@ if (!is_string($documentsPayload)) {
                         'data-omo-document-share': '1',
                         'data-omo-document-share-id': String(documentId)
                     }));
+                }
+
+                if (canManageTemplate && Number.isInteger(documentId) && documentId > 0) {
+                    fragment.appendChild(buildDocumentMenuItem(
+                        isTemplate
+                            ? <?= json_encode(omoDocumentsScopeT('documents.template.unmark'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
+                            : <?= json_encode(omoDocumentsScopeT('documents.template.mark'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                        {
+                            'data-omo-document-menu-action': 'template',
+                            'data-omo-document-template-id': String(documentId),
+                            'data-omo-document-template-state': isTemplate ? '0' : '1'
+                        }
+                    ));
                 }
 
                 if (
@@ -5949,6 +6083,36 @@ if (!is_string($documentsPayload)) {
 
                 if (action === 'share') {
                     openDocumentSharePopup(actionButton.getAttribute('data-omo-document-share-id'));
+                    return true;
+                }
+
+                if (action === 'template') {
+                    const documentId = Number(actionButton.getAttribute('data-omo-document-template-id') || 0);
+                    const isTemplate = String(actionButton.getAttribute('data-omo-document-template-state') || '') === '1';
+                    if (!Number.isInteger(documentId) || documentId <= 0) {
+                        return false;
+                    }
+                    fetch('/omo/api/documents/template_action.php', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({id: documentId, action: 'set_template', is_template: isTemplate ? 1 : 0})
+                    }).then(function (response) {
+                        return response.json().then(function (payload) {
+                            if (!response.ok || !payload || payload.status !== true) {
+                                throw new Error(String(payload && payload.message || <?= json_encode(omoDocumentsScopeT('documents.menu.action_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>));
+                            }
+                            return payload;
+                        });
+                    }).then(function () {
+                        if (typeof window.omoRefreshDocumentsPanel === 'function') {
+                            return window.omoRefreshDocumentsPanel();
+                        }
+                        window.location.reload();
+                        return null;
+                    }).catch(function (error) {
+                        window.omoNotify(String(error && error.message || <?= json_encode(omoDocumentsScopeT('documents.menu.action_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>), 'error');
+                    });
                     return true;
                 }
 
@@ -6135,6 +6299,77 @@ if (!is_string($documentsPayload)) {
                     );
                 });
             }
+
+            const templatePicker = root.querySelector('[data-omo-document-template-picker]');
+            if (templatePicker) {
+                const templateToggle = templatePicker.querySelector('[data-omo-document-template-picker-toggle]');
+                const templatePanel = templatePicker.querySelector('[data-omo-document-template-picker-panel]');
+                const closeTemplatePicker = function () {
+                    if (templatePanel) {
+                        templatePanel.hidden = true;
+                    }
+                    if (templateToggle) {
+                        templateToggle.setAttribute('aria-expanded', 'false');
+                    }
+                };
+
+                if (templateToggle && templatePanel) {
+                    templateToggle.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        const willOpen = templatePanel.hidden;
+                        closeTemplatePicker();
+                        templatePanel.hidden = !willOpen;
+                        templateToggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+                    });
+                }
+
+                templatePicker.querySelectorAll('[data-omo-document-template-create]').forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        const templateId = Number(button.getAttribute('data-omo-document-template-create') || 0);
+                        if (!Number.isInteger(templateId) || templateId <= 0) {
+                            return;
+                        }
+                        button.disabled = true;
+                        fetch('/omo/api/documents/template_action.php', {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                id: templateId,
+                                action: 'duplicate',
+                                oid: Number(root.getAttribute('data-omo-document-oid') || 0),
+                                cid: Number(root.getAttribute('data-omo-document-cid') || 0)
+                            })
+                        }).then(function (response) {
+                            return response.json().then(function (payload) {
+                                if (!response.ok || !payload || payload.status !== true) {
+                                    throw new Error(String(payload && payload.message || <?= json_encode(omoDocumentsScopeT('documents.menu.action_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>));
+                                }
+                                return payload;
+                            });
+                        }).then(function () {
+                            closeTemplatePicker();
+                            if (typeof window.omoRefreshDocumentsPanel === 'function') {
+                                return window.omoRefreshDocumentsPanel();
+                            }
+                            window.location.reload();
+                            return null;
+                        }).catch(function (error) {
+                            if (typeof window.omoNotify === 'function') {
+                                window.omoNotify(String(error && error.message || <?= json_encode(omoDocumentsScopeT('documents.menu.action_error'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>), 'error');
+                            }
+                        }).finally(function () {
+                            button.disabled = false;
+                        });
+                    });
+                });
+
+                ownerDocument.addEventListener('click', function (event) {
+                    if (!templatePicker.contains(event.target)) {
+                        closeTemplatePicker();
+                    }
+                });
+            }
         })();
         </script>
     </div>
@@ -6240,6 +6475,56 @@ if (!is_string($documentsPayload)) {
 
 .omo-documents__new-button {
     flex: 0 0 auto;
+}
+
+.omo-documents__new-actions {
+    display: inline-flex;
+    align-items: stretch;
+    flex: 0 0 auto;
+}
+
+.omo-documents__template-picker {
+    position: relative;
+}
+
+.omo-documents__template-picker-toggle {
+    min-width: 32px;
+    margin-left: 1px;
+    padding: 0 8px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.omo-documents__new-actions .omo-documents__new-button {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.omo-documents__template-picker-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 180;
+    min-width: min(290px, calc(100vw - 24px));
+}
+
+.omo-documents__template-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.omo-documents__template-menu-icon {
+    flex: 0 0 auto;
+    width: 17px;
+    height: 17px;
+    object-fit: contain;
+}
+
+.omo-documents__template-star {
+    color: #d97706;
+    font-size: .95em;
+    line-height: 1;
 }
 
 .omo-documents__detail-drawer[data-omo-document-drawer-mode="edit"] .omo-overlay-drawer__body {

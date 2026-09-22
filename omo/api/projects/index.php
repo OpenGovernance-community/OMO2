@@ -33,14 +33,24 @@ $usesImportance = !empty($projectDisplayConfig['useImportance']);
 $usesSize = !empty($projectDisplayConfig['useSize']);
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
 $applicationViewPreferences = omoApplicationViewPreferencesGetContext('projects', $organization, $currentHolon, $currentUserId);
+$projectViewPreferenceValue = static function ($requestKey, $viewKey, $fallback) use ($applicationViewPreferences) {
+    if (!empty($applicationViewPreferences['isPvApplicationTab'])) {
+        $pvView = $applicationViewPreferences['personalView'] ?? array();
+        if (is_array($pvView) && array_key_exists($viewKey, $pvView)) {
+            return $pvView[$viewKey];
+        }
+        return $fallback;
+    }
+
+    return omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, $requestKey, $viewKey, $fallback);
+};
 $canToggleScope = $currentHolon instanceof Holon;
 $availableScopes = omoApiGetAvailableContextScopes($canToggleScope, $currentHolon, $rootHolon);
 $projectScope = omoApiNormalizeContextScope(
-    omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'project_scope', 'scope', 'contextual'),
+    $projectViewPreferenceValue('project_scope', 'scope', 'contextual'),
     $availableScopes
 );
-$projectAssignment = strtolower(trim((string)omoApplicationViewPreferencesGetInitialValue(
-    $applicationViewPreferences,
+$projectAssignment = strtolower(trim((string)$projectViewPreferenceValue(
     'project_assignment',
     'assignment',
     'all'
@@ -58,16 +68,14 @@ if ($canUseHolonSort) {
     $availableProjectSorts[] = 'holon';
 }
 $projectQuickSearch = trim((string)($_GET['project_query'] ?? ''));
-$projectView = strtolower(trim((string)omoApplicationViewPreferencesGetInitialValue(
-    $applicationViewPreferences,
+$projectView = strtolower(trim((string)$projectViewPreferenceValue(
     'project_view',
     'view',
     'kanban'
 )));
 $projectView = in_array($projectView, ['list', 'gantt'], true) ? $projectView : 'kanban';
 $defaultProjectSort = $usesImportance ? 'importance' : ($usesPriority ? 'priority' : 'planned');
-$projectListSort = strtolower(trim((string)omoApplicationViewPreferencesGetInitialValue(
-    $applicationViewPreferences,
+$projectListSort = strtolower(trim((string)$projectViewPreferenceValue(
     'project_sort',
     'sort',
     $defaultProjectSort
@@ -825,6 +833,9 @@ $projectTexts = [
     'documentsPickerError' => omoProjectsT('projects.detail.documents.picker_error'),
     'documentsPickerAttachError' => omoProjectsT('projects.detail.documents.picker_attach_error'),
     'documentsPickerCreateError' => omoProjectsT('projects.detail.documents.picker_create_error'),
+    'documentsPickerTemplateHint' => omoProjectsT('projects.detail.documents.picker_template_hint'),
+    'documentsPickerBlank' => omoProjectsT('projects.detail.documents.picker_blank'),
+    'documentsPickerTemplateError' => omoProjectsT('projects.detail.documents.picker_template_error'),
     'documentsRemoveError' => omoProjectsT('projects.detail.documents.remove_error'),
     'taskDeleteConfirm' => omoProjectsT('projects.detail.task.delete_confirm'),
     'archivesTitle' => omoProjectsT('projects.archives.title'),
@@ -952,7 +963,9 @@ $projectTexts = [
                         </div>
                     </div>
                     <div class="omo-projects__filter-panel-actions">
-                        <button type="button" class="generic-action-button generic-action-button--main" data-omo-projects-filter-apply><?= omoApiEscape(omoProjectsT('projects.filters.apply')) ?></button>
+                        <?php if (empty($applicationViewPreferences['isPvApplicationTab'])): ?>
+                            <button type="button" class="generic-action-button generic-action-button--main" data-omo-projects-filter-apply><?= omoApiEscape(omoProjectsT('projects.filters.apply')) ?></button>
+                        <?php endif; ?>
                         <?php if (!empty($applicationViewPreferences['canSavePersonal']) || !empty($applicationViewPreferences['canSaveTemporary'])): ?>
                             <button type="button" class="generic-action-button generic-action-button--secondary"<?= !empty($applicationViewPreferences['canSavePersonal']) ? ' data-omo-projects-filter-save' : '' ?> data-omo-app-view-save-scope="<?= omoApiEscape($applicationViewPreferences['primarySaveScope']) ?>"><?= omoApiEscape(omoProjectsT('projects.filters.save_view')) ?></button>
                         <?php elseif (($applicationViewPreferences['primarySaveScope'] ?? '') !== ''): ?>
@@ -1288,7 +1301,7 @@ $projectTexts = [
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <link rel="stylesheet" href="/common/calendar/availability.css?v=20260916-conflict">
 <script src="/common/calendar/availability.js?v=20260916-conflict"></script>
-<script src="/common/calendar/event-editor.js?v=20260918-pv-template-visibility"></script>
+<script src="/common/calendar/event-editor.js?v=20260922-document-templates"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="/common/choice/change-details.js?v=20260816-governance-details"></script>

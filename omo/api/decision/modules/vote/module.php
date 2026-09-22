@@ -86,6 +86,14 @@ if (!function_exists('omoDecisionVoteModuleGetSourceLang')) {
                 'text' => 'Statut',
                 'context' => 'Label for the status field.',
             ],
+            'decisions.vote.lifecycle.evaluation_start_confirmation' => [
+                'text' => 'Le statut « En évaluation » n’est pas compatible avec la date de début d’évaluation définie au {date}. Voulez-vous vraiment commencer maintenant ? Les dates des phases d’élaboration et d’évaluation seront ajustées.',
+                'context' => 'Confirmation before manually starting a simple vote before its scheduled date.',
+            ],
+            'decisions.vote.lifecycle.consultation_start_confirmation' => [
+                'text' => 'Le statut « En élaboration » n’est pas compatible avec la date de début d’élaboration définie au {date}. Voulez-vous vraiment commencer maintenant ? La date de début de la phase d’élaboration sera ajustée.',
+                'context' => 'Confirmation before manually starting a simple vote consultation before its scheduled date.',
+            ],
             'decisions.vote.field.schedule' => [
                 'text' => 'Planification',
                 'context' => 'Heading for the optional process schedule fields.',
@@ -548,6 +556,10 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
         $hasSubmittedResponses = $decision instanceof DecisionProcess ? $decision->hasSubmittedResponses() : false;
         $resultsMode = $decision instanceof DecisionProcess
             && in_array($status, [DecisionProcess::STATUS_RESULTS, DecisionProcess::STATUS_ARCHIVED], true);
+        $isConsultationPhase = $decision instanceof DecisionProcess
+            && $consultationStarted
+            && !$evaluationStarted
+            && !$resultsMode;
         $liveResultsMode = false;
         $showOwnerIntermediateResults = $isManageMode
             && !empty($context['isOwner'])
@@ -743,10 +755,13 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     data-omo-decision-embedded-question="<?= $embeddedQuestion ? '1' : '0' ?>"
                     <?php if ($manageFormId !== ''): ?>
                     data-omo-decision-editor-header-form
+                    data-omo-decision-lifecycle-confirm-template="<?= $escape(t('decisions.vote.lifecycle.evaluation_start_confirmation', [], $lang, $sourceLang)) ?>"
+                    data-omo-decision-lifecycle-consultation-confirm-template="<?= $escape(t('decisions.vote.lifecycle.consultation_start_confirmation', [], $lang, $sourceLang)) ?>"
                     data-omo-decision-editor-header-title="<?= $escape(t($decision instanceof DecisionProcess ? 'decisions.edit.edit_title' : 'decisions.edit.create_title', [], $lang, $sourceLang)) ?>"
                     data-omo-decision-editor-header-submit-label="<?= $isEditable ? $escape($decision instanceof DecisionProcess ? t('decisions.vote.action.save', [], $lang, $sourceLang) : t('decisions.vote.action.create', [], $lang, $sourceLang)) : '' ?>"
                     <?php endif; ?>
                 >
+                    <script src="/omo/api/decision/modules/lifecycle_status.js"></script>
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($isDuplicate ? 0 : ($decision instanceof DecisionProcess ? (int)$decision->getId() : 0)) ?>">
@@ -1308,12 +1323,17 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                 <?php endif; ?>
 
                 <?php if ($isParticipateMode): ?>
+                <?php if ($isConsultationPhase): ?>
+                <div class="omo-decision-vote__form generic-form-stack">
+                <?php else: ?>
                 <form
                     class="omo-decision-vote__form generic-form-stack"
                     action="/omo/api/decision/modules/vote/respond.php"
                     method="post"
                     data-omo-decision-vote-response-form
                 >
+                <?php endif; ?>
+                    <?php if (!$isConsultationPhase): ?>
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
@@ -1322,9 +1342,14 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     <input type="hidden" name="intent" value="participate">
                     <?= omoDecisionRenderPublicTokenInput($context, $escape) ?>
                     <input type="hidden" name="choice_mode" value="<?= $escape($choiceMode) ?>">
+                    <?php endif; ?>
 
+                    <?php if ($isConsultationPhase): ?>
+                    <div class="omo-decision-vote__fieldset">
+                    <?php else: ?>
                     <fieldset class="omo-decision-vote__fieldset"<?= !$canEditSubmittedResponse ? ' disabled' : '' ?><?= $oneProposalAtATime && $evaluationStarted ? ' data-omo-decision-one-at-a-time' : '' ?><?= $oneProposalAtATime && $evaluationStarted && $choiceMode === 'single' ? ' data-omo-decision-one-at-a-time-single-choice="1"' : '' ?><?= $oneProposalAtATime && $evaluationStarted && (!($selectedResponse instanceof DecisionResponse) || DecisionResponse::normalizeStatus($selectedResponse->get('status')) !== DecisionResponse::STATUS_SUBMITTED) ? ' data-omo-decision-one-at-a-time-draft-url="/omo/api/decision/modules/vote/respond.php"' : '' ?>>
                         <legend class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.your_choice', [], $lang, $sourceLang)) ?></legend>
+                    <?php endif; ?>
                         <?php if ($choiceMode === 'multiple'): ?>
                         <p class="omo-decision-vote__text"><?= $escape($maxChoices === 0
                             ? t('decisions.vote.field.multiple_hint_unlimited', [], $lang, $sourceLang)
@@ -1335,21 +1360,21 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         <p class="omo-decision-vote__text"><?= $escape(t('decisions.vote.empty_proposals', [], $lang, $sourceLang)) ?></p>
                         <?php else: ?>
                             <?php foreach ($proposalObjects as $proposal): ?>
-                            <label class="omo-decision-vote__option generic-section generic-section--stack"<?= $oneProposalAtATime && $evaluationStarted ? ' data-omo-decision-one-at-a-time-item' : '' ?>>
-                                <input
+                            <?php if ($isConsultationPhase): ?><div class="omo-decision-vote__option generic-section generic-section--stack"><?php else: ?><label class="omo-decision-vote__option generic-section generic-section--stack"<?= $oneProposalAtATime && $evaluationStarted ? ' data-omo-decision-one-at-a-time-item' : '' ?>><?php endif; ?>
+                                <?php if (!$isConsultationPhase): ?><input
                                     type="<?= $choiceMode === 'multiple' ? 'checkbox' : 'radio' ?>"
                                     name="<?= $choiceMode === 'multiple' ? 'proposal_ids[]' : 'proposal_id' ?>"
                                     value="<?= $escape((int)$proposal->getId()) ?>"
                                     <?= in_array((int)$proposal->getId(), $selectedProposalIds, true) ? 'checked' : '' ?>
                                     <?= $choiceMode === 'single' ? 'required' : '' ?>
-                                >
+                                ><?php endif; ?>
                                 <span>
                                     <?php if (omoDecisionProposalTitleIsVisible($proposalContent, $proposal->get('title'))): ?><strong data-omo-proposal-title><?= $escape(trim((string)$proposal->get('title'))) ?></strong><?php endif; ?>
                                     <?= omoDecisionRenderProposalSupplementHtml($proposal->get('description'), $proposal->get('info_url'), $escape, 'omo-decision-vote__text', 'omo-decision-vote__link') ?>
                                     <?= omoDecisionRenderGovernanceChanges($proposal, $escape) ?>
                                     <?= omoDecisionRenderProposalDiscussionActions($proposal, $context, $escape) ?>
                                 </span>
-                            </label>
+                            <?php if ($isConsultationPhase): ?></div><?php else: ?></label><?php endif; ?>
                             <?php endforeach; ?>
                             <?php if ($oneProposalAtATime && $evaluationStarted): ?>
                             <div class="omo-decision-one-at-a-time__navigation">
@@ -1359,7 +1384,12 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                             </div>
                             <?php endif; ?>
                         <?php endif; ?>
+                    <?php if ($isConsultationPhase): ?>
+                    </div>
+                    <?php else: ?>
                     </fieldset>
+                    <?php endif; ?>
+                    <?php if (!$isConsultationPhase): ?>
                     <?= omoDecisionRenderVoteWeightResponseSelector($lang, $sourceLang, $escape, [
                         'enabled' => $voteWeightEnabled,
                         'question' => $voteWeightQuestion,
@@ -1371,10 +1401,12 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                         <input type="checkbox" name="is_anonymous" value="1"<?= $anonymousVoteChecked ? ' checked' : '' ?><?= $anonymousVoteDisabled || !$canEditSubmittedResponse ? ' disabled' : '' ?>>
                         <span><?= $escape(t('decisions.vote.field.anonymous', [], $lang, $sourceLang)) ?></span>
                     </label>
+                    <?php endif; ?>
                     <?php if ($consultationProposalPanel !== ''): ?>
                     <?= $consultationProposalPanel ?>
                     <?php endif; ?>
 
+                    <?php if (!$isConsultationPhase): ?>
                     <div class="omo-decision-vote__footer">
                         <button type="submit" class="generic-action-button generic-action-button--main" data-omo-decision-vote-response-submit<?= $canEditSubmittedResponse ? '' : ' disabled' ?>>
                             <?= $escape($selectedResponse instanceof DecisionResponse ? t('decisions.vote.action.update_response', [], $lang, $sourceLang) : t('decisions.vote.action.submit_response', [], $lang, $sourceLang)) ?>
@@ -1383,7 +1415,12 @@ if (!function_exists('omoDecisionVoteModuleRender')) {
                     </div>
 
                     <script type="application/json" data-omo-decision-vote-response-data><?= $responsePayloadJson ?></script>
+                    <?php endif; ?>
+                <?php if ($isConsultationPhase): ?>
+                </div>
+                <?php else: ?>
                 </form>
+                <?php endif; ?>
                 <?php if ($liveResultsMode): ?>
                 <section class="generic-soft-panel generic-soft-panel--stack">
                     <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.vote.field.live_results_heading', [], $lang, $sourceLang)) ?></span>

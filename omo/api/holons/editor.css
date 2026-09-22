@@ -2,6 +2,10 @@
     display: block;
 }
 
+.omo-holon-create--governance-capture {
+    background: var(--color-surface, #ffffff);
+}
+
 .omo-holon-create__panel {
     --param-drawer-content-gap: var(--generic-space-4, 16px);
 }
@@ -426,71 +430,45 @@
     gap: 8px;
 }
 
-.omo-holon-create__project-toolbar {
+.omo-holon-create__project-selected-list {
+    display: grid;
+    gap: 6px;
+}
+
+.omo-holon-create__project-selected-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+}
+
+.omo-holon-create__project-selected-copy {
+    display: grid;
     min-width: 0;
+    gap: 2px;
 }
 
-.omo-holon-create__project-search {
-    position: relative;
-    background: transparent;
+.omo-holon-create__project-selected-copy small {
+    color: var(--color-text-light);
+    line-height: 1.3;
 }
 
-.omo-holon-create__project-search img {
-    position: absolute;
-    z-index: 1;
-    top: 50%;
-    left: 10px;
-    width: 15px;
-    height: 15px;
-    opacity: 0.6;
-    pointer-events: none;
-    transform: translateY(-50%);
+.omo-holon-create__project-picker-content {
+    min-height: min(500px, 62dvh);
 }
 
-.omo-holon-create__project-search .generic-form-control {
-    min-width: 0;
-    min-height: 32px !important;
-    height: 32px !important;
-    padding: 3px 12px 3px 42px !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-}
-
-.omo-holon-create__project-list {
+.omo-holon-create__project-picker-results {
     display: grid;
     align-content: start;
-    max-height: 50vh;
-    overflow-y: auto;
-    border-top: 1px solid var(--color-border);
-    border-bottom: 1px solid var(--color-border);
+    gap: 10px;
 }
 
-.omo-holon-create__project-option {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    padding: 7px 4px;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
-    cursor: pointer;
-}
-
-.omo-holon-create__project-option[hidden] {
-    display: none;
-}
-
-.omo-holon-create__project-option:last-child {
-    border-bottom: 0;
-}
-
-.omo-holon-create__project-option > span {
-    min-width: 0;
-}
-
-.omo-holon-create__project-option small {
-    color: var(--color-text-light);
+.omo-holon-create__project-choice-select {
+    min-height: min(420px, 48dvh);
 }
 
 .omo-holon-create__list,
@@ -729,5 +707,19 @@
 
     .omo-holon-create__property {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .omo-holon-create__project-picker-content > .omo-resource-picker__navigation {
+        display: block;
+        padding-right: 0;
+        padding-bottom: 12px;
+        border-right: 0;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .omo-holon-create__project-picker-content .omo-holon-scope-picker__map {
+        height: min(42dvh, 340px);
     }
 }
