@@ -5974,13 +5974,15 @@ const OMO_RUNTIME_MAINTENANCE_MIN_INTERVAL_MS = 60000;
 let omoRuntimeMaintenanceLastRunAt = Date.now();
 let omoRuntimeMaintenanceInFlight = false;
 let omoRuntimeMaintenanceReloadingForSession = false;
+let omoRuntimeMaintenanceReady = false;
 
 function omoRunRuntimeMaintenance(options = {}) {
     const force = options.force === true;
     const now = Date.now();
 
     if (
-        omoRuntimeMaintenanceInFlight
+        !omoRuntimeMaintenanceReady
+        || omoRuntimeMaintenanceInFlight
         || (!force && now - omoRuntimeMaintenanceLastRunAt < OMO_RUNTIME_MAINTENANCE_MIN_INTERVAL_MS)
         || (navigator.onLine === false)
     ) {
@@ -6029,6 +6031,19 @@ function omoRunRuntimeMaintenance(options = {}) {
 }
 
 function omoInstallRuntimeMaintenanceTriggers() {
+    // Cron is the primary scheduler; keep a deferred fallback for hosts without cron.
+    const scheduleInitialMaintenance = function () {
+        window.setTimeout(function () {
+            omoRuntimeMaintenanceReady = true;
+            omoRunRuntimeMaintenance({force: true});
+        }, 2000);
+    };
+    if (document.readyState === 'complete') {
+        scheduleInitialMaintenance();
+    } else {
+        window.addEventListener('load', scheduleInitialMaintenance, {once: true});
+    }
+
     window.addEventListener('focus', function () {
         omoRunRuntimeMaintenance();
     });

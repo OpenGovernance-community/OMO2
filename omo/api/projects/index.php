@@ -33,6 +33,7 @@ $usesImportance = !empty($projectDisplayConfig['useImportance']);
 $usesSize = !empty($projectDisplayConfig['useSize']);
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
 $applicationViewPreferences = omoApplicationViewPreferencesGetContext('projects', $organization, $currentHolon, $currentUserId);
+commonReleaseReadOnlySession();
 $projectViewPreferenceValue = static function ($requestKey, $viewKey, $fallback) use ($applicationViewPreferences) {
     if (!empty($applicationViewPreferences['isPvApplicationTab'])) {
         $pvView = $applicationViewPreferences['personalView'] ?? array();

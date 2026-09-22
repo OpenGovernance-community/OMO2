@@ -771,6 +771,7 @@ if (!($currentHolon instanceof Holon) && $rootHolon instanceof Holon) {
 }
 
 $applicationViewPreferences = omoApplicationViewPreferencesGetContext('calendar', $organization, $currentHolon, $currentUserId);
+commonReleaseReadOnlySession();
 
 $viewMode = omoCalendarParseView(
     omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'view', 'view', 'month')

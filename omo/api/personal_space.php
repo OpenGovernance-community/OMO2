@@ -261,6 +261,10 @@ $lang = omoLoadTranslationBundle('omo_personal_space_panel', $sourceLang);
 $currentOrganizationId = isset($_GET['oid']) ? (int)$_GET['oid'] : (int)($_SESSION['currentOrganization'] ?? 0);
 $currentHolonId = isset($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $currentUserId = (int)commonGetCurrentUserId();
+if ($currentUserId > 0 && empty($_SESSION['omo_dashboard_layout_csrf'])) {
+    $_SESSION['omo_dashboard_layout_csrf'] = bin2hex(random_bytes(32));
+}
+commonReleaseReadOnlySession();
 $currentContextHolon = null;
 $organizationRootHolon = null;
 
@@ -496,9 +500,6 @@ foreach ($dashboardLayout as $dashboardModule) {
 }
 $dashboardCsrfToken = '';
 if ($currentUserId > 0) {
-    if (empty($_SESSION['omo_dashboard_layout_csrf'])) {
-        $_SESSION['omo_dashboard_layout_csrf'] = bin2hex(random_bytes(32));
-    }
     $dashboardCsrfToken = (string)$_SESSION['omo_dashboard_layout_csrf'];
 }
 $dashboardModuleLabels = array();
