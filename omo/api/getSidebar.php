@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/organization_applications_access.php';
+commonReleaseReadOnlySession();
 
 $sourceLang = [
     'sidebar.applications.manage_label' => [

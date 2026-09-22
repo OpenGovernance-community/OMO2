@@ -183,9 +183,25 @@ OMO_CRON_LOG_ENABLED=true
 OMO_CRON_LOG_PATH=
 ```
 
-Sans chemin explicite, tous les evenements JSONL sont ajoutes dans le fichier unique `../log/omo-cron/omo-cron.jsonl`, hors de la racine publique. Chaque ligne indique uniquement l heure, la source de l appel, son statut et sa duree totale. Les traitements en echec ne sont precises que lorsqu il y en a. Les appels provenant de la visite de `/omo/`, de l endpoint partiel, du cron HTTP, du cron CLI et d un import sont distingues.
+Sans chemin explicite, tous les evenements JSONL sont ajoutes dans le fichier unique `../log/omo-cron/omo-cron.jsonl`, hors de la racine publique. Chaque ligne indique l heure, la source de l appel, son statut et sa duree totale. Les traitements en echec ne sont precises que lorsqu il y en a. Les appels provenant de l endpoint partiel, du cron HTTP, du cron CLI et d un import sont distingues. Un appel evite par le verrou porte le statut `skipped` et une raison.
 
 Les parametres de l URL et le jeton du cron ne sont jamais enregistres. Les tentatives refusees par le cron HTTP sont comptees avec le statut `rejected` sans conserver le jeton fourni.
+
+### Planification et verrou de maintenance
+
+La page `/omo/` ne lance plus la maintenance dans sa reponse PHP. Le navigateur conserve un secours asynchrone, deux secondes apres le chargement complet, puis lors du retour sur l application. Ce secours ne remplace pas une planification serveur quand aucun utilisateur ne visite le site.
+
+Configurer de preference le planificateur de l hebergement pour appeler chaque minute le script existant avec un executable **PHP CLI 8.5** explicite (pas PHP-FPM ou CGI) :
+
+```sh
+/chemin/vers/php-cli /chemin/du/site/scripts/run-omo-maintenance.php
+```
+
+Le cron HTTP existant reste disponible avec son jeton habituel. Aucun planificateur n est installe automatiquement par ce changement.
+
+CLI, cron HTTP, import et secours navigateur partagent un verrou non bloquant par serveur/base de donnees dans `RUNTIME_LOG_DIR/omo-cron/maintenance-<empreinte>.lock` (par defaut `../log/omo-cron/`). Le navigateur evite aussi une nouvelle execution pendant 60 secondes apres une execution terminee ; les crons forces et la maintenance suivant un import ignorent ce delai, jamais le verrou. Le fichier est conserve apres execution : ne pas le supprimer pendant un traitement.
+
+Le compte CLI et le serveur web doivent pouvoir ouvrir les memes fichiers de verrou en lecture/ecriture. Le verrou est local au systeme de fichiers : pour plusieurs serveurs applicatifs, un repertoire partage supportant `flock` ou une coordination distribuee sera necessaire. Conserver ce repertoire hors de la racine publique, comme les journaux.
 
 ## 9. Reduire les anciennes images de profil
 

@@ -5,9 +5,19 @@ require_once __DIR__ . '/stats_spreadsheet_sync.php';
 require_once __DIR__ . '/notification_center.php';
 require_once __DIR__ . '/external_calendar.php';
 require_once __DIR__ . '/omo_cron_log.php';
+require_once __DIR__ . '/omo_maintenance_lock.php';
 
 if (!function_exists('omo_run_fake_cron_maintenance')) {
     function omo_run_fake_cron_maintenance($checklistLimit = 50, $force = false, $source = 'unknown')
+    {
+        return omoRunMaintenanceLocked(
+            static fn (): array => omo_run_fake_cron_maintenance_tasks($checklistLimit, $force, $source),
+            (string)$source,
+            (bool)$force || $source === 'organization_import'
+        );
+    }
+
+    function omo_run_fake_cron_maintenance_tasks($checklistLimit, $force, $source)
     {
         $logContext = omoCronStartMaintenanceLog($source);
         $failedTasks = array();

@@ -449,6 +449,7 @@ $applicationViewPreferences = omoApplicationViewPreferencesGetContext(
     $currentUserId
 );
 $isPvApplicationTab = !empty($applicationViewPreferences['isPvApplicationTab']);
+commonReleaseReadOnlySession();
 $documentScope = omoApiNormalizeContextScope(
     omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'document_scope', 'scope', 'contextual'),
     $availableDocumentScopes

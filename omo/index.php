@@ -1,13 +1,10 @@
 <?php
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
-require_once dirname(__DIR__) . '/common/omo_fake_cron.php';
 require_once dirname(__DIR__) . '/common/topbar.php';
 require_once dirname(__DIR__) . '/common/patreon.php';
 require_once dirname(__DIR__) . '/common/translation_bundles.php';
 require_once __DIR__ . '/topbar.php';
-
-omo_run_fake_cron_maintenance(50, false, 'omo_index');
 
 $sourceLang = [
     'app.access_denied.message' => [
@@ -1732,7 +1729,7 @@ window.omoConfig = <?=
 <script src="/omo/assets/js/site-update.js"></script>
 <?php } ?>
 <script src="assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
-<script src="assets/js/app.js?v=20260921-process-route"></script>
+<script src="assets/js/app.js?v=20260922-deferred-maintenance"></script>
 <script src="assets/js/structure-mini-map.js?v=20260916-structure-render-cache"></script>
 
 <script>

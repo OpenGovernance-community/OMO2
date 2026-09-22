@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Performances OMO : maintenance retiree du chargement PHP initial, secours navigateur differe et verrou commun aux crons ; chargement groupe des utilisateurs et affiliations de Team ; sessions liberees apres les jetons sur les principaux ecrans de consultation pour limiter les attentes entre appels paralleles. Tests de non-regression ajoutes et comparaison locale documentee.
+
+- Diagnostic local : journalisation SQL activee dans le .env Docker, journal conserve dans tmp/sql-performance et reference de navigation du 22 septembre documentee dans PERFORMANCE-BASELINE-2026-09-22.md pour comparer les futures optimisations.
+
 - Decisions : choisir manuellement les statuts En elaboration ou En evaluation avant leur date de debut demande confirmation et recale les dates des phases a maintenant. Un statut incoherent ne peut plus ouvrir la contribution ni le vote.
 
 - Decisions : pendant la phase d elaboration, les interfaces de vote simple et de consentement n affichent plus de choix ni de bouton de vote. Seules les contributions autorisees restent visibles jusqu au debut effectif du vote.

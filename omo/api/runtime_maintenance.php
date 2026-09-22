@@ -13,6 +13,9 @@ if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'POST') {
     exit;
 }
 
+commonReleaseReadOnlySession();
+ignore_user_abort(true);
+
 echo json_encode(array_merge([
     'status' => true,
 ], omo_run_fake_cron_maintenance(50, false, 'runtime_endpoint')), JSON_UNESCAPED_SLASHES);

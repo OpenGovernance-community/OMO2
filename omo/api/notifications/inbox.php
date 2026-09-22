@@ -17,6 +17,7 @@ if ($userId <= 0 || $organizationId <= 0) {
 }
 
 $items = [];
+commonReleaseReadOnlySession();
 foreach (\dbObject\Notification::getInboxForUser($userId, $organizationId, 30) as $notification) {
     $readAt = $notification->get('read_at');
     $createdAt = $notification->get('created_at');

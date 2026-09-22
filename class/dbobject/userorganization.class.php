@@ -3,6 +3,55 @@
 
 	class UserOrganization extends DbObject
 	{
+		/** Batch the data needed by team cards; visibility remains checked by the caller. */
+		public static function loadTeamMemberContext($organizationId, array $userIds, array $membershipsByUserId = array()): array
+		{
+			$organizationId = (int)$organizationId;
+			$userIds = array_values(array_unique(array_filter(array_map('intval', $userIds), static fn ($id) => $id > 0)));
+			$usersById = array();
+			if ($organizationId <= 0 || $userIds === array()) {
+				return array('memberships' => array(), 'users' => array());
+			}
+
+			$missingMembershipIds = array();
+			$missingUserIds = array();
+			foreach ($userIds as $userId) {
+				$membership = $membershipsByUserId[$userId] ?? null;
+				if (!($membership instanceof self)
+					|| (int)$membership->get('IDorganization') !== $organizationId
+					|| (int)$membership->get('IDuser') !== $userId) {
+					unset($membershipsByUserId[$userId]);
+					$missingMembershipIds[] = $userId;
+				}
+				$cachedUser = self::$preload[User::tableName() . '_' . $userId] ?? null;
+				if ($cachedUser instanceof User) {
+					$usersById[$userId] = $cachedUser;
+				} else {
+					$missingUserIds[] = $userId;
+				}
+			}
+			if ($missingMembershipIds !== array()) {
+				$memberships = new ArrayUserOrganization();
+				$memberships->loadHydrated(array('where' => array(
+					array('field' => 'IDorganization', 'value' => $organizationId),
+					array('field' => 'IDuser', 'op' => 'in', 'value' => $missingMembershipIds),
+				)));
+				foreach ($memberships as $membership) {
+					$membershipsByUserId[(int)$membership->get('IDuser')] = $membership;
+				}
+			}
+			if ($missingUserIds !== array()) {
+				$users = new ArrayUser();
+				$users->loadHydrated(array('where' => array(
+					array('field' => 'id', 'op' => 'in', 'value' => $missingUserIds),
+				)));
+				foreach ($users as $user) {
+					$usersById[(int)$user->getId()] = $user;
+				}
+			}
+			return array('memberships' => $membershipsByUserId, 'users' => $usersById);
+		}
+
 		public static function fetchStructureUserIds($organizationId)
 		{
 			$organizationId = (int)$organizationId;
