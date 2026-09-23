@@ -6240,7 +6240,7 @@
 			}
 		}
 
-		protected static function omo1ImportDocuments(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array &$documentIdMap, array &$documentProjectSourceMap, array &$stats, array &$warnings)
+		protected static function omo1ImportDocuments(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array &$documentIdMap, array &$documentProjectSourceMap, array &$documentParentSourceMap, array &$stats, array &$warnings)
 		{
 			foreach ($records as $record) {
 				if (!is_array($record)) {
@@ -6257,7 +6257,10 @@
 				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
 				$targetUserId = isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId;
 				$sourceHolonId = (int)($record['sourceHolonId'] ?? 0);
-				$sourceProjectId = (int)($record['sourceProjectId'] ?? 0);
+				$sourceProjectIds = isset($record['sourceProjectIds']) && is_array($record['sourceProjectIds'])
+					? array_values(array_unique(array_filter(array_map('intval', $record['sourceProjectIds']))))
+					: array();
+				$sourceProjectId = (int)($sourceProjectIds[0] ?? ($record['sourceProjectId'] ?? 0));
 				$targetHolonId = $sourceProjectId > 0
 					? null
 					: (isset($holonIdMap[$sourceHolonId]) ? (int)$holonIdMap[$sourceHolonId] : null);
@@ -6276,14 +6279,27 @@
 					$warnings[] = 'Les fichiers joints OMO 1 ne sont pas copies automatiquement.';
 				}
 
+				$documentType = trim((string)($record['documentType'] ?? ''));
+				$allowedDocumentTypes = array(
+					\dbObject\Document::TYPE_HTML,
+					\dbObject\Document::TYPE_EXTERNAL_LINK,
+					\dbObject\Document::TYPE_FOLDER,
+				);
+				if (!in_array($documentType, $allowedDocumentTypes, true)) {
+					$documentType = $isLegacyUploadedFile
+						? \dbObject\Document::TYPE_UPLOADED_FILE
+						: (trim((string)($record['externalUrl'] ?? '')) !== '' ? \dbObject\Document::TYPE_EXTERNAL_LINK : \dbObject\Document::TYPE_HTML);
+				}
 				$document = new \dbObject\Document();
 				$document->set('title', $title);
 				$document->set('description', $description !== '' ? $description : null);
 				$document->set('content', $content !== '' ? $content : null);
-				$document->set('documenttype', $isLegacyUploadedFile
-					? \dbObject\Document::TYPE_UPLOADED_FILE
-					: (trim((string)($record['externalUrl'] ?? '')) !== '' ? \dbObject\Document::TYPE_EXTERNAL_LINK : \dbObject\Document::TYPE_HTML));
+				$document->set('documenttype', $documentType);
 				$document->set('externalurl', $record['externalUrl'] ?? null);
+				$document->set('keywords', self::omo1ImportLimitText($record['keywords'] ?? '', 250) ?: null);
+				$document->set('is_template', !empty($record['isTemplate']) ? 1 : 0);
+				$document->set('openinnewwindow', !empty($record['openInNewWindow']) ? 1 : 0);
+				$document->set('project_visible_in_holon', !empty($record['projectVisibleInHolon']) ? 1 : 0);
 				if ($isLegacyUploadedFile && $legacyFilename !== '') {
 					$document->set('storedfilename', $legacyFilename);
 				}
@@ -6308,7 +6324,8 @@
 				);
 				self::omo1ImportSaveDocumentEditVisibility($document, $organization, $targetHolonId, $warnings);
 				$documentIdMap[$sourceId] = (int)$document->getId();
-				$documentProjectSourceMap[$sourceId] = $sourceProjectId;
+				$documentProjectSourceMap[$sourceId] = $sourceProjectIds !== array() ? $sourceProjectIds : array($sourceProjectId);
+				$documentParentSourceMap[$sourceId] = (int)($record['sourceParentDocumentId'] ?? 0);
 				$stats['documents'] += 1;
 			}
 		}
@@ -6332,6 +6349,8 @@
 				$project->set('IDorganization', (int)$organization->getId());
 				$project->set('IDholon', $targetHolonId);
 				$project->set('IDuser', $targetUserId);
+				$sourceProposerUserId = (int)($record['sourceProposerUserId'] ?? 0);
+				$project->set('IDuser_proposed', isset($userIdMap[$sourceProposerUserId]) ? (int)$userIdMap[$sourceProposerUserId] : null);
 				$project->set('title', $title !== '' ? $title : 'Projet OMO 1 #' . $sourceId);
 				$project->set('description', $record['description'] ?? null);
 				$projectStatus = array_key_exists('legacyStatusId', $record)
@@ -6346,6 +6365,9 @@
 				$project->set('capture_mode', \dbObject\Project::normalizeCaptureMode($record['captureMode'] ?? null));
 				$project->set('project_size', \dbObject\Project::normalizeSize($record['projectSize'] ?? \dbObject\Project::SIZE_M));
 				$project->set('project_kind', \dbObject\Project::KIND_STANDARD);
+				$project->set('proposal_status', trim((string)($record['proposalStatus'] ?? '')) ?: \dbObject\Project::PROPOSAL_NONE);
+				$project->set('proposed_at', self::omo1ImportDate($record['proposedAt'] ?? null));
+				$project->set('proposal_decided_at', self::omo1ImportDate($record['proposalDecidedAt'] ?? null));
 				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
 				if ($createdAt) {
 					$project->set('created_at', $createdAt);
@@ -6371,6 +6393,8 @@
 							?: $createdAt
 							?: new \DateTimeImmutable('today', new \DateTimeZone('Europe/Zurich'))
 					);
+					$project->set('blocked_auto_reactivate', !empty($record['blockedAutoReactivate']) ? 1 : 0);
+					$project->set('blocked_reactivate_status', trim((string)($record['blockedReactivateStatus'] ?? '')) ?: null);
 				}
 				$closedAt = self::omo1ImportDate($record['closedAt'] ?? null);
 				if (!$closedAt && $projectStatus === \dbObject\Project::STATUS_DONE) {
@@ -6403,9 +6427,86 @@
 				}
 				$sourceParentId = (int)($record['sourceParentProjectId'] ?? 0);
 				$project->set('IDproject_parent', isset($projectIdMap[$sourceParentId]) ? (int)$projectIdMap[$sourceParentId] : null);
+				$sourceJournalDocumentId = (int)($record['sourceJournalDocumentId'] ?? 0);
+				$project->set('IDdocument_journal', isset($documentIdMap[$sourceJournalDocumentId]) ? (int)$documentIdMap[$sourceJournalDocumentId] : null);
 				self::omo1ImportSave($project, 'La hierarchie des projets n a pas pu etre recreee');
 			}
 
+		}
+
+		protected static function omo1ImportProjectUsers(array $records, array $projectIdMap, array $userIdMap)
+		{
+			foreach ($records as $record) {
+				$targetProjectId = (int)($projectIdMap[(int)($record['sourceId'] ?? 0)] ?? 0);
+				if ($targetProjectId <= 0 || !isset($record['teamMembers']) || !is_array($record['teamMembers'])) {
+					continue;
+				}
+				foreach ($record['teamMembers'] as $memberRecord) {
+					if (!is_array($memberRecord)) {
+						continue;
+					}
+					$sourceUserId = (int)($memberRecord['sourceUserId'] ?? 0);
+					$targetUserId = (int)($userIdMap[$sourceUserId] ?? 0);
+					if ($targetUserId <= 0) {
+						continue;
+					}
+					$member = new \dbObject\ProjectUser();
+					if (!$member->load(array(array('IDproject', $targetProjectId), array('IDuser', $targetUserId)))) {
+						$member->set('IDproject', $targetProjectId);
+						$member->set('IDuser', $targetUserId);
+					}
+					$createdAt = self::omo1ImportDate($memberRecord['createdAt'] ?? null);
+					if ($createdAt) {
+						$member->set('datecreation', $createdAt);
+					}
+					$member->set('active', !array_key_exists('active', $memberRecord) || (bool)$memberRecord['active']);
+					self::omo1ImportSave($member, 'Un membre de projet n a pas pu etre importe');
+				}
+			}
+		}
+
+		protected static function omo1ImportProjectFollowers(array $records, array $projectIdMap, array $userIdMap, array &$stats, array &$warnings)
+		{
+			$skippedSourceUserIds = array();
+			foreach ($records as $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+				$sourceProjectId = (int)($record['sourceId'] ?? 0);
+				$targetProjectId = isset($projectIdMap[$sourceProjectId]) ? (int)$projectIdMap[$sourceProjectId] : 0;
+				if ($sourceProjectId <= 0 || $targetProjectId <= 0 || empty($record['followerSourceUserIds']) || !is_array($record['followerSourceUserIds'])) {
+					continue;
+				}
+
+				$processedSourceUserIds = array();
+				foreach ($record['followerSourceUserIds'] as $sourceUserId) {
+					$sourceUserId = (int)$sourceUserId;
+					if ($sourceUserId <= 0 || isset($processedSourceUserIds[$sourceUserId])) {
+						continue;
+					}
+					$processedSourceUserIds[$sourceUserId] = true;
+					if (!isset($userIdMap[$sourceUserId])) {
+						$skippedSourceUserIds[$sourceUserId] = true;
+						continue;
+					}
+					$targetUserId = (int)$userIdMap[$sourceUserId];
+					if ($targetUserId <= 0) {
+						continue;
+					}
+
+					$follower = new \dbObject\ProjectFollower();
+					if (!$follower->load(array(array('IDproject', $targetProjectId), array('IDuser', $targetUserId)))) {
+						$follower->set('IDproject', $targetProjectId);
+						$follower->set('IDuser', $targetUserId);
+					}
+					$follower->set('active', true);
+					self::omo1ImportSave($follower, 'Un suivi de projet n a pas pu etre importe');
+					$stats['projectFollowers'] += 1;
+				}
+			}
+			if (count($skippedSourceUserIds) > 0) {
+				$warnings[] = 'Le suivi de ' . count($skippedSourceUserIds) . ' membre(s) n a pas pu etre importe car ces membres ne figurent pas dans l import.';
+			}
 		}
 
 		protected static function omo1ImportPrepareTaskParent(\dbObject\Project $task, $parentProjectId, $sourceTaskId, array &$warnings)
@@ -6560,18 +6661,40 @@
 		protected static function omo1ImportLinkDocumentsToProjects(array $documentIdMap, array $documentProjectSourceMap, array $projectIdMap, array $taskIdMap)
 		{
 			foreach ($documentIdMap as $sourceDocumentId => $targetDocumentId) {
-				$sourceProjectId = (int)($documentProjectSourceMap[$sourceDocumentId] ?? 0);
-				$targetProjectId = (int)($projectIdMap[$sourceProjectId] ?? ($taskIdMap[$sourceProjectId] ?? 0));
-				if ($targetProjectId <= 0 || (int)$targetDocumentId <= 0) {
+				$sourceProjectIds = $documentProjectSourceMap[$sourceDocumentId] ?? array();
+				if (!is_array($sourceProjectIds)) {
+					$sourceProjectIds = array($sourceProjectIds);
+				}
+				foreach (array_values(array_unique(array_filter(array_map('intval', $sourceProjectIds)))) as $sourceProjectId) {
+					$targetProjectId = (int)($projectIdMap[$sourceProjectId] ?? ($taskIdMap[$sourceProjectId] ?? 0));
+					if ($targetProjectId <= 0 || (int)$targetDocumentId <= 0) {
+						continue;
+					}
+					$link = new \dbObject\ProjectDocument();
+					if ($link->load([['IDproject', $targetProjectId], ['IDdocument', (int)$targetDocumentId]])) {
+						continue;
+					}
+					$link->set('IDproject', $targetProjectId);
+					$link->set('IDdocument', (int)$targetDocumentId);
+					self::omo1ImportSave($link, 'Un lien projet-document n a pas pu etre cree');
+				}
+			}
+		}
+
+		protected static function omo1ImportDocumentParents(array $documentIdMap, array $documentParentSourceMap)
+		{
+			foreach ($documentParentSourceMap as $sourceDocumentId => $sourceParentDocumentId) {
+				$targetDocumentId = (int)($documentIdMap[(int)$sourceDocumentId] ?? 0);
+				$targetParentDocumentId = (int)($documentIdMap[(int)$sourceParentDocumentId] ?? 0);
+				if ($targetDocumentId <= 0 || $targetParentDocumentId <= 0 || $targetDocumentId === $targetParentDocumentId) {
 					continue;
 				}
-				$link = new \dbObject\ProjectDocument();
-				if ($link->load([['IDproject', $targetProjectId], ['IDdocument', (int)$targetDocumentId]])) {
+				$document = new \dbObject\Document();
+				if (!$document->load($targetDocumentId)) {
 					continue;
 				}
-				$link->set('IDproject', $targetProjectId);
-				$link->set('IDdocument', (int)$targetDocumentId);
-				self::omo1ImportSave($link, 'Un lien projet-document n a pas pu etre cree');
+				$document->set('IDdocument_parent', $targetParentDocumentId);
+				self::omo1ImportSave($document, 'La hierarchie des documents n a pas pu etre recreee');
 			}
 		}
 
@@ -6582,7 +6705,7 @@
 			return array($frequency, $schedule);
 		}
 
-		protected static function omo1ImportActivities(\dbObject\Organization $organization, array $records, array $holonIdMap, array &$stats)
+		protected static function omo1ImportActivities(\dbObject\Organization $organization, array $records, array $userIdMap, array $holonIdMap, array &$stats)
 		{
 			$positionsByHolonId = array();
 			foreach ($records as $recordIndex => $record) {
@@ -6616,6 +6739,8 @@
 					$activity = new \dbObject\ControlActivity();
 					$activity->set('IDorganization', (int)$organization->getId());
 					$activity->set('IDholon', $targetHolonId);
+					$sourceResponsibleUserId = (int)($record['sourceResponsibleUserId'] ?? 0);
+					$activity->set('IDuser_responsible', (int)($userIdMap[$sourceResponsibleUserId] ?? 0) ?: null);
 					$activity->set('title', $itemTitle);
 					$activity->set('description', $itemRecord['description'] ?? null);
 					$activity->set('frequency', $frequency);
@@ -6624,15 +6749,45 @@
 					$activity->set('display_lead_unit', \dbObject\ControlActivity::normalizeDelayUnit($recurrenceData['displayLeadUnit'] ?? null));
 					$activity->set('execution_duration_value', max(1, (int)($recurrenceData['executionDurationValue'] ?? 1)));
 					$activity->set('execution_duration_unit', \dbObject\ControlActivity::normalizeDelayUnit($recurrenceData['executionDurationUnit'] ?? null));
-					$activity->set('position', $positionsByHolonId[$targetHolonId]);
+					$activity->set('position', (int)($record['position'] ?? $positionsByHolonId[$targetHolonId]));
 					$activity->set('active', $itemActive);
+					$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
+					if ($createdAt) {
+						$activity->set('created_at', $createdAt);
+					}
+					$updatedAt = self::omo1ImportDate($record['updatedAt'] ?? null);
+					if ($updatedAt) {
+						$activity->set('updated_at', $updatedAt);
+					}
 					self::omo1ImportSave($activity, 'Une activite recurrente n a pas pu etre creee');
+					foreach ((array)($itemRecord['checks'] ?? array()) as $checkRecord) {
+						if (!is_array($checkRecord)) {
+							continue;
+						}
+						$sourceCheckUserId = (int)($checkRecord['sourceUserId'] ?? 0);
+						$targetCheckUserId = (int)($userIdMap[$sourceCheckUserId] ?? 0);
+						$scheduledFor = self::omo1ImportDate($checkRecord['scheduledFor'] ?? null);
+						$checkedAt = self::omo1ImportDate($checkRecord['checkedAt'] ?? null);
+						if ($targetCheckUserId <= 0 || !$scheduledFor || !$checkedAt) {
+							continue;
+						}
+						$check = new \dbObject\ControlTaskCheck();
+						$check->set('IDcontroltask', (int)$activity->getId());
+						$check->set('IDuser', $targetCheckUserId);
+						$check->set('scheduled_for', $scheduledFor);
+						$check->set('checked_at', $checkedAt);
+						$checkCreatedAt = self::omo1ImportDate($checkRecord['createdAt'] ?? null);
+						if ($checkCreatedAt) {
+							$check->set('created_at', $checkCreatedAt);
+						}
+						self::omo1ImportSave($check, 'Une validation de tache recurrente n a pas pu etre importee');
+					}
 					$stats['activities'] += 1;
 				}
 			}
 		}
 
-		protected static function omo1ImportProcesses(\dbObject\Organization $organization, array $records, array $userIdMap, array $holonIdMap, array &$stats)
+		protected static function omo1ImportProcesses(\dbObject\Organization $organization, array $records, array $userIdMap, array $holonIdMap, array &$stats, array &$processImportMaps)
 		{
 			foreach ($records as $record) {
 				if (!is_array($record) || (int)($record['sourceId'] ?? 0) <= 0) {
@@ -6798,6 +6953,76 @@
 
 				$stats['processes'] = (int)($stats['processes'] ?? 0) + 1;
 				$stats['processItems'] = (int)($stats['processItems'] ?? 0) + count($itemIdMap);
+				$processImportMaps[(int)$record['sourceId']] = array(
+					'checklistId' => (int)$checklist->getId(),
+					'triggerIds' => array((int)($triggerData['sourceId'] ?? 0) => (int)$trigger->getId()),
+					'itemIds' => $itemIdMap,
+				);
+			}
+		}
+
+		protected static function omo1ImportProcessRuns(\dbObject\Organization $organization, array $records, array $processImportMaps, array $projectIdMap, array $taskIdMap, array $userIdMap, array $holonIdMap)
+		{
+			foreach ($records as $record) {
+				if (!is_array($record)) {
+					continue;
+				}
+				$processMap = $processImportMaps[(int)($record['sourceId'] ?? 0)] ?? null;
+				if (!is_array($processMap) || empty($record['runs']) || !is_array($record['runs'])) {
+					continue;
+				}
+				foreach ($record['runs'] as $runRecord) {
+					if (!is_array($runRecord)) {
+						continue;
+					}
+					$run = new \dbObject\ChecklistRun();
+					$run->set('IDchecklist', (int)$processMap['checklistId']);
+					$sourceTriggerId = (int)($runRecord['sourceTriggerId'] ?? 0);
+					$run->set('IDchecklisttrigger', (int)($processMap['triggerIds'][$sourceTriggerId] ?? 0) ?: null);
+					$run->set('IDorganization', (int)$organization->getId());
+					$sourceHolonId = (int)($runRecord['sourceHolonId'] ?? 0);
+					$run->set('IDholon', (int)($holonIdMap[$sourceHolonId] ?? 0) ?: null);
+					$sourceRootProjectId = (int)($runRecord['sourceRootProjectId'] ?? 0);
+					$run->set('IDproject_root', (int)($projectIdMap[$sourceRootProjectId] ?? ($taskIdMap[$sourceRootProjectId] ?? 0)) ?: null);
+					$sourceCreatorUserId = (int)($runRecord['sourceCreatorUserId'] ?? 0);
+					$run->set('IDuser_created', (int)($userIdMap[$sourceCreatorUserId] ?? 0) ?: null);
+					$run->set('status', \dbObject\ChecklistRun::normalizeStatus($runRecord['status'] ?? null));
+					$run->set('scheduled_for', self::omo1ImportDate($runRecord['scheduledFor'] ?? null));
+					$createdAt = self::omo1ImportDate($runRecord['createdAt'] ?? null);
+					if ($createdAt) {
+						$run->set('created_at', $createdAt);
+					}
+					$completedAt = self::omo1ImportDate($runRecord['completedAt'] ?? null);
+					if ($completedAt) {
+						$run->set('completed_at', $completedAt);
+					}
+					self::omo1ImportSave($run, 'Une execution de processus n a pas pu etre importee');
+
+					foreach ((array)($runRecord['items'] ?? array()) as $runItemRecord) {
+						if (!is_array($runItemRecord)) {
+							continue;
+						}
+						$sourceChecklistItemId = (int)($runItemRecord['sourceChecklistItemId'] ?? 0);
+						$targetChecklistItemId = (int)($processMap['itemIds'][$sourceChecklistItemId] ?? 0);
+						if ($targetChecklistItemId <= 0) {
+							continue;
+						}
+						$runItem = new \dbObject\ChecklistRunItem();
+						$runItem->set('IDchecklistrun', (int)$run->getId());
+						$runItem->set('IDchecklistitem', $targetChecklistItemId);
+						$sourceProjectId = (int)($runItemRecord['sourceProjectId'] ?? 0);
+						$runItem->set('IDproject', (int)($projectIdMap[$sourceProjectId] ?? ($taskIdMap[$sourceProjectId] ?? 0)) ?: null);
+						$runItem->set('state', \dbObject\ChecklistRunItem::normalizeState($runItemRecord['state'] ?? null));
+						$runItem->set('activation_at', self::omo1ImportDate($runItemRecord['activationAt'] ?? null));
+						foreach (array('createdAt' => 'created_at', 'activatedAt' => 'activated_at', 'completedAt' => 'completed_at') as $sourceField => $targetField) {
+							$date = self::omo1ImportDate($runItemRecord[$sourceField] ?? null);
+							if ($date) {
+								$runItem->set($targetField, $date);
+							}
+						}
+						self::omo1ImportSave($runItem, 'Une etape d execution de processus n a pas pu etre importee');
+					}
+				}
 			}
 		}
 
@@ -7094,6 +7319,8 @@
 				};
 
 				$processedHistoryIds = array();
+				$nativePointIdMap = array();
+				$nativePointParentSourceMap = array();
 				$pointGroups = array();
 				foreach ($historyById as $sourceHistoryId => $historyRecord) {
 					if ((int)($historyRecord['sourceTensionId'] ?? 0) <= 0 || isset($processedHistoryIds[$sourceHistoryId])) {
@@ -7143,30 +7370,65 @@
 					}
 					$point = new \dbObject\DocumentPvPoint();
 					$point->set('IDdocument', (int)$document->getId());
-					$point->set('item_type', \dbObject\DocumentPvPoint::ITEM_TYPE_POINT);
+					$point->set('item_type', isset($historyRecord['itemType'])
+						? \dbObject\DocumentPvPoint::normalizeItemType($historyRecord['itemType'])
+						: \dbObject\DocumentPvPoint::ITEM_TYPE_POINT);
 					$point->set('title', $title);
 					$point->set('content', $content);
-					$point->set('pointtype', ($historyRecord['legacyPointType'] ?? '') === 'information'
-						? \dbObject\DocumentPvPoint::TYPE_INFORMATION
-						: \dbObject\DocumentPvPoint::TYPE_CONSULTATION);
+					$point->set(
+						'pointtype',
+						isset($historyRecord['pointtype'])
+							? \dbObject\DocumentPvPoint::normalizePointType($historyRecord['pointtype'])
+							: (($historyRecord['legacyPointType'] ?? '') === 'information'
+								? \dbObject\DocumentPvPoint::TYPE_INFORMATION
+								: \dbObject\DocumentPvPoint::TYPE_CONSULTATION)
+					);
 					$point->set('position', max(1, (int)($historyRecord['position'] ?? 1)));
+					$point->set('author_email', self::omo1ImportLimitText($historyRecord['authorEmail'] ?? '', 250) ?: null);
+					$point->set('priority', \dbObject\DocumentPvPoint::normalizePriority($historyRecord['priority'] ?? 3));
+					$point->set('desired_duration_minutes', max(0, (int)($historyRecord['desiredDurationMinutes'] ?? 0)));
+					$point->set('actual_duration_minutes', max(0, (int)($historyRecord['actualDurationMinutes'] ?? 0)));
 					$point->set('IDuser_author', $pointUserId);
-					$point->set('IDuser_modification', $targetUserId);
+					$pointModificationSourceUserId = (int)($historyRecord['sourceModificationUserId'] ?? 0);
+					$point->set('IDuser_modification', (int)($userIdMap[$pointModificationSourceUserId] ?? 0) ?: $targetUserId);
 					$point->set('IDholon_concerned', $pointHolonId);
-					$point->set('is_handled', true);
+					$point->set('is_handled', array_key_exists('isHandled', $historyRecord) ? (bool)$historyRecord['isHandled'] : true);
+					$point->set('is_confidential', !empty($historyRecord['isConfidential']) ? 1 : 0);
 					$point->set('active', true);
 					$pointCreatedAt = self::omo1ImportDate($historyRecord['createdAt'] ?? null);
 					if ($pointCreatedAt) {
 						$point->set('datecreation', $pointCreatedAt);
 						$point->set('datemodification', $pointCreatedAt);
 					}
+					$pointUpdatedAt = self::omo1ImportDate($historyRecord['updatedAt'] ?? null);
+					if ($pointUpdatedAt) {
+						$point->set('datemodification', $pointUpdatedAt);
+					}
 					self::omo1ImportSave($point, 'Un point de proces-verbal n a pas pu etre cree');
+					if (isset($historyRecord['itemType'])) {
+						$nativePointIdMap[$sourceHistoryId] = (int)$point->getId();
+						$nativePointParentSourceMap[$sourceHistoryId] = (int)($historyRecord['sourceParentId'] ?? 0);
+					}
 					$stats['pvPoints'] += 1;
+				}
+
+				foreach ($nativePointParentSourceMap as $sourcePointId => $sourceParentId) {
+					$targetPointId = (int)($nativePointIdMap[$sourcePointId] ?? 0);
+					$targetParentId = (int)($nativePointIdMap[$sourceParentId] ?? 0);
+					if ($targetPointId <= 0 || $targetParentId <= 0 || $targetPointId === $targetParentId) {
+						continue;
+					}
+					$point = new \dbObject\DocumentPvPoint();
+					if (!$point->load($targetPointId)) {
+						continue;
+					}
+					$point->set('IDparent', $targetParentId);
+					self::omo1ImportSave($point, 'La hierarchie des points de proces-verbal n a pas pu etre recreee');
 				}
 			}
 		}
 
-		protected static function omo1ImportCalendar(\dbObject\Organization $organization, array $records, $actorUserId, array $holonIdMap, array &$eventIdMap, array &$stats)
+		protected static function omo1ImportCalendar(\dbObject\Organization $organization, array $records, $actorUserId, array $userIdMap, array $holonIdMap, array &$eventIdMap, array &$stats)
 		{
 			foreach ($records as $record) {
 				if (!is_array($record) || (int)($record['sourceId'] ?? 0) <= 0) {
@@ -7201,7 +7463,8 @@
 				$event = new \dbObject\Event();
 				$event->set('IDorganization', (int)$organization->getId());
 				$event->set('IDholon', $targetHolonId);
-				$event->set('IDuser', (int)$actorUserId);
+				$sourceUserId = (int)($record['sourceUserId'] ?? 0);
+				$event->set('IDuser', isset($userIdMap[$sourceUserId]) ? (int)$userIdMap[$sourceUserId] : (int)$actorUserId);
 				$event->set('title', $title);
 				$event->set('description', $record['scratchpad'] ?? null);
 				$event->set('status', \dbObject\Event::STATUS_CONFIRMED);
@@ -7211,6 +7474,14 @@
 				$event->set('end_at', $endAt);
 				$event->set('is_all_day', false);
 				$event->set('active', !array_key_exists('active', $record) || (bool)$record['active']);
+				$createdAt = self::omo1ImportDate($record['createdAt'] ?? null);
+				if ($createdAt) {
+					$event->set('created_at', $createdAt);
+				}
+				$updatedAt = self::omo1ImportDate($record['updatedAt'] ?? null);
+				if ($updatedAt) {
+					$event->set('updated_at', $updatedAt);
+				}
 				self::omo1ImportSave($event, 'Une reunion du calendrier n a pas pu etre creee');
 				$eventIdMap[(int)$record['sourceId']] = (int)$event->getId();
 				$stats['calendar'] += 1;
@@ -7478,12 +7749,13 @@
 				$userIdMap = array();
 				$documentIdMap = array();
 				$documentProjectSourceMap = array();
+				$documentParentSourceMap = array();
 				$projectIdMap = array();
 				$taskIdMap = array();
 				$eventIdMap = array();
 				$pendingUserIds = array();
 				$pendingInvitations = array();
-				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'authorities' => 0, 'rules' => 0, 'documents' => 0, 'projects' => 0, 'tasks' => 0, 'activities' => 0, 'skippedActivities' => 0, 'processes' => 0, 'processItems' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
+				$stats = array('members' => 0, 'invitations' => 0, 'roleAssignments' => 0, 'authorities' => 0, 'rules' => 0, 'documents' => 0, 'projects' => 0, 'projectFollowers' => 0, 'tasks' => 0, 'activities' => 0, 'skippedActivities' => 0, 'processes' => 0, 'processItems' => 0, 'indicators' => 0, 'indicatorValues' => 0, 'calendar' => 0, 'pv' => 0, 'pvPoints' => 0);
 				$warnings = array_merge(
 					$mediaWarnings,
 					isset($structureResult['warnings']) && is_array($structureResult['warnings'])
@@ -7544,13 +7816,20 @@
 				}
 				if ($selectedModules['documents']) {
 					self::omo1ImportJournalWrite('module_documents_started');
-					self::omo1ImportDocuments($organization, self::omo1ImportModuleRecords($payload, 'documents'), $actorUserId, $userIdMap, $holonIdMap, $documentIdMap, $documentProjectSourceMap, $stats, $warnings);
+					self::omo1ImportDocuments($organization, self::omo1ImportModuleRecords($payload, 'documents'), $actorUserId, $userIdMap, $holonIdMap, $documentIdMap, $documentProjectSourceMap, $documentParentSourceMap, $stats, $warnings);
+					self::omo1ImportDocumentParents($documentIdMap, $documentParentSourceMap);
 					self::omo1ImportJournalWrite('module_documents_completed', array('documents' => (int)$stats['documents']));
 				}
 				if ($selectedModules['projects']) {
 					self::omo1ImportJournalWrite('module_projects_started');
-					self::omo1ImportProjects($organization, self::omo1ImportModuleRecords($payload, 'projects'), $actorUserId, $userIdMap, $holonIdMap, $documentIdMap, $documentProjectSourceMap, $projectIdMap, $stats);
-					self::omo1ImportJournalWrite('module_projects_completed', array('projects' => (int)$stats['projects']));
+					$projectRecords = self::omo1ImportModuleRecords($payload, 'projects');
+					self::omo1ImportProjects($organization, $projectRecords, $actorUserId, $userIdMap, $holonIdMap, $documentIdMap, $documentProjectSourceMap, $projectIdMap, $stats);
+					self::omo1ImportProjectUsers($projectRecords, $projectIdMap, $userIdMap);
+					self::omo1ImportProjectFollowers($projectRecords, $projectIdMap, $userIdMap, $stats, $warnings);
+					self::omo1ImportJournalWrite('module_projects_completed', array(
+						'projects' => (int)$stats['projects'],
+						'projectFollowers' => (int)$stats['projectFollowers'],
+					));
 				}
 				if ($selectedModules['tasks']) {
 					self::omo1ImportJournalWrite('module_tasks_started');
@@ -7575,8 +7854,10 @@
 							$legacyActivityRecords[] = $checklistRecord;
 						}
 					}
-					self::omo1ImportProcesses($organization, $processRecords, $userIdMap, $holonIdMap, $stats);
-					self::omo1ImportActivities($organization, $legacyActivityRecords, $holonIdMap, $stats);
+					$processImportMaps = array();
+					self::omo1ImportProcesses($organization, $processRecords, $userIdMap, $holonIdMap, $stats, $processImportMaps);
+					self::omo1ImportProcessRuns($organization, $processRecords, $processImportMaps, $projectIdMap, $taskIdMap, $userIdMap, $holonIdMap);
+					self::omo1ImportActivities($organization, $legacyActivityRecords, $userIdMap, $holonIdMap, $stats);
 					self::omo1ImportJournalWrite('module_activities_completed', array(
 						'activities' => (int)$stats['activities'],
 						'skippedActivities' => (int)$stats['skippedActivities'],
@@ -7591,7 +7872,7 @@
 				}
 				if ($selectedModules['calendar']) {
 					self::omo1ImportJournalWrite('module_calendar_started');
-					self::omo1ImportCalendar($organization, self::omo1ImportModuleRecords($payload, 'calendar'), $actorUserId, $holonIdMap, $eventIdMap, $stats);
+					self::omo1ImportCalendar($organization, self::omo1ImportModuleRecords($payload, 'calendar'), $actorUserId, $userIdMap, $holonIdMap, $eventIdMap, $stats);
 					self::omo1ImportJournalWrite('module_calendar_completed', array('calendar' => (int)$stats['calendar']));
 				}
 				if ($selectedModules['pv']) {

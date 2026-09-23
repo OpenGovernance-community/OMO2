@@ -1,5 +1,11 @@
 # Journal Des Nouveautes
 
+- Export OMO 2 : les suivis et équipes de projets, les validations de tâches récurrentes, les exécutions de processus et les types de points de PV sont préservés à l’import. Les fichiers téléversés et documents reliés à des services externes restent volontairement exclus et la popup d’export le signale clairement.
+
+- Migration OMO 1 : les membres qui avaient active le suivi d un projet sont maintenant exportes puis recrees comme abonnés au projet dans OMO2.
+
+- Autorités : les sélecteurs d’autorité parente affichent maintenant le nom de l’autorité suivi du holon source, afin de distinguer les autorités homonymes.
+
 - Calendrier : les vues mois, semaine, jour et liste sont construites dans le navigateur a la premiere utilisation de chaque portee, puis reutilisees. Le JavaScript est extrait et son URL porte une empreinte automatique du fichier pour renouveler le cache a chaque modification. Les donnees communes sont dedupliquees et les controles de droits restent cote serveur.
 
 - Droits : la légende sticky M, A, C suit désormais précisément les colonnes des cases, y compris après redimensionnement. Les repères teintés et les zones de clic sont harmonisés entre les deux éditeurs.

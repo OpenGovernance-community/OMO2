@@ -26,8 +26,8 @@ assertOrganizationProcessDuplication(
     'Process imports must recreate recurring activities and their dependencies.'
 );
 assertOrganizationProcessDuplication(
-    str_contains($organizationSource, 'self::omo1ImportProcesses($organization, $processRecords, $userIdMap, $holonIdMap, $stats);')
-        && str_contains($organizationSource, 'self::omo1ImportActivities($organization, $legacyActivityRecords, $holonIdMap, $stats);'),
+    str_contains($organizationSource, 'self::omo1ImportProcesses($organization, $processRecords, $userIdMap, $holonIdMap, $stats, $processImportMaps);')
+        && str_contains($organizationSource, 'self::omo1ImportActivities($organization, $legacyActivityRecords, $userIdMap, $holonIdMap, $stats);'),
     'Process and recurring activity records must use separate import paths.'
 );
 
