@@ -3,6 +3,7 @@
 use dbObject\DecisionGovernanceAction;
 use dbObject\DecisionProcess;
 use dbObject\DecisionProposal;
+use dbObject\DeferredProposal;
 use dbObject\Rule;
 
 if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
@@ -13,7 +14,10 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.title.edit' => ['text' => 'Modifier la décision hors réorg', 'context' => 'Governance decision editor title.'],
             'governance.intro' => ['text' => 'Préparez une ou plusieurs propositions. Chaque proposition peut regrouper plusieurs modifications qui seront appliquées ensemble si elle ne reçoit aucune objection.', 'context' => 'Governance decision editor introduction.'],
             'governance.field.title' => ['text' => 'Titre', 'context' => 'Governance process title field.'],
+            'governance.section.identity' => ['text' => 'Décision', 'context' => 'Heading for the decision title and optional context.'],
+            'governance.section.schedule' => ['text' => 'Calendrier et consultation', 'context' => 'Heading for the decision deadlines and voting question.'],
             'governance.field.intention' => ['text' => 'Intention et contexte', 'context' => 'Governance process description field.'],
+            'governance.field.intention.add' => ['text' => 'Ajouter une intention ou un contexte', 'context' => 'Reveal the optional governance process description field.'],
             'governance.field.consultation_end' => ['text' => 'Fin de la consultation', 'context' => 'Governance consultation end field.'],
             'governance.field.vote_end' => ['text' => 'Fin du vote', 'context' => 'Governance evaluation end field.'],
             'governance.question.label' => ['text' => 'Question soumise au consentement', 'context' => 'Governance consent question label.'],
@@ -27,8 +31,15 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.proposal.default' => ['text' => 'Proposition {index}', 'context' => 'Default governance proposal title.'],
             'governance.proposal.title' => ['text' => 'Titre de la proposition', 'context' => 'Governance proposal title field.'],
             'governance.proposal.description' => ['text' => 'Description de la proposition', 'context' => 'Governance proposal description field.'],
+            'governance.proposal.summary.generate' => ['text' => 'Rédiger un résumé avec l’IA', 'context' => 'Generate a short proposal description from its prepared changes.'],
+            'governance.proposal.summary.loading' => ['text' => 'Rédaction du résumé…', 'context' => 'Proposal summary generation in progress.'],
+            'governance.proposal.summary.empty' => ['text' => 'Ajoutez d’abord une modification à cette proposition.', 'context' => 'No changes are available to summarize.'],
+            'governance.proposal.summary.failed' => ['text' => 'Impossible de générer le résumé.', 'context' => 'Proposal summary generation error.'],
+            'governance.proposal.summary.ready' => ['text' => 'Résumé ajouté à la description. Vous pouvez le modifier.', 'context' => 'Proposal summary generation success.'],
+            'governance.proposal.summary.unavailable' => ['text' => 'L’IA n’est pas disponible pour cette prise de décision.', 'context' => 'AI access is unavailable for the governance summary request.'],
             'governance.proposal.remove' => ['text' => 'Retirer la proposition', 'context' => 'Remove governance proposal button.'],
-            'governance.action.add' => ['text' => 'Ajouter une modification', 'context' => 'Add governance action button.'],
+            'governance.action.add' => ['text' => 'Ajouter une modification', 'context' => 'Add a deferred proposal to one governance ballot option.'],
+            'governance.action.more' => ['text' => 'Actions de la modification', 'context' => 'Accessible label for the menu of one change within a ballot proposal.'],
             'governance.action.edit' => ['text' => 'Modifier', 'context' => 'Edit governance action button.'],
             'governance.action.remove' => ['text' => 'Retirer', 'context' => 'Remove governance action button.'],
             'governance.action.rule_update' => ['text' => 'Modifier une règle', 'context' => 'Rule update governance action label.'],
@@ -37,6 +48,17 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.action.role_update' => ['text' => 'Modifier un rôle', 'context' => 'Role update governance action label.'],
             'governance.action.role_create' => ['text' => 'Créer un rôle', 'context' => 'Role creation governance action label.'],
             'governance.action.role_delete' => ['text' => 'Supprimer un rôle', 'context' => 'Role deletion governance action label.'],
+            'governance.action.project_update' => ['text' => 'Modifier un projet', 'context' => 'Project update deferred proposal label.'],
+            'governance.action.project_create' => ['text' => 'Créer un projet', 'context' => 'Project creation deferred proposal label.'],
+            'governance.action.project_propose' => ['text' => 'Proposer un projet', 'context' => 'Project proposal label when the collective can propose but not create projects.'],
+            'governance.action.project_delete' => ['text' => 'Supprimer un projet', 'context' => 'Project deletion deferred proposal label.'],
+            'governance.action.object_type' => ['text' => 'Objet', 'context' => 'Deferred proposal object type label.'],
+            'governance.action.context' => ['text' => 'Contexte', 'context' => 'Deferred proposal holon context label.'],
+            'governance.action.object' => ['text' => 'Élément concerné', 'context' => 'Deferred proposal target object label.'],
+            'governance.action.open_context' => ['text' => 'Choisir un contexte dans la structure', 'context' => 'Open the collective holon context picker.'],
+            'governance.action.open_editor' => ['text' => 'Ouvrir l’éditeur', 'context' => 'Open deferred proposal editor button.'],
+            'governance.action.empty' => ['text' => 'Aucun élément disponible dans ce contexte.', 'context' => 'No deferred proposal target available.'],
+            'governance.action.loading' => ['text' => 'Chargement…', 'context' => 'Deferred proposal target loading label.'],
             'governance.action.choose' => ['text' => 'Choisissez une modification', 'context' => 'Governance action chooser title.'],
             'governance.action.rule' => ['text' => 'Règle', 'context' => 'Rule selection field.'],
             'governance.action.authority' => ['text' => 'Domaine d’autorité', 'context' => 'Rule authority field.'],
@@ -51,6 +73,8 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.action.delete_help' => ['text' => 'La règle complète sera supprimée uniquement si cette proposition est acceptée et si son contenu n’a pas changé entre-temps.', 'context' => 'Deferred rule deletion explanation.'],
             'governance.action.confirm_delete' => ['text' => 'Ajouter la suppression', 'context' => 'Add deferred rule deletion button.'],
             'governance.save' => ['text' => 'Créer la prise de décision', 'context' => 'Governance decision create button.'],
+            'governance.save_short' => ['text' => 'Créer', 'context' => 'Compact create button in the governance editor header.'],
+            'governance.update_short' => ['text' => 'Enregistrer', 'context' => 'Compact save button in the governance editor header.'],
             'governance.update' => ['text' => 'Enregistrer les modifications', 'context' => 'Governance decision update button.'],
             'governance.saving' => ['text' => 'Enregistrement…', 'context' => 'Governance decision saving label.'],
             'governance.error.generic' => ['text' => 'Impossible d’enregistrer cette prise de décision.', 'context' => 'Governance editor generic error.'],
@@ -183,7 +207,7 @@ if (!function_exists('omoDecisionGovernanceBuildBlueprint')) {
         }
         $blueprint = [];
         foreach ($decision->getProposals(true) as $proposal) {
-            if (!$proposal instanceof DecisionProposal || !$proposal->hasGovernanceActions()) {
+            if (!$proposal instanceof DecisionProposal) {
                 continue;
             }
             $actions = [];
@@ -203,14 +227,34 @@ if (!function_exists('omoDecisionGovernanceBuildBlueprint')) {
                 }
                 $actions[] = [
                     'id' => (int)$action->getId(),
+                    'storage' => 'legacy',
                     'type' => (string)$action->get('action_type'),
                     'targetId' => (int)$action->get('target_id'),
+                    'holonId' => (int)$decision->get('IDholon'),
                     'before' => $beforeState,
                     'after' => $afterState,
                     'status' => (string)$action->get('status'),
                     'statusMessage' => trim((string)$action->get('status_message')),
                 ];
             }
+            foreach (DeferredProposal::getForDecisionProposal((int)$proposal->getId()) as $deferredProposal) {
+                if (!$deferredProposal instanceof DeferredProposal
+                    || (string)$deferredProposal->get('status') === DeferredProposal::STATUS_REMOVED) {
+                    continue;
+                }
+                $actions[] = [
+                    'id' => (int)$deferredProposal->getId(),
+                    'storage' => 'deferred',
+                    'type' => (string)$deferredProposal->get('target_type') . '.' . (string)$deferredProposal->get('operation'),
+                    'targetId' => (int)$deferredProposal->get('target_id'),
+                    'holonId' => (int)$deferredProposal->get('IDholon'),
+                    'before' => DeferredProposal::normalizeState($deferredProposal->get('before_state')),
+                    'after' => DeferredProposal::normalizeState($deferredProposal->get('after_state')),
+                    'status' => (string)$deferredProposal->get('status'),
+                    'statusMessage' => trim((string)$deferredProposal->get('status_message')),
+                ];
+            }
+            if (!$actions) continue;
             $blueprint[] = [
                 'id' => (int)$proposal->getId(),
                 'title' => trim((string)$proposal->get('title')),

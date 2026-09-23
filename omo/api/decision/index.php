@@ -1524,7 +1524,7 @@ if (!is_string($payloadJson)) {
 
 <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
-<link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260917-proposal-menu-layer">
+<link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260923-compact-editor">
 <script src="/common/choice/decision_cards.js"></script>
 
 <style>

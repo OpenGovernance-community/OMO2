@@ -566,7 +566,7 @@ $currentUserLabel = trim((string)$currentUser->getScopedDisplayName());
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $escape(t('choice.page.title', [], $lang, $sourceLang)) ?></title>
     <link href="/shared_css.css" rel="stylesheet">
-    <link href="/common/choice/decision_cards.css" rel="stylesheet">
+    <link href="/common/choice/decision_cards.css?v=20260923-compact-editor" rel="stylesheet">
     <script src="/shared_functions.js"></script>
     <script>
         if (typeof sharedApplyDocumentTheme === 'function') {

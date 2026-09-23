@@ -461,15 +461,16 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <input type="hidden" name="evaluation_method" value="<?= $escape(DecisionProcess::METHOD_MAJORITY_JUDGMENT) ?>">
 
                     <?php if (!$embeddedQuestion): ?>
-                    <section class="generic-section generic-section--stack generic-form-section generic-form-section--compact omo-decision-edit__process-settings">
-                    <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.multi.process_title', [], $lang, $sourceLang)) ?></h3>
+                    <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-decision-edit__process-settings">
+                    <h3 class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.multi.process_title', [], $lang, $sourceLang)) ?></h3>
 
-                    <label class="omo-decision-majority-judgment__field">
+                    <label class="generic-form-field omo-decision-majority-judgment__field">
+                        <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.process_title', [], $lang, $sourceLang)) ?></span>
                         <input type="text" name="process_title" class="generic-form-control generic-form-control--compact" required maxlength="190" value="<?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('title')) : '') ?>" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.process_title', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>>
                     </label>
 
-                    <label class="omo-decision-majority-judgment__field">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.process_description', [], $lang, $sourceLang)) ?></span>
+                    <label class="generic-form-field omo-decision-majority-judgment__field">
+                        <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.process_description', [], $lang, $sourceLang)) ?></span>
                         <textarea name="process_description" class="generic-form-control generic-form-control--compact omo-decision-majority-judgment__textarea" rows="2" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.process_description', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>><?= $escape($decision instanceof DecisionProcess ? trim((string)$decision->get('description')) : '') ?></textarea>
                     </label>
 
@@ -483,14 +484,14 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         </div>
                         <div class="generic-accordion__content generic-form-stack generic-form-stack--compact">
                     <div class="omo-decision-majority-judgment__grid omo-decision-schedule__primary">
-                    <div class="omo-decision-majority-judgment__field">
+                    <div class="generic-form-field omo-decision-majority-judgment__field">
                         <div class="generic-heading-with-help">
-                            <label class="generic-card-title generic-card-title--small" for="omo-decision-majority-judgment-visibility"><?= $escape(t('decisions.edit.visibility.label', [], $lang, $sourceLang)) ?></label>
+                            <label class="generic-form-label" for="omo-decision-majority-judgment-visibility"><?= $escape(t('decisions.edit.visibility.label', [], $lang, $sourceLang)) ?></label>
                             <?php if (trim((string)($visibilityState['visibilityHelpText'] ?? '')) !== ''): ?>
                             <details class="generic-context-help"><summary aria-label="<?= $escape((string)$visibilityState['visibilityHelpText']) ?>">?</summary><div class="generic-context-help__content"><?= $escape((string)$visibilityState['visibilityHelpText']) ?></div></details>
                             <?php endif; ?>
                         </div>
-                        <select name="visibility_type" id="omo-decision-majority-judgment-visibility" class="generic-form-control" <?= $canEditStructure ? '' : 'disabled' ?>>
+                        <select name="visibility_type" id="omo-decision-majority-judgment-visibility" class="generic-form-control generic-form-control--compact" <?= $canEditStructure ? '' : 'disabled' ?>>
                             <?php foreach (($visibilityState['visibilityOptions'] ?? array()) as $optionValue => $optionLabel): ?>
                             <option
                                 value="<?= $escape($optionValue) ?>"
@@ -501,9 +502,9 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         </select>
                     </div>
 
-                        <label class="omo-decision-majority-judgment__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.status', [], $lang, $sourceLang)) ?></span>
-                            <select name="status" class="generic-form-control" <?= $isEditable ? '' : 'disabled' ?>>
+                        <label class="generic-form-field omo-decision-majority-judgment__field">
+                            <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.status', [], $lang, $sourceLang)) ?></span>
+                            <select name="status" class="generic-form-control generic-form-control--compact" <?= $isEditable ? '' : 'disabled' ?>>
                                 <?php foreach ([
                                     DecisionProcess::STATUS_DRAFT => 'decisions.majority_judgment.option.status.draft',
                                     DecisionProcess::STATUS_SCHEDULED => 'decisions.majority_judgment.option.status.scheduled',
@@ -518,25 +519,25 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         </label>
                     </div>
 
-                    <div class="omo-decision-majority-judgment__grid omo-decision-schedule__dates">
-                        <label class="omo-decision-majority-judgment__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.consultation_start', [], $lang, $sourceLang)) ?></span>
-                            <input type="datetime-local" name="consultation_start_at" class="generic-form-control" value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionMajorityJudgmentFormatDateTimeLocal($decision->get('consultation_start_at')) : '') ?>" <?= $canEditStartDates ? '' : 'disabled' ?>>
+                    <div class="generic-form-grid">
+                        <label class="generic-form-field omo-decision-majority-judgment__field">
+                            <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.consultation_start', [], $lang, $sourceLang)) ?></span>
+                            <input type="datetime-local" name="consultation_start_at" class="generic-form-control generic-form-control--compact" value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionMajorityJudgmentFormatDateTimeLocal($decision->get('consultation_start_at')) : '') ?>" <?= $canEditStartDates ? '' : 'disabled' ?>>
                         </label>
 
-                        <label class="omo-decision-majority-judgment__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.consultation_end', [], $lang, $sourceLang)) ?></span>
-                            <input type="datetime-local" name="consultation_end_at" class="generic-form-control" value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionMajorityJudgmentFormatDateTimeLocal($decision->get('consultation_end_at')) : '') ?>" <?= $isEditable ? '' : 'disabled' ?>>
+                        <label class="generic-form-field omo-decision-majority-judgment__field">
+                            <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.consultation_end', [], $lang, $sourceLang)) ?></span>
+                            <input type="datetime-local" name="consultation_end_at" class="generic-form-control generic-form-control--compact" value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionMajorityJudgmentFormatDateTimeLocal($decision->get('consultation_end_at')) : '') ?>" <?= $isEditable ? '' : 'disabled' ?>>
                         </label>
 
-                        <label class="omo-decision-majority-judgment__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.evaluation_start', [], $lang, $sourceLang)) ?></span>
-                            <input type="datetime-local" name="evaluation_start_at" class="generic-form-control" value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionMajorityJudgmentFormatDateTimeLocal($decision->get('evaluation_start_at')) : '') ?>" <?= $canEditStartDates ? '' : 'disabled' ?>>
+                        <label class="generic-form-field omo-decision-majority-judgment__field">
+                            <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.evaluation_start', [], $lang, $sourceLang)) ?></span>
+                            <input type="datetime-local" name="evaluation_start_at" class="generic-form-control generic-form-control--compact" value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionMajorityJudgmentFormatDateTimeLocal($decision->get('evaluation_start_at')) : '') ?>" <?= $canEditStartDates ? '' : 'disabled' ?>>
                         </label>
 
-                        <label class="omo-decision-majority-judgment__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.evaluation_end', [], $lang, $sourceLang)) ?></span>
-                            <input type="datetime-local" name="evaluation_end_at" class="generic-form-control" value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionMajorityJudgmentFormatDateTimeLocal($decision->get('evaluation_end_at')) : '') ?>" <?= $isEditable ? '' : 'disabled' ?>>
+                        <label class="generic-form-field omo-decision-majority-judgment__field">
+                            <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.evaluation_end', [], $lang, $sourceLang)) ?></span>
+                            <input type="datetime-local" name="evaluation_end_at" class="generic-form-control generic-form-control--compact" value="<?= $escape($decision instanceof DecisionProcess ? omoDecisionMajorityJudgmentFormatDateTimeLocal($decision->get('evaluation_end_at')) : '') ?>" <?= $isEditable ? '' : 'disabled' ?>>
                         </label>
                     </div>
                         </div>
@@ -545,43 +546,43 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                     <?= omoDecisionRenderInvitationSection($decision, array_merge($context, ['method' => DecisionProcess::METHOD_MAJORITY_JUDGMENT]), $lang, $sourceLang, $escape, 'omo-decision-majority-judgment__invitation-summary') ?>
 
                     </section>
-                    <section class="generic-section generic-section--stack omo-decision-edit__questions-section">
-                    <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.multi.questions_title', [], $lang, $sourceLang)) ?></h3>
+                    <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-decision-edit__questions-section">
+                    <h3 class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.multi.questions_title', [], $lang, $sourceLang)) ?></h3>
 
                     <?php if (function_exists('omoDecisionRenderEditorGroupSwitch')) {
                         omoDecisionRenderEditorGroupSwitch($context, $decision instanceof DecisionProcess ? $decision : null, $decisionGroup instanceof DecisionGroup ? $decisionGroup : null, $decision instanceof DecisionProcess ? $decision->getDecisionGroups(false) : [], $lang, $sourceLang, $escape);
                     } ?>
                     <?php endif; ?>
 
-                    <label class="omo-decision-majority-judgment__field">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.title', [], $lang, $sourceLang)) ?></span>
-                        <input type="text" name="title" class="generic-form-control" required maxlength="190" value="<?= $escape($decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('title')) : '') ?>" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.title', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>>
+                    <label class="generic-form-field omo-decision-majority-judgment__field">
+                        <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.title', [], $lang, $sourceLang)) ?></span>
+                        <input type="text" name="title" class="generic-form-control generic-form-control--compact" required maxlength="190" value="<?= $escape($decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('title')) : '') ?>" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.title', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>>
                     </label>
 
-                    <label class="omo-decision-majority-judgment__field">
-                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.description', [], $lang, $sourceLang)) ?></span>
-                        <textarea name="description" class="generic-form-control omo-decision-majority-judgment__textarea" rows="4" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.description', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>><?= $escape($decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('description')) : '') ?></textarea>
+                    <label class="generic-form-field omo-decision-majority-judgment__field">
+                        <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.description', [], $lang, $sourceLang)) ?></span>
+                        <textarea name="description" class="generic-form-control generic-form-control--compact omo-decision-majority-judgment__textarea" rows="4" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.description', [], $lang, $sourceLang)) ?>" <?= $canEditStructure ? '' : 'disabled' ?>><?= $escape($decisionGroup instanceof DecisionGroup ? trim((string)$decisionGroup->get('description')) : '') ?></textarea>
                     </label>
 
                     <div class="omo-decision-majority-judgment__grid">
-                        <label class="omo-decision-majority-judgment__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.field.evaluation_method', [], $lang, $sourceLang)) ?></span>
-                            <select class="generic-form-control" disabled>
+                        <label class="generic-form-field omo-decision-majority-judgment__field">
+                            <span class="generic-form-label"><?= $escape(t('decisions.edit.field.evaluation_method', [], $lang, $sourceLang)) ?></span>
+                            <select class="generic-form-control generic-form-control--compact" disabled>
                                 <option selected><?= $escape(t('decisions.edit.method.majority_judgment.label', [], $lang, $sourceLang)) ?></option>
                             </select>
                         </label>
-                        <label class="omo-decision-majority-judgment__field">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.type', [], $lang, $sourceLang)) ?></span>
-                            <select name="decision_type" class="generic-form-control" <?= $canEditStructure ? '' : 'disabled' ?>>
+                        <label class="generic-form-field omo-decision-majority-judgment__field">
+                            <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.type', [], $lang, $sourceLang)) ?></span>
+                            <select name="decision_type" class="generic-form-control generic-form-control--compact" <?= $canEditStructure ? '' : 'disabled' ?>>
                                 <option value="<?= $escape(DecisionProcess::TYPE_DECISION) ?>"<?= $decisionType === DecisionProcess::TYPE_DECISION ? ' selected' : '' ?>><?= $escape(t('decisions.majority_judgment.option.type.decision', [], $lang, $sourceLang)) ?></option>
                                 <option value="<?= $escape(DecisionProcess::TYPE_CONSULTATION) ?>"<?= $decisionType === DecisionProcess::TYPE_CONSULTATION ? ' selected' : '' ?>><?= $escape(t('decisions.majority_judgment.option.type.consultation', [], $lang, $sourceLang)) ?></option>
                             </select>
                         </label>
                     </div>
 
-                    <div class="omo-decision-majority-judgment__field">
+                    <div class="generic-form-field omo-decision-majority-judgment__field">
                         <div class="omo-decision-settings-title-row">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t($embeddedQuestion ? 'decisions.majority_judgment.field.question_settings' : 'decisions.majority_judgment.field.settings', [], $lang, $sourceLang)) ?></span>
+                            <span class="generic-form-label"><?= $escape(t($embeddedQuestion ? 'decisions.majority_judgment.field.question_settings' : 'decisions.majority_judgment.field.settings', [], $lang, $sourceLang)) ?></span>
                             <button type="button" class="generic-action-button generic-action-button--secondary omo-decision-settings-button" data-omo-decision-mj-settings-open data-omo-decision-mj-settings-title="<?= $escape(t($embeddedQuestion ? 'decisions.majority_judgment.field.question_settings' : 'decisions.majority_judgment.field.settings', [], $lang, $sourceLang)) ?>"><?= $escape(t('decisions.majority_judgment.action.configure', [], $lang, $sourceLang)) ?></button>
                         </div>
                         <div class="generic-soft-panel generic-soft-panel--stack generic-soft-panel--summary omo-decision-majority-judgment__settings-summary">
@@ -638,7 +639,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         <?php endforeach; ?>
                         <input type="hidden" name="mention_customization_enabled" value="<?= $mentionCustomizationEnabled ? '1' : '' ?>" data-omo-decision-mj-hidden-mention-customization-enabled>
                         <div class="omo-decision-majority-judgment__settings-head omo-decision-settings-head">
-                            <div class="omo-decision-majority-judgment__field">
+                            <div class="generic-form-field omo-decision-majority-judgment__field">
                                 <div class="omo-decision-settings-overview">
                                     <section class="omo-decision-settings-overview__group">
                                         <span class="omo-decision-settings-overview__title"><?= $escape(t('decisions.edit.settings.behavior', [], $lang, $sourceLang)) ?></span>
@@ -676,7 +677,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             <div class="omo-decision-settings-popup omo-decision-majority-judgment-popup__grid" data-topbar-modal-max-width="820px">
                                 <div class="generic-soft-panel generic-soft-panel--stack">
                                     <label class="omo-decision-majority-judgment-popup__field">
-                                        <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.scale', [], $lang, $sourceLang)) ?></span>
+                                        <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.scale', [], $lang, $sourceLang)) ?></span>
                                         <span class="omo-decision-majority-judgment__toggle">
                                             <input type="checkbox" data-omo-decision-mj-popup-mention-customization <?= $mentionCustomizationEnabled ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
                                             <span><?= $escape(t('decisions.majority_judgment.field.scale_customize', [], $lang, $sourceLang)) ?></span>
@@ -694,7 +695,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                                 </span>
                                                 <input
                                                     type="text"
-                                                    class="generic-form-control"
+                                                    class="generic-form-control generic-form-control--compact"
                                                     value="<?= $escape((string)$mentionOption['label']) ?>"
                                                     placeholder="<?= $escape((string)$mentionOption['default_label']) ?>"
                                                     data-omo-decision-mj-popup-mention-label="<?= $escape((string)$mentionScore) ?>"
@@ -704,7 +705,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                                 >
                                             </label>
                                             <label class="omo-decision-majority-judgment-popup__field omo-decision-majority-judgment-popup__field--toggle">
-                                                <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.scale_active', [], $lang, $sourceLang)) ?></span>
+                                                <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.scale_active', [], $lang, $sourceLang)) ?></span>
                                                 <span class="omo-decision-majority-judgment__toggle">
                                                     <input type="checkbox" data-omo-decision-mj-popup-mention-active="<?= $escape((string)$mentionScore) ?>" data-default-active="<?= !empty($mentionOption['default_active']) ? '1' : '' ?>" <?= !empty($mentionOption['active']) ? 'checked' : '' ?> <?= $canEditStructure ? '' : 'disabled' ?>>
                                                     <span><?= $escape(t('decisions.majority_judgment.field.scale_active', [], $lang, $sourceLang)) ?></span>
@@ -716,7 +717,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                     <p class="omo-decision-majority-judgment__text"><?= $escape(t('decisions.majority_judgment.field.scale_center_hint', [], $lang, $sourceLang)) ?></p>
                                     </div>
                                 </div>
-                                <section class="omo-decision-settings-popup__group">
+                                <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
                                     <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.participation', [], $lang, $sourceLang)) ?></span>
                                     <div class="omo-decision-settings-popup__options">
                                         <label class="omo-decision-settings-popup__option">
@@ -729,7 +730,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                         </label>
                                     </div>
                                 </section>
-                                <section class="omo-decision-settings-popup__group">
+                                <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
                                     <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.presentation', [], $lang, $sourceLang)) ?></span>
                                     <div class="omo-decision-settings-popup__options">
                                         <label class="omo-decision-settings-popup__option">
@@ -742,7 +743,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                         </label>
                                     </div>
                                 </section>
-                                <section class="omo-decision-settings-popup__group">
+                                <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
                                     <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.settings.privacy', [], $lang, $sourceLang)) ?></span>
                                     <div class="omo-decision-settings-popup__options">
                                         <label class="omo-decision-settings-popup__option">
@@ -791,9 +792,9 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                         </div>
                     </div>
 
-                    <div class="omo-decision-majority-judgment__field">
+                    <div class="generic-form-field omo-decision-majority-judgment__field">
                         <div class="generic-heading-with-help">
-                            <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.proposals', [], $lang, $sourceLang)) ?></span>
+                            <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.proposals', [], $lang, $sourceLang)) ?></span>
                             <details class="generic-context-help">
                                 <summary aria-label="<?= $escape(t('decisions.majority_judgment.field.proposals_hint', [], $lang, $sourceLang)) ?>">?</summary>
                                 <div class="generic-context-help__content"><?= $escape(t('decisions.majority_judgment.field.proposals_hint', [], $lang, $sourceLang)) ?></div>
@@ -808,7 +809,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                 <div class="omo-decision-majority-judgment__proposal-main">
                                     <span class="omo-decision-majority-judgment__proposal-label" data-omo-decision-mj-proposal-label><?= $escape(str_replace('{index}', (string)($proposalIndex + 1), t('decisions.majority_judgment.field.proposals_item', ['index' => (string)($proposalIndex + 1)], $lang, $sourceLang))) ?></span>
                                     <?php if ($proposalContent['title']): ?>
-                                    <input type="text" name="proposals[]" class="generic-form-control" value="<?= $escape((string)$proposalItem['title']) ?>" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.proposals', [], $lang, $sourceLang)) ?>" <?= $canEditProposals ? '' : 'disabled' ?>>
+                                    <input type="text" name="proposals[]" class="generic-form-control generic-form-control--compact" value="<?= $escape((string)$proposalItem['title']) ?>" placeholder="<?= $escape(t('decisions.majority_judgment.placeholder.proposals', [], $lang, $sourceLang)) ?>" <?= $canEditProposals ? '' : 'disabled' ?>>
                                     <?php else: ?>
                                     <input type="hidden" name="proposals[]" value="<?= $escape((string)$proposalItem['title']) ?>">
                                     <?php endif; ?>
@@ -916,16 +917,16 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
 
                 <?php if (!$publicLayout && $decision instanceof DecisionProcess && trim((string)$decision->get('description')) !== ''): ?>
                 <div class="generic-soft-panel generic-soft-panel--stack">
-                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.description', [], $lang, $sourceLang)) ?></span>
+                    <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.description', [], $lang, $sourceLang)) ?></span>
                     <p class="omo-decision-majority-judgment__text"><?= nl2br($escape(trim((string)$decision->get('description')))) ?></p>
                 </div>
                 <?php endif; ?>
 
                 <?php if ($isParticipateMode): ?>
                 <?php if ($isConsultationPhase): ?>
-                <div class="omo-decision-majority-judgment__form generic-form-stack">
+                <div class="omo-decision-majority-judgment__form generic-form-stack generic-form-stack--compact">
                 <?php else: ?>
-                <form class="omo-decision-majority-judgment__form generic-form-stack" action="/omo/api/decision/modules/majority_judgment/respond.php" method="post" data-omo-decision-mj-response-form>
+                <form class="omo-decision-majority-judgment__form generic-form-stack generic-form-stack--compact" action="/omo/api/decision/modules/majority_judgment/respond.php" method="post" data-omo-decision-mj-response-form>
                     <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                     <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                     <input type="hidden" name="id" value="<?= $escape($decision instanceof DecisionProcess ? (int)$decision->getId() : 0) ?>">
@@ -1013,7 +1014,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                 <?php endif; ?>
                 <?php if ($liveResultsMode): ?>
                 <section class="generic-soft-panel generic-soft-panel--stack">
-                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.live_results_heading', [], $lang, $sourceLang)) ?></span>
+                    <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.live_results_heading', [], $lang, $sourceLang)) ?></span>
                     <?php foreach ($proposalObjects as $liveProposal): ?>
                     <?php $liveStat = $proposalStats[(int)$liveProposal->getId()] ?? []; ?>
                     <div class="omo-decision-majority-judgment__readonly-stat"><strong><?= $escape(omoDecisionGetProposalLabel($liveProposal, $proposalContent)) ?></strong><span><?= $escape((string)($liveStat['majority_label'] ?? '')) ?> (<?= $escape((string)($liveStat['count'] ?? 0)) ?>)</span></div>
@@ -1037,7 +1038,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                 <?php endif; ?>
                 <?php else: ?>
                 <div class="generic-soft-panel generic-soft-panel--stack">
-                    <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.majority_judgment.field.proposals', [], $lang, $sourceLang)) ?></span>
+                    <span class="generic-form-label"><?= $escape(t('decisions.majority_judgment.field.proposals', [], $lang, $sourceLang)) ?></span>
                     <?php if (count($proposalObjects) === 0): ?>
                     <p class="omo-decision-majority-judgment__text"><?= $escape(t('decisions.majority_judgment.empty_proposals', [], $lang, $sourceLang)) ?></p>
                     <?php elseif ($resultsMode && $submittedVoteCount === 0): ?>
@@ -1882,7 +1883,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                     const proposalContent = payload.proposalContent || {title: true, description: true};
                                     const descriptionDetailsField = proposalContent.title && proposalContent.description
                                         ? '  <label style="display:grid;gap:6px;">'
-                                            + '    <span class="generic-card-title generic-card-title--small">' + String(payload.texts && payload.texts.proposalDescriptionLabel ? payload.texts.proposalDescriptionLabel : 'Description') + '</span>'
+                                            + '    <span class="generic-form-label">' + String(payload.texts && payload.texts.proposalDescriptionLabel ? payload.texts.proposalDescriptionLabel : 'Description') + '</span>'
                                             + '    <div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-decision-mj-proposal-modal-description></div><textarea hidden aria-hidden="true" data-omo-proposal-html-value></textarea></div>'
                                             + '  </label>'
                                         : '';
@@ -1890,8 +1891,8 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                                         + '<div class="generic-section generic-section--stack" style="display:grid;gap:12px;">'
                                         + descriptionDetailsField
                                         + '  <label style="display:grid;gap:6px;">'
-                                        + '    <span class="generic-card-title generic-card-title--small">' + String(payload.texts && payload.texts.proposalInfoUrlLabel ? payload.texts.proposalInfoUrlLabel : 'URL') + '</span>'
-                                        + '    <input type="url" class="generic-form-control" data-omo-decision-mj-proposal-modal-info-url placeholder="' + String(payload.texts && payload.texts.proposalInfoUrlPlaceholder ? payload.texts.proposalInfoUrlPlaceholder : 'https://...') + '">'
+                                        + '    <span class="generic-form-label">' + String(payload.texts && payload.texts.proposalInfoUrlLabel ? payload.texts.proposalInfoUrlLabel : 'URL') + '</span>'
+                                        + '    <input type="url" class="generic-form-control generic-form-control--compact" data-omo-decision-mj-proposal-modal-info-url placeholder="' + String(payload.texts && payload.texts.proposalInfoUrlPlaceholder ? payload.texts.proposalInfoUrlPlaceholder : 'https://...') + '">'
                                         + '  </label>'
                                         + '  <div style="display:flex;justify-content:flex-end;gap:8px;">'
                                         + '    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-mj-proposal-modal-cancel>Fermer</button>'
@@ -1966,7 +1967,7 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
                             card.setAttribute('draggable', 'true');
                             const proposalContent = payload.proposalContent || {};
                             const proposalTitleField = proposalContent.title
-                                ? '<input type="text" name="proposals[]" class="generic-form-control" placeholder="' + String(payload.texts && payload.texts.proposalPlaceholder ? payload.texts.proposalPlaceholder : 'Nom de la proposition') + '">'
+                                ? '<input type="text" name="proposals[]" class="generic-form-control generic-form-control--compact" placeholder="' + String(payload.texts && payload.texts.proposalPlaceholder ? payload.texts.proposalPlaceholder : 'Nom de la proposition') + '">'
                                 : '<input type="hidden" name="proposals[]" value="">';
                             const proposalDescriptionField = !proposalContent.title && proposalContent.description
                                 ? '<div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-decision-mj-proposal-description-editor' + (payload.proposalEditable === true ? '' : ' data-omo-proposal-html-disabled="1"') + '></div><textarea hidden aria-hidden="true" name="proposal_descriptions[]" data-omo-proposal-html-value data-omo-decision-mj-proposal-description></textarea></div>'
@@ -2370,7 +2371,6 @@ if (!function_exists('omoDecisionMajorityJudgmentModuleRender')) {
 
         .omo-decision-majority-judgment__head,
         .omo-decision-majority-judgment__copy,
-        .omo-decision-majority-judgment__field,
         .omo-decision-majority-judgment__proposal-main,
         .omo-decision-majority-judgment__footer,
         .omo-decision-majority-judgment__result-head,

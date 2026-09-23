@@ -53,7 +53,7 @@ $methodConfig = omoDecisionBuildMethodConfig($decisionGroup instanceof \dbObject
 $proposalContent = omoDecisionNormalizeProposalContent($methodConfig['proposal_content'] ?? null);
 
 if ($requestMethod === 'GET') {
-    if ($proposal->hasGovernanceActions()) {
+    if ($proposal->hasGovernanceActions() || $proposal->hasDeferredProposals()) {
         $decision = $proposal->getDecisionProcess();
         omoDecisionModuleJsonResponse(200, [
             'status' => true,

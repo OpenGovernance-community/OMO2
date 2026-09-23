@@ -23,7 +23,7 @@ $collectiveHolonId = (int)$document->getPvContextHolonId();
 $contextHolon = DeferredProposal::loadAllowedProjectTargetHolon($organizationId, $holonId, $operation, $collectiveHolonId);
 if (!$contextHolon instanceof Holon) $respond(403, ['status' => false, 'message' => 'Le collectif du PV ne dispose pas du droit nécessaire dans cet espace.']);
 $proposal = new DeferredProposal();
-if ($proposalId > 0 && (!$proposal->load($proposalId) || (int)$proposal->get('IDdocument_pv_point') !== $pointId || (int)$proposal->get('IDorganization') !== $organizationId || (string)$proposal->get('target_type') !== DeferredProposal::TARGET_PROJECT || (string)$proposal->get('status') !== DeferredProposal::STATUS_PENDING)) $respond(404, ['status' => false, 'message' => 'Cette proposition ne peut plus être modifiée.']);
+if ($proposalId > 0 && (!$proposal->load($proposalId) || (int)$proposal->get('IDdocument_pv_point') !== $pointId || (int)$proposal->get('IDorganization') !== $organizationId || (string)$proposal->get('target_type') !== DeferredProposal::TARGET_PROJECT || (string)$proposal->get('status') !== DeferredProposal::STATUS_PENDING)) $respond(404, ['status' => false, 'message' => 'Cette modification ne peut plus être modifiée.']);
 $project = new Project();
 if ($operation !== DeferredProposal::OPERATION_CREATE && (!$project->load($projectId) || (int)$project->get('IDorganization') !== $organizationId || (int)$project->get('IDholon') !== $holonId)) $respond(404, ['status' => false, 'message' => 'Le projet sélectionné est introuvable dans cet espace.']);
 $afterState = [];
@@ -35,5 +35,5 @@ if ($operation !== DeferredProposal::OPERATION_DELETE) {
     if ($afterState['status'] === Project::STATUS_BLOCKED && ($afterState['blocked_reason'] === '' || $afterState['blocked_until'] === '')) $respond(422, ['status' => false, 'message' => 'Un projet bloqué doit préciser le motif et la date de relance.']);
 }
 $proposal->set('IDorganization', $organizationId); $proposal->set('IDholon', $holonId); $proposal->set('IDuser_author', $userId); $proposal->set('target_type', DeferredProposal::TARGET_PROJECT); $proposal->set('operation', $operation); $proposal->set('target_id', $operation === DeferredProposal::OPERATION_CREATE ? null : $projectId); $proposal->set('before_state', $operation === DeferredProposal::OPERATION_CREATE ? [] : DeferredProposal::captureProjectState($project)); $proposal->set('after_state', $afterState); $proposal->set('IDdocument_pv_point', $pointId); if ($proposalId <= 0) $proposal->set('position', count(DeferredProposal::getForPvPoint($pointId)) + 1); $proposal->set('status', DeferredProposal::STATUS_PENDING); $proposal->set('parameters', ['payload_version' => 1, 'editor' => 'project']);
-$result = $proposal->save(); if (!is_array($result) || empty($result['status'])) $respond(500, ['status' => false, 'message' => 'Impossible d’enregistrer la proposition.']);
+$result = $proposal->save(); if (!is_array($result) || empty($result['status'])) $respond(500, ['status' => false, 'message' => 'Impossible d’enregistrer la modification.']);
 $respond(200, ['status' => true, 'id' => (int)$proposal->getId(), 'pointId' => $pointId]);
