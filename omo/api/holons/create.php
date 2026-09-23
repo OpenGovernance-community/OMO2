@@ -291,8 +291,8 @@ $drawerTitle = (($editorData['mode'] ?? 'create') === 'edit') ? 'Modifier l’é
 <script src="/omo/assets/js/sized-image-field.js"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
-<link rel="stylesheet" href="/common/permissions/editor.css?v=20260917-crud-3">
-<script src="/common/permissions/editor.js?v=20260917-crud-3"></script>
+<link rel="stylesheet" href="/common/permissions/editor.css?v=20260923-permission-align">
+<script src="/common/permissions/editor.js?v=20260923-permission-align"></script>
 <script>
 (() => {
 const state = {
@@ -531,21 +531,21 @@ function readPermissions() {
 
     const assignments = { member: {}, admin: {}, collective: {} };
     Array.from(elements.permissions.querySelectorAll('[data-permission-key]')).forEach(function (row) {
-        const profileKey = String(row.getAttribute('data-permission-profile') || 'member');
         const permissionKey = String(row.getAttribute('data-permission-key') || '').trim();
         if (!permissionKey) {
             return;
         }
 
-        const selectedRanges = Array.from(row.querySelectorAll('[data-permission-token]')).map(function (token) {
-            return String(token.getAttribute('data-permission-token') || '').trim();
-        }).filter(function (range) {
-            return range !== '';
+        Array.from(row.querySelectorAll('[data-permission-scope]')).forEach(function (scope) {
+            const range = String(scope.getAttribute('data-permission-token') || '').trim();
+            if (!range) return;
+            Array.from(scope.querySelectorAll('[data-permission-profile]:checked')).forEach(function (checkbox) {
+                const profileKey = String(checkbox.getAttribute('data-permission-profile') || '').trim();
+                if (!Object.prototype.hasOwnProperty.call(assignments, profileKey)) return;
+                if (!assignments[profileKey][permissionKey]) assignments[profileKey][permissionKey] = [];
+                assignments[profileKey][permissionKey].push(range);
+            });
         });
-
-        if (selectedRanges.length) {
-            assignments[profileKey][permissionKey] = selectedRanges;
-        }
     });
 
     return assignments;
@@ -720,10 +720,50 @@ function setPermissionEditorExpanded(isExpanded) {
     }
 }
 
-function setPermissionRowRanges(row, selectedRanges, rangeOptions) {
+function getPermissionProfiles() {
+    return [
+        { key: 'member', label: 'Membres' },
+        { key: 'admin', label: adminLexiconLabel },
+        { key: 'collective', label: 'Collectif' }
+    ];
+}
+
+function getPermissionAssignmentsForKey(assignments, permissionKey) {
+    const selected = {};
+    getPermissionProfiles().forEach(function (profile) {
+        selected[profile.key] = normalizePermissionRanges((assignments[profile.key] || {})[permissionKey]);
+    });
+    return selected;
+}
+
+function readPermissionRowAssignments(row) {
+    const assignments = { member: [], admin: [], collective: [] };
+    Array.from(row.querySelectorAll('[data-permission-scope]')).forEach(function (scope) {
+        const range = String(scope.getAttribute('data-permission-token') || '').trim();
+        if (!range) return;
+        Array.from(scope.querySelectorAll('[data-permission-profile]:checked')).forEach(function (checkbox) {
+            const profileKey = String(checkbox.getAttribute('data-permission-profile') || '').trim();
+            if (Object.prototype.hasOwnProperty.call(assignments, profileKey)) assignments[profileKey].push(range);
+        });
+    });
+    return assignments;
+}
+
+function setPermissionRowRanges(row, selectedAssignments, rangeOptions, profiles) {
     const tokensContainer = row.querySelector('[data-permission-tokens]');
     const select = row.querySelector('[data-permission-select]');
-    const normalizedRanges = normalizePermissionRanges(selectedRanges);
+    const selectedByProfile = selectedAssignments && typeof selectedAssignments === 'object' ? selectedAssignments : {};
+    const profileList = Array.isArray(profiles) ? profiles : getPermissionProfiles();
+    const normalizedRanges = [];
+    const seenRanges = new Set();
+
+    profileList.forEach(function (profile) {
+        normalizePermissionRanges(selectedByProfile[profile.key]).forEach(function (range) {
+            if (seenRanges.has(range)) return;
+            seenRanges.add(range);
+            normalizedRanges.push(range);
+        });
+    });
 
     if (!tokensContainer) {
         return;
@@ -734,10 +774,16 @@ function setPermissionRowRanges(row, selectedRanges, rangeOptions) {
     } else {
         tokensContainer.innerHTML = normalizedRanges.map(function (rangeKey) {
             return ''
-                + '<span class="omo-holon-create__permission-token" data-permission-token="' + escapeHtml(rangeKey) + '">'
-                + '  <span>' + escapeHtml(getPermissionRangeLabel(rangeKey, rangeOptions)) + '</span>'
-                + '  <button type="button" class="omo-holon-create__permission-token-remove" data-permission-remove="' + escapeHtml(rangeKey) + '" aria-label="Retirer cette portee">&times;</button>'
-                + '</span>';
+                + '<div class="omo-holon-create__permission-token" data-permission-token="' + escapeHtml(rangeKey) + '" data-permission-scope>'
+                + '  <span class="omo-holon-create__permission-scope-label">' + escapeHtml(getPermissionRangeLabel(rangeKey, rangeOptions)) + '</span>'
+                + '  <span class="omo-permission-editor__profiles">'
+                + profileList.map(function (profile) {
+                    const isChecked = normalizePermissionRanges(selectedByProfile[profile.key]).includes(rangeKey);
+                    return '<label title="' + escapeHtml(profile.label) + '"><input type="checkbox" data-permission-profile="' + escapeHtml(profile.key) + '" aria-label="' + escapeHtml(profile.label) + '"' + (isChecked ? ' checked' : '') + '></label>';
+                }).join('')
+                + '  </span>'
+                + '  <button type="button" class="omo-holon-create__permission-token-remove" data-permission-remove="' + escapeHtml(rangeKey) + '" aria-label="Retirer cette portée">&times;</button>'
+                + '</div>';
         }).join('');
     }
 
@@ -761,11 +807,9 @@ function bindPermissionRow(row, rangeOptions, labelRangeOptions) {
             return;
         }
 
-        const currentRanges = Array.from(row.querySelectorAll('[data-permission-token]')).map(function (token) {
-            return String(token.getAttribute('data-permission-token') || '').trim();
-        });
-        currentRanges.push(nextRange);
-        setPermissionRowRanges(row, currentRanges, labelRangeOptions || rangeOptions);
+        const selectedAssignments = readPermissionRowAssignments(row);
+        selectedAssignments.member.push(nextRange);
+        setPermissionRowRanges(row, selectedAssignments, labelRangeOptions || rangeOptions);
     });
 
     row.addEventListener('click', function (event) {
@@ -777,13 +821,17 @@ function bindPermissionRow(row, rangeOptions, labelRangeOptions) {
         }
 
         const removedRange = String(removeButton.getAttribute('data-permission-remove') || '').trim();
-        const remainingRanges = Array.from(row.querySelectorAll('[data-permission-token]')).map(function (token) {
-            return String(token.getAttribute('data-permission-token') || '').trim();
-        }).filter(function (range) {
-            return range !== '' && range !== removedRange;
+        const selectedAssignments = readPermissionRowAssignments(row);
+        Object.keys(selectedAssignments).forEach(function (profileKey) {
+            selectedAssignments[profileKey] = selectedAssignments[profileKey].filter(function (range) {
+                return range !== removedRange;
+            });
         });
+        setPermissionRowRanges(row, selectedAssignments, labelRangeOptions || rangeOptions);
+    });
 
-        setPermissionRowRanges(row, remainingRanges, labelRangeOptions || rangeOptions);
+    row.addEventListener('change', function () {
+        syncPermissionSummary();
     });
 }
 
@@ -791,11 +839,7 @@ function renderPermissions(permissionAssignments) {
     const permissionCatalog = getPermissionCatalog();
     const defaultRangeOptions = getPermissionRangeOptions();
     const assignments = normalizePermissionProfiles(permissionAssignments);
-    const profiles = [
-        { key: 'member', label: 'Membres' },
-        { key: 'admin', label: adminLexiconLabel },
-        { key: 'collective', label: 'Collectif' }
-    ];
+    const profiles = getPermissionProfiles();
     const permissionGroups = groupPermissionCatalog(permissionCatalog);
 
     if (!elements.permissions) {
@@ -808,67 +852,44 @@ function renderPermissions(permissionAssignments) {
         return;
     }
 
-    let html = '<div class="omo-holon-create__permission-tabs" role="tablist">';
-    profiles.forEach(function (profile, index) {
-        html += '<button type="button" class="omo-holon-create__permission-tab' + (index === 0 ? ' is-active' : '') + '" data-permission-profile-tab="' + profile.key + '" role="tab" aria-selected="' + (index === 0 ? 'true' : 'false') + '">' + escapeHtml(profile.label) + '</button>';
-    });
-    html += '</div>';
+    let html = '';
+    permissionGroups.forEach(function (group) {
+        html += '<section class="omo-holon-create__permission-group" data-permission-group="' + escapeHtml(group.key) + '">'
+            + '<div class="omo-holon-create__permission-group-title">' + escapeHtml(group.title) + '</div>'
+            + '<div class="omo-holon-create__permission-table">';
+        group.permissions.forEach(function (permission) {
+            const allPermissionRangeOptions = Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
+                ? permission.rangeOptions
+                : defaultRangeOptions;
+            const permissionRangeOptions = getPermissionRangeOptionsForCurrentHolon(allPermissionRangeOptions);
 
-    profiles.forEach(function (profile, profileIndex) {
-        html += '<div class="omo-holon-create__permission-panel" data-permission-profile-panel="' + profile.key + '" role="tabpanel"' + (profileIndex === 0 ? '' : ' hidden') + '>';
-        permissionGroups.forEach(function (group) {
-            html += '<section class="omo-holon-create__permission-group" data-permission-group="' + escapeHtml(group.key) + '">'
-                + '<div class="omo-holon-create__permission-group-title">' + escapeHtml(group.title) + '</div>'
-                + '<div class="omo-holon-create__permission-table">';
-            group.permissions.forEach(function (permission) {
-                const allPermissionRangeOptions = Array.isArray(permission.rangeOptions) && permission.rangeOptions.length
-                    ? permission.rangeOptions
-                    : defaultRangeOptions;
-                const permissionRangeOptions = getPermissionRangeOptionsForCurrentHolon(allPermissionRangeOptions);
+            html += '<div class="omo-holon-create__permission-row" data-permission-key="' + escapeHtml(permission.key) + '">'
+                + '<div class="omo-holon-create__permission-main">'
+                + '<div class="omo-holon-create__permission-title">' + escapeHtml(permission.title || permission.key) + '</div>'
+                + '<div class="omo-holon-create__permission-meta">' + escapeHtml(permission.key) + '</div>';
 
-                html += '<div class="omo-holon-create__permission-row" data-permission-profile="' + profile.key + '" data-permission-key="' + escapeHtml(permission.key) + '">'
-                    + '<div class="omo-holon-create__permission-main">'
-                    + '<div class="omo-holon-create__permission-title">' + escapeHtml(permission.title || permission.key) + '</div>'
-                    + '<div class="omo-holon-create__permission-meta">' + escapeHtml(permission.key) + '</div>';
+            if (String(permission.description || '').trim() !== '') {
+                html += '<div class="omo-holon-create__permission-description">' + escapeHtml(permission.description) + '</div>';
+            }
 
-                if (String(permission.description || '').trim() !== '') {
-                    html += '<div class="omo-holon-create__permission-description">' + escapeHtml(permission.description) + '</div>';
-                }
+            html += '</div><div class="omo-holon-create__permission-picker">'
+                + '<div class="omo-holon-create__permission-tokens" data-permission-tokens></div>'
+                + '<select class="omo-holon-create__permission-select generic-form-control" data-permission-select>'
+                + '<option value="">Ajouter une portée...</option>';
 
-                html += '</div><div class="omo-holon-create__permission-picker">'
-                    + '<div class="omo-holon-create__permission-tokens" data-permission-tokens></div>'
-                    + '<select class="omo-holon-create__permission-select generic-form-control" data-permission-select>'
-                    + '<option value="">Ajouter une portee...</option>';
-
-                permissionRangeOptions.forEach(function (range) {
-                    html += '<option value="' + escapeHtml(range.key) + '">' + escapeHtml(range.label || range.key) + '</option>';
-                });
-
-                html += '</select></div></div>';
+            permissionRangeOptions.forEach(function (range) {
+                html += '<option value="' + escapeHtml(range.key) + '">' + escapeHtml(range.label || range.key) + '</option>';
             });
-            html += '</div></section>';
+
+            html += '</select></div></div>';
         });
-        html += '</div>';
+        html += '</div></section>';
     });
 
     elements.permissions.innerHTML = html;
-    Array.from(elements.permissions.querySelectorAll('[data-permission-profile-tab]')).forEach(function (tab) {
-        tab.addEventListener('click', function () {
-            const profileKey = String(tab.getAttribute('data-permission-profile-tab') || 'member');
-            Array.from(elements.permissions.querySelectorAll('[data-permission-profile-tab]')).forEach(function (otherTab) {
-                const isActive = otherTab === tab;
-                otherTab.classList.toggle('is-active', isActive);
-                otherTab.setAttribute('aria-selected', isActive ? 'true' : 'false');
-            });
-            Array.from(elements.permissions.querySelectorAll('[data-permission-profile-panel]')).forEach(function (panel) {
-                panel.hidden = String(panel.getAttribute('data-permission-profile-panel') || '') !== profileKey;
-            });
-        });
-    });
 
     Array.from(elements.permissions.querySelectorAll('[data-permission-key]')).forEach(function (row) {
         const permissionKey = String(row.getAttribute('data-permission-key') || '').trim();
-        const profileKey = String(row.getAttribute('data-permission-profile') || 'member');
         const permission = permissionCatalog.find(function (item) {
             return String(item && item.key ? item.key : '') === permissionKey;
         }) || null;
@@ -878,7 +899,7 @@ function renderPermissions(permissionAssignments) {
         const permissionRangeOptions = getPermissionRangeOptionsForCurrentHolon(allPermissionRangeOptions);
 
         bindPermissionRow(row, permissionRangeOptions, allPermissionRangeOptions);
-        setPermissionRowRanges(row, assignments[profileKey][permissionKey], allPermissionRangeOptions);
+        setPermissionRowRanges(row, getPermissionAssignmentsForKey(assignments, permissionKey), allPermissionRangeOptions, profiles);
     });
 
     window.omoPermissionEditorEnhance(elements.permissions, getInheritedPermissions());
@@ -3061,4 +3082,4 @@ root.addEventListener('click', function (event) {
 </script>
 <?php endif; ?>
 
-<link rel="stylesheet" href="/omo/api/holons/editor.css?v=20260922-shared-project-selector">
+<link rel="stylesheet" href="/omo/api/holons/editor.css?v=20260923-permission-align">

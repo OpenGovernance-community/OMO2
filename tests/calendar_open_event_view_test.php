@@ -13,7 +13,7 @@ function assertCalendarOpenEventView(bool $condition, string $message): void
 
 $preferencesContextPosition = strpos($calendarSource, '$applicationViewPreferences = omoApplicationViewPreferencesGetContext(');
 $viewPreferencePosition = strpos($calendarSource, '$viewMode = omoCalendarParseView(', $preferencesContextPosition);
-$scopePreferencePosition = strpos($calendarSource, '$requestedScopeRaw = trim((string)omoApplicationViewPreferencesGetInitialValue(', $preferencesContextPosition);
+$scopePreferencePosition = strpos($calendarSource, '$requestedScopeRaw = trim((string)', $preferencesContextPosition);
 
 assertCalendarOpenEventView(
     $preferencesContextPosition !== false

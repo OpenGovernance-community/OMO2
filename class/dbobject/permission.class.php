@@ -432,6 +432,12 @@ class Permission extends DbObject
 
     public static function isPermissionContextual($permissionKey, $default = true)
     {
+        return self::memoizeRead([__FUNCTION__, (string)$permissionKey, (bool)$default],
+            static fn () => self::loadPermissionContextual($permissionKey, $default));
+    }
+
+    protected static function loadPermissionContextual($permissionKey, $default = true)
+    {
         $permissionKey = trim((string)$permissionKey);
         if ($permissionKey === '') {
             return (bool)$default;

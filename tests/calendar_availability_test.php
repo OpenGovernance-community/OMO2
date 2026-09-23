@@ -182,28 +182,35 @@ try {
             $dom = new DOMDocument();
             @$dom->loadHTML($html);
             $xpath = new DOMXPath($dom);
-            $nodes = $xpath->query('//*[@data-omo-calendar-other-organization]');
-            availabilityExpect($nodes->length > 0, 'Rendered week/day contains other-organization blocks');
-            foreach ($nodes as $node) {
-                availabilityExpect(trim($node->textContent) === $other->get('name'), 'Only organization name rendered');
-                $panel = $xpath->query('ancestor::*[@data-omo-calendar-view-panel][1]', $node)->item(0);
-                availabilityExpect(in_array($panel->getAttribute('data-omo-calendar-view-panel'), ['week', 'day'], true), 'No other-organization blocks in month/list');
+            $dataNode = $xpath->query('//script[@data-omo-calendar-data]')->item(0);
+            $payload = json_decode($dataNode->textContent, true, 512, JSON_THROW_ON_ERROR);
+            $otherItems = array_filter($payload['items'], static fn($item) => !empty($item['isOtherOrganization']));
+            availabilityExpect(count($otherItems) > 0, 'Week/day data contains other-organization blocks');
+            foreach ($otherItems as $itemId => $item) {
+                availabilityExpect($item['title'] === $other->get('name') && $item['documentUrl'] === '', 'Only organization label is exposed');
+                foreach ($payload['views'] as $scopeViews) {
+                    foreach ($scopeViews['month']['days'] as $dayData) {
+                        availabilityExpect(!in_array($itemId, $dayData['items'], true), 'No other-organization block in month');
+                    }
+                    foreach ($scopeViews['list']['sections'] as $section) {
+                        availabilityExpect(!in_array($itemId, $section['items'], true), 'No other-organization block in list');
+                    }
+                }
             }
             availabilityExpect(!str_contains($html, 'SECRET title') && !str_contains($html, 'SECRET details'), 'Source event never serialized into page');
-            $nowIndicators = $xpath->query('//*[@data-omo-calendar-now-indicator]');
-            availabilityExpect($nowIndicators->length > 0, 'Week and day timelines contain current-time indicators');
+            availabilityExpect($xpath->query('//*[@data-omo-calendar-view-panel]')->length === 0, 'No interfaces constructed server-side');
+            $script = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/calendar.js');
+            availabilityExpect(str_contains($script, "attr('now-indicator')"), 'Lazy timelines contain current-time indicators');
             availabilityExpect($xpath->query('//*[@data-omo-calendar-timezone and normalize-space(@data-omo-calendar-timezone) != ""]')->length === 1,
                 'Calendar timezone is supplied to current-time positioning');
-            availabilityExpect(str_contains($html, 'scrollTimelineToRelevantTime') && str_contains($html, 'availableHeight / 2')
-                && str_contains($html, 'setInterval(function ()'), 'Current-time line updates and opens vertically centered');
-            $dayHeaders = $xpath->query('//*[@data-omo-calendar-time-view="week"]//*[contains(concat(" ", normalize-space(@class), " "), " omo-calendar__time-day-header ")]');
-            availabilityExpect($dayHeaders->length > 0 && preg_match('/^(Lun|Mar|Mer|Jeu|Ven|Sam|Dim) [0-9]{1,2}[0-9]*$/',
-                trim($xpath->query('.//strong', $dayHeaders->item(0))->item(0)->textContent)) === 1, 'Timeline day heading omits repeated month name');
-            availabilityExpect($xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " omo-calendar__period-title--compact ")]/*[contains(concat(" ", normalize-space(@class), " "), " omo-calendar__timeline-count-badge ")]')->length > 0,
-                'Timeline period count uses a compact badge');
-            availabilityExpect($xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " omo-calendar__time-day-header ")]/*[contains(concat(" ", normalize-space(@class), " "), " omo-calendar__timeline-count-badge ")]')->length > 0,
-                'Timeline day counts use compact badges');
-            availabilityExpect(substr_count($html, '-webkit-line-clamp: 2') >= 2, 'Timed and all-day event titles are clamped to two lines');
+            availabilityExpect(str_contains($script, 'scrollTimelineToRelevantTime') && str_contains($script, 'availableHeight / 2')
+                && str_contains($script, 'setInterval(function ()'), 'Current-time line updates and opens vertically centered');
+            $week = $payload['views']['contextual']['week'];
+            availabilityExpect(count($week['days']) === 7 && preg_match('/^(Lun|Mar|Mer|Jeu|Ven|Sam|Dim) [0-9]{1,2}$/', $week['days'][0]['label']) === 1,
+                'Timeline day heading omits repeated month name');
+            availabilityExpect(isset($week['count'], $week['days'][0]['count'], $week['days'][0]['countLabel']), 'Timeline badges retain counts and labels');
+            $styles = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/calendar.css');
+            availabilityExpect(substr_count($styles, '-webkit-line-clamp: 2') >= 2, 'Timed and all-day event titles are clamped to two lines');
         } else {
             $_POST = ['title' => 'Availability test ' . $nonce, 'status' => Event::STATUS_DRAFT,
                 'start_at' => $day->format('Y-m-d') . 'T10:30', 'end_at' => $day->format('Y-m-d') . 'T11:30',
