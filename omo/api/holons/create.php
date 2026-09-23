@@ -1446,7 +1446,9 @@ function renderAuthorityListRow(value) {
             return '';
         }
         const selected = Number(authority.id || 0) === parentId ? ' selected' : '';
-        const optionLabel = String(authority.label || '');
+        const authorityLabel = String(authority.label || '');
+        const sourceHolonLabel = String(authority.holonLabel || '');
+        const optionLabel = authorityLabel + (sourceHolonLabel !== '' ? ' - ' + sourceHolonLabel : '');
         return '<option value="' + Number(authority.id || 0) + '"' + selected + '>'
             + escapeHtml(optionLabel)
             + '</option>';
