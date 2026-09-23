@@ -982,6 +982,9 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
     const previousRequest = $target.data('omoXhr');
     const requestId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const resolvedUrl = omoResolveAppUrl(url);
+    const requestUrl = typeof window.omoApplicationViewPreferencesPrepareRequest === 'function'
+        ? window.omoApplicationViewPreferencesPrepareRequest(resolvedUrl)
+        : resolvedUrl;
     const shouldTraceDecisionLoad = omoShouldTraceDecisionLoad($target, resolvedUrl);
 
     $target.attr('data-omo-load-url', resolvedUrl);
@@ -1004,7 +1007,7 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
     $target.html(getSkeleton(type));
 
     const xhr = $.ajax({
-        url: resolvedUrl,
+        url: requestUrl,
         method: 'GET',
         cache: false,
 

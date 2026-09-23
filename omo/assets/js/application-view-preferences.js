@@ -24,6 +24,65 @@
         }
     };
 
+    // Send only display preferences, for the requested context, before its first render.
+    // The server still resolves the saved-view hierarchy and all access checks.
+    window.omoApplicationViewPreferencesPrepareRequest = function (url) {
+        try {
+            var target = new URL(url, window.location.href);
+            var match = target.pathname.match(/^\/omo\/api\/(documents|calendar)\/index\.php$/);
+            if (!match || target.origin !== window.location.origin) return url;
+            if (['pv_application_tab_id', 'open_document_id', 'open_event_id', 'document_scope', 'scope', 'view', 'month', 'date', 'restore_view']
+                .some(function (key) { return target.searchParams.has(key); })) return url;
+            var config = window.omoConfig || {};
+            var oid = Number(target.searchParams.get('oid') || config.oid || 0);
+            var cid = Number(target.searchParams.get('cid') || (oid === Number(config.oid) ? config.rootHolonId : 0) || 0);
+            if (!oid || !cid) return url;
+            var application = match[1];
+            var contextKey = String(oid) + ':' + String(cid);
+            var prefix = 'omo.' + application;
+            function read(storage, key) {
+                try { return JSON.parse(storage.getItem(key) || 'null'); } catch (error) { return null; }
+            }
+            function view(value) {
+                if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+                var result = {};
+                viewFieldsByApplication[application].forEach(function (key) {
+                    if (typeof value[key] === 'string' && value[key].length < 32) result[key] = value[key];
+                });
+                return Object.keys(result).length ? result : null;
+            }
+            var temporary = read(window.sessionStorage, prefix + '.session-views.v1');
+            var saved = read(window.localStorage, prefix + '.saved-views.v2');
+            if (!saved || !saved.contexts) saved = {contexts: read(window.localStorage, prefix + '.saved-views.v1') || {}};
+            var restore = {
+                organizationId: oid, holonId: cid,
+                temporary: view(temporary && temporary[contextKey]),
+                saved: view(saved.contexts[contextKey]),
+                default: view(saved.defaultView)
+            };
+            if (application === 'calendar') {
+                var positions = read(window.sessionStorage, prefix + '.session-position.v1');
+                var position = positions && positions[contextKey];
+                if (position && typeof position.url === 'string') {
+                    var location = new URL(position.url, window.location.href);
+                    if (location.origin === target.origin && location.pathname === target.pathname
+                        && Number(location.searchParams.get('oid')) === oid && Number(location.searchParams.get('cid')) === cid) {
+                        restore.position = {};
+                        ['date', 'month', 'view', 'scope'].forEach(function (key) {
+                            var value = location.searchParams.get(key);
+                            if (value && value.length < 32) restore.position[key] = value;
+                        });
+                    }
+                }
+            }
+            if (!restore.temporary && !restore.saved && !restore.default && !restore.position) return url;
+            target.searchParams.set('restore_view', JSON.stringify(restore));
+            return target.pathname + target.search + target.hash;
+        } catch (error) {
+            return url;
+        }
+    };
+
     function readContext(root) {
         if (!root) return null;
         if (!root.hasAttribute || !root.hasAttribute('data-omo-app-view-preferences')) {

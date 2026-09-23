@@ -1,5 +1,19 @@
 # Journal Des Nouveautes
 
+- Calendrier : les vues mois, semaine, jour et liste sont construites dans le navigateur a la premiere utilisation de chaque portee, puis reutilisees. Le JavaScript est extrait et son URL porte une empreinte automatique du fichier pour renouveler le cache a chaque modification. Les donnees communes sont dedupliquees et les controles de droits restent cote serveur.
+
+- Droits : la légende sticky M, A, C suit désormais précisément les colonnes des cases, y compris après redimensionnement. Les repères teintés et les zones de clic sont harmonisés entre les deux éditeurs.
+
+- Restauration des vues : Documents et Calendrier transmettent les preferences du navigateur des la premiere requete. La portee et la periode memorisees sont rendues directement, sans chargement intermediaire ; les liens directs, les vues PV et la priorite des preferences restent preserves.
+
+- Documents : correction de l initialisation de la liste progressive lors du rechargement de la page avec le drawer ouvert, sans dependance a l ordre de chargement des scripts externes.
+
+- Droits : les éditeurs de modèles d’espaces et d’espaces regroupent maintenant chaque droit sur une seule ligne. Chaque portée ajoutée affiche directement les cases Membres, Admins et Collectif, ce qui donne une vue d’ensemble sans changer les données enregistrées. La légende sticky M, A, C laisse maintenant les trois cases compactes et alignées.
+
+- Documents : les fiches sont construites par lots de 30, puis ajoutees au defilement sans reconstruire les fiches deja affichees. Le tri et la recherche restent appliques a toute la liste chargee ; les dossiers et le HTML initial suivent aussi cette limite. Un bouton permet egalement d afficher la suite au clavier.
+
+- Acces aux donnees : Documents et Calendrier reutilisent leurs calculs de droits et de contexte pendant une meme consultation, sans cache entre requetes et avec abandon du cache en cas d ecriture. Documents reutilise les regles de visibilite chargees en lot ; Calendrier charge completement les evenements et evite les recherches SQL sur les evenements externes virtuels. Comparaison et controles de droits documentes dans PERFORMANCE-DATA-2026-09-23.md.
+
 - Performances OMO : maintenance retiree du chargement PHP initial, secours navigateur differe et verrou commun aux crons ; chargement groupe des utilisateurs et affiliations de Team ; sessions liberees apres les jetons sur les principaux ecrans de consultation pour limiter les attentes entre appels paralleles. Tests de non-regression ajoutes et comparaison locale documentee.
 
 - Diagnostic local : journalisation SQL activee dans le .env Docker, journal conserve dans tmp/sql-performance et reference de navigation du 22 septembre documentee dans PERFORMANCE-BASELINE-2026-09-22.md pour comparer les futures optimisations.

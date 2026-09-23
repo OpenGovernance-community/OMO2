@@ -241,9 +241,11 @@
 
 		public static function loadActiveRuleRow($objectType, $objectId, $organizationId = 0)
 		{
-			$rows = self::loadActiveRuleRows($objectType, [(int)$objectId], $organizationId);
-			$objectId = (int)$objectId;
-			return $rows[$objectId] ?? null;
+			return self::memoizeRead(['activeRule', self::getObjectKey($objectType), (int)$objectId, (int)$organizationId],
+				static function () use ($objectType, $objectId, $organizationId) {
+					$rows = self::loadActiveRuleRows($objectType, [(int)$objectId], $organizationId);
+					return $rows[(int)$objectId] ?? null;
+				});
 		}
 
 		public static function loadActiveRuleRows($objectType, array $objectIds, $organizationId = 0): array
@@ -310,6 +312,11 @@
 				$ruleMap[$resolvedObjectId] = $row;
 			}
 
+			// Reuse batch results in later per-object checks, including missing rules.
+			foreach ($objectIds as $objectId) {
+				self::memoizeRead(['activeRule', $objectType, $objectId, $organizationId],
+					static fn () => $ruleMap[$objectId] ?? null);
+			}
 			return $ruleMap;
 		}
 

@@ -73,7 +73,7 @@ assert(
   'omo/api/projects/projects.js',
   'omo/api/checklist/checklist.js',
   'omo/api/stats/index.php',
-  'omo/api/calendar/index.php',
+  'omo/api/calendar/calendar.js',
   'omo/api/decision/index.php'
 ].forEach(function (relativePath) {
   const source = read(relativePath);

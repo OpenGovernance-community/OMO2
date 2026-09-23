@@ -5,6 +5,7 @@ $documentSource = (string)file_get_contents(dirname(__DIR__) . '/class/dbobject/
 $documentCollectionSource = (string)file_get_contents(dirname(__DIR__) . '/class/dbobject/arraydocument.class.php');
 $calendarCreateSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/create.php');
 $calendarSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/index.php');
+$calendarSource .= (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/calendar.js');
 $projectEditorSource = (string)file_get_contents(dirname(__DIR__) . '/common/calendar/event-editor.js');
 $projectDocumentPickerSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/projects/document_picker.php');
 $projectSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/projects/projects.js');

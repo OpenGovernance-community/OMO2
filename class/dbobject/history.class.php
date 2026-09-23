@@ -702,7 +702,7 @@
 				return 0;
 			}
 
-			return (int)self::fetchValue(
+			return self::memoizeRead([__FUNCTION__, $organizationId], static fn () => (int)self::fetchValue(
 				"SELECT MAX(id)
 				FROM history
 				WHERE active = 1
@@ -710,7 +710,7 @@
 				array(
 					'organization_id' => $organizationId,
 				)
-			);
+			));
 		}
 
 		public static function getLatestHolonEntryId($organizationId)

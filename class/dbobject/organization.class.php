@@ -2961,6 +2961,18 @@
 
 		public function getStructuralRootHolon()
 		{
+			$rootId = self::memoizeRead([__FUNCTION__, (int)$this->getId()],
+				fn () => (int)($this->loadStructuralRootHolon()?->getId() ?? 0));
+			if ($rootId <= 0) {
+				return null;
+			}
+			$holon = new \dbObject\Holon();
+			$holon->setId($rootId);
+			return $holon;
+		}
+
+		protected function loadStructuralRootHolon()
+		{
 			if ((int)$this->getId() <= 0) {
 				return null;
 			}
