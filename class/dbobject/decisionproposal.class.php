@@ -127,10 +127,26 @@ class DecisionProposal extends DbObject
         return \dbObject\DecisionGovernanceAction::getForProposal((int)$this->getId());
     }
 
+    public function getDeferredProposals(bool $pendingOnly = false)
+    {
+        return \dbObject\DeferredProposal::getForDecisionProposal((int)$this->getId(), $pendingOnly);
+    }
+
     public function hasGovernanceActions()
     {
         foreach ($this->getGovernanceActions() as $action) {
             if ($action instanceof \dbObject\DecisionGovernanceAction) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public function hasDeferredProposals(): bool
+    {
+        foreach ($this->getDeferredProposals() as $proposal) {
+            if ($proposal instanceof \dbObject\DeferredProposal
+                && (string)$proposal->get('status') !== \dbObject\DeferredProposal::STATUS_REMOVED) {
                 return true;
             }
         }
@@ -275,13 +291,20 @@ class DecisionProposal extends DbObject
             ];
         }
 
-        if ($this->hasGovernanceActions()) {
+        if ($this->hasGovernanceActions() || $this->hasDeferredProposals()) {
             \dbObject\DecisionGovernanceAction::setProposalActionStatus(
                 $this,
                 \dbObject\DecisionGovernanceAction::STATUS_REMOVED,
                 'Proposition retiree pendant la consultation.',
                 \dbObject\DecisionGovernanceAction::STATUS_PENDING
             );
+            foreach ($this->getDeferredProposals(true) as $deferredProposal) {
+                if (!$deferredProposal instanceof \dbObject\DeferredProposal) continue;
+                $deferredProposal->set('status', \dbObject\DeferredProposal::STATUS_REMOVED);
+                $deferredProposal->set('status_message', 'Proposition retirée pendant la consultation.');
+                $deferredProposal->set('updated_at', new \DateTimeImmutable('now'));
+                $deferredProposal->save();
+            }
         }
 
         return [
@@ -297,7 +320,7 @@ class DecisionProposal extends DbObject
         $title = trim((string)$title);
         $description = \dbObject\PropertyFormat::sanitizeHtml((string)$description);
         $infoUrl = trim((string)$infoUrl);
-        if ($this->hasGovernanceActions()) {
+        if ($this->hasGovernanceActions() || $this->hasDeferredProposals()) {
             return [
                 'status' => false,
                 'reason' => 'governance_editor_required',

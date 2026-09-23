@@ -23,9 +23,9 @@ $sourceLang = [
     'close' => ['text' => 'Fermer', 'context' => 'Deferred holon proposal close button'],
     'delete_intro' => ['text' => 'La suppression sera appliquée uniquement au traitement du point, si l’espace n’a pas changé entre-temps.', 'context' => 'Deferred holon proposal deletion introduction'],
     'delete_confirm' => ['text' => 'Ajouter la suppression', 'context' => 'Deferred holon proposal deletion confirm button'],
-    'save_error' => ['text' => 'Impossible d’enregistrer la proposition.', 'context' => 'Deferred holon proposal save error'],
+    'save_error' => ['text' => 'Impossible d’enregistrer la modification.', 'context' => 'Deferred holon proposal save error'],
     'denied_error' => ['text' => 'Accès refusé.', 'context' => 'Deferred holon proposal denied error'],
-    'unavailable_error' => ['text' => 'Cette proposition ne peut plus être modifiée.', 'context' => 'Deferred holon proposal unavailable error'],
+    'unavailable_error' => ['text' => 'Cette modification ne peut plus être modifiée.', 'context' => 'Deferred holon proposal unavailable error'],
     'no_collective_context_error' => ['text' => 'Ce PV doit être rattaché à un espace pour utiliser ses droits collectifs.', 'context' => 'Deferred holon proposal missing collective context'],
     'delete_descendants' => ['one' => 'Cette suppression comprend également {count} élément imbriqué.', 'other' => 'Cette suppression comprend également {count} éléments imbriqués.', 'context' => 'Deferred holon deletion descendant warning'],
 ];

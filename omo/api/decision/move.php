@@ -63,7 +63,7 @@ if ($decisionId <= 0) {
 <?php if ($errorMessage !== ''): ?>
     <div class="generic-section generic-section--stack"><?= omoApiEscape($errorMessage) ?></div>
 <?php else: ?>
-    <form id="omo-decision-move-form" class="generic-section generic-section--stack">
+    <form id="omo-decision-move-form" class="generic-drawer-content generic-form-stack generic-form-stack--compact">
         <div class="generic-description">
             <strong><?= omoApiEscape((string)($moveData['decision']['title'] ?? '')) ?></strong>
             <span>&rarr;</span>
@@ -80,10 +80,10 @@ if ($decisionId <= 0) {
                     <span class="generic-form-label"><?= omoApiEscape(omoDecisionsMoveT('decisions.move.field.destination')) ?></span>
                     <span class="omo-resource-picker__quick-search">
                         <img src="/common/assets/icon-topbar-search.png" alt="" aria-hidden="true">
-                        <input type="search" id="omo-decision-move-search" class="generic-form-control" placeholder="<?= omoApiEscape(omoDecisionsMoveT('decisions.move.field.search_placeholder')) ?>">
+                        <input type="search" id="omo-decision-move-search" class="generic-form-control generic-form-control--compact" placeholder="<?= omoApiEscape(omoDecisionsMoveT('decisions.move.field.search_placeholder')) ?>">
                     </span>
                 </label>
-                <select id="omo-decision-move-destination" class="generic-form-control" size="10" aria-label="<?= omoApiEscape(omoDecisionsMoveT('decisions.move.field.destination')) ?>"></select>
+                <select id="omo-decision-move-destination" class="generic-form-control generic-form-control--compact" size="10" aria-label="<?= omoApiEscape(omoDecisionsMoveT('decisions.move.field.destination')) ?>"></select>
             </div>
         </div>
 

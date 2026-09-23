@@ -25,18 +25,18 @@ if ($operation !== 'create' && (!$rule->load($ruleId) || !($rule->getHolon() ins
 if ($operation === 'create') $validation = DecisionGovernanceAction::validateRuleCreate($_POST, $holonId);
 elseif ($operation === 'delete') $validation = DecisionGovernanceAction::validateRuleDelete($rule, $holonId);
 else $validation = DecisionGovernanceAction::validateRuleUpdate($rule, $_POST, $holonId);
-if (empty($validation['status'])) $respond(422, ['status' => false, 'message' => (string)($validation['message'] ?? 'Proposition invalide.')]);
+if (empty($validation['status'])) $respond(422, ['status' => false, 'message' => (string)($validation['message'] ?? 'Modification invalide.')]);
 $proposal = new DeferredProposal();
 if ($proposalId > 0 && (!$proposal->load($proposalId)
     || (int)$proposal->get('IDdocument_pv_point') !== $pointId
     || (int)$proposal->get('IDorganization') !== $organizationId
     || (string)$proposal->get('target_type') !== DeferredProposal::TARGET_RULE
     || (string)$proposal->get('status') !== DeferredProposal::STATUS_PENDING)) {
-    $respond(404, ['status' => false, 'message' => 'Cette proposition ne peut plus être modifiée.']);
+    $respond(404, ['status' => false, 'message' => 'Cette modification ne peut plus être modifiée.']);
 }
 $proposal->set('IDorganization', $organizationId); $proposal->set('IDholon', $holonId); $proposal->set('IDuser_author', $userId);
 $proposal->set('target_type', DeferredProposal::TARGET_RULE); $proposal->set('operation', $operation); $proposal->set('target_id', $operation === 'create' ? null : $ruleId);
 $proposal->set('before_state', $operation === 'create' ? [] : DecisionGovernanceAction::captureRuleState($rule)); $proposal->set('after_state', $operation === 'delete' ? [] : $validation['state']);
 $proposal->set('IDdocument_pv_point', $pointId); if ($proposalId <= 0) $proposal->set('position', count(DeferredProposal::getForPvPoint($pointId)) + 1); $proposal->set('status', DeferredProposal::STATUS_PENDING); $proposal->set('parameters', ['payload_version' => 1]);
-$result = $proposal->save(); if (!is_array($result) || empty($result['status'])) $respond(500, ['status' => false, 'message' => 'Impossible d’enregistrer la proposition.']);
+$result = $proposal->save(); if (!is_array($result) || empty($result['status'])) $respond(500, ['status' => false, 'message' => 'Impossible d’enregistrer la modification.']);
 $respond(200, ['status' => true, 'id' => (int)$proposal->getId(), 'pointId' => $pointId]);

@@ -496,7 +496,7 @@ if ($action === 'remove_deferred_proposal') {
     }
 
     $proposal->set('status', \dbObject\DeferredProposal::STATUS_REMOVED);
-    $proposal->set('status_message', 'Proposition supprimée avant validation.');
+    $proposal->set('status_message', 'Modification supprimée avant validation.');
     $proposal->set('updated_at', new \DateTimeImmutable('now'));
     $result = $proposal->save();
     if (!is_array($result) || empty($result['status'])) {
@@ -1290,7 +1290,7 @@ if ($action === 'toggle_handled') {
             }
             omoDocumentsPvEditorJsonResponse([
                 'status' => false,
-                'message' => trim((string)($proposalResult['message'] ?? 'Les propositions de ce point ne peuvent pas etre appliquees.')),
+                'message' => trim((string)($proposalResult['message'] ?? 'Les modifications de ce point ne peuvent pas etre appliquees.')),
                 'point' => omoDocumentsPvEditorBuildPointResponsePayload($point, $organizationId, $currentUserId),
             ], !empty($proposalResult['conflict']) ? 409 : 400);
         }

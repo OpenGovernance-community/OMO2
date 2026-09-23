@@ -2181,7 +2181,8 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     border-left: 0;
 }
 
-.generic-menu--split > .generic-menu-panel {
+.generic-menu--split > .generic-menu-panel,
+.generic-menu-panel--anchored {
     position: absolute;
     top: calc(100% + 6px);
     right: 0;

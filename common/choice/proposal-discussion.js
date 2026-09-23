@@ -150,7 +150,7 @@
             + '  </div>'
             + '  <div class="omo-proposal-chat__messages" data-omo-proposal-chat-messages role="log" aria-live="polite"><p class="omo-proposal-chat__loading">Chargement de la discussion…</p></div>'
             + '  <form class="omo-proposal-chat__composer" data-omo-proposal-chat-composer>'
-            + '    <textarea class="generic-form-control" name="content" rows="2" maxlength="4000" placeholder="Écrire un message…" required></textarea>'
+            + '    <textarea class="generic-form-control generic-form-control--compact" name="content" rows="2" maxlength="4000" placeholder="Écrire un message…" required></textarea>'
             + '    <div class="omo-proposal-chat__composer-actions">'
             + '      <button type="submit" class="generic-action-button generic-action-button--main">Envoyer</button>'
             + '      <label class="omo-proposal-chat__anonymous-option"><input type="checkbox" name="is_anonymous" value="1" data-omo-proposal-chat-anonymous> Publier anonymement</label>'
@@ -162,16 +162,16 @@
     function buildEditorHtml(proposalContent) {
         proposalContent = proposalContent && typeof proposalContent === 'object' ? proposalContent : {};
         var titleField = proposalContent.title !== false
-            ? '<label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Titre</span><input class="generic-form-control" type="text" name="title" maxlength="190" required></label>'
+            ? '<label class="generic-form-field"><span class="generic-form-label">Titre</span><input class="generic-form-control generic-form-control--compact" type="text" name="title" maxlength="190" required></label>'
             : '<input type="hidden" name="title" value="">';
         var descriptionField = proposalContent.description !== false
-            ? '<label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Description</span><div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-proposal-editor-description></div><textarea hidden aria-hidden="true" name="description" data-omo-proposal-html-value></textarea></div></label>'
+            ? '<label class="generic-form-field"><span class="generic-form-label">Description</span><div data-omo-proposal-html-field><div class="omo-proposal-html-editor" data-omo-proposal-html-editor data-omo-proposal-editor-description></div><textarea hidden aria-hidden="true" name="description" data-omo-proposal-html-value></textarea></div></label>'
             : '<input type="hidden" name="description" value="">';
         var urlField = proposalContent.url !== false
-            ? '<label class="omo-proposal-editor__field"><span class="generic-card-title generic-card-title--small">Lien d information</span><input class="generic-form-control" type="url" name="info_url" maxlength="500" placeholder="https://..."></label>'
+            ? '<label class="generic-form-field"><span class="generic-form-label">Lien d information</span><input class="generic-form-control generic-form-control--compact" type="url" name="info_url" maxlength="500" placeholder="https://..."></label>'
             : '<input type="hidden" name="info_url" value="">';
         return ''
-            + '<form class="omo-proposal-popup-content omo-proposal-editor" data-omo-proposal-editor data-topbar-modal-max-width="660px">'
+            + '<form class="omo-proposal-popup-content omo-proposal-editor generic-form-stack generic-form-stack--compact" data-omo-proposal-editor data-topbar-modal-max-width="660px">'
             + titleField
             + descriptionField
             + urlField

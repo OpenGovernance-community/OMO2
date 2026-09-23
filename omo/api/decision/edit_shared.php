@@ -683,10 +683,10 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
     }
 }
 ?>
-<link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260917-proposal-menu-layer">
+<link rel="stylesheet" href="/common/choice/decision_cards.css?v=20260923-compact-editor">
 <div class="omo-decision-edit omo-panel-view">
     <div class="omo-panel-view__body">
-        <div class="omo-panel-view__body_content omo-decision-edit__stack generic-drawer-content generic-form-stack">
+        <div class="omo-panel-view__body_content omo-decision-edit__stack generic-drawer-content generic-form-stack generic-form-stack--compact">
             
 
             <?php if (false && $isEditing && $intent === 'manage'): ?>
@@ -828,27 +828,27 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                     data-omo-decision-lifecycle-consultation-confirm-template="<?= $escape(t('decisions.edit.lifecycle.consultation_start_confirmation', [], $lang, $baseSourceLang)) ?>"
                 >
                     <script src="/omo/api/decision/modules/lifecycle_status.js"></script>
-                    <section class="generic-section generic-section--stack generic-form-section omo-decision-edit__process-settings">
-                        <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.multi.process_title', [], $lang, $baseSourceLang)) ?></h3>
-                        <form class="generic-form-stack" data-omo-decision-process-form>
+                    <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-decision-edit__process-settings">
+                        <h3 class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.multi.process_title', [], $lang, $baseSourceLang)) ?></h3>
+                        <form class="generic-form-stack generic-form-stack--compact" data-omo-decision-process-form>
                             <input type="hidden" name="oid" value="<?= $escape((int)$context['organizationId']) ?>">
                             <input type="hidden" name="cid" value="<?= $escape((int)$context['targetHolonId']) ?>">
                             <input type="hidden" name="id" value="<?= $escape($isDuplicate ? 0 : (int)$decision->getId()) ?>">
 
                             <label class="generic-form-field">
                                 <span class="generic-form-label"><?= $escape(t('decisions.edit.multi.process_name', [], $lang, $baseSourceLang)) ?></span>
-                                <input type="text" class="generic-form-control" name="process_title" required maxlength="190" value="<?= $escape(trim((string)$multiDecision->get('title'))) ?>" <?= $multiCanEditStructure ? '' : 'readonly' ?>>
+                                <input type="text" class="generic-form-control generic-form-control--compact" name="process_title" required maxlength="190" value="<?= $escape(trim((string)$multiDecision->get('title'))) ?>" <?= $multiCanEditStructure ? '' : 'readonly' ?>>
                             </label>
 
                             <label class="generic-form-field">
                                 <span class="generic-form-label"><?= $escape(t('decisions.edit.multi.process_description', [], $lang, $baseSourceLang)) ?></span>
-                                <textarea class="generic-form-control" name="process_description" rows="4" <?= $multiCanEditStructure ? '' : 'readonly' ?>><?= $escape(trim((string)$multiDecision->get('description'))) ?></textarea>
+                                <textarea class="generic-form-control generic-form-control--compact" name="process_description" rows="4" <?= $multiCanEditStructure ? '' : 'readonly' ?>><?= $escape(trim((string)$multiDecision->get('description'))) ?></textarea>
                             </label>
 
                             <div class="omo-decision-edit__process-primary">
                                 <label class="generic-form-field">
                                     <span class="generic-form-label"><?= $escape(t('decisions.edit.visibility.label', [], $lang, $baseSourceLang)) ?></span>
-                                    <select class="generic-form-control" name="visibility_type" <?= $multiCanEditStructure ? '' : 'disabled' ?>>
+                                    <select class="generic-form-control generic-form-control--compact" name="visibility_type" <?= $multiCanEditStructure ? '' : 'disabled' ?>>
                                         <?php foreach (($multiVisibilityState['visibilityOptions'] ?? []) as $optionValue => $optionLabel): ?>
                                         <option value="<?= $escape((string)$optionValue) ?>" <?= $optionValue === ($multiVisibilityState['selectedVisibilityType'] ?? DecisionProcess::getDefaultVisibilityType()) ? 'selected' : '' ?> <?= !empty(($multiVisibilityState['disabledVisibilityTypes'] ?? [])[$optionValue]) ? 'disabled' : '' ?>><?= $escape((string)$optionLabel) ?></option>
                                         <?php endforeach; ?>
@@ -856,7 +856,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                                 </label>
                                 <label class="generic-form-field">
                                     <span class="generic-form-label"><?= $escape(t('decisions.edit.multi.status', [], $lang, $baseSourceLang)) ?></span>
-                                    <select class="generic-form-control" name="status">
+                                    <select class="generic-form-control generic-form-control--compact" name="status">
                                         <?php foreach ($multiStatusOptions as $statusValue => $statusLabelKey): ?>
                                         <?php if ($multiConsultationOnly && !in_array($statusValue, [DecisionProcess::STATUS_DRAFT, DecisionProcess::STATUS_SCHEDULED, DecisionProcess::STATUS_CONSULTATION], true)) continue; ?>
                                         <option value="<?= $escape($statusValue) ?>" <?= $multiStatus === $statusValue ? 'selected' : '' ?>><?= $escape(t($statusLabelKey, [], $lang, $baseSourceLang)) ?></option>
@@ -865,12 +865,12 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                                 </label>
                             </div>
 
-                            <div class="omo-decision-edit__process-dates">
-                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.consultation_start', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="consultation_start_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('consultation_start_at'))) ?>" <?= $multiCanEditStartDates ? '' : 'readonly' ?>></label>
-                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.consultation_end', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="consultation_end_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('consultation_end_at'))) ?>"></label>
+                            <div class="generic-form-grid">
+                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.consultation_start', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control generic-form-control--compact" name="consultation_start_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('consultation_start_at'))) ?>" <?= $multiCanEditStartDates ? '' : 'readonly' ?>></label>
+                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.consultation_end', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control generic-form-control--compact" name="consultation_end_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('consultation_end_at'))) ?>"></label>
                                 <?php if (!$multiConsultationOnly): ?>
-                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.evaluation_start', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="evaluation_start_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('evaluation_start_at'))) ?>" <?= $multiCanEditStartDates ? '' : 'readonly' ?>></label>
-                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.evaluation_end', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control" name="evaluation_end_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('evaluation_end_at'))) ?>"></label>
+                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.evaluation_start', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control generic-form-control--compact" name="evaluation_start_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('evaluation_start_at'))) ?>" <?= $multiCanEditStartDates ? '' : 'readonly' ?>></label>
+                                <label class="generic-form-field"><span class="generic-form-label"><?= $escape(t('decisions.edit.multi.evaluation_end', [], $lang, $baseSourceLang)) ?></span><input type="datetime-local" class="generic-form-control generic-form-control--compact" name="evaluation_end_at" value="<?= $escape($isDuplicate ? '' : $multiDateValue($multiDecision->get('evaluation_end_at'))) ?>"></label>
                                 <?php endif; ?>
                             </div>
 
@@ -897,7 +897,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                                 </div>
                                 <template data-omo-decision-general-settings-template>
                                     <div class="omo-decision-settings-popup" data-topbar-modal-max-width="720px">
-                                        <section class="omo-decision-settings-popup__group">
+                                        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
                                             <span class="omo-decision-settings-popup__group-title"><?= $escape(t('decisions.edit.owner_intermediate_results_access', [], $lang, $baseSourceLang)) ?></span>
                                             <div class="omo-decision-settings-popup__options">
                                                 <label class="omo-decision-settings-popup__option omo-decision-settings-popup__option--wide"><input type="checkbox" data-omo-decision-general-owner-intermediate-results <?= $multiOwnerIntermediateResultsAccess ? 'checked' : '' ?> <?= $multiCanEditStructure ? '' : 'disabled' ?>><span><?= $escape(t('decisions.edit.owner_intermediate_results_access_explicit', [], $lang, $baseSourceLang)) ?></span></label>
@@ -917,8 +917,8 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                         </form>
                     </section>
 
-                    <section class="generic-section generic-section--stack omo-decision-edit__questions-section">
-                        <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.multi.questions_title', [], $lang, $baseSourceLang)) ?></h3>
+                    <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-decision-edit__questions-section">
+                        <h3 class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.multi.questions_title', [], $lang, $baseSourceLang)) ?></h3>
                         <?php if ($isDuplicate): ?>
                         <nav class="omo-decision-edit__question-nav" data-omo-decision-question-nav aria-label="<?= $escape(t('decisions.edit.groups.title', [], $lang, $baseSourceLang)) ?>">
                             <div class="omo-decision-edit__question-tabs">
@@ -983,7 +983,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
             <?php elseif ($isGovernanceWorkflow): ?>
                 <?php require __DIR__ . '/governance/edit.php'; ?>
             <?php elseif ((!$isEditing && $selectedMethod === '') || ($isEditing && $groupAction === 'create' && $selectedMethod === '')): ?>
-            <section class="generic-section generic-section--stack generic-form-section">
+            <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
                 <div class="omo-decision-edit__section-head generic-form-section__heading">
                     <div class="generic-form-section__copy">
                         <div class="generic-heading-with-help">
@@ -1063,7 +1063,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                 <details class="omo-decision-edit__import-panel">
                     <summary class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.import.title', [], $lang, $baseSourceLang)) ?></summary>
                     <form
-                        class="generic-form-stack"
+                        class="generic-form-stack generic-form-stack--compact"
                         action="/omo/api/decision/import.php"
                         method="post"
                         enctype="multipart/form-data"
@@ -1075,7 +1075,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                         <p class="omo-decision-edit__lead"><?= $escape(t('decisions.edit.import.text', [], $lang, $baseSourceLang)) ?></p>
                         <label class="omo-decision-edit__import-field generic-form-field">
                             <span class="generic-form-label"><?= $escape(t('decisions.edit.import.file_label', [], $lang, $baseSourceLang)) ?></span>
-                            <input type="file" class="generic-form-control" name="import_file" accept=".csv,.json,.xml" required>
+                            <input type="file" class="generic-form-control generic-form-control--compact" name="import_file" accept=".csv,.json,.xml" required>
                         </label>
                         <div class="omo-decision-edit__import-actions generic-form-actions">
                             <button type="submit" class="generic-action-button generic-action-button--secondary" data-omo-decision-import-submit>
@@ -1104,7 +1104,7 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
                 ]);
                 ?>
             <?php else: ?>
-            <section class="generic-section generic-section--stack generic-form-section">
+            <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
                 <h3 class="generic-card-title generic-card-title--section"><?= $escape(t('decisions.edit.unsupported_title', [], $lang, $baseSourceLang)) ?></h3>
                 <p class="omo-decision-edit__text"><?= $escape(t('decisions.edit.unsupported_text', [], $lang, $baseSourceLang)) ?></p>
                 <?php if ($isEditing): ?>
@@ -1743,10 +1743,6 @@ if (!function_exists('omoDecisionResolveVisibilityEditorState')) {
 </script>
 
 <style>
-.omo-decision-edit__stack {
-    --generic-form-gap: var(--generic-space-4, 16px);
-}
-
 .omo-decision-edit__readonly-stat {
     display: inline-flex;
     flex-wrap: wrap;

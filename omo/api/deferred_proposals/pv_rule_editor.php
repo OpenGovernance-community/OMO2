@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
+require_once dirname(__DIR__, 3) . '/common/choice/deferred-editor-fields.php';
 
 use dbObject\Document;
 use dbObject\DocumentPvPoint;
@@ -9,7 +10,7 @@ use dbObject\Rule;
 
 $sourceLang = [
     'intro_create' => ['text' => 'Cette modification restera en attente jusqu’au traitement de ce point.', 'context' => 'Deferred rule proposal editor introduction'],
-    'intro_edit' => ['text' => 'Modifiez la proposition avant son traitement.', 'context' => 'Deferred rule proposal editor introduction'],
+    'intro_edit' => ['text' => 'Modifiez la modification avant son traitement.', 'context' => 'Deferred rule proposal editor introduction'],
     'action' => ['text' => 'Action', 'context' => 'Deferred rule proposal form label'],
     'create' => ['text' => 'Créer une règle', 'context' => 'Deferred rule proposal action'],
     'update' => ['text' => 'Modifier une règle', 'context' => 'Deferred rule proposal action'],
@@ -26,18 +27,13 @@ $sourceLang = [
     'picker_unavailable' => ['text' => 'La navigation dans la structure n’est pas disponible.', 'context' => 'Deferred rule proposal error'],
     'rule' => ['text' => 'Règle', 'context' => 'Deferred rule proposal form label'],
     'empty_rules' => ['text' => 'Aucune règle disponible dans cet espace.', 'context' => 'Deferred rule proposal empty rule selector'],
-    'title' => ['text' => 'Titre', 'context' => 'Deferred rule proposal form label'],
-    'intention' => ['text' => 'Intention', 'context' => 'Deferred rule proposal form label'],
-    'description' => ['text' => 'Règle', 'context' => 'Deferred rule proposal form label'],
-    'review_date' => ['text' => 'Date de requestionnement', 'context' => 'Deferred rule proposal form label'],
-    'expiration_date' => ['text' => 'Date d’échéance', 'context' => 'Deferred rule proposal form label'],
-    'save_create' => ['text' => 'Ajouter la proposition', 'context' => 'Deferred rule proposal submit button'],
-    'save_edit' => ['text' => 'Enregistrer la proposition', 'context' => 'Deferred rule proposal submit button'],
+    'save_create' => ['text' => 'Ajouter la modification', 'context' => 'Deferred rule proposal submit button'],
+    'save_edit' => ['text' => 'Enregistrer la modification', 'context' => 'Deferred rule proposal submit button'],
     'cancel' => ['text' => 'Annuler', 'context' => 'Deferred rule proposal cancel button'],
-    'save_error' => ['text' => 'Impossible d’enregistrer la proposition.', 'context' => 'Deferred rule proposal error'],
+    'save_error' => ['text' => 'Impossible d’enregistrer la modification.', 'context' => 'Deferred rule proposal error'],
     'context_error' => ['text' => 'Impossible de charger les règles de cet espace.', 'context' => 'Deferred rule proposal error'],
     'denied_error' => ['text' => 'Accès refusé.', 'context' => 'Deferred rule proposal error'],
-    'unavailable_error' => ['text' => 'Cette proposition ne peut plus être modifiée.', 'context' => 'Deferred rule proposal error'],
+    'unavailable_error' => ['text' => 'Cette modification ne peut plus être modifiée.', 'context' => 'Deferred rule proposal error'],
     'no_holon_error' => ['text' => 'Aucun espace de la structure n’est disponible.', 'context' => 'Deferred rule proposal error'],
     'no_collective_context_error' => ['text' => 'Ce PV doit être rattaché à un espace pour utiliser ses droits collectifs.', 'context' => 'Deferred rule proposal error'],
     'delete_workflow_help' => ['text' => 'Cette règle sera supprimée uniquement lors du traitement du point, si elle n’a pas changé entre-temps.', 'context' => 'Deferred rule deletion confirmation'],
@@ -150,7 +146,7 @@ foreach ($holonCatalog as $catalogHolonId => $catalogEntry) {
     }
 }
 ?>
-<section class="generic-section generic-section--stack omo-deferred-rule-editor" data-deferred-pv-rule-editor>
+<section class="generic-section generic-section--stack generic-section--roomy omo-deferred-rule-editor" data-deferred-pv-rule-editor>
     <p><?= omoApiEscape($tr($proposalId > 0 ? 'intro_edit' : 'intro_create')) ?></p>
     <form class="generic-form-stack" action="/omo/api/deferred_proposals/pv_rule_save.php" method="post">
         <input type="hidden" name="oid" value="<?= $organizationId ?>">
@@ -171,10 +167,7 @@ foreach ($holonCatalog as $catalogHolonId => $catalogEntry) {
             <div class="generic-soft-panel generic-soft-panel--stack"><strong><?= omoApiEscape((string)($editorState['title'] ?: $tr('rule'))) ?></strong><span><?= omoApiEscape($tr('delete_workflow_help')) ?></span></div>
         <?php endif; ?>
         <div data-deferred-fields<?= $operation === DeferredProposal::OPERATION_DELETE ? ' hidden' : '' ?>>
-            <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('title')) ?></span><input class="generic-form-control" name="title" maxlength="255" value="<?= omoApiEscape((string)$editorState['title']) ?>" required></label>
-            <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('intention')) ?></span><textarea class="generic-form-control" name="intention" rows="3"><?= omoApiEscape((string)$editorState['intention']) ?></textarea></label>
-            <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('description')) ?></span><textarea class="generic-form-control" name="description" rows="5" required><?= omoApiEscape((string)$editorState['description']) ?></textarea></label>
-            <div class="generic-form-grid"><label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('review_date')) ?></span><input class="generic-form-control" type="date" name="review_date" value="<?= omoApiEscape((string)$editorState['review_date']) ?>" required></label><label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('expiration_date')) ?></span><input class="generic-form-control" type="date" name="expiration_date" value="<?= omoApiEscape((string)$editorState['expiration_date']) ?>" required></label></div>
+        <?php omoDeferredEditorRenderFields('rule', $editorState); ?>
         </div>
         <p class="generic-feedback" data-deferred-feedback hidden></p>
         <div class="generic-action-row"><button class="generic-action-button generic-action-button--main" type="submit" data-deferred-submit<?= $operationAllowed && ($operation === DeferredProposal::OPERATION_CREATE || $rules) ? '' : ' disabled' ?>><?= omoApiEscape($tr($proposalId > 0 ? 'save_edit' : 'save_create')) ?></button><button class="generic-action-button generic-action-button--secondary" type="button" data-deferred-cancel><?= omoApiEscape($tr('cancel')) ?></button></div>

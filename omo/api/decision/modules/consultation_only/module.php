@@ -94,7 +94,7 @@ if (!function_exists('omoDecisionConsultationOnlyModuleRender')) {
                         <input type="hidden" name="gid" value="<?= $escape($decisionGroup instanceof DecisionGroup ? (int)$decisionGroup->getId() : 0) ?>">
                         <label class="generic-form-field">
                             <span class="generic-form-label"><?= $escape(t('decisions.consultation_only.convert.label', [], $lang, $sourceLang)) ?></span>
-                            <select class="generic-form-control" name="target_method">
+                            <select class="generic-form-control generic-form-control--compact" name="target_method">
                                 <?php foreach ($methods as $method => $labelKey): ?>
                                 <option value="<?= $escape($method) ?>"><?= $escape(t($labelKey, [], $lang, $sourceLang)) ?></option>
                                 <?php endforeach; ?>

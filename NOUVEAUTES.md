@@ -1,5 +1,21 @@
 # Journal Des Nouveautes
 
+- Résultats des décisions : le message de chaque modification reflète son état réel (appliquée, non retenue, en attente ou en échec), au lieu d’annoncer systématiquement une application future.
+
+- Décisions : formulaires harmonisés avec les tâches récurrentes, sections allégées, libellés et champs compacts, dates adaptées à la largeur disponible. Les propositions hors réorg sont mieux séparées, l’ajout de modification suit directement leur liste et l’enregistrement est accessible dans l’en-tête.
+
+- Décisions hors réorg : l’IA rédige le résumé dans la langue d’interface de l’utilisateur et présente les modifications comme des actions proposées, en attente de validation, et non comme déjà réalisées.
+
+- Décisions hors réorg : la confirmation, les avertissements et les erreurs du résumé rédigé par l’IA apparaissent dans des notifications de la topbar qui disparaissent automatiquement.
+
+- Décisions hors réorg : le champ facultatif « Intention et contexte » apparaît sur demande. Une proposition peut faire rédiger sa description par l’IA, à partir des modifications déjà préparées, puis être retouchée avant enregistrement.
+
+- Vocabulaire : une proposition de scrutin regroupe un titre, une description et plusieurs modifications. Les changements individuels sont désormais nommés « modifications » dans les boutons, éditeurs, détails et messages, également dans les PV.
+
+- Scrutins hors réorg : le menu « … » des propositions reste fixe à l’ouverture ; le bouton « Retirer la proposition » est placé en bas à droite de sa carte.
+
+- Propositions différées : formulaires de règles et de projets partagés entre PV et scrutins hors réorg, espacement harmonisé et détails disponibles dès le chargement dynamique. Les créations et suppressions affichent un seul bloc neutre pour le côté absent, sans répéter des champs vides ; le comparatif des modifications est conservé.
+
 - Export OMO 2 : les suivis et équipes de projets, les validations de tâches récurrentes, les exécutions de processus et les types de points de PV sont préservés à l’import. Les fichiers téléversés et documents reliés à des services externes restent volontairement exclus et la popup d’export le signale clairement.
 
 - Migration OMO 1 : les membres qui avaient active le suivi d un projet sont maintenant exportes puis recrees comme abonnés au projet dans OMO2.
@@ -31,6 +47,7 @@
 - Documents : un document HTML, un lien externe, un PV, un fichier (dont ODT), un Etherpad/EtherCalc ou un dossier peut maintenant etre ajoute ou retire de la liste des modeles. Une etoile identifie les modeles, la fleche a cote de Nouveau cree un duplicata visible dans le contexte courant, et les reunions ainsi que les projets proposent les modeles compatibles avec le type et la portee du contexte choisi. Les modeles sont regroupes par espace et affichent leur icone de type pour les retrouver plus facilement. Les fichiers et les outils collaboratifs recopient leur contenu dans une ressource independante ; un dossier reprend aussi toute son arborescence.
 
 - Propositions différées : les projets peuvent maintenant être créés, modifiés ou supprimés depuis un point de PV. Ils suivent le même choix d’objet, d’action et de contexte que les règles et les éléments de structure, en vérifiant les droits collectifs du PV avant leur application. Le droit collectif de proposition de projet ouvre aussi la création, explicitement libellée « Proposer un projet ».
+- Décisions hors réorg : chaque option du scrutin peut maintenant regrouper plusieurs propositions différées de règle, de structure ou de projet. Le parcours, la navigation par holon, les droits collectifs, la liste compacte en accordéon et les éditeurs sont alignés sur ceux des points de PV ; seules les propositions de l’option retenue sont appliquées à la clôture.
 
 - Propriétés de structure : les listes de projets, y compris dans le format « HTML + liste », affichent seulement les projets retenus et les classent alphabétiquement. Le bouton « Ajouter » ouvre désormais le sélecteur des éditeurs Summernote dans la popup de la topbar, avec navigation circulaire et portée Local / Enfants / Descendants, puis restaure l’éditeur, ses valeurs et sa position de défilement.
 - Propositions différées : l’éditeur de règle permet maintenant de choisir un autre espace dans la navigation circulaire de la structure. Les espaces sans droit collectif du holon porteur du PV sont visibles mais désactivés, et chaque proposition conserve son propre espace cible jusqu’à son application.
