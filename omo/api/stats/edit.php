@@ -10,11 +10,12 @@ use dbObject\ArrayUserOrganization;
 use dbObject\Document;
 use dbObject\DocumentPvPoint;
 
-$organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
-$currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
-$indicatorId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : 0;
-$context = omoStatsResolveContext($organizationId, $currentHolonId);
-$context['pvMeetingPermission'] = commonResolvePvMeetingPermissionContext($organizationId);
+$deferredEditor = $GLOBALS['omoDeferredObjectEditor'] ?? null;
+$organizationId = $deferredEditor ? (int)$deferredEditor['organizationId'] : (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
+$currentHolonId = $deferredEditor ? (int)$deferredEditor['holonId'] : (isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0);
+$indicatorId = $deferredEditor ? (int)$deferredEditor['objectId'] : (isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : 0);
+$context = $deferredEditor ? ['status' => true] : omoStatsResolveContext($organizationId, $currentHolonId);
+$context['pvMeetingPermission'] = $deferredEditor ? null : commonResolvePvMeetingPermissionContext($organizationId);
 
 if (empty($context['status'])) {
     http_response_code(403);
@@ -22,18 +23,19 @@ if (empty($context['status'])) {
     exit;
 }
 
-$indicator = $indicatorId > 0 ? omoStatsLoadIndicator($indicatorId, $organizationId) : new StatIndicator();
+$indicator = $indicatorId > 0 && !$deferredEditor ? omoStatsLoadIndicator($indicatorId, $organizationId) : new StatIndicator();
+if ($deferredEditor && $indicatorId > 0) $indicator->load($indicatorId);
 if ($indicatorId > 0 && !($indicator instanceof StatIndicator)) {
     http_response_code(404);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoStatsT('stats.error.not_found')) . '</div>';
     exit;
 }
-if ($indicatorId > 0 && !omoStatsCanEditIndicator($indicator, $context)) {
+if (!$deferredEditor && $indicatorId > 0 && !omoStatsCanEditIndicator($indicator, $context)) {
     http_response_code(403);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoStatsT('stats.error.forbidden')) . '</div>';
     exit;
 }
-if ($indicatorId <= 0 && !omoStatsCanCreateContext($context)) {
+if (!$deferredEditor && $indicatorId <= 0 && !omoStatsCanCreateContext($context)) {
     http_response_code(403);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoStatsT('stats.error.forbidden')) . '</div>';
     exit;
@@ -41,6 +43,11 @@ if ($indicatorId <= 0 && !omoStatsCanCreateContext($context)) {
 
 if ($indicatorId <= 0) {
     $indicator->set('reference_type', StatIndicator::REFERENCE_NONE);
+}
+if ($deferredEditor) {
+    foreach (['IDdocument', 'IDuser_responsible', 'name', 'description', 'source_url', 'source_type', 'measurement_frequency', 'measurement_schedule', 'ethercalc_cell', 'ethercalc_frequency', 'ethercalc_range', 'ethercalc_date_column', 'ethercalc_value_column', 'spreadsheet_sheet', 'spreadsheet_cell', 'spreadsheet_frequency', 'spreadsheet_range', 'spreadsheet_date_column', 'spreadsheet_value_column', 'chart_min_value', 'reference_type', 'reference_scale', 'show_cumulative'] as $field) {
+        if (array_key_exists($field, $deferredEditor['state'])) $indicator->set($field, $deferredEditor['state'][$field]);
+    }
 }
 
 $indicatorResponsibleOptions = [];
@@ -69,10 +76,22 @@ if (!function_exists('omoStatsEditInputNumber')) {
 $referencePoints = $indicatorId > 0
     ? omoStatsCollectionItems($indicator->getReferencePoints(), StatIndicatorReferencePoint::class)
     : [];
+if ($deferredEditor && isset($deferredEditor['state']['reference_points'])) {
+    $referencePoints = [];
+    foreach ($deferredEditor['state']['reference_points'] as $pointState) {
+        if (!is_array($pointState)) continue;
+        $point = new StatIndicatorReferencePoint();
+        $point->set('position_percent', $pointState['position_percent'] ?? 0);
+        $point->set('value', $pointState['value'] ?? 0);
+        if (!empty($pointState['point_at'])) $point->set('point_at', new DateTime((string)$pointState['point_at']));
+        $referencePoints[] = $point;
+    }
+}
 $referenceType = StatIndicator::normalizeReferenceType($indicator->get('reference_type'));
 $ceilingValue = $referenceType === StatIndicator::REFERENCE_CEILING
     ? omoStatsGetCeilingValue($referencePoints)
     : null;
+if ($deferredEditor && $referenceType === StatIndicator::REFERENCE_CEILING && is_numeric($deferredEditor['state']['ceiling_value'] ?? null)) $ceilingValue = (float)$deferredEditor['state']['ceiling_value'];
 $measurementFrequency = StatIndicator::normalizeMeasurementFrequency($indicator->get('measurement_frequency'));
 $measurementSchedule = StatIndicator::normalizeMeasurementSchedule($measurementFrequency, $indicator->get('measurement_schedule'));
 $measurementFrequencyOptions = [['value' => '', 'label' => omoStatsT('stats.frequency.none')]];
@@ -88,7 +107,7 @@ foreach (StatIndicator::getMeasurementFrequencyCatalog() as $frequency) {
 }
 
 $requestedSourceType = StatIndicator::normalizeSourceType($_GET['source_type'] ?? StatIndicator::SOURCE_MANUAL);
-$selectedSourceType = $indicatorId > 0
+$selectedSourceType = $indicatorId > 0 || $deferredEditor
     ? StatIndicator::normalizeSourceType($indicator->get('source_type'))
     : $requestedSourceType;
 $isEthercalcSource = in_array($selectedSourceType, [StatIndicator::SOURCE_ETHERCALC_CELL, StatIndicator::SOURCE_ETHERCALC_TABLE], true);
@@ -96,7 +115,7 @@ $isSpreadsheetSource = in_array($selectedSourceType, [StatIndicator::SOURCE_SPRE
 $isEthercalcCellSource = $selectedSourceType === StatIndicator::SOURCE_ETHERCALC_CELL;
 $isSpreadsheetCellSource = $selectedSourceType === StatIndicator::SOURCE_SPREADSHEET_CELL;
 $isAutomaticSource = $isEthercalcSource || $isSpreadsheetSource;
-$selectedSourceDocumentId = $indicatorId > 0
+$selectedSourceDocumentId = $indicatorId > 0 || $deferredEditor
     ? (int)$indicator->get('IDdocument')
     : (isset($_GET['source_document_id']) && is_numeric($_GET['source_document_id']) ? (int)$_GET['source_document_id'] : 0);
 $ethercalcDocuments = [];
@@ -169,6 +188,7 @@ $sourceLang = [
     'editor.scale_cumulative_help' => ['text' => 'Ex. 120 000 de chiffre d affaires sur l annee.', 'context' => 'Example of a reference on the cumulative axis.'],
     'editor.saving' => ['text' => 'Enregistrement...', 'context' => 'Save action while an indicator request is pending.'],
     'editor.saved' => ['text' => 'Indicateur enregistre.', 'context' => 'Successful indicator save feedback.'],
+    'editor.deferred_single_column' => ['text' => 'Une modification différée peut porter sur une seule colonne de valeurs.', 'context' => 'Single indicator source column in a deferred modification.'],
 ];
 $editorBundle = omoLoadTranslationBundle('omo_stats_editor', $sourceLang);
 $editT = static function ($key) use ($editorBundle, $sourceLang) {
@@ -185,11 +205,12 @@ $referenceScale = StatIndicator::normalizeReferenceScale($indicator->get('refere
 $showCumulative = (int)$indicator->get('show_cumulative') > 0;
 ?>
 <link rel="stylesheet" href="/common/assets/components.css?v=20260919-compact-help">
-<div class="omo-stats-editor generic-drawer-content" data-omo-stats-editor data-indicator-id="<?= (int)$indicatorId ?>">
+<?php if ($deferredEditor): ?><link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260919-group-editor"><?php endif; ?>
+<div class="omo-stats-editor generic-drawer-content" data-omo-stats-editor<?= $deferredEditor ? ' data-deferred-object-editor' : '' ?> data-indicator-id="<?= (int)$indicatorId ?>">
     <div hidden data-omo-subdrawer-header
         data-omo-subdrawer-title="<?= omoApiEscape(omoStatsT($indicatorId > 0 ? 'stats.form.edit_title' : 'stats.form.create_title')) ?>"
         data-omo-subdrawer-description="<?= omoApiEscape(omoStatsT('stats.form.intro')) ?>"></div>
-    <form id="omoStatsIndicatorForm" class="generic-form-stack generic-form-stack--compact" action="/omo/api/stats/action.php" method="post">
+    <form id="omoStatsIndicatorForm" class="generic-form-stack generic-form-stack--compact" action="<?= $deferredEditor && $deferredEditor['origin'] === 'pv' ? '/omo/api/deferred_proposals/pv_object_save.php' : '/omo/api/stats/action.php' ?>" method="post"<?= $deferredEditor ? ' data-deferred-object-form' : '' ?>>
         <section class="generic-form-grid generic-form-grid--pair" aria-label="<?= omoApiEscape($editT('editor.identity')) ?>">
             <div class="generic-form-field">
                 <div class="generic-inline-help">
@@ -266,10 +287,11 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.date_column')) ?></span>
                     <input type="text" class="generic-form-control generic-form-control--compact" name="ethercalc_date_column" value="<?= omoApiEscape((string)($indicator->get('ethercalc_date_column') ?: 'A')) ?>" placeholder="A" required>
                 </label>
-                <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="ethercalc_table"<?= $isEthercalcCellSource ? ' hidden' : '' ?>>
-                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.value_columns')) ?></span>
-                    <input type="text" class="generic-form-control generic-form-control--compact" name="ethercalc_value_columns" value="<?= omoApiEscape((string)($indicator->get('ethercalc_value_column') ?: 'B')) ?>" placeholder="B,C" required>
-                </label>
+                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="ethercalc_table"<?= $isEthercalcCellSource ? ' hidden' : '' ?>>
+                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.value_columns')) ?></span>
+                     <input type="text" class="generic-form-control generic-form-control--compact" name="ethercalc_value_columns" value="<?= omoApiEscape((string)($indicator->get('ethercalc_value_column') ?: 'B')) ?>" placeholder="<?= $deferredEditor ? 'B' : 'B,C' ?>" required>
+                     <?php if ($deferredEditor): ?><small class="generic-help-text"><?= omoApiEscape($editT('editor.deferred_single_column')) ?></small><?php endif; ?>
+                 </label>
                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="ethercalc_table"<?= $isEthercalcCellSource ? ' hidden' : '' ?>>
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.ethercalc.frequency_sync')) ?></span>
                     <select class="generic-form-control generic-form-control--compact" name="ethercalc_frequency">
@@ -310,10 +332,11 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.date_column')) ?></span>
                     <input type="text" class="generic-form-control generic-form-control--compact" name="spreadsheet_date_column" value="<?= omoApiEscape((string)($indicator->get('spreadsheet_date_column') ?: 'A')) ?>" placeholder="A" required>
                 </label>
-                <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="spreadsheet_table"<?= $isSpreadsheetCellSource ? ' hidden' : '' ?>>
-                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.value_columns')) ?></span>
-                    <input type="text" class="generic-form-control generic-form-control--compact" name="spreadsheet_value_columns" value="<?= omoApiEscape((string)($indicator->get('spreadsheet_value_column') ?: 'B')) ?>" placeholder="B,C" required>
-                </label>
+                 <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="spreadsheet_table"<?= $isSpreadsheetCellSource ? ' hidden' : '' ?>>
+                     <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.value_columns')) ?></span>
+                     <input type="text" class="generic-form-control generic-form-control--compact" name="spreadsheet_value_columns" value="<?= omoApiEscape((string)($indicator->get('spreadsheet_value_column') ?: 'B')) ?>" placeholder="<?= $deferredEditor ? 'B' : 'B,C' ?>" required>
+                     <?php if ($deferredEditor): ?><small class="generic-help-text"><?= omoApiEscape($editT('editor.deferred_single_column')) ?></small><?php endif; ?>
+                 </label>
             <label class="omo-stats-field generic-form-field" data-omo-stats-source-mode-field="spreadsheet_cell"<?= $isSpreadsheetCellSource ? '' : ' hidden' ?>>
                 <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.import.spreadsheet.frequency_measurement')) ?></span>
                 <select class="generic-form-control generic-form-control--compact" name="spreadsheet_frequency">
@@ -479,14 +502,19 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
 <input type="hidden" name="id" value="<?= (int)$indicatorId ?>">
 <input type="hidden" name="stats_action" value="save_indicator">
 <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
-<input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
+ <input type="hidden" name="cid" value="<?= (int)$currentHolonId ?>">
+ <?php if ($deferredEditor && $deferredEditor['origin'] === 'pv'): ?>
+     <?php foreach (['point_id' => $deferredEditor['pointId'], 'proposal_id' => $deferredEditor['proposalId'], 'target_type' => $deferredEditor['targetType'], 'operation' => $deferredEditor['operation'], 'holon_id' => $currentHolonId, 'object_id' => $indicatorId] as $key => $entry): ?>
+         <input type="hidden" name="<?= omoApiEscape($key) ?>" value="<?= omoApiEscape((string)$entry) ?>">
+     <?php endforeach; ?>
+ <?php endif; ?>
 <?php if (!empty($context['pvMeetingPermission'])): ?>
     <input type="hidden" name="pv_meeting_document_id" value="<?= (int)($context['pvMeetingPermission']['documentId'] ?? 0) ?>">
     <input type="hidden" name="pv_meeting_editor_token" value="<?= omoApiEscape((string)($_GET['pv_meeting_editor_token'] ?? '')) ?>">
 <?php endif; ?>
 <div class="generic-feedback generic-feedback--collapse-empty" data-omo-stats-editor-feedback role="status" aria-live="polite"></div>
 <div class="omo-stats-editor__actions generic-form-actions generic-form-actions--stack-mobile">
-    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-cancel-editor data-indicator-id="<?= (int)$indicatorId ?>"><?= omoApiEscape(omoStatsT('stats.action.cancel')) ?></button>
+    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-stats-cancel-editor<?= $deferredEditor ? ' data-deferred-object-cancel' : '' ?> data-indicator-id="<?= (int)$indicatorId ?>"><?= omoApiEscape(omoStatsT('stats.action.cancel')) ?></button>
     <button type="submit" class="generic-action-button generic-action-button--main" data-omo-stats-save-editor><?= omoApiEscape(omoStatsT('stats.action.save')) ?></button>
 </div>
 </form>
@@ -694,3 +722,7 @@ $showCumulative = (int)$indicator->get('show_cumulative') > 0;
     syncReferenceScale();
 })();
 </script>
+<?php if ($deferredEditor): ?>
+<script src="/common/choice/deferred-object-editor.js?v=20260924-shared-form-validation"></script>
+<script>window.omoDeferredObjectEditorInit(document.querySelector('[data-deferred-object-editor]'), <?= json_encode(['origin'=>$deferredEditor['origin'],'targetType'=>$deferredEditor['targetType'],'holonId'=>$currentHolonId,'pointId'=>$deferredEditor['pointId'] ?? 0], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);</script>
+<?php endif; ?>

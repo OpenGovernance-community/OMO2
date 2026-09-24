@@ -10719,6 +10719,39 @@
 			}, array_values($items));
 		}
 
+		public function getHolonEditorListDisplayItems($value, $formatId, $listItemType): array
+		{
+			if (!\dbObject\PropertyFormat::isListFormat((int)$formatId)) return array();
+			$items = $this->parseHolonHistoryListItems($value, (int)$formatId);
+			$visible = array_values(array_filter($items, static function ($item) {
+				return !is_array($item) || empty($item['delete']);
+			}));
+			return array_map(function ($item) use ($listItemType) {
+				if ((string)$listItemType === \dbObject\Property::LIST_ITEM_AUTHORITY
+					&& is_array($item) && trim((string)($item['label'] ?? '')) !== '') {
+					return ['id' => (int)($item['id'] ?? 0), 'label' => trim((string)$item['label'])];
+				}
+				if ((string)$listItemType === \dbObject\Property::LIST_ITEM_AUTHORITY
+					&& is_array($item) && (string)($item['delegationMode'] ?? '') === 'complete'
+					&& (int)($item['parentId'] ?? 0) > 0) {
+					$parent = $this->buildHolonHistoryListDisplayItem((int)$item['parentId'], $listItemType);
+					$parentLabel = is_array($parent) ? (string)($parent['label'] ?? '') : 'Autorité #' . (int)$item['parentId'];
+					return ['id' => 0, 'label' => $parentLabel];
+				}
+				$display = $this->buildHolonHistoryListDisplayItem($item, $listItemType);
+				$itemId = is_array($item) ? (int)($item['id'] ?? 0) : (int)$item;
+				if ($itemId > 0 && !is_array($display)) {
+					$typeLabel = [
+						\dbObject\Property::LIST_ITEM_HOLON => 'Holon',
+						\dbObject\Property::LIST_ITEM_PROJECT => 'Projet',
+						\dbObject\Property::LIST_ITEM_AUTHORITY => 'Autorité',
+					][(string)$listItemType] ?? '';
+					if ($typeLabel !== '') return ['id' => $itemId, 'label' => $typeLabel . ' #' . $itemId];
+				}
+				return $display;
+			}, $visible);
+		}
+
 		protected function mergeHolonHistoryListValues($ancestorValue, $currentValue)
 		{
 			$merged = array();

@@ -54,6 +54,16 @@ function patreonGetConfigurationIssues($context = 'api')
 		}
 	}
 
+	if ($context === 'oauth') {
+		if (patreonGetConnectUrl() === '') {
+			$issues[] = 'PATREON_CONNECT_URL manquant ou invalide';
+		}
+		if (class_exists('\\dbObject\\PatreonOauthTransaction')
+			&& !\dbObject\PatreonOauthTransaction::isStorageAvailable()) {
+			$issues[] = 'table SQL patreon_oauth_transaction absente';
+		}
+	}
+
 	if (in_array($context, ['api', 'oauth', 'sync'], true) && !function_exists('curl_init')) {
 		$issues[] = 'extension PHP cURL manquante';
 	}
@@ -140,6 +150,14 @@ function patreonAssertConfigured($context = 'api')
 
 function patreonGetRedirectUri()
 {
+	$connectUrl = patreonGetConnectUrl();
+	if ($connectUrl !== '') {
+		$parts = parse_url($connectUrl);
+		$host = strtolower((string)($parts['host'] ?? ''));
+		$port = isset($parts['port']) && (int)$parts['port'] !== 443 ? ':' . (int)$parts['port'] : '';
+		return 'https://' . $host . $port . '/common/patreon_callback.php';
+	}
+
 	$configured = trim((string)($GLOBALS['patreonRedirectUri'] ?? ''));
 	if ($configured !== '') {
 		return $configured;
@@ -160,6 +178,153 @@ function patreonGetRedirectUri()
 	$https = strtolower((string)($_SERVER['HTTPS'] ?? ''));
 	$scheme = ($https !== '' && $https !== 'off') ? 'https' : 'http';
 	return $scheme . '://' . $host . '/common/patreon_callback.php';
+}
+
+function patreonGetConnectUrl()
+{
+	$url = trim((string)($GLOBALS['patreonConnectUrl'] ?? ''));
+	if ($url === '') {
+		return '';
+	}
+
+	$parts = parse_url($url);
+	if (!is_array($parts)
+		|| strtolower((string)($parts['scheme'] ?? '')) !== 'https'
+		|| trim((string)($parts['host'] ?? '')) === ''
+		|| isset($parts['user'])
+		|| isset($parts['pass'])
+		|| isset($parts['fragment'])
+		|| (string)($parts['path'] ?? '') !== '/common/patreon_connect.php') {
+		return '';
+	}
+
+	return rtrim($url, '?&');
+}
+
+function patreonGetConnectOrigin()
+{
+	$parts = parse_url(patreonGetConnectUrl());
+	if (!is_array($parts)) {
+		return '';
+	}
+
+	$host = strtolower((string)($parts['host'] ?? ''));
+	$port = isset($parts['port']) && (int)$parts['port'] !== 443 ? ':' . (int)$parts['port'] : '';
+	return $host !== '' ? 'https://' . $host . $port : '';
+}
+
+function patreonNormalizeReturnOriginPattern($origin)
+{
+	$parts = parse_url(trim((string)$origin));
+	if (!is_array($parts)
+		|| strtolower((string)($parts['scheme'] ?? '')) !== 'https'
+		|| isset($parts['user'])
+		|| isset($parts['pass'])
+		|| isset($parts['query'])
+		|| isset($parts['fragment'])
+		|| !in_array((string)($parts['path'] ?? ''), ['', '/'], true)) {
+		return '';
+	}
+
+	$host = strtolower((string)($parts['host'] ?? ''));
+	$domain = str_starts_with($host, '*.') ? substr($host, 2) : $host;
+	if ($domain === ''
+		|| str_contains($domain, '*')
+		|| filter_var($domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) === false
+		|| !str_contains($domain, '.')) {
+		return '';
+	}
+
+	$port = isset($parts['port']) && (int)$parts['port'] !== 443 ? ':' . (int)$parts['port'] : '';
+	return 'https://' . $host . $port;
+}
+
+function patreonGetAllowedReturnOrigins()
+{
+	$configured = trim((string)($GLOBALS['patreonConnectAllowedOrigins'] ?? ''));
+	$origins = $configured !== ''
+		? preg_split('/\\s*,\\s*/', $configured, -1, PREG_SPLIT_NO_EMPTY)
+		: [
+			'https://opengov.tools',
+			'https://dev.opengov.tools',
+			'https://*.dev.opengov.tools',
+			'https://beta.opengov.tools',
+			'https://omo2.org',
+			'https://*.omo2.org',
+			'https://openmyorganization.org',
+		];
+
+	$allowed = [];
+	foreach ($origins as $origin) {
+		$pattern = patreonNormalizeReturnOriginPattern($origin);
+		if ($pattern !== '') {
+			$allowed[] = $pattern;
+		}
+	}
+
+	return array_values(array_unique($allowed));
+}
+
+function patreonGetRequestOrigin()
+{
+	$host = strtolower(trim((string)($_SERVER['HTTP_HOST'] ?? '')));
+	if ($host === '' || preg_match('/[^a-z0-9.:-]/i', $host)) {
+		return '';
+	}
+
+	$scheme = function_exists('commonGetRequestScheme')
+		? commonGetRequestScheme()
+		: (strtolower((string)($_SERVER['HTTPS'] ?? '')) !== '' && strtolower((string)($_SERVER['HTTPS'] ?? '')) !== 'off' ? 'https' : 'http');
+	if (strtolower($scheme) !== 'https') {
+		return '';
+	}
+
+	$parts = parse_url('https://' . $host);
+	if (!is_array($parts) || empty($parts['host'])) {
+		return '';
+	}
+
+	$normalizedHost = strtolower((string)$parts['host']);
+	$port = isset($parts['port']) && (int)$parts['port'] !== 443 ? ':' . (int)$parts['port'] : '';
+	return 'https://' . $normalizedHost . $port;
+}
+
+function patreonIsAllowedReturnOrigin($origin)
+{
+	$origin = (string)$origin;
+	if ($origin === '' || $origin !== patreonNormalizeReturnOriginPattern($origin)) {
+		return false;
+	}
+
+	$host = strtolower((string)parse_url($origin, PHP_URL_HOST));
+	if (str_contains($host, '*')) {
+		return false;
+	}
+	$port = parse_url($origin, PHP_URL_PORT);
+	foreach (patreonGetAllowedReturnOrigins() as $pattern) {
+		if ($origin === $pattern) {
+			return true;
+		}
+
+		$patternHost = strtolower((string)parse_url($pattern, PHP_URL_HOST));
+		if (!str_starts_with($patternHost, '*.') || parse_url($pattern, PHP_URL_PORT) !== $port) {
+			continue;
+		}
+
+		$suffix = substr($patternHost, 1);
+		if (strlen($host) > strlen($suffix) && str_ends_with($host, $suffix)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+function patreonIsConnectHubRequest()
+{
+	$connectOrigin = patreonGetConnectOrigin();
+	$requestOrigin = patreonGetRequestOrigin();
+	return $connectOrigin !== '' && $requestOrigin !== '' && hash_equals($connectOrigin, $requestOrigin);
 }
 
 function patreonGetCreatorCampaignId()

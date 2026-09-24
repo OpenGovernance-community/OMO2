@@ -315,6 +315,18 @@ function serverEnvAdminGetEditableSections()
                     'help' => serverEnvAdminT('parameters.server_env.field.secret_keep.help', 'Laissez vide pour conserver la valeur actuelle.'),
                 ],
                 [
+                    'key' => 'PATREON_CONNECT_URL',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_URL.label', 'URL centrale de connexion Patreon'),
+                    'type' => 'text',
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_URL.help', 'URL du point de connexion central, par exemple https://omo2.org/common/patreon_connect.php.'),
+                ],
+                [
+                    'key' => 'PATREON_CONNECT_ALLOWED_ORIGINS',
+                    'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.label', 'Domaines de retour Patreon autorisés'),
+                    'type' => 'text',
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.help', 'Liste d origines HTTPS séparées par des virgules. https://*.dev.opengov.tools autorise ses sous-domaines ; ajoutez aussi https://dev.opengov.tools pour le domaine principal.'),
+                ],
+                [
                     'key' => 'PATREON_REDIRECT_URI',
                     'label' => serverEnvAdminT('parameters.server_env.field.PATREON_REDIRECT_URI.label', 'Redirect URI Patreon'),
                     'type' => 'text',
@@ -617,6 +629,11 @@ function serverEnvAdminValidateValues(array $values)
     $patreonRedirect = trim((string)($values['PATREON_REDIRECT_URI'] ?? ''));
     if ($patreonRedirect !== '' && preg_match('#^https?://#i', $patreonRedirect) !== 1) {
         $errors[] = 'La Redirect URI Patreon doit etre une URL absolue.';
+    }
+
+    $patreonConnectUrl = trim((string)($values['PATREON_CONNECT_URL'] ?? ''));
+    if ($patreonConnectUrl !== '' && preg_match('~^https://[^/?#]+/common/patreon_connect\.php$~i', $patreonConnectUrl) !== 1) {
+        $errors[] = 'L URL centrale Patreon doit se terminer par /common/patreon_connect.php et utiliser HTTPS.';
     }
 
     $envPath = serverEnvAdminGetEnvPath();

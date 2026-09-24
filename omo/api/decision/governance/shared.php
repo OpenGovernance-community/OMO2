@@ -52,6 +52,12 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.action.project_create' => ['text' => 'Créer un projet', 'context' => 'Project creation deferred proposal label.'],
             'governance.action.project_propose' => ['text' => 'Proposer un projet', 'context' => 'Project proposal label when the collective can propose but not create projects.'],
             'governance.action.project_delete' => ['text' => 'Supprimer un projet', 'context' => 'Project deletion deferred proposal label.'],
+            'governance.action.recurring_task_update' => ['text' => 'Modifier une tâche récurrente', 'context' => 'Recurring task update deferred proposal label.'],
+            'governance.action.recurring_task_create' => ['text' => 'Créer une tâche récurrente', 'context' => 'Recurring task creation deferred proposal label.'],
+            'governance.action.recurring_task_delete' => ['text' => 'Supprimer une tâche récurrente', 'context' => 'Recurring task deletion deferred proposal label.'],
+            'governance.action.indicator_update' => ['text' => 'Modifier un indicateur', 'context' => 'Indicator update deferred proposal label.'],
+            'governance.action.indicator_create' => ['text' => 'Créer un indicateur', 'context' => 'Indicator creation deferred proposal label.'],
+            'governance.action.indicator_delete' => ['text' => 'Supprimer un indicateur', 'context' => 'Indicator deletion deferred proposal label.'],
             'governance.action.object_type' => ['text' => 'Objet', 'context' => 'Deferred proposal object type label.'],
             'governance.action.context' => ['text' => 'Contexte', 'context' => 'Deferred proposal holon context label.'],
             'governance.action.object' => ['text' => 'Élément concerné', 'context' => 'Deferred proposal target object label.'],
@@ -205,6 +211,8 @@ if (!function_exists('omoDecisionGovernanceBuildBlueprint')) {
         if (!$decision instanceof DecisionProcess) {
             return [];
         }
+        $organization = new \dbObject\Organization();
+        $hasOrganization = $organization->load((int)$decision->get('IDorganization'));
         $blueprint = [];
         foreach ($decision->getProposals(true) as $proposal) {
             if (!$proposal instanceof DecisionProposal) {
@@ -224,6 +232,10 @@ if (!function_exists('omoDecisionGovernanceBuildBlueprint')) {
                     if (is_array($afterState['editor_payload']['properties'] ?? null)) {
                         $afterState['editor_payload']['properties'] = omoDecisionGovernanceDecorateRoleProperties($afterState['editor_payload']['properties']);
                     }
+                    if ($hasOrganization) {
+                        $beforeState = DeferredProposal::decorateHolonListDisplayState($beforeState, $organization);
+                        $afterState = DeferredProposal::decorateHolonListDisplayState($afterState, $organization);
+                    }
                 }
                 $actions[] = [
                     'id' => (int)$action->getId(),
@@ -242,14 +254,20 @@ if (!function_exists('omoDecisionGovernanceBuildBlueprint')) {
                     || (string)$deferredProposal->get('status') === DeferredProposal::STATUS_REMOVED) {
                     continue;
                 }
+                $beforeState = DeferredProposal::normalizeState($deferredProposal->get('before_state'));
+                $afterState = DeferredProposal::normalizeState($deferredProposal->get('after_state'));
+                if ($hasOrganization && (string)$deferredProposal->get('target_type') === DeferredProposal::TARGET_HOLON) {
+                    $beforeState = DeferredProposal::decorateHolonListDisplayState($beforeState, $organization);
+                    $afterState = DeferredProposal::decorateHolonListDisplayState($afterState, $organization);
+                }
                 $actions[] = [
                     'id' => (int)$deferredProposal->getId(),
                     'storage' => 'deferred',
                     'type' => (string)$deferredProposal->get('target_type') . '.' . (string)$deferredProposal->get('operation'),
                     'targetId' => (int)$deferredProposal->get('target_id'),
                     'holonId' => (int)$deferredProposal->get('IDholon'),
-                    'before' => DeferredProposal::normalizeState($deferredProposal->get('before_state')),
-                    'after' => DeferredProposal::normalizeState($deferredProposal->get('after_state')),
+                    'before' => $beforeState,
+                    'after' => $afterState,
                     'status' => (string)$deferredProposal->get('status'),
                     'statusMessage' => trim((string)$deferredProposal->get('status_message')),
                 ];

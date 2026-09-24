@@ -938,6 +938,6 @@ if ($associatedEvent instanceof \dbObject\Event) {
 <?php endif; ?>
 <?php if ($showPvDiscussion): ?>
 <script src="/common/choice/word-diff.js?v=20260821-pv-review-access-2"></script>
-<script src="/common/choice/change-details.js?v=20260923-lifecycle-details"></script>
+<script src="/common/choice/change-details.js?v=20260924-readable-diffs"></script>
 <script src="/common/chat/thread.js?v=20260821-pv-review-access-2"></script>
 <?php endif; ?>
