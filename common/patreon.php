@@ -213,6 +213,32 @@ function patreonGetConnectOrigin()
 	return $host !== '' ? 'https://' . $host . $port : '';
 }
 
+function patreonNormalizeReturnOriginPattern($origin)
+{
+	$parts = parse_url(trim((string)$origin));
+	if (!is_array($parts)
+		|| strtolower((string)($parts['scheme'] ?? '')) !== 'https'
+		|| isset($parts['user'])
+		|| isset($parts['pass'])
+		|| isset($parts['query'])
+		|| isset($parts['fragment'])
+		|| !in_array((string)($parts['path'] ?? ''), ['', '/'], true)) {
+		return '';
+	}
+
+	$host = strtolower((string)($parts['host'] ?? ''));
+	$domain = str_starts_with($host, '*.') ? substr($host, 2) : $host;
+	if ($domain === ''
+		|| str_contains($domain, '*')
+		|| filter_var($domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME) === false
+		|| !str_contains($domain, '.')) {
+		return '';
+	}
+
+	$port = isset($parts['port']) && (int)$parts['port'] !== 443 ? ':' . (int)$parts['port'] : '';
+	return 'https://' . $host . $port;
+}
+
 function patreonGetAllowedReturnOrigins()
 {
 	$configured = trim((string)($GLOBALS['patreonConnectAllowedOrigins'] ?? ''));
@@ -221,29 +247,19 @@ function patreonGetAllowedReturnOrigins()
 		: [
 			'https://opengov.tools',
 			'https://dev.opengov.tools',
+			'https://*.dev.opengov.tools',
 			'https://beta.opengov.tools',
 			'https://omo2.org',
+			'https://*.omo2.org',
 			'https://openmyorganization.org',
 		];
 
 	$allowed = [];
 	foreach ($origins as $origin) {
-		$origin = trim((string)$origin);
-		$parts = parse_url($origin);
-		if (!is_array($parts)
-			|| strtolower((string)($parts['scheme'] ?? '')) !== 'https'
-			|| trim((string)($parts['host'] ?? '')) === ''
-			|| isset($parts['user'])
-			|| isset($parts['pass'])
-			|| isset($parts['query'])
-			|| isset($parts['fragment'])
-			|| !in_array((string)($parts['path'] ?? ''), ['', '/'], true)) {
-			continue;
+		$pattern = patreonNormalizeReturnOriginPattern($origin);
+		if ($pattern !== '') {
+			$allowed[] = $pattern;
 		}
-
-		$host = strtolower((string)$parts['host']);
-		$port = isset($parts['port']) && (int)$parts['port'] !== 443 ? ':' . (int)$parts['port'] : '';
-		$allowed[] = 'https://' . $host . $port;
 	}
 
 	return array_values(array_unique($allowed));
@@ -275,7 +291,33 @@ function patreonGetRequestOrigin()
 
 function patreonIsAllowedReturnOrigin($origin)
 {
-	return in_array((string)$origin, patreonGetAllowedReturnOrigins(), true);
+	$origin = (string)$origin;
+	if ($origin === '' || $origin !== patreonNormalizeReturnOriginPattern($origin)) {
+		return false;
+	}
+
+	$host = strtolower((string)parse_url($origin, PHP_URL_HOST));
+	if (str_contains($host, '*')) {
+		return false;
+	}
+	$port = parse_url($origin, PHP_URL_PORT);
+	foreach (patreonGetAllowedReturnOrigins() as $pattern) {
+		if ($origin === $pattern) {
+			return true;
+		}
+
+		$patternHost = strtolower((string)parse_url($pattern, PHP_URL_HOST));
+		if (!str_starts_with($patternHost, '*.') || parse_url($pattern, PHP_URL_PORT) !== $port) {
+			continue;
+		}
+
+		$suffix = substr($patternHost, 1);
+		if (strlen($host) > strlen($suffix) && str_ends_with($host, $suffix)) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 function patreonIsConnectHubRequest()

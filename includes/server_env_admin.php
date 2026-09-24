@@ -324,7 +324,7 @@ function serverEnvAdminGetEditableSections()
                     'key' => 'PATREON_CONNECT_ALLOWED_ORIGINS',
                     'label' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.label', 'Domaines de retour Patreon autorisés'),
                     'type' => 'text',
-                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.help', 'Liste d origines HTTPS séparées par des virgules, par exemple https://opengov.tools,https://beta.opengov.tools.'),
+                    'help' => serverEnvAdminT('parameters.server_env.field.PATREON_CONNECT_ALLOWED_ORIGINS.help', 'Liste d origines HTTPS séparées par des virgules. https://*.dev.opengov.tools autorise ses sous-domaines ; ajoutez aussi https://dev.opengov.tools pour le domaine principal.'),
                 ],
                 [
                     'key' => 'PATREON_REDIRECT_URI',
