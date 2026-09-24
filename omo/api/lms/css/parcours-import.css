@@ -1,0 +1,146 @@
+/* omo/api/lms/parcours_import.php */
+.lms-import-parcours-view {
+    display: grid;
+    gap: 18px;
+}
+
+.lms-import-parcours-hero,
+.lms-import-parcours-card {
+    padding: 20px 22px;
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    box-shadow: var(--shadow);
+}
+
+.lms-import-parcours-hero {
+    border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border-color));
+    background:
+        radial-gradient(circle at top right, color-mix(in srgb, var(--primary) 20%, transparent), transparent 42%),
+        linear-gradient(135deg, color-mix(in srgb, var(--primary) 8%, var(--bg-card)), var(--bg-card));
+}
+
+.lms-import-parcours-hero h2,
+.lms-import-parcours-card h3 {
+    margin: 0 0 8px;
+}
+
+.lms-import-parcours-card {
+    border: 1px solid var(--border-color);
+    display: grid;
+    gap: 16px;
+}
+
+.lms-import-parcours-search {
+    display: grid;
+    gap: 6px;
+}
+
+.lms-import-parcours-search input {
+    width: 100%;
+}
+
+.lms-import-parcours-list {
+    display: grid;
+    gap: 12px;
+    max-height: min(58vh, 560px);
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.lms-import-parcours-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: start;
+    padding: 14px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-main);
+}
+
+.lms-import-parcours-item--pack {
+    border-color: color-mix(in srgb, var(--primary) 26%, var(--border-color));
+    background:
+        linear-gradient(135deg, color-mix(in srgb, var(--primary) 7%, var(--bg-main)), var(--bg-main));
+}
+
+.lms-import-parcours-item[hidden],
+.lms-import-parcours-empty[hidden] {
+    display: none !important;
+}
+
+.lms-import-parcours-item__copy {
+    display: grid;
+    gap: 8px;
+}
+
+.lms-import-parcours-item__copy strong {
+    display: block;
+}
+
+.lms-import-parcours-item__type {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 8%, var(--bg-card));
+    color: var(--text-light);
+    font-size: 0.82rem;
+    letter-spacing: 0.02em;
+}
+
+.lms-import-parcours-item--pack .lms-import-parcours-item__type {
+    background: color-mix(in srgb, var(--primary) 15%, var(--bg-card));
+    color: var(--primary);
+}
+
+.lms-import-parcours-item__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.lms-import-parcours-item__meta span {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 8%, var(--bg-card));
+    color: var(--text-light);
+    font-size: 0.92rem;
+}
+
+.lms-import-parcours-item__action {
+    margin-top: 0;
+    white-space: nowrap;
+}
+
+.lms-import-parcours-empty {
+    padding: 16px 18px;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--primary) 7%, var(--bg-main));
+}
+
+.lms-import-parcours-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.lms-import-parcours-cancel {
+    background: var(--border-color);
+    color: var(--text-main);
+}
+
+@media (max-width: 720px) {
+    .lms-import-parcours-item,
+    .lms-import-parcours-actions {
+        grid-template-columns: 1fr;
+        flex-direction: column-reverse;
+    }
+
+    .lms-import-parcours-item__action,
+    .lms-import-parcours-cancel {
+        width: 100%;
+    }
+}

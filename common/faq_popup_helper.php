@@ -1,11 +1,153 @@
 <?php
 
 require_once __DIR__ . '/omo_context_scope.php';
+require_once __DIR__ . '/translation_bundles.php';
+
+function faqPopupT(string $key): string
+{
+	static $lang = null;
+	$sourceLang = [
+		'navigation.back_list' => ['text' => 'Retour à la FAQ', 'context' => 'Back navigation to the FAQ list.'],
+		'navigation.back_question' => ['text' => 'Retour à la question', 'context' => 'Back navigation from the FAQ editor to the question.'],
+		'editor.title' => ['text' => 'Modifier la FAQ', 'context' => 'FAQ edit screen heading.'],
+		'editor.pending_help' => ['text' => 'Rédigez votre réponse puis choisissez la FAQ dans laquelle l’enregistrer.', 'context' => 'Instructions for answering a FAQ request.'],
+		'editor.relayed_help' => ['text' => 'Cette demande a été relayée. Répondez puis enregistrez-la dans la FAQ de l’organisation.', 'context' => 'Instructions for answering a relayed FAQ request.'],
+		'editor.edit_help' => ['text' => 'Mettez à jour le contenu puis enregistrez vos modifications.', 'context' => 'Instructions for editing an existing FAQ.'],
+		'editor.response' => ['text' => 'Question et réponse', 'context' => 'FAQ editor content section.'],
+		'editor.media' => ['text' => 'Image et vidéo (facultatif)', 'context' => 'Collapsible FAQ media fields.'],
+		'editor.publication' => ['text' => 'Publication', 'context' => 'FAQ visibility and ordering section.'],
+		'editor.publication_help' => ['text' => 'Cochez la case pour rendre cette réponse visible dans la FAQ choisie.', 'context' => 'FAQ publication help.'],
+		'editor.scope' => ['text' => 'Emplacement dans la FAQ', 'context' => 'FAQ attachment settings heading.'],
+		'request.pending' => ['text' => 'Question en attente de réponse', 'context' => 'Pending FAQ request heading.'],
+		'request.relayed' => ['text' => 'Question relayée aux administrateurs de l’organisation', 'context' => 'Relayed FAQ request heading.'],
+		'request.answered' => ['text' => 'Demande d’origine', 'context' => 'Original FAQ request heading.'],
+		'request.author' => ['text' => 'Auteur', 'context' => 'FAQ request author label.'],
+		'request.description' => ['text' => 'Description du problème', 'context' => 'FAQ request description label.'],
+	];
+	if ($lang === null) {
+		$locale = translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr');
+		$lang = loadTranslationBundle('faq_popup', $locale, $sourceLang);
+	}
+	return t($key, [], $lang, $sourceLang);
+}
+
+function faqPopupEditorSections(): array
+{
+	return [
+		['title' => faqPopupT('editor.response'), 'fields' => ['question', 'answer', 'detail']],
+		['title' => faqPopupT('editor.media'), 'fields' => ['image', 'video'], 'collapsible' => true],
+		['title' => faqPopupT('editor.publication'), 'description' => faqPopupT('editor.publication_help'), 'fields' => ['isactive', 'displayorder']],
+	];
+}
+
+function faqPopupRenderBackButton(int $faqId = 0): void
+{
+	$label = htmlspecialchars(faqPopupT($faqId > 0 ? 'navigation.back_question' : 'navigation.back_list'), ENT_QUOTES, 'UTF-8');
+	?>
+	<nav aria-label="<?= $label ?>">
+		<button type="button" class="generic-action-button generic-action-button--icon-only generic-action-button--quiet-icon" title="<?= $label ?>" aria-label="<?= $label ?>" <?= $faqId > 0 ? 'data-faq-cancel-edit data-faq-id="' . $faqId . '"' : 'data-faq-back' ?>>
+			<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 12H5m7-7-7 7 7 7"></path></svg>
+		</button>
+	</nav>
+	<?php
+}
+
+function faqPopupRenderRequestInfo(\dbObject\FAQ $faq): void
+{
+	if ((int)$faq->get('request_user_id') <= 0) return;
+	$title = $faq->isPendingRequest()
+		? ($faq->hasRequestBeenRelayed() ? 'request.relayed' : 'request.pending')
+		: 'request.answered';
+	$authorName = trim((string)$faq->get('request_author_name'));
+	$authorEmail = trim((string)$faq->get('request_author_email'));
+	$author = $authorName !== '' && $authorName !== $authorEmail ? $authorName . ' · ' . $authorEmail : $authorEmail;
+	?>
+	<section class="faq-popup__request-info generic-soft-panel generic-stack">
+		<h5 class="generic-card-title generic-card-title--small"><?= htmlspecialchars(faqPopupT($title), ENT_QUOTES, 'UTF-8') ?></h5>
+		<div class="generic-help-text"><strong><?= htmlspecialchars(faqPopupT('request.author'), ENT_QUOTES, 'UTF-8') ?> :</strong> <?= htmlspecialchars($author, ENT_QUOTES, 'UTF-8') ?></div>
+		<div class="generic-stack generic-stack--compact">
+			<strong class="generic-form-label"><?= htmlspecialchars(faqPopupT('request.description'), ENT_QUOTES, 'UTF-8') ?></strong>
+			<div class="generic-description"><?= nl2br(htmlspecialchars((string)$faq->get('request_description'), ENT_QUOTES, 'UTF-8')) ?></div>
+		</div>
+		<?php faqPopupRenderRelayAction($faq); ?>
+	</section>
+	<?php
+}
+
+function faqPopupRenderRelayAction(\dbObject\FAQ $faq)
+{
+	if (!$faq->canRelayRequest()) {
+		return;
+	}
+
+	static $lang = null;
+	$sourceLang = [
+		'faq.relay.button' => ['text' => 'Relayer aux admins de l’orga', 'context' => 'Button forwarding an unanswered FAQ request to organization administrators.'],
+		'faq.relay.sent' => ['text' => 'Cette question a déjà été relayée aux administrateurs de l’organisation.', 'context' => 'Explains why the FAQ relay button is disabled.'],
+		'faq.relay.migration' => ['text' => 'Le relais sera disponible après la mise à jour de la base de données.', 'context' => 'Explains why the FAQ relay button is disabled when its database migration is missing.'],
+	];
+	if ($lang === null) {
+		$locale = translationBundleResolveRequestLocale('lang', translationBundleGetSupportedLocales(), 'fr');
+		$lang = loadTranslationBundle('faq_relay', $locale, $sourceLang);
+	}
+	$reason = $faq->hasRequestBeenRelayed()
+		? t('faq.relay.sent', [], $lang, $sourceLang)
+		: (!\dbObject\FAQ::hasRequestRelayColumn() ? t('faq.relay.migration', [], $lang, $sourceLang) : '');
+	?>
+	<div class="generic-stack generic-stack--compact">
+		<div class="generic-action-row">
+		<button type="button" class="generic-action-button generic-action-button--secondary" data-faq-relay data-faq-id="<?= (int)$faq->getId() ?>"<?= $reason !== '' ? ' disabled' : '' ?>><?= htmlspecialchars(t('faq.relay.button', [], $lang, $sourceLang), ENT_QUOTES, 'UTF-8') ?></button>
+		</div>
+		<?php if ($reason !== ''): ?>
+			<span class="generic-help-text"><?= htmlspecialchars($reason, ENT_QUOTES, 'UTF-8') ?></span>
+		<?php endif; ?>
+	</div>
+	<?php
+}
 
 if (!function_exists('faqPopupCanCreateParcoursFaqs')) {
 	function faqPopupCanCreateParcoursFaqs(array $faqContext, $userId = 0, $useSessionCache = true)
 	{
 		return \dbObject\FAQ::canManageParcoursInContext($faqContext, $userId, $useSessionCache);
+	}
+}
+
+if (!function_exists('faqPopupResolveRequestScope')) {
+	function faqPopupResolveRequestScope(\dbObject\FAQ $faq, array $faqContext, $resolution)
+	{
+		$resolution = trim((string)$resolution);
+		$organizationId = (int)$faq->getResolvedOrganizationId();
+		$viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext);
+
+		if ($resolution === 'generic') {
+			if (empty($viewerAccess['canManageAllFaqs'])) {
+				return array(
+					'status' => false,
+					'message' => 'Seul un super admin peut sauver cette demande comme FAQ generique.',
+				);
+			}
+
+			return array(
+				'status' => true,
+				'organizationId' => null,
+				'holonId' => null,
+				'parcoursId' => null,
+			);
+		}
+
+		if ($resolution !== 'organization' || $organizationId <= 0) {
+			return array(
+				'status' => false,
+				'message' => 'Choisissez de sauver la demande comme FAQ generique ou comme FAQ d organisation.',
+			);
+		}
+
+		return array(
+			'status' => true,
+			'organizationId' => $organizationId,
+			'holonId' => null,
+			'parcoursId' => null,
+		);
 	}
 }
 
@@ -596,6 +738,8 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 			return;
 		}
 		?>
+		<fieldset class="generic-fieldset" data-faq-scope-section>
+		<legend class="generic-card-title generic-card-title--small"><?= htmlspecialchars(faqPopupT('editor.scope'), ENT_QUOTES, 'UTF-8') ?></legend>
 		<div class="faq-popup__scope-grid generic-form-grid" data-faq-scope-fields>
 			<input type="hidden" name="IDorganization" value="<?= $selectedOrganizationId > 0 ? $selectedOrganizationId : $contextOrganizationId ?>">
 			<input type="hidden" name="IDholon" value="<?= $selectedHolonId > 0 ? $selectedHolonId : '' ?>">
@@ -760,6 +904,7 @@ if (!function_exists('faqPopupRenderScopeFields')) {
 				</div>
 			<?php endif; ?>
 		</div>
+		</fieldset>
 		<?php
 	}
 }

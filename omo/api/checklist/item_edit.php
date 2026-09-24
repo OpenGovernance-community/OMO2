@@ -153,12 +153,12 @@ if ($currentHolonId > 0) {
 
         <section class="generic-section generic-section--stack generic-form-section omo-checklist-item-editor" data-checklist-item-row>
             <div class="omo-checklist-form-grid generic-form-grid">
-                <label class="omo-checklist-field omo-checklist-field--wide">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.' . $itemKind . '_title')) ?></span>
+                <label class="omo-checklist-field omo-checklist-field--wide generic-form-field generic-form-field--full">
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.' . $itemKind . '_title')) ?></span>
                     <input class="generic-form-control" type="text" name="title" value="<?= omoApiEscape((string)$project->get('title')) ?>" maxlength="255" required autofocus>
                 </label>
-                <div class="omo-checklist-field omo-checklist-field--wide">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.item_description')) ?></span>
+                <div class="omo-checklist-field omo-checklist-field--wide generic-form-field generic-form-field--full">
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.item_description')) ?></span>
                     <div class="omo-checklist-html-editor-container" data-checklist-html-editor-container>
                         <div
                             class="omo-checklist-html-editor"
@@ -169,8 +169,8 @@ if ($currentHolonId > 0) {
                     </div>
                 </div>
                 <?php if (($context['rootHolon'] ?? null) instanceof Holon): ?>
-                <label class="omo-checklist-field omo-checklist-field--wide">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.holon')) ?></span>
+                <label class="omo-checklist-field omo-checklist-field--wide generic-form-field generic-form-field--full">
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.holon')) ?></span>
                     <select class="generic-form-control" name="IDholon" required>
                         <?php foreach ($holonOptions as $option): ?>
                             <option value="<?= (int)$option['id'] ?>"<?= (int)$option['id'] === $selectedHolonId ? ' selected' : '' ?>><?= omoApiEscape((string)$option['label']) ?></option>
@@ -178,8 +178,8 @@ if ($currentHolonId > 0) {
                     </select>
                 </label>
                 <?php endif; ?>
-                <label class="omo-checklist-field" data-checklist-item-parent-field<?= $isContainerChecklist ? ' hidden' : '' ?>>
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.parent')) ?></span>
+                <label class="omo-checklist-field generic-form-field" data-checklist-item-parent-field<?= $isContainerChecklist ? ' hidden' : '' ?>>
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.parent')) ?></span>
                     <select class="generic-form-control" name="parent_item_id">
                         <option value="0"><?= omoApiEscape(omoChecklistT('checklist.form.parent_root')) ?></option>
                         <?php foreach ($relatedItems as $relatedItem): ?>
@@ -187,16 +187,16 @@ if ($currentHolonId > 0) {
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <label class="omo-checklist-field" data-checklist-item-activation-field<?= $isContainerChecklist ? ' hidden' : '' ?>>
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.activation')) ?></span>
+                <label class="omo-checklist-field generic-form-field" data-checklist-item-activation-field<?= $isContainerChecklist ? ' hidden' : '' ?>>
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.activation')) ?></span>
                     <select class="generic-form-control" name="activation_type" data-checklist-activation-select>
                         <?php foreach ([ChecklistItem::ACTIVATION_IMMEDIATE, ChecklistItem::ACTIVATION_AFTER_START, ChecklistItem::ACTIVATION_AFTER_COMPLETION] as $activationOption): ?>
                             <option value="<?= omoApiEscape($activationOption) ?>"<?= $activationType === $activationOption ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistActivationLabel($activationOption)) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <label class="omo-checklist-field" data-checklist-dependency-field<?= $isContainerChecklist || $activationType !== ChecklistItem::ACTIVATION_AFTER_COMPLETION ? ' hidden' : '' ?>>
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.dependency')) ?></span>
+                <label class="omo-checklist-field generic-form-field" data-checklist-dependency-field<?= $isContainerChecklist || $activationType !== ChecklistItem::ACTIVATION_AFTER_COMPLETION ? ' hidden' : '' ?>>
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.dependency')) ?></span>
                     <select class="generic-form-control" name="dependency_item_id">
                         <option value="0"><?= omoApiEscape(omoChecklistT('checklist.form.select_item')) ?></option>
                         <?php foreach ($relatedItems as $relatedItem): ?>
@@ -204,19 +204,19 @@ if ($currentHolonId > 0) {
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <label class="omo-checklist-field" data-checklist-delay-field<?= $isContainerChecklist || $activationType === ChecklistItem::ACTIVATION_IMMEDIATE ? ' hidden' : '' ?>>
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.delay')) ?></span>
+                <label class="omo-checklist-field generic-form-field" data-checklist-delay-field<?= $isContainerChecklist || $activationType === ChecklistItem::ACTIVATION_IMMEDIATE ? ' hidden' : '' ?>>
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.delay')) ?></span>
                     <input class="generic-form-control" type="number" name="delay_value" value="<?= (int)$delayValue ?>" min="<?= $activationType === ChecklistItem::ACTIVATION_AFTER_COMPLETION ? '0' : '-3650' ?>" max="3650" step="1">
                 </label>
-                <label class="omo-checklist-field" data-checklist-delay-field<?= $isContainerChecklist || $activationType === ChecklistItem::ACTIVATION_IMMEDIATE ? ' hidden' : '' ?>>
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.unit')) ?></span>
+                <label class="omo-checklist-field generic-form-field" data-checklist-delay-field<?= $isContainerChecklist || $activationType === ChecklistItem::ACTIVATION_IMMEDIATE ? ' hidden' : '' ?>>
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.unit')) ?></span>
                     <select class="generic-form-control" name="delay_unit">
                         <?php foreach (ChecklistItem::delayUnits() as $unit): ?>
                             <option value="<?= omoApiEscape($unit) ?>"<?= $delayUnit === $unit ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.delay.' . $unit)) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <div class="generic-section generic-section--stack generic-form-section omo-checklist-field omo-checklist-field--wide">
+                <div class="generic-section generic-section--stack generic-form-section omo-checklist-field omo-checklist-field--wide generic-form-field generic-form-field--full">
                     <div class="omo-checklist-item-editor__header">
                         <div>
                             <h3 class="generic-card-title"><?= omoApiEscape(omoChecklistT('checklist.form.item_timing')) ?></h3>
@@ -224,24 +224,24 @@ if ($currentHolonId > 0) {
                         </div>
                     </div>
                     <div class="omo-checklist-form-grid generic-form-grid">
-                        <label class="omo-checklist-field">
-                            <span><?= omoApiEscape(omoChecklistT('checklist.form.display_lead')) ?></span>
+                        <label class="omo-checklist-field generic-form-field">
+                            <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.display_lead')) ?></span>
                             <input class="generic-form-control" type="number" name="display_lead_value" value="<?= (int)$displayLeadValue ?>" min="0" max="3650" step="1">
                         </label>
-                        <label class="omo-checklist-field">
-                            <span><?= omoApiEscape(omoChecklistT('checklist.form.display_lead_unit')) ?></span>
+                        <label class="omo-checklist-field generic-form-field">
+                            <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.display_lead_unit')) ?></span>
                             <select class="generic-form-control" name="display_lead_unit">
                                 <?php foreach (ChecklistItem::delayUnits() as $unit): ?>
                                     <option value="<?= omoApiEscape($unit) ?>"<?= $displayLeadUnit === $unit ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.delay.' . $unit)) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </label>
-                        <label class="omo-checklist-field">
-                            <span><?= omoApiEscape(omoChecklistT('checklist.form.execution_duration')) ?></span>
+                        <label class="omo-checklist-field generic-form-field">
+                            <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.execution_duration')) ?></span>
                             <input class="generic-form-control" type="number" name="execution_duration_value" value="<?= (int)$executionDurationValue ?>" min="0" max="3650" step="1">
                         </label>
-                        <label class="omo-checklist-field">
-                            <span><?= omoApiEscape(omoChecklistT('checklist.form.execution_duration_unit')) ?></span>
+                        <label class="omo-checklist-field generic-form-field">
+                            <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.execution_duration_unit')) ?></span>
                             <select class="generic-form-control" name="execution_duration_unit">
                                 <?php foreach (ChecklistItem::delayUnits() as $unit): ?>
                                     <option value="<?= omoApiEscape($unit) ?>"<?= $executionDurationUnit === $unit ? ' selected' : '' ?>><?= omoApiEscape(omoChecklistT('checklist.delay.' . $unit)) ?></option>
@@ -251,7 +251,7 @@ if ($currentHolonId > 0) {
                     </div>
                 </div>
                 <?php if ($isContainerChecklist): ?>
-                    <div class="generic-section generic-section--stack generic-form-section omo-checklist-field omo-checklist-field--wide" data-checklist-item-recurrence>
+                    <div class="generic-section generic-section--stack generic-form-section omo-checklist-field omo-checklist-field--wide generic-form-field generic-form-field--full" data-checklist-item-recurrence>
                         <div class="omo-checklist-item-editor__header">
                             <div>
                                 <h3 class="generic-card-title"><?= omoApiEscape(omoChecklistT('checklist.form.item_recurrence')) ?></h3>
@@ -259,8 +259,8 @@ if ($currentHolonId > 0) {
                             </div>
                         </div>
                         <div class="omo-checklist-form-grid generic-form-grid">
-                            <label class="omo-checklist-field">
-                                <span><?= omoApiEscape(omoChecklistT('checklist.form.frequency')) ?></span>
+                            <label class="omo-checklist-field generic-form-field">
+                                <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.frequency')) ?></span>
                                 <select class="generic-form-control" name="recurrence_frequency" data-checklist-item-frequency>
                                     <option value=""><?= omoApiEscape(omoChecklistT('checklist.schedule.none')) ?></option>
                                     <?php foreach (RecurrenceSchedule::getFrequencyCatalog() as $frequencyOption): ?>
@@ -268,29 +268,29 @@ if ($currentHolonId > 0) {
                                     <?php endforeach; ?>
                                 </select>
                             </label>
-                            <label class="omo-checklist-field" data-checklist-item-schedule-field<?= $recurrenceFrequency === null ? ' hidden' : '' ?>>
-                                <span><?= omoApiEscape(omoChecklistT('checklist.form.schedule')) ?></span>
+                            <label class="omo-checklist-field generic-form-field" data-checklist-item-schedule-field<?= $recurrenceFrequency === null ? ' hidden' : '' ?>>
+                                <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.schedule')) ?></span>
                                 <select class="generic-form-control" name="recurrence_schedule" data-checklist-item-schedule data-selected-value="<?= omoApiEscape((string)$recurrenceSchedule) ?>"></select>
                             </label>
                         </div>
                     </div>
                 <?php endif; ?>
-                <label class="omo-checklist-field">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.priority')) ?></span>
+                <label class="omo-checklist-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.priority')) ?></span>
                     <select class="generic-form-control" name="priority">
                         <option value="">—</option>
                         <?php for ($level = 1; $level <= 5; $level++): ?><option value="<?= $level ?>"<?= (int)$project->get('priority') === $level ? ' selected' : '' ?>>P<?= $level ?></option><?php endfor; ?>
                     </select>
                 </label>
-                <label class="omo-checklist-field">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.importance')) ?></span>
+                <label class="omo-checklist-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.importance')) ?></span>
                     <select class="generic-form-control" name="importance">
                         <option value="">—</option>
                         <?php for ($level = 1; $level <= 5; $level++): ?><option value="<?= $level ?>"<?= (int)$project->get('importance') === $level ? ' selected' : '' ?>><?= $level ?>/5</option><?php endfor; ?>
                     </select>
                 </label>
-                <label class="omo-checklist-field">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.size')) ?></span>
+                <label class="omo-checklist-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.size')) ?></span>
                     <select class="generic-form-control" name="project_size">
                         <?php foreach (Project::sizes() as $size): ?><option value="<?= omoApiEscape($size) ?>"<?= Project::normalizeSize($project->get('project_size')) === $size ? ' selected' : '' ?>><?= omoApiEscape($size) ?></option><?php endforeach; ?>
                     </select>

@@ -17,7 +17,7 @@ if ($currentUserId <= 0) {
         'organization' => commonResolveOrganizationContext(1),
         'headHtml' => implode(PHP_EOL, array(
             '<script src="/shared_functions.js"></script>',
-            '<link rel="stylesheet" href="/shared_css.css">',
+            commonStylesheetTags('/shared_css.css'),
             '<script>sharedApplyDocumentTheme();</script>',
         )),
     ));
@@ -30,8 +30,8 @@ if ($currentUserId <= 0) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EasyMEMO</title>
     <script src="/shared_functions.js"></script>
-    <link rel="stylesheet" href="/shared_css.css">
-    <link rel="stylesheet" href="/omo/assets/css/styles.css">
+    <?= commonStylesheetTags('/shared_css.css') ?>
+    <?= commonStylesheetTags('/omo/assets/css/styles.css') ?>
     <link rel="stylesheet" href="/omo/api/stats/stats.css?v=20260807-range-handles">
     <script>sharedApplyDocumentTheme();</script>
     <style>

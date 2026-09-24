@@ -70,9 +70,9 @@ require_once __DIR__ . '/api/bootstrap.php';
     <script src="/shared_functions.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script>sharedApplyDocumentTheme();</script>
-    <link rel="stylesheet" href="/common/assets/components.css">
-    <link rel="stylesheet" href="/common/assets/topbar.css">
-    <link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260906-pv-all-subdrawers">
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/components.css') ?>">
+    <link rel="stylesheet" href="<?= commonAssetUrl('/common/assets/topbar.css') ?>">
+    <?= commonStylesheetTags('/omo/assets/css/styles.css') ?>
     <style>
     html, body { height: 100%; margin: 0; }
     body { background: var(--color-bg, #f8fafc); color: var(--color-text, #1f2937); }

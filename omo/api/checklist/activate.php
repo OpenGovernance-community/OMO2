@@ -53,14 +53,14 @@ if ($currentHolonId > 0) {
         <section class="generic-section omo-checklist-editor__section">
             <h3 class="generic-card-title generic-card-title--big"><?= omoApiEscape(omoChecklistT('checklist.form.activate_title')) ?></h3>
             <p class="omo-checklist-activation__intro generic-description"><?= omoApiEscape(omoChecklistT('checklist.form.activate_intro')) ?></p>
-            <div class="omo-checklist-form-grid">
-                <label class="omo-checklist-field omo-checklist-field--wide">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.instance_title')) ?></span>
+            <div class="omo-checklist-form-grid generic-form-grid">
+                <label class="omo-checklist-field omo-checklist-field--wide generic-form-field generic-form-field--full">
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.instance_title')) ?></span>
                     <input class="generic-form-control" type="text" name="instance_title" value="<?= omoApiEscape((string)$templateRoot->get('title')) ?>" maxlength="<?= (int)$instanceTitleMaxLength ?>" required autofocus>
                     <small><?= omoApiEscape(omoChecklistT('checklist.form.instance_title_help')) ?></small>
                 </label>
-                <label class="omo-checklist-field omo-checklist-field--wide">
-                    <span><?= omoApiEscape(omoChecklistT('checklist.form.reference_date')) ?></span>
+                <label class="omo-checklist-field omo-checklist-field--wide generic-form-field generic-form-field--full">
+                    <span class="generic-form-label"><?= omoApiEscape(omoChecklistT('checklist.form.reference_date')) ?></span>
                     <input class="generic-form-control" type="date" name="reference_date" value="<?= omoApiEscape((new DateTimeImmutable())->format('Y-m-d')) ?>" required>
                     <small><?= omoApiEscape(omoChecklistT('checklist.form.reference_help')) ?></small>
                 </label>

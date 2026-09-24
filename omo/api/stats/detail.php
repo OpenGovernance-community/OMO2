@@ -198,12 +198,12 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
             <input type="hidden" name="indicator_id" value="<?= (int)$indicatorId ?>">
             <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
             <div class="omo-stats-quick-value__fields">
-                <label class="omo-stats-field">
-                    <span><?= omoApiEscape(omoStatsT('stats.detail.value')) ?></span>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.detail.value')) ?></span>
                     <input type="number" class="generic-form-control" name="value" step="any" required inputmode="decimal">
                 </label>
-                <label class="omo-stats-field">
-                    <span><?= omoApiEscape(omoStatsT('stats.detail.value_date')) ?></span>
+                <label class="omo-stats-field generic-form-field">
+                    <span class="generic-form-label"><?= omoApiEscape(omoStatsT('stats.detail.value_date')) ?></span>
                     <input type="datetime-local" class="generic-form-control" name="measured_at" value="<?= omoApiEscape(date('Y-m-d\TH:i')) ?>" required>
                 </label>
                 <button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape(omoStatsT('stats.detail.add')) ?></button>

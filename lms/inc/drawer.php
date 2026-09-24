@@ -97,12 +97,7 @@ function openDrawer(content) {
     container.innerHTML = content;
     document.getElementById('quiz-zone').innerHTML = '';
 
-    container.querySelectorAll('script').forEach(s => {
-        const script = document.createElement('script');
-        script.textContent = s.textContent;
-        [...s.attributes].forEach(attr => script.setAttribute(attr.name, attr.value));
-        s.replaceWith(script);
-    });
+    window.commonExecuteFragmentScripts(container).catch(function (error) { console.error(error); });
     document.getElementById('overlay').style.display = 'block';
     document.getElementById('drawer').classList.add('open');
     document.documentElement.classList.add('lms-drawer-open');

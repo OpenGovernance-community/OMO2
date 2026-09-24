@@ -68,17 +68,7 @@ $modules = [
     </form>
     </div>
 </div>
-<style>
-.omo-organization-export { display: flex; flex-direction: column; gap: 0; color: var(--color-text, #1f2937); }
-.omo-organization-export .generic-drawer-header p { margin: 8px 0 0; color: var(--color-text-light, #64748b); line-height: 1.45; }
-.omo-organization-export__form { --generic-section-padding-block: 18px; --generic-section-padding-inline: 18px; }
-.omo-organization-export__modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 9px; margin: 0; padding: 14px; border: 1px solid var(--color-border, #d1d5db); border-radius: var(--radius-md); }
-.omo-organization-export__modules legend { padding: 0 6px; font-weight: 700; }
-.omo-organization-export__module { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; padding: 7px; border-radius: 8px; }
-.omo-organization-export__module input { grid-row: 1 / span 2; }
-.omo-organization-export__module small { color: var(--color-text-light, #64748b); font-size: 12px; }
-.omo-organization-export__actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
-</style>
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/organizations/export.css') ?>">
 <script>
 (function () {
     var root = document.querySelector('[data-omo-organization-export="1"]');

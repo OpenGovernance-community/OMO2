@@ -1,0 +1,101 @@
+/* popup/member-actions.php */
+.omo-member-actions {
+    display: grid;
+    gap: 16px;
+    color: var(--color-text, #1f2937);
+}
+
+.omo-member-actions--error {
+    padding: 18px;
+    border-radius: 16px;
+    background: var(--color-surface-alt, #f0f2f5);
+    color: var(--color-text-light, #6b7280);
+    border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.omo-member-actions__hero {
+    --generic-hero-gap: 8px;
+    --generic-hero-padding: 18px;
+    --generic-hero-radius: 20px;
+    --generic-hero-shadow: var(--shadow-md, 0 12px 24px rgba(0,0,0,0.12));
+}
+
+.omo-member-actions__hero h2 {
+    margin: 0;
+}
+
+.omo-member-actions__secondary {
+    color: var(--color-text-light, #6b7280);
+    word-break: break-word;
+}
+
+.omo-member-actions__badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.omo-member-actions__badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, var(--color-surface, #ffffff));
+    color: var(--color-primary, #2563eb);
+    font-size: 0.76rem;
+    font-weight: 700;
+    border: 1px solid color-mix(in srgb, var(--color-primary, #2563eb) 30%, var(--color-border, #e5e7eb));
+}
+
+.omo-member-actions__badge--pending {
+    background: rgba(100, 116, 139, 0.14);
+    color: var(--color-text-light, #6b7280);
+    border-color: var(--color-border, #e5e7eb);
+}
+
+.omo-member-actions__section {
+    --generic-section-gap: 10px;
+    --generic-section-padding-block: 18px;
+    --generic-section-padding-inline: 18px;
+    --generic-section-radius: 20px;
+}
+
+.omo-member-actions__section h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.omo-member-actions__section p {
+    margin: 0;
+    color: var(--color-text-light, #6b7280);
+    line-height: 1.45;
+}
+
+.omo-member-actions__actions {
+    display: grid;
+    gap: 10px;
+}
+
+.omo-member-actions__button {
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 0.95rem;
+    white-space: normal;
+}
+
+.omo-member-actions__feedback {
+    min-height: 22px;
+    color: var(--color-text-light, #6b7280);
+    font-size: 0.92rem;
+    line-height: 1.4;
+}
+
+.omo-member-actions__feedback.is-error {
+    color: #b91c1c;
+}
+
+.omo-member-actions__feedback.is-success {
+    color: #166534;
+}

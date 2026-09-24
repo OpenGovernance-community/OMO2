@@ -1,0 +1,464 @@
+/* omo/api/decision/index.php */
+.omo-decisions {
+    min-height: 100%;
+}
+
+.omo-decisions__app-icon {
+    --omo-panel-view-app-icon-accent: var(--color-primary, #2563eb);
+}
+
+.omo-decisions__header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.omo-decisions__header-secondary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.omo-decisions__scope-slot {
+    min-width: 0;
+}
+
+.omo-decisions__controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.omo-decisions__filters {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 12px 20px;
+    background: color-mix(in srgb, var(--color-bg, #f8fafc) 94%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border, #d1d5db) 80%, transparent);
+}
+
+.omo-decisions__hero {
+    z-index: 30;
+    overflow: visible;
+}
+
+.omo-decisions__status-bar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.omo-decisions__status-scroll {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.omo-decisions__status-tabs {
+    position: relative;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    padding: 3px 3px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-surface-alt, #f8fafc) 80%, var(--color-surface, #ffffff));
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-behavior: smooth;
+    overscroll-behavior-x: contain;
+}
+
+.omo-decisions__status-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.omo-decisions__filters-toggle {
+    flex: 0 0 auto;
+}
+
+.omo-decisions__filters-toggle.is-active {
+    border-color: color-mix(in srgb, var(--color-primary, #2563eb) 28%, var(--color-border, #d1d5db));
+}
+
+.omo-decisions__filters-panel[hidden] {
+    display: none !important;
+}
+
+.omo-decisions__status-scroll-button {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-surface, #ffffff) 92%, transparent);
+    color: var(--color-text, #1f2937);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transform: translateY(-50%);
+    box-shadow:
+        0 6px 18px rgba(15, 23, 42, 0.12),
+        inset 0 0 0 1px color-mix(in srgb, var(--color-border, #d1d5db) 82%, white 18%);
+}
+
+.omo-decisions__status-scroll-button:hover {
+    background: var(--color-surface, #ffffff);
+}
+
+.omo-decisions__status-scroll-button--prev {
+    left: 5px;
+}
+
+.omo-decisions__status-scroll-button--next {
+    right: 5px;
+}
+
+.omo-decisions__status-scroll-button[hidden] {
+    display: none !important;
+}
+
+.omo-decisions__status-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 37px;
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--color-text-light, #475569);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.omo-decisions__status-tab:hover {
+    color: var(--color-text, #1f2937);
+}
+
+.omo-decisions__status-tab.is-active {
+    background: var(--color-surface, #ffffff);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.10);
+    color: var(--color-text, #1f2937);
+}
+
+.omo-decisions__status-count {
+    display: inline-flex;
+    min-width: 24px;
+    min-height: 24px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, rgba(148, 163, 184, 0.16) 78%, transparent);
+    color: inherit;
+    font-size: 0.76rem;
+    line-height: 1;
+}
+
+.omo-decisions__filters-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.omo-decisions__field--full {
+    grid-column: 1 / -1;
+}
+
+.omo-decisions__field {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-decisions__filter-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.omo-decisions__state {
+    color: var(--color-text-light, #475569);
+    line-height: 1.6;
+    margin: var(--generic-container-margin, 20px);
+}
+
+.omo-decisions__list {
+    display: grid;
+    gap: 18px;
+}
+
+.omo-decisions__list[hidden] {
+    display: none !important;
+}
+
+.omo-decisions__list.generic-file-list {
+    --generic-file-list-columns: minmax(0, 2.7fr) minmax(130px, 0.95fr) minmax(150px, 1.1fr) minmax(132px, 0.95fr);
+    --generic-file-list-title-gap: 18px;
+    --generic-file-list-table-margin-inline: 12px;
+    --generic-file-list-padding-inline-start: 16px;
+    --generic-file-list-padding-inline-end: 18px;
+    --generic-file-list-header-padding-block: 14px;
+    --generic-file-list-row-padding-block: 12px;
+    --generic-file-list-menu-space: 0px;
+}
+
+.omo-decisions__list.generic-file-list .generic-file-list__group-title {
+    padding: 15px 12px;
+}
+
+.omo-decisions__list.generic-file-list .generic-file-list__table {
+    margin: 10px;
+}
+
+.omo-decisions__group {
+    position: relative;
+}
+
+.omo-decisions__card-list {
+    display: grid;
+    gap: 10px;
+    margin: 10px;
+}
+
+.omo-decisions__compact-row {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.omo-decisions__compact-row:hover,
+.omo-decisions__compact-row:focus-visible {
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 4%, var(--color-surface, #ffffff));
+}
+
+.omo-decisions__compact-avatar,
+.omo-decisions__compact-avatar-photo,
+.omo-decisions__compact-avatar-placeholder {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    flex: 0 0 auto;
+}
+
+.omo-decisions__compact-avatar-photo {
+    display: block;
+    object-fit: cover;
+}
+
+.omo-decisions__compact-avatar-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 14%, var(--color-surface-alt, #f8fafc));
+    color: var(--color-text, #1f2937);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.omo-decisions__compact-name-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+}
+
+.omo-decisions__compact-title-block {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.omo-decisions__compact-title-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.omo-decisions__visibility-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    opacity: 0.82;
+}
+
+.omo-decisions__visibility-icon img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.omo-decisions__visibility-icon--compact {
+    width: 16px;
+    height: 16px;
+}
+
+.omo-decisions__compact-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    color: var(--color-text-light, #475569);
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+
+.omo-decisions__compact-meta-separator {
+    opacity: 0.5;
+}
+
+.omo-decisions__compact-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, var(--color-surface-alt, #f8fafc));
+    color: var(--color-text, #1f2937);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.omo-decisions__compact-scope {
+    color: var(--color-text, #1f2937);
+}
+
+.omo-decisions__compact-activity {
+    color: var(--color-text-light, #475569);
+}
+
+.omo-decisions__compact-menu-toggle {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    color: var(--color-text, #1f2937);
+}
+
+.omo-decisions-card__menu-toggle {
+    min-width: 42px;
+    padding-left: 12px;
+    padding-right: 12px;
+}
+
+.omo-decisions__state[hidden] {
+    display: none !important;
+}
+
+@media (max-width: 720px) {
+    .omo-decisions__status-bar,
+    .omo-decisions-card__header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .omo-decisions__header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .omo-decisions__header-secondary,
+    .omo-decisions__controls {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .omo-decisions__filters-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .omo-decisions__header-actions .generic-action-button {
+        width: 100%;
+    }
+
+    .omo-decisions__filters-toggle {
+        width: 100%;
+    }
+
+    .omo-decisions__status-scroll {
+        width: 100%;
+    }
+
+    .omo-decisions__list.generic-file-list .generic-file-list__table {
+        margin-inline: 0;
+    }
+
+    .omo-decisions__compact-name-main {
+        gap: 10px;
+    }
+
+    .omo-decisions__compact-title-block {
+        gap: 5px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .omo-decisions__header-actions {
+        width: auto;
+        position: static;
+        z-index: auto;
+    }
+
+    .omo-decisions__header-actions .omo-mobile-corner-action {
+        width: 42px;
+        min-width: 42px;
+        max-width: 42px;
+        flex: 0 0 42px;
+        border-radius: 0 0 0 var(--radius-md) !important;
+    }
+
+    .omo-decisions__header-secondary {
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: nowrap;
+        gap: 10px;
+    }
+
+    .omo-decisions__scope-slot {
+        flex: 0 0 auto;
+    }
+
+    .omo-decisions__controls {
+        width: auto;
+        flex: 0 0 auto;
+        justify-content: flex-end;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+}

@@ -215,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= commonPasswordResetEscape(commonAuthT('password_reset.page.title', [], $lang, $sourceLang)) ?></title>
-    <link rel="stylesheet" href="/shared_css.css">
+    <?= commonStylesheetTags('/shared_css.css') ?>
     <link rel="stylesheet" href="/common/assets/auth.css">
     <script src="/common/assets/password_policy.js"></script>
     <style>

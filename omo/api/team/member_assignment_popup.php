@@ -183,18 +183,7 @@ $canReturnToUserPopup = is_array($returnPopupParts)
     </div>
 </form>
 
-<style>
-.omo-team-assignment-editor { display: grid; gap: var(--generic-space-3, 12px); }
-.omo-team-assignment-editor__heading, .omo-team-assignment-editor__field { display: grid; gap: var(--generic-space-1, 4px); }
-.omo-team-assignment-editor__field small, .omo-team-assignment-editor__feedback { color: var(--color-text-light); font-size: 0.82rem; }
-.omo-team-assignment-editor__focus-deadline { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 0.55fr); gap: var(--generic-space-3, 12px); }
-.omo-team-assignment-editor__budget-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 0.72fr) minmax(0, 1fr) minmax(130px, 0.72fr); gap: var(--generic-space-3, 12px); }
-.omo-team-assignment-editor__actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--generic-space-2, 8px); flex-wrap: wrap; }
-.omo-team-assignment-editor__feedback { flex: 1 1 auto; min-width: 0; }
-.omo-team-assignment-editor__buttons { display: flex; align-items: center; justify-content: flex-end; gap: var(--generic-space-2, 8px); flex-wrap: wrap; }
-.omo-team-assignment-editor__feedback.is-error { color: #b91c1c; }
-@media (max-width: 560px) { .omo-team-assignment-editor__focus-deadline, .omo-team-assignment-editor__budget-grid { grid-template-columns: 1fr; } .omo-team-assignment-editor__feedback { flex-basis: 100%; } .omo-team-assignment-editor__buttons { width: 100%; } }
-</style>
+<link rel="stylesheet" href="<?= commonAssetUrl('/common/team/member-assignment.css') ?>">
 
 <script>
 (function () {

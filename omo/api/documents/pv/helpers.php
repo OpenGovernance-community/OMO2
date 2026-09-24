@@ -1311,12 +1311,12 @@ function omoDocumentsPvEditorRenderPointCard(array $pointData, array $uiText): s
                 . ' title="' . omoDocumentsPvEditorEscape($optionLabel) . '"'
                 . ' aria-label="' . omoDocumentsPvEditorEscape($optionLabel) . '">'
                 . '<img src="' . omoDocumentsPvEditorEscape($optionIcon) . '" alt="" aria-hidden="true" class="omo-pv-editor__point-type-icon">'
-                . '<span class="omo-pv-editor__sr-only">' . omoDocumentsPvEditorEscape($optionLabel) . '</span>'
+                . '<span class="omo-pv-editor__sr-only generic-visually-hidden">' . omoDocumentsPvEditorEscape($optionLabel) . '</span>'
                 . '</button>';
         }
         $html .= '      </div>';
         $html .= '      <details class="omo-pv-editor__priority-menu" data-omo-pv-point-priority-menu="' . $pointId . '">';
-        $html .= '          <summary class="omo-pv-editor__priority-circle omo-pv-editor__priority-circle--p' . $priority . '" title="' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '"><span class="omo-pv-editor__sr-only">' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '</span></summary>';
+        $html .= '          <summary class="omo-pv-editor__priority-circle omo-pv-editor__priority-circle--p' . $priority . '" title="' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '" aria-label="' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '"><span class="omo-pv-editor__sr-only generic-visually-hidden">' . omoDocumentsPvEditorEscape((string)$uiText['priority'] . ' ' . $priorityLabel) . '</span></summary>';
         $html .= '          <div class="omo-pv-editor__priority-options">';
         for ($level = 1; $level <= 5; $level++) {
             $isSelected = $level === $priority;

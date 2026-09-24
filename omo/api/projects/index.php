@@ -1309,4 +1309,4 @@ $projectTexts = [
 <script src="/common/choice/word-diff.js?v=20260816"></script>
 <script src="/common/choice/change-details.js?v=20260924-readable-diffs"></script>
 <script src="/common/chat/thread.js?v=20260910-project-chat"></script>
-<script src="/omo/api/projects/projects.js?v=20260919-project-spaces-filter"></script>
+<script src="<?= commonAssetUrl('/omo/api/projects/projects.js') ?>"></script>

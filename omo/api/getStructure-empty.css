@@ -1,0 +1,21 @@
+/* omo/api/getStructure.php */
+.omo-structure-empty-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100%;
+    padding: 24px;
+}
+
+.omo-structure-empty-panel__card {
+    max-width: 560px;
+    width: 100%;
+}
+
+.omo-structure-empty-panel__title {
+    margin-bottom: 12px;
+}
+
+.omo-structure-empty-panel__text {
+    margin: 0 0 16px;
+}

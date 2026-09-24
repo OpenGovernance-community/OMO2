@@ -2,6 +2,8 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
+require_once("../common/faq_mail.php");
+require_once("../common/faq_ai.php");
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -99,16 +101,25 @@ if ($currentHolonId > 0 && $currentHolonId !== $rootHolonId) {
 	$faqUrl .= '/c/' . $currentHolonId;
 }
 $faqUrl .= '/#|faq-' . (int)$faq->getId();
-$escape = function ($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); };
-$mailBody = '<p>Une nouvelle question attend une réponse dans l’administration de la FAQ.</p>'
-	. '<p><strong>Question :</strong> ' . $escape($question) . '</p>'
-	. '<p><strong>Description :</strong><br>' . nl2br($escape($description)) . '</p>'
-	. '<p><strong>Auteur :</strong> ' . $escape($authorName) . ' (' . $escape($authorEmail) . ')</p>'
-	. '<p><a href="' . $escape($faqUrl) . '">Ouvrir la question dans la FAQ</a></p>';
+$mailBody = faqMailRenderQuestionRequest($faq, $faqUrl, $organization);
 $emailSent = false;
 foreach ($adminEmails as $adminEmail) {
 	if (myHTMLMail($mailFrom, $adminEmail, 'Nouvelle question dans la FAQ', $mailBody)) {
 		$emailSent = true;
+	}
+}
+
+$aiDraft = '';
+if (\dbObject\FAQ::hasAiDraftColumn()) {
+	$generatedDraft = faqAiGenerateDraft($question, $description);
+	if ($generatedDraft !== '') {
+		try {
+			if ($faq->saveAiDraft($generatedDraft)) {
+				$aiDraft = $generatedDraft;
+			}
+		} catch (\Throwable $exception) {
+			error_log('FAQ AI draft: could not store draft for FAQ ' . (int)$faq->getId() . '.');
+		}
 	}
 }
 
@@ -120,4 +131,5 @@ faqQuestionRequestRespond(array(
 			? 'Votre question est enregistrée, mais aucun administrateur du site actif n’a d’adresse e-mail valide.'
 			: 'Votre question est enregistrée. La notification par e-mail à l’administrateur n’a pas pu être envoyée.'),
 	'id' => (int)$faq->getId(),
+	'ai_draft' => $aiDraft,
 ));

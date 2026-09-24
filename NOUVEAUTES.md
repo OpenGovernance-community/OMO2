@@ -1,6 +1,30 @@
 # Journal Des Nouveautes
 
-- FAQ : les utilisateurs connectés peuvent envoyer une question sans réponse depuis les résultats de recherche. Elle reste masquée au public, apparaît dans la liste de l’administration avec son auteur et sa description, et l’administrateur peut y répondre puis choisir de la publier. La notification part aux comptes administrateurs du site actifs avec un lien direct `#|faq-ID` qui ouvre l’édition d’une demande inactive ; l’auteur reçoit la réponse. Migrations SQL ajoutées pour les demandes et les réponses nulles en attente.
+- Profil : les formulaires général et d’organisation utilisent les sections et champs communs d’édition, avec une présentation plus aérée, une photo mieux placée et des actions alignées. L’onglet de prévisualisation et son rendu ont été retirés.
+
+- Styles et scripts : les ressources propres à un écran sont rapprochées de sa page PHP, celles partagées dans OMO sont rangées sous `omo/assets/`, et les composants utilisables par plusieurs applications restent sous `common/`. Les références gardent leur version automatique liée au contenu.
+
+- JavaScript : les gros scripts de 79 pages et composants sont déplacés dans des fichiers mis en cache et versionnés automatiquement. Les fenêtres et panneaux partagent leur chargement ordonné ; les outils d’édition, de recadrage, de cartes, de décisions et de vidéo réutilisent des scripts communs. Le JavaScript intégré aux sources PHP d’OMO et des vues partagées diminue d’environ 97,6 %. Un inventaire et une documentation accompagnent cette organisation.
+
+- Styles : les formulaires réutilisent davantage les composants communs, avec les indicateurs et les tâches récurrentes comme référence. Les styles statiques de 52 vues sont externalisés et mis en cache avec une version liée à leur contenu ; le CSS intégré aux vues inventoriées diminue de 90 %. Les panneaux attendent leurs styles avant leur initialisation. Les doublons de la barre supérieure, des invitations, des cartes de détails et des éditeurs LMS sont regroupés. La page de référence et un outil d’inventaire documentent cette base commune.
+
+- FAQ : le titre de chaque écran est intégré à l’en-tête général de la fenêtre. Le retour devient une flèche de navigation en haut à gauche du contenu, sans second bandeau.
+
+- FAQ : consultation, création, édition et envoi de questions harmonisés avec les formulaires d’indicateurs. Les champs sont regroupés en sections, les médias sont repliables et les actions de sauvegarde sont espacées dans un pied de formulaire. La demande d’origine et son relais restent accessibles pendant la rédaction. Les aperçus d’images ciblent le bon formulaire et leur cadre reste masqué tant qu’aucune image n’est choisie.
+
+- FAQ : les ébauches de l’IA privilégient un vocabulaire utilisateur et les fonctionnalités visibles, sans mentionner les sources consultées ni les détails d’architecture. Le message d’accompagnement est affiché en dehors du bloc qui contient la réponse.
+
+- FAQ : si une IA est configurée, une première réponse est proposée à partir de la question, de sa description et du journal des nouveautés. L’ébauche est affichée à l’auteur et enregistrée dans la réponse courte, avec un marquage IA. La demande reste masquée, à traiter et relayable jusqu’à la réponse de l’administrateur. En cas d’absence de réponse pertinente ou d’échec de l’IA, la demande suit le circuit habituel.
+
+- FAQ : les droits des super admins et des admins d’organisation reposent sur leurs rôles, sans activation du mode admin. Le relais est accessible depuis la fiche et l’éditeur ; un message explique s’il a déjà eu lieu ou si la migration de suivi manque. La lecture des dates de réponse et de relais accepte les objets DateTime des dbObject.
+
+- Organisation : correction d’une faute de frappe dans le déplacement des décisions qui empêchait le chargement de la classe.
+
+- FAQ : les nouvelles demandes vont d’abord aux super admins. Ils peuvent les sauver comme FAQ générique, comme FAQ d’organisation, ou les relayer aux administrateurs de l’organisation concernée. Les admins de l’organisation peuvent aussi transmettre la demande à leurs autres admins. Le relais est enregistré et les destinataires reçoivent un lien direct vers la demande.
+
+- FAQ : les e-mails de nouvelle question et de réponse utilisent le gabarit commun avec les couleurs et les visuels de l’organisation. La question, la description et la réponse sont présentées dans des blocs lisibles, même lorsque la réponse n’est pas publiée dans la FAQ.
+
+- FAQ : les utilisateurs connectés peuvent envoyer une question sans réponse depuis les résultats de recherche. Elle reste masquée au public, apparaît dans la liste de l’administration avec son auteur et sa description, et l’administrateur peut y répondre puis choisir de la publier. La notification part aux comptes administrateurs du site actifs avec un lien direct `#|faq-ID` qui ouvre l’édition tant que la demande est sans réponse ; ensuite, le même lien ouvre sa fiche avec un bouton d’édition selon les droits. L’auteur reçoit la réponse. Migrations SQL ajoutées pour les demandes et les réponses nulles en attente.
 
 - Traductions : les textes du signalement GitHub partagent maintenant un bloc de traduction pour le formulaire, les retours JavaScript et les réponses de l’API.
 
