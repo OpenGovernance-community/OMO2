@@ -9,6 +9,10 @@ use dbObject\Organization;
 require_once __DIR__ . '/list_entries.php';
 
 $sourceLang = [
+    'documents.list.more' => [
+        'text' => 'Afficher la suite',
+        'context' => 'Fallback button to render the next batch of documents, also triggered while scrolling.',
+    ],
     'documents.scope.toggle_aria' => [
         'text' => 'Portée des documents',
         'context' => 'Accessible label for the document scope toggle.',
@@ -449,8 +453,12 @@ $applicationViewPreferences = omoApplicationViewPreferencesGetContext(
     $currentUserId
 );
 $isPvApplicationTab = !empty($applicationViewPreferences['isPvApplicationTab']);
+commonReleaseReadOnlySession();
+\dbObject\DbObject::enableReadOnlyMemoization();
+$browserRestore = omoApplicationViewPreferencesGetBrowserRestore($applicationViewPreferences);
 $documentScope = omoApiNormalizeContextScope(
-    omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'document_scope', 'scope', 'contextual'),
+    $_GET['document_scope'] ?? $browserRestore['view']['scope']
+        ?? omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'document_scope', 'scope', 'contextual'),
     $availableDocumentScopes
 );
 $documentScopeActiveIndex = omoApiResolveContextScopeIndex($documentScope, $availableDocumentScopes);
@@ -1151,7 +1159,7 @@ if (!is_string($documentsPayload)) {
                 <?php
                 $currentGroupKey = null;
 
-                foreach ($documentEntries as $entry):
+                foreach (array_slice($documentEntries, 0, 30) as $entry):
                     if ($entry['groupKey'] !== $currentGroupKey):
                         if ($currentGroupKey !== null):
                 ?>
@@ -1312,6 +1320,8 @@ if (!is_string($documentsPayload)) {
             <script src="/common/drawer/subdrawer.js?v=20260906-slide-right"></script>
             <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
             <script>
+            <?php // Fetched drawer scripts run inline before external scripts finish loading.
+            readfile(__DIR__ . '/progressive-list.js'); ?>
             (function () {
                 window.omoDocumentsFindRoot = function () {
                     return typeof window.omoFindApplicationRoot === 'function'
@@ -1794,6 +1804,31 @@ if (!is_string($documentsPayload)) {
                             let directUploadInProgress = false;
                             let directMoveInProgress = false;
                             let draggedDocumentId = 0;
+                            const progressiveLists = new Set();
+                            const renderedCounts = new Map();
+                            const startProgressiveList = function (container, items, appendItem, key) {
+                                const controller = window.omoCreateDocumentProgressiveList({
+                                    container: container,
+                                    items: items,
+                                    appendItem: appendItem,
+                                    initialCount: renderedCounts.get(key) || 30,
+                                    moreLabel: <?= json_encode(omoDocumentsScopeT('documents.list.more'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>,
+                                    afterAppend: function (count) {
+                                        renderedCounts.set(key, count);
+                                        if (typeof window.initGenericComponents === 'function') window.initGenericComponents(container);
+                                        syncFolderAccordionState(false);
+                                        syncDocumentSelection();
+                                        if (typeof window.syncGenericFileLists === 'function') window.syncGenericFileLists(results);
+                                        results.querySelectorAll('[data-generic-accordion]:not(.is-collapsed)').forEach(function (accordion) {
+                                            if (accordion.dataset.omoDocumentsAutoLoaded === '1') return;
+                                            accordion.dataset.omoDocumentsAutoLoaded = '1';
+                                            if (accordion.hasAttribute('data-omo-nextcloud-folder-id')) loadNextcloudFolder(accordion);
+                                            else loadDocumentFolder(accordion);
+                                        });
+                                    }
+                                });
+                                progressiveLists.add(controller);
+                            };
 
                             const collator = typeof Intl !== 'undefined' && typeof Intl.Collator === 'function'
                                 ? new Intl.Collator('fr', { sensitivity: 'base', numeric: true })
@@ -2700,9 +2735,9 @@ if (!is_string($documentsPayload)) {
                                             childList.classList.add('omo-documents__folder-children--compact');
                                         }
 
-                                        documentItem.children.forEach(function (childDocument) {
-                                            childList.appendChild(createItem(childDocument));
-                                        });
+                                        startProgressiveList(childList, documentItem.children, function (childDocument, sentinel) {
+                                            childList.insertBefore(createItem(childDocument), sentinel);
+                                        }, 'folder:' + folderId);
 
                                         content.appendChild(childList);
                                     } else {
@@ -2806,8 +2841,10 @@ if (!is_string($documentsPayload)) {
 										const list = document.createElement('div');
 										list.className = 'omo-documents__folder-children generic-file-list__children';
 										if (state.density === 'compact') list.classList.add('omo-documents__folder-children--compact');
-										entries.forEach(function (entry) { list.appendChild(createItem(createNextcloudRemoteItem(folderId, entry))); });
 										content.replaceChildren(list);
+                                        startProgressiveList(list, entries, function (entry, sentinel) {
+                                            list.insertBefore(createItem(createNextcloudRemoteItem(folderId, entry)), sentinel);
+                                        }, 'remote:' + folderId + ':' + path);
 									})
 									.catch(function (error) { content.textContent = String(error && error.message || omoDocumentsNextcloudErrorLabel); });
 							};
@@ -2880,17 +2917,7 @@ if (!is_string($documentsPayload)) {
                                         folder.childrenLoaded = true;
                                         state.loadingFolderIds.delete(folderId);
                                         state.openFolderIds.add(folderId);
-                                        render();
-                                        results.querySelectorAll('[data-generic-accordion]:not(.is-collapsed)').forEach(function (expandedAccordion) {
-                                            if (!(expandedAccordion instanceof HTMLElement)) {
-                                                return;
-                                            }
-                                            if (expandedAccordion.hasAttribute('data-omo-nextcloud-folder-id')) {
-                                                loadNextcloudFolder(expandedAccordion);
-                                            } else {
-                                                loadDocumentFolder(expandedAccordion);
-                                            }
-                                        });
+                                        render({preserveVisible: true});
                                     })
                                     .catch(function (error) {
                                         state.loadingFolderIds.delete(folderId);
@@ -3844,7 +3871,6 @@ if (!is_string($documentsPayload)) {
                             };
 
                             const renderByTemporal = function (sortMode, rootItems) {
-                                const fragment = document.createDocumentFragment();
                                 const groupedDocuments = new Map();
 
                                 rootItems.forEach(function (documentItem) {
@@ -3857,43 +3883,39 @@ if (!is_string($documentsPayload)) {
                                     groupedDocuments.get(groupKey).push(documentItem);
                                 });
 
-                                groups.forEach(function (group, groupIndex) {
-                                    const items = groupedDocuments.get(group.key || '') || [];
-
-                                    if (items.length === 0) {
-                                        return;
-                                    }
-
-                                    const section = document.createElement('section');
-                                    section.className = 'omo-documents__group omo-panel-group generic-file-list__group';
-
-                                    const title = document.createElement('h3');
-                                    title.className = 'omo-panel-group__title generic-file-list__group-title';
-                                    title.textContent = group.label || '';
-
-                                    const list = document.createElement('div');
-                                    list.className = 'omo-documents__list omo-panel-view__body_content';
-
-                                    if (state.density === 'compact') {
-                                        list.classList.add('omo-documents__list--compact', 'generic-file-list__table');
-                                        list.appendChild(createCompactListHeader(sortMode));
-                                    }
-
-                                    items.forEach(function (documentItem) {
-                                        list.appendChild(createItem(documentItem));
+                                const entries = groups.flatMap(function (group) {
+                                    return (groupedDocuments.get(group.key || '') || []).map(function (item) {
+                                        return {group: group, item: item};
                                     });
-
-                                    section.appendChild(title);
-                                    section.appendChild(list);
-                                    fragment.appendChild(section);
                                 });
+                                const lists = new Map();
+                                results.replaceChildren();
+                                startProgressiveList(results, entries, function (entry, sentinel) {
+                                    const group = entry.group;
+                                    let list = lists.get(group.key);
+                                    if (!list) {
+                                        const section = document.createElement('section');
+                                        section.className = 'omo-documents__group omo-panel-group generic-file-list__group';
 
-                                results.replaceChildren(fragment);
-                                if (typeof window.initGenericComponents === 'function') {
-                                    window.initGenericComponents(results);
-                                }
-                                syncFolderAccordionState(false);
-                                syncDocumentSelection();
+                                        const title = document.createElement('h3');
+                                        title.className = 'omo-panel-group__title generic-file-list__group-title';
+                                        title.textContent = group.label || '';
+
+                                        list = document.createElement('div');
+                                        list.className = 'omo-documents__list omo-panel-view__body_content';
+
+                                        if (state.density === 'compact') {
+                                            list.classList.add('omo-documents__list--compact', 'generic-file-list__table');
+                                            list.appendChild(createCompactListHeader(sortMode));
+                                        }
+
+                                        section.appendChild(title);
+                                        section.appendChild(list);
+                                        results.insertBefore(section, sentinel);
+                                        lists.set(group.key, list);
+                                    }
+                                    list.appendChild(createItem(entry.item));
+                                }, 'root');
                             };
 
                             const renderByAlpha = function (rootItems) {
@@ -3905,16 +3927,10 @@ if (!is_string($documentsPayload)) {
                                     list.appendChild(createCompactListHeader('updated'));
                                 }
 
-                                rootItems.forEach(function (documentItem) {
-                                    list.appendChild(createItem(documentItem));
-                                });
-
                                 results.replaceChildren(list);
-                                if (typeof window.initGenericComponents === 'function') {
-                                    window.initGenericComponents(results);
-                                }
-                                syncFolderAccordionState(false);
-                                syncDocumentSelection();
+                                startProgressiveList(list, rootItems, function (documentItem, sentinel) {
+                                    list.insertBefore(createItem(documentItem), sentinel);
+                                }, 'root');
                             };
 
                             const syncButtons = function (selector, activeValue, attributeName) {
@@ -3942,7 +3958,10 @@ if (!is_string($documentsPayload)) {
                                 });
                             };
 
-                            const render = function () {
+                            const render = function (options = {}) {
+                                progressiveLists.forEach(function (list) { list.destroy(); });
+                                progressiveLists.clear();
+                                if (!options.preserveVisible) renderedCounts.clear();
                                 if (typeof closeDocumentMenus === 'function') {
                                     closeDocumentMenus();
                                 }
@@ -4674,16 +4693,6 @@ if (!is_string($documentsPayload)) {
                             });
 
                             render();
-                            results.querySelectorAll('[data-generic-accordion]:not(.is-collapsed)').forEach(function (accordion) {
-                                if (!(accordion instanceof HTMLElement)) {
-                                    return;
-                                }
-                                if (accordion.hasAttribute('data-omo-nextcloud-folder-id')) {
-                                    loadNextcloudFolder(accordion);
-                                } else {
-                                    loadDocumentFolder(accordion);
-                                }
-                            });
                             window.setTimeout(function () {
                                 retryInitialDocumentOpen(0);
                             }, 0);

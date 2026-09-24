@@ -103,8 +103,8 @@ assertArrayDbObjectHydration(
 
 $calendarSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/index.php');
 assertArrayDbObjectHydration(
-    strpos($calendarSource, 'loadForOrganizationDateRange($organizationId, $calendarEarliestEventEndAt, null, false, [') !== false,
-    'Calendar lists must hydrate their date-bounded event rows in one collection query.'
+    strpos($calendarSource, 'loadForOrganizationDateRange($organizationId, $calendarEarliestEventEndAt, null, false, true)') !== false,
+    'Calendar lists must fully hydrate their date-bounded event rows in one collection query.'
 );
 
 $calDavSource = (string)file_get_contents(dirname(__DIR__) . '/common/caldav.php');
@@ -115,7 +115,7 @@ assertArrayDbObjectHydration(
 
 $documentCollectionSource = (string)file_get_contents(dirname(__DIR__) . '/class/dbobject/arraydocument.class.php');
 assertArrayDbObjectHydration(
-    substr_count($documentCollectionSource, "'hydrate' => \\dbObject\\Document::getCollectionHydrationFields()") === 3,
+    substr_count($documentCollectionSource, "'hydrate' => \\dbObject\\Document::getCollectionHydrationFields()") === 4,
     'Document collections must preload their lightweight metadata fields.'
 );
 
@@ -150,7 +150,8 @@ assertArrayDbObjectHydration(
 $documentsIndexSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/index.php');
 assertArrayDbObjectHydration(
     strpos($documentsIndexSource, 'ArrayDocument::loadListMetadataForOrganization') !== false
-        && strpos($documentsIndexSource, "'canDelete' => \$canManageLifecycle") !== false
+        && strpos($documentsIndexSource, "\$documentListMetadata['documentsWithChildren']") !== false
+        && strpos($documentsIndexSource, 'canDeleteInOrganizationContext') !== false
         && strpos($documentsIndexSource, 'canManageInOrganizationContextWithVisibilityRule') !== false,
     'The documents page must use the batched metadata instead of querying children per item.'
 );
@@ -169,6 +170,9 @@ assertArrayDbObjectHydration(
 );
 foreach (array('calendar', 'decision', 'policy', 'stats', 'team') as $applicationName) {
     $applicationSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/' . $applicationName . '/index.php');
+    if ($applicationName === 'calendar') {
+        $applicationSource .= (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/calendar.js');
+    }
     assertArrayDbObjectHydration(
         strpos($applicationSource, 'omoSetPanelResultsLoadingSkeleton') !== false,
         ucfirst($applicationName) . ' filters must use the shared loading skeleton while reloading.'

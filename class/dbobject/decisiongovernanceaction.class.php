@@ -684,7 +684,7 @@ class DecisionGovernanceAction extends DbObject
         $operation = trim((string)$proposal->get('operation'));
         $actionType = $targetType . '.' . $operation;
         if (!self::isImplementedType($actionType)) {
-            return ['status' => false, 'message' => 'Type de proposition invalide.'];
+            return ['status' => false, 'message' => 'Type de modification invalide.'];
         }
         $action = new self();
         $action->set('action_type', $actionType);
@@ -751,7 +751,7 @@ class DecisionGovernanceAction extends DbObject
         $current = self::captureRuleState($rule);
         if ($actionType === self::TYPE_RULE_DELETE) {
             if ($current !== $before) {
-                return ['status' => false, 'conflict' => true, 'message' => 'La regle a ete modifiee depuis la proposition.'];
+                return ['status' => false, 'conflict' => true, 'message' => 'La règle a été modifiée depuis la préparation de cette modification.'];
             }
             if (!$rule->delete()) {
                 return ['status' => false, 'message' => 'La regle ne peut pas etre supprimee.'];
@@ -764,7 +764,7 @@ class DecisionGovernanceAction extends DbObject
             return ['status' => true, 'already_applied' => true];
         }
         if ($current !== $before) {
-            return ['status' => false, 'conflict' => true, 'message' => 'La regle a ete modifiee depuis la proposition.'];
+            return ['status' => false, 'conflict' => true, 'message' => 'La règle a été modifiée depuis la préparation de cette modification.'];
         }
 
         $validation = self::validateRuleUpdate($rule, $after, (int)$decision->get('IDholon'));
@@ -778,11 +778,11 @@ class DecisionGovernanceAction extends DbObject
     {
         $context = new Holon();
         if (!$context->load((int)$decision->get('IDholon'))) {
-            return ['status' => false, 'conflict' => true, 'message' => 'Le contexte de la proposition n existe plus.'];
+            return ['status' => false, 'conflict' => true, 'message' => 'Le contexte de la modification n’existe plus.'];
         }
         $organization = new Organization();
         if (!$organization->load((int)$decision->get('IDorganization'))) {
-            return ['status' => false, 'message' => 'L organisation de la proposition est introuvable.'];
+            return ['status' => false, 'message' => 'L’organisation de la modification est introuvable.'];
         }
         if ($actionType === self::TYPE_HOLON_CREATE) {
             $validation = self::validateHolonState(self::normalizeState($this->get('after_state')), $context);
@@ -844,7 +844,7 @@ class DecisionGovernanceAction extends DbObject
         $current = self::captureHolonState($holon);
         $beforeComparable = array_diff_key($before, ['editor_payload' => true]);
         if ($actionType === self::TYPE_HOLON_DELETE) {
-            if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'L espace a été modifié depuis la proposition.'];
+            if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'L’espace a été modifié depuis la préparation de cette modification.'];
             $result = $organization->deleteHolonDefinition((int)$holon->getId(), 0, true);
             return !empty($result['status'])
                 ? ['status' => true, 'deleted_id' => (int)$holon->getId()]
@@ -852,7 +852,7 @@ class DecisionGovernanceAction extends DbObject
         }
         $after = self::normalizeHolonState(self::normalizeState($this->get('after_state')), $holon);
         if ($current === $after) return ['status' => true, 'already_applied' => true];
-        if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'L espace a été modifié depuis la proposition.'];
+        if ($current !== $beforeComparable) return ['status' => false, 'conflict' => true, 'message' => 'L’espace a été modifié depuis la préparation de cette modification.'];
         $parentHolon = $holon->getParentHolon();
         if (!$parentHolon instanceof Holon) return ['status' => false, 'conflict' => true, 'message' => 'Le parent de l espace cible est introuvable.'];
         $validation = self::validateHolonState($after, $parentHolon, $holon);

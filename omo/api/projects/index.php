@@ -33,6 +33,7 @@ $usesImportance = !empty($projectDisplayConfig['useImportance']);
 $usesSize = !empty($projectDisplayConfig['useSize']);
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
 $applicationViewPreferences = omoApplicationViewPreferencesGetContext('projects', $organization, $currentHolon, $currentUserId);
+commonReleaseReadOnlySession();
 $projectViewPreferenceValue = static function ($requestKey, $viewKey, $fallback) use ($applicationViewPreferences) {
     if (!empty($applicationViewPreferences['isPvApplicationTab'])) {
         $pvView = $applicationViewPreferences['personalView'] ?? array();
@@ -842,7 +843,7 @@ $projectTexts = [
 ];
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">
+<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">
 <link rel="stylesheet" href="/common/chat/thread.css?v=20260910-project-chat">
 <link rel="stylesheet" href="/omo/api/projects/projects.css?v=20260918-project-followers-star-size">
 <div
@@ -1304,6 +1305,6 @@ $projectTexts = [
 <script src="/common/calendar/event-editor.js?v=20260922-document-templates"></script>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
 <script src="/common/choice/word-diff.js?v=20260816"></script>
-<script src="/common/choice/change-details.js?v=20260816-governance-details"></script>
+<script src="/common/choice/change-details.js?v=20260923-lifecycle-details"></script>
 <script src="/common/chat/thread.js?v=20260910-project-chat"></script>
 <script src="/omo/api/projects/projects.js?v=20260919-project-spaces-filter"></script>

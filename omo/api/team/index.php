@@ -171,6 +171,7 @@ $canToggleTeamScope = $hasStructureContext && $currentHolon instanceof Holon;
 $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
 $hasBudgetApplication = $organization->isApplicationEnabled('budget', $currentUserId);
 $applicationViewPreferences = omoApplicationViewPreferencesGetContext('team', $organization, $currentHolon, $currentUserId);
+commonReleaseReadOnlySession();
 $availableTeamScopes = omoApiGetAvailableContextScopes($canToggleTeamScope, $currentHolon, $rootHolon);
 $teamScope = omoApiNormalizeContextScope(
     omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'team_scope', 'scope', 'contextual'),
@@ -185,6 +186,7 @@ $teamScopeLabels = array(
 );
 
 $rawMemberCards = array();
+$membershipsByUserId = array();
 $contextAdminUserIds = array();
 $removableContextMemberUserIds = array();
 $directContextMemberUserIds = array();
@@ -258,6 +260,7 @@ if ($hasStructureContext) {
             'userId' => $userId,
             'isPending' => !(bool)$membership->get('active'),
         );
+        $membershipsByUserId[$userId] = $membership;
     }
 }
 
@@ -357,6 +360,11 @@ $currentHolonTypeId = $hasStructureContext ? (int)$currentHolon->get('IDtypeholo
 $currentHolonIdForAssignments = $hasStructureContext ? (int)$currentHolon->getId() : 0;
 $isRoleTeamContext = $currentHolonTypeId === 1;
 $assignmentReviewReferenceDate = new DateTimeImmutable('today');
+$memberContext = UserOrganization::loadTeamMemberContext(
+    $organizationId,
+    array_column($rawMemberCards, 'userId'),
+    $membershipsByUserId
+);
 
 foreach ($rawMemberCards as $rawCard) {
     $userId = (int)($rawCard['userId'] ?? 0);
@@ -364,14 +372,10 @@ foreach ($rawMemberCards as $rawCard) {
         continue;
     }
 
-    $membership = new UserOrganization();
-    $hasMembership = $membership->load(array(
-        array('IDuser', $userId),
-        array('IDorganization', $organizationId),
-    ));
-
-    $user = new User();
-    $hasUser = $user->load($userId);
+    $membership = $memberContext['memberships'][$userId] ?? null;
+    $hasMembership = $membership instanceof UserOrganization;
+    $user = $memberContext['users'][$userId] ?? null;
+    $hasUser = $user instanceof User;
     $canViewUserDetail = $hasUser ? $user->canViewDetail() : false;
 
     $isPending = !empty($rawCard['isPending']) || ($hasMembership && !(bool)$membership->get('active'));

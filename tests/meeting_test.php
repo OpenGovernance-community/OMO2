@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/meeting/translations.php';
 
 $meetingSettingsSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/meeting_settings.php');
 $calendarSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/index.php');
+$calendarSource .= (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/calendar.js');
 
 use dbObject\MeetingProfile;
 use dbObject\MeetingBooking;

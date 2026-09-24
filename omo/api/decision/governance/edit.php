@@ -3,9 +3,13 @@
 use dbObject\Authority;
 use dbObject\ArrayAuthority;
 use dbObject\DecisionProcess;
+use dbObject\DeferredProposal;
 use dbObject\Rule;
 
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__, 4) . '/common/choice/deferred-editor-fields.php';
+require_once dirname(__DIR__, 4) . '/common/patreon.php';
+require_once dirname(__DIR__, 4) . '/common/openai_text.php';
 require_once dirname(__DIR__) . '/params/shared.php';
 
 $decision = ($context['decision'] ?? null) instanceof DecisionProcess ? $context['decision'] : null;
@@ -16,6 +20,8 @@ $isEditing = $decision instanceof DecisionProcess;
 $isOwner = !$isEditing || (int)$decision->get('IDuser') === $currentUserId;
 $isLocked = $isEditing && $decision->hasConsultationEnded();
 $canEdit = $isOwner && !$isLocked;
+$canUseAi = $canEdit && commonOpenAiGetApiKey() !== '' && patreonUserCanUseAi($currentUserId);
+$processDescription = $isEditing ? (string)$decision->get('description') : '';
 $decisionSettings = omoDecisionParamsGetConfig($context['organization'] ?? null);
 $governanceSettings = $decisionSettings['governance'];
 $existingGovernanceGroup = $isEditing ? $decision->getPrimaryGroup(false) : null;
@@ -99,6 +105,44 @@ foreach ($authorityItems as $authority) {
         ];
     }
 }
+$ruleCatalog = DeferredProposal::getRuleTargetHolonCatalog((int)$context['organizationId'], $targetHolonId);
+$holonCatalog = DeferredProposal::getHolonTargetHolonCatalog((int)$context['organizationId'], $targetHolonId);
+$projectCatalog = DeferredProposal::getProjectTargetHolonCatalog((int)$context['organizationId'], $targetHolonId);
+$contextLabels = [];
+$contextPermissions = [
+    DeferredProposal::TARGET_RULE => ['create' => [], 'update' => [], 'delete' => []],
+    DeferredProposal::TARGET_HOLON => ['create' => [], 'update' => [], 'delete' => []],
+    DeferredProposal::TARGET_PROJECT => ['create' => [], 'update' => [], 'delete' => []],
+];
+$projectCreationModes = [];
+foreach ([$ruleCatalog, $holonCatalog, $projectCatalog] as $catalog) {
+    foreach ($catalog as $catalogHolonId => $entry) $contextLabels[(int)$catalogHolonId] = (string)($entry['label'] ?? '');
+}
+foreach ($ruleCatalog as $catalogHolonId => $entry) {
+    foreach (array_keys($contextPermissions[DeferredProposal::TARGET_RULE]) as $catalogOperation) {
+        if (!empty($entry['permissions'][$catalogOperation])) $contextPermissions[DeferredProposal::TARGET_RULE][$catalogOperation][] = (int)$catalogHolonId;
+    }
+}
+foreach ($holonCatalog as $catalogHolonId => $entry) {
+    if (!empty($entry['permissions'][DeferredProposal::OPERATION_CREATE])) $contextPermissions[DeferredProposal::TARGET_HOLON]['create'][] = (int)$catalogHolonId;
+    foreach ([DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE] as $catalogOperation) {
+        if (empty($entry['permissions'][$catalogOperation])) continue;
+        $catalogHolon = new \dbObject\Holon();
+        $parentHolon = $catalogHolon->load((int)$catalogHolonId) ? $catalogHolon->getParentHolon() : null;
+        if ($parentHolon instanceof \dbObject\Holon) $contextPermissions[DeferredProposal::TARGET_HOLON][$catalogOperation][] = (int)$parentHolon->getId();
+    }
+}
+foreach ($projectCatalog as $catalogHolonId => $entry) {
+    $projectCreationModes[(int)$catalogHolonId] = (string)($entry['project_creation_mode'] ?? '');
+    foreach (array_keys($contextPermissions[DeferredProposal::TARGET_PROJECT]) as $catalogOperation) {
+        if (!empty($entry['permissions'][$catalogOperation])) $contextPermissions[DeferredProposal::TARGET_PROJECT][$catalogOperation][] = (int)$catalogHolonId;
+    }
+}
+foreach ($contextPermissions as &$operationPermissions) {
+    foreach ($operationPermissions as &$ids) $ids = array_values(array_unique(array_map('intval', $ids)));
+    unset($ids);
+}
+unset($operationPermissions);
 $payload = [
     'blueprint' => omoDecisionGovernanceBuildBlueprint($decision),
     'contextHolonId' => $targetHolonId,
@@ -106,14 +150,26 @@ $payload = [
     'roles' => array_values($roleData),
     'roleTemplates' => $roleTemplates,
     'authorities' => array_values($authorities),
+    'organizationId' => (int)$context['organizationId'],
+    'decisionId' => $decision instanceof DecisionProcess ? (int)$decision->getId() : 0,
+    'contextLabels' => $contextLabels,
+    'contextPermissions' => $contextPermissions,
+    'projectCreationModes' => $projectCreationModes,
     'defaultRuleState' => $defaultRuleState,
     'editable' => $canEdit,
+    'aiEnabled' => $canUseAi,
     'texts' => [
         'proposalDefault' => omoDecisionGovernanceT('governance.proposal.default', ['index' => '__INDEX__']),
         'proposalRemove' => omoDecisionGovernanceT('governance.proposal.remove'),
         'proposalTitle' => omoDecisionGovernanceT('governance.proposal.title'),
         'proposalDescription' => omoDecisionGovernanceT('governance.proposal.description'),
+        'summaryGenerate' => omoDecisionGovernanceT('governance.proposal.summary.generate'),
+        'summaryLoading' => omoDecisionGovernanceT('governance.proposal.summary.loading'),
+        'summaryEmpty' => omoDecisionGovernanceT('governance.proposal.summary.empty'),
+        'summaryFailed' => omoDecisionGovernanceT('governance.proposal.summary.failed'),
+        'summaryReady' => omoDecisionGovernanceT('governance.proposal.summary.ready'),
         'actionAdd' => omoDecisionGovernanceT('governance.action.add'),
+        'actionMore' => omoDecisionGovernanceT('governance.action.more'),
         'actionEdit' => omoDecisionGovernanceT('governance.action.edit'),
         'actionRemove' => omoDecisionGovernanceT('governance.action.remove'),
         'ruleUpdate' => omoDecisionGovernanceT('governance.action.rule_update'),
@@ -122,6 +178,17 @@ $payload = [
         'roleUpdate' => omoDecisionGovernanceT('governance.action.role_update'),
         'roleCreate' => omoDecisionGovernanceT('governance.action.role_create'),
         'roleDelete' => omoDecisionGovernanceT('governance.action.role_delete'),
+        'projectUpdate' => omoDecisionGovernanceT('governance.action.project_update'),
+        'projectCreate' => omoDecisionGovernanceT('governance.action.project_create'),
+        'projectPropose' => omoDecisionGovernanceT('governance.action.project_propose'),
+        'projectDelete' => omoDecisionGovernanceT('governance.action.project_delete'),
+        'objectType' => omoDecisionGovernanceT('governance.action.object_type'),
+        'context' => omoDecisionGovernanceT('governance.action.context'),
+        'object' => omoDecisionGovernanceT('governance.action.object'),
+        'openContext' => omoDecisionGovernanceT('governance.action.open_context'),
+        'openEditor' => omoDecisionGovernanceT('governance.action.open_editor'),
+        'emptyObjects' => omoDecisionGovernanceT('governance.action.empty'),
+        'loading' => omoDecisionGovernanceT('governance.action.loading'),
         'pending' => omoDecisionGovernanceT('governance.status.pending'),
         'applied' => omoDecisionGovernanceT('governance.status.applied'),
         'rejected' => omoDecisionGovernanceT('governance.status.rejected'),
@@ -135,21 +202,26 @@ $payload = [
     ],
 ];
 ?>
-<link rel="stylesheet" href="/common/choice/governance-actions.css?v=20260813-ergonomics">
-<link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">
-<section class="omo-decision-governance generic-section generic-section--stack" data-governance-editor>
+<link rel="stylesheet" href="/common/choice/governance-actions.css?v=20260923-compact-editor">
+<link rel="stylesheet" href="/common/choice/deferred-proposal-picker.css?v=20260923-shared">
+<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">
+<section class="omo-decision-governance generic-form-stack generic-form-stack--compact" data-governance-editor>
     <div
         hidden
         data-omo-subdrawer-header
         data-omo-subdrawer-title="<?= omoApiEscape(omoDecisionGovernanceT($isEditing ? 'governance.title.edit' : 'governance.title.create')) ?>"
         data-omo-subdrawer-help="<?= omoApiEscape(omoDecisionGovernanceT('governance.intro')) ?>"
-    ></div>
+    >
+        <?php if ($canEdit): ?>
+        <button type="submit" form="omo-governance-editor-form" class="generic-action-button generic-action-button--main" data-governance-submit data-omo-subdrawer-action><?= omoApiEscape(omoDecisionGovernanceT($isEditing ? 'governance.update_short' : 'governance.save_short')) ?></button>
+        <?php endif; ?>
+    </div>
 
     <?php if ($isLocked): ?>
         <div class="generic-soft-panel"><?= omoApiEscape(omoDecisionGovernanceT('governance.error.locked')) ?></div>
     <?php endif; ?>
 
-    <form class="generic-form-stack" action="/omo/api/decision/governance/save.php" method="post" data-governance-form>
+    <form id="omo-governance-editor-form" class="generic-form-stack generic-form-stack--compact" action="/omo/api/decision/governance/save.php" method="post" data-governance-form>
         <input type="hidden" name="oid" value="<?= (int)$context['organizationId'] ?>">
         <input type="hidden" name="cid" value="<?= $targetHolonId ?>">
         <input type="hidden" name="id" value="<?= $isEditing ? (int)$decision->getId() : 0 ?>">
@@ -158,55 +230,63 @@ $payload = [
         <input type="hidden" name="workflow" value="<?= omoApiEscape(DecisionProcess::WORKFLOW_GOVERNANCE) ?>">
         <textarea name="governance_blueprint" data-governance-blueprint hidden></textarea>
 
-        <section class="generic-section generic-section--stack generic-form-section">
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
+            <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoDecisionGovernanceT('governance.section.identity')) ?></h3>
             <label class="generic-form-field">
                 <span class="generic-form-label"><?= omoApiEscape(omoDecisionGovernanceT('governance.field.title')) ?></span>
-                <input class="generic-form-control" name="process_title" maxlength="190" required value="<?= omoApiEscape($isEditing ? (string)$decision->get('title') : '') ?>"<?= $canEdit ? '' : ' readonly' ?>>
+                <input class="generic-form-control generic-form-control--compact" name="process_title" maxlength="190" required value="<?= omoApiEscape($isEditing ? (string)$decision->get('title') : '') ?>"<?= $canEdit ? '' : ' readonly' ?>>
             </label>
-            <label class="generic-form-field">
+            <?php if ($canEdit && trim($processDescription) === ''): ?>
+            <button type="button" class="omo-decision-governance__intention-link" data-governance-intention-open aria-expanded="false" aria-controls="omo-governance-intention"><?= omoApiEscape(omoDecisionGovernanceT('governance.field.intention.add')) ?></button>
+            <?php endif; ?>
+            <label id="omo-governance-intention" class="generic-form-field" data-governance-intention-field<?= trim($processDescription) === '' ? ' hidden' : '' ?>>
                 <span class="generic-form-label"><?= omoApiEscape(omoDecisionGovernanceT('governance.field.intention')) ?></span>
-                <textarea class="generic-form-control" name="process_description" rows="5" required<?= $canEdit ? '' : ' readonly' ?>><?= omoApiEscape($isEditing ? (string)$decision->get('description') : '') ?></textarea>
+                <textarea class="generic-form-control generic-form-control--compact" name="process_description" rows="3"<?= $canEdit ? '' : ' readonly' ?>><?= omoApiEscape($processDescription) ?></textarea>
             </label>
-            <div class="generic-form-grid">
+        </section>
+
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
+            <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoDecisionGovernanceT('governance.section.schedule')) ?></h3>
+            <div class="generic-form-grid generic-form-grid--pair">
                 <label class="generic-form-field">
                     <span class="generic-form-label"><?= omoApiEscape(omoDecisionGovernanceT('governance.field.consultation_end')) ?></span>
-                    <input class="generic-form-control" type="datetime-local" name="consultation_end_at" required value="<?= omoApiEscape($consultationEnd instanceof DateTimeInterface ? $consultationEnd->format('Y-m-d\TH:i') : '') ?>"<?= $canEdit ? '' : ' readonly' ?>>
+                    <input class="generic-form-control generic-form-control--compact" type="datetime-local" name="consultation_end_at" required value="<?= omoApiEscape($consultationEnd instanceof DateTimeInterface ? $consultationEnd->format('Y-m-d\TH:i') : '') ?>"<?= $canEdit ? '' : ' readonly' ?>>
                 </label>
                 <label class="generic-form-field">
                     <span class="generic-form-label"><?= omoApiEscape(omoDecisionGovernanceT('governance.field.vote_end')) ?></span>
-                    <input class="generic-form-control" type="datetime-local" name="evaluation_end_at" required value="<?= omoApiEscape($evaluationEnd instanceof DateTimeInterface ? $evaluationEnd->format('Y-m-d\TH:i') : '') ?>"<?= $canEdit ? '' : ' readonly' ?>>
+                    <input class="generic-form-control generic-form-control--compact" type="datetime-local" name="evaluation_end_at" required value="<?= omoApiEscape($evaluationEnd instanceof DateTimeInterface ? $evaluationEnd->format('Y-m-d\TH:i') : '') ?>"<?= $canEdit ? '' : ' readonly' ?>>
                 </label>
             </div>
             <?php if ($questionIsEditable): ?>
             <div class="generic-form-field">
                 <div class="generic-heading-with-help">
                     <label class="generic-form-label" for="omo-governance-question"><?= omoApiEscape(omoDecisionGovernanceT($questionLabelKey)) ?></label>
-                    <details class="generic-context-help">
+                    <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
                         <summary aria-label="<?= omoApiEscape(omoDecisionGovernanceT($questionHelpKey)) ?>">?</summary>
                         <div class="generic-context-help__content"><?= omoApiEscape(omoDecisionGovernanceT($questionHelpKey)) ?></div>
                     </details>
                 </div>
-                <textarea class="generic-form-control" id="omo-governance-question" name="consent_question" rows="3" maxlength="1000" required><?= omoApiEscape($questionValue) ?></textarea>
+                <textarea class="generic-form-control generic-form-control--compact" id="omo-governance-question" name="consent_question" rows="2" maxlength="1000" required><?= omoApiEscape($questionValue) ?></textarea>
             </div>
             <?php else: ?>
-            <div class="omo-decision-governance__question">
-                <strong><?= omoApiEscape(omoDecisionGovernanceT($questionLabelKey)) ?></strong>
-                <span><?= omoApiEscape($questionValue) ?></span>
+            <div class="generic-soft-panel generic-soft-panel--stack">
+                <strong class="generic-form-label"><?= omoApiEscape(omoDecisionGovernanceT($questionLabelKey)) ?></strong>
+                <span class="generic-help-text generic-help-text--regular"><?= omoApiEscape($questionValue) ?></span>
                 <input type="hidden" name="consent_question" value="<?= omoApiEscape($questionValue) ?>">
             </div>
             <?php endif; ?>
         </section>
 
-        <section class="generic-section generic-section--stack generic-form-section">
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
             <div class="generic-heading-with-help">
-                <h4 class="generic-card-title"><?= omoApiEscape(omoDecisionGovernanceT('governance.proposals.title')) ?></h4>
-                <details class="generic-context-help">
+                <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoDecisionGovernanceT('governance.proposals.title')) ?></h3>
+                <details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover>
                     <summary aria-label="<?= omoApiEscape(omoDecisionGovernanceT('governance.proposals.help')) ?>">?</summary>
                     <div class="generic-context-help__content"><?= omoApiEscape(omoDecisionGovernanceT('governance.proposals.help')) ?></div>
                 </details>
             </div>
             <div class="omo-governance-proposals" data-governance-proposals></div>
-            <?php if ($canEdit): ?><button type="button" class="generic-action-button generic-action-button--secondary" data-governance-proposal-add><?= omoApiEscape(omoDecisionGovernanceT('governance.proposal.add')) ?></button><?php endif; ?>
+            <?php if ($canEdit): ?><div><button type="button" class="generic-action-button generic-action-button--secondary generic-action-button--compact" data-governance-proposal-add><span aria-hidden="true">+</span><?= omoApiEscape(omoDecisionGovernanceT('governance.proposal.add')) ?></button></div><?php endif; ?>
         </section>
 
         <p class="generic-feedback" data-governance-feedback hidden aria-live="polite"></p>
@@ -217,9 +297,22 @@ $payload = [
         <?php endif; ?>
     </form>
 
+    <?php foreach (['rule', 'project'] as $editorTargetType): ?>
+    <template data-governance-fields="<?= $editorTargetType ?>">
+        <section class="generic-section generic-section--stack generic-section--roomy">
+            <form class="generic-form-stack" data-editor>
+                <?php omoDeferredEditorRenderFields($editorTargetType, []); ?>
+                <div class="generic-action-row">
+                    <button class="generic-action-button generic-action-button--main" type="submit"><?= omoApiEscape(omoDeferredEditorT('save')) ?></button>
+                    <button class="generic-action-button generic-action-button--secondary" type="button" data-cancel><?= omoApiEscape(omoDeferredEditorT('cancel')) ?></button>
+                </div>
+            </form>
+        </section>
+    </template>
+    <?php endforeach; ?>
     <script type="application/json" data-governance-data><?= omoDecisionGovernanceEncodeJson($payload, '{}') ?></script>
 </section>
 <script src="/common/choice/word-diff.js?v=20260815"></script>
-<script src="/common/choice/change-details.js?v=20260816-governance-details"></script>
-<script src="/common/choice/governance-actions.js?v=20260902-submit-lock"></script>
+<script src="/common/choice/change-details.js?v=20260923-lifecycle-details"></script>
+<script src="/common/choice/governance-actions.js?v=20260923-compact-editor"></script>
 <script>if(window.omoGovernanceEditorInit){window.omoGovernanceEditorInit(document);}</script>

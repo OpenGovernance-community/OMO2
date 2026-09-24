@@ -421,7 +421,7 @@ function commonRenderTopbar(array $options = [])
 
     if (!$assetsLoaded) {
         commonRenderTopbarJqueryAssets();
-        echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260921-document-layout">' . PHP_EOL;
+        echo '<link rel="stylesheet" href="/common/assets/components.css?v=20260923-anchored-menu">' . PHP_EOL;
         echo '<script src="/common/assets/components.js?v=20260919-context-help-hover" defer></script>' . PHP_EOL;
         echo '<script src="/common/holon_scope_picker.js?v=20260908-picker-resize" defer></script>' . PHP_EOL;
         echo '<script src="/common/project-picker/project-picker.js?v=20260922-shared" defer></script>' . PHP_EOL;

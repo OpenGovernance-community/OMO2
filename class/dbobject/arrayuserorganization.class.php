@@ -97,7 +97,7 @@
 				";
 
 			$query = "
-				SELECT DISTINCT uo.id
+				SELECT DISTINCT uo.*
 				FROM user_organization uo
 				INNER JOIN `user` u ON u.id = uo.IDuser
 				LEFT JOIN invitation inv
@@ -122,7 +122,7 @@
 			if ($rows === false) {
 				$fallbackVisibilityCondition = $includeInactive ? '1 = 1' : 'uo.active = 1';
 				$fallbackQuery = "
-					SELECT uo.id
+					SELECT uo.*
 					FROM user_organization uo
 					INNER JOIN `user` u ON u.id = uo.IDuser
 					WHERE uo.IDorganization = :organization_id
@@ -144,7 +144,7 @@
 
 			foreach ($rows as $row) {
 				$item = new UserOrganization();
-				$item->setId((int)$row['id']);
+				$item->hydrateFromDatabaseRow($row, true);
 				$this[] = $item;
 			}
 		}

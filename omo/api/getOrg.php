@@ -2,6 +2,7 @@
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/avatar.php';
 require_once __DIR__ . '/projects/shared.php';
+commonReleaseReadOnlySession();
 use dbObject\ArrayOrganization;
 use dbObject\ArrayProject;
 use dbObject\Authority;
