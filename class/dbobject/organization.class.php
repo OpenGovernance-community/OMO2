@@ -2292,6 +2292,12 @@
 			if (!$user->load($userId) || $user->isHistoricalPlaceholder()) {
 				return array('status' => false, 'message' => 'Le compte a retirer est introuvable.');
 			}
+			if ($this->isSystemOrganization()
+				&& $this->getMembership($userId, true)
+				&& $user->isSiteAdmin()
+				&& \dbObject\User::countOtherActiveSiteAdminsInBaseOrganization($userId) === 0) {
+				return array('status' => false, 'message' => "Le dernier superadmin ne peut pas quitter l'organisation de base.");
+			}
 			$pdo = \dbObject\DbObject::getPdo();
 			if (!$pdo) {
 				return array('status' => false, 'message' => 'Connexion base de donnees indisponible.');
@@ -2307,7 +2313,7 @@
 				if (!is_array($scopeUpdateResult) || empty($scopeUpdateResult['status'])) {
 					throw new \RuntimeException('Les portees des documents lies a ce membre n ont pas pu etre mises a jour.');
 				}
-				$handlers = array('Project', 'ProjectUser', 'ProjectFollower', 'StatIndicator', 'StatIndicatorValue', 'Checklist', 'ControlActivity', 'Document', 'DocumentPvPoint', 'Event', 'History', 'Tension');
+				$handlers = array('Holon', 'Rule', 'Project', 'ProjectUser', 'ProjectFollower', 'StatIndicator', 'StatIndicatorValue', 'Checklist', 'ControlActivity', 'Document', 'DocumentPvPoint', 'Event', 'History', 'Tension', 'DecisionProcess', 'DecisionParticipant', 'DecisionProposal', 'ChatThread', 'ChatMessage', 'DeferredProposal', 'UserCompetenceValidation');
 				foreach ($handlers as $handler) {
 					$className = '\\dbObject\\' . $handler;
 					if (!$className::handleUserDeparture($organizationId, $userId, (int)$ghostUser->getId())) {
@@ -2497,13 +2503,18 @@
 			}
 
 			$isSelfRemoval = $actorUserId > 0 && $actorUserId === $userId;
-			if ($isSelfRemoval && $this->isSystemOrganization() && $membership->isOrganizationAdmin()) {
-				return array(
-					'status' => false,
-					'message' => 'Un admin ne peut pas quitter l organisation de base.',
+			if ($isSelfRemoval && $this->isSystemOrganization()) {
+				$activeMemberCount = (int)self::fetchValue(
+					'SELECT COUNT(*) FROM user_organization WHERE IDorganization = :organization_id AND active = 1',
+					array('organization_id' => $organizationId)
 				);
+				if ($activeMemberCount <= 1) {
+					return array(
+						'status' => false,
+						'message' => "Le dernier membre ne peut pas quitter l'organisation de base.",
+					);
+				}
 			}
-
 			$actorIsAdmin = $this->isUserOrganizationAdmin($actorUserId);
 			if (!$isSelfRemoval && !$actorIsAdmin) {
 				return array(
@@ -2758,9 +2769,40 @@
 
 		public function delete()
 		{
+			return $this->deleteInternal(true);
+		}
+
+		/**
+		 * Delete an organization as part of the deletion of its sole active member.
+		 * The caller has already established the account-deletion constraints; this
+		 * deliberately does not rely on the current session's organization rights.
+		 */
+		public function deleteForAccountDeletion($userId)
+		{
+			$userId = (int)$userId;
+			if ($userId <= 0 || $this->isSystemOrganization()) {
+				$this->lastDeleteError = "L'organisation ne peut pas etre supprimee avec ce profil.";
+				return false;
+			}
+
+			$activeMemberCount = (int)self::fetchValue(
+				"SELECT COUNT(*) FROM user_organization WHERE IDorganization = :organization_id AND active = 1",
+				array('organization_id' => (int)$this->getId())
+			);
+			$membership = $this->getMembership($userId, true);
+			if (!$membership || $activeMemberCount !== 1) {
+				$this->lastDeleteError = "L'organisation doit avoir exactement un membre actif pour etre supprimee avec ce profil.";
+				return false;
+			}
+
+			return $this->deleteInternal(false);
+		}
+
+		protected function deleteInternal($requirePermission)
+		{
 			$this->lastDeleteError = '';
 
-			if (!$this->canDelete()) {
+			if ($requirePermission && !$this->canDelete()) {
 				$this->lastDeleteError = "Vous n'avez pas le droit de supprimer cette organisation.";
 				return false;
 			}
@@ -2778,7 +2820,10 @@
 			}
 
 			try {
-				$pdo->beginTransaction();
+				$ownsTransaction = !$pdo->inTransaction();
+				if ($ownsTransaction) {
+					$pdo->beginTransaction();
+				}
 
 				$rootHolonIds = $this->getOrganizationRootHolonIds();
 				$holonIds = $this->getOrganizationHolonIds();
@@ -2906,10 +2951,12 @@
 					throw new \RuntimeException("L'organisation n'a pas pu etre supprimee.");
 				}
 
-				$pdo->commit();
+				if ($ownsTransaction && $pdo->inTransaction()) {
+					$pdo->commit();
+				}
 				return true;
 			} catch (\Throwable $exception) {
-				if ($pdo->inTransaction()) {
+				if (isset($ownsTransaction) && $ownsTransaction && $pdo->inTransaction()) {
 					$pdo->rollBack();
 				}
 

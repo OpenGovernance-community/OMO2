@@ -64,6 +64,14 @@ class ChatThread extends DbObject
         return 'updated_at DESC, id DESC';
     }
 
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute(
+            'UPDATE chat_thread SET IDuser_created = :ghost_user_id WHERE IDorganization = :organization_id AND IDuser_created = :user_id',
+            array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+        );
+    }
+
     public static function normalizeSubjectType($subjectType)
     {
         $subjectType = strtolower(trim((string)$subjectType));

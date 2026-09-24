@@ -67,8 +67,12 @@ function profilPopupGetSourceLang(): array
             'context' => 'Label for the current account login email.',
         ],
         'profile.popup.merge.reveal' => [
-            'text' => 'Fusionner deux profils',
+            'text' => 'Préparer la fusion',
             'context' => 'Button that reveals the account merge form.',
+        ],
+        'profile.popup.tools.collapse' => [
+            'text' => 'Replier',
+            'context' => 'Button that collapses an open profile tool.',
         ],
         'profile.popup.merge.other_email_label' => [
             'text' => "Adresse e-mail de connexion de l’autre compte",
@@ -153,6 +157,58 @@ function profilPopupGetSourceLang(): array
         'profile.popup.merge.cancel' => [
             'text' => 'Annuler',
             'context' => 'Button that cancels the account merge flow.',
+        ],
+        'profile.popup.delete.title' => [
+            'text' => 'Supprimer mon profil',
+            'context' => 'Title of the irreversible account deletion tool.',
+        ],
+        'profile.popup.delete.intro' => [
+            'text' => 'Supprimez définitivement votre compte. Les références utiles dans les organisations conservées restent attribuées à un profil historique technique.',
+            'context' => 'Introductory text for the account deletion tool.',
+        ],
+        'profile.popup.delete.open' => [
+            'text' => 'Préparer la suppression',
+            'context' => 'Button opening the account deletion confirmation area.',
+        ],
+        'profile.popup.delete.loading' => [
+            'text' => 'Analyse des conséquences en cours…',
+            'context' => 'Status while the account deletion consequences are loaded.',
+        ],
+        'profile.popup.delete.invalid_response' => [
+            'text' => 'La suppression n’a pas pu être préparée. Rechargez la page et réessayez.',
+            'context' => 'Fallback error shown when the account deletion endpoint response is invalid.',
+        ],
+        'profile.popup.delete.plan.leave' => [
+            'text' => 'Organisations que vous quitterez',
+            'context' => 'Heading of organizations retained after the profile is deleted.',
+        ],
+        'profile.popup.delete.plan.organizations' => [
+            'text' => 'Organisations et historique qui seront supprimés',
+            'context' => 'Heading of organizations deleted because the account is their sole active member.',
+        ],
+        'profile.popup.delete.plan.blocked' => [
+            'text' => 'Points à résoudre avant la suppression',
+            'context' => 'Heading of account deletion blockers.',
+        ],
+        'profile.popup.delete.plan.no_organization' => [
+            'text' => 'Ce profil n’est rattaché à aucune organisation.',
+            'context' => 'Message shown when the profile has no organization memberships.',
+        ],
+        'profile.popup.delete.confirmation_prefix' => [
+            'text' => 'Pour confirmer, écrivez exactement :',
+            'context' => 'Prefix before the exact text required to confirm account deletion.',
+        ],
+        'profile.popup.delete.complete' => [
+            'text' => 'Supprimer définitivement mon profil',
+            'context' => 'Button that performs the irreversible account deletion.',
+        ],
+        'profile.popup.delete.processing' => [
+            'text' => 'Suppression en cours…',
+            'context' => 'Status while account deletion is running.',
+        ],
+        'profile.popup.delete.success' => [
+            'text' => 'Votre profil a été supprimé.',
+            'context' => 'Success message after account deletion.',
         ],
         'profile.popup.merge.status.code_sent' => [
             'text' => "Un code a été envoyé à l’autre adresse e-mail.",

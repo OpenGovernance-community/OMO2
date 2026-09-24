@@ -95,10 +95,18 @@ class DecisionProcess extends DbObject
         return $animals[$animalIndex] . ' ' . $traits[$traitIndex] . ' - ' . $suffix;
     }
 
-    public static function tableName()
-    {
-        return 'decision_process';
-    }
+	public static function tableName()
+	{
+		return 'decision_process';
+	}
+
+	public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+	{
+		return self::execute(
+			'UPDATE decision_process SET IDuser = :ghost_user_id WHERE IDorganization = :organization_id AND IDuser = :user_id',
+			array('ghost_user_id' => (int)$ghostUserId, 'organization_id' => (int)$organizationId, 'user_id' => (int)$userId)
+		);
+	}
 
     public static function getVisibilityObjectType(): string
     {

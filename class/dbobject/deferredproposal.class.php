@@ -60,6 +60,24 @@ class DeferredProposal extends DbObject
         return 'position ASC, id ASC';
     }
 
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute(
+            'UPDATE deferred_proposal
+             SET IDuser_author = CASE WHEN IDuser_author = :source_author THEN :ghost_user_id ELSE IDuser_author END,
+                 IDuser_validated = CASE WHEN IDuser_validated = :source_validated THEN :ghost_user_id ELSE IDuser_validated END,
+                 IDuser_applied = CASE WHEN IDuser_applied = :source_applied THEN :ghost_user_id ELSE IDuser_applied END
+             WHERE IDorganization = :organization_id',
+            array(
+                'source_author' => (int)$userId,
+                'source_validated' => (int)$userId,
+                'source_applied' => (int)$userId,
+                'ghost_user_id' => (int)$ghostUserId,
+                'organization_id' => (int)$organizationId,
+            )
+        );
+    }
+
     public static function getTargetCatalog(): array
     {
         return [

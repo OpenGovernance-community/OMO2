@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- Profil : les outils de fusion et de suppression utilisent des cartes harmonisees avec leur bouton d action a droite et un formulaire repliable. La fusion conserve le statut de superadmin et les roles d admin d organisation ou de holon possedes par l un ou l autre des profils.
+
+- Profil : l onglet Outils regroupe maintenant des actions repliables pour fusionner des comptes ou supprimer definitivement son profil. La suppression affiche d abord les organisations conservees, celles qui seront supprimees avec leur historique lorsque le profil en est le seul membre, et les blocages de dernier administrateur. Un superadmin peut supprimer son profil si un autre superadmin actif reste membre de l organisation de base. Une confirmation textuelle est obligatoire. Les organisations conservees reutilisent ou creent leur profil historique technique afin de garder les references utiles apres la suppression. Un admin peut quitter l organisation de base si un autre admin y reste et, s il est aussi superadmin, si un autre superadmin y reste ; elle ne peut jamais etre supprimee.
+
 - Détail des modifications : les indicateurs affichent aussi les changements de personne en charge, de source et de fréquence de mise à jour ou de synchronisation. Les listes de propriétés des holons, notamment les autorités et les projets, présentent leurs libellés plutôt que leurs identifiants dans les comparaisons avant/après des PV et décisions.
 
 - Patreon : la liaison de compte passe maintenant par un point OAuth central configurable (`PATREON_CONNECT_URL`). Une transaction temporaire en base transmet l’utilisateur et le domaine d’origine au serveur central, qui notifie ensuite la fenêtre d’origine après la connexion. Les domaines de retour peuvent être autorisés avec un motif `*.domaine` pour les sous-domaines. Migration SQL ajoutée pour les transactions OAuth.
