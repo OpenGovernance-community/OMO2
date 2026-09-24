@@ -18,7 +18,7 @@ function siteStatsSourceLang(): array
         'stats.period.daily' => ['text' => 'par jour', 'context' => 'Chart aggregation label when bars represent days.'],
         'stats.period.weekly' => ['text' => 'par semaine', 'context' => 'Chart aggregation label when bars represent weeks.'],
         'stats.organizations.title' => ['text' => 'Organisations', 'context' => 'Title of the organizations statistics block.'],
-        'stats.organizations.total' => ['text' => 'Total d organisations', 'context' => 'Metric label for the total number of organizations.'],
+        'stats.organizations.total' => ['text' => 'Total d’organisations', 'context' => 'Metric label for the total number of organizations.'],
         'stats.organizations.new_month' => ['text' => 'Nouvelles ce mois', 'context' => 'Metric label for organizations created during the current month.'],
         'stats.organizations.chart' => ['text' => 'Nouvelles organisations par date', 'context' => 'Chart title for organization creation counts.'],
         'stats.users.title' => ['text' => 'Utilisateurs', 'context' => 'Title of the users statistics block.'],

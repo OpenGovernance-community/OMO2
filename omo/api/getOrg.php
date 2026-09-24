@@ -37,11 +37,11 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Action menu label to move the current holon in the left panel.',
         ],
         'leftbar.actions.share_as_model' => [
-            'text' => 'Partager comme modele',
+            'text' => 'Partager comme modèle',
             'context' => 'Action menu label to publish the current organization as a public model.',
         ],
         'leftbar.actions.stop_sharing_as_model' => [
-            'text' => 'Ne plus partager comme modele',
+            'text' => 'Ne plus partager comme modèle',
             'context' => 'Action menu label to unpublish the current organization model.',
         ],
         'leftbar.children.section_title' => [
@@ -122,7 +122,7 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Error message shown in the left panel when the requested holon cannot be found.',
         ],
         'leftbar.error.organization_access_denied' => [
-            'text' => 'Acces refuse a cette organisation.',
+            'text' => 'Accès refusé à cette organisation.',
             'context' => 'Error message shown in the left panel when the current organization cannot be viewed.',
         ],
         'leftbar.error.organization_invalid' => [
@@ -134,7 +134,7 @@ function omoGetOrgPanelSourceLang(): array
             'context' => 'Error message shown in the left panel when the requested organization cannot be found.',
         ],
         'leftbar.error.root_not_found' => [
-            'text' => 'Aucune structure racine n a ete trouvee pour cette organisation.',
+            'text' => 'Aucune structure racine n’a été trouvée pour cette organisation.',
             'context' => 'Error message shown in the left panel when the organization has no structural root holon.',
         ],
         'leftbar.members.add' => [

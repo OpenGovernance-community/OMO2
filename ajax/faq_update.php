@@ -71,6 +71,7 @@ if (empty($scope['status'])) {
 
 $data = $_POST;
 unset($data['id']);
+$previousAnsweredAt = trim((string)$faq->get('request_answered_at'));
 $linkedApplicationId = 0;
 if (\dbObject\FAQ::hasApplicationColumn() && $canManageFaqCollection) {
 	$linkedApplicationId = isset($data['IDapplication']) && is_numeric($data['IDapplication'])
@@ -109,6 +110,13 @@ if (trim((string)$faq->get('question')) === '' || trim((string)$faq->get('answer
 	exit;
 }
 
+$notifyRequester = (int)$faq->get('request_user_id') > 0
+	&& $previousAnsweredAt === ''
+	&& trim((string)$faq->get('answer')) !== '';
+if ($notifyRequester) {
+	$faq->set('request_answered_at', date('Y-m-d H:i:s'));
+}
+
 $saveResult = $faq->save();
 if (!is_array($saveResult) || empty($saveResult['status'])) {
 	echo json_encode([
@@ -117,6 +125,27 @@ if (!is_array($saveResult) || empty($saveResult['status'])) {
 		'message' => is_array($saveResult) && !empty($saveResult['text']) ? (string)$saveResult['text'] : "Impossible d'enregistrer cette FAQ.",
 	], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	exit;
+}
+
+$requesterNotified = false;
+$requesterEmail = trim((string)$faq->get('request_author_email'));
+if ($notifyRequester && filter_var($requesterEmail, FILTER_VALIDATE_EMAIL)) {
+	$mailFrom = trim((string)($GLOBALS['mailUser'] ?? ''));
+	if ($mailFrom === '') $mailFrom = 'info@systemdd.ch';
+	$requesterNotified = myHTMLMail(
+		$mailFrom,
+		$requesterEmail,
+		'Réponse à votre question dans la FAQ',
+		'<p>Bonjour ' . htmlspecialchars((string)$faq->get('request_author_name'), ENT_QUOTES, 'UTF-8') . ',</p>'
+		. '<p>Un administrateur a répondu à votre question :</p>'
+		. '<p><strong>' . htmlspecialchars((string)$faq->get('question'), ENT_QUOTES, 'UTF-8') . '</strong></p>'
+		. '<p>' . nl2br(htmlspecialchars((string)$faq->get('answer'), ENT_QUOTES, 'UTF-8')) . '</p>'
+		. (trim(strip_tags((string)$faq->get('detail'))) !== '' ? '<div>' . (string)$faq->get('detail') . '</div>' : '')
+	);
+	if (!$requesterNotified) {
+		$faq->set('request_answered_at', null);
+		$faq->save();
+	}
 }
 
 $popupReloadUrl = '/popup/faq.php';
@@ -143,7 +172,9 @@ $script = "if (window.commonTopbarRefreshModalContent) { window.commonTopbarRefr
 echo json_encode([
 	'status' => true,
 	'success' => true,
-	'message' => 'FAQ mise a jour.',
+	'message' => $notifyRequester && !$requesterNotified
+		? 'FAQ mise à jour, mais l’e-mail à la personne qui a posé la question n’a pas pu être envoyé.'
+		: ($requesterNotified ? 'Réponse enregistrée et envoyée par e-mail.' : 'FAQ mise à jour.'),
 	'reloadUrl' => $popupReloadUrl,
 	'focusId' => $focusId,
 	'script' => $script,

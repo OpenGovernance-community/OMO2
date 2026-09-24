@@ -1,14 +1,14 @@
 <?php
 $sourceLang = [
     'lms.parcours_content.pack.title' => ['text' => 'Parcours du pack', 'context' => 'Section title shown when viewing a pack parcours.'],
-    'lms.parcours_content.pack.intro' => ['text' => 'Seuls les parcours compatibles avec les applications actives dans cette organisation sont affiches.', 'context' => 'Intro text shown above the list of child parcours in a pack.'],
-    'lms.parcours_content.pack.empty' => ['text' => 'Aucun parcours visible n est actuellement disponible dans ce pack.', 'context' => 'Empty state shown when a pack exposes no visible child parcours.'],
-    'lms.parcours_content.pack.hidden_note' => ['text' => 'Actuellement masque pour les membres standard.', 'context' => 'Note shown on hidden child parcours cards.'],
+    'lms.parcours_content.pack.intro' => ['text' => 'Seuls les parcours compatibles avec les applications actives dans cette organisation sont affichés.', 'context' => 'Intro text shown above the list of child parcours in a pack.'],
+    'lms.parcours_content.pack.empty' => ['text' => 'Aucun parcours visible n’est actuellement disponible dans ce pack.', 'context' => 'Empty state shown when a pack exposes no visible child parcours.'],
+    'lms.parcours_content.pack.hidden_note' => ['text' => 'Actuellement masqué pour les membres standard.', 'context' => 'Note shown on hidden child parcours cards.'],
     'lms.parcours_content.pack.open' => ['text' => 'Ouvrir', 'context' => 'Button used to open a visible child parcours.'],
-    'lms.parcours_content.pack.hidden' => ['text' => 'Masque', 'context' => 'Disabled button label shown for hidden child parcours.'],
+    'lms.parcours_content.pack.hidden' => ['text' => 'Masqué', 'context' => 'Disabled button label shown for hidden child parcours.'],
     'lms.parcours_content.views.todo' => ['text' => 'Mes missions', 'context' => 'Button used to show pending missions in a parcours.'],
-    'lms.parcours_content.views.done' => ['text' => 'Terminees', 'context' => 'Button used to show completed missions in a parcours.'],
-    'lms.parcours_content.views.next' => ['text' => 'A venir', 'context' => 'Button used to show upcoming missions in a parcours.'],
+    'lms.parcours_content.views.done' => ['text' => 'Terminées', 'context' => 'Button used to show completed missions in a parcours.'],
+    'lms.parcours_content.views.next' => ['text' => 'À venir', 'context' => 'Button used to show upcoming missions in a parcours.'],
 ];
 
 $lang = omoLoadTranslationBundle('omo_lms_parcours_content', $sourceLang);

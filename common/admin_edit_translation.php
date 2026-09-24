@@ -64,7 +64,7 @@ function adminEditBuildSourceLang($object): array
             'context' => 'Longitude placeholder shown in adminEdit latlong fields.',
         ],
         'admin_edit.latlong.help.manual' => [
-            'text' => 'Renseignez latitude et longitude manuellement si la carte n est pas disponible.',
+            'text' => 'Renseignez la latitude et la longitude manuellement si la carte n’est pas disponible.',
             'context' => 'Help text shown when leaflet is unavailable in adminEdit latlong fields.',
         ],
         'admin_edit.latlong.help.map' => [

@@ -155,7 +155,7 @@ if (!function_exists('omoStatsSourceLang')) {
             'stats.form.intro' => ['text' => 'Définissez la série et, si nécessaire, sa courbe de référence.', 'context' => 'Introductory copy in the indicator form.'],
             'stats.form.responsible' => ['text' => 'Personne en charge', 'context' => 'Directly assigned person for an indicator.'],
             'stats.form.responsible_none' => ['text' => 'Aucune personne', 'context' => 'Empty direct responsible person option for an indicator.'],
-            'stats.form.responsible_help' => ['text' => 'Si aucune personne n est choisie, la responsabilité reste portée par l espace associé.', 'context' => 'Help text for the indicator responsible user selector.'],
+            'stats.form.responsible_help' => ['text' => 'Si aucune personne n’est choisie, la responsabilité reste portée par l’espace associé.', 'context' => 'Help text for the indicator responsible user selector.'],
             'stats.form.source_title' => ['text' => 'Source des valeurs', 'context' => 'Heading of the source choice in the indicator creation form.'],
             'stats.form.source_help' => ['text' => 'Choisissez une saisie manuelle ou une source automatique.', 'context' => 'Help text for the source choice in the indicator creation form.'],
             'stats.form.source_type' => ['text' => 'Type de source', 'context' => 'Label for the source type selector in the indicator creation form.'],

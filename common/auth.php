@@ -533,7 +533,7 @@ function commonGetAuthSharedSourceLang(): array
             'context' => 'Generic error shown when an authentication request is temporarily rate limited.'
         ],
         'auth.error.password_login_disabled' => [
-            'text' => 'La connexion avec mot de passe n est pas autorisee pour ce compte. Utilisez le code recu par e-mail.',
+            'text' => 'La connexion avec mot de passe n’est pas autorisée pour ce compte. Utilisez le code reçu par e-mail.',
             'context' => 'Error shown after a correct password is refused because the account only allows CalDAV or CardDAV use.'
         ],
         'auth.error.secondary_email_in_use' => [
@@ -778,7 +778,7 @@ function commonGetAuthJsSourceLang(): array
             'context' => 'Error shown when the TOTP second factor is wrong.'
         ],
         'auth.error.password_login_disabled' => [
-            'text' => 'La connexion avec mot de passe n est pas autorisee pour ce compte. Utilisez le code recu par e-mail.',
+            'text' => 'La connexion avec mot de passe n’est pas autorisée pour ce compte. Utilisez le code reçu par e-mail.',
             'context' => 'Error shown in the shared authentication JavaScript component after a correct password is refused because password login is disabled.'
         ],
         'auth.error.restart_login' => [
@@ -815,7 +815,7 @@ function commonGetAuthJsSourceLang(): array
             'context' => 'Title displayed above the TOTP second-factor instructions during login.'
         ],
         'auth.totp.instructions' => [
-            'text' => 'Ouvrez votre application de validation et saisissez le code a 6 chiffres.',
+            'text' => 'Ouvrez votre application de validation et saisissez le code à 6 chiffres.',
             'context' => 'Instruction displayed while a TOTP second factor is required.'
         ],
         'auth.totp.placeholder' => [
@@ -843,7 +843,7 @@ function commonGetAuthJsSourceLang(): array
             'context' => 'Status shown after the first login factor requires TOTP.'
         ],
         'auth.status.verifying_mfa' => [
-            'text' => 'Verification de la double authentification...',
+            'text' => 'Vérification de la double authentification…',
             'context' => 'Status shown while the TOTP code is being verified.'
         ],
         'auth.status.reset_email_sent' => [
@@ -2210,10 +2210,10 @@ function commonAuthSendSecurityAlert(array $payload)
             . '</td></tr>';
     }
 
-    $subject = '[' . $siteTitle . '] Limite de securite atteinte';
-    $body = '<p>Une limite de protection des connexions a ete atteinte.</p>'
+    $subject = '[' . $siteTitle . '] Limite de sécurité atteinte';
+    $body = '<p>Une limite de protection des connexions a été atteinte.</p>'
         . '<table>' . $rows . '</table>'
-        . '<p>Consultez le journal prive <code>../log/auth/authentication.jsonl</code> si une investigation est necessaire.</p>';
+        . '<p>Consultez le journal privé <code>../log/auth/authentication.jsonl</code> si une investigation est nécessaire.</p>';
     $sent = myHTMLMail([$fromAddress, $siteTitle], $recipient, $subject, $body);
     if (!$sent) {
         error_log('Unable to send authentication security alert.');

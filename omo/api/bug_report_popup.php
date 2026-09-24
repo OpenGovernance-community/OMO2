@@ -156,18 +156,18 @@ if ($currentUserId > 0 && $featureEnabled) {
 
     <div class="omo-bug-report-popup__header generic-drawer-header generic-drawer-header--sticky">
         <div class="generic-drawer-header__copy omo-bug-report-popup__header-copy omo-bug-report-popup__hero">
-            <div class="generic-card-title generic-card-title--eyebrow">Signalement rapide</div>
-            <h2 class="generic-card-title generic-card-title--large">Signaler un bug</h2>
-            <p>Ce formulaire cree une issue GitHub avec ta description et le contexte technique de la page en cours.</p>
+            <div class="generic-card-title generic-card-title--eyebrow"><?= omoApiEscape(githubBugReportT('eyebrow')) ?></div>
+            <h2 class="generic-card-title generic-card-title--large"><?= omoApiEscape(githubBugReportT('title')) ?></h2>
+            <p><?= omoApiEscape(githubBugReportT('intro')) ?></p>
             <div class="omo-bug-report-popup__meta">
                 <?php if ($destination['repo'] !== ''): ?>
-                    <span class="omo-bug-report-popup__badge">Repo: <?= htmlspecialchars($destination['repo'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="omo-bug-report-popup__badge"><?= omoApiEscape(githubBugReportT('repository', ['value' => $destination['repo']])) ?></span>
                 <?php endif; ?>
                 <?php if ($profileLabel !== ''): ?>
-                    <span class="omo-bug-report-popup__badge">User: <?= htmlspecialchars($profileLabel, ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="omo-bug-report-popup__badge"><?= omoApiEscape(githubBugReportT('user', ['value' => $profileLabel])) ?></span>
                 <?php endif; ?>
                 <?php if ($organizationLabel !== ''): ?>
-                    <span class="omo-bug-report-popup__badge">Organisation: <?= htmlspecialchars($organizationLabel, ENT_QUOTES, 'UTF-8') ?></span>
+                    <span class="omo-bug-report-popup__badge"><?= omoApiEscape(githubBugReportT('organization', ['value' => $organizationLabel])) ?></span>
                 <?php endif; ?>
             </div>
         </div>
@@ -179,13 +179,13 @@ if ($currentUserId > 0 && $featureEnabled) {
 
     <?php if ($currentUserId <= 0): ?>
         <div class="omo-bug-report-popup__error generic-section generic-section--stack">
-            <h3 class="generic-card-title generic-card-title--medium">Connexion requise</h3>
-            <p>Le signalement automatique vers GitHub n est disponible que pour un utilisateur connecte.</p>
+            <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(githubBugReportT('login_required')) ?></h3>
+            <p><?= omoApiEscape(githubBugReportT('login_required_help')) ?></p>
         </div>
     <?php elseif (!$featureEnabled): ?>
         <div class="omo-bug-report-popup__error generic-section generic-section--stack">
-            <h3 class="generic-card-title generic-card-title--medium">Fonction indisponible</h3>
-            <p>Le module de signalement n est pas configure sur ce serveur.</p>
+            <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(githubBugReportT('unavailable')) ?></h3>
+            <p><?= omoApiEscape(githubBugReportT('unavailable_help')) ?></p>
             <?php if ($configurationIssues !== []): ?>
                 <ul>
                     <?php foreach ($configurationIssues as $issue): ?>
@@ -194,26 +194,26 @@ if ($currentUserId > 0 && $featureEnabled) {
                 </ul>
             <?php endif; ?>
             <?php if (!patreonSupportUiIsEnabled()): ?>
-                <p>La configuration Patreon est egalement requise pour activer ce module.</p>
+                <p><?= omoApiEscape(githubBugReportT('patreon_required')) ?></p>
             <?php endif; ?>
         </div>
     <?php elseif (!$patreonConnected): ?>
         <div class="omo-bug-report-popup__error generic-section generic-section--stack">
-            <h3 class="generic-card-title generic-card-title--medium">Acces reserve aux comptes Patreon connectes</h3>
-            <p>Le Bug Tracking System est reserve aux personnes qui ont connecte un compte Patreon actif, meme sans abonnement payant.</p>
-            <p>Pour continuer, connecte ton compte Patreon puis reviens sur ce formulaire.</p>
+            <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(githubBugReportT('patreon_access')) ?></h3>
+            <p><?= omoApiEscape(githubBugReportT('patreon_access_help')) ?></p>
+            <p><?= omoApiEscape(githubBugReportT('patreon_connect_help')) ?></p>
             <div class="omo-bug-report-popup__connect-actions">
-                <button type="button" class="generic-action-button generic-action-button--main" id="omoBugReportPatreonConnect">Se connecter avec Patreon</button>
+                <button type="button" class="generic-action-button generic-action-button--main" id="omoBugReportPatreonConnect"><?= omoApiEscape(githubBugReportT('connect')) ?></button>
             </div>
         </div>
     <?php else: ?>
         <div class="omo-bug-report-popup__panel generic-section generic-section--stack">
-            <h3 class="generic-card-title generic-card-title--medium">Decrire le bug</h3>
-            <p class="omo-bug-report-popup__hint generic-help-text">Le contexte courant sera ajoute automatiquement: URL, titre de page, navigateur, langue, fuseau horaire, viewport, theme et utilisateur.</p>
+            <h3 class="generic-card-title generic-card-title--medium"><?= omoApiEscape(githubBugReportT('describe')) ?></h3>
+            <p class="omo-bug-report-popup__hint generic-help-text"><?= omoApiEscape(githubBugReportT('context_help')) ?></p>
 
             <form class="omo-bug-report-popup__form generic-stack generic-stack--roomy" id="omoBugReportForm">
                 <div class="omo-bug-report-popup__field generic-stack generic-stack--compact">
-                    <label for="omoBugReportTitle">Titre</label>
+                    <label for="omoBugReportTitle"><?= omoApiEscape(githubBugReportT('title_label')) ?></label>
                     <input
                         type="text"
                         id="omoBugReportTitle"
@@ -221,24 +221,24 @@ if ($currentUserId > 0 && $featureEnabled) {
                         class="generic-form-control"
                         maxlength="180"
                         required
-                        placeholder="Ex: La popup de partage reste vide"
+                        placeholder="<?= omoApiEscape(githubBugReportT('title_placeholder')) ?>"
                     >
                 </div>
 
                 <div class="omo-bug-report-popup__field generic-stack generic-stack--compact">
-                    <label for="omoBugReportDescription">Description</label>
+                    <label for="omoBugReportDescription"><?= omoApiEscape(githubBugReportT('description_label')) ?></label>
                     <textarea
                         id="omoBugReportDescription"
                         name="description"
                         class="generic-form-control"
                         rows="8"
                         required
-                        placeholder="Explique ce que tu faisais, ce qui s est passe, et ce que tu attendais."
+                        placeholder="<?= omoApiEscape(githubBugReportT('description_placeholder')) ?>"
                     ></textarea>
                 </div>
 
                 <div class="omo-bug-report-popup__field generic-stack generic-stack--compact">
-                    <label for="omoBugReportAttachments">Fichiers ou captures</label>
+                    <label for="omoBugReportAttachments"><?= omoApiEscape(githubBugReportT('attachments_label')) ?></label>
                     <input
                         type="file"
                         id="omoBugReportAttachments"
@@ -247,15 +247,15 @@ if ($currentUserId > 0 && $featureEnabled) {
                         accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.log,.zip"
                         multiple
                     >
-                    <p class="omo-bug-report-popup__hint generic-help-text">Les fichiers joints seront stockes sur le serveur et leur lien sera public dans l issue GitHub. Formats acceptes: PNG, JPG, GIF, WEBP, PDF, TXT, LOG, ZIP.</p>
+                    <p class="omo-bug-report-popup__hint generic-help-text"><?= omoApiEscape(githubBugReportT('attachments_help')) ?></p>
                     <div class="omo-bug-report-popup__file-list" id="omoBugReportFileList" hidden></div>
                 </div>
 
                 <div class="omo-bug-report-popup__feedback generic-feedback" id="omoBugReportFeedback" aria-live="polite"></div>
 
                 <div class="omo-bug-report-popup__actions generic-action-row">
-                    <button type="button" class="generic-action-button generic-action-button--secondary" id="omoBugReportClose">Fermer</button>
-                    <button type="submit" class="generic-action-button generic-action-button--main" id="omoBugReportSubmit">Envoyer vers GitHub</button>
+                    <button type="button" class="generic-action-button generic-action-button--secondary" id="omoBugReportClose"><?= omoApiEscape(githubBugReportT('close')) ?></button>
+                    <button type="submit" class="generic-action-button generic-action-button--main" id="omoBugReportSubmit"><?= omoApiEscape(githubBugReportT('send')) ?></button>
                 </div>
             </form>
         </div>
@@ -269,6 +269,16 @@ if ($currentUserId > 0 && $featureEnabled) {
     if (!root) {
         return;
     }
+
+    const texts = <?= json_encode([
+        'endpointMissing' => githubBugReportT('endpoint_missing'),
+        'attachmentWarning' => githubBugReportT('attachment_warning'),
+        'sending' => githubBugReportT('sending'),
+        'sent' => githubBugReportT('sent'),
+        'sendFailed' => githubBugReportT('send_failed'),
+        'viewIssue' => githubBugReportT('view_issue'),
+        'file' => githubBugReportT('file'),
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
     const patreonConnectButton = document.getElementById('omoBugReportPatreonConnect');
     const patreonConnectOrigin = <?= json_encode(patreonGetConnectOrigin(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
@@ -398,7 +408,7 @@ if ($currentUserId > 0 && $featureEnabled) {
 
         let html = escapeHtml(message);
         if (links && links.issue_url) {
-            html += ' <a href="' + escapeHtml(links.issue_url) + '" target="_blank" rel="noopener">Voir l issue</a>';
+            html += ' <a href="' + escapeHtml(links.issue_url) + '" target="_blank" rel="noopener">' + escapeHtml(texts.viewIssue) + '</a>';
         }
         feedback.innerHTML = html;
     }
@@ -418,7 +428,7 @@ if ($currentUserId > 0 && $featureEnabled) {
         fileList.hidden = false;
         fileList.innerHTML = files.map(function (file) {
             const sizeMb = file && file.size ? (file.size / (1024 * 1024)).toFixed(2) : '0.00';
-            return '<div>' + escapeHtml(file.name || 'Fichier') + ' (' + escapeHtml(sizeMb) + ' MB)</div>';
+            return '<div>' + escapeHtml(file.name || texts.file) + ' (' + escapeHtml(sizeMb) + ' MB)</div>';
         }).join('');
     }
 
@@ -464,7 +474,7 @@ if ($currentUserId > 0 && $featureEnabled) {
 
         const submitUrl = root.getAttribute('data-submit-url') || '';
         if (!submitUrl) {
-            setFeedback('Endpoint de signalement introuvable.', 'error');
+            setFeedback(texts.endpointMissing, 'error');
             return;
         }
 
@@ -478,8 +488,7 @@ if ($currentUserId > 0 && $featureEnabled) {
 
         const attachedFiles = attachmentsInput ? Array.from(attachmentsInput.files || []) : [];
         if (attachedFiles.length) {
-            const warningMessage = 'Attention: les donnees contenues dans les fichiers transmis seront visibles de tous via l issue GitHub. Continuer ?';
-            if (!window.confirm(warningMessage)) {
+            if (!window.confirm(texts.attachmentWarning)) {
                 return;
             }
         }
@@ -488,7 +497,7 @@ if ($currentUserId > 0 && $featureEnabled) {
         if (closeButton) {
             closeButton.disabled = true;
         }
-        setFeedback('Envoi vers GitHub...', 'info');
+        setFeedback(texts.sending, 'info');
 
         fetch(submitUrl, {
             method: 'POST',
@@ -517,13 +526,13 @@ if ($currentUserId > 0 && $featureEnabled) {
 
                 if (!result.ok || !result.data || !result.data.status) {
                     setFeedback(
-                        result.data && result.data.message ? result.data.message : 'Impossible d envoyer le signalement pour le moment.',
+                        result.data && result.data.message ? result.data.message : texts.sendFailed,
                         'error'
                     );
                     return;
                 }
 
-                setFeedback(result.data.message || 'Signalement envoye.', 'success', result.data);
+                setFeedback(result.data.message || texts.sent, 'success', result.data);
                 form.reset();
                 renderSelectedFiles();
                 if (titleInput) {
@@ -535,7 +544,7 @@ if ($currentUserId > 0 && $featureEnabled) {
                 if (closeButton) {
                     closeButton.disabled = false;
                 }
-                setFeedback('Impossible d envoyer le signalement pour le moment.', 'error');
+                setFeedback(texts.sendFailed, 'error');
             });
     });
 

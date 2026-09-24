@@ -43,7 +43,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Fallback drawer title for the OMO topbar when no specific title is provided.',
         ],
         'topbar.organization_level.open_aria' => [
-            'text' => 'Ouvrir les parametres de l organisation (niveau {level}).',
+            'text' => 'Ouvrir les paramètres de l’organisation (niveau {level}).',
             'context' => 'Accessible label for the organization interface level shortcut in the OMO topbar.',
         ],
         'topbar.help.button' => [
@@ -55,7 +55,7 @@ function omoGetTopbarSourceLang(): array
             'context' => 'Fallback label for a help item when no label is available in the OMO topbar.',
         ],
         'topbar.help.faq.description' => [
-            'text' => 'Acces aux questions les plus courantes, avec moteur de recherche pour trouver facilement la reponse a ses questions.',
+            'text' => 'Accès aux questions les plus courantes, avec un moteur de recherche pour trouver facilement la réponse à vos questions.',
             'context' => 'Description of the FAQ help entry in the OMO topbar.',
         ],
         'topbar.help.faq.label' => [

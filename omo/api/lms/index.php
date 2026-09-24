@@ -26,13 +26,19 @@ $sourceLang = [
     'lms.index.section.packs' => ['text' => 'Packs de parcours', 'context' => 'Section title listing parcours packs.'],
     'lms.index.pack.kicker' => ['text' => 'Pack', 'context' => 'Small overline shown on pack cards.'],
     'lms.index.section.completed_intro' => ['text' => 'Retrouvez ici les parcours deja completes a 100%.', 'context' => 'Intro text shown above the completed parcours section.'],
-    'lms.index.section.packs_intro' => ['text' => 'Ces packs regroupent plusieurs parcours. Les parcours lies a des applications desactivees y restent automatiquement masques.', 'context' => 'Intro text shown above the parcours packs section.'],
+    'lms.index.section.packs_intro' => ['text' => 'Ces packs regroupent plusieurs parcours. Les parcours liés à des applications désactivées y restent automatiquement masqués.', 'context' => 'Intro text shown above the parcours packs section.'],
     'lms.index.alert.required_title' => ['text' => 'Le titre est obligatoire.', 'context' => 'Alert shown when a title is required before submitting a form.'],
     'lms.index.alert.required_resume' => ['text' => 'Le résumé est obligatoire.', 'context' => 'Alert shown when a summary is required before submitting a mission form.'],
     'lms.index.alert.load_form' => ['text' => 'Impossible de charger le formulaire de parcours.', 'context' => 'Alert shown when the parcours create form cannot be loaded.'],
     'lms.index.alert.load_catalog' => ['text' => 'Impossible de charger le catalogue de parcours.', 'context' => 'Alert shown when the import catalog cannot be loaded.'],
     'lms.index.alert.load_parcours' => ['text' => 'Impossible de charger ce parcours.', 'context' => 'Alert shown when a parcours editor cannot be loaded.'],
     'lms.index.alert.load_mission' => ['text' => 'Impossible de charger cette mission.', 'context' => 'Alert shown when a mission editor cannot be loaded.'],
+    'lms.index.alert.create_mission' => ['text' => 'Impossible de créer cette mission.', 'context' => 'Alert shown when mission creation fails.'],
+    'lms.index.alert.save_mission' => ['text' => 'Impossible d’enregistrer cette mission.', 'context' => 'Alert shown when mission editing fails.'],
+    'lms.index.alert.save_mission_refresh' => ['text' => 'Mission enregistrée, mais impossible de recharger son éditeur.', 'context' => 'Alert shown when a mission saves but its editor cannot be reloaded.'],
+    'lms.index.alert.add_prerequisite' => ['text' => 'Impossible d’ajouter ce prérequis.', 'context' => 'Alert shown when adding a mission prerequisite fails.'],
+    'lms.index.alert.remove_prerequisite' => ['text' => 'Impossible de retirer ce prérequis.', 'context' => 'Alert shown when removing a mission prerequisite fails.'],
+    'lms.index.confirm.remove_prerequisite' => ['text' => 'Retirer ce prérequis de mission ?', 'context' => 'Confirmation shown before removing a mission prerequisite.'],
     'lms.index.alert.create_homework' => ['text' => 'Impossible de créer ce devoir.', 'context' => 'Alert shown when homework creation fails.'],
     'lms.index.alert.create_question' => ['text' => 'Impossible de créer cette question.', 'context' => 'Alert shown when question creation fails.'],
     'lms.index.alert.reorder_homeworks' => ['text' => 'Impossible de réordonner les devoirs.', 'context' => 'Alert shown when homework reordering fails.'],
@@ -47,6 +53,7 @@ $sourceLang = [
     'lms.index.form.remove' => ['text' => 'Supprimer', 'context' => 'Button label used to remove an answer choice row.'],
     'lms.index.form.create_homework' => ['text' => 'Créer le devoir', 'context' => 'Submit button label used when creating a homework.'],
     'lms.index.form.update_question' => ['text' => 'Mettre à jour la question', 'context' => 'Submit button label used when editing a mission question.'],
+    'lms.index.form.create_question' => ['text' => 'Créer la question', 'context' => 'Submit button label used when creating a mission question.'],
     'lms.index.delete.preview_failed' => ['text' => 'Impossible de préparer la suppression de ce parcours.', 'context' => 'Alert shown when the parcours deletion preview cannot be loaded.'],
     'lms.index.delete.confirm_named' => ['text' => 'Supprimer le parcours "{title}" ?', 'context' => 'Fallback confirmation message used before deleting a named parcours.'],
     'lms.index.delete.confirm_generic' => ['text' => 'Supprimer ce parcours ?', 'context' => 'Fallback confirmation message used before deleting a parcours without title.'],
@@ -826,6 +833,7 @@ const lmsIndexText = <?php echo json_encode([
     'removeLabel' => lmsIndexT('lms.index.form.remove'),
     'createHomework' => lmsIndexT('lms.index.form.create_homework'),
     'updateQuestion' => lmsIndexT('lms.index.form.update_question'),
+    'createQuestion' => lmsIndexT('lms.index.form.create_question'),
     'requiredTitle' => lmsIndexT('lms.index.alert.required_title'),
     'requiredResume' => lmsIndexT('lms.index.alert.required_resume'),
     'keepTwoChoices' => lmsIndexT('lms.index.alert.keep_two_choices'),
@@ -841,6 +849,12 @@ const lmsIndexText = <?php echo json_encode([
     'loadCatalogError' => lmsIndexT('lms.index.alert.load_catalog'),
     'loadParcoursError' => lmsIndexT('lms.index.alert.load_parcours'),
     'loadMissionError' => lmsIndexT('lms.index.alert.load_mission'),
+    'createMissionError' => lmsIndexT('lms.index.alert.create_mission'),
+    'saveMissionError' => lmsIndexT('lms.index.alert.save_mission'),
+    'saveMissionRefreshError' => lmsIndexT('lms.index.alert.save_mission_refresh'),
+    'addPrerequisiteError' => lmsIndexT('lms.index.alert.add_prerequisite'),
+    'removePrerequisiteError' => lmsIndexT('lms.index.alert.remove_prerequisite'),
+    'removePrerequisiteConfirm' => lmsIndexT('lms.index.confirm.remove_prerequisite'),
     'deletePreviewError' => lmsIndexT('lms.index.delete.preview_failed'),
     'deleteConfirmNamed' => lmsIndexT('lms.index.delete.confirm_named'),
     'deleteConfirmGeneric' => lmsIndexT('lms.index.delete.confirm_generic'),
@@ -1458,10 +1472,10 @@ function initMissionEditorDrawer() {
                     initLmsDrawerContent();
                 })
                 .catch(() => {
-                    window.alert('Mission enregistree, mais impossible de recharger son editeur.');
+                    window.alert(lmsIndexText.saveMissionRefreshError);
                 });
         } catch (error) {
-            window.alert(error && error.message ? error.message : 'Impossible d enregistrer cette mission.');
+            window.alert(error && error.message ? error.message : lmsIndexText.saveMissionError);
         } finally {
             isSubmitting = false;
             submitButton.disabled = false;
@@ -1747,12 +1761,12 @@ function initParcoursMissionManager() {
 
                 const payload = await response.json();
                 if (!response.ok || !payload || payload.success !== true) {
-                    throw new Error(payload && payload.message ? payload.message : 'Impossible de creer cette mission.');
+                    throw new Error(payload && payload.message ? payload.message : lmsIndexText.createMissionError);
                 }
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : 'Impossible de creer cette mission.');
+                window.alert(error && error.message ? error.message : lmsIndexText.createMissionError);
             } finally {
                 isCreatingMission = false;
                 creatorSubmit.disabled = false;
@@ -1932,7 +1946,7 @@ function initMissionDependencyManager() {
                 return;
             }
 
-            if (!window.confirm('Retirer ce prerequis de mission ?')) {
+            if (!window.confirm(lmsIndexText.removePrerequisiteConfirm)) {
                 return;
             }
 
@@ -1953,12 +1967,12 @@ function initMissionDependencyManager() {
 
                 const payload = await response.json();
                 if (!response.ok || !payload || payload.success !== true) {
-                    throw new Error(payload && payload.message ? payload.message : 'Impossible de retirer ce prerequis.');
+                    throw new Error(payload && payload.message ? payload.message : lmsIndexText.removePrerequisiteError);
                 }
 
                 await refreshMissionEditor(parcoursId, missionId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : 'Impossible de retirer ce prerequis.');
+                window.alert(error && error.message ? error.message : lmsIndexText.removePrerequisiteError);
             } finally {
                 button.disabled = false;
             }
@@ -2011,12 +2025,12 @@ function initMissionDependencyManager() {
 
                 const payload = await response.json();
                 if (!response.ok || !payload || payload.success !== true) {
-                    throw new Error(payload && payload.message ? payload.message : 'Impossible d ajouter ce prerequis.');
+                    throw new Error(payload && payload.message ? payload.message : lmsIndexText.addPrerequisiteError);
                 }
 
                 await refreshMissionEditor(parcoursId, missionId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : 'Impossible d ajouter ce prerequis.');
+                window.alert(error && error.message ? error.message : lmsIndexText.addPrerequisiteError);
             } finally {
                 button.disabled = false;
             }
@@ -2116,12 +2130,12 @@ function initParcoursPrerequisiteManager() {
 
                 const payload = await response.json();
                 if (!response.ok || !payload || payload.success !== true) {
-                    throw new Error(payload && payload.message ? payload.message : 'Impossible de retirer ce prerequis.');
+                    throw new Error(payload && payload.message ? payload.message : lmsIndexText.removePrerequisiteError);
                 }
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : 'Impossible de retirer ce prerequis.');
+                window.alert(error && error.message ? error.message : lmsIndexText.removePrerequisiteError);
             } finally {
                 button.disabled = false;
             }
@@ -2173,12 +2187,12 @@ function initParcoursPrerequisiteManager() {
 
                 const payload = await response.json();
                 if (!response.ok || !payload || payload.success !== true) {
-                    throw new Error(payload && payload.message ? payload.message : 'Impossible d ajouter ce prerequis.');
+                    throw new Error(payload && payload.message ? payload.message : lmsIndexText.addPrerequisiteError);
                 }
 
                 await refreshParcoursMissionManager(parcoursId);
             } catch (error) {
-                window.alert(error && error.message ? error.message : 'Impossible d ajouter ce prerequis.');
+                window.alert(error && error.message ? error.message : lmsIndexText.addPrerequisiteError);
             } finally {
                 button.disabled = false;
             }
@@ -2513,7 +2527,7 @@ function resetMissionQuestionForm(questionForm, submitButton) {
     }
 
     questionForm.hidden = true;
-    setMissionFormButtonLabel(submitButton, 'Creer la question');
+    setMissionFormButtonLabel(submitButton, lmsIndexText.createQuestion);
 }
 
 function openMissionQuestionFormForCreate(questionForm, submitButton) {
@@ -2523,7 +2537,7 @@ function openMissionQuestionFormForCreate(questionForm, submitButton) {
 
     resetMissionQuestionForm(questionForm, submitButton);
     questionForm.hidden = false;
-    setMissionFormButtonLabel(submitButton, 'Creer la question');
+    setMissionFormButtonLabel(submitButton, lmsIndexText.createQuestion);
 }
 
 function openMissionQuestionFormForEdit(questionForm, submitButton, item) {
@@ -3025,7 +3039,7 @@ async function deleteParcoursFromCard(event, parcoursId) {
         });
         const payload = await response.json();
         if (!response.ok || !payload || !payload.status) {
-            throw new Error(payload && payload.message ? payload.message : 'Impossible de supprimer ce parcours.');
+            throw new Error(payload && payload.message ? payload.message : lmsIndexText.deleteFailed);
         }
 
         window.alert(payload.message || lmsIndexText.deleteSuccess);

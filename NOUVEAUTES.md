@@ -1,5 +1,9 @@
 # Journal Des Nouveautes
 
+- FAQ : les utilisateurs connectés peuvent envoyer une question sans réponse depuis les résultats de recherche. Elle reste masquée au public, apparaît dans la liste de l’administration avec son auteur et sa description, et l’administrateur peut y répondre puis choisir de la publier. La notification part aux comptes administrateurs du site actifs avec un lien direct `#|faq-ID` qui ouvre l’édition d’une demande inactive ; l’auteur reçoit la réponse. Migrations SQL ajoutées pour les demandes et les réponses nulles en attente.
+
+- Traductions : les textes du signalement GitHub partagent maintenant un bloc de traduction pour le formulaire, les retours JavaScript et les réponses de l’API.
+
 - Regles : l enregistrement, la suppression et les erreurs utilisent les alertes temporaires de la topbar. Seuls le compteur et la liste des regles sont actualises apres une modification, sans recharger la page.
 
 - Regles : les organisations sans structure peuvent afficher, creer et gerer des regles liees directement a leur organisation. Ces regles restent visibles a la racine apres l ajout d une structure. Le choix d autorite n apparait que si des autorites existent dans l espace courant.

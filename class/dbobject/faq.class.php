@@ -23,17 +23,19 @@ class FAQ extends DbObject
 	public static function rules()
 	{
 		return [
-			[['question', 'answer'], 'required'],
+			[['question'], 'required'],
 			[['id', 'IDhowto', 'displayorder', 'viewcount', 'total_votes'], 'integer'],
-			[['IDorganization', 'IDholon', 'IDparcours', 'IDapplication'], 'fk'],
+			[['IDorganization', 'IDholon', 'IDparcours', 'IDapplication', 'request_user_id'], 'fk'],
 			[['positive_score', 'negative_score', 'reliability'], 'float'],
 			[['question'], 'string'],
 			[['video'], 'string'],
 			[['answer'], 'text'],
 			[['detail'], 'html'],
+			[['request_description'], 'text'],
+			[['request_author_name', 'request_author_email'], 'string'],
 			[['image'], 'image'],
 			[['isactive'], 'boolean'],
-			[['created', 'updated', 'reliability_updated_at', 'score_decayed_at'], 'datetime'],
+			[['created', 'updated', 'reliability_updated_at', 'score_decayed_at', 'request_answered_at'], 'datetime'],
 			[['id'], 'safe'],
 		];
 	}
@@ -53,7 +55,10 @@ class FAQ extends DbObject
 			'image' => 'Image',
 			'video' => 'Video',
 			'displayorder' => 'Ordre',
-			'isactive' => 'Active',
+			'isactive' => 'Afficher dans la FAQ publique',
+			'request_description' => 'Description du problème',
+			'request_author_name' => 'Auteur de la demande',
+			'request_author_email' => 'E-mail de l auteur',
 			'created' => 'Creee le',
 			'updated' => 'Mise a jour le',
 			'viewcount' => 'Nombre de vues',
@@ -298,6 +303,38 @@ class FAQ extends DbObject
 
 		self::$_hasApplicationColumn = self::hasColumn('IDapplication');
 		return self::$_hasApplicationColumn;
+	}
+
+	public static function hasRequestColumns()
+	{
+		foreach (array('request_user_id', 'request_author_name', 'request_author_email', 'request_description', 'request_answered_at') as $columnName) {
+			if (!self::hasColumn($columnName)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	public static function getSystemAdminEmails()
+	{
+		$admins = new ArrayUser();
+		$admins->load(array(
+			'where' => array(
+				array('field' => 'siteadmin', 'value' => 1),
+				array('field' => 'active', 'value' => 1),
+			),
+			'hydrate' => array('email'),
+		));
+		$emails = array();
+		foreach ($admins as $admin) {
+			$email = trim((string)$admin->get('email'));
+			if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				$emails[mb_strtolower($email, 'UTF-8')] = $email;
+			}
+		}
+
+		return array_values($emails);
 	}
 
 	public static function getPopupOrderBy()

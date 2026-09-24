@@ -8,7 +8,7 @@ require_once __DIR__ . '/inc/parcours_editor.php';
 
 $sourceLang = [
     'lms.parcours_create.error.access_denied' => [
-        'text' => 'Acces refuse.',
+        'text' => 'Accès refusé.',
         'context' => 'Error shown when the user cannot access the parcours editor.',
     ],
     'lms.parcours_create.error.not_found' => [
@@ -16,27 +16,27 @@ $sourceLang = [
         'context' => 'Error shown when the requested parcours cannot be found.',
     ],
     'lms.parcours_create.error.cannot_edit' => [
-        'text' => 'Vous n avez pas le droit de modifier ce parcours.',
+        'text' => 'Vous n’avez pas le droit de modifier ce parcours.',
         'context' => 'Error shown when the user cannot edit the requested parcours.',
     ],
     'lms.parcours_create.error.cannot_create' => [
-        'text' => 'Vous n avez pas le droit de creer un parcours dans ce contexte.',
+        'text' => 'Vous n’avez pas le droit de créer un parcours dans ce contexte.',
         'context' => 'Error shown when the user cannot create a parcours in the current context.',
     ],
     'lms.parcours_create.drawer.edit_title' => [
-        'text' => 'Editer le parcours',
+        'text' => 'Éditer le parcours',
         'context' => 'Drawer title when editing an existing parcours.',
     ],
     'lms.parcours_create.drawer.create_title' => [
-        'text' => 'Creer un parcours',
+        'text' => 'Créer un parcours',
         'context' => 'Drawer title when creating a new parcours.',
     ],
     'lms.parcours_create.drawer.edit_intro' => [
-        'text' => 'Mettez a jour le titre, la description et l image de ce parcours.',
+        'text' => 'Mettez à jour le titre, la description et l’image de ce parcours.',
         'context' => 'Intro text shown when editing a parcours.',
     ],
     'lms.parcours_create.drawer.create_intro' => [
-        'text' => 'Renseignez le titre, la description et l image du parcours. Il sera ensuite ajoute a l organisation courante.',
+        'text' => 'Renseignez le titre, la description et l’image du parcours. Il sera ensuite ajouté à l’organisation courante.',
         'context' => 'Intro text shown when creating a parcours.',
     ],
     'lms.parcours_create.action.save' => [
@@ -44,7 +44,7 @@ $sourceLang = [
         'context' => 'Primary action used to save an existing parcours.',
     ],
     'lms.parcours_create.action.create' => [
-        'text' => 'Creer le parcours',
+        'text' => 'Créer le parcours',
         'context' => 'Primary action used to create a new parcours.',
     ],
     'lms.parcours_create.action.cancel' => [
@@ -52,7 +52,7 @@ $sourceLang = [
         'context' => 'Secondary action used to close the parcours editor drawer.',
     ],
     'lms.parcours_create.note.after_create' => [
-        'text' => 'Vous pourrez ajouter et reordonner les missions ou les parcours du pack juste apres la creation.',
+        'text' => 'Vous pourrez ajouter et réordonner les missions ou les parcours du pack juste après sa création.',
         'context' => 'Hint shown below the parcours form before the parcours exists.',
     ],
 ];

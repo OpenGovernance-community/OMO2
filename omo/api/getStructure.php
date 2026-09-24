@@ -9,7 +9,7 @@ function omoGetStructurePanelSourceLang(): array
             'context' => 'Structure action menu item used to export the current structure.',
         ],
         'structure.actions.export.download' => [
-            'text' => 'Telecharger',
+            'text' => 'Télécharger',
             'context' => 'Button label used in the structure export modal to start a file download.',
         ],
         'structure.actions.export.format.csv' => [
@@ -17,7 +17,7 @@ function omoGetStructurePanelSourceLang(): array
             'context' => 'Label used for the CSV structure export format.',
         ],
         'structure.actions.export.format.csv_description' => [
-            'text' => 'Vue a plat des holons. Les droits sont listes dans une cellule avec leur code et leur portee.',
+            'text' => 'Vue à plat des holons. Les droits sont listés dans une cellule avec leur code et leur portée.',
             'context' => 'Description shown for the CSV structure export format.',
         ],
         'structure.actions.export.format.json' => [
@@ -25,7 +25,7 @@ function omoGetStructurePanelSourceLang(): array
             'context' => 'Label used for the JSON structure export format.',
         ],
         'structure.actions.export.format.json_description' => [
-            'text' => 'Format complet pour reimporter la structure. Il inclut aussi les droits des holons et des templates.',
+            'text' => 'Format complet pour réimporter la structure. Il inclut aussi les droits des holons et des modèles.',
             'context' => 'Description shown for the JSON structure export format.',
         ],
         'structure.actions.export.format.xml' => [
@@ -33,11 +33,11 @@ function omoGetStructurePanelSourceLang(): array
             'context' => 'Label used for the XML structure export format.',
         ],
         'structure.actions.export.format.xml_description' => [
-            'text' => 'Format structure et lisible, avec les memes codes de droits que le JSON.',
+            'text' => 'Format structuré et lisible, avec les mêmes codes de droits que le JSON.',
             'context' => 'Description shown for the XML structure export format.',
         ],
         'structure.actions.export.modal_intro' => [
-            'text' => 'Choisissez le format d export de cette structure.',
+            'text' => 'Choisissez le format d’export de cette structure.',
             'context' => 'Intro text shown in the structure export modal.',
         ],
         'structure.actions.export.modal_title' => [
@@ -53,7 +53,7 @@ function omoGetStructurePanelSourceLang(): array
             'context' => 'Structure action menu item used to print the current structure.',
         ],
         'structure.actions.refresh' => [
-            'text' => 'Rafraichir',
+            'text' => 'Rafraîchir',
             'context' => 'Structure action menu item that clears caches and reloads the current structure.',
         ],
         'structure.actions.share' => [
@@ -65,19 +65,19 @@ function omoGetStructurePanelSourceLang(): array
             'context' => 'Fallback browser name used in structure warnings when the exact browser cannot be detected.',
         ],
         'structure.error.organization_access_denied' => [
-            'text' => 'Acces refuse a cette organisation.',
+            'text' => 'Accès refusé à cette organisation.',
             'context' => 'Error message shown when the structure view cannot access the current organization.',
         ],
         'structure.list.empty_search' => [
-            'text' => 'Aucun noeud ne correspond a cette recherche.',
+            'text' => 'Aucun nœud ne correspond à cette recherche.',
             'context' => 'Message shown in the structure list view when the current search returns no visible nodes.',
         ],
         'structure.list.properties.hide_aria' => [
-            'text' => 'Masquer les proprietes',
+            'text' => 'Masquer les propriétés',
             'context' => 'Aria label for the button that collapses role details in the structure list view.',
         ],
         'structure.list.properties.show_aria' => [
-            'text' => 'Afficher les proprietes',
+            'text' => 'Afficher les propriétés',
             'context' => 'Aria label for the button that expands role details in the structure list view.',
         ],
         'structure.list.search.placeholder' => [
@@ -105,15 +105,15 @@ function omoGetStructurePanelSourceLang(): array
             'context' => 'Message shown when the current organization has no visible structure to display.',
         ],
         'structure.message.disabled' => [
-            'text' => 'L app Structure est desactivee pour cette organisation.',
+            'text' => 'L’application Structure est désactivée pour cette organisation.',
             'context' => 'Message shown when the Structure app is disabled for the current organization.',
         ],
         'structure.placeholder.action' => [
-            'text' => 'Ouvrir l app Structure',
+            'text' => 'Ouvrir l’application Structure',
             'context' => 'Call to action shown in the main structure panel when the organization has no structure yet.',
         ],
         'structure.placeholder.text' => [
-            'text' => 'Aucune structure n est encore definie pour cette organisation. Ouvrez l app Structure dans la leftbar pour creer une structure vide, importer un export ou partir d un modele.',
+            'text' => 'Aucune structure n’est encore définie pour cette organisation. Ouvrez l’application Structure dans la barre latérale pour créer une structure vide, importer un export ou partir d’un modèle.',
             'context' => 'Informational text shown in the main structure panel when the organization has no structure yet.',
         ],
         'structure.placeholder.title' => [
@@ -129,15 +129,15 @@ function omoGetStructurePanelSourceLang(): array
             'context' => 'Short toggle label used to switch between organization graph view and list view in the structure panel.',
         ],
         'structure.warning.brave' => [
-            'text' => 'Brave semble bloquer la lecture du canvas utilisee pour la navigation graphique, probablement a cause du bouclier anti-empreinte numerique. La vue liste a ete activee pour continuer a naviguer. Vous pouvez aussi assouplir le bouclier pour ce site.',
+            'text' => 'Brave semble bloquer la lecture du canevas utilisée pour la navigation graphique, probablement à cause du bouclier anti-empreinte numérique. La vue en liste a été activée pour continuer à naviguer. Vous pouvez aussi assouplir le bouclier pour ce site.',
             'context' => 'Warning shown in the structure panel when Brave blocks canvas pixel reading.',
         ],
         'structure.warning.dismiss_aria' => [
-            'text' => 'Reduire ce message',
+            'text' => 'Réduire ce message',
             'context' => 'Aria label for the button that collapses the structure browser warning.',
         ],
         'structure.warning.pixel_mismatch' => [
-            'text' => '{browserName} bloque ou altere la lecture du canvas utilisee pour la navigation graphique. La vue liste a ete activee pour continuer a naviguer.',
+            'text' => '{browserName} bloque ou altère la lecture du canevas utilisée pour la navigation graphique. La vue en liste a été activée pour continuer à naviguer.',
             'context' => 'Warning shown in the structure panel when the browser alters canvas pixel reading.',
         ],
         'structure.warning.restore' => [
@@ -145,7 +145,7 @@ function omoGetStructurePanelSourceLang(): array
             'context' => 'Button label used to reopen the collapsed browser warning in the structure panel.',
         ],
         'structure.warning.unavailable' => [
-            'text' => 'La lecture du canvas utilisee pour la navigation graphique n est pas disponible dans {browserName}. La vue liste a ete activee pour continuer a naviguer.',
+            'text' => 'La lecture du canevas utilisée pour la navigation graphique n’est pas disponible dans {browserName}. La vue en liste a été activée pour continuer à naviguer.',
             'context' => 'Warning shown in the structure panel when canvas pixel reading is unavailable in the current browser.',
         ],
     ];

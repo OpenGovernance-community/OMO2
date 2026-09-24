@@ -92,11 +92,11 @@ $sourceLang = [
         'context' => 'Title shown on the organization import card.',
     ],
     'app.directory.model.action' => [
-        'text' => 'Choisir un modele',
+        'text' => 'Choisir un modèle',
         'context' => 'Action label displayed on the public organization model card.',
     ],
     'app.directory.model.aria_label' => [
-        'text' => 'Creer une organisation a partir d un modele',
+        'text' => 'Créer une organisation à partir d’un modèle',
         'context' => 'Aria label for the public organization model card.',
     ],
     'app.directory.model.badge' => [
@@ -108,11 +108,11 @@ $sourceLang = [
         'context' => 'Subtitle displayed on the public organization model card.',
     ],
     'app.directory.model.modal_title' => [
-        'text' => 'Creer a partir d un modele',
+        'text' => 'Créer à partir d’un modèle',
         'context' => 'Title shown in the create-from-model popup.',
     ],
     'app.directory.model.title' => [
-        'text' => 'Creer a partir d un modele',
+        'text' => 'Créer à partir d’un modèle',
         'context' => 'Title displayed on the public organization model card.',
     ],
     'app.directory.description.empty.patreon_connect' => [
@@ -201,11 +201,11 @@ $sourceLang = [
         'context' => 'Menu item label used to leave an organization from the directory page.',
     ],
     'app.directory.menu.share_as_model' => [
-        'text' => 'Partager comme modele',
+        'text' => 'Partager comme modèle',
         'context' => 'Menu item used to publish an organization as a public model.',
     ],
     'app.directory.menu.stop_sharing_as_model' => [
-        'text' => 'Ne plus partager comme modele',
+        'text' => 'Ne plus partager comme modèle',
         'context' => 'Menu item used to unpublish an organization model.',
     ],
     'app.directory.modal.close' => [
@@ -1484,7 +1484,7 @@ if (
                 }
 
                 window.commonTopbarOpenModal(
-                    button.getAttribute('data-modal-title') || 'Demander l acces',
+                    button.getAttribute('data-modal-title') || 'Demander l’accès',
                     button.getAttribute('data-modal-url') || '',
                     'fetch'
                 );

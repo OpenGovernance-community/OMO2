@@ -175,7 +175,7 @@ function commonExternalCalendarResolveHref($base, $href)
 function commonExternalCalendarHttpRequest($url, $username, $password, $requestBody, $method = 'PROPFIND', $depth = 0, $redirects = 0, array $extraHeaders = [], ?float $deadline = null)
 {
     if ($deadline !== null && microtime(true) >= $deadline) {
-        return ['status' => false, 'message' => 'Le delai de synchronisation est depasse.'];
+        return ['status' => false, 'message' => 'Le délai de synchronisation est dépassé.'];
     }
     if (!function_exists('curl_init')) {
         return ['status' => false, 'message' => 'L extension cURL est indisponible sur le serveur.'];
@@ -183,7 +183,7 @@ function commonExternalCalendarHttpRequest($url, $username, $password, $requestB
 
     $url = commonExternalCalendarNormalizeUrl($url);
     if ($url === null) {
-        return ['status' => false, 'message' => 'Adresse CalDAV HTTPS invalide ou non autorisee.'];
+        return ['status' => false, 'message' => 'Adresse CalDAV HTTPS invalide ou non autorisée.'];
     }
     // Pin the checked DNS result so validation and connection use the same address.
     $host = parse_url($url, PHP_URL_HOST);
@@ -193,7 +193,7 @@ function commonExternalCalendarHttpRequest($url, $username, $password, $requestB
         $addresses = array_column(@dns_get_record($host, DNS_AAAA) ?: [], 'ipv6');
     }
     if (!$addresses || (!commonExternalCalendarAllowPrivateHosts() && count(array_filter($addresses, 'commonExternalCalendarIsPublicIpAddress')) !== count($addresses))) {
-        return ['status' => false, 'message' => 'Adresse du serveur CalDAV non autorisee.'];
+        return ['status' => false, 'message' => 'Adresse du serveur CalDAV non autorisée.'];
     }
     $responseBody = '';
     $location = '';
@@ -238,18 +238,18 @@ function commonExternalCalendarHttpRequest($url, $username, $password, $requestB
     $result = curl_exec($curl);
     $statusCode = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
     if ($result === false) {
-        return ['status' => false, 'message' => 'Connexion CalDAV impossible (reseau, certificat ou reponse trop volumineuse).'];
+        return ['status' => false, 'message' => 'Connexion CalDAV impossible (réseau, certificat ou réponse trop volumineuse).'];
     }
     if (in_array($statusCode, [301, 302, 303, 307, 308], true)) {
         $target = commonExternalCalendarResolveHref($url, $location);
         if ($target === null || $redirects >= 4) {
-            return ['status' => false, 'message' => 'Redirection CalDAV refusee. Utilisez directement l adresse HTTPS du serveur de synchronisation.'];
+            return ['status' => false, 'message' => 'Redirection CalDAV refusée. Utilisez directement l’adresse HTTPS du serveur de synchronisation.'];
         }
         return commonExternalCalendarHttpRequest($target, $username, $password, $requestBody, $method, $depth, $redirects + 1, $extraHeaders, $deadline);
     }
     if ($statusCode < 200 || $statusCode >= 300) {
         return ['status' => false, 'code' => $statusCode, 'message' => in_array($statusCode, [401, 403], true)
-            ? 'Acces refuse : verifiez l identifiant de synchronisation et le mot de passe d application.'
+            ? 'Accès refusé : vérifiez l’identifiant de synchronisation et le mot de passe d’application.'
             : 'Le serveur CalDAV a repondu avec le code HTTP ' . $statusCode . '.'];
     }
 
