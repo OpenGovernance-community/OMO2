@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- Affichage : les pages et fenêtres chargées à la demande attendent leurs feuilles de style et l’initialisation de leurs scripts avant de montrer leur contenu, ce qui évite l’apparition fugace d’une mise en page brute lors de la première visite. Un délai de secours évite de bloquer l’écran si une ressource ne répond pas.
+
 - Profil : les formulaires général et d’organisation utilisent les sections et champs communs d’édition, avec une présentation plus aérée, une photo mieux placée et des actions alignées. L’onglet de prévisualisation et son rendu ont été retirés.
 
 - Styles et scripts : les ressources propres à un écran sont rapprochées de sa page PHP, celles partagées dans OMO sont rangées sous `omo/assets/`, et les composants utilisables par plusieurs applications restent sous `common/`. Les références gardent leur version automatique liée au contenu.

@@ -239,6 +239,10 @@
 					window.__omoPopupCleanup();
 				}
 
+				Array.from(temp.querySelectorAll('link[rel~="stylesheet"]'))
+					.filter(function (link) { return !nextRoot.contains(link); })
+					.reverse()
+					.forEach(function (link) { nextRoot.insertBefore(link, nextRoot.firstChild); });
 				activeRoot.parentNode.replaceChild(nextRoot, activeRoot);
 				return window.commonExecuteFragmentScripts(nextRoot, {
                     scripts: fetchedScripts, target: nextRoot,

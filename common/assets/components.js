@@ -1,6 +1,8 @@
 (function () {
     var tabContainerCount = 0;
     var contextHelpPositionFrame = 0;
+    var fragmentDisplays = new WeakMap();
+    var stylesheetLoads = new WeakMap();
 
     function toArray(items) {
         return Array.prototype.slice.call(items || []);
@@ -11,7 +13,8 @@
     function executeFragmentScripts(container, options) {
         options = options || {};
         var scripts = options.scripts || toArray(container.querySelectorAll('script'));
-        return awaitStylesheets(container).then(function () {
+        var reveal = deferFragmentDisplay(container);
+        return waitForStylesheets(container).then(function () {
         return scripts.reduce(function (sequence, script) {
             return sequence.then(function () {
                 if (options.isCurrent && !options.isCurrent()) return;
@@ -39,16 +42,60 @@
                 });
             });
         }, Promise.resolve());
-        });
+        }).then(function () {
+            // Initializers can add styles for editors or other shared widgets.
+            if (options.isCurrent && !options.isCurrent()) return;
+            return waitForStylesheets(container);
+        }).finally(reveal);
+    }
+
+    // Opacity keeps the real layout available to maps, editors and size checks.
+    // A newer load owns the reveal: an older request cannot uncover its content.
+    function deferFragmentDisplay(container) {
+        if (!container || !container.classList) return function () {};
+        var previous = fragmentDisplays.get(container);
+        var state = {
+            busy: previous ? previous.busy : container.getAttribute('aria-busy'),
+            pending: previous ? previous.pending : container.classList.contains('generic-fragment-pending')
+        };
+        if (previous) window.clearTimeout(previous.timer);
+        fragmentDisplays.set(container, state);
+        container.classList.add('generic-fragment-pending');
+        container.setAttribute('aria-busy', 'true');
+
+        function reveal() {
+            if (fragmentDisplays.get(container) !== state) return;
+            window.clearTimeout(state.timer);
+            fragmentDisplays.delete(container);
+            if (!state.pending) container.classList.remove('generic-fragment-pending');
+            if (state.busy === null) container.removeAttribute('aria-busy');
+            else container.setAttribute('aria-busy', state.busy);
+        }
+
+        // An unavailable asset must not leave an entire screen invisible.
+        state.timer = window.setTimeout(reveal, 8000);
+        return reveal;
     }
 
     // Keep styles attached to their panel: moving them into the head would let
     // screen-specific selectors affect unrelated screens after navigation.
     function awaitStylesheets(container) {
+        var reveal = deferFragmentDisplay(container);
+        return waitForStylesheets(container).finally(reveal);
+    }
+
+    function waitForStylesheets(container) {
         if (!container || !container.querySelectorAll) return Promise.resolve();
-        return Promise.all(toArray(container.querySelectorAll('link[rel~="stylesheet"]')).map(function (link) {
+        var links = toArray(container.querySelectorAll('link[rel~="stylesheet"]'));
+        if (document.head && container !== document) {
+            links = links.concat(toArray(document.head.querySelectorAll('link[rel~="stylesheet"]')));
+        }
+        return Promise.all(links.map(function (link) {
             if (link.sheet || link.disabled || !link.href) return Promise.resolve();
-            return new Promise(function (resolve) {
+            if (link.media && window.matchMedia && !window.matchMedia(link.media).matches) return Promise.resolve();
+            var previousLoad = stylesheetLoads.get(link);
+            if (previousLoad && previousLoad.href === link.href) return previousLoad.promise;
+            var loaded = new Promise(function (resolve) {
                 var timer;
                 function finish() {
                     window.clearTimeout(timer);
@@ -62,6 +109,8 @@
                 timer = window.setTimeout(finish, 8000);
                 if (link.sheet) finish();
             });
+            stylesheetLoads.set(link, { href: link.href, promise: loaded });
+            return loaded;
         }));
     }
 
