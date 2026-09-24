@@ -13,7 +13,8 @@ if (!empty($enabledAppHashes['documents'])) {
         $dashboardModuleContextHolonId,
         500,
         $dashboardModuleScope,
-        $documentScopeHolonIds
+        $documentScopeHolonIds,
+        $organizationRootHolon instanceof \dbObject\Holon && $dashboardModuleContextHolonId === (int)$organizationRootHolon->getId()
     );
     $recentDocuments = $documents->buildPersonalSpaceItems($currentOrganizationId);
     $documentThreshold = new DateTimeImmutable('-7 days');

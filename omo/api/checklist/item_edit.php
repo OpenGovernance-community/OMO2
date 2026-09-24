@@ -168,6 +168,7 @@ if ($currentHolonId > 0) {
                         <textarea name="description" hidden aria-hidden="true" data-checklist-html-value><?= omoApiEscape((string)$project->get('description')) ?></textarea>
                     </div>
                 </div>
+                <?php if (($context['rootHolon'] ?? null) instanceof Holon): ?>
                 <label class="omo-checklist-field omo-checklist-field--wide">
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.holon')) ?></span>
                     <select class="generic-form-control" name="IDholon" required>
@@ -176,6 +177,7 @@ if ($currentHolonId > 0) {
                         <?php endforeach; ?>
                     </select>
                 </label>
+                <?php endif; ?>
                 <label class="omo-checklist-field" data-checklist-item-parent-field<?= $isContainerChecklist ? ' hidden' : '' ?>>
                     <span><?= omoApiEscape(omoChecklistT('checklist.form.parent')) ?></span>
                     <select class="generic-form-control" name="parent_item_id">

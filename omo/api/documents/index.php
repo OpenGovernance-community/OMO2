@@ -556,7 +556,9 @@ if ($currentOrganizationId > 0) {
         $currentOrganizationId,
         $effectiveCurrentHolonId,
         $documentScope,
-        $scopeHolonIds
+        $scopeHolonIds,
+        $currentContextHolon instanceof Holon && $rootHolon instanceof Holon
+            && (int)$currentContextHolon->getId() === (int)$rootHolon->getId()
     );
     $visibilityStats = $documents->getLastVisibilityStats();
     $visibleDocumentsCount = max(0, (int)($visibilityStats['visible'] ?? 0));

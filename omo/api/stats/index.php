@@ -72,12 +72,15 @@ $scopeHolonIds = $statsScope === 'children' && $currentHolon instanceof Holon
     : ($statsScope === 'descendants' && $currentHolon instanceof Holon
         ? omoApiGetDescendantHolonIds($currentHolon)
         : []);
+$includeOrganizationItems = $currentHolon instanceof Holon && $rootHolon instanceof Holon
+    && (int)$currentHolon->getId() === (int)$rootHolon->getId();
 $indicators = new ArrayStatIndicator();
 $indicators->loadForContext(
     $organizationId,
     $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0,
     $statsScope,
-    $scopeHolonIds
+    $scopeHolonIds,
+    $includeOrganizationItems
 );
 $indicatorItems = omoStatsCollectionItems($indicators, StatIndicator::class);
 $indicatorById = [];
@@ -90,7 +93,8 @@ $imports->loadForContext(
     $organizationId,
     $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0,
     $statsScope,
-    $scopeHolonIds
+    $scopeHolonIds,
+    $includeOrganizationItems
 );
 $importedIndicatorLabels = [];
 $importedIndicatorIds = [];
@@ -117,7 +121,8 @@ $groups->loadForContext(
     $organizationId,
     $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0,
     $statsScope,
-    $scopeHolonIds
+    $scopeHolonIds,
+    $includeOrganizationItems
 );
 $groupItems = omoStatsCollectionItems($groups, StatIndicatorGroup::class);
 $indicatorItems = array_values(array_filter($indicatorItems, static function (StatIndicator $indicator) use ($statsAssignment, $currentUserId, $organizationId): bool {
@@ -129,6 +134,9 @@ $groupItems = array_values(array_filter($groupItems, static function (StatIndica
     }
 
     $groupHolon = $group->getHolon();
+    if ((int)$group->get('IDholon') === 0) {
+        return \dbObject\UserOrganization::hasActiveMembership($currentUserId, $organizationId);
+    }
     return $groupHolon instanceof Holon
         && omoStatsUserIsAssociatedWithHolon($currentUserId, $organizationId, $groupHolon);
 }));

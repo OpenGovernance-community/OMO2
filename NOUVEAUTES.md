@@ -1,5 +1,21 @@
 # Journal Des Nouveautes
 
+- Regles : l enregistrement, la suppression et les erreurs utilisent les alertes temporaires de la topbar. Seuls le compteur et la liste des regles sont actualises apres une modification, sans recharger la page.
+
+- Regles : les organisations sans structure peuvent afficher, creer et gerer des regles liees directement a leur organisation. Ces regles restent visibles a la racine apres l ajout d une structure. Le choix d autorite n apparait que si des autorites existent dans l espace courant.
+
+- Projets : le champ Espace associe disparait et l espace devient facultatif dans une organisation sans structure. Les documents, indicateurs, taches recurrentes, processus et projets rattaches a l organisation restent visibles depuis la racine si une structure est ajoutee.
+
+- Processus : une organisation sans structure peut creer et executer des processus selon ses droits. Les projets modeles et les projets generes restent rattaches a l organisation sans holon, et le choix d espace disparait des etapes quand aucune structure n existe.
+
+- Taches recurrentes : une organisation sans structure peut afficher, creer, modifier, valider et supprimer des taches rattachees directement a l organisation, selon ses droits. La liste et le detail affichent le nom de l organisation pour ces taches.
+
+- Onglets : les composants partages affichent un menu deroulant sur mobile, avec le nom complet de l onglet actif. La selection conserve les chargements et actions existants ; les onglets cote a cote restent disponibles sur grand ecran.
+
+- Navigation mobile : l onglet du tableau de bord s appelle maintenant Pilotage.
+
+- Mobile : titres de pages et de sous-drawers plus compacts, marges reduites et boutons d en-tete repartis selon la largeur disponible. Les cartes des parametres occupent moins de hauteur et la prise de focus dans un panneau ne decale plus horizontalement le cadre de l application.
+
 - Profil : les outils de fusion et de suppression utilisent des cartes harmonisees avec leur bouton d action a droite et un formulaire repliable. La fusion conserve le statut de superadmin et les roles d admin d organisation ou de holon possedes par l un ou l autre des profils.
 
 - Profil : l onglet Outils regroupe maintenant des actions repliables pour fusionner des comptes ou supprimer definitivement son profil. La suppression affiche d abord les organisations conservees, celles qui seront supprimees avec leur historique lorsque le profil en est le seul membre, et les blocages de dernier administrateur. Un superadmin peut supprimer son profil si un autre superadmin actif reste membre de l organisation de base. Une confirmation textuelle est obligatoire. Les organisations conservees reutilisent ou creent leur profil historique technique afin de garder les references utiles apres la suppression. Un admin peut quitter l organisation de base si un autre admin y reste et, s il est aussi superadmin, si un autre superadmin y reste ; elle ne peut jamais etre supprimee.

@@ -56,6 +56,8 @@ if (!function_exists('omoPolicySourceLang')) {
             'policy.documentation' => ['text' => 'Informations et tracabilite', 'context' => 'Collapsed legal and audit metadata for a rule.'],
             'policy.drawer.title' => ['text' => 'Nouvelle regle', 'context' => 'Rule creation drawer title.'],
             'policy.drawer.description' => ['text' => 'Cette règle peut être rattachée à l’espace courant ou à l’une de ses autorités.', 'context' => 'Rule creation drawer description.'],
+            'policy.drawer.description_local' => ['text' => 'Cette regle est rattachee a l espace courant.', 'context' => 'Rule creation drawer description when no authority exists.'],
+            'policy.drawer.description_organization' => ['text' => 'Cette regle est rattachee directement a l organisation.', 'context' => 'Rule creation drawer description without a structure.'],
             'policy.drawer.title_edit' => ['text' => 'Modifier la regle', 'context' => 'Rule edit drawer title.'],
             'policy.drawer.description_edit' => ['text' => 'Modifiez le contenu, le rattachement ou les dates de cette regle.', 'context' => 'Rule edit drawer description.'],
             'policy.field.title' => ['text' => 'Titre', 'context' => 'Rule title field.'],
@@ -63,6 +65,7 @@ if (!function_exists('omoPolicySourceLang')) {
             'policy.field.description' => ['text' => 'Regle', 'context' => 'Rule HTML content field.'],
             'policy.field.authority' => ['text' => 'Autorite associee', 'context' => 'Optional direct authority used as the rule attachment.'],
             'policy.field.authority_local' => ['text' => 'Aucune (règle locale à l’espace)', 'context' => 'Authority selector option for a direct local rule.'],
+            'policy.field.authority_organization' => ['text' => 'Aucune (regle de l organisation)', 'context' => 'Authority selector option when editing an organization rule.'],
             'policy.field.review_date' => ['text' => 'Date de requestionnement', 'context' => 'Rule review date field.'],
             'policy.field.expiration_date' => ['text' => 'Date d echeance', 'context' => 'Rule expiration date field.'],
             'policy.save' => ['text' => 'Enregistrer', 'context' => 'Save local rule action.'],
@@ -118,8 +121,8 @@ if (!function_exists('omoPolicyResolveContext')) {
         }
 
         return [
-            'status' => $currentHolon instanceof Holon,
-            'message' => $currentHolon instanceof Holon ? '' : omoPolicyT('policy.error.context'),
+            'status' => true,
+            'message' => '',
             'organization' => $organization,
             'rootHolon' => $rootHolon,
             'currentHolon' => $currentHolon,
@@ -131,7 +134,12 @@ if (!function_exists('omoPolicyCanCreateLocalRule')) {
     function omoPolicyCanCreateLocalRule(array $context)
     {
         $holon = $context['currentHolon'] ?? null;
-        return $holon instanceof Holon && $holon->isAllowed('CAN_CREATE_RULE', false);
+        if ($holon instanceof Holon) {
+            return $holon->isAllowed('CAN_CREATE_RULE', false);
+        }
+        $organization = $context['organization'] ?? null;
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        return $organization instanceof Organization && \dbObject\Permission::userCanInOrganization('CAN_CREATE_RULE', (int)$organization->getId(), $currentUserId);
     }
 }
 
@@ -150,13 +158,16 @@ if (!function_exists('omoPolicyNormalizeGroup')) {
 }
 
 if (!function_exists('omoPolicyGetDirectAuthorities')) {
-    function omoPolicyGetDirectAuthorities(Holon $holon, ?Organization $organization = null)
+    function omoPolicyGetDirectAuthorities(?Holon $holon, ?Organization $organization = null)
     {
+        $authorities = new ArrayAuthority();
+        if (!($holon instanceof Holon)) {
+            return $authorities;
+        }
         if ($organization instanceof Organization) {
             $organization->ensureTemplateAuthorityInstancesForHolon($holon);
         }
 
-        $authorities = new ArrayAuthority();
         $authorities->loadForHolon((int)$holon->getId());
         return $authorities;
     }

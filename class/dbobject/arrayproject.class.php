@@ -153,7 +153,7 @@ class ArrayProject extends ArrayDbObject
 
     }
 
-    public function loadForContext($organizationId, $holonId = 0, $scope = 'contextual', array $descendantHolonIds = [])
+    public function loadForContext($organizationId, $holonId = 0, $scope = 'contextual', array $descendantHolonIds = [], $includeOrganizationProjects = false)
     {
         $this->exchangeArray([]);
         $organizationId = (int)$organizationId;
@@ -171,6 +171,7 @@ class ArrayProject extends ArrayDbObject
             ['field' => 'active', 'value' => 1],
             ['field' => 'project_kind', 'value' => Project::KIND_STANDARD],
         ];
+        $holonFilter = [];
 
         if ($scope === 'descendants') {
             $holonIds = array_values(array_unique(array_filter(array_merge(
@@ -180,11 +181,12 @@ class ArrayProject extends ArrayDbObject
                 return (int)$candidateHolonId > 0;
             })));
 
-            if (count($holonIds) === 0) {
+            if (count($holonIds) === 0 && !$includeOrganizationProjects) {
                 return;
             }
-
-            $where[] = ['field' => 'IDholon', 'op' => 'in', 'value' => $holonIds];
+            if (count($holonIds) > 0) {
+                $holonFilter[] = ['field' => 'IDholon', 'op' => 'in', 'value' => $holonIds];
+            }
         } elseif ($scope === 'children') {
             $holonIds = array_values(array_unique(array_filter(array_merge(
                 [$holonId],
@@ -193,19 +195,30 @@ class ArrayProject extends ArrayDbObject
                 return (int)$candidateHolonId > 0;
             })));
 
-            if (count($holonIds) === 0) {
+            if (count($holonIds) === 0 && !$includeOrganizationProjects) {
                 return;
             }
-
-            $where[] = ['field' => 'IDholon', 'op' => 'in', 'value' => $holonIds];
+            if (count($holonIds) > 0) {
+                $holonFilter[] = ['field' => 'IDholon', 'op' => 'in', 'value' => $holonIds];
+            }
         } else {
-            $where[] = $holonId > 0
+            $holonFilter[] = $holonId > 0
                 ? ['field' => 'IDholon', 'value' => $holonId]
                 : ['field' => 'IDholon', 'op' => 'is null'];
         }
 
-        $this->load([
-            'where' => $where,
+        if ($includeOrganizationProjects) {
+            $holonFilter[] = ['field' => 'IDholon', 'op' => 'is null'];
+        }
+
+        if ($includeOrganizationProjects) {
+            $params = ['where' => $where, 'whereAny' => $holonFilter];
+        } else {
+            $where[] = $holonFilter[0];
+            $params = ['where' => $where];
+        }
+
+        $this->load($params + [
             'orderBy' => [
                 ['field' => 'calculated_importance', 'dir' => 'DESC'],
                 ['field' => 'created_at', 'dir' => 'DESC'],

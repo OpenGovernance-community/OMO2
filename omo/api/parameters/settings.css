@@ -123,10 +123,24 @@
 @media (max-width: 768px) {
     .omo-settings__grid {
         margin: 0;
+        grid-auto-rows: auto;
     }
 
     .omo-settings__card {
         min-height: 0;
+        grid-template-rows: auto auto auto;
+        gap: var(--generic-space-3);
         padding: var(--generic-container-padding-block);
+    }
+
+    .omo-settings__card-icon-shell {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+    }
+
+    .omo-settings__card-icon {
+        width: 26px;
+        height: 26px;
     }
 }

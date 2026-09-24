@@ -123,7 +123,7 @@ function omoChecklistActionNextActivityPosition($organizationId, $holonId, array
     }
 
     $activities = new ArrayControlActivity();
-    $activities->loadForContext((int)$organizationId, [(int)$holonId], false);
+    $activities->loadForContext((int)$organizationId, (int)$holonId > 0 ? [(int)$holonId] : [], false, (int)$holonId <= 0);
     $position = 0;
     foreach ($activities as $activity) {
         if ($activity instanceof ControlActivity) {
@@ -139,7 +139,8 @@ function omoChecklistActionConvertItemToActivity(Checklist $checklist, Checklist
     $recurrence = omoChecklistGetTemporalItemRecurrence($item);
     $project = $item->getProjectTemplate();
     $holon = omoChecklistGetItemActivityHolon($checklist, $item);
-    if (!($recurrence instanceof ChecklistItemRecurrence) || !($project instanceof Project) || !($holon instanceof Holon)) {
+    if (!($recurrence instanceof ChecklistItemRecurrence) || !($project instanceof Project)
+        || (!($holon instanceof Holon) && $project->get('IDholon') !== null)) {
         throw new InvalidArgumentException(omoChecklistT('checklist.error.item_convert_recurrence'));
     }
 
@@ -151,7 +152,7 @@ function omoChecklistActionConvertItemToActivity(Checklist $checklist, Checklist
 
     $activity = new ControlActivity();
     $activity->set('IDorganization', (int)$organizationId);
-    $activity->set('IDholon', (int)$holon->getId());
+    $activity->set('IDholon', $holon instanceof Holon ? (int)$holon->getId() : null);
     $activity->set('IDuser_responsible', (int)$checklist->get('IDuser_responsible') > 0 ? (int)$checklist->get('IDuser_responsible') : null);
     $activity->set('title', mb_substr(trim((string)$project->get('title')) ?: ('Activite de processus #' . (int)$item->getId()), 0, 255, 'UTF-8'));
     $activity->set('description', trim(strip_tags((string)$project->get('description'))) ?: null);
@@ -161,7 +162,7 @@ function omoChecklistActionConvertItemToActivity(Checklist $checklist, Checklist
     $activity->set('display_lead_unit', $recurrence->getDisplayLeadUnit());
     $activity->set('execution_duration_value', max(1, $recurrence->getExecutionDurationValue()));
     $activity->set('execution_duration_unit', $recurrence->getExecutionDurationUnit());
-    $activity->set('position', omoChecklistActionNextActivityPosition($organizationId, (int)$holon->getId(), $activityPositions));
+    $activity->set('position', omoChecklistActionNextActivityPosition($organizationId, $holon instanceof Holon ? (int)$holon->getId() : 0, $activityPositions));
     $activity->set('active', 1);
     omoChecklistActionSaveObject($activity);
 
@@ -297,11 +298,8 @@ if ($action === 'save_checklist') {
         }
         if ($checklistId <= 0) {
             $currentHolon = $context['currentHolon'] ?? null;
-            if (!($currentHolon instanceof Holon)) {
-                throw new RuntimeException(omoChecklistT('checklist.error.context'));
-            }
             $templateRoot->set('IDorganization', $organizationId);
-            $templateRoot->set('IDholon', (int)$currentHolon->getId());
+            $templateRoot->set('IDholon', $currentHolon instanceof Holon ? (int)$currentHolon->getId() : null);
             $templateRoot->set('IDproject_parent', null);
         }
         $templateRoot->set('IDuser', null);
@@ -621,8 +619,7 @@ if (in_array($action, ['delete_item', 'move_item', 'extract_item'], true)) {
     }
     $canManage = omoChecklistCanManage($checklist);
     $checklistHolon = $checklist->getHolon();
-    $canCreate = $checklistHolon instanceof Holon
-        && omoChecklistCanUsePermission($checklistHolon, 'CAN_CREATE_PROCESS');
+    $canCreate = omoChecklistCanUsePermission($checklistHolon, 'CAN_CREATE_PROCESS', $organizationId);
     if (
         !$canManage
         || ($action === 'extract_item' && !$canCreate)
@@ -797,7 +794,7 @@ if ($action === 'save_item') {
     foreach (omoChecklistBuildHolonOptions($context) as $option) {
         $allowedHolonMap[(int)$option['id']] = true;
     }
-    if (!isset($allowedHolonMap[$holonId])) {
+    if ($holonId > 0 ? !isset($allowedHolonMap[$holonId]) : ($holonId !== 0 || $context['rootHolon'] instanceof Holon)) {
         omoChecklistActionRespond(false, omoChecklistT('checklist.error.item_holon'), [], 422);
     }
 
@@ -917,7 +914,7 @@ if ($action === 'save_item') {
         if ($itemId <= 0) {
             $project->set('IDorganization', $organizationId);
         }
-        $project->set('IDholon', $holonId);
+        $project->set('IDholon', $holonId > 0 ? $holonId : null);
         $project->set('IDuser', null);
         $project->set('IDproject_parent', (int)$parentProject->getId());
         $project->set('title', mb_substr($title, 0, 255, 'UTF-8'));

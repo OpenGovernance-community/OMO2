@@ -30,9 +30,11 @@ $policyScope = omoApiNormalizeContextScope(
 );
 $scopeHolonIds = $policyScope === 'children'
     ? omoApiGetDirectChildScopeHolonIds($currentHolon)
-    : ($policyScope === 'descendants' ? omoApiGetDescendantHolonIds($currentHolon) : [(int)$currentHolon->getId()]);
+    : ($policyScope === 'descendants' ? omoApiGetDescendantHolonIds($currentHolon) : ($currentHolon instanceof Holon ? [(int)$currentHolon->getId()] : []));
 $rules = new ArrayRule();
-$rules->loadForPolicyContexts($organizationId, $scopeHolonIds);
+$includeOrganizationRules = !($currentHolon instanceof Holon)
+    || ($rootHolon instanceof Holon && (int)$currentHolon->getId() === (int)$rootHolon->getId());
+$rules->loadForPolicyContexts($organizationId, $scopeHolonIds, $includeOrganizationRules);
 $policySort = omoPolicyNormalizeSort(
     omoApplicationViewPreferencesGetInitialValue($applicationViewPreferences, 'policy_sort', 'sort', 'alpha')
 );
@@ -133,10 +135,12 @@ if ($policyGroup === 'none') {
         if ($policyGroup === 'authority' && $ruleAuthority instanceof Authority) {
             $nodeKey = $policyRegisterAuthority($ruleAuthority);
         } elseif ($policyGroup === 'authority') {
-            $holonLabel = $ruleHolon instanceof Holon ? $ruleHolon->getFullDisplayName() : '-';
-            $nodeKey = $policyRegisterNode('local:' . ($ruleHolon instanceof Holon ? (int)$ruleHolon->getId() : 'unknown'), omoPolicyT('policy.group.local_rules', ['holon' => $holonLabel]));
+            $holonLabel = $ruleHolon instanceof Holon ? $ruleHolon->getFullDisplayName() : (string)$organization->get('name');
+            $nodeKey = $policyRegisterNode('local:' . ($ruleHolon instanceof Holon ? (int)$ruleHolon->getId() : 'organization'), omoPolicyT('policy.group.local_rules', ['holon' => $holonLabel]));
         } else {
-            $nodeKey = $policyRegisterHolon($ruleHolon);
+            $nodeKey = $ruleHolon instanceof Holon
+                ? $policyRegisterHolon($ruleHolon)
+                : $policyRegisterNode('organization', (string)$organization->get('name'));
         }
 
         if ($nodeKey === null) {
@@ -165,11 +169,12 @@ $policySortGroupKeys = static function (array $keys) use (&$policyGroupNodes) {
 };
 $policyRootGroupKeys = $policySortGroupKeys($policyRootGroupKeys);
 $canCreate = omoPolicyCanCreateLocalRule($context);
-$createUrl = '/omo/api/policy/edit.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . rawurlencode((string)$currentHolon->getId());
-$indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . rawurlencode((string)$currentHolon->getId());
+$currentContextHolonId = $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0;
+$createUrl = '/omo/api/policy/edit.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . $currentContextHolonId;
+$indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . $currentContextHolonId;
 ?>
 <link rel="stylesheet" href="/common/view-filter/view-filter.css?v=20260902-save-menu">
-<div class="omo-policy omo-panel-view" id="omo-policy-root" data-policy-oid="<?= (int)$organizationId ?>" data-policy-cid="<?= (int)$currentHolon->getId() ?>" data-omo-app-view-preferences="<?= omoApiEscape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>" data-policy-index-url="<?= omoApiEscape($indexUrl) ?>" data-policy-scope="<?= omoApiEscape($policyScope) ?>" data-policy-sort="<?= omoApiEscape($policySort) ?>" data-policy-group="<?= omoApiEscape($policyGroup) ?>" data-policy-create-url="<?= omoApiEscape($createUrl) ?>" data-policy-load-error="<?= omoApiEscape(omoPolicyT('policy.error.load')) ?>" data-policy-save-error="<?= omoApiEscape(omoPolicyT('policy.error.save')) ?>" data-policy-delete-confirm="<?= omoApiEscape(omoPolicyT('policy.delete.confirm')) ?>" data-policy-delete-error="<?= omoApiEscape(omoPolicyT('policy.error.delete')) ?>">
+<div class="omo-policy omo-panel-view" id="omo-policy-root" data-policy-oid="<?= (int)$organizationId ?>" data-policy-cid="<?= $currentContextHolonId ?>" data-omo-app-view-preferences="<?= omoApiEscape(json_encode($applicationViewPreferences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>" data-policy-index-url="<?= omoApiEscape($indexUrl) ?>" data-policy-scope="<?= omoApiEscape($policyScope) ?>" data-policy-sort="<?= omoApiEscape($policySort) ?>" data-policy-group="<?= omoApiEscape($policyGroup) ?>" data-policy-create-url="<?= omoApiEscape($createUrl) ?>" data-policy-load-error="<?= omoApiEscape(omoPolicyT('policy.error.load')) ?>" data-policy-save-error="<?= omoApiEscape(omoPolicyT('policy.error.save')) ?>" data-policy-delete-confirm="<?= omoApiEscape(omoPolicyT('policy.delete.confirm')) ?>" data-policy-delete-error="<?= omoApiEscape(omoPolicyT('policy.error.delete')) ?>">
     <header class="omo-panel-view__header omo-panel-view__header--stacked">
         <div class="omo-panel-view__header-main">
             <div class="omo-panel-view__title-cluster">
@@ -238,7 +243,7 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
             </section>
         <?php else: ?>
             <?php
-            $policyRenderRule = static function (array $entry) use ($organizationId) {
+            $policyRenderRule = static function (array $entry) use ($organizationId, $organization) {
                 $rule = $entry['rule'];
                 $createdBy = $rule->getCreatedByUser();
                 $updatedBy = $rule->getUpdatedByUser();
@@ -248,12 +253,12 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
                 $updatedDate = $rule->get('updated_at') instanceof DateTimeInterface ? $rule->get('updated_at')->format('d.m.Y H:i') : '';
                 $createdByLabel = $createdBy ? $createdBy->getScopedDisplayName($organizationId) : '-';
                 $updatedByLabel = $updatedBy ? $updatedBy->getScopedDisplayName($organizationId) : '-';
-                $holonLabel = $ruleHolon ? $ruleHolon->getFullDisplayName() : '-';
+                $holonLabel = $ruleHolon ? $ruleHolon->getFullDisplayName() : trim((string)$organization->get('name'));
                 $authorityLabel = $ruleAuthority ? trim((string)$ruleAuthority->get('label')) : '';
                 $canEditRule = $rule->canEdit();
                 $canDeleteRule = $rule->canDelete();
-                $ruleEditUrl = $canEditRule && $ruleHolon instanceof Holon
-                    ? '/omo/api/policy/edit.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . rawurlencode((string)$ruleHolon->getId()) . '&rule_id=' . rawurlencode((string)$rule->getId())
+                $ruleEditUrl = $canEditRule
+                    ? '/omo/api/policy/edit.php?oid=' . rawurlencode((string)$organizationId) . '&cid=' . ($ruleHolon instanceof Holon ? (int)$ruleHolon->getId() : 0) . '&rule_id=' . rawurlencode((string)$rule->getId())
                     : '';
                 $isExpired = !$rule->isValidAt();
                 $needsReview = !$isExpired && $rule->isReviewDue();
@@ -327,7 +332,7 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
     </div></div>
     <div class="omo-overlay-drawer" data-policy-drawer hidden>
         <div class="omo-overlay-drawer__backdrop" data-policy-close></div>
-        <div class="omo-overlay-drawer__panel"><div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky"><div class="generic-drawer-header__copy"><h3 class="omo-overlay-drawer__title"><?= omoApiEscape(omoPolicyT('policy.drawer.title')) ?></h3><p class="omo-overlay-drawer__description"><?= omoApiEscape(omoPolicyT('policy.drawer.description')) ?></p></div><div class="generic-drawer-header__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-policy-close><?= omoApiEscape(omoPolicyT('policy.close')) ?></button></div></div><div class="omo-overlay-drawer__body" data-policy-drawer-body></div></div>
+        <div class="omo-overlay-drawer__panel"><div class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky"><div class="generic-drawer-header__copy"><h3 class="omo-overlay-drawer__title"><?= omoApiEscape(omoPolicyT('policy.drawer.title')) ?></h3><p class="omo-overlay-drawer__description"><?= omoApiEscape(omoPolicyT($currentHolon instanceof Holon ? 'policy.drawer.description_local' : 'policy.drawer.description_organization')) ?></p></div><div class="generic-drawer-header__actions"><button type="button" class="generic-action-button generic-action-button--secondary" data-policy-close><?= omoApiEscape(omoPolicyT('policy.close')) ?></button></div></div><div class="omo-overlay-drawer__body" data-policy-drawer-body></div></div>
     </div>
 </div>
 <script src="/omo/assets/js/application-view-preferences.js?v=20260917-filter-hierarchy"></script>
@@ -354,7 +359,7 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
     var currentQuickSearch = '';
     var refreshRoot = function (url) {
         if (typeof window.omoReplaceFetchedPanelRoot !== 'function') {
-            window.location.href = url;
+            window.commonNotify(root.dataset.policyLoadError, 'error');
             return;
         }
         window.omoReplaceFetchedPanelRoot({
@@ -369,6 +374,8 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
                     });
                 }
             }
+        }).catch(function () {
+            window.commonNotify(root.dataset.policyLoadError, 'error');
         });
     };
     var policyViewUrl = function (view) {
@@ -796,10 +803,10 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
                 if (!result.ok || !result.data || !result.data.success) {
                     throw new Error(result.data && result.data.message ? result.data.message : (root.dataset.policyDeleteError || ''));
                 }
-                window.omoPolicyAfterSave();
+                afterChange(result.data.message);
             }).catch(function (error) {
                 deleteButton.disabled = false;
-                window.alert(error && error.message ? error.message : (root.dataset.policyDeleteError || ''));
+                window.commonNotify(error && error.message ? error.message : root.dataset.policyDeleteError, 'error');
             });
             return;
         }
@@ -807,6 +814,39 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         if (!event.target.closest('[data-policy-rule-menu]')) closeRuleMenus();
     });
     var close = function () { drawer.classList.remove('is-open'); window.setTimeout(function () { if (!drawer.classList.contains('is-open')) { drawer.hidden = true; body.innerHTML = ''; } }, 220); };
+    var refreshRulesList = function () {
+        var url = policyViewUrl(currentView());
+        if (typeof window.omoResolveAppUrl === 'function') url = window.omoResolveAppUrl(url);
+        return fetch(url, {
+            credentials: 'same-origin',
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            cache: 'no-store'
+        }).then(function (response) {
+            if (!response.ok) throw new Error(root.dataset.policyLoadError);
+            return response.text();
+        }).then(function (html) {
+            var fragment = document.createElement('div');
+            fragment.innerHTML = html;
+            var nextRoot = fragment.querySelector('#omo-policy-root');
+            var nextBody = nextRoot && nextRoot.querySelector('.omo-policy__body');
+            var nextCount = nextRoot && nextRoot.querySelector('.omo-panel-view__count');
+            var listBody = root.querySelector('.omo-policy__body');
+            var count = root.querySelector('.omo-panel-view__count');
+            if (!nextBody || !nextCount || !listBody || !count) throw new Error(root.dataset.policyLoadError);
+            if (!root.isConnected) return;
+            listBody.innerHTML = nextBody.innerHTML;
+            count.textContent = nextCount.textContent;
+            quickSearchEmpty = root.querySelector('[data-policy-search-empty]');
+            applyQuickSearch();
+        });
+    };
+    var afterChange = function (message) {
+        window.commonNotify(message, 'success');
+        close();
+        refreshRulesList().catch(function (error) {
+            window.commonNotify(error && error.message ? error.message : root.dataset.policyLoadError, 'error');
+        });
+    };
     var mountPolicyHtmlFields = function (scope) {
         if (!scope || !window.omoSimpleHtmlField || typeof window.omoSimpleHtmlField.mount !== 'function') return;
         scope.querySelectorAll('[data-policy-html-field]').forEach(function (host) {
@@ -832,13 +872,12 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         }).then(function (html) {
             body.innerHTML = html;
             var form = body.querySelector('[data-policy-form]');
-            if (form) {
-                if (drawerTitle) drawerTitle.textContent = form.getAttribute('data-policy-form-title') || omoPolicyDefaultDrawerTitle;
-                if (drawerDescription) drawerDescription.textContent = form.getAttribute('data-policy-form-description') || omoPolicyDefaultDrawerDescription;
-                mountPolicyHtmlFields(form);
-            }
+            if (!form) throw new Error(root.dataset.policyLoadError);
+            if (drawerTitle) drawerTitle.textContent = form.getAttribute('data-policy-form-title') || omoPolicyDefaultDrawerTitle;
+            if (drawerDescription) drawerDescription.textContent = form.getAttribute('data-policy-form-description') || omoPolicyDefaultDrawerDescription;
+            mountPolicyHtmlFields(form);
             if (typeof window.initGenericComponents === 'function') window.initGenericComponents(body);
-        }).catch(function () { body.textContent = root.dataset.policyLoadError; });
+        }).catch(function () { window.commonNotify(root.dataset.policyLoadError, 'error'); close(); });
     };
     var omoPolicyDefaultDrawerTitle = drawerTitle ? drawerTitle.textContent : '';
     var omoPolicyDefaultDrawerDescription = drawerDescription ? drawerDescription.textContent : '';
@@ -850,7 +889,6 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         if (!form) return;
         event.preventDefault();
         if (!form.reportValidity()) return;
-        var feedback = form.querySelector('[data-policy-feedback]');
         var formData = new FormData(form);
         var usesSharedPendingState = typeof window.omoBeginPendingAction === 'function';
         var submitButton = form.querySelector('[type="submit"]');
@@ -859,20 +897,16 @@ $indexUrl = '/omo/api/policy/index.php?oid=' . rawurlencode((string)$organizatio
         fetch(form.action, {method: 'POST', credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}, body: formData})
             .then(function (response) { return response.json().then(function (payload) { return {ok: response.ok, payload: payload}; }); })
             .then(function (result) {
-                if (!result.ok || !result.payload.success) throw new Error(result.payload.message || root.dataset.policySaveError);
-                feedback.hidden = false;
-                feedback.textContent = result.payload.message;
-                window.omoPolicyAfterSave();
+                if (!result.ok || !result.payload || !result.payload.success) throw new Error(result.payload && result.payload.message ? result.payload.message : root.dataset.policySaveError);
+                afterChange(result.payload.message);
             })
             .catch(function (error) {
-                feedback.hidden = false;
-                feedback.textContent = error.message || root.dataset.policySaveError;
+                window.commonNotify(error && error.message ? error.message : root.dataset.policySaveError, 'error');
             })
             .finally(function () {
                 if (usesSharedPendingState && typeof window.omoEndPendingAction === 'function') window.omoEndPendingAction(form);
                 else if (submitButton) submitButton.disabled = false;
             });
     });
-    window.omoPolicyAfterSave = function () { window.location.reload(); };
 })();
 </script>

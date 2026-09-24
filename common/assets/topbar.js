@@ -229,6 +229,10 @@
             return;
         }
 
+        if (typeof window.initGenericTabs === 'function') {
+            container.querySelectorAll('[data-generic-tabs]:not([data-generic-tabs-ready="1"])').forEach(window.initGenericTabs);
+        }
+
         Array.prototype.forEach.call(
             container.querySelectorAll('.common-topbar__sticky-actions'),
             function (node) {

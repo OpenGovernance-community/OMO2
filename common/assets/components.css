@@ -1712,6 +1712,30 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     display: none !important;
 }
 
+.generic-tabs__mobile {
+    display: none;
+    min-width: 0;
+    padding: var(--generic-space-2) var(--param-tabs-list-padding-inline);
+}
+
+.generic-tabs__select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 44px;
+    font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+    .generic-tabs > .generic-tabs__mobile {
+        display: block;
+    }
+
+    .generic-tabs__list[data-generic-tabs-mobile-ready] {
+        display: none;
+    }
+}
+
 .omo-decision-invitations-editor {
     display: grid;
     gap: 14px;
@@ -2305,18 +2329,48 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
 }
 
 @media (max-width: 768px) {
+    :root {
+        --generic-title-size-section: 18px;
+        --generic-title-size-large: 20px;
+        --generic-title-size-drawer: 1.125rem;
+        --generic-title-size-page: 1.25rem;
+        --generic-layout-gutter: var(--generic-space-3);
+    }
+
     .generic-drawer-content {
         --generic-drawer-content-padding-block: var(--generic-space-3);
         --generic-drawer-content-padding-inline: var(--generic-space-3);
     }
 
     .generic-drawer-header {
-        flex-direction: column;
-        align-items: stretch;
+        --generic-drawer-header-padding: var(--generic-space-3);
+        --generic-drawer-header-gap: var(--generic-space-2);
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .generic-drawer-header__copy {
+        flex: 1 1 10rem;
+        overflow-wrap: anywhere;
     }
 
     .generic-drawer-header__actions {
-        justify-content: flex-start;
+        flex: 0 1 auto;
+        min-width: 0;
+        max-width: 100%;
+        gap: var(--generic-space-2);
+        margin-inline-start: auto;
+    }
+
+    .generic-drawer-header__actions [data-omo-subdrawer-actions] {
+        display: contents;
+    }
+
+    .generic-drawer-header__actions .generic-action-button {
+        min-height: 36px;
+        padding-inline: 10px;
+        font-size: var(--generic-type-size-sm);
+        overflow-wrap: anywhere;
     }
 
     .generic-form-actions--stack-mobile {
