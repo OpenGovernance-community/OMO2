@@ -35,7 +35,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'Tab label used for the active profile preview.',
         ],
         'profile.popup.tabs.organization' => [
-            'text' => 'Profil specifique',
+            'text' => 'Profil spécifique',
             'context' => 'Tab label used for the organization-specific profile form.',
         ],
         'profile.popup.tabs.general' => [
@@ -43,7 +43,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'Tab label used for the general profile form.',
         ],
         'profile.popup.tabs.competences' => [
-            'text' => 'Competences',
+            'text' => 'Compétences',
             'context' => 'Tab label used for the competence editor tab.',
         ],
         'profile.popup.tabs.patreon' => [
@@ -489,11 +489,11 @@ function profilPopupGetSourceLang(): array
             'context' => 'Checkbox label allowing the account password to be used for interactive website login.',
         ],
         'profile.popup.password.login_permission.help' => [
-            'text' => 'Laissez cette case decochee si ce mot de passe doit servir uniquement a CalDAV et CardDAV.',
+            'text' => 'Laissez cette case décochée si ce mot de passe doit servir uniquement à CalDAV et CardDAV.',
             'context' => 'Help text explaining that a password can be reserved for DAV access.',
         ],
         'profile.popup.password.login_permission.unavailable' => [
-            'text' => 'Definissez d abord un mot de passe pour pouvoir choisir cet acces.',
+            'text' => 'Définissez d’abord un mot de passe pour pouvoir choisir cet accès.',
             'context' => 'Help text shown when password login permission cannot be changed because no password exists.',
         ],
         'profile.popup.totp.label' => [
@@ -501,11 +501,11 @@ function profilPopupGetSourceLang(): array
             'context' => 'Checkbox label enabling TOTP two factor authentication for website logins.',
         ],
         'profile.popup.totp.help.disabled' => [
-            'text' => 'Utilisez une application de validation comme Aegis, FreeOTP ou Google Authenticator. La double authentification est demandee pour chaque nouvelle connexion au site.',
+            'text' => 'Utilisez une application de validation comme Aegis, FreeOTP ou Google Authenticator. La double authentification est demandée pour chaque nouvelle connexion au site.',
             'context' => 'Help shown before TOTP activation.',
         ],
         'profile.popup.totp.help.enabled' => [
-            'text' => 'La double authentification est activee pour les nouvelles connexions au site. Les appareils coches comme memorises restent reconnus.',
+            'text' => 'La double authentification est activée pour les nouvelles connexions au site. Les appareils cochés comme mémorisés restent reconnus.',
             'context' => 'Help shown after TOTP activation.',
         ],
         'profile.popup.totp.setup.title' => [
@@ -517,11 +517,11 @@ function profilPopupGetSourceLang(): array
             'context' => 'TOTP enrollment instructions.',
         ],
         'profile.popup.totp.setup.manual_label' => [
-            'text' => 'Cle manuelle',
+            'text' => 'Clé manuelle',
             'context' => 'Label for the manual TOTP secret shown during enrollment.',
         ],
         'profile.popup.totp.setup.code_placeholder' => [
-            'text' => 'Code a 6 chiffres',
+            'text' => 'Code à 6 chiffres',
             'context' => 'TOTP enrollment verification input placeholder.',
         ],
         'profile.popup.totp.setup.confirm' => [
@@ -529,7 +529,7 @@ function profilPopupGetSourceLang(): array
             'context' => 'Button used to confirm TOTP enrollment.',
         ],
         'profile.popup.totp.disable.confirm' => [
-            'text' => 'Desactiver la double authentification pour ce compte ?',
+            'text' => 'Désactiver la double authentification pour ce compte ?',
             'context' => 'Confirmation before disabling TOTP.',
         ],
         'profile.popup.password.toggle.label' => [
@@ -706,15 +706,15 @@ function profilPopupGetSourceLang(): array
             'context' => 'Button label used to close the shared competence editor without saving.',
         ],
         'profile.popup.competence.create_button' => [
-            'text' => 'Ajouter une competence',
+            'text' => 'Ajouter une compétence',
             'context' => 'Button label used to open the shared competence editor in creation mode.',
         ],
         'profile.popup.competence.editor.create_title' => [
-            'text' => 'Nouvelle competence',
+            'text' => 'Nouvelle compétence',
             'context' => 'Title shown above the shared competence editor in creation mode.',
         ],
         'profile.popup.competence.editor.edit_title' => [
-            'text' => 'Modifier la competence',
+            'text' => 'Modifier la compétence',
             'context' => 'Title shown above the shared competence editor in edit mode.',
         ],
         'profile.popup.competence.js.reload_error' => [

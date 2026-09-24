@@ -329,7 +329,7 @@ if (!function_exists('omoCollaboraFetchDiscovery')) {
     {
         $baseUrl = rtrim((string)($config['internalUrl'] ?? $config['baseUrl'] ?? ''), '/');
         if ($baseUrl === '' || !function_exists('curl_init')) {
-            return array('status' => false, 'text' => 'Collabora n est pas disponible pour cette organisation.');
+            return array('status' => false, 'text' => 'Collabora n’est pas disponible pour cette organisation.');
         }
 
         $url = $baseUrl . '/hosting/discovery';

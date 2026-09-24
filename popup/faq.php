@@ -855,7 +855,7 @@ if ($canManageAllFaqs) {
 							<span class="faq-popup__meta">
 								<span class="<?= $scopeTypeClass ?>"><?= htmlspecialchars((string)($scopeInfo['label'] ?? 'FAQ'), ENT_QUOTES, 'UTF-8') ?></span>
 								<?php if (!(int)$faq->get('isactive')): ?>
-									<span class="faq-popup__meta-badge faq-popup__meta-badge--generic">Inactive</span>
+									<span class="faq-popup__meta-badge faq-popup__meta-badge--generic"><?= (int)$faq->get('request_user_id') > 0 && trim((string)$faq->get('answer')) === '' ? 'À traiter' : 'Inactive' ?></span>
 								<?php endif; ?>
 								<?php if ($faq->canBeEditedInContext($faqContext ?: array())): ?>
 									<span class="faq-popup__meta-badge">Editable</span>
@@ -885,6 +885,10 @@ if ($canManageAllFaqs) {
 				<?php $faqIndex++; ?>
 			<?php endforeach; ?>
 		</div>
+		<div class="faq-popup__ask generic-soft-panel generic-stack generic-stack--compact" data-faq-ask-shell hidden>
+			<div>Pas trouvé de réponse à votre problème dans cette liste ? Posez la question ci-dessous, et un administrateur vous répondra rapidement.</div>
+			<button type="button" class="generic-action-button generic-action-button--main" data-faq-ask>Poser la question</button>
+		</div>
 		<div class="faq-popup__footer" data-faq-load-more-shell<?= $initialRemainingFaqCount > 0 ? '' : ' hidden' ?>>
 			<button type="button" class="faq-popup__detail-link" data-faq-load-more<?= $initialRemainingFaqCount > 0 ? '' : ' hidden' ?>>Voir <?= (int)$initialLoadMoreCount ?> de plus</button>
 			<div class="faq-popup__load-more-note">Ou chercher par mot cle en haut de la page.</div>
@@ -892,6 +896,20 @@ if ($canManageAllFaqs) {
 	</div>
 
 	<div class="faq-popup__detail" data-faq-detail-view hidden></div>
+	<div class="faq-popup__detail" data-faq-request-view hidden>
+		<div class="faq-popup__editor-shell generic-drawer-content">
+			<div class="generic-form-section__heading">
+				<h4 class="generic-title generic-title--section">Poser une question</h4>
+				<button type="button" class="faq-popup__back generic-action-button generic-action-button--secondary" data-faq-back>Retour à la FAQ</button>
+			</div>
+			<form data-faq-request-form class="generic-stack generic-stack--compact">
+				<label class="generic-form-field"><span class="generic-form-label">Votre question</span><input class="generic-form-control" type="text" name="question" maxlength="255" required></label>
+				<label class="generic-form-field"><span class="generic-form-label">Description du problème</span><textarea class="generic-form-control" name="request_description" rows="5" maxlength="10000" required></textarea></label>
+				<div class="generic-action-row"><button type="submit" class="generic-action-button generic-action-button--main">Envoyer</button></div>
+				<div data-faq-request-message role="status" aria-live="polite"></div>
+			</form>
+		</div>
+	</div>
 	<?php if ($canAddFaq): ?>
 		<div class="faq-popup__detail" data-faq-editor-view hidden>
 			<div class="faq-popup__editor-shell generic-drawer-content" data-faq-form-shell>
@@ -944,6 +962,8 @@ if ($canManageAllFaqs) {
 
 	const detailView = root.querySelector('[data-faq-detail-view]');
 	const editorView = root.querySelector('[data-faq-editor-view]');
+	const requestView = root.querySelector('[data-faq-request-view]');
+	const askShell = root.querySelector('[data-faq-ask-shell]');
 	const searchInput = root.querySelector('[data-faq-search-input]');
 	const helper = root.querySelector('[data-faq-helper]');
 	const noResult = root.querySelector('[data-faq-no-result]');
@@ -1257,6 +1277,9 @@ if ($canManageAllFaqs) {
 		if (editorView) {
 			editorView.hidden = true;
 		}
+		if (requestView) {
+			requestView.hidden = true;
+		}
 
 		if (config.updateHash !== false && typeof window.omoOpenPopupHashState === 'function') {
 			window.omoOpenPopupHashState('faq', null);
@@ -1275,6 +1298,9 @@ if ($canManageAllFaqs) {
 			detailView.hidden = true;
 			clearFaqView(detailView);
 		}
+		if (requestView) {
+			requestView.hidden = true;
+		}
 		editorView.hidden = false;
 		syncScopeSelectors(editorView);
 		initFaqRichTextFields(editorView);
@@ -1292,6 +1318,9 @@ if ($canManageAllFaqs) {
 		if (editorView) {
 			editorView.hidden = true;
 		}
+		if (requestView) {
+			requestView.hidden = true;
+		}
 		clearFaqView(detailView);
 		detailView.hidden = false;
 		detailView.innerHTML = '<div class="faq-popup__helper">Chargement...</div>';
@@ -1301,8 +1330,8 @@ if ($canManageAllFaqs) {
 		}
 
 		const extraParams = {};
-		if (config.edit === true) {
-			extraParams.edit = '1';
+		if (config.edit === true || config.edit === 'auto') {
+			extraParams.edit = config.edit === 'auto' ? 'auto' : '1';
 		}
 
 		fetch('/ajax/faq_detail.php?' + buildFaqQuery(id, extraParams), {
@@ -1335,6 +1364,48 @@ if ($canManageAllFaqs) {
 			});
 	}
 
+	function showRequestForm() {
+		if (!requestView) return;
+		currentViewToken = 'faq-request';
+		root.classList.add('faq-popup--detail-open');
+		if (detailView) {
+			detailView.hidden = true;
+			clearFaqView(detailView);
+		}
+		if (editorView) editorView.hidden = true;
+		requestView.hidden = false;
+		const form = requestView.querySelector('[data-faq-request-form]');
+		if (form) form.reset();
+	}
+
+	function submitQuestionRequest(form) {
+		const message = form.querySelector('[data-faq-request-message]');
+		const submitButton = form.querySelector('[type="submit"]');
+		if (submitButton) submitButton.disabled = true;
+		if (message) message.textContent = 'Envoi en cours...';
+		const requestParams = new URLSearchParams();
+		if (currentOid > 0) requestParams.set('oid', String(currentOid));
+		if (currentCid > 0) requestParams.set('cid', String(currentCid));
+		fetch('/ajax/faq_question_request.php' + (requestParams.toString() ? '?' + requestParams.toString() : ''), {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: { 'X-Requested-With': 'XMLHttpRequest' },
+			body: new FormData(form)
+		}).then(function (response) {
+			return response.json().then(function (payload) {
+				if (!response.ok || !payload.success) throw new Error(payload.message || 'Impossible d envoyer votre question.');
+				return payload;
+			});
+		}).then(function (payload) {
+			if (message) message.textContent = payload.message || 'Votre question a bien été envoyée.';
+			form.reset();
+		}).catch(function (error) {
+			if (message) message.textContent = error.message || 'Impossible d envoyer votre question.';
+		}).finally(function () {
+			if (submitButton) submitButton.disabled = false;
+		});
+	}
+
 	function syncFromHash() {
 		const popupState = getPopupHashState();
 		const targetToken = popupState.popupToken;
@@ -1344,7 +1415,7 @@ if ($canManageAllFaqs) {
 		}
 
 		if (popupState.popupId) {
-			showDetail(popupState.popupId, { updateHash: false });
+			showDetail(popupState.popupId, { updateHash: false, edit: 'auto' });
 			return;
 		}
 
@@ -1386,6 +1457,9 @@ if ($canManageAllFaqs) {
 		}
 
 		const query = searchInput.value.trim();
+		if (askShell) {
+			askShell.hidden = query.length < 3;
+		}
 		const words = normalize(query).split(/\s+/).filter(Boolean);
 		const items = Array.from(list.querySelectorAll('[data-faq-item]'));
 		let visibleCount = 0;
@@ -1970,6 +2044,11 @@ if ($canManageAllFaqs) {
 			return;
 		}
 
+		if (event.target.closest('[data-faq-ask]')) {
+			showRequestForm();
+			return;
+		}
+
 		const saveButton = event.target.closest('[data-faq-save]');
 		if (saveButton) {
 			const scope = saveButton.closest('[data-faq-form-shell]') || editorView || detailView;
@@ -1989,6 +2068,13 @@ if ($canManageAllFaqs) {
 		if (event.target.closest('[data-faq-back]')) {
 			showList();
 		}
+	});
+
+	root.addEventListener('submit', function (event) {
+		const form = event.target.closest('[data-faq-request-form]');
+		if (!form) return;
+		event.preventDefault();
+		submitQuestionRequest(form);
 	});
 
 	if (searchInput) {

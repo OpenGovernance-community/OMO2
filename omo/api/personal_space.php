@@ -51,7 +51,7 @@ $sourceLang = [
         'context' => 'Main title of the personal space panel shown on the right side of the OMO workspace.',
     ],
     'personal_space.empty' => [
-        'text' => 'Aucun module n est configuré dans cette vue du tableau de pilotage.',
+        'text' => 'Aucun module n’est configuré dans cette vue du tableau de pilotage.',
         'context' => 'Fallback empty state when the effective dashboard layout has no visible module.',
     ],
     'personal_space.login_required' => [
@@ -198,7 +198,7 @@ $sourceLang = [
 	'personal_space.editor.reset_organization_model_default' => ['text' => 'Effacer la vue par défaut du modèle Organisation', 'context' => 'Remove the organization dashboard layout stored for the organization holon.'],
 	'personal_space.editor.reset_application_type_default' => ['text' => 'Effacer la vue par défaut de tous les {typeName}', 'context' => 'Remove the application dashboard layout stored for the current base holon type.'],
 	'personal_space.editor.reset_global_default' => ['text' => 'Effacer la vue par défaut globale', 'context' => 'Remove the global dashboard layout stored for all organizations.'],
-    'personal_space.editor.save_options' => ['text' => 'Autres options d enregistrement', 'context' => 'Accessible label for dashboard default save options.'],
+	'personal_space.editor.save_options' => ['text' => 'Autres options d’enregistrement', 'context' => 'Accessible label for dashboard default save options.'],
     'personal_space.editor.save_holon_default' => ['text' => 'Enregistrer par défaut pour ce holon', 'context' => 'Save the current dashboard layout as the default for this holon.'],
     'personal_space.editor.save_organization_template_default' => ['text' => 'Enregistrer par défaut pour le modèle {templateName}', 'context' => 'Save the current dashboard layout as the organization default for the template inherited by the current holon.'],
     'personal_space.editor.save_organization_model_default' => ['text' => 'Enregistrer par défaut pour le modèle Organisation', 'context' => 'Save the current dashboard layout as the default for the organization holon.'],
@@ -249,7 +249,7 @@ $sourceLang = [
     'personal_space.audience.mine' => ['text' => 'Moi', 'context' => 'Dashboard module audience showing items assigned to the current member.'],
     'personal_space.audience.roles' => ['text' => 'Mes espaces', 'context' => 'Dashboard indicators module audience showing items attached to the current member spaces.'],
     'personal_space.module.empty' => ['text' => 'Aucun élément à afficher.', 'context' => 'Empty dashboard module fallback.'],
-    'personal_space.video.empty' => ['text' => 'Aucune vidéo n est configurée pour ce module.', 'context' => 'Empty state for an unconfigured dashboard video module.'],
+    'personal_space.video.empty' => ['text' => 'Aucune vidéo n’est configurée pour ce module.', 'context' => 'Empty state for an unconfigured dashboard video module.'],
     'personal_space.video.player_title' => ['text' => 'Vidéo de présentation', 'context' => 'Title of the embedded video player in the dashboard.'],
     'personal_space.module.unavailable' => ['text' => 'Cette application n’est pas active dans ce contexte.', 'context' => 'Unavailable dashboard module message.'],
     'personal_space.module.more' => ['one' => 'Et {count} de plus', 'other' => 'Et {count} de plus', 'context' => 'Summary shown below a dashboard module when more items exist than are displayed.'],

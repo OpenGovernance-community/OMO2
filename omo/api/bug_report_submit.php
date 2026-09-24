@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode([
         'status' => false,
-        'message' => 'Methode non autorisee.',
+        'message' => githubBugReportT('request_method'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -68,7 +68,7 @@ function omoBugReportDetectBrowser($userAgent)
         }
     }
 
-    return 'Navigateur inconnu';
+    return githubBugReportT('browser_unknown');
 }
 
 function omoBugReportDetectOs($userAgent, $platform = '')
@@ -95,7 +95,7 @@ function omoBugReportDetectOs($userAgent, $platform = '')
         }
     }
 
-    return 'Systeme inconnu';
+    return githubBugReportT('system_unknown');
 }
 
 function omoBugReportNormalizeUploads($fieldName)
@@ -146,7 +146,7 @@ function omoBugReportUploadDir()
 {
     $documentRoot = rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/\\');
     if ($documentRoot === '') {
-        throw new RuntimeException('Document root introuvable pour stocker la piece jointe.');
+        throw new RuntimeException(githubBugReportT('upload_root_missing'));
     }
 
     return $documentRoot . DIRECTORY_SEPARATOR . 'img' . DIRECTORY_SEPARATOR . 'upload' . DIRECTORY_SEPARATOR . 'bugreport';
@@ -160,22 +160,22 @@ function omoBugReportStoreAttachment(array $upload)
     }
 
     if ($errorCode !== UPLOAD_ERR_OK) {
-        throw new RuntimeException('Une piece jointe n a pas pu etre televersee correctement.');
+        throw new RuntimeException(githubBugReportT('attachment_error'));
     }
 
     $tmpName = (string)($upload['tmp_name'] ?? '');
     if ($tmpName === '' || !is_uploaded_file($tmpName)) {
-        throw new RuntimeException('Fichier temporaire invalide pour la piece jointe.');
+        throw new RuntimeException(githubBugReportT('temporary_file_invalid'));
     }
 
     $size = (int)($upload['size'] ?? 0);
     if ($size <= 0) {
-        throw new RuntimeException('Une piece jointe est vide.');
+        throw new RuntimeException(githubBugReportT('empty_attachment'));
     }
 
     $maxSize = 15 * 1024 * 1024;
     if ($size > $maxSize) {
-        throw new RuntimeException('Chaque piece jointe doit faire moins de 15 MB.');
+        throw new RuntimeException(githubBugReportT('attachment_size'));
     }
 
     $originalName = trim((string)($upload['name'] ?? ''));
@@ -197,7 +197,7 @@ function omoBugReportStoreAttachment(array $upload)
     }
 
     if ($detectedMime === '' || !isset($rules[$detectedMime])) {
-        throw new RuntimeException('Type de fichier non autorise pour la piece jointe.');
+        throw new RuntimeException(githubBugReportT('attachment_type'));
     }
 
     if ($extension === '' || !in_array($extension, $rules[$detectedMime], true)) {
@@ -206,13 +206,13 @@ function omoBugReportStoreAttachment(array $upload)
 
     $targetDir = omoBugReportUploadDir();
     if (!is_dir($targetDir) && !@mkdir($targetDir, 0777, true)) {
-        throw new RuntimeException('Impossible de creer le dossier de stockage des pieces jointes.');
+        throw new RuntimeException(githubBugReportT('attachment_directory'));
     }
 
     $storedBaseName = date('Ymd_His') . '_' . bin2hex(random_bytes(6)) . '.' . $extension;
     $targetPath = $targetDir . DIRECTORY_SEPARATOR . $storedBaseName;
     if (!move_uploaded_file($tmpName, $targetPath)) {
-        throw new RuntimeException('Impossible de stocker une piece jointe sur le serveur.');
+        throw new RuntimeException(githubBugReportT('attachment_store'));
     }
 
     $publicPath = '/img/upload/bugreport/' . $storedBaseName;
@@ -238,7 +238,7 @@ function omoBugReportStoreAttachments($fieldName)
     }
 
     if (count($uploads) > 5) {
-        throw new RuntimeException('Maximum 5 pieces jointes par signalement.');
+        throw new RuntimeException(githubBugReportT('attachment_limit'));
     }
 
     $storedAttachments = [];
@@ -257,7 +257,7 @@ if ($currentUserId <= 0) {
     http_response_code(403);
     echo json_encode([
         'status' => false,
-        'message' => 'Connexion requise.',
+        'message' => githubBugReportT('login_error'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -266,7 +266,7 @@ if (!githubBugReportUiIsEnabled()) {
     http_response_code(404);
     echo json_encode([
         'status' => false,
-        'message' => 'Le module de signalement n est pas disponible sur ce serveur.',
+        'message' => githubBugReportT('module_unavailable'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -277,7 +277,7 @@ if (!$patreonConnected) {
     http_response_code(403);
     echo json_encode([
         'status' => false,
-        'message' => 'Le Bug Tracking System est reserve aux comptes Patreon connectes.',
+        'message' => githubBugReportT('patreon_error'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -289,7 +289,7 @@ if ($title === '' || $description === '') {
     http_response_code(422);
     echo json_encode([
         'status' => false,
-        'message' => 'Titre et description obligatoires.',
+        'message' => githubBugReportT('required_fields'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -299,7 +299,7 @@ if (!$user->load($currentUserId)) {
     http_response_code(404);
     echo json_encode([
         'status' => false,
-        'message' => 'Utilisateur introuvable.',
+        'message' => githubBugReportT('user_missing'),
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -322,37 +322,37 @@ if ($userDisplayName === '') {
 
 $userUsername = trim((string)$user->getScopedUsername($currentOrganizationId));
 $context = [
-    'URL' => omoBugReportCleanLine($_POST['page_url'] ?? '', 1800),
-    'Page title' => omoBugReportCleanLine($_POST['page_title'] ?? '', 250),
-    'Application' => omoBugReportCleanLine($_POST['app_key'] ?? '', 80),
-    'Theme' => omoBugReportCleanLine($_POST['theme'] ?? '', 80),
-    'User' => $userDisplayName !== '' ? $userDisplayName : ('User #' . $currentUserId),
-    'User id' => (string)$currentUserId,
-    'Username' => $userUsername,
-    'Organisation' => $organizationName,
-    'Organisation id' => $currentOrganizationId > 0 ? (string)$currentOrganizationId : '',
-    'Organisation shortname' => $organizationShortname,
-    'Browser' => omoBugReportDetectBrowser($_POST['user_agent'] ?? ''),
-    'OS' => omoBugReportDetectOs($_POST['user_agent'] ?? '', $_POST['platform'] ?? ''),
-    'User agent' => omoBugReportCleanLine($_POST['user_agent'] ?? '', 1000),
-    'Platform' => omoBugReportCleanLine($_POST['platform'] ?? '', 120),
-    'Language' => omoBugReportCleanLine($_POST['language'] ?? '', 80),
-    'Languages' => omoBugReportCleanLine($_POST['languages'] ?? '', 200),
-    'Timezone' => omoBugReportCleanLine($_POST['timezone'] ?? '', 80),
-    'Viewport' => omoBugReportCleanLine($_POST['viewport'] ?? '', 40),
-    'Screen' => omoBugReportCleanLine($_POST['screen_size'] ?? '', 40),
-    'Pixel ratio' => omoBugReportCleanLine($_POST['pixel_ratio'] ?? '', 20),
-    'Referrer' => omoBugReportCleanLine($_POST['referrer'] ?? '', 500),
-    'Client timestamp' => omoBugReportCleanLine($_POST['client_timestamp'] ?? '', 60),
-    'Server timestamp' => gmdate('c'),
+    githubBugReportT('issue_url') => omoBugReportCleanLine($_POST['page_url'] ?? '', 1800),
+    githubBugReportT('issue_page_title') => omoBugReportCleanLine($_POST['page_title'] ?? '', 250),
+    githubBugReportT('issue_application') => omoBugReportCleanLine($_POST['app_key'] ?? '', 80),
+    githubBugReportT('issue_theme') => omoBugReportCleanLine($_POST['theme'] ?? '', 80),
+    githubBugReportT('issue_user') => $userDisplayName !== '' ? $userDisplayName : ('Utilisateur #' . $currentUserId),
+    githubBugReportT('issue_user_id') => (string)$currentUserId,
+    githubBugReportT('issue_username') => $userUsername,
+    githubBugReportT('issue_organization') => $organizationName,
+    githubBugReportT('issue_organization_id') => $currentOrganizationId > 0 ? (string)$currentOrganizationId : '',
+    githubBugReportT('issue_organization_shortname') => $organizationShortname,
+    githubBugReportT('issue_browser') => omoBugReportDetectBrowser($_POST['user_agent'] ?? ''),
+    githubBugReportT('issue_os') => omoBugReportDetectOs($_POST['user_agent'] ?? '', $_POST['platform'] ?? ''),
+    githubBugReportT('issue_user_agent') => omoBugReportCleanLine($_POST['user_agent'] ?? '', 1000),
+    githubBugReportT('issue_platform') => omoBugReportCleanLine($_POST['platform'] ?? '', 120),
+    githubBugReportT('issue_language') => omoBugReportCleanLine($_POST['language'] ?? '', 80),
+    githubBugReportT('issue_languages') => omoBugReportCleanLine($_POST['languages'] ?? '', 200),
+    githubBugReportT('issue_timezone') => omoBugReportCleanLine($_POST['timezone'] ?? '', 80),
+    githubBugReportT('issue_viewport') => omoBugReportCleanLine($_POST['viewport'] ?? '', 40),
+    githubBugReportT('issue_screen') => omoBugReportCleanLine($_POST['screen_size'] ?? '', 40),
+    githubBugReportT('issue_pixel_ratio') => omoBugReportCleanLine($_POST['pixel_ratio'] ?? '', 20),
+    githubBugReportT('issue_referrer') => omoBugReportCleanLine($_POST['referrer'] ?? '', 500),
+    githubBugReportT('issue_client_timestamp') => omoBugReportCleanLine($_POST['client_timestamp'] ?? '', 60),
+    githubBugReportT('issue_server_timestamp') => gmdate('c'),
 ];
 
 $issueLines = [
-    '## Description',
+    '## ' . githubBugReportT('issue_description_heading'),
     '',
     $description,
     '',
-    '## Contexte',
+    '## ' . githubBugReportT('issue_context_heading'),
 ];
 
 foreach ($context as $label => $value) {
@@ -367,7 +367,7 @@ try {
     $attachments = omoBugReportStoreAttachments('attachments');
     if ($attachments !== []) {
         $issueLines[] = '';
-        $issueLines[] = '## Pieces jointes publiques';
+        $issueLines[] = '## ' . githubBugReportT('issue_attachments_heading');
         $issueLines[] = '';
 
         foreach ($attachments as $attachment) {
@@ -382,7 +382,7 @@ try {
         'type' => 'Bug',
     ]);
 
-    $responseMessage = 'Signalement envoye sur GitHub.';
+    $responseMessage = githubBugReportT('issue_sent');
 
     echo json_encode([
         'status' => true,

@@ -21,12 +21,15 @@ if (!$faq->load($faqId) || !(int)$faq->get("id")) {
 	die("FAQ introuvable");
 }
 
-if (!$faq->canBeViewedInContext($faqContext ?: array(), $faqScope)) {
+$canEditFaq = $faq->canBeEditedInContext($faqContext ?: array());
+if (!$faq->canBeViewedInContext($faqContext ?: array(), $faqScope) && !$canEditFaq) {
 	die("Cette FAQ n'est pas disponible");
 }
 
-$isEditMode = !empty($_GET['edit']) && $_GET['edit'] !== '0';
-$canEditFaq = $faq->canBeEditedInContext($faqContext ?: array());
+$editRequest = (string)($_GET['edit'] ?? '');
+$isEditMode = $editRequest === 'auto'
+	? (!(int)$faq->get('isactive') && $canEditFaq)
+	: ($editRequest !== '' && $editRequest !== '0');
 $canEditFaqScope = \dbObject\FAQ::currentViewerHasOrganizationAdminAccess($faq->getResolvedOrganizationId());
 $canDeleteFaq = $faq->canBeDeletedInContext($faqContext ?: array());
 $canManageParcoursFaqs = \dbObject\FAQ::canManageParcoursInContext($faqContext ?: array(), 0, true);
@@ -47,7 +50,9 @@ if ($isEditMode) {
 		'isactive',
 	);
 	$editorTitle = 'Editer la FAQ';
-	$editorStatus = 'Mettez a jour le contenu puis validez pour revenir au detail.';
+	$editorStatus = (int)$faq->get('request_user_id') > 0 && trim((string)$faq->get('answer')) === ''
+		? 'Répondez dans le champ « Réponse courte ». La case « Afficher dans la FAQ publique » permet de publier la question pour tout le monde.'
+		: 'Mettez à jour le contenu puis validez pour revenir au détail.';
 	$allowGeneric = $faq->canBeDetachedInContext($faqContext ?: array());
 	?>
 	<div class="faq-popup__item is-open">
@@ -130,8 +135,15 @@ if (\dbObject\FAQ::hasViewcountColumn()) {
 				<button type="button" class="faq-popup__back generic-action-button generic-action-button--secondary" data-faq-back>Retour a la FAQ</button>
 			</div>
 		</div>
+		<?php if ($canEditFaq && (int)$faq->get('request_user_id') > 0): ?>
+			<div class="faq-popup__request-info generic-soft-panel generic-stack generic-stack--compact">
+				<strong><?= trim((string)$faq->get('answer')) === '' ? 'Question en attente de réponse' : 'Question envoyée par l’utilisateur' ?></strong>
+				<div><strong>Auteur :</strong> <?= htmlspecialchars((string)$faq->get('request_author_name'), ENT_QUOTES, 'UTF-8') ?> · <?= htmlspecialchars((string)$faq->get('request_author_email'), ENT_QUOTES, 'UTF-8') ?></div>
+				<div><strong>Description du problème :</strong><br><?= nl2br(htmlspecialchars((string)$faq->get('request_description'), ENT_QUOTES, 'UTF-8')) ?></div>
+			</div>
+		<?php endif; ?>
 		<div style="color: #334155; line-height: 1.7; margin-bottom: 18px;">
-			<?= nl2br(htmlspecialchars((string)$faq->get("answer"))) ?>
+			<?= trim((string)$faq->get("answer")) !== '' ? nl2br(htmlspecialchars((string)$faq->get("answer"), ENT_QUOTES, 'UTF-8')) : ($canEditFaq && (int)$faq->get('request_user_id') > 0 ? 'Cette question attend votre réponse.' : '') ?>
 		</div>
 		<?php faqPopupRenderMediaBlock($faq); ?>
 		<?php if ((string)$faq->get("detail") !== ''): ?>

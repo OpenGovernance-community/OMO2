@@ -98,7 +98,7 @@ if (!function_exists('omoSpacedeckApiRequest')) {
     {
         $config = omoSpacedeckGetConfig();
         if ($config['internalUrl'] === '' || $config['provisioningToken'] === '') {
-            return array('status' => false, 'text' => 'SpaceDeck n est pas configure.');
+            return array('status' => false, 'text' => 'SpaceDeck n’est pas configuré.');
         }
 
         if (!function_exists('curl_init')) {

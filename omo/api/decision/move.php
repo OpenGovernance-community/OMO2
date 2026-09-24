@@ -9,7 +9,7 @@ $sourceLang = [
     'decisions.move.error.not_found' => ['text' => 'La prise de décision demandée est introuvable.', 'context' => 'Error shown when the decision cannot be loaded.'],
     'decisions.move.error.organization_not_found' => ['text' => 'Organisation introuvable.', 'context' => 'Error shown when the organization cannot be loaded.'],
     'decisions.move.error.forbidden' => ['text' => 'Vous n avez pas le droit de déplacer cette prise de décision.', 'context' => 'Error shown when the viewer cannot move the decision.'],
-    'decisions.move.error.no_destination' => ['text' => 'Aucune destination accessible n a été trouvée pour cette prise de décision.', 'context' => 'Error shown when no alternative destination is available.'],
+    'decisions.move.error.no_destination' => ['text' => 'Aucune destination accessible n’a été trouvée pour cette prise de décision.', 'context' => 'Error shown when no alternative destination is available.'],
     'decisions.move.field.destination' => ['text' => 'Destination', 'context' => 'Label shown above the decision destination picker.'],
             'decisions.move.field.holon' => ['text' => 'Espace de destination', 'context' => 'Label shown above the visual space picker.'],
     'decisions.move.field.search_placeholder' => ['text' => 'Rechercher une destination', 'context' => 'Search placeholder used in the move dialog.'],

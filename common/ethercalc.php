@@ -111,7 +111,7 @@ if (!function_exists('omoEthercalcRequest')) {
         $config = omoEthercalcGetConfig();
         $baseUrl = $config['internalBaseUrl'] !== '' ? $config['internalBaseUrl'] : $config['baseUrl'];
         if ($baseUrl === '' || $config['key'] === '') {
-            return array('status' => false, 'text' => 'EtherCalc n est pas configure.');
+            return array('status' => false, 'text' => 'EtherCalc n’est pas configuré.');
         }
 
         if (!function_exists('curl_init')) {
@@ -171,7 +171,7 @@ if (!function_exists('omoEthercalcCreateDocumentSheet')) {
     function omoEthercalcCreateDocumentSheet(int $organizationId): array
     {
         if (!omoEthercalcHasConfig()) {
-            return array('status' => false, 'text' => 'EtherCalc n est pas configure.');
+            return array('status' => false, 'text' => 'EtherCalc n’est pas configuré.');
         }
 
         try {
@@ -228,7 +228,7 @@ if (!function_exists('omoEthercalcDeleteDocumentSheet')) {
 
         $token = omoEthercalcBuildEditToken($roomId);
         if ($token === '') {
-            return array('status' => false, 'text' => 'EtherCalc n est pas configure.');
+            return array('status' => false, 'text' => 'EtherCalc n’est pas configuré.');
         }
 
         $result = omoEthercalcRequest('DELETE', '/_/' . rawurlencode($roomId), array('auth' => $token));
