@@ -1574,7 +1574,7 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
             . '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260923-compact-editor">'
             . '<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">'
             . '<script src="/common/choice/word-diff.js?v=20260815" defer></script>'
-            . '<script src="/common/choice/change-details.js?v=20260923-lifecycle-details" defer></script>'
+            . '<script src="/common/choice/change-details.js?v=20260924-readable-diffs" defer></script>'
             . '<script src="/common/choice/highlight-palette.js?v=20260904-highlight-clear" defer></script>'
             . '<script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear" defer></script>'
             . '<script src="/common/choice/decision-anonymity.js?v=20260825-named-vote" defer></script>'

@@ -415,7 +415,7 @@ if ($requestFragment === 'items') {
 
 <script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
 <script src="/common/choice/word-diff.js?v=20260816"></script>
-<script src="/common/choice/change-details.js?v=20260923-lifecycle-details"></script>
+<script src="/common/choice/change-details.js?v=20260924-readable-diffs"></script>
 <script>
 	(function () {
 		function safeObject(value) {

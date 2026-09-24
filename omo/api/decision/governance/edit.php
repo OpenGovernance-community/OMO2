@@ -105,17 +105,30 @@ foreach ($authorityItems as $authority) {
         ];
     }
 }
+$responsibleLabels = [];
+$organizationMembers = new \dbObject\ArrayUserOrganization();
+$organizationMembers->loadActiveForOrganization((int)$context['organizationId']);
+foreach ($organizationMembers as $membership) {
+    $memberUserId = (int)$membership->get('IDuser');
+    if ($memberUserId > 0) {
+        $responsibleLabels[$memberUserId] = \dbObject\DocumentPvPoint::getUserDisplayNameForOrganization($memberUserId, (int)$context['organizationId']);
+    }
+}
 $ruleCatalog = DeferredProposal::getRuleTargetHolonCatalog((int)$context['organizationId'], $targetHolonId);
 $holonCatalog = DeferredProposal::getHolonTargetHolonCatalog((int)$context['organizationId'], $targetHolonId);
 $projectCatalog = DeferredProposal::getProjectTargetHolonCatalog((int)$context['organizationId'], $targetHolonId);
+$recurringTaskCatalog = DeferredProposal::getObjectTargetHolonCatalog((int)$context['organizationId'], $targetHolonId, DeferredProposal::TARGET_RECURRING_TASK);
+$indicatorCatalog = DeferredProposal::getObjectTargetHolonCatalog((int)$context['organizationId'], $targetHolonId, DeferredProposal::TARGET_INDICATOR);
 $contextLabels = [];
 $contextPermissions = [
     DeferredProposal::TARGET_RULE => ['create' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_HOLON => ['create' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_PROJECT => ['create' => [], 'update' => [], 'delete' => []],
+    DeferredProposal::TARGET_RECURRING_TASK => ['create' => [], 'update' => [], 'delete' => []],
+    DeferredProposal::TARGET_INDICATOR => ['create' => [], 'update' => [], 'delete' => []],
 ];
 $projectCreationModes = [];
-foreach ([$ruleCatalog, $holonCatalog, $projectCatalog] as $catalog) {
+foreach ([$ruleCatalog, $holonCatalog, $projectCatalog, $recurringTaskCatalog, $indicatorCatalog] as $catalog) {
     foreach ($catalog as $catalogHolonId => $entry) $contextLabels[(int)$catalogHolonId] = (string)($entry['label'] ?? '');
 }
 foreach ($ruleCatalog as $catalogHolonId => $entry) {
@@ -138,6 +151,11 @@ foreach ($projectCatalog as $catalogHolonId => $entry) {
         if (!empty($entry['permissions'][$catalogOperation])) $contextPermissions[DeferredProposal::TARGET_PROJECT][$catalogOperation][] = (int)$catalogHolonId;
     }
 }
+foreach ([DeferredProposal::TARGET_RECURRING_TASK => $recurringTaskCatalog, DeferredProposal::TARGET_INDICATOR => $indicatorCatalog] as $catalogType => $catalog) {
+    foreach ($catalog as $catalogHolonId => $entry) foreach (array_keys($contextPermissions[$catalogType]) as $catalogOperation) {
+        if (!empty($entry['permissions'][$catalogOperation])) $contextPermissions[$catalogType][$catalogOperation][] = (int)$catalogHolonId;
+    }
+}
 foreach ($contextPermissions as &$operationPermissions) {
     foreach ($operationPermissions as &$ids) $ids = array_values(array_unique(array_map('intval', $ids)));
     unset($ids);
@@ -150,6 +168,7 @@ $payload = [
     'roles' => array_values($roleData),
     'roleTemplates' => $roleTemplates,
     'authorities' => array_values($authorities),
+    'responsibleLabels' => $responsibleLabels,
     'organizationId' => (int)$context['organizationId'],
     'decisionId' => $decision instanceof DecisionProcess ? (int)$decision->getId() : 0,
     'contextLabels' => $contextLabels,
@@ -182,6 +201,12 @@ $payload = [
         'projectCreate' => omoDecisionGovernanceT('governance.action.project_create'),
         'projectPropose' => omoDecisionGovernanceT('governance.action.project_propose'),
         'projectDelete' => omoDecisionGovernanceT('governance.action.project_delete'),
+        'recurringTaskUpdate' => omoDecisionGovernanceT('governance.action.recurring_task_update'),
+        'recurringTaskCreate' => omoDecisionGovernanceT('governance.action.recurring_task_create'),
+        'recurringTaskDelete' => omoDecisionGovernanceT('governance.action.recurring_task_delete'),
+        'indicatorUpdate' => omoDecisionGovernanceT('governance.action.indicator_update'),
+        'indicatorCreate' => omoDecisionGovernanceT('governance.action.indicator_create'),
+        'indicatorDelete' => omoDecisionGovernanceT('governance.action.indicator_delete'),
         'objectType' => omoDecisionGovernanceT('governance.action.object_type'),
         'context' => omoDecisionGovernanceT('governance.action.context'),
         'object' => omoDecisionGovernanceT('governance.action.object'),
@@ -313,6 +338,6 @@ $payload = [
     <script type="application/json" data-governance-data><?= omoDecisionGovernanceEncodeJson($payload, '{}') ?></script>
 </section>
 <script src="/common/choice/word-diff.js?v=20260815"></script>
-<script src="/common/choice/change-details.js?v=20260923-lifecycle-details"></script>
-<script src="/common/choice/governance-actions.js?v=20260923-compact-editor"></script>
+<script src="/common/choice/change-details.js?v=20260924-readable-diffs"></script>
+<script src="/common/choice/governance-actions.js?v=20260924-shared-object-forms"></script>
 <script>if(window.omoGovernanceEditorInit){window.omoGovernanceEditorInit(document);}</script>

@@ -3,10 +3,11 @@
 require_once '../shared_functions.php';
 require_once __DIR__ . '/patreon.php';
 
-function patreonRenderCallbackPage($title, $message, $isSuccess)
+function patreonRenderCallbackPage($title, $message, $isSuccess, $returnOrigin = '')
 {
 	$title = (string)$title;
 	$message = (string)$message;
+	$returnOrigin = (string)$returnOrigin;
 	$state = $isSuccess ? 'success' : 'error';
 	?>
 <!DOCTYPE html>
@@ -55,9 +56,10 @@ function patreonRenderCallbackPage($title, $message, $isSuccess)
 		<p>Cette fenêtre peut se fermer automatiquement.</p>
 		<script>
 			(function () {
+				var returnOrigin = <?= json_encode($returnOrigin, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
 				if (window.opener && !window.opener.closed) {
 					try {
-						window.opener.postMessage({ type: 'patreon-connected' }, window.location.origin);
+						window.opener.postMessage({ type: 'patreon-connected' }, returnOrigin);
 					} catch (error) {
 					}
 				}
@@ -79,40 +81,47 @@ if (!patreonIsConfigured('oauth')) {
 	exit;
 }
 
-if (!isset($_SESSION['patreon_oauth_state']) || !is_array($_SESSION['patreon_oauth_state'])) {
+if (!patreonIsConnectHubRequest()) {
+	patreonRenderCallbackPage('Connexion Patreon impossible', 'Le rappel Patreon doit être traité sur le domaine central configuré.', false);
+	exit;
+}
+
+$receivedState = trim((string)($_GET['state'] ?? ''));
+if ($receivedState === '') {
 	patreonRenderCallbackPage('Connexion Patreon impossible', 'La session de sécurité a expiré. Merci de relancer la connexion depuis votre profil.', false);
 	exit;
 }
 
-$storedState = $_SESSION['patreon_oauth_state'];
-unset($_SESSION['patreon_oauth_state']);
-
-$createdAt = (int)($storedState['created_at'] ?? 0);
-if ($createdAt <= 0 || $createdAt < (time() - 1800)) {
-	patreonRenderCallbackPage('Connexion Patreon expirée', 'La demande de connexion a expiré. Merci de relancer l’autorisation depuis votre profil.', false);
+$transaction = \dbObject\PatreonOauthTransaction::claimByStateHash(hash('sha256', $receivedState));
+if (!($transaction instanceof \dbObject\PatreonOauthTransaction)) {
+	patreonRenderCallbackPage('Connexion Patreon expirée', 'La demande de connexion a expiré ou a déjà été utilisée. Merci de la relancer depuis votre profil.', false);
 	exit;
 }
 
-$receivedState = (string)($_GET['state'] ?? '');
-if ($receivedState === '' || !hash_equals((string)($storedState['token'] ?? ''), $receivedState)) {
-	patreonRenderCallbackPage('Connexion Patreon refusée', 'Le jeton de sécurité OAuth est invalide.', false);
+$returnOrigin = (string)$transaction->get('return_origin');
+if (!patreonIsAllowedReturnOrigin($returnOrigin)) {
+	$transaction->markFailed();
+	patreonRenderCallbackPage('Connexion Patreon refusée', 'Le domaine de retour n’est plus autorisé.', false);
 	exit;
 }
 
-$userId = (int)($storedState['user_id'] ?? 0);
+$userId = (int)$transaction->get('IDuser');
 if ($userId <= 0) {
+	$transaction->markFailed();
 	patreonRenderCallbackPage('Connexion Patreon impossible', 'Utilisateur associé introuvable.', false);
 	exit;
 }
 
 if (!empty($_GET['error'])) {
 	$errorDescription = trim((string)($_GET['error_description'] ?? (string)$_GET['error']));
+	$transaction->markFailed();
 	patreonRenderCallbackPage('Connexion Patreon annulée', $errorDescription !== '' ? $errorDescription : 'L’autorisation Patreon a été refusée.', false);
 	exit;
 }
 
 $code = trim((string)($_GET['code'] ?? ''));
 if ($code === '') {
+	$transaction->markFailed();
 	patreonRenderCallbackPage('Connexion Patreon impossible', 'Aucun code OAuth Patreon n’a été reçu.', false);
 	exit;
 }
@@ -127,8 +136,12 @@ try {
 	}
 
 	patreonSyncConnection($connection);
-	patreonRenderCallbackPage('Compte Patreon connecté', 'La connexion Patreon est active et l’état de l’abonnement a été synchronisé.', true);
+	if (empty($transaction->markCompleted()['status'])) {
+		throw new RuntimeException('La connexion est active, mais sa confirmation n’a pas pu être enregistrée.');
+	}
+	patreonRenderCallbackPage('Compte Patreon connecté', 'La connexion Patreon est active et l’état de l’abonnement a été synchronisé.', true, $returnOrigin);
 } catch (Throwable $exception) {
+	$transaction->markFailed();
 	patreonRenderCallbackPage('Connexion Patreon impossible', $exception->getMessage(), false);
 }
 

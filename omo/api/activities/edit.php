@@ -7,26 +7,32 @@ use dbObject\ArrayUserOrganization;
 use dbObject\DocumentPvPoint;
 use dbObject\RecurrenceSchedule;
 
-$organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
-$currentHolonId = (int)($_GET['cid'] ?? 0);
-$context = omoActivityResolveContext($organizationId, $currentHolonId);
-$activityId = (int)($_GET['id'] ?? 0);
+$deferredEditor = $GLOBALS['omoDeferredObjectEditor'] ?? null;
+$organizationId = $deferredEditor ? (int)$deferredEditor['organizationId'] : (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
+$currentHolonId = $deferredEditor ? (int)$deferredEditor['holonId'] : (int)($_GET['cid'] ?? 0);
+$context = $deferredEditor ? ['status' => true] : omoActivityResolveContext($organizationId, $currentHolonId);
+$activityId = $deferredEditor ? (int)$deferredEditor['objectId'] : (int)($_GET['id'] ?? 0);
 $activity = new ControlActivity();
 $activity = $activityId > 0 && $activity->load($activityId) ? $activity : new ControlActivity();
-if (empty($context['status'])
+if (!$deferredEditor && (empty($context['status'])
     || ($activityId > 0 && ((int)$activity->get('IDorganization') !== $organizationId || !omoActivityCanEdit($activity)))
     || ($activityId === 0 && !omoActivityCanUsePermission($context['currentHolon'], 'CAN_CREATE_RECURRING_TASK'))
-) {
+)) {
     http_response_code(403);
     echo '<div class="omo-empty-state">' . omoApiEscape(omoActivityT('activity.error.forbidden')) . '</div>';
     exit;
+}
+if ($deferredEditor) {
+    foreach (['title', 'description', 'IDuser_responsible', 'frequency', 'schedule', 'display_lead_value', 'display_lead_unit', 'execution_duration_value', 'execution_duration_unit'] as $field) {
+        if (array_key_exists($field, $deferredEditor['state'])) $activity->set($field, $deferredEditor['state'][$field]);
+    }
 }
 
 $frequency = RecurrenceSchedule::normalizeFrequency($activity->get('frequency')) ?: RecurrenceSchedule::FREQUENCY_WEEKLY;
 $options = omoActivityScheduleOptions();
 $schedule = RecurrenceSchedule::normalizeSchedule($frequency, $activity->get('schedule'))
     ?: (string)($options[$frequency][0]['value'] ?? '1');
-$pvMeetingQuery = omoActivityPvMeetingQuery($organizationId);
+$pvMeetingQuery = $deferredEditor ? '' : omoActivityPvMeetingQuery($organizationId);
 $suffix = ($currentHolonId > 0 ? '&cid=' . $currentHolonId : '') . $pvMeetingQuery;
 $backUrl = $activityId > 0
     ? '/omo/api/activities/detail.php?oid=' . $organizationId . '&id=' . $activityId . $suffix
@@ -50,7 +56,9 @@ $activityHelp = static function ($label, $text) {
         . '<div class="generic-context-help__content">' . omoApiEscape($text) . '</div></details>';
 };
 ?>
-<div class="omo-activity-detail generic-drawer-content">
+<?php if ($deferredEditor): ?><link rel="stylesheet" href="/omo/api/activities/activities.css?v=20260921-compact-editor"><?php endif; ?>
+<div class="omo-activity-detail generic-drawer-content"<?= $deferredEditor ? ' data-deferred-object-editor' : '' ?>>
+    <?php if (!$deferredEditor): ?>
     <div
         hidden
         data-omo-subdrawer-header
@@ -60,13 +68,14 @@ $activityHelp = static function ($label, $text) {
         <button type="submit" form="omo-activity-editor-form" class="generic-action-button generic-action-button--main" data-omo-subdrawer-action><?= omoApiEscape(omoActivityT('activity.save')) ?></button>
         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-subdrawer-action data-activity-editor-cancel<?= $backUrl !== '' ? ' data-activity-open-url="' . omoApiEscape($backUrl) . '"' : '' ?>><?= omoApiEscape(omoActivityT('activity.cancel')) ?></button>
     </div>
+    <?php endif; ?>
 
     <form
         id="omo-activity-editor-form"
         class="generic-form-stack generic-form-stack--compact"
-        action="/omo/api/activities/action.php"
+        action="<?= $deferredEditor && $deferredEditor['origin'] === 'pv' ? '/omo/api/deferred_proposals/pv_object_save.php' : '/omo/api/activities/action.php' ?>"
         method="post"
-        data-activity-form
+        <?= $deferredEditor ? 'data-deferred-object-form' : 'data-activity-form' ?>
         data-activity-task-form
         data-activity-schedule-options="<?= omoApiEscape(json_encode($options, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>"
     >
@@ -78,6 +87,11 @@ $activityHelp = static function ($label, $text) {
             <input type="hidden" name="pv_meeting_editor_token" value="<?= omoApiEscape((string)($_GET['pv_meeting_editor_token'] ?? '')) ?>">
         <?php endif; ?>
         <?php if ($activityId > 0): ?><input type="hidden" name="id" value="<?= (int)$activityId ?>"><?php endif; ?>
+        <?php if ($deferredEditor && $deferredEditor['origin'] === 'pv'): ?>
+            <?php foreach (['oid' => $organizationId, 'point_id' => $deferredEditor['pointId'], 'proposal_id' => $deferredEditor['proposalId'], 'target_type' => $deferredEditor['targetType'], 'operation' => $deferredEditor['operation'], 'holon_id' => $currentHolonId, 'object_id' => $activityId] as $key => $entry): ?>
+                <input type="hidden" name="<?= omoApiEscape($key) ?>" value="<?= omoApiEscape((string)$entry) ?>">
+            <?php endforeach; ?>
+        <?php endif; ?>
 
         <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
             <div class="generic-heading-with-help">
@@ -170,5 +184,13 @@ $activityHelp = static function ($label, $text) {
         </section>
 
         <div class="omo-activity-feedback" data-activity-feedback aria-live="polite"></div>
+        <?php if ($deferredEditor): ?>
+            <div class="generic-action-row"><button type="submit" class="generic-action-button generic-action-button--main"><?= omoApiEscape(omoActivityT('activity.save')) ?></button><button type="button" class="generic-action-button generic-action-button--secondary" data-deferred-object-cancel><?= omoApiEscape(omoActivityT('activity.cancel')) ?></button></div>
+        <?php endif; ?>
     </form>
 </div>
+<?php if ($deferredEditor): ?>
+<script src="/omo/assets/js/simple-html-field.js?v=20260912-toolbar-always-visible"></script>
+<script src="/common/choice/deferred-object-editor.js?v=20260924-shared-form-validation"></script>
+<script>window.omoDeferredObjectEditorInit(document.querySelector('[data-deferred-object-editor]'), <?= json_encode(['origin'=>$deferredEditor['origin'],'targetType'=>$deferredEditor['targetType'],'holonId'=>$currentHolonId,'pointId'=>$deferredEditor['pointId'] ?? 0], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>);</script>
+<?php endif; ?>

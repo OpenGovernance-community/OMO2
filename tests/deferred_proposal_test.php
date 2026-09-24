@@ -4,6 +4,13 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/class/dbobject/dbobject.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/arraydbobject.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/arraydeferredproposal.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/recurrenceschedule.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/controltask.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/controlactivity.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/statindicator.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/propertyformat.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/property.class.php';
+require_once dirname(__DIR__) . '/class/dbobject/organization.class.php';
 require_once dirname(__DIR__) . '/class/dbobject/deferredproposal.class.php';
 require_once dirname(__DIR__) . '/omo/api/documents/pv/helpers.php';
 
@@ -20,12 +27,74 @@ $catalog = DeferredProposal::getTargetCatalog();
 assertDeferredProposal(isset($catalog[DeferredProposal::TARGET_RULE]), 'Rules must be available to deferred proposals.');
 assertDeferredProposal(isset($catalog[DeferredProposal::TARGET_PROJECT]), 'Projects must have a reserved deferred-proposal target.');
 assertDeferredProposal(
+    !empty($catalog[DeferredProposal::TARGET_RECURRING_TASK]['implemented'])
+        && !empty($catalog[DeferredProposal::TARGET_INDICATOR]['implemented']),
+    'Recurring tasks and indicators must be available to deferred proposals.'
+);
+assertDeferredProposal(
+    DeferredProposal::getRecurringTaskOperationPermissionKey(DeferredProposal::OPERATION_CREATE) === 'CAN_CREATE_RECURRING_TASK'
+        && DeferredProposal::getIndicatorOperationPermissionKey(DeferredProposal::OPERATION_DELETE) === 'CAN_DELETE_INDICATOR',
+    'New deferred targets must use their dedicated collective CRUD permissions.'
+);
+$recurringState = DeferredProposal::normalizeRecurringTaskState([
+    'title' => 'Revue hebdomadaire', 'frequency' => 'weekly', 'schedule' => '2',
+    'display_lead_value' => 1, 'display_lead_unit' => 'day',
+    'execution_duration_value' => 2, 'execution_duration_unit' => 'day',
+]);
+assertDeferredProposal(
+    $recurringState['title'] === 'Revue hebdomadaire' && $recurringState['frequency'] === 'weekly' && $recurringState['schedule'] === '2',
+    'Recurring task proposal states must be normalized.'
+);
+$indicatorState = DeferredProposal::normalizeIndicatorState([
+    'name' => 'Trésorerie', 'source_type' => 'manual', 'reference_type' => 'ceiling', 'ceiling_value' => '100',
+]);
+assertDeferredProposal(
+    $indicatorState['name'] === 'Trésorerie'
+        && $indicatorState['reference_type'] === 'ceiling'
+        && count($indicatorState['reference_points']) === 2,
+    'Indicator proposal states must retain their measurement and reference configuration.'
+);
+$indicatorEditorState = DeferredProposal::normalizeIndicatorEditorState([
+    'name' => 'Progression', 'source_type' => 'manual', 'reference_type' => 'objective',
+    'reference_points' => [
+        ['position_percent' => '0', 'value' => '10', 'point_at' => '2026-01-01T10:00'],
+        ['position_percent' => '50', 'value' => '20', 'point_at' => ''],
+        ['position_percent' => '100', 'value' => '30', 'point_at' => '2026-01-03T10:00'],
+    ],
+], 1);
+assertDeferredProposal(
+    count($indicatorEditorState['reference_points']) === 3
+        && $indicatorEditorState['reference_points'][1]['point_at'] === '2026-01-02 10:00:00',
+    'The shared indicator editor must retain and date its objective points.'
+);
+assertDeferredProposal(
     DeferredProposal::normalizeState('{"title":"Proposition"}') === ['title' => 'Proposition'],
     'JSON proposal states must be decoded.'
 );
 assertDeferredProposal(
     DeferredProposal::normalizeState('invalid') === [],
     'Invalid proposal states must fail closed.'
+);
+$displayOrganization = new \dbObject\Organization();
+$authorityDisplay = $displayOrganization->getHolonEditorListDisplayItems(
+    '[{"id":17,"label":"Comptabilité"},{"id":18,"delete":true}]', 2, 'authority'
+);
+assertDeferredProposal(
+    $authorityDisplay === [['id' => 17, 'label' => 'Comptabilité']],
+    'Holon authority lists must expose readable labels and omit deleted draft entries.'
+);
+$decoratedHolon = DeferredProposal::decorateHolonListDisplayState([
+    'editor_payload' => ['properties' => [
+        ['name' => 'Mandats', 'formatId' => 2, 'listItemType' => 'text', 'value' => '["Accueil","Comptes"]'],
+    ]],
+], $displayOrganization);
+assertDeferredProposal(
+    $decoratedHolon['editor_payload']['properties'][0]['displayItems'] === ['Accueil', 'Comptes'],
+    'Holon list display data must be derived without changing the stored value.'
+);
+assertDeferredProposal(
+    $displayOrganization->getHolonEditorListDisplayItems('{"before":"Intro","items":["Un","Deux"],"after":"Fin"}', 7, 'text') === ['Un', 'Deux'],
+    'Composite HTML lists must compare their items separately from the surrounding text.'
 );
 $presentationProposal = new DeferredProposal();
 $presentationProposal->set('target_type', DeferredProposal::TARGET_RULE);
@@ -251,6 +320,8 @@ assertDeferredProposal(
         && strpos($governanceJs, 'proposal_context.php') !== false
         && strpos($governanceJs, 'omoMountHolonScopePicker') !== false
         && strpos($governanceJs, 'data-type="project"') !== false
+        && strpos($governanceJs, 'data-type="recurring_task"') !== false
+        && strpos($governanceJs, 'data-type="indicator"') !== false
         && strpos($governanceJs, '<details class="generic-accordion omo-governance-action__accordion"') !== false,
     'Governance alternatives must use the unified deferred-proposal picker, collective holon navigation, projects, and accordion rows.'
 );
@@ -258,6 +329,7 @@ assertDeferredProposal(
     strpos($governanceContext, 'loadAllowedRuleTargetHolon') !== false
         && strpos($governanceContext, 'getHolonTargetHolonCatalog') !== false
         && strpos($governanceContext, 'loadAllowedProjectTargetHolon') !== false
+        && strpos($governanceContext, 'loadAllowedObjectTargetHolon') !== false
         && strpos($governanceSave, "set('IDdecision_proposal', \$proposalId)") !== false
         && strpos($governanceSave, "set('IDdocument_pv_point', null)") !== false,
     'Governance deferred proposals must be validated with the decision holon collective rights and attached to the selected alternative.'
