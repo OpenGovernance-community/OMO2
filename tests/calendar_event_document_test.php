@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 $calendarSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/index.php');
+$calendarScript = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/calendar.js');
 $dashboardDataSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/dashboard/modules/data/event.php');
 $dashboardTemplateSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/dashboard/modules/event.php');
 $sharedPermissionSource = (string)file_get_contents(dirname(__DIR__) . '/omo/api/calendar/permissions_shared.php');
@@ -28,8 +29,8 @@ assertCalendarEventDocument(
     'Calendar document links must use the shared permission checks.'
 );
 assertCalendarEventDocument(
-    substr_count($calendarSource, 'data-omo-calendar-open-url=') >= 4
-        && strpos($calendarSource, 'data-omo-calendar-open-pv-editor-url=') !== false,
+    strpos($calendarScript, "attr('open-url', event.documentUrl)") !== false
+        && strpos($calendarScript, "attr('open-pv-editor-url', event.documentPvEditorUrl)") !== false,
     'Calendar event representations must expose an openable document action.'
 );
 assertCalendarEventDocument(
@@ -47,12 +48,12 @@ assertCalendarEventDocument(
     strpos($calendarDetailSource, 'data-omo-calendar-document-delete-id=') !== false
         && strpos($calendarDetailSource, 'canDeleteDocument(true)') !== false
         && strpos($documentLifecycleSource, 'canDeleteDocument($allowEventDocument)') !== false
-        && strpos($calendarSource, 'function deleteAssociatedDocument(') !== false,
+        && strpos($calendarScript, 'function deleteAssociatedDocument(') !== false,
     'The event detail must expose a confirmed deletion action for removable linked documents.'
 );
 assertCalendarEventDocument(
-    strpos($calendarSource, '<strong class="omo-calendar__time-event-title"')
-        < strpos($calendarSource, '<span class="omo-calendar__time-event-time-row"'),
+    strpos($calendarScript, "tag('strong', 'omo-calendar__time-event-title'")
+        < strpos($calendarScript, "timeRow(event, 'omo-calendar__time-event-time')"),
     'Timed calendar events must render the title before the schedule block.'
 );
 assertCalendarEventDocument(

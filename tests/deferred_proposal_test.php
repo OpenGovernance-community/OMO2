@@ -50,7 +50,7 @@ $presentationHtml = omoDocumentsPvEditorRenderDeferredProposals(
         'deferredProposals' => [$presentation],
     ],
     [
-        'proposalsTitle' => 'Propositions',
+        'proposalsTitle' => 'Modifications',
         'proposalOperationUpdate' => 'Modification',
         'proposalStatusPending' => 'En attente',
         'proposalChangedFields' => 'Champs modifiés : {count}',
@@ -84,7 +84,7 @@ $holonPresentationHtml = omoDocumentsPvEditorRenderDeferredProposals(
         'deferredProposals' => [$holonPresentation],
     ],
     [
-        'proposalsTitle' => 'Propositions',
+        'proposalsTitle' => 'Modifications',
         'proposalOperationCreate' => 'Création',
         'proposalStatusPending' => 'En attente',
     ]
@@ -192,7 +192,7 @@ assertDeferredProposal(
 );
 assertDeferredProposal(
     strpos($pvRuleEditor, "\$_GET['proposal_id']") !== false
-        && strpos($pvRuleEditor, 'Enregistrer la proposition') !== false
+        && strpos($pvRuleEditor, 'Enregistrer la modification') !== false
         && strpos($pvRuleSave, "\$_POST['proposal_id']") !== false,
     'Pending PV proposals must reopen in their editor and save back into the same proposal.'
 );
@@ -239,6 +239,51 @@ assertDeferredProposal(
         && is_file(dirname(__DIR__) . '/omo/api/deferred_proposals/pv_project_save.php')
         && is_file(dirname(__DIR__) . '/omo/api/deferred_proposals/pv_proposal_context.php'),
     'The PV must provide deferred editors and save endpoints for rules and holons.'
+);
+
+$governanceEdit = (string)file_get_contents(dirname(__DIR__) . '/omo/api/decision/governance/edit.php');
+$governanceSave = (string)file_get_contents(dirname(__DIR__) . '/omo/api/decision/governance/save.php');
+$governanceContext = (string)file_get_contents(dirname(__DIR__) . '/omo/api/decision/governance/proposal_context.php');
+$governanceJs = (string)file_get_contents(dirname(__DIR__) . '/common/choice/governance-actions.js');
+$decisionProcessSource = (string)file_get_contents(dirname(__DIR__) . '/class/dbobject/decisionprocess.class.php');
+assertDeferredProposal(
+    strpos($governanceEdit, 'contextPermissions') !== false
+        && strpos($governanceJs, 'proposal_context.php') !== false
+        && strpos($governanceJs, 'omoMountHolonScopePicker') !== false
+        && strpos($governanceJs, 'data-type="project"') !== false
+        && strpos($governanceJs, '<details class="generic-accordion omo-governance-action__accordion"') !== false,
+    'Governance alternatives must use the unified deferred-proposal picker, collective holon navigation, projects, and accordion rows.'
+);
+assertDeferredProposal(
+    strpos($governanceContext, 'loadAllowedRuleTargetHolon') !== false
+        && strpos($governanceContext, 'getHolonTargetHolonCatalog') !== false
+        && strpos($governanceContext, 'loadAllowedProjectTargetHolon') !== false
+        && strpos($governanceSave, "set('IDdecision_proposal', \$proposalId)") !== false
+        && strpos($governanceSave, "set('IDdocument_pv_point', null)") !== false,
+    'Governance deferred proposals must be validated with the decision holon collective rights and attached to the selected alternative.'
+);
+assertDeferredProposal(
+    strpos($decisionProcessSource, 'DeferredProposal::applyAcceptedForDecision($this)') !== false,
+    'Accepted governance alternatives must apply their deferred proposals when results are finalized.'
+);
+
+require_once dirname(__DIR__) . '/omo/api/decision/governance/shared.php';
+$governanceLabels = omoDecisionGovernanceGetSourceLang();
+assertDeferredProposal(
+    $governanceLabels['governance.proposal.add']['text'] === 'Ajouter une proposition'
+        && $governanceLabels['governance.proposal.remove']['text'] === 'Retirer la proposition'
+        && $governanceLabels['governance.proposal.title']['text'] === 'Titre de la proposition'
+        && $governanceLabels['governance.proposal.description']['text'] === 'Description de la proposition'
+        && $governanceLabels['governance.action.add']['text'] === 'Ajouter une modification'
+        && $governanceLabels['governance.action.more']['text'] === 'Actions de la modification',
+    'Ballot proposals must retain their name while individual changes are called modifications.'
+);
+$pvLabels = omoDocumentsPvEditorSourceLang();
+assertDeferredProposal(
+    $pvLabels['documents.pv_editor.action.add_proposal']['text'] === 'Ajouter une modification'
+        && $pvLabels['documents.pv_editor.proposals.title']['text'] === 'Modifications'
+        && $pvLabels['documents.pv_editor.proposals.edit_title']['text'] === 'Éditer une modification',
+    'PV changes must use the same terminology as changes inside ballot proposals.'
 );
 
 echo "deferred_proposal_test: OK\n";

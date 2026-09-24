@@ -19,6 +19,10 @@ if ($configuredToken === '' || $providedToken === '' || !hash_equals($configured
     exit;
 }
 
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
 if (function_exists('ignore_user_abort')) {
     @ignore_user_abort(true);
 }

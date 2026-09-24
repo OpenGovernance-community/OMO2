@@ -154,29 +154,6 @@
     line-height: 1.2;
 }
 
-.omo-holon-create__permission-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.omo-holon-create__permission-tab {
-    border: 0;
-    border-bottom: 2px solid transparent;
-    padding: 9px 12px;
-    background: transparent;
-    color: var(--color-text-light);
-    cursor: pointer;
-    font: inherit;
-    font-weight: 700;
-}
-
-.omo-holon-create__permission-tab.is-active {
-    border-bottom-color: var(--color-primary);
-    color: var(--color-primary);
-}
-
 .omo-holon-create__permission-table {
     display: grid;
     gap: 12px;
@@ -244,16 +221,21 @@
 }
 
 .omo-holon-create__permission-token {
-    display: inline-flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 1.1rem;
     align-items: center;
-    gap: 8px;
-    width: fit-content;
+    gap: 12px;
+    width: 100%;
     max-width: 100%;
     padding: 7px 10px;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
     border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
     color: var(--color-text);
+}
+
+.omo-holon-create__permission-scope-label {
+    font-weight: 700;
 }
 
 .omo-holon-create__permission-token-remove {

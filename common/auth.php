@@ -1123,6 +1123,18 @@ function commonGetCurrentUserId()
     return (int)($_SESSION['currentUser'] ?? 0);
 }
 
+/** Call after the last session write, including form tokens, on read-only endpoints. */
+function commonReleaseReadOnlySession(): void
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        // Persist the current permission cache before rendering can refresh it lazily.
+        if (commonGetCurrentUserId() > 0) {
+            commonGetCurrentUserOrganizationPermissionSet();
+        }
+        session_write_close();
+    }
+}
+
 function commonGetCurrentUserDisplayName()
 {
     $userId = commonGetCurrentUserId();

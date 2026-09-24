@@ -14,8 +14,8 @@ $descriptionKey = $canUseGovernance ? 'decisions.params.description' : 'decision
 $methods = $config['methods'];
 $governance = $config['governance'];
 ?>
-<section class="generic-section generic-section--stack generic-section--roomy" data-omo-decision-params>
-    <div class="generic-hero-panel accent">
+<section class="generic-drawer-content" data-omo-decision-params>
+    <div class="generic-form-section__heading">
         <div class="generic-heading-with-help">
             <h2 class="generic-card-title generic-card-title--big"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.title'), ENT_QUOTES, 'UTF-8') ?></h2>
             <details class="generic-context-help">
@@ -34,12 +34,12 @@ $governance = $config['governance'];
     <?php elseif (!$canManage): ?>
         <div class="omo-empty-state"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.error.forbidden'), ENT_QUOTES, 'UTF-8') ?></div>
     <?php else: ?>
-    <form class="generic-form-stack" action="/omo/api/decision/params/save.php" method="post" data-omo-decision-params-form>
+    <form class="generic-form-stack generic-form-stack--compact" action="/omo/api/decision/params/save.php" method="post" data-omo-decision-params-form>
         <input type="hidden" name="oid" value="<?= (int)$organizationId ?>">
 
-        <section class="generic-section generic-section--stack generic-form-section">
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
             <div class="generic-form-section__heading">
-                <h3 class="generic-card-title generic-card-title--section"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.section.methods'), ENT_QUOTES, 'UTF-8') ?></h3>
+                <h3 class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.section.methods'), ENT_QUOTES, 'UTF-8') ?></h3>
             </div>
             <label class="generic-checkbox"><input type="checkbox" name="methods[simple_vote]" value="1"<?= !empty($methods['simple_vote']) ? ' checked' : '' ?>><span><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.simple_vote'), ENT_QUOTES, 'UTF-8') ?></span></label>
             <label class="generic-checkbox"><input type="checkbox" name="methods[majority_judgment]" value="1"<?= !empty($methods['majority_judgment']) ? ' checked' : '' ?>><span><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.majority_judgment'), ENT_QUOTES, 'UTF-8') ?></span></label>
@@ -48,15 +48,15 @@ $governance = $config['governance'];
         </section>
 
         <?php if ($canUseGovernance): ?>
-        <section class="generic-section generic-section--stack generic-form-section">
+        <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact">
             <div class="generic-form-section__heading">
-                <h3 class="generic-card-title generic-card-title--section"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.section.governance'), ENT_QUOTES, 'UTF-8') ?></h3>
+                <h3 class="generic-card-title generic-card-title--small"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.section.governance'), ENT_QUOTES, 'UTF-8') ?></h3>
             </div>
             <label class="generic-checkbox"><input type="checkbox" name="governance[enabled]" value="1" data-omo-decision-params-governance-enabled<?= !empty($governance['enabled']) ? ' checked' : '' ?>><span><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.governance_enabled'), ENT_QUOTES, 'UTF-8') ?></span></label>
-            <div class="generic-form-stack" data-omo-decision-params-governance-fields<?= !empty($governance['enabled']) ? '' : ' hidden' ?>>
+            <div class="generic-form-stack generic-form-stack--compact" data-omo-decision-params-governance-fields<?= !empty($governance['enabled']) ? '' : ' hidden' ?>>
                 <label class="generic-form-field">
                     <span class="generic-form-label"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.governance_method'), ENT_QUOTES, 'UTF-8') ?></span>
-                    <select class="generic-form-control" name="governance[evaluation_method]">
+                    <select class="generic-form-control generic-form-control--compact" name="governance[evaluation_method]">
                         <option value="simple_vote"<?= ($governance['evaluation_method'] ?? '') === 'simple_vote' ? ' selected' : '' ?>><?= htmlspecialchars(omoDecisionParamsT('decisions.params.option.governance_method.simple_vote'), ENT_QUOTES, 'UTF-8') ?></option>
                         <option value="consent"<?= ($governance['evaluation_method'] ?? '') === 'consent' ? ' selected' : '' ?>><?= htmlspecialchars(omoDecisionParamsT('decisions.params.option.governance_method.consent'), ENT_QUOTES, 'UTF-8') ?></option>
                     </select>
@@ -69,11 +69,11 @@ $governance = $config['governance'];
                             <div class="generic-context-help__content"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.governance_question_hint'), ENT_QUOTES, 'UTF-8') ?></div>
                         </details>
                     </div>
-                    <textarea class="generic-form-control" id="omo-decision-params-question" name="governance[question]" rows="3" maxlength="1000"><?= htmlspecialchars((string)$governance['question'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                    <textarea class="generic-form-control generic-form-control--compact" id="omo-decision-params-question" name="governance[question]" rows="3" maxlength="1000"><?= htmlspecialchars((string)$governance['question'], ENT_QUOTES, 'UTF-8') ?></textarea>
                 </div>
                 <div class="generic-form-grid">
-                    <label class="generic-form-field"><span class="generic-form-label"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.consultation_days'), ENT_QUOTES, 'UTF-8') ?></span><input class="generic-form-control" type="number" name="governance[consultation_days]" min="0" max="365" required value="<?= (int)$governance['consultation_days'] ?>"></label>
-                    <label class="generic-form-field"><span class="generic-form-label"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.vote_days'), ENT_QUOTES, 'UTF-8') ?></span><input class="generic-form-control" type="number" name="governance[vote_days]" min="1" max="365" required value="<?= (int)$governance['vote_days'] ?>"></label>
+                    <label class="generic-form-field"><span class="generic-form-label"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.consultation_days'), ENT_QUOTES, 'UTF-8') ?></span><input class="generic-form-control generic-form-control--compact" type="number" name="governance[consultation_days]" min="0" max="365" required value="<?= (int)$governance['consultation_days'] ?>"></label>
+                    <label class="generic-form-field"><span class="generic-form-label"><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.vote_days'), ENT_QUOTES, 'UTF-8') ?></span><input class="generic-form-control generic-form-control--compact" type="number" name="governance[vote_days]" min="1" max="365" required value="<?= (int)$governance['vote_days'] ?>"></label>
                 </div>
                 <label class="generic-checkbox"><input type="checkbox" name="governance[show_live_votes]" value="1" data-omo-decision-params-live-votes<?= !empty($governance['show_live_votes']) ? ' checked' : '' ?>><span><?= htmlspecialchars(omoDecisionParamsT('decisions.params.field.show_live_votes'), ENT_QUOTES, 'UTF-8') ?></span></label>
                 <div class="generic-heading-with-help" data-omo-decision-params-anonymous-fields<?= !empty($governance['show_live_votes']) ? '' : ' hidden' ?>>

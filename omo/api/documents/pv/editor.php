@@ -518,7 +518,7 @@ foreach ($points as $point) {
 }
 $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 ?>
-<link rel="stylesheet" href="/common/choice/change-details.css?v=20260922-deferred-proposals">
+<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">
 <?php if ($isPvReviewDiscussion): ?>
 <link rel="stylesheet" href="/common/chat/thread.css?v=20260821-pv-review-access-2">
 <?php endif; ?>
@@ -3302,7 +3302,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 </div>
 
 <script src="/common/choice/word-diff.js?v=20260922-deferred-proposals"></script>
-<script src="/common/choice/change-details.js?v=20260922-deferred-proposals"></script>
+<script src="/common/choice/change-details.js?v=20260923-lifecycle-details"></script>
 <?php if ($isPvReviewDiscussion): ?>
 <script src="/common/chat/thread.js?v=20260821-pv-review-access-2"></script>
 <?php endif; ?>
@@ -9249,7 +9249,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             event.preventDefault();
             event.stopPropagation();
             const url = String(proposalEditButton.getAttribute('data-omo-deferred-proposal-edit-url') || '');
-            const modalTitle = String(proposalEditButton.getAttribute('data-omo-deferred-proposal-edit-title') || 'Éditer une proposition');
+            const modalTitle = String(proposalEditButton.getAttribute('data-omo-deferred-proposal-edit-title') || 'Éditer une modification');
             closeDeferredProposalMenus(null);
             if (url !== '' && typeof window.commonTopbarOpenModal === 'function') {
                 window.commonTopbarOpenModal(modalTitle, url, 'fetch');
@@ -9263,7 +9263,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
             event.stopPropagation();
             const proposalId = Number(proposalDeleteButton.getAttribute('data-omo-deferred-proposal-delete') || 0);
             const pointId = Number(proposalDeleteButton.getAttribute('data-omo-deferred-proposal-point-id') || 0);
-            const confirmation = String(proposalDeleteButton.getAttribute('data-omo-deferred-proposal-delete-confirm') || 'Supprimer cette proposition ?');
+            const confirmation = String(proposalDeleteButton.getAttribute('data-omo-deferred-proposal-delete-confirm') || 'Supprimer cette modification ?');
             if (proposalId <= 0 || pointId <= 0 || !window.confirm(confirmation)) return;
             proposalDeleteButton.disabled = true;
             closeDeferredProposalMenus(null);
@@ -9272,7 +9272,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
                     if (payload && payload.point) replacePointHtml(payload.point);
                 })
                 .catch(function (payload) {
-                    window.alert(String(payload && payload.message || 'Impossible de supprimer la proposition.'));
+                    window.alert(String(payload && payload.message || 'Impossible de supprimer la modification.'));
                     if (proposalDeleteButton.isConnected) proposalDeleteButton.disabled = false;
                 });
             return;
@@ -9296,7 +9296,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
         if (addProposalButton && root.contains(addProposalButton)) {
             event.preventDefault();
             const url = String(addProposalButton.getAttribute('data-omo-pv-point-proposal-url') || '');
-            const modalTitle = String(addProposalButton.getAttribute('data-omo-pv-point-proposal-title') || 'Ajouter une proposition');
+            const modalTitle = String(addProposalButton.getAttribute('data-omo-pv-point-proposal-title') || 'Ajouter une modification');
             if (url !== '' && typeof window.commonTopbarOpenModal === 'function') {
                 window.commonTopbarOpenModal(modalTitle, url, 'fetch');
             }

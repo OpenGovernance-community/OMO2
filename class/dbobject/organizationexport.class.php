@@ -83,14 +83,24 @@ class OrganizationExport
             'pv' => 'buildPvRecords',
         ];
         foreach ($builders as $module => $builder) {
-            $records = $selected[$module]
-                ? self::$builder($organization, $payload['holons'])
-                : [];
+            $documentExport = null;
+            if ($selected[$module] && $module === 'documents') {
+                $documentExport = self::buildDocumentExportData($organization);
+                $records = $documentExport['records'];
+            } else {
+                $records = $selected[$module]
+                    ? self::$builder($organization, $payload['holons'])
+                    : [];
+            }
             $payload['modules'][$module] = [
                 'selected' => $selected[$module],
                 'count' => count($records),
                 'records' => $records,
             ];
+            if (is_array($documentExport) && !empty($documentExport['omittedByType'])) {
+                $payload['modules'][$module]['omittedCount'] = (int)$documentExport['omittedCount'];
+                $payload['modules'][$module]['omittedByType'] = $documentExport['omittedByType'];
+            }
         }
 
         $payload['modules']['structure'] = [
@@ -226,7 +236,16 @@ class OrganizationExport
         return $records;
     }
 
-    private static function buildDocumentRecords(Organization $organization, array $unusedHolons): array
+    private static function getExportableDocumentTypes(): array
+    {
+        return [
+            Document::TYPE_HTML,
+            Document::TYPE_EXTERNAL_LINK,
+            Document::TYPE_FOLDER,
+        ];
+    }
+
+    private static function buildDocumentExportData(Organization $organization): array
     {
         $documents = self::loadCollection('\\dbObject\\ArrayDocument', [
             ['field' => 'IDorganization', 'value' => (int)$organization->getId()],
@@ -236,47 +255,93 @@ class OrganizationExport
             ['field' => 'id', 'dir' => 'ASC'],
         ]);
         $records = [];
+        $omittedByType = [];
+        $exportableTypes = array_flip(self::getExportableDocumentTypes());
         foreach ($documents as $document) {
+            $documentType = (string)$document->get('documenttype');
+            if (!isset($exportableTypes[$documentType])) {
+                $omittedByType[$documentType !== '' ? $documentType : 'unknown'] = (int)($omittedByType[$documentType !== '' ? $documentType : 'unknown'] ?? 0) + 1;
+                continue;
+            }
             $projectLinks = self::loadCollection('\\dbObject\\ArrayProjectDocument', [
                 ['field' => 'IDdocument', 'value' => (int)$document->getId()],
             ]);
-            $projectId = 0;
+            $projectIds = [];
             foreach ($projectLinks as $projectLink) {
                 $projectId = (int)$projectLink->get('IDproject');
                 if ($projectId > 0) {
-                    break;
+                    $projectIds[$projectId] = $projectId;
                 }
             }
+            $projectIds = array_values($projectIds);
             $records[] = [
                 'sourceId' => (int)$document->getId(),
                 'title' => (string)$document->get('title'),
                 'description' => (string)$document->get('description'),
                 'content' => (string)$document->get('content'),
                 'externalUrl' => (string)$document->get('externalurl'),
+                'documentType' => $documentType,
                 'filename' => (string)$document->get('storedfilename'),
                 'legacyFilePath' => (string)$document->get('storedfilepath'),
                 'fileTransferRequired' => $document->get('documenttype') === Document::TYPE_UPLOADED_FILE,
                 'sourceUserId' => self::sourceUserId($document),
                 'sourceHolonId' => (int)$document->get('IDholon'),
-                'sourceProjectId' => $projectId,
+                'sourceProjectId' => (int)($projectIds[0] ?? 0),
+                'sourceProjectIds' => $projectIds,
+                'sourceParentDocumentId' => (int)$document->get('IDdocument_parent'),
+                'keywords' => (string)$document->get('keywords'),
+                'isTemplate' => (bool)$document->get('is_template'),
+                'openInNewWindow' => (bool)$document->get('openinnewwindow'),
+                'projectVisibleInHolon' => (bool)$document->get('project_visible_in_holon'),
                 'createdAt' => self::normalizeValue($document->get('datecreation')),
                 'updatedAt' => self::normalizeValue($document->get('datemodification')),
                 'active' => (bool)$document->get('active'),
             ];
         }
-        return $records;
+        ksort($omittedByType, SORT_STRING);
+        return [
+            'records' => $records,
+            'omittedCount' => array_sum($omittedByType),
+            'omittedByType' => $omittedByType,
+        ];
     }
 
     private static function buildProjectRecord(Project $project): array
     {
+        $team = new ArrayProjectUser();
+        $team->loadForProject((int)$project->getId(), false);
+        $teamMembers = [];
+        foreach ($team as $member) {
+            if (!($member instanceof ProjectUser)) {
+                continue;
+            }
+            $userId = (int)$member->get('IDuser');
+            if ($userId <= 0) {
+                continue;
+            }
+            $teamMembers[] = [
+                'sourceUserId' => $userId,
+                'active' => (bool)$member->get('active'),
+                'createdAt' => self::normalizeValue($member->get('datecreation')),
+            ];
+        }
         return [
             'sourceId' => (int)$project->getId(),
             'sourceUserId' => (int)$project->get('IDuser'),
+            'sourceProposerUserId' => (int)$project->get('IDuser_proposed'),
             'sourceHolonId' => (int)$project->get('IDholon'),
             'sourceParentProjectId' => (int)$project->get('IDproject_parent'),
+            'sourceJournalDocumentId' => (int)$project->get('IDdocument_journal'),
             'title' => (string)$project->get('title'),
             'description' => (string)$project->get('description'),
             'status' => (string)$project->get('status'),
+            'proposalStatus' => (string)$project->get('proposal_status'),
+            'proposedAt' => self::normalizeValue($project->get('proposed_at')),
+            'proposalDecidedAt' => self::normalizeValue($project->get('proposal_decided_at')),
+            'blockedReason' => (string)$project->get('blocked_reason'),
+            'blockedUntil' => self::normalizeValue($project->get('blocked_until')),
+            'blockedAutoReactivate' => (bool)$project->get('blocked_auto_reactivate'),
+            'blockedReactivateStatus' => (string)$project->get('blocked_reactivate_status'),
             'plannedStartAt' => self::normalizeValue($project->get('planned_start_date')),
             'plannedEndAt' => self::normalizeValue($project->get('planned_end_date')),
             'priority' => $project->get('priority'),
@@ -287,6 +352,10 @@ class OrganizationExport
             'active' => (bool)$project->get('active'),
             'createdAt' => self::normalizeValue($project->get('created_at')),
             'updatedAt' => self::normalizeValue($project->get('updated_at')),
+            'closedAt' => self::normalizeValue($project->get('closed_at')),
+            'archivedAt' => self::normalizeValue($project->get('archived_at')),
+            'teamMembers' => $teamMembers,
+            'followerSourceUserIds' => ProjectFollower::getActiveUserIdsForProject((int)$project->getId()),
         ];
     }
 
@@ -339,6 +408,43 @@ class OrganizationExport
             $triggerType = $trigger instanceof ChecklistTrigger
                 ? ChecklistTrigger::normalizeTriggerType($trigger->get('trigger_type'))
                 : ChecklistTrigger::TYPE_CONTAINER;
+            $runs = new ArrayChecklistRun();
+            $runs->loadForChecklist((int)$checklist->getId());
+            $runRecords = [];
+            foreach ($runs as $run) {
+                if (!($run instanceof ChecklistRun)) {
+                    continue;
+                }
+                $runItems = [];
+                foreach ($run->getItems() as $runItem) {
+                    if (!($runItem instanceof ChecklistRunItem)) {
+                        continue;
+                    }
+                    $runItems[] = [
+                        'sourceChecklistItemId' => (int)$runItem->get('IDchecklistitem'),
+                        'sourceProjectId' => (int)$runItem->get('IDproject'),
+                        'state' => (string)$runItem->get('state'),
+                        'activationAt' => self::normalizeValue($runItem->get('activation_at')),
+                        'createdAt' => self::normalizeValue($runItem->get('created_at')),
+                        'updatedAt' => self::normalizeValue($runItem->get('updated_at')),
+                        'activatedAt' => self::normalizeValue($runItem->get('activated_at')),
+                        'completedAt' => self::normalizeValue($runItem->get('completed_at')),
+                    ];
+                }
+                $runRecords[] = [
+                    'sourceId' => (int)$run->getId(),
+                    'sourceTriggerId' => (int)$run->get('IDchecklisttrigger'),
+                    'sourceHolonId' => (int)$run->get('IDholon'),
+                    'sourceRootProjectId' => (int)$run->get('IDproject_root'),
+                    'sourceCreatorUserId' => (int)$run->get('IDuser_created'),
+                    'status' => (string)$run->get('status'),
+                    'scheduledFor' => self::normalizeValue($run->get('scheduled_for')),
+                    'createdAt' => self::normalizeValue($run->get('created_at')),
+                    'updatedAt' => self::normalizeValue($run->get('updated_at')),
+                    'completedAt' => self::normalizeValue($run->get('completed_at')),
+                    'items' => $runItems,
+                ];
+            }
             $items = [];
             foreach ($checklist->getItems(false) as $item) {
                 if (!($item instanceof ChecklistItem)) {
@@ -410,6 +516,7 @@ class OrganizationExport
                 'active' => (bool)$checklist->get('active'),
                 'kind' => $triggerType === ChecklistTrigger::TYPE_MANUAL ? 'standalone' : 'container',
                 'trigger' => [
+                    'sourceId' => $trigger instanceof ChecklistTrigger ? (int)$trigger->getId() : 0,
                     'type' => $triggerType,
                     'stableKey' => $trigger instanceof ChecklistTrigger ? (string)$trigger->get('stable_key') : 'primary',
 					'frequency' => $trigger instanceof ChecklistTrigger ? (string)$trigger->get('frequency') : '',
@@ -418,6 +525,7 @@ class OrganizationExport
                     'enabled' => $trigger instanceof ChecklistTrigger && (bool)$trigger->get('enabled'),
                 ],
                 'items' => $items,
+                'runs' => $runRecords,
             ];
         }
 
@@ -427,12 +535,30 @@ class OrganizationExport
 			['field' => 'position', 'dir' => 'ASC'],
 			['field' => 'id', 'dir' => 'ASC'],
 		]);
-		foreach ($activities as $activity) {
-			$records[] = [
+        foreach ($activities as $activity) {
+            $checks = new ArrayControlTaskCheck();
+            $checks->loadForTask((int)$activity->getId());
+            $checkRecords = [];
+            foreach ($checks as $check) {
+                if (!($check instanceof ControlTaskCheck)) {
+                    continue;
+                }
+                $checkRecords[] = [
+                    'sourceUserId' => (int)$check->get('IDuser'),
+                    'scheduledFor' => self::normalizeValue($check->get('scheduled_for')),
+                    'checkedAt' => self::normalizeValue($check->get('checked_at')),
+                    'createdAt' => self::normalizeValue($check->get('created_at')),
+                ];
+            }
+            $records[] = [
 				'recordType' => 'recurring_activity',
 				'sourceId' => (int)$activity->getId(),
 				'sourceHolonId' => (int)$activity->get('IDholon'),
+				'sourceResponsibleUserId' => (int)$activity->get('IDuser_responsible'),
 				'active' => (bool)$activity->get('active'),
+				'position' => (int)$activity->get('position'),
+				'createdAt' => self::normalizeValue($activity->get('created_at')),
+				'updatedAt' => self::normalizeValue($activity->get('updated_at')),
 				'items' => [[
 					'sourceId' => (int)$activity->getId(),
 					'title' => (string)$activity->get('title'),
@@ -446,6 +572,7 @@ class OrganizationExport
 						'executionDurationValue' => (int)$activity->get('execution_duration_value'),
 						'executionDurationUnit' => (string)$activity->get('execution_duration_unit'),
 					],
+					'checks' => $checkRecords,
 				]],
 			];
 		}
@@ -520,6 +647,7 @@ class OrganizationExport
                 'isAllDay' => (bool)$event->get('is_all_day'),
                 'active' => (bool)$event->get('active'),
                 'createdAt' => self::normalizeValue($event->get('created_at')),
+                'updatedAt' => self::normalizeValue($event->get('updated_at')),
             ];
         }
         return $records;
@@ -547,12 +675,22 @@ class OrganizationExport
                 $history[] = [
                     'sourceId' => (int)$point->getId(),
                     'sourceUserId' => (int)$point->get('IDuser_author'),
+                    'sourceModificationUserId' => (int)$point->get('IDuser_modification'),
                     'sourceHolonId' => (int)$point->get('IDholon_concerned'),
+                    'sourceParentId' => (int)$point->get('IDparent'),
+                    'itemType' => (string)$point->get('item_type'),
                     'title' => (string)$point->get('title'),
                     'description' => (string)$point->get('content'),
+                    'authorEmail' => (string)$point->get('author_email'),
                     'pointtype' => (string)$point->get('pointtype'),
                     'position' => (int)$point->get('position'),
+                    'priority' => (int)$point->get('priority'),
+                    'desiredDurationMinutes' => (int)$point->get('desired_duration_minutes'),
+                    'actualDurationMinutes' => (int)$point->get('actual_duration_minutes'),
+                    'isHandled' => (bool)$point->get('is_handled'),
+                    'isConfidential' => (bool)$point->get('is_confidential'),
                     'createdAt' => self::normalizeValue($point->get('datecreation')),
+                    'updatedAt' => self::normalizeValue($point->get('datemodification')),
                     'active' => (bool)$point->get('active'),
                 ];
             }

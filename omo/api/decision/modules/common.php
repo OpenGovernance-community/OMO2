@@ -656,7 +656,7 @@ if (!function_exists('omoDecisionRenderVoteWeightEditor')) {
                     <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.block_settings.vote_weighting_question', [], $lang, $sourceLang)) ?></span>
                     <input
                         type="text"
-                        class="generic-form-control"
+                        class="generic-form-control generic-form-control--compact"
                         maxlength="190"
                         placeholder="<?= $escape(t('decisions.edit.block_settings.vote_weighting_placeholder_question', [], $lang, $sourceLang)) ?>"
                         data-omo-decision-vote-weight-question
@@ -675,11 +675,11 @@ if (!function_exists('omoDecisionRenderVoteWeightEditor')) {
                 <div class="omo-decision-vote-weight-editor__row" data-omo-decision-vote-weight-row>
                     <label class="omo-decision-vote-weight-editor__field">
                         <span class="generic-card-title generic-card-title--small" data-omo-decision-vote-weight-row-weight-title><?= $escape(t('decisions.edit.block_settings.vote_weighting_weight', [], $lang, $sourceLang)) ?></span>
-                        <input type="number" min="0.01" step="0.01" class="generic-form-control" data-omo-decision-vote-weight-row-weight>
+                        <input type="number" min="0.01" step="0.01" class="generic-form-control generic-form-control--compact" data-omo-decision-vote-weight-row-weight>
                     </label>
                     <label class="omo-decision-vote-weight-editor__field">
                         <span class="generic-card-title generic-card-title--small"><?= $escape(t('decisions.edit.block_settings.vote_weighting_label', [], $lang, $sourceLang)) ?></span>
-                        <input type="text" maxlength="90" class="generic-form-control" data-omo-decision-vote-weight-row-label>
+                        <input type="text" maxlength="90" class="generic-form-control generic-form-control--compact" data-omo-decision-vote-weight-row-label>
                     </label>
                     <div class="omo-decision-vote-weight-editor__actions">
                         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-decision-vote-weight-row-remove><?= $escape(t('decisions.edit.block_settings.vote_weighting_remove', [], $lang, $sourceLang)) ?></button>
@@ -1091,9 +1091,19 @@ if (!function_exists('omoDecisionRenderProposalSupplementHtml')) {
 if (!function_exists('omoDecisionRenderGovernanceChanges')) {
     function omoDecisionRenderGovernanceChanges(DecisionProposal $proposal, $escape)
     {
-        if (!$proposal->hasGovernanceActions()) {
+        if (!$proposal->hasGovernanceActions() && !$proposal->hasDeferredProposals()) {
             return '';
         }
+        static $sourceLang = [
+            'pending' => ['text' => 'Cette modification sera appliquée si la proposition est retenue.', 'context' => 'Decision modification awaiting a vote'],
+            'validated' => ['text' => 'Cette modification a été validée et reste en attente d’application.', 'context' => 'Decision modification approved but not applied'],
+            'applied' => ['text' => 'Cette modification a été appliquée.', 'context' => 'Decision modification successfully applied'],
+            'rejected' => ['text' => 'Cette modification n’a pas été appliquée : la proposition n’a pas été retenue.', 'context' => 'Decision modification rejected by the vote'],
+            'conflict' => ['text' => 'Cette modification n’a pas pu être appliquée en raison d’un conflit.', 'context' => 'Decision modification blocked by a conflict'],
+            'failed' => ['text' => 'L’application de cette modification a échoué.', 'context' => 'Decision modification application failed'],
+        ];
+        static $lang = null;
+        $lang ??= omoLoadTranslationBundle('omo_decision_modification_status', $sourceLang);
         if (!is_callable($escape)) {
             $escape = 'omoApiEscape';
         }
@@ -1119,11 +1129,11 @@ if (!function_exists('omoDecisionRenderGovernanceChanges')) {
             $state = $isDelete ? $before : $after;
             $target = trim((string)($isRule ? ($state['title'] ?? '') : ($state['name'] ?? '')));
             if (str_ends_with($actionType, '.create')) {
-                $summary = 'Cette proposition crée ' . ($isRule ? 'la règle' : 'le rôle') . '.';
+                $summary = 'Cette modification crée ' . ($isRule ? 'la règle' : 'le rôle') . '.';
             } elseif ($isDelete) {
-                $summary = 'Cette proposition supprime ' . ($isRule ? 'la règle' : 'le rôle') . '.';
+                $summary = 'Cette modification supprime ' . ($isRule ? 'la règle' : 'le rôle') . '.';
             } else {
-                $summary = 'Cette proposition modifie ' . ($isRule ? 'la règle' : 'le rôle') . '.';
+                $summary = 'Cette modification modifie ' . ($isRule ? 'la règle' : 'le rôle') . '.';
             }
 
             $heading = trim((string)($labels[$actionType] ?? 'Modification'));
@@ -1150,6 +1160,36 @@ if (!function_exists('omoDecisionRenderGovernanceChanges')) {
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             $items[] = '<section class="omo-governance-proposal-changes__item">'
                 . '<strong>' . $escape($heading) . '</strong>'
+                . '<p class="omo-governance-proposal-changes__summary">' . $escape($summary) . '</p>'
+                . '<details class="omo-change-details" data-omo-change-details-payload="' . $escape($payload) . '">'
+                . '<summary>Détail</summary><div data-omo-change-details-container></div></details>'
+                . '</section>';
+        }
+        foreach ($proposal->getDeferredProposals() as $deferredProposal) {
+            if (!$deferredProposal instanceof \dbObject\DeferredProposal
+                || (string)$deferredProposal->get('status') === \dbObject\DeferredProposal::STATUS_REMOVED) {
+                continue;
+            }
+            $summaryData = $deferredProposal->buildPresentationData();
+            $status = (string)$deferredProposal->get('status');
+            $summary = t(isset($sourceLang[$status]) ? $status : 'pending', [], $lang, $sourceLang);
+            $actionType = (string)($summaryData['changeType'] ?? '');
+            $before = (array)($summaryData['beforeState'] ?? []);
+            $after = (array)($summaryData['afterState'] ?? []);
+            $heading = trim((string)($summaryData['targetLabel'] ?? 'Modification'));
+            $operationLabel = match ((string)($summaryData['operation'] ?? '')) {
+                \dbObject\DeferredProposal::OPERATION_CREATE => 'Créer',
+                \dbObject\DeferredProposal::OPERATION_UPDATE => 'Modifier',
+                \dbObject\DeferredProposal::OPERATION_DELETE => 'Supprimer',
+                default => 'Modifier',
+            };
+            $target = trim((string)($summaryData['title'] ?? ''));
+            $payload = base64_encode((string)json_encode([
+                'governanceAction' => ['type' => $actionType, 'before' => $before, 'after' => $after],
+                'authorities' => (array)($summaryData['authorities'] ?? []),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $items[] = '<section class="omo-governance-proposal-changes__item">'
+                . '<strong>' . $escape($operationLabel . ' ' . mb_strtolower($heading) . ($target !== '' ? ' : ' . $target : '')) . '</strong>'
                 . '<p class="omo-governance-proposal-changes__summary">' . $escape($summary) . '</p>'
                 . '<details class="omo-change-details" data-omo-change-details-payload="' . $escape($payload) . '">'
                 . '<summary>Détail</summary><div data-omo-change-details-container></div></details>'
@@ -1531,16 +1571,16 @@ if (!function_exists('omoDecisionRenderProposalDiscussionAssets')) {
 
         $alreadyRendered = true;
         return '<link rel="stylesheet" href="/common/chat/thread.css?v=20260821-unified-chat-errors">'
-            . '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260917-proposal-menu-layer">'
-            . '<link rel="stylesheet" href="/common/choice/change-details.css?v=20260816-2">'
+            . '<link rel="stylesheet" href="/common/choice/proposal-discussion.css?v=20260923-compact-editor">'
+            . '<link rel="stylesheet" href="/common/choice/change-details.css?v=20260923-lifecycle-details">'
             . '<script src="/common/choice/word-diff.js?v=20260815" defer></script>'
-            . '<script src="/common/choice/change-details.js?v=20260816-governance-details" defer></script>'
+            . '<script src="/common/choice/change-details.js?v=20260923-lifecycle-details" defer></script>'
             . '<script src="/common/choice/highlight-palette.js?v=20260904-highlight-clear" defer></script>'
             . '<script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear" defer></script>'
             . '<script src="/common/choice/decision-anonymity.js?v=20260825-named-vote" defer></script>'
             . '<script src="/common/choice/decision-notifications.js?v=20260825-topbar-errors" defer></script>'
             . '<script src="/common/choice/proposal-html.js?v=20260824-proposal-content-refresh" defer></script>'
-            . '<script src="/common/choice/proposal-discussion.js?v=20260817-generic-actions" defer></script>';
+            . '<script src="/common/choice/proposal-discussion.js?v=20260923-compact-editor" defer></script>';
     }
 }
 
@@ -2101,7 +2141,7 @@ if (!function_exists('omoDecisionRenderConsultationProposalPublicPanel')) {
         if ($proposalContent['title']) {
             $proposalFields .= '<label style="display:grid;gap:6px;">'
                 . '<span class="generic-card-title generic-card-title--small">' . $escape(omoDecisionProposalT('decisions.proposals.title_label')) . '</span>'
-                . '<input type="text" class="generic-form-control" name="consultation_proposal_title" value="" placeholder="' . $escape(omoDecisionProposalT('decisions.proposals.title_placeholder')) . '" required>'
+                . '<input type="text" class="generic-form-control generic-form-control--compact" name="consultation_proposal_title" value="" placeholder="' . $escape(omoDecisionProposalT('decisions.proposals.title_placeholder')) . '" required>'
                 . '</label>';
         } else {
             $proposalFields .= '<input type="hidden" name="consultation_proposal_title" value="">';
@@ -2120,7 +2160,7 @@ if (!function_exists('omoDecisionRenderConsultationProposalPublicPanel')) {
         if ($proposalContent['url']) {
             $proposalFields .= '<label style="display:grid;gap:6px;">'
                 . '<span class="generic-card-title generic-card-title--small">' . $escape(omoDecisionProposalT('decisions.proposals.info_url_label')) . '</span>'
-                . '<input type="url" class="generic-form-control" name="consultation_proposal_info_url" value="" placeholder="https://...">'
+                . '<input type="url" class="generic-form-control generic-form-control--compact" name="consultation_proposal_info_url" value="" placeholder="https://...">'
                 . '</label>';
         } else {
             $proposalFields .= '<input type="hidden" name="consultation_proposal_info_url" value="">';

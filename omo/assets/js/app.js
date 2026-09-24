@@ -982,6 +982,9 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
     const previousRequest = $target.data('omoXhr');
     const requestId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const resolvedUrl = omoResolveAppUrl(url);
+    const requestUrl = typeof window.omoApplicationViewPreferencesPrepareRequest === 'function'
+        ? window.omoApplicationViewPreferencesPrepareRequest(resolvedUrl)
+        : resolvedUrl;
     const shouldTraceDecisionLoad = omoShouldTraceDecisionLoad($target, resolvedUrl);
 
     $target.attr('data-omo-load-url', resolvedUrl);
@@ -1004,7 +1007,7 @@ function loadContent(target, url, type = 'panel', onLoaded = null) {
     $target.html(getSkeleton(type));
 
     const xhr = $.ajax({
-        url: resolvedUrl,
+        url: requestUrl,
         method: 'GET',
         cache: false,
 
@@ -5974,13 +5977,15 @@ const OMO_RUNTIME_MAINTENANCE_MIN_INTERVAL_MS = 60000;
 let omoRuntimeMaintenanceLastRunAt = Date.now();
 let omoRuntimeMaintenanceInFlight = false;
 let omoRuntimeMaintenanceReloadingForSession = false;
+let omoRuntimeMaintenanceReady = false;
 
 function omoRunRuntimeMaintenance(options = {}) {
     const force = options.force === true;
     const now = Date.now();
 
     if (
-        omoRuntimeMaintenanceInFlight
+        !omoRuntimeMaintenanceReady
+        || omoRuntimeMaintenanceInFlight
         || (!force && now - omoRuntimeMaintenanceLastRunAt < OMO_RUNTIME_MAINTENANCE_MIN_INTERVAL_MS)
         || (navigator.onLine === false)
     ) {
@@ -6029,6 +6034,19 @@ function omoRunRuntimeMaintenance(options = {}) {
 }
 
 function omoInstallRuntimeMaintenanceTriggers() {
+    // Cron is the primary scheduler; keep a deferred fallback for hosts without cron.
+    const scheduleInitialMaintenance = function () {
+        window.setTimeout(function () {
+            omoRuntimeMaintenanceReady = true;
+            omoRunRuntimeMaintenance({force: true});
+        }, 2000);
+    };
+    if (document.readyState === 'complete') {
+        scheduleInitialMaintenance();
+    } else {
+        window.addEventListener('load', scheduleInitialMaintenance, {once: true});
+    }
+
     window.addEventListener('focus', function () {
         omoRunRuntimeMaintenance();
     });

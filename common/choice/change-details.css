@@ -19,4 +19,8 @@
 .omo-change-details__value-content.is-empty{color:#94a3b8;font-style:italic}
 .omo-change-details__added,.omo-change-details__value-content.is-added{border-radius:4px;background:rgba(22,163,74,.14);color:#166534}
 .omo-change-details__removed,.omo-change-details__value-content.is-removed{border-radius:4px;background:rgba(220,38,38,.12);color:#991b1b;text-decoration:line-through}
-@media(max-width:620px){.omo-change-details__card{grid-template-columns:1fr}}
+.omo-change-details__lifecycle{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding-top:8px;align-items:stretch}
+.omo-change-details__lifecycle>.omo-change-details__list{padding-top:0}
+.omo-change-details__absence{display:grid;place-items:center;text-align:center;color:var(--color-text-light,#64748b);min-height:100px}
+.omo-change-details__card--snapshot{grid-template-columns:1fr;border-color:var(--color-border,#e5e7eb);background:var(--color-surface,#fff)}
+@media(max-width:620px){.omo-change-details__card,.omo-change-details__lifecycle{grid-template-columns:1fr}}

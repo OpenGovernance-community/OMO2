@@ -46,7 +46,7 @@ class ArrayExternalCalendarEvent extends ArrayDbObject
         }
 
         $rows = ExternalCalendarEvent::fetchAll(
-            'SELECT e.`id`
+            'SELECT e.*
              FROM `external_calendar_event` e
              INNER JOIN `external_calendar` c ON c.`id` = e.`IDexternalcalendar`
              WHERE c.`IDuser` = :user_id
@@ -67,7 +67,7 @@ class ArrayExternalCalendarEvent extends ArrayDbObject
 
         foreach ($rows as $row) {
             $event = new ExternalCalendarEvent();
-            if ($event->load((int)($row['id'] ?? 0))) {
+            if ($event->hydrateFromDatabaseRow($row, true)) {
                 $this[] = $event;
             }
         }

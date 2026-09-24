@@ -54,6 +54,7 @@
 		// Ce wrapper garde l'ancienne API mysqli::query disponible le temps de la migration.
 		public function query($query)
 		{
+			DbObject::invalidateReadMemoForSql($query);
 			$profile = DbObject::beginSqlPerformanceProfile($query, array());
 			try {
 				$statement = $this->_pdo->query($query);
@@ -83,6 +84,7 @@
 
 		public function prepare($query)
 		{
+			DbObject::invalidateReadMemoForSql($query);
 			return $this->_pdo->prepare($query);
 		}
 
@@ -105,7 +107,48 @@
 		
 		public static $_dbh;
 		protected static $_lastDbError = null;
+		private static int $dbErrorGeneration = 0;
 		protected static $_tableExistsCache = array();
+		private static bool $readMemoEnabled = false;
+		private static array $readMemo = [];
+
+		/** Opt-in for read-only rendering only; never persisted in the session. */
+		public static function enableReadOnlyMemoization(bool $enabled = true): void
+		{
+			self::$readMemoEnabled = $enabled;
+			self::$readMemo = [];
+		}
+
+		protected static function memoizeRead(array $key, callable $load)
+		{
+			if (!self::$readMemoEnabled) {
+				return $load();
+			}
+			$connection = self::getPdo();
+			if (!($connection instanceof \PDO)) {
+				return $load();
+			}
+			$cacheKey = serialize([static::class, spl_object_id($connection),
+				$GLOBALS['dbServer'] ?? '', $GLOBALS['dbName'] ?? '', $key]);
+			if (array_key_exists($cacheKey, self::$readMemo)) {
+				return self::$readMemo[$cacheKey];
+			}
+			$errorGeneration = self::$dbErrorGeneration;
+			$value = $load();
+			if (self::$readMemoEnabled && self::$dbErrorGeneration === $errorGeneration) {
+				self::$readMemo[$cacheKey] = $value;
+			}
+			return $value;
+		}
+
+		public static function invalidateReadMemoForSql($query): void
+		{
+			// Writes and locking reads must never use a rendering snapshot.
+			if (self::$readMemoEnabled && (!preg_match('/^\s*SELECT\b/i', (string)$query)
+				|| preg_match('/\bFOR\s+UPDATE\b|\bLOCK\s+IN\s+SHARE\s+MODE\b/i', (string)$query))) {
+				self::enableReadOnlyMemoization(false);
+			}
+		}
 		protected static $_sqlPerformanceConfig = null;
 		protected static $_sqlPerformanceProfiles = array();
 		protected static $_sqlPerformanceRequestId = null;
@@ -496,6 +539,7 @@
 		}
 
 		protected static function rememberLastDbError($query, $params = array(), $exception = null) {
+			self::$dbErrorGeneration++;
 			self::$_lastDbError = array(
 				"query" => (string)$query,
 				"params" => is_array($params) ? $params : array(),
@@ -552,6 +596,7 @@
 		}
 
 		protected static function prepareAndExecute($query, $params = array()) {
+			self::invalidateReadMemoForSql($query);
 			self::clearLastDbError();
 			$pdo = self::getPdo();
 			if (!$pdo) {

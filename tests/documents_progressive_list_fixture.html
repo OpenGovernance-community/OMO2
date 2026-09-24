@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Test documents progressifs</title>
+<link rel="stylesheet" href="/common/assets/components.css">
+<style>
+body { margin: 24px; font: 16px sans-serif; }
+.fixture-scroll { height: 400px; overflow: auto; border: 1px solid #888; }
+.fixture-row { min-height: 40px; padding: 8px; border-bottom: 1px solid #ddd; box-sizing: border-box; }
+</style>
+<h1>400 documents fictifs</h1>
+<p>Aucune donnee applicative n est lue ou modifiee. Defiler dans la liste pour ajouter 30 fiches.</p>
+<label>Rechercher <input id="search" type="search"></label>
+<button id="reverse" type="button">Inverser le tri</button>
+<p id="count" role="status"></p>
+<div class="fixture-scroll" role="region" aria-label="Documents de test" tabindex="0"><div id="list"></div></div>
+<script src="/omo/api/documents/progressive-list.js?v=20260923-30"></script>
+<script>
+const all = Array.from({length: 400}, (_, i) => 'Document ' + String(i + 1).padStart(3, '0'));
+let reverse = false;
+let controller;
+function render() {
+    if (controller) controller.destroy();
+    const list = document.getElementById('list');
+    const query = document.getElementById('search').value;
+    const items = all.filter(item => item.includes(query));
+    if (reverse) items.reverse();
+    list.replaceChildren();
+    controller = window.omoCreateDocumentProgressiveList({
+        container: list, items, moreLabel: 'Afficher la suite',
+        appendItem(item, sentinel) {
+            const row = document.createElement('div');
+            row.className = 'fixture-row';
+            row.textContent = item;
+            list.insertBefore(row, sentinel);
+        },
+        afterAppend(count) { document.getElementById('count').textContent = count + ' / ' + items.length + ' fiches construites'; }
+    });
+}
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('reverse').addEventListener('click', function () { reverse = !reverse; render(); });
+render();
+</script>
+</html>

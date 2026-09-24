@@ -247,6 +247,47 @@ if (!function_exists('omoApplicationViewPreferencesGetEffectiveView')) {
     }
 }
 
+if (!function_exists('omoApplicationViewPreferencesGetBrowserRestore')) {
+    function omoApplicationViewPreferencesGetBrowserRestore(array $context): array
+    {
+        $raw = $_GET['restore_view'] ?? '';
+        if (!is_string($raw) || strlen($raw) > 4096 || !empty($context['isPvApplicationTab'])
+            || !empty($_GET['open_document_id']) || !empty($_GET['open_event_id'])) {
+            return array();
+        }
+        $restore = json_decode($raw, true);
+        if (!is_array($restore)
+            || ($restore['organizationId'] ?? null) !== ($context['organizationId'] ?? 0)
+            || ($restore['holonId'] ?? null) !== ($context['holonId'] ?? 0)) {
+            return array();
+        }
+        $views = array();
+        foreach (array('temporary', 'saved', 'default', 'position') as $source) {
+            $candidate = $restore[$source] ?? null;
+            if (!is_array($candidate)) continue;
+            foreach (array('scope', 'view', 'sort', 'density', 'date', 'month') as $key) {
+                if (isset($candidate[$key]) && is_string($candidate[$key]) && strlen($candidate[$key]) < 32) {
+                    $views[$source][$key] = $candidate[$key];
+                }
+            }
+        }
+        // Match each module's existing browser preference precedence; never persist it.
+        if (($context['application'] ?? '') === 'documents') {
+            $view = $views['temporary'] ?? omoApplicationViewPreferencesGetEffectiveView($context);
+            if ($view === null && !empty($context['canSavePersonal'])) {
+                $view = $views['saved'] ?? $views['default'] ?? null;
+            }
+            return array('view' => $view ?? array());
+        }
+        if (($context['application'] ?? '') === 'calendar') {
+            $view = $views['temporary'] ?? $views['saved'] ?? $views['default'] ?? $context['defaultView'] ?? null;
+            $position = $view === null ? ($views['position'] ?? array()) : array();
+            return array('view' => $view ?? $position, 'position' => $position);
+        }
+        return array();
+    }
+}
+
 if (!function_exists('omoApplicationViewPreferencesGetInitialValue')) {
     function omoApplicationViewPreferencesGetInitialValue(array $context, $requestKey, $viewKey, $fallback = '')
     {

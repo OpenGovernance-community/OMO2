@@ -35,6 +35,7 @@ assertCalendarConnectIcsTest(
 $root = dirname(__DIR__);
 $connectSource = (string)file_get_contents($root . '/omo/api/calendar/connect.php');
 $calendarSource = (string)file_get_contents($root . '/omo/api/calendar/index.php');
+$calendarSource .= (string)file_get_contents($root . '/omo/api/calendar/calendar.js');
 $feedSource = (string)file_get_contents($root . '/common/calendar/share-feed.php');
 $migrationSource = (string)file_get_contents($root . '/sql/2026-09-21-05-calendar-scoped-ics.sql');
 

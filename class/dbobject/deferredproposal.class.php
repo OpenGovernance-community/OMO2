@@ -707,7 +707,7 @@ class DeferredProposal extends DbObject
             return self::applyProjectProposal($proposal);
         }
         if (!in_array((string)$proposal->get('target_type'), [self::TARGET_RULE, self::TARGET_HOLON], true)) {
-            return ['status' => false, 'message' => 'Ce type de proposition n est pas encore executable.'];
+            return ['status' => false, 'message' => 'Ce type de modification n’est pas encore exécutable.'];
         }
         $proposalHolonId = (int)$proposal->get('IDholon');
         return DecisionGovernanceAction::applyDeferredProposal(
@@ -753,7 +753,7 @@ class DeferredProposal extends DbObject
             if (count($children) > 0) {
                 return ['status' => false, 'conflict' => true, 'message' => 'Le projet contient encore des sous-projets.'];
             }
-            if ($current !== $before) return ['status' => false, 'conflict' => true, 'message' => 'Le projet a été modifié depuis la proposition.'];
+            if ($current !== $before) return ['status' => false, 'conflict' => true, 'message' => 'Le projet a été modifié depuis la préparation de cette modification.'];
             return $project->delete()
                 ? ['status' => true, 'target_id' => $targetId]
                 : ['status' => false, 'message' => 'Le projet ne peut pas être supprimé.'];
@@ -761,7 +761,7 @@ class DeferredProposal extends DbObject
         $after = self::normalizeProjectState(self::normalizeState($proposal->get('after_state')), $project);
         $after['IDholon'] = $contextHolonId;
         if ($current === $after) return ['status' => true, 'target_id' => $targetId];
-        if ($current !== $before) return ['status' => false, 'conflict' => true, 'message' => 'Le projet a été modifié depuis la proposition.'];
+        if ($current !== $before) return ['status' => false, 'conflict' => true, 'message' => 'Le projet a été modifié depuis la préparation de cette modification.'];
         if ($after['title'] === '') return ['status' => false, 'message' => 'Le titre du projet est obligatoire.'];
         self::applyProjectState($project, $after, $organizationId);
         $result = $project->save();

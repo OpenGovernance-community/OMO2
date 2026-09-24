@@ -1168,6 +1168,17 @@ class HolonPermission extends DbObject
 
     public static function buildUserPermissionSetForOrganization($userId, $organizationId, array $permissionKeys = [])
     {
+        // Keep keys, user and organization isolated; bypass the cross-request session cache.
+        $permissionKeys = array_values(array_unique(array_map('strval', $permissionKeys)));
+        sort($permissionKeys);
+        $adminOverride = function_exists('commonUserHasAdminOverride')
+            && \commonUserHasAdminOverride((int)$userId, (int)$organizationId);
+        return self::memoizeRead([__FUNCTION__, (int)$userId, (int)$organizationId, $permissionKeys, $adminOverride],
+            static fn () => self::loadUserPermissionSetForOrganization($userId, $organizationId, $permissionKeys));
+    }
+
+    protected static function loadUserPermissionSetForOrganization($userId, $organizationId, array $permissionKeys = [])
+    {
         $userId = (int)$userId;
         $organizationId = (int)$organizationId;
         $permissionSet = [

@@ -7,7 +7,7 @@ use dbObject\DocumentPvPoint;
 use dbObject\Holon;
 
 $sourceLang = [
-    'intro' => ['text' => 'Préparez la proposition en choisissant son objet, son action et son contexte. Rien ne sera appliqué avant le traitement du point.', 'context' => 'Deferred proposal workflow introduction'],
+    'intro' => ['text' => 'Préparez la modification en choisissant son objet, son action et son contexte. Rien ne sera appliqué avant le traitement du point.', 'context' => 'Deferred proposal workflow introduction'],
     'object_type' => ['text' => 'Objet', 'context' => 'Deferred proposal target type label'],
     'rule' => ['text' => 'Règle', 'context' => 'Deferred proposal rule type'],
     'rule_help' => ['text' => 'Règles et politiques de l’espace', 'context' => 'Deferred proposal rule type help'],
@@ -44,7 +44,7 @@ $sourceLang = [
     'load_error' => ['text' => 'Impossible de charger les éléments de ce contexte.', 'context' => 'Deferred proposal context load error'],
     'editor_error' => ['text' => 'Impossible d’ouvrir l’éditeur.', 'context' => 'Deferred proposal editor load error'],
     'denied' => ['text' => 'Accès refusé.', 'context' => 'Deferred proposal denied message'],
-    'unavailable' => ['text' => 'Cette proposition ne peut plus être modifiée.', 'context' => 'Deferred proposal unavailable message'],
+    'unavailable' => ['text' => 'Cette modification ne peut plus être modifiée.', 'context' => 'Deferred proposal unavailable message'],
 ];
 $lang = omoLoadTranslationBundle('omo_deferred_proposal_workflow', $sourceLang);
 $tr = static fn (string $key): string => t($key, [], $lang, $sourceLang);
@@ -144,7 +144,7 @@ $buttonLabels = [
     DeferredProposal::TARGET_PROJECT => ['create' => $tr('create_project'), 'propose' => $tr('propose_project'), 'update' => $tr('update_project'), 'delete' => $tr('delete_project')],
 ];
 ?>
-<section class="generic-section generic-section--stack omo-deferred-workflow" data-deferred-proposal-workflow>
+<section class="generic-section generic-section--stack generic-section--roomy omo-deferred-workflow" data-deferred-proposal-workflow>
     <p><?= omoApiEscape($tr('intro')) ?></p>
     <div class="generic-form-field">
         <span class="generic-form-label"><?= omoApiEscape($tr('object_type')) ?></span>
@@ -168,12 +168,7 @@ $buttonLabels = [
     <p class="generic-feedback" data-deferred-feedback hidden></p>
     <div class="omo-deferred-workflow__picker-layer" data-deferred-context-picker hidden role="dialog" aria-modal="true"><div class="generic-soft-panel generic-soft-panel--elevated generic-soft-panel--stack omo-deferred-workflow__picker-panel"><div class="omo-deferred-workflow__picker-header"><div><h3 class="generic-card-title"><?= omoApiEscape($tr('context_picker')) ?></h3><p><?= omoApiEscape($tr('context_help')) ?></p></div><button class="generic-action-button generic-action-button--quiet-icon generic-action-button--icon-only" type="button" data-deferred-context-close aria-label="<?= omoApiEscape($tr('close')) ?>">&times;</button></div><div data-deferred-context-map></div><div class="omo-deferred-workflow__picker-selection"><strong data-deferred-context-candidate-label></strong><span data-deferred-context-candidate-status></span></div><div class="generic-action-row"><button class="generic-action-button generic-action-button--main" type="button" data-deferred-context-choose><?= omoApiEscape($tr('choose')) ?></button><button class="generic-action-button generic-action-button--secondary" type="button" data-deferred-context-close><?= omoApiEscape($tr('cancel')) ?></button></div></div></div>
 </section>
-<style>
-.omo-deferred-workflow__types{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--generic-space-2,8px)}
-.omo-deferred-workflow__type{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:12px;text-align:left;cursor:pointer}.omo-deferred-workflow__type span{color:var(--color-text-light);font-size:.9em}.omo-deferred-workflow__type.is-selected{border-color:var(--color-main,#2563eb);box-shadow:0 0 0 2px color-mix(in srgb,var(--color-main,#2563eb) 18%,transparent)}
-.omo-deferred-workflow__context-control{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--generic-space-2,8px)}.omo-deferred-workflow__context-control img{width:21px;height:21px;object-fit:contain}.omo-deferred-workflow__launch-field{justify-content:end}
-.omo-deferred-workflow__picker-layer{position:fixed;inset:0;z-index:10020;display:grid;place-items:center;padding:20px;background:rgba(15,23,42,.46);box-sizing:border-box}.omo-deferred-workflow__picker-layer[hidden]{display:none}.omo-deferred-workflow__picker-panel{width:min(680px,100%);max-height:calc(100dvh - 40px);overflow:auto}.omo-deferred-workflow__picker-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.omo-deferred-workflow__picker-header p{margin:4px 0 0;color:var(--color-text-light)}.omo-deferred-workflow__picker-panel .omo-holon-scope-picker__map{height:min(55dvh,520px)}.omo-deferred-workflow__picker-selection{display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--color-border);border-radius:var(--radius-md)}
-</style>
+<link rel="stylesheet" href="/common/choice/deferred-proposal-picker.css?v=20260923-shared">
 <script>
 (function(){
 const root=document.querySelector('[data-deferred-proposal-workflow]');if(!root)return;
