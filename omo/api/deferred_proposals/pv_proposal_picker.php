@@ -15,6 +15,10 @@ $sourceLang = [
     'holon_help' => ['text' => 'Éléments de la structure', 'context' => 'Deferred proposal holon type help'],
     'project' => ['text' => 'Projet', 'context' => 'Deferred proposal project type'],
     'project_help' => ['text' => 'Projets de l’espace', 'context' => 'Deferred proposal project type help'],
+    'recurring_task' => ['text' => 'Tâche récurrente', 'context' => 'Deferred proposal recurring task type'],
+    'recurring_task_help' => ['text' => 'Tâches planifiées de l’espace', 'context' => 'Deferred proposal recurring task type help'],
+    'indicator' => ['text' => 'Indicateur', 'context' => 'Deferred proposal indicator type'],
+    'indicator_help' => ['text' => 'Indicateurs et mesures de l’espace', 'context' => 'Deferred proposal indicator type help'],
     'action' => ['text' => 'Action', 'context' => 'Deferred proposal operation label'],
     'create' => ['text' => 'Création', 'context' => 'Deferred proposal create operation'],
     'update' => ['text' => 'Modification', 'context' => 'Deferred proposal update operation'],
@@ -36,6 +40,12 @@ $sourceLang = [
     'propose_project' => ['text' => 'Proposer un projet', 'context' => 'Deferred proposal open project proposal editor'],
     'update_project' => ['text' => 'Modifier le projet', 'context' => 'Deferred proposal open project update editor'],
     'delete_project' => ['text' => 'Supprimer le projet', 'context' => 'Deferred proposal open project deletion editor'],
+    'create_recurring_task' => ['text' => 'Créer la tâche récurrente', 'context' => 'Deferred proposal recurring task creation editor'],
+    'update_recurring_task' => ['text' => 'Modifier la tâche récurrente', 'context' => 'Deferred proposal recurring task update editor'],
+    'delete_recurring_task' => ['text' => 'Supprimer la tâche récurrente', 'context' => 'Deferred proposal recurring task deletion editor'],
+    'create_indicator' => ['text' => 'Créer l’indicateur', 'context' => 'Deferred proposal indicator creation editor'],
+    'update_indicator' => ['text' => 'Modifier l’indicateur', 'context' => 'Deferred proposal indicator update editor'],
+    'delete_indicator' => ['text' => 'Supprimer l’indicateur', 'context' => 'Deferred proposal indicator deletion editor'],
     'choose' => ['text' => 'Choisir ce contexte', 'context' => 'Deferred proposal context picker confirm'],
     'cancel' => ['text' => 'Annuler', 'context' => 'Deferred proposal cancel button'],
     'close' => ['text' => 'Fermer', 'context' => 'Deferred proposal context picker close'],
@@ -75,7 +85,7 @@ if ($proposalId > 0) {
     if (!$proposal->load($proposalId)
         || (int)$proposal->get('IDdocument_pv_point') !== $pointId
         || (int)$proposal->get('IDorganization') !== $organizationId
-        || !in_array((string)$proposal->get('target_type'), [DeferredProposal::TARGET_RULE, DeferredProposal::TARGET_HOLON, DeferredProposal::TARGET_PROJECT], true)
+        || !in_array((string)$proposal->get('target_type'), [DeferredProposal::TARGET_RULE, DeferredProposal::TARGET_HOLON, DeferredProposal::TARGET_PROJECT, DeferredProposal::TARGET_RECURRING_TASK, DeferredProposal::TARGET_INDICATOR], true)
         || (string)$proposal->get('status') !== DeferredProposal::STATUS_PENDING) {
         http_response_code(404);
         echo '<div class="omo-empty-state">' . omoApiEscape($tr('unavailable')) . '</div>';
@@ -97,15 +107,19 @@ $collectiveHolonId = (int)$document->getPvContextHolonId();
 $ruleCatalog = DeferredProposal::getRuleTargetHolonCatalog($organizationId, $collectiveHolonId);
 $holonCatalog = DeferredProposal::getHolonTargetHolonCatalog($organizationId, $collectiveHolonId);
 $projectCatalog = DeferredProposal::getProjectTargetHolonCatalog($organizationId, $collectiveHolonId);
+$recurringTaskCatalog = DeferredProposal::getObjectTargetHolonCatalog($organizationId, $collectiveHolonId, DeferredProposal::TARGET_RECURRING_TASK);
+$indicatorCatalog = DeferredProposal::getObjectTargetHolonCatalog($organizationId, $collectiveHolonId, DeferredProposal::TARGET_INDICATOR);
 $projectCreationModes = [];
 $contextLabels = [];
-foreach ([$ruleCatalog, $holonCatalog, $projectCatalog] as $catalog) {
+foreach ([$ruleCatalog, $holonCatalog, $projectCatalog, $recurringTaskCatalog, $indicatorCatalog] as $catalog) {
     foreach ($catalog as $holonId => $entry) $contextLabels[(int)$holonId] = (string)($entry['label'] ?? '');
 }
 $contextPermissions = [
     DeferredProposal::TARGET_RULE => ['create' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_HOLON => ['create' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_PROJECT => ['create' => [], 'update' => [], 'delete' => []],
+    DeferredProposal::TARGET_RECURRING_TASK => ['create' => [], 'update' => [], 'delete' => []],
+    DeferredProposal::TARGET_INDICATOR => ['create' => [], 'update' => [], 'delete' => []],
 ];
 foreach ($ruleCatalog as $holonId => $entry) {
     foreach (array_keys($contextPermissions[DeferredProposal::TARGET_RULE]) as $catalogOperation) {
@@ -127,6 +141,11 @@ foreach ($projectCatalog as $holonId => $entry) {
         if (!empty($entry['permissions'][$catalogOperation])) $contextPermissions[DeferredProposal::TARGET_PROJECT][$catalogOperation][] = (int)$holonId;
     }
 }
+foreach ([DeferredProposal::TARGET_RECURRING_TASK => $recurringTaskCatalog, DeferredProposal::TARGET_INDICATOR => $indicatorCatalog] as $catalogType => $catalog) {
+    foreach ($catalog as $holonId => $entry) foreach (array_keys($contextPermissions[$catalogType]) as $catalogOperation) {
+        if (!empty($entry['permissions'][$catalogOperation])) $contextPermissions[$catalogType][$catalogOperation][] = (int)$holonId;
+    }
+}
 foreach ($contextPermissions as &$operations) {
     foreach ($operations as &$ids) $ids = array_values(array_unique(array_map('intval', $ids)));
     unset($ids);
@@ -137,11 +156,15 @@ $targetRegistry = [
     DeferredProposal::TARGET_RULE => ['label' => $tr('rule'), 'help' => $tr('rule_help')],
     DeferredProposal::TARGET_HOLON => ['label' => $tr('holon'), 'help' => $tr('holon_help')],
     DeferredProposal::TARGET_PROJECT => ['label' => $tr('project'), 'help' => $tr('project_help')],
+    DeferredProposal::TARGET_RECURRING_TASK => ['label' => $tr('recurring_task'), 'help' => $tr('recurring_task_help')],
+    DeferredProposal::TARGET_INDICATOR => ['label' => $tr('indicator'), 'help' => $tr('indicator_help')],
 ];
 $buttonLabels = [
     DeferredProposal::TARGET_RULE => ['create' => $tr('create_rule'), 'update' => $tr('update_rule'), 'delete' => $tr('delete_rule')],
     DeferredProposal::TARGET_HOLON => ['create' => $tr('create_holon'), 'update' => $tr('update_holon'), 'delete' => $tr('delete_holon')],
     DeferredProposal::TARGET_PROJECT => ['create' => $tr('create_project'), 'propose' => $tr('propose_project'), 'update' => $tr('update_project'), 'delete' => $tr('delete_project')],
+    DeferredProposal::TARGET_RECURRING_TASK => ['create' => $tr('create_recurring_task'), 'update' => $tr('update_recurring_task'), 'delete' => $tr('delete_recurring_task')],
+    DeferredProposal::TARGET_INDICATOR => ['create' => $tr('create_indicator'), 'update' => $tr('update_indicator'), 'delete' => $tr('delete_indicator')],
 ];
 ?>
 <section class="generic-section generic-section--stack generic-section--roomy omo-deferred-workflow" data-deferred-proposal-workflow>
@@ -182,7 +205,7 @@ function updateLaunchButtons(){const labelsForType=buttonLabels[targetType]||{};
 function replaceObjects(items,selectedId){objectSelect.innerHTML='';(Array.isArray(items)?items:[]).forEach(function(item){const option=document.createElement('option');option.value=String(item.id||'');option.textContent=String(item.label||'');if(item.typeLabel)option.textContent+=' — '+String(item.typeLabel);if(Number(item.id)===Number(selectedId))option.selected=true;objectSelect.appendChild(option)});if(!objectSelect.options.length){const option=document.createElement('option');option.value='';option.textContent=texts.empty;objectSelect.appendChild(option);objectSelect.disabled=true}else objectSelect.disabled=selectionLocked;updateLaunchButtons()}
 function loadObjects(){const requestId=++contextRequest;showFeedback('');chooseDefaultContext();const isCreate=operation.value==='create';objectRow.hidden=isCreate;createRow.hidden=!isCreate;updateLaunchButtons();if(!contextAllowed(contextId)){replaceObjects([],0);return Promise.resolve(false)}const selectedId=initialObjectPending;initialObjectPending=0;if(isCreate){replaceObjects([],0);updateLaunchButtons();return Promise.resolve(true)}objectSelect.disabled=true;objectSelect.innerHTML='<option>'+texts.loading+'</option>';const url='/omo/api/deferred_proposals/pv_proposal_context.php?oid=<?= $organizationId ?>&point_id=<?= $pointId ?>&target_type='+encodeURIComponent(targetType)+'&operation='+encodeURIComponent(operation.value)+'&context_holon_id='+encodeURIComponent(String(contextId));return fetch(url,{credentials:'same-origin'}).then(function(response){return response.json().then(function(payload){return{ok:response.ok,payload:payload}})}).then(function(result){if(requestId!==contextRequest)return false;if(!result.ok||!result.payload.status)throw new Error(result.payload.message||texts.loadError);if(result.payload.context&&result.payload.context.label){labels[String(contextId)]=String(result.payload.context.label);contextLabel.value=String(result.payload.context.label)}replaceObjects(result.payload.objects,selectedId);return true}).catch(function(error){if(requestId===contextRequest){replaceObjects([],0);showFeedback(error.message||texts.loadError)}return false})}
 function updateCandidate(id){candidateContextId=Number(id||0);const allowed=contextAllowed(candidateContextId);candidateLabel.textContent=String(labels[String(candidateContextId)]||(picker&&picker.getSelectedHolonLabel?picker.getSelectedHolonLabel():'')||'');candidateStatus.textContent=allowed?texts.allowed:texts.denied;chooseContext.disabled=!allowed}function closePicker(){pickerLayer.hidden=true;if(picker&&typeof picker.destroy==='function')picker.destroy();picker=null;pickerHost.innerHTML=''}function openPicker(){if(typeof window.omoMountHolonScopePicker!=='function'){showFeedback(texts.editorError);return}candidateContextId=contextId;pickerLayer.hidden=false;picker=window.omoMountHolonScopePicker({host:pickerHost,organizationId:<?= $organizationId ?>,initialHolonId:contextId,selectableHolonIds:allowedContextIds(),showModes:false,initialScope:'local',labelMode:'context',suppressInitialChange:true,onChange:updateCandidate,onReady:updateCandidate});updateCandidate(contextId)}
-function buildEditorUrl(){const objectId=Number(objectSelect.value||0),common='direct=1&oid=<?= $organizationId ?>&point_id=<?= $pointId ?>&proposal_id='+proposalId+'&operation='+encodeURIComponent(operation.value);if(targetType==='rule')return'/omo/api/deferred_proposals/pv_rule_editor.php?workflow=1&'+common+'&holon_id='+encodeURIComponent(String(contextId))+'&rule_id='+encodeURIComponent(String(objectId));if(targetType==='project')return'/omo/api/deferred_proposals/pv_project_editor.php?stage=capture&'+common+'&holon_id='+encodeURIComponent(String(contextId))+'&project_id='+encodeURIComponent(String(objectId));return'/omo/api/deferred_proposals/pv_holon_editor.php?stage=capture&'+common+'&holon_id='+encodeURIComponent(String(operation.value==='create'?contextId:objectId))}
+function buildEditorUrl(){const objectId=Number(objectSelect.value||0),common='direct=1&oid=<?= $organizationId ?>&point_id=<?= $pointId ?>&proposal_id='+proposalId+'&operation='+encodeURIComponent(operation.value);if(targetType==='rule')return'/omo/api/deferred_proposals/pv_rule_editor.php?workflow=1&'+common+'&holon_id='+encodeURIComponent(String(contextId))+'&rule_id='+encodeURIComponent(String(objectId));if(targetType==='project')return'/omo/api/deferred_proposals/pv_project_editor.php?stage=capture&'+common+'&holon_id='+encodeURIComponent(String(contextId))+'&project_id='+encodeURIComponent(String(objectId));if(targetType==='recurring_task'||targetType==='indicator')return'/omo/api/deferred_proposals/pv_object_editor.php?stage=capture&'+common+'&target_type='+encodeURIComponent(targetType)+'&holon_id='+encodeURIComponent(String(contextId))+'&object_id='+encodeURIComponent(String(objectId));return'/omo/api/deferred_proposals/pv_holon_editor.php?stage=capture&'+common+'&holon_id='+encodeURIComponent(String(operation.value==='create'?contextId:objectId))}
 function openEditor(){if(!contextAllowed(contextId)||(operation.value!=='create'&&!Number(objectSelect.value||0)))return;showFeedback('');if(typeof window.commonTopbarRefreshModalContent!=='function'){showFeedback(texts.editorError);return}window.commonTopbarRefreshModalContent(buildEditorUrl())}
 root.querySelectorAll('[data-deferred-target-type]').forEach(function(button){button.addEventListener('click',function(){if(button.disabled)return;targetType=String(button.getAttribute('data-deferred-target-type')||'rule');initialObjectPending=0;updateTypeButtons();chooseDefaultContext();loadObjects()})});operation.addEventListener('change',function(){initialObjectPending=0;chooseDefaultContext();loadObjects()});objectSelect.addEventListener('change',updateLaunchButtons);root.querySelectorAll('[data-deferred-open-editor]').forEach(function(button){button.addEventListener('click',openEditor)});root.querySelector('[data-deferred-context-open]').addEventListener('click',openPicker);root.querySelectorAll('[data-deferred-context-close]').forEach(function(button){button.addEventListener('click',closePicker)});pickerLayer.addEventListener('click',function(event){if(event.target===pickerLayer)closePicker()});chooseContext.addEventListener('click',function(){if(!contextAllowed(candidateContextId))return;contextId=candidateContextId;contextLabel.value=String(labels[String(contextId)]||candidateLabel.textContent||'');closePicker();initialObjectPending=0;loadObjects()});updateTypeButtons();chooseDefaultContext();loadObjects();
 }());

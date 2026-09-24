@@ -299,7 +299,7 @@ class DecisionGovernanceAction extends DbObject
             'permissions' => is_array($editorHolon['permissionAssignments'] ?? null) ? $editorHolon['permissionAssignments'] : [],
             'properties' => is_array($editorHolon['properties'] ?? null) ? array_values($editorHolon['properties']) : [],
         ];
-        return $state;
+        return DeferredProposal::decorateHolonListDisplayState($state, $organization);
     }
 
     public static function findRolesInGovernanceContext(Holon $contextHolon)

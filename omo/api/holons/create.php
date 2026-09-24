@@ -2427,6 +2427,35 @@ function readProperties() {
             property.isLocal = String(row.dataset.isLocal || '0') === '1';
         }
 
+        if ([2, 7].indexOf(property.formatId) !== -1) {
+            let items = parseStoredListValue(value);
+            if (property.formatId === 7) {
+                try {
+                    const composite = JSON.parse(value);
+                    items = composite && Array.isArray(composite.items) ? composite.items : [];
+                } catch (error) { items = []; }
+            }
+            property.displayItems = items.filter(function (item) {
+                return !(item && typeof item === 'object' && item.delete === true);
+            }).map(function (item) {
+                if (property.listItemType === 'holon') return formatInheritedHolonItem(item);
+                if (property.listItemType === 'project') return formatInheritedProjectItem(item);
+                if (property.listItemType === 'authority') {
+                    if (item && typeof item === 'object' && String(item.label || '').trim()) return String(item.label).trim();
+                    if (item && typeof item === 'object' && item.delegationMode === 'complete') {
+                        const parent = getAuthorityParentCatalog().find(function (entry) { return Number(entry.id || 0) === Number(item.parentId || 0); });
+                        return parent ? String(parent.label || '') : '';
+                    }
+                    return formatInheritedAuthorityItem(item);
+                }
+                if (property.listItemType === 'detail') {
+                    const detail = normalizeDetailedListItem(item);
+                    return [detail.title, detail.description].filter(Boolean).join(' - ');
+                }
+                return String(item == null ? '' : item).trim();
+            }).filter(Boolean);
+        }
+
         return property;
     }).filter(function (property) {
         return Number(property.id || 0) > 0 || (property.isDirectProperty && String(property.name || '').trim() !== '');

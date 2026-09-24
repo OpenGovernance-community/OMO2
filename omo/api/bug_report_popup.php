@@ -271,6 +271,7 @@ if ($currentUserId > 0 && $featureEnabled) {
     }
 
     const patreonConnectButton = document.getElementById('omoBugReportPatreonConnect');
+    const patreonConnectOrigin = <?= json_encode(patreonGetConnectOrigin(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     const bugReportPopupUrl = '/omo/api/bug_report_popup.php';
     let patreonConnectWindow = null;
     let patreonConnectCloseWatcher = null;
@@ -324,7 +325,7 @@ if ($currentUserId > 0 && $featureEnabled) {
     }
 
     function handlePatreonMessage(event) {
-        if (event.origin !== window.location.origin) {
+        if (patreonConnectOrigin === '' || event.origin !== patreonConnectOrigin) {
             return;
         }
 

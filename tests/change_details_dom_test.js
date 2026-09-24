@@ -60,6 +60,27 @@ const markup = data => '<details data-omo-change-details-payload="' + encode(dat
     first.querySelector('summary').click();
     assert(!first.open);
 
+    const indicatorChanges = window.omoChoiceChangeDetails.governanceChanges({
+        type:'indicator.update',
+        before:{name:'Suivi', IDuser_responsible:11, ethercalc_frequency:'daily', source_type:'ethercalc_cell'},
+        after:{name:'Suivi', IDuser_responsible:12, ethercalc_frequency:'weekly', source_type:'ethercalc_cell'}
+    }, [], {11:'Camille', 12:'Alex'});
+    assert(indicatorChanges.some(change => change.label === 'Personne en charge' && change.before === 'Camille' && change.after === 'Alex'));
+    assert(indicatorChanges.some(change => change.label === 'Fréquence de synchronisation EtherCalc' && change.before === 'Chaque jour' && change.after === 'Chaque semaine'));
+
+    const holonChanges = window.omoChoiceChangeDetails.governanceChanges({
+        type:'holon.update', before:{editor_payload:{properties:[
+            {name:'Autorités',formatId:2,listItemType:'authority',value:'[17]',displayItems:[{id:17,label:'Comptabilité'}]},
+            {name:'Projets',formatId:7,listItemType:'project',value:'{"before":"","items":[31],"after":""}',displayItems:[{id:31,label:'Ancien projet'}]}
+        ]}}, after:{editor_payload:{properties:[
+            {name:'Autorités',formatId:2,listItemType:'authority',value:'[18]',displayItems:[{id:18,label:'Finances'}]},
+            {name:'Projets',formatId:7,listItemType:'project',value:'{"before":"","items":[32],"after":""}',displayItems:[{id:32,label:'Nouveau projet'}]}
+        ]}}
+    });
+    assert(holonChanges.some(change => change.label === 'Autorités' && (String(change.before).includes('Comptabilité') || String(change.after).includes('Finances'))));
+    assert(holonChanges.some(change => change.label === 'Projets' && (String(change.before).includes('Ancien projet') || String(change.after).includes('Nouveau projet'))));
+    assert(!holonChanges.some(change => JSON.stringify(change).includes('31') || JSON.stringify(change).includes('32')));
+
     const root = document.createElement('section');
     root.dataset.governanceEditor = '';
     root.innerHTML = '<form data-governance-form><input name="oid" value="1"><input name="cid" value="2"><input data-governance-blueprint>'

@@ -1079,6 +1079,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
             var organizationModelModalTitle = <?= json_encode(t('app.directory.model.modal_title'), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
             var shouldAutoOpenOrganizationCreateModal = <?= $shouldAutoOpenOrganizationCreateModal ? 'true' : 'false' ?>;
             var patreonConnectUrl = '/common/patreon_connect.php';
+            var patreonConnectOrigin = <?= json_encode(patreonGetConnectOrigin(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
 
             function interpolateTemplate(template, variables) {
                 return String(template || '').replace(/\{(\w+)\}/g, function (match, key) {
@@ -1241,7 +1242,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
             }
 
             function handlePatreonMessage(event) {
-                if (event.origin !== window.location.origin) {
+                if (patreonConnectOrigin === '' || event.origin !== patreonConnectOrigin) {
                     return;
                 }
 

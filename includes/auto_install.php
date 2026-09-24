@@ -381,6 +381,18 @@ function autoInstallGetFieldDefinitions()
                     'required' => false,
                 ],
                 [
+                    'key' => 'PATREON_CONNECT_URL',
+                    'label' => 'URL centrale de connexion Patreon',
+                    'type' => 'text',
+                    'required' => false,
+                ],
+                [
+                    'key' => 'PATREON_CONNECT_ALLOWED_ORIGINS',
+                    'label' => 'Domaines de retour Patreon autorisés',
+                    'type' => 'text',
+                    'required' => false,
+                ],
+                [
                     'key' => 'PATREON_REDIRECT_URI',
                     'label' => 'Redirect URI Patreon',
                     'type' => 'text',

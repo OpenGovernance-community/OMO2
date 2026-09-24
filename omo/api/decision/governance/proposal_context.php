@@ -11,6 +11,10 @@ use dbObject\DeferredProposal;
 use dbObject\Holon;
 use dbObject\Project;
 use dbObject\Rule;
+use dbObject\ArrayControlActivity;
+use dbObject\ArrayStatIndicator;
+use dbObject\ControlActivity;
+use dbObject\StatIndicator;
 
 header('Content-Type: application/json; charset=UTF-8');
 $respond = static function (int $code, array $payload): void {
@@ -35,7 +39,7 @@ if ($organizationId <= 0 || $collectiveHolonId <= 0
 $targetType = trim((string)($_GET['target_type'] ?? ''));
 $operation = trim((string)($_GET['operation'] ?? ''));
 $contextHolonId = (int)($_GET['context_holon_id'] ?? 0);
-if (!in_array($targetType, [DeferredProposal::TARGET_RULE, DeferredProposal::TARGET_HOLON, DeferredProposal::TARGET_PROJECT], true)
+if (!in_array($targetType, [DeferredProposal::TARGET_RULE, DeferredProposal::TARGET_HOLON, DeferredProposal::TARGET_PROJECT, DeferredProposal::TARGET_RECURRING_TASK, DeferredProposal::TARGET_INDICATOR], true)
     || !in_array($operation, [DeferredProposal::OPERATION_CREATE, DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE], true)) {
     $respond(422, ['status' => false, 'message' => 'Sélection invalide.']);
 }
@@ -68,7 +72,7 @@ if ($targetType === DeferredProposal::TARGET_RULE) {
             ];
         }
     }
-} else {
+} elseif ($targetType === DeferredProposal::TARGET_PROJECT) {
     $contextHolon = DeferredProposal::loadAllowedProjectTargetHolon($organizationId, $contextHolonId, $operation, $collectiveHolonId);
     if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire dans cet espace.']);
     if ($operation !== DeferredProposal::OPERATION_CREATE) {
@@ -77,6 +81,21 @@ if ($targetType === DeferredProposal::TARGET_RULE) {
         foreach ($projects as $project) {
             if (!$project instanceof Project || (int)$project->getId() <= 0) continue;
             $objects[] = ['id' => (int)$project->getId(), 'label' => trim((string)$project->get('title')), 'state' => DeferredProposal::captureProjectState($project)];
+        }
+        usort($objects, static fn (array $left, array $right): int => strcasecmp((string)$left['label'], (string)$right['label']));
+    }
+} else {
+    $contextHolon = DeferredProposal::loadAllowedObjectTargetHolon($organizationId, $contextHolonId, $operation, $collectiveHolonId, $targetType);
+    if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire dans cet espace.']);
+    if ($operation !== DeferredProposal::OPERATION_CREATE) {
+        $items = $targetType === DeferredProposal::TARGET_RECURRING_TASK ? new ArrayControlActivity() : new ArrayStatIndicator();
+        $items->load(['where' => [['field' => 'IDorganization', 'value' => $organizationId], ['field' => 'IDholon', 'value' => $contextHolonId], ['field' => 'active', 'value' => 1]], 'hydrate' => true]);
+        foreach ($items as $item) {
+            if ($targetType === DeferredProposal::TARGET_RECURRING_TASK && $item instanceof ControlActivity) {
+                $objects[] = ['id' => (int)$item->getId(), 'label' => trim((string)$item->get('title')), 'state' => DeferredProposal::captureRecurringTaskState($item)];
+            } elseif ($targetType === DeferredProposal::TARGET_INDICATOR && $item instanceof StatIndicator && !$item->isHiddenFromCatalog()) {
+                $objects[] = ['id' => (int)$item->getId(), 'label' => trim((string)$item->get('name')), 'state' => DeferredProposal::captureIndicatorState($item)];
+            }
         }
         usort($objects, static fn (array $left, array $right): int => strcasecmp((string)$left['label'], (string)$right['label']));
     }
