@@ -649,6 +649,9 @@ if (!function_exists('omoStatsCanEditIndicator')) {
 if (!function_exists('omoStatsCanDeleteIndicator')) {
     function omoStatsCanDeleteIndicator(StatIndicator $indicator, array $context): bool
     {
+        if ((int)$indicator->get('IDholon') === 0 && $indicator->canDelete()) {
+            return true;
+        }
         $holon = $indicator->getHolon() ?: ($context['rootHolon'] ?? null);
         return $holon instanceof Holon
             ? omoStatsCanUsePermission($holon, 'CAN_DELETE_INDICATOR', $context)
@@ -656,9 +659,32 @@ if (!function_exists('omoStatsCanDeleteIndicator')) {
     }
 }
 
+if (!function_exists('omoStatsCanUseOrganizationResourcePermission')) {
+    function omoStatsCanUseOrganizationResourcePermission(array $context, string $permissionKey): bool
+    {
+        $currentHolon = $context['currentHolon'] ?? null;
+        $rootHolon = $context['rootHolon'] ?? null;
+        if ($currentHolon instanceof Holon && (!($rootHolon instanceof Holon)
+            || (int)$currentHolon->getId() !== (int)$rootHolon->getId())) {
+            return false;
+        }
+        $organization = $context['organization'] ?? null;
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)commonGetCurrentUserId() : 0;
+        return $organization instanceof Organization && $currentUserId > 0
+            && (\dbObject\Permission::userCanInOrganization($permissionKey, (int)$organization->getId(), $currentUserId)
+                || ($rootHolon instanceof Holon && omoStatsCanUsePermission($rootHolon, $permissionKey, $context)));
+    }
+}
+
 if (!function_exists('omoStatsCanDeleteContextResource')) {
     function omoStatsCanDeleteContextResource($resource, array $context): bool
     {
+        if (!($resource instanceof StatIndicatorImport || $resource instanceof StatIndicatorGroup)) {
+            return false;
+        }
+        if ((int)$resource->get('IDholon') === 0) {
+            return omoStatsCanUseOrganizationResourcePermission($context, 'CAN_DELETE_INDICATOR');
+        }
         $holon = $context['currentHolon'] ?? $context['rootHolon'] ?? null;
         $contextHolonId = ($context['currentHolon'] ?? null) instanceof Holon ? (int)$context['currentHolon']->getId() : 0;
         return ($resource instanceof StatIndicatorImport || $resource instanceof StatIndicatorGroup)
@@ -808,6 +834,12 @@ if (!function_exists('omoStatsLoadImport')) {
 if (!function_exists('omoStatsCanEditContextResource')) {
     function omoStatsCanEditContextResource($resource, array $context)
     {
+        if (!($resource instanceof StatIndicatorImport || $resource instanceof StatIndicatorGroup)) {
+            return false;
+        }
+        if ((int)$resource->get('IDholon') === 0) {
+            return omoStatsCanUseOrganizationResourcePermission($context, 'CAN_EDIT_INDICATOR');
+        }
         if (!omoStatsCanManageContext($context)) {
             return false;
         }
@@ -1732,6 +1764,9 @@ if (!function_exists('omoStatsMatchesAssignment')) {
         }
 
         $holon = $indicator->getHolon();
+        if ((int)$indicator->get('IDholon') === 0) {
+            return \dbObject\UserOrganization::hasActiveMembership($currentUserId, (int)$organizationId);
+        }
         return $holon instanceof Holon
             && omoStatsUserIsAssociatedWithHolon($currentUserId, $organizationId, $holon);
     }

@@ -8,7 +8,7 @@ class ArrayStatIndicator extends ArrayDbObject
         return '\\dbObject\\StatIndicator';
     }
 
-    public function loadForContext($organizationId, $holonId = 0, $scope = 'contextual', array $descendantHolonIds = [])
+    public function loadForContext($organizationId, $holonId = 0, $scope = 'contextual', array $descendantHolonIds = [], $includeOrganizationItems = false)
     {
         $organizationId = (int)$organizationId;
         $holonId = (int)$holonId;
@@ -34,11 +34,19 @@ class ArrayStatIndicator extends ArrayDbObject
             $descendantHolonIds = array_values(array_unique(array_filter(array_map('intval', $descendantHolonIds), static function ($candidateId) {
                 return $candidateId > 0;
             })));
-            $params['where'][] = ['field' => 'IDholon', 'op' => 'in', 'value' => $descendantHolonIds];
+            if ($descendantHolonIds === [] && !$includeOrganizationItems) {
+                return;
+            }
+            if ($descendantHolonIds !== []) {
+                $params[$includeOrganizationItems ? 'whereAny' : 'where'][] = ['field' => 'IDholon', 'op' => 'in', 'value' => $descendantHolonIds];
+            }
         } else {
-            $params['where'][] = $holonId > 0
+            $params[$includeOrganizationItems ? 'whereAny' : 'where'][] = $holonId > 0
                 ? ['field' => 'IDholon', 'value' => $holonId]
                 : ['field' => 'IDholon', 'op' => 'is null'];
+        }
+        if ($includeOrganizationItems) {
+            $params['whereAny'][] = ['field' => 'IDholon', 'op' => 'is null'];
         }
 
         $loaded = new self();

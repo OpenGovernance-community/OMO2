@@ -9615,11 +9615,16 @@
 
 		protected function getProjectListEditorCatalog(?\dbObject\Holon $holon = null)
 		{
+			$rootHolon = $this->getEnabledStructuralRootHolon();
+			$includeOrganizationProjects = $holon instanceof \dbObject\Holon && $rootHolon instanceof \dbObject\Holon
+				&& (int)$holon->getId() === (int)$rootHolon->getId();
 			$projects = new \dbObject\ArrayProject();
 			$projects->loadForContext(
 				(int)$this->getId(),
 				$holon instanceof \dbObject\Holon ? (int)$holon->getId() : 0,
-				'contextual'
+				'contextual',
+				[],
+				$includeOrganizationProjects
 			);
 			return $this->formatProjectListEditorCatalog($projects);
 		}
@@ -9675,6 +9680,9 @@
 
 			$projects = new \dbObject\ArrayProject();
 			$holonId = $holon instanceof \dbObject\Holon ? (int)$holon->getId() : 0;
+			$rootHolon = $this->getEnabledStructuralRootHolon();
+			$includeOrganizationProjects = $rootHolon instanceof \dbObject\Holon
+				&& $holonId === (int)$rootHolon->getId();
 			if ($holonId > 0) {
 				$directChildIds = array();
 				$visitedGroupIds = array();
@@ -9722,9 +9730,9 @@
 				};
 				$appendDescendantScopeHolonIds($holon);
 
-				$projects->loadForContext((int)$this->getId(), $holonId, 'children', $directChildIds);
+				$projects->loadForContext((int)$this->getId(), $holonId, 'children', $directChildIds, $includeOrganizationProjects);
 				$catalogs['children'] = $this->formatProjectListEditorCatalog($projects);
-				$projects->loadForContext((int)$this->getId(), $holonId, 'descendants', $descendantIds);
+				$projects->loadForContext((int)$this->getId(), $holonId, 'descendants', $descendantIds, $includeOrganizationProjects);
 				$catalogs['descendants'] = $this->formatProjectListEditorCatalog($projects);
 			}
 

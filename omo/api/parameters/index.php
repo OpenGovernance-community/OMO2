@@ -343,7 +343,7 @@ $holonTemplateCardIconUrl = '/img/omo-parameters/holon-template.png';
     </div>
 </div>
 
-<link rel="stylesheet" href="/omo/api/parameters/settings.css?v=20260917-style-review-final">
+<link rel="stylesheet" href="/omo/api/parameters/settings.css?v=20260924-mobile-cards">
 
 <script src="/omo/api/projects/params/params.js?v=20260917-calculation"></script>
 <script>

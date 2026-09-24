@@ -161,7 +161,9 @@ if ($parentPickerInitialHolonId <= 0 && $context['currentHolon'] instanceof Holo
     $parentPickerInitialHolonId = (int)$context['currentHolon']->getId();
 }
 $assignedHolon = $project->getHolon();
-$assignedHolonId = $assignedHolon instanceof Holon ? (int)$assignedHolon->getId() : $parentPickerInitialHolonId;
+$assignedHolonId = $assignedHolon instanceof Holon
+    ? (int)$assignedHolon->getId()
+    : ($isEdit ? 0 : $parentPickerInitialHolonId);
 $assignedHolonLabel = $assignedHolon instanceof Holon
     ? trim((string)$assignedHolon->getDisplayName())
     : trim((string)$context['organization']->get('name'));
@@ -220,6 +222,7 @@ $formTexts = [
         <section class="generic-section generic-section--stack generic-form-section generic-form-section--divided generic-form-section--compact omo-project-form__section">
             <h3 class="generic-card-title generic-card-title--small"><?= omoApiEscape(omoProjectsT('projects.form.assignment')) ?></h3>
             <div class="omo-project-form__grid omo-project-form__grid--assignment generic-form-grid">
+                <?php if (($context['rootHolon'] ?? null) instanceof Holon): ?>
                 <div class="omo-project-form__field generic-form-field">
                     <label class="generic-form-label" for="omo-project-holon-label"><?= omoApiEscape(omoProjectsT('projects.field.holon')) ?></label>
                     <div class="omo-project-form__parent-control">
@@ -228,6 +231,7 @@ $formTexts = [
                         <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-project-holon-picker><?= omoApiEscape(omoProjectsT('projects.holon.choose')) ?></button>
                     </div>
                 </div>
+                <?php endif; ?>
                 <div class="omo-project-form__field generic-form-field">
                     <span class="generic-inline-help"><label class="generic-form-label" for="omo-project-responsible"><?= omoApiEscape(omoProjectsT('projects.field.responsible')) ?></label><details class="generic-context-help generic-context-help--compact" data-generic-context-help-hover><summary aria-label="<?= omoApiEscape(omoProjectsT('projects.responsible.help')) ?>">?</summary><div class="generic-context-help__content"><?= omoApiEscape(omoProjectsT('projects.responsible.help')) ?></div></details></span>
                     <select id="omo-project-responsible" class="generic-form-control" name="IDuser">
@@ -440,6 +444,7 @@ $formTexts = [
             var matches = parentCandidates.filter(function (candidate) {
                 var matchesScope = !scopePicker
                     || scopePicker.matches(Number(candidate.holonId || 0))
+                    || (Number(candidate.holonId || 0) === 0 && selectedHolonId === <?= ($context['rootHolon'] ?? null) instanceof Holon ? (int)$context['rootHolon']->getId() : 0 ?>)
                     || (selectedHolonId > 0 && Number(candidate.holonId || 0) === selectedHolonId)
                     || Number(candidate.id || 0) === currentId;
                 return matchesScope && (query === '' || [candidate.title, candidate.context].join(' ').toLowerCase().indexOf(query) !== -1);
@@ -472,7 +477,7 @@ $formTexts = [
             search.addEventListener('input', render);
             search.focus();
         }
-        if (typeof window.omoMountHolonScopePicker === 'function') {
+        if (<?= ($context['rootHolon'] ?? null) instanceof Holon ? 'true' : 'false' ?> && typeof window.omoMountHolonScopePicker === 'function') {
             scopePicker = window.omoMountHolonScopePicker({
                 host: modal.querySelector('[data-omo-project-parent-scope]'),
                 organizationId: <?= (int)$organizationId ?>,
@@ -484,7 +489,8 @@ $formTexts = [
         render();
     });
 
-    root.querySelector('[data-omo-project-holon-picker]').addEventListener('click', function () {
+    var holonPickerButton = root.querySelector('[data-omo-project-holon-picker]');
+    if (holonPickerButton) holonPickerButton.addEventListener('click', function () {
         if (typeof window.commonTopbarOpenModal !== 'function' || typeof window.omoMountHolonScopePicker !== 'function') return;
         var html = '<div class="omo-project-holon-picker generic-drawer-content">'
             + '<p class="omo-project-move-dialog__hint generic-help-text">' + escapeHtml(texts.holonPickerHint) + '</p>'

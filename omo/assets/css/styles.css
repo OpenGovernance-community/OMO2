@@ -2206,6 +2206,7 @@ html[data-theme] .common-help-card p {
     margin: 0 0 6px;
     font-size: var(--generic-title-size-page);
     line-height: var(--generic-type-line-tight);
+    overflow-wrap: anywhere;
 }
 
 .omo-panel-view__description {
@@ -3293,6 +3294,7 @@ html[data-theme] .common-help-card p {
     margin: 0 0 6px;
     font-size: var(--generic-title-size-drawer);
     line-height: var(--generic-type-line-tight);
+    overflow-wrap: anywhere;
 }
 
 .omo-overlay-drawer__description {
@@ -3474,10 +3476,19 @@ button.omo-card {
         min-width: 0;
     }
 
-    .omo-overlay-drawer__header {
+    .omo-overlay-drawer__header:not(.generic-drawer-header) {
         flex-direction: column;
         align-items: stretch;
         padding: 14px;
+    }
+
+    .omo-overlay-drawer__title {
+        margin-bottom: 0;
+    }
+
+    .omo-overlay-drawer__description {
+        font-size: var(--generic-type-size-sm);
+        line-height: 1.4;
     }
 
      .panel-left,
@@ -3577,7 +3588,8 @@ body.view-right .mobile-nav button[data-view="right"]::after {
 
     .content {
         position: relative;
-        overflow: hidden;
+        /* Off-screen panels must not scroll the shell when a control gains focus. */
+        overflow: clip;
     }
 
     .panel {

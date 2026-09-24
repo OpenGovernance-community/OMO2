@@ -161,11 +161,13 @@ if (count($projectResponsibleIds) > 0) {
 
 $projects = new ArrayProject();
 $scopeCurrentHolonId = $currentHolon instanceof Holon ? (int)$currentHolon->getId() : 0;
+$includeOrganizationProjects = $currentHolon instanceof Holon && $rootHolon instanceof Holon
+    && $scopeCurrentHolonId === (int)$rootHolon->getId();
 foreach ($allProjects as $allProject) {
     if (
         !($allProject instanceof Project)
         || !omoProjectsCanViewProject($allProject, $context)
-        || !omoProjectsScopeContainsProject($allProject, $projectScope, $scopeCurrentHolonId, $scopeHolonIds)
+        || !omoProjectsScopeContainsProject($allProject, $projectScope, $scopeCurrentHolonId, $scopeHolonIds, $includeOrganizationProjects)
         || !omoProjectsMatchesAssignment($allProject, $projectAssignment, $currentUserId, $organizationId)
         || ($projectAssignment === 'followed' && !isset($followedProjectIds[(int)$allProject->getId()]))
     ) {

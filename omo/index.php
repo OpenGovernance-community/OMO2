@@ -270,8 +270,8 @@ $sourceLang = [
         'context' => 'Mobile navigation label for the tools panel.',
     ],
     'app.mobile.right_panel' => [
-        'text' => 'Résumé',
-        'context' => 'Mobile navigation label for the right panel.',
+        'text' => 'Pilotage',
+        'context' => 'Mobile navigation label for the dashboard panel.',
     ],
     'app.not_found.message' => [
         'text' => "L'organisation demandée n'existe pas ou n'est plus disponible.",
@@ -831,7 +831,7 @@ if ($isOrganizationHub && !$isDemoGuest) {
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <title><?= htmlspecialchars(t('app.directory.page_title')) ?></title>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260917-button-hover-halo">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260924-mobile-headers">
     <link rel="stylesheet" href="/common/assets/auth.css">
 </head>
 <body class="auth-state-page auth-state-page--scrollable auth-state-page--themed auth-state-page--with-topbar">
@@ -1550,7 +1550,7 @@ if (!$isDemoGuest && $currentUserId > 0 && patreonSupportUiIsEnabled()) {
     <title><?= htmlspecialchars(t('app.main.page_title', ['organizationName' => (($organizationContext['name'] ?? '') ?: 'OMO')])) ?></title>
     <?= $omoThemeBootstrapHtml . PHP_EOL ?>
     <?= $omoPwaHeadHtml . PHP_EOL ?>
-<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260917-button-hover-halo">
+<link rel="stylesheet" href="/omo/assets/css/styles.css?v=20260924-mobile-headers">
     <style>
         html[data-omo-organization-accent] {
             --omo-organization-accent: <?= $omoOrganizationAccentColorCss ?>;

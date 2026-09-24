@@ -20,7 +20,7 @@ class Rule extends DbObject
         return [
             [['title', 'description', 'review_date', 'expiration_date'], 'required'],
             [['id'], 'integer'],
-            [['IDauthority', 'IDholon', 'IDuser_creation', 'IDuser_modification'], 'fk'],
+            [['IDauthority', 'IDholon', 'IDorganization', 'IDuser_creation', 'IDuser_modification'], 'fk'],
             [['title', 'scope'], 'string'],
             [['intention', 'description'], 'html'],
             [['review_date', 'expiration_date'], 'date'],
@@ -35,6 +35,7 @@ class Rule extends DbObject
             'id' => 'ID',
             'IDauthority' => 'Domaine d autorite',
             'IDholon' => 'Holon local',
+            'IDorganization' => 'Organisation',
             'title' => 'Titre',
             'intention' => 'Intention',
             'description' => 'Descriptif',
@@ -89,10 +90,12 @@ class Rule extends DbObject
     {
         return self::execute(
             'UPDATE rule rule_record
-             INNER JOIN holon holon_record ON holon_record.id = rule_record.IDholon
+             LEFT JOIN authority authority_record ON authority_record.id = rule_record.IDauthority
+             LEFT JOIN holon holon_record ON holon_record.id = COALESCE(rule_record.IDholon, authority_record.IDholon)
+             LEFT JOIN holon root_holon ON root_holon.id = holon_record.IDholon_org
              SET rule_record.IDuser_creation = CASE WHEN rule_record.IDuser_creation = :source_creation THEN :ghost_user_id ELSE rule_record.IDuser_creation END,
                  rule_record.IDuser_modification = CASE WHEN rule_record.IDuser_modification = :source_modification THEN :ghost_user_id ELSE rule_record.IDuser_modification END
-             WHERE holon_record.IDorganization = :organization_id',
+             WHERE COALESCE(rule_record.IDorganization, NULLIF(holon_record.IDorganization, 0), root_holon.IDorganization, 0) = :organization_id',
             array(
                 'source_creation' => (int)$userId,
                 'source_modification' => (int)$userId,
@@ -124,6 +127,7 @@ class Rule extends DbObject
     {
         $authorityId = (int)$this->get('IDauthority');
         $holonId = (int)$this->get('IDholon');
+        $organizationId = (int)$this->get('IDorganization');
         $title = trim((string)$this->get('title'));
         $intention = self::sanitizeContentHtml($this->get('intention'));
         $description = self::sanitizeContentHtml($this->get('description'));
@@ -134,8 +138,8 @@ class Rule extends DbObject
             return ['status' => false, 'text' => 'A rule requires a title, description, review date and expiration date.'];
         }
 
-        if (($authorityId <= 0 && $holonId <= 0) || ($authorityId > 0 && $holonId > 0)) {
-            return ['status' => false, 'text' => 'A rule must be attached either to an authority or to one holon.'];
+        if (($authorityId > 0 && $holonId > 0) || ($authorityId <= 0 && $holonId <= 0 && $organizationId <= 0)) {
+            return ['status' => false, 'text' => 'A rule must be attached to an organization, authority or holon.'];
         }
 
         if ($reviewDate > $expirationDate) {
@@ -147,16 +151,35 @@ class Rule extends DbObject
             if (!$authority->load($authorityId)) {
                 return ['status' => false, 'text' => 'The selected authority does not exist.'];
             }
+            $organizationId = (int)$authority->getOrganizationId();
             $this->set('IDauthority', $authorityId);
             $this->set('IDholon', null);
-        } else {
+        } elseif ($holonId > 0) {
             $holon = new Holon();
             if (!$holon->load($holonId)) {
                 return ['status' => false, 'text' => 'The selected holon does not exist.'];
             }
+            $organizationId = (int)$holon->get('IDorganization');
+            if ($organizationId <= 0 && (int)$holon->get('IDholon_org') > 0) {
+                $rootHolon = new Holon();
+                if ($rootHolon->load((int)$holon->get('IDholon_org'))) {
+                    $organizationId = (int)$rootHolon->get('IDorganization');
+                }
+            }
             $this->set('IDauthority', null);
             $this->set('IDholon', $holonId);
+        } else {
+            $organization = new Organization();
+            if (!$organization->load($organizationId)) {
+                return ['status' => false, 'text' => 'The selected organization does not exist.'];
+            }
+            $this->set('IDauthority', null);
+            $this->set('IDholon', null);
         }
+        if ($organizationId <= 0) {
+            return ['status' => false, 'text' => 'The rule organization could not be resolved.'];
+        }
+        $this->set('IDorganization', $organizationId);
 
         $this->set('title', $title);
         $this->set('intention', $intention !== '' ? $intention : null);
@@ -285,6 +308,30 @@ class Rule extends DbObject
         return $authority instanceof Authority ? $authority->getHolon() : null;
     }
 
+    public function getOrganizationId(): int
+    {
+        $organizationId = (int)$this->get('IDorganization');
+        if ($organizationId > 0) {
+            return $organizationId;
+        }
+        $authority = $this->getAuthority();
+        if ($authority instanceof Authority) {
+            return (int)$authority->getOrganizationId();
+        }
+        $holon = $this->getHolon();
+        if (!($holon instanceof Holon)) {
+            return 0;
+        }
+        $organizationId = (int)$holon->get('IDorganization');
+        if ($organizationId > 0) {
+            return $organizationId;
+        }
+        $rootHolon = new Holon();
+        return $rootHolon->load((int)$holon->get('IDholon_org'))
+            ? (int)$rootHolon->get('IDorganization')
+            : 0;
+    }
+
     public function getCreatedByUser()
     {
         $user = new User();
@@ -300,13 +347,21 @@ class Rule extends DbObject
     public function canEdit()
     {
         $holon = $this->getHolon();
-        return $holon instanceof Holon && $holon->isAllowed('CAN_EDIT_RULE', false);
+        if ($holon instanceof Holon) {
+            return $holon->isAllowed('CAN_EDIT_RULE', false);
+        }
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0);
+        return Permission::userCanInOrganization('CAN_EDIT_RULE', $this->getOrganizationId(), $currentUserId);
     }
 
     public function canDelete()
     {
         $holon = $this->getHolon();
-        return $holon instanceof Holon && $holon->isAllowed('CAN_DELETE_RULE', false);
+        if ($holon instanceof Holon) {
+            return $holon->isAllowed('CAN_DELETE_RULE', false);
+        }
+        $currentUserId = function_exists('commonGetCurrentUserId') ? (int)\commonGetCurrentUserId() : (int)($_SESSION['currentUser'] ?? 0);
+        return Permission::userCanInOrganization('CAN_DELETE_RULE', $this->getOrganizationId(), $currentUserId);
     }
 
     public function isReviewDue(?\DateTimeInterface $date = null)

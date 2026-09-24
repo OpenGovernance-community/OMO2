@@ -157,6 +157,84 @@
         return findClosestByAttribute(startNode, 'data-generic-tabs', document);
     }
 
+    function initMobileTabs(container, state) {
+        var list = state.tabs[0].closest('.generic-tabs__list');
+        var wrapper;
+        var select;
+
+        if (!list || list.hasAttribute('data-generic-tabs-mobile-ready')) {
+            return;
+        }
+
+        wrapper = document.createElement('div');
+        wrapper.className = 'generic-tabs__mobile';
+        select = document.createElement('select');
+        select.className = 'generic-form-control generic-tabs__select';
+        wrapper.appendChild(select);
+        list.parentNode.insertBefore(wrapper, list);
+
+        function availableTabs() {
+            return toArray(list.querySelectorAll('[data-generic-tab]')).filter(function (tab) {
+                var node = tab;
+                if (findClosestTabContainer(tab) !== container) { return false; }
+                while (node && node !== list) {
+                    if (node.hidden || node.getAttribute('aria-hidden') === 'true'
+                        || window.getComputedStyle(node).display === 'none') { return false; }
+                    node = node.parentElement;
+                }
+                return true;
+            });
+        }
+
+        function sync() {
+            var tabs = availableTabs();
+            var active = getFirstActiveTab(tabs);
+            var options = tabs.map(function (tab) {
+                var option = document.createElement('option');
+                option.value = ensureId(tab, container.id + '-tab');
+                option.textContent = String(tab.getAttribute('aria-label') || tab.textContent || '').replace(/\s+/g, ' ').trim();
+                option.disabled = tab.disabled || tab.getAttribute('aria-disabled') === 'true';
+                option.selected = tab === active;
+                return option;
+            });
+            select.replaceChildren.apply(select, options);
+            select.disabled = !tabs.some(function (tab) {
+                return !tab.disabled && tab.getAttribute('aria-disabled') !== 'true';
+            });
+            select.setAttribute('aria-label', list.getAttribute('aria-label')
+                || (active && (active.getAttribute('aria-label') || active.textContent).trim()) || '');
+            if (list.hasAttribute('aria-labelledby')) {
+                select.setAttribute('aria-labelledby', list.getAttribute('aria-labelledby'));
+            } else {
+                select.removeAttribute('aria-labelledby');
+            }
+            if (active && active.getAttribute('aria-controls')) {
+                select.setAttribute('aria-controls', active.getAttribute('aria-controls'));
+            } else {
+                select.removeAttribute('aria-controls');
+            }
+            wrapper.hidden = tabs.length < 2;
+        }
+
+        select.addEventListener('change', function () {
+            var tab = availableTabs().find(function (item) { return item.id === select.value; });
+            if (tab && !tab.disabled && tab.getAttribute('aria-disabled') !== 'true') {
+                // Keep module-specific click handlers (lazy loading, charts, etc.).
+                tab.click();
+            }
+            sync();
+        });
+        sync();
+        list.setAttribute('data-generic-tabs-mobile-ready', '1');
+        new MutationObserver(sync).observe(list, {
+            subtree: true,
+            childList: true,
+            characterData: true,
+            attributes: true,
+            attributeFilter: ['class', 'style', 'hidden', 'disabled', 'aria-disabled', 'aria-hidden', 'aria-selected', 'aria-label', 'aria-labelledby', 'aria-controls']
+        });
+    }
+
     function initTabs(container) {
         var state;
 
@@ -170,6 +248,7 @@
         }
 
         activateTab(container, getFirstActiveTab(state.tabs), false);
+        initMobileTabs(container, state);
         container.dataset.genericTabsReady = '1';
     }
 
@@ -867,6 +946,9 @@
         initFileLists(scope);
         initEditableSelects(scope);
         positionOpenContextHelps(scope);
+        if (scope.matches && scope.matches('[data-generic-tabs]')) {
+            initTabs(scope);
+        }
         toArray(scope.querySelectorAll('[data-generic-tabs]')).forEach(initTabs);
         toArray(scope.querySelectorAll('[data-generic-accordion]')).forEach(initAccordion);
     }

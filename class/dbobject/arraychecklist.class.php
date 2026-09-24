@@ -34,7 +34,7 @@ class ArrayChecklist extends ArrayDbObject
         $this->load($params);
     }
 
-    public function loadForContext($organizationId, $holonId, $scope = 'contextual', array $scopeHolonIds = [])
+    public function loadForContext($organizationId, $holonId, $scope = 'contextual', array $scopeHolonIds = [], $includeOrganizationProcesses = false)
     {
         $this->loadForOrganization((int)$organizationId, true, true);
 
@@ -53,8 +53,10 @@ class ArrayChecklist extends ArrayDbObject
                 continue;
             }
             $templateRoot = $checklist->getTemplateRoot();
-            $templateHolonId = $templateRoot instanceof Project ? (int)$templateRoot->get('IDholon') : 0;
-            if (isset($allowedHolonMap[$templateHolonId])) {
+            $templateHolonId = $templateRoot instanceof Project ? $templateRoot->get('IDholon') : null;
+            if (($templateRoot instanceof Project && $templateHolonId === null
+                    && ($includeOrganizationProcesses || ($holonId === 0 && $scope === 'contextual')))
+                || ((int)$templateHolonId > 0 && isset($allowedHolonMap[(int)$templateHolonId]))) {
                 $matches[] = $checklist;
             }
         }
