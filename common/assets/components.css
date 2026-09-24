@@ -1,5 +1,12 @@
 @import url('/common/assets/theme.css?v=20260917-light-surfaces');
 
+/* Keep AJAX fragments measurable while their styles and initializers load. */
+.generic-fragment-pending {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: none !important;
+}
+
 :root {
     --radius-sm: 4px;
     --radius-md: 6px;
