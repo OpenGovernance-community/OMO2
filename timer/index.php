@@ -324,7 +324,7 @@ $profileData = commonResolveTopbarProfileData($organizationContext, []);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title><?= htmlspecialchars(t('timer.page.title'), ENT_QUOTES, 'UTF-8') ?></title>
-    <link rel="stylesheet" href="/shared_css.css">
+    <?= commonStylesheetTags('/shared_css.css') ?>
     <link rel="stylesheet" href="/common/assets/topbar.css">
     <link rel="stylesheet" href="/timer/assets/timer.css?v=20260908-manual-entry">
 </head>

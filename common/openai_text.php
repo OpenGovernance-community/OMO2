@@ -50,7 +50,7 @@ function commonOpenAiBuildRewriteModelFallbacks($preferredModel)
     return $models;
 }
 
-function commonOpenAiRequestChatCompletion($apiKey, array $payload)
+function commonOpenAiRequestChatCompletion($apiKey, array $payload, int $timeout = 120)
 {
     $curl = curl_init('https://api.openai.com/v1/chat/completions');
     if ($curl === false) {
@@ -73,7 +73,8 @@ function commonOpenAiRequestChatCompletion($apiKey, array $payload)
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $encodedPayload,
-        CURLOPT_TIMEOUT => 120,
+        CURLOPT_CONNECTTIMEOUT => min(10, max(1, $timeout)),
+        CURLOPT_TIMEOUT => max(1, $timeout),
         CURLOPT_HTTPHEADER => array(
             'Authorization: Bearer ' . $apiKey,
             'Content-Type: application/json',

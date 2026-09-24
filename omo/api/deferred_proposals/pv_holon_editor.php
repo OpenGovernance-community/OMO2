@@ -188,18 +188,13 @@ $targetLabel = (string)($labels[$targetHolonId] ?? '');
 .omo-deferred-holon-selector__picker-header { display:flex; justify-content:space-between; gap:12px; }
 .omo-deferred-holon-selector__picker-panel .omo-holon-scope-picker__map { height:min(55dvh,520px); }
 </style>
-<script>
-(function () {
-    const root = document.querySelector('[data-deferred-holon-selector]'); if (!root) return;
-    const operation = root.querySelector('[data-deferred-operation]'), label = root.querySelector('[data-deferred-holon-label]'), permission = root.querySelector('[data-deferred-holon-permission]'), proceed = root.querySelector('[data-deferred-continue]'), pickerLayer = root.querySelector('[data-deferred-holon-picker]'), pickerHost = root.querySelector('[data-deferred-holon-map]');
-    const labels = <?= json_encode($labels, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, permissions = <?= json_encode($permissions, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>, texts = <?= json_encode(['allowed' => $tr('allowed'), 'denied' => $tr('denied')], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-    let targetId = <?= $targetHolonId ?>, candidateId = targetId, picker = null;
-    function allowedIds() { return Array.isArray(permissions[operation.value]) ? permissions[operation.value].map(Number) : []; }
-    function allowed(id) { return allowedIds().indexOf(Number(id)) !== -1; }
-    function sync() { const ok = allowed(targetId); label.value = String(labels[String(targetId)] || ''); permission.hidden = ok; permission.textContent = ok ? '' : texts.denied; proceed.disabled = !ok; }
-    function closePicker() { pickerLayer.hidden = true; if (picker && typeof picker.destroy === 'function') picker.destroy(); picker = null; pickerHost.innerHTML = ''; }
-    function updateCandidate(id) { candidateId = Number(id || 0); root.querySelector('[data-deferred-holon-choose]').disabled = !allowed(candidateId); }
-    function openPicker() { if (typeof window.omoMountHolonScopePicker !== 'function') return; candidateId = targetId; pickerLayer.hidden = false; picker = window.omoMountHolonScopePicker({host:pickerHost, organizationId:<?= $organizationId ?>, initialHolonId:targetId, selectableHolonIds:allowedIds(), showModes:false, initialScope:'local', labelMode:'context', suppressInitialChange:true, onChange:updateCandidate, onReady:updateCandidate}); updateCandidate(targetId); }
-    operation.addEventListener('change', sync); root.querySelector('[data-deferred-holon-open]').addEventListener('click', openPicker); root.querySelectorAll('[data-deferred-holon-close]').forEach(function (button) { button.addEventListener('click', closePicker); }); root.querySelector('[data-deferred-holon-choose]').addEventListener('click', function () { if (!allowed(candidateId)) return; targetId = candidateId; closePicker(); sync(); }); root.querySelector('[data-deferred-cancel]').addEventListener('click', function () { if (window.commonTopbarCloseModal) window.commonTopbarCloseModal(); }); proceed.addEventListener('click', function () { if (!allowed(targetId) || typeof window.commonTopbarOpenModal !== 'function') return; const url = '/omo/api/deferred_proposals/pv_holon_editor.php?stage=capture&oid=<?= $organizationId ?>&point_id=<?= $pointId ?>&proposal_id=<?= $proposalId ?>&operation=' + encodeURIComponent(operation.value) + '&holon_id=' + encodeURIComponent(String(targetId)); window.commonTopbarOpenModal(<?= json_encode($tr('holon')) ?>, url, 'fetch'); }); sync();
-}());
-</script>
+<?= commonPageScriptTags('/omo/api/deferred_proposals/pv_holon_editor.js', [
+    'labels' => $labels,
+    'permissions' => $permissions,
+    'tr' => ['allowed' => $tr('allowed'), 'denied' => $tr('denied')],
+    'targetId' => $targetHolonId,
+    'organizationId' => $organizationId,
+    'pointId' => $pointId,
+    'proposalId' => $proposalId,
+    'tr2' => $tr('holon'),
+]) ?>

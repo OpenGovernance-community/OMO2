@@ -302,7 +302,7 @@ $pageTitle = siteStatsT('stats.page.title');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= siteStatsEscape($pageTitle) ?></title>
-    <link rel="stylesheet" href="/shared_css.css">
+    <?= commonStylesheetTags('/shared_css.css') ?>
     <link rel="stylesheet" href="/common/assets/components.css">
     <style>
         .site-stats-body {

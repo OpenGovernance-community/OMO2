@@ -1464,4 +1464,5 @@ if ($isEditMode) {
     </div>
 </div>
 
-<link rel="stylesheet" href="/omo/api/calendar/editor.css?v=20260917-style-review-final">
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/calendar/invitations.css') ?>">
+<link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/calendar/editor.css') ?>">

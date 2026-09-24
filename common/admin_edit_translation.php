@@ -80,7 +80,7 @@ function adminEditBuildSourceLang($object): array
             'context' => 'Live character count helper shown below adminEdit text fields.',
         ],
         'admin_edit.image.choose_disk' => [
-            'text' => 'Choose image on disk...',
+            'text' => 'Choisir une image sur le disque',
             'context' => 'Button label shown in the sized image adminEdit field.',
         ],
     ];

@@ -34,8 +34,8 @@ class FAQ extends DbObject
 			[['request_description'], 'text'],
 			[['request_author_name', 'request_author_email'], 'string'],
 			[['image'], 'image'],
-			[['isactive'], 'boolean'],
-			[['created', 'updated', 'reliability_updated_at', 'score_decayed_at', 'request_answered_at'], 'datetime'],
+			[['isactive', 'request_ai_draft'], 'boolean'],
+			[['created', 'updated', 'reliability_updated_at', 'score_decayed_at', 'request_answered_at', 'request_relayed_at'], 'datetime'],
 			[['id'], 'safe'],
 		];
 	}
@@ -59,6 +59,7 @@ class FAQ extends DbObject
 			'request_description' => 'Description du problème',
 			'request_author_name' => 'Auteur de la demande',
 			'request_author_email' => 'E-mail de l auteur',
+			'request_relayed_at' => 'Relayee aux administrateurs le',
 			'created' => 'Creee le',
 			'updated' => 'Mise a jour le',
 			'viewcount' => 'Nombre de vues',
@@ -316,6 +317,70 @@ class FAQ extends DbObject
 		return true;
 	}
 
+	public static function hasRequestRelayColumn()
+	{
+		return self::hasColumn('request_relayed_at');
+	}
+
+	public function isPendingRequest()
+	{
+		return (int)$this->get('request_user_id') > 0
+			&& (trim((string)$this->get('answer')) === '' || $this->hasAiDraft());
+	}
+
+	public static function hasAiDraftColumn()
+	{
+		return self::hasColumn('request_ai_draft');
+	}
+
+	public function hasAiDraft()
+	{
+		return (bool)$this->get('request_ai_draft');
+	}
+
+	public function saveAiDraft(string $answer): bool
+	{
+		$answer = trim($answer);
+		if ($answer === '' || (int)$this->getId() <= 0 || !self::hasAiDraftColumn()) {
+			return false;
+		}
+		// A delayed AI response must never overwrite a human answer or publish the request.
+		$statement = self::prepareAndExecute(
+			"UPDATE `faq` SET `answer` = :answer, `request_ai_draft` = 1
+			 WHERE `id` = :id AND `request_user_id` > 0 AND `isactive` = 0
+			 AND `request_answered_at` IS NULL AND (`answer` IS NULL OR TRIM(`answer`) = '')",
+			['answer' => $answer, 'id' => (int)$this->getId()]
+		);
+		if ($statement === false) {
+			return false;
+		}
+		$affectedRows = (int)$statement->rowCount();
+		$statement->closeCursor();
+		self::finishSqlPerformanceStatement($statement, 'execute', true, $affectedRows);
+		if ($affectedRows !== 1) {
+			return false;
+		}
+		$this->set('answer', $answer);
+		$this->set('request_ai_draft', true);
+		return true;
+	}
+
+	public function hasRequestBeenRelayed()
+	{
+		return self::parseDateTimeValue($this->get('request_relayed_at')) !== null;
+	}
+
+	public function hasRequestBeenAnswered()
+	{
+		return self::parseDateTimeValue($this->get('request_answered_at')) !== null;
+	}
+
+	public function canRelayRequest()
+	{
+		return $this->isPendingRequest()
+			&& self::currentViewerHasOrganizationAdminAccess($this->getResolvedOrganizationId());
+	}
+
 	public static function getSystemAdminEmails()
 	{
 		$admins = new ArrayUser();
@@ -329,6 +394,34 @@ class FAQ extends DbObject
 		$emails = array();
 		foreach ($admins as $admin) {
 			$email = trim((string)$admin->get('email'));
+			if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+				$emails[mb_strtolower($email, 'UTF-8')] = $email;
+			}
+		}
+
+		return array_values($emails);
+	}
+
+	public static function getOrganizationAdminEmails($organizationId, $excludedUserId = 0)
+	{
+		$organizationId = (int)$organizationId;
+		$excludedUserId = (int)$excludedUserId;
+		if ($organizationId <= 0) {
+			return array();
+		}
+
+		$memberships = new ArrayUserOrganization();
+		$memberships->loadActiveForOrganization($organizationId);
+		$emails = array();
+		foreach ($memberships as $membership) {
+			if (!$membership instanceof UserOrganization || !$membership->isOrganizationAdmin()) {
+				continue;
+			}
+			if ($excludedUserId > 0 && (int)$membership->get('IDuser') === $excludedUserId) {
+				continue;
+			}
+
+			$email = trim((string)$membership->getScopedEmail());
 			if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
 				$emails[mb_strtolower($email, 'UTF-8')] = $email;
 			}
@@ -466,7 +559,8 @@ class FAQ extends DbObject
 		}
 
 		$organization = new \dbObject\Organization();
-		if (!$organization->load($organizationId) || !$organization->canViewDetail()) {
+		if (!$organization->load($organizationId)
+			|| (!self::currentViewerHasOrganizationAdminAccess($organizationId) && !$organization->canViewDetail())) {
 			return false;
 		}
 
@@ -484,7 +578,7 @@ class FAQ extends DbObject
 			if (
 				!$candidate->load($currentHolonId)
 				|| !$candidate->isDescendantOf($rootHolon->getId())
-				|| !$candidate->canViewDetail()
+				|| (!self::currentViewerHasOrganizationAdminAccess($organizationId) && !$candidate->canViewDetail())
 			) {
 				return false;
 			}
@@ -590,8 +684,8 @@ class FAQ extends DbObject
 
 	public static function currentViewerHasSiteAdminAccess()
 	{
-		return function_exists('commonCurrentUserIsSiteAdminModeEnabled')
-			&& \commonCurrentUserIsSiteAdminModeEnabled();
+		return function_exists('commonCurrentUserIsSiteAdmin')
+			&& \commonCurrentUserIsSiteAdmin();
 	}
 
 	public static function currentViewerHasOrganizationAdminAccess($organizationId = 0)
@@ -605,8 +699,8 @@ class FAQ extends DbObject
 			return true;
 		}
 
-		return function_exists('commonCurrentUserIsAdminModeEnabled')
-			&& \commonCurrentUserIsAdminModeEnabled($organizationId);
+		return function_exists('commonCurrentUserCanUseAdminMode')
+			&& \commonCurrentUserCanUseAdminMode($organizationId);
 	}
 
 	public static function resolveViewerAccess(array $context = array())
@@ -1166,7 +1260,7 @@ class FAQ extends DbObject
 			return true;
 		}
 
-		if (!(int)$this->get('isactive')) {
+		if (!(int)$this->get('isactive') || $this->hasAiDraft()) {
 			return false;
 		}
 

@@ -1,0 +1,60 @@
+/* omo/api/decision/send_invitations_popup.php */
+.omo-decision-send-invitations-popup__textarea {
+    min-height: 220px;
+}
+
+.omo-decision-send-invitations-popup__split {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+}
+
+.omo-decision-send-invitations-popup__split-main {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.omo-decision-send-invitations-popup__split-toggle {
+    min-width: 44px;
+    padding-inline: 12px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left-color: color-mix(in srgb, rgba(255, 255, 255, 0.28) 75%, transparent);
+    font-size: 12px;
+}
+
+.omo-decision-send-invitations-popup__split-toggle::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg) translateY(-1px);
+}
+
+.omo-decision-send-invitations-popup__menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 8px);
+    min-width: 240px;
+    padding: 8px;
+    border: 1px solid var(--topbar-panel-border, #dbe3ef);
+    border-radius: var(--radius-md);
+    background: var(--topbar-panel-bg, #ffffff);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+    display: grid;
+    gap: 6px;
+    z-index: 20;
+}
+
+.omo-decision-send-invitations-popup__menu[hidden] {
+    display: none;
+}
+
+.omo-decision-send-invitations-popup__menu-action {
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+    box-shadow: none;
+}

@@ -6,6 +6,65 @@
         return Array.prototype.slice.call(items || []);
     }
 
+    // Native innerHTML leaves scripts inert. Replay only executable scripts in
+    // source order, retaining their DOM position and the host application's context.
+    function executeFragmentScripts(container, options) {
+        options = options || {};
+        var scripts = options.scripts || toArray(container.querySelectorAll('script'));
+        return awaitStylesheets(container).then(function () {
+        return scripts.reduce(function (sequence, script) {
+            return sequence.then(function () {
+                if (options.isCurrent && !options.isCurrent()) return;
+                var type = (script.getAttribute('type') || '').trim().toLowerCase();
+                if (type && !/^(?:module|(?:text|application)\/(?:java|ecma)script)$/.test(type)) return;
+                if (!script.isConnected && options.target) options.target.appendChild(script);
+                if (!script.parentNode) return;
+                return new Promise(function (resolve, reject) {
+                    var replacement = document.createElement('script');
+                    toArray(script.attributes).forEach(function (attribute) {
+                        replacement.setAttribute(attribute.name, attribute.value);
+                    });
+                    if (options.target) replacement.__omoLoadTarget = options.target;
+                    var waitsForLoad = !!replacement.src || type === 'module';
+                    if (waitsForLoad) {
+                        replacement.async = false;
+                        replacement.addEventListener('load', resolve, { once: true });
+                        replacement.addEventListener('error', function () {
+                            reject(new Error('Unable to load page script: ' + (replacement.src || 'module')));
+                        }, { once: true });
+                    }
+                    replacement.textContent = script.textContent || '';
+                    script.parentNode.replaceChild(replacement, script);
+                    if (!waitsForLoad) resolve();
+                });
+            });
+        }, Promise.resolve());
+        });
+    }
+
+    // Keep styles attached to their panel: moving them into the head would let
+    // screen-specific selectors affect unrelated screens after navigation.
+    function awaitStylesheets(container) {
+        if (!container || !container.querySelectorAll) return Promise.resolve();
+        return Promise.all(toArray(container.querySelectorAll('link[rel~="stylesheet"]')).map(function (link) {
+            if (link.sheet || link.disabled || !link.href) return Promise.resolve();
+            return new Promise(function (resolve) {
+                var timer;
+                function finish() {
+                    window.clearTimeout(timer);
+                    link.removeEventListener('load', finish);
+                    link.removeEventListener('error', finish);
+                    resolve();
+                }
+                link.addEventListener('load', finish, { once: true });
+                link.addEventListener('error', finish, { once: true });
+                // A removed panel or a failed request must not stall navigation.
+                timer = window.setTimeout(finish, 8000);
+                if (link.sheet) finish();
+            });
+        }));
+    }
+
     function ensureId(element, prefix) {
         if (!element) {
             return '';
@@ -1290,6 +1349,8 @@
 
     window.initGenericTabs = initTabs;
     window.initGenericComponents = initGenericComponents;
+    window.genericAwaitStylesheets = awaitStylesheets;
+    window.commonExecuteFragmentScripts = executeFragmentScripts;
     window.initGenericEditableSelects = initEditableSelects;
     window.initGenericFileLists = initFileLists;
     window.syncGenericFileLists = function (root) {

@@ -3,6 +3,7 @@
 require_once("../config.php");
 require_once("../shared_functions.php");
 require_once("../common/auth.php");
+require_once("../common/faq_mail.php");
 require_once("../omo/api/lms/inc/access.php");
 require_once("../common/faq_popup_helper.php");
 
@@ -50,16 +51,20 @@ if (!$faq->canBeEditedInContext($faqContext ?: array())) {
 $viewerAccess = \dbObject\FAQ::resolveViewerAccess($faqContext ?: array());
 $canManageFaqCollection = !empty($viewerAccess['canManageAllFaqs']) || !empty($viewerAccess['canManageOrganizationFaqs']);
 $canManageParcoursFaqs = \dbObject\FAQ::canManageParcoursInContext($faqContext ?: array(), (int)($viewerAccess['userId'] ?? 0), false);
+$isPendingRequest = $faq->isPendingRequest();
+$requestResolution = trim((string)($_POST['faq_request_resolution'] ?? ''));
 
 // Ordinary editors change content, never the attachment or application.
-$scope = !$canManageFaqCollection ? array(
-	'status' => true,
-	'organizationId' => $faq->get('IDorganization'),
-	'holonId' => $faq->get('IDholon'),
-	'parcoursId' => $faq->get('IDparcours'),
-) : faqPopupResolveSubmittedScope($faqContext ?: array(), $_POST, array(
-	'allowParcoursCreate' => $canManageParcoursFaqs,
-));
+$scope = $isPendingRequest
+	? faqPopupResolveRequestScope($faq, $faqContext ?: array(), $requestResolution)
+	: (!$canManageFaqCollection ? array(
+		'status' => true,
+		'organizationId' => $faq->get('IDorganization'),
+		'holonId' => $faq->get('IDholon'),
+		'parcoursId' => $faq->get('IDparcours'),
+	) : faqPopupResolveSubmittedScope($faqContext ?: array(), $_POST, array(
+		'allowParcoursCreate' => $canManageParcoursFaqs,
+	)));
 if (empty($scope['status'])) {
 	echo json_encode([
 		'status' => false,
@@ -71,7 +76,9 @@ if (empty($scope['status'])) {
 
 $data = $_POST;
 unset($data['id']);
-$previousAnsweredAt = trim((string)$faq->get('request_answered_at'));
+unset($data['faq_request_resolution']);
+unset($data['request_ai_draft']);
+$requestAlreadyAnswered = $faq->hasRequestBeenAnswered();
 $linkedApplicationId = 0;
 if (\dbObject\FAQ::hasApplicationColumn() && $canManageFaqCollection) {
 	$linkedApplicationId = isset($data['IDapplication']) && is_numeric($data['IDapplication'])
@@ -111,10 +118,13 @@ if (trim((string)$faq->get('question')) === '' || trim((string)$faq->get('answer
 }
 
 $notifyRequester = (int)$faq->get('request_user_id') > 0
-	&& $previousAnsweredAt === ''
+	&& !$requestAlreadyAnswered
 	&& trim((string)$faq->get('answer')) !== '';
 if ($notifyRequester) {
 	$faq->set('request_answered_at', date('Y-m-d H:i:s'));
+}
+if (\dbObject\FAQ::hasAiDraftColumn()) {
+	$faq->set('request_ai_draft', false);
 }
 
 $saveResult = $faq->save();
@@ -132,15 +142,12 @@ $requesterEmail = trim((string)$faq->get('request_author_email'));
 if ($notifyRequester && filter_var($requesterEmail, FILTER_VALIDATE_EMAIL)) {
 	$mailFrom = trim((string)($GLOBALS['mailUser'] ?? ''));
 	if ($mailFrom === '') $mailFrom = 'info@systemdd.ch';
+	$organization = $faq->getResolvedOrganization();
 	$requesterNotified = myHTMLMail(
-		$mailFrom,
+		[$mailFrom, faqMailBrandOptions($organization)['brand_name']],
 		$requesterEmail,
 		'Réponse à votre question dans la FAQ',
-		'<p>Bonjour ' . htmlspecialchars((string)$faq->get('request_author_name'), ENT_QUOTES, 'UTF-8') . ',</p>'
-		. '<p>Un administrateur a répondu à votre question :</p>'
-		. '<p><strong>' . htmlspecialchars((string)$faq->get('question'), ENT_QUOTES, 'UTF-8') . '</strong></p>'
-		. '<p>' . nl2br(htmlspecialchars((string)$faq->get('answer'), ENT_QUOTES, 'UTF-8')) . '</p>'
-		. (trim(strip_tags((string)$faq->get('detail'))) !== '' ? '<div>' . (string)$faq->get('detail') . '</div>' : '')
+		faqMailRenderAnswer($faq, $organization)
 	);
 	if (!$requesterNotified) {
 		$faq->set('request_answered_at', null);

@@ -933,16 +933,6 @@ button.omo-stats-group-detail__legend-item:focus-visible {
     align-items: end;
 }
 
-.omo-stats-field {
-    display: grid;
-    align-content: start;
-    gap: var(--generic-form-field-gap, var(--generic-space-2, 8px));
-    min-width: 0;
-    color: var(--color-text, #1f2937);
-    font-size: var(--generic-type-size-sm, 0.84rem);
-    font-weight: 700;
-}
-
 .omo-stats-feedback {
     min-height: 0;
     color: var(--color-text-light, #64748b);

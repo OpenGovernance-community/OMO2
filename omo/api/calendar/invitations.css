@@ -1,0 +1,56 @@
+/* omo/api/calendar/invitations_popup.php */
+.omo-calendar-invitations-editor,
+.omo-calendar-invitations-editor__tab-panel,
+.omo-calendar-invitations-editor__checklist,
+.omo-calendar-invitations-editor__member-list,
+.omo-calendar-invitations-editor__check-meta,
+.omo-calendar-invitations-editor__tree-node,
+.omo-calendar-invitations-editor__tree-children {
+    display: grid;
+    gap: 8px;
+}
+
+.omo-calendar-invitations-editor [hidden] {
+    display: none !important;
+}
+
+.omo-calendar-invitations-editor__tabs {
+    --generic-tabs-panel-padding-block: 14px;
+    --generic-tabs-panel-padding-inline: 14px;
+}
+
+.omo-calendar-invitations-editor__filter {
+    width: 100%;
+}
+
+.omo-calendar-invitations-editor__empty {
+    font-style: italic;
+}
+
+.omo-calendar-invitations-editor__tree-row,
+.omo-calendar-invitations-editor__check {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.omo-calendar-invitations-editor__tree-children {
+    margin-left: 18px;
+    padding-left: 14px;
+    border-left: 1px solid var(--topbar-panel-border, #dbe3ef);
+}
+
+.omo-calendar-invitations-editor__check-type,
+.omo-calendar-invitations-editor__member-email {
+    color: var(--color-text-light, #64748b);
+    font-size: 0.9rem;
+}
+
+.omo-calendar-invitations-editor__textarea {
+    min-height: 120px;
+}
+
+.omo-calendar-invitations-popup__empty {
+    padding: 18px;
+    color: var(--color-text, #1f2937);
+}

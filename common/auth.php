@@ -3,6 +3,7 @@
 require_once __DIR__ . '/environment_subdomains.php';
 require_once __DIR__ . '/runtime_log.php';
 require_once __DIR__ . '/totp.php';
+require_once __DIR__ . '/assets.php';
 
 function commonGetDemoOrganizationId()
 {
@@ -3567,7 +3568,7 @@ function commonRenderMagicLoginPage(array $options = [])
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($title) ?></title>
-    <link rel="stylesheet" href="/shared_css.css">
+    <?= commonStylesheetTags('/shared_css.css') ?>
     <link rel="stylesheet" href="/common/assets/auth.css">
     <?php if ($organizationColor !== ''): ?>
     <style>

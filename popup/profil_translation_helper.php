@@ -18,10 +18,6 @@ function profilPopupGetSourceLang(): array
             'text' => 'Utilisateur inconnu',
             'context' => 'Error message shown when the current user record cannot be loaded for the profile popup.',
         ],
-        'profile.popup.section.active.title' => [
-            'text' => 'Votre profil actif',
-            'context' => 'Section title shown at the top of the personal profile popup.',
-        ],
         'profile.popup.section.edit.title' => [
             'text' => 'Modifier votre profil',
             'context' => 'Section title shown above the editable profile forms.',
@@ -30,16 +26,12 @@ function profilPopupGetSourceLang(): array
             'text' => 'Sections du profil personnel',
             'context' => 'Aria label used for the profile editor tabs.',
         ],
-        'profile.popup.tabs.current' => [
-            'text' => 'Prévisualisation',
-            'context' => 'Tab label used for the active profile preview.',
-        ],
         'profile.popup.tabs.organization' => [
             'text' => 'Profil spécifique',
             'context' => 'Tab label used for the organization-specific profile form.',
         ],
         'profile.popup.tabs.general' => [
-            'text' => 'Profil general',
+            'text' => 'Profil général',
             'context' => 'Tab label used for the general profile form.',
         ],
         'profile.popup.tabs.competences' => [
@@ -53,6 +45,26 @@ function profilPopupGetSourceLang(): array
         'profile.popup.tabs.tools' => [
             'text' => 'Outils',
             'context' => 'Tab label used for account tools in the profile popup.',
+        ],
+        'profile.popup.form.identity.general' => [
+            'text' => 'Identité et présentation',
+            'context' => 'Section heading for identity fields in the general profile form.',
+        ],
+        'profile.popup.form.contact.general' => [
+            'text' => 'Coordonnées et informations personnelles',
+            'context' => 'Section heading for contact and location fields in the general profile form.',
+        ],
+        'profile.popup.form.identity.organization' => [
+            'text' => 'Profil dans cette organisation',
+            'context' => 'Section heading for identity fields in the organization profile form.',
+        ],
+        'profile.popup.form.contact.organization' => [
+            'text' => 'Coordonnées dans cette organisation',
+            'context' => 'Section heading for contact fields in the organization profile form.',
+        ],
+        'profile.popup.form.security' => [
+            'text' => 'Sécurité du compte',
+            'context' => 'Section heading above password and two-factor settings in the general profile form.',
         ],
         'profile.popup.merge.title' => [
             'text' => 'Fusionner deux profils',
@@ -316,57 +328,9 @@ function profilPopupGetSourceLang(): array
             'text' => 'Patreon',
             'context' => 'Section title shown for the Patreon connection block in the profile popup.',
         ],
-        'profile.popup.active.context.label' => [
-            'text' => 'Contexte',
-            'context' => 'Label shown for the active profile context summary item.',
-        ],
-        'profile.popup.active.context.organization' => [
-            'text' => 'Organisation : {organizationName}',
-            'context' => 'Summary value shown when the active profile context is scoped to an organization.',
-        ],
-        'profile.popup.active.context.general' => [
-            'text' => 'Profil général',
-            'context' => 'Summary value shown when the active profile context is the general user profile.',
-        ],
-        'profile.popup.active.photo.label' => [
-            'text' => 'Photo affichée',
-            'context' => 'Label shown for the active profile photo summary item.',
-        ],
-        'profile.popup.active.email.label' => [
-            'text' => 'E-mail affiché',
-            'context' => 'Label shown for the active profile email summary item.',
-        ],
-		'profile.popup.active.phone.label' => [
-			'text' => 'Téléphone affiché',
-			'context' => 'Label shown for the active profile phone summary item.',
-		],
-        'profile.popup.active.username.label' => [
-            'text' => "Nom d'utilisateur affiche",
-            'context' => 'Label shown for the active profile username summary item.',
-        ],
-        'profile.popup.active.fullname.label' => [
-            'text' => 'Nom complet',
-            'context' => 'Label shown for the active full name summary item.',
-        ],
-        'profile.popup.active.presentation.label' => [
-            'text' => 'Présentation active',
-            'context' => 'Label shown for the active profile presentation summary item.',
-        ],
-        'profile.popup.active.birthdate.label' => [
-            'text' => 'Date de naissance',
-            'context' => 'Label shown for the birth date summary item.',
-        ],
-        'profile.popup.active.birthday.label' => [
-            'text' => 'Anniversaire',
-            'context' => 'Label shown for the birthday summary item.',
-        ],
         'profile.popup.value.not_provided' => [
             'text' => 'Non renseigné',
             'context' => 'Fallback text shown in the profile popup when a value is missing.',
-        ],
-        'profile.popup.value.no_presentation' => [
-            'text' => 'Aucune présentation renseignée',
-            'context' => 'Fallback text shown when the user has no active presentation text.',
         ],
         'profile.popup.scope.switch_aria' => [
             'text' => 'Choix du contexte de profil',
