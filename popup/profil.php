@@ -690,6 +690,7 @@ function profilFormatAmountCents($value)
 
 <script>
 (function () {
+    var patreonConnectOrigin = <?= json_encode(patreonGetConnectOrigin(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     var root = document.getElementById("profilePanelRoot");
     var initialTabButton = root ? root.querySelector(".generic-tabs__tab.is-active[data-profile-fragment-panel]") : null;
     var activeProfileTabButton = initialTabButton;
@@ -975,7 +976,7 @@ function profilFormatAmountCents($value)
     }
 
     window.addEventListener("message", function (event) {
-        if (event.origin !== window.location.origin) {
+        if (patreonConnectOrigin === "" || event.origin !== patreonConnectOrigin) {
             return;
         }
 

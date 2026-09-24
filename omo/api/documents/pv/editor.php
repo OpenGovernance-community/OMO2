@@ -3302,7 +3302,7 @@ $isPvReviewDiscussion = $pvStage === \dbObject\Document::PV_STAGE_REVIEW;
 </div>
 
 <script src="/common/choice/word-diff.js?v=20260922-deferred-proposals"></script>
-<script src="/common/choice/change-details.js?v=20260923-lifecycle-details"></script>
+<script src="/common/choice/change-details.js?v=20260924-readable-diffs"></script>
 <?php if ($isPvReviewDiscussion): ?>
 <script src="/common/chat/thread.js?v=20260821-pv-review-access-2"></script>
 <?php endif; ?>

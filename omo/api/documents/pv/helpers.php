@@ -1167,6 +1167,7 @@ function omoDocumentsPvEditorRenderDeferredProposals(array $pointData, array $ui
                     'after' => is_array($proposal['afterState'] ?? null) ? $proposal['afterState'] : [],
                 ],
                 'authorities' => is_array($proposal['authorities'] ?? null) ? $proposal['authorities'] : [],
+                'responsibleLabels' => is_array($proposal['responsibleLabels'] ?? null) ? $proposal['responsibleLabels'] : [],
             ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
             $html .= '<article class="omo-pv-editor__deferred-proposal generic-soft-panel" data-deferred-proposal-id="' . $proposalId . '">';
@@ -1179,6 +1180,8 @@ function omoDocumentsPvEditorRenderDeferredProposals(array $pointData, array $ui
                     $editUrl = '/omo/api/deferred_proposals/pv_holon_editor.php?stage=capture&direct=1&oid=' . $organizationId . '&point_id=' . $pointId . '&proposal_id=' . $proposalId;
                 } elseif ($targetType === \dbObject\DeferredProposal::TARGET_PROJECT) {
                     $editUrl = '/omo/api/deferred_proposals/pv_project_editor.php?stage=capture&direct=1&oid=' . $organizationId . '&point_id=' . $pointId . '&proposal_id=' . $proposalId;
+                } elseif (in_array($targetType, [\dbObject\DeferredProposal::TARGET_RECURRING_TASK, \dbObject\DeferredProposal::TARGET_INDICATOR], true)) {
+                    $editUrl = '/omo/api/deferred_proposals/pv_object_editor.php?stage=capture&direct=1&oid=' . $organizationId . '&point_id=' . $pointId . '&proposal_id=' . $proposalId . '&target_type=' . rawurlencode($targetType);
                 } else {
                     $editUrl = '/omo/api/deferred_proposals/pv_rule_editor.php?workflow=1&direct=1&oid=' . $organizationId . '&point_id=' . $pointId . '&proposal_id=' . $proposalId;
                 }

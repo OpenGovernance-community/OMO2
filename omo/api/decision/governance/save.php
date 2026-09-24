@@ -287,7 +287,7 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             if ($operation !== DeferredProposal::OPERATION_CREATE) $usedTargetIds['project:' . $targetId] = true;
             $beforeState = $operation === DeferredProposal::OPERATION_CREATE ? [] : ($existingDeferred instanceof DeferredProposal ? DeferredProposal::normalizeState($existingDeferred->get('before_state')) : DeferredProposal::captureProjectState($project));
             $afterState = $operation === DeferredProposal::OPERATION_DELETE ? [] : DeferredProposal::normalizeProjectState((array)($actionInput['after'] ?? []), $operation === DeferredProposal::OPERATION_UPDATE ? $project : null);
-            $afterState['IDholon'] = $actionContextHolonId;
+            if ($operation !== DeferredProposal::OPERATION_DELETE) $afterState['IDholon'] = $actionContextHolonId;
             if ($operation !== DeferredProposal::OPERATION_DELETE && trim((string)($afterState['title'] ?? '')) === '') $respond(422, ['status' => false, 'message' => 'Le titre du projet est obligatoire.']);
             if ($operation !== DeferredProposal::OPERATION_DELETE
                 && (string)($afterState['planned_start_date'] ?? '') !== ''
@@ -305,6 +305,47 @@ foreach (array_values($blueprint) as $proposalIndex => $proposalInput) {
             $suggestedTitles[] = $verb . ' le projet ' . $projectTitle;
             $actionDescriptions[] = '<h4>' . htmlspecialchars($verb . ' le projet ' . $projectTitle, ENT_QUOTES, 'UTF-8') . '</h4>';
             $normalizedActions[] = ['id' => $actionId, 'existing' => null, 'existing_deferred' => $existingDeferred, 'action_type' => $actionType, 'operation' => $operation, 'holon_id' => $actionContextHolonId, 'target_id' => $targetId, 'target_type' => DeferredProposal::TARGET_PROJECT, 'before' => $beforeState, 'after' => $afterState, 'position' => $actionIndex + 1];
+            continue;
+        }
+        if (in_array($actionType, ['recurring_task.create', 'recurring_task.update', 'recurring_task.delete', 'indicator.create', 'indicator.update', 'indicator.delete'], true)) {
+            [$targetType, $operation] = explode('.', $actionType, 2);
+            $targetId = (int)($actionInput['targetId'] ?? 0);
+            $contextHolon = DeferredProposal::loadAllowedObjectTargetHolon($organizationId, $actionContextHolonId, $operation, $targetHolonId, $targetType);
+            if (!($contextHolon instanceof Holon)) $respond(403, ['status' => false, 'message' => 'Le collectif ne dispose pas du droit nécessaire pour cet élément.']);
+            $object = $targetType === DeferredProposal::TARGET_RECURRING_TASK ? new \dbObject\ControlActivity() : new \dbObject\StatIndicator();
+            if ($operation !== DeferredProposal::OPERATION_CREATE
+                && (!$object->load($targetId) || (int)$object->get('IDorganization') !== $organizationId || (int)$object->get('IDholon') !== $actionContextHolonId)) {
+                $respond(422, ['status' => false, 'message' => 'L’élément choisi n’appartient pas à cet espace.']);
+            }
+            $uniqueTargetKey = $targetType . ':' . $targetId;
+            if ($operation !== DeferredProposal::OPERATION_CREATE && isset($usedTargetIds[$uniqueTargetKey])) $respond(422, ['status' => false, 'message' => 'Un même élément ne peut pas être modifié plusieurs fois dans ce scrutin.']);
+            if ($operation !== DeferredProposal::OPERATION_CREATE) $usedTargetIds[$uniqueTargetKey] = true;
+            $beforeState = $operation === DeferredProposal::OPERATION_CREATE ? [] : ($existingDeferred instanceof DeferredProposal
+                ? DeferredProposal::normalizeState($existingDeferred->get('before_state'))
+                : ($targetType === DeferredProposal::TARGET_RECURRING_TASK ? DeferredProposal::captureRecurringTaskState($object) : DeferredProposal::captureIndicatorState($object)));
+            if ($operation === DeferredProposal::OPERATION_DELETE) {
+                $afterState = [];
+            } elseif ($targetType === DeferredProposal::TARGET_RECURRING_TASK) {
+                $afterState = DeferredProposal::normalizeRecurringTaskState((array)($actionInput['after'] ?? []), $operation === DeferredProposal::OPERATION_UPDATE ? $object : null);
+                if ($afterState['title'] === '') $respond(422, ['status' => false, 'message' => 'Le titre de la tâche récurrente est obligatoire.']);
+            } else {
+                try {
+                    $afterState = DeferredProposal::normalizeIndicatorEditorState((array)($actionInput['after'] ?? []), $organizationId, $operation === DeferredProposal::OPERATION_UPDATE ? $object : null);
+                } catch (InvalidArgumentException $exception) {
+                    $respond(422, ['status' => false, 'message' => $exception->getMessage()]);
+                }
+                if ($afterState['name'] === '') $respond(422, ['status' => false, 'message' => 'Le nom de l’indicateur est obligatoire.']);
+            }
+            if ((int)($afterState['IDuser_responsible'] ?? 0) > 0 && !\dbObject\UserOrganization::hasActiveMembership((int)$afterState['IDuser_responsible'], $organizationId)) $afterState['IDuser_responsible'] = null;
+            if ($operation === DeferredProposal::OPERATION_UPDATE && $beforeState === $afterState) $respond(422, ['status' => false, 'message' => 'Cette modification ne contient aucun changement.']);
+            if ($operation !== DeferredProposal::OPERATION_DELETE) $afterState['IDholon'] = $actionContextHolonId;
+            $displayState = $operation === DeferredProposal::OPERATION_DELETE ? $beforeState : $afterState;
+            $objectLabel = trim((string)($displayState[$targetType === DeferredProposal::TARGET_INDICATOR ? 'name' : 'title'] ?? ''));
+            $noun = $targetType === DeferredProposal::TARGET_INDICATOR ? 'l’indicateur' : 'la tâche récurrente';
+            $verb = $operation === DeferredProposal::OPERATION_CREATE ? 'Créer' : ($operation === DeferredProposal::OPERATION_UPDATE ? 'Modifier' : 'Supprimer');
+            $suggestedTitles[] = $verb . ' ' . $noun . ' ' . $objectLabel;
+            $actionDescriptions[] = '<h4>' . htmlspecialchars($verb . ' ' . $noun . ' ' . $objectLabel, ENT_QUOTES, 'UTF-8') . '</h4>';
+            $normalizedActions[] = ['id' => $actionId, 'existing' => null, 'existing_deferred' => $existingDeferred, 'action_type' => $actionType, 'operation' => $operation, 'holon_id' => $actionContextHolonId, 'target_id' => $targetId, 'target_type' => $targetType, 'before' => $beforeState, 'after' => $afterState, 'position' => $actionIndex + 1];
             continue;
         }
         if (!DecisionGovernanceAction::isImplementedType($actionType)

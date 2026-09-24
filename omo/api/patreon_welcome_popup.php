@@ -175,6 +175,7 @@ if (!$patreonConfigured) {
 
 <script>
 (function () {
+    var patreonConnectOrigin = <?= json_encode(patreonGetConnectOrigin(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     var connectButton = document.getElementById('omoPatreonWelcomeConnect');
 
     function markPromptAsHandled() {
@@ -199,7 +200,7 @@ if (!$patreonConfigured) {
     }
 
     function handleMessage(event) {
-        if (event.origin !== window.location.origin) {
+        if (patreonConnectOrigin === '' || event.origin !== patreonConnectOrigin) {
             return;
         }
 

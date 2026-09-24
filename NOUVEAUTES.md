@@ -1,5 +1,11 @@
 # Journal Des Nouveautes
 
+- Détail des modifications : les indicateurs affichent aussi les changements de personne en charge, de source et de fréquence de mise à jour ou de synchronisation. Les listes de propriétés des holons, notamment les autorités et les projets, présentent leurs libellés plutôt que leurs identifiants dans les comparaisons avant/après des PV et décisions.
+
+- Patreon : la liaison de compte passe maintenant par un point OAuth central configurable (`PATREON_CONNECT_URL`). Une transaction temporaire en base transmet l’utilisateur et le domaine d’origine au serveur central, qui notifie ensuite la fenêtre d’origine après la connexion. Migration SQL ajoutée pour les transactions OAuth.
+
+- Modifications différées : les indicateurs et les tâches récurrentes rejoignent les règles, rôles, cercles et projets dans le premier menu de sélection. Leur création, modification ou suppression utilise les droits collectifs du contexte, peut être préparée depuis un PV ou une décision hors réorg, puis est appliquée après validation. Leurs formulaires de création et de modification réutilisent désormais les éditeurs standard, y compris les réglages de source et de référence des indicateurs. Une modification d’indicateur issue d’un tableau porte sur une seule colonne de valeurs.
+
 - Résultats des décisions : le message de chaque modification reflète son état réel (appliquée, non retenue, en attente ou en échec), au lieu d’annoncer systématiquement une application future.
 
 - Décisions : formulaires harmonisés avec les tâches récurrentes, sections allégées, libellés et champs compacts, dates adaptées à la largeur disponible. Les propositions hors réorg sont mieux séparées, l’ajout de modification suit directement leur liste et l’enregistrement est accessible dans l’en-tête.
