@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/config.php';
 require_once dirname(__DIR__) . '/shared_functions.php';
 require_once dirname(__DIR__) . '/common/auth.php';
 require_once dirname(__DIR__) . '/common/account_merge.php';
+require_once dirname(__DIR__) . '/common/account_deletion.php';
 require_once __DIR__ . '/profil_translation_helper.php';
 
 $connected = checklogin();
@@ -23,6 +24,8 @@ $state = commonAccountMergeGetState($currentUserId);
 $configuration = array(
     'endpoint' => '/ajax/user_account_merge.php',
     'csrfToken' => commonAccountMergeGetCsrfToken(),
+    'deletionEndpoint' => '/ajax/user_account_delete.php',
+    'deletionCsrfToken' => commonAccountDeletionGetCsrfToken(),
     'currentEmail' => (string)$currentUser->get('email'),
     'otherEmail' => is_array($state) ? (string)($state['other_email'] ?? '') : '',
     'phase' => is_array($state) ? (string)($state['phase'] ?? 'code') : 'start',
@@ -36,27 +39,44 @@ $configuration = array(
         'verified' => profilPopupT('profile.popup.merge.status.verified'),
         'processing' => profilPopupT('profile.popup.merge.status.processing'),
         'invalidResponse' => profilPopupT('profile.popup.js.invalid_response'),
+        'deletionLoading' => profilPopupT('profile.popup.delete.loading'),
+        'deletionInvalidResponse' => profilPopupT('profile.popup.delete.invalid_response'),
+        'deletionSuccess' => profilPopupT('profile.popup.delete.success'),
+        'deletionWillLeave' => profilPopupT('profile.popup.delete.plan.leave'),
+        'deletionWillDeleteOrganizations' => profilPopupT('profile.popup.delete.plan.organizations'),
+        'deletionBlocked' => profilPopupT('profile.popup.delete.plan.blocked'),
+        'deletionNoOrganization' => profilPopupT('profile.popup.delete.plan.no_organization'),
+        'deletionConfirmationPrefix' => profilPopupT('profile.popup.delete.confirmation_prefix'),
+        'deletionProcessing' => profilPopupT('profile.popup.delete.processing'),
+        'mergeOpen' => profilPopupT('profile.popup.merge.reveal'),
+        'deletionOpen' => profilPopupT('profile.popup.delete.open'),
+        'collapse' => profilPopupT('profile.popup.tools.collapse'),
     ),
 );
 ?>
 <style>
-    .profile-merge-tool {
+    .profile-tools-list,
+    .profile-account-tool__content {
         display: grid;
         gap: 16px;
     }
 
-    .profile-merge-tool__copy,
+    .profile-account-tool__copy,
     .profile-merge-tool__step,
     .profile-merge-tool__choices {
         display: grid;
         gap: 12px;
     }
 
-    .profile-merge-tool__copy p,
+    .profile-account-tool__copy p,
     .profile-merge-tool__step p {
         margin: 0;
         color: var(--color-text-light, #64748b);
         line-height: 1.5;
+    }
+
+    .profile-account-tool__header .generic-action-button {
+        flex-shrink: 0;
     }
 
     .profile-merge-tool__field {
@@ -129,22 +149,50 @@ $configuration = array(
     .profile-merge-tool__status.is-success {
         color: #15803d;
     }
+
+    .profile-account-delete__plan,
+    .profile-account-delete__confirmation {
+        display: grid;
+        gap: 12px;
+    }
+
+    .profile-account-delete__plan p {
+        margin: 0;
+        color: var(--color-text-light, #64748b);
+        line-height: 1.5;
+    }
+
+    .profile-account-delete__list {
+        margin: 0;
+        padding-left: 20px;
+    }
+
+    .profile-account-delete__status {
+        min-height: 24px;
+        font-weight: 650;
+    }
+
+    .profile-account-delete__status.is-error { color: #b91c1c; }
+    .profile-account-delete__status.is-success { color: #15803d; }
 </style>
 
-<section class="profile-merge-tool generic-section profile-panel__section" data-profile-merge-root>
-    <div class="profile-merge-tool__copy">
-        <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(profilPopupT('profile.popup.merge.title'), ENT_QUOTES, 'UTF-8') ?></h3>
-        <p><?= htmlspecialchars(profilPopupT('profile.popup.merge.intro'), ENT_QUOTES, 'UTF-8') ?></p>
+<div class="profile-tools-list" data-profile-tools-root>
+<section class="profile-merge-tool generic-section generic-accordion generic-accordion--card generic-accordion--collapsible generic-accordion--action-only is-collapsed profile-panel__section" data-profile-merge-root>
+    <div class="generic-accordion__header profile-account-tool__header">
+        <div class="profile-account-tool__copy">
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(profilPopupT('profile.popup.merge.title'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <p><?= htmlspecialchars(profilPopupT('profile.popup.merge.intro'), ENT_QUOTES, 'UTF-8') ?></p>
+        </div>
+        <button type="button" class="generic-action-button generic-action-button--main" aria-expanded="false" data-merge-reveal>
+            <?= htmlspecialchars(profilPopupT('profile.popup.merge.reveal'), ENT_QUOTES, 'UTF-8') ?>
+        </button>
     </div>
 
+    <div class="generic-accordion__content profile-account-tool__content">
     <div class="generic-soft-panel generic-soft-panel--stack">
         <strong><?= htmlspecialchars(profilPopupT('profile.popup.merge.current_email'), ENT_QUOTES, 'UTF-8') ?></strong>
         <span class="profile-merge-tool__current-email"><?= htmlspecialchars((string)$currentUser->get('email'), ENT_QUOTES, 'UTF-8') ?></span>
     </div>
-
-    <button type="button" class="generic-action-button generic-action-button--main" data-merge-reveal>
-        <?= htmlspecialchars(profilPopupT('profile.popup.merge.reveal'), ENT_QUOTES, 'UTF-8') ?>
-    </button>
 
     <div class="profile-merge-tool__step" data-merge-email-step hidden>
         <label class="profile-merge-tool__field">
@@ -231,16 +279,40 @@ $configuration = array(
     </div>
 
     <div class="profile-merge-tool__status" aria-live="polite" data-merge-status></div>
+    </div>
 </section>
+
+<section class="profile-account-delete generic-section generic-accordion generic-accordion--card generic-accordion--collapsible generic-accordion--action-only is-collapsed profile-panel__section" data-profile-delete-root>
+    <div class="generic-accordion__header profile-account-tool__header">
+        <div class="profile-account-tool__copy">
+            <h3 class="generic-card-title generic-card-title--medium"><?= htmlspecialchars(profilPopupT('profile.popup.delete.title'), ENT_QUOTES, 'UTF-8') ?></h3>
+            <p><?= htmlspecialchars(profilPopupT('profile.popup.delete.intro'), ENT_QUOTES, 'UTF-8') ?></p>
+        </div>
+        <button type="button" class="generic-action-button generic-action-button--danger" aria-expanded="false" data-delete-open><?= htmlspecialchars(profilPopupT('profile.popup.delete.open'), ENT_QUOTES, 'UTF-8') ?></button>
+    </div>
+    <div class="generic-accordion__content profile-account-delete__plan" data-delete-content>
+        <div class="profile-account-delete__status" aria-live="polite" data-delete-status></div>
+        <div data-delete-plan></div>
+        <div class="profile-account-delete__confirmation" data-delete-confirmation hidden>
+            <label class="profile-merge-tool__field">
+                <span data-delete-confirmation-label></span>
+                <input type="text" class="generic-form-control" autocomplete="off" data-delete-confirmation-input>
+            </label>
+            <button type="button" class="generic-action-button generic-action-button--danger" disabled data-delete-complete><?= htmlspecialchars(profilPopupT('profile.popup.delete.complete'), ENT_QUOTES, 'UTF-8') ?></button>
+        </div>
+    </div>
+</section>
+</div>
 
 <script>
 (function () {
     var script = document.currentScript;
     var root = script ? script.previousElementSibling : null;
     var config = <?= json_encode($configuration, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>;
-    if (!root || !root.hasAttribute("data-profile-merge-root")) return;
+    if (!root || !root.hasAttribute("data-profile-tools-root")) return;
 
     var reveal = root.querySelector("[data-merge-reveal]");
+    var mergeRoot = root.querySelector("[data-profile-merge-root]");
     var emailInput = root.querySelector("[data-merge-email]");
     var codeInput = root.querySelector("[data-merge-code]");
     var passwordInput = root.querySelector("[data-merge-password]");
@@ -252,6 +324,13 @@ $configuration = array(
     var passwordLoginEnabled = !!config.passwordLoginEnabled;
     var currentIsSiteAdmin = !!config.currentIsSiteAdmin;
     var otherIsSiteAdmin = !!config.otherIsSiteAdmin;
+    var mergePhase = "start";
+
+    function updateMergeToggle() {
+        var expanded = !mergeRoot.classList.contains("is-collapsed");
+        reveal.setAttribute("aria-expanded", expanded ? "true" : "false");
+        reveal.textContent = expanded ? config.text.collapse : config.text.mergeOpen;
+    }
 
     function enforceSuperAdminChoice(data) {
         data = data || {};
@@ -274,7 +353,7 @@ $configuration = array(
     }
 
     function setBusy(busy) {
-        Array.prototype.forEach.call(root.querySelectorAll("button, input"), function (control) {
+        Array.prototype.forEach.call(mergeRoot.querySelectorAll("button, input"), function (control) {
             if (control === completeButton && !busy) {
                 control.disabled = !confirmCheck.checked;
                 return;
@@ -310,7 +389,9 @@ $configuration = array(
 
     function renderPhase(phase, data) {
         data = data || {};
-        reveal.hidden = phase !== "start";
+        mergePhase = phase;
+        if (phase !== "start") mergeRoot.classList.remove("is-collapsed");
+        updateMergeToggle();
         root.querySelector("[data-merge-email-step]").hidden = phase !== "email";
         root.querySelector("[data-merge-code-step]").hidden = phase !== "code";
         root.querySelector("[data-merge-password-step]").hidden = phase !== "password";
@@ -340,7 +421,14 @@ $configuration = array(
         if (result.message) setStatus(result.message, "success");
     }
 
-    reveal.addEventListener("click", function () { renderPhase("email"); });
+    reveal.addEventListener("click", function () {
+        if (!mergeRoot.classList.contains("is-collapsed")) {
+            mergeRoot.classList.add("is-collapsed");
+            updateMergeToggle();
+            return;
+        }
+        renderPhase(mergePhase === "start" ? "email" : mergePhase);
+    });
     function startVerification(email) {
         setBusy(true);
         post("start", { email: email }).then(function (result) {
@@ -410,6 +498,8 @@ $configuration = array(
                 completeButton.disabled = true;
                 setStatus("");
                 renderPhase("start");
+                mergeRoot.classList.add("is-collapsed");
+                updateMergeToggle();
             });
         });
     });
@@ -439,5 +529,141 @@ $configuration = array(
         codeInput.value = config.initialCode;
         root.querySelector("[data-merge-verify-code]").click();
     }
+
+    var deletionRoot = root.querySelector("[data-profile-delete-root]");
+    if (!deletionRoot) return;
+    var deletionOpen = deletionRoot.querySelector("[data-delete-open]");
+    var deletionStatus = deletionRoot.querySelector("[data-delete-status]");
+    var deletionPlan = deletionRoot.querySelector("[data-delete-plan]");
+    var deletionConfirmation = deletionRoot.querySelector("[data-delete-confirmation]");
+    var deletionConfirmationLabel = deletionRoot.querySelector("[data-delete-confirmation-label]");
+    var deletionConfirmationInput = deletionRoot.querySelector("[data-delete-confirmation-input]");
+    var deletionComplete = deletionRoot.querySelector("[data-delete-complete]");
+    var currentDeletionPlan = null;
+
+    function updateDeletionToggle() {
+        var expanded = !deletionRoot.classList.contains("is-collapsed");
+        deletionOpen.setAttribute("aria-expanded", expanded ? "true" : "false");
+        deletionOpen.textContent = expanded ? config.text.collapse : config.text.deletionOpen;
+    }
+
+    function setDeletionStatus(message, type) {
+        deletionStatus.textContent = message || "";
+        deletionStatus.className = "profile-account-delete__status" + (type ? " is-" + type : "");
+    }
+
+    function postDeletion(action, values) {
+        var body = new URLSearchParams();
+        body.set("action", action);
+        body.set("csrf_token", config.deletionCsrfToken);
+        Object.keys(values || {}).forEach(function (key) { body.set(key, values[key]); });
+        return fetch(config.deletionEndpoint, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+                "Accept": "application/json",
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: body.toString()
+        }).then(function (response) {
+            return response.text().then(function (text) {
+                var payload;
+                try { payload = JSON.parse(text); } catch (error) { payload = { status: false, message: config.text.deletionInvalidResponse }; }
+                if (!response.ok && !payload.message) payload.message = config.text.deletionInvalidResponse;
+                return payload;
+            });
+        });
+    }
+
+    function appendDeletionList(title, organizations) {
+        if (!organizations || !organizations.length) return;
+        var heading = document.createElement("h4");
+        heading.className = "generic-card-title generic-card-title--section";
+        heading.textContent = title;
+        deletionPlan.appendChild(heading);
+        var list = document.createElement("ul");
+        list.className = "profile-account-delete__list";
+        organizations.forEach(function (organization) {
+            var item = document.createElement("li");
+            item.textContent = typeof organization === "string" ? organization : (organization.name || "");
+            list.appendChild(item);
+        });
+        deletionPlan.appendChild(list);
+    }
+
+    function renderDeletionPlan(plan) {
+        currentDeletionPlan = plan || null;
+        deletionPlan.replaceChildren();
+        deletionConfirmation.hidden = true;
+        deletionConfirmationInput.value = "";
+        deletionComplete.disabled = true;
+        if (!plan || !plan.status) {
+            setDeletionStatus((plan && plan.message) || config.text.deletionInvalidResponse, "error");
+            return;
+        }
+        appendDeletionList(config.text.deletionWillDeleteOrganizations, plan.deleted_organizations || []);
+        appendDeletionList(config.text.deletionWillLeave, plan.departures || []);
+        appendDeletionList(config.text.deletionBlocked, plan.blockers || []);
+        if (!(plan.deleted_organizations || []).length && !(plan.departures || []).length && !(plan.blockers || []).length) {
+            var noOrganization = document.createElement("p");
+            noOrganization.textContent = config.text.deletionNoOrganization;
+            deletionPlan.appendChild(noOrganization);
+        }
+        if (!plan.can_delete) {
+            setDeletionStatus((plan.blockers && plan.blockers[0]) || config.text.deletionInvalidResponse, "error");
+            return;
+        }
+        deletionConfirmationLabel.textContent = config.text.deletionConfirmationPrefix + " " + (plan.confirmation_text || "");
+        deletionConfirmationInput.placeholder = plan.confirmation_text || "";
+        deletionConfirmation.hidden = false;
+        setDeletionStatus("");
+    }
+
+    function loadDeletionPlan() {
+        if (!deletionRoot.classList.contains("is-collapsed")) {
+            deletionRoot.classList.add("is-collapsed");
+            updateDeletionToggle();
+            return;
+        }
+        deletionRoot.classList.remove("is-collapsed");
+        updateDeletionToggle();
+        deletionOpen.disabled = true;
+        setDeletionStatus(config.text.deletionLoading);
+        postDeletion("plan", {}).then(function (plan) {
+            deletionOpen.disabled = false;
+            renderDeletionPlan(plan);
+        }).catch(function () {
+            deletionOpen.disabled = false;
+            setDeletionStatus(config.text.deletionInvalidResponse, "error");
+        });
+    }
+
+    deletionOpen.addEventListener("click", loadDeletionPlan);
+    deletionConfirmationInput.addEventListener("input", function () {
+        deletionComplete.disabled = !currentDeletionPlan
+            || deletionConfirmationInput.value.trim() !== String(currentDeletionPlan.confirmation_text || "");
+    });
+    deletionComplete.addEventListener("click", function () {
+        if (!currentDeletionPlan) return;
+        deletionComplete.disabled = true;
+        deletionConfirmationInput.disabled = true;
+        setDeletionStatus(config.text.deletionProcessing);
+        postDeletion("delete", { confirmation: deletionConfirmationInput.value.trim() }).then(function (result) {
+            if (!result.status) {
+                deletionConfirmationInput.disabled = false;
+                deletionComplete.disabled = false;
+                setDeletionStatus(result.message || config.text.deletionInvalidResponse, "error");
+                if (result.plan) renderDeletionPlan(result.plan);
+                return;
+            }
+            setDeletionStatus(result.message || config.text.deletionSuccess, "success");
+            window.setTimeout(function () { window.top.location.href = result.redirect || "/"; }, 700);
+        }).catch(function () {
+            deletionConfirmationInput.disabled = false;
+            deletionComplete.disabled = false;
+            setDeletionStatus(config.text.deletionInvalidResponse, "error");
+        });
+    });
 })();
 </script>

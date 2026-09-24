@@ -85,6 +85,23 @@ class Rule extends DbObject
         return 'expiration_date ASC, review_date ASC, id ASC';
     }
 
+    public static function handleUserDeparture($organizationId, $userId, $ghostUserId)
+    {
+        return self::execute(
+            'UPDATE rule rule_record
+             INNER JOIN holon holon_record ON holon_record.id = rule_record.IDholon
+             SET rule_record.IDuser_creation = CASE WHEN rule_record.IDuser_creation = :source_creation THEN :ghost_user_id ELSE rule_record.IDuser_creation END,
+                 rule_record.IDuser_modification = CASE WHEN rule_record.IDuser_modification = :source_modification THEN :ghost_user_id ELSE rule_record.IDuser_modification END
+             WHERE holon_record.IDorganization = :organization_id',
+            array(
+                'source_creation' => (int)$userId,
+                'source_modification' => (int)$userId,
+                'ghost_user_id' => (int)$ghostUserId,
+                'organization_id' => (int)$organizationId,
+            )
+        );
+    }
+
     public static function sanitizeContentHtml($html)
     {
         $html = is_scalar($html) ? (string)$html : '';

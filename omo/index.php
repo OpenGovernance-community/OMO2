@@ -193,7 +193,7 @@ $sourceLang = [
         'context' => 'Menu item label used to delete an organization from the directory page.',
     ],
     'app.directory.menu.system_organization_notice' => [
-        'text' => "Cette organisation de base est utilisée par le système pour les messages et les tutoriels. Elle ne peut pas être supprimée et ses administrateurs ne peuvent pas la quitter.",
+        'text' => "Cette organisation de base est utilisée par le système pour les messages et les tutoriels. Elle ne peut pas être supprimée. Le départ est bloqué s'il ne reste aucun administrateur ou superadmin.",
         'context' => 'Notice shown instead of destructive actions for the protected system organization card.',
     ],
     'app.directory.menu.leave' => [
@@ -421,9 +421,6 @@ function omoBuildDirectoryCardData(array $directoryEntry, $currentUserId)
     $invitationPendingHolons = $pendingInvitation ? $pendingInvitation->getPendingHolons() : [];
     $isTemplateOrganization = $accessibleOrganization->isSharedAsTemplate();
     $isSystemOrganization = $accessibleOrganization->isSystemOrganization();
-    $isSystemOrganizationAdmin = $isSystemOrganization
-        && $organizationMembership
-        && $organizationMembership->isOrganizationAdmin();
 
     return [
         'organization' => $accessibleOrganization,
@@ -435,7 +432,6 @@ function omoBuildDirectoryCardData(array $directoryEntry, $currentUserId)
             && commonCurrentUserIsAdminModeEnabled($organizationId)
             && $accessibleOrganization->getStructuralRootHolon() !== null,
         'isSystemOrganization' => $isSystemOrganization,
-        'isSystemOrganizationAdmin' => $isSystemOrganizationAdmin,
         'organizationName' => $organizationName,
         'organizationUrl' => $organizationUrl,
         'organizationLogo' => trim((string)$accessibleOrganization->get('logo')),
@@ -472,7 +468,6 @@ function omoRenderDirectoryCard(array $directoryCardData)
     $canDeleteOrganization = !empty($directoryCardData['canDeleteOrganization']);
     $canManageModelSharing = !empty($directoryCardData['canManageModelSharing']);
     $isSystemOrganization = !empty($directoryCardData['isSystemOrganization']);
-    $isSystemOrganizationAdmin = !empty($directoryCardData['isSystemOrganizationAdmin']);
     $organizationName = (string)$directoryCardData['organizationName'];
     $organizationUrl = (string)$directoryCardData['organizationUrl'];
     $organizationLogo = (string)$directoryCardData['organizationLogo'];
@@ -516,13 +511,11 @@ function omoRenderDirectoryCard(array $directoryCardData)
                             <?= htmlspecialchars($accessibleOrganization->isSharedAsTemplate() ? t('app.directory.menu.stop_sharing_as_model') : t('app.directory.menu.share_as_model')) ?>
                         </button>
                         <?php } ?>
-                        <?php if (!$isSystemOrganizationAdmin) { ?>
                         <button
                             type="button"
                             class="omo-org-card-menu__item"
                             data-omo-org-action="leave"
                         ><?= htmlspecialchars(t('app.directory.menu.leave')) ?></button>
-                        <?php } ?>
                         <?php if ($canDeleteOrganization) { ?>
                         <button
                             type="button"
