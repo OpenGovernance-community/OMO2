@@ -2,6 +2,7 @@
 	namespace dbObject;
 
 	require_once dirname(__DIR__, 2) . '/common/environment_subdomains.php';
+	require_once dirname(__DIR__, 2) . '/common/search_text.php';
 
 
 	class Organization extends DbObject
@@ -5578,7 +5579,7 @@
 			$targetDomainPropertiesById = array();
 
 			$normalizeValueKey = static function ($value) {
-				$value = html_entity_decode(strip_tags((string)$value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+				$value = html_entity_decode(strip_tags(preg_replace('~<[^>]+>~u', ' ', (string)$value)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
 				$value = preg_replace('/\s+/u', ' ', trim($value));
 				return function_exists('mb_strtolower') ? mb_strtolower((string)$value, 'UTF-8') : strtolower((string)$value);
 			};
@@ -14145,32 +14146,7 @@
 
 		protected static function buildTopbarSearchTerms($query)
 		{
-			$normalizedQuery = self::normalizeTopbarSearchText($query);
-			if ($normalizedQuery === '') {
-				return array();
-			}
-
-			$terms = array($normalizedQuery);
-			$tokens = preg_split('/\s+/u', $normalizedQuery) ?: array();
-
-			foreach ($tokens as $token) {
-				$token = trim((string)$token);
-				if ($token === '') {
-					continue;
-				}
-
-				$length = function_exists('mb_strlen')
-					? (int)mb_strlen($token, 'UTF-8')
-					: (int)strlen($token);
-				if ($length < 2) {
-					continue;
-				}
-
-				$terms[] = $token;
-			}
-
-			$terms = array_values(array_unique($terms));
-			return array_slice($terms, 0, 6);
+			return \commonSearchQueryTerms((string)$query);
 		}
 
 		protected static function normalizeTopbarSearchDateRange(array $dateRange = array())
@@ -14206,130 +14182,121 @@
 			return array_slice($filtered, 0, max(1, (int)$limit));
 		}
 
+		/** Candidate selection only; the common PHP ranker computes displayed scores. */
 		protected static function buildTopbarSearchScoreSql($expression, array $terms, array &$params, $prefix, array $weights = array())
 		{
-			if (count($terms) === 0) {
-				return '0';
-			}
-
-			$resolvedWeights = array_merge(array(
-				'exact' => 60,
-				'prefix' => 35,
-				'like' => 18,
-			), $weights);
-
-			$chunks = array();
-
+			$weight = (int)($weights['exact'] ?? 60);
+			$chunks = [];
+			$text = "TRIM(REGEXP_REPLACE(CAST(" . $expression . " AS CHAR), '<[^>]*>', ' '))";
 			foreach (array_values($terms) as $index => $term) {
-				$paramBase = $prefix . '_' . $index;
-				$params[$paramBase . '_exact'] = $term;
-				$params[$paramBase . '_prefix'] = $term . '%';
-				$params[$paramBase . '_like'] = '%' . $term . '%';
-
-				$chunks[] = '(CASE'
-					. ' WHEN ' . $expression . ' = :' . $paramBase . '_exact THEN ' . (int)$resolvedWeights['exact']
-					. ' WHEN ' . $expression . ' LIKE :' . $paramBase . '_prefix THEN ' . (int)$resolvedWeights['prefix']
-					. ' WHEN ' . $expression . ' LIKE :' . $paramBase . '_like THEN ' . (int)$resolvedWeights['like']
-					. ' ELSE 0 END)';
+				$base = $prefix . '_' . $index;
+				$exact = \commonBuildSearchTermPattern($term);
+				$variants = implode('|', array_map('commonBuildSearchTermPattern', \commonSearchTermVariants($term)));
+				$params[$base . '_whole'] = '^' . $exact . '$';
+				$params[$base . '_whole_plural'] = '^(?:' . $variants . ')$';
+				$params[$base . '_word'] = '(^|[^[:alnum:]])' . $exact . '($|[^[:alnum:]])';
+				$params[$base . '_plural'] = '(^|[^[:alnum:]])(?:' . $variants . ')($|[^[:alnum:]])';
+				$chunk = '(CASE WHEN ' . $text . ' REGEXP :' . $base . '_whole THEN ' . (int)round($weight * 1.5)
+					. ' WHEN ' . $text . ' REGEXP :' . $base . '_whole_plural THEN ' . (int)round($weight * 1.5 * 0.94)
+					. ' WHEN ' . $text . ' REGEXP :' . $base . '_word THEN ' . $weight
+					. ' WHEN ' . $text . ' REGEXP :' . $base . '_plural THEN ' . (int)round($weight * 0.94);
+				$stem = \commonSearchSingular($term);
+				if (!ctype_digit($stem) && mb_strlen($stem, 'UTF-8') >= 4) {
+					$params[$base . '_prefix'] = '(^|[^[:alnum:]])' . \commonBuildSearchTermPattern($stem);
+					$chunk .= ' WHEN ' . $text . ' REGEXP :' . $base . '_prefix THEN ' . (int)round($weight * 0.5);
+					if (mb_strlen($stem, 'UTF-8') >= 5) {
+						$params[$base . '_fragment'] = \commonBuildSearchTermPattern($stem);
+						$chunk .= ' WHEN ' . $text . ' REGEXP :' . $base . '_fragment THEN ' . (int)round($weight * 0.12);
+					}
+				}
+				$chunks[] = $chunk . ' ELSE 0 END)';
 			}
-
-			return implode(' + ', $chunks);
+			return $chunks ? implode(' + ', $chunks) : '0';
 		}
 
 		protected static function buildTopbarSearchTagScoreSql($expression, array $terms, array &$params, $prefix, array $weights = array())
 		{
-			if (count($terms) === 0) {
-				return '0';
-			}
-
-			$resolvedWeights = array_merge(array(
-				'exact' => 100,
-				'prefix' => 72,
-				'like' => 24,
-			), $weights);
-			$normalizedExpression = "CONCAT(',', TRIM(BOTH ',' FROM REPLACE(REPLACE(" . $expression . ", ', ', ','), ' ,', ',')), ',')";
-			$chunks = array();
-
-			foreach (array_values($terms) as $index => $term) {
-				$normalizedTerm = self::normalizeTopbarSearchText($term);
-				if ($normalizedTerm === '') {
-					continue;
-				}
-
-				$paramBase = $prefix . '_' . $index;
-				$params[$paramBase . '_exact'] = '%,' . $normalizedTerm . ',%';
-				$params[$paramBase . '_prefix'] = '%,' . $normalizedTerm . '%';
-				$params[$paramBase . '_like'] = '%' . $normalizedTerm . '%';
-
-				$chunks[] = '(CASE'
-					. ' WHEN ' . $normalizedExpression . ' LIKE :' . $paramBase . '_exact THEN ' . (int)$resolvedWeights['exact']
-					. ' WHEN ' . $normalizedExpression . ' LIKE :' . $paramBase . '_prefix THEN ' . (int)$resolvedWeights['prefix']
-					. ' WHEN ' . $normalizedExpression . ' LIKE :' . $paramBase . '_like THEN ' . (int)$resolvedWeights['like']
-					. ' ELSE 0 END)';
-			}
-
-			return count($chunks) > 0 ? implode(' + ', $chunks) : '0';
+			return self::buildTopbarSearchScoreSql($expression, $terms, $params, $prefix, $weights);
 		}
 
 		protected static function buildTopbarSearchAnyMatchSql(array $expressions, array $terms, array &$params, $prefix)
 		{
-			if (count($expressions) === 0 || count($terms) === 0) {
-				return '1 = 0';
-			}
-
-			$chunks = array();
-
+			$chunks = [];
 			foreach (array_values($expressions) as $expressionIndex => $expression) {
 				foreach (array_values($terms) as $termIndex => $term) {
-					$paramName = $prefix . '_' . $expressionIndex . '_' . $termIndex;
-					$params[$paramName] = '%' . $term . '%';
-					$chunks[] = $expression . ' LIKE :' . $paramName;
+					$name = $prefix . '_' . $expressionIndex . '_' . $termIndex;
+					// Broad retrieval, including both directions of regular plurals.
+					$params[$name] = implode('|', array_map('commonBuildSearchTermPattern', \commonSearchTermVariants($term)));
+					$chunks[] = 'CAST(' . $expression . ' AS CHAR) REGEXP :' . $name;
 				}
 			}
-
-			return count($chunks) > 0 ? '(' . implode(' OR ', $chunks) . ')' : '1 = 0';
+			return $chunks ? '(' . implode(' OR ', $chunks) . ')' : '1 = 0';
 		}
 
 		protected static function getTopbarSearchTextScore($value, array $terms, array $weights = array())
 		{
-			if (count($terms) === 0) {
-				return 0;
-			}
-
-			$text = self::normalizeTopbarSearchText(self::cleanTopbarSearchTextValue($value));
-			if ($text === '') {
-				return 0;
-			}
-
-			$resolvedWeights = array_merge(array(
-				'exact' => 60,
-				'prefix' => 35,
-				'like' => 18,
-			), $weights);
-			$score = 0;
-
+			$score = 0.0;
 			foreach ($terms as $term) {
-				$term = self::normalizeTopbarSearchText($term);
-				if ($term === '') {
+				$score += \commonSearchTextQuality((string)$value, $term) * (int)($weights['exact'] ?? 60);
+			}
+			return (int)round($score);
+		}
+
+		protected static function rankTopbarSearchResults(array $results, string $query): array
+		{
+			$ranked = [];
+			foreach ($results as $result) {
+				$fields = $result['_searchFields'] ?? [];
+				if (TopbarSearchRanker::score($fields, $query) <= 0) { continue; }
+				// A request such as "processus de validation des factures" also names a type.
+				// It corroborates an existing text match with the low context weight.
+				$rankFields = $fields;
+				$rankFields['context'] = array_merge((array)($fields['context'] ?? []), [(string)($result['moduleLabel'] ?? '')]);
+				$score = TopbarSearchRanker::score($rankFields, $query);
+				if ($score <= 0) { continue; }
+				$result['relevance'] = $score;
+				$bestSource = '';
+				$bestScore = 0;
+				foreach (['summary', 'body', 'tags', 'context'] as $field) {
+					foreach ((array)($fields[$field] ?? []) as $source) {
+						$sourceScore = TopbarSearchRanker::score(['summary' => (string)$source], $query);
+						if ($sourceScore > $bestScore) {
+							$bestScore = $sourceScore;
+							$bestSource = (string)$source;
+						}
+					}
+				}
+				if ($bestSource !== '') {
+					$result['excerpt'] = self::buildTopbarSearchSnippet($bestSource, $query, 100, 220);
+				}
+				unset($result['_searchFields']);
+				$ranked[] = $result;
+			}
+			usort($ranked, static fn($left, $right) => $right['relevance'] <=> $left['relevance']);
+			return $ranked;
+		}
+
+		protected static function chooseTopbarSearchSnippetSource(array $candidates, array $terms)
+		{
+			$bestValue = '';
+			$bestScore = 0;
+			$fallback = '';
+			foreach ($candidates as $candidate) {
+				$value = self::cleanTopbarSearchTextValue($candidate);
+				if ($value === '') {
 					continue;
 				}
-
-				if ($text === $term) {
-					$score += (int)$resolvedWeights['exact'];
-					continue;
+				if ($fallback === '') {
+					$fallback = $value;
 				}
-
-				if (strpos($text, $term) === 0) {
-					$score += (int)$resolvedWeights['prefix'];
-					continue;
-				}
-
-				if (strpos($text, $term) !== false) {
-					$score += (int)$resolvedWeights['like'];
+				$score = self::getTopbarSearchTextScore($value, $terms);
+				if ($score > $bestScore) {
+					$bestScore = $score;
+					$bestValue = $value;
 				}
 			}
 
-			return $score;
+			return $bestValue !== '' ? $bestValue : $fallback;
 		}
 
 		protected static function buildTopbarStructurePropertySearchValue(\dbObject\HolonProperty $property)
@@ -14824,6 +14791,93 @@
 			return $faq->getResolvedOrganizationId() === $organizationId;
 		}
 
+		/** Load a search preview with current permissions, independently of cached search results. */
+		public function loadTopbarSearchPreviewObject(string $module, int $id, array $viewerContext)
+		{
+			$organizationId = (int)$this->getId();
+			$classes = [
+				'structure' => Holon::class, 'team' => User::class, 'calendar' => Event::class,
+				'documents' => Document::class, 'pv' => Document::class, 'rules' => Rule::class,
+				'decision' => DecisionProcess::class, 'projects' => Project::class,
+				'stats' => StatIndicator::class, 'processus' => Checklist::class,
+				'activities' => ControlActivity::class, 'faq' => FAQ::class, 'tutorials' => Parcours::class,
+			];
+			if ($id <= 0 || !isset($classes[$module]) || !self::topbarSearchViewerHasOrganizationAccess($viewerContext, $organizationId)) {
+				return null;
+			}
+			$appHash = ['pv' => 'documents', 'rules' => 'policy'][$module] ?? $module;
+			if (!in_array($module, ['faq', 'tutorials'], true) && !$this->isApplicationEnabled($appHash)) {
+				return null;
+			}
+			$object = new $classes[$module]();
+			if (!$object->load($id)) {
+				return null;
+			}
+			if ($module === 'faq') {
+				return self::topbarSearchViewerCanViewFaq($object, $this, $viewerContext) ? $object : null;
+			}
+			if ($module === 'tutorials') {
+				return self::topbarSearchViewerCanViewParcours($id, $viewerContext, $organizationId) ? $object : null;
+			}
+			if ($module === 'team') {
+				return $object->getOrganizationMembership($organizationId)
+					&& self::topbarSearchViewerCanViewUser($object, $viewerContext, true) ? $object : null;
+			}
+			if ($module === 'rules') {
+				$currentHolon = self::topbarSearchResolveCurrentHolon($this, $viewerContext);
+				if (!$currentHolon) {
+					return null;
+				}
+				$rules = new ArrayRule();
+				$rules->loadForPolicyContexts($organizationId, [(int)$currentHolon->getId()]);
+				foreach ($rules as $rule) {
+					$holon = $rule->getHolon();
+					if ((int)$rule->getId() === $id && $holon && self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+						return $rule;
+					}
+				}
+				return null;
+			}
+			if ($module === 'structure') {
+				$root = $this->getStructuralRootHolon();
+				return $root && (int)$object->get('active') === 1 && (int)$object->get('visible') === 1
+					&& $object->isDescendantOf((int)$root->getId(), true)
+					&& $object->canViewDetail() && self::topbarSearchViewerCanViewHolon($object, $viewerContext) ? $object : null;
+			}
+			if ((int)$object->get('IDorganization') !== $organizationId) {
+				return null;
+			}
+			if (in_array($module, ['documents', 'pv'], true)) {
+				$userId = (int)($viewerContext['userId'] ?? 0);
+				$invited = $object->isPvDocument() && !$object->isPvValidated()
+					&& $object->canUserAccessPvBeforeValidation($userId, $organizationId);
+				return $object->canUserPassPvMeetingVisibilityGate($userId, $organizationId)
+					&& ($invited || $object->canViewInOrganizationContext($organizationId, (int)($viewerContext['currentHolonId'] ?? 0))
+						|| $object->canViewDirectlyInOrganization($organizationId)) ? $object : null;
+			}
+			if ($module === 'decision') {
+				return self::topbarSearchResolveDecisionAccess($object, $viewerContext, $organizationId) ? $object : null;
+			}
+			if ((int)$object->get('active') !== 1) {
+				return null;
+			}
+			if ($module === 'calendar') {
+				return self::topbarSearchViewerCanViewEvent($object, $viewerContext, $organizationId) ? $object : null;
+			}
+			$holon = $object->getHolon();
+			if ($holon) {
+				$root = $this->getStructuralRootHolon();
+				if (!$root || !$holon->isDescendantOf((int)$root->getId(), true)
+					|| !$holon->canViewDetail() || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+					return null;
+				}
+			}
+			if ($module === 'stats' && !$object->canView()) {
+				return null;
+			}
+			return $object;
+		}
+
 		protected static function cleanTopbarSearchTextValue($value, $limit = 0)
 		{
 			$value = html_entity_decode(strip_tags((string)$value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
@@ -14846,51 +14900,72 @@
 		protected static function buildTopbarSearchSnippet($value, $query, $radius = 90, $fallbackLimit = 220)
 		{
 			$text = self::cleanTopbarSearchTextValue($value);
-			$query = trim((string)$query);
-
 			if ($text === '') {
 				return '';
 			}
-
-			if ($query === '') {
+			$terms = self::buildTopbarSearchTerms($query);
+			if (count($terms) === 0) {
 				return self::cleanTopbarSearchTextValue($text, $fallbackLimit);
 			}
-
-			$lowerText = function_exists('mb_strtolower')
-				? mb_strtolower($text, 'UTF-8')
-				: strtolower($text);
-			$lowerQuery = self::normalizeTopbarSearchText($query);
-
-			if ($lowerQuery === '') {
-				return self::cleanTopbarSearchTextValue($text, $fallbackLimit);
-			}
-
-			$position = function_exists('mb_stripos')
-				? mb_stripos($lowerText, $lowerQuery, 0, 'UTF-8')
-				: stripos($lowerText, $lowerQuery);
-
-			if ($position === false) {
-				return self::cleanTopbarSearchTextValue($text, $fallbackLimit);
-			}
-
-			$queryLength = function_exists('mb_strlen')
-				? (int)mb_strlen($lowerQuery, 'UTF-8')
-				: (int)strlen($lowerQuery);
 			$textLength = function_exists('mb_strlen')
 				? (int)mb_strlen($text, 'UTF-8')
 				: (int)strlen($text);
+			$radius = max(0, (int)$radius);
+			$bestPosition = null;
+			$bestScore = 0;
+			$longestTermLength = 0;
+			$termPatterns = array();
+			foreach ($terms as $term) {
+				$longestTermLength = max($longestTermLength, function_exists('mb_strlen') ? (int)mb_strlen($term, 'UTF-8') : (int)strlen($term));
+				$termPatterns[] = '/' . \commonBuildSearchMatchPattern($term) . '/iu';
+			}
 
-			$start = max(0, (int)$position - (int)$radius);
-			$length = min($textLength - $start, ((int)$radius * 2) + $queryLength);
+			foreach ($termPatterns as $termPattern) {
+				$offset = 0;
+				for ($index = 0; $index < 20; $index++) {
+					if (preg_match($termPattern, $text, $match, PREG_OFFSET_CAPTURE, $offset) !== 1) {
+						break;
+					}
+					$bytePosition = (int)$match[0][1];
+					$position = function_exists('mb_strlen')
+						? (int)mb_strlen(substr($text, 0, $bytePosition), 'UTF-8')
+						: $bytePosition;
+					$start = max(0, (int)$position - $radius);
+					$length = min($textLength - $start, ($radius * 2) + $longestTermLength);
+					$window = function_exists('mb_substr')
+						? (string)mb_substr($text, $start, $length, 'UTF-8')
+						: (string)substr($text, $start, $length);
+					$score = 0;
+					foreach ($termPatterns as $termIndex => $windowPattern) {
+						if (preg_match($windowPattern, $window) === 1) {
+							$score += (int)round(100 * \commonSearchTextQuality($window, $terms[$termIndex]));
+						}
+					}
+					if ($score > $bestScore) {
+						$bestScore = $score;
+						$bestPosition = (int)$position;
+					}
+					$offset = $bytePosition + max(1, strlen((string)$match[0][0]));
+				}
+			}
+
+			if ($bestPosition === null) {
+				return self::cleanTopbarSearchTextValue($text, $fallbackLimit);
+			}
+
+			$start = max(0, $bestPosition - $radius);
+			$length = min($textLength - $start, ($radius * 2) + $longestTermLength);
 			$snippet = function_exists('mb_substr')
 				? (string)mb_substr($text, $start, $length, 'UTF-8')
 				: (string)substr($text, $start, $length);
 
 			if ($start > 0) {
+				$snippet = (string)preg_replace('/^\S+\s+/u', '', $snippet);
 				$snippet = '... ' . ltrim($snippet);
 			}
 
 			if ($start + $length < $textLength) {
+				$snippet = (string)preg_replace('/\s+\S*$/u', '', $snippet);
 				$snippet = rtrim($snippet) . ' ...';
 			}
 
@@ -15021,6 +15096,7 @@
 					$snippetScore = $candidateScore;
 					$snippetSource = $candidate;
 				}
+				$createdAt = $faq->get('created');
 
 				$results[] = array(
 					'module' => 'faq',
@@ -15030,8 +15106,9 @@
 						return trim((string)$part) !== '';
 					}))),
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'_searchFields' => ['title' => $question, 'summary' => $answer, 'body' => $detail, 'context' => $contextCandidates],
 					'relevance' => $totalScore,
-					'_searchDate' => (string)$faq->get('created'),
+					'_searchDate' => $createdAt instanceof \DateTimeInterface ? $createdAt->format('Y-m-d H:i:s') : '',
 					'action' => array(
 						'type' => 'faq',
 						'faqId' => (int)$faq->getId(),
@@ -15039,6 +15116,7 @@
 				);
 			}
 
+			$results = self::rankTopbarSearchResults($results, $query);
 			usort($results, function ($left, $right) {
 				$leftScore = (int)($left['relevance'] ?? 0);
 				$rightScore = (int)($right['relevance'] ?? 0);
@@ -15159,6 +15237,7 @@
 					'title' => $title !== '' ? $title : ('Regle #' . (int)$rule->getId()),
 					'subtitle' => implode(' | ', array_values($subtitleParts)),
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'_searchFields' => ['title' => $title, 'summary' => [$description, $intention], 'context' => [$holonLabel, $authorityLabel]],
 					'relevance' => $totalScore,
 					'_searchDate' => $searchDate,
 					'action' => array(
@@ -15169,6 +15248,7 @@
 				);
 			}
 
+			$results = self::rankTopbarSearchResults($results, $query);
 			usort($results, function ($left, $right) {
 				$leftScore = (int)($left['relevance'] ?? 0);
 				$rightScore = (int)($right['relevance'] ?? 0);
@@ -15224,7 +15304,8 @@
 					'moduleLabel' => 'Tutoriels',
 					'title' => $title !== '' ? $title : ('Parcours #' . (int)$parcoursId),
 					'subtitle' => $isPack ? 'Pack' : 'Parcours',
-					'excerpt' => self::buildTopbarSearchSnippet($description !== '' ? $description : $title, $query, 100, 220),
+					'excerpt' => self::buildTopbarSearchSnippet(self::chooseTopbarSearchSnippetSource(array($description, $title), $terms), $query, 100, 220),
+					'_searchFields' => ['title' => $title, 'summary' => $description],
 					'relevance' => $totalScore,
 					'_searchDate' => (string)($parcoursRow['datecreation'] ?? ''),
 					'_sortKind' => 1,
@@ -15320,23 +15401,10 @@
 						$missionResume,
 						$missionHtml,
 						$parcoursTitle,
+						$missionTitle,
+						$branchLabel,
 					);
-					$snippetSource = '';
-					$snippetScore = -1;
-					foreach ($snippetCandidates as $candidate) {
-						$candidate = trim((string)$candidate);
-						if ($candidate === '') {
-							continue;
-						}
-
-						$candidateScore = self::getTopbarSearchTextScore($candidate, $terms);
-						if ($candidateScore <= $snippetScore) {
-							continue;
-						}
-
-						$snippetScore = $candidateScore;
-						$snippetSource = $candidate;
-					}
+					$snippetSource = self::chooseTopbarSearchSnippetSource($snippetCandidates, $terms);
 
 					$results[] = array(
 						'module' => 'tutorials',
@@ -15344,6 +15412,7 @@
 						'title' => $missionTitle !== '' ? $missionTitle : ('Mission #' . (int)($missionRow['id'] ?? 0)),
 						'subtitle' => implode(' | ', $subtitleParts),
 						'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+						'_searchFields' => ['title' => $missionTitle, 'summary' => $missionResume, 'body' => $missionHtml, 'context' => [$parcoursTitle, $branchLabel]],
 						'relevance' => $missionScore,
 						'_searchDate' => (string)($missionRow['datecreation'] ?? ''),
 						'_sortKind' => 2,
@@ -15356,6 +15425,7 @@
 				}
 			}
 
+			$results = self::rankTopbarSearchResults($results, $query);
 			usort($results, function ($left, $right) {
 				$leftScore = (int)($left['relevance'] ?? 0);
 				$rightScore = (int)($right['relevance'] ?? 0);
@@ -15432,6 +15502,7 @@
 					)
 				);
 
+				$searchFields = ['title' => $holon->getDisplayName(), 'summary' => [], 'body' => [], 'context' => [$holon->get('templatename')]];
 				$propertyScore = 0;
 				$matchedExcerpt = '';
 				$matchedExcerptScore = 0;
@@ -15439,6 +15510,9 @@
 				foreach ($holon->getPropertiesValue() as $property) {
 					$propertyLabel = trim((string)$property->get('name') . ' ' . (string)$property->get('shortname'));
 					$propertyValue = self::buildTopbarStructurePropertySearchValue($property);
+					$searchFields['summary'][] = (string)$property->get('value');
+					$searchFields['body'][] = (string)$property->get('value_parents');
+					$searchFields['context'][] = $propertyLabel;
 					$propertyRowScore =
 						self::getTopbarSearchTextScore($propertyLabel, $terms, array(
 							'exact' => 26,
@@ -15496,6 +15570,7 @@
 					'title' => $holon->getDisplayName(),
 					'subtitle' => $subtitle,
 					'excerpt' => $matchedExcerpt,
+					'_searchFields' => $searchFields,
 					'relevance' => $totalScore,
 					'_searchDate' => (string)($row['datecreation'] ?? ''),
 					'datemodification' => (string)($row['datemodification'] ?? ''),
@@ -15506,6 +15581,7 @@
 				);
 			}
 
+			$results = self::rankTopbarSearchResults($results, $query);
 			usort($results, function ($left, $right) {
 				$leftScore = (int)($left['relevance'] ?? 0);
 				$rightScore = (int)($right['relevance'] ?? 0);
@@ -15611,11 +15687,11 @@
 						)
 						SEPARATOR ' || '
 					) AS competence_excerpt_source,
-					COALESCE(SUM(" . $competenceNameScoreSql . " + " . $competenceDescriptionScoreSql . "), 0) AS competence_relevance,
+					COALESCE(MAX(" . $competenceNameScoreSql . " + " . $competenceDescriptionScoreSql . "), 0) AS competence_relevance,
 					(
 						MAX(" . $identityScoreSql . ")
 						+ MAX(" . $parameterScoreSql . ")
-						+ COALESCE(SUM(" . $competenceNameRelevanceSql . " + " . $competenceDescriptionRelevanceSql . "), 0)
+						+ COALESCE(MAX(" . $competenceNameRelevanceSql . " + " . $competenceDescriptionRelevanceSql . "), 0)
 					) AS relevance
 				FROM user_organization uo
 				INNER JOIN user u
@@ -15691,6 +15767,7 @@
 					'title' => $title,
 					'subtitle' => implode(' - ', $subtitleParts),
 					'excerpt' => $excerpt,
+					'_searchFields' => ['title' => [$fullName, $scopedUsername], 'tags' => [$scopedEmail], 'summary' => $matchedCompetenceExcerpt],
 					'relevance' => (int)($row['relevance'] ?? 0),
 					'_searchDate' => (string)($row['membership_created_at'] ?? ''),
 					'action' => array(
@@ -15700,7 +15777,7 @@
 				);
 			}
 
-			return $results;
+			return self::rankTopbarSearchResults($results, $query);
 		}
 
 		protected function searchTopbarDocumentResults($query, array $terms, $limit = 12, array $viewerContext = array(), $documentType = null)
@@ -15719,8 +15796,8 @@
 			$descriptionExpr = "LOWER(COALESCE(d.description, ''))";
 			$keywordsExpr = "LOWER(COALESCE(d.keywords, ''))";
 			$contentExpr = "LOWER(COALESCE(d.content, ''))";
-			$pvPointTitleExpr = $isPvSearch ? "LOWER(COALESCE(pv_search.point_titles, ''))" : '0';
-			$pvPointContentExpr = $isPvSearch ? "LOWER(COALESCE(pv_search.point_contents, ''))" : '0';
+			$pvPointTitleExpr = $isPvSearch ? "LOWER(COALESCE(pv_search.point_titles, ''))" : "''";
+			$pvPointContentExpr = $isPvSearch ? "LOWER(COALESCE(pv_search.point_contents, ''))" : "''";
 
 			$titleScoreSql = self::buildTopbarSearchScoreSql($titleExpr, $terms, $params, 'document_title', array(
 				'exact' => 100,
@@ -15810,12 +15887,10 @@
 				}
 
 				$subtitle = $document->getOrganizationContextLabel();
-				$pvSnippetSource = trim((string)($row['point_titles'] ?? '') . ' ' . (string)($row['point_contents'] ?? ''));
-				$snippetSource = $isPvSearch && $pvSnippetSource !== ''
-					? $pvSnippetSource
-					: (trim((string)($row['description'] ?? '')) !== ''
-					? (string)($row['description'] ?? '')
-					: ((trim((string)($row['keywords'] ?? '')) !== '' ? (string)($row['keywords'] ?? '') : (string)($row['content'] ?? ''))));
+				$snippetSource = self::chooseTopbarSearchSnippetSource(array_merge(
+					$isPvSearch ? array((string)($row['point_titles'] ?? ''), (string)($row['point_contents'] ?? '')) : array(),
+					array((string)($row['description'] ?? ''), (string)($row['keywords'] ?? ''), (string)($row['content'] ?? ''), (string)($row['title'] ?? ''))
+				), $terms);
 				$detailUrl = '/omo/api/documents/detail.php?id=' . (int)$document->getId() . '&oid=' . (int)$this->getId();
 				if ((int)$document->get('IDholon') > 0) {
 					$detailUrl .= '&cid=' . (int)$document->get('IDholon');
@@ -15827,6 +15902,7 @@
 					'title' => trim((string)$document->get('title')) !== '' ? (string)$document->get('title') : ('Document #' . (int)$document->getId()),
 					'subtitle' => $subtitle,
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'_searchFields' => ['title' => $row['title'], 'tags' => explode(',', (string)$row['keywords']), 'summary' => [$row['description'], $row['point_titles']], 'body' => [$row['content'], $row['point_contents']], 'context' => $subtitle],
 					'relevance' => (int)($row['relevance'] ?? 0),
 					'_searchDate' => (string)($row['datecreation'] ?? ''),
 					'action' => array(
@@ -15837,7 +15913,7 @@
 				);
 			}
 
-			return $results;
+			return self::rankTopbarSearchResults($results, $query);
 		}
 
 		protected function searchTopbarDecisionResults($query, array $terms, $limit = 12, array $viewerContext = array())
@@ -16091,6 +16167,7 @@
 					'title' => $resultTitle,
 					'subtitle' => $subtitle,
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'_searchFields' => ['title' => $row['process_title'], 'summary' => [$row['process_description'], $row['group_titles'], $row['proposal_titles']], 'body' => [$row['group_descriptions'], $row['proposal_descriptions']], 'context' => $row['holon_name']],
 					'relevance' => (int)($row['relevance'] ?? 0),
 					'_searchDate' => (string)($row['created_at'] ?? ''),
 					'action' => array(
@@ -16101,7 +16178,7 @@
 				);
 			}
 
-			return $results;
+			return self::rankTopbarSearchResults($results, $query);
 		}
 
 		protected function searchTopbarProjectResults($query, array $terms, $limit = 12, array $viewerContext = array())
@@ -16171,15 +16248,14 @@
 
 				$title = trim((string)($row['title'] ?? ''));
 				$description = self::cleanTopbarSearchTextValue((string)($row['description'] ?? ''));
-				$excerptSource = self::getTopbarSearchTextScore($description, $terms) > 0
-					? $description
-					: $title;
+				$excerptSource = self::chooseTopbarSearchSnippetSource(array($description, $title), $terms);
 				$results[] = array(
 					'module' => 'projects',
 					'moduleLabel' => 'Projets',
 					'title' => $title !== '' ? $title : ('Projet #' . (int)($row['id'] ?? 0)),
 					'subtitle' => implode(' | ', array_filter($subtitleParts)),
 					'excerpt' => self::buildTopbarSearchSnippet($excerptSource, $query, 100, 220),
+					'_searchFields' => ['title' => $title, 'summary' => $description],
 					'relevance' => (int)($row['relevance'] ?? 0),
 					'_searchDate' => (string)($row['created_at'] ?? ''),
 					'action' => array(
@@ -16190,7 +16266,133 @@
 				);
 			}
 
-			return $results;
+			return self::rankTopbarSearchResults($results, $query);
+		}
+
+		protected function searchTopbarProcessResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array('organization_id' => (int)$this->getId());
+			$titleExpr = "LOWER(COALESCE(p.title, ''))";
+			$descriptionExpr = "LOWER(COALESCE(p.description, ''))";
+			$titleScoreSql = self::buildTopbarSearchScoreSql($titleExpr, $terms, $params, 'process_title', array('exact' => 108, 'prefix' => 68, 'like' => 36));
+			$descriptionScoreSql = self::buildTopbarSearchScoreSql($descriptionExpr, $terms, $params, 'process_description', array('exact' => 34, 'prefix' => 22, 'like' => 12));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(array($titleExpr, $descriptionExpr), $terms, $params, 'process_prefilter');
+			$rows = self::fetchAll(
+				"SELECT
+					pr.id,
+					p.title,
+					p.description,
+					p.IDholon,
+					pr.created_at,
+					(" . $titleScoreSql . " + " . $descriptionScoreSql . ") AS relevance
+				FROM process pr
+				INNER JOIN project p ON p.id = pr.IDproject_template_root AND p.IDorganization = pr.IDorganization
+				WHERE pr.IDorganization = :organization_id
+				  AND pr.active = 1
+				  AND p.active = 1
+				  AND " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, pr.created_at DESC, pr.id DESC
+				LIMIT " . max(1, (int)$limit),
+				$params
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['IDholon'] ?? 0);
+				$subtitle = trim((string)$this->get('name'));
+				if ($holonId > 0) {
+					$holon = new \dbObject\Holon();
+					if (!$holon->load($holonId) || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+						continue;
+					}
+					$subtitle = trim((string)$holon->getDisplayName());
+				}
+				$title = trim((string)($row['title'] ?? ''));
+				$description = self::cleanTopbarSearchTextValue((string)($row['description'] ?? ''));
+				$results[] = array(
+					'module' => 'processus',
+					'moduleLabel' => 'Processus',
+					'title' => $title !== '' ? $title : ('Processus #' . (int)$row['id']),
+					'subtitle' => $subtitle,
+					'excerpt' => self::buildTopbarSearchSnippet(self::chooseTopbarSearchSnippetSource(array($description, $title), $terms), $query, 100, 220),
+					'_searchFields' => ['title' => $title, 'summary' => $description],
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['created_at'] ?? ''),
+					'action' => array('type' => 'checklist', 'checklistId' => (int)$row['id'], 'holonId' => $holonId),
+				);
+			}
+
+			return self::rankTopbarSearchResults($results, $query);
+		}
+
+		protected function searchTopbarRecurringTaskResults($query, array $terms, $limit = 12, array $viewerContext = array())
+		{
+			if ((int)$this->getId() <= 0 || count($terms) === 0) {
+				return array();
+			}
+
+			$params = array('organization_id' => (int)$this->getId());
+			$titleExpr = "LOWER(COALESCE(rt.title, ''))";
+			$descriptionExpr = "LOWER(COALESCE(rt.description, ''))";
+			$titleScoreSql = self::buildTopbarSearchScoreSql($titleExpr, $terms, $params, 'activity_title', array('exact' => 108, 'prefix' => 68, 'like' => 36));
+			$descriptionScoreSql = self::buildTopbarSearchScoreSql($descriptionExpr, $terms, $params, 'activity_description', array('exact' => 34, 'prefix' => 22, 'like' => 12));
+			$preFilterSql = self::buildTopbarSearchAnyMatchSql(array($titleExpr, $descriptionExpr), $terms, $params, 'activity_prefilter');
+			$rows = self::fetchAll(
+				"SELECT
+					rt.id,
+					rt.title,
+					rt.description,
+					rt.IDholon,
+					rt.created_at,
+					(" . $titleScoreSql . " + " . $descriptionScoreSql . ") AS relevance
+				FROM recurring_task rt
+				WHERE rt.IDorganization = :organization_id
+				  AND rt.active = 1
+				  AND " . $preFilterSql . "
+				HAVING relevance > 0
+				ORDER BY relevance DESC, rt.created_at DESC, rt.id DESC
+				LIMIT " . max(1, (int)$limit),
+				$params
+			);
+			if ($rows === false) {
+				return array();
+			}
+
+			$results = array();
+			foreach ($rows as $row) {
+				$holonId = (int)($row['IDholon'] ?? 0);
+				$subtitle = trim((string)$this->get('name'));
+				if ($holonId > 0) {
+					$holon = new \dbObject\Holon();
+					if (!$holon->load($holonId) || !self::topbarSearchViewerCanViewHolon($holon, $viewerContext)) {
+						continue;
+					}
+					$subtitle = trim((string)$holon->getDisplayName());
+				}
+				$title = trim((string)($row['title'] ?? ''));
+				$description = self::cleanTopbarSearchTextValue((string)($row['description'] ?? ''));
+				$results[] = array(
+					'module' => 'activities',
+					'moduleLabel' => 'Taches recurrentes',
+					'title' => $title !== '' ? $title : ('Tache recurrente #' . (int)$row['id']),
+					'subtitle' => $subtitle,
+					'excerpt' => self::buildTopbarSearchSnippet(self::chooseTopbarSearchSnippetSource(array($description, $title), $terms), $query, 100, 220),
+					'_searchFields' => ['title' => $title, 'summary' => $description],
+					'relevance' => (int)($row['relevance'] ?? 0),
+					'_searchDate' => (string)($row['created_at'] ?? ''),
+					'action' => array('type' => 'activity', 'activityId' => (int)$row['id'], 'holonId' => $holonId),
+				);
+			}
+
+			return self::rankTopbarSearchResults($results, $query);
 		}
 
 		protected function searchTopbarStatIndicatorResults($query, array $terms, $limit = 12, array $viewerContext = array())
@@ -16246,15 +16448,14 @@
 				$name = trim((string)($row['name'] ?? ''));
 				$description = self::cleanTopbarSearchTextValue((string)($row['description'] ?? ''));
 				$sourceUrl = trim((string)($row['source_url'] ?? ''));
-				$excerptSource = self::getTopbarSearchTextScore($description, $terms) > 0
-					? $description
-					: (self::getTopbarSearchTextScore($sourceUrl, $terms) > 0 ? $sourceUrl : $name);
+				$excerptSource = self::chooseTopbarSearchSnippetSource(array($description, $sourceUrl, $name), $terms);
 				$results[] = array(
 					'module' => 'stats',
 					'moduleLabel' => 'Indicateurs',
 					'title' => $name !== '' ? $name : ('Indicateur #' . (int)($row['id'] ?? 0)),
 					'subtitle' => implode(' | ', array_filter($subtitleParts)),
 					'excerpt' => self::buildTopbarSearchSnippet($excerptSource, $query, 100, 220),
+					'_searchFields' => ['title' => $name, 'summary' => $description, 'context' => $sourceUrl],
 					'relevance' => (int)($row['relevance'] ?? 0),
 					'_searchDate' => (string)($row['created_at'] ?? ''),
 					'action' => array(
@@ -16266,7 +16467,7 @@
 				);
 			}
 
-			return $results;
+			return self::rankTopbarSearchResults($results, $query);
 		}
 
 		protected function searchTopbarCalendarResults($query, array $terms, $limit = 12, array $viewerContext = array())
@@ -16380,13 +16581,12 @@
 					}
 				}
 
-				$snippetSource = trim((string)$event->get('description'));
-				if ($snippetSource === '') {
-					$snippetSource = $holonName;
-				}
-				if ($snippetSource === '') {
-					$snippetSource = trim((string)$event->get('status'));
-				}
+				$snippetSource = self::chooseTopbarSearchSnippetSource(array(
+					(string)$event->get('description'),
+					$holonName,
+					(string)$event->get('status'),
+					$eventTitle,
+				), $terms);
 
 				$results[] = array(
 					'module' => 'calendar',
@@ -16396,6 +16596,7 @@
 						return trim((string)$part) !== '';
 					}))),
 					'excerpt' => self::buildTopbarSearchSnippet($snippetSource, $query, 100, 220),
+					'_searchFields' => ['title' => $eventTitle, 'summary' => $event->get('description'), 'context' => $holonName],
 					'relevance' => (int)($row['relevance'] ?? 0),
 					'_searchDate' => (string)($row['start_at'] ?? ''),
 					'action' => array(
@@ -16406,7 +16607,7 @@
 				);
 			}
 
-			return $results;
+			return self::rankTopbarSearchResults($results, $query);
 		}
 
 		public function searchTopbarResults($query, array $scopes = array(), array $options = array())
@@ -16425,6 +16626,8 @@
 				'decision' => 'decision',
 				'projects' => 'projects',
 				'stats' => 'stats',
+				'processus' => 'processus',
+				'activities' => 'activities',
 			);
 			$enabledScopes = array();
 			foreach ($scopeAppHashes as $scopeId => $hash) {
@@ -16479,6 +16682,8 @@
 				'tutorials' => 0,
 				'projects' => 0,
 				'stats' => 0,
+				'processus' => 0,
+				'activities' => 0,
 			);
 			$results = array();
 
@@ -16552,34 +16757,28 @@
 					$counts['stats'] = count($scopeResults);
 					$results = array_merge($results, $scopeResults);
 				}
+
+				if (isset($normalizedScopes['processus'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarProcessResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
+					$counts['processus'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
+
+				if (isset($normalizedScopes['activities'])) {
+					$scopeResults = self::filterTopbarSearchResultsByDateRange($this->searchTopbarRecurringTaskResults($query, $terms, $expandedPerScopeLimit, $viewerContext), $dateRange, $perScopeLimit);
+					$counts['activities'] = count($scopeResults);
+					$results = array_merge($results, $scopeResults);
+				}
 			}
 
-			$moduleOrder = array(
-				'structure' => 1,
-				'team' => 2,
-				'calendar' => 3,
-				'rules' => 4,
-				'decision' => 5,
-				'documents' => 6,
-				'pv' => 7,
-				'faq' => 8,
-				'tutorials' => 9,
-				'projects' => 10,
-				'stats' => 11,
-			);
 
-			usort($results, function ($left, $right) use ($moduleOrder) {
+			usort($results, function ($left, $right) {
 				$leftScore = (int)($left['relevance'] ?? 0);
 				$rightScore = (int)($right['relevance'] ?? 0);
 				if ($leftScore !== $rightScore) {
 					return $rightScore <=> $leftScore;
 				}
 
-				$leftModuleOrder = $moduleOrder[(string)($left['module'] ?? '')] ?? 99;
-				$rightModuleOrder = $moduleOrder[(string)($right['module'] ?? '')] ?? 99;
-				if ($leftModuleOrder !== $rightModuleOrder) {
-					return $leftModuleOrder <=> $rightModuleOrder;
-				}
 
 				return strcmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
 			});

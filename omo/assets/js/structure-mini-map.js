@@ -322,7 +322,7 @@
     const safeMaxOpacity = clampNumber(Number(maxOpacity), safeMinOpacity, 1);
     const referenceNode = currentNode || rootNode || null;
     const referenceDepth = referenceNode ? getNodeDepth(referenceNode) : 0;
-    const distanceFromCurrentLevel = Math.abs(getNodeDepth(node) - referenceDepth);
+    const distanceFromCurrentLevel = Math.max(0, getNodeDepth(node) - referenceDepth);
     const safeOpacityStep = clampNumber(Number(opacityStep), 0, 1);
     const fadeDistance = Math.max(0, distanceFromCurrentLevel - 1);
 

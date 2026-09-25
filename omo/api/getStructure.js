@@ -290,7 +290,7 @@ function getCurrentStructureDepth() {
 function getNodeDepthOpacity(node, minOpacity, maxOpacity) {
   const safeMinOpacity = clampNumber(Number(minOpacity), 0, 1);
   const safeMaxOpacity = clampNumber(Number(maxOpacity), safeMinOpacity, 1);
-  const distanceFromCurrentLevel = Math.abs(getNodeDepth(node) - getCurrentStructureDepth());
+  const distanceFromCurrentLevel = Math.max(0, getNodeDepth(node) - getCurrentStructureDepth());
   const opacityStep = structureDisplaySettings.fadeOpacityStep;
   const fadeDistance = Math.max(0, distanceFromCurrentLevel - 1);
   return clampNumber(safeMaxOpacity - (fadeDistance * opacityStep), safeMinOpacity, safeMaxOpacity);

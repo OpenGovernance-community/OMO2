@@ -211,6 +211,11 @@ if ($canManageAllFaqs) {
 				<div
 					class="faq-popup__item generic-soft-panel generic-soft-panel--flush<?= $faqIndex === 0 ? ' is-open' : '' ?>"
 					data-faq-item
+					data-faq-search="<?= htmlspecialchars(json_encode([
+						'answer' => (string)$faq->get('answer'),
+						'detail' => (string)$faq->get('detail'),
+						'context' => (string)($scopeInfo['label'] ?? ''),
+					], JSON_INVALID_UTF8_SUBSTITUTE), ENT_QUOTES, 'UTF-8') ?>"
 					data-faq-id="<?= (int)$faq->get("id") ?>"
 					data-faq-default-order="<?= $faqIndex ?>"
 					data-faq-viewcount="<?= (int)$faq->get("viewcount") ?>"
@@ -318,4 +323,5 @@ if ($canManageAllFaqs) {
 		</div>
 	<?php endif; ?>
 </div>
+<script src="<?= commonAssetUrl('/common/search_text.js') ?>"></script>
 <script src="<?= commonAssetUrl('/omo/assets/js/faq.js') ?>"></script>

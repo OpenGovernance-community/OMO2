@@ -5419,7 +5419,9 @@ function omoGetTopbarSearchScopes() {
         documents: true,
         decision: true,
         projects: true,
-        stats: true
+        stats: true,
+        processus: true,
+        activities: true
     };
 
     document.querySelectorAll('#menu_sidebar .menu-item[data-hash][data-navigation-mode]').forEach(function (item) {

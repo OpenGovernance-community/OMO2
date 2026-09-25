@@ -42,17 +42,6 @@
 		modalBody.setAttribute('data-omo-popup-live-sync', '1');
 	}
 
-	function normalize(value) {
-		return String(value || '')
-			.toLowerCase()
-			.normalize('NFD')
-			.replace(/[\u0300-\u036f]/g, '');
-	}
-
-	function escapeRegExp(value) {
-		return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	}
-
 	function normalizeFaqScope(value) {
 		const normalizedScope = String(value || '').trim().toLowerCase();
 		if (normalizedScope === 'global') {
@@ -63,26 +52,6 @@
 		}
 
 		return 'contextual';
-	}
-
-	function buildAccentInsensitivePattern(word) {
-		const accentMap = {
-			a: '[a\\u00E0\\u00E1\\u00E2\\u00E3\\u00E4\\u00E5]',
-			c: '[c\\u00E7]',
-			e: '[e\\u00E8\\u00E9\\u00EA\\u00EB]',
-			i: '[i\\u00EC\\u00ED\\u00EE\\u00EF]',
-			n: '[n\\u00F1]',
-			o: '[o\\u00F2\\u00F3\\u00F4\\u00F5\\u00F6\\u00F8]',
-			u: '[u\\u00F9\\u00FA\\u00FB\\u00FC]',
-			y: '[y\\u00FF\\u00FD]'
-		};
-
-		return word
-			.split('')
-			.map(function (char) {
-				return accentMap[char] || escapeRegExp(char);
-			})
-			.join('');
 	}
 
 	function buildFaqQuery(id, extraParams) {
@@ -270,27 +239,36 @@
 		}
 	}
 
-	function highlight(node, words) {
-		ensureOriginalText(node);
-		const html = node.getAttribute('data-original-text') || '';
-		const filteredWords = words.filter(function (word) {
-			return word.length >= 2;
-		});
+	const search = window.commonSearchText;
+	const searchFields = new WeakMap();
 
-		if (filteredWords.length === 0) {
-			node.innerHTML = html;
-			return;
+	function plainText(value) {
+		const template = document.createElement('template');
+		template.innerHTML = String(value || '')
+			.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+			.replace(/<[^>]*>/g, ' ');
+		return template.content.textContent.replace(/\s+/g, ' ').trim();
+	}
+
+	function getSearchFields(item) {
+		if (!searchFields.has(item)) {
+			const question = item.querySelector('.faq-popup__question');
+			const answer = item.querySelector('[data-faq-answer-text]');
+			const payload = JSON.parse(item.getAttribute('data-faq-search') || '{}');
+			const fields = {
+				title: question ? question.textContent : '',
+				summary: payload.answer !== undefined ? plainText(payload.answer) : (answer ? answer.textContent : ''),
+				body: plainText(payload.detail),
+				context: payload.context || ''
+			};
+			searchFields.set(item, {fields: fields, prepared: search.prepareFields(fields)});
 		}
+		return searchFields.get(item);
+	}
 
-		const pattern = filteredWords
-			.map(buildAccentInsensitivePattern)
-			.sort(function (a, b) {
-				return b.length - a.length;
-			})
-			.join('|');
-		const regex = new RegExp('(' + pattern + ')', 'gi');
-
-		node.innerHTML = html.replace(regex, '<span class="faq-popup__highlight">$1</span>');
+	function highlight(node, query) {
+		ensureOriginalText(node);
+		search.highlight(node, query, 'faq-popup__highlight');
 	}
 
 	function getPopupHashState() {
@@ -550,7 +528,8 @@
 		if (askShell) {
 			askShell.hidden = query.length < 3;
 		}
-		const words = normalize(query).split(/\s+/).filter(Boolean);
+		const preparedQuery = search.prepareQuery(query);
+		const words = preparedQuery.terms;
 		const items = Array.from(list.querySelectorAll('[data-faq-item]'));
 		let visibleCount = 0;
 		const rankedItems = [];
@@ -582,25 +561,10 @@
 
 		items.forEach(function (item) {
 			const question = item.querySelector('.faq-popup__question');
-			const answer = item.querySelector('[data-faq-answer]');
 			const answerText = item.querySelector('[data-faq-answer-text]');
-			const meta = item.querySelector('.faq-popup__meta');
-			const haystack = normalize(
-				(question ? question.textContent : '')
-				+ ' '
-				+ (answer ? answer.textContent : '')
-				+ ' '
-				+ (meta ? meta.textContent : '')
-			);
-
-			let score = 0;
-			words.forEach(function (word) {
-				if (word.length > 0 && haystack.indexOf(word) !== -1) {
-					score++;
-				}
-			});
-
-			const visible = score >= Math.ceil(words.length / 2);
+			const entry = getSearchFields(item);
+			const score = search.score(entry.prepared, preparedQuery);
+			const visible = score > 0;
 			item.hidden = !visible;
 
 			if (visible) {
@@ -611,10 +575,15 @@
 					score: score
 				});
 				if (question) {
-					highlight(question, words);
+					highlight(question, preparedQuery);
 				}
 				if (answerText) {
-					highlight(answerText, words);
+					ensureOriginalText(answerText);
+					const summaryScore = search.score({summary: entry.prepared.summary}, preparedQuery);
+					const detailScore = search.score({body: entry.prepared.body}, preparedQuery);
+					const source = detailScore > summaryScore ? entry.fields.body : entry.fields.summary;
+					if (source) answerText.textContent = search.excerpt(source, preparedQuery);
+					highlight(answerText, preparedQuery);
 				}
 			} else {
 				item.classList.remove('is-open');
@@ -632,7 +601,8 @@
 		if (words.length > 0 && rankedItems.length > 1) {
 			rankedItems
 				.sort(function (a, b) {
-					return b.score - a.score;
+					return b.score - a.score
+						|| Number(a.item.getAttribute('data-faq-default-order')) - Number(b.item.getAttribute('data-faq-default-order'));
 				})
 				.forEach(function (entry) {
 					list.appendChild(entry.item);
