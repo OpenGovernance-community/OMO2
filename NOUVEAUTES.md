@@ -1,5 +1,29 @@
 # Journal Des Nouveautes
 
+- Structure : les membres ordinaires restent empiles meme quand ils tiennent sur une ligne. La souris les deploie au survol, y compris sur un ordinateur a ecran tactile ; le doigt les deploie au toucher. L'apercu utilise trois lignes au maximum selon la largeur, avec "..." en derniere position si necessaire. Les administrateurs restent visibles a cote.
+
+- Recherche : synthese des compteurs sans cadre englobant, modules contenant des resultats mis en evidence et filtre actif distingue par un contour renforce.
+
+- Recherche : suppression du rappel du titre, de la requete et des modules au-dessus des resultats, deja presents dans l en-tete.
+
+- Menu FAQ : recherche JavaScript sur les reponses completes, avec priorite a la question et aux mots entiers, pluriels proches, cinq mots significatifs les plus longs et bonus de couverture. Les boutons et notes ne polluent plus le score ; les resumes montrent le passage pertinent et le surlignage respecte le texte.
+
+- Recherche : classement harmonise entre modules, avec les cinq mots significatifs les plus longs, priorite aux mots entiers et pluriels reguliers presque equivalents. La couverture de plusieurs mots et les titres sont favorises ; les fragments internes et le contexte pesent moins, les repetitions sont plafonnees. Correction des points artificiels attribues aux documents hors PV et alignement des extraits et du surlignage sur ces correspondances.
+
+- Recherche : chaque resultat propose un apercu dans un drawer interne, avec une vue condensee propre au module (metadonnees des documents et PV, note FAQ, graphique d indicateur, texte et intention des regles, etapes des processus, etc.). Fermer l apercu conserve les resultats ; le bouton Ouvrir en pied de vue reprend la navigation par hash. Les droits d acces sont verifies au chargement de l apercu.
+
+- Site public : la page de migration OMO1 vers OMO2 compare maintenant les captures de structure, projets, reunions, documents et indicateurs. Seul le choix Decisions reste en attente. Le titre compact laisse davantage de place au comparateur et la consigne se trouve sous les images. L'espace de la video explicative reste reserve et la page est accessible depuis l'accueil OMO2.
+
+- Recherche : les extraits se concentrent sur le passage qui contient le plus de termes recherches. Les correspondances sont surlignees dans le titre, le contexte et le resume des resultats, avec ou sans accent.
+
+- Recherche : correction de la date des resultats FAQ pour eviter une erreur DateTime pendant une recherche globale.
+
+- Recherche : la topbar propose maintenant les processus et les taches recurrentes. Les resultats cherchent dans leurs titres et descriptions et ouvrent directement la fiche correspondante.
+
+- Structure : l’estompage selon la profondeur ne touche que les éléments situés sous le niveau courant ; le holon d’organisation reste donc pleinement visible pendant la navigation.
+
+- Mini structure : les éléments situés au-dessus du niveau courant, dont le holon d’organisation, ne s’estompent plus pendant la navigation.
+
 - Affichage : les pages et fenêtres chargées à la demande attendent leurs feuilles de style et l’initialisation de leurs scripts avant de montrer leur contenu, ce qui évite l’apparition fugace d’une mise en page brute lors de la première visite. Un délai de secours évite de bloquer l’écran si une ressource ne répond pas.
 
 - Profil : les formulaires général et d’organisation utilisent les sections et champs communs d’édition, avec une présentation plus aérée, une photo mieux placée et des actions alignées. L’onglet de prévisualisation et son rendu ont été retirés.

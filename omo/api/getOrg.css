@@ -137,7 +137,9 @@
 }
 
 .circle-member-stack.is-expanded,
-.circle-member-stack:focus-within {
+.circle-member-stack.is-pointer-hovered,
+.circle-member-stack:focus-visible,
+.circle-member-stack:has(:focus-visible) {
     display: grid;
     grid-template-columns: repeat(var(--circle-member-columns, 1), 34px);
     grid-auto-rows: 34px;
@@ -149,7 +151,9 @@
 }
 
 .circle-member-stack.is-expanded .circle-member--regular,
-.circle-member-stack:focus-within .circle-member--regular {
+.circle-member-stack.is-pointer-hovered .circle-member--regular,
+.circle-member-stack:focus-visible .circle-member--regular,
+.circle-member-stack:has(:focus-visible) .circle-member--regular {
     position: relative;
     top: auto;
     left: auto;
@@ -157,7 +161,9 @@
 }
 
 .circle-member-stack.is-expanded > [data-circle-member-action],
-.circle-member-stack:focus-within > [data-circle-member-action] {
+.circle-member-stack.is-pointer-hovered > [data-circle-member-action],
+.circle-member-stack:focus-visible > [data-circle-member-action],
+.circle-member-stack:has(:focus-visible) > [data-circle-member-action] {
     position: relative;
     top: auto;
     left: auto;
@@ -165,39 +171,10 @@
 }
 
 .circle-member-stack.is-expanded .circle-member--regular.circle-member--out-of-preview,
-.circle-member-stack:focus-within .circle-member--regular.circle-member--out-of-preview {
+.circle-member-stack.is-pointer-hovered .circle-member--regular.circle-member--out-of-preview,
+.circle-member-stack:focus-visible .circle-member--regular.circle-member--out-of-preview,
+.circle-member-stack:has(:focus-visible) .circle-member--regular.circle-member--out-of-preview {
     display: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-    .circle-member-stack:hover {
-        display: grid;
-        grid-template-columns: repeat(var(--circle-member-columns, 1), 34px);
-        grid-auto-rows: 34px;
-        align-content: start;
-        column-gap: 8px;
-        row-gap: 8px;
-        height: auto;
-        max-height: 118px;
-    }
-
-    .circle-member-stack:hover .circle-member--regular {
-        position: relative;
-        top: auto;
-        left: auto;
-        z-index: auto;
-    }
-
-    .circle-member-stack:hover > [data-circle-member-action] {
-        position: relative;
-        top: auto;
-        left: auto;
-        z-index: auto;
-    }
-
-    .circle-member-stack:hover .circle-member--regular.circle-member--out-of-preview {
-        display: none;
-    }
 }
 
 .circle-member {

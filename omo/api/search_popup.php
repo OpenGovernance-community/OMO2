@@ -1,8 +1,10 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/common/topbar.php';
+require_once dirname(__DIR__, 2) . '/common/search_text.php';
 require_once dirname(__DIR__) . '/topbar.php';
 require_once __DIR__ . '/stats/shared.php';
+require_once __DIR__ . '/search/preview_shared.php';
 
 if (!function_exists('omoSearchPopupGetScopeLabels')) {
     function omoSearchPopupGetScopeLabels(?\dbObject\Organization $organization = null)
@@ -17,6 +19,8 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
             'decision' => 'Decisions',
             'projects' => 'Projets',
             'stats' => 'Indicateurs',
+            'processus' => 'Processus',
+            'activities' => 'Taches recurrentes',
             'faq' => 'FAQ',
             'tutorials' => 'Tutoriels',
         );
@@ -35,6 +39,8 @@ if (!function_exists('omoSearchPopupGetScopeLabels')) {
             'decision' => 'decision',
             'projects' => 'projects',
             'stats' => 'stats',
+            'processus' => 'processus',
+            'activities' => 'activities',
         );
 
         foreach ($scopeAppHashes as $scopeId => $hash) {
@@ -107,6 +113,7 @@ if (!function_exists('omoSearchPopupRenderStyles')) {
     {
         ?>
         <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/search_popup.css') ?>">
+        <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/stats/stats.css') ?>">
         <?php
     }
 }
@@ -121,17 +128,6 @@ if (!function_exists('omoSearchPopupGetUiStrings')) {
     }
 }
 
-if (!function_exists('omoSearchPopupRenderScopeBadges')) {
-    function omoSearchPopupRenderScopeBadges(array $selectedScopes, array $scopeLabels, $escape)
-    {
-        foreach (array_values($selectedScopes) as $scope) {
-            ?>
-            <span class="omo-search-popup__scope"><?= $escape($scopeLabels[$scope] ?? $scope) ?></span>
-            <?php
-        }
-    }
-}
-
 if (!function_exists('omoSearchPopupRenderStats')) {
     function omoSearchPopupRenderStats(array $selectedScopes, array $scopeLabels, array $counts, $escape)
     {
@@ -142,7 +138,7 @@ if (!function_exists('omoSearchPopupRenderStats')) {
             ?>
             <button
                 type="button"
-                class="omo-search-popup__stat"
+                class="omo-search-popup__stat<?= (int)($counts[$scopeId] ?? 0) > 0 ? ' has-results' : '' ?>"
                 data-omo-search-popup-stat-filter="<?= $escape($scopeId) ?>"
                 data-omo-search-popup-stat-active="0"
                 aria-pressed="false"
@@ -197,6 +193,33 @@ if (!function_exists('omoSearchPopupRenderSearchForm')) {
     }
 }
 
+if (!function_exists('omoSearchPopupHighlightTerms')) {
+    function omoSearchPopupHighlightTerms($value, $query, $escape)
+    {
+        $value = (string)$value;
+        $query = trim((string)$query);
+        if ($value === '' || $query === '') {
+            return $escape($value);
+        }
+
+        $terms = commonSearchQueryTerms($query);
+        if (!$terms) { return $escape($value); }
+        $pattern = '/(' . implode('|', array_map('commonBuildSearchMatchPattern', $terms)) . ')/iu';
+        $parts = preg_split($pattern, $value, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return $escape($value);
+        }
+
+        $html = '';
+        foreach ($parts as $index => $part) {
+            $html .= $index % 2 === 1
+                ? '<mark class="omo-search-popup__match">' . $escape($part) . '</mark>'
+                : $escape($part);
+        }
+        return $html;
+    }
+}
+
 if (!function_exists('omoSearchPopupRenderContent')) {
     function omoSearchPopupRenderContent($query, array $selectedScopes, array $scopeLabels, array $payload, $escape)
     {
@@ -206,33 +229,11 @@ if (!function_exists('omoSearchPopupRenderContent')) {
         $error = trim((string)($payload['error'] ?? ''));
         ?>
         <div class="omo-search-popup__content-state" data-omo-search-job-status="<?= $escape($status) ?>">
-            <div class="omo-search-popup__hero generic-section">
-                <div class="omo-search-popup__head">
-                    <div>
-                        <h3 class="generic-card-title">Resultats de recherche</h3>
-                        <p class="omo-search-popup__summary">
-                            <?php if ($query === ''): ?>
-                                Saisissez une recherche dans la topbar pour lancer l exploration.
-                            <?php elseif ($status === 'running' || $status === 'queued'): ?>
-                                Recherche en cours pour <strong><?= $escape($query) ?></strong>
-                            <?php elseif ($status === 'failed'): ?>
-                                La recherche pour <strong><?= $escape($query) ?></strong> a rencontre un probleme.
-                            <?php else: ?>
-                                Recherche pour <strong><?= $escape($query) ?></strong>
-                            <?php endif; ?>
-                        </p>
-                    </div>
-                    <div class="omo-search-popup__scopes">
-                        <?php omoSearchPopupRenderScopeBadges($selectedScopes, $scopeLabels, $escape); ?>
-                    </div>
+            <?php if ($status === 'completed'): ?>
+                <div class="omo-search-popup__stats">
+                    <?php omoSearchPopupRenderStats($selectedScopes, $scopeLabels, $counts, $escape); ?>
                 </div>
-
-                <?php if ($status === 'completed'): ?>
-                    <div class="omo-search-popup__stats">
-                        <?php omoSearchPopupRenderStats($selectedScopes, $scopeLabels, $counts, $escape); ?>
-                    </div>
-                <?php endif; ?>
-            </div>
+            <?php endif; ?>
 
             <?php if ($query === ''): ?>
                 <div class="omo-search-popup__empty">Aucune recherche demandee.</div>
@@ -284,6 +285,12 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                         } elseif ($module === 'stats' && !empty($action['indicatorId'])) {
                             $buttonAttributes = ' data-omo-search-open-stat-indicator-id="' . (int)$action['indicatorId'] . '"'
                                 . ' data-omo-search-open-stat-indicator-holon="' . (int)($action['holonId'] ?? 0) . '"';
+                        } elseif ($module === 'processus' && !empty($action['checklistId'])) {
+                            $buttonAttributes = ' data-omo-search-open-checklist-id="' . (int)$action['checklistId'] . '"'
+                                . ' data-omo-search-open-checklist-holon="' . (int)($action['holonId'] ?? 0) . '"';
+                        } elseif ($module === 'activities' && !empty($action['activityId'])) {
+                            $buttonAttributes = ' data-omo-search-open-activity-id="' . (int)$action['activityId'] . '"'
+                                . ' data-omo-search-open-activity-holon="' . (int)($action['holonId'] ?? 0) . '"';
                         } elseif ($module === 'faq' && !empty($action['faqId'])) {
                             $buttonAttributes = ' data-omo-search-open-faq="' . (int)$action['faqId'] . '"';
                         } elseif ($module === 'tutorials' && !empty($action['parcoursId'])) {
@@ -301,17 +308,27 @@ if (!function_exists('omoSearchPopupRenderContent')) {
                             </div>
 
                             <div class="omo-search-popup__result-body">
-                                <h4><?= $escape((string)($result['title'] ?? 'Resultat')) ?></h4>
+                                <h4><?= omoSearchPopupHighlightTerms((string)($result['title'] ?? 'Resultat'), $query, $escape) ?></h4>
                                 <?php if ($subtitle !== ''): ?>
-                                    <div class="omo-search-popup__subtitle"><?= $escape($subtitle) ?></div>
+                                    <div class="omo-search-popup__subtitle"><?= omoSearchPopupHighlightTerms($subtitle, $query, $escape) ?></div>
                                 <?php endif; ?>
                                 <?php if (trim((string)($result['excerpt'] ?? '')) !== ''): ?>
-                                    <p class="omo-search-popup__excerpt"><?= $escape((string)$result['excerpt']) ?></p>
+                                    <p class="omo-search-popup__excerpt"><?= omoSearchPopupHighlightTerms((string)$result['excerpt'], $query, $escape) ?></p>
                                 <?php endif; ?>
                             </div>
 
                             <div class="omo-search-popup__actions">
-                                <button type="button" class="generic-action-button generic-action-button--main"<?= $buttonAttributes ?>>Ouvrir</button>
+                                <?php
+                                $previewIdKeys = ['structure' => 'holonId', 'team' => 'userId', 'calendar' => 'eventId',
+                                    'documents' => 'documentId', 'pv' => 'documentId', 'rules' => 'ruleId',
+                                    'decision' => 'decisionId', 'projects' => 'projectId', 'stats' => 'indicatorId',
+                                    'processus' => 'checklistId', 'activities' => 'activityId', 'faq' => 'faqId', 'tutorials' => 'parcoursId'];
+                                ?>
+                                <button type="button" class="generic-action-button generic-action-button--main"
+                                    data-omo-search-preview="<?= $escape($module) ?>"
+                                    data-omo-search-preview-id="<?= (int)($action[$previewIdKeys[$module] ?? ''] ?? 0) ?>"
+                                    data-omo-search-preview-mission="<?= (int)($action['missionId'] ?? 0) ?>"
+                                    <?= $buttonAttributes ?>><?= $escape(omoSearchPreviewT('preview')) ?></button>
                             </div>
                         </article>
                     <?php endforeach; ?>
@@ -515,6 +532,9 @@ omoSearchPopupRenderStyles();
     data-omo-search-popup-root="1"
     data-omo-search-popup-oid="<?= (int)$organizationId ?>"
     data-omo-search-popup-cid="<?= (int)$currentHolonId ?>"
+    data-omo-search-preview-loading="<?= $escape(omoSearchPreviewT('loading')) ?>"
+    data-omo-search-preview-error="<?= $escape(omoSearchPreviewT('error')) ?>"
+    data-omo-search-preview-open-label="<?= $escape(omoSearchPreviewT('open')) ?>"
 >
     <?php omoSearchPopupRenderSearchForm($query, $selectedScopes, $scopeLabels, $dateRange, $escape); ?>
     <div data-omo-search-popup-content>
@@ -600,6 +620,24 @@ omoSearchPopupRenderStyles();
             }
         }
         ?>
+    </div>
+    <div class="omo-overlay-drawer omo-overlay-drawer--detail-panel" data-omo-search-preview-drawer hidden>
+        <div class="omo-overlay-drawer__backdrop" data-omo-search-preview-close></div>
+        <section class="omo-overlay-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="omo-search-preview-title" tabindex="-1">
+            <header class="omo-overlay-drawer__header generic-drawer-header generic-drawer-header--sticky">
+                <div class="generic-drawer-header__copy">
+                    <h3 class="omo-overlay-drawer__title" id="omo-search-preview-title" data-omo-subdrawer-title><?= $escape(omoSearchPreviewT('preview')) ?></h3>
+                </div>
+                <div class="generic-drawer-header__actions">
+                    <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-search-preview-close><?= $escape(omoSearchPreviewT('close')) ?></button>
+                </div>
+            </header>
+            <div class="omo-overlay-drawer__body" data-omo-search-preview-body aria-live="polite"></div>
+            <footer class="generic-drawer-footer">
+                <button type="button" class="generic-action-button generic-action-button--secondary" data-omo-search-preview-retry hidden><?= $escape(omoSearchPreviewT('retry')) ?></button>
+                <div data-omo-search-preview-action></div>
+            </footer>
+        </section>
     </div>
 </div>
 <?php if (is_array($clientJobState)): ?>

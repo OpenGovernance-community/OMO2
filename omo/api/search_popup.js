@@ -14,6 +14,112 @@
 
     root.dataset.omoSearchPopupUiBound = '1';
 
+    var previewDrawer = root.querySelector('[data-omo-search-preview-drawer]');
+    var previewPanel = previewDrawer.querySelector('[role="dialog"]');
+    var previewBody = previewDrawer.querySelector('[data-omo-search-preview-body]');
+    var previewTitle = previewDrawer.querySelector('[data-omo-subdrawer-title]');
+    var previewAction = previewDrawer.querySelector('[data-omo-search-preview-action]');
+    var previewRetry = previewDrawer.querySelector('[data-omo-search-preview-retry]');
+    var previewController = window.omoCreateSubdrawerController({ drawer: previewDrawer });
+    var previewRequest = null;
+    var previewSource = null;
+    var previewInertNodes = [];
+    // Mount beside the scrolling modal body so the drawer fills the visible panel.
+    var previewHost = root.closest('.common-topbar-modal__panel') || root.parentElement;
+    previewHost.appendChild(previewDrawer);
+
+    function closePreview(restoreFocus) {
+        if (previewRequest) { previewRequest.abort(); previewRequest = null; }
+        previewDrawer.classList.remove('is-open');
+        previewDrawer.hidden = true;
+        previewInertNodes.forEach(function (node) { node.inert = false; });
+        previewInertNodes = [];
+        if (restoreFocus && previewSource && previewSource.isConnected) {
+            previewSource.focus({ preventScroll: true });
+        }
+    }
+
+    function showPreview(button) {
+        if (previewRequest) { previewRequest.abort(); }
+        previewSource = button;
+        previewTitle.textContent = button.closest('article').querySelector('h4').textContent;
+        previewAction.replaceChildren();
+        previewRetry.hidden = true;
+        previewBody.classList.add('generic-drawer-content');
+        previewBody.textContent = root.dataset.omoSearchPreviewLoading;
+        previewBody.setAttribute('aria-busy', 'true');
+        previewController.open();
+        Array.prototype.forEach.call(previewHost.children, function (node) {
+            if (node !== previewDrawer && !node.inert) { node.inert = true; previewInertNodes.push(node); }
+        });
+        previewPanel.focus({ preventScroll: true });
+        var controller = new AbortController();
+        previewRequest = controller;
+        var params = new URLSearchParams({
+            oid: organizationId, cid: currentHolonId,
+            module: button.dataset.omoSearchPreview,
+            id: button.dataset.omoSearchPreviewId,
+            mission_id: button.dataset.omoSearchPreviewMission || '0'
+        });
+        fetch('/omo/api/search/preview.php?' + params.toString(), {
+            credentials: 'same-origin', signal: controller.signal,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (response) {
+            if (!response.ok) { throw new Error('Preview unavailable'); }
+            return response.json();
+        }).then(function (preview) {
+            if (controller.signal.aborted || previewRequest !== controller) { return; }
+            previewTitle.textContent = preview.title || previewTitle.textContent;
+            previewBody.classList.remove('generic-drawer-content');
+            previewBody.innerHTML = preview.html;
+            previewBody.removeAttribute('aria-busy');
+            var openButton = button.cloneNode(false);
+            openButton.removeAttribute('data-omo-search-preview');
+            openButton.textContent = root.dataset.omoSearchPreviewOpenLabel;
+            previewAction.replaceChildren(openButton);
+        }).catch(function () {
+            if (controller.signal.aborted || previewRequest !== controller) { return; }
+            previewBody.textContent = root.dataset.omoSearchPreviewError;
+            previewBody.removeAttribute('aria-busy');
+            previewRetry.hidden = false;
+        });
+    }
+
+    function handlePreviewClick(event) {
+        if (event.target.closest('[data-omo-search-preview-close]')) {
+            event.preventDefault();
+            closePreview(true);
+        } else if (event.target.closest('[data-omo-search-preview-retry]')) {
+            showPreview(previewSource);
+        } else {
+            if (previewAction.contains(event.target)) { closePreview(false); }
+            handleResultClick(event);
+        }
+    }
+
+    function handlePreviewKeydown(event) {
+        if (previewDrawer.hidden) { return; }
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            closePreview(true);
+        } else if (event.key === 'Tab') {
+            var buttons = Array.prototype.filter.call(previewPanel.querySelectorAll('button'), function (button) {
+                return !button.hidden && !button.disabled;
+            });
+            var first = buttons[0];
+            var last = buttons[buttons.length - 1];
+            if (event.shiftKey && (document.activeElement === first || document.activeElement === previewPanel)) {
+                event.preventDefault(); last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault(); first.focus();
+            }
+        }
+    }
+
+    previewDrawer.addEventListener('click', handlePreviewClick);
+    window.addEventListener('keydown', handlePreviewKeydown, true);
+
     if (typeof window.commonTopbarInitializeSearchPeriod === 'function') {
         window.commonTopbarInitializeSearchPeriod(searchForm);
     }
@@ -156,6 +262,12 @@
     }
 
     function handleResultClick(event) {
+        var previewButton = event.target.closest('[data-omo-search-preview]');
+        if (previewButton) {
+            event.preventDefault();
+            showPreview(previewButton);
+            return;
+        }
         if (handleStatFilterClick(event)) {
             return;
         }
@@ -223,6 +335,24 @@
             return;
         }
 
+        var checklistButton = event.target.closest('[data-omo-search-open-checklist-id]');
+        if (checklistButton && typeof window.omoOpenSearchChecklistResult === 'function') {
+            window.omoOpenSearchChecklistResult(
+                Number(checklistButton.getAttribute('data-omo-search-open-checklist-id') || '0'),
+                Number(checklistButton.getAttribute('data-omo-search-open-checklist-holon') || '0')
+            );
+            return;
+        }
+
+        var activityButton = event.target.closest('[data-omo-search-open-activity-id]');
+        if (activityButton && typeof window.omoOpenSearchActivityResult === 'function') {
+            window.omoOpenSearchActivityResult(
+                Number(activityButton.getAttribute('data-omo-search-open-activity-id') || '0'),
+                Number(activityButton.getAttribute('data-omo-search-open-activity-holon') || '0')
+            );
+            return;
+        }
+
         var faqButton = event.target.closest('[data-omo-search-open-faq]');
         if (faqButton && typeof window.omoOpenFaqHashState === 'function') {
             window.omoOpenFaqHashState(Number(faqButton.getAttribute('data-omo-search-open-faq') || '0'));
@@ -245,6 +375,10 @@
     root.addEventListener('click', handleResultClick);
 
     window.__omoPopupCleanup = function () {
+        closePreview(false);
+        previewDrawer.removeEventListener('click', handlePreviewClick);
+        window.removeEventListener('keydown', handlePreviewKeydown, true);
+        previewDrawer.remove();
         if (searchForm) {
             searchForm.removeEventListener('submit', relaunchSearch);
         }
