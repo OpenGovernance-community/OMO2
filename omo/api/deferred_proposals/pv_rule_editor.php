@@ -66,6 +66,8 @@ $operation = DeferredProposal::OPERATION_CREATE;
 $selectedRuleId = 0;
 $proposalHolonId = 0;
 $editorState = [
+    'scope' => Rule::SCOPE_LOCAL,
+    'IDauthority' => null,
     'title' => '',
     'intention' => '',
     'description' => '',
@@ -167,7 +169,11 @@ foreach ($holonCatalog as $catalogHolonId => $catalogEntry) {
             <div class="generic-soft-panel generic-soft-panel--stack"><strong><?= omoApiEscape((string)($editorState['title'] ?: $tr('rule'))) ?></strong><span><?= omoApiEscape($tr('delete_workflow_help')) ?></span></div>
         <?php endif; ?>
         <div data-deferred-fields<?= $operation === DeferredProposal::OPERATION_DELETE ? ' hidden' : '' ?>>
-        <?php omoDeferredEditorRenderFields('rule', $editorState); ?>
+        <?php
+        $scopeHolon = new \dbObject\Holon();
+        $scopeContext = Rule::getScopeContext($scopeHolon->load($holonId) ? $scopeHolon : null);
+        omoDeferredEditorRenderFields('rule', $editorState + ['scopeContext' => $scopeContext]);
+        ?>
         </div>
         <p class="generic-feedback" data-deferred-feedback hidden></p>
         <div class="generic-action-row"><button class="generic-action-button generic-action-button--main" type="submit" data-deferred-submit<?= $operationAllowed && ($operation === DeferredProposal::OPERATION_CREATE || $rules) ? '' : ' disabled' ?>><?= omoApiEscape($tr($proposalId > 0 ? 'save_edit' : 'save_create')) ?></button><button class="generic-action-button generic-action-button--secondary" type="button" data-deferred-cancel><?= omoApiEscape($tr('cancel')) ?></button></div>
@@ -182,6 +188,7 @@ foreach ($holonCatalog as $catalogHolonId => $catalogEntry) {
     </div>
 </section>
 <link rel="stylesheet" href="<?= commonAssetUrl('/omo/api/deferred_proposals/pv_rule_editor.css') ?>">
+<script src="<?= commonAssetUrl('/common/choice/rule-scope-fields.js') ?>"></script>
 <?= commonPageScriptTags('/omo/api/deferred_proposals/pv_rule_editor.js', [
     'labels' => $holonLabels,
     'permissions' => $permissionsByOperation,

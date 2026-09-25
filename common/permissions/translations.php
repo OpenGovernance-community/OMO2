@@ -3,6 +3,8 @@
 function commonPermissionEditorSourceLang(): array
 {
     return [
+        'extended' => ['text' => 'Autorité étendue', 'context' => 'Optional extended personal permission for a scope'],
+        'extended_help' => ['text' => 'Les droits Membres et Admin de cette portee exigent une activation consciente des autorites etendues. Les droits du Collectif restent permanents.', 'context' => 'Explanation of extended permissions and collective independence'],
         'search' => ['text' => 'Rechercher un droit ou une application', 'context' => 'Permission editor search field.'],
         'assigned' => ['text' => 'Droits attribués uniquement', 'context' => 'Filter for local or inherited permission assignments.'],
         'expand' => ['text' => 'Tout déplier', 'context' => 'Expand permission application groups.'],

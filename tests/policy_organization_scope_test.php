@@ -39,6 +39,7 @@ namespace dbObject {
         private int $id = 0;
         public function load($id): bool { $this->id = (int)$id; return $this->id === 9; }
         public function getId(): int { return $this->id; }
+        public function getHolonEditorPropertyDefinitions(): array { return []; }
         public function get($field) { return $field === 'IDorganization' ? 42 : null; }
         public function isDescendantOf($id, $includeSelf = false): bool { return $includeSelf && (int)$id === $this->id; }
     }
@@ -100,6 +101,13 @@ namespace {
     policyAssert(count($rules) === 2, 'Root holon must list its own and organization rules.');
     $rules->loadForPolicyContexts(42, [9]);
     policyAssert(count($rules) === 1 && $rules[0]->getId() === 2, 'Child context must exclude organization rules.');
+    $rules->loadForPolicyContexts(42, [], true, 'local');
+    policyAssert(count($rules) === 1 && $rules[0]->getId() === 1, 'Local without a structure lists directly attached organization rules.');
+    $rules->loadForPolicyContexts(42, [], false, 'global');
+    policyAssert(count($rules) === 2, 'Global needs no selected holon and includes the whole organization.');
+    foreach (['children', 'descendants', 'unknown'] as $oldScope) {
+        policyAssert(\dbObject\ArrayRule::normalizeViewScope($oldScope) === 'contextual', 'Retired or invalid filters fall back to contextual.');
+    }
 
     echo "policy_organization_scope_test: OK\n";
 }

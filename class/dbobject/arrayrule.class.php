@@ -41,15 +41,20 @@ class ArrayRule extends ArrayDbObject
         $this->loadForPolicyContexts($organizationId, [(int)$contextHolon->getId()]);
     }
 
+    public static function normalizeViewScope($scope): string
+    {
+        return in_array($scope, ['local', 'contextual', 'global'], true) ? $scope : 'contextual';
+    }
+
     /**
-     * Load the rules effective for at least one holon in a displayed context
-     * scope. The rule itself is included once even when it applies to several
-     * holons of that scope.
+     * Contextual: applicable rules; local: rules defined in the selected holons;
+     * global: all rules of this organization. Each rule is included once.
      */
-    public function loadForPolicyContexts($organizationId, array $contextHolonIds, $includeOrganizationRules = false)
+    public function loadForPolicyContexts($organizationId, array $contextHolonIds, $includeOrganizationRules = false, $viewScope = 'contextual')
     {
         $this->exchangeArray([]);
         $organizationId = (int)$organizationId;
+        $viewScope = self::normalizeViewScope($viewScope);
         $contextHolons = [];
         foreach ($contextHolonIds as $contextHolonId) {
             $contextHolonId = (int)$contextHolonId;
@@ -62,7 +67,7 @@ class ArrayRule extends ArrayDbObject
                 $contextHolons[$contextHolonId] = $contextHolon;
             }
         }
-        if ($organizationId <= 0 || (count($contextHolons) === 0 && !$includeOrganizationRules)) {
+        if ($organizationId <= 0 || ($viewScope !== 'global' && count($contextHolons) === 0 && !$includeOrganizationRules)) {
             return;
         }
 
@@ -85,20 +90,26 @@ class ArrayRule extends ArrayDbObject
             if (!$rule->load((int)($row['id'] ?? 0))) {
                 continue;
             }
-            $scope = Rule::normalizeScope($rule->get('scope'));
+            if ($viewScope === 'global') {
+                $this[] = $rule;
+                continue;
+            }
             $sourceHolon = $rule->getHolon();
             if (!($sourceHolon instanceof Holon)) {
                 if ($includeOrganizationRules && (int)$rule->get('IDorganization') === $organizationId
                     && (int)$rule->get('IDauthority') === 0 && (int)$rule->get('IDholon') === 0) {
                     $this[] = $rule;
+                    continue;
                 }
+            }
+
+            if ($viewScope === 'local') {
+                if ($sourceHolon instanceof Holon && isset($contextHolons[(int)$sourceHolon->getId()])) $this[] = $rule;
                 continue;
             }
 
             foreach ($contextHolons as $contextHolon) {
-                if ($scope === Rule::SCOPE_GLOBAL
-                    || ($scope === Rule::SCOPE_LOCAL && (int)$sourceHolon->getId() === (int)$contextHolon->getId())
-                    || ($scope === Rule::SCOPE_DESCENDANTS && $contextHolon->isDescendantOf((int)$sourceHolon->getId(), true))) {
+                if ($rule->appliesToHolon($contextHolon)) {
                     $this[] = $rule;
                     break;
                 }

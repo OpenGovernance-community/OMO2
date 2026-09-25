@@ -786,7 +786,13 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
         }, 180);
     }
 
-    function openIndicator(indicatorId) {
+    function openIndicator(indicatorId, importId) {
+        var resolvedImportId = Number(importId || 0);
+        if (Number.isInteger(resolvedImportId) && resolvedImportId > 0) {
+            // Imports belong to the current list context, not the source indicator's route.
+            openDrawerWithUrl(detailBaseUrl + (detailBaseUrl.indexOf('?') === -1 ? '?' : '&') + 'import_id=' + encodeURIComponent(String(resolvedImportId)));
+            return;
+        }
         var resolvedId = Number(indicatorId || 0);
         if (!Number.isInteger(resolvedId) || resolvedId <= 0) {
             return;
@@ -1542,7 +1548,7 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
                 return;
             }
             event.preventDefault();
-            openIndicator(item.getAttribute('data-omo-stats-indicator-id'));
+            openIndicator(item.getAttribute('data-omo-stats-indicator-id'), item.getAttribute('data-omo-stats-import-id'));
         }
         item.addEventListener('click', activate);
         item.addEventListener('keydown', activate);
@@ -1641,8 +1647,10 @@ window.commonPageScripts["/omo/api/stats/stats.js"] = function (pageConfig, page
             deleteImportData.append('stats_action', 'delete_import');
             deleteImportData.append('import_id', deleteImportButton.getAttribute('data-omo-stats-delete-import') || '');
             deleteImportData.append('oid', root.getAttribute('data-omo-stats-oid') || '');
+            deleteImportData.append('cid', String(routeCid));
             deleteImportButton.disabled = true;
             postFormData(deleteImportData).then(function () {
+                closeDrawer({force: true});
                 return refreshRoot(currentUrl);
             }).catch(function (error) {
                 deleteImportButton.disabled = false;

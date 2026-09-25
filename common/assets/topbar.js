@@ -1296,9 +1296,13 @@
             return;
         }
 
+        var notice = button.getAttribute('data-admin-mode-confirm');
+        if (button.getAttribute('data-admin-mode-enabled') === '1' && notice && !window.confirm(notice)) return;
+
         var formData = new FormData();
         formData.append('enabled', button.getAttribute('data-admin-mode-enabled') === '1' ? '1' : '0');
         formData.append('return_to', window.location.pathname + window.location.search);
+        if (button.hasAttribute('data-admin-mode-csrf')) formData.append('csrf_token', button.getAttribute('data-admin-mode-csrf'));
         if (organizationId !== '') {
             formData.append('organization_id', organizationId);
         }

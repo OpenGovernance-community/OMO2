@@ -2565,6 +2565,32 @@ html[data-theme="dark"] .generic-tabs__tab:focus-visible .generic-monochrome-ico
     cursor: pointer;
 }
 
+/* Full-width accessible toggle when actions sit beside the accordion title. */
+.generic-accordion__trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--generic-space-3);
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.generic-accordion__trigger:focus-visible {
+    outline: 2px solid var(--color-primary, #2563eb);
+    outline-offset: 3px;
+}
+
+.generic-search-highlight {
+    background: #fde68a;
+    color: #422006;
+}
+
 .generic-accordion--action-only .generic-accordion__header {
     cursor: default;
 }

@@ -198,7 +198,7 @@ function normalizePermissionRanges(value) {
     const seen = new Set();
 
     ranges.forEach(function (range) {
-        const normalizedRange = String(range || '').trim();
+        const normalizedRange = window.omoPermissionAssignments.range(range);
         if (!normalizedRange || seen.has(normalizedRange)) {
             return;
         }
@@ -237,7 +237,7 @@ function readPermissions() {
                 const profileKey = String(checkbox.getAttribute('data-permission-profile') || '').trim();
                 if (!Object.prototype.hasOwnProperty.call(assignments, profileKey)) return;
                 if (!assignments[profileKey][permissionKey]) assignments[profileKey][permissionKey] = [];
-                assignments[profileKey][permissionKey].push(range);
+                assignments[profileKey][permissionKey].push(window.omoPermissionAssignments.readScope(scope, profileKey));
             });
         });
     });
@@ -425,7 +425,7 @@ function getPermissionProfiles() {
 function getPermissionAssignmentsForKey(assignments, permissionKey) {
     const selected = {};
     getPermissionProfiles().forEach(function (profile) {
-        selected[profile.key] = normalizePermissionRanges((assignments[profile.key] || {})[permissionKey]);
+        selected[profile.key] = window.omoPermissionAssignments.values((assignments[profile.key] || {})[permissionKey]);
     });
     return selected;
 }
@@ -437,7 +437,7 @@ function readPermissionRowAssignments(row) {
         if (!range) return;
         Array.from(scope.querySelectorAll('[data-permission-profile]:checked')).forEach(function (checkbox) {
             const profileKey = String(checkbox.getAttribute('data-permission-profile') || '').trim();
-            if (Object.prototype.hasOwnProperty.call(assignments, profileKey)) assignments[profileKey].push(range);
+            if (Object.prototype.hasOwnProperty.call(assignments, profileKey)) assignments[profileKey].push(window.omoPermissionAssignments.readScope(scope, profileKey));
         });
     });
     return assignments;
@@ -481,6 +481,7 @@ function setPermissionRowRanges(row, selectedAssignments, rangeOptions, profiles
         }).join('');
     }
 
+    window.omoPermissionAssignments.decorate(row, selectedByProfile);
     if (select) {
         select.value = '';
     }
@@ -518,7 +519,7 @@ function bindPermissionRow(row, rangeOptions, labelRangeOptions) {
         const selectedAssignments = readPermissionRowAssignments(row);
         Object.keys(selectedAssignments).forEach(function (profileKey) {
             selectedAssignments[profileKey] = selectedAssignments[profileKey].filter(function (range) {
-                return range !== removedRange;
+                return window.omoPermissionAssignments.range(range) !== removedRange;
             });
         });
         setPermissionRowRanges(row, selectedAssignments, labelRangeOptions || rangeOptions);
@@ -1751,7 +1752,7 @@ function createPropertyRow(property, index) {
         + renderInheritedValue(property)
         + '  <' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 ? 'div' : 'label') + ' class="omo-holon-create__field generic-form-field">'
         + '      <span>Valeur locale</span>'
-        + '      <div class="omo-holon-create__property-input">' + renderPropertyInput(property) + '</div>'
+        + '      <div class="omo-holon-create__property-input">' + renderPropertyInput(window.omoPropertyListConversion.sourceProperty(property)) + '</div>'
         + '  </' + ([5, 7].indexOf(Number(property.formatId || 0)) >= 0 ? 'div' : 'label') + '>'
         + '</div>';
 
@@ -1771,6 +1772,7 @@ function createPropertyRow(property, index) {
         });
     }
 
+    window.omoPropertyListConversion.mount(row, property, '.omo-holon-create__property-input', '.omo-holon-create__direct-property-format');
     return row;
 }
 
@@ -1799,6 +1801,7 @@ function getDirectPropertyDraft(row) {
     return {
         id: Number(row.dataset.propertyId || 0),
         holonPropertyId: Number(row.dataset.holonPropertyId || 0),
+        listConversionFrom: String(row.dataset.listConversionFrom || ''),
         name: String(nameField && nameField.value ? nameField.value : row.dataset.propertyName || ''),
         shortname: String(row.dataset.shortname || ''),
         formatId: formatId,
@@ -1944,6 +1947,7 @@ function syncTemplateSelection(preferredTemplateId, sourceProperties) {
 
 // Sérialise valeur propriété
 function serializePropertyValue(row) {
+    if (row.dataset.listConversionFrom) return String(row.dataset.conversionValue || '');
     const formatId = Number(row.dataset.formatId || 0);
     const listItemType = String(row.dataset.listItemType || 'text');
     const canEditValue = String(row.dataset.canEditValue || '0') === '1';
@@ -2040,6 +2044,7 @@ function readProperties() {
             shortname: String(row.dataset.shortname || ''),
             formatId: Number(row.dataset.formatId || 0),
             listItemType: listItemType,
+            listConversionFrom: String(row.dataset.listConversionFrom || ''),
             value: value
         };
 
@@ -2616,6 +2621,8 @@ root.addEventListener('change', function (event) {
             return;
         }
         const propertyDraft = getDirectPropertyDraft(propertyRow);
+        if (event.target.matches('.omo-holon-create__direct-property-list-type')
+            && !window.omoPropertyListConversion.change(propertyDraft, propertyRow.dataset.listItemType, event.target, getAuthorityCatalog())) return;
         if (event.target.matches('.omo-holon-create__direct-property-format')) {
             propertyDraft.value = '';
         }

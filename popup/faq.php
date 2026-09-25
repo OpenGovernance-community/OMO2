@@ -164,7 +164,7 @@ if ($canManageAllFaqs) {
 					</div>
 					<div class="faq-popup__toolbar-actions generic-action-row">
 						<?php if ($canAddFaq): ?>
-							<button type="button" class="faq-popup__add generic-action-button generic-action-button--main" data-faq-add>Ajouter une question</button>
+							<button type="button" class="faq-popup__add generic-action-button generic-action-button--main" data-faq-add>Ajouter une FAQ</button>
 						<?php endif; ?>
 					</div>
 				</div>

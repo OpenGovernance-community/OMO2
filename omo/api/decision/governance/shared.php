@@ -47,6 +47,8 @@ if (!function_exists('omoDecisionGovernanceGetSourceLang')) {
             'governance.action.rule_delete' => ['text' => 'Supprimer une règle', 'context' => 'Rule deletion governance action label.'],
             'governance.action.role_update' => ['text' => 'Modifier un rôle', 'context' => 'Role update governance action label.'],
             'governance.action.role_create' => ['text' => 'Créer un rôle', 'context' => 'Role creation governance action label.'],
+            'governance.action.role_move' => ['text' => 'Deplacer un role ou cercle', 'context' => 'Deferred holon move action'],
+            'governance.action.move' => ['text' => 'Deplacement', 'context' => 'Deferred holon move operation'],
             'governance.action.role_delete' => ['text' => 'Supprimer un rôle', 'context' => 'Role deletion governance action label.'],
             'governance.action.project_update' => ['text' => 'Modifier un projet', 'context' => 'Project update deferred proposal label.'],
             'governance.action.project_create' => ['text' => 'Créer un projet', 'context' => 'Project creation deferred proposal label.'],

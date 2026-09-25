@@ -157,5 +157,54 @@
         });
     }
 
-    return {prepareQuery, prepareFields, wordQuality, score, excerpt, highlight};
+    // Literal filtering needs exact ranges, including phrases across inline markup.
+    function highlightLiteral(node, value, className = 'generic-search-highlight') {
+        const query = normalize(value).trim();
+        if (!query) return;
+        const document = node.ownerDocument;
+        const walker = document.createTreeWalker(node, 4);
+        const nodes = [];
+        let text = '';
+        while (walker.nextNode()) {
+            const current = walker.currentNode;
+            if (current.parentElement.closest('script, style, textarea')) continue;
+            nodes.push({node: current, start: text.length, end: text.length + current.length});
+            text += current.nodeValue;
+        }
+        let normalized = '';
+        const offsets = [];
+        let offset = 0;
+        for (const character of text) {
+            const part = normalize(character);
+            for (let i = 0; i < part.length; i++) offsets.push({start: offset, end: offset + character.length});
+            if (!part && offsets.length) offsets[offsets.length - 1].end = offset + character.length;
+            normalized += part;
+            offset += character.length;
+        }
+        const ranges = [];
+        for (let start = normalized.indexOf(query); start !== -1; start = normalized.indexOf(query, start + query.length)) {
+            ranges.push({start: offsets[start].start, end: offsets[start + query.length - 1].end});
+        }
+        nodes.forEach(entry => {
+            const hits = ranges.filter(range => range.start < entry.end && range.end > entry.start);
+            if (!hits.length) return;
+            const fragment = document.createDocumentFragment();
+            const value = entry.node.nodeValue;
+            let offset = 0;
+            hits.forEach(hit => {
+                const start = Math.max(0, hit.start - entry.start);
+                const end = Math.min(value.length, hit.end - entry.start);
+                fragment.appendChild(document.createTextNode(value.slice(offset, start)));
+                const mark = document.createElement('mark');
+                mark.className = className;
+                mark.textContent = value.slice(start, end);
+                fragment.appendChild(mark);
+                offset = end;
+            });
+            fragment.appendChild(document.createTextNode(value.slice(offset)));
+            entry.node.replaceWith(fragment);
+        });
+    }
+
+    return {prepareQuery, prepareFields, wordQuality, score, excerpt, highlight, highlightLiteral};
 });

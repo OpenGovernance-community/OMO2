@@ -504,6 +504,7 @@ $displayItemCount = count($statsEntries);
                             <article
                                 class="generic-section omo-stats-card<?= $overdueSeverity === 'error' ? ' omo-stats-card--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-card--warning' : '') ?>"
                                 data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"
+                                data-omo-stats-import-id="<?= (int)$item['importId'] ?>"
                                 data-omo-stats-search-item
                                 tabindex="0"
                                 role="button"
@@ -656,6 +657,7 @@ $displayItemCount = count($statsEntries);
                                 <div
                                     class="generic-file-list__row omo-stats-compact__row<?= $item['overdueSeverity'] === 'error' ? ' omo-stats-compact__row--overdue' : ($item['overdueSeverity'] === 'warning' ? ' omo-stats-compact__row--warning' : '') ?>"
                                     data-omo-stats-indicator-id="<?= (int)$indicator->getId() ?>"
+                                    data-omo-stats-import-id="<?= (int)$item['importId'] ?>"
                                     tabindex="0"
                                     role="button"
                                     aria-label="<?= omoApiEscape(omoStatsT('stats.card.open', ['name' => $indicatorName])) ?>"

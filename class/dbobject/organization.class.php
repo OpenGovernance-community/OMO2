@@ -4364,7 +4364,7 @@
 				$rule->set('title', $title);
 				$rule->set('intention', trim((string)($record['intention'] ?? '')) ?: null);
 				$rule->set('description', $description);
-				$rule->set('scope', $targetAuthorityId > 0 ? \dbObject\Rule::normalizeScope($record['scope'] ?? null) : \dbObject\Rule::SCOPE_LOCAL);
+				$rule->set('scope', \dbObject\Rule::normalizeScope($record['scope'] ?? null));
 				$rule->set('review_date', $reviewDate);
 				$rule->set('expiration_date', $expirationDate);
 				$saveResult = $rule->save();
@@ -4449,7 +4449,8 @@
 						$assignmentsByPermissionKey[$memberType][$permissionKey] = array();
 					}
 
-					$assignmentsByPermissionKey[$memberType][$permissionKey][] = $range;
+					$assignmentsByPermissionKey[$memberType][$permissionKey][] = !empty($row['is_extended'])
+						? ['range' => $range, 'is_extended' => true] : $range;
 				}
 			}
 
@@ -8796,7 +8797,7 @@
 						'title' => (string)$rule->get('title'),
 						'intention' => (string)$rule->get('intention'),
 						'description' => (string)$rule->get('description'),
-						'scope' => \dbObject\Rule::SCOPE_LOCAL,
+						'scope' => \dbObject\Rule::normalizeScope($rule->get('scope')),
 						'reviewDate' => $rule->get('review_date') instanceof \DateTimeInterface ? $rule->get('review_date')->format('Y-m-d') : (string)$rule->get('review_date'),
 						'expirationDate' => $rule->get('expiration_date') instanceof \DateTimeInterface ? $rule->get('expiration_date')->format('Y-m-d') : (string)$rule->get('expiration_date'),
 					);
@@ -9768,8 +9769,22 @@
 			}));
 		}
 
-		protected function canMoveHolonToParent(\dbObject\Holon $holon, \dbObject\Holon $targetParent, ?\dbObject\Holon $rootHolon = null)
+		protected function hasHolonMovePermission(\dbObject\Holon $holon, int $collectiveHolonId = 0, int $userId = 0): bool
 		{
+			return $collectiveHolonId > 0
+				? HolonPermission::holonHasCollectivePermissionForHolonContext((int)$this->getId(), $collectiveHolonId, 'CAN_MOVE_HOLON', (int)$holon->getId())
+				: $holon->isAllowed('CAN_MOVE_HOLON', false, $userId);
+		}
+
+		public function canMoveHolonToParent(\dbObject\Holon $holon, \dbObject\Holon $targetParent, ?\dbObject\Holon $rootHolon = null, int $collectiveHolonId = 0, int $userId = 0)
+		{
+			$rootHolon = $rootHolon ?: $this->getStructuralRootHolon();
+			if (!$rootHolon || !$this->containsHolon($holon)
+				|| !in_array((int)$holon->get('IDtypeholon'), [1, 2, 3], true)
+				|| $holon->isTemplateNode((int)$rootHolon->getId())
+				|| !$this->hasHolonMovePermission($holon, $collectiveHolonId, $userId)) {
+				return false;
+			}
 			$targetTypeId = (int)$targetParent->get('IDtypeholon');
 			if (!in_array($targetTypeId, array(2, 3, 4), true)) {
 				return false;
@@ -9779,7 +9794,7 @@
 				return false;
 			}
 
-			if (!$targetParent->canEdit()) {
+			if (!$this->hasHolonMovePermission($targetParent, $collectiveHolonId, $userId)) {
 				return false;
 			}
 
@@ -9816,7 +9831,7 @@
 			return $this->isTemplateAvailableForHolonCreation($template, $targetParent, (int)$holon->getId());
 		}
 
-		protected function buildMovableHolonDestinationCatalog(\dbObject\Holon $candidate, array &$catalog, $rootHolonId, \dbObject\Holon $movingHolon, array $path = array())
+		protected function buildMovableHolonDestinationCatalog(\dbObject\Holon $candidate, array &$catalog, $rootHolonId, \dbObject\Holon $movingHolon, array $path = array(), int $collectiveHolonId = 0)
 		{
 			$rootHolonId = (int)$rootHolonId;
 			if ((int)$candidate->getId() !== $rootHolonId && $candidate->isTemplateNode($rootHolonId)) {
@@ -9830,7 +9845,7 @@
 			$currentPath = $path;
 			$currentPath[] = $candidate->getDisplayName();
 
-			if ($this->canMoveHolonToParent($movingHolon, $candidate)) {
+			if ($this->canMoveHolonToParent($movingHolon, $candidate, null, $collectiveHolonId)) {
 				$catalog[] = array(
 					'id' => (int)$candidate->getId(),
 					'name' => $candidate->getDisplayName(),
@@ -9842,7 +9857,7 @@
 			}
 
 			foreach ($candidate->getChildren() as $child) {
-				$this->buildMovableHolonDestinationCatalog($child, $catalog, $rootHolonId, $movingHolon, $currentPath);
+				$this->buildMovableHolonDestinationCatalog($child, $catalog, $rootHolonId, $movingHolon, $currentPath, $collectiveHolonId);
 			}
 		}
 
@@ -9886,7 +9901,7 @@
 			}
 		}
 
-		public function getHolonMoveEditorData($holonId = 0)
+		public function getHolonMoveEditorData($holonId = 0, int $collectiveHolonId = 0)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
@@ -9941,12 +9956,12 @@
 				);
 			}
 
-			$data['canMove'] = $currentParent && $holon->canEdit() && $currentParent->canEdit();
+			$data['canMove'] = $currentParent && $this->hasHolonMovePermission($holon, $collectiveHolonId);
 			if (!$data['canMove']) {
 				return $data;
 			}
 
-			$this->buildMovableHolonDestinationCatalog($rootHolon, $data['destinations'], (int)$rootHolon->getId(), $holon);
+			$this->buildMovableHolonDestinationCatalog($rootHolon, $data['destinations'], (int)$rootHolon->getId(), $holon, [], $collectiveHolonId);
 
 			return $data;
 		}
@@ -10875,15 +10890,15 @@
 				$permissionId = $permission ? (int)$permission->getId() : 0;
 				$visibleItems = array();
 
-				foreach ((array)$ranges as $range) {
-					$range = trim((string)$range);
+				foreach ((array)$ranges as $assignment) {
+					$range = HolonPermission::getAssignmentRange($assignment);
 					if ($range === '') {
 						continue;
 					}
 
 					$visibleItems[] = array(
-						'id' => $range,
-						'label' => (string)($rangeLabels[$range] ?? $range),
+						'id' => $range . (HolonPermission::isExtendedAssignment($assignment) ? ':extended' : ''),
+						'label' => (string)($rangeLabels[$range] ?? $range) . (HolonPermission::isExtendedAssignment($assignment) ? ' (Autorité étendue)' : ''),
 					);
 				}
 
@@ -10945,13 +10960,14 @@
 							$collectedAssignments[$memberType][$permissionKey] = array();
 						}
 
-						foreach ((array)$ranges as $range) {
-							$range = trim((string)$range);
+						foreach ((array)$ranges as $assignment) {
+							$range = HolonPermission::getAssignmentRange($assignment);
 							if ($range === '') {
 								continue;
 							}
 
-							$collectedAssignments[$memberType][$permissionKey][$range] = $range;
+							$assignmentKey = $range . (HolonPermission::isExtendedAssignment($assignment) ? ':extended' : '');
+							$collectedAssignments[$memberType][$permissionKey][$assignmentKey] = $assignment;
 						}
 					}
 				}
@@ -13140,6 +13156,8 @@
 			if ($isTemplateEditing) {
 				$holon->syncTemplateProperties($templateDefinitions, (int)$rootHolon->getId());
 			} else {
+				$conversionResult = \dbObject\Property::convertListDefinitions($holon, $submittedDirectDefinitions);
+				if (empty($conversionResult['status'])) { return $conversionResult; }
 				$resolvedDirectDefinitions = $holon->syncDirectEditorPropertyDefinitions(
 					$submittedDirectDefinitions,
 					(int)$rootHolon->getId()
@@ -13279,7 +13297,7 @@
 			);
 		}
 
-		public function moveHolonDefinition($holonId = 0, $targetParentId = 0, $userId = 0)
+		public function moveHolonDefinition($holonId = 0, $targetParentId = 0, $userId = 0, int $collectiveHolonId = 0)
 		{
 			$rootHolon = $this->getStructuralRootHolon();
 			$holonId = (int)$holonId;
@@ -13331,14 +13349,14 @@
 				);
 			}
 
-			if (!$holon->canEdit() || !$currentParent->canEdit() || !$targetParent->canEdit()) {
+			if (!$this->hasHolonMovePermission($holon, $collectiveHolonId, (int)$userId) || !$this->hasHolonMovePermission($targetParent, $collectiveHolonId, (int)$userId)) {
 				return array(
 					'status' => false,
 'message' => "Vous n’avez pas les droits pour déplacer cet espace.",
 				);
 			}
 
-			if (!$this->canMoveHolonToParent($holon, $targetParent, $rootHolon)) {
+			if (!$this->canMoveHolonToParent($holon, $targetParent, $rootHolon, $collectiveHolonId, (int)$userId)) {
 				return array(
 					'status' => false,
 					'message' => "Le parent cible n'est pas compatible avec ce deplacement.",
@@ -13347,9 +13365,9 @@
 
 			$previousParentId = (int)$currentParent->getId();
 			$holon->set('IDholon_parent', $targetParentId);
-			$holon->save();
+			$saveResult = $holon->save();
 
-			if ((int)$holon->get('IDholon_parent') !== $targetParentId) {
+			if (!is_array($saveResult) || empty($saveResult['status'])) {
 				return array(
 					'status' => false,
 'message' => "L’espace n’a pas pu être déplacé.",
@@ -13676,6 +13694,9 @@
 				);
 			}
 
+			$conversionResult = \dbObject\Property::convertListDefinitions($template, $submittedProperties);
+			if (empty($conversionResult['status'])) { return $conversionResult; }
+
 			$template->syncTemplateProperties(
 				$submittedProperties,
 				(int)$rootHolon->getId()
@@ -13940,6 +13961,12 @@
 				if ($propertyId > 0) {
 					$submittedValuesByPropertyId[$propertyId] = $definition['value'] ?? '';
 				}
+			}
+
+			$conversionResult = \dbObject\Property::convertListDefinitions($holon, $definitions);
+			if (empty($conversionResult['status'])) { return $conversionResult; }
+			foreach ($definitions as $definition) {
+				$submittedValuesByPropertyId[(int)($definition['id'] ?? 0)] = $definition['value'] ?? '';
 			}
 
 			$authoritySyncResult = $this->syncSubmittedAuthorityPropertyValues($holon, $submittedValuesByPropertyId, $definitions, $userId);

@@ -1203,6 +1203,28 @@ function commonClearCurrentUserAllAdminModes()
 {
     commonClearCurrentUserAdminMode();
     commonClearCurrentUserSiteAdminMode();
+    unset($_SESSION['extendedAuthoritiesByOrganization']);
+}
+
+function commonCurrentUserCanUseExtendedAuthorities($organizationId): bool
+{
+    return \dbObject\HolonPermission::userHasExtendedAuthorities((int)commonGetCurrentUserId(), (int)$organizationId);
+}
+
+function commonCurrentUserIsExtendedAuthoritiesEnabled($organizationId): bool
+{
+    $userId = (int)commonGetCurrentUserId();
+    return $userId > 0 && (int)($_SESSION['extendedAuthoritiesByOrganization'][(int)$organizationId] ?? 0) === $userId;
+}
+
+function commonSetCurrentUserExtendedAuthorities(bool $enabled, int $organizationId): bool
+{
+    $active = $enabled && $organizationId > 0 && commonCurrentUserCanUseExtendedAuthorities($organizationId);
+    if ($active) $_SESSION['extendedAuthoritiesByOrganization'][$organizationId] = (int)commonGetCurrentUserId();
+    else unset($_SESSION['extendedAuthoritiesByOrganization'][$organizationId]);
+    commonClearCurrentUserPermissionCache();
+    commonGetCurrentUserOrganizationPermissionSet($organizationId, true);
+    return $active;
 }
 
 function commonCurrentUserCanUseAdminMode($organizationId = null)
@@ -1613,6 +1635,10 @@ function commonIsCurrentUserPermissionCacheEntryFresh(array $permissionCacheEntr
     }
 
     if ((int)($permissionCacheEntry['userId'] ?? 0) !== $currentUserId) {
+        return false;
+    }
+
+    if (!empty($permissionCacheEntry['extendedAuthoritiesActive']) !== commonCurrentUserIsExtendedAuthoritiesEnabled($organizationId)) {
         return false;
     }
 

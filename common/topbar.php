@@ -305,6 +305,15 @@ function commonRenderTopbar(array $options = [])
                 'statusInactiveLabel' => (string)($options['profile']['adminMode']['statusInactiveLabel'] ?? 'Mode admin d organisation inactif'),
                 'toggleUrl' => (string)($options['profile']['adminMode']['toggleUrl'] ?? '/common/admin_mode.php'),
             ],
+            'extendedAuthorities' => [
+                'enabled' => !empty($options['profile']['extendedAuthorities']['enabled']),
+                'active' => !empty($options['profile']['extendedAuthorities']['active']),
+                'organizationId' => (int)($options['profile']['extendedAuthorities']['organizationId'] ?? 0),
+                'enableLabel' => (string)($options['profile']['extendedAuthorities']['enableLabel'] ?? ''),
+                'disableLabel' => (string)($options['profile']['extendedAuthorities']['disableLabel'] ?? ''),
+                'notice' => (string)($options['profile']['extendedAuthorities']['notice'] ?? ''),
+                'csrfToken' => (string)($options['profile']['extendedAuthorities']['csrfToken'] ?? ''),
+            ],
             'siteAdminMode' => [
                 'enabled' => !empty($options['profile']['siteAdminMode']['enabled']),
                 'active' => !empty($options['profile']['siteAdminMode']['active']),
@@ -767,6 +776,17 @@ function commonRenderTopbar(array $options = [])
                                 </div>
                             <?php endif; ?>
                             <button type="button" class="common-topbar__menu-item common-topbar-profile-actions__button" data-topbar-profile-edit><?= htmlspecialchars($config['profile']['editLabel']) ?></button>
+                            <?php if (!empty($config['profile']['extendedAuthorities']['enabled'])): ?>
+                                <button type="button"
+                                    class="common-topbar__menu-item common-topbar-profile-actions__button common-topbar-profile-actions__button--mode <?= !empty($config['profile']['extendedAuthorities']['active']) ? 'common-topbar-profile-actions__button--active' : 'common-topbar-profile-actions__button--inactive' ?>"
+                                    data-topbar-admin-mode-toggle
+                                    data-admin-mode-url="/common/extended_authorities.php"
+                                    data-admin-mode-organization-id="<?= (int)$config['profile']['extendedAuthorities']['organizationId'] ?>"
+                                    data-admin-mode-enabled="<?= !empty($config['profile']['extendedAuthorities']['active']) ? '0' : '1' ?>"
+                                    data-admin-mode-confirm="<?= htmlspecialchars($config['profile']['extendedAuthorities']['notice']) ?>"
+                                    data-admin-mode-csrf="<?= htmlspecialchars($config['profile']['extendedAuthorities']['csrfToken']) ?>"
+                                ><?= htmlspecialchars(!empty($config['profile']['extendedAuthorities']['active']) ? $config['profile']['extendedAuthorities']['disableLabel'] : $config['profile']['extendedAuthorities']['enableLabel']) ?></button>
+                            <?php endif; ?>
                             <?php if (!empty($config['profile']['adminMode']['enabled'])): ?>
                                 <button
                                     type="button"

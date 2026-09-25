@@ -1715,10 +1715,10 @@
 					}
 
 					$ranges = is_array($ranges) ? array_values($ranges) : array();
-					sort($ranges);
+					usort($ranges, static fn ($a, $b) => strcmp(HolonPermission::getAssignmentRange($a), HolonPermission::getAssignmentRange($b)));
 
-					foreach ($ranges as $range) {
-						$range = trim((string)$range);
+					foreach ($ranges as $assignment) {
+						$range = HolonPermission::getAssignmentRange($assignment);
 						if ($range === '') {
 							continue;
 						}
@@ -1727,6 +1727,7 @@
 							'permissionKey' => $permissionKey,
 							'range' => $range,
 							'memberType' => $memberType,
+							'is_extended' => HolonPermission::isExtendedAssignment($assignment),
 						);
 					}
 				}

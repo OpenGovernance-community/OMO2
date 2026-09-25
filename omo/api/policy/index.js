@@ -54,7 +54,7 @@
     };
     var normalizeView = function (view) {
         view = view && typeof view === 'object' ? view : {};
-        var scope = view.scope === 'children' || view.scope === 'descendants' ? view.scope : 'contextual';
+        var scope = view.scope === 'local' || view.scope === 'global' ? view.scope : 'contextual';
         if (!filterPanel || !filterPanel.querySelector('[data-policy-scope-choice="' + scope + '"]')) scope = root.dataset.policyScope || 'contextual';
         var sort = view.sort === 'created' || view.sort === 'updated' ? view.sort : 'alpha';
         var group = view.group === 'authority' ? 'authority' : (view.group === 'none' ? 'none' : 'holon');
@@ -301,9 +301,21 @@
         var query = normalizeQuickSearch(currentQuickSearch);
         var visibleCount = 0;
         root.querySelectorAll('[data-policy-rule-card]').forEach(function (ruleCard) {
-            var searchableText = ruleCard.getAttribute('data-policy-rule-search') || ruleCard.textContent || '';
+            var searchFields = Array.from(ruleCard.querySelectorAll('[data-policy-search-text]'));
+            var searchableText = searchFields.map(function (field) {
+                return field.getAttribute('data-policy-search-value') || field.textContent || '';
+            }).join(' ');
             var matches = query === '' || normalizeQuickSearch(searchableText).indexOf(query) !== -1;
             ruleCard.classList.toggle('is-filter-hidden', !matches);
+            searchFields.forEach(function (field) {
+                field.querySelectorAll('mark.generic-search-highlight').forEach(function (mark) {
+                    mark.replaceWith(document.createTextNode(mark.textContent));
+                });
+                field.normalize();
+                if (matches && query && window.commonSearchText) {
+                    window.commonSearchText.highlightLiteral(field, query);
+                }
+            });
             if (matches) visibleCount++;
         });
         root.querySelectorAll('[data-policy-rule-group]').forEach(function (group) {
@@ -395,6 +407,7 @@
         });
     }
     window.requestAnimationFrame(syncPolicyGroupStickyOffsets);
+    if (typeof window.initGenericComponents === 'function') window.initGenericComponents(root);
     window.addEventListener('resize', syncPolicyGroupStickyOffsets);
     var closeRuleMenus = function (exceptMenu) {
         root.querySelectorAll('[data-policy-rule-menu]').forEach(function (menu) {
@@ -496,6 +509,7 @@
             if (!nextBody || !nextCount || !listBody || !count) throw new Error(root.dataset.policyLoadError);
             if (!root.isConnected) return;
             listBody.innerHTML = nextBody.innerHTML;
+            if (typeof window.initGenericComponents === 'function') window.initGenericComponents(listBody);
             count.textContent = nextCount.textContent;
             quickSearchEmpty = root.querySelector('[data-policy-search-empty]');
             applyQuickSearch();
@@ -537,6 +551,7 @@
             if (drawerTitle) drawerTitle.textContent = form.getAttribute('data-policy-form-title') || omoPolicyDefaultDrawerTitle;
             if (drawerDescription) drawerDescription.textContent = form.getAttribute('data-policy-form-description') || omoPolicyDefaultDrawerDescription;
             mountPolicyHtmlFields(form);
+            if (window.omoInitRuleScopeFields) window.omoInitRuleScopeFields(form);
             if (typeof window.initGenericComponents === 'function') window.initGenericComponents(body);
         }).catch(function () { window.commonNotify(root.dataset.policyLoadError, 'error'); close(); });
     };

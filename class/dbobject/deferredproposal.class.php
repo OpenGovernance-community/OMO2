@@ -11,6 +11,7 @@ class DeferredProposal extends DbObject
     public const OPERATION_CREATE = 'create';
     public const OPERATION_UPDATE = 'update';
     public const OPERATION_DELETE = 'delete';
+    public const OPERATION_MOVE = 'move';
 
     public const STATUS_PENDING = 'pending';
     public const STATUS_VALIDATED = 'validated';
@@ -105,6 +106,7 @@ class DeferredProposal extends DbObject
             self::OPERATION_CREATE => 'CAN_ADD_HOLON',
             self::OPERATION_UPDATE => 'CAN_EDIT_HOLON',
             self::OPERATION_DELETE => 'CAN_DELETE_HOLON',
+            self::OPERATION_MOVE => 'CAN_MOVE_HOLON',
             default => '',
         };
     }
@@ -311,6 +313,7 @@ class DeferredProposal extends DbObject
             self::OPERATION_CREATE => self::getHolonOperationPermissionKey(self::OPERATION_CREATE),
             self::OPERATION_UPDATE => self::getHolonOperationPermissionKey(self::OPERATION_UPDATE),
             self::OPERATION_DELETE => self::getHolonOperationPermissionKey(self::OPERATION_DELETE),
+            self::OPERATION_MOVE => self::getHolonOperationPermissionKey(self::OPERATION_MOVE),
         ];
         $permissionSet = HolonPermission::buildHolonCollectivePermissionSetForOrganization(
             $organizationId,
@@ -523,6 +526,46 @@ class DeferredProposal extends DbObject
         };
         $collect($rootHolon);
         return $catalog;
+    }
+
+    public static function captureHolonMoveState(Holon $holon): array
+    {
+        $parent = $holon->getParentHolon();
+        return DecisionGovernanceAction::captureHolonState($holon) + [
+            'parent_id' => (int)$holon->get('IDholon_parent'),
+            'parent_label' => $parent ? (string)$parent->getFullDisplayName() : '',
+        ];
+    }
+
+    public static function validateHolonMove(Organization $organization, Holon $holon, int $destinationId, int $collectiveHolonId): array
+    {
+        $destination = new Holon();
+        if ($collectiveHolonId <= 0 || !$destination->load($destinationId)
+            || $destinationId === (int)$holon->get('IDholon_parent')
+            || !$organization->canMoveHolonToParent($holon, $destination, null, $collectiveHolonId)) {
+            return ['status' => false, 'message' => 'Le deplacement est incompatible ou hors du perimetre autorise au collectif.'];
+        }
+        $state = self::captureHolonMoveState($holon);
+        $state['parent_id'] = $destinationId;
+        $state['parent_label'] = (string)$destination->getFullDisplayName();
+        return ['status' => true, 'state' => $state];
+    }
+
+    protected static function applyHolonMove(self $proposal, int $collectiveHolonId): array
+    {
+        $organization = new Organization();
+        $holon = new Holon();
+        $before = self::normalizeState($proposal->get('before_state'));
+        $after = self::normalizeState($proposal->get('after_state'));
+        if (!$organization->load((int)$proposal->get('IDorganization'))
+            || !$holon->load((int)$proposal->get('target_id'))
+            || (int)$holon->get('IDholon_parent') !== (int)($before['parent_id'] ?? 0)
+            || (int)$holon->get('IDholon_template') !== (int)($before['template_id'] ?? 0)) {
+            return ['status' => false, 'conflict' => true, 'message' => 'Le holon a ete deplace, supprime ou son modele a change depuis la proposition.'];
+        }
+        $validation = self::validateHolonMove($organization, $holon, (int)($after['parent_id'] ?? 0), $collectiveHolonId);
+        if (empty($validation['status'])) return $validation;
+        return $organization->moveHolonDefinition((int)$holon->getId(), (int)$after['parent_id'], 0, $collectiveHolonId);
     }
 
     public static function captureProjectState(Project $project): array
@@ -966,7 +1009,9 @@ class DeferredProposal extends DbObject
         foreach (self::getForPvPoint((int)$point->getId(), true) as $proposal) {
             if ($proposal instanceof self) $proposals[] = $proposal;
         }
-        return self::applyBatch($proposals, (int)$point->get('IDholon_concerned'), $userId, 'pv_point:' . (int)$point->getId());
+        $document = new Document();
+        $collectiveHolonId = $document->load((int)$point->get('IDdocument')) ? (int)$document->getPvContextHolonId() : 0;
+        return self::applyBatch($proposals, $collectiveHolonId, $userId, 'pv_point:' . (int)$point->getId());
     }
 
     public static function applyAcceptedForDecision(DecisionProcess $decision): array
@@ -1053,6 +1098,10 @@ class DeferredProposal extends DbObject
 
     protected static function applyOne(self $proposal, int $contextHolonId): array
     {
+        if ((string)$proposal->get('target_type') === self::TARGET_HOLON
+            && (string)$proposal->get('operation') === self::OPERATION_MOVE) {
+            return self::applyHolonMove($proposal, $contextHolonId);
+        }
         // The existing governance executor remains the single source of truth
         // for rules and roles while the other editors receive capture modes.
         if ((string)$proposal->get('target_type') === self::TARGET_PROJECT) {
