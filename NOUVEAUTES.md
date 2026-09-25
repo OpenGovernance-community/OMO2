@@ -1,5 +1,7 @@
 # Journal Des Nouveautes
 
+- Recherche : nom du fichier TopbarSearchRanker corrige en minuscules pour le chargement automatique sur Linux ; test de casse ajoute pour detecter aussi ce probleme sous Windows.
+
 - Structure : les membres ordinaires restent empiles meme quand ils tiennent sur une ligne. La souris les deploie au survol, y compris sur un ordinateur a ecran tactile ; le doigt les deploie au toucher. L'apercu utilise trois lignes au maximum selon la largeur, avec "..." en derniere position si necessaire. Les administrateurs restent visibles a cote.
 
 - Recherche : synthese des compteurs sans cadre englobant, modules contenant des resultats mis en evidence et filtre actif distingue par un contour renforce.

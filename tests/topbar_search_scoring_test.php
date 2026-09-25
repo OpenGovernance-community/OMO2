@@ -1,8 +1,21 @@
 <?php
 declare(strict_types=1);
 
-require_once dirname(__DIR__) . '/class/dbobject/topbarSearchRanker.class.php';
 use dbObject\TopbarSearchRanker;
+
+// Exercise the lowercase path used by shared_functions.php, without its session/DB bootstrap.
+spl_autoload_register(static function (string $class): void {
+    if ($class !== TopbarSearchRanker::class) { return; }
+    $path = dirname(__DIR__) . '/class/' . str_replace('\\', '/', strtolower($class)) . '.class.php';
+    // Windows would otherwise hide a filename case mismatch that breaks Linux deployments.
+    if (!in_array(basename($path), scandir(dirname($path)), true)) {
+        throw new RuntimeException('Class filename must match the lowercase autoload path: ' . $path);
+    }
+    require_once $path;
+});
+if (!class_exists(TopbarSearchRanker::class)) {
+    throw new RuntimeException('Search ranker could not be autoloaded.');
+}
 
 function searchAssert(bool $condition, string $message): void
 {
