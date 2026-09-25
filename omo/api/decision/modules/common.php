@@ -920,6 +920,7 @@ if (!function_exists('omoDecisionRenderGovernanceChanges')) {
         }
         static $sourceLang = [
             'pending' => ['text' => 'Cette modification sera appliquée si la proposition est retenue.', 'context' => 'Decision modification awaiting a vote'],
+            'move' => ['text' => 'Deplacer', 'context' => 'Deferred holon move action'],
             'validated' => ['text' => 'Cette modification a été validée et reste en attente d’application.', 'context' => 'Decision modification approved but not applied'],
             'applied' => ['text' => 'Cette modification a été appliquée.', 'context' => 'Decision modification successfully applied'],
             'rejected' => ['text' => 'Cette modification n’a pas été appliquée : la proposition n’a pas été retenue.', 'context' => 'Decision modification rejected by the vote'],
@@ -1005,6 +1006,7 @@ if (!function_exists('omoDecisionRenderGovernanceChanges')) {
                 \dbObject\DeferredProposal::OPERATION_CREATE => 'Créer',
                 \dbObject\DeferredProposal::OPERATION_UPDATE => 'Modifier',
                 \dbObject\DeferredProposal::OPERATION_DELETE => 'Supprimer',
+                \dbObject\DeferredProposal::OPERATION_MOVE => t('move', [], $lang, $sourceLang),
                 default => 'Modifier',
             };
             $target = trim((string)($summaryData['title'] ?? ''));

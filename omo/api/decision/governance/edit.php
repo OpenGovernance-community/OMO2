@@ -122,7 +122,7 @@ $indicatorCatalog = DeferredProposal::getObjectTargetHolonCatalog((int)$context[
 $contextLabels = [];
 $contextPermissions = [
     DeferredProposal::TARGET_RULE => ['create' => [], 'update' => [], 'delete' => []],
-    DeferredProposal::TARGET_HOLON => ['create' => [], 'update' => [], 'delete' => []],
+    DeferredProposal::TARGET_HOLON => ['create' => [], 'update' => [], 'delete' => [], 'move' => []],
     DeferredProposal::TARGET_PROJECT => ['create' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_RECURRING_TASK => ['create' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_INDICATOR => ['create' => [], 'update' => [], 'delete' => []],
@@ -138,7 +138,7 @@ foreach ($ruleCatalog as $catalogHolonId => $entry) {
 }
 foreach ($holonCatalog as $catalogHolonId => $entry) {
     if (!empty($entry['permissions'][DeferredProposal::OPERATION_CREATE])) $contextPermissions[DeferredProposal::TARGET_HOLON]['create'][] = (int)$catalogHolonId;
-    foreach ([DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE] as $catalogOperation) {
+    foreach ([DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE, DeferredProposal::OPERATION_MOVE] as $catalogOperation) {
         if (empty($entry['permissions'][$catalogOperation])) continue;
         $catalogHolon = new \dbObject\Holon();
         $parentHolon = $catalogHolon->load((int)$catalogHolonId) ? $catalogHolon->getParentHolon() : null;
@@ -196,6 +196,9 @@ $payload = [
         'ruleDelete' => omoDecisionGovernanceT('governance.action.rule_delete'),
         'roleUpdate' => omoDecisionGovernanceT('governance.action.role_update'),
         'roleCreate' => omoDecisionGovernanceT('governance.action.role_create'),
+        'roleMove' => omoDecisionGovernanceT('governance.action.role_move'),
+        'move' => omoDecisionGovernanceT('governance.action.move'),
+        'moveEmpty' => omoDeferredEditorT('move_empty'),
         'roleDelete' => omoDecisionGovernanceT('governance.action.role_delete'),
         'projectUpdate' => omoDecisionGovernanceT('governance.action.project_update'),
         'projectCreate' => omoDecisionGovernanceT('governance.action.project_create'),
@@ -322,7 +325,7 @@ $payload = [
         <?php endif; ?>
     </form>
 
-    <?php foreach (['rule', 'project'] as $editorTargetType): ?>
+    <?php foreach (['rule', 'project', 'holon_move'] as $editorTargetType): ?>
     <template data-governance-fields="<?= $editorTargetType ?>">
         <section class="generic-section generic-section--stack generic-section--roomy">
             <form class="generic-form-stack" data-editor>
@@ -338,6 +341,7 @@ $payload = [
     <script type="application/json" data-governance-data><?= omoDecisionGovernanceEncodeJson($payload, '{}') ?></script>
 </section>
 <script src="/common/choice/word-diff.js?v=20260815"></script>
+<script src="<?= commonAssetUrl('/common/choice/rule-scope-fields.js') ?>"></script>
 <script src="/common/choice/change-details.js?v=20260924-readable-diffs"></script>
-<script src="/common/choice/governance-actions.js?v=20260924-shared-object-forms"></script>
+<script src="<?= commonAssetUrl('/common/choice/governance-actions.js') ?>"></script>
 <script>if(window.omoGovernanceEditorInit){window.omoGovernanceEditorInit(document);}</script>

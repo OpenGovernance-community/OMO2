@@ -1,5 +1,25 @@
 # Journal Des Nouveautes
 
+- Regles : les filtres Local, Contextuelles et Global remplacent Local, Enfants directs et Descendants. Local liste les regles definies dans le holon, Contextuelles rassemble ses regles applicables (cercle proche, ascendants et globales), Global affiche tout le reglement de l organisation. Les anciens filtres enregistres reviennent sur Contextuelles.
+
+- Regles : l aide du selecteur de portee affiche uniquement l explication du choix actuel et se met a jour au clic.
+
+- Regles : choix de portee locale, cercle, descendante ou globale avec le selecteur des vues. Pour un role, le cercle inclut son cercle parent et ses enfants directs. Si les domaines d autorite sont utilises, une autorite associee est exigee pour les portees globale, descendante et cercle depuis un role. Controle partage avec les PV et decisions, affichage des changements de portee et conservation dans les exports. Migration SQL ajoutee.
+
+- Regles : affichage en accordeons fermes par defaut, y compris pendant la recherche. Les correspondances sont surlignees dans les titres et contenus, sans distinction de casse ou d accents et en conservant la mise en forme.
+
+- Autorites : les noms acceptent maintenant les textes longs, sans limite de 255 caracteres ni troncature lors de la conversion des listes. Migration SQL ajoutee et aller-retour texte / autorite teste avec des libelles longs en UTF-8.
+
+- Holons : la conversion des listes d autorites vers du texte conserve aussi les textes anciens restes dans ces listes. Les erreurs distinguent une autorite supprimee d une autorite d une autre organisation, avec la liste, le holon et l identifiant concernes.
+
+- Droits : chaque portee peut etre marquee comme Autorite etendue pour les membres et admins (libelle harmonise dans les editeurs de holons et de modeles). Ces autorites etendues restent inactives par defaut ; les personnes concernees peuvent les activer dans leur profil apres un rappel de leur usage temporaire au service de l organisation. Activation et desactivation recalculent les droits, et le marquage est conserve dans les modeles et exports.
+
+- Holons : le passage d une liste texte a une liste d autorites, et inversement, demande confirmation puis convertit les valeurs lors de l enregistrement, y compris dans les holons partageant la definition. Le retour au texte conserve les noms, supprime les autorites et leurs instances de modele, conserve les regles dans leur holon et detache les sous-autorites. La conversion est annulee en cas d erreur ou de reference dans une autre liste.
+
+- Indicateurs : un indicateur importe ouvre un sous-drawer lie a son import, avec une action Detacher qui retire uniquement cet import. Le contexte est transmis lors du detachement et l'indicateur original ainsi que ses valeurs sont conserves. Le texte explicatif du detachement est retire du sous-drawer.
+
+- Structure : nouveau droit CAN_MOVE_HOLON pour deplacer les holons dans son perimetre, avec menu et destinations filtres et controle serveur. Les PV et decisions hors reorganisation peuvent proposer un deplacement differe, afficher le parent avant/apres et verifier a nouveau les droits et la structure lors de la validation.
+
 - Recherche : nom du fichier TopbarSearchRanker corrige en minuscules pour le chargement automatique sur Linux ; test de casse ajoute pour detecter aussi ce probleme sous Windows.
 
 - Structure : les membres ordinaires restent empiles meme quand ils tiennent sur une ligne. La souris les deploie au survol, y compris sur un ordinateur a ecran tactile ; le doigt les deploie au toucher. L'apercu utilise trois lignes au maximum selon la largeur, avec "..." en derniere position si necessaire. Les administrateurs restent visibles a cote.

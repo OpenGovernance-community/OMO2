@@ -9,6 +9,7 @@ class Rule extends DbObject
     public const SCOPE_GLOBAL = 'global';
     public const SCOPE_DESCENDANTS = 'descendants';
     public const SCOPE_LOCAL = 'local';
+    public const SCOPE_CIRCLE = 'circle';
 
     public static function tableName()
     {
@@ -34,7 +35,7 @@ class Rule extends DbObject
         return [
             'id' => 'ID',
             'IDauthority' => 'Domaine d autorite',
-            'IDholon' => 'Holon local',
+            'IDholon' => 'Espace de rattachement',
             'IDorganization' => 'Organisation',
             'title' => 'Titre',
             'intention' => 'Intention',
@@ -53,10 +54,10 @@ class Rule extends DbObject
     {
         return [
             'IDauthority' => 'Autorite precise dans laquelle cette regle est definie.',
-            'IDholon' => 'Holon auquel une regle locale est directement rattachee.',
+            'IDholon' => 'Holon auquel la regle est directement rattachee.',
             'intention' => 'Pourquoi cette regle a ete creee.',
             'description' => 'Contenu HTML simple de la regle: texte, mise en forme, listes et liens.',
-            'scope' => 'Global, descendants ou uniquement le contexte local.',
+            'scope' => 'Contexte local, cercle et enfants directs, descendants ou organisation entiere.',
             'review_date' => 'Date a laquelle la regle doit etre requestionnee.',
             'expiration_date' => 'Apres cette date, la regle n est plus valide.',
         ];
@@ -77,6 +78,7 @@ class Rule extends DbObject
                 [self::SCOPE_GLOBAL, 'Globale'],
                 [self::SCOPE_DESCENDANTS, 'Descendante'],
                 [self::SCOPE_LOCAL, 'Locale'],
+                [self::SCOPE_CIRCLE, 'Cercle'],
             ],
         ];
     }
@@ -114,13 +116,83 @@ class Rule extends DbObject
 
     public static function scopes()
     {
-        return [self::SCOPE_GLOBAL, self::SCOPE_DESCENDANTS, self::SCOPE_LOCAL];
+        return [self::SCOPE_LOCAL, self::SCOPE_CIRCLE, self::SCOPE_DESCENDANTS, self::SCOPE_GLOBAL];
     }
 
     public static function normalizeScope($value)
     {
         $value = trim(mb_strtolower((string)$value, 'UTF-8'));
         return in_array($value, self::scopes(), true) ? $value : self::SCOPE_LOCAL;
+    }
+
+    public static function getScopeContext(?Holon $holon): array
+    {
+        $authorities = new ArrayAuthority();
+        $usesAuthorities = false;
+        if ($holon instanceof Holon) {
+            $authorities->loadForHolon((int)$holon->getId());
+            foreach ($holon->getHolonEditorPropertyDefinitions() as $definition) {
+                if (PropertyFormat::isListFormat((int)($definition['formatId'] ?? 0))
+                    && Property::normalizeListItemType($definition['listItemType'] ?? null) === Property::LIST_ITEM_AUTHORITY) {
+                    $usesAuthorities = true;
+                    break;
+                }
+            }
+        }
+        $items = [];
+        foreach ($authorities as $authority) {
+            if ((int)$authority->get('is_shell') === 1) continue;
+            $items[] = ['id' => (int)$authority->getId(), 'label' => (string)$authority->get('label')];
+        }
+        return [
+            'usesAuthorities' => $usesAuthorities || count($authorities) > 0,
+            'isRole' => $holon instanceof Holon && (int)$holon->get('IDtypeholon') === 1,
+            'authorities' => $items,
+        ];
+    }
+
+    public static function validateScopeAttachment($scope, ?Holon $holon, $authorityId = 0): array
+    {
+        if (!in_array($scope, self::scopes(), true)) {
+            return ['status' => false, 'text' => 'La portee de la regle est invalide.'];
+        }
+        $context = self::getScopeContext($holon);
+        if ((int)$authorityId > 0) {
+            if (!in_array((int)$authorityId, array_column($context['authorities'], 'id'), true)) {
+                return ['status' => false, 'text' => 'Le domaine d autorite doit etre actif et rattache a cet espace.'];
+            }
+        } elseif ($context['usesAuthorities'] && ($scope === self::SCOPE_GLOBAL || $scope === self::SCOPE_DESCENDANTS
+            || ($scope === self::SCOPE_CIRCLE && $context['isRole']))) {
+            return ['status' => false, 'text' => 'Un domaine d autorite est obligatoire pour cette portee.'];
+        }
+        return ['status' => true];
+    }
+
+    public function appliesToHolon(Holon $contextHolon): bool
+    {
+        $scope = self::normalizeScope($this->get('scope'));
+        if ($scope === self::SCOPE_GLOBAL) return true;
+        $source = $this->getHolon();
+        if (!$source instanceof Holon) {
+            $organization = new Organization();
+            if (!$organization->load($this->getOrganizationId())) return false;
+            $source = $organization->getEnabledStructuralRootHolon();
+        }
+        if (!$source instanceof Holon) return false;
+        if ($scope === self::SCOPE_CIRCLE) {
+            $circle = $contextHolon->getContainingCircle(true);
+            if ($circle instanceof Holon && ((int)$source->getId() === (int)$circle->getId()
+                || (int)$source->get('IDholon_parent') === (int)$circle->getId())) {
+                return true;
+            }
+        }
+        if ($scope === self::SCOPE_CIRCLE && (int)$source->get('IDtypeholon') === 1) {
+            $source = $source->getContainingCircle() ?? $source;
+        }
+        $sourceId = (int)$source->getId();
+        if ($sourceId === (int)$contextHolon->getId()) return true;
+        if ($scope === self::SCOPE_CIRCLE) return (int)$contextHolon->get('IDholon_parent') === $sourceId;
+        return $scope === self::SCOPE_DESCENDANTS && $contextHolon->isDescendantOf($sourceId, true);
     }
 
     public function save()
@@ -133,6 +205,7 @@ class Rule extends DbObject
         $description = self::sanitizeContentHtml($this->get('description'));
         $reviewDate = $this->normalizeDate($this->get('review_date'));
         $expirationDate = $this->normalizeDate($this->get('expiration_date'));
+        $scope = trim((string)$this->get('scope')) ?: self::SCOPE_LOCAL;
 
         if ($title === '' || $description === '' || !$reviewDate || !$expirationDate) {
             return ['status' => false, 'text' => 'A rule requires a title, description, review date and expiration date.'];
@@ -181,10 +254,18 @@ class Rule extends DbObject
         }
         $this->set('IDorganization', $organizationId);
 
+        $scopeHolon = $this->getHolon();
+        if (!$scopeHolon instanceof Holon) {
+            $scopeOrganization = new Organization();
+            if ($scopeOrganization->load($organizationId)) $scopeHolon = $scopeOrganization->getEnabledStructuralRootHolon();
+        }
+        $scopeValidation = self::validateScopeAttachment($scope, $scopeHolon, $authorityId);
+        if (empty($scopeValidation['status'])) return $scopeValidation;
+
         $this->set('title', $title);
         $this->set('intention', $intention !== '' ? $intention : null);
         $this->set('description', $description);
-        $this->set('scope', $authorityId > 0 ? self::normalizeScope($this->get('scope')) : self::SCOPE_LOCAL);
+        $this->set('scope', $scope);
         $this->set('review_date', $reviewDate->format('Y-m-d'));
         $this->set('expiration_date', $expirationDate->format('Y-m-d'));
 

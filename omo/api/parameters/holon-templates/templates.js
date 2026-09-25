@@ -848,7 +848,7 @@ function omoHolonTemplateGetPermissionProfiles() {
 function omoHolonTemplateGetPermissionAssignmentsForKey(assignments, permissionKey) {
     const selected = {};
     omoHolonTemplateGetPermissionProfiles().forEach(function (profile) {
-        selected[profile.key] = omoHolonTemplateNormalizePermissionRanges((assignments[profile.key] || {})[permissionKey]);
+        selected[profile.key] = window.omoPermissionAssignments.values((assignments[profile.key] || {})[permissionKey]);
     });
     return selected;
 }
@@ -872,7 +872,7 @@ function omoHolonTemplateReadPermissions() {
                 const profileKey = String(checkbox.getAttribute('data-permission-profile') || '').trim();
                 if (!Object.prototype.hasOwnProperty.call(assignments, profileKey)) return;
                 if (!assignments[profileKey][permissionKey]) assignments[profileKey][permissionKey] = [];
-                assignments[profileKey][permissionKey].push(range);
+                assignments[profileKey][permissionKey].push(window.omoPermissionAssignments.readScope(scope, profileKey));
             });
         });
     });
@@ -886,7 +886,7 @@ function omoHolonTemplateNormalizePermissionRanges(value) {
     const seen = new Set();
 
     ranges.forEach(function (range) {
-        const normalizedRange = String(range || '').trim();
+        const normalizedRange = window.omoPermissionAssignments.range(range);
         if (!normalizedRange || seen.has(normalizedRange)) {
             return;
         }
@@ -950,6 +950,7 @@ function omoHolonTemplateSetPermissionRowRanges(row, selectedAssignments, rangeO
         }).join('');
     }
 
+    window.omoPermissionAssignments.decorate(row, selectedByProfile);
     if (select) {
         select.value = '';
     }
@@ -985,7 +986,7 @@ function omoHolonTemplateBindPermissionRow(row, rangeOptions, labelRangeOptions)
         const selectedAssignments = omoHolonTemplateReadPermissionRowAssignments(row);
         Object.keys(selectedAssignments).forEach(function (profileKey) {
             selectedAssignments[profileKey] = selectedAssignments[profileKey].filter(function (range) {
-                return range !== removedRange;
+                return window.omoPermissionAssignments.range(range) !== removedRange;
             });
         });
         omoHolonTemplateSetPermissionRowRanges(row, selectedAssignments, labelRangeOptions || rangeOptions);
@@ -999,7 +1000,7 @@ function omoHolonTemplateReadPermissionRowAssignments(row) {
         if (!range) return;
         Array.from(scope.querySelectorAll('[data-permission-profile]:checked')).forEach(function (checkbox) {
             const profileKey = String(checkbox.getAttribute('data-permission-profile') || '').trim();
-            if (Object.prototype.hasOwnProperty.call(assignments, profileKey)) assignments[profileKey].push(range);
+            if (Object.prototype.hasOwnProperty.call(assignments, profileKey)) assignments[profileKey].push(window.omoPermissionAssignments.readScope(scope, profileKey));
         });
     });
     return assignments;
@@ -2203,6 +2204,7 @@ function omoHolonTemplateRefreshPropertyIndexes() {
 }
 
 function omoHolonTemplateSerializePropertyValue(row, formatId, listItemType) {
+    if (row.dataset.listConversionFrom) return String(row.dataset.conversionValue || '');
     const htmlFieldHost = row.querySelector('[data-omo-html-field="1"]');
     if (Number(formatId || 0) === 5 && htmlFieldHost && htmlFieldHost.__omoSimpleHtmlField && typeof htmlFieldHost.__omoSimpleHtmlField.getValue === 'function') {
         return String(htmlFieldHost.__omoSimpleHtmlField.getValue() || '');
@@ -2374,7 +2376,7 @@ function omoHolonTemplateCreatePropertyRow(property) {
         ? ''
         : '<' + valueFieldTag + ' class="omo-field omo-template-property__value-field">'
             + '      <span>' + omoHolonTemplateEscapeHtml(valueFieldTitle) + '</span>'
-            + '      <div class="omo-template-property__value-control">' + omoHolonTemplateRenderValueInputHtml(normalizedProperty) + '</div>'
+            + '      <div class="omo-template-property__value-control">' + omoHolonTemplateRenderValueInputHtml(window.omoPropertyListConversion.sourceProperty(normalizedProperty)) + '</div>'
             + '      <small class="omo-template-property__value-help">' + omoHolonTemplateEscapeHtml(omoHolonTemplateGetValueHelpText(normalizedProperty.formatId, normalizedProperty)) + '</small>'
             + '  </' + valueFieldTag + '>';
 
@@ -2413,6 +2415,7 @@ function omoHolonTemplateCreatePropertyRow(property) {
         });
     }
 
+    window.omoPropertyListConversion.mount(row, normalizedProperty, '.omo-template-property__value-control', '.omo-template-property__format');
     return row;
 }
 
@@ -2447,6 +2450,7 @@ function omoHolonTemplateReadPropertyState(row) {
     return {
         id: Number(row.dataset.propertyId || 0),
         holonPropertyId: Number(row.dataset.holonPropertyId || 0),
+        listConversionFrom: String(row.dataset.listConversionFrom || ''),
         name: (row.querySelector('.omo-template-property__name') || {}).value || '',
         formatId: formatId,
         listItemType: listItemType,
@@ -3175,7 +3179,15 @@ if (omoHolonTemplateElements.root) {
             return;
         }
 
+        const previousType = String(row.dataset.listItemType || 'text');
+        const targetType = propertyField.value;
+        if (propertyField.matches('.omo-template-property__list-item-type')) propertyField.value = previousType;
         const propertyState = omoHolonTemplateReadPropertyState(row);
+        if (propertyField.matches('.omo-template-property__list-item-type')) {
+            propertyField.value = targetType;
+            propertyState.listItemType = targetType;
+            if (!window.omoPropertyListConversion.change(propertyState, previousType, propertyField, omoHolonTemplateGetAuthorityCatalog())) return;
+        }
         const replacement = omoHolonTemplateCreatePropertyRow(propertyState);
         row.replaceWith(replacement);
     });

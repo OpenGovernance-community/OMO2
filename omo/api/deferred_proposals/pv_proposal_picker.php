@@ -22,6 +22,8 @@ $sourceLang = [
     'action' => ['text' => 'Action', 'context' => 'Deferred proposal operation label'],
     'create' => ['text' => 'Création', 'context' => 'Deferred proposal create operation'],
     'update' => ['text' => 'Modification', 'context' => 'Deferred proposal update operation'],
+    'move' => ['text' => 'Deplacement', 'context' => 'Deferred holon move operation'],
+    'move_holon' => ['text' => 'Deplacer le role ou cercle', 'context' => 'Deferred holon move editor'],
     'delete' => ['text' => 'Suppression', 'context' => 'Deferred proposal delete operation'],
     'context' => ['text' => 'Contexte', 'context' => 'Deferred proposal context label'],
     'open_context' => ['text' => 'Choisir un contexte dans la structure', 'context' => 'Deferred proposal context picker button'],
@@ -116,7 +118,7 @@ foreach ([$ruleCatalog, $holonCatalog, $projectCatalog, $recurringTaskCatalog, $
 }
 $contextPermissions = [
     DeferredProposal::TARGET_RULE => ['create' => [], 'update' => [], 'delete' => []],
-    DeferredProposal::TARGET_HOLON => ['create' => [], 'update' => [], 'delete' => []],
+    DeferredProposal::TARGET_HOLON => ['create' => [], 'update' => [], 'delete' => [], 'move' => []],
     DeferredProposal::TARGET_PROJECT => ['create' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_RECURRING_TASK => ['create' => [], 'update' => [], 'delete' => []],
     DeferredProposal::TARGET_INDICATOR => ['create' => [], 'update' => [], 'delete' => []],
@@ -128,7 +130,7 @@ foreach ($ruleCatalog as $holonId => $entry) {
 }
 foreach ($holonCatalog as $holonId => $entry) {
     if (!empty($entry['permissions'][DeferredProposal::OPERATION_CREATE])) $contextPermissions[DeferredProposal::TARGET_HOLON]['create'][] = (int)$holonId;
-    foreach ([DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE] as $catalogOperation) {
+    foreach ([DeferredProposal::OPERATION_UPDATE, DeferredProposal::OPERATION_DELETE, DeferredProposal::OPERATION_MOVE] as $catalogOperation) {
         if (empty($entry['permissions'][$catalogOperation])) continue;
         $targetHolon = new Holon();
         $parentHolon = $targetHolon->load((int)$holonId) ? $targetHolon->getParentHolon() : null;
@@ -161,7 +163,7 @@ $targetRegistry = [
 ];
 $buttonLabels = [
     DeferredProposal::TARGET_RULE => ['create' => $tr('create_rule'), 'update' => $tr('update_rule'), 'delete' => $tr('delete_rule')],
-    DeferredProposal::TARGET_HOLON => ['create' => $tr('create_holon'), 'update' => $tr('update_holon'), 'delete' => $tr('delete_holon')],
+    DeferredProposal::TARGET_HOLON => ['create' => $tr('create_holon'), 'update' => $tr('update_holon'), 'delete' => $tr('delete_holon'), 'move' => $tr('move_holon')],
     DeferredProposal::TARGET_PROJECT => ['create' => $tr('create_project'), 'propose' => $tr('propose_project'), 'update' => $tr('update_project'), 'delete' => $tr('delete_project')],
     DeferredProposal::TARGET_RECURRING_TASK => ['create' => $tr('create_recurring_task'), 'update' => $tr('update_recurring_task'), 'delete' => $tr('delete_recurring_task')],
     DeferredProposal::TARGET_INDICATOR => ['create' => $tr('create_indicator'), 'update' => $tr('update_indicator'), 'delete' => $tr('delete_indicator')],
@@ -180,7 +182,7 @@ $buttonLabels = [
         </div>
     </div>
     <div class="generic-form-grid omo-deferred-workflow__selection-row">
-        <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('action')) ?></span><select class="generic-form-control" data-deferred-operation<?= $proposalId > 0 ? ' disabled' : '' ?>><option value="create"<?= $operation === 'create' ? ' selected' : '' ?>><?= omoApiEscape($tr('create')) ?></option><option value="update"<?= $operation === 'update' ? ' selected' : '' ?>><?= omoApiEscape($tr('update')) ?></option><option value="delete"<?= $operation === 'delete' ? ' selected' : '' ?>><?= omoApiEscape($tr('delete')) ?></option></select></label>
+        <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('action')) ?></span><select class="generic-form-control" data-deferred-operation<?= $proposalId > 0 ? ' disabled' : '' ?>><option value="create"<?= $operation === 'create' ? ' selected' : '' ?>><?= omoApiEscape($tr('create')) ?></option><option value="update"<?= $operation === 'update' ? ' selected' : '' ?>><?= omoApiEscape($tr('update')) ?></option><option value="delete"<?= $operation === 'delete' ? ' selected' : '' ?>><?= omoApiEscape($tr('delete')) ?></option><option value="move"<?= $operation === 'move' ? ' selected' : '' ?>><?= omoApiEscape($tr('move')) ?></option></select></label>
         <label class="generic-form-field"><span class="generic-form-label"><?= omoApiEscape($tr('context')) ?></span><span class="omo-deferred-workflow__context-control"><input class="generic-form-control" type="text" readonly data-deferred-context-label value="<?= omoApiEscape((string)($contextLabels[$contextHolonId] ?? '')) ?>"><button class="generic-action-button generic-action-button--secondary generic-action-button--icon-only" type="button" data-deferred-context-open title="<?= omoApiEscape($tr('open_context')) ?>" aria-label="<?= omoApiEscape($tr('open_context')) ?>"<?= $proposalId > 0 ? ' disabled' : '' ?>><img src="/omo/images/tools/connection.png" alt=""></button></span></label>
     </div>
     <div class="generic-form-grid omo-deferred-workflow__object-row" data-deferred-object-row hidden>

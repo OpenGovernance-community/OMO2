@@ -28,7 +28,7 @@ $normalized = DecisionGovernanceAction::normalizeRuleState([
     'expiration_date' => '2027-12-31 12:00:00',
 ]);
 assertDecisionGovernanceAction($normalized['title'] === 'Regle test', 'The rule title must be trimmed.');
-assertDecisionGovernanceAction($normalized['scope'] === 'local', 'A holon rule must remain local.');
+assertDecisionGovernanceAction($normalized['scope'] === 'descendants', 'A holon rule must retain its selected scope.');
 assertDecisionGovernanceAction($normalized['review_date'] === '2027-01-10', 'The review date must be normalized.');
 
 $description = DecisionGovernanceAction::buildRuleUpdateDescription(
@@ -76,19 +76,7 @@ assertDecisionGovernanceAction(
     'Rule deletions must be registered as implemented.'
 );
 
-$createValidation = DecisionGovernanceAction::validateRuleCreate($normalized, 12);
-assertDecisionGovernanceAction(
-    !empty($createValidation['status']) && (int)$createValidation['state']['IDholon'] === 12,
-    'A local rule creation must be normalized in the decision holon.'
-);
-$invalidCreateValidation = DecisionGovernanceAction::validateRuleCreate(
-    array_merge($normalized, ['review_date' => '2028-01-01', 'expiration_date' => '2027-01-01']),
-    12
-);
-assertDecisionGovernanceAction(
-    empty($invalidCreateValidation['status']),
-    'A rule creation must reject an expiration date before its review date.'
-);
+// Attachment and date validation uses real holons in rule_scope_integration_test.php.
 
 $stateDescription = DecisionGovernanceAction::buildRuleStateDescription($normalized);
 assertDecisionGovernanceAction(

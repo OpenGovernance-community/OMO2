@@ -413,8 +413,9 @@ $omoHolonTemplateTexts = [
 <script src="/omo/assets/js/sized-image-field.js"></script>
 <script src="/omo/assets/js/simple-html-field.js?v=20260904-highlight-clear"></script>
 <script src="/common/assets/multiline-list-paste.js"></script>
+<script src="/common/assets/property-list-conversion.js"></script>
 <link rel="stylesheet" href="/common/permissions/editor.css?v=20260923-permission-align">
-<script src="/common/permissions/editor.js?v=20260923-permission-align"></script>
+<script src="/common/permissions/editor.js?v=20260925-extended-authorities-label"></script>
 <?= commonPageScriptTags('/omo/api/parameters/holon-templates/templates.js', [
     'omoHolonTemplateTexts' => $omoHolonTemplateTexts,
     'data' => $editorData,

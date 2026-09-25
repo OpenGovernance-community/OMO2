@@ -148,6 +148,165 @@
 			$typeIds = self::parseHolonTypeIds($value);
 			return count($typeIds) > 0 ? implode(',', $typeIds) : null;
 		}
+
+		/** Convert every stored value of a shared definition before changing its type. */
+		public static function convertListDefinitions(Holon $holon, array &$definitions)
+		{
+			$pdo = self::getPdo();
+			$ownsTransaction = !$pdo->inTransaction();
+			$convertedDefinitions = $definitions;
+			try {
+				if ($ownsTransaction) {
+					$pdo->beginTransaction();
+				} else {
+					$pdo->exec('SAVEPOINT property_list_conversion');
+				}
+				foreach ($convertedDefinitions as &$definition) {
+					$propertyId = (int)($definition['id'] ?? 0);
+					if ($propertyId <= 0) {
+						continue;
+					}
+					$stored = self::fetchRow('SELECT * FROM `property` WHERE id = :id FOR UPDATE', ['id' => $propertyId]);
+					if (!is_array($stored)) {
+						throw new \RuntimeException('La liste est introuvable. Rechargez le formulaire.');
+					}
+					$from = self::normalizeListItemType($stored['listitemtype'] ?? '');
+					$to = self::normalizeListItemType($definition['listItemType'] ?? '');
+					$sourceFormat = (int)$stored['IDpropertyformat'];
+					$targetFormat = (int)($definition['formatId'] ?? 0);
+					$confirmedFrom = (string)($definition['listConversionFrom'] ?? '');
+					if ($confirmedFrom !== '' && $confirmedFrom !== $from) {
+						throw new \RuntimeException('Le type de cette liste a change. Rechargez le formulaire avant de la convertir.');
+					}
+					if (!PropertyFormat::isListFormat($sourceFormat) || !PropertyFormat::isListFormat($targetFormat)
+						|| $from === $to || !in_array($from, [self::LIST_ITEM_TEXT, self::LIST_ITEM_AUTHORITY], true)
+						|| !in_array($to, [self::LIST_ITEM_TEXT, self::LIST_ITEM_AUTHORITY], true)) {
+						if ($confirmedFrom !== '') {
+							throw new \RuntimeException('Enregistrez la conversion avant de modifier le format de la liste.');
+						}
+						continue;
+					}
+					if ($confirmedFrom !== $from || $sourceFormat !== $targetFormat) {
+						throw new \RuntimeException('Veuillez confirmer la conversion de la liste avant de l enregistrer.');
+					}
+					$template = $holon->getTemplateHolon();
+					if ($template instanceof Holon) {
+						foreach ($template->getTemplatePropertyDefinitions() as $inherited) {
+							if ((int)($inherited['id'] ?? 0) === $propertyId) {
+								throw new \RuntimeException('Une liste heritee doit etre convertie depuis le modele qui la definit.');
+							}
+						}
+					}
+					$local = new HolonProperty();
+					$root = new Holon();
+					if (!$root->load((int)$stored['IDholon_organization'])) {
+						throw new \RuntimeException('L organisation de la liste est introuvable.');
+					}
+					if (!$local->load([['IDholon', $holon->getId()], ['IDproperty', $propertyId]])
+						|| (int)$stored['IDholon_organization'] !== (int)($holon->get('IDholon_org') ?: $holon->getId())) {
+						throw new \RuntimeException('Cette definition de liste ne peut pas etre convertie depuis ce holon.');
+					}
+					$rows = self::fetchAll('SELECT id FROM `holonproperty` WHERE IDproperty = :id ORDER BY id FOR UPDATE', ['id' => $propertyId]);
+					if (!is_array($rows)) {
+						throw new \RuntimeException('Les valeurs de la liste ne peuvent pas etre chargees.');
+					}
+					$authoritiesToDelete = [];
+					foreach ($rows as $row) {
+						$value = new HolonProperty();
+						if (!$value->load((int)$row['id'], true)) {
+							throw new \RuntimeException('Une valeur de liste est introuvable.');
+						}
+						$isCurrent = (int)$value->get('IDholon') === (int)$holon->getId();
+						// Reverse conversion uses the stored authority IDs, never IDs supplied by the browser.
+						$raw = $isCurrent && $from === self::LIST_ITEM_TEXT
+							? ($definition['value'] ?? '') : $value->get('value');
+						$parts = self::listConversionParts($raw, $sourceFormat);
+						$items = [];
+						foreach ($parts['items'] as $item) {
+							if ($from === self::LIST_ITEM_TEXT) {
+								if (!is_scalar($item)) {
+									throw new \RuntimeException('La liste contient une valeur qui n est pas un texte.');
+								}
+								$label = trim((string)$item);
+								if ($label === '') { continue; }
+								$authority = new Authority();
+								$authority->set('IDholon', (int)$value->get('IDholon'));
+								$authority->set('label', $label);
+								$authority->set('is_local', true);
+								$result = $authority->save();
+								if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? 'Creation d autorite impossible.'); }
+								$items[] = (int)$authority->getId();
+							} else {
+								$id = self::listAuthorityReferenceId($item);
+								// Old type changes left plain text in authority lists. Keep that text intact.
+								if ($id === 0 && is_string($item)) {
+									$items[] = $item;
+									continue;
+								}
+								$context = 'Liste "' . (string)$stored['name'] . '", holon #' . (int)$value->get('IDholon') . ' : ';
+								if ($id === 0) {
+									throw new \RuntimeException($context . 'une reference d autorite est invalide. La conversion est annulee.');
+								}
+								$authority = new Authority();
+								if (!$authority->load($id)) {
+									throw new \RuntimeException($context . 'l autorite #' . $id . ' n existe plus. Reparez cette reference avant la conversion.');
+								}
+								if ((int)$authority->getOrganizationId() !== (int)$root->get('IDorganization')) {
+									throw new \RuntimeException($context . 'l autorite #' . $id . ' appartient a une autre organisation. La conversion est annulee.');
+								}
+								$items[] = (string)$authority->get('label');
+								$authoritiesToDelete[$id] = $id;
+							}
+						}
+						$parts['items'] = $items;
+						$converted = $raw === null ? null : json_encode($sourceFormat === PropertyFormat::FORMAT_HTML_LIST ? $parts : $items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+						$value->set('value', $converted);
+						$result = $value->save();
+						if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? 'Conversion de valeur impossible.'); }
+						if ($isCurrent) { $definition['value'] = $converted; }
+					}
+					if ($authoritiesToDelete) {
+						Authority::deleteForListConversion(array_values($authoritiesToDelete), $propertyId);
+					}
+					$property = new self();
+					$property->load($propertyId, true);
+					$property->set('listitemtype', $to);
+					$result = $property->save();
+					if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? 'Conversion de liste impossible.'); }
+					unset($definition['listConversionFrom']);
+				}
+				unset($definition);
+				if ($ownsTransaction) { $pdo->commit(); } else { $pdo->exec('RELEASE SAVEPOINT property_list_conversion'); }
+				$definitions = $convertedDefinitions;
+				return ['status' => true];
+			} catch (\Throwable $exception) {
+				if ($ownsTransaction && $pdo->inTransaction()) { $pdo->rollBack(); }
+				elseif (!$ownsTransaction) { $pdo->exec('ROLLBACK TO SAVEPOINT property_list_conversion'); }
+				self::$preload = [];
+				return ['status' => false, 'message' => $exception->getMessage()];
+			}
+		}
+
+		public static function listAuthorityReferenceId($item)
+		{
+			$id = is_array($item) ? ($item['id'] ?? null) : $item;
+			return (is_int($id) || (is_string($id) && ctype_digit(trim($id)))) && (int)$id > 0 ? (int)$id : 0;
+		}
+
+		public static function listConversionParts($raw, $formatId)
+		{
+			if ($raw === null || trim((string)$raw) === '') { return ['items' => []]; }
+			$decoded = json_decode((string)$raw, true);
+			if ((int)$formatId === PropertyFormat::FORMAT_LIST && !is_array($decoded)) {
+				return ['items' => preg_split('/\r\n|\r|\n|\|/', (string)$raw)];
+			}
+			if (json_last_error() !== JSON_ERROR_NONE) {
+				throw new \RuntimeException('Le contenu de la liste est invalide.');
+			}
+			$parts = (int)$formatId === PropertyFormat::FORMAT_HTML_LIST ? $decoded : ['items' => $decoded];
+			if (!is_array($parts) || !is_array($parts['items'] ?? null)) { throw new \RuntimeException('Le contenu de la liste est invalide.'); }
+			return $parts;
+		}
 	}
 	
 ?>

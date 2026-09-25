@@ -5,6 +5,40 @@
         .then(response => response.ok ? response.json() : {})
         .catch(() => ({}));
     const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    // Keep ordinary assignments compatible with the historical string format.
+    const assignmentValues = value => Array.isArray(value) ? value : (value ? [value] : []);
+    const assignmentRange = value => String(value && typeof value === 'object' ? value.range || '' : value || '').trim();
+    window.omoPermissionAssignments = {
+        values: assignmentValues,
+        range: assignmentRange,
+        readScope: (scope, profile) => {
+            const range = scope.dataset.permissionToken;
+            return profile !== 'collective' && !!scope.querySelector('[data-permission-extended]:checked')
+                ? {range: range, is_extended: true} : range;
+        },
+        decorate: (row, assignments) => {
+            row.querySelectorAll('[data-permission-scope]').forEach(scope => {
+                const label = document.createElement('label');
+                label.className = 'generic-checkbox';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.dataset.permissionExtended = '';
+                checkbox.checked = ['member', 'admin'].some(profile => assignmentValues(assignments[profile])
+                    .some(item => assignmentRange(item) === scope.dataset.permissionToken && !!item.is_extended));
+                const text = document.createElement('span');
+                text.textContent = 'Autorité étendue';
+                label.append(checkbox, text);
+                scope.firstElementChild.append(label);
+                const refresh = () => { checkbox.disabled = !scope.querySelector('[data-permission-profile="member"]:checked, [data-permission-profile="admin"]:checked'); };
+                scope.addEventListener('change', refresh);
+                refresh();
+                translations.then(texts => {
+                    text.textContent = texts.extended || 'Autorité étendue';
+                    label.title = texts.extended_help || '';
+                });
+            });
+        }
+    };
 
     window.omoPermissionEditorEnhance = function (root, inherited) {
         if (!root || !root.querySelector('[data-permission-key]')) return;

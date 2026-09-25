@@ -59,4 +59,5 @@ $respond(200, [
     'status' => true,
     'holon' => ['id' => (int)$holon->getId(), 'label' => (string)$holon->getFullDisplayName()],
     'rules' => $rulesPayload,
+    'scopeContext' => Rule::getScopeContext($holon),
 ]);

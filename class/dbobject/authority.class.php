@@ -57,13 +57,6 @@ class Authority extends DbObject
         ];
     }
 
-    public static function attributeLength()
-    {
-        return [
-            'label' => 255,
-        ];
-    }
-
     public static function getOrder()
     {
         return 'label ASC, id ASC';
@@ -900,6 +893,66 @@ class Authority extends DbObject
         ]);
 
         return !empty($result['status']);
+    }
+
+    /** Called inside Property's conversion transaction; rules keep their holon and dates. */
+    public static function deleteForListConversion(array $ids, $propertyId)
+    {
+        $authorities = [];
+        for ($index = 0; $index < count($ids); $index++) {
+            $id = (int)$ids[$index];
+            if (isset($authorities[$id])) { continue; }
+            $authority = new self();
+            if (!$authority->load($id)) { throw new \RuntimeException('Une autorite a convertir est introuvable.'); }
+            $authorities[$id] = $authority;
+            $instances = self::fetchAll('SELECT id FROM authority WHERE IDauthority_template = :id', ['id' => $id]);
+            if (!is_array($instances)) { throw new \RuntimeException('Les instances du modele ne peuvent pas etre chargees.'); }
+            foreach ($instances as $instance) { $ids[] = (int)$instance['id']; }
+        }
+
+        // A reference in another list must not silently become a dangling ID.
+        $references = self::fetchAll(
+            'SELECT hp.value, p.IDpropertyformat FROM holonproperty hp INNER JOIN property p ON p.id = hp.IDproperty
+             WHERE p.listitemtype = :type AND p.id <> :property_id',
+            ['type' => Property::LIST_ITEM_AUTHORITY, 'property_id' => (int)$propertyId]
+        );
+        if (!is_array($references)) { throw new \RuntimeException('Les references aux autorites ne peuvent pas etre verifiees.'); }
+        foreach ($references as $reference) {
+            foreach (Property::listConversionParts($reference['value'], (int)$reference['IDpropertyformat'])['items'] as $item) {
+                $id = Property::listAuthorityReferenceId($item);
+                if (isset($authorities[$id])) {
+                    throw new \RuntimeException('Une autorite est aussi utilisee dans une autre liste. Retirez cette reference avant la conversion.');
+                }
+            }
+        }
+
+        foreach ($authorities as $id => $authority) {
+            foreach ($authority->getRules() as $rule) {
+                $rule->set('IDauthority', null);
+                $rule->set('IDholon', (int)$authority->get('IDholon'));
+                $result = $rule->save();
+                if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? 'Une regle ne peut pas etre detachee.'); }
+            }
+            foreach ($authority->getChildren() as $child) {
+                $child->set('IDauthority_parent', null);
+                $child->set('is_local', true);
+                $result = $child->save();
+                if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? 'Une sous-autorite ne peut pas etre detachee.'); }
+            }
+            $parent = $authority->getParent();
+            if ($parent && $parent->isShell() && !isset($authorities[(int)$parent->getId()])) {
+                $parent->set('is_shell', false);
+                $result = $parent->save();
+                if (empty($result['status'])) { throw new \RuntimeException($result['text'] ?? 'L autorite parente ne peut pas etre reactivee.'); }
+            }
+        }
+        foreach ($authorities as $id => $authority) {
+            // The ordinary deletion plan moves rules to the parent; conversion keeps them here.
+            if (!self::execute('DELETE FROM authority WHERE id = :id', ['id' => $id])) {
+                throw new \RuntimeException('Une autorite ne peut pas etre supprimee.');
+            }
+            unset(self::$preload['authority_' . $id]);
+        }
     }
 
     protected function getSubtreeRows()

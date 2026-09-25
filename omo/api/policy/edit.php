@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/shared.php';
+require_once dirname(__DIR__, 3) . '/common/choice/rule-scope-fields.php';
 
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $ruleId = isset($_GET['rule_id']) && is_numeric($_GET['rule_id']) ? (int)$_GET['rule_id'] : 0;
@@ -27,6 +28,7 @@ if (empty($context['status']) || ($editingRule instanceof \dbObject\Rule ? !$edi
 $today = new DateTimeImmutable('today');
 $authorities = omoPolicyGetDirectAuthorities($context['currentHolon'], $context['organization']);
 $hasAuthorities = $context['currentHolon'] instanceof \dbObject\Holon && count($authorities) > 0;
+$scopeContext = \dbObject\Rule::getScopeContext($context['currentHolon']);
 $isEditing = $editingRule instanceof \dbObject\Rule;
 $drawerDescriptionKey = $isEditing ? 'policy.drawer.description_edit'
     : (!($context['currentHolon'] instanceof \dbObject\Holon)
@@ -39,8 +41,6 @@ $expirationDate = $isEditing && $editingRule->get('expiration_date') instanceof 
     ? $editingRule->get('expiration_date')->format('Y-m-d')
     : $today->modify('+1 year')->format('Y-m-d');
 $selectedAuthorityId = $isEditing ? (int)$editingRule->get('IDauthority') : 0;
-$isOrganizationRule = $isEditing && (int)$editingRule->get('IDauthority') === 0
-    && (int)$editingRule->get('IDholon') === 0;
 ?>
 <div class="generic-drawer-content">
     <form method="post" action="/omo/api/policy/action.php" class="generic-form-stack" data-policy-form data-policy-form-title="<?= omoApiEscape(omoPolicyT($isEditing ? 'policy.drawer.title_edit' : 'policy.drawer.title')) ?>" data-policy-form-description="<?= omoApiEscape(omoPolicyT($drawerDescriptionKey)) ?>">
@@ -53,19 +53,7 @@ $isOrganizationRule = $isEditing && (int)$editingRule->get('IDauthority') === 0
                 <span class="generic-form-label"><?= omoApiEscape(omoPolicyT('policy.field.title')) ?></span>
                 <input class="generic-form-control" name="title" maxlength="255" value="<?= omoApiEscape($isEditing ? (string)$editingRule->get('title') : '') ?>" required autofocus>
             </label>
-            <?php if ($hasAuthorities): ?>
-            <label class="generic-form-field">
-                <span class="generic-form-label"><?= omoApiEscape(omoPolicyT('policy.field.authority')) ?></span>
-                <select class="generic-form-control" name="authority_id">
-                    <option value="0"><?= omoApiEscape(omoPolicyT($isOrganizationRule ? 'policy.field.authority_organization' : 'policy.field.authority_local')) ?></option>
-                    <?php foreach ($authorities as $authority): ?>
-                        <?php if ($authority instanceof \dbObject\Authority): ?>
-                            <option value="<?= (int)$authority->getId() ?>"<?= $selectedAuthorityId === (int)$authority->getId() ? ' selected' : '' ?>><?= omoApiEscape((string)$authority->get('label')) ?></option>
-                        <?php endif; ?>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-            <?php endif; ?>
+            <?php omoRuleScopeRenderFields(['scope' => $isEditing ? $editingRule->get('scope') : 'local', 'IDauthority' => $selectedAuthorityId], $scopeContext); ?>
             <label class="generic-form-field">
                 <span class="generic-form-label"><?= omoApiEscape(omoPolicyT('policy.field.intention')) ?></span>
                 <div class="omo-policy__html-field" data-policy-html-field></div>

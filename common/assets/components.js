@@ -371,6 +371,7 @@
         }
 
         accordion.dataset.genericAccordionReady = '1';
+        toggle.setAttribute('aria-expanded', accordion.classList.contains('is-collapsed') ? 'false' : 'true');
         toggle.addEventListener('click', function (event) {
             var interactiveTarget = event.target.closest('a, button, input, select, textarea, label, [data-generic-accordion-ignore-toggle]');
 
@@ -379,6 +380,7 @@
             }
 
             accordion.classList.toggle('is-collapsed');
+            toggle.setAttribute('aria-expanded', accordion.classList.contains('is-collapsed') ? 'false' : 'true');
         });
     }
 

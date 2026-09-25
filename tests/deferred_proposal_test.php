@@ -179,6 +179,11 @@ $pvProjectSave = (string)file_get_contents(dirname(__DIR__) . '/omo/api/deferred
 $deferredProposalSource = (string)file_get_contents(dirname(__DIR__) . '/class/dbobject/deferredproposal.class.php');
 $holonScopePicker = (string)file_get_contents(dirname(__DIR__) . '/common/holon_scope_picker.js');
 $holonCreate = (string)file_get_contents(dirname(__DIR__) . '/omo/api/holons/create.php');
+$pvProposalPicker .= (string)file_get_contents(dirname(__DIR__) . '/omo/api/deferred_proposals/pv_proposal_picker.js');
+$pvHolonEditor .= (string)file_get_contents(dirname(__DIR__) . '/omo/api/deferred_proposals/pv_holon_editor.js');
+$pvRuleEditor .= (string)file_get_contents(dirname(__DIR__) . '/omo/api/deferred_proposals/pv_rule_editor.js');
+$pvEditor .= (string)file_get_contents(dirname(__DIR__) . '/omo/api/documents/pv/editor.js');
+$holonCreate .= (string)file_get_contents(dirname(__DIR__) . '/omo/api/holons/editor.js');
 $holonEditorCss = (string)file_get_contents(dirname(__DIR__) . '/omo/api/holons/editor.css');
 $toggleStart = strpos($pvAction, "if (\$action === 'toggle_handled')");
 $toggleEnd = strpos($pvAction, "if (\$action === 'reorder_points')", $toggleStart);
@@ -268,7 +273,7 @@ assertDeferredProposal(
 assertDeferredProposal(
     strpos($pvRuleEditor, 'DecisionGovernanceAction::captureRuleState') !== false
         && strpos($pvRuleEditor, 'populateFromSelectedRule') !== false
-        && strpos($pvRuleEditor, "['title','intention','description','review_date','expiration_date']") !== false,
+        && strpos($pvRuleEditor, "['title','intention','description','review_date','expiration_date','scope','IDauthority']") !== false,
     'Selecting a rule for an update proposal must initialise all editable rule fields.'
 );
 assertDeferredProposal(

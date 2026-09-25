@@ -9,9 +9,16 @@ use dbObject\StatIndicatorValue;
 $organizationId = (int)($_SESSION['currentOrganization'] ?? ($_GET['oid'] ?? 0));
 $currentHolonId = isset($_GET['cid']) && is_numeric($_GET['cid']) ? (int)$_GET['cid'] : 0;
 $indicatorId = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : 0;
+$isImport = array_key_exists('import_id', $_GET);
+$importId = isset($_GET['import_id']) && is_numeric($_GET['import_id']) ? (int)$_GET['import_id'] : 0;
 $context = omoStatsResolveContext($organizationId, $currentHolonId);
 if (!empty($context['status'])) {
     $context['pvMeetingPermission'] = commonResolvePvMeetingPermissionContext($organizationId);
+}
+$import = $isImport && !empty($context['status']) ? omoStatsLoadImport($importId, $organizationId) : null;
+if ($isImport) {
+    // Resolve the source through the import; never fall back to an original detail.
+    $indicatorId = $import ? (int)$import->get('IDstatindicator') : 0;
 }
 $indicator = omoStatsLoadIndicator($indicatorId, $organizationId);
 
@@ -26,7 +33,8 @@ $referencePoints = omoStatsCollectionItems($indicator->getReferencePoints(), Sta
 $valuesDescending = array_reverse($values);
 $latestValue = count($values) > 0 ? $values[count($values) - 1] : null;
 $latestReferencePercentage = omoStatsGetIndicatorReferencePercentage($indicator, $latestValue, $referencePoints);
-$canEdit = !empty($context['status']) && omoStatsCanEditIndicator($indicator, $context);
+$canEdit = !$isImport && !empty($context['status']) && omoStatsCanEditIndicator($indicator, $context);
+$canDetach = $import && omoStatsCanDeleteContextResource($import, $context);
 $canEditValues = $canEdit && !$indicator->isEthercalcSource() && !$indicator->isSpreadsheetSource();
 $sourceUrl = StatIndicator::sanitizeSourceUrl($indicator->get('source_url'));
 $sourceDocument = null;
@@ -68,12 +76,16 @@ $detailUrl = '/omo/api/stats/detail.php?oid=' . rawurlencode((string)$organizati
 if ($currentHolonId > 0) {
     $detailUrl .= '&cid=' . rawurlencode((string)$currentHolonId);
 }
+if ($isImport) {
+    $detailUrl .= '&import_id=' . rawurlencode((string)$importId);
+}
 $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
 ?>
 <article
     class="omo-stats-detail<?= $overdueSeverity === 'error' ? ' omo-stats-detail--overdue' : ($overdueSeverity === 'warning' ? ' omo-stats-detail--warning' : '') ?>"
     data-omo-stats-detail
     data-indicator-id="<?= (int)$indicatorId ?>"
+    data-import-id="<?= (int)$importId ?>"
     data-detail-url="<?= omoApiEscape($detailUrl) ?>"
 >
     <div
@@ -82,6 +94,14 @@ $tabPrefix = 'omo-stats-detail-' . (int)$indicatorId;
         data-omo-subdrawer-title="<?= omoApiEscape((string)$indicator->get('name')) ?>"
         data-omo-subdrawer-description="<?= omoApiEscape($headerDescription) ?>"
     >
+        <?php if ($canDetach): ?>
+            <button
+                type="button"
+                class="generic-action-button generic-action-button--danger"
+                data-omo-subdrawer-action
+                data-omo-stats-delete-import="<?= (int)$importId ?>"
+            ><?= omoApiEscape(omoStatsT('stats.action.delete_import')) ?></button>
+        <?php endif; ?>
         <?php if ($canEdit): ?>
             <button
                 type="button"

@@ -3,7 +3,7 @@ namespace dbObject;
 
 class HolonPermission extends DbObject
 {
-    const PERMISSION_CACHE_VERSION = 23;
+    const PERMISSION_CACHE_VERSION = 24;
     const MEMBER_TYPE_MEMBER = 'member';
     const MEMBER_TYPE_ADMIN = 'admin';
     const MEMBER_TYPE_COLLECTIVE = 'collective';
@@ -28,6 +28,7 @@ class HolonPermission extends DbObject
             [['IDholon', 'IDpermission'], 'fk'],
             [['range'], 'string'],
             [['member_type'], 'string'],
+            [['is_extended'], 'boolean'],
             [['created_at', 'updated_at'], 'datetime'],
             [['id'], 'safe'],
         ];
@@ -41,6 +42,7 @@ class HolonPermission extends DbObject
             'IDpermission' => 'Droit',
             'range' => 'Portee',
             'member_type' => 'Profil membre',
+            'is_extended' => 'Autorité étendue',
             'created_at' => 'Creation',
             'updated_at' => 'Mise a jour',
         ];
@@ -53,6 +55,7 @@ class HolonPermission extends DbObject
             'IDpermission' => 'Droit accorde a ce holon.',
             'range' => 'Zone sur laquelle le droit peut etre exerce.',
             'member_type' => 'Indique si le droit concerne les membres, les admins ou le collectif.',
+            'is_extended' => 'Droit personnel disponible uniquement apres activation des autorites etendues.',
         ];
     }
 
@@ -132,16 +135,22 @@ class HolonPermission extends DbObject
 
     protected static function normalizeAssignmentRangesForPermission($permissionKey, $ranges)
     {
+        $normalized = self::normalizeAssignmentRanges($ranges);
         $isContextual = \dbObject\Permission::isPermissionContextual($permissionKey, true);
         if (!$isContextual) {
-            if (!is_array($ranges)) {
-                $ranges = trim((string)$ranges) !== '' ? [$ranges] : [];
-            }
-
-            return count($ranges) > 0 ? [self::RANGE_ORGANIZATION] : [];
+            return $normalized ? [self::RANGE_ORGANIZATION => !in_array(false, $normalized, true)] : [];
         }
+        return $normalized;
+    }
 
-        return self::normalizeAssignmentRanges($ranges);
+    public static function getAssignmentRange($assignment): string
+    {
+        return trim((string)(is_array($assignment) ? ($assignment['range'] ?? '') : $assignment));
+    }
+
+    public static function isExtendedAssignment($assignment): bool
+    {
+        return is_array($assignment) && !empty($assignment['is_extended']);
     }
 
     public static function isValidRange($range)
@@ -185,7 +194,7 @@ class HolonPermission extends DbObject
     public static function getAssignmentKeyMapForHolon($holonId, $memberType = null)
     {
         $rows = self::fetchAll(
-            'SELECT hp.`range`, hp.`member_type`, p.`permission_key`
+            'SELECT hp.`range`, hp.`member_type`, hp.`is_extended`, p.`permission_key`
              FROM `holon_permission` hp
              INNER JOIN `permission` p ON p.`id` = hp.`IDpermission`
              WHERE hp.`IDholon` = :holon_id',
@@ -221,10 +230,12 @@ class HolonPermission extends DbObject
             }
 
             $normalizedRange = self::normalizeRange($row['range'] ?? '');
+            $value = !empty($row['is_extended']) && $rowMemberType !== self::MEMBER_TYPE_COLLECTIVE
+                ? ['range' => $normalizedRange, 'is_extended' => true] : $normalizedRange;
             if ($memberType === null) {
-                $assignments[$assignmentKey][$permissionKey][$normalizedRange] = $normalizedRange;
+                $assignments[$assignmentKey][$permissionKey][$normalizedRange] = $value;
             } else {
-                $assignments[$assignmentKey][$normalizedRange] = $normalizedRange;
+                $assignments[$assignmentKey][$normalizedRange] = $value;
             }
         }
 
@@ -250,17 +261,18 @@ class HolonPermission extends DbObject
         }
 
         $normalizedRanges = [];
-        foreach ($ranges as $range) {
-            $range = trim((string)$range);
+        foreach ($ranges as $assignment) {
+            $range = self::getAssignmentRange($assignment);
             if ($range === '' || !self::isValidRange($range)) {
                 continue;
             }
 
             $normalizedRange = self::normalizeRange($range);
-            $normalizedRanges[$normalizedRange] = $normalizedRange;
+            $extended = self::isExtendedAssignment($assignment);
+            $normalizedRanges[$normalizedRange] = ($normalizedRanges[$normalizedRange] ?? true) && $extended;
         }
 
-        return array_values($normalizedRanges);
+        return $normalizedRanges;
     }
 
     public static function syncAssignmentsForHolon($holonId, array $assignmentsByPermissionKey, $memberType = null)
@@ -339,7 +351,7 @@ class HolonPermission extends DbObject
                 foreach ($existingRanges as $range => $existingRow) {
                 if (
                     isset($normalizedAssignments[$currentMemberType][$permissionKey])
-                    && in_array($range, $normalizedAssignments[$currentMemberType][$permissionKey], true)
+                    && array_key_exists($range, $normalizedAssignments[$currentMemberType][$permissionKey])
                 ) {
                     continue;
                 }
@@ -364,7 +376,7 @@ class HolonPermission extends DbObject
                     continue;
                 }
 
-                foreach ($ranges as $range) {
+                foreach ($ranges as $range => $extended) {
                     $item = self::findByHolonAndPermission($holonId, (int)$permission->getId(), $range, $currentMemberType);
                     if (!$item) {
                         $item = new self();
@@ -374,6 +386,7 @@ class HolonPermission extends DbObject
                     $item->set('IDpermission', (int)$permission->getId());
                     $item->set('range', self::normalizeRange($range));
                     $item->set('member_type', $currentMemberType);
+                    $item->set('is_extended', $currentMemberType !== self::MEMBER_TYPE_COLLECTIVE && $extended);
                     $saveResult = $item->save();
                     if (empty($saveResult['status'])) {
                         return false;
@@ -707,7 +720,7 @@ class HolonPermission extends DbObject
         $permissionFilterSql = self::buildPermissionKeyFilterSql($permissionKeys, $params);
 
         $rows = self::fetchAll(
-            'SELECT hp.`IDholon`, hp.`range`, hp.`member_type`, p.`permission_key`
+            'SELECT hp.`IDholon`, hp.`range`, hp.`member_type`, hp.`is_extended`, p.`permission_key`
              FROM `holon_permission` hp
              INNER JOIN `permission` p ON p.`id` = hp.`IDpermission`
              INNER JOIN `holon` h ON h.`id` = hp.`IDholon`
@@ -1004,7 +1017,7 @@ class HolonPermission extends DbObject
         return $debug;
     }
 
-    public static function buildEffectivePermissionDetailsForOrganization($userId, $organizationId, array $permissionKeys = [])
+    public static function buildEffectivePermissionDetailsForOrganization($userId, $organizationId, array $permissionKeys = [], bool $extendedOnly = false)
     {
         $userId = (int)$userId;
         $organizationId = (int)$organizationId;
@@ -1020,7 +1033,7 @@ class HolonPermission extends DbObject
             return $details;
         }
 
-        if (function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)) {
+        if (!$extendedOnly && function_exists('commonUserHasAdminOverride') && \commonUserHasAdminOverride($userId, $organizationId)) {
             $details['adminOverrideActive'] = true;
             foreach (\dbObject\Permission::getEditorCatalog() as $permissionEntry) {
                 $permissionKey = trim((string)($permissionEntry['key'] ?? ''));
@@ -1084,6 +1097,7 @@ class HolonPermission extends DbObject
                 'range' => self::normalizeRange($assignmentRow['range'] ?? ''),
                 'member_type' => self::normalizeMemberType($assignmentRow['member_type'] ?? self::MEMBER_TYPE_MEMBER),
                 'is_contextual' => (bool)($permissionContextualMap[$permissionKey] ?? true),
+                'is_extended' => !empty($assignmentRow['is_extended']),
             ];
         }
 
@@ -1111,6 +1125,9 @@ class HolonPermission extends DbObject
                     if ($assignment['member_type'] === self::MEMBER_TYPE_ADMIN && empty($membershipRow['is_admin'])) {
                         continue;
                     }
+
+                    if ($extendedOnly ? empty($assignment['is_extended'])
+                        : (!empty($assignment['is_extended']) && !self::extendedAuthoritiesActive($userId, $organizationId))) continue;
 
                     $permissionKey = trim((string)($assignment['permission_key'] ?? ''));
                     if ($permissionKey === '') {
@@ -1166,6 +1183,21 @@ class HolonPermission extends DbObject
         return $details;
     }
 
+    protected static function extendedAuthoritiesActive(int $userId, int $organizationId): bool
+    {
+        return function_exists('commonCurrentUserIsExtendedAuthoritiesEnabled')
+            && $userId === (int)\commonGetCurrentUserId()
+            && \commonCurrentUserIsExtendedAuthoritiesEnabled($organizationId);
+    }
+
+    public static function userHasExtendedAuthorities(int $userId, int $organizationId): bool
+    {
+        return self::memoizeRead([__FUNCTION__, $userId, $organizationId], static function () use ($userId, $organizationId) {
+            $details = self::buildEffectivePermissionDetailsForOrganization($userId, $organizationId, [], true);
+            return !empty($details['rows']);
+        });
+    }
+
     public static function buildUserPermissionSetForOrganization($userId, $organizationId, array $permissionKeys = [])
     {
         // Keep keys, user and organization isolated; bypass the cross-request session cache.
@@ -1173,7 +1205,7 @@ class HolonPermission extends DbObject
         sort($permissionKeys);
         $adminOverride = function_exists('commonUserHasAdminOverride')
             && \commonUserHasAdminOverride((int)$userId, (int)$organizationId);
-        return self::memoizeRead([__FUNCTION__, (int)$userId, (int)$organizationId, $permissionKeys, $adminOverride],
+        return self::memoizeRead([__FUNCTION__, (int)$userId, (int)$organizationId, $permissionKeys, $adminOverride, self::extendedAuthoritiesActive((int)$userId, (int)$organizationId)],
             static fn () => self::loadUserPermissionSetForOrganization($userId, $organizationId, $permissionKeys));
     }
 
@@ -1183,6 +1215,7 @@ class HolonPermission extends DbObject
         $organizationId = (int)$organizationId;
         $permissionSet = [
             'cacheVersion' => self::PERMISSION_CACHE_VERSION,
+            'extendedAuthoritiesActive' => self::extendedAuthoritiesActive($userId, $organizationId),
             'userId' => $userId,
             'organizationId' => $organizationId,
             'definedPermissionKeys' => [],
@@ -1249,6 +1282,7 @@ class HolonPermission extends DbObject
                 'range' => self::normalizeRange($assignmentRow['range'] ?? ''),
                 'member_type' => self::normalizeMemberType($assignmentRow['member_type'] ?? self::MEMBER_TYPE_MEMBER),
                 'is_contextual' => (bool)($permissionContextualMap[$permissionKey] ?? true),
+                'is_extended' => !empty($assignmentRow['is_extended']),
             ];
         }
 
@@ -1278,6 +1312,8 @@ class HolonPermission extends DbObject
                     if ($assignment['member_type'] === self::MEMBER_TYPE_ADMIN && empty($membershipRow['is_admin'])) {
                         continue;
                     }
+
+                    if (!empty($assignment['is_extended']) && !$permissionSet['extendedAuthoritiesActive']) continue;
 
                     $permissionKey = trim((string)($assignment['permission_key'] ?? ''));
                     if ($permissionKey === '') {
