@@ -8,6 +8,9 @@ return static function (\dbObject\FAQ $faq): array {
             'votes' => $votes,
             'updated' => $faq->get('updated'),
         ],
-        'sections' => [omoSearchPreviewSection('summary', trim((string)$faq->get('answer')) !== '' ? $faq->get('answer') : $faq->get('detail'))],
+        'sections' => [
+            omoSearchPreviewSection('summary', $faq->get('answer')),
+            omoSearchPreviewSection('content', $faq->get('detail')),
+        ],
     ];
 };

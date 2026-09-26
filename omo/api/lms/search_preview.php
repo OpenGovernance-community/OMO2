@@ -13,6 +13,9 @@ return static function (\dbObject\Parcours $parcours): array {
     return [
         'title' => $object->get('title'),
         'fields' => ['tutorial' => $parcours->get('title')],
-        'sections' => [omoSearchPreviewSection('summary', $object->get($missionId > 0 ? 'resume' : 'description'))],
+        'sections' => [
+            omoSearchPreviewSection('summary', $object->get($missionId > 0 ? 'resume' : 'description')),
+            omoSearchPreviewSection('content', $missionId > 0 ? $object->get('html') : ''),
+        ],
     ];
 };

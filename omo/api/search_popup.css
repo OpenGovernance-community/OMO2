@@ -25,6 +25,12 @@
     align-content: start;
 }
 
+.omo-search-preview__metadata {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+    gap: 16px;
+}
+
 .omo-search-popup__result,
 .omo-search-popup__status-card {
     --generic-section-padding-block: 18px;

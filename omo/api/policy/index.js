@@ -42,8 +42,9 @@
     var policyViewUrl = function (view) {
         var url = root.dataset.policyIndexUrl;
         url += '&policy_scope=' + encodeURIComponent(view.scope);
-        if (view.sort !== 'alpha') url += '&policy_sort=' + encodeURIComponent(view.sort);
-        if (view.group !== 'holon') url += '&policy_group=' + encodeURIComponent(view.group);
+        // Omitted values restore server preferences and can trigger a refresh loop.
+        url += '&policy_sort=' + encodeURIComponent(view.sort);
+        url += '&policy_group=' + encodeURIComponent(view.group);
         return url;
     };
     var policyPreferenceKey = function () {

@@ -14908,6 +14908,7 @@
 		protected static function cleanTopbarSearchTextValue($value, $limit = 0)
 		{
 			$value = html_entity_decode(strip_tags((string)$value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+			$value = \commonSearchNormalizeWhitespace($value);
 			$value = preg_replace('/\s+/u', ' ', $value);
 			$value = trim((string)$value);
 
@@ -15648,7 +15649,7 @@
 			);
 
 			$identityExpr = "LOWER(CONCAT_WS(' ', COALESCE(u.firstname, ''), COALESCE(u.lastname, ''), COALESCE(NULLIF(uo.username, ''), u.username, ''), COALESCE(NULLIF(uo.email, ''), u.email, '')))";
-			$parameterExpr = "LOWER(CONCAT_WS(' ', COALESCE(u.parameters, ''), COALESCE(uo.parameters, '')))";
+			$parameterExpr = "LOWER(CONCAT_WS(' ', COALESCE(u.parameters, ''), COALESCE(uo.parameters, ''), COALESCE(NULLIF(TRIM(uo.presentation), ''), u.presentation, '')))";
 			$competenceNameExpr = "LOWER(COALESCE(c_skill.name, ''))";
 			$competenceDescriptionExpr = "LOWER(COALESCE(uc_skill.description, ''))";
 
@@ -15778,12 +15779,13 @@
 					$subtitleParts[] = $scopedEmail;
 				}
 
-				$matchedCompetenceExcerpt = trim((string)($row['competence_excerpt_source'] ?? ''));
-				$competenceRelevance = (int)($row['competence_relevance'] ?? 0);
-				$excerpt = '';
-				if ($competenceRelevance > 0 && $matchedCompetenceExcerpt !== '') {
-					$excerpt = self::buildTopbarSearchSnippet($matchedCompetenceExcerpt, $query, 90, 220);
+				$visibleCompetences = [];
+				foreach ($user->getVisibleCompetenceRows((int)$this->getId(), (int)($viewerContext['userId'] ?? 0)) as $skill) {
+					$visibleCompetences[] = trim((string)($skill['name'] ?? '') . ' ' . (string)($skill['description'] ?? ''));
 				}
+				$presentation = $user->getScopedPresentation((int)$this->getId());
+				$profileTexts = array_merge([$presentation], $visibleCompetences);
+				$excerpt = self::buildTopbarSearchSnippet(self::chooseTopbarSearchSnippetSource($profileTexts, $terms), $query, 90, 220);
 				if ($excerpt === '' && (int)($row['membership_active'] ?? 0) !== 1) {
 					$excerpt = 'Membre en attente ou inactif.';
 				}
@@ -15794,7 +15796,7 @@
 					'title' => $title,
 					'subtitle' => implode(' - ', $subtitleParts),
 					'excerpt' => $excerpt,
-					'_searchFields' => ['title' => [$fullName, $scopedUsername], 'tags' => [$scopedEmail], 'summary' => $matchedCompetenceExcerpt],
+					'_searchFields' => ['title' => [$fullName, $scopedUsername], 'tags' => [$scopedEmail], 'summary' => $profileTexts],
 					'relevance' => (int)($row['relevance'] ?? 0),
 					'_searchDate' => (string)($row['membership_created_at'] ?? ''),
 					'action' => array(
@@ -16810,8 +16812,13 @@
 				return strcmp((string)($left['title'] ?? ''), (string)($right['title'] ?? ''));
 			});
 
-			if (count($results) > $limit) {
+			// Module filters need the complete per-scope selection, including lower-ranked modules.
+			if (empty($options['retainAllScopes']) && count($results) > $limit) {
 				$results = array_slice($results, 0, $limit);
+			}
+			$counts = array_fill_keys(array_keys($counts), 0);
+			foreach ($results as $result) {
+				$counts[$result['module']]++;
 			}
 
 			return array(

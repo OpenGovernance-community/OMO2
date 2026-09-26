@@ -59,6 +59,7 @@
             oid: organizationId, cid: currentHolonId,
             module: button.dataset.omoSearchPreview,
             id: button.dataset.omoSearchPreviewId,
+            q: button.closest('[data-omo-search-result-query]').getAttribute('data-omo-search-result-query'),
             mission_id: button.dataset.omoSearchPreviewMission || '0'
         });
         fetch('/omo/api/search/preview.php?' + params.toString(), {
@@ -70,6 +71,7 @@
         }).then(function (preview) {
             if (controller.signal.aborted || previewRequest !== controller) { return; }
             previewTitle.textContent = preview.title || previewTitle.textContent;
+            if (preview.titleHtml) { previewTitle.innerHTML = preview.titleHtml; }
             previewBody.classList.remove('generic-drawer-content');
             previewBody.innerHTML = preview.html;
             previewBody.removeAttribute('aria-busy');

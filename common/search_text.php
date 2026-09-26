@@ -1,10 +1,24 @@
 <?php
 
+/** Decode only whitespace entities, including escaped CRs that ENT_HTML5 leaves intact. */
+function commonSearchNormalizeWhitespace(string $value): string
+{
+    $value = preg_replace_callback('/&(?:amp;)*#(0*(?:9|10|13)|x0*[9ad]);/i', static function ($match) {
+        $code = strtolower($match[1]);
+        return chr($code[0] === 'x' ? hexdec(substr($code, 1)) : (int)$code);
+    }, $value);
+    $value = str_replace(["\r\n", "\r"], "\n", $value);
+    $value = preg_replace('/[^\S\n]+/u', ' ', $value);
+    $value = preg_replace('/ *\n */u', "\n", $value);
+    return trim(preg_replace('/\n{3,}/u', "\n\n", $value));
+}
+
 /** Shared by candidate selection, ranking, excerpts and highlighting. */
 function commonSearchNormalizeText(string $value): string
 {
     $value = preg_replace('~<(script|style)\b[^>]*>.*?</\1>~is', ' ', $value);
     $value = html_entity_decode(strip_tags(preg_replace('~<[^>]+>~u', ' ', $value)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $value = commonSearchNormalizeWhitespace($value);
     if (class_exists(\Normalizer::class)) {
         $value = \Normalizer::normalize($value, \Normalizer::FORM_D) ?: $value;
         $value = preg_replace('/\p{Mn}/u', '', $value);

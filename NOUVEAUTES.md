@@ -1,5 +1,13 @@
 # Journal Des Nouveautes
 
+- Regles : correction des rechargements en boucle au passage au tri alphabetique ou au regroupement par holon lorsqu une autre vue est enregistree. Les filtres sont transmis explicitement au serveur, y compris leurs valeurs par defaut.
+
+- Recherche : nettoyage des retours a la ligne encodes (comme &#13;) dans les resumes et apercus, y compris les anciennes recherches memorisees. Les paragraphes sont conserves et les lignes vides repetitives sont reduites.
+
+- Recherche : les filtres de modules conservent tous les resultats annonces par leurs compteurs. Suppression de la coupe globale a 36 resultats dans le worker, qui pouvait faire disparaitre entierement certains modules ; les compteurs refletent aussi la liste disponible lors de la restauration d une ancienne recherche.
+
+- Recherche : apercus centres sur les passages correspondants, titres et textes surlignes, contenu des documents HTML et FAQ, points pertinents des PV avec contexte de reunion, sous-projets et compteurs de documents et dates accessibles. Les competences pertinentes remontent dans la fiche Team, la bio devient recherchable et seules les competences visibles contribuent au classement final. Les autres apercus beneficient aussi des extraits et du surlignage ; le graphique des indicateurs est conserve.
+
 - Regles : les filtres Local, Contextuelles et Global remplacent Local, Enfants directs et Descendants. Local liste les regles definies dans le holon, Contextuelles rassemble ses regles applicables (cercle proche, ascendants et globales), Global affiche tout le reglement de l organisation. Les anciens filtres enregistres reviennent sur Contextuelles.
 
 - Regles : l aide du selecteur de portee affiche uniquement l explication du choix actuel et se met a jour au clic.
